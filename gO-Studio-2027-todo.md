@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 25 | 13 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 23 | 13 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -97,9 +97,7 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ### IDE integration
 
-- [ ] Changed APIs. — *Parziale: i simboli esportati aggiunti/modificati/rimossi sono contati nel dialog di commit (VCSChangedSymbols); mancano endpoint HTTP/gRPC cambiati e breaking change.*
-- [ ] Changed DB interactions.
-- [ ] Changed broker interactions.
+- [ ] Changed APIs. — *Parziale: nel dialog di commit i simboli esportati e gli handler HTTP/gRPC cambiati sono marcati (euristica sul sorgente); manca il rilevamento dei breaking change di firma.*
 
 ## §21 · Static Analysis
 

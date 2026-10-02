@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -31,12 +32,36 @@ type VCSChangedSymbol struct {
 	Exported bool   `json:"exported"`
 	// Test vale per Test*, Benchmark*, Fuzz* ed Example* nei file _test.go.
 	Test bool `json:"test"`
+	// Touches dice cosa tocca la dichiarazione, dedotto dal sorgente: "http", "grpc", "db", "broker".
+	Touches []string `json:"touches,omitempty"`
+}
+
+// Indizi dal sorgente: firme di handler e chiamate tipiche dei client. Sono euristiche, non analisi dei tipi.
+var symbolTouches = []struct {
+	tag     string
+	pattern *regexp.Regexp
+}{
+	{"http", regexp.MustCompile(`http\.ResponseWriter|\*gin\.Context|echo\.Context|\*fiber\.Ctx|\.HandleFunc\(|http\.Handle\(|\.(GET|POST|PUT|PATCH|DELETE)\("/`)},
+	{"grpc", regexp.MustCompile(`grpc\.|Unimplemented\w+Server|\.Register\w+Server\(`)},
+	{"db", regexp.MustCompile(`\b(sql|sqlx|pgx|pgxpool|gorm|mongo|bson|redis)\.|\.(QueryRow|Query|Exec|QueryRowContext|QueryContext|ExecContext|BeginTx|Prepare|PrepareContext)\(`)},
+	{"broker", regexp.MustCompile(`\b(kafka|sarama|kgo|nats|jetstream|amqp|amqp091|pubsub|sqs|sns|kinesis|eventhub)\.|\.(Publish|PublishMsg|Produce|ProduceSync|WriteMessages|SendMessage|ReadMessage|Subscribe|QueueSubscribe|Consume)\(`)},
+}
+
+func touchesOf(source string) []string {
+	tags := []string{}
+	for _, item := range symbolTouches {
+		if item.pattern.MatchString(source) {
+			tags = append(tags, item.tag)
+		}
+	}
+	return tags
 }
 
 type goDeclaration struct {
 	name, kind     string
 	start, end     int
 	exported, test bool
+	touches        []string
 }
 
 // VCSChangedSymbols elenca funzioni, metodi, tipi, costanti e variabili aggiunti, modificati
@@ -106,7 +131,7 @@ func diffDeclarations(relative string, previous, current []goDeclaration, ranges
 		before[declaration.kind+" "+declaration.name] = true
 	}
 	symbol := func(declaration goDeclaration, change string, line int) VCSChangedSymbol {
-		return VCSChangedSymbol{RelativePath: relative, Name: declaration.name, Kind: declaration.kind, Change: change, Line: line, Exported: declaration.exported, Test: declaration.test}
+		return VCSChangedSymbol{RelativePath: relative, Name: declaration.name, Kind: declaration.kind, Change: change, Line: line, Exported: declaration.exported, Test: declaration.test, Touches: declaration.touches}
 	}
 	result := []VCSChangedSymbol{}
 	now := map[string]bool{}
@@ -170,7 +195,9 @@ func goDeclarations(text string, isTestFile bool) []goDeclaration {
 			}
 			name := value.Name.Name
 			test := isTestFile && value.Recv == nil && isTestFunctionName(name)
-			declarations = append(declarations, goDeclaration{name: functionName(value), kind: kind, start: start, end: end, exported: ast.IsExported(name), test: test})
+			// Solo firma e corpo, non il commento: un handler si riconosce da ciò che fa.
+			source := text[fileSet.Position(value.Pos()).Offset:fileSet.Position(value.End()).Offset]
+			declarations = append(declarations, goDeclaration{name: functionName(value), kind: kind, start: start, end: end, exported: ast.IsExported(name), test: test, touches: touchesOf(source)})
 		case *ast.GenDecl:
 			kind := map[token.Token]string{token.TYPE: "type", token.CONST: "const", token.VAR: "var"}[value.Tok]
 			if kind == "" {

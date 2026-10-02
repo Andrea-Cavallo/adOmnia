@@ -52,3 +52,17 @@ func TestVCSChangedSymbolsAgainstHEAD(t *testing.T) {
 		t.Fatalf("metadati dei simboli inattesi: %+v", symbols)
 	}
 }
+
+func TestChangedSymbolTouchesAreReadFromTheFunctionSource(t *testing.T) {
+	text := "package svc\n\n// Handler uses sql. in the comment only.\nfunc Handler(w http.ResponseWriter, r *http.Request) {\n\trow := db.QueryRowContext(r.Context(), \"select 1\")\n\t_ = row\n\t_ = writer.WriteMessages(r.Context())\n}\n\nfunc Pure() int { return 1 }\n"
+	declarations := goDeclarations(text, false)
+	if len(declarations) != 2 {
+		t.Fatalf("dichiarazioni: %+v", declarations)
+	}
+	if got := declarations[0].touches; len(got) != 3 || got[0] != "http" || got[1] != "db" || got[2] != "broker" {
+		t.Fatalf("Handler: %v", got)
+	}
+	if got := declarations[1].touches; len(got) != 0 {
+		t.Fatalf("Pure non tocca nulla: %v", got)
+	}
+}

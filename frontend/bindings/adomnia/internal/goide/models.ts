@@ -5574,6 +5574,11 @@ export class VCSChangedSymbol {
      */
     "test": boolean;
 
+    /**
+     * Touches dice cosa tocca la dichiarazione, dedotto dal sorgente: "http", "grpc", "db", "broker".
+     */
+    "touches"?: string[];
+
     /** Creates a new VCSChangedSymbol instance. */
     constructor($$source: Partial<VCSChangedSymbol> = {}) {
         if (!("relativePath" in $$source)) {
@@ -5605,7 +5610,11 @@ export class VCSChangedSymbol {
      * Creates a new VCSChangedSymbol instance from a string or object.
      */
     static createFrom($$source: any = {}): VCSChangedSymbol {
+        const $$createField7_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("touches" in $$parsedSource) {
+            $$parsedSource["touches"] = $$createField7_0($$parsedSource["touches"]);
+        }
         return new VCSChangedSymbol($$parsedSource as Partial<VCSChangedSymbol>);
     }
 }

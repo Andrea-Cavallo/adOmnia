@@ -41,6 +41,8 @@ async function runPrecommitChecks(sessionId: string, selected: Set<string>): Pro
   return precommitProblems(Object.values(mergedReports(state.diagnostics[sessionId], state.lint[sessionId]?.reports)), selected)
 }
 
+const TOUCH_LABEL: Record<string, string> = { http: 'HTTP API', grpc: 'gRPC', db: 'database', broker: 'broker' }
+
 const CHANGE_MARK: Record<string, { mark: string; className: string }> = {
   added: { mark: '+', className: 'text-success' },
   modified: { mark: '~', className: 'text-accent' },
@@ -54,11 +56,13 @@ function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChang
   if (visible.length === 0) return null
   const tests = visible.filter((symbol) => symbol.test).length
   const api = visible.filter((symbol) => symbol.exported && !symbol.test).length
+  const touching = (tag: string) => visible.filter((symbol) => symbol.touches?.includes(tag)).length
+  const areas = (['http', 'grpc', 'db', 'broker'] as const).map((tag) => ({ tag, count: touching(tag) })).filter((item) => item.count > 0)
   return (
     <details className="border-b border-border-1 px-3 py-2 text-[12px]">
       <summary className="flex cursor-pointer items-center gap-2 text-text-2">
         <span className="font-medium">{visible.length} changed symbol{visible.length === 1 ? '' : 's'}</span>
-        <span className="text-text-4">· {api} exported · {tests} test{tests === 1 ? '' : 's'}</span>
+        <span className="text-text-4">· {api} exported · {tests} test{tests === 1 ? '' : 's'}{areas.map((item) => ` · ${item.count} ${TOUCH_LABEL[item.tag]}`).join('')}</span>
         <button type="button" onClick={(event) => { event.preventDefault(); onClose(); void runGoStudioChangedTests() }} title="Run go test on the packages with changed Go files and on the packages that import them" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-success hover:bg-success/10">
           <FlaskConical size={12} aria-hidden="true" /> Test changed packages
         </button>
@@ -66,7 +70,7 @@ function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChang
       <div className="mt-1.5 max-h-[22vh] overflow-auto">
         {visible.map((symbol) => {
           const change = CHANGE_MARK[symbol.change] ?? CHANGE_MARK.modified
-          const label = <><span className={`w-3 shrink-0 text-center font-semibold ${change.className}`} aria-label={symbol.change}>{change.mark}</span><span className="w-12 shrink-0 text-[10.5px] text-text-4">{symbol.kind}</span><span className={`truncate font-mono text-[11.5px] ${symbol.exported ? 'text-text-1' : 'text-text-2'}`}>{symbol.name}</span>{symbol.test && <span className="gs-badge h-[16px] text-[10px]">test</span>}<span className="ml-auto shrink-0 truncate font-mono text-[10.5px] text-text-4">{symbol.relativePath}{symbol.line ? `:${symbol.line}` : ''}</span></>
+          const label = <><span className={`w-3 shrink-0 text-center font-semibold ${change.className}`} aria-label={symbol.change}>{change.mark}</span><span className="w-12 shrink-0 text-[10.5px] text-text-4">{symbol.kind}</span><span className={`truncate font-mono text-[11.5px] ${symbol.exported ? 'text-text-1' : 'text-text-2'}`}>{symbol.name}</span>{symbol.test && <span className="gs-badge h-[16px] text-[10px]">test</span>}{symbol.touches?.map((tag) => <span key={tag} title={`Touches ${TOUCH_LABEL[tag] ?? tag} (read from the source)`} className="gs-badge h-[16px] text-[10px] text-warning">{TOUCH_LABEL[tag] ?? tag}</span>)}<span className="ml-auto shrink-0 truncate font-mono text-[10.5px] text-text-4">{symbol.relativePath}{symbol.line ? `:${symbol.line}` : ''}</span></>
           return symbol.line
             ? <button key={`${symbol.relativePath}:${symbol.kind}:${symbol.name}`} type="button" onClick={() => { onClose(); void openLocation(symbol.relativePath, symbol.line, 1) }} className="flex h-6 w-full items-center gap-2 rounded px-1.5 text-left hover:bg-surface-2/60">{label}</button>
             : <div key={`${symbol.relativePath}:${symbol.kind}:${symbol.name}`} className="flex h-6 items-center gap-2 px-1.5 opacity-80" title="Removed: no longer in the file">{label}</div>
