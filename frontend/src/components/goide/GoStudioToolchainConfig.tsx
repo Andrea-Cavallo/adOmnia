@@ -3,7 +3,7 @@ import { Globe, FolderGit2} from 'lucide-react'
 import { GoStudioButton, GoStudioField } from './GoStudioModal'
 import { configureGoIDEGlobalToolchain, getGoIDEToolchainSettings, resetGoIDEToolchainToGlobal, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
-import { modulePatternProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
+import { modulePatternProblem, networkModeOf, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode, type GoStudioNetworkMode, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
 
 type Scope = 'project' | 'global'
 
@@ -16,6 +16,12 @@ const TEXT_FIELDS: { key: ToolchainField; label: string; placeholder: string; hi
   { key: 'GONOSUMDB', label: 'GONOSUMDB', placeholder: 'defaults to GOPRIVATE' },
   { key: 'GOOS', label: 'GOOS', placeholder: 'host OS (linux, windows, darwin…)' },
   { key: 'GOARCH', label: 'GOARCH', placeholder: 'host arch (amd64, arm64…)' },
+]
+
+const NETWORK_MODES: { value: GoStudioNetworkMode; label: string; hint: string }[] = [
+  { value: 'online', label: 'Online', hint: 'Modules and toolchains download through GOPROXY and are verified against the checksum database.' },
+  { value: 'offline', label: 'Offline', hint: 'GOPROXY=off and GOTOOLCHAIN=local: builds use only the module cache and vendor/, nothing is downloaded.' },
+  { value: 'airgapped', label: 'Air-gapped', hint: 'Offline plus GOSUMDB=off: no request ever leaves the machine. Point GOPROXY at an internal registry instead if you have one.' },
 ]
 
 interface Props {
@@ -87,6 +93,13 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
         </div>
         <span className="ml-auto text-[11.5px] text-text-4">{settings?.project ? 'Project overrides the global default' : 'Project follows the global default'}</span>
       </div>
+      <GoStudioField label="Network" hint={NETWORK_MODES.find((mode) => mode.value === networkModeOf(form))?.hint}>
+        <div role="radiogroup" aria-label="Network mode" className="gs-segmented self-start">
+          {NETWORK_MODES.map((mode) => (
+            <button key={mode.value} type="button" role="radio" aria-checked={networkModeOf(form) === mode.value} aria-pressed={networkModeOf(form) === mode.value} onClick={(event) => { event.preventDefault(); setForm((current) => withNetworkMode(current, mode.value)) }} className="gs-segment">{mode.label}</button>
+          ))}
+        </div>
+      </GoStudioField>
       <GoStudioField label="Go binary"><input value={goBinary} onChange={(event) => setGoBinary(event.target.value)} placeholder="Leave empty to use Go from PATH" className={inputClass} /></GoStudioField>
       <div className="grid grid-cols-2 gap-x-3 gap-y-3">
         {TEXT_FIELDS.map(({ key, label, placeholder, hint }) => {

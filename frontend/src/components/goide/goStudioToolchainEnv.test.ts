@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { modulePatternProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv } from './goStudioToolchainEnv'
+import { modulePatternProblem, networkModeOf, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode } from './goStudioToolchainEnv'
 
 describe('toolchain env form', () => {
   it('round-trips structured fields, build tags and extra variables', () => {
@@ -33,5 +33,20 @@ describe('GOPRIVATE helpers', () => {
     expect(suggestedPrivatePattern('git.corp.example/team/svc')).toBe('git.corp.example')
     expect(suggestedPrivatePattern('golang.org/x/tools')).toBeNull()
     expect(suggestedPrivatePattern('example')).toBeNull()
+  })
+})
+
+describe('network mode', () => {
+  it('switches between online, offline and air-gapped without losing other settings', () => {
+    const base = toolchainFormFromEnv({ GOPRIVATE: 'git.corp/*', GOFLAGS: '-tags=e2e' })
+    expect(networkModeOf(base)).toBe('online')
+    const offline = withNetworkMode(base, 'offline')
+    expect(toolchainEnvFromForm(offline)).toEqual({ GOPRIVATE: 'git.corp/*', GOFLAGS: '-tags=e2e', GOPROXY: 'off', GOTOOLCHAIN: 'local' })
+    expect(networkModeOf(offline)).toBe('offline')
+    const airgapped = withNetworkMode(offline, 'airgapped')
+    expect(networkModeOf(airgapped)).toBe('airgapped')
+    expect(toolchainEnvFromForm(withNetworkMode(airgapped, 'offline')).GOSUMDB).toBeUndefined()
+    const online = toolchainEnvFromForm(withNetworkMode(airgapped, 'online'))
+    expect(online).toEqual({ GOPRIVATE: 'git.corp/*', GOFLAGS: '-tags=e2e', GOTOOLCHAIN: 'local' })
   })
 })

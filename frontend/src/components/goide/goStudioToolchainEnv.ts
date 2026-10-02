@@ -73,3 +73,31 @@ export function suggestedPrivatePattern(modulePath: string): string | null {
   if (HOSTED_FORGES.has(host)) return owner ? `${host}/${owner}/*` : null
   return host
 }
+
+export type GoStudioNetworkMode = 'online' | 'offline' | 'airgapped'
+
+/** Online: proxy e checksum DB di default. Offline: nessun download (solo cache e vendor). Air-gapped: anche niente checksum DB. */
+export function networkModeOf(form: ToolchainForm): GoStudioNetworkMode {
+  const env = toolchainEnvFromForm(form)
+  if (env.GOPROXY !== 'off') return 'online'
+  return env.GOSUMDB === 'off' ? 'airgapped' : 'offline'
+}
+
+/**
+ * Applica un modo di rete all'ambiente della toolchain senza toccare il resto:
+ * offline = GOPROXY=off e GOTOOLCHAIN=local (nessun download di moduli o toolchain), air-gapped
+ * aggiunge GOSUMDB=off; online toglie solo i valori "off" messi da questi preset.
+ */
+export function withNetworkMode(form: ToolchainForm, mode: GoStudioNetworkMode): ToolchainForm {
+  const env = toolchainEnvFromForm(form)
+  if (mode === 'online') {
+    if (env.GOPROXY === 'off') delete env.GOPROXY
+    if (env.GOSUMDB === 'off') delete env.GOSUMDB
+  } else {
+    env.GOPROXY = 'off'
+    env.GOTOOLCHAIN = 'local'
+    if (mode === 'airgapped') env.GOSUMDB = 'off'
+    else if (env.GOSUMDB === 'off') delete env.GOSUMDB
+  }
+  return toolchainFormFromEnv(env)
+}

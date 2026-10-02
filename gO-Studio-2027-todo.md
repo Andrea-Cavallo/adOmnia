@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 33 | 14 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 31 | 15 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -61,7 +61,7 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 - [ ] Per-project AI permissions. — *Parziale: Per-progetto solo .adomnia/aiignore per Copilot (internal/copilot/ignore.go); nessun permesso AI per progetto per gli altri provider.*
 - [ ] Telemetry opt-in.
 - [ ] Clear network activity panel.
-- [ ] Offline mode.
+- [ ] Offline mode. — *Parziale: la toolchain Go ha il modo Offline/Air-gapped (GOPROXY=off, GOTOOLCHAIN=local, GOSUMDB=off); manca un interruttore unico che blocchi anche AI cloud, vulncheck e controllo aggiornamenti.*
 - [ ] Export privacy settings.
 
 ## §48 · Enterprise — rete aziendale e toolchain
@@ -69,8 +69,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 - [ ] Corporate proxy. — *Parziale: GOPROXY configurabile per toolchain e proxy Copilot; non c'è un proxy globale unico.*
 - [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
 - [ ] Custom CA certificates. — *Parziale: CA bundle PEM solo per Copilot (NODE_EXTRA_CA_CERTS); non per toolchain Go o resto di Go Studio.*
-- [ ] Offline mode.
-- [ ] Air-gapped mode.
 - [ ] Internal artifact registry.
 - [ ] Corporate Git support.
 - [ ] Audit-friendly settings export.
