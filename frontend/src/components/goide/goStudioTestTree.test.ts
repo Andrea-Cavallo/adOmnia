@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/goide-tests-api'
-import { buildTestTree, filterTestTree, flakyCauses, isFlaky, raceRepeatRequestForNode, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
+import { buildTestTree, filterTestTree, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -109,5 +109,12 @@ describe('flaky causes', () => {
   it('reruns a test with the race detector', () => {
     const current = run([node('example.com/svc/api', '', 'fail', { directory: 'svc/api' }), node('example.com/svc/api', 'TestRace', 'fail')])
     expect(raceRepeatRequestForNode(current, current.results[1], 20)).toMatchObject({ run: '^TestRace$', repeat: 20, shuffle: 'on', race: true })
+  })
+})
+
+describe('reproduce command', () => {
+  it('rebuilds the go test command with repetitions, seed and race', () => {
+    const current = { ...run([node('example.com/svc/api', '', 'fail', { directory: 'svc/api', shuffleSeed: '42' }), node('example.com/svc/api', 'TestRace/case 1', 'fail')]), request: { sessionId: 's', workingDirectory: 'svc', packages: ['./...'], repeat: 20, shuffle: 'on', race: true, buildTags: ['integration'] } } as unknown as GoIDETestRun
+    expect(reproduceCommandFor(current, current.results[1])).toBe("cd svc && go test -count=20 -shuffle=42 -race -tags integration -run '^TestRace$/^case 1$' ./api")
   })
 })

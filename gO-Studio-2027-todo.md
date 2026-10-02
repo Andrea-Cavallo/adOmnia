@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 36 | 15 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 35 | 14 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -98,7 +98,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Flaky Test Detector
 
 - [ ] Concurrency correlation. — *Parziale: un test flaky si ripete con `-race` dal pannello Tests e l'output segnala data race/deadlock; manca una correlazione statistica con `-parallel`/`-cpu`.*
-- [ ] Generazione scenario riproducibile. — *Parziale: il seed di `-shuffle` si riesegue dal pannello Tests (stesso ordine, stesse ripetizioni); manca uno scenario esportabile (comando/test minimo).*
 
 ## §22 · Git Integration
 

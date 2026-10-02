@@ -185,3 +185,25 @@ export function flakyCauses(output: string, shuffled: boolean): string[] {
 export function raceRepeatRequestForNode(run: GoIDETestRun, result: GoIDETestResult, repeat: number): GoIDETestRunRequest {
   return { ...repeatRequestForNode(run, result, repeat), race: true }
 }
+
+function shellQuote(value: string): string {
+  return /^[\w./=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\''`)}'`
+}
+
+/**
+ * Comando da terminale che riproduce lo scenario di un test: stesso package, filtro, ripetizioni,
+ * seed di -shuffle (se il package l'ha stampato), race detector e build tag.
+ */
+export function reproduceCommandFor(run: GoIDETestRun, result: GoIDETestResult): string {
+  const request = requestForNode(run, result)
+  const seed = run.results.find((item) => item.package === result.package && !item.name)?.shuffleSeed
+  const args = ['go', 'test']
+  if ((run.request.repeat ?? 0) > 1) args.push(`-count=${run.request.repeat}`)
+  if (seed) args.push(`-shuffle=${seed}`)
+  if (run.request.race) args.push('-race')
+  if (request.buildTags?.length) args.push('-tags', request.buildTags.join(','))
+  if (request.run) args.push('-run', request.run)
+  args.push(...request.packages)
+  const command = args.map(shellQuote).join(' ')
+  return request.workingDirectory ? `cd ${shellQuote(request.workingDirectory)} && ${command}` : command
+}

@@ -6,7 +6,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { functionsByCoverage } from './goStudioCoverage'
 import { clearFlakyHistory, flakyRecords, loadFlakyHistory, saveFlakyHistory, type GoStudioFlakyHistoryEntry, type GoStudioFlakyRecord } from './goStudioFlakyHistory'
@@ -257,6 +257,9 @@ function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result:
           <button type="button" onClick={() => void openLocation(result.failure!.relativePath!, result.failure!.line, 1)} className="shrink-0 font-mono text-[10px] text-danger underline decoration-danger/40 underline-offset-2">{result.failure.relativePath}:{result.failure.line}</button>
         )}
         <span className="ml-auto shrink-0 text-[10px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
+        <button type="button" onClick={() => void WailsClipboard.SetText(reproduceCommandFor(run, result))} title="Copy the go test command that reproduces this run (filter, repetitions, -shuffle seed, -race, tags)" className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1">
+          <Copy size={10} aria-hidden="true" />
+        </button>
       </div>
       <RepetitionSummary run={run} result={result} output={output} />
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
