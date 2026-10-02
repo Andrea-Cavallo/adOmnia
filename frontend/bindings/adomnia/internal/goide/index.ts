@@ -97,6 +97,7 @@ export {
     NavigationEntry,
     NewFile,
     OpenDocument,
+    PendingDefer,
     PrivateRepoCredential,
     ProcessDescriptor,
     ProcessInfo,

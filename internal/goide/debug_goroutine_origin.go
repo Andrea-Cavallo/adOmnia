@@ -39,22 +39,33 @@ func (m *DebugManager) GoroutineCreation(id DebugSessionID, threadID int) (Gorou
 	if gopc == 0 {
 		return result, nil
 	}
-	address := fmt.Sprintf("0x%x", gopc)
-	instructions, err := m.Disassemble(id, address, 1, 0)
+	location, err := m.callSiteBefore(id, gopc)
 	if err != nil {
 		return GoroutineCreation{}, err
 	}
-	// La riga giusta è quella della CALL che precede l'indirizzo di ritorno, come fa il runtime (gopc-1).
+	result.Location = location
+	if location != nil && location.Path != "" {
+		result.SourceLine = strings.TrimSpace(newSourceLineCache().line(location.Path, location.Line))
+	}
+	return result, nil
+}
+
+// callSiteBefore risolve un indirizzo di ritorno sulla riga della CALL che lo precede, come fa il
+// runtime con pc-1: è la riga dell'istruzione go o defer che ha chiamato newproc/deferproc.
+func (m *DebugManager) callSiteBefore(id DebugSessionID, returnPC uint64) (*DebugFrame, error) {
+	address := fmt.Sprintf("0x%x", returnPC)
+	instructions, err := m.Disassemble(id, address, 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	var location *DebugFrame
 	for _, instruction := range instructions {
 		if strings.EqualFold(instruction.Address, address) || instruction.Line == 0 {
 			continue
 		}
-		result.Location = &DebugFrame{Name: instruction.Symbol, Path: instruction.Path, RelativePath: instruction.RelativePath, Line: instruction.Line, Column: 1, InstructionPointer: instruction.Address}
+		location = &DebugFrame{Name: instruction.Symbol, Path: instruction.Path, RelativePath: instruction.RelativePath, Line: instruction.Line, Column: 1, InstructionPointer: instruction.Address}
 	}
-	if result.Location != nil && result.Location.Path != "" {
-		result.SourceLine = strings.TrimSpace(newSourceLineCache().line(result.Location.Path, result.Location.Line))
-	}
-	return result, nil
+	return location, nil
 }
 
 func (m *DebugManager) evaluateUint(id DebugSessionID, expression string, frameID int) (uint64, error) {

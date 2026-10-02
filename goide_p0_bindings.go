@@ -11,3 +11,8 @@ func (g *GoIDE) BaseBranchCoverage(sessionID, base string, packageDirs, buildTag
 func (g *GoIDE) DebugGoroutineCreation(debugID string, threadID int) (goide.GoroutineCreation, error) {
 	return g.service.DebugGoroutineCreation(debugID, threadID)
 }
+
+// DebugPendingDefers restituisce i defer registrati a runtime dalla goroutine, in ordine di esecuzione.
+func (g *GoIDE) DebugPendingDefers(debugID string, threadID int) ([]goide.PendingDefer, error) {
+	return g.service.DebugPendingDefers(debugID, threadID)
+}

@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 3 | 3 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 2 | 2 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -42,12 +42,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Test obbligatori
 
 - [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
-
-## §7 · Debugger Go con Delve
-
-### Go-specific
-
-- [ ] Deferred call inspector. — *Parziale: goStudioDeferredCalls.ts + GoStudioDebugSession.tsx elencano dal sorgente i defer candidati; mancano l'elenco e l'ordine runtime dei defer davvero pendenti. Delve li conosce (`stack -defer`) ma non li espone via DAP. Strada: avviare Delve headless e aprire una seconda connessione JSON-RPC (`Stacktrace` con `Defers`) solo per i defer; leggere `runtime.curg._defer` non basta, perché i defer open-coded (Go ≥ 1.14) non stanno in quella lista. Costo medio.*
 
 ## §2 · Editor Core
 

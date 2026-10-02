@@ -3622,6 +3622,48 @@ export class OpenDocument {
 }
 
 /**
+ * PendingDefer è un defer registrato a runtime e non ancora eseguito.
+ */
+export class PendingDefer {
+    /**
+     * Order è la posizione di esecuzione: 1 parte per primo al ritorno o durante un panic.
+     */
+    "order": number;
+
+    /**
+     * Location è la riga dell'istruzione defer; Location.Name è la funzione che l'ha registrato.
+     */
+    "location"?: DebugFrame | null;
+    "sourceLine"?: string;
+
+    /**
+     * Wrapper è la funzione che il runtime chiamerà (per Go ≥ 1.18 un wrapper come main.f.deferwrap1).
+     */
+    "wrapper"?: string;
+
+    /** Creates a new PendingDefer instance. */
+    constructor($$source: Partial<PendingDefer> = {}) {
+        if (!("order" in $$source)) {
+            this["order"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PendingDefer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PendingDefer {
+        const $$createField1_0 = $$createType53;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
+        }
+        return new PendingDefer($$parsedSource as Partial<PendingDefer>);
+    }
+}
+
+/**
  * PrivateRepoCredential è lo stato delle credenziali di un host nel gestore credenziali di Git.
  */
 export class PrivateRepoCredential {

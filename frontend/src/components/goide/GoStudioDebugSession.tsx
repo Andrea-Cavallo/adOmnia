@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, GitFork, MapPin, OctagonAlert, Rocket } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { GoroutineCreation } from '../../../bindings/adomnia/internal/goide/models'
+import type { GoroutineCreation, PendingDefer } from '../../../bindings/adomnia/internal/goide/models'
 import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, readGoIDEDebugMemory, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugMemory, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
@@ -44,7 +44,7 @@ export function GoStudioDebugSession({ view, sessionId }: GoStudioDebugSessionPr
       <section aria-label="Goroutine and call stack" className="flex min-h-0 flex-col">
         {paused && <GoroutineDetail goroutine={selected} threadId={view.threadId} debugId={view.info.id} onSelectGoroutine={(id) => void useGoIDEDebugStore.getState().selectThread(view.info.id, id)} />}
         {paused && <PanicInspector view={view} />}
-        {paused && <DeferredCallInspector frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
+        {paused && <DeferredCallInspector debugId={view.info.id} threadId={view.threadId} frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         {paused && <DisassemblyInspector debugId={view.info.id} frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         {paused && <MemoryInspector debugId={view.info.id} frameId={view.frameId} />}
         <FramesPane view={view} />
@@ -154,30 +154,54 @@ function DisassemblyInspector({ debugId, frame }: { debugId: string; frame: GoID
   )
 }
 
-function DeferredCallInspector({ frame }: { frame: GoIDEDebugFrame | null }) {
-  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+function DeferredCallInspector({ debugId, threadId, frame }: { debugId: string; threadId: number | null; frame: GoIDEDebugFrame | null }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'runtime' | 'source' | 'error'>('idle')
+  const [pending, setPending] = useState<PendingDefer[]>([])
   const [calls, setCalls] = useState<GoStudioSourceDeferredCall[]>([])
+  const [reason, setReason] = useState('')
   const inspect = async () => {
-    if (!frame?.relativePath || state === 'loading') return
+    if (state === 'loading' || threadId === null) return
     setState('loading')
     try {
-      const document = await useGoIDEStore.getState().ensureDocumentLoaded(frame.relativePath)
-      if (!document) throw new Error('source is unavailable')
+      setPending(await GoIDEBindings.DebugPendingDefers(debugId, threadId) ?? [])
+      setState('runtime')
+      return
+    } catch (error) {
+      setReason(error instanceof Error ? error.message : String(error))
+    }
+    // Il runtime non è leggibile (binario ottimizzato, target remoto): restano i candidati da sorgente.
+    try {
+      const document = frame?.relativePath ? await useGoIDEStore.getState().ensureDocumentLoaded(frame.relativePath) : null
+      if (!document || !frame) throw new Error('source is unavailable')
       setCalls(sourceDeferredCallsBefore(document.buffer, frame.line))
-      setState('ready')
+      setState('source')
     } catch {
-      setCalls([])
       setState('error')
     }
   }
-  useEffect(() => { setState('idle'); setCalls([]) }, [frame?.id])
-  if (!frame?.relativePath) return null
+  useEffect(() => { setState('idle'); setPending([]); setCalls([]) }, [threadId, frame?.id])
+  if (threadId === null) return null
   return (
     <div className="mx-2 mt-2 shrink-0 rounded-lg border border-border-1 bg-surface-0/40 p-2.5 text-[11px]">
-      <div className="flex items-center gap-2"><b className="text-text-2">Deferred calls</b><button type="button" onClick={() => void inspect()} disabled={state === 'loading'} className="ml-auto rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10 disabled:opacity-50">{state === 'loading' ? 'Reading…' : 'Inspect source'}</button></div>
-      {state === 'ready' && (calls.length > 0 ? <ol className="mt-1 space-y-0.5 font-mono text-[10.5px]">{calls.map((call) => <li key={call.line}><span className="mr-1 text-text-4">{call.line}</span>{call.expression}</li>)}</ol> : <p className="mt-1 text-text-4">No earlier <code>defer</code> in this source function.</p>)}
-      {state === 'error' && <p className="mt-1 text-danger">Source is unavailable for this frame.</p>}
-      {(state === 'idle' || state === 'ready') && <p className="mt-1 text-[10.5px] leading-4 text-text-4">Source candidates only: branches may mean a defer was not registered; Delve does not expose the pending runtime order.</p>}
+      <div className="flex items-center gap-2"><b className="text-text-2">Deferred calls</b><button type="button" onClick={() => void inspect()} disabled={state === 'loading'} className="ml-auto rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10 disabled:opacity-50">{state === 'loading' ? 'Reading…' : state === 'idle' ? 'Inspect' : 'Refresh'}</button></div>
+      {state === 'runtime' && (pending.length > 0 ? (
+        <ol className="mt-1 space-y-0.5 text-[10.5px]">
+          {pending.map((entry) => (
+            <li key={entry.order}>
+              <button type="button" disabled={!entry.location} onClick={() => openFrame(entry.location)} title={entry.wrapper || undefined} className="flex w-full min-w-0 items-baseline gap-1.5 rounded text-left enabled:hover:bg-surface-3">
+                <span className="w-4 shrink-0 text-right text-text-4">{entry.order}</span>
+                <span className="shrink-0 text-text-3">{entry.location?.name ? splitFunctionName(entry.location.name).name : '?'}</span>
+                <span className="truncate font-mono text-text-2">{entry.sourceLine || entry.wrapper}</span>
+                {entry.location && <span className="ml-auto shrink-0 font-mono text-text-4">{shortLocation(entry.location.relativePath || entry.location.path, entry.location.line)}</span>}
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : <p className="mt-1 text-text-4">No pending <code>defer</code> on this goroutine.</p>)}
+      {state === 'runtime' && pending.length > 0 && <p className="mt-1 text-[10.5px] leading-4 text-text-4">Registered at runtime, in the order they will run (1 first). Only defers that actually executed are listed.</p>}
+      {state === 'source' && (calls.length > 0 ? <ol className="mt-1 space-y-0.5 font-mono text-[10.5px]">{calls.map((call) => <li key={call.line}><span className="mr-1 text-text-4">{call.line}</span>{call.expression}</li>)}</ol> : <p className="mt-1 text-text-4">No earlier <code>defer</code> in this source function.</p>)}
+      {state === 'source' && <p className="mt-1 text-[10.5px] leading-4 text-text-4">The runtime defer chain is not readable here ({reason}); showing source candidates of this function instead.</p>}
+      {state === 'error' && <p className="mt-1 text-danger">Neither the runtime nor the source is available for this frame.</p>}
     </div>
   )
 }
@@ -225,7 +249,7 @@ function PanicInspectorDetail({ debugId, panic }: { debugId: string; panic: NonN
       {panic.originFrame && <button type="button" onClick={() => openFrame(panic.originFrame)} className="mt-1.5 flex max-w-full items-center gap-1 rounded font-mono text-text-2 hover:text-accent"><MapPin size={11} className="shrink-0" />Open origin: {splitFunctionName(panic.originFrame.name).name} · {shortLocation(panic.originFrame.relativePath || panic.originFrame.path, panic.originFrame.line)}</button>}
       {panicValue && <p className="mt-1.5 break-all font-mono text-[10.5px] text-text-2">Panic value: <span className="text-text-1">{panicValue.value}</span>{panicValue.type && <span className="text-text-4"> ({panicValue.type})</span>}</p>}
       {!panicValue && <p className="mt-1.5 text-[10.5px] leading-4 text-text-4">{valueStatus === 'loading' ? 'Reading panic value from the runtime frame…' : 'The DAP adapter did not expose a panic value for this stop.'}</p>}
-      <p className="mt-1 text-[10.5px] leading-4 text-text-4">Recovered/deferred state requires additional Delve data and is not inferred here.</p>
+      <p className="mt-1 text-[10.5px] leading-4 text-text-4">Pending deferred calls (they may recover the panic) are listed under Deferred calls.</p>
     </div>
   )
 }
