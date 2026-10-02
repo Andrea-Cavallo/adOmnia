@@ -61,10 +61,7 @@ function loadSidebarWidth(): number {
 
 function App() {
   const tr = useUiTranslation()
-  const { activeWindowChrome, commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
-  useEffect(() => {
-    useAppStore.getState().setAppWindowChrome(activeWindowChrome !== null && activeWindowChrome !== 'system')
-  }, [activeWindowChrome])
+  const { commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)

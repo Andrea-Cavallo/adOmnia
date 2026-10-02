@@ -32,17 +32,19 @@ type entry struct {
 
 // Manager crea, mette a fuoco e chiude le finestre Go Studio separate.
 type Manager struct {
-	app      *application.App
-	onClosed func(windowID string)
+	app       *application.App
+	onClosed  func(windowID string)
+	frameless bool
 
 	mu      sync.Mutex
 	windows map[string]*entry
 }
 
 // New crea il manager. onClosed viene chiamata a finestra chiusa, per restituire
-// le sue sessioni alla finestra principale.
-func New(app *application.App, onClosed func(windowID string)) *Manager {
-	return &Manager{app: app, onClosed: onClosed, windows: make(map[string]*entry)}
+// le sue sessioni alla finestra principale. Con frameless le finestre nascono senza
+// barra di sistema: la toolbar di gO Studio fa da barra del titolo.
+func New(app *application.App, frameless bool, onClosed func(windowID string)) *Manager {
+	return &Manager{app: app, onClosed: onClosed, frameless: frameless, windows: make(map[string]*entry)}
 }
 
 // WindowIDFor restituisce l'identificativo stabile della finestra di una
@@ -81,6 +83,7 @@ func (m *Manager) Open(sessionID, projectName string) (string, error) {
 		MinWidth:  900,
 		MinHeight: 600,
 		URL:       "/?" + query.Encode(),
+		Frameless: m.frameless,
 	})
 	current := &entry{window: window, sessionID: sessionID}
 	m.windows[windowID] = current

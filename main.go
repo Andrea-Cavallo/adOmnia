@@ -220,8 +220,8 @@ func startupWindowChromeFromSettings(settingsJSON []byte, goos string) string {
 	if parsed.Version < 3 && chrome == windowChromeApp {
 		chrome = windowChromeSystem
 	}
-	// v12: la barra integrata torna predefinita fuori da Linux, una volta sola.
-	if parsed.Version < 12 && chrome == windowChromeSystem && goos != "linux" {
+	// v13: la barra integrata torna predefinita fuori da Linux, una volta sola (v12 la saltava per chi aveva scelto System).
+	if parsed.Version < 13 && chrome == windowChromeSystem && goos != "linux" {
 		chrome = windowChromeApp
 	}
 	return normalizeWindowChrome(chrome)

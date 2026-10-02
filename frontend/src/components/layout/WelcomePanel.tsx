@@ -54,9 +54,9 @@ export function WelcomePanel() {
   const activeCard = hoveredCard ?? focusedCard
 
   return (
-    <div className="relative min-h-full overflow-auto text-text-1" data-hub-page>
-      <div className="relative mx-auto flex min-h-full max-w-[1600px] flex-col px-10 py-6 max-lg:px-5">
-        <header data-hub-hero className="relative grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center max-xl:grid-cols-1">
+    <div className="relative h-full overflow-auto text-text-1" data-hub-page>
+      <div className="relative mx-auto flex min-h-full max-w-[1600px] flex-col px-10 py-4 max-lg:px-5">
+        <header data-hub-hero className="relative grid shrink-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center max-xl:grid-cols-1">
           <div className="relative z-10 min-w-0 py-4">
             <h1 data-hub-headline className="m-0">
               <span data-hub-headline-lead>{tr('Call it. Code it.')}</span>
@@ -85,7 +85,8 @@ export function WelcomePanel() {
           </div>
         </header>
 
-        <div data-hub-card-grid className="relative z-10 mt-2 grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
+        {/* Two rows that share the height left by the hero: all six studios are visible without scrolling. */}
+        <div data-hub-card-grid className="relative z-10 mt-2 grid flex-1 grid-cols-3 gap-4 lg:grid-rows-[repeat(2,minmax(min-content,1fr))] max-lg:grid-cols-2 max-sm:grid-cols-1">
           {HUB_CARDS.map((card) => (
             <HubCardView
               key={card.pose}
