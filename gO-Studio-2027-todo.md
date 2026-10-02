@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 8 | 6 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 7 | 7 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -50,14 +50,10 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ## §7 · Debugger Go con Delve
 
-### Base
-
-- [ ] Set next statement dove supportato. — *non supportato da Delve via DAP (niente `goto`): resta aperto finché Delve non lo offre*
-
 ### Go-specific
 
 - [ ] Goroutine creation stack. — *Parziale: La sessione Debug mostra "Started in" (funzione di avvio) in GoStudioDebugSession.tsx; manca lo stack dell'istruzione go che ha creato la goroutine.*
-- [ ] Deferred call inspector. — *Parziale: goStudioDeferredCalls.ts + GoStudioDebugSession.tsx elencano dal sorgente i defer candidati; mancano l'elenco e l'ordine runtime dei defer davvero pendenti (Delve non li espone).*
+- [ ] Deferred call inspector. — *Parziale: goStudioDeferredCalls.ts + GoStudioDebugSession.tsx elencano dal sorgente i defer candidati; mancano l'elenco e l'ordine runtime dei defer davvero pendenti. Delve li conosce (`stack -defer`) ma non li espone via DAP. Strada: avviare Delve headless e aprire una seconda connessione JSON-RPC (`Stacktrace` con `Defers`) solo per i defer; leggere `runtime.curg._defer` non basta, perché i defer open-coded (Go ≥ 1.14) non stanno in quella lista. Costo medio.*
 
 ## §10 · Test Explorer
 
@@ -69,7 +65,7 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ### Refactoring
 
-- [ ] Move symbol. — *oggi Move to New File (gopls); spostare un simbolo in un altro package non è ancora supportato da gopls.*
+- [ ] Move symbol. — *Parziale: oggi Move to New File (gopls, stesso package). gopls non sposta simboli tra package: va scritto in adOmnia con go/packages + go/ast: spostare la dichiarazione, riscrivere i riferimenti (`pkg.Nome`) e gli import in tutto il progetto, rifiutare simboli non esportati usati altrove e cicli di import, anteprima delle modifiche prima di applicarle. Costo alto.*
 
 ---
 
