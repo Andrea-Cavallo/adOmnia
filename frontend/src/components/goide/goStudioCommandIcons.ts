@@ -188,6 +188,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'run.build': icon(Hammer),
   'run.buildPackage': icon(PackageOpen),
   'run.testPackage': icon(FlaskConical, TEST),
+  'run.testChanged': icon(FlaskConical, TEST),
   'run.context': icon(Play, TEST),
   'run.benchPackage': icon(Gauge, TEST),
   'run.vetPackage': icon(ShieldCheck),
@@ -224,6 +225,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
 
   'vcs.commit': icon(GitCommitHorizontal),
   'vcs.history': icon(History),
+  'vcs.lineHistory': icon(History),
   'vcs.annotate': icon(GitCompare),
   'vcs.gitStudio': icon(GitPullRequestArrow),
 

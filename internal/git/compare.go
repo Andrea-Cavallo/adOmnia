@@ -209,6 +209,26 @@ func FileHistory(repoPath, path string, n int) ([]CommitInfo, error) {
 	return parseCommitLog(out), nil
 }
 
+// LineHistory lists the commits that changed lines start..end (1-based, inclusive) of path,
+// following the range back through history with git log -L (-s drops the patches).
+func LineHistory(repoPath, path string, start, end, n int) ([]CommitInfo, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil, fmt.Errorf("file path is empty")
+	}
+	if start < 1 || end < start {
+		return nil, fmt.Errorf("invalid line range %d-%d", start, end)
+	}
+	if n <= 0 {
+		n = 100
+	}
+	out, err := runGit(repoPath, "log", fmt.Sprintf("--max-count=%d", n), "-s", "--date=short", commitLogFormat, fmt.Sprintf("-L%d,%d:%s", start, end, path))
+	if err != nil {
+		return nil, fmt.Errorf("git log -L: %w", err)
+	}
+	return parseCommitLog(out), nil
+}
+
 // Blame returns line-by-line authorship for a file at its current revision.
 func Blame(repoPath, path string) (string, error) {
 	path = strings.TrimSpace(path)

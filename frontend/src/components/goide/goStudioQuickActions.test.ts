@@ -4,8 +4,9 @@ vi.mock('@/lib/goide-api', () => ({ selectGoIDEFolder: vi.fn(), startGoIDEDepend
 vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: vi.fn(), setState: vi.fn() }, activeGoIDEDocument: vi.fn() }))
 vi.mock('@/stores/goideTests', () => ({ useGoIDETestsStore: { getState: vi.fn() } }))
+vi.mock('@/stores/goideVcs', () => ({ useGoIDEVCSStore: { getState: vi.fn() } }))
 
-import { fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
+import { changedPackageTestRequests, fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
 
 const session = (modules: string[]) => ({
   project: { realPath: '/work/repo', modules: modules.map((path) => ({ path, modulePath: '' })) },
@@ -51,5 +52,20 @@ describe('testRequestForTarget', () => {
     expect(fuzzRunRequestForTarget(repo, { line: 9, kind: 'fuzz', name: 'FuzzParse', packagePath: './tools/gen/parser' })).toEqual({
       workingDirectory: 'tools/gen', target: './parser', programArguments: ['-run', '^$', '-fuzz', '^FuzzParse$', '-fuzztime=30s'],
     })
+  })
+})
+
+describe('changedPackageTestRequests', () => {
+  it('tests each changed Go package once, grouped by module, skipping deletions and non-Go files', () => {
+    const repo = { id: 's', ...session(['/work/repo', '/work/repo/tools/gen']) }
+    const change = (relativePath: string, status = 'M') => ({ relativePath, status, staged: false, untracked: false, conflicted: false })
+    expect(changedPackageTestRequests(repo, [
+      change('internal/api/server.go'), change('internal/api/server_test.go'), change('main.go', '??'),
+      change('internal/old/gone.go', 'D'), change('README.md'), change('tools/gen/gen.go'),
+    ])).toEqual([
+      { sessionId: 's', workingDirectory: '', packages: ['.', './internal/api'], run: '', bench: '', coverage: false },
+      { sessionId: 's', workingDirectory: 'tools/gen', packages: ['.'], run: '', bench: '', coverage: false },
+    ])
+    expect(changedPackageTestRequests(repo, [change('docs/a.md')])).toEqual([])
   })
 })

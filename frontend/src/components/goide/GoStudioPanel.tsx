@@ -61,7 +61,7 @@ import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDi
 import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
-import { runGoStudioBenchmarks, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
+import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
 import { flushBufferRecovery } from './goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { debugRequestForTarget, fuzzRunRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
@@ -589,6 +589,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         return target ? runTarget(target) : void runGoStudioQuickCommand('test', 'package')
       }
       case 'run.testPackage': return void runGoStudioQuickCommand('test', 'package')
+      case 'run.testChanged': return void runGoStudioChangedTests()
       case 'run.benchPackage': return void runGoStudioBenchmarks('package')
       case 'run.vetPackage': return void runGoStudioQuickCommand('vet', 'package')
       case 'run.buildAll': return void runGoStudioQuickCommand('build', 'module')
@@ -695,7 +696,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         />
       )}
       <GoStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
-      <GoStudioGitHistoryDialog document={vcsDialog === 'history' ? currentActiveDocument() : null} open={vcsDialog === 'history'} onClose={() => setVcsDialog(null)} />
+      <GoStudioGitHistoryDialog document={vcsDialog === 'history' || vcsDialog === 'lineHistory' ? currentActiveDocument() : null} open={vcsDialog === 'history' || vcsDialog === 'lineHistory'} lines={vcsDialog === 'lineHistory'} onClose={() => setVcsDialog(null)} />
       <GoStudioHunkPopup />
       <GoStudioBreakpointPopover />
       <GoStudioBreakpointsDialog sessionId={activeSession.id} />

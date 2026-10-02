@@ -1391,6 +1391,15 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
 }
 
 /**
+ * VCSLineHistory elenca i commit che hanno modificato le righe start..end del file.
+ */
+export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<goide$0.VCSCommit[]> {
+    return $Call.ByID(3679175152, sessionID, relativePath, start, end).then(($result: any) => {
+        return $$createType104($result);
+    });
+}
+
+/**
  * VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {

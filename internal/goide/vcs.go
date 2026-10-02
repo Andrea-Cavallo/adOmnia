@@ -197,11 +197,32 @@ func (s *Service) VCSFileHistory(sessionID, relativePath string) ([]VCSCommit, e
 	if err != nil {
 		return nil, err
 	}
+	return vcsCommits(commits), nil
+}
+
+// VCSLineHistory elenca i commit che hanno modificato le righe start..end (1-based) del file salvato.
+func (s *Service) VCSLineHistory(sessionID, relativePath string, start, end int) ([]VCSCommit, error) {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	repoPath, err := paths.toRepo(relativePath)
+	if err != nil {
+		return nil, err
+	}
+	commits, err := git.LineHistory(paths.repoRoot, repoPath, start, end, maxVCSHistory)
+	if err != nil {
+		return nil, err
+	}
+	return vcsCommits(commits), nil
+}
+
+func vcsCommits(commits []git.CommitInfo) []VCSCommit {
 	result := make([]VCSCommit, 0, len(commits))
 	for _, commit := range commits {
 		result = append(result, VCSCommit{Hash: commit.Hash, FullHash: commit.FullHash, Author: commit.Author, Date: commit.Date, Message: commit.Message})
 	}
-	return result, nil
+	return result
 }
 
 // VCSBlame restituisce autore, commit e data di ogni riga del file salvato.

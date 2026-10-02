@@ -20,6 +20,11 @@ export function getGoIDEFileHistory(sessionId: string, relativePath: string): Pr
   return GoIDEBindings.VCSFileHistory(sessionId, relativePath)
 }
 
+/** Commit che hanno modificato le righe start..end (1-based) del file salvato. */
+export function getGoIDELineHistory(sessionId: string, relativePath: string, start: number, end: number): Promise<VCSCommit[]> {
+  return GoIDEBindings.VCSLineHistory(sessionId, relativePath, start, end)
+}
+
 export function getGoIDEBlame(sessionId: string, relativePath: string): Promise<VCSBlameLine[]> {
   return GoIDEBindings.VCSBlame(sessionId, relativePath)
 }

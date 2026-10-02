@@ -715,6 +715,11 @@ func (g *GoIDE) VCSFileHistory(sessionID, relativePath string) ([]goide.VCSCommi
 	return g.service.VCSFileHistory(sessionID, relativePath)
 }
 
+// VCSLineHistory elenca i commit che hanno modificato le righe start..end del file.
+func (g *GoIDE) VCSLineHistory(sessionID, relativePath string, start, end int) ([]goide.VCSCommit, error) {
+	return g.service.VCSLineHistory(sessionID, relativePath, start, end)
+}
+
 // VCSBlame restituisce autore e commit di ogni riga del file.
 func (g *GoIDE) VCSBlame(sessionID, relativePath string) ([]goide.VCSBlameLine, error) {
 	return g.service.VCSBlame(sessionID, relativePath)

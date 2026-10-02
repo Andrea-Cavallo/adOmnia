@@ -8,6 +8,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Added
 - **Flaky Test Detector in Go Studio:** the Tests panel reruns a test or the whole run ×10/20/50/100 in random order (`-count=N -shuffle=on`), counts passes and failures per test, marks flaky tests with a badge and a filter, shows failure rate and min/avg/max duration, and replays the exact order with the printed `-shuffle` seed.
+- **Line history in Go Studio:** *Git → Show History for Selection…* lists only the commits that changed the selected lines (`git log -L`), each diffed against the current editor.
+- **Test Changed Packages:** *Run → Test Changed Packages* runs `go test` only on the packages with modified, staged or new Go files, one run per module.
 
 ## [0.9.53] - 2026-10-02
 

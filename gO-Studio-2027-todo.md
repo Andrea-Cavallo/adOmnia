@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 49 | 13 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 47 | 14 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -110,14 +110,12 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ### IDE integration
 
-- [ ] Line history.
 - [ ] Changed symbols.
-- [ ] Changed tests.
 - [ ] Changed APIs.
 - [ ] Changed DB interactions.
 - [ ] Changed broker interactions.
 - [ ] Pre-commit checks.
-- [ ] Test affected code.
+- [ ] Test affected code. — *Parziale: Run → Test Changed Packages testa i package con file Go modificati; mancano i package che li importano (reverse deps).*
 
 ## §21 · Static Analysis
 

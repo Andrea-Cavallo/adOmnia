@@ -38,3 +38,32 @@ func TestBlameLines_ReturnsStructuredOwnership(t *testing.T) {
 		t.Fatalf("unexpected second line: %+v", lines[1])
 	}
 }
+
+func TestLineHistory_ListsOnlyCommitsTouchingTheRange(t *testing.T) {
+	gitAvailable(t)
+	dir := filepath.Join(t.TempDir(), "repo")
+	if err := Init(Config{RepoPath: dir, Branch: "main", AuthorName: "Alice", AuthorEmail: "alice@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "notes.txt")
+	for _, step := range []struct{ content, message string }{
+		{"one\ntwo\nthree\n", "initial"},
+		{"one\nTWO\nthree\n", "change line two"},
+		{"ONE\nTWO\nthree\n", "change line one"},
+	} {
+		writeFile(t, file, step.content)
+		if _, err := CommitAll(dir, step.message); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commits, err := LineHistory(dir, "notes.txt", 2, 2, 0)
+	if err != nil {
+		t.Fatalf("LineHistory: %v", err)
+	}
+	if len(commits) != 2 || commits[0].Message != "change line two" || commits[1].Message != "initial" {
+		t.Fatalf("expected the commits that touched line 2, got %+v", commits)
+	}
+	if _, err := LineHistory(dir, "notes.txt", 3, 1, 0); err == nil {
+		t.Fatal("inverted range accepted")
+	}
+}

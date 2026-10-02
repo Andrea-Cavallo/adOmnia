@@ -23,12 +23,12 @@ export type GoStudioCommandId =
   | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
   | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
-  | 'run.rerunFailedTests' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
+  | 'run.rerunFailedTests' | 'run.testChanged' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
   | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
-  | 'vcs.commit' | 'vcs.history' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
+  | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
@@ -209,6 +209,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.context', menu: 'run', label: 'Run Current Context (test, main or package)', binding: { key: 'F10', mod: true, shift: true } },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package' },
+  { id: 'run.testChanged', menu: 'run', label: 'Test Changed Packages' },
   { id: 'run.benchPackage', menu: 'run', label: 'Run Current Package Benchmarks' },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },
@@ -244,6 +245,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.runtimeEnrichment', menu: 'tools', label: 'Runtime Enrichment…' },
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },
+  { id: 'vcs.lineHistory', menu: 'git', label: 'Show History for Selection…' },
   { id: 'vcs.annotate', menu: 'git', label: 'Annotate with Git Blame' },
   { id: 'vcs.resolveConflicts', menu: 'git', label: 'Resolve Conflicts…' },
   { id: 'vcs.gitStudio', menu: 'git', label: 'Push, Pull, Conflicts and Rebase in Git Studio', separatorBefore: true },
@@ -433,6 +435,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'vcs.commit': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsChanges > 0 ? true : 'No local changes to commit'
     case 'vcs.resolveConflicts': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsConflicts > 0 ? true : 'No conflicted files'
     case 'vcs.history':
+    case 'vcs.lineHistory':
     case 'vcs.annotate': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.hasEditor ? true : 'Open a file first'
     case 'view.unsplit': return context.split ? true : 'The editor is not split'
     case 'go.toolchains':
@@ -443,6 +446,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'run.buildPackage':
     case 'run.context':
     case 'run.testPackage':
+    case 'run.testChanged':
     case 'run.benchPackage':
     case 'run.vetPackage':
     case 'run.buildAll':
