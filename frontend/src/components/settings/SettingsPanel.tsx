@@ -35,6 +35,7 @@ import {
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
+import { NetworkPrivacySettings } from './NetworkPrivacySettings'
 import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 import { redactSensitiveData } from '@/lib/secretRedaction'
@@ -231,7 +232,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'editor', label: s.sections.editor, icon: <Code2 size={14} />, terms: searchable(s.editor) },
     { id: 'features', label: 'Feature Surface', icon: <Sparkles size={14} />, terms: 'features surface advanced lab experimental rail command palette visibility modules' },
     { id: 'workspace', label: 'Workspace', icon: <FolderOpen size={14} />, terms: 'workspace import export backup project local .adomnia' },
-    { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: searchable(s.privacy) },
+    { id: 'privacy', label: s.sections.privacy, icon: <Database size={14} />, terms: `${searchable(s.privacy)} network offline proxy certificate ca telemetry activity` },
     { id: 'shortcuts', label: s.sections.shortcuts, icon: <Keyboard size={14} />, terms: searchable(s.shortcuts) },
     { id: 'about', label: s.sections.about, icon: <Info size={14} />, terms: searchable(s.about) },
     { id: 'developer', label: s.sections.developer, icon: <Bug size={14} />, terms: searchable(s.developer) },
@@ -904,6 +905,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {section === 'privacy' && (
           <>
             <SectionHeader title={s.privacy.title} subtitle={s.privacy.subtitle} />
+            <NetworkPrivacySettings />
             <SettingsCard>
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>

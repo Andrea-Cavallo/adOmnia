@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"context"
 	"fmt"
 	"net/http"
@@ -8,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
@@ -39,10 +40,7 @@ func (p *bedrockProvider) Name() string { return "amazon-bedrock" }
 
 func loadBedrockConfig(ctx context.Context, region, profile string, proxy func(*http.Request) (*url.URL, error)) (aws.Config, error) {
 	options := make([]func(*awsconfig.LoadOptions) error, 0, 3)
-	if proxy != nil {
-		client := awshttp.NewBuildableClient().WithTransportOptions(func(t *http.Transport) { t.Proxy = proxy })
-		options = append(options, awsconfig.WithHTTPClient(client))
-	}
+	options = append(options, awsconfig.WithHTTPClient(netpolicy.ClientWithFallbackProxy("ai", 0, proxy)))
 	if strings.TrimSpace(region) != "" {
 		options = append(options, awsconfig.WithRegion(strings.TrimSpace(region)))
 	}

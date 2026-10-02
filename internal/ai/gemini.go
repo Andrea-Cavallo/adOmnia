@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -18,7 +20,7 @@ func newGeminiProvider(apiKey, model string) *geminiProvider {
 	if model == "" {
 		model = "gemini-3.5-flash"
 	}
-	return &geminiProvider{apiKey: apiKey, model: model, client: &http.Client{}}
+	return &geminiProvider{apiKey: apiKey, model: model, client: netpolicy.Client("ai", 0)}
 }
 
 func (p *geminiProvider) Name() string { return "gemini" }

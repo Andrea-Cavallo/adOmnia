@@ -1,6 +1,8 @@
 package copilot
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -16,14 +18,16 @@ const httpTimeout = 10 * time.Minute
 // disattivata: un CA interno si aggiunge al trust store, non lo sostituisce.
 func httpClient(settings Settings) (*http.Client, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// Senza valori propri Copilot usa proxy e CA di adOmnia (Settings → Network & Privacy).
+	if err := netpolicy.Apply(transport); err != nil {
+		return nil, err
+	}
 	if settings.Proxy.URL != "" {
 		proxy, err := url.Parse(settings.Proxy.URL)
 		if err != nil {
 			return nil, fmt.Errorf("invalid proxy: %w", err)
 		}
 		transport.Proxy = http.ProxyURL(proxy)
-	} else {
-		transport.Proxy = http.ProxyFromEnvironment
 	}
 	if settings.CABundlePath != "" {
 		pool, err := certificatePool(settings.CABundlePath)
@@ -32,7 +36,7 @@ func httpClient(settings Settings) (*http.Client, error) {
 		}
 		transport.TLSClientConfig = &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}
 	}
-	return &http.Client{Transport: transport, Timeout: httpTimeout}, nil
+	return &http.Client{Transport: netpolicy.Wrap("copilot", transport), Timeout: httpTimeout}, nil
 }
 
 func certificatePool(bundlePath string) (*x509.CertPool, error) {

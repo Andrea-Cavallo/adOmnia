@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
@@ -87,7 +89,6 @@ type ToolchainInstaller struct {
 	mu         sync.RWMutex
 	root       string
 	operations map[string]*installOperation
-	client     *http.Client
 	emit       func(string, ToolchainInstallation)
 }
 
@@ -95,17 +96,7 @@ type ToolchainInstaller struct {
 func NewToolchainInstaller(emit func(string, ToolchainInstallation)) *ToolchainInstaller {
 	return &ToolchainInstaller{
 		operations: make(map[string]*installOperation),
-		client: &http.Client{Timeout: 30 * time.Minute, CheckRedirect: func(request *http.Request, via []*http.Request) error {
-			host := strings.ToLower(request.URL.Hostname())
-			if host != "go.dev" && host != "dl.google.com" {
-				return fmt.Errorf("redirect download non consentito: %s", host)
-			}
-			if len(via) > 5 {
-				return fmt.Errorf("troppi redirect download")
-			}
-			return nil
-		}},
-		emit: emit,
+		emit:       emit,
 	}
 }
 
@@ -130,7 +121,7 @@ func (i *ToolchainInstaller) ListReleases(ctx context.Context) ([]ToolchainRelea
 	if err != nil {
 		return nil, err
 	}
-	response, err := i.client.Do(request)
+	response, err := toolchainDownloadClient().Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("catalogo Go non raggiungibile: %w", err)
 	}
@@ -357,7 +348,7 @@ func (i *ToolchainInstaller) download(ctx context.Context, id string, release To
 	if err != nil {
 		return err
 	}
-	response, err := i.client.Do(request)
+	response, err := toolchainDownloadClient().Do(request)
 	if err != nil {
 		return fmt.Errorf("download Go fallito: %w", err)
 	}
@@ -594,4 +585,20 @@ func extractTarGzip(ctx context.Context, archivePath, destination string) error 
 			return fmt.Errorf("archivio Go contiene un elemento non consentito")
 		}
 	}
+}
+
+// toolchainDownloadClient segue proxy, CA e modo offline di adOmnia e accetta redirect solo verso go.dev.
+func toolchainDownloadClient() *http.Client {
+	client := netpolicy.Client("go-toolchain", 30*time.Minute)
+	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		host := strings.ToLower(request.URL.Hostname())
+		if host != "go.dev" && host != "dl.google.com" {
+			return fmt.Errorf("redirect download non consentito: %s", host)
+		}
+		if len(via) > 5 {
+			return fmt.Errorf("troppi redirect download")
+		}
+		return nil
+	}
+	return client
 }

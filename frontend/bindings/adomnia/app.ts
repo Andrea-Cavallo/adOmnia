@@ -13,6 +13,9 @@ import * as bootstrap$0 from "./internal/bootstrap/models.js";
 import * as markdown$0 from "./internal/markdown/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as netpolicy$0 from "./internal/netpolicy/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -56,6 +59,13 @@ export function CheckForUpdate(): $CancellablePromise<$models.UpdateInfo> {
 
 export function ClearDevLogs(): $CancellablePromise<void> {
     return $Call.ByID(2262681050);
+}
+
+/**
+ * ClearNetworkActivity svuota il registro delle connessioni.
+ */
+export function ClearNetworkActivity(): $CancellablePromise<void> {
+    return $Call.ByID(2652940309);
 }
 
 export function CompareFolders(left: string, right: string, maxFileMB: number): $CancellablePromise<string> {
@@ -111,6 +121,24 @@ export function GetDevLogs(): $CancellablePromise<string> {
     return $Call.ByID(471003717);
 }
 
+/**
+ * GetNetworkActivity elenca le connessioni che adOmnia ha aperto o bloccato da sola, dalla più recente.
+ */
+export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
+    return $Call.ByID(2699211190).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
+ * GetNetworkSettings restituisce modo offline, proxy e CA validi per tutta adOmnia.
+ */
+export function GetNetworkSettings(): $CancellablePromise<netpolicy$0.Settings> {
+    return $Call.ByID(1026796858).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
 export function GetServerPort(): $CancellablePromise<number> {
     return $Call.ByID(1323345775);
 }
@@ -132,7 +160,7 @@ export function GetVaultTimeout(): $CancellablePromise<number> {
 
 export function ImportMarkdownFolderToWorkspace(sourceRoot: string): $CancellablePromise<markdown$0.WorkspaceInfo> {
     return $Call.ByID(421526873, sourceRoot).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType5($result);
     });
 }
 
@@ -156,13 +184,13 @@ export function IsDevMode(): $CancellablePromise<boolean> {
  */
 export function ListLogFiles(): $CancellablePromise<$models.LogFileEntry[]> {
     return $Call.ByID(2963318464).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType7($result);
     });
 }
 
 export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.FileEntry[]> {
     return $Call.ByID(2340622615, root).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType8($result);
     });
 }
 
@@ -172,13 +200,13 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
  */
 export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
     return $Call.ByID(705221870).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType9($result);
     });
 }
 
 export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
     return $Call.ByID(1584322926).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType10($result);
     });
 }
 
@@ -281,6 +309,15 @@ export function SaveMarkdownFileAs(defaultName: string, content: string): $Cance
     });
 }
 
+/**
+ * SaveNetworkSettings valida e salva la politica di rete; vale subito per le nuove connessioni.
+ */
+export function SaveNetworkSettings(settings: netpolicy$0.Settings): $CancellablePromise<netpolicy$0.Settings> {
+    return $Call.ByID(1280426947, settings).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
 export function SaveSettings(settingsJSON: string): $CancellablePromise<void> {
     return $Call.ByID(1949631069, settingsJSON);
 }
@@ -328,13 +365,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType12($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType13($result);
     });
 }
 
@@ -361,12 +398,15 @@ export function WriteMarkdownFile(path: string, content: string): $CancellablePr
 // Private type creation functions
 const $$createType0 = $models.UpdateInfo.createFrom;
 const $$createType1 = markdown$0.FileEntry.createFrom;
-const $$createType2 = markdown$0.WorkspaceInfo.createFrom;
-const $$createType3 = $models.LogFileEntry.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($$createType1);
-const $$createType6 = bootstrap$0.State.createFrom;
-const $$createType7 = bootstrap$0.StateV2.createFrom;
-const $$createType8 = $models.StorageEntry.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = $Create.Array($Create.Any);
+const $$createType2 = netpolicy$0.Event.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = netpolicy$0.Settings.createFrom;
+const $$createType5 = markdown$0.WorkspaceInfo.createFrom;
+const $$createType6 = $models.LogFileEntry.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = $Create.Array($$createType1);
+const $$createType9 = bootstrap$0.State.createFrom;
+const $$createType10 = bootstrap$0.StateV2.createFrom;
+const $$createType11 = $models.StorageEntry.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Array($Create.Any);

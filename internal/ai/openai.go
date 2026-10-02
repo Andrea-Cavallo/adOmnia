@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -20,7 +22,7 @@ func newOpenAIProvider(apiKey, model, baseURL string) *openAIProvider {
 	if model == "" {
 		model = "gpt-6-sol"
 	}
-	return &openAIProvider{apiKey: apiKey, model: model, baseURL: baseURL, client: &http.Client{}}
+	return &openAIProvider{apiKey: apiKey, model: model, baseURL: baseURL, client: netpolicy.Client("ai", 0)}
 }
 
 func (p *openAIProvider) Name() string { return "openai" }

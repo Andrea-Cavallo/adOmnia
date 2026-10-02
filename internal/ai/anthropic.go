@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -30,13 +32,9 @@ type anthropicConn struct {
 }
 
 func newAnthropicConn(cfg Config, timeout time.Duration) anthropicConn {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if cfg.proxy != nil {
-		transport.Proxy = cfg.proxy
-	}
 	return anthropicConn{
 		baseURL: anthropicRoot(cfg.BaseURL), apiKey: cfg.APIKey, authToken: cfg.AuthToken,
-		headers: cfg.headers, client: &http.Client{Transport: transport, Timeout: timeout},
+		headers: cfg.headers, client: netpolicy.ClientWithFallbackProxy("ai", timeout, cfg.proxy),
 	}
 }
 

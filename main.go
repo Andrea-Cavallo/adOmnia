@@ -1,6 +1,8 @@
 package main
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"adomnia/internal/adomniacli"
 	"adomnia/internal/browser"
 	"adomnia/internal/docker"
@@ -54,6 +56,7 @@ func main() {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 
+	netpolicy.Configure(dataDir())
 	configureWindowChromeBackend(startupWindowChrome)
 
 	app := NewApp()

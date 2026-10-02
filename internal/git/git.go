@@ -1,6 +1,8 @@
 package git
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"errors"
 	"fmt"
@@ -93,6 +95,7 @@ type WorkingTreeFileSnapshot struct {
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	cmd.Env = netpolicy.Environ()
 	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out

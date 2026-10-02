@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bufio"
 	"context"
 	"encoding/json"
@@ -508,7 +510,7 @@ func goplsSettings(settings LanguageServerSettings) map[string]any {
 	return map[string]any{
 		"gofumpt":            settings.Gofumpt,
 		"staticcheck":        settings.Staticcheck,
-		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck],
+		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
 		"usePlaceholders":    settings.Placeholders,
 		"completeUnimported": true,
 		"hoverKind":          "FullDocumentation",

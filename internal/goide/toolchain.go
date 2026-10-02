@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"context"
 	"fmt"
 	goversion "go/version"
@@ -311,6 +313,8 @@ func (m *ToolchainManager) Environment(sessionID SessionID, overrides map[string
 	for key, value := range merged {
 		base[key] = value
 	}
+	// Proxy e CA di adOmnia riempiono i vuoti; il modo offline di adOmnia vince sul progetto.
+	netpolicy.ProcessEnvironment(base)
 	// gO Studio non scarica toolchain Go da solo: senza una scelta esplicita (variabile d'ambiente,
 	// configurazione del progetto o go env -w) i processi avviati usano l'SDK selezionato.
 	if _, explicit := base["GOTOOLCHAIN"]; !explicit && !m.userChoseToolchain(sessionID) {

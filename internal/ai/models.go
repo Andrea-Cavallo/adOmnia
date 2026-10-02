@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -34,7 +36,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 	if cfg.Provider == ProviderAmazonBedrock {
 		return discoverBedrockModels(ctx, cfg, query)
 	}
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := netpolicy.ClientWithFallbackProxy("ai", 12*time.Second, cfg.proxy)
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	var endpoint string
 

@@ -1,6 +1,8 @@
 package goide
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"context"
 	"encoding/json"
 	"errors"
@@ -413,7 +415,9 @@ func findDuplicates(graphOutput string) []DuplicateDependency {
 			sort.Strings(use.RequiredBy)
 			duplicate.Versions = append(duplicate.Versions, use)
 		}
-		sort.Slice(duplicate.Versions, func(left, right int) bool { return duplicate.Versions[left].Version < duplicate.Versions[right].Version })
+		sort.Slice(duplicate.Versions, func(left, right int) bool {
+			return duplicate.Versions[left].Version < duplicate.Versions[right].Version
+		})
 		duplicates = append(duplicates, duplicate)
 	}
 	sort.Slice(duplicates, func(left, right int) bool { return duplicates[left].Path < duplicates[right].Path })
@@ -548,8 +552,13 @@ func estimateModuleWeight(directory string) int64 {
 func runGovulncheck(directory, binary string) ([]DependencyVulnerability, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dependencyVulnTimeout)
 	defer cancel()
+	if err := netpolicy.Allow("vulncheck", "vuln.go.dev"); err != nil {
+		return nil, err
+	}
+	netpolicy.Record(netpolicy.Event{Category: "vulncheck", Host: "vuln.go.dev", Outcome: netpolicy.OutcomeOK, Detail: "govulncheck"})
 	command := exec.CommandContext(ctx, binary, "-json", "./...")
 	command.Dir = directory
+	command.Env = netpolicy.Environ()
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {

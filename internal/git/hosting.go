@@ -1,6 +1,8 @@
 package git
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -101,7 +103,7 @@ func hostRequest(ctx context.Context, account HostAccount, method, endpoint, tok
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	return http.DefaultClient.Do(req)
+	return netpolicy.Client("git-host", 0).Do(req)
 }
 
 func hostError(provider string, resp *http.Response) error {
@@ -395,7 +397,7 @@ func PushWithHostAccount(repoPath, branch string, account HostAccount, token str
 	cmd := exec.CommandContext(ctx, "git", "push", "origin", branch)
 	configureHiddenCommand(cmd)
 	cmd.Dir = repoPath
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraHeader", "GIT_CONFIG_VALUE_0="+header, "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(netpolicy.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraHeader", "GIT_CONFIG_VALUE_0="+header, "GIT_TERMINAL_PROMPT=0")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

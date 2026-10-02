@@ -1,6 +1,8 @@
 package git
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -63,7 +65,7 @@ func githubRequest(ctx context.Context, method, url, token string, body io.Reade
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	return http.DefaultClient.Do(req)
+	return netpolicy.Client("git-host", 0).Do(req)
 }
 
 // githubError turns a non-2xx response into a clean, frontend-safe error using

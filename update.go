@@ -1,6 +1,9 @@
 package main
 
 import (
+	"adomnia/internal/netpolicy"
+	"errors"
+
 	"context"
 	"encoding/json"
 	"fmt"
@@ -62,7 +65,10 @@ func (a *App) CheckForUpdate() (UpdateInfo, error) {
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := netpolicy.Client("update", 10*time.Second).Do(req)
+	if errors.Is(err, netpolicy.ErrOffline) {
+		return info, err
+	}
 	if err != nil {
 		return info, fmt.Errorf("could not reach GitHub to check for updates")
 	}

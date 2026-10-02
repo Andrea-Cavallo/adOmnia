@@ -1,6 +1,8 @@
 package copilot
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bufio"
 	"context"
 	"encoding/json"
@@ -242,6 +244,11 @@ func (m *Manager) Start() error {
 		m.mu.Unlock()
 		return nil
 	}
+	if err := netpolicy.Allow("copilot", m.settings.ProfileForWorkspace(m.root).Host); err != nil {
+		m.mu.Unlock()
+		m.setStatus(func(status *Status) { status.State = StateError; status.Message = err.Error() })
+		return err
+	}
 	m.launching = true
 	m.stopping = false
 	m.profile = m.settings.ProfileForWorkspace(m.root)
@@ -359,8 +366,12 @@ func initializeParams(folders []map[string]string) map[string]any {
 
 // serverConfiguration deriva sempre host e rete dal profilo: nessun github.com cablato.
 func serverConfiguration(settings Settings, profile GitHubProfile) map[string]any {
+	proxy := settings.Proxy.URL
+	if proxy == "" {
+		proxy = netpolicy.Current().ProxyURL
+	}
 	configuration := map[string]any{
-		"http": map[string]any{"proxy": settings.Proxy.URL, "proxyStrictSSL": settings.Proxy.StrictSSL},
+		"http": map[string]any{"proxy": proxy, "proxyStrictSSL": settings.Proxy.StrictSSL},
 		// adOmnia non ha telemetria; chiediamo lo stesso al server. La comunicazione con GitHub per
 		// il completamento resta attiva, come spiegato nella UI.
 		"telemetry": map[string]any{"telemetryLevel": "off"},

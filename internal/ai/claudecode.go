@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -290,9 +292,7 @@ func (s ClaudeCodeSettings) ProxyFunc() func(*http.Request) (*url.URL, error) {
 
 // HTTPClient returns a client whose transport honours the layered proxy.
 func (s ClaudeCodeSettings) HTTPClient(timeout time.Duration) *http.Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = s.ProxyFunc()
-	return &http.Client{Transport: transport, Timeout: timeout}
+	return netpolicy.ClientWithFallbackProxy("ai", timeout, s.ProxyFunc())
 }
 
 // ClaudeCodeFileStatus is the renderer-safe description of one detected file.

@@ -1,6 +1,8 @@
 package httpexec
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -145,6 +147,10 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 	transport := &http.Transport{
 		TLSClientConfig: tlsCfg,
 		DialContext:     buildDialerWithHosts(req.HostsMap),
+	}
+	// Proxy e CA aziendali di adOmnia; le richieste dell'utente non sono bloccate dal modo offline.
+	if err := netpolicy.Apply(transport); err != nil {
+		return HTTPExecResponse{Error: &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}}
 	}
 
 	client := &http.Client{Transport: transport, Jar: getCookieJar(req.CookieJarID)}
