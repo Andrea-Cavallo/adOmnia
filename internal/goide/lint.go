@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,9 @@ import (
 const (
 	LinterGolangci    = "golangci-lint"
 	LinterStaticcheck = "staticcheck"
+	// LinterCustom è un qualsiasi analizzatore che stampa "file.go:riga:colonna: messaggio",
+	// come go vet e i singlechecker/multichecker di golang.org/x/tools/go/analysis.
+	LinterCustom = "custom"
 	lintTimeout       = 5 * time.Minute
 	maxLintOutput     = 32 * 1024 * 1024
 	maxLintIssues     = 5_000
@@ -130,10 +134,14 @@ func (s *Service) linterCandidates(sessionID SessionID) []linterCandidate {
 }
 
 func linterKindForBinary(binary string) string {
-	if strings.Contains(strings.ToLower(filepath.Base(binary)), "staticcheck") {
+	name := strings.ToLower(filepath.Base(binary))
+	switch {
+	case strings.Contains(name, "staticcheck"):
 		return LinterStaticcheck
+	case strings.Contains(name, "golangci"):
+		return LinterGolangci
 	}
-	return LinterGolangci
+	return LinterCustom
 }
 
 // DetectLinter individua golangci-lint o staticcheck e l'eventuale configurazione di progetto, senza crearla.
@@ -174,6 +182,10 @@ func linterConfig(root, kind string) string {
 }
 
 func linterVersion(kind, binary string) (string, error) {
+	if kind == LinterCustom {
+		// Gli analizzatori personalizzati non hanno un flag di versione comune.
+		return "custom", nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), goplsVersionTimeout)
 	defer cancel()
 	flag := "version"
@@ -326,7 +338,12 @@ func (s *Service) collectLintIssues(ctx context.Context, sessionID string, chang
 	if err != nil {
 		return Session{}, "", nil, nil, err
 	}
-	issues, err := parseLintOutput(info.Kind, session.Project.RealPath, output)
+	var issues []lintIssue
+	if info.Kind == LinterCustom {
+		issues = parseTextLint(session.Project.RealPath, strings.TrimSuffix(filepath.Base(info.Binary), ".exe"), output)
+	} else {
+		issues, err = parseLintOutput(info.Kind, session.Project.RealPath, output)
+	}
 	if err != nil {
 		return Session{}, "", nil, nil, err
 	}
@@ -339,6 +356,8 @@ func (s *Service) collectLintIssues(ctx context.Context, sessionID string, chang
 func lintArguments(info LinterInfo, packages []string) []string {
 	var arguments []string
 	switch {
+	case info.Kind == LinterCustom:
+		arguments = []string{}
 	case info.Kind == LinterStaticcheck:
 		arguments = []string{"-f", "json"}
 	case strings.HasPrefix(info.Version, "v1."):
@@ -364,6 +383,14 @@ func runLinter(ctx context.Context, info LinterInfo, root string, environment []
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	if info.Kind == LinterCustom {
+		// Gli analizzatori go/analysis scrivono i problemi su stderr ed escono con 3 se ne trovano.
+		combined := slices.Concat(stdout.Bytes(), stderr.Bytes())
+		if len(textLintLine.FindAll(combined, 1)) == 0 && err != nil {
+			return nil, fmt.Errorf("%s fallito: %s", filepath.Base(info.Binary), strings.TrimSpace(string(combined)))
+		}
+		return combined, nil
+	}
 	// I linter escono con codice diverso da zero quando trovano problemi: conta solo l'output JSON.
 	if stdout.Len() == 0 && err != nil {
 		return nil, fmt.Errorf("%s fallito: %s", info.Kind, strings.TrimSpace(stderr.String()))
@@ -381,6 +408,23 @@ func (b *limitedBuffer) Write(data []byte) (int, error) {
 		b.Buffer.Write(data[:min(len(data), remaining)])
 	}
 	return len(data), nil
+}
+
+var textLintLine = regexp.MustCompile(`(?m)^(.+?\.go):(\d+)(?::(\d+))?: (.+)$`)
+
+// parseTextLint legge l'output testuale "file.go:riga[:colonna]: messaggio" (percorsi relativi alla radice).
+func parseTextLint(root, source string, output []byte) []lintIssue {
+	issues := []lintIssue{}
+	for _, match := range textLintLine.FindAllSubmatch(output, -1) {
+		path := strings.TrimSpace(string(match[1]))
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(root, path)
+		}
+		line, _ := strconv.Atoi(string(match[2]))
+		column, _ := strconv.Atoi(string(match[3]))
+		issues = append(issues, lintIssue{path: path, line: line, column: column, severity: 2, source: source, message: strings.TrimSpace(string(match[4]))})
+	}
+	return issues
 }
 
 func parseLintOutput(kind, root string, output []byte) ([]lintIssue, error) {

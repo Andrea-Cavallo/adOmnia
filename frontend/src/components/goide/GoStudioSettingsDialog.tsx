@@ -47,7 +47,7 @@ const SETTINGS: Setting[] = [
   { section: 'Editor', label: 'Type hints', hint: 'Inferred types of := and range, composite literal types, constant values.', kind: 'toggle', pref: 'typeHints' },
   { section: 'Save actions', label: 'Format on save', hint: 'gofmt (or gofumpt) through gopls.', kind: 'toggle', pref: 'formatOnSave' },
   { section: 'Save actions', label: 'Optimize imports on save', hint: 'Add missing and remove unused imports.', kind: 'toggle', pref: 'organizeImportsOnSave' },
-  { section: 'Save actions', label: 'Run linter on save', hint: 'golangci-lint or staticcheck, when installed.', kind: 'toggle', pref: 'lintOnSave' },
+  { section: 'Save actions', label: 'Run linter on save', hint: 'golangci-lint, staticcheck or a custom analyzer, when configured.', kind: 'toggle', pref: 'lintOnSave' },
   { section: 'Save actions', label: 'Trim trailing whitespace', hint: 'For non-Go files; Go files are already formatted.', kind: 'toggle', pref: 'trimTrailingWhitespace' },
   { section: 'Save actions', label: 'Auto save', hint: 'Save modified files when the editor loses focus.', kind: 'toggle', pref: 'autoSave' },
   { section: 'Language server', label: 'gofumpt style', hint: 'Stricter formatting rules (restarts gopls).', kind: 'toggle', server: 'gofumpt' },

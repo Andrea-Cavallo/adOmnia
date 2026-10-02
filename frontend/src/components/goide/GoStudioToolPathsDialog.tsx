@@ -82,7 +82,7 @@ export function GoStudioToolPathsDialog({ open, sessionId, onClose }: GoStudioTo
       <GoStudioField label="gopls" hint={<span className="gs-mono block truncate">{detected(gopls)}</span>}>
         <input value={goplsBinary} onChange={(event) => setGoplsBinary(event.target.value)} placeholder="Automatic: adOmnia tools, GOPATH/bin, PATH" className="gs-input gs-mono" />
       </GoStudioField>
-      <GoStudioField label="Linter (golangci-lint or staticcheck)" hint={<span className="gs-mono block truncate">{detected(linter)}{linter?.configPath ? ` · config ${linter.configPath}` : ''}</span>}>
+      <GoStudioField label="Linter (golangci-lint, staticcheck or any go vet-style analyzer)" hint={<span className="gs-mono block truncate">{detected(linter)}{linter?.configPath ? ` · config ${linter.configPath}` : ''}</span>}>
         <input value={linterBinary} onChange={(event) => setLinterBinary(event.target.value)} placeholder="Automatic: golangci-lint, then staticcheck" className="gs-input gs-mono" />
       </GoStudioField>
       <GoStudioField label="Delve (dlv)" hint={<span className="gs-mono block truncate">{detected(delve)}</span>}>
