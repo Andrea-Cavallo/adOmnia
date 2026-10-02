@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.56 release notes: Performance Studio, Go trace and the end of the foundations
+
+See [the full v0.9.56 notes](releases/v0.9.56.md): pprof profiles and execution
+traces read inside Go Studio, the debugger shows where goroutines were created
+and the real pending defers, Move Symbol to Package with a build check before
+the preview, total coverage against the base branch, a commit dialog with real
+per-file diffs, protection against pushing local go.mod replaces, image preview,
+visible gopls activity and the shell picker beside the terminal tabs.
+
 ## v0.9.55 release notes: one network policy and private Go modules
 
 See [the full v0.9.55 notes](releases/v0.9.55.md): an app-wide offline mode, one

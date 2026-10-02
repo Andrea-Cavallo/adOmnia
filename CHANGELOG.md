@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.56] - 2026-10-02
+
 ### Added
 - **Go execution trace viewer in Go Studio:** *View → Go Trace* (or the **Trace** button in the status bar) finds the `trace.out` / `*.trace` files a test run writes with the Execution trace (`-trace`) profiling option and reads them locally with Go's own trace parser — no `go tool trace`, no external process. It shows a **goroutine timeline** (running, runnable, waiting and syscall spans per goroutine), **scheduler activity** per P, **GC/STW ranges**, **blocking by category** (network, synchronization, GC, sleep) and **long-running or still-live goroutines**, plus a **runtime events** list (logs, tasks, regions). Clicking a span, an event or a goroutine opens the corresponding source frame, project files in the editor and standard-library files read-only. A filter narrows the timeline by goroutine id or starting function.
 - **Images open in Go Studio:** clicking a `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico`, `.avif` or `.svg` in the Project tree no longer fails with *"not a UTF-8 text document"*. Images open read-only in a dedicated preview tab with zoom, fit-to-window and a dimensions readout, and are never sent to gopls or the code integrations. The same mechanism resolves **local images in the Markdown preview** (`![](relative/path.png)`), which previously showed as broken because a `file://` URL is not readable inside the WebView; the backend reads the image from the project and hands the preview a data URL.
