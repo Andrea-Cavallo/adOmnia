@@ -42,6 +42,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
   switch (id) {
     case 'nav.findInFiles': lsp.requestFind(selectedText()); return true
     case 'view.problems': lsp.showToolWindow('problems'); return true
+    case 'view.contextInspector': lsp.showToolWindow('context'); return true
     case 'view.terminal': lsp.showToolWindow('terminal'); return true
     case 'view.tests': lsp.showToolWindow('tests'); return true
     case 'view.todo': lsp.showToolWindow('todo'); return true

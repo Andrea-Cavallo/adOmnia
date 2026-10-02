@@ -162,6 +162,22 @@
 .go-studio-impl-up::before { content: 'I↑'; color: var(--color-accent, #8b5cf6); }
 .go-studio-impl-glyph:hover::before { filter: brightness(1.3); }
 
+/* Context Propagation Inspector: un glifo per riga, tinto per gravità, tooltip con l'elenco completo. */
+.go-studio-ctx-glyph {
+  cursor: help;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.go-studio-ctx-error::before { content: '⨯'; color: var(--color-danger, #ef4444); }
+.go-studio-ctx-warning::before { content: '!'; color: var(--color-warning, #f59e0b); }
+.go-studio-ctx-info::before { content: '·'; color: var(--color-accent, #8b5cf6); }
+.go-studio-ctx-glyph:hover::before { filter: brightness(1.3); }
+
 /* Gutter VCS rispetto a HEAD, come GoLand: verde aggiunto, blu modificato, triangolo per le righe cancellate. */
 .monaco-editor .go-studio-vcs {
   cursor: pointer;

@@ -104,6 +104,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'view.toggleStructure': icon(PanelRight),
   'view.toggleBottom': icon(PanelBottom),
   'view.problems': icon(CircleDot),
+  'view.contextInspector': icon(Network),
   'view.terminal': icon(SquareTerminal),
   'view.tests': icon(FlaskConical),
   'view.todo': icon(ListTodo),

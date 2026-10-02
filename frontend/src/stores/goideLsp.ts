@@ -34,7 +34,7 @@ import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
-export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo'
+export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context'
 
 export interface GoIDEHierarchyView {
   sessionId: string

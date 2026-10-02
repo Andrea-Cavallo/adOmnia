@@ -24,6 +24,7 @@ import { isToolTarget, toolTargetLabel } from './goStudioToolTargets'
 import { indentationFor, useEditorConfig } from './goStudioEditorConfig'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
+import { useGoStudioContextMarkers } from './goStudioContextMarkers'
 import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
 import { registerGoStudioExtraLanguages } from './goStudioExtraLanguages'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
@@ -160,6 +161,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   useGoStudioDebugDecorations(editorRef, document, mountCount)
   useGoStudioBookmarks(editorRef, document, mountCount)
   useGoStudioImplementationMarkers(editorRef, document, mountCount)
+  useGoStudioContextMarkers(editorRef, document, mountCount)
   useGoStudioVcsGutter(editorRef, document, mountCount)
 
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).

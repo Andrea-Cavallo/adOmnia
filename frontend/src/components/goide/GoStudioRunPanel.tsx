@@ -13,6 +13,7 @@ import { GoStudioTerminalPanel } from './GoStudioTerminalPanel'
 import { resolveConsolePath } from './goStudioConsolePaths'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './goStudioLogLevels'
 import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
+import { GoStudioContextPanel } from './GoStudioContextPanel'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
@@ -138,6 +139,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   debug: 'Debug',
   todo: 'TODO',
   terminal: 'Terminal',
+  context: 'Context',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -272,6 +274,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'tests' && <div className="min-h-0 flex-1"><GoStudioTestsPanel session={session} /></div>}
       {view === 'debug' && <div className="min-h-0 flex-1"><GoStudioDebugPanel session={session} /></div>}
       {view === 'todo' && <div className="min-h-0 flex-1"><GoStudioTodoPanel sessionId={sessionId} /></div>}
+      {view === 'context' && <div className="min-h-0 flex-1"><GoStudioContextPanel sessionId={sessionId} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>
