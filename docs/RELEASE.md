@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.55 release notes: one network policy and private Go modules
+
+See [the full v0.9.55 notes](releases/v0.9.55.md): an app-wide offline mode, one
+corporate proxy and CA bundle for every connection, an in-memory network activity
+log, private Go module credentials through the Git credential manager with a
+registry test, and the Go Studio minimap removed.
+
 ## v0.9.54 release notes: Go Studio for teams and enterprise networks
 
 See [the full v0.9.54 notes](releases/v0.9.54.md): Flaky Test Detector, patch and
