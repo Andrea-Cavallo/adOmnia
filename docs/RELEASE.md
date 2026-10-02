@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.53 release notes: cleaner window, one-screen Hub and Context Inspector
+
+See [the full v0.9.53 notes](releases/v0.9.53.md): the system title bar is hidden
+by default again, detached Go Studio windows share the app chrome, the Hub fits on
+one screen, Go Studio adds a Context Propagation Inspector, and a gopls startup
+error ("addView called before server initialized") is fixed.
+
 ## v0.9.52 release notes: readable logs, AI privacy and a visual go.mod editor
 
 See [the full v0.9.52 notes](releases/v0.9.52.md): colour-coded Run console and

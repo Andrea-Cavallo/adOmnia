@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.53] - 2026-10-02
+
+### Added
+- **Context Propagation Inspector in Go Studio:** *View → Context Propagation Inspector* (Alt+9) analyses `context.Context` flow in the current file, offline and on unsaved buffers, with editor markers: `Background()`/`TODO()` inside call chains, missing or too-wide timeouts, context stored in structs, leaked `cancel` funcs, ignored cancellation, broken chains and trace-ID propagation.
+
+### Fixed
+- **gopls startup error:** opening a file while gopls was starting no longer shows "Error loading workspace folders … addView called before server initialized"; documents are sent only after the initialize handshake.
+- **System title bar hidden by default (Windows/macOS):** Settings v13 migrates a saved *System* choice back to the app title bar once; detached Go Studio windows are frameless and use the Go Studio toolbar as their window bar.
+- **Hub fits on one screen:** the hero and the studio cards share the viewport height, so all six studios are visible without scrolling.
+
 ## [0.9.52] - 2026-10-02
 
 ### Added
