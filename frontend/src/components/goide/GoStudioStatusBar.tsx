@@ -1,5 +1,6 @@
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
+import { recordLintSample } from './goStudioQualityHistory'
 import { AlertCircle, AlertTriangle, BatteryLow, EyeOff, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
@@ -58,6 +59,11 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const reports = useGoIDELspStore((state) => state.diagnostics[session.id])
   const linter = useGoIDELspStore((state) => state.linter[session.id] ?? null)
   const lint = useGoIDELspStore((state) => state.lint[session.id])
+  const lintResult = lint?.result
+  useEffect(() => {
+    // Solo le run complete: un lint dei soli file modificati non misura il debito del progetto.
+    if (lintResult && !lintResult.changedOnly) recordLintSample(session.project.rootPath, { at: new Date().toISOString(), linter: lintResult.linter, issues: lintResult.issueCount, baselined: lintResult.baselined ?? 0 })
+  }, [lintResult, session.project.rootPath])
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const counts = diagnosticCounts(mergedReports(reports, lint?.reports))
   const watcher = useWatcherStatus(session.id)

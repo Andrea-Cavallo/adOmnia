@@ -71,6 +71,7 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { bookmarksFor, historyFor, useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { runNavigationCommand } from './goStudioNavigationEditor'
 import { GoStudioBookmarksDialog } from './GoStudioBookmarksDialog'
+import { GoStudioQualityDialog } from './GoStudioQualityDialog'
 import { GoStudioBranchWidget } from './GoStudioBranchWidget'
 import { GoStudioCommitDialog } from './GoStudioCommitDialog'
 import { GoStudioGitHistoryDialog } from './GoStudioGitHistoryDialog'
@@ -207,6 +208,7 @@ export function GoStudioPanel() {
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
+  const [qualityOpen, setQualityOpen] = useState(false)
   const [locationsMode, setLocationsMode] = useState<'bookmarks' | 'recent'>('bookmarks')
   const [goTool, setGoTool] = useState<GoStudioGoToolDialogState | null>(null)
   const [attachMode, setAttachMode] = useState<GoStudioAttachMode | null>(null)
@@ -545,6 +547,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     if (id === 'debug.attach' || id === 'debug.remote') return setAttachMode(id === 'debug.attach' ? 'attach' : 'remote')
     const toolDialog = goToolDialogFor(id, activeSession)
     if (toolDialog) return setGoTool(toolDialog)
+    if (id === 'code.quality') return void setQualityOpen(true)
     if (runNavigationCommand(id, activeSession?.id ?? null, activeGoStudioEditor(), (mode) => { setLocationsMode(mode); setBookmarksOpen(true) })) return
     switch (id) {
       case 'file.openProject': return void store.openProject()
@@ -704,6 +707,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
+      <GoStudioQualityDialog session={activeSession} open={qualityOpen} onClose={() => setQualityOpen(false)} />
       <GoStudioBookmarksDialog open={bookmarksOpen} sessionId={activeSession.id} mode={locationsMode} onClose={() => { setBookmarksOpen(false); setLocationsMode('bookmarks') }} />
       <GoStudioSymbolSearch open={symbolSearchOpen} sessionId={activeSession.id} onClose={() => setSymbolSearchOpen(false)} />
       <GoStudioRenameDialog />
