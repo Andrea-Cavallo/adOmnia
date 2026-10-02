@@ -210,7 +210,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.buildPackage', menu: 'run', label: 'Build Current Package', binding: { key: 'F9', mod: true }, separatorBefore: true },
   { id: 'run.context', menu: 'run', label: 'Run Current Context (test, main or package)', binding: { key: 'F10', mod: true, shift: true } },
   { id: 'run.testPackage', menu: 'run', label: 'Test Current Package' },
-  { id: 'run.testChanged', menu: 'run', label: 'Test Changed Packages' },
+  { id: 'run.testChanged', menu: 'run', label: 'Test Changed and Dependent Packages' },
   { id: 'run.benchPackage', menu: 'run', label: 'Run Current Package Benchmarks' },
   { id: 'run.vetPackage', menu: 'run', label: 'Vet Current Package' },
   { id: 'run.testCoverage', menu: 'run', label: 'Test Current Package with Coverage' },

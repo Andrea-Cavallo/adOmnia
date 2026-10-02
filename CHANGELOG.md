@@ -9,7 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ### Added
 - **Flaky Test Detector in Go Studio:** the Tests panel reruns a test or the whole run ×10/20/50/100 in random order (`-count=N -shuffle=on`), counts passes and failures per test, marks flaky tests with a badge and a filter, shows failure rate and min/avg/max duration, and replays the exact order with the printed `-shuffle` seed.
 - **Line history in Go Studio:** *Git → Show History for Selection…* lists only the commits that changed the selected lines (`git log -L`), each diffed against the current editor.
-- **Test Changed Packages:** *Run → Test Changed Packages* runs `go test` only on the packages with modified, staged or new Go files, one run per module.
+- **Test affected code:** *Run → Test Changed and Dependent Packages* runs `go test` on the packages with modified, staged or new Go files plus every package of the module that imports them (transitively, or only from its tests), one run per module.
 - **Lint changed files only:** *Code → Run Linter on Changed Files* runs golangci-lint or staticcheck only on the packages of modified, staged or new Go files and reports only those files; the status bar says "in changed files".
 - **Coverage by function:** the coverage summary in the Tests panel has a *Functions* view (like `go tool cover -func`) listing every function and method from the least covered, each opening its declaration.
 - **Changed symbols in the commit dialog:** Go Studio's commit dialog summarises the functions, methods, types, constants and variables added (+), modified (~) or removed (−) since HEAD in the checked files, with exported and test counts, a jump to each declaration and a *Test changed packages* shortcut.

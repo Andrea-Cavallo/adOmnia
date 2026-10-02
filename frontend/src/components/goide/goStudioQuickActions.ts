@@ -2,7 +2,7 @@ import { selectGoIDEFolder, startGoIDEDependencyAction, type GoIDESession } from
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { activeGoIDEDocument, useGoIDEStore, type GoIDEEditorDocument, type GoIDEQuickRunKind } from '@/stores/goide'
-import type { GoIDETestRunRequest } from '@/lib/goide-tests-api'
+import { affectedGoIDETestPackages, type GoIDETestRunRequest } from '@/lib/goide-tests-api'
 import type { GoIDEVCSFileChange } from '@/lib/goide-vcs-api'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
@@ -80,7 +80,7 @@ export function changedPackageTestRequests(session: Pick<GoIDESession, 'id' | 'p
   return [...byModule].map(([workingDirectory, packages]) => ({ sessionId: session.id, workingDirectory, packages: [...packages].sort(), run: '', bench: '', coverage: false }))
 }
 
-/** Esegue i test dei soli package toccati dalle modifiche locali. */
+/** Esegue i test dei package toccati dalle modifiche locali e di quelli che li importano. */
 export async function runGoStudioChangedTests(): Promise<void> {
   const session = trustedSession(useGoIDEStore.getState().activeSessionId)
   if (!session) return
@@ -89,7 +89,11 @@ export async function runGoStudioChangedTests(): Promise<void> {
   if (!status?.available) return void useGoIDEStore.setState({ error: 'The project is not in a Git repository.' })
   const requests = changedPackageTestRequests(session, status.changes)
   if (requests.length === 0) return void useGoIDEStore.setState({ error: 'No changed Go files: nothing to test.' })
-  for (const request of requests) await useGoIDETestsStore.getState().start(request)
+  for (const request of requests) {
+    // Se go list fallisce (modulo che non compila) si testano almeno i package modificati.
+    const packages = await affectedGoIDETestPackages(session.id, request.workingDirectory, request.packages).catch(() => request.packages)
+    await useGoIDETestsStore.getState().start({ ...request, packages })
+  }
 }
 
 /** Costruisce la richiesta di un comando rapido (build, test, vet, generate, install). */

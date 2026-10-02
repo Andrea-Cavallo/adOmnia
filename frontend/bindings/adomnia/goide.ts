@@ -30,6 +30,15 @@ export function AcknowledgeCrash(): $CancellablePromise<void> {
 }
 
 /**
+ * AffectedTestPackages aggiunge ai package indicati quelli del modulo che li importano (anche nei test).
+ */
+export function AffectedTestPackages(sessionID: string, moduleDirectory: string, packages: string[]): $CancellablePromise<string[]> {
+    return $Call.ByID(1503044963, sessionID, moduleDirectory, packages).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * CancelToolchainInstall annulla l'installazione indicata.
  */
 export function CancelToolchainInstall(installID: string): $CancellablePromise<void> {

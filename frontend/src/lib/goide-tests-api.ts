@@ -22,3 +22,8 @@ export async function getGoIDETestOutput(runId: string, nodeId: string): Promise
 export async function listGoIDETestRuns(sessionId: string): Promise<TestRunSnapshot[]> {
   return GoIDEBindings.ListTestRuns(sessionId)
 }
+
+/** Aggiunge ai package (pattern relativi al modulo) quelli che li importano, anche solo nei test. */
+export async function affectedGoIDETestPackages(sessionId: string, moduleDirectory: string, packages: string[]): Promise<string[]> {
+  return GoIDEBindings.AffectedTestPackages(sessionId, moduleDirectory, packages)
+}

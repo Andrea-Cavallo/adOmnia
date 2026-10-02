@@ -59,7 +59,7 @@ function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChang
       <summary className="flex cursor-pointer items-center gap-2 text-text-2">
         <span className="font-medium">{visible.length} changed symbol{visible.length === 1 ? '' : 's'}</span>
         <span className="text-text-4">· {api} exported · {tests} test{tests === 1 ? '' : 's'}</span>
-        <button type="button" onClick={(event) => { event.preventDefault(); onClose(); void runGoStudioChangedTests() }} title="Run go test on the packages with changed Go files" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-success hover:bg-success/10">
+        <button type="button" onClick={(event) => { event.preventDefault(); onClose(); void runGoStudioChangedTests() }} title="Run go test on the packages with changed Go files and on the packages that import them" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-success hover:bg-success/10">
           <FlaskConical size={12} aria-hidden="true" /> Test changed packages
         </button>
       </summary>

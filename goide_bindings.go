@@ -715,6 +715,11 @@ func (g *GoIDE) VCSFileHistory(sessionID, relativePath string) ([]goide.VCSCommi
 	return g.service.VCSFileHistory(sessionID, relativePath)
 }
 
+// AffectedTestPackages aggiunge ai package indicati quelli del modulo che li importano (anche nei test).
+func (g *GoIDE) AffectedTestPackages(sessionID, moduleDirectory string, packages []string) ([]string, error) {
+	return g.service.AffectedTestPackages(sessionID, moduleDirectory, packages)
+}
+
 // VCSChangedSymbols elenca le dichiarazioni Go aggiunte, modificate o rimosse rispetto a HEAD.
 func (g *GoIDE) VCSChangedSymbols(sessionID string) ([]goide.VCSChangedSymbol, error) {
 	return g.service.VCSChangedSymbols(sessionID)
