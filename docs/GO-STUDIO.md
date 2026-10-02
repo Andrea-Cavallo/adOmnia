@@ -341,6 +341,7 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 - **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).
 - gopls diagnostics are coalesced: at most one update per file every 150 ms, and at most 1000 diagnostics per file reach the UI (errors first).
+- Large repositories, measured on Windows (2026-10-02, gopls v0.23.0, `gopls stats`): adOmnia itself (96 workspace packages, 950 with dependencies) loads in 5.4 s with a 430 MB heap; the opentelemetry-go-contrib monorepo through `go.work` (69 modules, 232 workspace packages, 1585 in total) loads in 3.7 s with a 255 MB heap once modules are cached. The first load of that monorepo took 50 s, mostly module downloads. Go Studio's own index (`TestLargeMonorepoStaysResponsive`, 40 modules / 4000 files): open ~80 ms, Quick Open ~40 ms, Find in Files ~0.5 s.
 - The Run console draws the last 5000 lines; search and Copy console still use the full 4 MB buffer. Project folders with more than 500 entries show them in pages (**Show more**).
 
 ## Platform verification
