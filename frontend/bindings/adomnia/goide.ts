@@ -1515,11 +1515,20 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
 }
 
 /**
+ * WorkspaceModuleGraph restituisce le dipendenze tra i moduli del progetto, lette dai go.mod.
+ */
+export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goide$0.WorkspaceModule[]> {
+    return $Call.ByID(368877389, sessionID).then(($result: any) => {
+        return $$createType116($result);
+    });
+}
+
+/**
  * WorkspaceSymbols cerca simboli nel workspace.
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType116($result);
+        return $$createType118($result);
     });
 }
 
@@ -1653,5 +1662,7 @@ const $$createType111 = $Create.Array($$createType110);
 const $$createType112 = $Create.Map($Create.Any, $$createType111);
 const $$createType113 = goide$0.VCSStatus.createFrom;
 const $$createType114 = goide$0.WatcherStatus.createFrom;
-const $$createType115 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType115 = goide$0.WorkspaceModule.createFrom;
 const $$createType116 = $Create.Array($$createType115);
+const $$createType117 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType118 = $Create.Array($$createType117);

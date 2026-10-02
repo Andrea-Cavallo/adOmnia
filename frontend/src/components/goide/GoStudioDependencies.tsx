@@ -5,6 +5,7 @@ import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore } from '@/stores/goide'
 import { GoStudioAlert, GoStudioButton, GoStudioField, GoStudioModal } from './GoStudioModal'
 import { GoStudioGoModSettings, type GoModEdit } from './GoStudioGoModSettings'
+import { GoStudioWorkspaceModules } from './GoStudioWorkspaceModules'
 
 interface GoStudioDependenciesProps {
   open: boolean
@@ -19,7 +20,7 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
   const [version, setVersion] = useState('latest')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'requirements' | 'gomod'>('requirements')
+  const [tab, setTab] = useState<'requirements' | 'gomod' | 'workspace'>('requirements')
   // Versioni pubblicate per dipendenza, caricate solo su richiesta (passano dal GOPROXY).
   const [versions, setVersions] = useState<Record<string, string[] | 'loading'>>({})
   const executions = useGoIDEStore((store) => store.executions)
@@ -123,7 +124,9 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
         <div role="tablist" aria-label="Dependencies view" className="gs-segmented self-start">
           <button type="button" role="tab" aria-selected={tab === 'requirements'} onClick={() => setTab('requirements')} className="gs-segment">Requirements</button>
           <button type="button" role="tab" aria-selected={tab === 'gomod'} onClick={() => setTab('gomod')} className="gs-segment">go.mod</button>
+          {session.project.modules.length > 1 && <button type="button" role="tab" aria-selected={tab === 'workspace'} onClick={() => setTab('workspace')} className="gs-segment">Workspace modules</button>}
         </div>
+        {tab === 'workspace' && <GoStudioWorkspaceModules sessionId={session.id} onSelect={(directory) => { const target = session.project.modules.find((module) => module.path.replace(/\\/g, '/').endsWith(`/${directory}`) || (directory === '' && module.path === session.project.realPath)); if (target) { setModuleDirectory(target.path); void load(target.path) } setTab('requirements') }} />}
         {tab === 'gomod' && state && <GoStudioGoModSettings state={state} running={running} onEdit={(edit) => void editGoMod(edit)} />}
         {tab === 'requirements' && <>
         <div className="gs-list min-h-0 flex-1">

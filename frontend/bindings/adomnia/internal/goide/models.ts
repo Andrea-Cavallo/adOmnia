@@ -5891,6 +5891,67 @@ export class WorkspaceChange {
     }
 }
 
+/**
+ * WorkspaceModule è un modulo del progetto con i moduli dello stesso progetto che richiede.
+ */
+export class WorkspaceModule {
+    "modulePath": string;
+
+    /**
+     * Directory è la cartella del modulo relativa al progetto ('' per la radice).
+     */
+    "directory": string;
+
+    /**
+     * Requires sono i module path di altri moduli del progetto richiesti in go.mod.
+     */
+    "requires": string[];
+
+    /**
+     * Replaced segnala i require soddisfatti da una replace verso una cartella locale.
+     */
+    "replaced": string[];
+
+    /**
+     * Error spiega un go.mod che non si legge.
+     */
+    "error"?: string;
+
+    /** Creates a new WorkspaceModule instance. */
+    constructor($$source: Partial<WorkspaceModule> = {}) {
+        if (!("modulePath" in $$source)) {
+            this["modulePath"] = "";
+        }
+        if (!("directory" in $$source)) {
+            this["directory"] = "";
+        }
+        if (!("requires" in $$source)) {
+            this["requires"] = [];
+        }
+        if (!("replaced" in $$source)) {
+            this["replaced"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WorkspaceModule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WorkspaceModule {
+        const $$createField2_0 = $$createType18;
+        const $$createField3_0 = $$createType18;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("requires" in $$parsedSource) {
+            $$parsedSource["requires"] = $$createField2_0($$parsedSource["requires"]);
+        }
+        if ("replaced" in $$parsedSource) {
+            $$parsedSource["replaced"] = $$createField3_0($$parsedSource["replaced"]);
+        }
+        return new WorkspaceModule($$parsedSource as Partial<WorkspaceModule>);
+    }
+}
+
 export class WorkspaceSymbol {
     "name": string;
     "kind": number;

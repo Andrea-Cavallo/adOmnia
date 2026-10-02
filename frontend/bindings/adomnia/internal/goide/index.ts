@@ -145,6 +145,7 @@ export {
     VCSStatus,
     WatcherStatus,
     WorkspaceChange,
+    WorkspaceModule,
     WorkspaceSymbol
 } from "./models.js";
 

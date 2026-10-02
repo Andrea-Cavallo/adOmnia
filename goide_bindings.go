@@ -228,6 +228,11 @@ func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
 	return "", fmt.Errorf("gO session %s is not open", sessionID)
 }
 
+// WorkspaceModuleGraph restituisce le dipendenze tra i moduli del progetto, lette dai go.mod.
+func (g *GoIDE) WorkspaceModuleGraph(sessionID string) ([]goide.WorkspaceModule, error) {
+	return g.service.WorkspaceModuleGraph(sessionID)
+}
+
 // AIProjectPolicy restituisce la politica AI del progetto: "allowed", "local-only" o "off".
 func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
 	root, err := g.sessionRoot(sessionID)
