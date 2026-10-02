@@ -242,3 +242,18 @@ html.light .go-studio-root .go-studio-run-group,
    colore del testo. I valori per tema li calcola brandColors() dal contrasto WCAG. */
 .go-studio-brand-icon { fill: var(--brand-on-light); }
 html.dark .go-studio-brand-icon { fill: var(--brand-on-dark); }
+
+/* Cartelle stile Finder: blu di sistema Apple, più luminoso sul tema scuro. */
+.go-studio-root {
+  --gs-folder-back: #3a9df0;
+  --gs-folder-front: #6bbcf7;
+  --gs-folder-shine: rgb(255 255 255 / 0.55);
+}
+html.dark .go-studio-root {
+  --gs-folder-back: #2f8be0;
+  --gs-folder-front: #5aaef2;
+  --gs-folder-shine: rgb(255 255 255 / 0.35);
+}
+.go-studio-folder-back { fill: var(--gs-folder-back); }
+.go-studio-folder-front { fill: var(--gs-folder-front); }
+.go-studio-folder-shine { fill: none; stroke: var(--gs-folder-shine); stroke-width: 0.7; stroke-linecap: round; }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, FolderOpen, Loader2, Minus, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
+import { GoStudioFolderIcon } from './GoStudioFolderIcon'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { BrandIcon, GoStudioFileIcon } from './GoStudioFileIcon'
@@ -70,7 +71,7 @@ const emptyEntries: GoIDEFileEntry[] = []
 function FolderIcon({ name, open }: { name: string; open: boolean }) {
   const brand = resolveGoStudioFolderBrand(name)
   if (brand) return <BrandIcon slug={brand} size={14} />
-  return open ? <FolderOpen size={15} className="shrink-0 text-text-3" /> : <Folder size={15} className="shrink-0 text-text-3" />
+  return <GoStudioFolderIcon open={open} />
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
@@ -245,7 +246,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
               onContext(null, rect.left + 16, rect.bottom)
             }
           }}>
-          <FolderOpen size={15} className="shrink-0 text-accent" />
+          <GoStudioFolderIcon open />
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>

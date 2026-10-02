@@ -158,12 +158,17 @@ interface GoIDELspState {
 interface PersistedSettings {
   settings: GoIDELanguageServerSettings
   preferences: GoIDEEditorPreferences
+  /** Versione delle preferenze salvate, per le migrazioni una tantum. */
+  version?: number
 }
+
+/** v2: minimappa accesa di default, come negli IDE, anche per chi aveva salvato le preferenze prima. */
+const PREFERENCES_VERSION = 2
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false }
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
-  typeHints: false, stickyScroll: true, minimap: false, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
+  typeHints: false, stickyScroll: true, minimap: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
   autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
@@ -176,7 +181,7 @@ function loadPersisted(): PersistedSettings {
     const parsed = JSON.parse(raw) as Partial<PersistedSettings>
     return {
       settings: { ...DEFAULT_SETTINGS, ...parsed.settings, semanticLinks: false },
-      preferences: { ...DEFAULT_PREFERENCES, ...parsed.preferences },
+      preferences: { ...DEFAULT_PREFERENCES, ...parsed.preferences, ...((parsed.version ?? 1) < PREFERENCES_VERSION ? { minimap: true } : {}) },
     }
   } catch {
     return { settings: DEFAULT_SETTINGS, preferences: DEFAULT_PREFERENCES }
@@ -345,14 +350,14 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   updateSettings: async (sessionId, patch) => {
     const settings = { ...get().settings, ...patch }
     set({ settings })
-    safeSetItem(SETTINGS_KEY, JSON.stringify({ settings, preferences: get().preferences }))
+    safeSetItem(SETTINGS_KEY, JSON.stringify({ settings, preferences: get().preferences, version: PREFERENCES_VERSION }))
     if (sessionId && get().status[sessionId]?.state === 'ready') await get().restart(sessionId)
   },
 
   updatePreferences: (patch) => {
     const preferences = { ...get().preferences, ...patch }
     set({ preferences })
-    safeSetItem(SETTINGS_KEY, JSON.stringify({ settings: get().settings, preferences }))
+    safeSetItem(SETTINGS_KEY, JSON.stringify({ settings: get().settings, preferences, version: PREFERENCES_VERSION }))
   },
 
   showToolWindow: (toolWindow) => {
