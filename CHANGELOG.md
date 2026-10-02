@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.52] - 2026-10-02
+
 ### Added
 - **Readable, colour-coded logs:** the Go Studio Run console colours each line by its log level (log, slog text/JSON, zap, zerolog, logrus), dims timestamps and highlights the level token; stderr is no longer red by default, since Go's `log` package writes there — compile errors and panics still are. Console and integrated terminal use the bundled JetBrains Mono (13 px terminal, re-measured once the font loads). Log Inspector colours messages by level and marks error/warning rows.
 - **go.mod editor in Go Studio:** the Dependencies dialog has a *go.mod* tab to change module path, Go version and toolchain, add or remove `exclude` and `retract` directives, and preview `go mod tidy -diff` without touching files. Each requirement can list its published versions (*Versions*) to upgrade or downgrade to a specific one. Every change runs `go mod edit`/`go get` after confirmation.
@@ -18,6 +20,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ### Fixed
 - **Debugger error chain:** *Resolve wrapped errors* now reads `fmt.Errorf` wrappers directly (`*fmt.wrapError`), so it also works when the program never calls `Unwrap()` and the linker removed it; other error types still call `Unwrap()`.
 - **Tool versions cached:** gopls, Delve and linter versions are read once per binary (size + date) and remembered across restarts; terminal shells (`wsl -l -q`) are re-detected at most every 5 minutes.
+
+### Changed
+- **Cleaner window and Hub:** the system title bar is hidden by default and the Hub fits on one screen.
+
+### Verified
+- TypeScript passes; 218 frontend test files / 949 tests pass; the startup bundle budget passes.
+- `go vet ./...` and `go test ./...` pass; the Windows Wails 3 production pipeline builds a GUI `adomnia.exe` with the embedded icon.
 
 ## [0.9.51] - 2026-10-01
 

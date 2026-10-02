@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.52 release notes: readable logs, AI privacy and a visual go.mod editor
+
+See [the full v0.9.52 notes](releases/v0.9.52.md): colour-coded Run console and
+Log Inspector, `.adomnia/aiignore` and reversible secret redaction for Fix with AI,
+partial apply in the change preview, a visual go.mod editor with version
+downgrade, and per-workspace crash recovery.
+
 ## v0.9.51 release notes: faster Go Studio, Apple-light IDE and deeper runtime context
 
 See [the full v0.9.51 notes](releases/v0.9.51.md): Go Studio adds one-click
