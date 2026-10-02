@@ -5466,6 +5466,62 @@ export class VCSBlameLine {
 }
 
 /**
+ * VCSChangedSymbol è una dichiarazione Go di primo livello toccata dalle modifiche locali.
+ */
+export class VCSChangedSymbol {
+    "relativePath": string;
+
+    /**
+     * Name è "Func", "T.Method", "(*T).Method" o il nome di tipo, costante o variabile.
+     */
+    "name": string;
+    "kind": string;
+    "change": string;
+    "line": number;
+    "exported": boolean;
+
+    /**
+     * Test vale per Test*, Benchmark*, Fuzz* ed Example* nei file _test.go.
+     */
+    "test": boolean;
+
+    /** Creates a new VCSChangedSymbol instance. */
+    constructor($$source: Partial<VCSChangedSymbol> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("change" in $$source)) {
+            this["change"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("exported" in $$source)) {
+            this["exported"] = false;
+        }
+        if (!("test" in $$source)) {
+            this["test"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSChangedSymbol instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSChangedSymbol {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VCSChangedSymbol($$parsedSource as Partial<VCSChangedSymbol>);
+    }
+}
+
+/**
  * VCSCommit è un commit della cronologia di un file.
  */
 export class VCSCommit {

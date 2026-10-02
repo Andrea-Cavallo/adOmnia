@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -207,6 +208,50 @@ func FileHistory(repoPath, path string, n int) ([]CommitInfo, error) {
 		return nil, fmt.Errorf("git log --follow: %w", err)
 	}
 	return parseCommitLog(out), nil
+}
+
+// LineRange is a 1-based, inclusive range of working-tree lines changed since HEAD.
+// A pure deletion has Deletion set and spans the two lines around the removed text.
+type LineRange struct {
+	Start    int  `json:"start"`
+	End      int  `json:"end"`
+	Deletion bool `json:"deletion,omitempty"`
+}
+
+var hunkHeader = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
+
+// ChangedLines returns the working-tree line ranges of path that differ from HEAD.
+func ChangedLines(repoPath, path string) ([]LineRange, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil, fmt.Errorf("file path is empty")
+	}
+	out, err := runGit(repoPath, "diff", "-U0", "--color=never", "HEAD", "--", path)
+	if err != nil {
+		return nil, fmt.Errorf("git diff -U0: %w", err)
+	}
+	return parseHunkRanges(out), nil
+}
+
+func parseHunkRanges(diff string) []LineRange {
+	ranges := []LineRange{}
+	for _, line := range strings.Split(diff, "\n") {
+		match := hunkHeader.FindStringSubmatch(line)
+		if match == nil {
+			continue
+		}
+		start, _ := strconv.Atoi(match[1])
+		count := 1
+		if match[2] != "" {
+			count, _ = strconv.Atoi(match[2])
+		}
+		if count == 0 {
+			ranges = append(ranges, LineRange{Start: start, End: start + 1, Deletion: true})
+			continue
+		}
+		ranges = append(ranges, LineRange{Start: start, End: start + count - 1})
+	}
+	return ranges
 }
 
 // LineHistory lists the commits that changed lines start..end (1-based, inclusive) of path,

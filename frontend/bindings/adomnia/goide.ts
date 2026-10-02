@@ -1368,6 +1368,15 @@ export function VCSBlame(sessionID: string, relativePath: string): $CancellableP
 }
 
 /**
+ * VCSChangedSymbols elenca le dichiarazioni Go aggiunte, modificate o rimosse rispetto a HEAD.
+ */
+export function VCSChangedSymbols(sessionID: string): $CancellablePromise<goide$0.VCSChangedSymbol[]> {
+    return $Call.ByID(2852524783, sessionID).then(($result: any) => {
+        return $$createType103($result);
+    });
+}
+
+/**
  * VCSCheckout passa a un branch locale esistente.
  */
 export function VCSCheckout(sessionID: string, branch: string): $CancellablePromise<void> {
@@ -1379,7 +1388,7 @@ export function VCSCheckout(sessionID: string, branch: string): $CancellableProm
  */
 export function VCSCommitFiles(sessionID: string, message: string, relativePaths: string[]): $CancellablePromise<git$0.CommitResult> {
     return $Call.ByID(2017164414, sessionID, message, relativePaths).then(($result: any) => {
-        return $$createType102($result);
+        return $$createType104($result);
     });
 }
 
@@ -1395,7 +1404,7 @@ export function VCSFileAtRevision(sessionID: string, relativePath: string, revis
  */
 export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSCommit[]> {
     return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
-        return $$createType104($result);
+        return $$createType106($result);
     });
 }
 
@@ -1404,7 +1413,7 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
  */
 export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<goide$0.VCSCommit[]> {
     return $Call.ByID(3679175152, sessionID, relativePath, start, end).then(($result: any) => {
-        return $$createType104($result);
+        return $$createType106($result);
     });
 }
 
@@ -1413,7 +1422,7 @@ export function VCSLineHistory(sessionID: string, relativePath: string, start: n
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
-        return $$createType105($result);
+        return $$createType107($result);
     });
 }
 
@@ -1422,7 +1431,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSSta
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType106($result);
+        return $$createType108($result);
     });
 }
 
@@ -1431,7 +1440,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType108($result);
+        return $$createType110($result);
     });
 }
 
@@ -1552,10 +1561,12 @@ const $$createType98 = goide$0.SignatureResult.createFrom;
 const $$createType99 = goide$0.ToolchainSettings.createFrom;
 const $$createType100 = goide$0.VCSBlameLine.createFrom;
 const $$createType101 = $Create.Array($$createType100);
-const $$createType102 = git$0.CommitResult.createFrom;
-const $$createType103 = goide$0.VCSCommit.createFrom;
-const $$createType104 = $Create.Array($$createType103);
-const $$createType105 = goide$0.VCSStatus.createFrom;
-const $$createType106 = goide$0.WatcherStatus.createFrom;
-const $$createType107 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType108 = $Create.Array($$createType107);
+const $$createType102 = goide$0.VCSChangedSymbol.createFrom;
+const $$createType103 = $Create.Array($$createType102);
+const $$createType104 = git$0.CommitResult.createFrom;
+const $$createType105 = goide$0.VCSCommit.createFrom;
+const $$createType106 = $Create.Array($$createType105);
+const $$createType107 = goide$0.VCSStatus.createFrom;
+const $$createType108 = goide$0.WatcherStatus.createFrom;
+const $$createType109 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType110 = $Create.Array($$createType109);

@@ -715,6 +715,11 @@ func (g *GoIDE) VCSFileHistory(sessionID, relativePath string) ([]goide.VCSCommi
 	return g.service.VCSFileHistory(sessionID, relativePath)
 }
 
+// VCSChangedSymbols elenca le dichiarazioni Go aggiunte, modificate o rimosse rispetto a HEAD.
+func (g *GoIDE) VCSChangedSymbols(sessionID string) ([]goide.VCSChangedSymbol, error) {
+	return g.service.VCSChangedSymbols(sessionID)
+}
+
 // VCSLineHistory elenca i commit che hanno modificato le righe start..end del file.
 func (g *GoIDE) VCSLineHistory(sessionID, relativePath string, start, end int) ([]goide.VCSCommit, error) {
 	return g.service.VCSLineHistory(sessionID, relativePath, start, end)

@@ -136,6 +136,7 @@ export {
     ToolchainSettings,
     ToolchainTiming,
     VCSBlameLine,
+    VCSChangedSymbol,
     VCSCommit,
     VCSFileChange,
     VCSStatus,
