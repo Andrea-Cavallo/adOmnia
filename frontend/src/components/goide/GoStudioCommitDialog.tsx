@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, FlaskConical, GitCommitHorizontal } from 'lucide-react'
+import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal } from 'lucide-react'
 import { getGoIDEChangedSymbols, type GoIDEVCSChangedSymbol } from '@/lib/goide-vcs-api'
 import { runGoStudioChangedTests } from './goStudioQuickActions'
 import { useGoIDEStore } from '@/stores/goide'
-import { useGoIDELspStore } from '@/stores/goideLsp'
+import { mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
+import { precommitProblems, type GoStudioPrecommitSummary } from './goStudioPrecommit'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
@@ -20,6 +21,24 @@ const STATUS_LABEL: Record<string, string> = { M: 'modified', A: 'added', D: 'de
 function describe(status: string): string {
   const code = status.trim().charAt(0) || status.trim().charAt(1)
   return STATUS_LABEL[code] ?? status.trim()
+}
+
+const PRECOMMIT_KEY = 'adomnia.goStudio.precommitChecks'
+
+function loadPrecommitPreference(): boolean {
+  try { return localStorage.getItem(PRECOMMIT_KEY) !== 'off' } catch { return true }
+}
+
+function savePrecommitPreference(enabled: boolean): void {
+  try { localStorage.setItem(PRECOMMIT_KEY, enabled ? 'on' : 'off') } catch { /* preferenza solo locale */ }
+}
+
+/** Errori gopls e risultati del linter sui file modificati, limitati ai file spuntati. */
+async function runPrecommitChecks(sessionId: string, selected: Set<string>): Promise<GoStudioPrecommitSummary> {
+  const lsp = useGoIDELspStore.getState()
+  if (lsp.linter[sessionId]?.available) await lsp.runLint(sessionId, true)
+  const state = useGoIDELspStore.getState()
+  return precommitProblems(Object.values(mergedReports(state.diagnostics[sessionId], state.lint[sessionId]?.reports)), selected)
 }
 
 const CHANGE_MARK: Record<string, { mark: string; className: string }> = {
@@ -65,12 +84,15 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [symbols, setSymbols] = useState<GoIDEVCSChangedSymbol[]>([])
+  const [checkFirst, setCheckFirst] = useState(loadPrecommitPreference)
+  const [blocked, setBlocked] = useState<GoStudioPrecommitSummary | null>(null)
   const messageRef = useRef<HTMLTextAreaElement>(null)
   const changes = status?.changes ?? []
 
   useEffect(() => {
     if (!open) return
     setError(null)
+    setBlocked(null)
     setBusy(false)
     void useGoIDEVCSStore.getState().refreshStatus(sessionId)
     let cancelled = false
@@ -94,13 +116,21 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     return next
   })
 
-  const commit = async () => {
+  const commit = async (force = false) => {
     if (busy || !message.trim() || selected.size === 0) return
     setBusy(true)
     setError(null)
+    setBlocked(null)
     try {
       // Si registra il contenuto salvato: prima si salvano gli editor modificati.
       if (!await useGoIDEStore.getState().saveAllDocuments(sessionId)) return setBusy(false)
+      if (checkFirst && !force) {
+        const problems = await runPrecommitChecks(sessionId, selected)
+        if (problems.errors + problems.warnings > 0) {
+          setBlocked(problems)
+          return setBusy(false)
+        }
+      }
       const hash = await useGoIDEVCSStore.getState().commit(sessionId, message.trim(), [...selected])
       useGoIDELspStore.setState({ message: `Committed ${selected.size} file(s) as ${hash ?? 'a new commit'}.` })
       setMessage('')
@@ -146,6 +176,21 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
       <form id="go-studio-commit-form" className="flex flex-col gap-3 p-5" onSubmit={(event) => { event.preventDefault(); void commit() }}>
         <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
+        <label className="flex items-center gap-2 text-[12px] text-text-3">
+          <input type="checkbox" checked={checkFirst} onChange={(event) => { setCheckFirst(event.target.checked); savePrecommitPreference(event.target.checked) }} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />
+          Check for errors and lint warnings in these files before committing
+        </label>
+        {blocked && (
+          <GoStudioAlert tone="warning" icon={AlertTriangle}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{blocked.errors} error{blocked.errors === 1 ? '' : 's'} and {blocked.warnings} warning{blocked.warnings === 1 ? '' : 's'} in {blocked.files.length} file{blocked.files.length === 1 ? '' : 's'} you are committing.</span>
+              <span className="ml-auto flex gap-1.5">
+                <GoStudioButton small variant="ghost" onClick={() => { useGoIDELspStore.getState().showToolWindow('problems'); onClose() }}>Show Problems</GoStudioButton>
+                <GoStudioButton small variant="secondary" onClick={() => void commit(true)}>Commit anyway</GoStudioButton>
+              </span>
+            </div>
+          </GoStudioAlert>
+        )}
         {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
       </form>
     </GoStudioModal>
