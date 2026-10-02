@@ -160,3 +160,28 @@ export function reproduceRequest(run: GoIDETestRun, packageResult: GoIDETestResu
   if (!packageResult.shuffleSeed) return null
   return { ...requestForNode(run, packageResult), repeat: run.request.repeat, shuffle: packageResult.shuffleSeed }
 }
+
+const FLAKY_CAUSES: { pattern: RegExp; cause: string }[] = [
+  { pattern: /WARNING: DATA RACE|race detected during execution/, cause: 'Data race: goroutines touch shared memory without synchronisation.' },
+  { pattern: /all goroutines are asleep - deadlock|fatal error: deadlock/, cause: 'Deadlock: goroutines wait on each other in some interleavings.' },
+  { pattern: /context deadline exceeded|i\/o timeout|timed out|test timed out after/i, cause: 'Timing: the test depends on deadlines, sleeps or slow I/O.' },
+  { pattern: /address already in use|bind: /, cause: 'Port conflict: a fixed port is reused across runs or parallel tests.' },
+  { pattern: /connection refused|no such host|dial tcp|connection reset/i, cause: 'External dependency: a network service is not always reachable.' },
+  { pattern: /panic: send on closed channel|close of closed channel/, cause: 'Channel lifecycle: a channel is closed while still in use.' },
+  { pattern: /concurrent map (?:read and map write|writes|iteration and map write)/, cause: 'Concurrent map access without a lock.' },
+]
+
+/**
+ * Cause probabili di un test flaky lette dall'output di tutte le ripetizioni: sono indizi, non diagnosi.
+ * Con -shuffle attivo e nessun indizio, la prima ipotesi è la dipendenza dall'ordine dei test.
+ */
+export function flakyCauses(output: string, shuffled: boolean): string[] {
+  const causes = FLAKY_CAUSES.filter(({ pattern }) => pattern.test(output)).map(({ cause }) => cause)
+  if (causes.length === 0 && shuffled) causes.push('Order dependency: shared state between tests; replay the package with the same -shuffle seed.')
+  return causes
+}
+
+/** Riesegue il test N volte con il race detector: conferma o esclude la causa concorrente. */
+export function raceRepeatRequestForNode(run: GoIDETestRun, result: GoIDETestResult, repeat: number): GoIDETestRunRequest {
+  return { ...repeatRequestForNode(run, result, repeat), race: true }
+}

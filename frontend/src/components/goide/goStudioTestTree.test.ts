@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/goide-tests-api'
-import { buildTestTree, filterTestTree, isFlaky, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
+import { buildTestTree, filterTestTree, flakyCauses, isFlaky, raceRepeatRequestForNode, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -95,5 +95,19 @@ describe('flaky detector', () => {
     expect(repeatRequestForNode(current, flaky, 50)).toMatchObject({ packages: ['./api'], run: '^TestRace$', repeat: 50, shuffle: 'on' })
     expect(reproduceRequest(current, pkg)).toMatchObject({ packages: ['./api'], run: '', shuffle: '42' })
     expect(reproduceRequest(current, node('p', '', 'pass'))).toBeNull()
+  })
+})
+
+describe('flaky causes', () => {
+  it('reads hints from the output of every repetition', () => {
+    expect(flakyCauses('==================\nWARNING: DATA RACE\nWrite at 0x00c', false)[0]).toMatch(/^Data race/)
+    expect(flakyCauses('dial tcp 127.0.0.1:5432: connect: connection refused', false)[0]).toMatch(/^External dependency/)
+    expect(flakyCauses('    x_test.go:12: context deadline exceeded', false)[0]).toMatch(/^Timing/)
+    expect(flakyCauses('    x_test.go:12: got 2 want 3', true)[0]).toMatch(/^Order dependency/)
+    expect(flakyCauses('    x_test.go:12: got 2 want 3', false)).toEqual([])
+  })
+  it('reruns a test with the race detector', () => {
+    const current = run([node('example.com/svc/api', '', 'fail', { directory: 'svc/api' }), node('example.com/svc/api', 'TestRace', 'fail')])
+    expect(raceRepeatRequestForNode(current, current.results[1], 20)).toMatchObject({ run: '^TestRace$', repeat: 20, shuffle: 'on', race: true })
   })
 })

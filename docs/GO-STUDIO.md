@@ -165,6 +165,7 @@ pause and explains it.
 - **Run N times.** In the Tests panel, **↻ ×** with 10/20/50/100 reruns the current run with `-count=N -shuffle=on`; the ↻ on a test row runs that test 20 times. Repetitions are counted from the `go test -json` events, never from text.
 - **Flaky badge and filter.** A test that both passed and failed shows *flaky failed/runs*; a test that always failed stays a plain failure. The *N flaky* toggle shows only flaky tests. One failed repetition keeps the test red even if the last one passed.
 - **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
+- **Possible causes.** For a flaky test the detail lists hints read from the output of every repetition: data race, deadlock, timing, port conflict, unreachable service, channel or map misuse, or (with shuffling and no other hint) test-order dependency. *×N with -race* repeats it with the race detector. These are hints, not a diagnosis.
 - **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
 
 ## Linting
