@@ -57,14 +57,18 @@ type trackedDocument struct {
 }
 
 type lspSession struct {
-	mu          sync.Mutex
-	id          SessionID
-	root        string
-	rootURI     string
-	name        string
-	options     LanguageServerOptions
-	status      LanguageServerStatus
-	process     *serverProcess
+	mu      sync.Mutex
+	id      SessionID
+	root    string
+	rootURI string
+	name    string
+	options LanguageServerOptions
+	status  LanguageServerStatus
+	process *serverProcess
+	// synced è il processo che ha completato initialize/initialized: solo lui riceve i documenti.
+	// Un didOpen durante l'handshake fa creare a gopls una vista prima dell'avvio
+	// ("addView called before server initialized").
+	synced      *serverProcess
 	stopping    bool
 	launching   bool
 	crashes     []time.Time
@@ -231,6 +235,10 @@ func (m *LSPManager) launch(state *lspSession) error {
 		m.abandon(state, process)
 		return err
 	}
+	// Da qui i documenti aperti dall'utente vanno a gopls; quelli aperti durante l'handshake li riapre reopenDocuments.
+	state.mu.Lock()
+	state.synced = process
+	state.mu.Unlock()
 	m.reopenDocuments(state, process)
 	m.setState(state, LanguageServerReady, "")
 	return nil
@@ -271,6 +279,7 @@ func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
 		return
 	}
 	state.process = nil
+	state.synced = nil
 	stopping := state.stopping
 	state.status.PID = 0
 	state.mu.Unlock()
@@ -397,6 +406,7 @@ func (m *LSPManager) abandon(state *lspSession, process *serverProcess) {
 	state.mu.Lock()
 	if state.process == process {
 		state.process = nil
+		state.synced = nil
 		state.status.PID = 0
 	}
 	state.mu.Unlock()

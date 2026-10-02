@@ -42,7 +42,7 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	tracked := &trackedDocument{id: document.ID, uri: document.URI, path: document.Path, languageID: languageID, version: 1, text: text, readOnly: readOnly}
 	state.documents[document.ID] = tracked
 	state.byURI[document.URI] = document.ID
-	process := state.process
+	process := state.synced
 	state.mu.Unlock()
 	if process != nil {
 		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
@@ -77,7 +77,7 @@ func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, 
 	tracked.version = version
 	tracked.text = text
 	uri := tracked.uri
-	process := state.process
+	process := state.synced
 	state.mu.Unlock()
 	if process == nil {
 		return nil
@@ -96,7 +96,7 @@ func (m *LSPManager) DocumentSaved(sessionID SessionID, documentID DocumentID) {
 	}
 	state.mu.Lock()
 	tracked, ok := state.documents[documentID]
-	process := state.process
+	process := state.synced
 	state.mu.Unlock()
 	if ok && process != nil {
 		_ = process.conn.Notify("textDocument/didSave", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: tracked.uri}})
@@ -115,7 +115,7 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 		delete(state.documents, documentID)
 		delete(state.byURI, tracked.uri)
 	}
-	process := state.process
+	process := state.synced
 	state.mu.Unlock()
 	if ok && process != nil {
 		_ = process.conn.Notify("textDocument/didClose", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: tracked.uri}})
