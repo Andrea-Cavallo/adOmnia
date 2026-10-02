@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 5 | 5 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 4 | 4 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -42,7 +42,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Test obbligatori
 
 - [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
-- [ ] Verifica Windows, macOS e Linux. — *Parziale: test DR in CI su tutti e tre (`build.yml`: Linux in Checks, step "Go Studio disaster recovery" nei job Windows e macOS); verde in locale su Windows, da spuntare al primo run CI verde.*
 
 ## §7 · Debugger Go con Delve
 
