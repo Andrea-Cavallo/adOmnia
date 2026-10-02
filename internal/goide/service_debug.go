@@ -226,6 +226,12 @@ func (s *Service) DebugScopes(debugID string, frameID int) ([]DebugScope, error)
 	return s.debug.Scopes(DebugSessionID(debugID), frameID)
 }
 
+// DebugReadMemory legge length byte a partire da un indirizzo esadecimale o dall'indirizzo di
+// un'espressione Go (es. "&buf[0]") valutata nel frame.
+func (s *Service) DebugReadMemory(debugID, location string, length, frameID int) (DebugMemory, error) {
+	return s.debug.ReadMemory(DebugSessionID(debugID), location, length, frameID)
+}
+
 // DebugShowRegisters mostra o nasconde lo scope Registers nelle variabili dei frame.
 func (s *Service) DebugShowRegisters(debugID string, show bool) error {
 	return s.debug.ShowRegisters(DebugSessionID(debugID), show)

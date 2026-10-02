@@ -594,6 +594,11 @@ func (g *GoIDE) DebugScopes(debugID string, frameID int) ([]goide.DebugScope, er
 	return g.service.DebugScopes(debugID, frameID)
 }
 
+// DebugReadMemory legge la memoria da un indirizzo o dall'indirizzo di un'espressione nel frame.
+func (g *GoIDE) DebugReadMemory(debugID, location string, length, frameID int) (goide.DebugMemory, error) {
+	return g.service.DebugReadMemory(debugID, location, length, frameID)
+}
+
 // DebugShowRegisters mostra o nasconde lo scope Registers nelle variabili dei frame.
 func (g *GoIDE) DebugShowRegisters(debugID string, show bool) error {
 	return g.service.DebugShowRegisters(debugID, show)

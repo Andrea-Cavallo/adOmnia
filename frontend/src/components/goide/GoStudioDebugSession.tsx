@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, MapPin, OctagonAlert, Rocket } from 'lucide-react'
-import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
+import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, readGoIDEDebugMemory, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugMemory, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
 import { GoStudioGoroutineTree } from './GoStudioGoroutineTree'
@@ -9,6 +9,7 @@ import { PaneHeader, StateBadge, shortLocation } from './GoStudioDebugUi'
 import { goroutineRelations, splitFunctionName, type GoroutineRelation } from './goStudioConcurrency'
 import { panicSnapshot, panicValueFromVariables } from './goStudioPanicInspector'
 import { sourceDeferredCallsBefore, type GoStudioSourceDeferredCall } from './goStudioDeferredCalls'
+import { memoryDumpRows } from './goStudioMemoryDump'
 
 const RELATION_LABEL: Record<GoroutineRelation, string> = {
   channel: 'channel', mutex: 'mutex', rwmutex: 'RWMutex', waitgroup: 'WaitGroup', context: 'context', network: 'network', database: 'database', timer: 'timer',
@@ -43,10 +44,61 @@ export function GoStudioDebugSession({ view, sessionId }: GoStudioDebugSessionPr
         {paused && <PanicInspector view={view} />}
         {paused && <DeferredCallInspector frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         {paused && <DisassemblyInspector debugId={view.info.id} frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
+        {paused && <MemoryInspector debugId={view.info.id} frameId={view.frameId} />}
         <FramesPane view={view} />
       </section>
       <GoStudioDebugVariables view={view} sessionId={sessionId} />
       <GoStudioDebugConsole view={view} />
+    </div>
+  )
+}
+
+const MEMORY_SIZES = [64, 256, 1024]
+
+/** Memoria del processo in pausa da un indirizzo o dall'indirizzo di un'espressione del frame. */
+function MemoryInspector({ debugId, frameId }: { debugId: string; frameId: number | null }) {
+  const [location, setLocation] = useState('')
+  const [size, setSize] = useState(64)
+  const [memory, setMemory] = useState<GoIDEDebugMemory | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const read = async () => {
+    if (!location.trim() || loading) return
+    setLoading(true)
+    setError('')
+    try {
+      setMemory(await readGoIDEDebugMemory(debugId, location.trim(), size, frameId ?? 0))
+    } catch (reason) {
+      setMemory(null)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { setMemory(null); setError('') }, [debugId, frameId])
+  return (
+    <div className="mx-2 mt-2 shrink-0 rounded-lg border border-border-1 bg-surface-0/40 p-2.5 text-[11px]">
+      <form onSubmit={(event) => { event.preventDefault(); void read() }} className="flex items-center gap-1.5">
+        <b className="text-text-2">Memory</b>
+        <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="&buf[0] or 0xc000…" aria-label="Memory address or expression" className="h-6 min-w-0 flex-1 rounded border border-border-1 bg-surface-1 px-1.5 font-mono text-[10.5px] text-text-1 outline-none focus:border-accent" />
+        <select value={size} onChange={(event) => setSize(Number(event.target.value))} aria-label="Bytes to read" className="h-6 rounded border border-border-1 bg-surface-1 px-1 text-[10.5px] text-text-2">
+          {MEMORY_SIZES.map((value) => <option key={value} value={value}>{value} B</option>)}
+        </select>
+        <button type="submit" disabled={loading || !location.trim()} className="rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10 disabled:opacity-50">{loading ? 'Reading…' : 'Read'}</button>
+      </form>
+      {memory && (
+        <div role="table" aria-label="Memory dump" className="mt-1.5 max-h-56 overflow-auto font-mono text-[10.5px] leading-[18px] text-text-2">
+          {memoryDumpRows(memory.address, memory.bytes).map((row) => (
+            <div key={row.address} role="row" className="flex gap-3 whitespace-pre">
+              <span className="shrink-0 text-text-4">{row.address}</span>
+              <span>{row.hex.join(' ')}</span>
+              <span className="text-text-3">{row.ascii}</span>
+            </div>
+          ))}
+          {memory.error && <p className="mt-1 whitespace-normal font-sans text-warning">{memory.error}</p>}
+        </div>
+      )}
+      {error && <p className="mt-1 text-danger">{error}</p>}
     </div>
   )
 }

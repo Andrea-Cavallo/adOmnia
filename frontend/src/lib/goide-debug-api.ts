@@ -1,6 +1,6 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
-  Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
+  Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
   GoroutineOverview, GoroutineSummary, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
@@ -16,6 +16,7 @@ export interface GoIDEDebugOutput {
 export type GoIDEDebugThread = DebugThread
 export type GoIDEDebugFrame = DebugFrame
 export type GoIDEDebugInstruction = DebugInstruction
+export type GoIDEDebugMemory = DebugMemory
 export type GoIDEDebugScope = DebugScope
 export type GoIDEDebugVariable = DebugVariable
 export type GoIDEEvaluateResult = EvaluateResult
@@ -120,4 +121,9 @@ export function getGoIDEDebugDisassembly(debugId: string, address: string, befor
 /** Aggiunge o toglie lo scope "Registers" dalle variabili dei frame (dlv config showRegisters). */
 export function showGoIDEDebugRegisters(debugId: string, show: boolean): Promise<void> {
   return GoIDEBindings.DebugShowRegisters(debugId, show)
+}
+
+/** Byte di memoria da un indirizzo (0x…) o dall'indirizzo di un'espressione (es. &buf[0]) nel frame. */
+export function readGoIDEDebugMemory(debugId: string, location: string, length: number, frameId: number): Promise<DebugMemory> {
+  return GoIDEBindings.DebugReadMemory(debugId, location, length, frameId)
 }

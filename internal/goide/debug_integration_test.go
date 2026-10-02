@@ -614,3 +614,40 @@ func TestDebuggerDisassemblesTheCurrentFrame(t *testing.T) {
 		t.Fatalf("scope Registers mancante o vuoto: %v %+v", err, scopes)
 	}
 }
+
+func TestDebuggerReadsMemoryFromAnExpression(t *testing.T) {
+	ide, recorder, session := startDebugProject(t)
+	if _, err := ide.SetBreakpoints(string(session.ID), "main.go", lineBreakpoints(debugFixtureLine(t, "\t\ttotal += value"))); err != nil {
+		t.Fatal(err)
+	}
+	started, err := ide.StartDebug(DebugRequest{SessionID: session.ID, Mode: "debug", Target: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ide.StopDebug(string(started.ID)) })
+	stopped := waitDebugState(t, recorder, started.ID, DebugStopped, 0)
+	frames, _ := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
+	// values è []int{1, 2, 3}: 24 byte little-endian su amd64/arm64, oltre il blocco da 64 per il chunking.
+	memory, err := ide.DebugReadMemory(string(started.ID), "&values[0]", 24, frames[0].ID)
+	if err != nil || len(memory.Bytes) != 24 || memory.Bytes[0] != 1 || memory.Bytes[8] != 2 || memory.Bytes[16] != 3 || !hexAddress.MatchString(memory.Address) {
+		t.Fatalf("memoria inattesa: %v %+v", err, memory)
+	}
+	again, err := ide.DebugReadMemory(string(started.ID), memory.Address, 100, frames[0].ID)
+	if err != nil || len(again.Bytes) == 0 || again.Bytes[0] != 1 || again.Address != memory.Address {
+		t.Fatalf("lettura da indirizzo esadecimale: %v %+v", err, again)
+	}
+	if _, err := ide.DebugReadMemory(string(started.ID), "0x0", 16, frames[0].ID); err == nil {
+		t.Fatal("l'indirizzo 0 non deve essere leggibile")
+	}
+}
+
+func TestParseByteArray(t *testing.T) {
+	if values, err := parseByteArray("[4]uint8 [1,0,255,16]", 4); err != nil || values[2] != 255 {
+		t.Fatalf("%v %v", values, err)
+	}
+	for _, bad := range []string{"(unreadable could not read memory)", "[2]uint8 [1,2]", "[4]uint8 [1,2,3,999]"} {
+		if _, err := parseByteArray(bad, 4); err == nil {
+			t.Fatalf("accettato %q", bad)
+		}
+	}
+}

@@ -23,6 +23,7 @@ export {
     CursorPosition,
     DebugFrame,
     DebugInstruction,
+    DebugMemory,
     DebugRequest,
     DebugScope,
     DebugSessionInfo,

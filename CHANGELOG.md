@@ -15,6 +15,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Changed symbols in the commit dialog:** Go Studio's commit dialog summarises the functions, methods, types, constants and variables added (+), modified (~) or removed (−) since HEAD in the checked files, with exported and test counts, a jump to each declaration and a *Test changed packages* shortcut.
 - **Pre-commit checks:** before committing, Go Studio saves, lints the changed files and stops if the checked files have gopls errors or lint warnings, offering *Show Problems* or *Commit anyway* (the check can be turned off in the dialog).
 - **Disassembly and registers in the debugger:** a paused frame's *Disassemble* shows the machine instructions around the current one (Delve `disassemble`), grouped by Go line with the current instruction marked; the CPU button in *Variables* adds a *Registers* scope to every frame.
+- **Memory view in the debugger:** the *Memory* card reads 64 B–1 KB of the paused process from an address (`0x…`) or from the address of an expression such as `&buf[0]`, shown as a hex dump with ASCII; unreadable memory stops the dump with a clear message.
 
 ## [0.9.53] - 2026-10-02
 
