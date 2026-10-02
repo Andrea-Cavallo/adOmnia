@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.54 release notes: Go Studio for teams and enterprise networks
+
+See [the full v0.9.54 notes](releases/v0.9.54.md): Flaky Test Detector, patch and
+per-function coverage, lint on changed files with a shared baseline, a smarter
+commit dialog, disassembly and memory in the debugger, offline/air-gapped and
+proxy-aware toolchains, per-project AI policy, faster Find in Files, plus Finder
+folders, a grouped Structure panel and a full-height minimap.
+
 ## v0.9.53 release notes: cleaner window, one-screen Hub and Context Inspector
 
 See [the full v0.9.53 notes](releases/v0.9.53.md): the system title bar is hidden
