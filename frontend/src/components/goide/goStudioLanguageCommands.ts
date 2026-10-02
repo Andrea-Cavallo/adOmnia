@@ -1,6 +1,7 @@
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDELspStore, EDITOR_FONT_SIZE } from '@/stores/goideLsp'
 import { clearLintBaseline, saveLintBaseline } from '@/lib/goide-lsp-api'
+import { exportGoStudioSettingsReport } from './goStudioSettingsExport'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 
@@ -81,6 +82,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'go.installStaticcheck': void confirmInstall(sessionId, 'staticcheck'); return true
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
     case 'code.lintChanged': lsp.showToolWindow('problems'); void lsp.runLint(sessionId, true); return true
+    case 'tools.exportSettings': void exportGoStudioSettingsReport(sessionId); return true
     case 'code.lintBaseline': void updateLintBaseline(sessionId, true); return true
     case 'code.lintBaselineClear': void updateLintBaseline(sessionId, false); return true
     default: return false
