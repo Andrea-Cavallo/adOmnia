@@ -1011,6 +1011,11 @@ func (g *GoIDE) RunLint(ctx context.Context, sessionID string) (goide.LintResult
 	return settleCancelled(ctx, value, err)
 }
 
+// LinterConfigFile restituisce (o, con create, crea) il file di configurazione del linter del progetto.
+func (g *GoIDE) LinterConfigFile(sessionID string, create bool) (string, error) {
+	return g.service.LinterConfigFile(sessionID, create)
+}
+
 // SaveLintBaseline registra i problemi attuali del linter in .adomnia/lint-baseline.json.
 func (g *GoIDE) SaveLintBaseline(ctx context.Context, sessionID string) (int, error) {
 	value, err := g.service.SaveLintBaseline(ctx, sessionID)

@@ -139,6 +139,11 @@ export async function installLinter(sessionId: string, kind: GoIDELinterKind): P
   return GoIDEBindings.InstallLinter(sessionId, kind, true)
 }
 
+/** File di configurazione del linter (relativo al progetto); '' se manca e create è falso. */
+export function linterConfigFile(sessionId: string, create: boolean): Promise<string> {
+  return GoIDEBindings.LinterConfigFile(sessionId, create)
+}
+
 /** Registra i problemi attuali del linter in .adomnia/lint-baseline.json; restituisce quanti sono. */
 export function saveLintBaseline(sessionId: string): Promise<number> {
   return GoIDEBindings.SaveLintBaseline(sessionId)

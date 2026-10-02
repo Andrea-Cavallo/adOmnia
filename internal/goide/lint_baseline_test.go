@@ -50,3 +50,34 @@ func TestLintBaselineHidesOnlyKnownFindings(t *testing.T) {
 		t.Fatalf("senza baseline vanno mostrati tutti: %v %+v", err, result)
 	}
 }
+
+func TestLinterConfigFileIsCreatedOnlyOnRequest(t *testing.T) {
+	binary := linterForTest(t, LinterStaticcheck)
+	root := t.TempDir()
+	writeFixtureFile(t, root, "go.mod", "module example.com/cfg\n\ngo 1.22\n")
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := string(session.ID)
+	service.SetToolAuthorization(id, true)
+	service.DetectToolchain(id)
+	if err := service.ConfigureLinter(id, binary); err != nil {
+		t.Fatal(err)
+	}
+	if name, err := service.LinterConfigFile(id, false); err != nil || name != "" {
+		t.Fatalf("senza richiesta non va creato nulla: %q %v", name, err)
+	}
+	name, err := service.LinterConfigFile(id, true)
+	if err != nil || name != "staticcheck.conf" {
+		t.Fatalf("configurazione non creata: %q %v", name, err)
+	}
+	if info, _ := service.DetectLinter(id); info.ConfigPath == "" {
+		t.Fatal("la configurazione creata deve essere rilevata")
+	}
+	if again, err := service.LinterConfigFile(id, false); err != nil || again != "staticcheck.conf" {
+		t.Fatalf("configurazione esistente: %q %v", again, err)
+	}
+}

@@ -676,6 +676,13 @@ export function InterruptedProcesses(): $CancellablePromise<goide$0.ProcessDescr
 }
 
 /**
+ * LinterConfigFile restituisce (o, con create, crea) il file di configurazione del linter del progetto.
+ */
+export function LinterConfigFile(sessionID: string, create: boolean): $CancellablePromise<string> {
+    return $Call.ByID(3265313512, sessionID, create);
+}
+
+/**
  * ListBreakpoints restituisce i breakpoint salvati della sessione.
  */
 export function ListBreakpoints(sessionID: string): $CancellablePromise<goide$0.FileBreakpoints[]> {

@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 29 | 15 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 28 | 14 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -104,7 +104,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ## §21 · Static Analysis
 
 - [ ] Custom linter support. — *Parziale: ConfigureLinter accetta un binario custom per sessione, ma solo golangci-lint o staticcheck, non linter arbitrari.*
-- [ ] Per-project linter settings. — *Parziale: Rileva .golangci.yml/staticcheck.conf del progetto; nessuna UI per le impostazioni del linter del progetto.*
 - [ ] Quality panel.
 - [ ] Technical debt trend.
 

@@ -149,6 +149,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'code.lint': icon(Radar),
   'code.lintChanged': icon(Radar),
   'tools.exportSettings': icon(ShieldCheck),
+  'code.lintConfig': icon(Settings2),
   'code.lintBaseline': icon(Radar),
   'code.lintBaselineClear': icon(Radar),
   'code.formatOnSave': icon(AlignLeft),

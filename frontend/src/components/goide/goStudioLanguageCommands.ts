@@ -1,6 +1,7 @@
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDELspStore, EDITOR_FONT_SIZE } from '@/stores/goideLsp'
-import { clearLintBaseline, saveLintBaseline } from '@/lib/goide-lsp-api'
+import { clearLintBaseline, linterConfigFile, saveLintBaseline } from '@/lib/goide-lsp-api'
+import { useGoIDEStore } from '@/stores/goide'
 import { exportGoStudioSettingsReport } from './goStudioSettingsExport'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
@@ -82,10 +83,29 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'go.installStaticcheck': void confirmInstall(sessionId, 'staticcheck'); return true
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
     case 'code.lintChanged': lsp.showToolWindow('problems'); void lsp.runLint(sessionId, true); return true
+    case 'code.lintConfig': void openLinterConfig(sessionId); return true
     case 'tools.exportSettings': void exportGoStudioSettingsReport(sessionId); return true
     case 'code.lintBaseline': void updateLintBaseline(sessionId, true); return true
     case 'code.lintBaselineClear': void updateLintBaseline(sessionId, false); return true
     default: return false
+  }
+}
+
+/** Apre la configurazione del linter del progetto; se manca, la crea solo dopo conferma. */
+async function openLinterConfig(sessionId: string): Promise<void> {
+  try {
+    let path = await linterConfigFile(sessionId, false)
+    if (!path) {
+      if (!await confirm({
+        title: 'Create linter configuration?',
+        message: 'This project has no .golangci.yml or staticcheck.conf. A minimal configuration for the detected linter is written to the project root and opened: commit it to share the rules with your team.',
+        confirmLabel: 'Create',
+      })) return
+      path = await linterConfigFile(sessionId, true)
+    }
+    await useGoIDEStore.getState().openDocument(path)
+  } catch (error) {
+    useGoIDELspStore.setState({ message: error instanceof Error ? error.message : String(error) })
   }
 }
 
