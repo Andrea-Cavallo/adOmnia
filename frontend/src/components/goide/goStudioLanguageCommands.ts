@@ -79,6 +79,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'go.installGolangci': void confirmInstall(sessionId, 'golangci-lint'); return true
     case 'go.installStaticcheck': void confirmInstall(sessionId, 'staticcheck'); return true
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
+    case 'code.lintChanged': lsp.showToolWindow('problems'); void lsp.runLint(sessionId, true); return true
     default: return false
   }
 }

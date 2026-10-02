@@ -139,8 +139,9 @@ export async function installLinter(sessionId: string, kind: GoIDELinterKind): P
   return GoIDEBindings.InstallLinter(sessionId, kind, true)
 }
 
-export function requestLint(sessionId: string): CancellablePromise<LintResult> {
-  return GoIDEBindings.RunLint(sessionId)
+/** changedOnly: solo i package dei file Go modificati (git status), riportando solo quei file. */
+export function requestLint(sessionId: string, changedOnly = false): CancellablePromise<LintResult> {
+  return changedOnly ? GoIDEBindings.RunLintChanged(sessionId) : GoIDEBindings.RunLint(sessionId)
 }
 
 // Richieste semantiche: restituiscono la CancellablePromise del binding, così cancel() annulla il ctx Go e gopls.

@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	pathpkg "path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -54,6 +56,10 @@ type LintResult struct {
 	IssueCount int                 `json:"issueCount"`
 	Truncated  bool                `json:"truncated"`
 	DurationMS int64               `json:"durationMs"`
+	// ChangedOnly indica che il linter ha girato solo sui package dei file Go modificati e
+	// che Reports contiene solo quei file; ChangedFiles è il loro numero.
+	ChangedOnly  bool `json:"changedOnly,omitempty"`
+	ChangedFiles int  `json:"changedFiles,omitempty"`
 }
 
 type lintIssue struct {
@@ -225,6 +231,48 @@ func (s *Service) InstallLinter(sessionID, kind string, confirmed bool) (Executi
 
 // RunLint esegue il linter sul progetto; ctx annullato termina l'intero albero di processi.
 func (s *Service) RunLint(ctx context.Context, sessionID string) (LintResult, error) {
+	return s.runLint(ctx, sessionID, false)
+}
+
+// RunLintChanged esegue il linter solo sui package dei file Go modificati (git status) e
+// riporta solo i problemi di quei file.
+func (s *Service) RunLintChanged(ctx context.Context, sessionID string) (LintResult, error) {
+	return s.runLint(ctx, sessionID, true)
+}
+
+// changedGoFiles restituisce i file Go modificati, staged o nuovi (relativi al progetto, con /)
+// e i loro package come pattern relativi alla radice del progetto.
+func (s *Service) changedGoFiles(sessionID string) (map[string]bool, []string, error) {
+	status, err := s.VCSStatus(sessionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !status.Available {
+		return nil, nil, fmt.Errorf("il progetto non è in un repository Git: %s", status.Reason)
+	}
+	files := map[string]bool{}
+	seen := map[string]bool{}
+	var packages []string
+	for _, change := range status.Changes {
+		path := filepath.ToSlash(change.RelativePath)
+		if !strings.HasSuffix(path, ".go") || strings.Contains(change.Status, "D") {
+			continue
+		}
+		files[path] = true
+		pattern := "./" + pathpkg.Dir(path)
+		if pattern == "./." {
+			pattern = "."
+		}
+		if !seen[pattern] {
+			seen[pattern] = true
+			packages = append(packages, pattern)
+		}
+	}
+	sort.Strings(packages)
+	return files, packages, nil
+}
+
+func (s *Service) runLint(ctx context.Context, sessionID string, changedOnly bool) (LintResult, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return LintResult{}, err
@@ -243,8 +291,18 @@ func (s *Service) RunLint(ctx context.Context, sessionID string) (LintResult, er
 	if err != nil {
 		return LintResult{}, err
 	}
+	packages := []string{"./..."}
+	var changed map[string]bool
+	if changedOnly {
+		if changed, packages, err = s.changedGoFiles(sessionID); err != nil {
+			return LintResult{}, err
+		}
+		if len(packages) == 0 {
+			return LintResult{Linter: info.Kind, Reports: []DiagnosticsReport{}, ChangedOnly: true}, nil
+		}
+	}
 	started := time.Now()
-	output, err := runLinter(ctx, info, session.Project.RealPath, environment)
+	output, err := runLinter(ctx, info, session.Project.RealPath, environment, packages)
 	if err != nil {
 		return LintResult{}, err
 	}
@@ -252,7 +310,10 @@ func (s *Service) RunLint(ctx context.Context, sessionID string) (LintResult, er
 	if err != nil {
 		return LintResult{}, err
 	}
-	result := LintResult{Linter: info.Kind, DurationMS: time.Since(started).Milliseconds()}
+	if changedOnly {
+		issues = slices.DeleteFunc(issues, func(issue lintIssue) bool { return !changed[relativeWithin(session.Project.RealPath, issue.path)] })
+	}
+	result := LintResult{Linter: info.Kind, DurationMS: time.Since(started).Milliseconds(), ChangedOnly: changedOnly, ChangedFiles: len(changed)}
 	if len(issues) > maxLintIssues {
 		issues = issues[:maxLintIssues]
 		result.Truncated = true
@@ -262,20 +323,23 @@ func (s *Service) RunLint(ctx context.Context, sessionID string) (LintResult, er
 	return result, nil
 }
 
-func lintArguments(info LinterInfo) []string {
-	if info.Kind == LinterStaticcheck {
-		return []string{"-f", "json", "./..."}
+func lintArguments(info LinterInfo, packages []string) []string {
+	var arguments []string
+	switch {
+	case info.Kind == LinterStaticcheck:
+		arguments = []string{"-f", "json"}
+	case strings.HasPrefix(info.Version, "v1."):
+		arguments = []string{"run", "--out-format", "json"}
+	default:
+		arguments = []string{"run", "--output.json.path=stdout", "--show-stats=false"}
 	}
-	if strings.HasPrefix(info.Version, "v1.") {
-		return []string{"run", "--out-format", "json", "./..."}
-	}
-	return []string{"run", "--output.json.path=stdout", "--show-stats=false", "./..."}
+	return append(arguments, packages...)
 }
 
-func runLinter(ctx context.Context, info LinterInfo, root string, environment []string) ([]byte, error) {
+func runLinter(ctx context.Context, info LinterInfo, root string, environment []string, packages []string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, lintTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, info.Binary, lintArguments(info)...)
+	command := exec.CommandContext(ctx, info.Binary, lintArguments(info, packages)...)
 	command.Dir = root
 	command.Env = environment
 	configureProcess(command, false)

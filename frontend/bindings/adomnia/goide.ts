@@ -1095,6 +1095,15 @@ export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResu
 }
 
 /**
+ * RunLintChanged esegue il linter solo sui file Go modificati; si annulla con la promise frontend.
+ */
+export function RunLintChanged(sessionID: string): $CancellablePromise<goide$0.LintResult> {
+    return $Call.ByID(3396593074, sessionID).then(($result: any) => {
+        return $$createType93($result);
+    });
+}
+
+/**
  * SaveDocument salva atomicamente il buffer con protezione dalle modifiche esterne.
  */
 export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<goide$0.OpenDocument> {

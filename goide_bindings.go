@@ -981,6 +981,12 @@ func (g *GoIDE) RunLint(ctx context.Context, sessionID string) (goide.LintResult
 	return settleCancelled(ctx, value, err)
 }
 
+// RunLintChanged esegue il linter solo sui file Go modificati; si annulla con la promise frontend.
+func (g *GoIDE) RunLintChanged(ctx context.Context, sessionID string) (goide.LintResult, error) {
+	value, err := g.service.RunLintChanged(ctx, sessionID)
+	return settleCancelled(ctx, value, err)
+}
+
 // SearchProject cerca testo nel progetto; si annulla con la promise frontend.
 func (g *GoIDE) SearchProject(ctx context.Context, query goide.SearchQuery) (goide.SearchResult, error) {
 	value, err := g.service.SearchProject(ctx, query)

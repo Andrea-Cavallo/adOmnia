@@ -3094,6 +3094,13 @@ export class LintResult {
     "truncated": boolean;
     "durationMs": number;
 
+    /**
+     * ChangedOnly indica che il linter ha girato solo sui package dei file Go modificati e
+     * che Reports contiene solo quei file; ChangedFiles è il loro numero.
+     */
+    "changedOnly"?: boolean;
+    "changedFiles"?: number;
+
     /** Creates a new LintResult instance. */
     constructor($$source: Partial<LintResult> = {}) {
         if (!("linter" in $$source)) {

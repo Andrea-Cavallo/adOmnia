@@ -143,7 +143,7 @@ interface GoIDELspState {
   install: (sessionId: string) => Promise<GoIDEExecution | null>
   detectLinter: (sessionId: string) => Promise<GoIDELinterInfo | null>
   installLinter: (sessionId: string, kind: GoIDELinterKind) => Promise<GoIDEExecution | null>
-  runLint: (sessionId: string) => Promise<void>
+  runLint: (sessionId: string, changedOnly?: boolean) => Promise<void>
   cancelLint: (sessionId: string) => void
   updateSettings: (sessionId: string | null, patch: Partial<GoIDELanguageServerSettings>) => Promise<void>
   updatePreferences: (patch: Partial<GoIDEEditorPreferences>) => void
@@ -315,9 +315,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   },
 
   // Una sola esecuzione per sessione: una nuova richiesta annulla quella in corso.
-  runLint: async (sessionId) => {
+  runLint: async (sessionId, changedOnly = false) => {
     get().cancelLint(sessionId)
-    const request = requestLint(sessionId)
+    const request = requestLint(sessionId, changedOnly)
     runningLints.set(sessionId, request)
     const update = (patch: Partial<GoIDELintState>) => set((state) => ({ lint: { ...state.lint, [sessionId]: { ...(state.lint[sessionId] ?? EMPTY_LINT), ...patch } } }))
     update({ running: true, error: null })

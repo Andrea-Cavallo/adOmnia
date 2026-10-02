@@ -150,3 +150,44 @@ func TestGolangciFixesBecomeEditorEditsWithUTF16Columns(t *testing.T) {
 		t.Fatalf("una correzione fuori dal testo deve essere scartata: %+v", reports[0].Diagnostics[1])
 	}
 }
+
+func TestRunLintChangedLintsOnlyModifiedGoFiles(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git non disponibile")
+	}
+	binary := linterForTest(t, LinterStaticcheck)
+	repo := t.TempDir()
+	writeFixtureFile(t, repo, "go.mod", "module example.com/lintchanged\n\ngo 1.22\n")
+	writeFixtureFile(t, repo, "main.go", "package main\n\nfunc unusedMain() {}\n\nfunc main() {}\n")
+	writeFixtureFile(t, repo, "pkg/other/other.go", "package other\n\nfunc unusedOther() {}\n")
+	gitCommand(t, repo, "init", "-q", "-b", "main")
+	gitCommand(t, repo, "add", ".")
+	gitCommand(t, repo, "commit", "-q", "-m", "initial")
+
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := string(session.ID)
+	if _, err := service.SetToolAuthorization(id, true); err != nil {
+		t.Fatal(err)
+	}
+	service.DetectToolchain(id)
+	if err := service.ConfigureLinter(id, binary); err != nil {
+		t.Fatal(err)
+	}
+	clean, err := service.RunLintChanged(context.Background(), id)
+	if err != nil || !clean.ChangedOnly || clean.IssueCount != 0 {
+		t.Fatalf("senza modifiche non va segnalato nulla: %+v %v", clean, err)
+	}
+	writeFixtureFile(t, repo, "pkg/other/other.go", "package other\n\nfunc unusedOther() {}\n\nfunc alsoUnused() {}\n")
+	result, err := service.RunLintChanged(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ChangedFiles != 1 || len(result.Reports) != 1 || result.Reports[0].RelativePath != "pkg/other/other.go" || result.IssueCount != 2 {
+		t.Fatalf("solo il file modificato va analizzato: %+v", result)
+	}
+}
