@@ -7,6 +7,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
+- **Per-workspace crash recovery store:** Go Studio keeps unsaved buffers under one `recovery/<workspace-id>` entry per project in the local adOmnia store (never inside the repository); each snapshot rewrites only the project being edited, and the previous single store migrates automatically on first start. Disaster-recovery tests (real process kill during snapshot writes, 10 dirty files) now run in CI on Windows, macOS and Linux.
 - **Quick model switch in chat:** Copilot Chat lists the models available to the signed-in account and switches by starting a clean conversation; AI di a0 switches from its own header, verifies the selected model first, and keeps the current model if verification fails. Custom a0 model IDs remain supported without opening Settings.
 - **Database/Broker workspace recovery:** Database Studio restores query tabs, active query and limits; Broker Studio now also restores the active protocol, saved profile and Kafka resource tab. Only local metadata and Vault-safe profile references are persisted; brokers are never connected automatically.
 
