@@ -39,7 +39,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-force": "^3.0.0",
-    "lucide-react": "^1.47.0",
+    "lucide-react": "^1.48.0",
     "mermaid": "^11.17.2",
     "monaco-editor": "^0.56.0",
     "monaco-emacs": "^0.3.0",
