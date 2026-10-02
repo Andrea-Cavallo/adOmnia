@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEFileChange } from '@/lib/goide-lsp-api'
-import { changedLines } from './goStudioChangePreview'
+import { changedLines, selectHunks, selectableHunks } from './goStudioChangePreview'
 
 const change = (newContent: string, edits: GoIDEFileChange['edits']) => ({ uri: 'file:///m.go', path: '/m.go', relativePath: 'm.go', newContent, edits } as GoIDEFileChange)
 const at = (line: number, column: number, endLine = line, endColumn = column) => ({ startLine: line, startColumn: column, endLine, endColumn })
@@ -18,7 +18,7 @@ describe('changedLines', () => {
       { range: at(1, 6, 1, 8), text: 'hi' },
       { range: at(4, 6, 4, 8), text: 'hi' },
     ]))
-    expect(result).toEqual([{ line: 1, text: 'a := hi', hunkStart: false, kind: 'added' }, { line: 4, text: 'b := hi', hunkStart: true, kind: 'added' }])
+    expect(result).toEqual([{ line: 1, text: 'a := hi', hunkStart: false, kind: 'added', hunk: 0 }, { line: 4, text: 'b := hi', hunkStart: true, kind: 'added', hunk: 1 }])
   })
 
   it('accounts for lines removed by earlier edits', () => {
@@ -41,5 +41,31 @@ describe('changedLines', () => {
     const result = changedLines({ ...change('package main\n\nfunc a() {}', []), created: true })
     expect(result.every((row) => row.kind === 'added')).toBe(true)
     expect(result).toHaveLength(3)
+  })
+})
+
+describe('selectHunks', () => {
+  const original = 'a := ho\nx\ny\nb := ho\n'
+  const file = { ...change('a := hi\nx\ny\nb := hi\n', [
+    { range: at(1, 6, 1, 8), text: 'hi' },
+    { range: at(4, 6, 4, 8), text: 'hi' },
+  ]), originalContent: original }
+
+  it('applies only the chosen hunk and recomputes the file', () => {
+    expect(selectableHunks(file)).toBe(2)
+    const second = selectHunks(file, new Set([1]))!
+    expect(second.edits).toHaveLength(1)
+    expect(second.newContent).toBe('a := ho\nx\ny\nb := hi\n')
+  })
+
+  it('keeps the whole file when every hunk is chosen and drops it when none is', () => {
+    expect(selectHunks(file, new Set([0, 1]))).toBe(file)
+    expect(selectHunks(file, new Set())).toBeNull()
+  })
+
+  it('treats files without original text as a single unit', () => {
+    const created = { ...change('package x\n', []), created: true }
+    expect(selectableHunks(created)).toBe(0)
+    expect(selectHunks(created, new Set())).toBe(created)
   })
 })

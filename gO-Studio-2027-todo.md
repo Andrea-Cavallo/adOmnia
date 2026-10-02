@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 65 | 15 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 63 | 15 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -63,11 +63,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 - [ ] Clear network activity panel.
 - [ ] Offline mode.
 - [ ] Export privacy settings.
-
-### AI: cosa esce dalla macchina
-
-- [ ] Apply single hunk.
-- [ ] Apply file.
 
 ## §48 · Enterprise — rete aziendale e toolchain
 
@@ -277,17 +272,17 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 
 ## §17 · Context Propagation Inspector
 
-- [ ] Traccia `context.Context`.
-- [ ] Evidenzia `context.Background()` dentro call chain.
-- [ ] Evidenzia `context.TODO()`.
-- [ ] Detect cancellation chain broken.
-- [ ] Detect missing timeout.
-- [ ] Detect timeout troppo ampio configurabile.
-- [ ] Detect context stored in struct quando sospetto.
-- [ ] Detect ignored cancellation.
-- [ ] Detect leaked cancel function.
-- [ ] Visual context graph.
-- [ ] Trace ID correlation.
+- [x] Traccia `context.Context`. — *Parziale: l'analisi statica (`goStudioContextAnalysis.ts`) segue parametri, radici e variabili derivate per file; non attraversa i confini tra package.*
+- [x] Evidenzia `context.Background()` dentro call chain.
+- [x] Evidenzia `context.TODO()`.
+- [x] Detect cancellation chain broken.
+- [x] Detect missing timeout.
+- [x] Detect timeout troppo ampio configurabile. — *Soglia configurabile nel pannello (default 30s, persistita in localStorage).*
+- [x] Detect context stored in struct quando sospetto.
+- [x] Detect ignored cancellation.
+- [x] Detect leaked cancel function.
+- [x] Visual context graph. — *Parziale: grafo di propagazione testuale (nodi funzione + archi) nel pannello Context, non un grafo visuale SVG/force-directed.*
+- [x] Trace ID correlation. — *Parziale: correlazione statica (`WithValue` con chiavi trace/request + letterali); nessuna correlazione runtime con trace OTLP.*
 
 ## §16 · Interface Explorer
 
@@ -1022,7 +1017,7 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 - [ ] Dependency intelligence. — *Parziale: Dialog `GoStudioDependencies.tsx` con go get/tidy, mod why/graph. Mancano grafo tra moduli e analisi di aggiornamenti e licenze.*
 - [ ] Security. — *Parziale: Solo diagnostica `Vulncheck` di gopls. Non c'è uno Security Studio dedicato.*
 - [ ] Interface explorer. — *Parziale: Implementation markers, Implement Interface dialog e gerarchie. Manca un explorer dedicato.*
-- [ ] Context propagation inspector. — *Parziale: Solo `goStudioContextInspector.ts` per le variabili `context.Context` nel debug. Manca l'analisi statica.*
+- [x] Context propagation inspector. — *Implementata l'analisi statica (`goStudioContextAnalysis.ts`) con pannello dedicato, marcatori nel gutter e soglia timeout configurabile; il runtime inspector (`goStudioContextInspector.ts`) resta per le variabili in debug. Manca la verifica manuale nell'app.*
 - [ ] Runtime Lens.
 - [ ] Architecture Explorer.
 
@@ -1149,7 +1144,7 @@ Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 - [ ] Performance Studio.
 - [ ] Go trace.
 - [ ] Interface Explorer. — *Parziale: Implement Interface, implementation markers e type hierarchy; manca una vista dedicata.*
-- [ ] Context Inspector. — *Parziale: Inspector runtime di context.Context in debug; manca la propagazione statica.*
+- [ ] Context Inspector. — *Parziale: Inspector runtime di context.Context in debug e analisi statica della propagazione (`goStudioContextAnalysis.ts`) con pannello e gutter marker; manca la verifica manuale.*
 - [ ] Error intelligence. — *Parziale: Error chain viewer e panic inspector; manca l'analisi statica.*
 - [ ] Security. — *Parziale: Vulnerability Diagnostics opt-in via gopls; nessuna Security Studio o govulncheck dedicato.*
 - [ ] Dependency Studio. — *Parziale: GoStudioDependencies.tsx con azioni go.mod; mancano grafo, impatto e dimensione binario.*
