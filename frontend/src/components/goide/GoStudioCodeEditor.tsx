@@ -227,7 +227,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         fontLigatures,
         stickyScroll: { enabled: stickyScroll, maxLineCount: 4 },
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
-        minimap: { enabled: minimap, renderCharacters: false, scale: 1 },
+        // Panoramica del file a blocchi per scendere rapidamente, con il riquadro della vista sempre visibile.
+        minimap: { enabled: minimap, renderCharacters: false, scale: 1, showSlider: 'always', size: 'proportional', maxColumn: 100 },
         lineNumbers: 'on',
         folding: true,
         // Parentesi monocromatiche come in IntelliJ: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
