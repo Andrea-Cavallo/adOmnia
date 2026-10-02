@@ -16,7 +16,7 @@ export type GoStudioCommandId =
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
-  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
+  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
   | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
@@ -170,6 +170,9 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.lintChanged', menu: 'code', label: 'Run Linter on Changed Files' },
   { id: 'code.quality', menu: 'code', label: 'Code Quality…' },
   { id: 'code.lintConfig', menu: 'code', label: 'Linter Configuration for This Project…' },
+  { id: 'tools.aiPolicyAllowed', menu: 'tools', label: 'AI for This Project: Any Configured Provider', separatorBefore: true },
+  { id: 'tools.aiPolicyLocal', menu: 'tools', label: 'AI for This Project: Local Models Only' },
+  { id: 'tools.aiPolicyOff', menu: 'tools', label: 'AI for This Project: Off' },
   { id: 'tools.exportSettings', menu: 'tools', label: 'Export Settings Report (Privacy & Audit)…' },
   { id: 'code.lintBaseline', menu: 'code', label: 'Save Lint Baseline (Hide Current Findings)…' },
   { id: 'code.lintBaselineClear', menu: 'code', label: 'Remove Lint Baseline' },

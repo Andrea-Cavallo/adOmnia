@@ -1,4 +1,4 @@
-import { getGoIDEToolchainSettings, type GoIDEToolchainSettings } from '@/lib/goide-api'
+import { getGoIDEAIPolicy, getGoIDEToolchainSettings, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { saveBase64File } from '@/lib/fileUtils'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
@@ -11,6 +11,8 @@ const URL_USERINFO = /(\b[a-z][a-z0-9+.-]*:\/\/)[^\s/@]+@/gi
 export interface GoStudioSettingsReportInput {
   projectName: string
   trusted: boolean
+  /** .adomnia/ai-policy.json: allowed, local-only o off. */
+  aiPolicy?: string
   toolchain: GoIDEToolchainSettings
   ai: Pick<AppSettings['ai'], 'enabled' | 'provider' | 'model' | 'baseURL' | 'apiKey' | 'credentialMode' | 'modelUpdatePolicy' | 'gatewayEnabled' | 'gatewayPort' | 'workspaceActionsEnabled'>
   linter: { kind?: string; available?: boolean; configPath?: string } | null
@@ -49,7 +51,7 @@ export function goStudioSettingsReport(input: GoStudioSettingsReportInput): stri
     format: 'adomnia-go-studio-settings',
     version: 1,
     exportedAt: input.exportedAt,
-    project: { name: input.projectName, toolsTrusted: input.trusted },
+    project: { name: input.projectName, toolsTrusted: input.trusted, aiPolicy: input.aiPolicy ?? 'allowed' },
     telemetry: 'none: adOmnia sends no telemetry or analytics',
     toolchain: {
       effective: input.toolchain.project ? 'project' : 'global',
@@ -87,6 +89,7 @@ export async function exportGoStudioSettingsReport(sessionId: string): Promise<v
     const text = goStudioSettingsReport({
       projectName,
       trusted: session.project.authorization === 'tooling-permitted',
+      aiPolicy: await getGoIDEAIPolicy(sessionId).catch(() => undefined),
       toolchain: await getGoIDEToolchainSettings(sessionId),
       ai: useSettingsStore.getState().settings.ai,
       linter: useGoIDELspStore.getState().linter[sessionId] ?? null,

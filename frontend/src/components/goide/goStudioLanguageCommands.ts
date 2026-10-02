@@ -3,6 +3,7 @@ import { useGoIDELspStore, EDITOR_FONT_SIZE } from '@/stores/goideLsp'
 import { clearLintBaseline, linterConfigFile, saveLintBaseline } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { exportGoStudioSettingsReport } from './goStudioSettingsExport'
+import { setGoIDEAIPolicy, type GoIDEAIPolicy } from '@/lib/goide-api'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 
@@ -84,10 +85,29 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
     case 'code.lintChanged': lsp.showToolWindow('problems'); void lsp.runLint(sessionId, true); return true
     case 'code.lintConfig': void openLinterConfig(sessionId); return true
+    case 'tools.aiPolicyAllowed': void applyAIPolicy(sessionId, 'allowed'); return true
+    case 'tools.aiPolicyLocal': void applyAIPolicy(sessionId, 'local-only'); return true
+    case 'tools.aiPolicyOff': void applyAIPolicy(sessionId, 'off'); return true
     case 'tools.exportSettings': void exportGoStudioSettingsReport(sessionId); return true
     case 'code.lintBaseline': void updateLintBaseline(sessionId, true); return true
     case 'code.lintBaselineClear': void updateLintBaseline(sessionId, false); return true
     default: return false
+  }
+}
+
+const AI_POLICY_MESSAGE: Record<GoIDEAIPolicy, string> = {
+  allowed: 'AI may read this project with any configured provider (secrets and .adomnia/aiignore stay excluded).',
+  'local-only': 'This project now allows only local AI models (Ollama or a localhost endpoint). Saved in .adomnia/ai-policy.json: commit it to share the rule.',
+  off: 'AI is off for this project: no file is sent to any provider. Saved in .adomnia/ai-policy.json: commit it to share the rule.',
+}
+
+/** Politica AI del progetto, versionabile: vale per Fix with AI e per Copilot. */
+async function applyAIPolicy(sessionId: string, policy: GoIDEAIPolicy): Promise<void> {
+  try {
+    await setGoIDEAIPolicy(sessionId, policy)
+    useGoIDELspStore.setState({ message: AI_POLICY_MESSAGE[policy] })
+  } catch (error) {
+    useGoIDELspStore.setState({ message: error instanceof Error ? error.message : String(error) })
   }
 }
 

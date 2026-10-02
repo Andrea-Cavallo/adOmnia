@@ -15,11 +15,19 @@ import * as goide$0 from "./internal/goide/models.js";
 /**
  * AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
  * macchina verso un provider AI: segreti noti (.env, chiavi, certificati) e .adomnia/aiignore del progetto.
+ * localProvider indica un modello su questa macchina: conta per la politica "local-only" del progetto.
  */
-export function AIExcludedPaths(sessionID: string, relativePaths: string[]): $CancellablePromise<string[]> {
-    return $Call.ByID(3723098158, sessionID, relativePaths).then(($result: any) => {
+export function AIExcludedPaths(sessionID: string, relativePaths: string[], localProvider: boolean): $CancellablePromise<string[]> {
+    return $Call.ByID(3723098158, sessionID, relativePaths, localProvider).then(($result: any) => {
         return $$createType0($result);
     });
+}
+
+/**
+ * AIProjectPolicy restituisce la politica AI del progetto: "allowed", "local-only" o "off".
+ */
+export function AIProjectPolicy(sessionID: string): $CancellablePromise<string> {
+    return $Call.ByID(703384639, sessionID);
 }
 
 /**
@@ -1227,6 +1235,13 @@ export function SemanticTokens(sessionID: string, documentID: string): $Cancella
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
         return $$createType98($result);
     });
+}
+
+/**
+ * SetAIProjectPolicy scrive .adomnia/ai-policy.json (o lo rimuove per "allowed").
+ */
+export function SetAIProjectPolicy(sessionID: string, policy: string): $CancellablePromise<void> {
+    return $Call.ByID(517329711, sessionID, policy);
 }
 
 /**

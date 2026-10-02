@@ -431,9 +431,30 @@ export async function acknowledgeGoIDECrash(): Promise<void> {
   await GoIDEBindings.AcknowledgeCrash()
 }
 
-/** Percorsi che non devono mai andare a un provider AI: segreti noti e .adomnia/aiignore del progetto. */
-export async function listGoIDEAIExcludedPaths(sessionId: string, relativePaths: string[]): Promise<string[]> {
-  return relativePaths.length === 0 ? [] : GoIDEBindings.AIExcludedPaths(sessionId, relativePaths)
+/**
+ * Percorsi che non devono andare al provider AI: segreti noti, .adomnia/aiignore e la politica
+ * .adomnia/ai-policy.json del progetto (localProvider: il modello gira su questa macchina).
+ */
+export async function listGoIDEAIExcludedPaths(sessionId: string, relativePaths: string[], localProvider: boolean): Promise<string[]> {
+  return relativePaths.length === 0 ? [] : GoIDEBindings.AIExcludedPaths(sessionId, relativePaths, localProvider)
+}
+
+export type GoIDEAIPolicy = 'allowed' | 'local-only' | 'off'
+
+export async function getGoIDEAIPolicy(sessionId: string): Promise<GoIDEAIPolicy> {
+  return (await GoIDEBindings.AIProjectPolicy(sessionId)) as GoIDEAIPolicy
+}
+
+export async function setGoIDEAIPolicy(sessionId: string, policy: GoIDEAIPolicy): Promise<void> {
+  await GoIDEBindings.SetAIProjectPolicy(sessionId, policy)
+}
+
+/** Un provider è locale se gira su questa macchina: Ollama o un endpoint compatibile su loopback. */
+export function isLocalAIProvider(ai: { provider: string; baseURL?: string }): boolean {
+  let host = ''
+  try { host = new URL(ai.baseURL ?? '').hostname } catch { host = '' }
+  const loopback = host === 'localhost' || host === '::1' || host === '[::1]' || /^127\./.test(host)
+  return (ai.provider === 'ollama' || ai.provider === 'openai-compatible') && loopback
 }
 
 export async function listGoIDERecoveredBuffers(sessionId: string): Promise<GoIDERecoveredBuffer[]> {

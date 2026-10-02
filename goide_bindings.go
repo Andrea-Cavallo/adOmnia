@@ -228,14 +228,33 @@ func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
 	return "", fmt.Errorf("gO session %s is not open", sessionID)
 }
 
+// AIProjectPolicy restituisce la politica AI del progetto: "allowed", "local-only" o "off".
+func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
+	root, err := g.sessionRoot(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return copilot.LoadAIPolicy(root), nil
+}
+
+// SetAIProjectPolicy scrive .adomnia/ai-policy.json (o lo rimuove per "allowed").
+func (g *GoIDE) SetAIProjectPolicy(sessionID, policy string) error {
+	root, err := g.sessionRoot(sessionID)
+	if err != nil {
+		return err
+	}
+	return copilot.SaveAIPolicy(root, policy)
+}
+
 // AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
 // macchina verso un provider AI: segreti noti (.env, chiavi, certificati) e .adomnia/aiignore del progetto.
-func (g *GoIDE) AIExcludedPaths(sessionID string, relativePaths []string) ([]string, error) {
+// localProvider indica un modello su questa macchina: conta per la politica "local-only" del progetto.
+func (g *GoIDE) AIExcludedPaths(sessionID string, relativePaths []string, localProvider bool) ([]string, error) {
 	root, err := g.sessionRoot(sessionID)
 	if err != nil {
 		return nil, err
 	}
-	filter := copilot.LoadContextFilter(root)
+	filter := copilot.LoadContextFilterFor(root, localProvider)
 	excluded := []string{}
 	for _, relativePath := range relativePaths {
 		if filter.Excluded(relativePath) {

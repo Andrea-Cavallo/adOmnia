@@ -1,5 +1,5 @@
 import * as AIEngine from '../../../bindings/adomnia/aiengine'
-import { closeGoIDEDocument, listGoIDEAIExcludedPaths, listGoIDEDirectory, openGoIDEDocument } from '@/lib/goide-api'
+import { closeGoIDEDocument, getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths, listGoIDEDirectory, openGoIDEDocument } from '@/lib/goide-api'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import type { GoIDEFileChange, GoIDEWorkspaceChange } from '@/lib/goide-lsp-api'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
@@ -61,8 +61,14 @@ async function proposeFix(relativePath: string, problem: AIFixProblem, otherProb
   const packageDir = localPackageDirForProblem(problem.message, document.buffer, session.project.modules ?? [])
   const candidates = packageDir === null ? [] : await readPackageFiles(sessionId, packageDir, relativePath)
   // .adomnia/aiignore e i file segreti noti non lasciano mai la macchina, nemmeno come contesto.
-  const excluded = new Set(await listGoIDEAIExcludedPaths(sessionId, [relativePath, ...candidates.map((file) => file.relativePath)]))
-  if (excluded.has(relativePath)) return `${relativePath} is excluded from AI by .adomnia/aiignore`
+  const local = isLocalAIProvider(useSettingsStore.getState().settings.ai)
+  const excluded = new Set(await listGoIDEAIExcludedPaths(sessionId, [relativePath, ...candidates.map((file) => file.relativePath)], local))
+  if (excluded.has(relativePath)) {
+    const policy = await getGoIDEAIPolicy(sessionId).catch(() => 'allowed')
+    if (policy === 'off') return 'AI is turned off for this project (.adomnia/ai-policy.json)'
+    if (policy === 'local-only' && !local) return 'this project allows only local AI models (.adomnia/ai-policy.json): use Ollama or a localhost endpoint'
+    return `${relativePath} is excluded from AI by .adomnia/aiignore`
+  }
   const related = candidates.filter((file) => !excluded.has(file.relativePath))
   // I segreti nel codice diventano segnaposto e tornano al loro posto nella risposta.
   const redactor = createAIRedactor()

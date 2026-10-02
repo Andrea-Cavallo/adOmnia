@@ -21,10 +21,24 @@ var builtinSensitivePatterns = []string{
 // ContextFilter decide se un file del progetto può essere mostrato a Copilot.
 type ContextFilter struct {
 	patterns []string
+	// blockAll: la politica AI del progetto non permette questo provider.
+	blockAll bool
 }
 
 // LoadContextFilter unisce i pattern predefiniti a quelli di <root>/.adomnia/aiignore (sintassi glob, "dir/**").
+// Copilot è un servizio cloud: con .adomnia/ai-policy.json "local-only" o "off" non vede nulla.
 func LoadContextFilter(root string) ContextFilter {
+	return LoadContextFilterFor(root, false)
+}
+
+// LoadContextFilterFor applica anche la politica AI del progetto per un provider locale o cloud.
+func LoadContextFilterFor(root string, localProvider bool) ContextFilter {
+	filter := loadIgnorePatterns(root)
+	filter.blockAll = !PolicyAllows(LoadAIPolicy(root), localProvider)
+	return filter
+}
+
+func loadIgnorePatterns(root string) ContextFilter {
 	patterns := append([]string(nil), builtinSensitivePatterns...)
 	file, err := os.Open(filepath.Join(root, filepath.FromSlash(AIIgnoreFile)))
 	if err != nil {
@@ -43,6 +57,9 @@ func LoadContextFilter(root string) ContextFilter {
 
 // Excluded vale per il percorso relativo al progetto (con /) o per il solo nome del file.
 func (f ContextFilter) Excluded(relativePath string) bool {
+	if f.blockAll {
+		return true
+	}
 	relative := strings.TrimPrefix(filepath.ToSlash(relativePath), "./")
 	name := path.Base(relative)
 	for _, pattern := range f.patterns {

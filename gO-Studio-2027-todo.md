@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 20 | 10 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 19 | 9 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -58,7 +58,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ## §50 · Privacy / Local-first
 
-- [ ] Per-project AI permissions. — *Parziale: Per-progetto solo .adomnia/aiignore per Copilot (internal/copilot/ignore.go); nessun permesso AI per progetto per gli altri provider.*
 - [ ] Telemetry opt-in.
 - [ ] Clear network activity panel.
 - [ ] Offline mode. — *Parziale: la toolchain Go ha il modo Offline/Air-gapped (GOPROXY=off, GOTOOLCHAIN=local, GOSUMDB=off); manca un interruttore unico che blocchi anche AI cloud, vulncheck e controllo aggiornamenti.*
