@@ -338,6 +338,8 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 
 Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, Alt+click adds a cursor, Shift+Alt+drag selects a column, a click on a line number toggles a breakpoint, and a right-click on a line number edits it (condition, hit count, logpoint).
 
+
+**Local replaces in go.mod.** Saving a go.mod with `replace example.com/lib => ../lib` comments out the other replace of the same module as `// adomnia-off: …` (Go accepts one replace per module) and restores it when the local replace is removed. Commits of a go.mod with a local replace show a warning, and pushes from adOmnia ask for confirmation while the pushed commits contain one.
 ## Performance and low-resource mode
 
 - **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).

@@ -1,3 +1,4 @@
+import { isGoModPath, syncLocalReplaces } from '@/lib/goModLocalReplaces'
 import { recordRunHistory } from '@/components/goide/goStudioRunHistory'
 import { caretsFor, restoreCarets } from '@/components/goide/goStudioCaretMemory'
 import { create } from 'zustand'
@@ -867,7 +868,9 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     if (!current || !current.dirty) return true
     set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, saving: true, saveError: null } : item) }))
     try {
-      const saved = await saveGoIDEDocument(current.document.sessionId, current.document.id, current.buffer, current.diskToken, force)
+      // go.mod: un replace locale spegne quello "vero" dello stesso modulo, toglierlo lo riattiva.
+      const buffer = isGoModPath(current.document.relativePath) ? syncLocalReplaces(current.buffer) : current.buffer
+      const saved = await saveGoIDEDocument(current.document.sessionId, current.document.id, buffer, current.diskToken, force)
       cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
       set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? toEditorDocument(saved) : item) }))
       void get().persistSessionView(current.document.sessionId)

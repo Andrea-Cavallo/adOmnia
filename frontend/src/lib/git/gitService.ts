@@ -1,3 +1,4 @@
+import { guardedPush } from './pushGuard'
 import { isDesktopRuntime } from '@/lib/desktopRuntime'
 // Git Sync service layer. The single place the UI talks to git: it wraps the
 // Wails bindings, parses the typed OpResult contract, and normalizes errors so
@@ -129,7 +130,7 @@ export const extractHeadToNewBranch = (repo: string, newBranch: string): Promise
   callOp(() => GitSync.ExtractHeadToNewBranch(repo, newBranch))
 
 export const forcePush = (repo: string, branch: string): Promise<OpResult> =>
-  callOp(() => GitSync.ForcePush(repo, branch))
+  callOp(() => guardedPush(repo, () => GitSync.ForcePush(repo, branch)))
 
 // ── Conflict resolver ────────────────────────────────────────────────────────
 

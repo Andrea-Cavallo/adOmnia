@@ -277,6 +277,15 @@ export function ListWorktrees(repoPath: string): $CancellablePromise<string> {
     return $Call.ByID(356495181, repoPath);
 }
 
+/**
+ * LocalReplaces elenca i replace verso cartelle locali nei go.mod committati: da segnalare prima di un push.
+ */
+export function LocalReplaces(repoPath: string): $CancellablePromise<git$0.LocalReplace[]> {
+    return $Call.ByID(3064384009, repoPath).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 export function Log(repoPath: string, n: number): $CancellablePromise<string> {
     return $Call.ByID(1445777937, repoPath, n);
 }
@@ -448,3 +457,5 @@ export function UpdateSubmodules(repoPath: string, path: string): $CancellablePr
 // Private type creation functions
 const $$createType0 = git$0.PullRequest.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = git$0.LocalReplace.createFrom;
+const $$createType3 = $Create.Array($$createType2);

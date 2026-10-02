@@ -1,3 +1,4 @@
+import { guardedPush } from '@/lib/git/pushGuard'
 import { useMemo, useState, type ReactNode } from 'react'
 import {
   Archive,
@@ -211,7 +212,7 @@ export function GitActionsTab({ repoPath, currentBranch, changes, branches, remo
           <div className="flex flex-wrap gap-2">
             <button className={actionClass()} disabled={disabled} onClick={() => runAction(() => GitSync.Fetch(repoPath), 'Fetch complete.')}><GitPullRequestArrow size={13} /> Fetch</button>
             <button className={actionClass()} disabled={disabled} onClick={() => runAction(() => GitSync.Pull(repoPath, currentBranch), 'Pull complete.')}><GitPullRequest size={13} /> Pull</button>
-            <button className={actionClass('primary')} disabled={disabled} onClick={() => runAction(() => GitSync.Push(repoPath, currentBranch), 'Push complete.')}><Upload size={13} /> Push</button>
+            <button className={actionClass('primary')} disabled={disabled} onClick={() => runAction(() => guardedPush(repoPath, () => GitSync.Push(repoPath, currentBranch)), 'Push complete.')}><Upload size={13} /> Push</button>
           </div>
           <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
             <input value={userName} onChange={(event) => setUserName(event.target.value)} className={fieldClass()} placeholder="Author name" />

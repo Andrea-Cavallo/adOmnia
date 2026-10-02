@@ -61,6 +61,39 @@ export class LineRange {
 }
 
 /**
+ * LocalReplace è un replace verso una cartella locale in un go.mod committato: pubblicato, rompe la
+ * build di chiunque altro, perché quel percorso esiste solo su questa macchina.
+ */
+export class LocalReplace {
+    "file": string;
+    "module": string;
+    "target": string;
+
+    /** Creates a new LocalReplace instance. */
+    constructor($$source: Partial<LocalReplace> = {}) {
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("module" in $$source)) {
+            this["module"] = "";
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LocalReplace instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LocalReplace {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LocalReplace($$parsedSource as Partial<LocalReplace>);
+    }
+}
+
+/**
  * PullRequest is the trimmed PR shape the UI needs.
  */
 export class PullRequest {

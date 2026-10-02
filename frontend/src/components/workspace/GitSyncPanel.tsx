@@ -1,3 +1,4 @@
+import { guardedPush } from '@/lib/git/pushGuard'
 import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -854,7 +855,7 @@ export function GitSyncPanel() {
         <button onClick={() => runAction(() => GitSync.Pull(repoPath, currentBranch), 'Pull complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
           <Download size={13} /> Pull
         </button>
-        <button onClick={() => runAction(() => GitSync.Push(repoPath, currentBranch), 'Push complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
+        <button onClick={() => runAction(() => guardedPush(repoPath, () => GitSync.Push(repoPath, currentBranch)), 'Push complete.')} disabled={!repoPath || loading} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
           <Upload size={13} /> Push
         </button>
         <button onClick={() => runAction(() => GitSync.Stash(repoPath), 'Working changes stashed.')} disabled={!repoPath || loading || !status.dirty} className="flex h-8 items-center gap-1.5 rounded px-2 text-xs text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:text-text-4 disabled:opacity-40">

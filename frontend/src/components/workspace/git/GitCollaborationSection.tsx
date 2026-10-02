@@ -1,3 +1,4 @@
+import { guardedPush } from '@/lib/git/pushGuard'
 import { useEffect, useMemo, useState } from 'react'
 import { GitPullRequest, GitPullRequestArrow, KeyRound, Sparkles, Trash2 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
@@ -113,7 +114,7 @@ export function GitCollaborationSection({ repoPath, currentBranch, branches, rem
   })
 
   const pushWithAccount = () => run('push', async () => {
-    await GitSync.HostPush(repoPath, account, await resolvedToken(), currentBranch)
+    await guardedPush(repoPath, async () => GitSync.HostPush(repoPath, account, await resolvedToken(), currentBranch))
     setNotice(`Pushed ${currentBranch} with the selected ${draft.provider} account.`)
   })
 

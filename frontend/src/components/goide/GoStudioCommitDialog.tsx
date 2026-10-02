@@ -9,6 +9,8 @@ import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioCommitDiff } from './GoStudioCommitDiff'
+import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import { activeLocalReplaces, isGoModPath, type GoModReplace } from '@/lib/goModLocalReplaces'
 
 interface GoStudioCommitDialogProps {
   sessionId: string
@@ -94,6 +96,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   const [checkFirst, setCheckFirst] = useState(loadPrecommitPreference)
   const [blocked, setBlocked] = useState<GoStudioPrecommitSummary | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
+  const [localReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
   const messageRef = useRef<HTMLTextAreaElement>(null)
   const changes = status?.changes ?? []
 
@@ -116,6 +119,21 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     setFocused((current) => (current && changes.some((change) => change.relativePath === current) ? current : changes.find((change) => !change.untracked)?.relativePath ?? changes[0]?.relativePath ?? null))
     // Si ricalcola solo quando cambia l'elenco dei file, non a ogni spunta.
   }, [open, changes.map((change) => change.relativePath).join('\n')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedGoMods = [...selected].filter(isGoModPath).sort().join('\n')
+  useEffect(() => {
+    if (!open || !selectedGoMods) { setLocalReplaces([]); return }
+    let cancelled = false
+    void Promise.all(selectedGoMods.split('\n').map(async (file) => {
+      try {
+        const diff = await GoIDEBindings.VCSWorkingDiff(sessionId, file)
+        return activeLocalReplaces(diff.modified).map((entry) => ({ ...entry, file }))
+      } catch {
+        return []
+      }
+    })).then((found) => { if (!cancelled) setLocalReplaces(found.flat()) })
+    return () => { cancelled = true }
+  }, [open, sessionId, selectedGoMods])
 
   if (!open) return null
 
@@ -195,6 +213,11 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
           <input type="checkbox" checked={checkFirst} onChange={(event) => { setCheckFirst(event.target.checked); savePrecommitPreference(event.target.checked) }} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />
           Check for errors and lint warnings in these files before committing
         </label>
+        {localReplaces.length > 0 && (
+          <GoStudioAlert tone="warning" icon={AlertTriangle}>
+            Local replace in {[...new Set(localReplaces.map((entry) => entry.file))].join(', ')}: {localReplaces.map((entry) => `${entry.module} => ${entry.target}`).join(', ')}. Fine for a local commit, but pushing it breaks the build for everyone else; adOmnia will ask before any push.
+          </GoStudioAlert>
+        )}
         {blocked && (
           <GoStudioAlert tone="warning" icon={AlertTriangle}>
             <div className="flex flex-wrap items-center gap-2">

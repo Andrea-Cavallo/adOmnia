@@ -4,5 +4,6 @@
 export {
     CommitResult,
     LineRange,
+    LocalReplace,
     PullRequest
 } from "./models.js";
