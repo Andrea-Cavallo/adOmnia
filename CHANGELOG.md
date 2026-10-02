@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.54] - 2026-10-02
+
 ### Added
 - **Flaky Test Detector in Go Studio:** the Tests panel reruns a test or the whole run ×10/20/50/100 in random order (`-count=N -shuffle=on`), counts passes and failures per test, marks flaky tests with a badge and a filter, shows failure rate and min/avg/max duration, and replays the exact order with the printed `-shuffle` seed. A flaky test lists possible causes read from its output (data race, deadlock, timing, port conflict, external service, channel or map misuse, test order) and offers a rerun with `-race` or a GOMAXPROCS correlation (`-cpu=1,2,4,8`) that shows the failure rate per value and whether failures follow parallelism. Tests found flaky are remembered per project on this machine (names and counts only): later runs mark them *was flaky* and include them in the flaky filter until the history is cleared. The copy button in a test's detail copies the `go test` command that reproduces it (filter, `-count`, the printed `-shuffle` seed, `-race`, tags and working directory).
 - **Line history in Go Studio:** *Git → Show History for Selection…* lists only the commits that changed the selected lines (`git log -L`), each diffed against the current editor.
@@ -29,6 +31,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Custom analyzers as linter:** any binary set in *Go Tool Paths → Linter* that is not golangci-lint or staticcheck runs as `<binary> ./...` and its `file.go:line[:column]: message` output (go vet and `go/analysis` single/multichecker style) appears in Problems, with lint on save, changed-files lint and baseline.
 - **Project linter settings:** *Code → Linter Configuration for This Project* opens `.golangci.yml` or `staticcheck.conf`; when the project has none it offers to create a minimal one for the detected linter (golangci-lint v1/v2 or staticcheck).
 - **Lint baseline:** *Code → Save Lint Baseline* records every current golangci-lint/staticcheck finding in `.adomnia/lint-baseline.json` (by file, linter and message, so moved code stays hidden); later runs show only new findings and the status bar counts the hidden ones. Commit the file to share it; *Remove Lint Baseline* shows everything again.
+
+### Changed
+- **Go Studio project tree:** folders use a Finder-style icon (two-tone Apple blue, front panel tilted when open) in light and dark themes.
+- **Grouped Structure panel:** symbols are grouped into Constants, Variables, Types, Functions and Methods with counts; methods sit under their receiver type after the fields, functions show parameters and result, fields and constants their type or value, with GoLand-style letter badges (also in breadcrumb and searches).
+- **Minimap on by default:** the editor minimap is on (one-shot migration of saved preferences), fills the editor height with readable blocks and a soft view slider, and the inspection widget no longer covers it.
+- **Cleaner Go Studio header:** a larger adOmnia logo, the project shown with the Finder folder instead of initials, and a tidier branch widget.
 
 ## [0.9.53] - 2026-10-02
 
