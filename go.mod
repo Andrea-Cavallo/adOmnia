@@ -46,7 +46,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.1
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.1
 	github.com/aymanbagabas/go-pty v0.2.3
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 )
 
