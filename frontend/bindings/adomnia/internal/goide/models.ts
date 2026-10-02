@@ -5579,6 +5579,11 @@ export class VCSChangedSymbol {
      */
     "touches"?: string[];
 
+    /**
+     * Breaking: un simbolo esportato rimosso o con la firma cambiata rispetto a HEAD.
+     */
+    "breaking"?: boolean;
+
     /** Creates a new VCSChangedSymbol instance. */
     constructor($$source: Partial<VCSChangedSymbol> = {}) {
         if (!("relativePath" in $$source)) {

@@ -1,8 +1,10 @@
 package goide
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"path/filepath"
 	"regexp"
@@ -34,6 +36,8 @@ type VCSChangedSymbol struct {
 	Test bool `json:"test"`
 	// Touches dice cosa tocca la dichiarazione, dedotto dal sorgente: "http", "grpc", "db", "broker".
 	Touches []string `json:"touches,omitempty"`
+	// Breaking: un simbolo esportato rimosso o con la firma cambiata rispetto a HEAD.
+	Breaking bool `json:"breaking,omitempty"`
 }
 
 // Indizi dal sorgente: firme di handler e chiamate tipiche dei client. Sono euristiche, non analisi dei tipi.
@@ -62,6 +66,8 @@ type goDeclaration struct {
 	start, end     int
 	exported, test bool
 	touches        []string
+	// signature è la firma stampata (funzioni e metodi), per riconoscere i cambi incompatibili.
+	signature string
 }
 
 // VCSChangedSymbols elenca funzioni, metodi, tipi, costanti e variabili aggiunti, modificati
@@ -127,8 +133,10 @@ func changedSymbolsInFile(paths vcsPaths, relative, repoPath string, change VCSF
 // versioni, segna modificati quelli che contengono una riga cambiata.
 func diffDeclarations(relative string, previous, current []goDeclaration, ranges []git.LineRange) []VCSChangedSymbol {
 	before := map[string]bool{}
+	signatures := map[string]string{}
 	for _, declaration := range previous {
 		before[declaration.kind+" "+declaration.name] = true
+		signatures[declaration.kind+" "+declaration.name] = declaration.signature
 	}
 	symbol := func(declaration goDeclaration, change string, line int) VCSChangedSymbol {
 		return VCSChangedSymbol{RelativePath: relative, Name: declaration.name, Kind: declaration.kind, Change: change, Line: line, Exported: declaration.exported, Test: declaration.test, Touches: declaration.touches}
@@ -142,13 +150,17 @@ func diffDeclarations(relative string, previous, current []goDeclaration, ranges
 		case !before[key]:
 			result = append(result, symbol(declaration, SymbolAdded, declaration.start))
 		case touches(declaration, ranges):
-			result = append(result, symbol(declaration, SymbolModified, declaration.start))
+			changed := symbol(declaration, SymbolModified, declaration.start)
+			changed.Breaking = declaration.exported && signatures[key] != declaration.signature
+			result = append(result, changed)
 		}
 	}
 	for _, declaration := range previous {
 		if !now[declaration.kind+" "+declaration.name] {
 			// La riga si riferisce a HEAD: nel file attuale la dichiarazione non c'è più.
-			result = append(result, symbol(declaration, SymbolRemoved, 0))
+			removed := symbol(declaration, SymbolRemoved, 0)
+			removed.Breaking = declaration.exported && !declaration.test
+			result = append(result, removed)
 		}
 	}
 	return result
@@ -197,7 +209,7 @@ func goDeclarations(text string, isTestFile bool) []goDeclaration {
 			test := isTestFile && value.Recv == nil && isTestFunctionName(name)
 			// Solo firma e corpo, non il commento: un handler si riconosce da ciò che fa.
 			source := text[fileSet.Position(value.Pos()).Offset:fileSet.Position(value.End()).Offset]
-			declarations = append(declarations, goDeclaration{name: functionName(value), kind: kind, start: start, end: end, exported: ast.IsExported(name), test: test, touches: touchesOf(source)})
+			declarations = append(declarations, goDeclaration{name: functionName(value), kind: kind, start: start, end: end, exported: ast.IsExported(name), test: test, touches: touchesOf(source), signature: functionSignature(fileSet, value)})
 		case *ast.GenDecl:
 			kind := map[token.Token]string{token.TYPE: "type", token.CONST: "const", token.VAR: "var"}[value.Tok]
 			if kind == "" {
@@ -240,4 +252,33 @@ func isTestFunctionName(name string) bool {
 		}
 	}
 	return false
+}
+
+// functionSignature stampa ricevitore, parametri e risultati senza nomi dei parametri:
+// rinominare un parametro non rompe i chiamanti, cambiarne il tipo sì.
+func functionSignature(fileSet *token.FileSet, function *ast.FuncDecl) string {
+	var buffer bytes.Buffer
+	if function.Recv != nil && len(function.Recv.List) > 0 {
+		_ = printer.Fprint(&buffer, fileSet, function.Recv.List[0].Type)
+		buffer.WriteString(" ")
+	}
+	fields := func(list *ast.FieldList) {
+		buffer.WriteString("(")
+		if list != nil {
+			for index, field := range list.List {
+				count := max(len(field.Names), 1)
+				for repeat := 0; repeat < count; repeat++ {
+					if index > 0 || repeat > 0 {
+						buffer.WriteString(", ")
+					}
+					_ = printer.Fprint(&buffer, fileSet, field.Type)
+				}
+			}
+		}
+		buffer.WriteString(")")
+	}
+	fields(function.Type.TypeParams)
+	fields(function.Type.Params)
+	fields(function.Type.Results)
+	return buffer.String()
 }

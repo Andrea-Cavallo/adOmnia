@@ -3,6 +3,8 @@ package goide
 import (
 	"os/exec"
 	"testing"
+
+	"adomnia/internal/git"
 )
 
 func TestVCSChangedSymbolsAgainstHEAD(t *testing.T) {
@@ -64,5 +66,21 @@ func TestChangedSymbolTouchesAreReadFromTheFunctionSource(t *testing.T) {
 	}
 	if got := declarations[1].touches; len(got) != 0 {
 		t.Fatalf("Pure non tocca nulla: %v", got)
+	}
+}
+
+func TestBreakingChangesAreSignatureOrRemovalOfExportedSymbols(t *testing.T) {
+	before := goDeclarations("package p\n\nfunc Rename(a int) int { return a }\n\nfunc Retype(a int) int { return a }\n\nfunc Body() int { return 1 }\n\nfunc Gone() {}\n\nfunc gone() {}\n", false)
+	after := goDeclarations("package p\n\nfunc Rename(b int) int { return b }\n\nfunc Retype(a int64) int { return int(a) }\n\nfunc Body() int { return 2 }\n", false)
+	ranges := []git.LineRange{{Start: 3, End: 7}}
+	breaking := map[string]bool{}
+	for _, symbol := range diffDeclarations("p.go", before, after, ranges) {
+		breaking[symbol.Name] = symbol.Breaking
+	}
+	want := map[string]bool{"Rename": false, "Retype": true, "Body": false, "Gone": true, "gone": false}
+	for name, value := range want {
+		if got, ok := breaking[name]; !ok || got != value {
+			t.Fatalf("%s: breaking=%v (presente=%v), atteso %v", name, got, ok, value)
+		}
 	}
 }
