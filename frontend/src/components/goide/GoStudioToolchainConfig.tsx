@@ -3,15 +3,15 @@ import { Globe, FolderGit2} from 'lucide-react'
 import { GoStudioButton, GoStudioField } from './GoStudioModal'
 import { configureGoIDEGlobalToolchain, getGoIDEToolchainSettings, resetGoIDEToolchainToGlobal, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
-import { toolchainEnvFromForm, toolchainFormFromEnv, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
+import { modulePatternProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
 
 type Scope = 'project' | 'global'
 
 const inputClass = 'gs-input gs-mono'
 
-const TEXT_FIELDS: { key: ToolchainField; label: string; placeholder: string }[] = [
+const TEXT_FIELDS: { key: ToolchainField; label: string; placeholder: string; hint?: string }[] = [
   { key: 'GOPROXY', label: 'GOPROXY', placeholder: 'https://proxy.golang.org,direct' },
-  { key: 'GOPRIVATE', label: 'GOPRIVATE', placeholder: 'git.example.com/*' },
+  { key: 'GOPRIVATE', label: 'GOPRIVATE', placeholder: 'git.example.com/*', hint: 'Comma-separated module path prefixes fetched directly from their Git host, skipping the proxy and the checksum database. Credentials go in .netrc or a Git credential helper.' },
   { key: 'GONOPROXY', label: 'GONOPROXY', placeholder: 'defaults to GOPRIVATE' },
   { key: 'GONOSUMDB', label: 'GONOSUMDB', placeholder: 'defaults to GOPRIVATE' },
   { key: 'GOOS', label: 'GOOS', placeholder: 'host OS (linux, windows, darwin…)' },
@@ -32,6 +32,9 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
   const [goBinary, setGoBinary] = useState('')
   const [form, setForm] = useState<ToolchainForm>(() => toolchainFormFromEnv({}))
   const [busy, setBusy] = useState(false)
+  const modules = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.modules)
+  const suggestion = (modules ?? []).map((module) => suggestedPrivatePattern(module.modulePath ?? '')).find((pattern): pattern is string => !!pattern) ?? null
+  const problems = TEXT_FIELDS.map(({ key }) => modulePatternProblem(key, form.fields[key])).filter((problem): problem is string => !!problem)
 
   const load = async (nextScope: Scope, current = settings) => {
     const config = nextScope === 'project' ? current?.project ?? current?.global : current?.global
@@ -86,9 +89,17 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
       </div>
       <GoStudioField label="Go binary"><input value={goBinary} onChange={(event) => setGoBinary(event.target.value)} placeholder="Leave empty to use Go from PATH" className={inputClass} /></GoStudioField>
       <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-        {TEXT_FIELDS.map(({ key, label, placeholder }) => (
-          <GoStudioField key={key} label={label}><input value={form.fields[key]} onChange={(event) => setField(key, event.target.value)} placeholder={placeholder} className={inputClass} /></GoStudioField>
-        ))}
+        {TEXT_FIELDS.map(({ key, label, placeholder, hint }) => {
+          const problem = modulePatternProblem(key, form.fields[key])
+          return (
+            <GoStudioField key={key} label={label} hint={problem ? <span className="text-danger">{problem}</span> : hint}>
+              <input value={form.fields[key]} onChange={(event) => setField(key, event.target.value)} placeholder={placeholder} aria-invalid={!!problem} className={inputClass} />
+              {key === 'GOPRIVATE' && !form.fields.GOPRIVATE.trim() && suggestion && (
+                <button type="button" onClick={(event) => { event.preventDefault(); setField('GOPRIVATE', suggestion) }} className="self-start text-[11px] text-accent hover:underline">Use {suggestion} (from this project's module path)</button>
+              )}
+            </GoStudioField>
+          )
+        })}
         <GoStudioField label="CGO">
           <select value={form.fields.CGO_ENABLED} onChange={(event) => setField('CGO_ENABLED', event.target.value)} className="gs-input">
             <option value="">Default</option><option value="1">Enabled (CGO_ENABLED=1)</option><option value="0">Disabled (CGO_ENABLED=0)</option>
@@ -102,7 +113,7 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
       </GoStudioField>
       <div className="flex items-center justify-end gap-2">
         {scope === 'project' && settings?.project && <GoStudioButton variant="ghost" disabled={busy} onClick={() => void useGlobal()}>Use global default</GoStudioButton>}
-        <GoStudioButton variant="primary" loading={busy} onClick={() => void save()}>{scope === 'project' ? 'Save for project' : 'Save as global default'}</GoStudioButton>
+        <GoStudioButton variant="primary" loading={busy} disabled={problems.length > 0} title={problems[0]} onClick={() => void save()}>{scope === 'project' ? 'Save for project' : 'Save as global default'}</GoStudioButton>
       </div>
     </section>
   )

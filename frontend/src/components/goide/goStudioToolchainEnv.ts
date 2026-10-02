@@ -40,3 +40,36 @@ export function toolchainEnvFromForm(form: ToolchainForm): Record<string, string
   if (goflags) env.GOFLAGS = goflags
   return env
 }
+
+const PATTERN_FIELDS: ReadonlySet<ToolchainField> = new Set(['GOPRIVATE', 'GONOPROXY', 'GONOSUMDB'])
+
+/**
+ * GOPRIVATE, GONOPROXY e GONOSUMDB sono liste di glob di prefissi di module path separate da virgole:
+ * niente schema, credenziali, spazi o voci vuote. null se il valore è valido o vuoto.
+ */
+export function modulePatternProblem(field: ToolchainField, value: string): string | null {
+  if (!PATTERN_FIELDS.has(field) || !value.trim()) return null
+  const patterns = value.split(',')
+  if (patterns.some((pattern) => !pattern.trim())) return 'Remove the empty entry between commas.'
+  for (const pattern of patterns.map((item) => item.trim())) {
+    if (/\s/.test(pattern)) return `"${pattern}" contains spaces: separate patterns with commas.`
+    if (pattern.includes('://')) return `"${pattern}" is a URL: use a module path prefix such as git.example.com/team/*.`
+    if (pattern.includes('@')) return `"${pattern}" contains "@": credentials belong in .netrc or a Git credential helper, not here.`
+    if (pattern.startsWith('/') || pattern.endsWith('/')) return `"${pattern}" must not start or end with "/".`
+  }
+  return null
+}
+
+const PUBLIC_HOSTS = new Set(['golang.org', 'google.golang.org', 'gopkg.in', 'go.uber.org', 'k8s.io', 'sigs.k8s.io', 'cloud.google.com'])
+const HOSTED_FORGES = new Set(['github.com', 'gitlab.com', 'bitbucket.org', 'codeberg.org'])
+
+/**
+ * Pattern GOPRIVATE suggerito dal module path del progetto: l'organizzazione sui forge pubblici
+ * (github.com/acme/*), l'host intero per un server aziendale; null per moduli pubblici o locali.
+ */
+export function suggestedPrivatePattern(modulePath: string): string | null {
+  const [host, owner] = modulePath.trim().split('/')
+  if (!host?.includes('.') || PUBLIC_HOSTS.has(host)) return null
+  if (HOSTED_FORGES.has(host)) return owner ? `${host}/${owner}/*` : null
+  return host
+}

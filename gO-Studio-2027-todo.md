@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 34 | 15 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 33 | 14 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -68,7 +68,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 - [ ] Corporate proxy. — *Parziale: GOPROXY configurabile per toolchain e proxy Copilot; non c'è un proxy globale unico.*
 - [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
-- [ ] GOPRIVATE UX. — *Parziale: Campo GOPRIVATE con placeholder in GoStudioToolchainConfig.tsx; nessuna guida o validazione specifica.*
 - [ ] Custom CA certificates. — *Parziale: CA bundle PEM solo per Copilot (NODE_EXTRA_CA_CERTS); non per toolchain Go o resto di Go Studio.*
 - [ ] Offline mode.
 - [ ] Air-gapped mode.
