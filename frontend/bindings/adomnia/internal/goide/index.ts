@@ -73,6 +73,7 @@ export {
     GoWorkModule,
     GoWorkState,
     GoplsInfo,
+    GoroutineCreation,
     GoroutineOverview,
     GoroutineSummary,
     HierarchyItem,

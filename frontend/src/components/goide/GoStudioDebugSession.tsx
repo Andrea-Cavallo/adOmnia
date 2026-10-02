@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, MapPin, OctagonAlert, Rocket } from 'lucide-react'
+import { Eye, EyeOff, GitFork, MapPin, OctagonAlert, Rocket } from 'lucide-react'
+import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import type { GoroutineCreation } from '../../../bindings/adomnia/internal/goide/models'
 import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, readGoIDEDebugMemory, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugMemory, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
@@ -40,7 +42,7 @@ export function GoStudioDebugSession({ view, sessionId }: GoStudioDebugSessionPr
           : <p className="px-3 py-2 text-[11.5px] text-text-4">{view.info.state === 'running' ? 'Running. Pause or hit a breakpoint to inspect goroutines.' : 'No goroutines.'}</p>}
       </section>
       <section aria-label="Goroutine and call stack" className="flex min-h-0 flex-col">
-        {paused && <GoroutineDetail goroutine={selected} threadId={view.threadId} />}
+        {paused && <GoroutineDetail goroutine={selected} threadId={view.threadId} debugId={view.info.id} onSelectGoroutine={(id) => void useGoIDEDebugStore.getState().selectThread(view.info.id, id)} />}
         {paused && <PanicInspector view={view} />}
         {paused && <DeferredCallInspector frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
         {paused && <DisassemblyInspector debugId={view.info.id} frame={view.frames.find((frame) => frame.id === view.frameId) ?? null} />}
@@ -228,7 +230,7 @@ function PanicInspectorDetail({ debugId, panic }: { debugId: string; panic: NonN
   )
 }
 
-function GoroutineDetail({ goroutine, threadId }: { goroutine: GoIDEGoroutine | null; threadId: number | null }) {
+function GoroutineDetail({ goroutine, threadId, debugId, onSelectGoroutine }: { goroutine: GoIDEGoroutine | null; threadId: number | null; debugId: string; onSelectGoroutine: (id: number) => void }) {
   if (!goroutine) return <div className="shrink-0 px-3 pt-2.5 text-[12.5px] font-semibold text-text-1">Goroutine #{threadId ?? '?'}</div>
   const origin = goroutine.origin ? splitFunctionName(goroutine.origin.name) : null
   return (
@@ -251,6 +253,7 @@ function GoroutineDetail({ goroutine, threadId }: { goroutine: GoIDEGoroutine | 
             <dd className="min-w-0"><button type="button" onClick={() => openFrame(goroutine.origin)} className="flex max-w-full items-center gap-1 truncate font-mono text-text-2 hover:text-accent"><Rocket size={11} className="shrink-0" />{origin.name}()</button></dd>
           </>
         )}
+        <GoroutineCreatedAt debugId={debugId} goroutineId={goroutine.id} onSelectGoroutine={onSelectGoroutine} />
         {goroutine.location && (
           <>
             <dt className="text-text-4">Location</dt>
@@ -296,5 +299,30 @@ function FramesPane({ view }: { view: GoIDEDebugView }) {
         {paused && hidden > 0 && <button type="button" onClick={() => setShowLibrary(true)} className="px-2 py-1 text-[11px] text-text-4 hover:text-text-2">+ {hidden} runtime and library frames</button>}
       </div>
     </div>
+  )
+}
+
+/** Riga dell'istruzione go che ha creato la goroutine (dal runtime) e la goroutine che l'ha eseguita. */
+function GoroutineCreatedAt({ debugId, goroutineId, onSelectGoroutine }: { debugId: string; goroutineId: number; onSelectGoroutine: (id: number) => void }) {
+  const [creation, setCreation] = useState<GoroutineCreation | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setCreation(null)
+    GoIDEBindings.DebugGoroutineCreation(debugId, goroutineId).then((value) => { if (!cancelled) setCreation(value) }).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [debugId, goroutineId])
+  if (!creation?.location && !creation?.parentId) return null
+  return (
+    <>
+      <dt className="text-text-4">Created at</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-x-2">
+        {creation.location && (
+          <button type="button" onClick={() => openFrame(creation.location)} title={creation.sourceLine || undefined} className="flex max-w-full items-center gap-1 truncate font-mono text-text-2 hover:text-accent">
+            <GitFork size={11} className="shrink-0" />{shortLocation(creation.location.relativePath || creation.location.path, creation.location.line)}
+          </button>
+        )}
+        {!!creation.parentId && <button type="button" onClick={() => onSelectGoroutine(creation.parentId!)} className="text-[10.5px] text-text-4 hover:text-accent">by goroutine #{creation.parentId}</button>}
+      </dd>
+    </>
   )
 }

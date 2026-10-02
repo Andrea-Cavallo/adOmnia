@@ -2730,6 +2730,44 @@ export class GoplsInfo {
 }
 
 /**
+ * GoroutineCreation è l'istruzione `go` che ha creato una goroutine e la goroutine che l'ha eseguita.
+ */
+export class GoroutineCreation {
+    /**
+     * Location è la riga dell'istruzione go; nil per le goroutine create dal runtime (es. main).
+     */
+    "location"?: DebugFrame | null;
+
+    /**
+     * SourceLine è il testo di Location.
+     */
+    "sourceLine"?: string;
+
+    /**
+     * ParentID è la goroutine che ha eseguito l'istruzione go (Go 1.21+); 0 se non nota.
+     */
+    "parentId"?: number;
+
+    /** Creates a new GoroutineCreation instance. */
+    constructor($$source: Partial<GoroutineCreation> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoroutineCreation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoroutineCreation {
+        const $$createField0_0 = $$createType53;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
+        }
+        return new GoroutineCreation($$parsedSource as Partial<GoroutineCreation>);
+    }
+}
+
+/**
  * GoroutineOverview è l'istantanea di tutte le goroutine alla pausa corrente.
  */
 export class GoroutineOverview {
@@ -2753,7 +2791,7 @@ export class GoroutineOverview {
      * Creates a new GoroutineOverview instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineOverview {
-        const $$createField0_0 = $$createType53;
+        const $$createField0_0 = $$createType55;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField0_0($$parsedSource["goroutines"]);
@@ -2817,8 +2855,8 @@ export class GoroutineSummary {
      * Creates a new GoroutineSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineSummary {
-        const $$createField5_0 = $$createType55;
-        const $$createField7_0 = $$createType55;
+        const $$createField5_0 = $$createType53;
+        const $$createField7_0 = $$createType53;
         const $$createField8_0 = $$createType56;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
@@ -6174,11 +6212,11 @@ const $$createType48 = FunctionBreakpointState.createFrom;
 const $$createType49 = $Create.Array($$createType48);
 const $$createType50 = GoWorkModule.createFrom;
 const $$createType51 = $Create.Array($$createType50);
-const $$createType52 = GoroutineSummary.createFrom;
-const $$createType53 = $Create.Array($$createType52);
-const $$createType54 = DebugFrame.createFrom;
-const $$createType55 = $Create.Nullable($$createType54);
-const $$createType56 = $Create.Array($$createType54);
+const $$createType52 = DebugFrame.createFrom;
+const $$createType53 = $Create.Nullable($$createType52);
+const $$createType54 = GoroutineSummary.createFrom;
+const $$createType55 = $Create.Array($$createType54);
+const $$createType56 = $Create.Array($$createType52);
 const $$createType57 = EditorLocation.createFrom;
 const $$createType58 = $Create.Array($$createType3);
 const $$createType59 = HighlightEntry.createFrom;
