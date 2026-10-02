@@ -49,6 +49,7 @@ import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
 import { GoStudioChangePreviewDialog, GoStudioRenameDialog } from './GoStudioRefactorDialogs'
 import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
+import { GoStudioActivityBar } from './GoStudioActivityBar'
 import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
@@ -716,6 +717,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioChangePreviewDialog />
       <GoStudioToolPathsDialog open={toolPathsOpen} sessionId={activeSession.id} onClose={() => setToolPathsOpen(false)} />
       <GoStudioLanguageServerLog open={lspLogOpen} sessionId={activeSession.id} onClose={() => setLspLogOpen(false)} />
+      {!zen && <GoStudioActivityBar session={activeSession} onOpenLog={() => setLspLogOpen(true)} />}
       <UnsavedChangesDialog open={!!closeFlow.pending} documents={closeFlow.pending?.documents ?? []} onSave={() => closeFlow.settle(true)} onDiscard={() => closeFlow.settle(false)} onCancel={closeFlow.cancel} />
     </div>
   )

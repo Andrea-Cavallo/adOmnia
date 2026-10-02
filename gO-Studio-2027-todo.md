@@ -23,7 +23,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 122 | 24 |
+| **P1** | Workflow Go migliore di GoLand | 98 | 19 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
@@ -53,40 +53,42 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 
 ### Profiler
 
-- [ ] CPU profile. — *Parziale: runconfig_params.go aggiunge -cpuprofile=cpu.pprof alle configurazioni di test (menu in GoStudioRunParameters.tsx); scrive solo il file, niente analisi o vista.*
-- [ ] Heap profile. — *Parziale: -memprofile=mem.pprof per le config di test (runconfig_params.go); solo cattura su file, nessun parsing né vista in app.*
-- [ ] Allocations profile. — *Parziale: mem.pprof da -memprofile contiene anche i campioni alloc_*, ma è solo cattura; manca una vista separata delle allocazioni.*
-- [ ] Goroutine profile.
-- [ ] Mutex profile. — *Parziale: -mutexprofile=mutex.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
-- [ ] Block profile. — *Parziale: -blockprofile=block.pprof selezionabile nelle config di test (runconfig_params.go); solo file, nessuna visualizzazione.*
-- [ ] Thread creation profile dove disponibile.
-- [ ] `pprof` integration. — *Parziale: Solo i flag go test che scrivono *.pprof (runconfig_params.go, solo config di test); nessun parsing, nessun go tool pprof, nessun viewer.*
+- [x] CPU profile. — *cpu.pprof dalle config di test; parsing diretto con `github.com/google/pprof/profile` e viste Top/flame/callers/diff.*
+- [x] Heap profile. — *Il viewer seleziona i sample type inuse_space/inuse_objects del mem.pprof.*
+- [x] Allocations profile. — *I sample type alloc_objects/alloc_space dello stesso mem.pprof restano separati da quelli in uso nel selettore.*
+- [ ] Goroutine profile. — *Il viewer mostrerebbe un goroutine.pprof, ma nessuna configurazione lo produce ancora.*
+- [x] Mutex profile. — *mutex.pprof dalle config di test, visualizzato.*
+- [x] Block profile. — *block.pprof dalle config di test, visualizzato.*
+- [ ] Thread creation profile dove disponibile. — *Nessuna cattura; il viewer accetterebbe il file.*
+- [x] `pprof` integration. — *Parsing pprof in Go (google/pprof), Top/flame/edge/line calcolati in app; `go tool pprof` non viene invocato.*
 
 ### Visualizzazioni
 
-- [ ] Top functions.
-- [ ] Call graph.
-- [ ] Flame graph.
-- [ ] Icicle view.
-- [ ] Source line cost.
-- [ ] Package grouping.
-- [ ] Hide runtime internals.
-- [ ] Diff profiles.
-- [ ] Search function.
-- [ ] Navigate to source.
+- [x] Top functions.
+- [ ] Call graph. — *Parziale: pannello Callers/Callees con archi caller→callee e pesi; manca un grafo visuale a nodi.*
+- [x] Flame graph.
+- [x] Icicle view. — *Toggle Flame/Icicle.*
+- [ ] Source line cost. — *Parziale: pprof.go aggrega il costo per file:riga (`lines`), ma l'editor non lo evidenzia.*
+- [x] Package grouping.
+- [x] Hide runtime internals.
+- [x] Diff profiles.
+- [x] Search function.
+- [x] Navigate to source. — *File del progetto nell'editor, stdlib in sola lettura.*
 
 ### Go trace
 
-- [ ] Trace capture. — *Parziale: -trace=trace.out selezionabile nelle config di test (runconfig_params.go/GoStudioRunParameters.tsx); scrive solo il file, nessun viewer né go tool trace.*
-- [ ] Goroutine timeline.
-- [ ] Scheduler activity.
-- [ ] GC.
-- [ ] Syscalls.
-- [ ] Network blocking.
-- [ ] Synchronization.
-- [ ] Long-running goroutines.
-- [ ] Runtime events.
-- [ ] Navigate trace event → code.
+> Viewer implementato: `internal/goide/trace.go` interpreta i file `trace.out`/`*.trace` del progetto con `golang.org/x/exp/trace`; `GoStudioTracePanel.tsx` li mostra (View → Go Trace, bottone Trace nella status bar). Nessun `go tool trace` invocato.
+
+- [x] Trace capture. — *-trace=trace.out dalle config di test e parsing in-app.*
+- [x] Goroutine timeline. — *Un track per goroutine con span running/runnable/waiting/syscall.*
+- [x] Scheduler activity. — *Un track per P con i suoi intervalli di esecuzione.*
+- [x] GC. — *Range GC/STW in timeline e totale; sezione GC blocking.*
+- [x] Syscalls. — *Stato syscall nelle timeline e totale nei chip statistiche.*
+- [x] Network blocking. — *Attese con reason network, ordinate per durata.*
+- [x] Synchronization. — *Attese chan/sync/mutex/select, ordinate per durata.*
+- [x] Long-running goroutines. — *Goroutine vive o sopra soglia, con funzione di partenza.*
+- [x] Runtime events. — *Log, task e regioni con tempo e goroutine.*
+- [x] Navigate trace event → code. — *Clic su span/evento/goroutine apre il frame sorgente (progetto o stdlib).*
 
 ## §20 · Security Studio
 
@@ -898,7 +900,7 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 > Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
 
 - [ ] Concurrency view. — *Parziale: `GoStudioConcurrencyView.tsx` e `GoStudioGoroutineTree.tsx`, sezione 8 a 36/37. Manca la worker pool saturation.*
-- [ ] Profiler integrato. — *Parziale: Solo il profiling dei test (cpu/mem/block/mutex/trace) in `runconfig_params.go`. Manca un viewer pprof.*
+- [ ] Profiler integrato. — *Parziale: profiling dei test (cpu/mem/block/mutex/trace) in `runconfig_params.go` e viewer pprof in-app (`internal/goide/pprof.go`, `GoStudioProfilePanel.tsx`). Mancano cattura per goroutine/threadcreate, call graph visuale, heatmap per riga e trace viewer.*
 - [ ] Benchmark explorer. — *Parziale: Esecuzione dal gutter, confronto e storico in `goStudioBenchmarks*.ts` e nel pannello Tests. Sezione 12 a 15/20.*
 - [ ] Fuzzing UX. — *Parziale: Solo run con `-fuzztime` dal gutter e generazione del fuzz test. Mancano corpus, crash e minimizzazione.*
 - [ ] Dependency intelligence. — *Parziale: Dialog `GoStudioDependencies.tsx` con go get/tidy, mod why/graph. Mancano grafo tra moduli e analisi di aggiornamenti e licenze.*

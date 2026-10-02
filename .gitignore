@@ -34,6 +34,7 @@ yarn-debug.log*
 yarn-error.log*
 debug.log
 trace.out
+*.pprof
 cpu.prof
 mem.prof
 coverage.html

@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import {
-  Fullscreen, PanelLeft, Gauge, BatteryLow,
+  Activity, Fullscreen, PanelLeft, Gauge, BatteryLow,
   AlignLeft, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpDown, Binary, Bookmark, BookmarkPlus, BookOpen, Bot, Braces, Bug,
   CircleCheck, CircleDot, CircleHelp, CirclePause, CirclePlay, CircleStop, Code2, Columns2, Compass, Copy, Download,
   Eye, EyeOff, FileCode2, FilePlus2, FileSearch, FileText, FlaskConical, FlaskRound, FolderOpen, FolderPlus, FolderX,
@@ -9,7 +9,7 @@ import {
   PackageOpen, PackagePlus, PackageSearch, Paintbrush, PanelBottom, PanelRight, PanelTop, Pencil, Pin, Play, Plug,
   Radar, Redo2, RefreshCw, Send, Repeat, Replace, RotateCcw, Rows2, Save, SaveAll, ScanSearch, Search, SearchCode, Server,
   Settings2, ShieldCheck, Sparkles, Square, SquareDashed, SquareTerminal, StepForward, Terminal, TextCursorInput, Trash2,
-  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Focus, Ligature, ZoomIn, ZoomOut, PenLine, ShieldAlert, CircleSlash
+  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Flame, Focus, Ligature, ZoomIn, ZoomOut, PenLine, ShieldAlert, CircleSlash
 } from 'lucide-react'
 import { GoGopherIcon } from './GoGopherIcon'
 import type { GoStudioCommandId, GoStudioMenuId } from './goStudioCommands'
@@ -107,6 +107,8 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'view.terminal': icon(SquareTerminal),
   'view.tests': icon(FlaskConical),
   'view.todo': icon(ListTodo),
+  'view.profile': icon(Flame),
+  'view.trace': icon(Activity),
   'view.debug': icon(Bug),
   'view.splitRight': icon(Columns2),
   'view.splitDown': icon(Rows2),

@@ -344,10 +344,33 @@ func (s *Service) OpenDocument(sessionID, relativePath string) (OpenDocument, er
 	if err != nil {
 		return OpenDocument{}, err
 	}
-	s.lsp.TrackDocument(session, document.Document, document.Content, false)
-	s.observeDocuments(func(observer DocumentObserver) { observer.DocumentOpened(session, document.Document, document.Content) })
+	// Le immagini non sono testi: restano fuori dal language server e dalle integrazioni di codice.
+	if document.Document.Language != "image" {
+		s.lsp.TrackDocument(session, document.Document, document.Content, false)
+		s.observeDocuments(func(observer DocumentObserver) { observer.DocumentOpened(session, document.Document, document.Content) })
+	}
 	s.emit("document.opened", session.ID, string(document.Document.ID), document.Document)
 	return document, nil
+}
+
+// ReadFileDataURL legge un'immagine del progetto come data URL, senza aprire una tab.
+func (s *Service) ReadFileDataURL(sessionID, relativePath string) (string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return "", err
+	}
+	path, err := s.documents.ResolveProjectPath(session.Project, relativePath)
+	if err != nil {
+		return "", err
+	}
+	if _, ok := imageMimeType(path); !ok {
+		return "", fmt.Errorf("il file non è un'immagine supportata")
+	}
+	dataURL, _, _, err := readImageFile(path)
+	if err != nil {
+		return "", err
+	}
+	return dataURL, nil
 }
 
 // SaveDocument salva un documento con controllo delle modifiche esterne.

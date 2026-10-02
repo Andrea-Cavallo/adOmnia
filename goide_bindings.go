@@ -448,9 +448,14 @@ func (g *GoIDE) ListDirectory(sessionID, relativePath string, includeIgnored boo
 	return g.service.ListDirectory(sessionID, relativePath, includeIgnored)
 }
 
-// OpenDocument apre un documento testuale confinato al progetto.
+// OpenDocument apre un documento testuale o un'immagine confinato al progetto.
 func (g *GoIDE) OpenDocument(sessionID, relativePath string) (goide.OpenDocument, error) {
 	return g.service.OpenDocument(sessionID, relativePath)
+}
+
+// ReadFileDataURL legge un'immagine del progetto come data URL, per gli asset del Markdown.
+func (g *GoIDE) ReadFileDataURL(sessionID, relativePath string) (string, error) {
+	return g.service.ReadFileDataURL(sessionID, relativePath)
 }
 
 // SaveDocument salva atomicamente il buffer con protezione dalle modifiche esterne.
@@ -581,6 +586,26 @@ func (g *GoIDE) GetTestOutput(runID, nodeID string) (string, error) {
 // ListTestRuns restituisce le esecuzioni di test della sessione, dalla più recente.
 func (g *GoIDE) ListTestRuns(sessionID string) ([]goide.TestRunSnapshot, error) {
 	return g.service.ListTestRuns(sessionID)
+}
+
+// ListProfileFiles elenca i profili pprof (*.pprof) trovati nel progetto, per il Performance Studio.
+func (g *GoIDE) ListProfileFiles(sessionID string) ([]goide.ProfileFile, error) {
+	return g.service.ListProfileFiles(sessionID)
+}
+
+// LoadProfile interpreta un profilo pprof del progetto in un report per il Performance Studio.
+func (g *GoIDE) LoadProfile(sessionID, relativePath string) (goide.ProfileReport, error) {
+	return g.service.LoadProfile(sessionID, relativePath)
+}
+
+// ListTraceFiles elenca i file di esecuzione trace (`trace.out`, `*.trace`) del progetto.
+func (g *GoIDE) ListTraceFiles(sessionID string) ([]goide.ProfileFile, error) {
+	return g.service.ListTraceFiles(sessionID)
+}
+
+// LoadTrace interpreta un file trace del progetto in una timeline per il viewer.
+func (g *GoIDE) LoadTrace(sessionID, relativePath string) (goide.TraceReport, error) {
+	return g.service.LoadTrace(sessionID, relativePath)
 }
 
 // DetectDelve individua dlv e ne legge la versione.

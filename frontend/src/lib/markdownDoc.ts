@@ -178,7 +178,7 @@ export function sanitizeUrl(url: string): string {
   const lower = t.toLowerCase()
   if (!t) return '#'
   if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) return '#'
-  if (lower.startsWith('data:') && !/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(t)) return '#'
+  if (lower.startsWith('data:') && !/^data:image\/(png|jpe?g|gif|webp|bmp|x-icon|vnd\.microsoft\.icon|avif|svg\+xml);base64,/i.test(t)) return '#'
   return t
 }
 

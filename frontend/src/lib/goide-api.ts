@@ -132,6 +132,11 @@ export async function openGoIDEDocument(sessionId: string, relativePath: string)
   return GoIDEBindings.OpenDocument(sessionId, relativePath)
 }
 
+/** Immagine del progetto come data URL, per l'anteprima nell'editor e i link relativi del Markdown. */
+export async function readGoIDEAssetDataUrl(sessionId: string, relativePath: string): Promise<string> {
+  return GoIDEBindings.ReadFileDataURL(sessionId, relativePath)
+}
+
 /** Crea file nuovi nel progetto, tutti o nessuno; un file esistente non viene mai sovrascritto. */
 export async function createGoIDEFiles(sessionId: string, files: Array<{ relativePath: string; content: string }>): Promise<void> {
   await GoIDEBindings.CreateFiles(sessionId, files)
@@ -338,6 +343,33 @@ export async function startGoIDEConfiguredRun(sessionId: string, configId: strin
 
 export async function startGoIDEConfiguredBuild(sessionId: string, configId: string): Promise<GoIDEExecution> {
   return GoIDEBindings.StartConfiguredBuild(sessionId, configId)
+}
+
+// --- Performance Studio (pprof) ---------------------------------------------
+
+export type GoIDEProfileFile = Awaited<ReturnType<typeof GoIDEBindings.ListProfileFiles>>[number]
+export type GoIDEProfileReport = Awaited<ReturnType<typeof GoIDEBindings.LoadProfile>>
+
+/** Profili pprof (*.pprof) trovati nel progetto, dal più recente. */
+export async function listGoIDEProfileFiles(sessionId: string): Promise<GoIDEProfileFile[]> {
+  return GoIDEBindings.ListProfileFiles(sessionId)
+}
+
+/** Interpreta un profilo del progetto per le viste Top / Flame / Call graph. */
+export async function loadGoIDEProfile(sessionId: string, relativePath: string): Promise<GoIDEProfileReport> {
+  return GoIDEBindings.LoadProfile(sessionId, relativePath)
+}
+
+export type GoIDETraceReport = Awaited<ReturnType<typeof GoIDEBindings.LoadTrace>>
+
+/** File di esecuzione trace (`trace.out`, `*.trace`) trovati nel progetto. */
+export async function listGoIDETraceFiles(sessionId: string): Promise<GoIDEProfileFile[]> {
+  return GoIDEBindings.ListTraceFiles(sessionId)
+}
+
+/** Interpreta una traccia Go in una timeline per goroutine, scheduler, GC ed eventi. */
+export async function loadGoIDETrace(sessionId: string, relativePath: string): Promise<GoIDETraceReport> {
+  return GoIDEBindings.LoadTrace(sessionId, relativePath)
 }
 
 // --- Terminale PTY ----------------------------------------------------------

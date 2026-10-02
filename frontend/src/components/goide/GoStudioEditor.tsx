@@ -14,6 +14,7 @@ import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { isGeneratedGoFile } from './goStudioExtraLanguages'
 import { coverageForDocument } from './goStudioCoverage'
 import { GoStudioMarkdownView, isMarkdownDocument, type GoStudioMarkdownMode } from './GoStudioMarkdownView'
+import { GoStudioImageView, isImageDocument } from './GoStudioImageView'
 
 interface GoStudioEditorProps {
   documents: GoIDEEditorDocument[]
@@ -96,6 +97,8 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
             keepCurrentModifiedModel
             options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }}
           />
+        ) : isImageDocument(active) ? (
+          <GoStudioImageView document={active} />
         ) : isMarkdownDocument(active) ? (
           <GoStudioMarkdownView
             document={active}

@@ -52,7 +52,7 @@ require (
 
 require golang.org/x/tools v0.50.0
 
-require golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
+require golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
@@ -83,7 +83,7 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe // indirect
+	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

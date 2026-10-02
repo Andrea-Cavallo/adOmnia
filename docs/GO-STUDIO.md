@@ -177,6 +177,38 @@ pause and explains it.
 - **Baseline.** *Save Lint Baseline* writes the current findings to `.adomnia/lint-baseline.json` (file, linter, code and message, no line numbers). Later runs hide those findings and show only new ones; the status bar shows how many are hidden. Commit the file to share the baseline; *Remove Lint Baseline* deletes it.
 - **Pre-commit check.** The commit dialog lints the changed files and stops on gopls errors or lint warnings in the checked files, with *Show Problems* or *Commit anyway*.
 
+## Performance Studio (pprof)
+
+- **Capture.** A test run configuration can profile the run: CPU (`-cpuprofile`), Memory (`-memprofile`), Blocking (`-blockprofile`), Mutex (`-mutexprofile`) or Execution trace (`-trace`), chosen in the configuration's *Profiling* menu. Go writes the file (`cpu.pprof`, `mem.pprof`, …) in the package directory of the test.
+- **Open it.** *View → Performance Studio* (Alt+0) or the status-bar *Profile* button lists every `*.pprof` under the project, newest first, and opens one. It is read locally with the same parser as `go tool pprof`; no process starts and no file leaves the machine.
+- **Top functions.** Flat or cumulative, one row per function, with a value bar, the percentage of the total, package grouping and a search box. *Hide runtime* drops `runtime.*` and Go SDK frames.
+- **Flame graph.** Real frame widths from the sample stacks; *Flame (root on bottom)* and *Icicle (root on top)*, each frame hoverable with its value and percentage.
+- **Sample type.** A CPU profile exposes `samples` and `cpu`; a memory profile exposes `alloc_objects`, `alloc_space`, `inuse_objects` and `inuse_space`. The selector switches every view, so allocations and in-use memory are separate reads of the same file.
+- **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
+- **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
+- **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Go trace
+
+- **Capture.** A test run configuration with the *Execution trace* (`-trace`) profiling option writes `trace.out` in the package directory.
+- **Open it.** *View → Go Trace* (or the **Trace** button in the status bar) lists every `trace.out` / `*.trace` under the project and opens one. It is read locally with Go's own trace parser (`golang.org/x/exp/trace`); no `go tool trace` and no external process.
+- **Goroutine timeline.** One track per goroutine with colored spans for `running`, `runnable`, `waiting` and `syscall`, plus the total busy time; filter by goroutine id or starting function.
+- **Scheduler.** One track per P with its running intervals.
+- **Blocking.** The longest waits by category — network, synchronization, GC, sleep — and the goroutines that are still live or ran longer than 5 ms.
+- **GC.** GC/STW ranges appear in the timeline header and their total is in the stats chips.
+- **Runtime events.** Logs, tasks and user regions with time and goroutine.
+- **Go to source.** Clicking a span, an event or a goroutine opens the corresponding frame — project files in the editor, standard-library files read-only.
+- **Stats.** Duration, goroutine count, running/waiting/syscall time, GC, network wait and synchronization wait.
+
+## Images and local Markdown assets
+
+- **Image tabs.** Clicking an image in the Project tree opens a read-only preview tab (zoom, fit-to-window, dimensions) instead of failing as a non-text file. Supported: png, jpg/jpeg, gif, webp, bmp, ico, avif, svg, up to 16 MB. Image tabs are never sent to gopls.
+- **Markdown.** Relative image links in the Markdown preview (`![](img/a.png)`) are read from the project as data URLs, because a `file://` URL is not readable inside the WebView.
+
+## Language server activity
+
+- **Always visible.** Starting, restarting, indexing or a gopls crash shows a small panel in the bottom-right of Go Studio with a spinner, elapsed time, the indexing message and percentage, and its own progress bar.
+- **Force reload.** The panel's reload button (and *Go → Restart Language Server*) restarts gopls from scratch; **Log** opens the language-server log. On a crash the panel stays with the error and the same reload action.
+
 ## Crash recovery
 
 - **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.
@@ -262,6 +294,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 | Problems | Alt+6 | ⌥6 |
 | Terminal | Alt+F12 | ⌥F12 |
 | Tests | Alt+8 | ⌥8 |
+| Performance Studio | Alt+0 | ⌥0 |
 | Debug | Alt+5 | ⌥5 |
 | Split Right | Ctrl+\ | ⌘\ |
 

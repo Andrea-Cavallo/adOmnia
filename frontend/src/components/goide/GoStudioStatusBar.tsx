@@ -1,7 +1,7 @@
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
-import { AlertCircle, AlertTriangle, BatteryLow, EyeOff, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldCheck, Sun } from 'lucide-react'
+import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -130,6 +130,12 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       <button type="button" onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
+      </button>
+      <button type="button" onClick={() => showToolWindow('profile')} title="Performance Studio (pprof) · Alt+0" className={`${ITEM} gap-1`}>
+        <Flame size={12} />Profile
+      </button>
+      <button type="button" onClick={() => showToolWindow('trace')} title="Go trace (trace.out)" className={`${ITEM} gap-1`}>
+        <Activity size={12} />Trace
       </button>
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}

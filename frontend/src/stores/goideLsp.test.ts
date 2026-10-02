@@ -7,6 +7,7 @@ vi.mock('@/lib/goide-lsp-api', () => ({
 }))
 
 import { diagnosticCounts, useGoIDELspStore } from './goideLsp'
+import { restartLanguageServer } from '@/lib/goide-lsp-api'
 
 const report = (uri: string, severity: number) => ({
   uri, path: uri.replace('file://', ''), relativePath: 'main.go',
@@ -16,7 +17,21 @@ const report = (uri: string, severity: number) => ({
 const event = (sessionId: string, type: string, payload: unknown) => ({ version: 1, type, sessionId, sequence: 1, timestamp: '', payload })
 
 describe('Go Studio language server store', () => {
-  beforeEach(() => useGoIDELspStore.setState({ diagnostics: {}, status: {}, progress: {} }))
+  beforeEach(() => useGoIDELspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
+
+  it('shows activity while gopls restarts and clears it when ready', async () => {
+    vi.mocked(restartLanguageServer).mockResolvedValue({ state: 'ready' } as never)
+    const promise = useGoIDELspStore.getState().restart('a')
+    expect(useGoIDELspStore.getState().activity.a?.label).toContain('Restarting')
+    await promise
+    expect(useGoIDELspStore.getState().activity.a).toBeNull()
+  })
+
+  it('keeps an error activity when gopls crashes', () => {
+    useGoIDELspStore.getState().handleEvent(event('a', 'lsp.status', { sessionId: 'a', state: 'crashed', error: 'boom' }))
+    expect(useGoIDELspStore.getState().activity.a?.error).toBe(true)
+    expect(useGoIDELspStore.getState().activity.a?.detail).toBe('boom')
+  })
 
   it('keeps diagnostics isolated per session and replaces them per file', () => {
     const { handleEvent } = useGoIDELspStore.getState()

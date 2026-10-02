@@ -62,6 +62,8 @@ type Document struct {
 	Dirty        bool       `json:"dirty"`
 	ReadOnly     bool       `json:"readOnly,omitempty"`
 	External     bool       `json:"external,omitempty"`
+	// MediaType è valorizzato per le immagini (image/png, image/jpeg…); Language è "image".
+	MediaType string `json:"mediaType,omitempty"`
 }
 
 type OpenDocument struct {
@@ -69,6 +71,8 @@ type OpenDocument struct {
 	Content    string    `json:"content"`
 	DiskToken  string    `json:"diskToken"`
 	ModifiedAt time.Time `json:"modifiedAt"`
+	// DataURL è il contenuto base64 di un'immagine, per l'anteprima nell'editor.
+	DataURL string `json:"dataUrl,omitempty"`
 }
 
 type DocumentDiskState struct {

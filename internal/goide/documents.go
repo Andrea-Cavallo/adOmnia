@@ -3,6 +3,7 @@ package goide
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net/url"
@@ -93,12 +94,22 @@ func (m *DocumentManager) OpenDocument(session Session, relativePath string) (Op
 	if err != nil {
 		return OpenDocument{}, err
 	}
-	content, info, token, err := readTextFile(path)
+	mediaType, isImage := imageMimeType(path)
+	content, dataURL, info, token := "", "", (os.FileInfo)(nil), ""
+	if isImage {
+		dataURL, token, info, err = readImageFile(path)
+	} else {
+		content, info, token, err = readTextFile(path)
+	}
 	if err != nil {
 		return OpenDocument{}, err
 	}
 	rel, _ := filepath.Rel(session.Project.RealPath, path)
 	documentID := stableDocumentID(session.ID, path)
+	language := languageForPath(path)
+	if isImage {
+		language = "image"
+	}
 	document := Document{
 		ID:           documentID,
 		SessionID:    session.ID,
@@ -106,8 +117,10 @@ func (m *DocumentManager) OpenDocument(session Session, relativePath string) (Op
 		Path:         path,
 		RelativePath: filepath.ToSlash(rel),
 		Name:         filepath.Base(path),
-		Language:     languageForPath(path),
+		Language:     language,
+		MediaType:    mediaType,
 		Version:      1,
+		ReadOnly:     isImage,
 	}
 	m.mu.Lock()
 	if existing, ok := m.documents[documentID]; ok {
@@ -115,7 +128,7 @@ func (m *DocumentManager) OpenDocument(session Session, relativePath string) (Op
 	}
 	m.documents[documentID] = documentRecord{document: document, diskToken: token}
 	m.mu.Unlock()
-	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC()}, nil
+	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC(), DataURL: dataURL}, nil
 }
 
 // SaveDocument scrive atomicamente un buffer e rifiuta sovrascritture di modifiche esterne non confermate.
@@ -199,19 +212,29 @@ func (m *DocumentManager) OpenExternalDocument(session Session, path string, all
 	if !withinAnyRoot(realPath, allowedRoots) {
 		return OpenDocument{}, fmt.Errorf("il file non appartiene al progetto, all'SDK Go o alla module cache")
 	}
-	content, info, token, err := readTextFile(realPath)
+	mediaType, isImage := imageMimeType(realPath)
+	content, dataURL, info, token := "", "", (os.FileInfo)(nil), ""
+	if isImage {
+		dataURL, token, info, err = readImageFile(realPath)
+	} else {
+		content, info, token, err = readTextFile(realPath)
+	}
 	if err != nil {
 		return OpenDocument{}, err
 	}
+	language := languageForPath(realPath)
+	if isImage {
+		language = "image"
+	}
 	document := Document{
 		ID: stableDocumentID(session.ID, realPath), SessionID: session.ID, URI: fileURI(realPath), Path: realPath,
-		RelativePath: filepath.ToSlash(realPath), Name: filepath.Base(realPath), Language: languageForPath(realPath),
-		Version: 1, ReadOnly: true, External: true,
+		RelativePath: filepath.ToSlash(realPath), Name: filepath.Base(realPath), Language: language,
+		MediaType: mediaType, Version: 1, ReadOnly: true, External: true,
 	}
 	m.mu.Lock()
 	m.documents[document.ID] = documentRecord{document: document, diskToken: token}
 	m.mu.Unlock()
-	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC()}, nil
+	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC(), DataURL: dataURL}, nil
 }
 
 func withinAnyRoot(path string, roots []string) bool {
@@ -330,6 +353,53 @@ func ensureWithinRoot(root, candidate string) error {
 		return fmt.Errorf("il percorso richiesto è esterno al progetto")
 	}
 	return nil
+}
+
+// imageMimeType restituisce il MIME di un'immagine supportata dall'anteprima, se il percorso ne ha l'estensione.
+func imageMimeType(path string) (string, bool) {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png":
+		return "image/png", true
+	case ".jpg", ".jpeg":
+		return "image/jpeg", true
+	case ".gif":
+		return "image/gif", true
+	case ".webp":
+		return "image/webp", true
+	case ".bmp":
+		return "image/bmp", true
+	case ".ico":
+		return "image/x-icon", true
+	case ".avif":
+		return "image/avif", true
+	case ".svg":
+		return "image/svg+xml", true
+	default:
+		return "", false
+	}
+}
+
+// readImageFile legge un'immagine come data URL base64, con lo stesso limite dei documenti testuali.
+func readImageFile(path string) (string, string, os.FileInfo, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("impossibile leggere l'immagine: %w", err)
+	}
+	if info.IsDir() {
+		return "", "", nil, fmt.Errorf("il percorso è una cartella")
+	}
+	if info.Size() > MaxDocumentBytes {
+		return "", "", nil, fmt.Errorf("immagine troppo grande: limite %d byte", MaxDocumentBytes)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("impossibile leggere l'immagine: %w", err)
+	}
+	mime, ok := imageMimeType(path)
+	if !ok {
+		mime = "application/octet-stream"
+	}
+	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data), diskToken(data, info), info, nil
 }
 
 func readTextFile(path string) (string, os.FileInfo, string, error) {

@@ -1,8 +1,43 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Code2, Columns2, Eye } from 'lucide-react'
 import { MarkdownPreview } from '@/components/markdown/MarkdownPreview'
 import { renderMarkdown } from '@/lib/markdownDoc'
+import { readGoIDEAssetDataUrl } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { localMarkdownAssets, substituteMarkdownAssets } from './goStudioMarkdownAssets'
+
+// Cache per sessione: gli asset locali non vengono riletti a ogni battitura del Markdown.
+const assetCache = new Map<string, string>()
+
+function useMarkdownAssets(document: GoIDEEditorDocument): Map<string, string> {
+  const sessionId = document.document.sessionId
+  const path = document.document.relativePath
+  const [assets, setAssets] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    const refs = localMarkdownAssets(document.buffer, path)
+    if (refs.length === 0) { setAssets(new Map()); return }
+    let cancelled = false
+    Promise.all(refs.map(async (ref) => {
+      const key = `${sessionId}\u0000${ref.relative}`
+      const cached = assetCache.get(key)
+      if (cached) return [ref.raw, cached] as const
+      try {
+        const dataUrl = await readGoIDEAssetDataUrl(sessionId, ref.relative)
+        assetCache.set(key, dataUrl)
+        return [ref.raw, dataUrl] as const
+      } catch {
+        return null
+      }
+    })).then((entries) => {
+      if (cancelled) return
+      const map = new Map<string, string>()
+      for (const entry of entries) if (entry) map.set(entry[0], entry[1])
+      setAssets(map)
+    })
+    return () => { cancelled = true }
+  }, [document.buffer, path, sessionId])
+  return assets
+}
 
 export type GoStudioMarkdownMode = 'editor' | 'split' | 'preview'
 
@@ -42,7 +77,8 @@ interface GoStudioMarkdownViewProps {
 export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: GoStudioMarkdownViewProps) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const path = document.document.relativePath
-  const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(document.buffer, path)), [document.buffer, path, mode])
+  const assets = useMarkdownAssets(document)
+  const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(substituteMarkdownAssets(document.buffer, assets), path)), [document.buffer, path, mode, assets])
   const openLink = (href: string) => {
     const target = resolveMarkdownLink(path, href)
     if (target) void openDocument(target)

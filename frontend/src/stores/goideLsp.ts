@@ -34,7 +34,7 @@ import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
-export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context'
+export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace'
 
 export interface GoIDEHierarchyView {
   sessionId: string
@@ -99,6 +99,17 @@ export interface GoIDEReferencesView {
   locations: GoIDEEditorLocation[]
 }
 
+/** Operazione lunga visibile all'utente (avvio/riavvio di gopls, crash, installazione). */
+export interface GoIDEActivity {
+  label: string
+  detail?: string
+  startedAt: number
+  /** true quando l'utente può forzare il riavvio di gopls da qui. */
+  forceReload?: boolean
+  /** true quando l'operazione è terminata con errore. */
+  error?: boolean
+}
+
 interface GoIDELspState {
   settings: GoIDELanguageServerSettings
   preferences: GoIDEEditorPreferences
@@ -106,6 +117,8 @@ interface GoIDELspState {
   onBattery: boolean
   status: Record<string, GoIDELanguageServerStatus>
   progress: Record<string, GoIDELanguageServerProgress | null>
+  /** Operazione in corso o errore da mostrare all'utente, per sessione. */
+  activity: Record<string, GoIDEActivity | null>
   gopls: Record<string, GoIDEGoplsInfo | null>
   linter: Record<string, GoIDELinterInfo | null>
   lint: Record<string, GoIDELintState>
@@ -150,6 +163,7 @@ interface GoIDELspState {
   showReferences: (sessionId: string, view: GoIDEReferencesView) => void
   setSearchResult: (sessionId: string, result: GoIDESearchResult | null) => void
   handleEvent: (event: GoIDEEvent) => void
+  dismissActivity: (sessionId: string) => void
   clearMessage: () => void
   showCaretPopup: (popup: GoIDECaretPopup | null) => void
 }
@@ -213,6 +227,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   diagnostics: {},
   userStopped: {},
   toolWindow: 'run',
+  activity: {},
   references: {},
   search: {},
   message: null,
@@ -266,35 +281,47 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   },
 
   start: async (sessionId) => {
-    set((state) => ({ userStopped: { ...state.userStopped, [sessionId]: false }, message: null }))
+    set((state) => ({
+      userStopped: { ...state.userStopped, [sessionId]: false },
+      message: null,
+      activity: { ...state.activity, [sessionId]: { label: 'Starting gopls…', startedAt: Date.now(), forceReload: true } },
+    }))
     try {
       const status = await startLanguageServer(sessionId, get().settings)
-      set((state) => ({ status: { ...state.status, [sessionId]: status } }))
+      set((state) => ({ status: { ...state.status, [sessionId]: status }, activity: { ...state.activity, [sessionId]: status.state === 'ready' ? null : state.activity[sessionId] } }))
     } catch (error) {
-      set({ message: errorMessage(error) })
+      const detail = errorMessage(error)
+      set((state) => ({ message: detail, activity: { ...state.activity, [sessionId]: { label: 'gopls did not start', detail, startedAt: Date.now(), forceReload: true, error: true } } }))
     }
   },
 
   stop: async (sessionId) => {
-    set((state) => ({ userStopped: { ...state.userStopped, [sessionId]: true } }))
+    set((state) => ({ userStopped: { ...state.userStopped, [sessionId]: true }, activity: { ...state.activity, [sessionId]: null } }))
     try { await stopLanguageServer(sessionId) } catch (error) { set({ message: errorMessage(error) }) }
   },
 
   restart: async (sessionId) => {
-    set((state) => ({ userStopped: { ...state.userStopped, [sessionId]: false }, message: null }))
+    set((state) => ({
+      userStopped: { ...state.userStopped, [sessionId]: false },
+      message: null,
+      activity: { ...state.activity, [sessionId]: { label: 'Restarting gopls…', startedAt: Date.now(), forceReload: true } },
+    }))
     try {
       const status = await restartLanguageServer(sessionId, get().settings)
-      set((state) => ({ status: { ...state.status, [sessionId]: status } }))
+      set((state) => ({ status: { ...state.status, [sessionId]: status }, activity: { ...state.activity, [sessionId]: status.state === 'ready' ? null : state.activity[sessionId] } }))
     } catch (error) {
-      set({ message: errorMessage(error) })
+      const detail = errorMessage(error)
+      set((state) => ({ message: detail, activity: { ...state.activity, [sessionId]: { label: 'gopls did not restart', detail, startedAt: Date.now(), forceReload: true, error: true } } }))
     }
   },
 
   install: async (sessionId) => {
+    set((state) => ({ activity: { ...state.activity, [sessionId]: { label: 'Installing gopls…', startedAt: Date.now() } } }))
     try {
       return await installGopls(sessionId)
     } catch (error) {
-      set({ message: errorMessage(error) })
+      const detail = errorMessage(error)
+      set((state) => ({ message: detail, activity: { ...state.activity, [sessionId]: { label: 'gopls installation failed', detail, startedAt: Date.now(), error: true } } }))
       return null
     }
   },
@@ -379,8 +406,14 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       const status = event.payload as GoIDELanguageServerStatus
       set((state) => {
         const cleared = status.state === 'stopped' || status.state === 'crashed'
+        const activity = status.state === 'ready' || status.state === 'stopped'
+          ? null
+          : status.state === 'crashed'
+            ? (state.activity[sessionId]?.error ? state.activity[sessionId] : { label: 'gopls crashed', detail: status.error, startedAt: Date.now(), forceReload: true, error: true })
+            : state.activity[sessionId]
         return {
           status: { ...state.status, [sessionId]: status },
+          activity: { ...state.activity, [sessionId]: activity },
           progress: cleared ? { ...state.progress, [sessionId]: null } : state.progress,
           diagnostics: cleared ? { ...state.diagnostics, [sessionId]: {} } : state.diagnostics,
         }
@@ -415,6 +448,8 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       })
     }
   },
+
+  dismissActivity: (sessionId) => set((state) => ({ activity: { ...state.activity, [sessionId]: null } })),
 
   clearMessage: () => set({ message: null }),
   showCaretPopup: (popup) => set({ caretPopup: popup }),
