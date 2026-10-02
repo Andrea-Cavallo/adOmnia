@@ -1583,11 +1583,20 @@ export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSSta
 }
 
 /**
+ * VCSWorkingDiff restituisce un file in HEAD e su disco, per il diff nel dialog di commit.
+ */
+export function VCSWorkingDiff(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSWorkingDiff> {
+    return $Call.ByID(4260236086, sessionID, relativePath).then(($result: any) => {
+        return $$createType120($result);
+    });
+}
+
+/**
  * WatcherStatus indica se il progetto è osservato per intero o solo in parte.
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType120($result);
+        return $$createType121($result);
     });
 }
 
@@ -1596,7 +1605,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goide$0.WorkspaceModule[]> {
     return $Call.ByID(368877389, sessionID).then(($result: any) => {
-        return $$createType122($result);
+        return $$createType123($result);
     });
 }
 
@@ -1605,7 +1614,7 @@ export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goi
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType124($result);
+        return $$createType125($result);
     });
 }
 
@@ -1744,8 +1753,9 @@ const $$createType116 = git$0.LineRange.createFrom;
 const $$createType117 = $Create.Array($$createType116);
 const $$createType118 = $Create.Map($Create.Any, $$createType117);
 const $$createType119 = goide$0.VCSStatus.createFrom;
-const $$createType120 = goide$0.WatcherStatus.createFrom;
-const $$createType121 = goide$0.WorkspaceModule.createFrom;
-const $$createType122 = $Create.Array($$createType121);
-const $$createType123 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType124 = $Create.Array($$createType123);
+const $$createType120 = goide$0.VCSWorkingDiff.createFrom;
+const $$createType121 = goide$0.WatcherStatus.createFrom;
+const $$createType122 = goide$0.WorkspaceModule.createFrom;
+const $$createType123 = $Create.Array($$createType122);
+const $$createType124 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType125 = $Create.Array($$createType124);

@@ -21,3 +21,8 @@ func (g *GoIDE) DebugPendingDefers(debugID string, threadID int) ([]goide.Pendin
 func (g *GoIDE) MoveSymbol(sessionID string, request goide.MoveSymbolRequest) (goide.WorkspaceChange, error) {
 	return g.service.MoveSymbol(sessionID, request)
 }
+
+// VCSWorkingDiff restituisce un file in HEAD e su disco, per il diff nel dialog di commit.
+func (g *GoIDE) VCSWorkingDiff(sessionID, relativePath string) (goide.VCSWorkingDiff, error) {
+	return g.service.VCSWorkingDiff(sessionID, relativePath)
+}

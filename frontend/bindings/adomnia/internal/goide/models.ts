@@ -6089,6 +6089,44 @@ export class VCSStatus {
 }
 
 /**
+ * VCSWorkingDiff è un file confrontato tra HEAD e la copia di lavoro, per il dialog di commit.
+ */
+export class VCSWorkingDiff {
+    "relativePath": string;
+    "original": string;
+    "modified": string;
+
+    /**
+     * Binary o TooLarge: il contenuto non viene inviato, il dialog lo spiega.
+     */
+    "binary"?: boolean;
+    "tooLarge"?: boolean;
+
+    /** Creates a new VCSWorkingDiff instance. */
+    constructor($$source: Partial<VCSWorkingDiff> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("original" in $$source)) {
+            this["original"] = "";
+        }
+        if (!("modified" in $$source)) {
+            this["modified"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VCSWorkingDiff instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VCSWorkingDiff {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VCSWorkingDiff($$parsedSource as Partial<VCSWorkingDiff>);
+    }
+}
+
+/**
  * WatcherStatus descrive quanto del progetto è osservato: oltre il limite le modifiche esterne possono sfuggire.
  */
 export class WatcherStatus {

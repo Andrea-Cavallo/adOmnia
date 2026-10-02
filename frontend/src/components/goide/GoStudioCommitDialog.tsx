@@ -8,6 +8,7 @@ import { precommitProblems, type GoStudioPrecommitSummary } from './goStudioPrec
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
+import { GoStudioCommitDiff } from './GoStudioCommitDiff'
 
 interface GoStudioCommitDialogProps {
   sessionId: string
@@ -69,7 +70,7 @@ function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChang
           <FlaskConical size={12} aria-hidden="true" /> Test changed packages
         </button>
       </summary>
-      <div className="mt-1.5 max-h-[22vh] overflow-auto">
+      <div className="mt-1.5 max-h-[18vh] overflow-auto">
         {visible.map((symbol) => {
           const change = CHANGE_MARK[symbol.change] ?? CHANGE_MARK.modified
           const label = <><span className={`w-3 shrink-0 text-center font-semibold ${change.className}`} aria-label={symbol.change}>{change.mark}</span><span className="w-12 shrink-0 text-[10.5px] text-text-4">{symbol.kind}</span><span className={`truncate font-mono text-[11.5px] ${symbol.exported ? 'text-text-1' : 'text-text-2'}`}>{symbol.name}</span>{symbol.breaking && <span title={symbol.change === 'removed' ? 'Exported symbol removed: callers outside the package break' : 'Exported signature changed: callers outside the package may break'} className="gs-badge h-[16px] text-[10px] text-danger">breaking</span>}{symbol.test && <span className="gs-badge h-[16px] text-[10px]">test</span>}{symbol.touches?.map((tag) => <span key={tag} title={`Touches ${TOUCH_LABEL[tag] ?? tag} (read from the source)`} className="gs-badge h-[16px] text-[10px] text-warning">{TOUCH_LABEL[tag] ?? tag}</span>)}<span className="ml-auto shrink-0 truncate font-mono text-[10.5px] text-text-4">{symbol.relativePath}{symbol.line ? `:${symbol.line}` : ''}</span></>
@@ -92,6 +93,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   const [symbols, setSymbols] = useState<GoIDEVCSChangedSymbol[]>([])
   const [checkFirst, setCheckFirst] = useState(loadPrecommitPreference)
   const [blocked, setBlocked] = useState<GoStudioPrecommitSummary | null>(null)
+  const [focused, setFocused] = useState<string | null>(null)
   const messageRef = useRef<HTMLTextAreaElement>(null)
   const changes = status?.changes ?? []
 
@@ -109,7 +111,9 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [open, sessionId])
   useEffect(() => {
-    if (open) setSelected(new Set(changes.filter((change) => !change.untracked && !change.conflicted).map((change) => change.relativePath)))
+    if (!open) return
+    setSelected(new Set(changes.filter((change) => !change.untracked && !change.conflicted).map((change) => change.relativePath)))
+    setFocused((current) => (current && changes.some((change) => change.relativePath === current) ? current : changes.find((change) => !change.untracked)?.relativePath ?? changes[0]?.relativePath ?? null))
     // Si ricalcola solo quando cambia l'elenco dei file, non a ogni spunta.
   }, [open, changes.map((change) => change.relativePath).join('\n')]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -152,7 +156,9 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     <GoStudioModal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="full"
+      tall
+      className="!h-[min(90vh,920px)] !w-[min(1480px,95vw)]"
       divided
       flush
       icon={GitCommitHorizontal}
@@ -165,21 +171,24 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
         <GoStudioButton variant="primary" type="submit" form="go-studio-commit-form" loading={busy} disabled={!canCommit}>Commit</GoStudioButton>
       </>}
     >
-      <div className="max-h-[36vh] overflow-auto border-b border-border-1 p-1.5">
+      <div className="flex min-h-0 flex-1">
+      <div className="flex w-[400px] min-w-[300px] shrink-0 flex-col border-r border-border-1">
+      <div className="min-h-0 flex-1 overflow-auto border-b border-border-1 p-1.5">
         {changes.length === 0 && <p className="gs-list-empty">No local changes in this project.</p>}
         {changes.map((change) => (
-          <label key={change.relativePath} className={`flex h-8 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 hover:bg-surface-2/60 ${change.conflicted ? 'opacity-60' : ''}`}>
-            <input type="checkbox" checked={selected.has(change.relativePath)} disabled={change.conflicted} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
+          <div key={change.relativePath} role="button" tabIndex={0} aria-pressed={focused === change.relativePath} onClick={() => setFocused(change.relativePath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setFocused(change.relativePath) } }} title="Show the changes of this file"
+            className={`flex h-8 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 ${focused === change.relativePath ? 'bg-accent/12 ring-1 ring-accent/30' : 'hover:bg-surface-2/60'} ${change.conflicted ? 'opacity-60' : ''}`}>
+            <input type="checkbox" aria-label={`Include ${change.relativePath}`} checked={selected.has(change.relativePath)} disabled={change.conflicted} onClick={(event) => event.stopPropagation()} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
             <GoStudioFileIcon name={change.relativePath.split('/').pop() ?? change.relativePath} relativePath={change.relativePath} />
             <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-1">{change.relativePath}</span>
             {change.conflicted && onResolveConflicts
               ? <button type="button" onClick={(event) => { event.preventDefault(); onResolveConflicts() }} className="gs-badge h-[18px] text-[10.5px] text-danger underline-offset-2 hover:underline">conflict · resolve…</button>
               : <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Git Studio' : describe(change.status)}</span>}
-          </label>
+          </div>
         ))}
       </div>
       <ChangedSymbols symbols={symbols} selected={selected} onClose={onClose} />
-      <form id="go-studio-commit-form" className="flex flex-col gap-3 p-5" onSubmit={(event) => { event.preventDefault(); void commit() }}>
+      <form id="go-studio-commit-form" className="flex shrink-0 flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
         <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
         <label className="flex items-center gap-2 text-[12px] text-text-3">
@@ -199,6 +208,11 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
         )}
         {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
       </form>
+      </div>
+      <div className="min-w-0 flex-1">
+        <GoStudioCommitDiff sessionId={sessionId} relativePath={focused} />
+      </div>
+      </div>
     </GoStudioModal>
   )
 }

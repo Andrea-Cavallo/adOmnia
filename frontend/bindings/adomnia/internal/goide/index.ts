@@ -149,6 +149,7 @@ export {
     VCSCommit,
     VCSFileChange,
     VCSStatus,
+    VCSWorkingDiff,
     WatcherStatus,
     WorkspaceChange,
     WorkspaceModule,

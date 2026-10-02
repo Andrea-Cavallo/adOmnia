@@ -317,7 +317,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   return (
     <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 px-1">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
           {terminals.map((terminal) => {
             const shown = terminal.id === activeId || (splitVisible && terminal.id === splitId)
             return (
@@ -364,6 +364,32 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
             )
           })}
         </div>
+        {/* + e scelta della shell subito dopo le schede, come in VS Code e GoLand: visibili anche con il pannello stretto. */}
+        <button
+          type="button"
+          onClick={() => void open()}
+          disabled={busy}
+          title={`New terminal (${profiles.find((profile) => profile.id === defaultProfile)?.name ?? profiles[0]?.name ?? 'default shell'})`}
+          className={toolButton}
+        >
+          <Plus size={12} />
+        </button>
+        <button
+          type="button"
+          disabled={busy || profiles.length === 0}
+          aria-haspopup="menu"
+          aria-expanded={!!profileMenu}
+          title="New terminal with another shell: PowerShell, Command Prompt, Git Bash, WSL…"
+          aria-label="Choose shell"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            setProfileMenu(profileMenu ? null : { x: rect.right - 220, y: rect.bottom + 4 })
+          }}
+          className="grid h-6 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35"
+        >
+          <ChevronDown size={12} />
+        </button>
+        <div className="min-w-2 flex-1" />
         <button type="button" onClick={openSearch} disabled={!targetId} title="Find in terminal (Ctrl+F)" className={toolButton}>
           <Search size={12} />
         </button>
@@ -389,30 +415,6 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
         </button>
         <button type="button" onClick={toggleSplit} disabled={busy || !activeId} aria-pressed={splitVisible} title={splitVisible ? 'Unsplit terminals' : 'Split terminal'} className={`${toolButton} ${splitVisible ? 'bg-surface-3 text-text-1' : ''}`}>
           <Columns2 size={12} />
-        </button>
-        <span className="mx-0.5 h-4 w-px shrink-0 bg-border-1" />
-        <button
-          type="button"
-          onClick={() => void open()}
-          disabled={busy}
-          title={`New terminal (${profiles.find((profile) => profile.id === defaultProfile)?.name ?? profiles[0]?.name ?? 'default shell'})`}
-          className={toolButton}
-        >
-          <Plus size={12} />
-        </button>
-        <button
-          type="button"
-          disabled={busy || profiles.length === 0}
-          aria-haspopup="menu"
-          aria-expanded={!!profileMenu}
-          title="Choose a shell: PowerShell, Command Prompt, Git Bash, WSL…"
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect()
-            setProfileMenu(profileMenu ? null : { x: rect.right - 220, y: rect.bottom + 4 })
-          }}
-          className="grid h-6 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35"
-        >
-          <ChevronDown size={12} />
         </button>
         {profileMenu && (
           <ContextMenu
