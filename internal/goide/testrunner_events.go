@@ -10,6 +10,7 @@ import (
 const (
 	maxTestNodes       = 5000
 	maxTestOutputBytes = 64 * 1024
+	maxTestOutcomes    = 4096
 )
 
 // Stati di un nodo dell'albero dei test, ricavati dagli eventi di `go test -json`.
@@ -64,6 +65,9 @@ type TestResult struct {
 	MaxMillis int64 `json:"maxMillis,omitempty"`
 	// TotalMillis somma le durate di tutte le ripetizioni (media = TotalMillis/Runs).
 	TotalMillis int64 `json:"totalMillis,omitempty"`
+	// Outcomes è la sequenza degli esiti delle ripetizioni ("P" o "F"), nell'ordine di esecuzione:
+	// con -cpu le prime Repeat sono del primo valore, e così via.
+	Outcomes string `json:"outcomes,omitempty"`
 	// ShuffleSeed è il seed di -shuffle stampato dal package, per riprodurre l'ordine.
 	ShuffleSeed string `json:"shuffleSeed,omitempty"`
 }
@@ -184,6 +188,9 @@ func (t *testTree) apply(line []byte) {
 // recordRepetition accumula un esito: con -count=N un fallimento resta visibile anche se l'ultima ripetizione passa.
 func recordRepetition(node *TestResult, failed bool, elapsed int64) {
 	node.Runs++
+	if len(node.Outcomes) < maxTestOutcomes {
+		node.Outcomes += map[bool]string{true: "F", false: "P"}[failed]
+	}
 	if failed {
 		node.Failures++
 	} else if node.Failures > 0 {

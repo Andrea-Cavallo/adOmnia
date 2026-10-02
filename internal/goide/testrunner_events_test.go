@@ -130,3 +130,17 @@ func TestTestArgumentsRepeatAndShuffle(t *testing.T) {
 		}
 	}
 }
+
+func TestRepetitionOutcomesAndCPUArguments(t *testing.T) {
+	results, _ := treeFromFile(t, "flaky.jsonl").snapshot()
+	if flaky := findResult(results, "example.com/flaky", "TestFlaky"); flaky == nil || len(flaky.Outcomes) != 3 || strings.Count(flaky.Outcomes, "F") != 1 {
+		t.Fatalf("sequenza degli esiti: %+v", flaky)
+	}
+	arguments, err := testArguments(TestRunRequest{Repeat: 5, CPU: []int{1, 2, 4}}, "")
+	if err != nil || !strings.Contains(strings.Join(arguments, " "), "-count=5 -cpu=1,2,4") {
+		t.Fatalf("argomenti: %v %v", arguments, err)
+	}
+	if _, err := testArguments(TestRunRequest{CPU: []int{0}}, ""); err == nil {
+		t.Fatal("-cpu=0 accettato")
+	}
+}

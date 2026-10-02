@@ -6,7 +6,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, failureRateByCPU, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { functionsByCoverage, untakenBranches } from './goStudioCoverage'
 import { GoStudioPatchCoverage } from './GoStudioPatchCoverage'
@@ -225,6 +225,7 @@ function RepetitionSummary({ run, result, output }: { run: GoIDETestRun; result:
   const reproduce = reproduceRequest(run, result)
   const flaky = isFlaky(result)
   const causes = useMemo(() => (flaky && output ? flakyCauses(output, !!run.request.shuffle) : []), [flaky, output, run.request.shuffle])
+  const rates = failureRateByCPU(run, result)
   if (!stats && !reproduce) return null
   const start = useGoIDETestsStore.getState().start
   return (
@@ -246,6 +247,19 @@ function RepetitionSummary({ run, result, output }: { run: GoIDETestRun; result:
         <button type="button" disabled={run.status === 'running'} onClick={() => void start(raceRepeatRequestForNode(run, result, stats?.runs ?? 20))} title="Repeat with the race detector to confirm or rule out a concurrency cause" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10 disabled:opacity-30">
           <Repeat size={10} aria-hidden="true" /> ×{stats?.runs ?? 20} with -race
         </button>
+      )}
+      {flaky && !run.request.cpu?.length && (
+        <button type="button" disabled={run.status === 'running'} onClick={() => void start(cpuCorrelationRequestForNode(run, result, 10))} title="Repeat 10 times at GOMAXPROCS 1, 2, 4 and 8 to see whether failures follow parallelism" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10 disabled:opacity-30">
+          <Gauge size={10} aria-hidden="true" /> correlate with GOMAXPROCS
+        </button>
+      )}
+      {rates.length > 0 && (
+        <div className="w-full">
+          <div className="flex flex-wrap gap-x-3 font-mono">
+            {rates.map((item) => <span key={item.cpu} className={item.failures ? 'text-warning' : 'text-success'}>GOMAXPROCS {item.cpu}: {item.failures}/{item.runs} failed</span>)}
+          </div>
+          <div className="text-text-2">{cpuCorrelationVerdict(rates)}</div>
+        </div>
       )}
       {causes.length > 0 && (
         <ul className="w-full list-none text-text-2" aria-label="Possible causes">

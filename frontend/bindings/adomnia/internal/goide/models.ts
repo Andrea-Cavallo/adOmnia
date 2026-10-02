@@ -5074,6 +5074,12 @@ export class TestResult {
     "totalMillis"?: number;
 
     /**
+     * Outcomes è la sequenza degli esiti delle ripetizioni ("P" o "F"), nell'ordine di esecuzione:
+     * con -cpu le prime Repeat sono del primo valore, e così via.
+     */
+    "outcomes"?: string;
+
+    /**
      * ShuffleSeed è il seed di -shuffle stampato dal package, per riprodurre l'ordine.
      */
     "shuffleSeed"?: string;
@@ -5153,6 +5159,11 @@ export class TestRunRequest {
      */
     "shuffle"?: string;
 
+    /**
+     * CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.
+     */
+    "cpu"?: number[];
+
     /** Creates a new TestRunRequest instance. */
     constructor($$source: Partial<TestRunRequest> = {}) {
         if (!("sessionId" in $$source)) {
@@ -5175,6 +5186,7 @@ export class TestRunRequest {
         const $$createField2_0 = $$createType18;
         const $$createField7_0 = $$createType18;
         const $$createField8_0 = $$createType19;
+        const $$createField11_0 = $$createType17;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField2_0($$parsedSource["packages"]);
@@ -5184,6 +5196,9 @@ export class TestRunRequest {
         }
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField8_0($$parsedSource["environment"]);
+        }
+        if ("cpu" in $$parsedSource) {
+            $$parsedSource["cpu"] = $$createField11_0($$parsedSource["cpu"]);
         }
         return new TestRunRequest($$parsedSource as Partial<TestRunRequest>);
     }

@@ -201,9 +201,48 @@ export function reproduceCommandFor(run: GoIDETestRun, result: GoIDETestResult):
   if ((run.request.repeat ?? 0) > 1) args.push(`-count=${run.request.repeat}`)
   if (seed) args.push(`-shuffle=${seed}`)
   if (run.request.race) args.push('-race')
+  if (run.request.cpu?.length) args.push(`-cpu=${run.request.cpu.join(',')}`)
   if (request.buildTags?.length) args.push('-tags', request.buildTags.join(','))
   if (request.run) args.push('-run', request.run)
   args.push(...request.packages)
   const command = args.map(shellQuote).join(' ')
   return request.workingDirectory ? `cd ${shellQuote(request.workingDirectory)} && ${command}` : command
+}
+
+export const CORRELATION_CPUS = [1, 2, 4, 8]
+
+/** Ripete il test con GOMAXPROCS 1, 2, 4 e 8 (-cpu) per vedere se la flakiness cresce col parallelismo. */
+export function cpuCorrelationRequestForNode(run: GoIDETestRun, result: GoIDETestResult, repeat: number): GoIDETestRunRequest {
+  return { ...requestForNode(run, result), repeat, shuffle: 'on', cpu: CORRELATION_CPUS }
+}
+
+export interface GoStudioCPUFailureRate {
+  cpu: number
+  runs: number
+  failures: number
+}
+
+/** Tasso di fallimento per valore di -cpu: testing esegue tutte le ripetizioni di un valore prima del successivo. */
+export function failureRateByCPU(run: GoIDETestRun, result: GoIDETestResult): GoStudioCPUFailureRate[] {
+  const cpus = run.request.cpu ?? []
+  const outcomes = result.outcomes ?? ''
+  const repeat = Math.max(1, run.request.repeat ?? 1)
+  if (cpus.length < 2 || outcomes.length < cpus.length * repeat) return []
+  return cpus.map((cpu, index) => {
+    const slice = outcomes.slice(index * repeat, (index + 1) * repeat)
+    return { cpu, runs: slice.length, failures: [...slice].filter((outcome) => outcome === 'F').length }
+  })
+}
+
+/** Lettura del confronto: null se non c'è differenza utile tra il primo e l'ultimo valore. */
+export function cpuCorrelationVerdict(rates: GoStudioCPUFailureRate[]): string | null {
+  if (rates.length < 2) return null
+  const rate = (item: GoStudioCPUFailureRate) => item.failures / item.runs
+  const first = rate(rates[0])
+  const last = rate(rates[rates.length - 1])
+  if (rates.every((item) => item.failures === 0)) return 'No failures at any GOMAXPROCS in this run.'
+  if (first === 0 && last > 0) return `Fails only with parallelism (GOMAXPROCS ≥ ${rates.find((item) => item.failures > 0)?.cpu}): likely a concurrency bug.`
+  if (last > first) return 'Fails more often with more parallelism: concurrency is a likely factor.'
+  if (last < first) return 'Fails more often with less parallelism: suspect timing assumptions rather than races.'
+  return 'Failure rate does not change with GOMAXPROCS: concurrency is unlikely to be the cause.'
 }

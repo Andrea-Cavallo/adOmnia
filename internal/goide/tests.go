@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,6 +42,8 @@ type TestRunRequest struct {
 	Repeat int `json:"repeat,omitempty"`
 	// Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
 	Shuffle string `json:"shuffle,omitempty"`
+	// CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.
+	CPU []int `json:"cpu,omitempty"`
 }
 
 // TestRunSnapshot è lo stato di un'esecuzione di test; Results non include l'output dei singoli nodi.
@@ -109,6 +112,16 @@ func testArguments(request TestRunRequest, coverageFile string) ([]string, error
 	arguments := []string{"test", "-json", fmt.Sprintf("-count=%d", max(1, request.Repeat))}
 	if request.Shuffle != "" {
 		arguments = append(arguments, "-shuffle="+request.Shuffle)
+	}
+	if len(request.CPU) > 0 {
+		values := make([]string, 0, len(request.CPU))
+		for _, cpu := range request.CPU {
+			if cpu < 1 || cpu > 1024 || len(request.CPU) > 16 {
+				return nil, fmt.Errorf("valori -cpu non validi: da 1 a 1024, al massimo 16")
+			}
+			values = append(values, strconv.Itoa(cpu))
+		}
+		arguments = append(arguments, "-cpu="+strings.Join(values, ","))
 	}
 	if len(request.BuildTags) > 0 {
 		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))

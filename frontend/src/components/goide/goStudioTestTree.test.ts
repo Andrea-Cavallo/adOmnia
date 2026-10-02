@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/goide-tests-api'
-import { buildTestTree, filterTestTree, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
+import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './goStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -116,5 +116,17 @@ describe('reproduce command', () => {
   it('rebuilds the go test command with repetitions, seed and race', () => {
     const current = { ...run([node('example.com/svc/api', '', 'fail', { directory: 'svc/api', shuffleSeed: '42' }), node('example.com/svc/api', 'TestRace/case 1', 'fail')]), request: { sessionId: 's', workingDirectory: 'svc', packages: ['./...'], repeat: 20, shuffle: 'on', race: true, buildTags: ['integration'] } } as unknown as GoIDETestRun
     expect(reproduceCommandFor(current, current.results[1])).toBe("cd svc && go test -count=20 -shuffle=42 -race -tags integration -run '^TestRace$/^case 1$' ./api")
+  })
+})
+
+describe('concurrency correlation', () => {
+  it('splits outcomes per -cpu value and explains the trend', () => {
+    const base = run([node('example.com/svc/api', '', 'fail', { directory: 'svc/api' }), node('example.com/svc/api', 'TestRace', 'fail', { runs: 8, failures: 3, outcomes: 'PPPFPFPF' })])
+    expect(cpuCorrelationRequestForNode(base, base.results[1], 10)).toMatchObject({ run: '^TestRace$', repeat: 10, cpu: [1, 2, 4, 8] })
+    const correlated = { ...base, request: { ...base.request, repeat: 2, cpu: [1, 2, 4, 8] } } as unknown as GoIDETestRun
+    const rates = failureRateByCPU(correlated, correlated.results[1])
+    expect(rates).toEqual([{ cpu: 1, runs: 2, failures: 0 }, { cpu: 2, runs: 2, failures: 1 }, { cpu: 4, runs: 2, failures: 1 }, { cpu: 8, runs: 2, failures: 1 }])
+    expect(cpuCorrelationVerdict(rates)).toMatch(/only with parallelism \(GOMAXPROCS ≥ 2\)/)
+    expect(failureRateByCPU(base, base.results[1])).toEqual([])
   })
 })
