@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 18 | 9 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 17 | 9 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -46,13 +46,12 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 ## §3 · gopls Integration
 
-- [ ] Gestione repository grandi. — *gopls esclude `node_modules`; manca una misura su monorepo grandi → §4.*
+- [ ] Gestione repository grandi. — *Parziale: misura automatica (`TestLargeMonorepoStaysResponsive`, 40 moduli/4000 file): apertura ~80 ms, Quick Open ~40 ms, ricerca ~0,5 s; manca la misura di gopls (indicizzazione e memoria) su un monorepo reale.*
 
 ## §4 · Workspace e Project Model
 
 ### Multi-module
 
-- [ ] Supporto monorepo. — *funziona (multi-modulo, go.work); manca una misura delle prestazioni su monorepo grandi.*
 - [ ] Project graph. — *→ §15 Architecture Explorer.*
 
 ## §50 · Privacy / Local-first

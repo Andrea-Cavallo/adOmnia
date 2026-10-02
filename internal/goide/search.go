@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -44,6 +45,9 @@ type SearchResult struct {
 	Truncated    bool          `json:"truncated"`
 }
 
+// searchWorkers limita le letture parallele: abbastanza per nascondere la latenza del disco.
+const searchWorkers = 8
+
 // SearchProject cerca testo nei file del progetto rispettando cancellazione, limiti ed esclusioni.
 func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchResult, error) {
 	session, err := s.session(string(query.SessionID))
@@ -55,6 +59,7 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 		return SearchResult{}, err
 	}
 	result := SearchResult{Matches: []SearchMatch{}}
+	candidates := []searchCandidate{}
 	root := session.Project.RealPath
 	walkErr := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if ctx.Err() != nil {
@@ -81,16 +86,52 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 			result.Truncated = true
 			return filepath.SkipAll
 		}
-		if searchFile(path, relative, matcher, &result) {
-			return filepath.SkipAll
+		info, err := entry.Info()
+		if err != nil || info.Size() > maxSearchFileBytes {
+			return nil
 		}
+		candidates = append(candidates, searchCandidate{path: path, relative: relative})
 		return nil
 	})
 	if walkErr != nil && ctx.Err() != nil {
 		return SearchResult{}, ctx.Err()
 	}
+	// Leggere i file in parallelo conta soprattutto su Windows, dove aprire un file costa più che cercarci.
+	perFile := make([][]SearchMatch, len(candidates))
+	next := make(chan int)
+	var workers sync.WaitGroup
+	for worker := 0; worker < min(searchWorkers, max(1, len(candidates))); worker++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for index := range next {
+				if ctx.Err() == nil {
+					perFile[index] = searchFile(candidates[index].path, candidates[index].relative, matcher)
+				}
+			}
+		}()
+	}
+	for index := range candidates {
+		next <- index
+	}
+	close(next)
+	workers.Wait()
+	if ctx.Err() != nil {
+		return SearchResult{}, ctx.Err()
+	}
+	for _, matches := range perFile {
+		for _, match := range matches {
+			if len(result.Matches) >= maxSearchResults {
+				result.Truncated = true
+				return result, nil
+			}
+			result.Matches = append(result.Matches, match)
+		}
+	}
 	return result, nil
 }
+
+type searchCandidate struct{ path, relative string }
 
 func compileSearch(query SearchQuery) (*regexp.Regexp, error) {
 	pattern := query.Pattern
@@ -132,16 +173,14 @@ func matchesAny(patterns []string, relative, name string) bool {
 	return false
 }
 
-// searchFile aggiunge i risultati del file e restituisce true quando il limite globale è raggiunto.
-func searchFile(path, relative string, matcher *regexp.Regexp, result *SearchResult) bool {
-	info, err := os.Stat(path)
-	if err != nil || info.Size() > maxSearchFileBytes {
-		return false
-	}
+// searchFile restituisce le occorrenze di un file (al più maxSearchResults).
+func searchFile(path, relative string, matcher *regexp.Regexp) []SearchMatch {
 	data, err := os.ReadFile(path)
-	if err != nil || bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
-		return false
+	// Il controllo sull'intero file evita lo scanner riga per riga nella grande maggioranza dei file senza occorrenze.
+	if err != nil || !matcher.Match(data) || bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
+		return nil
 	}
+	matches := []SearchMatch{}
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	scanner.Buffer(make([]byte, 64*1024), maxSearchFileBytes)
 	line := 0
@@ -152,18 +191,17 @@ func searchFile(path, relative string, matcher *regexp.Regexp, result *SearchRes
 			if bounds[0] == bounds[1] {
 				continue
 			}
-			result.Matches = append(result.Matches, SearchMatch{
+			matches = append(matches, SearchMatch{
 				RelativePath: relative, Line: line,
 				Column: utf16Length(text[:bounds[0]]) + 1, EndColumn: utf16Length(text[:bounds[1]]) + 1,
 				Preview: previewLine(text),
 			})
-			if len(result.Matches) >= maxSearchResults {
-				result.Truncated = true
-				return true
+			if len(matches) > maxSearchResults {
+				return matches
 			}
 		}
 	}
-	return false
+	return matches
 }
 
 func utf16Length(text string) int {
