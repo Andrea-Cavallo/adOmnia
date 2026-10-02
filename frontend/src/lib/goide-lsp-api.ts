@@ -139,6 +139,15 @@ export async function installLinter(sessionId: string, kind: GoIDELinterKind): P
   return GoIDEBindings.InstallLinter(sessionId, kind, true)
 }
 
+/** Registra i problemi attuali del linter in .adomnia/lint-baseline.json; restituisce quanti sono. */
+export function saveLintBaseline(sessionId: string): Promise<number> {
+  return GoIDEBindings.SaveLintBaseline(sessionId)
+}
+
+export function clearLintBaseline(sessionId: string): Promise<void> {
+  return GoIDEBindings.ClearLintBaseline(sessionId)
+}
+
 /** changedOnly: solo i package dei file Go modificati (git status), riportando solo quei file. */
 export function requestLint(sessionId: string, changedOnly = false): CancellablePromise<LintResult> {
   return changedOnly ? GoIDEBindings.RunLintChanged(sessionId) : GoIDEBindings.RunLint(sessionId)

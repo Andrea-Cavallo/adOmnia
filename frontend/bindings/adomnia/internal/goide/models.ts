@@ -3233,6 +3233,11 @@ export class LintResult {
     "changedOnly"?: boolean;
     "changedFiles"?: number;
 
+    /**
+     * Baselined conta i problemi nascosti perché già presenti in .adomnia/lint-baseline.json.
+     */
+    "baselined"?: number;
+
     /** Creates a new LintResult instance. */
     constructor($$source: Partial<LintResult> = {}) {
         if (!("linter" in $$source)) {

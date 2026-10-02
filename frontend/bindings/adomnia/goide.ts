@@ -74,6 +74,13 @@ export function ClaimSessionWindow(sessionID: string, windowID: string, force: b
 }
 
 /**
+ * ClearLintBaseline rimuove la baseline del linter.
+ */
+export function ClearLintBaseline(sessionID: string): $CancellablePromise<void> {
+    return $Call.ByID(3066515929, sessionID);
+}
+
+/**
  * CloneRepository clona un repository Git in parent/<nome> e restituisce la cartella, da aprire come progetto.
  */
 export function CloneRepository(remoteURL: string, parent: string): $CancellablePromise<string> {
@@ -1144,6 +1151,13 @@ export function SaveDocument(sessionID: string, documentID: string, content: str
     return $Call.ByID(3463741930, sessionID, documentID, content, diskToken, force).then(($result: any) => {
         return $$createType87($result);
     });
+}
+
+/**
+ * SaveLintBaseline registra i problemi attuali del linter in .adomnia/lint-baseline.json.
+ */
+export function SaveLintBaseline(sessionID: string): $CancellablePromise<number> {
+    return $Call.ByID(2148470405, sessionID);
 }
 
 /**

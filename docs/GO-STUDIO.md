@@ -167,6 +167,12 @@ pause and explains it.
 - **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
 - **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
 
+## Linting
+
+- **Whole project or changed files.** *Code → Run Linter* runs golangci-lint or staticcheck on `./...`; *Run Linter on Changed Files* only on the packages of modified, staged or new Go files and keeps only those files' findings.
+- **Baseline.** *Save Lint Baseline* writes the current findings to `.adomnia/lint-baseline.json` (file, linter, code and message, no line numbers). Later runs hide those findings and show only new ones; the status bar shows how many are hidden. Commit the file to share the baseline; *Remove Lint Baseline* deletes it.
+- **Pre-commit check.** The commit dialog lints the changed files and stops on gopls errors or lint warnings in the checked files, with *Show Problems* or *Commit anyway*.
+
 ## Crash recovery
 
 - **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.

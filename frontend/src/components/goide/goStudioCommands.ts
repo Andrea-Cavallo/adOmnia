@@ -16,7 +16,7 @@ export type GoStudioCommandId =
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
-  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'code.lint' | 'code.lintChanged' | 'code.lintOnSave'
+  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
   | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
   | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
@@ -168,6 +168,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.organizeImports', menu: 'code', label: 'Optimize Imports', binding: { key: 'o', mod: true, alt: true }, editorOwned: true },
   { id: 'code.lint', menu: 'code', label: 'Run Linter', binding: { key: 'l', mod: true, alt: true, shift: true }, separatorBefore: true },
   { id: 'code.lintChanged', menu: 'code', label: 'Run Linter on Changed Files' },
+  { id: 'code.lintBaseline', menu: 'code', label: 'Save Lint Baseline (Hide Current Findings)…' },
+  { id: 'code.lintBaselineClear', menu: 'code', label: 'Remove Lint Baseline' },
   { id: 'code.formatOnSave', menu: 'code', label: 'Reformat on Save', separatorBefore: true },
   { id: 'code.importsOnSave', menu: 'code', label: 'Optimize Imports on Save' },
   { id: 'code.lintOnSave', menu: 'code', label: 'Run Linter on Save' },
@@ -414,7 +416,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'nav.bookmarks': return context.bookmarkCount > 0 ? true : 'No bookmarks yet (F11 adds one)'
   }
   if (id.startsWith('nav.') && id !== 'nav.symbol' && id !== 'nav.findInFiles') return semanticAvailability(context)
-  if (id === 'code.lint' || id === 'code.lintChanged') {
+  if (id === 'code.lint' || id === 'code.lintChanged' || id === 'code.lintBaseline' || id === 'code.lintBaselineClear') {
     if (!context.authorized) return NOT_TRUSTED
     return context.linterAvailable ? true : 'Install golangci-lint or staticcheck (Go menu)'
   }

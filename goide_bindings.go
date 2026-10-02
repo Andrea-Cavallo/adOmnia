@@ -1006,6 +1006,17 @@ func (g *GoIDE) RunLint(ctx context.Context, sessionID string) (goide.LintResult
 	return settleCancelled(ctx, value, err)
 }
 
+// SaveLintBaseline registra i problemi attuali del linter in .adomnia/lint-baseline.json.
+func (g *GoIDE) SaveLintBaseline(ctx context.Context, sessionID string) (int, error) {
+	value, err := g.service.SaveLintBaseline(ctx, sessionID)
+	return settleCancelled(ctx, value, err)
+}
+
+// ClearLintBaseline rimuove la baseline del linter.
+func (g *GoIDE) ClearLintBaseline(sessionID string) error {
+	return g.service.ClearLintBaseline(sessionID)
+}
+
 // RunLintChanged esegue il linter solo sui file Go modificati; si annulla con la promise frontend.
 func (g *GoIDE) RunLintChanged(ctx context.Context, sessionID string) (goide.LintResult, error) {
 	value, err := g.service.RunLintChanged(ctx, sessionID)

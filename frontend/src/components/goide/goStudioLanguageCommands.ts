@@ -1,5 +1,6 @@
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDELspStore, EDITOR_FONT_SIZE } from '@/stores/goideLsp'
+import { clearLintBaseline, saveLintBaseline } from '@/lib/goide-lsp-api'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 
@@ -80,7 +81,32 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'go.installStaticcheck': void confirmInstall(sessionId, 'staticcheck'); return true
     case 'code.lint': lsp.showToolWindow('problems'); void lsp.runLint(sessionId); return true
     case 'code.lintChanged': lsp.showToolWindow('problems'); void lsp.runLint(sessionId, true); return true
+    case 'code.lintBaseline': void updateLintBaseline(sessionId, true); return true
+    case 'code.lintBaselineClear': void updateLintBaseline(sessionId, false); return true
     default: return false
+  }
+}
+
+/** Baseline del linter: i problemi attuali diventano accettati e si vedono solo quelli nuovi. */
+async function updateLintBaseline(sessionId: string, save: boolean): Promise<void> {
+  const lsp = useGoIDELspStore.getState()
+  if (save && !await confirm({
+    title: 'Save lint baseline?',
+    message: 'The linter runs on the whole project and every current finding is written to .adomnia/lint-baseline.json. From then on only new findings are shown. Commit the file to share the baseline with your team.',
+    confirmLabel: 'Save baseline',
+  })) return
+  try {
+    if (save) {
+      const count = await saveLintBaseline(sessionId)
+      useGoIDELspStore.setState({ message: `Lint baseline saved: ${count} finding${count === 1 ? '' : 's'} will be hidden.` })
+    } else {
+      await clearLintBaseline(sessionId)
+      useGoIDELspStore.setState({ message: 'Lint baseline removed: every finding is shown again.' })
+    }
+    lsp.showToolWindow('problems')
+    await useGoIDELspStore.getState().runLint(sessionId)
+  } catch (error) {
+    useGoIDELspStore.setState({ message: error instanceof Error ? error.message : String(error) })
   }
 }
 

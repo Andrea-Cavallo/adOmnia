@@ -60,6 +60,8 @@ type LintResult struct {
 	// che Reports contiene solo quei file; ChangedFiles è il loro numero.
 	ChangedOnly  bool `json:"changedOnly,omitempty"`
 	ChangedFiles int  `json:"changedFiles,omitempty"`
+	// Baselined conta i problemi nascosti perché già presenti in .adomnia/lint-baseline.json.
+	Baselined int `json:"baselined,omitempty"`
 }
 
 type lintIssue struct {
@@ -273,47 +275,14 @@ func (s *Service) changedGoFiles(sessionID string) (map[string]bool, []string, e
 }
 
 func (s *Service) runLint(ctx context.Context, sessionID string, changedOnly bool) (LintResult, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return LintResult{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return LintResult{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima di eseguire il linter")
-	}
-	info, err := s.DetectLinter(sessionID)
-	if err != nil {
-		return LintResult{}, err
-	}
-	if !info.Available {
-		return LintResult{}, errors.New(info.Error)
-	}
-	environment, err := s.languageServerEnvironment(session.ID)
-	if err != nil {
-		return LintResult{}, err
-	}
-	packages := []string{"./..."}
-	var changed map[string]bool
-	if changedOnly {
-		if changed, packages, err = s.changedGoFiles(sessionID); err != nil {
-			return LintResult{}, err
-		}
-		if len(packages) == 0 {
-			return LintResult{Linter: info.Kind, Reports: []DiagnosticsReport{}, ChangedOnly: true}, nil
-		}
-	}
 	started := time.Now()
-	output, err := runLinter(ctx, info, session.Project.RealPath, environment, packages)
+	session, kind, issues, changed, err := s.collectLintIssues(ctx, sessionID, changedOnly)
 	if err != nil {
 		return LintResult{}, err
 	}
-	issues, err := parseLintOutput(info.Kind, session.Project.RealPath, output)
-	if err != nil {
-		return LintResult{}, err
-	}
-	if changedOnly {
-		issues = slices.DeleteFunc(issues, func(issue lintIssue) bool { return !changed[relativeWithin(session.Project.RealPath, issue.path)] })
-	}
-	result := LintResult{Linter: info.Kind, DurationMS: time.Since(started).Milliseconds(), ChangedOnly: changedOnly, ChangedFiles: len(changed)}
+	result := LintResult{Linter: kind, ChangedOnly: changedOnly, ChangedFiles: len(changed)}
+	issues, result.Baselined = applyLintBaseline(session.Project.RealPath, issues)
+	result.DurationMS = time.Since(started).Milliseconds()
 	if len(issues) > maxLintIssues {
 		issues = issues[:maxLintIssues]
 		result.Truncated = true
@@ -321,6 +290,50 @@ func (s *Service) runLint(ctx context.Context, sessionID string, changedOnly boo
 	result.IssueCount = len(issues)
 	result.Reports = lintReports(session, issues)
 	return result, nil
+}
+
+// collectLintIssues esegue il linter (tutto il progetto o i soli package dei file modificati).
+func (s *Service) collectLintIssues(ctx context.Context, sessionID string, changedOnly bool) (Session, string, []lintIssue, map[string]bool, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Session{}, "", nil, nil, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return Session{}, "", nil, nil, fmt.Errorf("autorizza esplicitamente gli strumenti prima di eseguire il linter")
+	}
+	info, err := s.DetectLinter(sessionID)
+	if err != nil {
+		return Session{}, "", nil, nil, err
+	}
+	if !info.Available {
+		return Session{}, "", nil, nil, errors.New(info.Error)
+	}
+	environment, err := s.languageServerEnvironment(session.ID)
+	if err != nil {
+		return Session{}, "", nil, nil, err
+	}
+	packages := []string{"./..."}
+	var changed map[string]bool
+	if changedOnly {
+		if changed, packages, err = s.changedGoFiles(sessionID); err != nil {
+			return Session{}, "", nil, nil, err
+		}
+		if len(packages) == 0 {
+			return session, info.Kind, nil, changed, nil
+		}
+	}
+	output, err := runLinter(ctx, info, session.Project.RealPath, environment, packages)
+	if err != nil {
+		return Session{}, "", nil, nil, err
+	}
+	issues, err := parseLintOutput(info.Kind, session.Project.RealPath, output)
+	if err != nil {
+		return Session{}, "", nil, nil, err
+	}
+	if changedOnly {
+		issues = slices.DeleteFunc(issues, func(issue lintIssue) bool { return !changed[relativeWithin(session.Project.RealPath, issue.path)] })
+	}
+	return session, info.Kind, issues, changed, nil
 }
 
 func lintArguments(info LinterInfo, packages []string) []string {
