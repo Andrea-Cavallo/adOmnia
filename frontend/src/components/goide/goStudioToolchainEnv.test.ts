@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withCorporateNetwork, withNetworkMode } from './goStudioToolchainEnv'
+import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withCorporateNetwork, withNetworkMode, privateHostsOf, usesGitCredentials, withGoAuth } from './goStudioToolchainEnv'
 
 describe('toolchain env form', () => {
   it('round-trips structured fields, build tags and extra variables', () => {
@@ -62,5 +62,21 @@ describe('corporate network', () => {
     expect(proxyProblem('http://proxy.corp:8080')).toBeNull()
     expect(proxyProblem('proxy.corp:8080')).not.toBeNull()
     expect(proxyProblem('ftp://proxy')).not.toBeNull()
+  })
+})
+
+describe('private module credentials', () => {
+  it('collects GOPRIVATE hosts and a custom registry host', () => {
+    const form = toolchainFormFromEnv({ GOPRIVATE: 'git.corp.example/*,github.com/acme/*,*.internal', GOPROXY: 'https://art.corp/api/go/virtual,direct' })
+    expect(privateHostsOf(form)).toEqual(['art.corp', 'git.corp.example', 'github.com'])
+    expect(privateHostsOf(toolchainFormFromEnv({ GOPROXY: 'https://proxy.golang.org,direct' }))).toEqual([])
+  })
+
+  it('toggles GOAUTH without touching the rest of the environment', () => {
+    const form = toolchainFormFromEnv({ GOPRIVATE: 'git.corp.example', FOO: 'bar' })
+    const enabled = withGoAuth(form, 'netrc;git /')
+    expect(usesGitCredentials(enabled)).toBe(true)
+    expect(toolchainEnvFromForm(enabled)).toMatchObject({ GOAUTH: 'netrc;git /', FOO: 'bar', GOPRIVATE: 'git.corp.example' })
+    expect(usesGitCredentials(withGoAuth(enabled, null))).toBe(false)
   })
 })

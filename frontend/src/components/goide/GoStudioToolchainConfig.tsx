@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Globe, FolderGit2} from 'lucide-react'
 import { GoStudioButton, GoStudioField } from './GoStudioModal'
+import { GoStudioPrivateModules } from './GoStudioPrivateModules'
 import { configureGoIDEGlobalToolchain, getGoIDEToolchainSettings, resetGoIDEToolchainToGlobal, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, withCorporateNetwork, type GoStudioCorporateNetwork, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode, type GoStudioNetworkMode, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
@@ -11,7 +12,7 @@ const inputClass = 'gs-input gs-mono'
 
 const TEXT_FIELDS: { key: ToolchainField; label: string; placeholder: string; hint?: string }[] = [
   { key: 'GOPROXY', label: 'GOPROXY', placeholder: 'https://proxy.golang.org,direct' },
-  { key: 'GOPRIVATE', label: 'GOPRIVATE', placeholder: 'git.example.com/*', hint: 'Comma-separated module path prefixes fetched directly from their Git host, skipping the proxy and the checksum database. Credentials go in .netrc or a Git credential helper.' },
+  { key: 'GOPRIVATE', label: 'GOPRIVATE', placeholder: 'git.example.com/*', hint: 'Comma-separated module path prefixes fetched directly from their Git host, skipping the proxy and the checksum database. Credentials: see Private modules below.' },
   { key: 'GONOPROXY', label: 'GONOPROXY', placeholder: 'defaults to GOPRIVATE' },
   { key: 'GONOSUMDB', label: 'GONOSUMDB', placeholder: 'defaults to GOPRIVATE' },
   { key: 'GOOS', label: 'GOOS', placeholder: 'host OS (linux, windows, darwin…)' },
@@ -133,6 +134,7 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
         </GoStudioField>
         <GoStudioField label="Build tags"><input value={form.buildTags} onChange={(event) => setForm({ ...form, buildTags: event.target.value })} placeholder="integration, e2e" className={inputClass} /></GoStudioField>
       </div>
+      <GoStudioPrivateModules sessionId={sessionId} form={form} onChange={setForm} />
       <GoStudioField label="Other GOFLAGS"><input value={form.goflags} onChange={(event) => setForm({ ...form, goflags: event.target.value })} placeholder="-mod=mod -trimpath" className={inputClass} /></GoStudioField>
       <GoStudioField label="Other variables" hint="Applies to build, run, test, gopls and tools. Values with credentials in URLs stay in memory only.">
         <textarea value={form.other} onChange={(event) => setForm({ ...form, other: event.target.value })} placeholder={'GOTOOLCHAIN=local\nGOEXPERIMENT=…'} className="gs-input gs-mono" />

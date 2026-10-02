@@ -141,3 +141,36 @@ export function proxyProblem(value: string): string | null {
     return 'Enter a full URL such as http://proxy.corp:8080.'
   }
 }
+
+/**
+ * Host che chiedono credenziali: quelli dei pattern GOPRIVATE (primo elemento, senza glob) e
+ * l'host del primo GOPROXY se non è il proxy pubblico. Ordinati e senza duplicati.
+ */
+export function privateHostsOf(form: ToolchainForm): string[] {
+  const hosts = new Set<string>()
+  for (const pattern of form.fields.GOPRIVATE.split(',')) {
+    const host = pattern.trim().split('/')[0]
+    if (host && host.includes('.') && !/[*?[\]]/.test(host)) hosts.add(host.toLowerCase())
+  }
+  const registry = form.fields.GOPROXY.split(/[,|]/).map((entry) => entry.trim()).find((entry) => /^https?:\/\//.test(entry))
+  if (registry) {
+    try {
+      const host = new URL(registry).host.toLowerCase()
+      if (host !== 'proxy.golang.org') hosts.add(host)
+    } catch { /* GOPROXY non valido: lo segnala `go` */ }
+  }
+  return [...hosts].sort()
+}
+
+/** GOAUTH con il metodo git attivo? */
+export function usesGitCredentials(form: ToolchainForm): boolean {
+  return (toolchainEnvFromForm(form).GOAUTH ?? '').split(';').some((method) => method.trim().startsWith('git '))
+}
+
+/** Imposta GOAUTH (es. "netrc;git C:\\") o lo toglie con null, lasciando il resto dell'ambiente. */
+export function withGoAuth(form: ToolchainForm, value: string | null): ToolchainForm {
+  const env = toolchainEnvFromForm(form)
+  if (value) env.GOAUTH = value
+  else delete env.GOAUTH
+  return toolchainFormFromEnv(env)
+}

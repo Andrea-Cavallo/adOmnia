@@ -233,6 +233,31 @@ func (g *GoIDE) WorkspaceModuleGraph(sessionID string) ([]goide.WorkspaceModule,
 	return g.service.WorkspaceModuleGraph(sessionID)
 }
 
+// PrivateRepoCredentialStatus dice se il gestore credenziali di Git conosce l'host (mai il token).
+func (g *GoIDE) PrivateRepoCredentialStatus(host string) (goide.PrivateRepoCredential, error) {
+	return g.service.PrivateRepoCredentialStatus(host)
+}
+
+// SavePrivateRepoCredential affida username e token di un host privato al gestore credenziali di Git.
+func (g *GoIDE) SavePrivateRepoCredential(host, username, token string) (goide.PrivateRepoCredential, error) {
+	return g.service.SavePrivateRepoCredential(host, username, token)
+}
+
+// RemovePrivateRepoCredential toglie le credenziali di un host dal gestore credenziali di Git.
+func (g *GoIDE) RemovePrivateRepoCredential(host string) error {
+	return g.service.RemovePrivateRepoCredential(host)
+}
+
+// GoAuthWithGitCredentials è il valore GOAUTH che fa usare a go le credenziali di Git.
+func (g *GoIDE) GoAuthWithGitCredentials() string {
+	return g.service.GoAuthWithGitCredentials()
+}
+
+// TestModuleRegistry prova il primo GOPROXY della sessione (registry interno) con proxy, CA e credenziali.
+func (g *GoIDE) TestModuleRegistry(sessionID string) (goide.ModuleRegistryCheck, error) {
+	return g.service.TestModuleRegistry(sessionID)
+}
+
 // AIProjectPolicy restituisce la politica AI del progetto: "allowed", "local-only" o "off".
 func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
 	root, err := g.sessionRoot(sessionID)

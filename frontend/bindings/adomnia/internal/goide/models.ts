@@ -3381,6 +3381,43 @@ export class MakeInfo {
 }
 
 /**
+ * ModuleRegistryCheck è l'esito della prova di un registry di moduli (GOPROXY interno).
+ */
+export class ModuleRegistryCheck {
+    "url": string;
+    "module": string;
+    "status"?: number;
+    "ok": boolean;
+    "message": string;
+
+    /** Creates a new ModuleRegistryCheck instance. */
+    constructor($$source: Partial<ModuleRegistryCheck> = {}) {
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("module" in $$source)) {
+            this["module"] = "";
+        }
+        if (!("ok" in $$source)) {
+            this["ok"] = false;
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ModuleRegistryCheck instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ModuleRegistryCheck {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ModuleRegistryCheck($$parsedSource as Partial<ModuleRegistryCheck>);
+    }
+}
+
+/**
  * NavigationEntry è una posizione della cronologia di navigazione (Back/Forward).
  */
 export class NavigationEntry {
@@ -3474,6 +3511,35 @@ export class OpenDocument {
             $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
         }
         return new OpenDocument($$parsedSource as Partial<OpenDocument>);
+    }
+}
+
+/**
+ * PrivateRepoCredential è lo stato delle credenziali di un host nel gestore credenziali di Git.
+ */
+export class PrivateRepoCredential {
+    "host": string;
+    "stored": boolean;
+    "username"?: string;
+
+    /** Creates a new PrivateRepoCredential instance. */
+    constructor($$source: Partial<PrivateRepoCredential> = {}) {
+        if (!("host" in $$source)) {
+            this["host"] = "";
+        }
+        if (!("stored" in $$source)) {
+            this["stored"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PrivateRepoCredential instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PrivateRepoCredential {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PrivateRepoCredential($$parsedSource as Partial<PrivateRepoCredential>);
     }
 }
 

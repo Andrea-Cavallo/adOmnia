@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 17 | 9 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 8 | 6 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -48,26 +48,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 - [ ] Gestione repository grandi. — *Parziale: misura automatica (`TestLargeMonorepoStaysResponsive`, 40 moduli/4000 file): apertura ~80 ms, Quick Open ~40 ms, ricerca ~0,5 s; manca la misura di gopls (indicizzazione e memoria) su un monorepo reale.*
 
-## §4 · Workspace e Project Model
-
-### Multi-module
-
-- [ ] Project graph. — *→ §15 Architecture Explorer.*
-
-## §50 · Privacy / Local-first
-
-- [ ] Telemetry opt-in.
-- [ ] Clear network activity panel.
-- [ ] Offline mode. — *Parziale: la toolchain Go ha il modo Offline/Air-gapped (GOPROXY=off, GOTOOLCHAIN=local, GOSUMDB=off); manca un interruttore unico che blocchi anche AI cloud, vulncheck e controllo aggiornamenti.*
-
-## §48 · Enterprise — rete aziendale e toolchain
-
-- [ ] Corporate proxy. — *Parziale: proxy aziendale (HTTPS_PROXY/NO_PROXY) per toolchain Go, Git e gopls nelle impostazioni toolchain, proxy separato per Copilot; manca un proxy unico per tutta adOmnia (AI, client HTTP).*
-- [ ] Private module repositories. — *Parziale: Campi GOPRIVATE/GONOPROXY/GONOSUMDB in GoStudioToolchainConfig.tsx; manca la gestione credenziali dei repo privati.*
-- [ ] Custom CA certificates. — *Parziale: CA bundle PEM per Copilot e per toolchain Go/Git (GIT_SSL_CAINFO, SSL_CERT_FILE su Linux); su Windows/macOS Go usa lo store di sistema; manca per il client HTTP e l'AI di adOmnia.*
-- [ ] Internal artifact registry.
-- [ ] Corporate Git support.
-
 ## §7 · Debugger Go con Delve
 
 ### Base
@@ -84,17 +64,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Coverage
 
 - [ ] Coverage diff rispetto a branch base. — *Parziale: la vista Patch misura la coverage delle righe cambiate dal merge-base con il branch scelto; manca il confronto con la coverage totale misurata sul branch base.*
-
-### Flaky Test Detector
-
-
-## §22 · Git Integration
-
-### IDE integration
-
-
-## §21 · Static Analysis
-
 
 ## §2 · Editor Core
 

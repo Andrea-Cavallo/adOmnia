@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Network & privacy for all of adOmnia (Settings → Privacy & Data):** one **Offline mode** switch blocks every connection adOmnia opens by itself to a non-local host — AI cloud providers, Copilot, update check, vulnerability database (govulncheck and gopls vulncheck), Go toolchain and module downloads (forces `GOPROXY=off`, `GOSUMDB=off`, `GOTOOLCHAIN=local`), Git host APIs — while local models and the requests you send from the API client keep working. A single **corporate proxy** (with NO_PROXY) and **CA bundle** apply to the API client, AI providers, Copilot, Git and the Go toolchain (project values still win). A **Network activity** log lists, in memory only, every connection adOmnia opened or blocked (category, host, path without query, status). adOmnia states plainly that it has no telemetry.
+- **Private Go modules in Go Studio:** per-host credentials for GOPRIVATE hosts and the internal registry are handed to the Git credential manager (never stored by adOmnia, the token never comes back to the UI); a switch sets `GOAUTH=netrc;git …` so `go` reads them, and **Test module registry** probes the saved GOPROXY with proxy, CA and credentials and explains auth, TLS and proxy failures.
+
 ### Removed
 - **Minimap in Go Studio:** the editor minimap, its View menu toggle and its setting are gone; saved preferences drop the old key.
 
