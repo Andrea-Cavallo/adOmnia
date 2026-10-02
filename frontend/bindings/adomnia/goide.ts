@@ -1466,11 +1466,20 @@ export function VCSLineHistory(sessionID: string, relativePath: string, start: n
 }
 
 /**
+ * VCSPatchLines restituisce le righe Go aggiunte o modificate dal merge-base con base.
+ */
+export function VCSPatchLines(sessionID: string, base: string): $CancellablePromise<{ [_ in string]?: git$0.LineRange[] }> {
+    return $Call.ByID(447699899, sessionID, base).then(($result: any) => {
+        return $$createType112($result);
+    });
+}
+
+/**
  * VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
-        return $$createType110($result);
+        return $$createType113($result);
     });
 }
 
@@ -1479,7 +1488,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSSta
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType111($result);
+        return $$createType114($result);
     });
 }
 
@@ -1488,7 +1497,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType113($result);
+        return $$createType116($result);
     });
 }
 
@@ -1617,7 +1626,10 @@ const $$createType106 = $Create.Array($$createType105);
 const $$createType107 = git$0.CommitResult.createFrom;
 const $$createType108 = goide$0.VCSCommit.createFrom;
 const $$createType109 = $Create.Array($$createType108);
-const $$createType110 = goide$0.VCSStatus.createFrom;
-const $$createType111 = goide$0.WatcherStatus.createFrom;
-const $$createType112 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType113 = $Create.Array($$createType112);
+const $$createType110 = git$0.LineRange.createFrom;
+const $$createType111 = $Create.Array($$createType110);
+const $$createType112 = $Create.Map($Create.Any, $$createType111);
+const $$createType113 = goide$0.VCSStatus.createFrom;
+const $$createType114 = goide$0.WatcherStatus.createFrom;
+const $$createType115 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType116 = $Create.Array($$createType115);

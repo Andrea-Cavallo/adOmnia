@@ -9,6 +9,7 @@ import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { buildTestTree, debugRequestForNode, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { functionsByCoverage } from './goStudioCoverage'
+import { GoStudioPatchCoverage } from './GoStudioPatchCoverage'
 import { clearFlakyHistory, flakyRecords, loadFlakyHistory, saveFlakyHistory, type GoStudioFlakyHistoryEntry, type GoStudioFlakyRecord } from './goStudioFlakyHistory'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { runGoStudioBenchmarks } from './goStudioQuickActions'
@@ -127,10 +128,13 @@ function OutputLine({ line, baseDirectory }: { line: string; baseDirectory: stri
   )
 }
 
-function CoverageSummary({ report }: { report: GoIDECoverageReport }) {
+type CoverageView = 'files' | 'functions' | 'patch'
+
+function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; sessionId: string }) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const openLocation = useGoIDEStore((state) => state.openLocation)
-  const [byFunction, setByFunction] = useState(false)
+  const [view, setView] = useState<CoverageView>('files')
+  const byFunction = view === 'functions'
   const functions = useMemo(() => (byFunction ? functionsByCoverage(report) : []), [byFunction, report])
   const bar = (value: number) => (
     <span className="h-1.5 w-20 shrink-0 overflow-hidden rounded bg-danger/25"><span className="block h-full bg-success" style={{ width: `${value}%` }} /></span>
@@ -141,8 +145,9 @@ function CoverageSummary({ report }: { report: GoIDECoverageReport }) {
       <div className="mb-2 flex items-center gap-2 text-text-2">
         <ShieldCheck size={12} className="text-success" aria-hidden="true" /> Coverage {report.percent.toFixed(1)}% <span className="text-text-4">· {report.covered}/{report.statements} statements · mode {report.mode}</span>
         <span role="tablist" aria-label="Coverage view" className="ml-auto flex gap-0.5">
-          <button type="button" role="tab" aria-selected={!byFunction} onClick={() => setByFunction(false)} className={tab(!byFunction)}>Files</button>
-          <button type="button" role="tab" aria-selected={byFunction} onClick={() => setByFunction(true)} title="Functions from the least covered" className={tab(byFunction)}>Functions</button>
+          <button type="button" role="tab" aria-selected={view === 'files'} onClick={() => setView('files')} className={tab(view === 'files')}>Files</button>
+          <button type="button" role="tab" aria-selected={byFunction} onClick={() => setView('functions')} title="Functions from the least covered" className={tab(byFunction)}>Functions</button>
+          <button type="button" role="tab" aria-selected={view === 'patch'} onClick={() => setView('patch')} title="Coverage of the lines changed since a base branch, as in a pull request" className={tab(view === 'patch')}>Patch</button>
         </span>
       </div>
       {byFunction && functions.map((fn) => (
@@ -151,7 +156,8 @@ function CoverageSummary({ report }: { report: GoIDECoverageReport }) {
         </button>
       ))}
       {byFunction && functions.length === 0 && <p className="text-[10px] text-text-4">No functions with statements.</p>}
-      {!byFunction && report.packages.map((pkg) => (
+      {view === 'patch' && <GoStudioPatchCoverage sessionId={sessionId} report={report} />}
+      {view === 'files' && report.packages.map((pkg) => (
         <div key={pkg.importPath} className="mb-1">
           <div className="flex h-6 items-center gap-2 font-medium text-text-2">{bar(pkg.percent)}<span className="w-12 shrink-0 text-right text-[10px]">{pkg.percent.toFixed(1)}%</span><span className="truncate">{pkg.relativePath || pkg.importPath}</span></div>
           {report.files.filter((file) => file.relativePath.startsWith(`${pkg.relativePath}/`) && !file.relativePath.slice(pkg.relativePath.length + 1).includes('/')).map((file) => (
@@ -367,7 +373,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
           {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
-        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} history={benchmarkHistory} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
+        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} history={benchmarkHistory} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
       </div>
     </div>
   )

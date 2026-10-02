@@ -225,6 +225,33 @@ func vcsCommits(commits []git.CommitInfo) []VCSCommit {
 	return result
 }
 
+// VCSPatchLines restituisce, per file Go del progetto, le righe aggiunte o modificate dal merge-base
+// con base (incluse le modifiche non committate): il perimetro di una pull request. Le sole
+// cancellazioni non hanno righe da coprire e vengono omesse.
+func (s *Service) VCSPatchLines(sessionID, base string) (map[string][]git.LineRange, error) {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	changed, err := git.ChangedLinesSince(paths.repoRoot, base)
+	if err != nil {
+		return nil, err
+	}
+	result := map[string][]git.LineRange{}
+	for repoPath, ranges := range changed {
+		relative, ok := paths.toProject(repoPath)
+		if !ok {
+			continue
+		}
+		for _, changedRange := range ranges {
+			if !changedRange.Deletion {
+				result[relative] = append(result[relative], changedRange)
+			}
+		}
+	}
+	return result, nil
+}
+
 // VCSBlame restituisce autore, commit e data di ogni riga del file salvato.
 func (s *Service) VCSBlame(sessionID, relativePath string) ([]VCSBlameLine, error) {
 	_, paths, err := s.vcsPaths(sessionID)

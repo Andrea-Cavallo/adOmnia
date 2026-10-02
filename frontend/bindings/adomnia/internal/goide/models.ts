@@ -369,6 +369,7 @@ export class CoverageBlock {
     "endLine": number;
     "endColumn": number;
     "covered": boolean;
+    "statements": number;
 
     /** Creates a new CoverageBlock instance. */
     constructor($$source: Partial<CoverageBlock> = {}) {
@@ -386,6 +387,9 @@ export class CoverageBlock {
         }
         if (!("covered" in $$source)) {
             this["covered"] = false;
+        }
+        if (!("statements" in $$source)) {
+            this["statements"] = 0;
         }
 
         Object.assign(this, $$source);

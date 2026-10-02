@@ -233,6 +233,48 @@ func ChangedLines(repoPath, path string) ([]LineRange, error) {
 	return parseHunkRanges(out), nil
 }
 
+// ChangedLinesSince returns, per repository path, the working-tree line ranges of Go files changed
+// since the merge base of base and HEAD: what a pull request from this branch would change.
+func ChangedLinesSince(repoPath, base string) (map[string][]LineRange, error) {
+	base = strings.TrimSpace(base)
+	if base == "" || strings.HasPrefix(base, "-") {
+		return nil, fmt.Errorf("invalid base ref %q", base)
+	}
+	mergeBase, err := runGit(repoPath, "merge-base", base, "HEAD")
+	if err != nil {
+		return nil, fmt.Errorf("git merge-base %s HEAD: %w", base, err)
+	}
+	out, err := runGit(repoPath, "diff", "-U0", "--color=never", strings.TrimSpace(mergeBase), "--", "*.go")
+	if err != nil {
+		return nil, fmt.Errorf("git diff -U0: %w", err)
+	}
+	files := map[string][]LineRange{}
+	current := ""
+	var section strings.Builder
+	flush := func() {
+		if current != "" {
+			if ranges := parseHunkRanges(section.String()); len(ranges) > 0 {
+				files[current] = ranges
+			}
+		}
+		section.Reset()
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "+++ ") {
+			flush()
+			current = ""
+			if name := strings.TrimPrefix(line, "+++ "); strings.HasPrefix(name, "b/") {
+				current = strings.TrimPrefix(name, "b/")
+			}
+			continue
+		}
+		section.WriteString(line)
+		section.WriteByte('\n')
+	}
+	flush()
+	return files, nil
+}
+
 func parseHunkRanges(diff string) []LineRange {
 	ranges := []LineRange{}
 	for _, line := range strings.Split(diff, "\n") {

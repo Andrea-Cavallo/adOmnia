@@ -740,6 +740,11 @@ func (g *GoIDE) VCSChangedSymbols(sessionID string) ([]goide.VCSChangedSymbol, e
 	return g.service.VCSChangedSymbols(sessionID)
 }
 
+// VCSPatchLines restituisce le righe Go aggiunte o modificate dal merge-base con base.
+func (g *GoIDE) VCSPatchLines(sessionID, base string) (map[string][]git.LineRange, error) {
+	return g.service.VCSPatchLines(sessionID, base)
+}
+
 // VCSLineHistory elenca i commit che hanno modificato le righe start..end del file.
 func (g *GoIDE) VCSLineHistory(sessionID, relativePath string, start, end int) ([]goide.VCSCommit, error) {
 	return g.service.VCSLineHistory(sessionID, relativePath, start, end)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDECoverageReport } from '@/lib/goide-tests-api'
-import { coverageForDocument, coverageLineStates, functionsByCoverage } from './goStudioCoverage'
+import { coverageForDocument, coverageLineStates, functionsByCoverage, patchCoverage } from './goStudioCoverage'
 
 const block = (startLine: number, endLine: number, covered: boolean) => ({ startLine, startColumn: 1, endLine, endColumn: 1, covered })
 const report = {
@@ -32,5 +32,18 @@ describe('function coverage', () => {
       { ...report.files[0], relativePath: 'b.go', functions: [fn('Small', 1, 2, 1), fn('None', 4, 3, 0)] },
     ] } as unknown as GoIDECoverageReport
     expect(functionsByCoverage(withFunctions).map((item) => `${item.relativePath}:${item.name}`)).toEqual(['b.go:None', 'a.go:Half', 'b.go:Small', 'a.go:Full'])
+  })
+})
+
+describe('patch coverage', () => {
+  it('counts only statements in blocks that touch changed lines', () => {
+    const statementBlock = (startLine: number, endLine: number, covered: boolean, statements: number) => ({ ...block(startLine, endLine, covered), statements })
+    const withBlocks = { ...report, files: [
+      { ...report.files[0], relativePath: 'a.go', blocks: [statementBlock(3, 5, true, 2), statementBlock(6, 8, false, 3), statementBlock(20, 22, false, 4)] },
+      { ...report.files[0], relativePath: 'untouched.go', blocks: [statementBlock(1, 2, false, 5)] },
+    ] } as unknown as GoIDECoverageReport
+    const patch = patchCoverage(withBlocks, { 'a.go': [{ start: 4, end: 7 }], 'nocoverage.go': [{ start: 1, end: 9 }] })
+    expect(patch).toEqual({ statements: 5, covered: 2, percent: 40, files: [{ relativePath: 'a.go', statements: 5, covered: 2, uncoveredLines: [6, 7] }] })
+    expect(patchCoverage(withBlocks, {}).percent).toBe(0)
   })
 })

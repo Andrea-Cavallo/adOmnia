@@ -3,5 +3,6 @@
 
 export {
     CommitResult,
+    LineRange,
     PullRequest
 } from "./models.js";

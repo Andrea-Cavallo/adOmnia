@@ -42,3 +42,14 @@ export function commitGoIDEFiles(sessionId: string, message: string, relativePat
 export function checkoutGoIDEBranch(sessionId: string, branch: string): Promise<void> {
   return GoIDEBindings.VCSCheckout(sessionId, branch)
 }
+
+export interface GoIDELineRange {
+  start: number
+  end: number
+}
+
+/** Righe Go aggiunte o modificate dal merge-base con base (modifiche locali incluse), per file del progetto. */
+export async function getGoIDEPatchLines(sessionId: string, base: string): Promise<Record<string, GoIDELineRange[]>> {
+  const lines = await GoIDEBindings.VCSPatchLines(sessionId, base)
+  return Object.fromEntries(Object.entries(lines).map(([path, ranges]) => [path, (ranges ?? []).map(({ start, end }) => ({ start, end }))]))
+}

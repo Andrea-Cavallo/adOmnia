@@ -24,6 +24,7 @@ type CoverageBlock struct {
 	EndLine     int  `json:"endLine"`
 	EndColumn   int  `json:"endColumn"`
 	Covered     bool `json:"covered"`
+	Statements  int  `json:"statements"`
 }
 
 // CoverageFile riporta la copertura di un file e l'impronta del contenuto analizzato:
@@ -182,7 +183,7 @@ func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte)
 			}
 			file.Blocks = append(file.Blocks, CoverageBlock{
 				StartLine: block.startLine, StartColumn: utf16Column(lines, block.startLine, block.startColumn),
-				EndLine: block.endLine, EndColumn: utf16Column(lines, block.endLine, block.endColumn), Covered: block.count > 0,
+				EndLine: block.endLine, EndColumn: utf16Column(lines, block.endLine, block.endColumn), Covered: block.count > 0, Statements: block.statements,
 			})
 		}
 		file.Percent = percent(file.Covered, file.Statements)

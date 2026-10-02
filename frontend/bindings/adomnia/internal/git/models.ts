@@ -31,6 +31,36 @@ export class CommitResult {
 }
 
 /**
+ * LineRange is a 1-based, inclusive range of working-tree lines changed since HEAD.
+ * A pure deletion has Deletion set and spans the two lines around the removed text.
+ */
+export class LineRange {
+    "start": number;
+    "end": number;
+    "deletion"?: boolean;
+
+    /** Creates a new LineRange instance. */
+    constructor($$source: Partial<LineRange> = {}) {
+        if (!("start" in $$source)) {
+            this["start"] = 0;
+        }
+        if (!("end" in $$source)) {
+            this["end"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LineRange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LineRange {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LineRange($$parsedSource as Partial<LineRange>);
+    }
+}
+
+/**
  * PullRequest is the trimmed PR shape the UI needs.
  */
 export class PullRequest {
