@@ -78,3 +78,14 @@ describe('diffProfiles across kinds', () => {
     expect(diff(base, heap, 1)).toEqual([])
   })
 })
+
+describe('codeOrigin', () => {
+  it('classifies project, dependency, standard library and runtime frames', async () => {
+    const { codeOrigin } = await import('./goStudioProfiles')
+    expect(codeOrigin({ package: 'example.com/app/api', relative: 'api/handler.go' })).toBe('project')
+    expect(codeOrigin({ package: 'github.com/jackc/pgx/v5' })).toBe('dependency')
+    expect(codeOrigin({ package: 'encoding/json' })).toBe('stdlib')
+    expect(codeOrigin({ package: 'runtime', runtime: true })).toBe('runtime')
+    expect(codeOrigin({ package: '' })).toBe('runtime')
+  })
+})

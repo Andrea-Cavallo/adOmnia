@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+- **Performance Studio and Go trace charts redesigned:** one validated palette (colour-blind safe, light and dark) colours every function by origin (your code, dependencies, standard library, Go runtime) across Top functions, flame graph and Callers. The flame graph renders at real pixel size (no stretched text), zooms on click, dims search misses and shows a hover tooltip; root stacks no longer overlap. Callers is a caller → function → callee view, Diff uses a diverging bar with ▲/▼ arrows, and view tabs are a segmented control. The trace timeline has a time axis, a GC/stop-the-world lane and bands, state encoded by colour and thickness, hover tooltips, stat tiles and per-goroutine time mix.
+
 ## [0.9.56] - 2026-10-02
 
 ### Added

@@ -146,3 +146,27 @@ export function isRuntimeFunction(fn: ProfileFunction): boolean {
 export function shortFunctionName(fn: ProfileFunction): string {
   return fn.short || fn.name
 }
+
+/** Da dove viene il codice di una funzione: guida il colore in flame graph, Top e Callers. */
+export type CodeOrigin = 'project' | 'dependency' | 'stdlib' | 'runtime'
+
+export const CODE_ORIGINS: Array<{ id: CodeOrigin; label: string; color: string }> = [
+  { id: 'project', label: 'Your code', color: 'var(--gs-viz-project)' },
+  { id: 'dependency', label: 'Dependencies', color: 'var(--gs-viz-dependency)' },
+  { id: 'stdlib', label: 'Standard library', color: 'var(--gs-viz-stdlib)' },
+  { id: 'runtime', label: 'Go runtime', color: 'var(--gs-viz-runtime)' },
+]
+
+/** Progetto se il file è nel progetto; dipendenza se il package inizia con un dominio (github.com/…); altrimenti stdlib. */
+export function codeOrigin(fn: Pick<ProfileFunction, 'relative' | 'runtime' | 'package'>): CodeOrigin {
+  if (fn.relative) return 'project'
+  if (fn.runtime) return 'runtime'
+  const firstSegment = (fn.package ?? '').split('/')[0]
+  if (!firstSegment) return 'runtime'
+  return firstSegment.includes('.') ? 'dependency' : 'stdlib'
+}
+
+export function codeOriginColor(fn: Pick<ProfileFunction, 'relative' | 'runtime' | 'package'>): string {
+  const origin = codeOrigin(fn)
+  return CODE_ORIGINS.find((item) => item.id === origin)?.color ?? 'var(--gs-viz-runtime)'
+}
