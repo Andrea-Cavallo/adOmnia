@@ -14,7 +14,7 @@ export type GoStudioCommandId =
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
-  | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.changeSignature'
+  | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.moveSymbol' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
   | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
@@ -162,6 +162,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.extractFunction', menu: 'code', label: 'Extract Function/Method', binding: { key: 'm', mod: true, alt: true }, editorOwned: true },
   { id: 'code.inline', menu: 'code', label: 'Inline', binding: { key: 'n', mod: true, alt: true }, editorOwned: true },
   { id: 'code.moveToNewFile', menu: 'code', label: 'Move to New File', binding: { key: 'F6' }, editorOwned: true },
+  { id: 'code.moveSymbol', menu: 'code', label: 'Move Symbol to Package…', editorOwned: true },
   { id: 'code.changeSignature', menu: 'code', label: 'Change Signature…', binding: { key: 'F6', mod: true }, editorOwned: true },
   { id: 'code.reformat', menu: 'code', label: 'Reformat Code', binding: { key: 'l', mod: true, alt: true }, editorOwned: true, separatorBefore: true },
   { id: 'code.organizeImports', menu: 'code', label: 'Optimize Imports', binding: { key: 'o', mod: true, alt: true }, editorOwned: true },

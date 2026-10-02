@@ -937,6 +937,15 @@ export function MovePath(sessionID: string, $from: string, to: string): $Cancell
 }
 
 /**
+ * MoveSymbol sposta una dichiarazione in un altro package del modulo; restituisce l'anteprima delle modifiche.
+ */
+export function MoveSymbol(sessionID: string, request: goide$0.MoveSymbolRequest): $CancellablePromise<goide$0.WorkspaceChange> {
+    return $Call.ByID(2769978375, sessionID, request).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
  * OpenDocument apre un documento testuale confinato al progetto.
  */
 export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<goide$0.OpenDocument> {

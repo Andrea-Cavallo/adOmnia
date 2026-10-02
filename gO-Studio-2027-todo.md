@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 2 | 2 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
 | **P1** | Workflow Go migliore di GoLand | 122 | 24 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
@@ -42,12 +42,6 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 ### Test obbligatori
 
 - [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
-
-## §2 · Editor Core
-
-### Refactoring
-
-- [ ] Move symbol. — *Parziale: oggi Move to New File (gopls, stesso package). gopls non sposta simboli tra package: va scritto in adOmnia con go/packages + go/ast: spostare la dichiarazione, riscrivere i riferimenti (`pkg.Nome`) e gli import in tutto il progetto, rifiutare simboli non esportati usati altrove e cicli di import, anteprima delle modifiche prima di applicarle. Costo alto.*
 
 ---
 

@@ -3525,6 +3525,50 @@ export class ModuleRegistryCheck {
 }
 
 /**
+ * MoveSymbolRequest indica la dichiarazione (posizione del cursore nel file) e la cartella di destinazione.
+ */
+export class MoveSymbolRequest {
+    "relativePath": string;
+
+    /**
+     * Line e Column sono 1-based, colonna in unità UTF-16 come nell'editor.
+     */
+    "line": number;
+    "column": number;
+
+    /**
+     * TargetDirectory è relativa al progetto; può non esistere ancora (nuovo package).
+     */
+    "targetDirectory": string;
+
+    /** Creates a new MoveSymbolRequest instance. */
+    constructor($$source: Partial<MoveSymbolRequest> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("column" in $$source)) {
+            this["column"] = 0;
+        }
+        if (!("targetDirectory" in $$source)) {
+            this["targetDirectory"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MoveSymbolRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MoveSymbolRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MoveSymbolRequest($$parsedSource as Partial<MoveSymbolRequest>);
+    }
+}
+
+/**
  * NavigationEntry è una posizione della cronologia di navigazione (Back/Forward).
  */
 export class NavigationEntry {

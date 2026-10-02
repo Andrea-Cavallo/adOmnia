@@ -94,6 +94,7 @@ export {
     LinterInfo,
     MakeInfo,
     ModuleRegistryCheck,
+    MoveSymbolRequest,
     NavigationEntry,
     NewFile,
     OpenDocument,

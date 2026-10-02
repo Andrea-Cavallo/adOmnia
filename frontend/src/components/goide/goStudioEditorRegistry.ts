@@ -44,6 +44,7 @@ const MONACO_ACTIONS = {
   'code.inline': 'goStudio.inline',
   'code.moveToNewFile': 'goStudio.moveToNewFile',
   'code.changeSignature': 'goStudio.changeSignature',
+  'code.moveSymbol': 'goStudio.moveSymbol',
 } as const
 
 export type GoStudioEditorCommand = keyof typeof MONACO_ACTIONS

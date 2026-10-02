@@ -16,3 +16,8 @@ func (g *GoIDE) DebugGoroutineCreation(debugID string, threadID int) (goide.Goro
 func (g *GoIDE) DebugPendingDefers(debugID string, threadID int) ([]goide.PendingDefer, error) {
 	return g.service.DebugPendingDefers(debugID, threadID)
 }
+
+// MoveSymbol sposta una dichiarazione in un altro package del modulo; restituisce l'anteprima delle modifiche.
+func (g *GoIDE) MoveSymbol(sessionID string, request goide.MoveSymbolRequest) (goide.WorkspaceChange, error) {
+	return g.service.MoveSymbol(sessionID, request)
+}

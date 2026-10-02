@@ -59,6 +59,7 @@ import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
 import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
+import { GoStudioMoveSymbolDialog } from './GoStudioMoveSymbolDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
 import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
@@ -671,6 +672,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioGenerateMenu />
       <GoStudioImplementInterfaceDialog />
       <GoStudioChangeSignatureDialog />
+      <GoStudioMoveSymbolDialog />
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <GoStudioSecretsPrompt
