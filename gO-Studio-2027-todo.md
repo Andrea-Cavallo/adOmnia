@@ -41,15 +41,15 @@ _Le lacune che costringono ancora ad aprire un altro IDE._
 
 ### Storage e robustezza
 
-- [ ] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Parziale: le snapshot sono isolate per workspace-id (hash del percorso) nello store locale di adOmnia (bbolt in app data), non in una cartella per workspace; scelta voluta per non mettere codice non salvato dentro il repository.*
+- [x] Recovery storage per workspace sotto `.adomnia/recovery/<workspace-id>/`. — *Fatto: una chiave `recovery/<workspace-id>` per progetto nello store locale di adOmnia (bbolt in app data, mai nel repository); ogni snapshot riscrive solo il workspace toccato e lo store unico precedente migra al primo avvio (`TestRecoveryWritesOnlyTheTouchedWorkspace`, `TestRecoveryMigratesLegacyStoreIntoWorkspaces`).*
 - [x] Gestire disco pieno, permessi negati, snapshot corrotta, file cancellato, workspace spostato e shutdown durante la scrittura. — *Fatto: workspace spostato riagganciato per module path quando la vecchia cartella non esiste più (`BindProject`, `TestRecoveryFollowsAMovedProject`).*
 
 ### Test obbligatori
 
 - [x] Kill forzato durante editing con più file dirty → tutti i buffer devono essere recuperabili. — *Fatto: `TestKillDuringSnapshotWritesKeepsEveryBuffer` uccide davvero (Kill) un processo che riscrive 10 buffer su bbolt e li ritrova tutti integri; resta la finestra di debounce di ~750 ms dell'editor.*
 - [x] Kill durante scrittura snapshot → snapshot precedente ancora valida. — *Fatto: stesso test, kill a 0/37/113 ms durante scritture continue; la transazione bbolt lascia l'ultima snapshot completa con hash valido.*
-- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo verificato con 10 file (TestTenDirtyBuffers…); la reattività della UI va misurata a mano.*
-- [ ] Verifica Windows, macOS e Linux.
+- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
+- [ ] Verifica Windows, macOS e Linux. — *Test DR in CI su tutti e tre (`build.yml`: Linux in Checks, step "Go Studio disaster recovery" nei job Windows e macOS); verde in locale su Windows, da spuntare al primo run CI verde.*
 
 ## §2 · Editor Core
 

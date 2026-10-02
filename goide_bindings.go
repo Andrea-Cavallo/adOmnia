@@ -89,7 +89,40 @@ func (goIDERecoveryStore) Save(data []byte) error {
 	if storage.DB() == nil {
 		return fmt.Errorf("archivio locale non inizializzato")
 	}
+	if len(data) == 0 {
+		return storage.Delete("goide", goIDERecoveryKey)
+	}
 	return storage.Put("goide", goIDERecoveryKey, data)
+}
+
+// LoadWorkspaces legge le chiavi recovery/<workspace-id>: una per progetto.
+func (goIDERecoveryStore) LoadWorkspaces() (map[string][]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	keys, err := storage.List("goide", goide.RecoveryWorkspacePrefix)
+	if err != nil {
+		return nil, err
+	}
+	workspaces := make(map[string][]byte, len(keys))
+	for _, key := range keys {
+		data, err := storage.Get("goide", key)
+		if err != nil {
+			return nil, err
+		}
+		workspaces[strings.TrimPrefix(key, goide.RecoveryWorkspacePrefix)] = data
+	}
+	return workspaces, nil
+}
+
+func (goIDERecoveryStore) SaveWorkspace(workspaceID string, data []byte) error {
+	if storage.DB() == nil {
+		return fmt.Errorf("archivio locale non inizializzato")
+	}
+	if len(data) == 0 {
+		return storage.Delete("goide", goide.RecoveryWorkspacePrefix+workspaceID)
+	}
+	return storage.Put("goide", goide.RecoveryWorkspacePrefix+workspaceID, data)
 }
 
 type GoIDE struct {
