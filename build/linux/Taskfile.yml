@@ -7,11 +7,14 @@ tasks:
   build:
     deps:
       - task: common:build:frontend
+    env:
+      # Wails still needs deprecated GDK X11 accessors for window positioning.
+      # Suppress GDK deprecation annotations only, not other compiler warnings.
+      CGO_CFLAGS: '{{.CGO_CFLAGS | default "-O2 -g"}} -DGDK_DISABLE_DEPRECATION_WARNINGS'
     cmds:
-      # Linux releases target Wails' GTK3/WebKitGTK 4.1 backend. Keep both
-      # production and gtk3 here instead of relying on a Task variable that
-      # cannot be overridden through the packaging script's environment.
-      - go build -buildvcs=false -trimpath -tags 'production gtk3' -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
+      # Local builds use Wails' default GTK4/WebKitGTK 6 backend.
+      # Packaging can explicitly select the GTK3 compatibility backend.
+      - go build -buildvcs=false -trimpath -tags '{{.LINUX_BUILD_TAGS | default "production"}}' -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .
 
   package:
     summary: Build native Wails 3 Linux tarballs.

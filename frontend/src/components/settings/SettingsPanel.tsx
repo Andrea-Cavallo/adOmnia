@@ -183,15 +183,11 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   }, [])
 
   const [startupWindowChrome, setStartupWindowChrome] = useState<AppSettings['appearance']['windowChrome'] | null>(null)
-  const [runtimePlatform, setRuntimePlatform] = useState<string | null>(null)
 
   useEffect(() => {
     safeGetStartupWindowChrome()
       .then((mode) => setStartupWindowChrome(mode))
       .catch(() => setStartupWindowChrome(null))
-    import('@/wailsjs/runtime/runtime').then(({ Environment }) => Environment())
-      .then((env) => setRuntimePlatform(env.platform))
-      .catch(() => setRuntimePlatform(null))
   }, [])
 
   useEffect(() => {
@@ -327,23 +323,13 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     }
     return (total / 1024).toFixed(1)
   })()
-  const isLinuxRuntime = runtimePlatform === 'linux'
   const rawWindowChromeValue = settings.appearance.windowChrome ?? 'system'
-  const windowChromeValue = isLinuxRuntime
-    ? (rawWindowChromeValue === 'app' ? 'app-xwayland' : rawWindowChromeValue)
-    : (rawWindowChromeValue === 'system' ? 'system' : 'app')
-  const startupWindowChromeValue = isLinuxRuntime && startupWindowChrome === 'app'
-    ? 'app-xwayland'
-    : startupWindowChrome
-  const windowChromeOptions = isLinuxRuntime
-    ? [
-        { value: 'app-xwayland', label: s.appearance.windowChromeOptions.appXWayland },
-        { value: 'system', label: s.appearance.windowChromeOptions.system },
-      ]
-    : [
-        { value: 'app', label: s.appearance.windowChromeOptions.app },
-        { value: 'system', label: s.appearance.windowChromeOptions.system },
-      ]
+  const windowChromeValue = rawWindowChromeValue === 'system' ? 'system' : 'app'
+  const startupWindowChromeValue = startupWindowChrome === 'app-xwayland' ? 'app' : startupWindowChrome
+  const windowChromeOptions = [
+    { value: 'app', label: s.appearance.windowChromeOptions.app },
+    { value: 'system', label: s.appearance.windowChromeOptions.system },
+  ]
 
   return (
     <div className="flex h-full min-w-0 bg-surface-0">

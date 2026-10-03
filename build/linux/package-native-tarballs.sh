@@ -97,7 +97,7 @@ build_and_package() {
     # The frontend is identical across variants, so build it once up front and
     # only re-link the Go binary per target.
     VERSION="${VERSION}" BUILD_DATE="${BUILD_DATE}" GIT_COMMIT="${GIT_COMMIT}" \
-        GOFLAGS="-tags=gtk3" \
+        LINUX_BUILD_TAGS="production gtk3" \
         wails3 task linux:build
 
     if [ "$COMPRESS_WITH_UPX" = "1" ]; then
