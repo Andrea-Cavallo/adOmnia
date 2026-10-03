@@ -1,12 +1,14 @@
 package goide
 
 import (
+	"adomnia/internal/ide/language"
+	idetesting "adomnia/internal/ide/testing"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"adomnia/internal/languages/golang"
 )
@@ -24,109 +26,102 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	if err != nil {
 		return TestRunSnapshot{}, err
 	}
+	id := request.Language
+	if id == "" {
+		id = golang.ID
+	}
+	if id == golang.ID && len(request.LanguageOptions) > 0 {
+		var options TestRunRequest
+		if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
+			return TestRunSnapshot{}, fmt.Errorf("opzioni test Go non valide: %w", err)
+		}
+		options.SessionID, options.WorkingDirectory, options.Environment = request.SessionID, request.WorkingDirectory, request.Environment
+		options.Language, options.LanguageOptions = request.Language, request.LanguageOptions
+		request = options
+	}
 	for _, pattern := range request.Packages {
 		if err := validateRunTarget(session.Project.RealPath, moduleDir, strings.TrimSuffix(pattern, "/...")); err != nil {
 			return TestRunSnapshot{}, err
 		}
 	}
+
+	adapter, found := s.workspace.languages.Get(id)
+	runner, supported := adapter.(language.TestRunner)
+	if !found || !supported {
+		return TestRunSnapshot{}, fmt.Errorf("test non disponibili per %s", id)
+	}
 	coverageFile := ""
-	if request.Coverage {
-		coverageFile, err = newCoverageProfilePath()
+	binary := ""
+	if id == golang.ID {
+		binary, err = s.toolchain.GoBinary(session.ID)
+		if err != nil {
+			return TestRunSnapshot{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire i test")
+		}
+		if request.Coverage {
+			coverageFile, err = newCoverageProfilePath()
+			if err != nil {
+				return TestRunSnapshot{}, err
+			}
+		}
+	}
+	cleanupCoverage := coverageFile
+	startedOK := false
+	defer func() {
+		if !startedOK && cleanupCoverage != "" {
+			_ = os.Remove(cleanupCoverage)
+		}
+	}()
+	environment, err := s.executionEnvironment(session.ID, id, request.Environment)
+	if err != nil {
+		return TestRunSnapshot{}, err
+	}
+	options := request.LanguageOptions
+	if len(options) == 0 {
+		options, err = json.Marshal(request)
 		if err != nil {
 			return TestRunSnapshot{}, err
 		}
 	}
-	arguments, err := testArguments(request, coverageFile)
+	spec, parser, err := runner.TestCommand(idetesting.Request{Root: session.Project.RealPath, Executable: binary, WorkingDirectory: moduleDir, Environment: environment, CoverageFile: coverageFile, LanguageOptions: options})
 	if err != nil {
 		return TestRunSnapshot{}, err
 	}
-	binary, err := s.toolchain.GoBinary(session.ID)
-	if err != nil {
-		return TestRunSnapshot{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire i test")
-	}
-	environment, err := s.toolchain.Environment(session.ID, request.Environment)
-	if err != nil {
-		return TestRunSnapshot{}, err
-	}
+
 	request.SessionID = session.ID
 	relativeModule := filepath.ToSlash(relativeWithin(session.Project.RealPath, moduleDir))
-	run := &testRun{
-		tree: newTestTree(), moduleDir: relativeModule, modulePath: golang.ReadModulePath(filepath.Join(moduleDir, "go.mod")), coverageFile: coverageFile,
-		snapshot: TestRunSnapshot{SessionID: session.ID, Request: request, Status: TestRunning, StartedAt: time.Now().UTC(), Results: []TestResult{}},
+	modulePath := ""
+	if id == golang.ID {
+		modulePath = golang.ReadModulePath(filepath.Join(moduleDir, "go.mod"))
 	}
-	stopTicker := make(chan struct{})
-	spec := CommandSpec{
-		SessionID: session.ID, Kind: "tests", Executable: binary, Arguments: arguments, WorkingDirectory: moduleDir,
-		Environment: environment, DisplayCommand: displayCommand("go", arguments), QuietStdout: true,
-		OutputTap: func(stream string, data []byte) {
-			if stream == "stdout" {
-				run.consume(data)
+	var races golang.RaceCollector
+	var coverage *CoverageReport
+	hooks := idetesting.Hooks{
+		Metadata: func() json.RawMessage {
+			data, _ := json.Marshal(testMetadata{Coverage: coverage, RaceReports: races.Reports()})
+			return data
+		},
+		Publish: func(snapshot idetesting.Snapshot) {
+			s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), hostTestSnapshot(snapshot))
+		},
+	}
+	if id == golang.ID {
+		hooks.Line = races.ConsumeJSON
+		hooks.Results = func(results []TestResult) { golang.ResolveTestLocations(results, relativeModule, modulePath) }
+		hooks.Finish = func(_ Execution) {
+			if coverageFile != "" {
+				coverage, _ = loadCoverage(session.Project.RealPath, relativeModule, modulePath, coverageFile)
+				_ = os.Remove(coverageFile)
 			}
-		},
-		OnExit: func(execution Execution) {
-			close(stopTicker)
-			s.finishTests(session, run, execution)
-		},
-	}
-	execution, err := s.processes.Start(spec)
-	if err != nil {
-		if coverageFile != "" {
-			_ = os.Remove(coverageFile)
 		}
+	}
+	spec.SessionID, spec.Kind = session.ID, "tests"
+	payload, _ := json.Marshal(request)
+	snapshot, err := s.tests.core.Start(s.processes, spec, parser, payload, hooks)
+	if err != nil {
 		return TestRunSnapshot{}, err
 	}
-	run.mu.Lock()
-	run.snapshot.RunID = execution.ID
-	run.snapshot.Command = execution.Command
-	run.mu.Unlock()
-	s.tests.register(run)
-	go s.publishTestProgress(run, stopTicker)
-	snapshot, _ := run.publishable(true)
-	return snapshot, nil
-}
-
-// publishTestProgress invia al più un aggiornamento ogni testUpdateInterval mentre i test girano.
-func (s *Service) publishTestProgress(run *testRun, stop <-chan struct{}) {
-	ticker := time.NewTicker(testUpdateInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-stop:
-			return
-		case <-ticker.C:
-			if snapshot, ok := run.publishable(false); ok {
-				s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), snapshot)
-			}
-		}
-	}
-}
-
-// finishTests chiude l'albero, legge la coverage se richiesta e pubblica lo stato finale.
-func (s *Service) finishTests(session Session, run *testRun, execution Execution) {
-	run.mu.Lock()
-	run.finished = true
-	status := execution.Status
-	if status == "exited" || status == "failed" {
-		status = "finished"
-	}
-	run.snapshot.Status = status
-	finishedAt := time.Now().UTC()
-	if execution.FinishedAt != nil {
-		finishedAt = execution.FinishedAt.UTC()
-	}
-	run.snapshot.FinishedAt = &finishedAt
-	coverageFile := run.coverageFile
-	run.mu.Unlock()
-	if coverageFile != "" {
-		report, err := loadCoverage(session.Project.RealPath, run.moduleDir, run.modulePath, coverageFile)
-		run.mu.Lock()
-		if err == nil {
-			run.snapshot.Coverage = report
-		}
-		run.mu.Unlock()
-	}
-	snapshot, _ := run.publishable(true)
-	s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), snapshot)
+	startedOK = true
+	return hostTestSnapshot(snapshot), nil
 }
 
 func newCoverageProfilePath() (string, error) {

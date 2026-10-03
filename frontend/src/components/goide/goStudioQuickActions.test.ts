@@ -9,7 +9,7 @@ vi.mock('@/stores/goideVcs', () => ({ useGoIDEVCSStore: { getState: vi.fn() } })
 import { changedPackageTestRequests, fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
 
 const session = (modules: string[]) => ({
-  project: { realPath: '/work/repo', modules: modules.map((path) => ({ path, modulePath: '' })) },
+  project: { realPath: '/work/repo', units: modules.map((root) => ({ language: 'go', kind: 'module', root, name: '' })) },
 }) as unknown as Parameters<typeof moduleScopeFor>[0]
 
 describe('moduleScopeFor', () => {
@@ -22,7 +22,7 @@ describe('moduleScopeFor', () => {
 
   it('falls back to the first module without an active file and handles Windows paths', () => {
     expect(moduleScopeFor(session(['/work/repo/svc']), null)).toEqual({ moduleDirectory: 'svc', packageTarget: '.' })
-    const windows = { project: { realPath: 'C:\\work\\repo', modules: [{ path: 'C:\\work\\repo\\svc', modulePath: '' }] } } as unknown as Parameters<typeof moduleScopeFor>[0]
+    const windows = { project: { realPath: 'C:\\work\\repo', units: [{ language: 'go', kind: 'module', root: 'C:\\work\\repo\\svc', name: '' }] } } as unknown as Parameters<typeof moduleScopeFor>[0]
     expect(moduleScopeFor(windows, 'svc/api/a.go')).toEqual({ moduleDirectory: 'svc', packageTarget: './api' })
   })
 

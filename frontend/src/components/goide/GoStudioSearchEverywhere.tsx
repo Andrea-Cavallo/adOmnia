@@ -14,7 +14,7 @@ import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { matchScore, rankCandidates } from './goStudioSearchRanking'
 import { testRequestForTarget } from './goStudioQuickActions'
-import { pinnedFirst } from './goStudioRunHistory'
+import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
 import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, rememberCommand, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
 import { GoStudioPalette } from './GoStudioModal'
 

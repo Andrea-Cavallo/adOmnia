@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => ({}) } }))
 
 const { contextRunTarget } = await import('./goStudioRunTargets')
-const { pinnedFirst } = await import('./goStudioRunHistory')
+const { pinnedFirst } = await import('@/lib/goide/goStudioRunHistory')
 const { runsToRestart } = await import('./goStudioRunOnSave')
 
 const TEST_FILE = ['package geom', '', 'func TestArea(t *testing.T) {', '\tt.Log("a")', '}', '', 'func TestPerimeter(t *testing.T) {', '\tt.Log("p")', '}', ''].join('\n')

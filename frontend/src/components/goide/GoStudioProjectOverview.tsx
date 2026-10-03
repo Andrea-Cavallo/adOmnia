@@ -1,3 +1,4 @@
+import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { AlertTriangle, Boxes, FileCode2, FolderTree, Layers } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
@@ -25,15 +26,15 @@ function SectionTitle({ icon, label, count }: { icon: React.ReactNode; label: st
 export function GoStudioProjectOverview({ session }: GoStudioProjectOverviewProps) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const { project } = session
-  const modules = project.modules ?? []
-  const looseDirectories = project.looseGoDirs ?? []
+  const modules = goModules(project)
+  const looseDirectories = goProjectLayout(project).looseGoDirs
   const roots = [project.realPath, project.rootPath]
   const relative = (path: string) => relativeTo(roots.find((root) => relativeTo(root, path) !== path) ?? project.rootPath, path)
 
   return (
       <div aria-label="Project overview" className="min-h-0 flex-1 overflow-auto pb-2 text-[10px]">
         <SectionTitle icon={<Layers size={10} />} label="Go workspace" />
-        {project.goWorkPath ? (
+        {goProjectLayout(project).goWorkPath ? (
           <button type="button" onClick={() => void openDocument('go.work')} className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-text-2 hover:bg-surface-3 hover:text-text-1"><FileCode2 size={11} className="text-accent" /> go.work</button>
         ) : <p className="px-2 py-1 text-text-4">{modules.length > 1 ? 'No go.work: modules build independently.' : 'No go.work file.'}</p>}
 

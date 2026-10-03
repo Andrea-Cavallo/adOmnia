@@ -9,12 +9,12 @@ vi.mock('@/lib/goide-lsp-api', () => ({}))
 
 import { breakpointDecorations, executionDecorations, expressionAt } from './goStudioDebugEditor'
 import { debugRequestForTarget } from './goStudioQuickActions'
-import { debugRequestForNode } from './goStudioTestTree'
+import { debugRequestForNode } from '@/lib/goide/goStudioTestTree'
 import { executionPoint, hasLiveDebugger, type GoIDEDebugView } from '@/stores/goideDebug'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoIDETestRun } from '@/lib/goide-tests-api'
 
-const session = { id: 's1', project: { realPath: '/work/app', modules: [{ path: '/work/app' }] } } as unknown as GoIDESession
+const session = { id: 's1', project: { realPath: '/work/app', units: [{ language: 'go', kind: 'module', root: '/work/app' }] } } as unknown as GoIDESession
 
 function view(state: string, frames: GoIDEDebugView['frames'], frameId: number | null): GoIDEDebugView {
   return {

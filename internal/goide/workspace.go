@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/language"
+	"adomnia/internal/ide/project"
 	"adomnia/internal/languages/golang"
 )
 
@@ -139,8 +140,6 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 	}
 	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath)
 	session.Project.Units = fresh.Units
-	session.Project.Modules, session.Project.LooseGoDirs = fresh.Modules, fresh.LooseGoDirs
-	session.Project.GoModPath, session.Project.GoWorkPath = fresh.GoModPath, fresh.GoWorkPath
 	session.UpdatedAt = time.Now().UTC()
 	m.sessions[id] = session
 	return session, nil
@@ -169,6 +168,10 @@ func (m *WorkspaceManager) ReplaceSessions(sessions []Session) {
 		info, err := os.Stat(session.Project.RealPath)
 		if err != nil || !info.IsDir() {
 			continue
+		}
+		if session.Project.Units == nil {
+			// Sessione salvata prima delle unità (campi goModPath/modules ora rimossi): rileggi il progetto.
+			session.Project.Units = inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath).Units
 		}
 		m.sessions[session.ID] = session
 	}
@@ -216,37 +219,46 @@ func inspectProject(languages *language.Registry, root, realRoot string) Project
 		Name:          filepath.Base(root),
 		RootPath:      root,
 		RealPath:      realRoot,
-		Modules:       []GoModule{},
 		Authorization: AuthorizationOpened,
 	}
 	// La detection di un linguaggio non blocca l'apertura: un detector in errore restituisce
 	// comunque le unità trovate (come prima, quando gli errori del walk venivano ignorati).
 	result.Units, _ = languages.DetectUnits(context.Background(), root)
-	applyGoUnits(&result)
+	if result.Units == nil {
+		result.Units = []project.Unit{}
+	}
 	return result
 }
 
-// applyGoUnits deriva i campi Go legacy di Project dalle unità Go, finché il frontend li legge
-// (rimozione prevista nella Fase 11 del refactor multi-language).
-func applyGoUnits(target *Project) {
-	for _, unit := range target.Units {
+// goLayout è la vista Go di un progetto: moduli, go.work e cartelle sciolte, derivati dalle unità.
+type goLayout struct {
+	GoModPath   string
+	GoWorkPath  string
+	Modules     []GoModule
+	LooseGoDirs []string
+}
+
+func goLayoutOf(source Project) goLayout {
+	target := goLayout{Modules: []GoModule{}}
+	for _, unit := range source.Units {
 		if unit.Language != golang.ID {
 			continue
 		}
 		switch unit.Kind {
 		case golang.UnitModule:
 			target.Modules = append(target.Modules, GoModule{Path: unit.Root, ModulePath: unit.Name})
-			if samePath(unit.Root, target.RootPath) {
-				target.GoModPath = filepath.Join(target.RootPath, "go.mod")
+			if samePath(unit.Root, source.RootPath) {
+				target.GoModPath = filepath.Join(source.RootPath, "go.mod")
 			}
 		case golang.UnitWorkspace:
 			target.GoWorkPath = unit.Manifest
 		case golang.UnitLoose:
-			if rel, err := filepath.Rel(target.RootPath, unit.Root); err == nil {
+			if rel, err := filepath.Rel(source.RootPath, unit.Root); err == nil {
 				target.LooseGoDirs = append(target.LooseGoDirs, filepath.ToSlash(rel))
 			}
 		}
 	}
+	return target
 }
 
 func newID(prefix string) string {

@@ -1,50 +1,13 @@
 package goide
 
 import (
-	"bytes"
-	"fmt"
-	"path"
-	"path/filepath"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
+	"adomnia/internal/ide/testing"
+	"adomnia/internal/languages/golang"
+	"encoding/json"
 	"time"
 )
 
-const (
-	testUpdateInterval = 250 * time.Millisecond
-	maxTestRunHistory  = 20
-	maxTestPatterns    = 64
-	maxTestRepeat      = 1000
-)
-
-var shuffleSeed = regexp.MustCompile(`^(on|-?\d{1,19})$`)
-
-// TestRunRequest descrive un'esecuzione di `go test -json`: package, filtro -run, benchmark e coverage.
-type TestRunRequest struct {
-	SessionID SessionID `json:"sessionId"`
-	// WorkingDirectory è la cartella del modulo, relativa al progetto ('' per la radice).
-	WorkingDirectory string `json:"workingDirectory"`
-	// Packages sono pattern relativi al modulo, es. "./..." o "./internal/api".
-	Packages []string `json:"packages"`
-	// Run è l'espressione regolare di -run; vuota esegue tutti i test.
-	Run string `json:"run,omitempty"`
-	// Bench abilita i benchmark con l'espressione indicata (i test vengono esclusi con -run ^$ se Run è vuoto).
-	Bench    string `json:"bench,omitempty"`
-	Coverage bool   `json:"coverage,omitempty"`
-	// Race attiva il race detector (-race): i report finiscono in TestRunSnapshot.RaceReports.
-	Race        bool              `json:"race,omitempty"`
-	BuildTags   []string          `json:"buildTags,omitempty"`
-	Environment map[string]string `json:"environment,omitempty"`
-	// Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
-	Repeat int `json:"repeat,omitempty"`
-	// Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
-	Shuffle string `json:"shuffle,omitempty"`
-	// CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.
-	CPU []int `json:"cpu,omitempty"`
-}
+type TestRunRequest = golang.TestOptions
 
 // TestRunSnapshot è lo stato di un'esecuzione di test; Results non include l'output dei singoli nodi.
 type TestRunSnapshot struct {
@@ -65,235 +28,34 @@ type TestRunSnapshot struct {
 	RaceReports []string `json:"raceReports,omitempty"`
 }
 
-type testRun struct {
-	mu            sync.Mutex
-	snapshot      TestRunSnapshot
-	tree          *testTree
-	pending       []byte
-	dirty         bool
-	moduleDir     string
-	modulePath    string
-	coverageFile  string
-	finished      bool
-	lastPublished time.Time
-	races         raceCollector
+type TestManager struct{ core *testing.Manager }
+
+func NewTestManager() *TestManager { return &TestManager{core: testing.NewManager()} }
+
+var testArguments = golang.TestArguments
+
+type testMetadata struct {
+	Coverage    *CoverageReport `json:"coverage,omitempty"`
+	RaceReports []string        `json:"raceReports,omitempty"`
 }
 
-// TestManager tiene gli alberi delle esecuzioni di test per sessione, con uno storico limitato.
-type TestManager struct {
-	mu   sync.Mutex
-	runs map[RunID]*testRun
+func hostTestSnapshot(s testing.Snapshot) TestRunSnapshot {
+	var request TestRunRequest
+	_ = json.Unmarshal(s.Request, &request)
+	var meta testMetadata
+	_ = json.Unmarshal(s.Metadata, &meta)
+	return TestRunSnapshot{RunID: s.RunID, SessionID: s.SessionID, Request: request, Command: s.Command, Status: s.Status, Summary: s.Summary, Results: s.Results, Overflow: s.Overflow, StartedAt: s.StartedAt, FinishedAt: s.FinishedAt, Coverage: meta.Coverage, RaceReports: meta.RaceReports}
 }
-
-func NewTestManager() *TestManager {
-	return &TestManager{runs: make(map[RunID]*testRun)}
+func (m *TestManager) Snapshot(id RunID) (TestRunSnapshot, error) {
+	s, err := m.core.Snapshot(id)
+	return hostTestSnapshot(s), err
 }
-
-// testArguments costruisce gli argomenti di go test senza shell, rifiutando espressioni non valide.
-func testArguments(request TestRunRequest, coverageFile string) ([]string, error) {
-	packages := request.Packages
-	if len(packages) == 0 {
-		packages = []string{"./..."}
+func (m *TestManager) Output(id RunID, node string) (string, error) { return m.core.Output(id, node) }
+func (m *TestManager) List(id SessionID) []TestRunSnapshot {
+	out := []TestRunSnapshot{}
+	for _, s := range m.core.List(id) {
+		out = append(out, hostTestSnapshot(s))
 	}
-	if len(packages) > maxTestPatterns {
-		return nil, fmt.Errorf("troppi package: massimo %d", maxTestPatterns)
-	}
-	for _, expression := range []string{request.Run, request.Bench} {
-		if _, err := regexp.Compile(strings.ReplaceAll(expression, "/", "|")); err != nil {
-			return nil, fmt.Errorf("espressione di filtro non valida %q: %w", expression, err)
-		}
-	}
-	if request.Repeat < 0 || request.Repeat > maxTestRepeat {
-		return nil, fmt.Errorf("ripetizioni non valide: da 1 a %d", maxTestRepeat)
-	}
-	if request.Shuffle != "" && !shuffleSeed.MatchString(request.Shuffle) {
-		return nil, fmt.Errorf("shuffle non valido %q: usa \"on\" o un seed numerico", request.Shuffle)
-	}
-	arguments := []string{"test", "-json", fmt.Sprintf("-count=%d", max(1, request.Repeat))}
-	if request.Shuffle != "" {
-		arguments = append(arguments, "-shuffle="+request.Shuffle)
-	}
-	if len(request.CPU) > 0 {
-		values := make([]string, 0, len(request.CPU))
-		for _, cpu := range request.CPU {
-			if cpu < 1 || cpu > 1024 || len(request.CPU) > 16 {
-				return nil, fmt.Errorf("valori -cpu non validi: da 1 a 1024, al massimo 16")
-			}
-			values = append(values, strconv.Itoa(cpu))
-		}
-		arguments = append(arguments, "-cpu="+strings.Join(values, ","))
-	}
-	if len(request.BuildTags) > 0 {
-		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
-	}
-	if request.Race {
-		arguments = append(arguments, "-race")
-	}
-	switch {
-	case request.Run != "":
-		arguments = append(arguments, "-run", request.Run)
-	case request.Bench != "":
-		arguments = append(arguments, "-run", "^$")
-	}
-	if request.Bench != "" {
-		arguments = append(arguments, "-bench", request.Bench, "-benchmem")
-	}
-	if coverageFile != "" {
-		arguments = append(arguments, "-coverprofile", coverageFile)
-	}
-	return append(arguments, packages...), nil
+	return out
 }
-
-func (m *TestManager) register(run *testRun) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.runs[run.snapshot.RunID] = run
-	if len(m.runs) <= maxTestRunHistory {
-		return
-	}
-	var oldest *testRun
-	for _, candidate := range m.runs {
-		candidate.mu.Lock()
-		finished := candidate.finished
-		candidate.mu.Unlock()
-		if finished && (oldest == nil || candidate.snapshot.StartedAt.Before(oldest.snapshot.StartedAt)) {
-			oldest = candidate
-		}
-	}
-	if oldest != nil {
-		delete(m.runs, oldest.snapshot.RunID)
-	}
-}
-
-func (m *TestManager) run(runID RunID) (*testRun, bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	run, ok := m.runs[runID]
-	return run, ok
-}
-
-// consume divide lo stdout di go test in righe JSON complete e le applica all'albero.
-func (run *testRun) consume(data []byte) {
-	run.mu.Lock()
-	defer run.mu.Unlock()
-	run.pending = append(run.pending, data...)
-	for {
-		newline := bytes.IndexByte(run.pending, '\n')
-		if newline < 0 {
-			break
-		}
-		run.tree.apply(run.pending[:newline])
-		run.races.consumeJSON(run.pending[:newline])
-		run.pending = run.pending[newline+1:]
-		run.dirty = true
-	}
-}
-
-// publishable restituisce lo snapshot da inviare se è cambiato e l'intervallo minimo è trascorso.
-func (run *testRun) publishable(force bool) (TestRunSnapshot, bool) {
-	run.mu.Lock()
-	defer run.mu.Unlock()
-	if !force && (!run.dirty || time.Since(run.lastPublished) < testUpdateInterval) {
-		return TestRunSnapshot{}, false
-	}
-	run.dirty = false
-	run.lastPublished = time.Now()
-	return run.snapshotLocked(false), true
-}
-
-func (run *testRun) snapshotLocked(withOutput bool) TestRunSnapshot {
-	results, summary := run.tree.snapshot()
-	for index := range results {
-		if !withOutput {
-			results[index].Output = ""
-		}
-		if results[index].Name == "" {
-			results[index].Directory = run.packageDirectory(results[index].Package)
-		}
-		if failure := results[index].Failure; failure != nil {
-			resolved := *failure
-			resolved.RelativePath = run.resolveFailure(results[index], failure.File)
-			results[index].Failure = &resolved
-		}
-	}
-	snapshot := run.snapshot
-	snapshot.Results = results
-	snapshot.Summary = summary
-	snapshot.Overflow = run.tree.overflowed
-	snapshot.RaceReports = run.races.reports()
-	return snapshot
-}
-
-// resolveFailure porta il file citato nel fallimento a un percorso relativo al progetto:
-// gli errori di build sono relativi al modulo, le righe dei test alla cartella del package.
-func (run *testRun) resolveFailure(result TestResult, file string) string {
-	file = filepath.ToSlash(file)
-	if result.BuildFailed || strings.Contains(file, "/") {
-		return path.Clean(path.Join(run.moduleDir, file))
-	}
-	return path.Clean(path.Join(run.packageDirectory(result.Package), file))
-}
-
-func (run *testRun) packageDirectory(importPath string) string {
-	if run.modulePath == "" || !strings.HasPrefix(importPath, run.modulePath) {
-		return run.moduleDir
-	}
-	return path.Join(run.moduleDir, strings.TrimPrefix(strings.TrimPrefix(importPath, run.modulePath), "/"))
-}
-
-// Snapshot restituisce l'esecuzione completa, con l'output di ogni nodo.
-func (m *TestManager) Snapshot(runID RunID) (TestRunSnapshot, error) {
-	run, ok := m.run(runID)
-	if !ok {
-		return TestRunSnapshot{}, fmt.Errorf("esecuzione di test non trovata")
-	}
-	run.mu.Lock()
-	defer run.mu.Unlock()
-	return run.snapshotLocked(true), nil
-}
-
-// Output restituisce l'output di un solo nodo dell'albero.
-func (m *TestManager) Output(runID RunID, nodeID string) (string, error) {
-	run, ok := m.run(runID)
-	if !ok {
-		return "", fmt.Errorf("esecuzione di test non trovata")
-	}
-	run.mu.Lock()
-	defer run.mu.Unlock()
-	node, ok := run.tree.nodes[nodeID]
-	if !ok {
-		return "", fmt.Errorf("test non trovato")
-	}
-	return node.Output, nil
-}
-
-// List restituisce le esecuzioni di test della sessione, dalla più recente, senza output.
-func (m *TestManager) List(sessionID SessionID) []TestRunSnapshot {
-	m.mu.Lock()
-	runs := make([]*testRun, 0, len(m.runs))
-	for _, run := range m.runs {
-		if run.snapshot.SessionID == sessionID {
-			runs = append(runs, run)
-		}
-	}
-	m.mu.Unlock()
-	snapshots := make([]TestRunSnapshot, 0, len(runs))
-	for _, run := range runs {
-		run.mu.Lock()
-		snapshots = append(snapshots, run.snapshotLocked(false))
-		run.mu.Unlock()
-	}
-	sort.Slice(snapshots, func(left, right int) bool { return snapshots[left].StartedAt.After(snapshots[right].StartedAt) })
-	return snapshots
-}
-
-// CloseSession dimentica le esecuzioni di test della sessione chiusa.
-func (m *TestManager) CloseSession(sessionID SessionID) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for id, run := range m.runs {
-		if run.snapshot.SessionID == sessionID {
-			delete(m.runs, id)
-		}
-	}
-}
+func (m *TestManager) CloseSession(id SessionID) { m.core.CloseSession(id) }

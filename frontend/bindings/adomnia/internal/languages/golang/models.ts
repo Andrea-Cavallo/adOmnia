@@ -5,6 +5,137 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as dap$0 from "../../ide/dap/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as run$0 from "../../ide/run/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as json$0 from "../../../../encoding/json/models.js";
+
+export const DebugFrame = dap$0.DebugFrame;
+export type DebugFrame = dap$0.DebugFrame;
+
+/**
+ * DebugMemory è un blocco di memoria del processo in pausa.
+ */
+export class DebugMemory {
+    "address": string;
+    "bytes": number[];
+
+    /**
+     * Error spiega perché la lettura si è fermata prima di length byte (memoria non leggibile).
+     */
+    "error"?: string;
+
+    /** Creates a new DebugMemory instance. */
+    constructor($$source: Partial<DebugMemory> = {}) {
+        if (!("address" in $$source)) {
+            this["address"] = "";
+        }
+        if (!("bytes" in $$source)) {
+            this["bytes"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DebugMemory instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DebugMemory {
+        const $$createField1_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("bytes" in $$parsedSource) {
+            $$parsedSource["bytes"] = $$createField1_0($$parsedSource["bytes"]);
+        }
+        return new DebugMemory($$parsedSource as Partial<DebugMemory>);
+    }
+}
+
+export class DebugRequest {
+    "sessionId": dap$0.SessionID;
+
+    /**
+     * Mode è "debug" (programma), "test", "attach" (processo locale) o "remote" (dlv --headless già avviato).
+     */
+    "mode": string;
+
+    /**
+     * ProcessID è il processo a cui agganciarsi in modalità attach.
+     */
+    "processId"?: number;
+
+    /**
+     * Address è host:porta del server Delve in modalità remote.
+     */
+    "address"?: string;
+
+    /**
+     * WorkingDirectory è la cartella del modulo relativa al progetto.
+     */
+    "workingDirectory": string;
+
+    /**
+     * Target è il package relativo al modulo, es. "." o "./cmd/api".
+     */
+    "target": string;
+    "testName"?: string;
+    "programArguments"?: string[];
+    "buildTags"?: string[];
+    "environment"?: { [_ in string]?: string };
+
+    /**
+     * EnvFile e BuildFlags arrivano dalla configurazione Run attiva.
+     */
+    "envFile"?: string;
+    "buildFlags"?: string[];
+
+    /** Creates a new DebugRequest instance. */
+    constructor($$source: Partial<DebugRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("mode" in $$source)) {
+            this["mode"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DebugRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DebugRequest {
+        const $$createField7_0 = $$createType1;
+        const $$createField8_0 = $$createType1;
+        const $$createField9_0 = $$createType2;
+        const $$createField11_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField7_0($$parsedSource["programArguments"]);
+        }
+        if ("buildTags" in $$parsedSource) {
+            $$parsedSource["buildTags"] = $$createField8_0($$parsedSource["buildTags"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField9_0($$parsedSource["environment"]);
+        }
+        if ("buildFlags" in $$parsedSource) {
+            $$parsedSource["buildFlags"] = $$createField11_0($$parsedSource["buildFlags"]);
+        }
+        return new DebugRequest($$parsedSource as Partial<DebugRequest>);
+    }
+}
+
 /**
  * DelveInfo descrive il binario dlv trovato per la sessione.
  */
@@ -107,6 +238,149 @@ export class GoplsSettings {
     }
 }
 
+/**
+ * GoroutineCreation è l'istruzione `go` che ha creato una goroutine e la goroutine che l'ha eseguita.
+ */
+export class GoroutineCreation {
+    /**
+     * Location è la riga dell'istruzione go; nil per le goroutine create dal runtime (es. main).
+     */
+    "location"?: DebugFrame | null;
+
+    /**
+     * SourceLine è il testo di Location.
+     */
+    "sourceLine"?: string;
+
+    /**
+     * ParentID è la goroutine che ha eseguito l'istruzione go (Go 1.21+); 0 se non nota.
+     */
+    "parentId"?: number;
+
+    /** Creates a new GoroutineCreation instance. */
+    constructor($$source: Partial<GoroutineCreation> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoroutineCreation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoroutineCreation {
+        const $$createField0_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
+        }
+        return new GoroutineCreation($$parsedSource as Partial<GoroutineCreation>);
+    }
+}
+
+/**
+ * GoroutineOverview è l'istantanea di tutte le goroutine alla pausa corrente.
+ */
+export class GoroutineOverview {
+    "goroutines": GoroutineSummary[];
+
+    /**
+     * Truncated indica che le goroutine erano più di maxGoroutineOverview.
+     */
+    "truncated"?: boolean;
+
+    /** Creates a new GoroutineOverview instance. */
+    constructor($$source: Partial<GoroutineOverview> = {}) {
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoroutineOverview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoroutineOverview {
+        const $$createField0_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("goroutines" in $$parsedSource) {
+            $$parsedSource["goroutines"] = $$createField0_0($$parsedSource["goroutines"]);
+        }
+        return new GoroutineOverview($$parsedSource as Partial<GoroutineOverview>);
+    }
+}
+
+/**
+ * GoroutineSummary è una goroutine vista dall'IDE: stato, causa del blocco, dove si trova e dove è partita.
+ */
+export class GoroutineSummary {
+    "id": number;
+    "name": string;
+    "current": boolean;
+    "state": string;
+
+    /**
+     * BlockedOn è l'espressione su cui la goroutine aspetta (es. "s.orderChannel"), letta dalla riga di codice.
+     */
+    "blockedOn"?: string;
+
+    /**
+     * Location è il frame di progetto più in alto: la riga che l'utente riconosce.
+     */
+    "location"?: DebugFrame | null;
+
+    /**
+     * SourceLine è il testo di Location, per mostrare "84 │ order := <-s.orderChannel".
+     */
+    "sourceLine"?: string;
+
+    /**
+     * Origin è il frame di progetto più in basso: la funzione avviata dall'istruzione go.
+     */
+    "origin"?: DebugFrame | null;
+    "frames": DebugFrame[];
+
+    /** Creates a new GoroutineSummary instance. */
+    constructor($$source: Partial<GoroutineSummary> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("current" in $$source)) {
+            this["current"] = false;
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("frames" in $$source)) {
+            this["frames"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoroutineSummary instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoroutineSummary {
+        const $$createField5_0 = $$createType4;
+        const $$createField7_0 = $$createType4;
+        const $$createField8_0 = $$createType7;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField5_0($$parsedSource["location"]);
+        }
+        if ("origin" in $$parsedSource) {
+            $$parsedSource["origin"] = $$createField7_0($$parsedSource["origin"]);
+        }
+        if ("frames" in $$parsedSource) {
+            $$parsedSource["frames"] = $$createField8_0($$parsedSource["frames"]);
+        }
+        return new GoroutineSummary($$parsedSource as Partial<GoroutineSummary>);
+    }
+}
+
 export class InstallToolchainRequest {
     "sessionId": string;
     "version": string;
@@ -165,6 +439,136 @@ export class InstalledToolchain {
     }
 }
 
+/**
+ * PendingDefer è un defer registrato a runtime e non ancora eseguito.
+ */
+export class PendingDefer {
+    /**
+     * Order è la posizione di esecuzione: 1 parte per primo al ritorno o durante un panic.
+     */
+    "order": number;
+
+    /**
+     * Location è la riga dell'istruzione defer; Location.Name è la funzione che l'ha registrato.
+     */
+    "location"?: DebugFrame | null;
+    "sourceLine"?: string;
+
+    /**
+     * Wrapper è la funzione che il runtime chiamerà (per Go ≥ 1.18 un wrapper come main.f.deferwrap1).
+     */
+    "wrapper"?: string;
+
+    /** Creates a new PendingDefer instance. */
+    constructor($$source: Partial<PendingDefer> = {}) {
+        if (!("order" in $$source)) {
+            this["order"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PendingDefer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PendingDefer {
+        const $$createField1_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("location" in $$parsedSource) {
+            $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
+        }
+        return new PendingDefer($$parsedSource as Partial<PendingDefer>);
+    }
+}
+
+export class TestOptions {
+    "language"?: string;
+    "languageOptions"?: json$0.RawMessage;
+    "sessionId": run$0.SessionID;
+
+    /**
+     * WorkingDirectory è la cartella del modulo, relativa al progetto ('' per la radice).
+     */
+    "workingDirectory": string;
+
+    /**
+     * Packages sono pattern relativi al modulo, es. "./..." o "./internal/api".
+     */
+    "packages": string[];
+
+    /**
+     * Run è l'espressione regolare di -run; vuota esegue tutti i test.
+     */
+    "run"?: string;
+
+    /**
+     * Bench abilita i benchmark con l'espressione indicata (i test vengono esclusi con -run ^$ se Run è vuoto).
+     */
+    "bench"?: string;
+    "coverage"?: boolean;
+
+    /**
+     * Race attiva il race detector (-race): i report finiscono in TestRunSnapshot.RaceReports.
+     */
+    "race"?: boolean;
+    "buildTags"?: string[];
+    "environment"?: { [_ in string]?: string };
+
+    /**
+     * Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
+     */
+    "repeat"?: number;
+
+    /**
+     * Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
+     */
+    "shuffle"?: string;
+
+    /**
+     * CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.
+     */
+    "cpu"?: number[];
+
+    /** Creates a new TestOptions instance. */
+    constructor($$source: Partial<TestOptions> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("packages" in $$source)) {
+            this["packages"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TestOptions instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TestOptions {
+        const $$createField4_0 = $$createType1;
+        const $$createField9_0 = $$createType1;
+        const $$createField10_0 = $$createType2;
+        const $$createField13_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
+        }
+        if ("buildTags" in $$parsedSource) {
+            $$parsedSource["buildTags"] = $$createField9_0($$parsedSource["buildTags"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField10_0($$parsedSource["environment"]);
+        }
+        if ("cpu" in $$parsedSource) {
+            $$parsedSource["cpu"] = $$createField13_0($$parsedSource["cpu"]);
+        }
+        return new TestOptions($$parsedSource as Partial<TestOptions>);
+    }
+}
+
 export class ToolchainConfiguration {
     "goBinary": string;
     "environment"?: { [_ in string]?: string };
@@ -182,7 +586,7 @@ export class ToolchainConfiguration {
      * Creates a new ToolchainConfiguration instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainConfiguration {
-        const $$createField1_0 = $$createType0;
+        const $$createField1_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
@@ -256,7 +660,7 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType2;
+        const $$createField23_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("timings" in $$parsedSource) {
             $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
@@ -307,7 +711,7 @@ export class ToolchainInstallation {
      * Creates a new ToolchainInstallation instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInstallation {
-        const $$createField8_0 = $$createType3;
+        const $$createField8_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("log" in $$parsedSource) {
             $$parsedSource["log"] = $$createField8_0($$parsedSource["log"]);
@@ -381,8 +785,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType5;
-        const $$createField1_0 = $$createType4;
+        const $$createField0_0 = $$createType11;
+        const $$createField1_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -424,9 +828,15 @@ export class ToolchainTiming {
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Map($Create.Any, $Create.Any);
-const $$createType1 = ToolchainTiming.createFrom;
-const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = ToolchainConfiguration.createFrom;
-const $$createType5 = $Create.Nullable($$createType4);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = $Create.Array($Create.Any);
+const $$createType2 = $Create.Map($Create.Any, $Create.Any);
+const $$createType3 = dap$0.DebugFrame.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);
+const $$createType5 = GoroutineSummary.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Array($$createType3);
+const $$createType8 = ToolchainTiming.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = ToolchainConfiguration.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);

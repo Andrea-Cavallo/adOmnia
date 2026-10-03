@@ -1,3 +1,4 @@
+import { languageServerEditorLanguages } from '@/components/ide/languages'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
 import {
@@ -23,7 +24,8 @@ import { lintActionsFor } from './goStudioLintActions'
 import { editorModelUri, fileUri } from './goStudioModelUri'
 import { fixGoStudioProblemWithAI, goStudioAIFixAvailable } from './goStudioAIFixRunner'
 
-const LANGUAGE = 'go'
+// Provider LSP generici: valgono per ogni linguaggio servito da un language server.
+const LANGUAGE = languageServerEditorLanguages()
 const MARKER_OWNER = 'gopls'
 const LINT_MARKER_OWNER = 'lint'
 export const APPLY_CODE_ACTION_COMMAND = 'goStudio.applyCodeAction'

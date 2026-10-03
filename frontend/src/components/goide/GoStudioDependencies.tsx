@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, ArrowUpCircle, History, Loader2, Package, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
 import { listGoIDEDependencies, listGoIDEModuleVersions, startGoIDEDependencyAction, type GoIDEDependencyState, type GoIDESession } from '@/lib/goide-api'
@@ -14,7 +15,7 @@ interface GoStudioDependenciesProps {
 }
 
 export function GoStudioDependencies({ open, session, onClose }: GoStudioDependenciesProps) {
-  const [moduleDirectory, setModuleDirectory] = useState(session.project.modules[0]?.path ?? '')
+  const [moduleDirectory, setModuleDirectory] = useState(goModules(session.project)[0]?.path ?? '')
   const [state, setState] = useState<GoIDEDependencyState | null>(null)
   const [modulePath, setModulePath] = useState('')
   const [version, setVersion] = useState('latest')
@@ -36,7 +37,7 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
 
   useEffect(() => {
     if (!open) return
-    const directory = session.project.modules[0]?.path ?? ''
+    const directory = goModules(session.project)[0]?.path ?? ''
     setModuleDirectory(directory)
     setState(null)
     setVersions({})
@@ -107,13 +108,13 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
       footer={<GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>}
     >
       {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
-      {session.project.modules.length === 0 ? (
+      {goModules(session.project).length === 0 ? (
         <div className="gs-surface gs-list-empty">This project has no Go module. Open or create a folder with a go.mod to manage dependencies.</div>
       ) : <>
         <div className="flex items-end gap-2">
           <GoStudioField label="Module" className="flex-1">
             <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="gs-input gs-mono">
-              {session.project.modules.map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}
+              {goModules(session.project).map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}
             </select>
           </GoStudioField>
           <GoStudioButton variant="secondary" className="gs-btn-icon" disabled={loading} onClick={() => void load()} aria-label="Reload dependencies" title="Reload">
@@ -124,9 +125,9 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
         <div role="tablist" aria-label="Dependencies view" className="gs-segmented self-start">
           <button type="button" role="tab" aria-selected={tab === 'requirements'} onClick={() => setTab('requirements')} className="gs-segment">Requirements</button>
           <button type="button" role="tab" aria-selected={tab === 'gomod'} onClick={() => setTab('gomod')} className="gs-segment">go.mod</button>
-          {session.project.modules.length > 1 && <button type="button" role="tab" aria-selected={tab === 'workspace'} onClick={() => setTab('workspace')} className="gs-segment">Workspace modules</button>}
+          {goModules(session.project).length > 1 && <button type="button" role="tab" aria-selected={tab === 'workspace'} onClick={() => setTab('workspace')} className="gs-segment">Workspace modules</button>}
         </div>
-        {tab === 'workspace' && <GoStudioWorkspaceModules sessionId={session.id} onSelect={(directory) => { const target = session.project.modules.find((module) => module.path.replace(/\\/g, '/').endsWith(`/${directory}`) || (directory === '' && module.path === session.project.realPath)); if (target) { setModuleDirectory(target.path); void load(target.path) } setTab('requirements') }} />}
+        {tab === 'workspace' && <GoStudioWorkspaceModules sessionId={session.id} onSelect={(directory) => { const target = goModules(session.project).find((module) => module.path.replace(/\\/g, '/').endsWith(`/${directory}`) || (directory === '' && module.path === session.project.realPath)); if (target) { setModuleDirectory(target.path); void load(target.path) } setTab('requirements') }} />}
         {tab === 'gomod' && state && <GoStudioGoModSettings state={state} running={running} onEdit={(edit) => void editGoMod(edit)} />}
         {tab === 'requirements' && <>
         <div className="gs-list min-h-0 flex-1">

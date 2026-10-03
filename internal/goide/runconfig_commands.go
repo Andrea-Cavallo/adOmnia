@@ -1,13 +1,12 @@
 package goide
 
 import (
+	"adomnia/internal/ide/run"
+	"adomnia/internal/languages/golang"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 )
@@ -18,43 +17,19 @@ const (
 	maxSharedRunConfigBytes   = 1 << 20
 )
 
-var goSubcommandPattern = regexp.MustCompile(`^[a-z][a-z0-9]{0,31}$`)
-
-// normalizeCommandConfiguration valida i tipi command, go-tool e compound.
+// normalizeCommandConfiguration preserves the legacy facade while core owns common rules.
 func normalizeCommandConfiguration(config RunConfiguration) (RunConfiguration, error) {
-	config.Target = strings.TrimSpace(config.Target)
-	config.Files, config.BinaryPath = nil, ""
-	switch config.Kind {
-	case RunKindCommand:
-		if config.Target == "" || strings.ContainsRune(config.Target, '\x00') || strings.HasPrefix(config.Target, "-") {
-			return config, fmt.Errorf("indica il comando da eseguire (es. npm, ./scripts/seed.sh)")
-		}
-	case RunKindGoTool:
-		if !goSubcommandPattern.MatchString(config.Target) {
+	if config.Kind == RunKindGoTool {
+		config.Target = strings.TrimSpace(config.Target)
+		config.Files, config.BinaryPath, config.Compound = nil, "", nil
+		if !golang.ValidSubcommand(config.Target) {
 			return config, fmt.Errorf("indica il comando go (es. generate, vet, tool)")
 		}
-	case RunKindCompound:
-		config.Target = ""
-		ids := make([]string, 0, len(config.Compound))
-		for _, id := range config.Compound {
-			id = strings.TrimSpace(id)
-			if id != "" && id != config.ID && !contains(ids, id) {
-				ids = append(ids, id)
-			}
-		}
-		if len(ids) < 2 {
-			return config, fmt.Errorf("una configurazione compound avvia almeno due configurazioni")
-		}
-		if len(ids) > maxCompoundConfigurations {
-			return config, fmt.Errorf("massimo %d configurazioni in una compound", maxCompoundConfigurations)
-		}
-		config.Compound = ids
-		config.PreRun, config.PostRun = nil, nil
+		return config, nil
 	}
-	if config.Kind != RunKindCompound {
-		config.Compound = nil
-	}
-	return config, nil
+	normalized, err := run.NormalizeCommandConfiguration(toCoreConfiguration(config))
+	config.Target, config.Files, config.BinaryPath, config.Compound, config.PreRun, config.PostRun = normalized.Target, normalized.Files, normalized.BinaryPath, normalized.Compound, normalized.PreRun, normalized.PostRun
+	return config, err
 }
 
 func contains(values []string, value string) bool {
@@ -69,27 +44,28 @@ func contains(values []string, value string) bool {
 // startCommandRun avvia un comando qualsiasi o un sottocomando go, senza shell, nella working directory.
 func (s *Service) startCommandRun(session Session, kind, workingDirectory string, request RunRequest) (Execution, error) {
 	target := strings.TrimSpace(request.Target)
-	environment, err := s.toolchain.Environment(session.ID, request.Environment)
+	languageID := "generic"
+	if kind == string(RunKindGoTool) {
+		languageID = golang.ID
+	}
+	environment, err := s.executionEnvironment(session.ID, languageID, request.Environment)
 	if err != nil {
 		return Execution{}, err
 	}
 	var spec CommandSpec
 	if kind == string(RunKindGoTool) {
-		if !goSubcommandPattern.MatchString(target) {
+		if !golang.ValidSubcommand(target) {
 			return Execution{}, fmt.Errorf("comando go non valido: %q", target)
 		}
-		binary, err := s.toolchain.GoBinary(session.ID)
-		if err != nil {
-			return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
-		}
-		arguments := append([]string{target}, request.ProgramArguments...)
-		spec = CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: displayCommand("go", arguments)}
-	} else {
-		executable, err := resolveCommandExecutable(session.Project.RealPath, workingDirectory, target)
+		spec, err = s.runCommandSpec(session.ID, kind, workingDirectory, target, request)
 		if err != nil {
 			return Execution{}, err
 		}
-		spec = CommandSpec{Executable: executable, Arguments: append([]string(nil), request.ProgramArguments...), DisplayCommand: displayCommand(target, request.ProgramArguments)}
+	} else {
+		spec, err = run.Command(session.Project.RealPath, workingDirectory, target, request.ProgramArguments)
+		if err != nil {
+			return Execution{}, err
+		}
 	}
 	spec.SessionID, spec.Kind, spec.WorkingDirectory, spec.Environment = session.ID, kind, workingDirectory, environment
 	execution, err := s.processes.Start(spec)
@@ -102,24 +78,7 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 }
 
 // resolveCommandExecutable: un percorso (./scripts/x.sh) resta confinato al progetto, un nome si cerca nel PATH.
-func resolveCommandExecutable(root, workingDirectory, target string) (string, error) {
-	if strings.ContainsAny(target, `/\`) {
-		if err := validateRunTarget(root, workingDirectory, target); err != nil {
-			return "", err
-		}
-		path := filepath.Clean(filepath.Join(workingDirectory, filepath.FromSlash(target)))
-		info, err := os.Stat(path)
-		if err != nil || info.IsDir() {
-			return "", fmt.Errorf("comando non trovato nel progetto: %s", target)
-		}
-		return path, nil
-	}
-	path, err := exec.LookPath(target)
-	if err != nil {
-		return "", fmt.Errorf("%s non trovato nel PATH", target)
-	}
-	return path, nil
-}
+var resolveCommandExecutable = run.ResolveCommandExecutable
 
 // validateCompound accetta solo configurazioni esistenti della sessione e non a loro volta compound.
 func (s *Service) validateCompound(session Session, config RunConfiguration) error {
@@ -140,27 +99,12 @@ func (s *Service) startCompound(session Session, config RunConfiguration, secret
 	if err := s.validateCompound(session, config); err != nil {
 		return Execution{}, err
 	}
-	var first *Execution
-	var failures []string
+	steps := make([]run.Step, 0, len(config.Compound))
 	for _, id := range config.Compound {
-		execution, err := s.StartConfiguredRun(string(session.ID), id, secrets)
-		if err != nil {
-			member, _ := s.runConfigs.Get(session.ID, id)
-			failures = append(failures, fmt.Sprintf("%s: %v", member.Name, err))
-			continue
-		}
-		if first == nil {
-			started := execution
-			first = &started
-		}
+		member, _ := s.runConfigs.Get(session.ID, id)
+		steps = append(steps, run.Step{Name: member.Name, Start: func() (Execution, error) { return s.StartConfiguredRun(string(session.ID), id, secrets) }})
 	}
-	if first == nil {
-		return Execution{}, fmt.Errorf("nessuna configurazione della compound è partita: %s", strings.Join(failures, "; "))
-	}
-	if len(failures) > 0 {
-		s.processes.Notice(*first, "Compound "+config.Name+": non partite "+strings.Join(failures, "; "))
-	}
-	return *first, nil
+	return run.Compound(s.processes, config.Name, steps)
 }
 
 type sharedRunConfigurations struct {
@@ -236,29 +180,7 @@ func (m *RunConfigManager) Import(sessionID SessionID, config RunConfiguration) 
 	if err != nil {
 		return false
 	}
-	normalized.ID, normalized.SessionID, normalized.Shared = config.ID, sessionID, true
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	existing := m.configs[sessionID]
-	for index, current := range existing {
-		if current.ID != config.ID {
-			continue
-		}
-		normalized.Pinned, normalized.RestartOnSave = current.Pinned, current.RestartOnSave
-		normalized.Order, normalized.CreatedAt, normalized.UpdatedAt = current.Order, current.CreatedAt, current.UpdatedAt
-		// I segreti non sono nel file: si tiene la versione locale senza perderli.
-		if sameSharedContent(current, normalized) {
-			return false
-		}
-		existing[index] = normalized
-		return true
-	}
-	if len(existing) >= maxRunConfigurationsPerSession {
-		return false
-	}
-	normalized.Order = len(existing)
-	m.configs[sessionID] = append(existing, normalized)
-	return true
+	return m.core.Import(sessionID, toCoreConfiguration(normalized))
 }
 
 func sameSharedContent(left, right RunConfiguration) bool {

@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { useEffect, useState } from 'react'
 import { Globe, FolderGit2} from 'lucide-react'
 import { GoStudioButton, GoStudioField } from './GoStudioModal'
@@ -39,7 +40,8 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
   const [goBinary, setGoBinary] = useState('')
   const [form, setForm] = useState<ToolchainForm>(() => toolchainFormFromEnv({}))
   const [busy, setBusy] = useState(false)
-  const modules = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.modules)
+  const project = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project)
+  const modules = project ? goModules(project) : []
   const suggestion = (modules ?? []).map((module) => suggestedPrivatePattern(module.modulePath ?? '')).find((pattern): pattern is string => !!pattern) ?? null
   const corporate = corporateNetworkOf(form)
   const setCorporate = (patch: Partial<GoStudioCorporateNetwork>) => setForm((current) => withCorporateNetwork(current, { ...corporateNetworkOf(current), ...patch }))

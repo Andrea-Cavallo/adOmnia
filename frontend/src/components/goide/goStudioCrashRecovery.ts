@@ -1,4 +1,4 @@
-import { lineDiff } from './goStudioLineDiff'
+import { lineDiff } from '@/lib/goide/goStudioLineDiff'
 
 export interface GoStudioRecoveryDiffLine {
   kind: 'added' | 'removed'

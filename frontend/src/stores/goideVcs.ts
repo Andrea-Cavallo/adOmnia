@@ -4,7 +4,7 @@ import {
   checkoutGoIDEBranch, commitGoIDEFiles, getGoIDEBlame, getGoIDEFileAtRevision, getGoIDEVCSStatus,
   type GoIDEVCSBlameLine, type GoIDEVCSStatus,
 } from '@/lib/goide-vcs-api'
-import { isBinaryText, type GoStudioLineHunk } from '@/components/goide/goStudioLineDiff'
+import { isBinaryText, type GoStudioLineHunk } from '@/lib/goide/goStudioLineDiff'
 import { focusRepo } from '@/lib/gitRepos'
 
 const STATUS_REFRESH_DEBOUNCE_MS = 700

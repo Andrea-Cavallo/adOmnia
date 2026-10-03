@@ -60,11 +60,9 @@ export {
     FormatResult,
     FunctionBreakpoint,
     FunctionBreakpointSettings,
-    FunctionBreakpointState,
     FunctionBreakpointsView,
     GoDependency,
     GoExclusion,
-    GoModule,
     GoReplacement,
     GoRetraction,
     GoToolInfo,
@@ -75,7 +73,6 @@ export {
     GoplsInfo,
     GoroutineCreation,
     GoroutineOverview,
-    GoroutineSummary,
     HierarchyItem,
     HighlightEntry,
     HighlightsResult,
@@ -145,7 +142,6 @@ export {
     TerminalProfile,
     TerminalRequest,
     TerminalSession,
-    TestLocation,
     TestResult,
     TestRunRequest,
     TestRunSnapshot,
@@ -176,7 +172,6 @@ export {
 } from "./models.js";
 
 export type {
-    DebugSessionID,
     DocumentID,
     RunID,
     SessionID,

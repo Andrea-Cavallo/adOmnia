@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"unicode/utf16"
 
 	"adomnia/internal/ide/lsp"
@@ -274,24 +275,39 @@ func (m *LSPManager) WorkspaceSymbols(ctx context.Context, sessionID SessionID, 
 	if len(servers) == 0 {
 		return nil, fmt.Errorf("nessun language server pronto per questa sessione")
 	}
-	ctx, cancel := withRequestTimeout(ctx)
-	defer cancel()
+	type symbolResponse struct {
+		server  readyServer
+		symbols []lsp.SymbolInformation
+		err     error
+	}
+	responses := make([]symbolResponse, len(servers))
+	var requests sync.WaitGroup
+	for index, server := range servers {
+		requests.Add(1)
+		go func(index int, server readyServer) {
+			defer requests.Done()
+			requestCtx, cancel := withRequestTimeout(ctx)
+			defer cancel()
+			responses[index].server = server
+			responses[index].err = server.process.conn.Call(requestCtx, "workspace/symbol", map[string]string{"query": query}, &responses[index].symbols)
+		}(index, server)
+	}
+	requests.Wait()
 	converted := make([]WorkspaceSymbol, 0)
 	var failure error
 	answered := false
-	for _, server := range servers {
-		var symbols []lsp.SymbolInformation
-		if err := server.process.conn.Call(ctx, "workspace/symbol", map[string]string{"query": query}, &symbols); err != nil {
-			failure = err
+	for _, response := range responses {
+		if response.err != nil {
+			failure = response.err
 			continue
 		}
 		answered = true
-		for _, symbol := range symbols {
+		for _, symbol := range response.symbols {
 			if len(converted) >= maxWorkspaceSymbolResults {
 				break
 			}
 			path := pathFromURI(symbol.Location.URI)
-			relative := relativeWithin(server.state.root, path)
+			relative := relativeWithin(response.server.state.root, path)
 			converted = append(converted, WorkspaceSymbol{
 				Name: symbol.Name, Kind: symbol.Kind, Container: symbol.ContainerName,
 				Location: EditorLocation{URI: symbol.Location.URI, Path: path, RelativePath: relative, External: relative == "", Range: editorRange(symbol.Location.Range)},

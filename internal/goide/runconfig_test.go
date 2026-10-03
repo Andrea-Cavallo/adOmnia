@@ -1,12 +1,35 @@
 package goide
 
 import (
+	"adomnia/internal/languages/golang"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestRunConfigurationMigratesLegacyAndReadsOpaqueOptions(t *testing.T) {
+	manager := NewRunConfigManager()
+	manager.Replace([]RunConfiguration{{ID: "legacy", SessionID: "s", Name: "legacy", Kind: RunKindTest, GoArguments: []string{"-count=2"}, BuildTags: []string{"integration"}, Race: true, Environment: []EnvironmentEntry{{Key: "SECRET", Value: "private", Secret: true}}}})
+	config, err := manager.Get("s", "legacy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var options golang.RunOptions
+	if err := json.Unmarshal(config.LanguageOptions, &options); err != nil || len(options.GoArguments) != 1 || !options.Race {
+		t.Fatalf("legacy options lost: %+v %v", options, err)
+	}
+	config.GoArguments, config.BuildTags, config.Race = nil, nil, false
+	manager.Replace([]RunConfiguration{config})
+	loaded, err := manager.Get("s", "legacy")
+	if err != nil || len(loaded.GoArguments) != 1 || !loaded.Race || len(loaded.BuildTags) != 1 {
+		t.Fatalf("opaque options lost: %+v %v", loaded, err)
+	}
+	if manager.Snapshot()[0].Environment[0].Value != "" {
+		t.Fatal("secret persisted")
+	}
+}
 
 func TestRunConfigurationValidationAndCrud(t *testing.T) {
 	manager := NewRunConfigManager()

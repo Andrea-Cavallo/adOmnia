@@ -1,3 +1,4 @@
+import { languageServerEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
@@ -17,7 +18,8 @@ import { currentGoStudioDocumentVersion } from './goStudioLspSync'
 import { prepareDocument, toEditorRange, toMonacoRange } from './goStudioLanguageFeatures'
 import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, typeInfoFromHover } from './goStudioSemanticTokens'
 
-const LANGUAGE = 'go'
+// Provider LSP generici: valgono per ogni linguaggio servito da un language server.
+const LANGUAGE = languageServerEditorLanguages()
 const INLAY_PARAMETER = 2
 const RECURSION_DEBOUNCE_MS = 800
 

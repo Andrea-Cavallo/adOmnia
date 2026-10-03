@@ -23,6 +23,11 @@ func (s *Service) SaveRunConfiguration(sessionID string, config RunConfiguration
 	if err != nil {
 		return RunConfiguration{}, err
 	}
+	if config.Language != "" && config.Language != "go" && !isToolRunKind(string(config.Kind)) && config.Kind != RunKindCommand && config.Kind != RunKindBinary && config.Kind != RunKindCompound {
+		if _, err := s.runAdapter(config.Language, string(config.Kind)); err != nil {
+			return RunConfiguration{}, err
+		}
+	}
 	if err := s.validateConfigurationPaths(session, config); err != nil {
 		return RunConfiguration{}, err
 	}
@@ -198,6 +203,7 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	}
 
 	request := RunRequest{
+		Language: config.Language, LanguageOptions: config.LanguageOptions,
 		SessionID:        session.ID,
 		WorkingDirectory: config.WorkingDirectory,
 		GoArguments:      append([]string(nil), config.GoArguments...),
@@ -230,7 +236,10 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	case RunKindCompound:
 		return RunRequest{}, fmt.Errorf("una configurazione compound avvia altre configurazioni, non un comando")
 	default:
-		return RunRequest{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+		if _, err := s.runAdapter(config.Language, string(config.Kind)); err != nil {
+			return RunRequest{}, err
+		}
+		request.Kind, request.Target = string(config.Kind), config.Target
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, config.WorkingDirectory)
 	if err != nil {
@@ -238,6 +247,9 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 	}
 	if err := applyRunParameters(session.Project.RealPath, workingDirectory, config, &request); err != nil {
 		return RunRequest{}, err
+	}
+	if config.Language == "" || config.Language == "go" {
+		request.LanguageOptions = nil
 	}
 	return request, nil
 }

@@ -94,7 +94,7 @@ func TestWorkspaceFindsNestedModules(t *testing.T) {
 		t.Fatal(err)
 	}
 	project := inspectProject(newLanguageRegistry(), root, root)
-	if len(project.Modules) != 2 || project.GoModPath == "" {
+	if len(goLayoutOf(project).Modules) != 2 || goLayoutOf(project).GoModPath == "" {
 		t.Fatalf("moduli annidati non rilevati: %#v", project)
 	}
 }
@@ -117,11 +117,11 @@ func TestWorkspaceDistinguishesGoFoldersWithoutModule(t *testing.T) {
 		}
 	}
 	project := inspectProject(newLanguageRegistry(), root, root)
-	if project.GoModPath != "" || len(project.Modules) != 1 {
-		t.Fatalf("moduli inattesi: %#v", project.Modules)
+	if goLayoutOf(project).GoModPath != "" || len(goLayoutOf(project).Modules) != 1 {
+		t.Fatalf("moduli inattesi: %#v", goLayoutOf(project).Modules)
 	}
-	if len(project.LooseGoDirs) != 1 || project.LooseGoDirs[0] != "scripts" {
-		t.Fatalf("cartelle Go senza modulo inattese: %#v", project.LooseGoDirs)
+	if len(goLayoutOf(project).LooseGoDirs) != 1 || goLayoutOf(project).LooseGoDirs[0] != "scripts" {
+		t.Fatalf("cartelle Go senza modulo inattese: %#v", goLayoutOf(project).LooseGoDirs)
 	}
 }
 

@@ -45,7 +45,7 @@ func TestUpdateGoWorkWithRealGo(t *testing.T) {
 	if !state.Exists || !state.Modules[0].InWorkspace || !state.Modules[1].InWorkspace {
 		t.Fatalf("go.work init: %+v", state)
 	}
-	if current, _ := service.session(sessionID); current.Project.GoWorkPath == "" {
+	if current, _ := service.session(sessionID); goLayoutOf(current.Project).GoWorkPath == "" {
 		t.Fatal("session not refreshed after go work init")
 	}
 

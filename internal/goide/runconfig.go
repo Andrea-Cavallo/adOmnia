@@ -1,211 +1,29 @@
 package goide
 
 import (
+	"adomnia/internal/languages/golang"
+	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
-	"sync"
-	"time"
 )
-
-const maxRunConfigurationsPerSession = 50
-
-// RunConfigManager possiede le configurazioni Run salvate, isolate per sessione.
-// I valori marcati come segreti non escono mai da questo processo verso la
-// persistenza: vengono richiesti all'avvio e tenuti solo in memoria.
-type RunConfigManager struct {
-	mu      sync.RWMutex
-	configs map[SessionID][]RunConfiguration
-	counter uint64
-}
-
-func NewRunConfigManager() *RunConfigManager {
-	return &RunConfigManager{configs: make(map[SessionID][]RunConfiguration)}
-}
-
-// List restituisce le configurazioni della sessione ordinate come le vede l'utente.
-func (m *RunConfigManager) List(sessionID SessionID) []RunConfiguration {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return cloneConfigurations(m.configs[sessionID])
-}
-
-// Get restituisce una singola configurazione della sessione indicata.
-func (m *RunConfigManager) Get(sessionID SessionID, id string) (RunConfiguration, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	for _, config := range m.configs[sessionID] {
-		if config.ID == id {
-			return cloneConfiguration(config), nil
-		}
-	}
-	return RunConfiguration{}, fmt.Errorf("configurazione %q non trovata nella sessione", id)
-}
-
-// Save crea o aggiorna una configurazione dopo averla validata.
-func (m *RunConfigManager) Save(sessionID SessionID, config RunConfiguration) (RunConfiguration, error) {
-	normalized, err := normalizeConfiguration(config)
-	if err != nil {
-		return RunConfiguration{}, err
-	}
-	normalized.SessionID = sessionID
-	now := time.Now().UTC()
-	normalized.UpdatedAt = now
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	existing := m.configs[sessionID]
-	for index, current := range existing {
-		if current.ID == normalized.ID && normalized.ID != "" {
-			normalized.CreatedAt = current.CreatedAt
-			normalized.Order = current.Order
-			existing[index] = normalized
-			m.configs[sessionID] = existing
-			return cloneConfiguration(normalized), nil
-		}
-	}
-	if len(existing) >= maxRunConfigurationsPerSession {
-		return RunConfiguration{}, fmt.Errorf("massimo %d configurazioni per sessione", maxRunConfigurationsPerSession)
-	}
-	m.counter++
-	normalized.ID = fmt.Sprintf("cfg-%d-%d", now.UnixNano(), m.counter)
-	normalized.CreatedAt = now
-	normalized.Order = len(existing)
-	m.configs[sessionID] = append(existing, normalized)
-	return cloneConfiguration(normalized), nil
-}
-
-// Duplicate crea una copia indipendente della configurazione indicata.
-func (m *RunConfigManager) Duplicate(sessionID SessionID, id string) (RunConfiguration, error) {
-	source, err := m.Get(sessionID, id)
-	if err != nil {
-		return RunConfiguration{}, err
-	}
-	source.ID = ""
-	source.Name = uniqueName(m.List(sessionID), source.Name+" copy")
-	return m.Save(sessionID, source)
-}
-
-// Rename cambia soltanto il nome visibile della configurazione.
-func (m *RunConfigManager) Rename(sessionID SessionID, id, name string) (RunConfiguration, error) {
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
-		return RunConfiguration{}, fmt.Errorf("il nome della configurazione non può essere vuoto")
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for index, config := range m.configs[sessionID] {
-		if config.ID != id {
-			continue
-		}
-		config.Name = trimmed
-		config.UpdatedAt = time.Now().UTC()
-		m.configs[sessionID][index] = config
-		return cloneConfiguration(config), nil
-	}
-	return RunConfiguration{}, fmt.Errorf("configurazione %q non trovata nella sessione", id)
-}
-
-// Reorder riordina le configurazioni secondo la sequenza di identificatori indicata.
-func (m *RunConfigManager) Reorder(sessionID SessionID, ids []string) ([]RunConfiguration, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	existing := m.configs[sessionID]
-	position := make(map[string]int, len(ids))
-	for index, id := range ids {
-		position[id] = index
-	}
-	for _, config := range existing {
-		if _, ok := position[config.ID]; !ok {
-			return nil, fmt.Errorf("riordino incompleto: manca la configurazione %q", config.ID)
-		}
-	}
-	for index, config := range existing {
-		config.Order = position[config.ID]
-		existing[index] = config
-	}
-	sort.SliceStable(existing, func(i, j int) bool { return existing[i].Order < existing[j].Order })
-	// ids può contenere voci estranee o duplicate: l'ordine viene ricompattato
-	// a 0..n-1 così che il prossimo Save non produca posizioni in conflitto.
-	for index := range existing {
-		existing[index].Order = index
-	}
-	m.configs[sessionID] = existing
-	return cloneConfigurations(existing), nil
-}
-
-// Delete rimuove una configurazione e ricompatta l'ordinamento.
-func (m *RunConfigManager) Delete(sessionID SessionID, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	existing := m.configs[sessionID]
-	for index, config := range existing {
-		if config.ID != id {
-			continue
-		}
-		existing = append(existing[:index], existing[index+1:]...)
-		for position := range existing {
-			existing[position].Order = position
-		}
-		m.configs[sessionID] = existing
-		return nil
-	}
-	return fmt.Errorf("configurazione %q non trovata nella sessione", id)
-}
-
-// CloseSession rilascia le configurazioni della sola sessione chiusa.
-func (m *RunConfigManager) CloseSession(sessionID SessionID) {
-	m.mu.Lock()
-	delete(m.configs, sessionID)
-	m.mu.Unlock()
-}
-
-// Replace ripristina le configurazioni persistite, scartando quelle non valide.
-func (m *RunConfigManager) Replace(configs []RunConfiguration) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.configs = make(map[SessionID][]RunConfiguration)
-	for _, config := range configs {
-		if config.SessionID == "" || config.ID == "" {
-			continue
-		}
-		normalized, err := normalizeConfiguration(config)
-		if err != nil {
-			continue
-		}
-		normalized.ID = config.ID
-		normalized.SessionID = config.SessionID
-		normalized.CreatedAt = config.CreatedAt
-		normalized.UpdatedAt = config.UpdatedAt
-		normalized.Order = config.Order
-		m.configs[config.SessionID] = append(m.configs[config.SessionID], normalized)
-	}
-	for sessionID, configs := range m.configs {
-		sort.SliceStable(configs, func(i, j int) bool { return configs[i].Order < configs[j].Order })
-		m.configs[sessionID] = configs
-	}
-}
-
-// Snapshot restituisce tutte le configurazioni in forma persistibile, senza valori segreti.
-func (m *RunConfigManager) Snapshot() []RunConfiguration {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	sessions := make([]SessionID, 0, len(m.configs))
-	for sessionID := range m.configs {
-		sessions = append(sessions, sessionID)
-	}
-	sort.Slice(sessions, func(i, j int) bool { return sessions[i] < sessions[j] })
-	all := make([]RunConfiguration, 0, len(m.configs))
-	for _, sessionID := range sessions {
-		for _, config := range m.configs[sessionID] {
-			all = append(all, redactConfiguration(config))
-		}
-	}
-	return all
-}
 
 // normalizeConfiguration valida e ripulisce una configurazione prima di salvarla o avviarla.
 func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
+	if len(config.LanguageOptions) > 0 && (config.Language == "" || config.Language == golang.ID) && config.GoArguments == nil && config.BuildTags == nil && config.GOOS == "" && config.GOARCH == "" && !config.Race && !config.Coverage && config.Profile == "" && config.DebugFlags == nil {
+		var options golang.RunOptions
+		if err := json.Unmarshal(config.LanguageOptions, &options); err != nil {
+			return RunConfiguration{}, fmt.Errorf("opzioni Go non valide: %w", err)
+		}
+		config.GoArguments = options.GoArguments
+		config.BuildTags = options.BuildTags
+		config.GOOS = options.GOOS
+		config.GOARCH = options.GOARCH
+		config.Race = options.Race
+		config.Coverage = options.Coverage
+		config.Profile = options.Profile
+		config.DebugFlags = options.DebugFlags
+	}
+
 	config.Name = strings.TrimSpace(config.Name)
 	if config.Name == "" {
 		return RunConfiguration{}, fmt.Errorf("il nome della configurazione non può essere vuoto")
@@ -259,7 +77,12 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		}
 		config = normalized
 	default:
-		return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+		if config.Language == "" || config.Language == golang.ID {
+			return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+		}
+		if !json.Valid(config.LanguageOptions) {
+			return RunConfiguration{}, fmt.Errorf("opzioni del linguaggio non valide")
+		}
 	}
 	if config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
 		config.Docker = DockerOptions{}
@@ -318,6 +141,7 @@ func redactConfiguration(config RunConfiguration) RunConfiguration {
 
 func cloneConfiguration(config RunConfiguration) RunConfiguration {
 	clone := config
+	clone.LanguageOptions = append(json.RawMessage(nil), config.LanguageOptions...)
 	clone.Files = append([]string(nil), config.Files...)
 	clone.GoArguments = append([]string(nil), config.GoArguments...)
 	clone.ProgramArguments = append([]string(nil), config.ProgramArguments...)

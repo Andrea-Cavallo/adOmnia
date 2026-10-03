@@ -166,7 +166,7 @@ func (s *Service) TestModuleRegistry(sessionID string) (ModuleRegistryCheck, err
 	if registry == "" {
 		return ModuleRegistryCheck{Message: "GOPROXY non punta a un registry (è vuoto, off o direct)."}, nil
 	}
-	module := firstRequiredModule(session.Project.Modules)
+	module := firstRequiredModule(goLayoutOf(session.Project).Modules)
 	return checkModuleRegistry(registry, module), nil
 }
 

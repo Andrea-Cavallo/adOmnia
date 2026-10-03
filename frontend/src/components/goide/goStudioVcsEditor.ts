@@ -4,7 +4,7 @@ import type { GoIDEEditorDocument } from '@/stores/goide'
 import { headKey, useGoIDEVCSStore } from '@/stores/goideVcs'
 import type { GoIDEVCSBlameLine } from '@/lib/goide-vcs-api'
 import { documentForModel } from './goStudioLanguageFeatures'
-import { hunkOldLines, lineDiff, type GoStudioLineHunk } from './goStudioLineDiff'
+import { hunkOldLines, lineDiff, type GoStudioLineHunk } from '@/lib/goide/goStudioLineDiff'
 
 const DIFF_DEBOUNCE_MS = 300
 const BLAME_AUTHOR_CHARS = 12

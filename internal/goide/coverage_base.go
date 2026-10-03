@@ -86,7 +86,7 @@ func (s *Service) BaseBranchCoverage(sessionID, base string, packageDirs, buildT
 			result.Missing = append(result.Missing, dir)
 			continue
 		}
-		module := moduleForDir(session.Project.RealPath, session.Project.Modules, dir)
+		module := moduleForDir(session.Project.RealPath, goLayoutOf(session.Project).Modules, dir)
 		byModule[module] = append(byModule[module], dir)
 	}
 	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)

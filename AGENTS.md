@@ -37,6 +37,13 @@ New cross-panel actions go through `frontend/src/lib/entities/`, not new `Custom
 - if the panel must be mounted to act, call `handoffToPanel(rail, ref, intent, payload)` from the opener and receive it in the panel with `useEntityHandoff(rail, handler)` — return `false` while the panel is not ready (e.g. still hydrating) and it is retried.
 Project entities come from `internal/devcontext` (Go) via `stores/devcontext.ts`.
 
+### IDE languages (Go Studio platform)
+
+Go Studio is the IDE Platform with Go as its first language adapter; read `docs/architecture/ide-multilanguage-refactor.md` before touching `internal/goide`, `internal/ide` or `internal/languages`.
+- The core (`internal/ide/*`) never imports an adapter or Go tooling; `internal/ide/architecture_test.go` enforces it. Languages are registered in `internal/goide/languages.go`.
+- The frontend learns registered languages from `GetCapabilities().languages` and describes each one in `frontend/src/components/ide/languages/<id>/` (icon, menu, commands with `requires`, Monaco editor languages). Never hard-code `'go'` in shared editor code: use `languageServerEditorLanguages()` / `ideLanguageForEditor()`.
+- `Project` has only language units: derive Go modules with `goLayoutOf` (Go) or `goProjectLayout` / `goModules` (`lib/goide/goProject.ts`).
+
 ### Go Studio dialogs
 
 Every Go Studio modal uses `GoStudioModal`, every search palette `GoStudioPalette`, both in `frontend/src/components/goide/GoStudioModal.tsx`. Never hand-build a backdrop, shell, header or footer.

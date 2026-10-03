@@ -83,8 +83,8 @@ func TestLargeMonorepoStaysResponsive(t *testing.T) {
 		t.Fatal(err)
 	}
 	open := time.Since(started)
-	if len(session.Project.Modules) != scaleModules {
-		t.Fatalf("moduli del go.work: %d, attesi %d", len(session.Project.Modules), scaleModules)
+	if len(goLayoutOf(session.Project).Modules) != scaleModules {
+		t.Fatalf("moduli del go.work: %d, attesi %d", len(goLayoutOf(session.Project).Modules), scaleModules)
 	}
 
 	started = time.Now()

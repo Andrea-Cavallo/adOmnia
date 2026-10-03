@@ -1,6 +1,6 @@
 import { isGoModPath, syncLocalReplaces } from '@/lib/goModLocalReplaces'
-import { recordRunHistory } from '@/components/goide/goStudioRunHistory'
-import { caretsFor, restoreCarets } from '@/components/goide/goStudioCaretMemory'
+import { recordRunHistory } from '@/lib/goide/goStudioRunHistory'
+import { caretsFor, restoreCarets } from '@/lib/goide/goStudioCaretMemory'
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import {
@@ -60,8 +60,8 @@ import { openExternalDocument } from '@/lib/goide-lsp-api'
 import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudioWorkspace } from '@/lib/goide-workspaces-api'
 import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { confirm } from '@/lib/confirmDialog'
-import { cancelBufferRecovery, scheduleBufferRecovery } from '@/components/goide/goStudioRecovery'
-import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/components/goide/goStudioDiskChanges'
+import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/goide/goStudioRecovery'
+import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/goide/goStudioDiskChanges'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
 const MAX_CLOSED_HISTORY = 20

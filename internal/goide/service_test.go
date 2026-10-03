@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"adomnia/internal/languages/golang"
 )
 
 type memoryStore struct {
@@ -109,5 +111,17 @@ func TestRunPathsStayInsideProjectAndMetadataOmitsSensitiveValues(t *testing.T) 
 	}
 	if strings.Contains(execution.Command, "secret-value") || !strings.Contains(execution.Command, "<2 program args>") {
 		t.Fatalf("metadati comando non sicuri: %q", execution.Command)
+	}
+}
+
+func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	languages := service.GetCapabilities().Languages
+	if len(languages) != 1 || languages[0].ID != golang.ID || languages[0].Name != "Go" {
+		t.Fatalf("languages = %+v", languages)
+	}
+	if capabilities := languages[0].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.Documents {
+		t.Fatalf("Go capabilities = %+v", capabilities)
 	}
 }

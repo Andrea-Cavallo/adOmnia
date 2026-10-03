@@ -1,3 +1,4 @@
+import { goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
@@ -7,6 +8,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
 import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
+import { BrandIcon } from './GoStudioFileIcon'
+import { ideLanguageForEditor } from '@/components/ide/languages'
 import { GoStudioCopilotStatus } from './GoStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { useThemesStore } from '@/stores/themes'
@@ -142,7 +145,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       </button>
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
-      <span className={LABEL}>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
+      <span className={`${LABEL} flex items-center gap-1`}>{documentInfo && ideLanguageForEditor(documentInfo.language) && <BrandIcon slug={ideLanguageForEditor(documentInfo.language)!.icon} size={12} />}{documentInfo?.language || (goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <GoStudioCopilotStatus className={ITEM} />
       <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Go Studio appearance">

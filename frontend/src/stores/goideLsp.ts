@@ -4,6 +4,7 @@ import type { GoStudioSignature } from '@/components/goide/goStudioChangeSignatu
 import { create } from 'zustand'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
+import { GO_LANGUAGE_ID } from '@/lib/goide/goLanguage'
 import { subscribeGoIDEEvents, type GoIDEEvent, type GoIDEExecution } from '@/lib/goide-api'
 import {
   detectGopls,
@@ -404,6 +405,8 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     if (!sessionId) return
     if (event.type === 'lsp.status') {
       const status = event.payload as GoIDELanguageServerStatus
+      // Questo store segue gopls: lo stato degli altri language server della sessione non lo sovrascrive.
+      if (status.language && status.language !== GO_LANGUAGE_ID) return
       set((state) => {
         const cleared = status.state === 'stopped' || status.state === 'crashed'
         const activity = status.state === 'ready' || status.state === 'stopped'

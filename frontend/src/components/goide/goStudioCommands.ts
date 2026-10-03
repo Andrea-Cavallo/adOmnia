@@ -1,7 +1,10 @@
 import { effectiveAltBindings, effectiveBinding, isRemapped } from './goStudioKeymap'
+import { IDE_LANGUAGES, languageRequirement, type IdeRegisteredLanguage } from '@/components/ide/languages'
+import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide/languages/go/commands'
 
 export type GoStudioCommandId =
-  | 'file.openProject' | 'file.newProject' | 'file.clone' | 'go.goWork' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
+  | GoLanguageCommandId
+  | 'file.openProject' | 'file.newProject' | 'file.clone' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
@@ -17,16 +20,11 @@ export type GoStudioCommandId =
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.moveSymbol' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
-  | 'go.toolchains' | 'go.detect' | 'go.dependencies' | 'go.tidy' | 'go.trust'
-  | 'go.updateAll' | 'go.updatePatch' | 'go.modDownload' | 'go.modVerify'
-  | 'go.lspStart' | 'go.lspRestart' | 'go.lspStop' | 'go.lspInstall' | 'go.lspLog'
-  | 'go.toolVet' | 'go.toolGenerate' | 'go.toolFix' | 'go.toolModWhy' | 'go.toolModGraph' | 'go.toolDoc'
-  | 'go.installGolangci' | 'go.installStaticcheck' | 'go.toolPaths'
   | 'run.run' | 'run.build' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'run.rerunFailedTests' | 'run.testChanged' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
-  | 'debug.stop' | 'view.debug' | 'go.installDelve' | 'debug.attach' | 'debug.remote'
+  | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.runtimeEnrichment'
@@ -53,6 +51,8 @@ export interface GoStudioCommand {
   /** Se il comando non è disponibile il tasto torna a Monaco (es. F8 = problema successivo fuori dal debug). */
   passThroughWhenUnavailable?: boolean
   separatorBefore?: boolean
+  /** Linguaggio che deve essere registrato nel backend: lo dichiarano le contribuzioni di linguaggio. */
+  requires?: { language: string }
 }
 
 export const GO_STUDIO_MENUS: ReadonlyArray<{ id: GoStudioMenuId; label: string }> = [
@@ -61,7 +61,8 @@ export const GO_STUDIO_MENUS: ReadonlyArray<{ id: GoStudioMenuId; label: string 
   { id: 'view', label: 'View' },
   { id: 'navigate', label: 'Navigate' },
   { id: 'code', label: 'Code' },
-  { id: 'go', label: 'Go' },
+  // Menu dei linguaggi (oggi "Go"), dalle loro contribuzioni.
+  ...IDE_LANGUAGES.flatMap((language) => language.menu ? [language.menu as { id: GoStudioMenuId; label: string }] : []),
   { id: 'run', label: 'Run' },
   { id: 'tools', label: 'Tools' },
   { id: 'git', label: 'Git' },
@@ -188,31 +189,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.gofumpt', menu: 'code', label: 'Use gofumpt Style' },
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
   { id: 'code.vulncheck', menu: 'code', label: 'Vulnerability Diagnostics (vuln.go.dev)' },
-  { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
-  { id: 'go.detect', menu: 'go', label: 'Detect Go SDK' },
-  { id: 'go.dependencies', menu: 'go', label: 'Module Dependencies…', separatorBefore: true },
-  { id: 'go.goWork', menu: 'go', label: 'Go Workspace (go.work)…' },
-  { id: 'go.tidy', menu: 'go', label: 'go mod tidy…' },
-  { id: 'go.updateAll', menu: 'go', label: 'Update All Dependencies…' },
-  { id: 'go.updatePatch', menu: 'go', label: 'Update Patch Versions…' },
-  { id: 'go.modDownload', menu: 'go', label: 'Download Modules…' },
-  { id: 'go.modVerify', menu: 'go', label: 'Verify Modules' },
-  { id: 'go.toolVet', menu: 'go', label: 'Go Tools: go vet…', separatorBefore: true },
-  { id: 'go.toolGenerate', menu: 'go', label: 'Go Tools: go generate…' },
-  { id: 'go.toolFix', menu: 'go', label: 'Go Tools: go fix…' },
-  { id: 'go.toolModWhy', menu: 'go', label: 'Go Tools: go mod why…' },
-  { id: 'go.toolModGraph', menu: 'go', label: 'Go Tools: go mod graph…' },
-  { id: 'go.toolDoc', menu: 'go', label: 'Go Tools: go doc…' },
-  { id: 'go.trust', menu: 'go', label: 'Trust Project Tools', separatorBefore: true },
-  { id: 'go.lspStart', menu: 'go', label: 'Start Language Server (gopls)', separatorBefore: true },
-  { id: 'go.lspRestart', menu: 'go', label: 'Restart Language Server' },
-  { id: 'go.lspStop', menu: 'go', label: 'Stop Language Server' },
-  { id: 'go.lspInstall', menu: 'go', label: 'Install gopls…' },
-  { id: 'go.lspLog', menu: 'go', label: 'Language Server Log…' },
-  { id: 'go.installGolangci', menu: 'go', label: 'Install golangci-lint…', separatorBefore: true },
-  { id: 'go.installStaticcheck', menu: 'go', label: 'Install staticcheck…' },
-  { id: 'go.installDelve', menu: 'go', label: 'Install Delve (debugger)…' },
-  { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter, dlv)…' },
+  ...GO_LANGUAGE_COMMANDS,
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'debug.debug', menu: 'run', label: 'Debug', binding: { key: 'F9', shift: true } },
   { id: 'debug.attach', menu: 'run', label: 'Attach to Process…' },
@@ -375,6 +352,8 @@ export interface GoStudioCommandContext {
   detached?: boolean
   /** Il progetto attivo è modificabile in un'altra finestra: i suoi buffer vivono là. */
   ownedElsewhere?: boolean
+  /** Linguaggi registrati nel backend (`GetCapabilities().languages`); undefined finché non sono caricati. */
+  languages?: readonly IdeRegisteredLanguage[]
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -410,7 +389,12 @@ function windowAvailability(id: GoStudioCommandId, context: GoStudioCommandConte
   return null
 }
 
+const REQUIRED_LANGUAGE = new Map(GO_STUDIO_COMMANDS.flatMap((command) => command.requires ? [[command.id, command.requires.language] as const] : []))
+
 export function commandAvailability(id: GoStudioCommandId, context: GoStudioCommandContext): true | string {
+  const language = REQUIRED_LANGUAGE.get(id)
+  const required = language ? languageRequirement(language, context.languages) : true
+  if (required !== true) return required
   const windowed = windowAvailability(id, context)
   if (windowed !== null) return windowed
   if (id === 'view.maximize') return context.detached ? 'Already a separate window' : true

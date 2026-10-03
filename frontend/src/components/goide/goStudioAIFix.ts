@@ -1,6 +1,6 @@
 import type { GoIDEEditorTextEdit } from '@/lib/goide-lsp-api'
 import { applyTextEdits } from './goStudioWorkspaceEdits'
-import { lineDiff } from './goStudioLineDiff'
+import { lineDiff } from '@/lib/goide/goStudioLineDiff'
 
 /** File inviato all'AI come contesto, con percorso relativo al progetto. */
 export interface AIFixFile {

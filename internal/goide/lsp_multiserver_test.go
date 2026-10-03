@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,40 @@ import (
 	"adomnia/internal/ide/language"
 	"adomnia/internal/languages/golang"
 )
+
+func TestWorkspaceSymbolsPreservesHealthyServerResults(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := language.NewRegistry()
+	for _, adapter := range []language.Language{golang.New(), fakeTextLanguage{}} {
+		if err := registry.Register(adapter); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manager := NewLSPManager(registry)
+	root := t.TempDir()
+	t.Cleanup(manager.Shutdown)
+	session := Session{ID: "symbols", Project: Project{RootPath: root, RealPath: root}}
+	for _, id := range []string{golang.ID, "text"} {
+		env := append(os.Environ(), fakeGoplsEnv+"=1", "ADOMNIA_FAKE_LSP_ROOT="+root)
+		if id == golang.ID {
+			env = append(env, "ADOMNIA_FAKE_LSP_SLOW=1")
+		}
+		_, err := manager.Start(session, LanguageServerOptions{Language: id, Binary: executable, Arguments: []string{"--stdio-marker"}, Environment: env})
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitForLog(t, manager, session.ID, id, "ARGS --stdio-marker")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	symbols, err := manager.WorkspaceSymbols(ctx, session.ID, "Healthy")
+	if err != nil || len(symbols) != 1 || symbols[0].Name != "HealthySymbol" {
+		t.Fatalf("healthy server results lost: %+v, %v", symbols, err)
+	}
+}
 
 // fakeTextLanguage è un secondo linguaggio fittizio: dimostra che il manager LSP non è cablato su Go.
 type fakeTextLanguage struct{}

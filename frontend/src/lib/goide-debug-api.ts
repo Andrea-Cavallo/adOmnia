@@ -2,7 +2,7 @@ import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
-  GoroutineOverview, GoroutineSummary, ProcessInfo,
+  GoroutineOverview, ProcessInfo,
 } from '../../bindings/adomnia/internal/goide/models'
 
 export type GoIDEDebugRequest = DebugRequest
@@ -28,7 +28,7 @@ export type GoIDEFunctionBreakpoints = FunctionBreakpointsView
 export type GoIDEFileBreakpoints = FileBreakpoints
 export type GoIDEDelveInfo = DelveInfo
 export type GoIDEGoroutineOverview = GoroutineOverview
-export type GoIDEGoroutine = GoroutineSummary
+export type GoIDEGoroutine = GoroutineOverview['goroutines'][number]
 export type GoIDEDebugStepAction = 'continue' | 'pause' | 'next' | 'stepIn' | 'stepOut'
 
 export function detectGoIDEDelve(sessionId: string): Promise<DelveInfo> {

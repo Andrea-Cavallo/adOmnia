@@ -1,6 +1,6 @@
 # gO Studio → adOmnia IDE Platform: refactor multi-language
 
-> Stato: **Fasi 1–7 completate** (assessment, astrazioni core, Language Registry, detection e SDK Go nell'adapter, LSP multi-server, gopls nell'adapter, localizzatore unico degli strumenti). Ultimo aggiornamento: 2026-10-03.
+> Stato: **Fasi 1–12 completate** (sezione 23). Restano fuori, per scelta motivata, lo spostamento in massa di `components/goide` e la rimozione dei campi Go piatti dal DTO delle run config. Lo smoke manuale della build desktop e la build nativa macOS/Linux sono da fare a mano (checklist in sezione 23). Ultimo aggiornamento: 2026-10-03.
 > Obiettivo: trasformare gO Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
 > riscritture e senza regressioni. Java/Rust/Python/TypeScript sono solo *scenari di validazione*:
 > **non** si implementano in questo refactor.
@@ -505,7 +505,7 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
 - [x] **Fase 2 — Astrazioni core.** `internal/ide/language` (`Language`, `ProjectDetector`, `CapabilitiesOf`) e `internal/ide/project` (`Unit`, `IgnoredDirectory`, `EnsureWithin`). Test architetturale di import (`internal/ide/architecture_test.go`) + linguaggi fittizi (`registry_test.go`). Le altre capability (§8) entrano nella fase che porta il loro primo consumer.
 - [x] **Fase 3 — Language Registry.** `language.Registry` (non globale, fail-fast su ID duplicati/non validi), composition root `internal/goide/languages.go`, iniettato nel `WorkspaceManager`. *L'estensione della facciata `Capabilities` con `languages` è spostata alla Fase 10, dove ha il primo consumer (UI).*
 - [x] **Fase 4 — Project detection Go.** Scansione `go.mod`/`go.work`/cartelle sciolte spostata in `internal/languages/golang/detector.go` (stessi limiti e ordinamento); `Project.Units` popolato; campi legacy (`GoModPath`, `GoWorkPath`, `Modules`, `LooseGoDirs`) derivati dalle Unit in `goide.applyGoUnits` e coperti da test di equivalenza. Limite noto: una scansione del disco per linguaggio (walk condiviso quando i detector saranno più d'uno).
-- [ ] **Fase 5 — SDK/Toolchain.**
+- [x] **Fase 5 — SDK/Toolchain.**
   - [x] `internal/ide/process`: adattamento processi per piattaforma (process group, console nascosta, kill dell'albero, shell predefinita).
   - [x] `internal/ide/sdk`: ambiente dei processi (validazione, credenziali mai persistite, merge con proxy/CA/offline), risoluzione eseguibili, `BinaryStamp`, query informative, download con SHA-256 ed estrazione zip/tgz sicura.
   - [x] SDK Go nell'adapter: `golang/sdk.go` (manager config/ambiente/`GOTOOLCHAIN`), `sdk_detect.go` (`go version`/`go env`), `sdk_install.go` (catalogo go.dev). Il manager è `ToolchainManager[K ~string]`: l'host lo istanzia con il proprio `SessionID`, senza toccare i call site. `goide/toolchain.go` contiene solo alias.
@@ -525,11 +525,43 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] Capability `UsageClassifier` e `DeclarationExtractor` nel core; Go le implementa con `go/ast` (`golang/usage.go`, `golang/declaration.go`). Usages e Quick Definition le usano tramite il registry: un linguaggio senza capability riceve il risultato LSP grezzo.
   - [x] Wails conserva gli alias Go come alias TS: il frontend non cambia (`LanguageServerSettings` = `golang.GoplsSettings`).
   - Scelta: **nessuna interfaccia `LanguageServerProvider` per ora.** L'unico consumatore sarebbe l'host, che chiama `golang.GoplsServerSpec` con impostazioni tipizzate Go; un provider generico richiederebbe impostazioni opache senza un consumatore reale. Entra nella Fase 10, quando la UI avvierà i server per linguaggio dalla facciata generica.
-- [ ] **Fase 8 — Run/Build/Test.** `ide/run`, `ide/testing`; `golang.Runner`/`TestRunner`; `LanguageOptions` + migrazione run config.
-- [ ] **Fase 9 — Debug/Delve.** `ide/dap` DebugManager con `AdapterSpec`; `golang/delve.go` + estensioni goroutine/defer/memoria via `dap.Session`.
-- [ ] **Fase 10 — UI.** `frontend/src/components/ide/` (generico) + `components/ide/languages/go/` (contribuzioni: comandi, menu, tool window, status bar, provider Monaco, impostazioni). Command `requires`, tool-window registry, provider Monaco per `languageId` dal backend. Aggiornare la regex di `scripts/check-startup-bundle.mjs`.
-- [ ] **Fase 11 — Accoppiamento residuo.** Rimozione campi legacy (`Project.GoModPath`…, run config piatti), stato globale (toolversion caches → istanza), layering store→components.
-- [ ] **Fase 12 — Validazione.** Test architetturali, smoke manuale completo di gO Studio (`todo-ide.md`), aggiornamento `docs/GO-STUDIO.md`, `AGENTS.md`, `CLAUDE.md` (sezione "Add a Go Studio feature" → "Add a language/IDE feature").
+- [x] **Fase 8 — Run/Build/Test (backend completato).**
+  - [x] `ide/run.ProcessManager`: lifecycle, process tree, stdin, output UTF-8, limiti, storico, stop e shutdown. `SessionID`, `RunID`, `Execution`, `CommandSpec` e modelli comuni nel core; alias di compatibilità in `goide`.
+  - [x] `ide/run.Manager`: CRUD, ordine, isolamento per sessione, import condiviso e redazione segreti. `Configuration` contiene `LanguageOptions` opaco e nessun campo Go. La normalizzazione specifica è iniettata dall'host.
+  - [x] Capability `Runner` / `TestRunner` derivata dal registry. `golang.Language.CommandSpec` dichiara i kind Go; eliminato `supportedRunKinds`. `golang.TestCommand` costruisce il comando strutturato e fornisce il parser.
+  - [x] `golang.RunOptions` e conversione dei campi legacy in lettura/nel manager; facciata e file condivisi continuano a leggere/scrivere i campi piatti per il frontend attuale. Test di caricamento legacy, round-trip opaco e segreti; validazione dei percorsi anche nei target extra delle opzioni opache.
+  - [x] `ide/testing.Tree` aggrega eventi neutrali; `golang.Test2JSONParser` possiede JSON, benchmark, shuffle, timeout e riferimenti ai sorgenti Go. Builder e validazione dei flag Go nell'adapter.
+  - [x] `ide/testing.Manager` possiede avvio, framing stdout, albero, snapshot/output, storico limitato, isolamento e pubblicazione progressiva/finale. Gestisce anche la coda senza newline e registra l’identità prima della callback di fine. Hook iniettati per metadati specifici: `golang.RaceCollector` e risoluzione sorgenti Go nell’adapter; coverage e conversione dei modelli Wails nel layer di compatibilità dell’host. Test su 23 run, storico di 20, isolamento degli snapshot, chiusura sessione e un solo evento finale.
+  - [x] `ide/run.Chain` / `Compound`, parametri comuni, env file, controllo porte e comandi generici nel core. `run.Tools` possiede Make, Docker build/run/compose e stop dei container; l’host inietta il percorso Make, autorizzazione e aggiornamento della richiesta per Rerun. `golang.ApplyRunOptions` / `ValidateRunOptions` possiedono GOOS/GOARCH, race, coverage e profiling. Gli identificatori persistiti e la label Docker legacy restano compatibili.
+  - [x] Run/Test scelgono capability dal registry; gli ambienti non-Go e Make/Docker/command/binary usano il preparatore comune senza selezione SDK Go. Runner fittizio reale con PATH privo di Go: apertura progetto/documento, configurazione salvata con opzioni opache, env file/precedenza esplicita/porta, Run via facade e `run.Manager`, Test con parser neutrale, storico/output e `command`. Anche le opzioni Go opache applicano flag/ambiente e coverage; package test opachi confinati al progetto. La migrazione UI resta in Fase 10, la rimozione dei campi piatti in Fase 11.
+- [x] **Fase 9 — Debug/Delve (implementazione backend verificata automaticamente).**
+  - [x] `ide/dap.DebugManager` e store breakpoint nel core: nessun import dell'host o dell'adapter. Thread, stack, scope, variabili, watch, console, stepping e disassembly parlano solo DAP.
+  - [x] `dap.AdapterSpec` fornisce ID, eseguibile, argomenti, ambiente, directory, titolo, launch/attach e hook per errori/evaluate/panic. Trasporti `Stdio` e `TCPListen` con pattern di readiness configurabile; remoto senza processo locale. Validazione della spec prima dello spawn, stderr separato dal protocollo stdio, chiusura di stream/processi e cleanup.
+  - [x] `golang.DebugAdapter`: argomenti `dlv dap`, launch/test/attach/remoto, binario temporaneo per piattaforma, build flag, titoli e spiegazioni SDK/Delve. Retry `call ` solo per REPL; watch e hover non eseguono chiamate implicitamente. Hit-condition e `runtime.gopanic` restano Go-specifici.
+  - [x] `golang.DebugExtensions` usa `dap.Session` per goroutine, origine, defer, lettura memoria via evaluate e registri. L'host conserva wrapper e alias, senza copie della logica Go.
+  - [x] Adapter fittizio senza Go/Delve su PATH: handshake e operazioni reali sui due trasporti, ID e readiness diversi da Go, stderr, disconnect e spec invalide. Regressioni Delve reali: breakpoint condizionali/hit count/logpoint/funzione/panic, Run to Cursor, step/variabili/evaluate, test singolo, isolamento sessioni, attach/detach, remoto, disassembly, memoria, goroutine/defer e stop senza orfani.
+  - [x] Binding rigenerati con Wails `v3.0.0-beta.26`; adattato il wrapper TS al tipo delle goroutine derivato dai modelli generati, senza modificare la UI.
+  - [ ] Smoke manuale della nuova build: `wails3 task dev` ha compilato e avviato il binario, ma l'istanza già aperta ha intercettato l'avvio per il vincolo single-instance. Nessun claim di osservazione della nuova build; resta nella validazione di Fase 12.
+- [x] **Fase 10 — UI.**
+  - [x] Facciata: `GetCapabilities().languages` (`language.Info`: id, nome, capability derivate) dal registry. È il primo consumer UI della Fase 3.
+  - [x] `frontend/src/components/ide/languages.ts`: `IdeLanguageContribution` (id, nome, icona Simple Icons, linguaggi Monaco serviti dal language server, menu). `IDE_LANGUAGES` è l'elenco delle contribuzioni.
+  - [x] `components/ide/languages/go/`: contribuzione Go (icona `go`, editor `go`, menu Go) e i 25 comandi del menu Go con `requires: { language: 'go' }`.
+  - [x] Command `requires`: `commandAvailability` disabilita i comandi di un linguaggio non registrato dal backend, con il motivo nel menu.
+  - [x] Menu dei linguaggi derivati dalle contribuzioni.
+  - [x] Provider Monaco LSP generici (completion, hover, signature, definizioni, simboli, formatting, code action, semantic tokens, inlay hints, highlight, code vision) registrati sui linguaggi Monaco delle contribuzioni, non su `'go'`. CodeLens go.mod/package restano Go.
+  - [x] Eventi `lsp.status` filtrati per `language`: lo stato gopls non viene sovrascritto da un altro server della stessa sessione.
+  - [x] Icona del linguaggio nella status bar.
+  - [x] Icone Simple Icons per Java/OpenJDK, Kotlin, PHP, Ruby, .NET, C/C++, Swift, Dart, Scala, Elixir, Haskell, Lua, Zig, Maven e Gradle (estensioni e file di build), con `scripts/generate-brand-icons.mjs`.
+  - [x] Regex di `scripts/check-startup-bundle.mjs` estesa a `components/ide/**` e `lib/goide/**`.
+  - Scelta: **nessuno spostamento in massa** dei ~300 file di `components/goide` in `components/ide`. Sarebbe solo churn, senza effetto per l'utente e con alto rischio di conflitti. Un componente si sposta quando un secondo linguaggio lo usa davvero.
+  - Scelta: **nessun registry di tool window** né interfaccia `LanguageServerProvider`, perché manca un secondo consumer. Il server di un nuovo linguaggio si descrive con una `lsp.ServerSpec` prodotta dal suo adapter, come `golang.GoplsServerSpec`.
+- [x] **Fase 11 — Accoppiamento residuo.**
+  - [x] Rimossi `Project.goModPath/goWorkPath/modules/looseGoDirs` da modello, JSON e binding. Backend: `goLayoutOf(project)` li deriva dalle unità. Frontend: `lib/goide/goProject.ts` (`goProjectLayout`, `goModules`).
+  - [x] Migrazione: una sessione persistita senza `units` (salvata prima della Fase 4) viene ri-ispezionata al restore (`TestRestoreDetectsUnitsOfLegacySessions`).
+  - [x] Layering: gli helper puri importati dagli store (`RunHistory`, `CaretMemory`, `Recovery`, `DiskChanges`, `TestTree`, `LineDiff`) sono spostati da `components/goide` a `lib/goide`. Gli store importano da `components/` solo tipi, che spariscono in compilazione.
+  - Scelta: **i campi Go piatti delle run config restano nel DTO della facciata.** Il modello core `run.Configuration` ne è già privo (Fase 8). Il DTO è anche il formato di `.adomnia/run-configurations.json`, versionato nei repository: cambiarlo romperebbe chi apre lo stesso progetto con una versione precedente di adOmnia.
+  - Scelta: **la cache delle versioni dei tool (`sdk.CachedVersion`) resta di processo.** Memorizza un fatto su un file (percorso + stamp), valido per ogni sessione e istanza. Per istanza rilancerebbe solo `<tool> version`.
+- [x] **Fase 12 — Validazione.** Test architetturali e suite completa verdi (sezione 23). Aggiornati `docs/GO-STUDIO.md`, `AGENTS.md`, `CLAUDE.md` ("Add a language/IDE feature") e CHANGELOG. Smoke manuale e build native macOS/Linux restano manuali (checklist in sezione 23).
 
 Ordine scelto perché ogni fase sblocca la successiva con il minimo raggio d'azione: le Fasi 2-4 sono quasi solo additive; 5-9 spostano codice dietro interfacce già testate; 10 tocca la UI quando il backend espone già le capability.
 
@@ -585,16 +617,86 @@ Manuale (per fase): checklist di `todo-ide.md` — apertura progetto, completame
 
 ## 20. Acceptance criteria
 
-- [ ] Il core (`internal/ide/...`) non importa `internal/languages/...` né librerie di tooling Go (test architetturale).
-- [ ] `internal/languages/golang` dipende dal core, mai il contrario; nessun ciclo.
-- [ ] gO Studio funziona come prima (test esistenti + smoke manuale).
-- [ ] `Project` è composto da `Unit` multi-linguaggio; nessun campo Go nel modello core.
-- [ ] Lifecycle LSP generico, più server per sessione; gopls è un `LanguageServerProvider` Go.
-- [ ] DebugManager parla solo DAP; Delve è un `DebugAdapterProvider` Go.
-- [ ] Run/Build/Test sono capability (`Runner`, `TestRunner`); i kind Go sono dichiarati dall'adapter.
-- [ ] SDK/toolchain astratti (`ide/sdk`); `GOROOT/GOPATH/GOPROXY/GOPRIVATE` solo in `languages/golang`.
-- [ ] Esiste `language.Registry`; nessuno switch globale per linguaggio nel core.
-- [ ] `FakeLanguage` registrabile e usabile nei test senza modificare workspace, editor, terminal, run, debug, LSP, explorer.
-- [ ] Frontend: componenti IDE comuni senza `'go'` letterali; contribuzioni Go in `components/ide/languages/go/`.
-- [ ] Tutti i test esistenti verdi + test architetturali nuovi; build Windows/macOS/Linux invariata.
-- [ ] Aggiungere `languages/java` richiede solo un nuovo package e una riga di registrazione.
+- [x] Il core (`internal/ide/...`) non importa `internal/languages/...` né librerie di tooling Go (test architetturale).
+- [x] `internal/languages/golang` dipende dal core, mai il contrario; nessun ciclo.
+- [x] gO Studio funziona come prima nei test automatici (Go con gopls/Delve reali, 1041 test frontend). Lo smoke manuale della build desktop è nella checklist della sezione 23.
+- [x] `Project` è composto da `Unit` multi-linguaggio; nessun campo Go nel modello core.
+- [x] Lifecycle LSP generico, più server per sessione. gopls è descritto dall'adapter Go (`golang.GoplsServerSpec` → `lsp.ServerSpec`); nessuna interfaccia provider senza un secondo consumer (Fase 10).
+- [x] DebugManager parla solo DAP; Delve è un `DebugAdapterProvider` Go.
+- [x] Run/Build/Test sono capability (`Runner`, `TestRunner`); i kind Go sono dichiarati dall'adapter.
+- [x] SDK/toolchain astratti (`ide/sdk`); `GOROOT/GOPATH/GOPROXY/GOPRIVATE` solo in `languages/golang` (nel core compaiono solo nei commenti).
+- [x] Esiste `language.Registry`; nessuno switch globale per linguaggio nel core.
+- [x] Linguaggi fittizi registrabili e usati nei test senza modificare il core: registry/detection, LSP multi-server, Run/Test senza Go nel PATH, adapter DAP fittizio, `requires` dei comandi UI.
+- [x] Frontend: il layer comune `components/ide` è senza `'go'` letterali e le contribuzioni Go sono in `components/ide/languages/go/`. `components/goide` resta la UI di gO Studio (scelta della Fase 10).
+- [x] Tutti i test esistenti verdi + test architetturali nuovi; build Windows verificata, `go vet` macOS/Linux sui package del refactor. La build nativa macOS/Linux è manuale (CI di release).
+- [x] Aggiungere `languages/java` richiede un nuovo package backend + una riga in `goide/languages.go`, e lato UI una cartella `components/ide/languages/java/` + una riga in `IDE_LANGUAGES` (icona `openjdk` già generata).
+
+---
+
+## 21. Verifica e pubblicazione delle prime nove fasi — 2026-10-03
+
+Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incremento chiude le due osservazioni dell'audit LSP (argomenti di startup nella `ServerSpec`; richieste workspace/symbol parallele con timeout indipendenti e risultati parziali), pubblica le estrazioni Run/Test effettivamente realizzate e completa il backend DAP/Delve della Fase 9. **Alla pubblicazione di `daa2e89` la Fase 8 era ancora parziale.** Il completamento successivo è documentato nella sezione 22.
+
+| Verifica eseguita | Esito / limite |
+|---|---|
+| `go build ./...` | PASS |
+| `go test ./... -count=1 -timeout=240s` | PASS; `internal/goide` 155.462 s. PATH include gli strumenti Go gestiti; integrazioni reali gopls e Delve disponibili. |
+| `go test ./... -short -count=1 -timeout=180s` | PASS; `internal/goide` 152.971 s. |
+| `go vet ./...` | PASS; anche il controllo mirato core/adapter/host è verde. |
+| Test architetturali core/adapter | PASS: core senza import dell'host, adapter o librerie di tooling Go; adapter senza import dell'host. |
+| Nuove regressioni | PASS: argv LSP, server lento/risultati sani, DAP TCP e stdio, spec invalide, migrazione configurazioni legacy/opache, segreti, target/flag Go opachi confinati. |
+| Generazione binding | PASS con CLI Wails `v3.0.0-beta.26`, coerente con `go.mod`; 17 servizi, 588 metodi, 315 modelli. |
+| `npx tsc --noEmit` / `npm run build` | PASS dopo l'adeguamento del wrapper TS al modello goroutine generato. |
+| `npm test` | PASS: 232 file, 1.035 test. |
+| `npm run check:startup` sulla build corrente | PASS: 620.225 byte JS iniziali; nessun modulo deferred sullo startup. |
+| `wails3 task dev` con CLI beta.26 | Compilazione frontend e binario Windows riuscite. Lo smoke della nuova build non è osservato: l'istanza già aperta ha intercettato l'avvio single-instance. |
+| Altre piattaforme | Build macOS/Linux e relativo smoke non eseguiti in questo ambiente Windows. |
+
+Dopo il completamento della Fase 8 (sezione 22), il prossimo lavoro è la Fase 10 (contribuzioni UI e capability per linguaggio), Fase 11 (alias/campi legacy/cache/store coupling) e Fase 12 (smoke completo e verifiche multipiattaforma). Il frontend corrente continua a essere Go Studio; non esiste ancora un workflow utente per un secondo linguaggio.
+
+## 22. Completamento della Fase 8 — 2026-10-03
+
+Implementazione pubblicata su `master`: [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/commit/fe3456ac351ebae9ce7d8cbd76b2ca0b070df4e4). La Fase 9 e le basi Run/Test precedenti sono in `daa2e89`.
+
+I tre residui di Fase 8 sono chiusi. Il core assume il lifecycle dei test e dei workflow Run; la facciata compone autorizzazione, documenti, registry, SDK Go solo per Go e metadati compatibili con Wails. Le API pubbliche e i JSON legacy non cambiano. Le configurazioni di altri linguaggi conservano `LanguageOptions` fino all’esecuzione e possono usare i kind dichiarati dal loro adapter, senza un elenco globale nel core.
+
+Le nuove regressioni verificano il workflow con eseguibili reali, non solo la costruzione di argomenti: nessun Go nel PATH; runner e parser di un linguaggio fittizio; `.env` e porte; comando generico; identità delle run veloci; flush della riga finale; storico limitato e isolamento degli snapshot. Le opzioni Go opache sono coperte per race/coverage/profiling/GOOS/GOARCH e per i test con coverage reale e package confinati.
+
+| Verifica | Esito |
+|---|---|
+| `go build ./...` / `go vet ./...` | PASS; controllo vet mirato ripetuto dopo l’ultima correzione delle callback. |
+| `go test ./... -count=1 -timeout=240s` | PASS; host `internal/goide` 144.153 s, core testing 2.930 s; PATH include gopls e Delve gestiti. |
+| Regressioni mirate `-race` | PASS: workflow senza Go, opzioni opache Go, storico/snapshot, catene e configurazioni, callback contemporanee build/container. Le ultime correzioni sono verificate anche dopo la suite generale. |
+| Make reale | PASS; Docker reale SKIP per daemon non attivo. |
+| Test architetturali core/adapter | PASS, compresi nella suite completa. |
+| Binding Wails `v3.0.0-beta.26` | PASS: 17 servizi, 588 metodi, 315 modelli; contratti pubblici invariati. |
+| `npx tsc --noEmit` / `npm run build` | PASS. Nessuna modifica funzionale alla UI. |
+| `npm run check:startup` | PASS: 620.225 byte JS iniziali, nessun deferred sullo startup. |
+| `git diff --check` | PASS. |
+
+La callback che memorizza le richieste Make/Docker copia i dati per ogni invocazione: una build molto rapida e il container successivo non modificano più la stessa richiesta catturata. La regressione esegue entrambe le callback contemporaneamente e controlla separatamente le richieste di Rerun, anche con il race detector.
+
+Limiti osservati: Make end-to-end passa; Docker end-to-end è saltato perché il daemon Docker Desktop non è attivo (costruzione comandi, percorsi e segreti sono coperti dai test). Nessuna verifica manuale della nuova build desktop o di macOS/Linux in questo incremento: restano nella Fase 12. Restano aperte soltanto le Fasi 10, 11 e 12.
+
+## 23. Fasi 10–12 — 2026-10-03
+
+Fase 10 porta la piattaforma nella UI senza riscriverla. Il backend dice quali linguaggi esistono, il frontend li descrive con contribuzioni. Comandi, menu e provider editor non sono più cablati su Go. Fase 11 toglie il modello Go da `Project` e i cicli store→components. Fase 12 verifica e documenta.
+
+| Verifica | Esito |
+|---|---|
+| `go build ./...`, `go vet ./...`, build app (`go build -o NUL .`) | PASS |
+| `GOOS=linux/darwin go vet` su `internal/ide/...`, `internal/languages/...`, `internal/goide` | PASS (il resto dell'app importa Wails, che su Linux richiede cgo: non verificabile da Windows) |
+| `go test ./... -count=1` con gopls e Delve reali nel PATH | PASS |
+| Binding Wails `v3.0.0-beta.26` | PASS: 17 servizi, 588 metodi, 316 modelli |
+| `npx tsc --noEmit`, `npm run build` | PASS |
+| `npx vitest run` | PASS: 234 file, 1041 test |
+| `npm run check:startup` | PASS: 620.225 byte JS iniziali, nessun modulo deferred allo startup |
+
+### Checklist smoke manuale (da eseguire sulla build desktop)
+
+- [ ] Aprire un progetto Go salvato da una versione precedente: albero, overview moduli, status bar (`go.mod`/`go.work`/folder mode) corretti.
+- [ ] Menu Go completo; Start Language Server, completion/hover/rename, Problems.
+- [ ] Icona del linguaggio nella status bar su un file `.go`; icone Java/Kotlin/Maven/Gradle nell'albero di un progetto misto.
+- [ ] Run, Test (albero test, rerun failed), Debug con breakpoint, terminale, Git.
+- [ ] Dependencies, Dependency Graph, Runtime Enrichment, Toolchain config: il selettore dei moduli mostra i moduli del progetto.
+- [ ] Build nativa macOS e Linux (CI di release) e avvio.

@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { create } from 'zustand'
 import { duplicateGoIDEPath, moveGoIDEPath, type GoIDESession } from '@/lib/goide-api'
 import type { GoIDEQuickRunKind, GoIDESplitOrientation } from '@/stores/goide'
@@ -43,7 +44,7 @@ function report(message: string): void {
 export function goImportPath(session: Pick<GoIDESession, 'project'>, relativePath: string, directory: boolean): string | null {
   const packageDirectory = directory ? relativePath : parentOf(relativePath)
   const scope = moduleScopeFor(session, joinRelative(packageDirectory, DIRECTORY_PROBE))
-  const module = (session.project.modules ?? []).find((item) => {
+  const module = (goModules(session.project)).find((item) => {
     const root = session.project.realPath.replace(/\\/g, '/').replace(/\/+$/, '')
     const path = item.path.replace(/\\/g, '/').replace(/\/+$/, '')
     return path === (scope.moduleDirectory ? `${root}/${scope.moduleDirectory}` : root)
