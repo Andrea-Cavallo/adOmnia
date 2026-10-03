@@ -10,6 +10,8 @@ import {
 } from './goStudioTrace'
 import { GoStudioTraceTimeline, type TraceTimelineRow } from './GoStudioTraceTimeline'
 import { VizBar, VizSegmented } from './GoStudioVizKit'
+import { GoStudioPerfExport } from './GoStudioPerfExport'
+import { traceToMarkdown, markdownFileName } from './goStudioPerfMarkdown'
 
 interface GoStudioTracePanelProps {
   session: GoIDESession
@@ -115,6 +117,7 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
         </label>
         <button type="button" onClick={() => void refresh()} aria-label="Refresh traces" title="Refresh" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} className={filesLoading ? 'animate-spin' : ''} /></button>
         {loading && <Loader2 size={14} className="animate-spin text-accent" aria-label="Loading trace" />}
+        {report && <span className="ml-auto"><GoStudioPerfExport fileName={markdownFileName(report.name, 'trace')} build={() => traceToMarkdown(report)} /></span>}
       </div>
 
       {error && <p className="border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11.5px] text-danger">{error}</p>}

@@ -9,6 +9,8 @@ import {
 } from './goStudioProfiles'
 import { GoStudioFlameGraph } from './GoStudioFlameGraph'
 import { VizBar, VizLegend, VizSegmented } from './GoStudioVizKit'
+import { GoStudioPerfExport } from './GoStudioPerfExport'
+import { markdownFileName, profileToMarkdown } from './goStudioPerfMarkdown'
 
 interface GoStudioProfilePanelProps {
   session: GoIDESession
@@ -202,6 +204,14 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
         <label className="flex items-center gap-1.5 text-[11.5px] text-text-3"><input type="checkbox" checked={hideRuntime} onChange={(event) => setHideRuntime(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Hide runtime</label>
         <button type="button" onClick={() => void refresh()} aria-label="Refresh profiles" title="Refresh" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} className={filesLoading ? 'animate-spin' : ''} /></button>
         {reportLoading && <Loader2 size={14} className="animate-spin text-accent" aria-label="Loading profile" />}
+        {report && (
+          <span className="ml-auto">
+            <GoStudioPerfExport
+              fileName={markdownFileName(report.name, report.sampleTypes[sampleIndex]?.name ?? 'profile')}
+              build={() => profileToMarkdown(report, { sampleIndex, compareWith: diffReport && matchingSampleIndex(report, diffReport, sampleIndex) >= 0 ? diffReport : null })}
+            />
+          </span>
+        )}
       </div>
 
       {error && <p className="border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11.5px] text-danger">{error}</p>}
