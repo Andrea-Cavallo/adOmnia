@@ -568,6 +568,11 @@ func (g *GoIDE) DependencyVulnerabilities(sessionID, moduleDirectory string) ([]
 	return g.service.DependencyVulnerabilities(sessionID, moduleDirectory)
 }
 
+// VulnerabilityScan esegue govulncheck con percorsi di chiamata, versione corretta e catena di dipendenze.
+func (g *GoIDE) VulnerabilityScan(sessionID, moduleDirectory string) (goide.VulnReport, error) {
+	return g.service.VulnerabilityScan(sessionID, moduleDirectory)
+}
+
 // StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
 func (g *GoIDE) StartTests(request goide.TestRunRequest) (goide.TestRunSnapshot, error) {
 	return g.service.StartTests(request)

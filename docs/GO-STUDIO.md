@@ -216,6 +216,15 @@ pause and explains it.
 - **Image tabs.** Clicking an image in the Project tree opens a read-only preview tab (zoom, fit-to-window, dimensions) instead of failing as a non-text file. Supported: png, jpg/jpeg, gif, webp, bmp, ico, avif, svg, up to 16 MB. Image tabs are never sent to gopls.
 - **Markdown.** Relative image links in the Markdown preview (`![](img/a.png)`) are read from the project as data URLs, because a `file://` URL is not readable inside the WebView.
 
+## Vulnerabilities (govulncheck)
+
+- **Open it.** *View → Vulnerabilities (govulncheck)* or the **Vulns** button in the status bar. *Scan with govulncheck* runs `govulncheck -json ./...` on the chosen Go module of a trusted project. It is on demand: govulncheck downloads the Go vulnerability database from vuln.go.dev (shown in *Settings → Network & Privacy* under **Vulnerability DB**; offline and air-gapped modes block it). Install govulncheck from *Go → Toolchains* if it is missing.
+- **Priority from reachability.** The Go database rarely publishes CVSS scores, so findings are ranked by what govulncheck proves: **High · Called** (your code calls the vulnerable symbol), **Medium · Imported** (the package is imported, no call found), **Low · Required only** (the module is only in the build). A CVSS vector is shown when the advisory has one. Priority always has an icon and a label, never colour alone.
+- **Detail.** Each finding shows ID and aliases (CVE, GHSA), summary and details, found → fixed version, vulnerable symbols, references and a link to the advisory.
+- **Call paths and dependency path.** Up to five call paths per finding, from your function to the vulnerable symbol. Every step opens its source: project files in the editor, dependencies and the standard library read-only (resolved from `GOMODCACHE` and `GOROOT`). The dependency path is the shortest module chain from your module, read offline from `go mod graph`.
+- **Upgrade preview.** The `go.mod` change (`require module old → fixed`, or the new indirect requirement) and the exact `go get module@fixed` command. *Upgrade…* asks for confirmation and runs it like the other dependency actions; standard library findings point to a Go toolchain upgrade instead.
+- **Export for AI.** *Copy for AI*, *Save .md* and *Ask Copilot* produce a Markdown report (context, glossary, summary table, per-finding fix, call paths, dependency path). Locations are project-relative or bare file names, never absolute machine paths.
+
 ## SonarQube (optional)
 
 - **Opt-in.** *View → SonarQube* (or the **Sonar** button in the status bar) is off until you enable it for the project. Configure the server URL, project key, sources (default `.`) and exclusions; `sonar-scanner` must be installed and is detected on the managed tools folder or the PATH (a custom path is accepted). Nothing is installed or started by adOmnia on its own.

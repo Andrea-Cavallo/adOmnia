@@ -110,6 +110,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'view.profile': icon(Flame),
   'view.trace': icon(Activity),
   'view.sonar': icon(ShieldCheck),
+  'view.vulnerabilities': icon(ShieldAlert),
   'view.debug': icon(Bug),
   'view.splitRight': icon(Columns2),
   'view.splitDown': icon(Rows2),

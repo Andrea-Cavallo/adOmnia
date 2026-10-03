@@ -2,7 +2,7 @@ import { goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
-import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldCheck, Sun } from 'lucide-react'
+import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -142,6 +142,9 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       </button>
       <button type="button" onClick={() => showToolWindow('sonar')} title="SonarQube (optional)" className={`${ITEM} gap-1`}>
         <ShieldCheck size={12} />Sonar
+      </button>
+      <button type="button" onClick={() => showToolWindow('vulns')} title="Known vulnerabilities (govulncheck)" className={`${ITEM} gap-1`}>
+        <ShieldAlert size={12} />Vulns
       </button>
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}

@@ -550,77 +550,30 @@ func estimateModuleWeight(directory string) int64 {
 	return total
 }
 
+// runGovulncheck legge lo stream JSON di govulncheck (un messaggio per riga) e lo riduce a una riga per advisory.
 func runGovulncheck(directory, binary string) ([]DependencyVulnerability, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dependencyVulnTimeout)
-	defer cancel()
-	if err := netpolicy.Allow("vulncheck", "vuln.go.dev"); err != nil {
+	output, err := runGovulncheckJSON(directory, binary, netpolicy.Environ())
+	if err != nil {
 		return nil, err
 	}
-	netpolicy.Record(netpolicy.Event{Category: "vulncheck", Host: "vuln.go.dev", Outcome: netpolicy.OutcomeOK, Detail: "govulncheck"})
-	command := exec.CommandContext(ctx, binary, "-json", "./...")
-	command.Dir = directory
-	command.Env = netpolicy.Environ()
-	configureProcess(command, false)
-	output, err := command.CombinedOutput()
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("govulncheck scaduto")
-	}
-	if len(output) > maxModuleGraphBytes {
-		output = output[:maxModuleGraphBytes]
-	}
-	findings, parseErr := parseVulnerabilities(output)
-	if err != nil && parseErr != nil {
-		return nil, fmt.Errorf("govulncheck: %s", strings.TrimSpace(string(output)))
-	}
-	return findings, nil
-}
-
-func parseVulnerabilities(output []byte) ([]DependencyVulnerability, error) {
-	var result struct {
-		Vulns []struct {
-			OSV struct {
-				ID       string `json:"id"`
-				Summary  string `json:"summary"`
-				Severity []struct {
-					Type  string `json:"type"`
-					Score string `json:"score"`
-				} `json:"severity"`
-			} `json:"osv"`
-			Module struct {
-				Path    string `json:"path"`
-				Version string `json:"version"`
-			} `json:"module"`
-			Package struct {
-				Path string `json:"path"`
-			} `json:"package"`
-			Symbol string `json:"symbol"`
-		} `json:"vulns"`
-	}
-	if err := json.Unmarshal(output, &result); err != nil {
+	report, err := parseGovulncheckStream(output)
+	if err != nil {
 		return nil, err
 	}
-	findings := make([]DependencyVulnerability, 0, len(result.Vulns))
-	for _, vuln := range result.Vulns {
+	findings := make([]DependencyVulnerability, 0, len(report.Findings))
+	for _, finding := range report.Findings {
+		symbol := ""
+		if len(finding.Symbols) > 0 {
+			symbol = finding.Symbols[0]
+		}
+		pkg := ""
+		if len(finding.Packages) > 0 {
+			pkg = finding.Packages[0]
+		}
 		findings = append(findings, DependencyVulnerability{
-			ID: vuln.OSV.ID, Module: vuln.Module.Path, Version: vuln.Module.Version,
-			Package: vuln.Package.Path, Symbol: vuln.Symbol,
-			Severity: severityLabel(vuln.OSV.Severity), Summary: vuln.OSV.Summary,
+			ID: finding.ID, Module: finding.Module, Version: finding.FoundVersion, Package: pkg, Symbol: symbol,
+			Severity: finding.Level, Summary: finding.Summary,
 		})
 	}
 	return findings, nil
-}
-
-func severityLabel(severity []struct {
-	Type  string `json:"type"`
-	Score string `json:"score"`
-}) string {
-	if len(severity) == 0 {
-		return ""
-	}
-	parts := make([]string, 0, len(severity))
-	for _, entry := range severity {
-		parts = append(parts, entry.Type)
-	}
-	sort.Strings(parts)
-	return strings.Join(parts, ",")
 }
