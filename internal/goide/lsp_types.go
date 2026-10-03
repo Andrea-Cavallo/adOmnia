@@ -13,13 +13,15 @@ const (
 )
 
 type LanguageServerStatus struct {
-	SessionID SessionID           `json:"sessionId"`
-	State     LanguageServerState `json:"state"`
-	Binary    string              `json:"binary,omitempty"`
-	Version   string              `json:"version,omitempty"`
-	PID       int                 `json:"pid,omitempty"`
-	Restarts  int                 `json:"restarts"`
-	Error     string              `json:"error,omitempty"`
+	SessionID SessionID `json:"sessionId"`
+	// Language è il linguaggio servito (es. "go"): una sessione può avere un server per linguaggio.
+	Language string              `json:"language,omitempty"`
+	State    LanguageServerState `json:"state"`
+	Binary   string              `json:"binary,omitempty"`
+	Version  string              `json:"version,omitempty"`
+	PID      int                 `json:"pid,omitempty"`
+	Restarts int                 `json:"restarts"`
+	Error    string              `json:"error,omitempty"`
 	// Features elenca ciò che il gopls in esecuzione supporta davvero: l'editor nasconde il resto.
 	Features *LanguageServerFeatures `json:"features,omitempty"`
 }

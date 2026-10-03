@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // Gerarchie di gopls (chiamate e tipi) esposte in forma uniforme: l'elemento LSP
@@ -60,7 +61,7 @@ func (m *LSPManager) PrepareHierarchy(ctx context.Context, sessionID SessionID, 
 	if err := process.conn.Call(ctx, method, positionParams(document, line, column), &items); err != nil {
 		return nil, err
 	}
-	state, _ := m.get(sessionID)
+	state, _ := m.forDocument(sessionID, documentID)
 	return m.hierarchyItems(state, items, nil), nil
 }
 
@@ -74,15 +75,16 @@ func (m *LSPManager) ExpandHierarchy(ctx context.Context, sessionID SessionID, d
 	if err := json.Unmarshal([]byte(token), &item); err != nil || item.URI == "" {
 		return nil, fmt.Errorf("nodo della gerarchia non valido")
 	}
-	state, ok := m.get(sessionID)
+	// Il nodo può stare in un file non aperto: il server è quello del linguaggio del file.
+	state, ok := m.forPath(sessionID, pathFromURI(item.URI))
 	if !ok {
-		return nil, fmt.Errorf("gopls non avviato per questa sessione")
+		return nil, fmt.Errorf("nessun language server avviato per %s", filepath.Base(pathFromURI(item.URI)))
 	}
 	state.mu.Lock()
-	process, ready := state.process, state.status.State == LanguageServerReady
+	process, ready, name := state.process, state.status.State == LanguageServerReady, state.options.displayName()
 	state.mu.Unlock()
 	if process == nil || !ready {
-		return nil, fmt.Errorf("gopls non è pronto")
+		return nil, fmt.Errorf("%s non è pronto", name)
 	}
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
@@ -91,7 +93,7 @@ func (m *LSPManager) ExpandHierarchy(ctx context.Context, sessionID SessionID, d
 		var calls []struct {
 			From       *hierarchyItem `json:"from"`
 			To         *hierarchyItem `json:"to"`
-			FromRanges []lsp.Range     `json:"fromRanges"`
+			FromRanges []lsp.Range    `json:"fromRanges"`
 		}
 		if err := process.conn.Call(ctx, method, map[string]any{"item": item}, &calls); err != nil {
 			return nil, err

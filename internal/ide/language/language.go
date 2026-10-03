@@ -25,13 +25,21 @@ type ProjectDetector interface {
 	DetectUnits(ctx context.Context, root string) ([]project.Unit, error)
 }
 
+// DocumentSelector dice quali file appartengono al linguaggio e con quale languageId LSP
+// vanno inviati al suo language server (es. "go", "go.mod").
+type DocumentSelector interface {
+	DocumentLanguageID(path string) (string, bool)
+}
+
 // Capabilities è derivato dalle interfacce implementate: non si dichiara a mano.
 type Capabilities struct {
 	ProjectDetection bool `json:"projectDetection"`
+	Documents        bool `json:"documents"`
 }
 
 // CapabilitiesOf restituisce le capability effettivamente implementate da l.
 func CapabilitiesOf(l Language) Capabilities {
 	_, detects := l.(ProjectDetector)
-	return Capabilities{ProjectDetection: detects}
+	_, selects := l.(DocumentSelector)
+	return Capabilities{ProjectDetection: detects, Documents: selects}
 }

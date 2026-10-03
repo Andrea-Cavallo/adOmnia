@@ -8,7 +8,7 @@ import (
 	"go/token"
 	"strings"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 const maxQuickDefinitionLines = 120
@@ -28,9 +28,9 @@ func (m *LSPManager) QuickDefinition(ctx context.Context, sessionID SessionID, d
 	if err != nil || len(locations) == 0 {
 		return QuickDefinitionResult{}, err
 	}
-	state, ok := m.get(sessionID)
+	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
-		return QuickDefinitionResult{}, fmt.Errorf("gopls non avviato per questa sessione")
+		return QuickDefinitionResult{}, fmt.Errorf("documento non sincronizzato con un language server")
 	}
 	location := locations[0]
 	text := m.documentText(state, location.URI, location.Path)

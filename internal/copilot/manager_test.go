@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 const fakeServerEnv = "ADOMNIA_FAKE_COPILOT_SERVER"

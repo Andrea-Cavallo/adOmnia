@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 const (

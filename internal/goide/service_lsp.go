@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"adomnia/internal/languages/golang"
+	"adomnia/internal/netpolicy"
 )
 
 // StartLanguageServer avvia gopls per un progetto autorizzato, usando l'SDK Go selezionato per la sessione.
 func (s *Service) StartLanguageServer(sessionID string, settings LanguageServerSettings) (LanguageServerStatus, error) {
 	session, options, err := s.languageServerOptions(sessionID, settings)
 	if err != nil {
-		return s.lsp.Status(SessionID(sessionID)), err
+		return s.lsp.Status(SessionID(sessionID), golang.ID), err
 	}
 	return s.lsp.Start(session, options)
 }
@@ -19,7 +22,7 @@ func (s *Service) StartLanguageServer(sessionID string, settings LanguageServerS
 func (s *Service) RestartLanguageServer(sessionID string, settings LanguageServerSettings) (LanguageServerStatus, error) {
 	session, options, err := s.languageServerOptions(sessionID, settings)
 	if err != nil {
-		return s.lsp.Status(SessionID(sessionID)), err
+		return s.lsp.Status(SessionID(sessionID), golang.ID), err
 	}
 	return s.lsp.Restart(session, options)
 }
@@ -29,7 +32,7 @@ func (s *Service) StopLanguageServer(sessionID string) error {
 	if _, err := s.session(sessionID); err != nil {
 		return err
 	}
-	s.lsp.Stop(SessionID(sessionID))
+	s.lsp.Stop(SessionID(sessionID), golang.ID)
 	return nil
 }
 
@@ -38,7 +41,7 @@ func (s *Service) LanguageServerStatus(sessionID string) (LanguageServerStatus, 
 	if _, err := s.session(sessionID); err != nil {
 		return LanguageServerStatus{}, err
 	}
-	return s.lsp.Status(SessionID(sessionID)), nil
+	return s.lsp.Status(SessionID(sessionID), golang.ID), nil
 }
 
 // LanguageServerLog restituisce le ultime righe di log gopls della sessione.
@@ -46,7 +49,7 @@ func (s *Service) LanguageServerLog(sessionID string) ([]string, error) {
 	if _, err := s.session(sessionID); err != nil {
 		return nil, err
 	}
-	return s.lsp.Log(SessionID(sessionID)), nil
+	return s.lsp.Log(SessionID(sessionID), golang.ID), nil
 }
 
 func (s *Service) languageServerOptions(sessionID string, settings LanguageServerSettings) (Session, LanguageServerOptions, error) {
@@ -69,7 +72,44 @@ func (s *Service) languageServerOptions(sessionID string, settings LanguageServe
 		return Session{}, LanguageServerOptions{}, err
 	}
 	environment = withDefaultEnvironment(environment, goplsEnvironmentDefaults)
-	return session, LanguageServerOptions{Binary: gopls.Binary, Version: gopls.Version, Environment: environment, Settings: settings}, nil
+	return session, goplsServerOptions(gopls, environment, settings), nil
+}
+
+// goplsServerOptions descrive gopls al manager LSP generico: nome, avvio e configurazione.
+// ponytail: resta nell'host fino alla Fase 7, quando gopls diventa un LanguageServerProvider dell'adapter Go.
+func goplsServerOptions(gopls GoplsInfo, environment []string, settings LanguageServerSettings) LanguageServerOptions {
+	return LanguageServerOptions{
+		Language: golang.ID, Name: "gopls", Binary: gopls.Binary, Version: gopls.Version, Environment: environment,
+		InitializationOptions: goplsSettings(settings),
+		// Rivalutata a ogni richiesta: il modo offline può cambiare mentre gopls è attivo.
+		Configuration: func() any { return goplsSettings(settings) },
+		WatchesFile:   isGoplsWatchedFile,
+	}
+}
+
+// goplsSettings traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
+func goplsSettings(settings LanguageServerSettings) map[string]any {
+	return map[string]any{
+		"gofumpt":            settings.Gofumpt,
+		"staticcheck":        settings.Staticcheck,
+		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
+		"usePlaceholders":    settings.Placeholders,
+		"completeUnimported": true,
+		"hoverKind":          "FullDocumentation",
+		"linksInHover":       settings.SemanticLinks,
+		"semanticTokens":     true,
+		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
+		"semanticTokenTypes": map[string]bool{"string": false, "number": false},
+		// Tutte le categorie utili: il frontend mostra quelle di tipo solo con la preferenza Type Hints.
+		"hints": map[string]bool{
+			"parameterNames":         true,
+			"functionTypeParameters": true,
+			"assignVariableTypes":    true,
+			"rangeVariableTypes":     true,
+			"compositeLiteralTypes":  true,
+			"constantValues":         true,
+		},
+	}
 }
 
 // UpdateDocumentBuffer sincronizza con gopls il buffer non salvato; una versione obsoleta viene ignorata.

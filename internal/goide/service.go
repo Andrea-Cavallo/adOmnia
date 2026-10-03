@@ -67,13 +67,14 @@ type Service struct {
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
+	languages := newLanguageRegistry()
 	service := &Service{
-		workspace:        NewWorkspaceManager(newLanguageRegistry()),
+		workspace:        NewWorkspaceManager(languages),
 		studioWorkspaces: newStudioWorkspaceRegistry(),
 		documents:        NewDocumentManager(),
 		toolchain:        NewToolchainManager(),
 		processes:        NewProcessManager(),
-		lsp:              NewLSPManager(),
+		lsp:              NewLSPManager(languages),
 		terminal:         NewTerminalManager(),
 		debug:            NewDebugManager(),
 		tests:            NewTestManager(),
@@ -271,7 +272,7 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 	}
 	if !allowed {
 		s.processes.StopSession(session.ID)
-		s.lsp.Stop(session.ID)
+		s.lsp.StopSession(session.ID)
 	}
 	s.setTrusted(session.Project.RealPath, allowed)
 	if err := s.saveState(); err != nil {

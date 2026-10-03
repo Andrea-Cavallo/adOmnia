@@ -5,7 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // Tipi di utilizzo mostrati nella vista Usages, ricavati dall'AST e mai da euristiche testuali.

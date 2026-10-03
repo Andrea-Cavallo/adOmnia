@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // ErrExcluded indica un file escluso dal contesto AI (segreti o .adomnia/aiignore).

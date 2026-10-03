@@ -92,3 +92,31 @@ func TestDetectUnitsMergesLanguagesAndKeepsPartialResults(t *testing.T) {
 		t.Fatalf("units lost or reordered: %v", languages)
 	}
 }
+
+// fakeSelector implementa solo DocumentSelector: riconosce i file con l'estensione indicata.
+type fakeSelector struct {
+	fakeLanguage
+	extension, languageID string
+}
+
+func (f fakeSelector) DocumentLanguageID(path string) (string, bool) {
+	return f.languageID, strings.HasSuffix(path, f.extension)
+}
+
+func TestForPathRoutesFilesToTheirLanguage(t *testing.T) {
+	registry := NewRegistry()
+	_ = registry.Register(fakeLanguage{id: "plain"})
+	_ = registry.Register(fakeSelector{fakeLanguage: fakeLanguage{id: "java"}, extension: ".java", languageID: "java"})
+	_ = registry.Register(fakeSelector{fakeLanguage: fakeLanguage{id: "ts"}, extension: ".ts", languageID: "typescript"})
+
+	owner, languageID, ok := registry.ForPath("/p/src/App.ts")
+	if !ok || owner.ID() != "ts" || languageID != "typescript" {
+		t.Fatalf("ForPath(.ts) = %v %q %v", owner, languageID, ok)
+	}
+	if _, _, ok := registry.ForPath("/p/README.md"); ok {
+		t.Fatal("a file no language selects must not be routed")
+	}
+	if !CapabilitiesOf(fakeSelector{fakeLanguage: fakeLanguage{id: "x"}}).Documents {
+		t.Fatal("Documents capability not derived")
+	}
+}

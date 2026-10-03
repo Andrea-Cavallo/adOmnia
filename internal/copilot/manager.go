@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // State è lo stato dell'integrazione mostrato nella status bar.

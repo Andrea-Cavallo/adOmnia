@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
+	"adomnia/internal/languages/golang"
 )
 
 const fakeGoplsEnv = "ADOMNIA_FAKE_GOPLS"
@@ -30,7 +31,7 @@ type fakeGopls struct {
 	initialized atomic.Bool
 }
 
-func (f *fakeGopls) HandleNotification(method string, _ json.RawMessage) {
+func (f *fakeGopls) HandleNotification(method string, params json.RawMessage) {
 	switch method {
 	case "initialized":
 		f.initialized.Store(true)
@@ -38,7 +39,13 @@ func (f *fakeGopls) HandleNotification(method string, _ json.RawMessage) {
 		if !f.initialized.Load() {
 			fmt.Fprintln(os.Stderr, "VIOLATION "+method+" before initialized")
 		} else if method == "textDocument/didOpen" {
-			fmt.Fprintln(os.Stderr, "OPENED")
+			var opened struct {
+				TextDocument struct {
+					URI string `json:"uri"`
+				} `json:"textDocument"`
+			}
+			_ = json.Unmarshal(params, &opened)
+			fmt.Fprintln(os.Stderr, "OPENED "+opened.TextDocument.URI)
 		}
 	}
 }
@@ -64,25 +71,25 @@ func TestDocumentsOpenedDuringHandshakeWaitForInitialized(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	manager := NewLSPManager()
+	manager := NewLSPManager(newLanguageRegistry())
 	session := Session{ID: "s1", Project: Project{Name: "mappe", RootPath: root, RealPath: root}}
 	go func() {
 		// gopls è avviato (PID noto) ma initialize non ha ancora risposto.
-		for manager.Status(session.ID).PID == 0 {
+		for manager.Status(session.ID, golang.ID).PID == 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
 		manager.TrackDocument(session, Document{ID: "d1", URI: fileURI(root + "/main.go"), Path: root + "/main.go"}, "package main\n", false)
 		_ = manager.UpdateDocument(session.ID, "d1", 2, "package main\n\nfunc main() {}\n")
 	}()
-	status, err := manager.Start(session, LanguageServerOptions{Binary: executable, Environment: append(os.Environ(), fakeGoplsEnv+"=1")})
+	status, err := manager.Start(session, LanguageServerOptions{Language: golang.ID, Name: "gopls", Binary: executable, Environment: append(os.Environ(), fakeGoplsEnv+"=1")})
 	if err != nil {
 		t.Fatalf("avvio fallito: %v (%+v)", err, status)
 	}
-	defer manager.Stop(session.ID)
+	defer manager.Stop(session.ID, golang.ID)
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		log := strings.Join(manager.Log(session.ID), "\n")
+		log := strings.Join(manager.Log(session.ID, golang.ID), "\n")
 		if strings.Contains(log, "VIOLATION") {
 			t.Fatalf("documento inviato prima di initialized:\n%s", log)
 		}
@@ -91,5 +98,5 @@ func TestDocumentsOpenedDuringHandshakeWaitForInitialized(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatalf("il documento aperto durante l'handshake non è mai arrivato a gopls:\n%s", strings.Join(manager.Log(session.ID), "\n"))
+	t.Fatalf("il documento aperto durante l'handshake non è mai arrivato a gopls:\n%s", strings.Join(manager.Log(session.ID, golang.ID), "\n"))
 }

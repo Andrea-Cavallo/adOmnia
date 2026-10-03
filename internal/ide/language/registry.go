@@ -56,6 +56,21 @@ func (r *Registry) All() []Language {
 	return append([]Language(nil), r.languages...)
 }
 
+// ForPath restituisce il linguaggio che possiede il file e il suo languageId LSP; il primo
+// DocumentSelector registrato che lo riconosce vince.
+func (r *Registry) ForPath(path string) (Language, string, bool) {
+	for _, l := range r.All() {
+		selector, ok := l.(DocumentSelector)
+		if !ok {
+			continue
+		}
+		if languageID, ok := selector.DocumentLanguageID(path); ok {
+			return l, languageID, true
+		}
+	}
+	return nil, "", false
+}
+
 // DetectUnits chiede a ogni ProjectDetector le unità sotto root. Un detector che fallisce non
 // nasconde quelle degli altri: le unità trovate tornano comunque, gli errori sono uniti.
 func (r *Registry) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {

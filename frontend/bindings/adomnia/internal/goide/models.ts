@@ -3318,6 +3318,11 @@ export enum LanguageServerState {
 
 export class LanguageServerStatus {
     "sessionId": SessionID;
+
+    /**
+     * Language è il linguaggio servito (es. "go"): una sessione può avere un server per linguaggio.
+     */
+    "language"?: string;
     "state": LanguageServerState;
     "binary"?: string;
     "version"?: string;
@@ -3349,10 +3354,10 @@ export class LanguageServerStatus {
      * Creates a new LanguageServerStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): LanguageServerStatus {
-        const $$createField7_0 = $$createType65;
+        const $$createField8_0 = $$createType65;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("features" in $$parsedSource) {
-            $$parsedSource["features"] = $$createField7_0($$parsedSource["features"]);
+            $$parsedSource["features"] = $$createField8_0($$parsedSource["features"]);
         }
         return new LanguageServerStatus($$parsedSource as Partial<LanguageServerStatus>);
     }

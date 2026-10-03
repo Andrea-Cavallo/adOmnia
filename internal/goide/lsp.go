@@ -1,8 +1,6 @@
 package goide
 
 import (
-	"adomnia/internal/netpolicy"
-
 	"bufio"
 	"context"
 	"encoding/json"
@@ -14,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/language"
+	"adomnia/internal/ide/lsp"
 )
 
 const (
@@ -31,12 +30,29 @@ const (
 	maxDiagnosticsPerFile = 1000
 )
 
-// LanguageServerOptions descrive come avviare gopls per una sessione.
+// LanguageServerOptions descrive come avviare il language server di un linguaggio per una sessione.
+// Il manager gestisce il lifecycle LSP in modo generico: tutto ciò che è specifico del server
+// (nome, opzioni di inizializzazione, configurazione, file da osservare) arriva da qui.
 type LanguageServerOptions struct {
+	// Language è l'ID del linguaggio servito (registry), es. "go": un server per linguaggio e sessione.
+	Language string
+	// Name è il nome del server nei messaggi e nei log (es. "gopls").
+	Name        string
 	Binary      string
 	Version     string
 	Environment []string
-	Settings    LanguageServerSettings
+	// InitializationOptions va in initialize; Configuration risponde a workspace/configuration.
+	InitializationOptions any
+	Configuration         func() any
+	// WatchesFile filtra i file cambiati su disco da notificare al server (nil: nessuno).
+	WatchesFile func(path string) bool
+}
+
+func (o LanguageServerOptions) displayName() string {
+	if o.Name != "" {
+		return o.Name
+	}
+	return "language server"
 }
 
 type lspEmitter func(eventType string, sessionID SessionID, resourceID string, payload any)
@@ -59,14 +75,15 @@ type trackedDocument struct {
 }
 
 type lspSession struct {
-	mu      sync.Mutex
-	id      SessionID
-	root    string
-	rootURI string
-	name    string
-	options LanguageServerOptions
-	status  LanguageServerStatus
-	process *serverProcess
+	mu       sync.Mutex
+	id       SessionID
+	language string
+	root     string
+	rootURI  string
+	name     string
+	options  LanguageServerOptions
+	status   LanguageServerStatus
+	process  *serverProcess
 	// synced è il processo che ha completato initialize/initialized: solo lui riceve i documenti.
 	// Un didOpen durante l'handshake fa creare a gopls una vista prima dell'avvio
 	// ("addView called before server initialized").
@@ -87,14 +104,21 @@ type lspSession struct {
 	closed             bool
 }
 
-type LSPManager struct {
-	mu       sync.Mutex
-	sessions map[SessionID]*lspSession
-	emit     lspEmitter
+// lspKey identifica un language server: uno per linguaggio in ogni sessione.
+type lspKey struct {
+	session  SessionID
+	language string
 }
 
-func NewLSPManager() *LSPManager {
-	return &LSPManager{sessions: make(map[SessionID]*lspSession)}
+type LSPManager struct {
+	mu        sync.Mutex
+	sessions  map[lspKey]*lspSession
+	emit      lspEmitter
+	languages *language.Registry
+}
+
+func NewLSPManager(languages *language.Registry) *LSPManager {
+	return &LSPManager{sessions: make(map[lspKey]*lspSession), languages: languages}
 }
 
 // SetEmitter collega gli eventi LSP al proprietario applicativo.
@@ -113,43 +137,81 @@ func (m *LSPManager) publish(eventType string, sessionID SessionID, resourceID s
 	}
 }
 
-func (m *LSPManager) ensure(session Session) *lspSession {
+func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if existing, ok := m.sessions[session.ID]; ok {
+	key := lspKey{session: session.ID, language: languageID}
+	if existing, ok := m.sessions[key]; ok {
 		return existing
 	}
 	created := &lspSession{
-		id: session.ID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
-		status:    LanguageServerStatus{SessionID: session.ID, State: LanguageServerStopped},
+		id: session.ID, language: languageID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
+		status:    LanguageServerStatus{SessionID: session.ID, Language: languageID, State: LanguageServerStopped},
 		documents: make(map[DocumentID]*trackedDocument), byURI: make(map[string]DocumentID),
 		codeActions: make(map[string]lsp.CodeAction), diagnostics: make(map[string][]lsp.Diagnostic),
 	}
-	m.sessions[session.ID] = created
+	m.sessions[key] = created
 	return created
 }
 
-func (m *LSPManager) get(sessionID SessionID) (*lspSession, bool) {
+// server restituisce il language server del linguaggio nella sessione.
+func (m *LSPManager) server(sessionID SessionID, languageID string) (*lspSession, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	session, ok := m.sessions[sessionID]
-	return session, ok
+	state, ok := m.sessions[lspKey{session: sessionID, language: languageID}]
+	return state, ok
 }
 
-// Status restituisce lo stato corrente di gopls per la sessione.
-func (m *LSPManager) Status(sessionID SessionID) LanguageServerStatus {
-	session, ok := m.get(sessionID)
+// servers restituisce i language server della sessione, ordinati per linguaggio (risultati stabili).
+func (m *LSPManager) servers(sessionID SessionID) []*lspSession {
+	m.mu.Lock()
+	result := make([]*lspSession, 0, 1)
+	for key, state := range m.sessions {
+		if key.session == sessionID {
+			result = append(result, state)
+		}
+	}
+	m.mu.Unlock()
+	sort.Slice(result, func(i, j int) bool { return result[i].language < result[j].language })
+	return result
+}
+
+// forDocument restituisce il server che ha sincronizzato il documento.
+func (m *LSPManager) forDocument(sessionID SessionID, documentID DocumentID) (*lspSession, bool) {
+	for _, state := range m.servers(sessionID) {
+		state.mu.Lock()
+		_, tracked := state.documents[documentID]
+		state.mu.Unlock()
+		if tracked {
+			return state, true
+		}
+	}
+	return nil, false
+}
+
+// forPath restituisce il server del linguaggio che possiede il file, anche se non è aperto.
+func (m *LSPManager) forPath(sessionID SessionID, path string) (*lspSession, bool) {
+	owner, _, ok := m.languages.ForPath(path)
 	if !ok {
-		return LanguageServerStatus{SessionID: sessionID, State: LanguageServerStopped}
+		return nil, false
+	}
+	return m.server(sessionID, owner.ID())
+}
+
+// Status restituisce lo stato corrente del language server del linguaggio per la sessione.
+func (m *LSPManager) Status(sessionID SessionID, languageID string) LanguageServerStatus {
+	session, ok := m.server(sessionID, languageID)
+	if !ok {
+		return LanguageServerStatus{SessionID: sessionID, Language: languageID, State: LanguageServerStopped}
 	}
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	return session.status
 }
 
-// Log restituisce le ultime righe di log del language server della sessione.
-func (m *LSPManager) Log(sessionID SessionID) []string {
-	session, ok := m.get(sessionID)
+// Log restituisce le ultime righe di log del language server del linguaggio.
+func (m *LSPManager) Log(sessionID SessionID, languageID string) []string {
+	session, ok := m.server(sessionID, languageID)
 	if !ok {
 		return []string{}
 	}
@@ -158,9 +220,13 @@ func (m *LSPManager) Log(sessionID SessionID) []string {
 	return append([]string(nil), session.log...)
 }
 
-// Start avvia gopls per la sessione se non è già attivo; i documenti tracciati vengono riaperti.
+// Start avvia il server di options.Language per la sessione se non è già attivo; i documenti
+// tracciati per quel linguaggio vengono riaperti.
 func (m *LSPManager) Start(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
-	state := m.ensure(session)
+	if options.Language == "" {
+		return LanguageServerStatus{}, fmt.Errorf("linguaggio del language server non indicato")
+	}
+	state := m.ensure(session, options.Language)
 	state.mu.Lock()
 	if state.process != nil || state.launching {
 		status := state.status
@@ -170,14 +236,14 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	state.launching = true
 	state.options = options
 	state.stopping = false
-	state.status = LanguageServerStatus{SessionID: session.ID, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
+	state.status = LanguageServerStatus{SessionID: session.ID, Language: options.Language, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
 	state.mu.Unlock()
 	m.publishStatus(state)
 	if err := m.launch(state); err != nil {
 		m.setState(state, LanguageServerCrashed, err.Error())
-		return m.Status(session.ID), err
+		return m.Status(session.ID, options.Language), err
 	}
-	return m.Status(session.ID), nil
+	return m.Status(session.ID, options.Language), nil
 }
 
 // launch avvia il processo; il chiamante deve aver impostato launching, che viene sempre azzerato.
@@ -191,6 +257,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	options := state.options
 	root := state.root
 	state.mu.Unlock()
+	name := options.displayName()
 
 	command := exec.Command(options.Binary)
 	command.Dir = root
@@ -198,18 +265,18 @@ func (m *LSPManager) launch(state *lspSession) error {
 	configureProcess(command, false)
 	stdin, err := command.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stdin di gopls: %w", err)
+		return fmt.Errorf("impossibile collegare stdin di %s: %w", name, err)
 	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stdout di gopls: %w", err)
+		return fmt.Errorf("impossibile collegare stdout di %s: %w", name, err)
 	}
 	stderr, err := command.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stderr di gopls: %w", err)
+		return fmt.Errorf("impossibile collegare stderr di %s: %w", name, err)
 	}
 	if err := command.Start(); err != nil {
-		return fmt.Errorf("avvio gopls fallito: %w", err)
+		return fmt.Errorf("avvio %s fallito: %w", name, err)
 	}
 	process := &serverProcess{command: command, stdin: stdin, exited: make(chan struct{})}
 	process.conn = lsp.NewConn(stdout, stdin, &lspHandler{manager: m, session: state, process: process})
@@ -227,7 +294,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	var initialized initializeResult
 	if err := process.conn.Call(ctx, "initialize", initializeParams(state), &initialized); err != nil {
 		m.abandon(state, process)
-		return fmt.Errorf("inizializzazione gopls fallita: %w", err)
+		return fmt.Errorf("inizializzazione %s fallita: %w", name, err)
 	}
 	features := initialized.Capabilities.features()
 	state.mu.Lock()
@@ -237,7 +304,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 		m.abandon(state, process)
 		return err
 	}
-	// Da qui i documenti aperti dall'utente vanno a gopls; quelli aperti durante l'handshake li riapre reopenDocuments.
+	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
 	state.mu.Lock()
 	state.synced = process
 	state.mu.Unlock()
@@ -289,7 +356,9 @@ func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
 		m.setState(state, LanguageServerStopped, "")
 		return
 	}
-	reason := "gopls terminato inaspettatamente"
+	state.mu.Lock()
+	reason := state.options.displayName() + " terminato inaspettatamente"
+	state.mu.Unlock()
 	if err != nil {
 		reason = fmt.Sprintf("%s: %v", reason, err)
 	}
@@ -332,12 +401,14 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 	}()
 }
 
-// Stop chiude gopls con shutdown/exit e termina il process tree se non risponde.
-func (m *LSPManager) Stop(sessionID SessionID) {
-	state, ok := m.get(sessionID)
-	if !ok {
-		return
+// Stop chiude il language server del linguaggio con shutdown/exit e termina il process tree se non risponde.
+func (m *LSPManager) Stop(sessionID SessionID, languageID string) {
+	if state, ok := m.server(sessionID, languageID); ok {
+		m.stop(state)
 	}
+}
+
+func (m *LSPManager) stop(state *lspSession) {
 	state.mu.Lock()
 	state.stopping = true
 	process := state.process
@@ -359,10 +430,10 @@ func (m *LSPManager) Stop(sessionID SessionID) {
 	}
 }
 
-// Restart arresta e riavvia gopls azzerando il contatore dei crash.
+// Restart arresta e riavvia il server di options.Language azzerando il contatore dei crash.
 func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
-	m.Stop(session.ID)
-	if state, ok := m.get(session.ID); ok {
+	m.Stop(session.ID, options.Language)
+	if state, ok := m.server(session.ID, options.Language); ok {
 		state.mu.Lock()
 		state.crashes = nil
 		state.mu.Unlock()
@@ -370,11 +441,21 @@ func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (La
 	return m.Start(session, options)
 }
 
-// CloseSession arresta gopls e dimentica documenti e diagnostica della sessione.
+// StopSession arresta tutti i language server della sessione.
+func (m *LSPManager) StopSession(sessionID SessionID) {
+	for _, state := range m.servers(sessionID) {
+		m.stop(state)
+	}
+}
+
+// CloseSession arresta i language server della sessione e ne dimentica documenti e diagnostica.
 func (m *LSPManager) CloseSession(sessionID SessionID) {
-	m.Stop(sessionID)
+	m.StopSession(sessionID)
 	m.mu.Lock()
-	if state, ok := m.sessions[sessionID]; ok {
+	for key, state := range m.sessions {
+		if key.session != sessionID {
+			continue
+		}
 		state.mu.Lock()
 		state.closed = true
 		if state.diagnosticsTimer != nil {
@@ -382,23 +463,22 @@ func (m *LSPManager) CloseSession(sessionID SessionID) {
 		}
 		state.pendingDiagnostics, state.diagnosticsTimer = nil, nil
 		state.mu.Unlock()
+		delete(m.sessions, key)
 	}
-	delete(m.sessions, sessionID)
 	m.mu.Unlock()
 }
 
 // Shutdown arresta tutti i language server posseduti dal manager.
 func (m *LSPManager) Shutdown() {
 	m.mu.Lock()
-	ids := make([]SessionID, 0, len(m.sessions))
-	for id := range m.sessions {
-		ids = append(ids, id)
+	states := make([]*lspSession, 0, len(m.sessions))
+	for _, state := range m.sessions {
+		states = append(states, state)
 	}
 	m.mu.Unlock()
 	var group sync.WaitGroup
-	for _, id := range ids {
-		group.Add(1)
-		go func(id SessionID) { defer group.Done(); m.Stop(id) }(id)
+	for _, state := range states {
+		group.Go(func() { m.stop(state) })
 	}
 	group.Wait()
 }
@@ -452,10 +532,10 @@ func initializeParams(state *lspSession) map[string]any {
 	defer state.mu.Unlock()
 	return map[string]any{
 		"processId":             nil,
-		"clientInfo":            map[string]any{"name": "adOmnia Go Studio"},
+		"clientInfo":            map[string]any{"name": "adOmnia IDE"},
 		"rootUri":               state.rootURI,
 		"workspaceFolders":      []map[string]any{{"uri": state.rootURI, "name": state.name}},
-		"initializationOptions": goplsSettings(state.options.Settings),
+		"initializationOptions": state.options.InitializationOptions,
 		"capabilities": map[string]any{
 			"general": map[string]any{"positionEncodings": []string{"utf-16"}},
 			"workspace": map[string]any{
@@ -505,38 +585,13 @@ func initializeParams(state *lspSession) map[string]any {
 	}
 }
 
-// goplsSettings traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
-func goplsSettings(settings LanguageServerSettings) map[string]any {
-	return map[string]any{
-		"gofumpt":            settings.Gofumpt,
-		"staticcheck":        settings.Staticcheck,
-		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
-		"usePlaceholders":    settings.Placeholders,
-		"completeUnimported": true,
-		"hoverKind":          "FullDocumentation",
-		"linksInHover":       settings.SemanticLinks,
-		"semanticTokens":     true,
-		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
-		"semanticTokenTypes": map[string]bool{"string": false, "number": false},
-		// Tutte le categorie utili: il frontend mostra quelle di tipo solo con la preferenza Type Hints.
-		"hints": map[string]bool{
-			"parameterNames":         true,
-			"functionTypeParameters": true,
-			"assignVariableTypes":    true,
-			"rangeVariableTypes":     true,
-			"compositeLiteralTypes":  true,
-			"constantValues":         true,
-		},
-	}
-}
-
 type lspHandler struct {
 	manager *LSPManager
 	session *lspSession
 	process *serverProcess
 }
 
-// HandleNotification scarta i messaggi di processi gopls non più correnti.
+// HandleNotification scarta i messaggi di processi del server non più correnti.
 func (h *lspHandler) HandleNotification(method string, params json.RawMessage) {
 	if !h.manager.isCurrent(h.session, h.process) {
 		return
@@ -561,7 +616,7 @@ func (h *lspHandler) HandleNotification(method string, params json.RawMessage) {
 	}
 }
 
-// HandleRequest risponde alle richieste gopls necessarie; workspace/applyEdit viene catturato per l'anteprima.
+// HandleRequest risponde alle richieste del server necessarie; workspace/applyEdit viene catturato per l'anteprima.
 func (h *lspHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
 	switch method {
 	case "workspace/configuration":
@@ -570,8 +625,12 @@ func (h *lspHandler) HandleRequest(_ context.Context, method string, params json
 		}
 		_ = json.Unmarshal(params, &request)
 		h.session.mu.Lock()
-		settings := goplsSettings(h.session.options.Settings)
+		configuration := h.session.options.Configuration
 		h.session.mu.Unlock()
+		var settings any
+		if configuration != nil {
+			settings = configuration()
+		}
 		result := make([]any, len(request.Items))
 		for index := range result {
 			result[index] = settings

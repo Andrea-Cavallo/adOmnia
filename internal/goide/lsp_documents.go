@@ -6,34 +6,20 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // ErrStaleDocumentVersion indica una modifica con versione non successiva a quella già sincronizzata.
 var ErrStaleDocumentVersion = fmt.Errorf("versione documento obsoleta")
 
-// languageIDForPath restituisce il languageId LSP gestito da gopls, o stringa vuota se il file non è pertinente.
-func languageIDForPath(path string) string {
-	base := strings.ToLower(filepath.Base(path))
-	switch {
-	case base == "go.mod":
-		return "go.mod"
-	case base == "go.work":
-		return "go.work"
-	case strings.HasSuffix(base, ".go"):
-		return "go"
-	default:
-		return ""
-	}
-}
-
-// TrackDocument registra un documento aperto e lo invia a gopls se attivo; i file non Go vengono ignorati.
+// TrackDocument registra un documento aperto e lo invia al language server del suo linguaggio se attivo;
+// i file che nessun linguaggio registrato riconosce vengono ignorati.
 func (m *LSPManager) TrackDocument(session Session, document Document, text string, readOnly bool) {
-	languageID := languageIDForPath(document.Path)
-	if languageID == "" {
+	owner, languageID, ok := m.languages.ForPath(document.Path)
+	if !ok {
 		return
 	}
-	state := m.ensure(session)
+	state := m.ensure(session, owner.ID())
 	state.mu.Lock()
 	if _, exists := state.documents[document.ID]; exists {
 		state.mu.Unlock()
@@ -56,7 +42,7 @@ func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, 
 	if int64(len(text)) > MaxDocumentBytes {
 		return fmt.Errorf("documento troppo grande per la sincronizzazione")
 	}
-	state, ok := m.get(sessionID)
+	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
 		return nil
 	}
@@ -90,7 +76,7 @@ func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, 
 
 // DocumentSaved notifica a gopls il salvataggio del documento.
 func (m *LSPManager) DocumentSaved(sessionID SessionID, documentID DocumentID) {
-	state, ok := m.get(sessionID)
+	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
 		return
 	}
@@ -105,7 +91,7 @@ func (m *LSPManager) DocumentSaved(sessionID SessionID, documentID DocumentID) {
 
 // UntrackDocument chiude il documento lato gopls e lo dimentica.
 func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID) {
-	state, ok := m.get(sessionID)
+	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
 		return
 	}
@@ -122,22 +108,19 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 	}
 }
 
-// snapshot restituisce una copia del documento e la connessione attiva; errore se gopls non è pronto.
+// snapshot restituisce una copia del documento e la connessione del server che lo possiede;
+// errore se il server non è pronto.
 func (m *LSPManager) snapshot(sessionID SessionID, documentID DocumentID) (trackedDocument, *serverProcess, error) {
-	state, ok := m.get(sessionID)
+	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
-		return trackedDocument{}, nil, fmt.Errorf("gopls non avviato per questa sessione")
+		return trackedDocument{}, nil, fmt.Errorf("documento non sincronizzato con un language server")
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
 	if state.process == nil || state.status.State != LanguageServerReady {
-		return trackedDocument{}, nil, fmt.Errorf("gopls non è pronto")
+		return trackedDocument{}, nil, fmt.Errorf("%s non è pronto", state.options.displayName())
 	}
-	tracked, ok := state.documents[documentID]
-	if !ok {
-		return trackedDocument{}, nil, fmt.Errorf("documento non sincronizzato con gopls")
-	}
-	return *tracked, state.process, nil
+	return *state.documents[documentID], state.process, nil
 }
 
 func pathFromURI(uri string) string {
@@ -183,28 +166,28 @@ func editorEdits(edits []lsp.TextEdit) []EditorTextEdit {
 	return result
 }
 
-// NotifyWatchedFiles comunica a gopls i file Go cambiati su disco che non sono aperti nell'editor.
+// NotifyWatchedFiles comunica a ogni language server della sessione i file cambiati su disco che
+// osserva (WatchesFile) e che non sono aperti nell'editor.
 func (m *LSPManager) NotifyWatchedFiles(sessionID SessionID, changes []DiskChange) {
-	state, ok := m.get(sessionID)
-	if !ok {
-		return
-	}
-	state.mu.Lock()
-	process := state.process
-	ready := state.status.State == LanguageServerReady
-	events := make([]map[string]any, 0, len(changes))
-	for _, change := range changes {
-		uri := fileURI(change.Path)
-		if _, open := state.byURI[uri]; open || !isGoplsWatchedFile(change.Path) {
+	for _, state := range m.servers(sessionID) {
+		state.mu.Lock()
+		process := state.process
+		ready := state.status.State == LanguageServerReady
+		watches := state.options.WatchesFile
+		events := make([]map[string]any, 0, len(changes))
+		for _, change := range changes {
+			uri := fileURI(change.Path)
+			if _, open := state.byURI[uri]; open || watches == nil || !watches(change.Path) {
+				continue
+			}
+			events = append(events, map[string]any{"uri": uri, "type": int(change.Kind)})
+		}
+		state.mu.Unlock()
+		if process == nil || !ready || len(events) == 0 {
 			continue
 		}
-		events = append(events, map[string]any{"uri": uri, "type": int(change.Kind)})
+		_ = process.conn.Notify("workspace/didChangeWatchedFiles", map[string]any{"changes": events})
 	}
-	state.mu.Unlock()
-	if process == nil || !ready || len(events) == 0 {
-		return
-	}
-	_ = process.conn.Notify("workspace/didChangeWatchedFiles", map[string]any{"changes": events})
 }
 
 func isGoplsWatchedFile(path string) bool {

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 func TestDiagnosticsAreThrottledAndCapped(t *testing.T) {
-	manager := NewLSPManager()
+	manager := NewLSPManager(newLanguageRegistry())
 	var mu sync.Mutex
 	var reports []DiagnosticsReport
 	manager.SetEmitter(func(eventType string, _ SessionID, _ string, payload any) {

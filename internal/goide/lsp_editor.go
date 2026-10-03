@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 const maxRecursionProbes = 300

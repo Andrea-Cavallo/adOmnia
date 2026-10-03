@@ -1,6 +1,6 @@
 # gO Studio → adOmnia IDE Platform: refactor multi-language
 
-> Stato: **Fasi 1–4 completate, Fase 5 quasi completa** (assessment, astrazioni core, Language Registry, detection Go e SDK Go nell'adapter). Ultimo aggiornamento: 2026-10-03.
+> Stato: **Fasi 1–4 e 6 completate, Fase 5 quasi completa** (assessment, astrazioni core, Language Registry, detection e SDK Go nell'adapter, LSP multi-server). Ultimo aggiornamento: 2026-10-03.
 > Obiettivo: trasformare gO Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
 > riscritture e senza regressioni. Java/Rust/Python/TypeScript sono solo *scenari di validazione*:
 > **non** si implementano in questo refactor.
@@ -511,7 +511,14 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] SDK Go nell'adapter: `golang/sdk.go` (manager config/ambiente/`GOTOOLCHAIN`), `sdk_detect.go` (`go version`/`go env`), `sdk_install.go` (catalogo go.dev). Il manager è `ToolchainManager[K ~string]`: l'host lo istanzia con il proprio `SessionID`, senza toccare i call site. `goide/toolchain.go` contiene solo alias.
   - [x] Persistenza: **nessuna migrazione necessaria**. Il manager è per linguaggio, quindi lo schema Go resta identico; un linguaggio futuro salverà il proprio SDK sotto una chiave nuova.
   - [ ] `ToolLocator` unico (custom → managed → directory del linguaggio → PATH) al posto delle 5 copie in gopls/Delve/lint/make/Sonar (P10). Va fatto insieme alla Fase 7 (gopls) e alla Fase 9 (Delve), che spostano già quei file.
-- [ ] **Fase 6 — LSP generico.** Spostamento `lsp/` → `ide/lsp`; manager keyed (session, server); `DocumentSelector` dal registry.
+- [x] **Fase 6 — LSP generico.**
+  - [x] `goide/lsp` → `ide/lsp` e `goide/dap` → `ide/dap` (protocollo e trasporto, solo stdlib; anche `internal/copilot` li usa da lì).
+  - [x] `LSPManager` con **un server per (sessione, linguaggio)**: `Start`/`Status`/`Log`/`Stop` ricevono il linguaggio; le operazioni su un documento usano il server che lo ha sincronizzato (`forDocument`); quelle di sessione girano su tutti i server (`WorkspaceSymbols` unisce i risultati, `ResolveCodeAction` trova il server che ha proposto l'azione, `ExpandHierarchy` usa il linguaggio del file, `NotifyWatchedFiles`/`StopSession`/`CloseSession` su tutti).
+  - [x] Il lifecycle non conosce gopls: nome, opzioni di `initialize`, risposta a `workspace/configuration` e file osservati arrivano da `LanguageServerOptions`; `clientInfo` è "adOmnia IDE". La configurazione gopls (`goplsServerOptions`, `goplsSettings`) è nell'host in attesa della Fase 7.
+  - [x] Capability `DocumentSelector` + `Registry.ForPath`: sostituisce lo switch `.go/go.mod/go.work` (implementata dall'adapter Go in `golang/documents.go`).
+  - [x] `LanguageServerStatus.language` (additivo, per la UI della Fase 10).
+  - [x] Test: due server per due linguaggi nella stessa sessione (`lsp_multiserver_test.go`), `ForPath` con linguaggi fittizi; regressione verificata con gopls e Delve reali (integrazione LSP, refactoring, gerarchie, crash restart, debug).
+  - Limite noto: gli eventi `lsp.status` restano indicizzati per sessione; con più server la UI dovrà distinguerli per `language` (Fase 10).
 - [ ] **Fase 7 — gopls nell'adapter.** `ServerSpec`, settings, comandi `gopls.*`, `UsageClassifier`, `DeclarationSource`.
 - [ ] **Fase 8 — Run/Build/Test.** `ide/run`, `ide/testing`; `golang.Runner`/`TestRunner`; `LanguageOptions` + migrazione run config.
 - [ ] **Fase 9 — Debug/Delve.** `ide/dap` DebugManager con `AdapterSpec`; `golang/delve.go` + estensioni goroutine/defer/memoria via `dap.Session`.

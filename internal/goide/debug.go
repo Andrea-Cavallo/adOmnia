@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/goide/dap"
+	"adomnia/internal/ide/dap"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 const (
@@ -161,7 +161,7 @@ func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documen
 	if len(locations) > maxLocationResults {
 		locations = locations[:maxLocationResults]
 	}
-	state, _ := m.get(sessionID)
+	state, _ := m.forDocument(sessionID, documentID)
 	result := m.editorLocations(state, locations)
 	if kind == "references" {
 		classifyUsages(result, func(location EditorLocation) string { return m.documentText(state, location.URI, location.Path) })
@@ -266,44 +266,59 @@ func symbolNodes(symbols []lsp.DocumentSymbol) []SymbolNode {
 	return nodes
 }
 
-// WorkspaceSymbols cerca simboli in tutto il workspace della sessione.
+// WorkspaceSymbols cerca simboli in tutto il workspace della sessione, su ogni language server pronto.
+// Un server che fallisce non nasconde i risultati degli altri; l'errore torna solo se nessuno risponde.
 func (m *LSPManager) WorkspaceSymbols(ctx context.Context, sessionID SessionID, query string) ([]WorkspaceSymbol, error) {
-	state, process, err := m.readyProcess(sessionID)
-	if err != nil {
-		return nil, err
+	servers := m.readyServers(sessionID)
+	if len(servers) == 0 {
+		return nil, fmt.Errorf("nessun language server pronto per questa sessione")
 	}
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
-	var symbols []lsp.SymbolInformation
-	if err := process.conn.Call(ctx, "workspace/symbol", map[string]string{"query": query}, &symbols); err != nil {
-		return nil, err
+	converted := make([]WorkspaceSymbol, 0)
+	var failure error
+	answered := false
+	for _, server := range servers {
+		var symbols []lsp.SymbolInformation
+		if err := server.process.conn.Call(ctx, "workspace/symbol", map[string]string{"query": query}, &symbols); err != nil {
+			failure = err
+			continue
+		}
+		answered = true
+		for _, symbol := range symbols {
+			if len(converted) >= maxWorkspaceSymbolResults {
+				break
+			}
+			path := pathFromURI(symbol.Location.URI)
+			relative := relativeWithin(server.state.root, path)
+			converted = append(converted, WorkspaceSymbol{
+				Name: symbol.Name, Kind: symbol.Kind, Container: symbol.ContainerName,
+				Location: EditorLocation{URI: symbol.Location.URI, Path: path, RelativePath: relative, External: relative == "", Range: editorRange(symbol.Location.Range)},
+			})
+		}
 	}
-	if len(symbols) > maxWorkspaceSymbolResults {
-		symbols = symbols[:maxWorkspaceSymbolResults]
-	}
-	converted := make([]WorkspaceSymbol, 0, len(symbols))
-	for _, symbol := range symbols {
-		path := pathFromURI(symbol.Location.URI)
-		relative := relativeWithin(state.root, path)
-		converted = append(converted, WorkspaceSymbol{
-			Name: symbol.Name, Kind: symbol.Kind, Container: symbol.ContainerName,
-			Location: EditorLocation{URI: symbol.Location.URI, Path: path, RelativePath: relative, External: relative == "", Range: editorRange(symbol.Location.Range)},
-		})
+	if !answered {
+		return nil, failure
 	}
 	return converted, nil
 }
 
-func (m *LSPManager) readyProcess(sessionID SessionID) (*lspSession, *serverProcess, error) {
-	state, ok := m.get(sessionID)
-	if !ok {
-		return nil, nil, fmt.Errorf("gopls non avviato per questa sessione")
+type readyServer struct {
+	state   *lspSession
+	process *serverProcess
+}
+
+// readyServers restituisce i language server pronti della sessione, in ordine di linguaggio.
+func (m *LSPManager) readyServers(sessionID SessionID) []readyServer {
+	result := make([]readyServer, 0, 1)
+	for _, state := range m.servers(sessionID) {
+		state.mu.Lock()
+		if state.process != nil && state.status.State == LanguageServerReady {
+			result = append(result, readyServer{state: state, process: state.process})
+		}
+		state.mu.Unlock()
 	}
-	state.mu.Lock()
-	defer state.mu.Unlock()
-	if state.process == nil || state.status.State != LanguageServerReady {
-		return nil, nil, fmt.Errorf("gopls non è pronto")
-	}
-	return state, state.process, nil
+	return result
 }
 
 // PrepareRename verifica che il simbolo sia rinominabile e restituisce il nome corrente.
@@ -344,7 +359,7 @@ func (m *LSPManager) Rename(ctx context.Context, sessionID SessionID, documentID
 	if edit == nil {
 		return WorkspaceChange{Label: "Rename", Files: []FileChange{}}, nil
 	}
-	state, _ := m.get(sessionID)
+	state, _ := m.forDocument(sessionID, documentID)
 	return m.workspaceChange(state, "Rename to "+newName, *edit)
 }
 
@@ -383,7 +398,7 @@ func (m *LSPManager) CodeActions(ctx context.Context, sessionID SessionID, docum
 	if err != nil {
 		return nil, err
 	}
-	state, _ := m.get(sessionID)
+	state, _ := m.forDocument(sessionID, documentID)
 	requested := lsp.Range{Start: lspPosition(selection.StartLine, selection.StartColumn), End: lspPosition(selection.EndLine, selection.EndColumn)}
 	actionContext := map[string]any{"diagnostics": m.overlappingDiagnostics(state, document.uri, requested)}
 	if len(only) > 0 {
@@ -427,15 +442,24 @@ func (m *LSPManager) CodeActions(ctx context.Context, sessionID SessionID, docum
 
 // ResolveCodeAction calcola le modifiche dell'azione come anteprima transazionale, senza scrivere file.
 func (m *LSPManager) ResolveCodeAction(ctx context.Context, sessionID SessionID, actionID string) (WorkspaceChange, error) {
-	state, process, err := m.readyProcess(sessionID)
-	if err != nil {
-		return WorkspaceChange{}, err
+	// L'azione è nella cache del server che l'ha proposta.
+	var (
+		state   *lspSession
+		process *serverProcess
+		action  lsp.CodeAction
+		found   bool
+	)
+	for _, server := range m.readyServers(sessionID) {
+		server.state.mu.Lock()
+		action, found = server.state.codeActions[actionID]
+		delete(server.state.codeActions, actionID)
+		server.state.mu.Unlock()
+		if found {
+			state, process = server.state, server.process
+			break
+		}
 	}
-	state.mu.Lock()
-	action, ok := state.codeActions[actionID]
-	delete(state.codeActions, actionID)
-	state.mu.Unlock()
-	if !ok {
+	if !found {
 		return WorkspaceChange{}, fmt.Errorf("azione non più disponibile: richiedila di nuovo")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*defaultRequestTimeout)
@@ -489,7 +513,7 @@ func (m *LSPManager) ChangeSignature(ctx context.Context, sessionID SessionID, d
 	if err != nil {
 		return WorkspaceChange{}, err
 	}
-	state, _ := m.get(sessionID)
+	state, _ := m.forDocument(sessionID, documentID)
 	location := lsp.Location{URI: document.uri, Range: lsp.Range{Start: lspPosition(caret.StartLine, caret.StartColumn), End: lspPosition(caret.EndLine, caret.EndColumn)}}
 	argument, err := json.Marshal(map[string]any{"Location": location, "NewParams": newParams, "NewResults": newResults, "ResolveEdits": false})
 	if err != nil {

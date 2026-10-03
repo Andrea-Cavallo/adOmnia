@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"adomnia/internal/goide/lsp"
+	"adomnia/internal/ide/lsp"
 )
 
 // handler riceve notifiche e richieste del Copilot Language Server; ignora quelle di processi superati.
