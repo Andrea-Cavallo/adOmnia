@@ -9,6 +9,7 @@ package language
 import (
 	"context"
 
+	"adomnia/internal/ide/lsp"
 	"adomnia/internal/ide/project"
 )
 
@@ -31,15 +32,39 @@ type DocumentSelector interface {
 	DocumentLanguageID(path string) (string, bool)
 }
 
+// Tipi di utilizzo di un riferimento, mostrati nella vista Usages.
+const (
+	UsageDeclaration = "declaration"
+	UsageWrite       = "write"
+	UsageRead        = "read"
+	UsageImport      = "import"
+)
+
+// UsageClassifier arricchisce i riferimenti LSP con il tipo di utilizzo, leggendo la sintassi del
+// file (mai euristiche testuali). Restituisce un valore per posizione: un Usage* o "" se ignoto.
+type UsageClassifier interface {
+	ClassifyUsages(text string, positions []lsp.Position) []string
+}
+
+// DeclarationExtractor estrae il sorgente della dichiarazione che contiene la posizione (con la sua
+// documentazione) e la riga 1-based da cui parte; ok è false se la posizione non è in una dichiarazione.
+type DeclarationExtractor interface {
+	DeclarationSource(text string, at lsp.Position) (code string, startLine int, ok bool)
+}
+
 // Capabilities è derivato dalle interfacce implementate: non si dichiara a mano.
 type Capabilities struct {
 	ProjectDetection bool `json:"projectDetection"`
 	Documents        bool `json:"documents"`
+	Usages           bool `json:"usages"`
+	Declarations     bool `json:"declarations"`
 }
 
 // CapabilitiesOf restituisce le capability effettivamente implementate da l.
 func CapabilitiesOf(l Language) Capabilities {
 	_, detects := l.(ProjectDetector)
 	_, selects := l.(DocumentSelector)
-	return Capabilities{ProjectDetection: detects, Documents: selects}
+	_, classifies := l.(UsageClassifier)
+	_, extracts := l.(DeclarationExtractor)
+	return Capabilities{ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts}
 }

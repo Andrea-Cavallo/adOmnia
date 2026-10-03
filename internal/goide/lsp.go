@@ -30,30 +30,8 @@ const (
 	maxDiagnosticsPerFile = 1000
 )
 
-// LanguageServerOptions descrive come avviare il language server di un linguaggio per una sessione.
-// Il manager gestisce il lifecycle LSP in modo generico: tutto ciò che è specifico del server
-// (nome, opzioni di inizializzazione, configurazione, file da osservare) arriva da qui.
-type LanguageServerOptions struct {
-	// Language è l'ID del linguaggio servito (registry), es. "go": un server per linguaggio e sessione.
-	Language string
-	// Name è il nome del server nei messaggi e nei log (es. "gopls").
-	Name        string
-	Binary      string
-	Version     string
-	Environment []string
-	// InitializationOptions va in initialize; Configuration risponde a workspace/configuration.
-	InitializationOptions any
-	Configuration         func() any
-	// WatchesFile filtra i file cambiati su disco da notificare al server (nil: nessuno).
-	WatchesFile func(path string) bool
-}
-
-func (o LanguageServerOptions) displayName() string {
-	if o.Name != "" {
-		return o.Name
-	}
-	return "language server"
-}
+// LanguageServerOptions è la spec del server prodotta dal language adapter (per Go: gopls).
+type LanguageServerOptions = lsp.ServerSpec
 
 type lspEmitter func(eventType string, sessionID SessionID, resourceID string, payload any)
 
@@ -257,7 +235,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	options := state.options
 	root := state.root
 	state.mu.Unlock()
-	name := options.displayName()
+	name := options.DisplayName()
 
 	command := exec.Command(options.Binary)
 	command.Dir = root
@@ -357,7 +335,7 @@ func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
 		return
 	}
 	state.mu.Lock()
-	reason := state.options.displayName() + " terminato inaspettatamente"
+	reason := state.options.DisplayName() + " terminato inaspettatamente"
 	state.mu.Unlock()
 	if err != nil {
 		reason = fmt.Sprintf("%s: %v", reason, err)

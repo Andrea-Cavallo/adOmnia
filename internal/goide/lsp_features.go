@@ -11,6 +11,7 @@ import (
 	"unicode/utf16"
 
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/languages/golang"
 )
 
 const (
@@ -164,7 +165,7 @@ func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documen
 	state, _ := m.forDocument(sessionID, documentID)
 	result := m.editorLocations(state, locations)
 	if kind == "references" {
-		classifyUsages(result, func(location EditorLocation) string { return m.documentText(state, location.URI, location.Path) })
+		classifyUsages(m.languages, result, func(location EditorLocation) string { return m.documentText(state, location.URI, location.Path) })
 	}
 	return result, nil
 }
@@ -382,7 +383,7 @@ func (m *LSPManager) Format(ctx context.Context, sessionID SessionID, documentID
 // CodeActions elenca quick fix, refactoring e azioni sorgente disponibili per l'intervallo.
 // webViewActionKinds sono azioni gopls che aprono la sua interfaccia web via window/showDocument:
 // Go Studio non apre pagine esterne, quindi non vengono proposte invece di mostrare pulsanti inerti.
-var webViewActionKinds = []string{"source.doc", "gopls.doc", "source.splitPackage", "source.assembly", "source.freesymbols"}
+var webViewActionKinds = []string{"source.doc", golang.GoplsDocCommand, "source.splitPackage", "source.assembly", "source.freesymbols"}
 
 func opensGoplsWebView(kind string) bool {
 	for _, prefix := range webViewActionKinds {
@@ -521,7 +522,7 @@ func (m *LSPManager) ChangeSignature(ctx context.Context, sessionID SessionID, d
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*defaultRequestTimeout)
 	defer cancel()
-	return m.executeCommand(ctx, state, process, "Change Signature", lsp.Command{Command: "gopls.change_signature", Arguments: []json.RawMessage{argument}})
+	return m.executeCommand(ctx, state, process, "Change Signature", lsp.Command{Command: golang.GoplsChangeSignatureCommand, Arguments: []json.RawMessage{argument}})
 }
 
 // executeCommand esegue un comando gopls e raccoglie gli workspace/applyEdit emessi durante l'esecuzione.

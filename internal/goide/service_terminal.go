@@ -76,19 +76,6 @@ func mergeEnvironment(base, overrides []string) []string {
 }
 
 // withDefaultEnvironment aggiunge le variabili indicate solo se l'ambiente non le definisce già.
-func withDefaultEnvironment(environment []string, defaults map[string]string) []string {
-	present := make(map[string]bool, len(environment))
-	for _, entry := range environment {
-		name, _, _ := strings.Cut(entry, "=")
-		present[strings.ToUpper(name)] = true
-	}
-	for name, value := range defaults {
-		if !present[name] {
-			environment = append(environment, name+"="+value)
-		}
-	}
-	return environment
-}
 
 // WriteTerminal inoltra l'input dell'utente alla shell indicata.
 func (s *Service) WriteTerminal(terminalID, data string) error {

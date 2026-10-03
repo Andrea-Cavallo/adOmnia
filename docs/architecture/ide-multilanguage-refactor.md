@@ -1,6 +1,6 @@
 # gO Studio → adOmnia IDE Platform: refactor multi-language
 
-> Stato: **Fasi 1–4 e 6 completate, Fase 5 quasi completa** (assessment, astrazioni core, Language Registry, detection e SDK Go nell'adapter, LSP multi-server). Ultimo aggiornamento: 2026-10-03.
+> Stato: **Fasi 1–7 completate** (assessment, astrazioni core, Language Registry, detection e SDK Go nell'adapter, LSP multi-server, gopls nell'adapter, localizzatore unico degli strumenti). Ultimo aggiornamento: 2026-10-03.
 > Obiettivo: trasformare gO Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
 > riscritture e senza regressioni. Java/Rust/Python/TypeScript sono solo *scenari di validazione*:
 > **non** si implementano in questo refactor.
@@ -510,7 +510,7 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] `internal/ide/sdk`: ambiente dei processi (validazione, credenziali mai persistite, merge con proxy/CA/offline), risoluzione eseguibili, `BinaryStamp`, query informative, download con SHA-256 ed estrazione zip/tgz sicura.
   - [x] SDK Go nell'adapter: `golang/sdk.go` (manager config/ambiente/`GOTOOLCHAIN`), `sdk_detect.go` (`go version`/`go env`), `sdk_install.go` (catalogo go.dev). Il manager è `ToolchainManager[K ~string]`: l'host lo istanzia con il proprio `SessionID`, senza toccare i call site. `goide/toolchain.go` contiene solo alias.
   - [x] Persistenza: **nessuna migrazione necessaria**. Il manager è per linguaggio, quindi lo schema Go resta identico; un linguaggio futuro salverà il proprio SDK sotto una chiave nuova.
-  - [ ] `ToolLocator` unico (custom → managed → directory del linguaggio → PATH) al posto delle 5 copie in gopls/Delve/lint/make/Sonar (P10). Va fatto insieme alla Fase 7 (gopls) e alla Fase 9 (Delve), che spostano già quei file.
+  - [x] Localizzatore unico (`sdk.ToolSearch` + `sdk.Locate`, cache versioni `sdk.CachedVersion`) per gopls, Delve, linter e Sonar (P10). `make` resta a parte: il binario personalizzato esclude gli altri e non ha versione, forzarlo nello stesso schema sarebbe un'astrazione sbagliata. Fatto nella Fase 7.
 - [x] **Fase 6 — LSP generico.**
   - [x] `goide/lsp` → `ide/lsp` e `goide/dap` → `ide/dap` (protocollo e trasporto, solo stdlib; anche `internal/copilot` li usa da lì).
   - [x] `LSPManager` con **un server per (sessione, linguaggio)**: `Start`/`Status`/`Log`/`Stop` ricevono il linguaggio; le operazioni su un documento usano il server che lo ha sincronizzato (`forDocument`); quelle di sessione girano su tutti i server (`WorkspaceSymbols` unisce i risultati, `ResolveCodeAction` trova il server che ha proposto l'azione, `ExpandHierarchy` usa il linguaggio del file, `NotifyWatchedFiles`/`StopSession`/`CloseSession` su tutti).
@@ -519,7 +519,12 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] `LanguageServerStatus.language` (additivo, per la UI della Fase 10).
   - [x] Test: due server per due linguaggi nella stessa sessione (`lsp_multiserver_test.go`), `ForPath` con linguaggi fittizi; regressione verificata con gopls e Delve reali (integrazione LSP, refactoring, gerarchie, crash restart, debug).
   - Limite noto: gli eventi `lsp.status` restano indicizzati per sessione; con più server la UI dovrà distinguerli per `language` (Fase 10).
-- [ ] **Fase 7 — gopls nell'adapter.** `ServerSpec`, settings, comandi `gopls.*`, `UsageClassifier`, `DeclarationSource`.
+- [x] **Fase 7 — gopls nell'adapter.**
+  - [x] `lsp.ServerSpec` nel core (`LanguageServerOptions` nell'host è un alias).
+  - [x] `golang/gopls.go`: `LocateGopls`, `GoplsInfo`, `GoplsSettings`, `GoplsServerSpec` (configurazione, ambiente di default, file osservati), costanti dei comandi `gopls.*`; `golang/delve.go`: `LocateDelve`, `DelveInfo` (anticipo della Fase 9 per la sola ricerca).
+  - [x] Capability `UsageClassifier` e `DeclarationExtractor` nel core; Go le implementa con `go/ast` (`golang/usage.go`, `golang/declaration.go`). Usages e Quick Definition le usano tramite il registry: un linguaggio senza capability riceve il risultato LSP grezzo.
+  - [x] Wails conserva gli alias Go come alias TS: il frontend non cambia (`LanguageServerSettings` = `golang.GoplsSettings`).
+  - Scelta: **nessuna interfaccia `LanguageServerProvider` per ora.** L'unico consumatore sarebbe l'host, che chiama `golang.GoplsServerSpec` con impostazioni tipizzate Go; un provider generico richiederebbe impostazioni opache senza un consumatore reale. Entra nella Fase 10, quando la UI avvierà i server per linguaggio dalla facciata generica.
 - [ ] **Fase 8 — Run/Build/Test.** `ide/run`, `ide/testing`; `golang.Runner`/`TestRunner`; `LanguageOptions` + migrazione run config.
 - [ ] **Fase 9 — Debug/Delve.** `ide/dap` DebugManager con `AdapterSpec`; `golang/delve.go` + estensioni goroutine/defer/memoria via `dap.Session`.
 - [ ] **Fase 10 — UI.** `frontend/src/components/ide/` (generico) + `components/ide/languages/go/` (contribuzioni: comandi, menu, tool window, status bar, provider Monaco, impostazioni). Command `requires`, tool-window registry, provider Monaco per `languageId` dal backend. Aggiornare la regex di `scripts/check-startup-bundle.mjs`.

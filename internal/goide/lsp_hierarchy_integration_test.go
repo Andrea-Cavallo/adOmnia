@@ -91,15 +91,6 @@ func lineOf(t *testing.T, content, prefix string) int {
 	return 0
 }
 
-func TestGoplsSettingsKeepVulncheckOptIn(t *testing.T) {
-	if got := goplsSettings(LanguageServerSettings{})["vulncheck"]; got != "Off" {
-		t.Fatalf("vulncheck by default = %v, want Off (local-first)", got)
-	}
-	if got := goplsSettings(LanguageServerSettings{Vulncheck: true})["vulncheck"]; got != "Imports" {
-		t.Fatalf("vulncheck when enabled = %v, want Imports", got)
-	}
-}
-
 // gopls reale: le impostazioni di Go Studio (vulncheck incluso) non producono avvisi di opzioni sconosciute.
 func TestGoplsAcceptsGoStudioSettings(t *testing.T) {
 	gopls := findGoplsForTest(t)

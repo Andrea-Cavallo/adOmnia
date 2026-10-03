@@ -5,6 +5,108 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+/**
+ * DelveInfo descrive il binario dlv trovato per la sessione.
+ */
+export class DelveInfo {
+    "available": boolean;
+    "binary"?: string;
+    "version"?: string;
+    "source"?: string;
+    "error"?: string;
+
+    /** Creates a new DelveInfo instance. */
+    constructor($$source: Partial<DelveInfo> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DelveInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DelveInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DelveInfo($$parsedSource as Partial<DelveInfo>);
+    }
+}
+
+/**
+ * GoplsInfo descrive il gopls trovato per una sessione.
+ */
+export class GoplsInfo {
+    "available": boolean;
+    "binary"?: string;
+    "version"?: string;
+    "source"?: string;
+    "managedDir"?: string;
+    "error"?: string;
+
+    /** Creates a new GoplsInfo instance. */
+    constructor($$source: Partial<GoplsInfo> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoplsInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoplsInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoplsInfo($$parsedSource as Partial<GoplsInfo>);
+    }
+}
+
+/**
+ * GoplsSettings sono le preferenze dell'utente tradotte nella configurazione di gopls.
+ */
+export class GoplsSettings {
+    "gofumpt": boolean;
+    "staticcheck": boolean;
+    "placeholders": boolean;
+    "semanticLinks": boolean;
+
+    /**
+     * Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
+     * dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
+     */
+    "vulncheck": boolean;
+
+    /** Creates a new GoplsSettings instance. */
+    constructor($$source: Partial<GoplsSettings> = {}) {
+        if (!("gofumpt" in $$source)) {
+            this["gofumpt"] = false;
+        }
+        if (!("staticcheck" in $$source)) {
+            this["staticcheck"] = false;
+        }
+        if (!("placeholders" in $$source)) {
+            this["placeholders"] = false;
+        }
+        if (!("semanticLinks" in $$source)) {
+            this["semanticLinks"] = false;
+        }
+        if (!("vulncheck" in $$source)) {
+            this["vulncheck"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoplsSettings instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoplsSettings {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoplsSettings($$parsedSource as Partial<GoplsSettings>);
+    }
+}
+
 export class InstallToolchainRequest {
     "sessionId": string;
     "version": string;

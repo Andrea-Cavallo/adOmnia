@@ -75,3 +75,10 @@ func TestGoImplementsProjectDetection(t *testing.T) {
 		t.Fatal("Go adapter must detect projects")
 	}
 }
+
+func TestGoDeclaresItsCapabilities(t *testing.T) {
+	capabilities := language.CapabilitiesOf(New())
+	if !capabilities.ProjectDetection || !capabilities.Documents || !capabilities.Usages || !capabilities.Declarations {
+		t.Fatalf("Go adapter capabilities = %+v", capabilities)
+	}
+}

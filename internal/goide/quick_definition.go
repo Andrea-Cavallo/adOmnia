@@ -3,12 +3,7 @@ package goide
 import (
 	"context"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"strings"
-
-	"adomnia/internal/ide/lsp"
 )
 
 const maxQuickDefinitionLines = 120
@@ -34,43 +29,8 @@ func (m *LSPManager) QuickDefinition(ctx context.Context, sessionID SessionID, d
 	}
 	location := locations[0]
 	text := m.documentText(state, location.URI, location.Path)
-	code, startLine, truncated := declarationSource(text, location.Range)
+	code, startLine, truncated := declarationSource(m.languages, location.Path, text, location.Range)
 	return QuickDefinitionResult{Found: code != "", Location: location, Code: code, StartLine: startLine, Truncated: truncated}, nil
-}
-
-// declarationSource restituisce la dichiarazione top-level (con commento di documentazione) che contiene la posizione.
-func declarationSource(text string, at EditorRange) (string, int, bool) {
-	fset := token.NewFileSet()
-	file, _ := parser.ParseFile(fset, "", text, parser.ParseComments|parser.SkipObjectResolution)
-	offset, err := lsp.OffsetForPosition(text, lspPosition(at.StartLine, at.StartColumn))
-	if file == nil || err != nil {
-		return "", 0, false
-	}
-	tokenFile := fset.File(file.Pos())
-	target := tokenFile.Pos(offset)
-	for _, declaration := range file.Decls {
-		if target < declaration.Pos() || target >= declaration.End() {
-			continue
-		}
-		start := declaration.Pos()
-		if doc := declarationDoc(declaration); doc != nil {
-			start = doc.Pos()
-		}
-		startOffset := tokenFile.Offset(start)
-		startOffset -= len(text[:startOffset]) - len(strings.TrimRight(text[:startOffset], " \t"))
-		return clipLines(text[startOffset:tokenFile.Offset(declaration.End())], fset.Position(start).Line)
-	}
-	return "", 0, false
-}
-
-func declarationDoc(declaration ast.Decl) *ast.CommentGroup {
-	switch node := declaration.(type) {
-	case *ast.FuncDecl:
-		return node.Doc
-	case *ast.GenDecl:
-		return node.Doc
-	}
-	return nil
 }
 
 func clipLines(code string, startLine int) (string, int, bool) {

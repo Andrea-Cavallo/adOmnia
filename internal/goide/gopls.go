@@ -4,100 +4,30 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"time"
+
+	"adomnia/internal/languages/golang"
 )
 
-const (
-	goplsModule         = "golang.org/x/tools/gopls@latest"
-	goplsVersionTimeout = 8 * time.Second
-)
-
-// executableName aggiunge l'estensione richiesta dalla piattaforma a un binario Go installato.
-func executableName(name string) string {
-	if runtime.GOOS == "windows" {
-		return name + ".exe"
-	}
-	return name
-}
-
-func goplsExecutableName() string {
-	return executableName("gopls")
-}
-
-// goplsCandidates elenca i binari in ordine di priorità: personalizzato, gestito da adOmnia, GOPATH/bin, PATH.
-func (s *Service) goplsCandidates(sessionID SessionID) []GoplsInfo {
-	candidates := make([]GoplsInfo, 0, 4)
-	s.goplsMu.RLock()
-	custom := s.goplsBinaries[sessionID]
-	s.goplsMu.RUnlock()
-	if custom != "" {
-		candidates = append(candidates, GoplsInfo{Binary: custom, Source: "custom"})
-	}
-	if s.toolsRoot != "" {
-		candidates = append(candidates, GoplsInfo{Binary: filepath.Join(s.toolsRoot, "bin", goplsExecutableName()), Source: "managed"})
-	}
-	if info, ok := s.toolchain.LastDetected(sessionID); ok && info.GOPATH != "" {
-		for _, gopath := range filepath.SplitList(info.GOPATH) {
-			candidates = append(candidates, GoplsInfo{Binary: filepath.Join(gopath, "bin", goplsExecutableName()), Source: "GOPATH"})
-		}
-	}
-	if found, err := exec.LookPath("gopls"); err == nil {
-		candidates = append(candidates, GoplsInfo{Binary: found, Source: "PATH"})
-	}
-	return candidates
-}
-
-// DetectGopls individua gopls e ne legge la versione senza avviarlo come server.
+// DetectGopls individua gopls (personalizzato, cartella strumenti, GOPATH/bin, PATH) e ne legge la versione.
 func (s *Service) DetectGopls(sessionID string) (GoplsInfo, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return GoplsInfo{}, err
 	}
-	managedDir := filepath.Join(s.toolsRoot, "bin")
-	for _, candidate := range s.goplsCandidates(session.ID) {
-		info, statErr := os.Stat(candidate.Binary)
-		if statErr != nil || info.IsDir() {
-			if candidate.Source == "custom" {
-				return GoplsInfo{Binary: candidate.Binary, Source: "custom", ManagedDir: managedDir, Error: "il binario gopls configurato non esiste"}, nil
-			}
-			continue
-		}
-		version, versionErr := cachedToolVersion(candidate.Binary, goplsVersion)
-		candidate.ManagedDir = managedDir
-		if versionErr != nil {
-			candidate.Error = versionErr.Error()
-			return candidate, nil
-		}
-		candidate.Available = true
-		candidate.Version = version
-		return candidate, nil
-	}
-	return GoplsInfo{ManagedDir: managedDir, Error: "gopls non trovato: installalo da Go → Install gopls oppure indica un binario personalizzato"}, nil
+	s.goplsMu.RLock()
+	custom := s.goplsBinaries[session.ID]
+	s.goplsMu.RUnlock()
+	return golang.LocateGopls(custom, s.toolsRoot, s.sessionGOPATH(session.ID)), nil
 }
 
-func goplsVersion(binary string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), goplsVersionTimeout)
-	defer cancel()
-	command := exec.CommandContext(ctx, binary, "version")
-	configureProcess(command, false)
-	output, err := command.CombinedOutput()
-	if ctx.Err() != nil {
-		return "", fmt.Errorf("gopls non risponde a 'gopls version'")
+// sessionGOPATH è il GOPATH dell'SDK rilevato per la sessione (vuoto se non ancora rilevato).
+func (s *Service) sessionGOPATH(sessionID SessionID) string {
+	if info, ok := s.toolchain.LastDetected(sessionID); ok {
+		return info.GOPATH
 	}
-	if err != nil {
-		return "", fmt.Errorf("gopls non eseguibile: %s", strings.TrimSpace(string(output)))
-	}
-	for _, line := range strings.Split(string(output), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) >= 2 && strings.HasSuffix(fields[0], "gopls") {
-			return fields[1], nil
-		}
-	}
-	return strings.TrimSpace(strings.SplitN(string(output), "\n", 2)[0]), nil
+	return ""
 }
 
 // ConfigureGopls imposta un binario gopls personalizzato per la sessione; stringa vuota ripristina la ricerca automatica.
@@ -129,7 +59,7 @@ func (s *Service) ConfigureGopls(sessionID, binary string) error {
 
 // InstallGopls esegue `go install` di gopls nella cartella strumenti di adOmnia dopo conferma esplicita.
 func (s *Service) InstallGopls(sessionID string, confirmed bool) (Execution, error) {
-	return s.installTool(sessionID, goplsModule, confirmed)
+	return s.installTool(sessionID, golang.GoplsModule, confirmed)
 }
 
 // installTool esegue `go install module` con GOBIN nella cartella strumenti, visibile nella Run console.

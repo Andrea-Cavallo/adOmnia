@@ -19,6 +19,9 @@ import (
 	"sync"
 	"time"
 	"unicode/utf16"
+
+	"adomnia/internal/ide/sdk"
+	"adomnia/internal/languages/golang"
 )
 
 const (
@@ -26,10 +29,10 @@ const (
 	LinterStaticcheck = "staticcheck"
 	// LinterCustom è un qualsiasi analizzatore che stampa "file.go:riga:colonna: messaggio",
 	// come go vet e i singlechecker/multichecker di golang.org/x/tools/go/analysis.
-	LinterCustom = "custom"
-	lintTimeout       = 5 * time.Minute
-	maxLintOutput     = 32 * 1024 * 1024
-	maxLintIssues     = 5_000
+	LinterCustom  = "custom"
+	lintTimeout   = 5 * time.Minute
+	maxLintOutput = 32 * 1024 * 1024
+	maxLintIssues = 5_000
 )
 
 var (
@@ -92,45 +95,10 @@ type byteEdit struct {
 	text       string
 }
 
-type linterCandidate struct {
-	kind   string
-	binary string
-	source string
-}
-
 // lintRegistry tiene i binari personalizzati per sessione.
 type lintRegistry struct {
 	mu     sync.RWMutex
 	custom map[SessionID]string
-}
-
-func (s *Service) linterCandidates(sessionID SessionID) []linterCandidate {
-	candidates := []linterCandidate{}
-	s.lint.mu.RLock()
-	custom := s.lint.custom[sessionID]
-	s.lint.mu.RUnlock()
-	if custom != "" {
-		candidates = append(candidates, linterCandidate{kind: linterKindForBinary(custom), binary: custom, source: "custom"})
-	}
-	directories := []struct{ path, source string }{}
-	if s.toolsRoot != "" {
-		directories = append(directories, struct{ path, source string }{filepath.Join(s.toolsRoot, "bin"), "managed"})
-	}
-	if info, ok := s.toolchain.LastDetected(sessionID); ok {
-		for _, gopath := range filepath.SplitList(info.GOPATH) {
-			directories = append(directories, struct{ path, source string }{filepath.Join(gopath, "bin"), "GOPATH"})
-		}
-	}
-	// golangci-lint è preferito perché aggrega staticcheck e altri linter.
-	for _, kind := range []string{LinterGolangci, LinterStaticcheck} {
-		for _, directory := range directories {
-			candidates = append(candidates, linterCandidate{kind: kind, binary: filepath.Join(directory.path, executableName(kind)), source: directory.source})
-		}
-		if found, err := exec.LookPath(kind); err == nil {
-			candidates = append(candidates, linterCandidate{kind: kind, binary: found, source: "PATH"})
-		}
-	}
-	return candidates
 }
 
 func linterKindForBinary(binary string) string {
@@ -150,25 +118,35 @@ func (s *Service) DetectLinter(sessionID string) (LinterInfo, error) {
 	if err != nil {
 		return LinterInfo{}, err
 	}
-	for _, candidate := range s.linterCandidates(session.ID) {
-		info, statErr := os.Stat(candidate.binary)
-		if statErr != nil || info.IsDir() {
-			if candidate.source == "custom" {
-				return LinterInfo{Binary: candidate.binary, Source: "custom", Error: "il binario del linter configurato non esiste"}, nil
-			}
-			continue
-		}
-		version, versionErr := cachedToolVersion(candidate.binary, func(binary string) (string, error) { return linterVersion(candidate.kind, binary) })
-		result := LinterInfo{Kind: candidate.kind, Binary: candidate.binary, Source: candidate.source, ConfigPath: linterConfig(session.Project.RealPath, candidate.kind)}
-		if versionErr != nil {
-			result.Error = versionErr.Error()
-			return result, nil
-		}
-		result.Available = true
-		result.Version = version
+	s.lint.mu.RLock()
+	custom := s.lint.custom[session.ID]
+	s.lint.mu.RUnlock()
+	// golangci-lint è preferito perché aggrega staticcheck e altri linter.
+	search := golang.ToolSearch([]string{LinterGolangci, LinterStaticcheck}, custom, s.toolsRoot, s.sessionGOPATH(session.ID))
+	located, found := sdk.Locate(search.Candidates(), missingLinterBinary, func(candidate sdk.ToolCandidate) (string, error) {
+		return linterVersion(linterKind(candidate), candidate.Binary)
+	})
+	if !found {
+		return LinterInfo{Error: "nessun linter trovato: installa golangci-lint o staticcheck dal menu Go"}, nil
+	}
+	result := LinterInfo{Binary: located.Binary, Source: located.Source, Version: located.Version, Available: located.Available, Error: located.Error}
+	if located.Error == missingLinterBinary {
+		// Binario personalizzato sparito: come prima, niente tipo né configurazione.
 		return result, nil
 	}
-	return LinterInfo{Error: "nessun linter trovato: installa golangci-lint o staticcheck dal menu Go"}, nil
+	result.Kind = linterKind(located.ToolCandidate)
+	result.ConfigPath = linterConfig(session.Project.RealPath, result.Kind)
+	return result, nil
+}
+
+const missingLinterBinary = "il binario del linter configurato non esiste"
+
+// linterKind è il tipo di linter del candidato: dal nome cercato, o dal binario se personalizzato.
+func linterKind(candidate sdk.ToolCandidate) string {
+	if candidate.Source == sdk.SourceCustom {
+		return linterKindForBinary(candidate.Binary)
+	}
+	return candidate.Name
 }
 
 func linterConfig(root, kind string) string {
@@ -186,7 +164,7 @@ func linterVersion(kind, binary string) (string, error) {
 		// Gli analizzatori personalizzati non hanno un flag di versione comune.
 		return "custom", nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), goplsVersionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), sdk.VersionTimeout)
 	defer cancel()
 	flag := "version"
 	if kind == LinterStaticcheck {

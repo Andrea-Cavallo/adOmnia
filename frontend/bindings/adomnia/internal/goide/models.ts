@@ -1186,32 +1186,16 @@ export class DebugVariable {
 }
 
 /**
- * DelveInfo descrive il binario dlv trovato per la sessione.
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
  */
-export class DelveInfo {
-    "available": boolean;
-    "binary"?: string;
-    "version"?: string;
-    "source"?: string;
-    "error"?: string;
+export const DelveInfo = golang$0.DelveInfo;
 
-    /** Creates a new DelveInfo instance. */
-    constructor($$source: Partial<DelveInfo> = {}) {
-        if (!("available" in $$source)) {
-            this["available"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new DelveInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): DelveInfo {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new DelveInfo($$parsedSource as Partial<DelveInfo>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type DelveInfo = golang$0.DelveInfo;
 
 export class DependencyActionRequest {
     "sessionId": SessionID;
@@ -2715,31 +2699,17 @@ export class GoWorkState {
     }
 }
 
-export class GoplsInfo {
-    "available": boolean;
-    "binary"?: string;
-    "version"?: string;
-    "source"?: string;
-    "managedDir"?: string;
-    "error"?: string;
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const GoplsInfo = golang$0.GoplsInfo;
 
-    /** Creates a new GoplsInfo instance. */
-    constructor($$source: Partial<GoplsInfo> = {}) {
-        if (!("available" in $$source)) {
-            this["available"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new GoplsInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): GoplsInfo {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new GoplsInfo($$parsedSource as Partial<GoplsInfo>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type GoplsInfo = golang$0.GoplsInfo;
 
 /**
  * GoroutineCreation è l'istruzione `go` che ha creato una goroutine e la goroutine che l'ha eseguita.
@@ -3261,47 +3231,17 @@ export class LanguageServerFeatures {
     }
 }
 
-export class LanguageServerSettings {
-    "gofumpt": boolean;
-    "staticcheck": boolean;
-    "placeholders": boolean;
-    "semanticLinks": boolean;
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const LanguageServerSettings = golang$0.GoplsSettings;
 
-    /**
-     * Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
-     * dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
-     */
-    "vulncheck": boolean;
-
-    /** Creates a new LanguageServerSettings instance. */
-    constructor($$source: Partial<LanguageServerSettings> = {}) {
-        if (!("gofumpt" in $$source)) {
-            this["gofumpt"] = false;
-        }
-        if (!("staticcheck" in $$source)) {
-            this["staticcheck"] = false;
-        }
-        if (!("placeholders" in $$source)) {
-            this["placeholders"] = false;
-        }
-        if (!("semanticLinks" in $$source)) {
-            this["semanticLinks"] = false;
-        }
-        if (!("vulncheck" in $$source)) {
-            this["vulncheck"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new LanguageServerSettings instance from a string or object.
-     */
-    static createFrom($$source: any = {}): LanguageServerSettings {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new LanguageServerSettings($$parsedSource as Partial<LanguageServerSettings>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type LanguageServerSettings = golang$0.GoplsSettings;
 
 export enum LanguageServerState {
     /**

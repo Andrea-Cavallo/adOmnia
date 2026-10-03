@@ -1,33 +1,30 @@
-package goide
+package golang
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
 
+	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/lsp"
 )
 
-// Tipi di utilizzo mostrati nella vista Usages, ricavati dall'AST e mai da euristiche testuali.
+// Tipi di utilizzo ricavati dall'AST Go (alias locali dei valori del core).
 const (
-	UsageDeclaration = "declaration"
-	UsageWrite       = "write"
-	UsageRead        = "read"
-	UsageImport      = "import"
+	UsageDeclaration = language.UsageDeclaration
+	UsageWrite       = language.UsageWrite
+	UsageRead        = language.UsageRead
+	UsageImport      = language.UsageImport
 )
 
-// classifyUsages assegna a ogni riferimento il tipo di utilizzo, analizzando una sola volta ogni file coinvolto.
-func classifyUsages(locations []EditorLocation, textFor func(EditorLocation) string) {
-	parsed := map[string]*usageFile{}
-	for index := range locations {
-		location := &locations[index]
-		file, ok := parsed[location.URI]
-		if !ok {
-			file = parseUsageFile(textFor(*location))
-			parsed[location.URI] = file
-		}
-		location.Usage = file.usageAt(location.Range)
+// ClassifyUsages assegna a ogni posizione del file il tipo di utilizzo, analizzando il file una volta sola.
+func (*Language) ClassifyUsages(text string, positions []lsp.Position) []string {
+	file := parseUsageFile(text)
+	usages := make([]string, len(positions))
+	for index, position := range positions {
+		usages[index] = file.usageAt(position)
 	}
+	return usages
 }
 
 type usageFile struct {
@@ -43,11 +40,11 @@ func parseUsageFile(text string) *usageFile {
 	return &usageFile{text: text, fset: fset, syntax: syntax}
 }
 
-func (f *usageFile) usageAt(value EditorRange) string {
+func (f *usageFile) usageAt(position lsp.Position) string {
 	if f.syntax == nil {
 		return ""
 	}
-	offset, err := lsp.OffsetForPosition(f.text, lspPosition(value.StartLine, value.StartColumn))
+	offset, err := lsp.OffsetForPosition(f.text, position)
 	if err != nil {
 		return ""
 	}

@@ -141,3 +141,19 @@ func EnvironmentList(environment map[string]string) []string {
 	}
 	return result
 }
+
+// WithDefaultEnvironment aggiunge le variabili di defaults non già presenti (confronto senza maiuscole):
+// valgono solo se l'utente non le ha impostate.
+func WithDefaultEnvironment(environment []string, defaults map[string]string) []string {
+	present := make(map[string]bool, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		present[strings.ToUpper(name)] = true
+	}
+	for name, value := range defaults {
+		if !present[name] {
+			environment = append(environment, name+"="+value)
+		}
+	}
+	return environment
+}

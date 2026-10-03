@@ -14,6 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"adomnia/internal/ide/sdk"
 )
 
 const maxRecentProjects = 20
@@ -912,7 +914,7 @@ func (s *Service) restore() error {
 	}
 	s.toolchain.Replace(state.Toolchains, globalToolchain)
 	s.toolchain.RestoreDetected(state.DetectedToolchains)
-	restoreToolVersions(state.ToolVersions)
+	sdk.RestoreVersions(state.ToolVersions)
 	views := maps.Clone(state.SessionUI)
 	if views == nil {
 		views = make(map[SessionID]SessionView)
@@ -943,7 +945,7 @@ func (s *Service) saveState() error {
 		Toolchains:         toolchains,
 		GlobalToolchain:    &globalToolchain,
 		DetectedToolchains: s.toolchain.DetectedSnapshot(),
-		ToolVersions:       snapshotToolVersions(),
+		ToolVersions:       sdk.VersionsSnapshot(),
 		Sessions:           s.workspace.ListSessions(),
 		Recent:             recent,
 		RunConfigs:         s.runConfigs.Snapshot(),

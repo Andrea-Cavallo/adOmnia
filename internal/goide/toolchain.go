@@ -19,15 +19,22 @@ type (
 	InstalledToolchain      = golang.InstalledToolchain
 	InstallToolchainRequest = golang.InstallToolchainRequest
 	ToolchainInstallation   = golang.ToolchainInstallation
+	GoplsInfo               = golang.GoplsInfo
+	DelveInfo               = golang.DelveInfo
+	LanguageServerSettings  = golang.GoplsSettings
 )
 
 func NewToolchainManager() *ToolchainManager { return golang.NewToolchainManager[SessionID]() }
 
 var (
-	NewToolchainInstaller = golang.NewToolchainInstaller
-	binaryStamp           = sdk.BinaryStamp
-	samePath              = project.SamePath
+	NewToolchainInstaller  = golang.NewToolchainInstaller
+	binaryStamp            = sdk.BinaryStamp
+	samePath               = project.SamePath
+	executableName         = sdk.ExecutableName
+	withDefaultEnvironment = sdk.WithDefaultEnvironment
 )
+
+func goplsExecutableName() string { return sdk.ExecutableName("gopls") }
 
 // validEnvironmentName è condiviso da run configuration e strumenti di build.
 var validEnvironmentName = sdk.ValidEnvironmentName

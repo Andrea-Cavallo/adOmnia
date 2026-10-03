@@ -36,25 +36,6 @@ type LanguageServerFeatures struct {
 	CallHierarchy     bool     `json:"callHierarchy"`
 }
 
-type GoplsInfo struct {
-	Available  bool   `json:"available"`
-	Binary     string `json:"binary,omitempty"`
-	Version    string `json:"version,omitempty"`
-	Source     string `json:"source,omitempty"`
-	ManagedDir string `json:"managedDir,omitempty"`
-	Error      string `json:"error,omitempty"`
-}
-
-type LanguageServerSettings struct {
-	Gofumpt       bool `json:"gofumpt"`
-	Staticcheck   bool `json:"staticcheck"`
-	Placeholders  bool `json:"placeholders"`
-	SemanticLinks bool `json:"semanticLinks"`
-	// Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
-	// dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
-	Vulncheck bool `json:"vulncheck"`
-}
-
 type EditorRange struct {
 	StartLine   int `json:"startLine"`
 	StartColumn int `json:"startColumn"`

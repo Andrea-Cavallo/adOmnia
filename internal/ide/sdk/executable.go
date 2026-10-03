@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"adomnia/internal/ide/process"
 )
@@ -62,3 +63,6 @@ func Query(ctx context.Context, label, binary, workingDirectory string, environm
 	}
 	return string(output), nil
 }
+
+// VersionTimeout limita le query "<strumento> version": uno strumento che non risponde non blocca l'IDE.
+const VersionTimeout = 8 * time.Second

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"strings"
 
 	"adomnia/internal/ide/lsp"
 )
@@ -118,7 +117,7 @@ func (m *LSPManager) snapshot(sessionID SessionID, documentID DocumentID) (track
 	state.mu.Lock()
 	defer state.mu.Unlock()
 	if state.process == nil || state.status.State != LanguageServerReady {
-		return trackedDocument{}, nil, fmt.Errorf("%s non è pronto", state.options.displayName())
+		return trackedDocument{}, nil, fmt.Errorf("%s non è pronto", state.options.DisplayName())
 	}
 	return *state.documents[documentID], state.process, nil
 }
@@ -188,9 +187,4 @@ func (m *LSPManager) NotifyWatchedFiles(sessionID SessionID, changes []DiskChang
 		}
 		_ = process.conn.Notify("workspace/didChangeWatchedFiles", map[string]any{"changes": events})
 	}
-}
-
-func isGoplsWatchedFile(path string) bool {
-	base := strings.ToLower(filepath.Base(path))
-	return strings.HasSuffix(base, ".go") || base == "go.mod" || base == "go.sum" || base == "go.work" || base == "go.work.sum"
 }

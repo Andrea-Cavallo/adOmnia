@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"adomnia/internal/languages/golang"
-	"adomnia/internal/netpolicy"
 )
 
 // StartLanguageServer avvia gopls per un progetto autorizzato, usando l'SDK Go selezionato per la sessione.
@@ -71,45 +70,7 @@ func (s *Service) languageServerOptions(sessionID string, settings LanguageServe
 	if err != nil {
 		return Session{}, LanguageServerOptions{}, err
 	}
-	environment = withDefaultEnvironment(environment, goplsEnvironmentDefaults)
-	return session, goplsServerOptions(gopls, environment, settings), nil
-}
-
-// goplsServerOptions descrive gopls al manager LSP generico: nome, avvio e configurazione.
-// ponytail: resta nell'host fino alla Fase 7, quando gopls diventa un LanguageServerProvider dell'adapter Go.
-func goplsServerOptions(gopls GoplsInfo, environment []string, settings LanguageServerSettings) LanguageServerOptions {
-	return LanguageServerOptions{
-		Language: golang.ID, Name: "gopls", Binary: gopls.Binary, Version: gopls.Version, Environment: environment,
-		InitializationOptions: goplsSettings(settings),
-		// Rivalutata a ogni richiesta: il modo offline può cambiare mentre gopls è attivo.
-		Configuration: func() any { return goplsSettings(settings) },
-		WatchesFile:   isGoplsWatchedFile,
-	}
-}
-
-// goplsSettings traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
-func goplsSettings(settings LanguageServerSettings) map[string]any {
-	return map[string]any{
-		"gofumpt":            settings.Gofumpt,
-		"staticcheck":        settings.Staticcheck,
-		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
-		"usePlaceholders":    settings.Placeholders,
-		"completeUnimported": true,
-		"hoverKind":          "FullDocumentation",
-		"linksInHover":       settings.SemanticLinks,
-		"semanticTokens":     true,
-		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
-		"semanticTokenTypes": map[string]bool{"string": false, "number": false},
-		// Tutte le categorie utili: il frontend mostra quelle di tipo solo con la preferenza Type Hints.
-		"hints": map[string]bool{
-			"parameterNames":         true,
-			"functionTypeParameters": true,
-			"assignVariableTypes":    true,
-			"rangeVariableTypes":     true,
-			"compositeLiteralTypes":  true,
-			"constantValues":         true,
-		},
-	}
+	return session, golang.GoplsServerSpec(gopls, environment, settings), nil
 }
 
 // UpdateDocumentBuffer sincronizza con gopls il buffer non salvato; una versione obsoleta viene ignorata.
@@ -251,13 +212,3 @@ func (s *Service) ExpandHierarchy(ctx context.Context, sessionID, direction, tok
 func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (QuickDefinitionResult, error) {
 	return s.lsp.QuickDefinition(ctx, SessionID(sessionID), DocumentID(documentID), line, column)
 }
-
-// goplsEnvironmentDefaults valgono solo se l'utente non ha già impostato le variabili.
-//
-// GO_TELEMETRY_CHILD=2: golang.org/x/telemetry (start.go) tratta il processo come
-// discendente del proprio figlio e non avvia né il processo "** telemetry **" né la
-// raccolta; la modalità globale scelta con `go telemetry` resta intatta.
-// GOTELEMETRY invece è di sola lettura e non spegne nulla: verificato su Windows con
-// gopls v0.23.0 (con GOTELEMETRY=off il figlio parte, con GO_TELEMETRY_CHILD=2 no).
-// GOMEMLIMIT: il GC di gopls diventa più aggressivo vicino a 1 GiB e taglia i picchi, al costo di un po' di CPU.
-var goplsEnvironmentDefaults = map[string]string{"GO_TELEMETRY_CHILD": "2", "GOMEMLIMIT": "1GiB"}

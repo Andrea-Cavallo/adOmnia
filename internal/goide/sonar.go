@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/ide/sdk"
 	"adomnia/internal/netpolicy"
 )
 
@@ -171,48 +172,21 @@ func (s *Service) DetectSonarScanner(sessionID string) (SonarScannerInfo, error)
 	if err != nil {
 		return SonarScannerInfo{}, err
 	}
-	for _, candidate := range s.sonarScannerCandidates(session.ID) {
-		info, statErr := os.Stat(candidate.binary)
-		if statErr != nil || info.IsDir() {
-			if candidate.source == "custom" {
-				return SonarScannerInfo{Binary: candidate.binary, Source: "custom", Error: "il binario di sonar-scanner configurato non esiste"}, nil
-			}
-			continue
-		}
-		version, versionErr := cachedToolVersion(candidate.binary, sonarScannerVersion)
-		result := SonarScannerInfo{Binary: candidate.binary, Source: candidate.source}
-		if versionErr != nil {
-			result.Error = versionErr.Error()
-			return result, nil
-		}
-		result.Available = true
-		result.Version = version
-		return result, nil
-	}
-	return SonarScannerInfo{Error: "sonar-scanner non trovato: installalo e aggiungilo al PATH, oppure indica il percorso in Go Tool Paths"}, nil
-}
-
-type sonarCandidate struct {
-	binary string
-	source string
-}
-
-func (s *Service) sonarScannerCandidates(sessionID SessionID) []sonarCandidate {
-	candidates := []sonarCandidate{}
-	if custom := s.sonar.customBinary(sessionID); custom != "" {
-		candidates = append(candidates, sonarCandidate{binary: custom, source: "custom"})
-	}
+	search := sdk.ToolSearch{Names: []string{sonarScanner}, Custom: s.sonar.customBinary(session.ID)}
 	if s.toolsRoot != "" {
-		candidates = append(candidates, sonarCandidate{binary: filepath.Join(s.toolsRoot, "bin", executableName(sonarScanner)), source: "managed"})
+		search.ManagedDir = filepath.Join(s.toolsRoot, "bin")
 	}
-	if found, err := exec.LookPath(sonarScanner); err == nil {
-		candidates = append(candidates, sonarCandidate{binary: found, source: "PATH"})
+	located, found := sdk.Locate(search.Candidates(), "il binario di sonar-scanner configurato non esiste", func(candidate sdk.ToolCandidate) (string, error) {
+		return sonarScannerVersion(candidate.Binary)
+	})
+	if !found {
+		return SonarScannerInfo{Error: "sonar-scanner non trovato: installalo e aggiungilo al PATH, oppure indica il percorso in Go Tool Paths"}, nil
 	}
-	return candidates
+	return SonarScannerInfo{Available: located.Available, Binary: located.Binary, Version: located.Version, Source: located.Source, Error: located.Error}, nil
 }
 
 func sonarScannerVersion(binary string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), goplsVersionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), sdk.VersionTimeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, binary, "--version")
 	configureProcess(command, false)

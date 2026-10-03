@@ -3,6 +3,8 @@ package goide
 import (
 	"encoding/json"
 	"fmt"
+
+	"adomnia/internal/ide/sdk"
 )
 
 const PersistenceSchemaVersion = 4
@@ -27,7 +29,7 @@ type persistedState struct {
 	// DetectedToolchains è la cache dell'ultimo rilevamento riuscito: al riavvio l'SDK è subito disponibile.
 	DetectedToolchains map[SessionID]ToolchainInfo `json:"detectedToolchains,omitempty"`
 	// ToolVersions: versioni di gopls, dlv e linter già lette, valide finché il binario non cambia.
-	ToolVersions map[string]ToolVersionEntry `json:"toolVersions,omitempty"`
+	ToolVersions map[string]sdk.ToolVersionEntry `json:"toolVersions,omitempty"`
 	// TrustedPaths: cartelle (percorso reale) già autorizzate; riaprirle non richiede un nuovo consenso.
 	TrustedPaths []string `json:"trustedPaths,omitempty"`
 	// SonarConfigs: configurazione non segreta di SonarQube per sessione (il token non è mai persistito).

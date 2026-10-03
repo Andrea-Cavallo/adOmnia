@@ -81,7 +81,7 @@ func (m *LSPManager) ExpandHierarchy(ctx context.Context, sessionID SessionID, d
 		return nil, fmt.Errorf("nessun language server avviato per %s", filepath.Base(pathFromURI(item.URI)))
 	}
 	state.mu.Lock()
-	process, ready, name := state.process, state.status.State == LanguageServerReady, state.options.displayName()
+	process, ready, name := state.process, state.status.State == LanguageServerReady, state.options.DisplayName()
 	state.mu.Unlock()
 	if process == nil || !ready {
 		return nil, fmt.Errorf("%s non è pronto", name)

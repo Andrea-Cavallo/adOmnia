@@ -1,50 +1,16 @@
 package goide
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"adomnia/internal/languages/golang"
 )
-
-const delveModule = "github.com/go-delve/delve/cmd/dlv@latest"
-
-// DelveInfo descrive il binario dlv trovato per la sessione.
-type DelveInfo struct {
-	Available bool   `json:"available"`
-	Binary    string `json:"binary,omitempty"`
-	Version   string `json:"version,omitempty"`
-	Source    string `json:"source,omitempty"`
-	Error     string `json:"error,omitempty"`
-}
-
-// delveCandidates segue lo stesso ordine di gopls: personalizzato, gestito da adOmnia, GOPATH/bin, PATH.
-func (s *Service) delveCandidates(sessionID SessionID) []DelveInfo {
-	candidates := make([]DelveInfo, 0, 4)
-	s.goplsMu.RLock()
-	custom := s.delveBinaries[sessionID]
-	s.goplsMu.RUnlock()
-	if custom != "" {
-		candidates = append(candidates, DelveInfo{Binary: custom, Source: "custom"})
-	}
-	if s.toolsRoot != "" {
-		candidates = append(candidates, DelveInfo{Binary: filepath.Join(s.toolsRoot, "bin", executableName("dlv")), Source: "managed"})
-	}
-	if info, ok := s.toolchain.LastDetected(sessionID); ok && info.GOPATH != "" {
-		for _, gopath := range filepath.SplitList(info.GOPATH) {
-			candidates = append(candidates, DelveInfo{Binary: filepath.Join(gopath, "bin", executableName("dlv")), Source: "GOPATH"})
-		}
-	}
-	if found, err := exec.LookPath("dlv"); err == nil {
-		candidates = append(candidates, DelveInfo{Binary: found, Source: "PATH"})
-	}
-	return candidates
-}
 
 // DetectDelve individua dlv e ne legge la versione, senza avviare nulla.
 func (s *Service) DetectDelve(sessionID string) (DelveInfo, error) {
@@ -52,42 +18,10 @@ func (s *Service) DetectDelve(sessionID string) (DelveInfo, error) {
 	if err != nil {
 		return DelveInfo{}, err
 	}
-	for _, candidate := range s.delveCandidates(session.ID) {
-		if info, statErr := os.Stat(candidate.Binary); statErr != nil || info.IsDir() {
-			if candidate.Source == "custom" {
-				return DelveInfo{Binary: candidate.Binary, Source: "custom", Error: "il binario dlv configurato non esiste"}, nil
-			}
-			continue
-		}
-		version, versionErr := cachedToolVersion(candidate.Binary, delveVersion)
-		if versionErr != nil {
-			candidate.Error = versionErr.Error()
-			return candidate, nil
-		}
-		candidate.Available, candidate.Version = true, version
-		return candidate, nil
-	}
-	return DelveInfo{Error: "Delve (dlv) non trovato: installalo da Go → Install Delve oppure indica un binario personalizzato"}, nil
-}
-
-func delveVersion(binary string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), goplsVersionTimeout)
-	defer cancel()
-	command := exec.CommandContext(ctx, binary, "version")
-	configureProcess(command, false)
-	output, err := command.CombinedOutput()
-	if ctx.Err() != nil {
-		return "", fmt.Errorf("dlv non risponde a 'dlv version'")
-	}
-	if err != nil {
-		return "", fmt.Errorf("dlv non eseguibile: %s", strings.TrimSpace(string(output)))
-	}
-	for _, line := range strings.Split(string(output), "\n") {
-		if version, ok := strings.CutPrefix(strings.TrimSpace(line), "Version:"); ok {
-			return strings.TrimSpace(version), nil
-		}
-	}
-	return "", fmt.Errorf("versione di dlv non riconosciuta")
+	s.goplsMu.RLock()
+	custom := s.delveBinaries[session.ID]
+	s.goplsMu.RUnlock()
+	return golang.LocateDelve(custom, s.toolsRoot, s.sessionGOPATH(session.ID)), nil
 }
 
 // ConfigureDelve imposta un dlv personalizzato per la sessione; stringa vuota ripristina la ricerca automatica.
@@ -118,7 +52,7 @@ func (s *Service) ConfigureDelve(sessionID, binary string) error {
 
 // InstallDelve esegue `go install` di Delve nella cartella strumenti di adOmnia dopo conferma esplicita.
 func (s *Service) InstallDelve(sessionID string, confirmed bool) (Execution, error) {
-	return s.installTool(sessionID, delveModule, confirmed)
+	return s.installTool(sessionID, golang.DelveModule, confirmed)
 }
 
 // StartDebug avvia Delve per il package o il test richiesto; solo per progetti autorizzati e su azione esplicita.
