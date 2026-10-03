@@ -12,5 +12,7 @@ import (
 var linuxWindowIcon []byte
 
 func applyPlatformOptions(appOptions *application.Options) {
-	appOptions.Linux.ProgramName = "adOmnia"
+	// Must match the installed adomnia.desktop filename (case-sensitive on Wayland).
+	appOptions.Linux.ProgramName = "adomnia"
+	appOptions.Icon = linuxWindowIcon
 }

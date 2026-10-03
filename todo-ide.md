@@ -18,6 +18,14 @@ Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** in fon
 
 **Già verificato in automatico su Windows** (2026-09-29, Go 1.26.5, gopls v0.23.0, Delve 1.27.2), quindi non va rifatto a mano: stop dell'albero di processi, terminale ConPTY, debugger (breakpoint, step, variabili, evaluate, singolo test, attach, remoto, nessun `dlv`/`__debug_bin` orfano), navigazione gopls verso altri package, isolamento fra sessioni. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
 
+### Rendering font (Linux/WebKitGTK)
+
+- [ ] Confrontare gli stessi font, dimensioni, pesi e ligature con il browser sullo stesso schermo e scala, in dark/light; verificare testo fermo e in scrolling, allineamento cursore/selezione dopo cambio font, editor principale/split/separato. Verificare che la rimozione del layer hinting non peggiori lo scrolling di file grandi.
+
+### Scrolling dell'editor (Linux/WebKitGTK)
+
+- [ ] Su un file lungo, verificare l'inerzia Monaco con touchpad e mouse a scorrimento continuo, verticale e orizzontale; provare editor principale, split e finestra separata. Nessuna inerzia touchpad forzata sulla rotella a scatti. Verificare anche movimento e lampeggio smooth del cursore durante digitazione, navigazione con frecce e click. Attivare/disattivare «movimento ridotto» a editor aperto: scrolling e cursore senza animazioni, cursore fisso.
+
 ### A. Collaudo Fasi 1–4 (sblocca i gate 1, 2, 3 e 4)
 
 - [ ] **M1 — Flusso base**: apri il progetto, autorizza, modifica, salva, Build, Run con stdin, Stop e Restart. *(Fase 1)*

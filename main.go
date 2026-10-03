@@ -123,7 +123,7 @@ func main() {
 			WebviewUserDataPath: dataDir(),
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "adOmnia",
+			ProgramName: "adomnia",
 		},
 	}
 	applyPlatformOptions(&appOptions)
@@ -147,6 +147,7 @@ func main() {
 		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
 		EnableFileDrop: true,
 	})
+	configureNativeWindowIcon(mainWindow)
 	app.SetMainWindow(mainWindow)
 	goIDE.attachMainWindow(mainWindow)
 	if err := desktopApp.Run(); err != nil {
@@ -168,7 +169,8 @@ func dataDir() string {
 func normalizeWindowChrome(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case windowChromeAppX11:
-		return windowChromeAppX11
+		// Backward-compatible alias: never force XWayland for old settings.
+		return windowChromeApp
 	case windowChromeSystem:
 		return windowChromeSystem
 	default:

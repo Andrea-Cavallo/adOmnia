@@ -27,6 +27,20 @@ Phase 8 was published in [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/c
 
 *View → Maximize Editor* (Ctrl+Shift+F12, or a double-click on an editor tab) closes Project, Structure and the bottom tool window so the code takes all the space; press it again to bring them back exactly as they were. Every pane also closes on its own with its — button or its shortcut (Project Alt+1, Structure Alt+7, bottom tool window Alt+4).
 
+The code editor enables Monaco's inertial and smooth scrolling for touchpads and
+compatible continuous-scroll mouse input. Device classification stays with Monaco;
+ordinary stepped wheels are not forced into touchpad inertia. The system's
+**Reduce motion** preference disables these animations, including changes while
+the editor is open. The caret also moves and blinks smoothly; Reduce motion
+turns off its movement animation and keeps it solid. Main, split and detached
+editors use the same behavior.
+
+Font families, sizes, weights and ligatures stay unchanged. The code editor
+avoids forced text compositing layers and refreshes Monaco's cached glyph
+measurements after local fonts load. Global font smoothing follows the platform
+instead of forcing grayscale. Rendering can still differ between WebKitGTK and
+Chromium; compare on the same monitor and display scale.
+
 The status bar starts with the breadcrumb (file path › enclosing symbol; click a symbol to jump to its siblings) and shows line:column, the line separator (LF/CRLF), the language and the Go SDK. Save and Maximize editor sit at the right of the tab row. The top-right corner of the editor shows the problems of the open file: a green check when it is clean, otherwise error and warning counts with arrows for the previous and next problem (Shift+F8 / F8).
 
 *View → Maximize Go Studio* (Ctrl+Shift+F11, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Go Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Go Studio restores them too.

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings } from '../wailsjs/go/main/App'
-import { debouncedSave, setAutoSaveDelay } from '@/lib/storeSave'
+import { immediateSave, setAutoSaveDelay } from '@/lib/storeSave'
 import { DEFAULT_UI_FONT_ID, type UIFontId } from '@/lib/uiFonts'
 import { normalizeRailItem } from '@/lib/navigation'
 import { updateUiSessionStartupPreference, type StartupBehavior } from '@/lib/uiSessionMemento'
@@ -321,6 +321,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // and deliberate 'system' picks are left untouched.
       const migratedToV3 = (parsed.version ?? 0) < 3 && appearance.windowChrome === 'app'
       if (migratedToV3) appearance.windowChrome = 'system'
+      // Legacy XWayland mode now means app chrome on the native session backend.
+      if (appearance.windowChrome === 'app-xwayland') appearance.windowChrome = 'app'
       // v12: barra unita alla toolbar come in JetBrains, una volta sola; chi poi sceglie System lo mantiene.
       // v13: la barra di sistema torna nascosta di default (anche per chi l'aveva scelta dopo la v12).
       if ((parsed.version ?? 0) < 13 && appearance.windowChrome === 'system' && !IS_LINUX) appearance.windowChrome = 'app'
@@ -368,7 +370,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   save: () => {
     const s = get().settings
-    debouncedSave('settings', () => SaveSettings(JSON.stringify(s)))
+    const snapshot = JSON.stringify(s)
+    immediateSave('settings', () => SaveSettings(snapshot))
   },
 
   update: (patch) => {

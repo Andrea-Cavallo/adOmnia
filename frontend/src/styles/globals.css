@@ -148,8 +148,10 @@
        would invalidate the whole font-family declaration. */
     font-family: var(--skin-font-ui, var(--font-ui, var(--font-sans)));
     font-size: var(--ui-font-size);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* Keep the platform's native rasterization instead of forcing grayscale.
+       Font families, weights and metrics remain unchanged. */
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
   }
 
   button,
