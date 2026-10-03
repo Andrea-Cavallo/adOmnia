@@ -137,6 +137,9 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       <button type="button" onClick={() => showToolWindow('trace')} title="Go trace (trace.out)" className={`${ITEM} gap-1`}>
         <Activity size={12} />Trace
       </button>
+      <button type="button" onClick={() => showToolWindow('sonar')} title="SonarQube (optional)" className={`${ITEM} gap-1`}>
+        <ShieldCheck size={12} />Sonar
+      </button>
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
       <span className={LABEL}>{documentInfo?.language || (session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>

@@ -92,6 +92,7 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 
 ## §20 · Security Studio
 
+- [x] SonarQube (opzionale). — *Scansione `sonar-scanner` del progetto autorizzato + import issue dalla Web API (`internal/goide/sonar.go`), pannello con severità, navigazione al codice, filtro security, **Copy problems** (`file:line [SEVERITY rule] message`), **Resolve with AI** (preview) e baseline versionabile `.adomnia/sonar-baseline.json`. Token solo in memoria, Offline mode rispettato, nessun processo senza trust.*
 - [ ] `govulncheck`. — *Parziale: Esiste solo il toggle gopls vulncheck (lsp.go); non c'è un'esecuzione govulncheck con pannello risultati.*
 - [ ] Reachable vulnerability path.
 - [ ] Vulnerability severity.

@@ -9,7 +9,7 @@ const EMPTY: NetworkSettings = { offline: false, proxyUrl: '', noProxy: '', caBu
 
 const CATEGORY_LABELS: Record<string, string> = {
   ai: 'AI provider', update: 'Update check', 'git-host': 'Git host API', copilot: 'Copilot',
-  vulncheck: 'Vulnerability DB', 'go-toolchain': 'Go download', 'go-registry': 'Module registry',
+  vulncheck: 'Vulnerability DB', 'go-toolchain': 'Go download', 'go-registry': 'Module registry', sonarqube: 'SonarQube',
 }
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))

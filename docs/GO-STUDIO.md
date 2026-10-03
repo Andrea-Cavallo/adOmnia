@@ -204,6 +204,17 @@ pause and explains it.
 - **Image tabs.** Clicking an image in the Project tree opens a read-only preview tab (zoom, fit-to-window, dimensions) instead of failing as a non-text file. Supported: png, jpg/jpeg, gif, webp, bmp, ico, avif, svg, up to 16 MB. Image tabs are never sent to gopls.
 - **Markdown.** Relative image links in the Markdown preview (`![](img/a.png)`) are read from the project as data URLs, because a `file://` URL is not readable inside the WebView.
 
+## SonarQube (optional)
+
+- **Opt-in.** *View → SonarQube* (or the **Sonar** button in the status bar) is off until you enable it for the project. Configure the server URL, project key, sources (default `.`) and exclusions; `sonar-scanner` must be installed and is detected on the managed tools folder or the PATH (a custom path is accepted). Nothing is installed or started by adOmnia on its own.
+- **Token.** The SonarQube token is kept in memory for the session only: it is never persisted and never sent back to the UI. Saving a scan without a token asks for it again after a restart.
+- **Network.** The scan uploads the analysis to your server; adOmnia's **Offline mode** blocks it and the corporate proxy/CA apply. Every connection is recorded in *Network activity*.
+- **Scan and import.** *Scan now* runs `sonar-scanner` on the trusted project and waits for the server's Compute Engine to finish processing the report (`.scannerwork/report-task.txt` → `/api/ce/task`, up to 3 minutes), then imports the open issues from `/api/issues/search` (at most 5,000, below the server's 10,000-result limit). Works with SonarQube 9.9 LTA, 10.x (including MQR severities HIGH/MEDIUM/LOW) and SonarCloud: the token is sent as Basic credentials, which every version accepts. If processing takes longer, use **Refresh** (which only reimports, without rescanning). Calls appear in *Settings → Network & Privacy* under **SonarQube**.
+- **Issues.** Listed by severity with file:line navigation, a text filter, a severity filter and a *Security only* toggle; the header shows totals, security count and how many are hidden by the baseline.
+- **Copy problems.** Copies every shown finding as `file:line [SEVERITY rule] message`, ordered from the most severe.
+- **Resolve with AI.** Sends the findings grouped per file to the AI configured in *Settings → AI*, through the same preview-before-apply flow as *Fix with AI*: nothing is written without confirmation and the change is undoable.
+- **Baseline.** *Save baseline* records the current findings in `.adomnia/sonar-baseline.json` (versionable with the project) so later scans show only new problems; *Clear baseline* removes it. Suppression keeps the file, rule and message, not the line, so it survives code moving.
+
 ## Language server activity
 
 - **Always visible.** Starting, restarting, indexing or a gopls crash shows a small panel in the bottom-right of Go Studio with a spinner, elapsed time, the indexing message and percentage, and its own progress bar.

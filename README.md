@@ -25,7 +25,7 @@ gO Studio is the Go IDE built into adOmnia. It is designed for day-to-day Go wor
 
 | Area | What you get |
 | --- | --- |
-| **Editing** | Completion, navigation, hover, rename, Change Signature, extract and other refactorings via gopls; diagnostics, quick fixes, CodeLens, golangci-lint and staticcheck; a three-way merge editor. |
+| **Editing** | Completion, navigation, hover, rename, Change Signature, extract and other refactorings via gopls; diagnostics, quick fixes, CodeLens, golangci-lint, staticcheck and optional SonarQube (issues imported into the IDE, copyable and fixable with AI); a three-way merge editor. |
 | **Run and test** | Run from the gutter next to `func main` or a test; test explorer with coverage in the gutter; Makefile targets, Dockerfiles and docker compose services; a Run console that colours log levels (`log`, slog, zap, zerolog, logrus). |
 | **Debugging** | Delve with conditional, hit-count and function breakpoints, logpoints, stop on panic and Run to Cursor. A **concurrency-first** view groups goroutines by origin, shows where each one started and evaluates expressions in the selected frame. |
 | **Go insight** | Dependency graph with transitive versions, licenses, updates and `govulncheck`; a visual `go.mod` editor (Go version, toolchain, `exclude`, `retract`, version downgrade, `tidy` preview); a Context Propagation Inspector for `context.Context`. |

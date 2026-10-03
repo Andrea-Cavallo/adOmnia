@@ -28,7 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
-| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~37 |
+| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~38 |
 
 ---
 
@@ -1071,6 +1071,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J6.3 | **Project Services** | Opens Docker Lab, Database Studio and Broker Studio preconfigured for services detected in `go.mod`. |
 | J6.4 | **Open in API Client** | CodeLens on HTTP route handlers (net/http, gorilla/mux, gin, echo, fiber, chi) opens a prefilled request. |
 | J6.5 | **Plugin Events** | Read-only Go Studio events for plugins (contract v1). |
+| J6.6 | **SonarQube Integration** | Optional: runs `sonar-scanner` on the trusted project, waits for the server to process the report, and imports open issues (SonarQube 9.9 LTA, 10.x incl. MQR severities, SonarCloud). Severity/security filters, file:line navigation, *Copy problems*, *Resolve with AI* and a versionable `.adomnia/sonar-baseline.json`. Token in memory only; respects Offline mode, proxy and corporate CA. |
 
 ---
 
@@ -1087,5 +1088,5 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 37 |
-| **Total** | 44 sections | **~572** |
+| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 38 |
+| **Total** | 44 sections | **~573** |

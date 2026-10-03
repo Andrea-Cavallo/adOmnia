@@ -608,6 +608,51 @@ func (g *GoIDE) LoadTrace(sessionID, relativePath string) (goide.TraceReport, er
 	return g.service.LoadTrace(sessionID, relativePath)
 }
 
+// DetectSonarScanner cerca sonar-scanner per la sessione.
+func (g *GoIDE) DetectSonarScanner(sessionID string) (goide.SonarScannerInfo, error) {
+	return g.service.DetectSonarScanner(sessionID)
+}
+
+// ConfigureSonarScanner imposta un binario sonar-scanner personalizzato; vuoto ripristina la ricerca automatica.
+func (g *GoIDE) ConfigureSonarScanner(sessionID, binary string) error {
+	return g.service.ConfigureSonarScanner(sessionID, binary)
+}
+
+// SonarConfigFor restituisce la configurazione SonarQube (senza token) della sessione.
+func (g *GoIDE) SonarConfigFor(sessionID string) (goide.SonarConfig, error) {
+	return g.service.SonarConfigFor(sessionID)
+}
+
+// SaveSonarConfig salva server, chiave e percorsi; il token è separato e resta in memoria.
+func (g *GoIDE) SaveSonarConfig(sessionID string, config goide.SonarConfig) (goide.SonarConfig, error) {
+	return g.service.SaveSonarConfig(sessionID, config)
+}
+
+// SetSonarToken memorizza il token SonarQube in memoria per la sessione (mai persistito).
+func (g *GoIDE) SetSonarToken(sessionID, token string) error {
+	return g.service.SetSonarToken(sessionID, token)
+}
+
+// RunSonarScan esegue sonar-scanner e importa gli issue dalla Web API.
+func (g *GoIDE) RunSonarScan(ctx context.Context, sessionID, token string) (goide.SonarScanResult, error) {
+	return g.service.RunSonarScan(ctx, sessionID, token)
+}
+
+// FetchSonarIssues importa gli issue già presenti sul server, senza rieseguire la scansione.
+func (g *GoIDE) FetchSonarIssues(ctx context.Context, sessionID, token string) (goide.SonarScanResult, error) {
+	return g.service.FetchSonarIssues(ctx, sessionID, token)
+}
+
+// SaveSonarBaseline registra gli issue attuali come accettati.
+func (g *GoIDE) SaveSonarBaseline(ctx context.Context, sessionID, token string) (int, error) {
+	return g.service.SaveSonarBaseline(ctx, sessionID, token)
+}
+
+// ClearSonarBaseline rimuove la baseline SonarQube.
+func (g *GoIDE) ClearSonarBaseline(sessionID string) error {
+	return g.service.ClearSonarBaseline(sessionID)
+}
+
 // DetectDelve individua dlv e ne legge la versione.
 func (g *GoIDE) DetectDelve(sessionID string) (goide.DelveInfo, error) {
 	return g.service.DetectDelve(sessionID)

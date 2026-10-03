@@ -30,6 +30,8 @@ type persistedState struct {
 	ToolVersions map[string]ToolVersionEntry `json:"toolVersions,omitempty"`
 	// TrustedPaths: cartelle (percorso reale) già autorizzate; riaprirle non richiede un nuovo consenso.
 	TrustedPaths []string `json:"trustedPaths,omitempty"`
+	// SonarConfigs: configurazione non segreta di SonarQube per sessione (il token non è mai persistito).
+	SonarConfigs map[SessionID]SonarConfig `json:"sonarConfigs,omitempty"`
 }
 
 type Persistence struct {

@@ -58,6 +58,7 @@ type Service struct {
 	delveBinaries    map[SessionID]string
 	makeBinaries     map[SessionID]string
 	lint             lintRegistry
+	sonar            sonarRegistry
 	watcher          *WatchManager
 	// windows registra le sessioni spostate in finestre separate.
 	windows *windowRegistry
@@ -85,6 +86,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		delveBinaries:    make(map[SessionID]string),
 		makeBinaries:     make(map[SessionID]string),
 		lint:             lintRegistry{custom: make(map[SessionID]string)},
+		sonar:            sonarRegistry{custom: make(map[SessionID]string), configs: make(map[SessionID]SonarConfig), tokens: make(map[SessionID]string)},
 		windows:          newWindowRegistry(),
 	}
 	service.recovery = NewRecoveryManager(nil)
@@ -308,6 +310,11 @@ func (s *Service) CloseSession(id string) error {
 	s.lint.mu.Lock()
 	delete(s.lint.custom, sessionID)
 	s.lint.mu.Unlock()
+	s.sonar.mu.Lock()
+	delete(s.sonar.custom, sessionID)
+	delete(s.sonar.configs, sessionID)
+	delete(s.sonar.tokens, sessionID)
+	s.sonar.mu.Unlock()
 	s.runConfigs.CloseSession(sessionID)
 	s.tests.CloseSession(sessionID)
 	_ = s.history.ForgetSession(sessionID)
@@ -897,6 +904,7 @@ func (s *Service) restore() error {
 	s.trusted = slices.Clone(state.TrustedPaths)
 	s.recentMu.Unlock()
 	s.runConfigs.Replace(state.RunConfigs)
+	s.sonar.replaceConfigs(state.SonarConfigs)
 	globalToolchain := ToolchainConfiguration{}
 	if state.GlobalToolchain != nil {
 		globalToolchain = *state.GlobalToolchain
@@ -942,6 +950,7 @@ func (s *Service) saveState() error {
 		Workspaces:         workspaces,
 		ActiveWorkspace:    activeWorkspace,
 		TrustedPaths:       trusted,
+		SonarConfigs:       s.sonar.configSnapshot(),
 	})
 }
 

@@ -52,6 +52,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.todo': lsp.showToolWindow('todo'); return true
     case 'view.profile': lsp.showToolWindow('profile'); return true
     case 'view.trace': lsp.showToolWindow('trace'); return true
+    case 'view.sonar': lsp.showToolWindow('sonar'); return true
     case 'code.formatOnSave': lsp.updatePreferences({ formatOnSave: !lsp.preferences.formatOnSave }); return true
     case 'code.importsOnSave': lsp.updatePreferences({ organizeImportsOnSave: !lsp.preferences.organizeImportsOnSave }); return true
     case 'code.gofumpt': void lsp.updateSettings(sessionId, { gofumpt: !lsp.settings.gofumpt }); return true

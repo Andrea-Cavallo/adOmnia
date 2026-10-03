@@ -372,6 +372,52 @@ export async function loadGoIDETrace(sessionId: string, relativePath: string): P
   return GoIDEBindings.LoadTrace(sessionId, relativePath)
 }
 
+// --- SonarQube (opzionale) ---------------------------------------------------
+
+export type GoIDESonarConfig = Awaited<ReturnType<typeof GoIDEBindings.SonarConfigFor>>
+export type GoIDESonarScannerInfo = Awaited<ReturnType<typeof GoIDEBindings.DetectSonarScanner>>
+export type GoIDESonarScanResult = Awaited<ReturnType<typeof GoIDEBindings.RunSonarScan>>
+export type GoIDESonarIssue = GoIDESonarScanResult['issues'][number]
+
+export async function detectGoIDESonarScanner(sessionId: string): Promise<GoIDESonarScannerInfo> {
+  return GoIDEBindings.DetectSonarScanner(sessionId)
+}
+
+export async function configureGoIDESonarScanner(sessionId: string, binary: string): Promise<void> {
+  await GoIDEBindings.ConfigureSonarScanner(sessionId, binary)
+}
+
+export async function getGoIDESonarConfig(sessionId: string): Promise<GoIDESonarConfig> {
+  return GoIDEBindings.SonarConfigFor(sessionId)
+}
+
+export async function saveGoIDESonarConfig(sessionId: string, config: GoIDESonarConfig): Promise<GoIDESonarConfig> {
+  return GoIDEBindings.SaveSonarConfig(sessionId, config)
+}
+
+/** Il token resta in memoria per la sessione e non viene mai riletto dal backend. */
+export async function setGoIDESonarToken(sessionId: string, token: string): Promise<void> {
+  await GoIDEBindings.SetSonarToken(sessionId, token)
+}
+
+/** Esegue sonar-scanner sul progetto e importa gli issue dalla Web API. */
+export async function runGoIDESonarScan(sessionId: string, token: string): Promise<GoIDESonarScanResult> {
+  return GoIDEBindings.RunSonarScan(sessionId, token)
+}
+
+/** Reimporta gli issue già presenti sul server, senza rieseguire la scansione. */
+export async function fetchGoIDESonarIssues(sessionId: string, token: string): Promise<GoIDESonarScanResult> {
+  return GoIDEBindings.FetchSonarIssues(sessionId, token)
+}
+
+export async function saveGoIDESonarBaseline(sessionId: string, token: string): Promise<number> {
+  return GoIDEBindings.SaveSonarBaseline(sessionId, token)
+}
+
+export async function clearGoIDESonarBaseline(sessionId: string): Promise<void> {
+  await GoIDEBindings.ClearSonarBaseline(sessionId)
+}
+
 // --- Terminale PTY ----------------------------------------------------------
 
 export type GoIDETerminalProfile = TerminalProfile
