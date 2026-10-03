@@ -1,3 +1,4 @@
+import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { GoStudioFolderIcon } from './GoStudioFolderIcon'
@@ -216,7 +217,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
     setMenu(null)
     runTreeAction(id, entry)
   }
-  const menuContext = { canPaste, vcsAvailable, hasGoModule: (session.project.modules ?? []).length > 0 }
+  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0 }
 
   return (
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
@@ -255,7 +256,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
-        {session.project.modules.length} module{session.project.modules.length === 1 ? '' : 's'} · {session.project.goWorkPath ? 'go.work' : session.project.goModPath ? 'go.mod' : 'folder mode'}
+        {goModules(session.project).length} module{goModules(session.project).length === 1 ? '' : 's'} · {goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'folder mode'}
       </div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <GoStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />

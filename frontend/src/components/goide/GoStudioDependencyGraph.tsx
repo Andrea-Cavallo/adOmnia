@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpCircle, Loader2, RefreshCw, ShieldAlert, X } from 'lucide-react'
 import {
@@ -28,7 +29,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDependencyGraphProps) {
-  const [moduleDirectory, setModuleDirectory] = useState(session.project.modules[0]?.path ?? '')
+  const [moduleDirectory, setModuleDirectory] = useState(goModules(session.project)[0]?.path ?? '')
   const [report, setReport] = useState<GoIDEDependencyGraphReport | null>(null)
   const [updates, setUpdates] = useState<Record<string, string>>({})
   const [vulns, setVulns] = useState<Record<string, number>>({})
@@ -53,7 +54,7 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
 
   useEffect(() => {
     if (!open) return
-    const directory = session.project.modules[0]?.path ?? ''
+    const directory = goModules(session.project)[0]?.path ?? ''
     setModuleDirectory(directory)
     setReport(null)
     setUpdates({})
@@ -103,13 +104,13 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
         </div>
         <div className="flex min-h-0 flex-1 flex-col p-4">
           {error && <div role="alert" className="mb-3 rounded border border-danger/30 bg-danger/10 p-2 text-[10px] text-danger">{error}</div>}
-          {session.project.modules.length === 0 ? (
+          {goModules(session.project).length === 0 ? (
             <div className="rounded border border-border-1 bg-surface-0 p-4 text-[11px] text-text-3">This project has no Go module. Create or open a folder containing go.mod first.</div>
           ) : (
             <>
               <div className="mb-3 flex items-end gap-2">
                 <label className="min-w-0 flex-1 text-[10px] text-text-3">Module
-                  <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[10px] text-text-1">{session.project.modules.map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}</select>
+                  <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[10px] text-text-1">{goModules(session.project).map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}</select>
                 </label>
                 <button type="button" disabled={loading} onClick={() => void load()} className="grid h-8 w-8 place-items-center rounded border border-border-1 text-text-3 hover:border-accent disabled:opacity-40">{loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}</button>
               </div>

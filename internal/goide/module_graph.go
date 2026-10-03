@@ -28,7 +28,7 @@ func (s *Service) WorkspaceModuleGraph(sessionID string) ([]WorkspaceModule, err
 	if err != nil {
 		return nil, err
 	}
-	return workspaceModuleGraph(session.Project.RealPath, session.Project.Modules), nil
+	return workspaceModuleGraph(session.Project.RealPath, goLayoutOf(session.Project).Modules), nil
 }
 
 func workspaceModuleGraph(root string, modules []GoModule) []WorkspaceModule {

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
 import { startGoIDETests, listGoIDETestRuns, type GoIDETestResult, type GoIDETestRun, type GoIDETestRunRequest } from '@/lib/goide-tests-api'
-import { requestForNode, rerunFailedRequest } from '@/components/goide/goStudioTestTree'
+import { requestForNode, rerunFailedRequest } from '@/lib/goide/goStudioTestTree'
 import { useGoIDEStore } from './goide'
 import { useGoIDELspStore } from './goideLsp'
 

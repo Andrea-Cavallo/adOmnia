@@ -13,6 +13,9 @@ const SLUGS = [
   'markdown', 'yaml', 'json', 'xml', 'toml', 'html5', 'css', 'graphql', 'javascript', 'typescript',
   'nodedotjs', 'npm', 'python', 'rust', 'gnubash', 'make', 'dotenv', 'editorconfig', 'prettier',
   'eslint', 'nginx', 'openapiinitiative', 'swagger', 'prometheus', 'grafana', 'renovate', 'dependabot',
+  // Linguaggi dell'IDE Platform: ogni language contribution sceglie qui la propria icona.
+  'openjdk', 'kotlin', 'php', 'ruby', 'dotnet', 'cplusplus', 'c', 'swift', 'dart', 'scala', 'elixir',
+  'haskell', 'lua', 'zig', 'gradle', 'apachemaven',
 ]
 
 const root = process.argv[2]

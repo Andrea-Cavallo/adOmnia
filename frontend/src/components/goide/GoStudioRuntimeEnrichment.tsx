@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { useEffect, useRef, useState } from 'react'
 import { Activity, Loader2, RefreshCw, X } from 'lucide-react'
 import { getRuntimeEnrichment, type RuntimeEnrichment } from '@/lib/devsession-api'
@@ -14,7 +15,7 @@ const KIND_LABEL: Record<string, string> = { route: 'route', file: 'file', datas
 const EDGE_LABEL: Record<string, string> = { hit: 'breakpoint hit', query: 'query', message: 'message' }
 
 export function GoStudioRuntimeEnrichment({ open, session, onClose }: GoStudioRuntimeEnrichmentProps) {
-  const [moduleDirectory, setModuleDirectory] = useState(session.project.modules[0]?.path ?? '')
+  const [moduleDirectory, setModuleDirectory] = useState(goModules(session.project)[0]?.path ?? '')
   const [report, setReport] = useState<RuntimeEnrichment | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +37,7 @@ export function GoStudioRuntimeEnrichment({ open, session, onClose }: GoStudioRu
 
   useEffect(() => {
     if (!open) return
-    const directory = session.project.modules[0]?.path ?? ''
+    const directory = goModules(session.project)[0]?.path ?? ''
     setModuleDirectory(directory)
     setReport(null)
     if (directory) void load(directory)
@@ -61,7 +62,7 @@ export function GoStudioRuntimeEnrichment({ open, session, onClose }: GoStudioRu
           {error && <div role="alert" className="mb-3 rounded border border-danger/30 bg-danger/10 p-2 text-[10px] text-danger">{error}</div>}
           <div className="mb-3 flex items-end gap-2">
             <label className="min-w-0 flex-1 text-[10px] text-text-3">Module
-              <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[10px] text-text-1">{session.project.modules.map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}</select>
+              <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="mt-1 h-8 w-full rounded border border-border-1 bg-surface-0 px-2 font-mono text-[10px] text-text-1">{goModules(session.project).map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}</select>
             </label>
             <button type="button" disabled={loading} onClick={() => void load()} className="grid h-8 w-8 place-items-center rounded border border-border-1 text-text-3 hover:border-accent disabled:opacity-40">{loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}</button>
           </div>

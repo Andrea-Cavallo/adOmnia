@@ -95,7 +95,7 @@ func (s *Service) ProjectServices(sessionID string) ([]ProjectService, error) {
 		return nil, err
 	}
 	var dependencies []GoDependency
-	for _, module := range session.Project.Modules {
+	for _, module := range goLayoutOf(session.Project).Modules {
 		state, err := readDependencyState(session.Project, module.Path)
 		if err != nil {
 			continue

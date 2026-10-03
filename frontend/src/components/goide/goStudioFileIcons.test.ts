@@ -29,6 +29,12 @@ describe('Go Studio file icons', () => {
     for (const name of ['server.pem', 'tls.key', 'client.p12', 'store.pfx', 'truststore.jks']) expect(resolveGoStudioFileIcon(name)).toEqual({ kind: 'generic', icon: 'key' })
   })
 
+  it('gives other languages and their build files their own brand', () => {
+    const slug = (path: string) => { const icon = resolveGoStudioFileIcon(path); return icon.kind === 'brand' ? icon.slug : icon.kind }
+    expect([slug('src/Main.java'), slug('app.kt'), slug('pom.xml'), slug('build.gradle.kts'), slug('index.php'), slug('lib.cpp'), slug('util.h')])
+      .toEqual(['openjdk', 'kotlin', 'apachemaven', 'gradle', 'php', 'cplusplus', 'c'])
+  })
+
   it('maps special names and paths to real brands', () => {
     const brand = (name: string, path?: string) => resolveGoStudioFileIcon(name, path)
     expect(brand('Dockerfile')).toEqual({ kind: 'brand', slug: 'docker' })
@@ -63,7 +69,7 @@ describe('Go Studio file icons', () => {
       const colors = brandColors(icon.hex)
       if (colors.onDark !== 'currentColor') expect(contrastRatio(icon.hex, '05070D'), slug).toBeGreaterThanOrEqual(3)
       if (colors.onLight !== 'currentColor') expect(contrastRatio(icon.hex, 'F8FAFC'), slug).toBeGreaterThanOrEqual(3)
-      expect(icon.path.length, slug).toBeGreaterThan(20)
+      expect(icon.path.length, slug).toBeGreaterThan(10) // Kotlin è un solo poligono di 20 caratteri
     }
   })
 })

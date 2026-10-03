@@ -80,8 +80,9 @@ type workspaceOrigin struct {
 // ProjectFingerprint identifica un progetto indipendentemente dalla cartella: i module path ordinati.
 // Senza moduli è vuota e il recupero non segue spostamenti.
 func ProjectFingerprint(project Project) string {
-	paths := make([]string, 0, len(project.Modules))
-	for _, module := range project.Modules {
+	modules := goLayoutOf(project).Modules
+	paths := make([]string, 0, len(modules))
+	for _, module := range modules {
 		if module.ModulePath != "" {
 			paths = append(paths, module.ModulePath)
 		}

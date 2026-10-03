@@ -21,6 +21,8 @@ const EXACT_NAMES: Record<string, BrandIconSlug> = {
   'renovate.json': 'renovate', 'dependabot.yml': 'dependabot', 'dependabot.yaml': 'dependabot',
   'prometheus.yml': 'prometheus', 'prometheus.yaml': 'prometheus',
   '.gitlab-ci.yml': 'gitlab', 'codeowners': 'github',
+  'pom.xml': 'apachemaven', 'build.gradle': 'gradle', 'build.gradle.kts': 'gradle', 'settings.gradle': 'gradle', 'settings.gradle.kts': 'gradle', gradlew: 'gradle',
+  'composer.json': 'php', gemfile: 'ruby', 'pubspec.yaml': 'dart', 'build.zig': 'zig', 'mix.exs': 'elixir', 'package.swift': 'swift',
 }
 
 const EXTENSIONS: Record<string, BrandIconSlug> = {
@@ -29,6 +31,9 @@ const EXTENSIONS: Record<string, BrandIconSlug> = {
   js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
   py: 'python', rs: 'rust', sh: 'gnubash', bash: 'gnubash', mk: 'make', tf: 'terraform', tfvars: 'terraform',
   sqlite: 'sqlite', db: 'sqlite', dockerfile: 'docker',
+  java: 'openjdk', kt: 'kotlin', kts: 'kotlin', php: 'php', rb: 'ruby', cs: 'dotnet', csproj: 'dotnet', fs: 'dotnet', sln: 'dotnet',
+  cpp: 'cplusplus', cc: 'cplusplus', cxx: 'cplusplus', hpp: 'cplusplus', c: 'c', h: 'c', swift: 'swift', dart: 'dart', scala: 'scala',
+  ex: 'elixir', exs: 'elixir', hs: 'haskell', lua: 'lua', zig: 'zig',
 }
 
 const GENERIC_EXTENSIONS: Record<string, Extract<GoStudioFileIconKind, { kind: 'generic' }>['icon']> = {

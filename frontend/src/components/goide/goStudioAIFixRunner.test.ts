@@ -5,7 +5,7 @@ const api = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(), close: vi.fn(() =>
 const goide = vi.hoisted(() => ({
   state: {
     activeSessionId: 's1',
-    sessions: [{ id: 's1', project: { modules: [{ path: '.', modulePath: 'Example' }] } }],
+    sessions: [{ id: 's1', project: { units: [{ language: 'go', kind: 'module', root: '.', name: 'Example' }] } }],
     documents: [] as unknown[],
     ensureDocumentLoaded: vi.fn(),
   },

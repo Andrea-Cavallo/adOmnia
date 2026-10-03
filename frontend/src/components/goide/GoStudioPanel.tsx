@@ -1,6 +1,6 @@
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { restartRunsOnSave } from './goStudioRunOnSave'
-import { pinnedFirst } from './goStudioRunHistory'
+import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
@@ -64,7 +64,7 @@ import { GoStudioMoveSymbolDialog } from './GoStudioMoveSymbolDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
 import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
-import { flushBufferRecovery } from './goStudioRecovery'
+import { flushBufferRecovery } from '@/lib/goide/goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { debugRequestForTarget, fuzzRunRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
 import { runDebugCommand, selectDebugState } from './goStudioDebugCommands'
@@ -99,7 +99,7 @@ import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
 
 
 const PANEL_STATE_KEYS = [
-  'activeSessionId', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
+  'activeSessionId', 'capabilities', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
   'runConfigsBySession', 'executions', 'closedDocuments', 'activeRunBySession', 'activeConfigBySession',
   'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'startConfiguredBuild', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
   'toggleShowIgnored', 'togglePinned', 'setToolAuthorization', 'setQuickOpen', 'selectSession', 'selectRunConfiguration', 'restartRun',
@@ -443,6 +443,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   const lspStatus = activeSession ? lsp.statusInfo : undefined
   const commandContext: GoStudioCommandContext = {
     hasSession: !!activeSession,
+    languages: store.capabilities?.languages,
     documentCount: summary.documentCount,
     hasClosedDocuments: !!activeSession && (store.closedDocuments[activeSession.id]?.length ?? 0) > 0,
     split: !!activeSession && !!store.splitBySession[activeSession.id],

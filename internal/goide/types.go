@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/project"
 )
 
@@ -41,13 +42,9 @@ type Project struct {
 	Name          string             `json:"name"`
 	RootPath      string             `json:"rootPath"`
 	RealPath      string             `json:"realPath"`
-	GoModPath     string             `json:"goModPath,omitempty"`
-	GoWorkPath    string             `json:"goWorkPath,omitempty"`
-	Modules       []GoModule         `json:"modules"`
-	LooseGoDirs   []string           `json:"looseGoDirs,omitempty"`
 	Authorization AuthorizationState `json:"authorization"`
-	// Units sono le unità di build rilevate dai language adapter (multi-linguaggio);
-	// i campi Go qui sopra ne sono derivati finché il frontend li legge.
+	// Units sono le unità di build rilevate dai language adapter (multi-linguaggio): moduli Go,
+	// go.work e cartelle sciolte si leggono da qui (goLayoutOf), non da campi dedicati.
 	Units []project.Unit `json:"units"`
 }
 
@@ -332,4 +329,7 @@ type Capabilities struct {
 	Tests            bool `json:"tests"`
 	MultipleSessions bool `json:"multipleSessions"`
 	SeparateWindows  bool `json:"separateWindows"`
+	// Languages sono i linguaggi registrati con le capability che implementano: la UI abilita
+	// comandi e provider editor solo per questi.
+	Languages []language.Info `json:"languages"`
 }

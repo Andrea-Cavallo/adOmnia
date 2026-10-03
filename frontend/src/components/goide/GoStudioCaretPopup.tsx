@@ -28,7 +28,7 @@ function DefinitionBody({ result }: { result: GoIDEQuickDefinition }) {
   const [html, setHtml] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
-    void monaco.editor.colorize(result.code, 'go', { tabSize: 4 }).then((colored) => { if (!cancelled) setHtml(colored) })
+    void monaco.editor.colorize(result.code, activeGoStudioEditor()?.getModel()?.getLanguageId() ?? 'plaintext', { tabSize: 4 }).then((colored) => { if (!cancelled) setHtml(colored) })
     return () => { cancelled = true }
   }, [result.code])
   const lines = result.code.split('\n').length

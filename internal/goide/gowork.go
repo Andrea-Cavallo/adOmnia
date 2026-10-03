@@ -79,7 +79,7 @@ func goWorkState(project Project) (GoWorkState, error) {
 	}
 	state := GoWorkState{Exists: exists, GoVersion: version, Modules: []GoWorkModule{}}
 	detected := map[string]bool{}
-	for _, module := range project.Modules {
+	for _, module := range goLayoutOf(project).Modules {
 		directory := workDirectory(project.RootPath, module.Path)
 		detected[directory] = true
 		_, used := uses[directory]

@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import * as AIEngine from '../../../bindings/adomnia/aiengine'
 import { closeGoIDEDocument, getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths, listGoIDEDirectory, openGoIDEDocument } from '@/lib/goide-api'
 import { createAIRedactor } from '@/lib/aiRedaction'
@@ -58,7 +59,7 @@ async function proposeFix(relativePath: string, problem: AIFixProblem, otherProb
   if (!document) return `${relativePath} could not be opened`
   if (document.buffer.length > MAX_AI_FIX_FILE_CHARS) return `${relativePath} is too large to send (limit ${MAX_AI_FIX_FILE_CHARS / 1000}k characters)`
   const target: SourceFile = { relativePath, content: document.buffer, uri: document.document.uri, path: document.document.path, documentId: document.document.id }
-  const packageDir = localPackageDirForProblem(problem.message, document.buffer, session.project.modules ?? [])
+  const packageDir = localPackageDirForProblem(problem.message, document.buffer, goModules(session.project))
   const candidates = packageDir === null ? [] : await readPackageFiles(sessionId, packageDir, relativePath)
   // .adomnia/aiignore e i file segreti noti non lasciano mai la macchina, nemmeno come contesto.
   const local = isLocalAIProvider(useSettingsStore.getState().settings.ai)

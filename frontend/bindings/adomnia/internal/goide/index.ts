@@ -63,7 +63,6 @@ export {
     FunctionBreakpointsView,
     GoDependency,
     GoExclusion,
-    GoModule,
     GoReplacement,
     GoRetraction,
     GoToolInfo,

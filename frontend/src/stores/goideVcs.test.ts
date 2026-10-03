@@ -8,7 +8,7 @@ vi.mock('@/lib/goide-vcs-api', () => ({
 
 import { getGoIDEFileAtRevision } from '@/lib/goide-vcs-api'
 import type { GoIDEVCSStatus } from '@/lib/goide-vcs-api'
-import { isBinaryText, lineDiff } from '@/components/goide/goStudioLineDiff'
+import { isBinaryText, lineDiff } from '@/lib/goide/goStudioLineDiff'
 import { headKey, syncGitStudioToSession, useGoIDEVCSStore } from './goideVcs'
 import { loadLastRepo, saveLastRepo } from '@/lib/gitRepos'
 

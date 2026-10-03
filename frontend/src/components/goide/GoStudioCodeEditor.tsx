@@ -1,5 +1,5 @@
 import { attachEditorMode } from './goStudioEditorModes'
-import { caretFor, rememberCaret } from './goStudioCaretMemory'
+import { caretFor, rememberCaret } from '@/lib/goide/goStudioCaretMemory'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { useEffect, useRef, useState } from 'react'

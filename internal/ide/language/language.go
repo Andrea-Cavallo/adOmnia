@@ -81,3 +81,15 @@ func CapabilitiesOf(l Language) Capabilities {
 	_, debugs := l.(DebugAdapterProvider)
 	return Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts}
 }
+
+// Info descrive un linguaggio registrato per la UI: identità e capability derivate.
+type Info struct {
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Capabilities Capabilities `json:"capabilities"`
+}
+
+// InfoOf restituisce la descrizione di l per la UI.
+func InfoOf(l Language) Info {
+	return Info{ID: l.ID(), Name: l.Name(), Capabilities: CapabilitiesOf(l)}
+}

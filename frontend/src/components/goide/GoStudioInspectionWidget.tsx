@@ -2,6 +2,7 @@ import { AlertCircle, AlertTriangle, Check, ChevronDown, ChevronUp } from 'lucid
 import { useShallow } from 'zustand/react/shallow'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
+import { isLanguageServerEditorLanguage } from '@/components/ide/languages'
 import { runGoStudioEditorCommand } from './goStudioEditorRegistry'
 
 interface GoStudioInspectionWidgetProps {
@@ -22,7 +23,7 @@ export function GoStudioInspectionWidget({ document }: GoStudioInspectionWidgetP
   const { sessionId, id, relativePath, language } = document.document
   const { errors, warnings } = useFileCounts(sessionId, id, relativePath)
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
-  if (language !== 'go') return null
+  if (!isLanguageServerEditorLanguage(language)) return null
   const clean = errors === 0 && warnings === 0
 
   return (

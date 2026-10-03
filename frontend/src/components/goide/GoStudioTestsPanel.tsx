@@ -6,7 +6,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
-import { buildTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, failureRateByCPU, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from './goStudioTestTree'
+import { buildTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, failureRateByCPU, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type GoStudioTestNode } from '@/lib/goide/goStudioTestTree'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { functionsByCoverage, untakenBranches } from './goStudioCoverage'
 import { GoStudioPatchCoverage } from './GoStudioPatchCoverage'

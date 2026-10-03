@@ -82,7 +82,7 @@ describe('goImportPath', () => {
   const session = {
     project: {
       realPath: '/work/app',
-      modules: [{ path: '/work/app', modulePath: 'example.com/app' }, { path: '/work/app/tools', modulePath: 'example.com/app/tools' }],
+      units: [{ language: 'go', kind: 'module', root: '/work/app', name: 'example.com/app' }, { language: 'go', kind: 'module', root: '/work/app/tools', name: 'example.com/app/tools' }],
     },
   } as never
 

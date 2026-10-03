@@ -146,7 +146,17 @@ func (s *Service) GetCapabilities() Capabilities {
 		LSP:              true,
 		Terminal:         true,
 		MultipleSessions: true,
+		Languages:        s.languageInfos(),
 	}
+}
+
+func (s *Service) languageInfos() []language.Info {
+	adapters := s.workspace.languages.All()
+	infos := make([]language.Info, 0, len(adapters))
+	for _, adapter := range adapters {
+		infos = append(infos, language.InfoOf(adapter))
+	}
+	return infos
 }
 
 // OpenProject apre una sessione non autorizzata all'esecuzione e non avvia alcuno strumento.

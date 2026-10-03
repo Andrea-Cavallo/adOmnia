@@ -1,3 +1,4 @@
+import { goModules } from '@/lib/goide/goProject'
 import { selectGoIDEFolder, startGoIDEDependencyAction, type GoIDESession } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDETestsStore } from '@/stores/goideTests'
@@ -6,7 +7,7 @@ import { affectedGoIDETestPackages, type GoIDETestRunRequest } from '@/lib/goide
 import type { GoIDEVCSFileChange } from '@/lib/goide-vcs-api'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
-import { benchmarkDebugArguments, runPatternFor } from './goStudioTestTree'
+import { benchmarkDebugArguments, runPatternFor } from '@/lib/goide/goStudioTestTree'
 import type { GoStudioGoRunTarget } from './goStudioRunTargets'
 import { goModActionNeedsConfirmation, goModCommandLine, type GoModDependencyAction } from './goStudioGoMod'
 
@@ -51,7 +52,7 @@ function isWithin(directory: string, parent: string): boolean {
 
 /** Trova il modulo più interno che contiene il file, così i comandi go partono dalla cartella giusta. */
 export function moduleScopeFor(session: Pick<GoIDESession, 'project'>, relativePath: string | null): GoStudioModuleScope {
-  const moduleDirectories = (session.project.modules ?? [])
+  const moduleDirectories = (goModules(session.project))
     .map((module) => relativeTo(session.project.realPath, module.path))
     .filter((directory): directory is string => directory !== null)
   const fileDirectory = relativePath ? directoryOf(normalize(relativePath)) : null

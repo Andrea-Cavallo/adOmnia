@@ -1,3 +1,4 @@
+import { languageServerEditorLanguages } from '@/components/ide/languages'
 import { monaco } from '@/lib/monacoSetup'
 import { requestDocumentSymbols, requestLocations, type GoIDESymbolNode } from '@/lib/goide-lsp-api'
 import { getGoIDEBlame, type GoIDEVCSBlameLine } from '@/lib/goide-vcs-api'
@@ -6,7 +7,8 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { prepareDocument } from './goStudioLanguageFeatures'
 
-const LANGUAGE = 'go'
+// Provider LSP generici: valgono per ogni linguaggio servito da un language server.
+const LANGUAGE = languageServerEditorLanguages()
 const SHOW_USAGES_COMMAND = 'goStudio.codeVisionUsages'
 const UNCOMMITTED_HASH = /^0+$/
 

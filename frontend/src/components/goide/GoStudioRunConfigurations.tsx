@@ -7,7 +7,7 @@ import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { GoStudioEntryList } from './GoStudioEntryList'
 import { GoStudioRunParameters } from './GoStudioRunParameters'
-import { readRunHistory } from './goStudioRunHistory'
+import { readRunHistory } from '@/lib/goide/goStudioRunHistory'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
 const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []

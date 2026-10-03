@@ -58,7 +58,7 @@ func (s *Service) MoveSymbol(sessionID string, request MoveSymbolRequest) (Works
 	if strings.TrimSpace(request.TargetDirectory) == "" || ensureWithinRoot(root, targetDirectory) != nil {
 		return WorkspaceChange{}, errors.New("cartella di destinazione non valida")
 	}
-	moduleRelative := moduleForDir(root, session.Project.Modules, path.Dir(filepath.ToSlash(request.RelativePath)))
+	moduleRelative := moduleForDir(root, goLayoutOf(session.Project).Modules, path.Dir(filepath.ToSlash(request.RelativePath)))
 	moduleDir := filepath.Join(root, filepath.FromSlash(moduleRelative))
 	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
 	if err != nil {
