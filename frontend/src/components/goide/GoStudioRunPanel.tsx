@@ -17,7 +17,7 @@ import { GoStudioContextPanel } from './GoStudioContextPanel'
 import { GoStudioProfilePanel } from './GoStudioProfilePanel'
 import { GoStudioTracePanel } from './GoStudioTracePanel'
 import { GoStudioSonarPanel } from './GoStudioSonarPanel'
-import { GoStudioVulnPanel } from './GoStudioVulnPanel'
+import { GoStudioSecurityPanel } from './GoStudioSecurityPanel'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
@@ -147,7 +147,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   profile: 'Performance',
   trace: 'Trace',
   sonar: 'SonarQube',
-  vulns: 'Vulnerabilities',
+  vulns: 'Security',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -286,7 +286,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'profile' && <div className="min-h-0 flex-1"><GoStudioProfilePanel session={session} /></div>}
       {view === 'trace' && <div className="min-h-0 flex-1"><GoStudioTracePanel session={session} /></div>}
       {view === 'sonar' && <div className="min-h-0 flex-1"><GoStudioSonarPanel session={session} /></div>}
-      {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioVulnPanel session={session} /></div>}
+      {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
     </section>

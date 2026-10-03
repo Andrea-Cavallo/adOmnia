@@ -19,6 +19,9 @@ import * as project$0 from "../ide/project/models.js";
 import * as run$0 from "../ide/run/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as security$0 from "../ide/security/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as testing$0 from "../ide/testing/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -4217,6 +4220,26 @@ export class SearchResult {
         return new SearchResult($$parsedSource as Partial<SearchResult>);
     }
 }
+
+/**
+ * Alias della facciata: le binding Wails e il frontend vedono i tipi del core tramite goide.
+ */
+export const SecurityFinding = security$0.Finding;
+
+/**
+ * Alias della facciata: le binding Wails e il frontend vedono i tipi del core tramite goide.
+ */
+export type SecurityFinding = security$0.Finding;
+
+/**
+ * Alias della facciata: le binding Wails e il frontend vedono i tipi del core tramite goide.
+ */
+export const SecurityReport = security$0.Report;
+
+/**
+ * Alias della facciata: le binding Wails e il frontend vedono i tipi del core tramite goide.
+ */
+export type SecurityReport = security$0.Report;
 
 export class SemanticTokensResult {
     "version": number;

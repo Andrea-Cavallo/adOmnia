@@ -1072,6 +1072,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J6.4 | **Open in API Client** | CodeLens on HTTP route handlers (net/http, gorilla/mux, gin, echo, fiber, chi) opens a prefilled request. |
 | J6.5 | **Plugin Events** | Read-only Go Studio events for plugins (contract v1). |
 | J6.6 | **SonarQube Integration** | Optional: runs `sonar-scanner` on the trusted project, waits for the server to process the report, and imports open issues (SonarQube 9.9 LTA, 10.x incl. MQR severities, SonarCloud). Severity/security filters, file:line navigation, *Copy problems*, *Resolve with AI* and a versionable `.adomnia/sonar-baseline.json`. Token in memory only; respects Offline mode, proxy and corporate CA. |
+| J6.7 | **Security panel: code scan** | Offline scan of the project files (no network, no processes): hardcoded secrets and committed private keys (masked), disabled TLS verification and obsolete TLS versions, weak crypto and small RSA keys, plain HTTP, SQL built from strings, shell commands built from data, path traversal and zip slip, gob decoding of untrusted input, unbounded request bodies, world-writable permissions. Suppression only with a written reason (panel or `// adomnia:security-ignore <rule>: <reason>`), versionable baseline in `.adomnia/security.json`, Markdown export for AI. |
+| J6.8 | **Security panel: dependencies (govulncheck)** | On-demand govulncheck scan ranked by reachability (called / imported / required only), advisory detail and aliases, found → fixed version, call paths from project code that open each source, module dependency path, upgrade preview with confirmed `go get`, Markdown export for AI. |
 
 ---
 

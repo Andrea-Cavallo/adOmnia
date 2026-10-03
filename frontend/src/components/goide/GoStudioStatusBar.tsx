@@ -143,8 +143,8 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       <button type="button" onClick={() => showToolWindow('sonar')} title="SonarQube (optional)" className={`${ITEM} gap-1`}>
         <ShieldCheck size={12} />Sonar
       </button>
-      <button type="button" onClick={() => showToolWindow('vulns')} title="Known vulnerabilities (govulncheck)" className={`${ITEM} gap-1`}>
-        <ShieldAlert size={12} />Vulns
+      <button type="button" onClick={() => showToolWindow('vulns')} title="Security: code scan and known vulnerabilities" className={`${ITEM} gap-1`}>
+        <ShieldAlert size={12} />Security
       </button>
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}

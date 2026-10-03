@@ -30,7 +30,7 @@ function openFrame(frame: GoIDEVulnFrame): void {
 }
 
 /** Security Studio: govulncheck con raggiungibilità, percorsi di chiamata cliccabili e aggiornamento con anteprima. */
-export function GoStudioVulnPanel({ session }: { session: GoIDESession }) {
+export function GoStudioVulnPanel({ session, lead }: { session: GoIDESession; lead?: React.ReactNode }) {
   const modules = goModules(session.project)
   const [moduleDirectory, setModuleDirectory] = useState(modules[0]?.path ?? '')
   const [report, setReport] = useState<GoIDEVulnReport | null>(null)
@@ -79,7 +79,7 @@ export function GoStudioVulnPanel({ session }: { session: GoIDESession }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header flex-wrap gap-2">
-        <span className="go-studio-tool-title">Vulnerabilities</span>
+        {lead ?? <span className="go-studio-tool-title">Vulnerabilities</span>}
         {modules.length > 1 && (
           <select aria-label="Go module" value={moduleDirectory} onChange={(event) => setModuleDirectory(event.target.value)} className="h-7 max-w-64 rounded-lg border-0 bg-[var(--gs-raised)] px-2 font-mono text-[11.5px] text-text-1 outline-none focus:ring-1 focus:ring-accent">
             {modules.map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}

@@ -125,6 +125,8 @@ export {
     SearchMatch,
     SearchQuery,
     SearchResult,
+    SecurityFinding,
+    SecurityReport,
     SemanticTokensResult,
     Session,
     SessionView,

@@ -125,7 +125,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.profile', menu: 'view', label: 'Performance Studio', binding: { key: '0', alt: true } },
   { id: 'view.trace', menu: 'view', label: 'Go Trace' },
   { id: 'view.sonar', menu: 'view', label: 'SonarQube' },
-  { id: 'view.vulnerabilities', menu: 'view', label: 'Vulnerabilities (govulncheck)' },
+  { id: 'view.vulnerabilities', menu: 'view', label: 'Security (Code and Dependencies)' },
   { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },

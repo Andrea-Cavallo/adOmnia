@@ -216,9 +216,23 @@ pause and explains it.
 - **Image tabs.** Clicking an image in the Project tree opens a read-only preview tab (zoom, fit-to-window, dimensions) instead of failing as a non-text file. Supported: png, jpg/jpeg, gif, webp, bmp, ico, avif, svg, up to 16 MB. Image tabs are never sent to gopls.
 - **Markdown.** Relative image links in the Markdown preview (`![](img/a.png)`) are read from the project as data URLs, because a `file://` URL is not readable inside the WebView.
 
-## Vulnerabilities (govulncheck)
+## Security
 
-- **Open it.** *View → Vulnerabilities (govulncheck)* or the **Vulns** button in the status bar. *Scan with govulncheck* runs `govulncheck -json ./...` on the chosen Go module of a trusted project. It is on demand: govulncheck downloads the Go vulnerability database from vuln.go.dev (shown in *Settings → Network & Privacy* under **Vulnerability DB**; offline and air-gapped modes block it). Install govulncheck from *Go → Toolchains* if it is missing.
+*View → Security (Code and Dependencies)* or the **Security** button in the status bar. Two views share the panel and keep their results when you switch.
+
+### Code (offline static scan)
+
+- **What it checks.** *Scan code* reads the project files (no network, no processes; dependencies, `vendor/`, `node_modules/`, tests and fixtures are skipped):
+  - **Secrets** in any text file: AWS, GitHub, GitLab, Stripe, OpenAI/Anthropic, Slack and Google keys, JWTs, passwords in connection strings, private keys with a real PEM body, and random-looking strings assigned to credential names. Values are masked (first 4 characters only); dev defaults (`postgres`, `guest`), placeholders and label names such as `tokenKey` or `passwordField` are ignored.
+  - **Go rules** from the AST (aliases resolved, generated files skipped): `InsecureSkipVerify`, TLS 1.0/1.1, MD5/SHA-1/DES/RC4, RSA keys under 2048 bits, plain HTTP URLs and `http.ListenAndServe`, SQL built with `fmt.Sprintf` or concatenation, `sh -c`/`cmd /C`/`powershell -Command` with a runtime command line, file paths from request input, archive entry names joined to a destination (zip slip), `gob` decoding of request bodies or connections, request bodies decoded without `http.MaxBytesReader`, world-writable modes (`0666`, `0777`, `os.ModePerm`).
+- **Severity.** High (exploitable as written), Medium (risky in context), Low (hardening). Each finding shows why it matters and how to fix it, and opens its line in the editor.
+- **Suppress with a reason.** A suppression always needs a written reason. From the panel it is saved in `.adomnia/security.json`; in the code, put `// adomnia:security-ignore <rule>: <reason>` on the line or the line above (a comment without a reason is ignored). Findings are matched by rule, file and the code of the line, not the line number, so they survive code moving.
+- **Baseline.** *Save baseline* accepts the current findings in `.adomnia/security.json` (commit it): later scans show only new ones. *Clear baseline* brings them back. Suppressed and baselined findings stay visible with the filters.
+- **Export for AI.** *Copy for AI*, *Save .md* and *Ask Copilot* export only the active findings with each rule's risk and fix. Secret values stay masked.
+
+### Dependencies (govulncheck)
+
+- **Scan.** *Scan with govulncheck* runs `govulncheck -json ./...` on the chosen Go module of a trusted project. It is on demand: govulncheck downloads the Go vulnerability database from vuln.go.dev (shown in *Settings → Network & Privacy* under **Vulnerability DB**; offline and air-gapped modes block it). Install govulncheck from *Go → Toolchains* if it is missing.
 - **Priority from reachability.** The Go database rarely publishes CVSS scores, so findings are ranked by what govulncheck proves: **High · Called** (your code calls the vulnerable symbol), **Medium · Imported** (the package is imported, no call found), **Low · Required only** (the module is only in the build). A CVSS vector is shown when the advisory has one. Priority always has an icon and a label, never colour alone.
 - **Detail.** Each finding shows ID and aliases (CVE, GHSA), summary and details, found → fixed version, vulnerable symbols, references and a link to the advisory.
 - **Call paths and dependency path.** Up to five call paths per finding, from your function to the vulnerable symbol. Every step opens its source: project files in the editor, dependencies and the standard library read-only (resolved from `GOMODCACHE` and `GOROOT`). The dependency path is the shortest module chain from your module, read offline from `go mod graph`.
