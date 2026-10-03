@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.57 release notes: the IDE Platform, SonarQube and one-click profiles
+
+See [the full v0.9.57 notes](releases/v0.9.57.md): Go Studio runs on a
+language-neutral IDE core with Go as its first adapter, the UI learns languages
+from the backend (icons for Java, Kotlin, PHP, Ruby, .NET, C/C++ and more),
+optional SonarQube analysis with baseline and AI fixes, one-click CPU/memory
+profiles and execution traces, redesigned performance charts and AI-ready
+performance reports.
+
 ## v0.9.56 release notes: Performance Studio, Go trace and the end of the foundations
 
 See [the full v0.9.56 notes](releases/v0.9.56.md): pprof profiles and execution
