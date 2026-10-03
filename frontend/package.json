@@ -41,7 +41,7 @@
     "d3-force": "^3.0.0",
     "lucide-react": "^1.47.0",
     "mermaid": "^11.17.2",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor": "^0.57.0",
     "monaco-emacs": "^0.3.0",
     "monaco-vim": "^0.4.4",
     "monaco-yaml": "^5.5.1",
