@@ -56,8 +56,8 @@ export function resolveContextMenuPosition(input: MenuPositionInput): { left: nu
     left = depth > 0
       ? x - width - MENU_WIDTH + SUBMENU_OVERLAP
       : viewportWidth - width - VIEWPORT_GUTTER
-    if (left < VIEWPORT_GUTTER) left = VIEWPORT_GUTTER
   }
+  left = Math.max(VIEWPORT_GUTTER, left)
   if (top + height > viewportHeight - VIEWPORT_GUTTER) {
     top = Math.max(VIEWPORT_GUTTER, viewportHeight - height - VIEWPORT_GUTTER)
   }

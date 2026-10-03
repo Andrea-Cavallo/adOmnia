@@ -1,4 +1,4 @@
-import { Bookmark, Bot, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, SearchCode, Sparkles, SquareTerminal, TerminalSquare, type LucideIcon } from 'lucide-react'
+import { Bookmark, Bot, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
@@ -39,7 +39,7 @@ interface ToolWindowEntry {
 }
 
 const TOOL_WINDOWS: ReadonlyArray<ToolWindowEntry> = [
-  { id: 'run', label: 'Run', icon: TerminalSquare },
+  { id: 'run', label: 'Run', icon: Play },
   { id: 'debug', label: 'Debug · Alt+5', icon: Bug },
   { id: 'tests', label: 'Tests · Alt+8', icon: FlaskConical },
   { id: 'terminal', label: 'Terminal · Alt+F12', icon: SquareTerminal },

@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { isContextMenuBackdrop, resolveContextMenuPosition } from './ContextMenu'
 
 describe('resolveContextMenuPosition', () => {
+  it('keeps the terminal shell menu visible when its right-aligned anchor is near the left edge', () => {
+    expect(resolveContextMenuPosition({
+      x: 155 - 220,
+      y: 64,
+      width: 232,
+      height: 180,
+      depth: 0,
+      viewportWidth: 1200,
+      viewportHeight: 800,
+    })).toEqual({ left: 8, top: 64 })
+  })
+
   it('keeps a submenu attached to the parent anchor when there is room', () => {
     expect(resolveContextMenuPosition({
       x: 499,

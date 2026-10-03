@@ -10,6 +10,7 @@ import {
 import { GoStudioFlameGraph } from './GoStudioFlameGraph'
 import { VizBar, VizLegend, VizSegmented } from './GoStudioVizKit'
 import { GoStudioPerfExport } from './GoStudioPerfExport'
+import { GoStudioCreateProfile } from './GoStudioCreateProfile'
 import { markdownFileName, profileToMarkdown } from './goStudioPerfMarkdown'
 
 interface GoStudioProfilePanelProps {
@@ -122,6 +123,12 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
 
   useEffect(() => { void refresh() }, [refresh])
 
+  const profileCreated = useCallback((path: string) => {
+    setSelectedPath(path)
+    void refresh()
+    void useGoIDEStore.getState().refreshProject()
+  }, [refresh])
+
   useEffect(() => {
     let cancelled = false
     const run = async () => {
@@ -178,6 +185,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header flex-wrap gap-2">
         <span className="go-studio-tool-title">Performance</span>
+        <GoStudioCreateProfile key={sessionId} session={session} onCreated={profileCreated} />
         <select
           aria-label="Profile file"
           value={selectedPath}
@@ -219,7 +227,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
       {!report && !reportLoading && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-text-4">
           <Flame size={22} />
-          <p className="text-[12.5px]">No profile loaded. Run a test with CPU, Memory, Block, Mutex or Trace profiling, then pick the generated <span className="font-mono">.pprof</span> here.</p>
+          <p className="text-[12.5px]">Use Create .pprof to run package tests and open the generated profile, or select an existing file above.</p>
         </div>
       )}
 

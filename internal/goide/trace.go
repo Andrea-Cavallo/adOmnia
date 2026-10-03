@@ -110,7 +110,7 @@ type TraceReport struct {
 	Truncated     bool             `json:"truncated,omitempty"`
 }
 
-// ListTraceFiles cerca i file di esecuzione trace (`trace.out`, `*.trace`) dentro il progetto.
+// ListTraceFiles cerca i file di esecuzione trace (`trace.out`, `trace-*.out`, `*.trace`) dentro il progetto.
 func (s *Service) ListTraceFiles(sessionID string) ([]ProfileFile, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -133,7 +133,7 @@ func (s *Service) ListTraceFiles(sessionID string) ([]ProfileFile, error) {
 			return nil
 		}
 		base := strings.ToLower(entry.Name())
-		if base != "trace.out" && !strings.HasSuffix(base, ".trace") {
+		if base != "trace.out" && !(strings.HasPrefix(base, "trace-") && strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
 			return nil
 		}
 		info, err := entry.Info()

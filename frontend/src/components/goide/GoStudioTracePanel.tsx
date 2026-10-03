@@ -11,6 +11,7 @@ import {
 import { GoStudioTraceTimeline, type TraceTimelineRow } from './GoStudioTraceTimeline'
 import { VizBar, VizSegmented } from './GoStudioVizKit'
 import { GoStudioPerfExport } from './GoStudioPerfExport'
+import { GoStudioCreateProfile } from './GoStudioCreateProfile'
 import { traceToMarkdown, markdownFileName } from './goStudioPerfMarkdown'
 
 interface GoStudioTracePanelProps {
@@ -63,6 +64,12 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
 
   useEffect(() => { void refresh() }, [refresh])
 
+  const traceCreated = useCallback((path: string) => {
+    setSelectedPath(path)
+    void refresh()
+    void useGoIDEStore.getState().refreshProject()
+  }, [refresh])
+
   useEffect(() => {
     let cancelled = false
     if (!selectedPath) { setReport(null); return }
@@ -107,6 +114,7 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header flex-wrap gap-2">
         <span className="go-studio-tool-title">Trace</span>
+        <GoStudioCreateProfile key={sessionId} session={session} capture="trace" onCreated={traceCreated} />
         <select aria-label="Trace file" value={selectedPath} onChange={(event) => setSelectedPath(event.target.value)} className="h-7 max-w-72 rounded-lg border-0 bg-[var(--gs-raised)] px-2 font-mono text-[11.5px] text-text-1 outline-none focus:ring-1 focus:ring-accent">
           {files.length === 0 && <option value="">No trace.out in the project</option>}
           {files.map((file) => <option key={file.relative} value={file.relative}>{file.relative}</option>)}
@@ -125,7 +133,7 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
       {!report && !loading && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-text-4">
           <Activity size={22} />
-          <p className="text-[12.5px]">No trace loaded. Run a test with the Execution trace (`-trace`) profiling option, then open the generated <span className="font-mono">trace.out</span> here.</p>
+          <p className="text-[12.5px]">Use Create trace.out to run package tests and open the generated trace, or select an existing file above.</p>
         </div>
       )}
 
