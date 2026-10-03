@@ -573,6 +573,31 @@ func (g *GoIDE) VulnerabilityScan(sessionID, moduleDirectory string) (goide.Vuln
 	return g.service.VulnerabilityScan(sessionID, moduleDirectory)
 }
 
+// SecurityScan analizza offline i file del progetto: segreti e regole statiche di sicurezza.
+func (g *GoIDE) SecurityScan(sessionID string) (goide.SecurityReport, error) {
+	return g.service.SecurityScan(sessionID)
+}
+
+// SuppressSecurityFinding sopprime un finding con motivazione (salvata in .adomnia/security.json).
+func (g *GoIDE) SuppressSecurityFinding(sessionID string, finding goide.SecurityFinding, reason string) error {
+	return g.service.SuppressSecurityFinding(sessionID, finding, reason)
+}
+
+// UnsuppressSecurityFinding toglie una soppressione registrata dal pannello.
+func (g *GoIDE) UnsuppressSecurityFinding(sessionID, fingerprint string) error {
+	return g.service.UnsuppressSecurityFinding(sessionID, fingerprint)
+}
+
+// SaveSecurityBaseline accetta i finding attuali: le scansioni successive mostrano solo i nuovi.
+func (g *GoIDE) SaveSecurityBaseline(sessionID string) (int, error) {
+	return g.service.SaveSecurityBaseline(sessionID)
+}
+
+// ClearSecurityBaseline rimuove la baseline di sicurezza.
+func (g *GoIDE) ClearSecurityBaseline(sessionID string) error {
+	return g.service.ClearSecurityBaseline(sessionID)
+}
+
 // StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
 func (g *GoIDE) StartTests(request goide.TestRunRequest) (goide.TestRunSnapshot, error) {
 	return g.service.StartTests(request)

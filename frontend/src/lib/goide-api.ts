@@ -243,6 +243,31 @@ export async function scanGoIDEVulnerabilities(sessionId: string, moduleDirector
   return GoIDEBindings.VulnerabilityScan(sessionId, moduleDirectory)
 }
 
+export type GoIDESecurityReport = Awaited<ReturnType<typeof GoIDEBindings.SecurityScan>>
+export type GoIDESecurityFinding = GoIDESecurityReport['findings'][number]
+export type GoIDESecurityRule = GoIDESecurityReport['rules'][number]
+
+/** Scansione offline dei file del progetto: segreti e regole statiche (TLS, crypto, injection, permessi). */
+export async function scanGoIDESecurity(sessionId: string): Promise<GoIDESecurityReport> {
+  return GoIDEBindings.SecurityScan(sessionId)
+}
+
+export async function suppressGoIDESecurityFinding(sessionId: string, finding: GoIDESecurityFinding, reason: string): Promise<void> {
+  await GoIDEBindings.SuppressSecurityFinding(sessionId, finding, reason)
+}
+
+export async function unsuppressGoIDESecurityFinding(sessionId: string, fingerprint: string): Promise<void> {
+  await GoIDEBindings.UnsuppressSecurityFinding(sessionId, fingerprint)
+}
+
+export async function saveGoIDESecurityBaseline(sessionId: string): Promise<number> {
+  return GoIDEBindings.SaveSecurityBaseline(sessionId)
+}
+
+export async function clearGoIDESecurityBaseline(sessionId: string): Promise<void> {
+  await GoIDEBindings.ClearSecurityBaseline(sessionId)
+}
+
 export type GoIDEGoTool = 'vet' | 'generate' | 'fix' | 'modWhy' | 'modGraph' | 'doc'
 export type GoIDEGoToolRequest = GoToolRequest
 export type GoIDEGoToolPreview = GoToolPreview

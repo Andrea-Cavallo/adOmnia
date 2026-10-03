@@ -59,6 +59,7 @@ Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** in fon
 - [ ] **M29** — Nessuna azione eseguita implicitamente all'apertura o al ripristino.
 - [ ] **M30** — Tutte le funzioni visibili sono reali e i limiti sono espliciti.
 - [ ] **M33** — Vulnerabilities (govulncheck) con rete verso vuln.go.dev: scan su un progetto con una dipendenza vulnerabile nota; un finding *Called* mostra il percorso di chiamata, ogni passo apre il sorgente (progetto nell'editor, dipendenza e stdlib in sola lettura); *Upgrade…* mostra l'anteprima go.mod, chiede conferma ed esegue `go get`; un nuovo scan non riporta più il finding. In modalità Offline lo scan viene bloccato con un messaggio chiaro.
+- [ ] **M34** — Security → Code su un progetto reale: lo scan è offline e veloce; un segreto è mascherato; un finding si apre nell'editor; *Suppress with reason* senza motivazione è disabilitato, con motivazione scrive `.adomnia/security.json` e il finding sparisce; un commento `// adomnia:security-ignore <rule>: <motivo>` lo sopprime anche dopo aver spostato il codice; *Save baseline* nasconde i finding esistenti e uno nuovo compare; Ask Copilot apre la chat con il report.
 
 ---
 

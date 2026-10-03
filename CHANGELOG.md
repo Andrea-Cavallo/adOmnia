@@ -7,6 +7,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
+- **Security panel: offline code scan in Go Studio.** *View → Security* (or **Security** in the status bar) now has a *Code* view next to *Dependencies* (govulncheck). It finds hardcoded secrets and committed private keys (masked), disabled TLS verification and old TLS versions, weak crypto and short RSA keys, plain HTTP, SQL and shell commands built from strings, path traversal and zip slip, gob decoding of untrusted input, unbounded request bodies and world-writable permissions. Every suppression needs a written reason (panel or `// adomnia:security-ignore <rule>: <reason>`); a versionable baseline in `.adomnia/security.json` keeps legacy projects readable; *Copy for AI*, *Save .md* and *Ask Copilot* export the active findings. Secrets are generic for every language (`internal/ide/security`), Go rules live in the Go adapter.
+
+### Added
 - **Vulnerabilities panel in Go Studio (govulncheck):** *View → Vulnerabilities* (or **Vulns** in the status bar) scans the module on demand and ranks findings by reachability (called, imported, required only), with advisory details and aliases, found → fixed version, vulnerable symbols, up to five clickable call paths from your code to the vulnerable symbol (dependencies and stdlib open read-only), the module dependency path, an upgrade preview of the `go.mod` change with a confirmed `go get module@fixed`, and *Copy for AI* / *Save .md* / *Ask Copilot* Markdown export.
 
 ### Fixed
