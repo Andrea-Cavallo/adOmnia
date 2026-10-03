@@ -639,6 +639,8 @@ Dopo il completamento della Fase 8 (sezione 22), il prossimo lavoro è la Fase 1
 
 ## 22. Completamento della Fase 8 — 2026-10-03
 
+Implementazione pubblicata su `master`: [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/commit/fe3456ac351ebae9ce7d8cbd76b2ca0b070df4e4). La Fase 9 e le basi Run/Test precedenti sono in `daa2e89`.
+
 I tre residui di Fase 8 sono chiusi. Il core assume il lifecycle dei test e dei workflow Run; la facciata compone autorizzazione, documenti, registry, SDK Go solo per Go e metadati compatibili con Wails. Le API pubbliche e i JSON legacy non cambiano. Le configurazioni di altri linguaggi conservano `LanguageOptions` fino all’esecuzione e possono usare i kind dichiarati dal loro adapter, senza un elenco globale nel core.
 
 Le nuove regressioni verificano il workflow con eseguibili reali, non solo la costruzione di argomenti: nessun Go nel PATH; runner e parser di un linguaggio fittizio; `.env` e porte; comando generico; identità delle run veloci; flush della riga finale; storico limitato e isolamento degli snapshot. Le opzioni Go opache sono coperte per race/coverage/profiling/GOOS/GOARCH e per i test con coverage reale e package confinati.
