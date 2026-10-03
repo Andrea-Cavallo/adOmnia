@@ -70,7 +70,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
 | `docs/GO-STUDIO.md` | Go Studio (the integrated Go IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `todo-ide.md`. |
-| `docs/architecture/ide-multilanguage-refactor.md` | Go Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration plan with live status. Read it before touching anything under `internal/goide`, `internal/ide` or `internal/languages`. |
+| `docs/architecture/ide-multilanguage-refactor.md` | Go Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/goide`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -156,15 +156,15 @@ adomnia/
 │   ├── database/ storage/ vault/       # local data and secrets
 │   ├── docker/ loadtest/ plugins/      # lab, load testing, JS plugin runtime
 │   ├── themes/ templates/ git/         # customization and versioning
-│   ├── ide/                   #   IDE Platform core: language-agnostic (language registry,
-│   │                          #   project model, run/workflows, testing, process, sdk…) — never imports languages/*
+│   ├── ide/                   #   IDE Platform core: language-agnostic (language registry, project units,
+│   │                          #   lsp, dap, run/workflows, testing, process, sdk…) — never imports languages/*
 │   ├── languages/golang/      #   Go adapter: detection, SDK, gopls, run options/test2json/race reports, Delve/runtime extensions
 │   ├── goide/                 #   Go Studio host: composition root + Service facade for Wails
 │   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend
 │   ├── src/components/        # UI panels and components (ide/ = language contributions, goide/ = gO Studio UI)
 │   ├── src/stores/            # Zustand stores
-│   ├── src/lib/               # API wrappers, parsers, helpers, types
+│   ├── src/lib/               # API wrappers, parsers, helpers, types (lib/goide/ = pure Go Studio helpers used by stores)
 │   └── src/styles/            # Global CSS and design tokens
 ├── assets/images/             # App artwork and icons
 ├── docker/adomnia-lab/        # Local lab Docker Compose setup
@@ -403,7 +403,7 @@ if (request.auth.type === 'aws4') {
 
 ### Multi-language IDE Platform (Go Studio)
 
-Go Studio is being refactored from "a Go IDE" into **adOmnia IDE Platform + Go Language Adapter** (plan and status: `docs/architecture/ide-multilanguage-refactor.md`). Rules that already apply:
+Go Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the only registered language today; Java/Rust/Python/TS are validation scenarios, not features. Rules:
 
 - **Dependency direction:** `internal/goide` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/goide`.
 - **Languages are registered in one place:** `internal/goide/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.
@@ -412,6 +412,7 @@ Go Studio is being refactored from "a Go IDE" into **adOmnia IDE Platform + Go L
 - **The UI learns languages from the backend** (`GetCapabilities().languages`) and describes each one in `frontend/src/components/ide/languages/<id>/` (`IdeLanguageContribution`: icon from Simple Icons, menu, commands with `requires: { language }`, Monaco editor languages served by its language server). Generic editor providers register on `languageServerEditorLanguages()`, never on a literal language id.
 - **The Wails service `GoIDE` stays the stable facade**; moved types are re-exported as aliases in `internal/goide` so bindings and call sites keep working. The run-configuration DTO keeps its flat Go fields on purpose: it is also the `.adomnia/run-configurations.json` format shared through Git.
 - The Go adapter package is named `golang` (`go` is a keyword).
+- **Deliberate non-goals (do not "finish" them without a real second consumer):** no mass move of `components/goide` into `components/ide` (move a file when a second language uses it), no `LanguageServerProvider` interface or tool-window registry (a language server is a `lsp.ServerSpec` built by its adapter), the tool-version cache in `ide/sdk` stays process-wide (it caches facts about files).
 
 ### Add a language/IDE feature
 
