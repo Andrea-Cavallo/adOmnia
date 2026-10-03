@@ -54,6 +54,22 @@
 .go-studio-cov-uncovered { background: var(--color-danger, #ef4444); opacity: 0.75; }
 .go-studio-cov-partial { background: var(--color-warning, #f59e0b); opacity: 0.8; }
 
+/* Costo per riga del profilo aperto nel Performance Studio: barra calda accanto a quella di coverage. */
+.go-studio-heat {
+  margin-left: 7px;
+  width: 3px !important;
+  border-radius: 1px;
+}
+.go-studio-heat-1 { background: var(--color-warning, #f59e0b); opacity: 0.3; }
+.go-studio-heat-2 { background: var(--color-warning, #f59e0b); opacity: 0.65; }
+.go-studio-heat-3 { background: var(--color-danger, #ef4444); opacity: 0.7; }
+.go-studio-heat-4 { background: var(--color-danger, #ef4444); opacity: 1; }
+.go-studio-heat-label {
+  color: var(--color-warning, #f59e0b);
+  font-style: italic;
+  opacity: 0.75;
+}
+
 /* Breakpoint: pallino sul numero di riga, come in GoLand. Il numero resta leggibile al passaggio. */
 .monaco-editor .line-numbers.go-studio-bp,
 .monaco-editor .line-numbers.go-studio-exec {

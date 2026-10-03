@@ -23,7 +23,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 98 | 19 |
+| **P1** | Workflow Go migliore di GoLand | 94 | 17 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
 | **P3** | Remote ed estensibilità | 29 | 3 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
@@ -56,19 +56,19 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 - [x] CPU profile. — *cpu.pprof dalle config di test; parsing diretto con `github.com/google/pprof/profile` e viste Top/flame/callers/diff.*
 - [x] Heap profile. — *Il viewer seleziona i sample type inuse_space/inuse_objects del mem.pprof.*
 - [x] Allocations profile. — *I sample type alloc_objects/alloc_space dello stesso mem.pprof restano separati da quelli in uso nel selettore.*
-- [ ] Goroutine profile. — *Il viewer mostrerebbe un goroutine.pprof, ma nessuna configurazione lo produce ancora.*
+- [x] Goroutine profile. — *Performance → **From service**: scarica `/debug/pprof/goroutine` da un servizio locale con net/http/pprof (`pprof_capture.go`), lo valida e lo salva nel progetto.*
 - [x] Mutex profile. — *mutex.pprof dalle config di test, visualizzato.*
 - [x] Block profile. — *block.pprof dalle config di test, visualizzato.*
-- [ ] Thread creation profile dove disponibile. — *Nessuna cattura; il viewer accetterebbe il file.*
+- [x] Thread creation profile dove disponibile. — *Stessa cattura da servizio vivo (`threadcreate`), insieme a heap, allocs, block, mutex e CPU con durata 1–60 s. Solo localhost.*
 - [x] `pprof` integration. — *Parsing pprof in Go (google/pprof), Top/flame/edge/line calcolati in app; `go tool pprof` non viene invocato.*
 
 ### Visualizzazioni
 
 - [x] Top functions.
-- [ ] Call graph. — *Parziale: pannello Callers/Callees con archi caller→callee e pesi; manca un grafo visuale a nodi.*
+- [x] Call graph. — *Vista **Call graph**: le 24 funzioni più costose a livelli chiamante→chiamato, archi pesati, colori per origine, ricorsione gestita; clic evidenzia, doppio clic apre il sorgente.*
 - [x] Flame graph.
 - [x] Icicle view. — *Toggle Flame/Icicle.*
-- [ ] Source line cost. — *Parziale: pprof.go aggrega il costo per file:riga (`lines`), ma l'editor non lo evidenzia.*
+- [x] Source line cost. — *Il profilo aperto colora le righe nell'editor (barra calda nel gutter, costo e % a fine riga per le righe ≥ 1%, hover); toggle **Cost in editor**.*
 - [x] Package grouping.
 - [x] Hide runtime internals.
 - [x] Diff profiles.

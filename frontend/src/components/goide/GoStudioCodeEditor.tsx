@@ -18,6 +18,7 @@ import { installRecursiveCallMarkers, registerGoStudioSemanticFeatures } from '.
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
+import { useGoStudioProfileHeatDecorations } from './goStudioProfileHeat'
 import { startGoStudioLspSync } from './goStudioLspSync'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './goStudioToolTargets'
@@ -162,6 +163,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   useGoStudioImplementationMarkers(editorRef, document, mountCount)
   useGoStudioContextMarkers(editorRef, document, mountCount)
   useGoStudioVcsGutter(editorRef, document, mountCount)
+  useGoStudioProfileHeatDecorations(editorRef, document, mountCount)
 
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
   const coverage = useGoIDETestsStore((state) => visibleCoverage(state, document.document.sessionId))

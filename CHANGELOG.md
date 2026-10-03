@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Profiles from a running service:** Performance Studio → **From service** downloads a profile from `/debug/pprof` of a service on this machine (goroutines, heap, allocations, CPU for 1–60 s, block, mutex, thread creation), checks that it is a real pprof and saves it in the project root, where it opens. Goroutine and thread-creation profiles were the two that `go test` cannot produce. Localhost only, no proxy, trusted projects only.
+- **Call graph view:** Performance Studio draws the most expensive functions as a layered graph from callers to callees, with edge thickness by cost and colours by code origin. Recursion does not break the layout. Click highlights a function's calls; double-click opens its source.
+- **Line cost in the editor:** the open profile marks hot source lines in the editor with a heat bar in the gutter, the cost and share at the end of the lines that matter (≥ 1%), and a hover with the profile name. **Cost in editor** turns it off.
+
 ## [0.9.57] - 2026-10-03
 
 ### Added

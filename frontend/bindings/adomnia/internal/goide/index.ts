@@ -89,6 +89,7 @@ export {
     LanguageServerStatus,
     LintResult,
     LinterInfo,
+    LiveProfileRequest,
     MakeInfo,
     ModuleRegistryCheck,
     MoveSymbolRequest,

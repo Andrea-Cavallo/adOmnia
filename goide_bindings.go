@@ -593,6 +593,11 @@ func (g *GoIDE) ListProfileFiles(sessionID string) ([]goide.ProfileFile, error) 
 	return g.service.ListProfileFiles(sessionID)
 }
 
+// CaptureLiveProfile salva nel progetto un profilo scaricato da /debug/pprof di un servizio locale.
+func (g *GoIDE) CaptureLiveProfile(ctx context.Context, request goide.LiveProfileRequest) (goide.ProfileFile, error) {
+	return g.service.CaptureLiveProfile(ctx, request)
+}
+
 // LoadProfile interpreta un profilo pprof del progetto in un report per il Performance Studio.
 func (g *GoIDE) LoadProfile(sessionID, relativePath string) (goide.ProfileReport, error) {
 	return g.service.LoadProfile(sessionID, relativePath)

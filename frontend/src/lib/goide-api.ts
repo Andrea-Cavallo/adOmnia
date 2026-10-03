@@ -360,6 +360,13 @@ export async function loadGoIDEProfile(sessionId: string, relativePath: string):
   return GoIDEBindings.LoadProfile(sessionId, relativePath)
 }
 
+export type GoIDELiveProfileRequest = Parameters<typeof GoIDEBindings.CaptureLiveProfile>[0]
+
+/** Scarica un profilo da /debug/pprof di un servizio locale e lo salva nel progetto. */
+export async function captureGoIDELiveProfile(request: GoIDELiveProfileRequest): Promise<GoIDEProfileFile> {
+  return GoIDEBindings.CaptureLiveProfile(request)
+}
+
 export type GoIDETraceReport = Awaited<ReturnType<typeof GoIDEBindings.LoadTrace>>
 
 /** File di esecuzione trace (`trace.out`, `*.trace`) trovati nel progetto. */

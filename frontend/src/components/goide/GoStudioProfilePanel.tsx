@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowRight, ArrowUp, Crosshair, Flame, GitCompare, Layers, ListTree, Loader2, RefreshCw, Search } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUp, Crosshair, Flame, GitCompare, Layers, ListTree, Loader2, Network, RefreshCw, Search } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { listGoIDEProfileFiles, loadGoIDEProfile, type GoIDEProfileFile, type GoIDEProfileReport } from '@/lib/goide-api'
 import type { GoIDESession } from '@/lib/goide-api'
@@ -8,21 +8,25 @@ import {
   sampleValue, shortFunctionName, sortTop, codeOriginColor, CODE_ORIGINS, type ProfileFunction, type ProfileNode,
 } from './goStudioProfiles'
 import { GoStudioFlameGraph } from './GoStudioFlameGraph'
+import { GoStudioCallGraph } from './GoStudioCallGraph'
 import { VizBar, VizLegend, VizSegmented } from './GoStudioVizKit'
 import { GoStudioPerfExport } from './GoStudioPerfExport'
 import { GoStudioCreateProfile } from './GoStudioCreateProfile'
+import { GoStudioCaptureLiveProfile } from './GoStudioCaptureLiveProfile'
 import { markdownFileName, profileToMarkdown } from './goStudioPerfMarkdown'
+import { profileHeatFrom, useGoStudioProfileHeat } from './goStudioProfileHeat'
 
 interface GoStudioProfilePanelProps {
   session: GoIDESession
 }
 
-type ProfileTab = 'top' | 'flame' | 'callers' | 'diff'
+type ProfileTab = 'top' | 'flame' | 'graph' | 'callers' | 'diff'
 type TopMode = 'flat' | 'cum'
 
 const TABS: Array<{ id: ProfileTab; label: string; icon: typeof Flame }> = [
   { id: 'top', label: 'Top functions', icon: ListTree },
   { id: 'flame', label: 'Flame graph', icon: Flame },
+  { id: 'graph', label: 'Call graph', icon: Network },
   { id: 'callers', label: 'Callers', icon: Crosshair },
   { id: 'diff', label: 'Diff', icon: GitCompare },
 ]
@@ -98,6 +102,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
   const [tab, setTab] = useState<ProfileTab>('top')
   const [mode, setMode] = useState<TopMode>('cum')
   const [sampleIndex, setSampleIndex] = useState(0)
+  const heatEnabled = useGoStudioProfileHeat((state) => state.enabled)
   const [search, setSearch] = useState('')
   const [hideRuntime, setHideRuntime] = useState(false)
   const [grouped, setGrouped] = useState(false)
@@ -172,6 +177,10 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
   const selectedName = selectedFunction?.name ?? ''
   const callers = useMemo(() => report?.edges.filter((edge) => edge.callee.name === selectedName) ?? [], [report, selectedName])
   const callees = useMemo(() => report?.edges.filter((edge) => edge.caller.name === selectedName) ?? [], [report, selectedName])
+  // Il profilo aperto colora il costo per riga nell'editor della stessa sessione.
+  useEffect(() => {
+    useGoStudioProfileHeat.getState().publish(sessionId, report ? profileHeatFrom(report, sampleIndex) : null)
+  }, [report, sampleIndex, sessionId])
   const topEdges = useMemo(() => (report?.edges ?? []).slice(0, 200), [report])
   const deltas = useMemo(() => (report && diffReport ? diffProfiles(report, diffReport, sampleIndex, mode) : []), [report, diffReport, sampleIndex, mode])
   const changedCount = useMemo(() => deltas.filter((delta) => delta.delta !== 0).length, [deltas])
@@ -186,6 +195,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
       <div className="go-studio-tool-header flex-wrap gap-2">
         <span className="go-studio-tool-title">Performance</span>
         <GoStudioCreateProfile key={sessionId} session={session} onCreated={profileCreated} />
+        <GoStudioCaptureLiveProfile key={`live-${sessionId}`} session={session} onCreated={profileCreated} />
         <select
           aria-label="Profile file"
           value={selectedPath}
@@ -209,6 +219,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
           <Search size={12} />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search function" aria-label="Search function" className="min-w-0 flex-1 bg-transparent text-[11.5px] text-text-2 outline-none" />
         </label>
+        <label className="flex items-center gap-1.5 text-[11.5px] text-text-3" title="Show the cost of each source line in the editor"><input type="checkbox" checked={heatEnabled} onChange={(event) => useGoStudioProfileHeat.getState().setEnabled(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Cost in editor</label>
         <label className="flex items-center gap-1.5 text-[11.5px] text-text-3"><input type="checkbox" checked={hideRuntime} onChange={(event) => setHideRuntime(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Hide runtime</label>
         <button type="button" onClick={() => void refresh()} aria-label="Refresh profiles" title="Refresh" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} className={filesLoading ? 'animate-spin' : ''} /></button>
         {reportLoading && <Loader2 size={14} className="animate-spin text-accent" aria-label="Loading profile" />}
@@ -277,6 +288,10 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
 
           {tab === 'flame' && (
             <GoStudioFlameGraph flame={report.flame ?? null} total={total} sampleIndex={sampleIndex} unit={unit} query={search} selected={selectedName || null} onSelect={setSelectedFunction} />
+          )}
+
+          {tab === 'graph' && (
+            <GoStudioCallGraph top={report.topCum ?? []} edges={report.edges ?? []} sampleIndex={sampleIndex} total={total} unit={unit} hideRuntime={hideRuntime} selected={selectedName || null} onSelect={setSelectedFunction} onOpen={openFunction} />
           )}
 
           {tab === 'callers' && (

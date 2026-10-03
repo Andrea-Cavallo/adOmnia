@@ -2599,6 +2599,40 @@ export class LinterInfo {
 }
 
 /**
+ * LiveProfileRequest descrive la cattura: URL del servizio (es. http://localhost:6060), tipo di profilo
+ * (nome dell'endpoint /debug/pprof/<kind>) e durata in secondi solo per il CPU profile.
+ */
+export class LiveProfileRequest {
+    "sessionId": string;
+    "url": string;
+    "kind": string;
+    "seconds"?: number;
+
+    /** Creates a new LiveProfileRequest instance. */
+    constructor($$source: Partial<LiveProfileRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LiveProfileRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LiveProfileRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LiveProfileRequest($$parsedSource as Partial<LiveProfileRequest>);
+    }
+}
+
+/**
  * MakeInfo descrive il make usato dalla sessione.
  */
 export class MakeInfo {
