@@ -234,6 +234,15 @@ export async function scanGoIDEDependencyVulnerabilities(sessionId: string, modu
   return GoIDEBindings.DependencyVulnerabilities(sessionId, moduleDirectory)
 }
 
+export type GoIDEVulnReport = Awaited<ReturnType<typeof GoIDEBindings.VulnerabilityScan>>
+export type GoIDEVulnFinding = GoIDEVulnReport['findings'][number]
+export type GoIDEVulnFrame = NonNullable<GoIDEVulnFinding['callPaths']>[number][number]
+
+/** govulncheck con percorsi di chiamata, versione corretta e catena di dipendenze (contatta vuln.go.dev). */
+export async function scanGoIDEVulnerabilities(sessionId: string, moduleDirectory: string): Promise<GoIDEVulnReport> {
+  return GoIDEBindings.VulnerabilityScan(sessionId, moduleDirectory)
+}
+
 export type GoIDEGoTool = 'vet' | 'generate' | 'fix' | 'modWhy' | 'modGraph' | 'doc'
 export type GoIDEGoToolRequest = GoToolRequest
 export type GoIDEGoToolPreview = GoToolPreview

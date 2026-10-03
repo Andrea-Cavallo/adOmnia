@@ -5781,6 +5781,172 @@ export class VCSWorkingDiff {
 }
 
 /**
+ * VulnFinding riassume un advisory OSV per il modulo analizzato.
+ */
+export class VulnFinding {
+    "id": string;
+    "aliases"?: string[];
+    "summary"?: string;
+    "details"?: string;
+    "published"?: string;
+    "modified"?: string;
+    "url": string;
+    "references"?: string[];
+    "cvss"?: string[];
+    "module": string;
+    "foundVersion"?: string;
+    "fixedVersion"?: string;
+    "level": string;
+    "packages"?: string[];
+    "symbols"?: string[];
+
+    /**
+     * CallPaths partono dal codice del progetto (primo elemento) e arrivano al simbolo vulnerabile (ultimo).
+     */
+    "callPaths"?: VulnFrame[][];
+
+    /**
+     * DependencyPath è la catena di moduli dal modulo principale a quello vulnerabile (go mod graph).
+     */
+    "dependencyPath"?: string[];
+
+    /**
+     * GoModVersion è la versione richiesta nel go.mod del progetto, se il modulo è un requirement diretto o indiretto.
+     */
+    "goModVersion"?: string;
+
+    /** Creates a new VulnFinding instance. */
+    constructor($$source: Partial<VulnFinding> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("module" in $$source)) {
+            this["module"] = "";
+        }
+        if (!("level" in $$source)) {
+            this["level"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VulnFinding instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VulnFinding {
+        const $$createField1_0 = $$createType2;
+        const $$createField7_0 = $$createType2;
+        const $$createField8_0 = $$createType2;
+        const $$createField13_0 = $$createType2;
+        const $$createField14_0 = $$createType2;
+        const $$createField15_0 = $$createType128;
+        const $$createField16_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("aliases" in $$parsedSource) {
+            $$parsedSource["aliases"] = $$createField1_0($$parsedSource["aliases"]);
+        }
+        if ("references" in $$parsedSource) {
+            $$parsedSource["references"] = $$createField7_0($$parsedSource["references"]);
+        }
+        if ("cvss" in $$parsedSource) {
+            $$parsedSource["cvss"] = $$createField8_0($$parsedSource["cvss"]);
+        }
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField13_0($$parsedSource["packages"]);
+        }
+        if ("symbols" in $$parsedSource) {
+            $$parsedSource["symbols"] = $$createField14_0($$parsedSource["symbols"]);
+        }
+        if ("callPaths" in $$parsedSource) {
+            $$parsedSource["callPaths"] = $$createField15_0($$parsedSource["callPaths"]);
+        }
+        if ("dependencyPath" in $$parsedSource) {
+            $$parsedSource["dependencyPath"] = $$createField16_0($$parsedSource["dependencyPath"]);
+        }
+        return new VulnFinding($$parsedSource as Partial<VulnFinding>);
+    }
+}
+
+/**
+ * VulnFrame è un passo di un percorso di chiamata: dal codice del progetto al simbolo vulnerabile.
+ */
+export class VulnFrame {
+    "module"?: string;
+    "version"?: string;
+    "package"?: string;
+    "function"?: string;
+    "receiver"?: string;
+    "file"?: string;
+    "relative"?: string;
+    "line"?: number;
+    "column"?: number;
+    "inProject": boolean;
+
+    /** Creates a new VulnFrame instance. */
+    constructor($$source: Partial<VulnFrame> = {}) {
+        if (!("inProject" in $$source)) {
+            this["inProject"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VulnFrame instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VulnFrame {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VulnFrame($$parsedSource as Partial<VulnFrame>);
+    }
+}
+
+/**
+ * VulnReport è il risultato di una scansione govulncheck.
+ */
+export class VulnReport {
+    "modulePath": string;
+    "moduleDirectory": string;
+    "scannedAt": string;
+    "scannerVersion"?: string;
+    "databaseUpdated"?: string;
+    "goVersion"?: string;
+    "findings": VulnFinding[];
+
+    /** Creates a new VulnReport instance. */
+    constructor($$source: Partial<VulnReport> = {}) {
+        if (!("modulePath" in $$source)) {
+            this["modulePath"] = "";
+        }
+        if (!("moduleDirectory" in $$source)) {
+            this["moduleDirectory"] = "";
+        }
+        if (!("scannedAt" in $$source)) {
+            this["scannedAt"] = "";
+        }
+        if (!("findings" in $$source)) {
+            this["findings"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VulnReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VulnReport {
+        const $$createField6_0 = $$createType130;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("findings" in $$parsedSource) {
+            $$parsedSource["findings"] = $$createField6_0($$parsedSource["findings"]);
+        }
+        return new VulnReport($$parsedSource as Partial<VulnReport>);
+    }
+}
+
+/**
  * WatcherStatus descrive quanto del progetto è osservato: oltre il limite le modifiche esterne possono sfuggire.
  */
 export class WatcherStatus {
@@ -5833,7 +5999,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType127;
+        const $$createField1_0 = $$createType132;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -6064,5 +6230,10 @@ const $$createType122 = $Create.Array($$createType121);
 const $$createType123 = TraceStats.createFrom;
 const $$createType124 = VCSFileChange.createFrom;
 const $$createType125 = $Create.Array($$createType124);
-const $$createType126 = FileChange.createFrom;
+const $$createType126 = VulnFrame.createFrom;
 const $$createType127 = $Create.Array($$createType126);
+const $$createType128 = $Create.Array($$createType127);
+const $$createType129 = VulnFinding.createFrom;
+const $$createType130 = $Create.Array($$createType129);
+const $$createType131 = FileChange.createFrom;
+const $$createType132 = $Create.Array($$createType131);

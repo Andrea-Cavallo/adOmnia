@@ -1726,11 +1726,20 @@ export function VCSWorkingDiff(sessionID: string, relativePath: string): $Cancel
 }
 
 /**
+ * VulnerabilityScan esegue govulncheck con percorsi di chiamata, versione corretta e catena di dipendenze.
+ */
+export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.VulnReport> {
+    return $Call.ByID(416955177, sessionID, moduleDirectory).then(($result: any) => {
+        return $$createType128($result);
+    });
+}
+
+/**
  * WatcherStatus indica se il progetto è osservato per intero o solo in parte.
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType128($result);
+        return $$createType129($result);
     });
 }
 
@@ -1739,7 +1748,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
  */
 export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goide$0.WorkspaceModule[]> {
     return $Call.ByID(368877389, sessionID).then(($result: any) => {
-        return $$createType130($result);
+        return $$createType131($result);
     });
 }
 
@@ -1748,7 +1757,7 @@ export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goi
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType132($result);
+        return $$createType133($result);
     });
 }
 
@@ -1895,8 +1904,9 @@ const $$createType124 = $Create.Array($$createType123);
 const $$createType125 = $Create.Map($Create.Any, $$createType124);
 const $$createType126 = goide$0.VCSStatus.createFrom;
 const $$createType127 = goide$0.VCSWorkingDiff.createFrom;
-const $$createType128 = goide$0.WatcherStatus.createFrom;
-const $$createType129 = goide$0.WorkspaceModule.createFrom;
-const $$createType130 = $Create.Array($$createType129);
-const $$createType131 = goide$0.WorkspaceSymbol.createFrom;
-const $$createType132 = $Create.Array($$createType131);
+const $$createType128 = goide$0.VulnReport.createFrom;
+const $$createType129 = goide$0.WatcherStatus.createFrom;
+const $$createType130 = goide$0.WorkspaceModule.createFrom;
+const $$createType131 = $Create.Array($$createType130);
+const $$createType132 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType133 = $Create.Array($$createType132);

@@ -7,6 +7,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
+- **Vulnerabilities panel in Go Studio (govulncheck):** *View → Vulnerabilities* (or **Vulns** in the status bar) scans the module on demand and ranks findings by reachability (called, imported, required only), with advisory details and aliases, found → fixed version, vulnerable symbols, up to five clickable call paths from your code to the vulnerable symbol (dependencies and stdlib open read-only), the module dependency path, an upgrade preview of the `go.mod` change with a confirmed `go get module@fixed`, and *Copy for AI* / *Save .md* / *Ask Copilot* Markdown export.
+
+### Fixed
+- **Dependency Graph vulnerability scan always came back empty:** govulncheck `-json` prints a stream of JSON messages, which the old parser read as a single object and silently discarded. Both the Dependency Graph and the new panel now read the stream, verified against real govulncheck v1.8.0 output.
+
+### Added
 - **Profiles from a running service:** Performance Studio → **From service** downloads a profile from `/debug/pprof` of a service on this machine (goroutines, heap, allocations, CPU for 1–60 s, block, mutex, thread creation), checks that it is a real pprof and saves it in the project root, where it opens. Goroutine and thread-creation profiles were the two that `go test` cannot produce. Localhost only, no proxy, trusted projects only.
 - **Call graph view:** Performance Studio draws the most expensive functions as a layered graph from callers to callees, with edge thickness by cost and colours by code origin. Recursion does not break the layout. Click highlights a function's calls; double-click opens its source.
 - **Line cost in the editor:** the open profile marks hot source lines in the editor with a heat bar in the gutter, the cost and share at the end of the lines that matter (≥ 1%), and a hover with the profile name. **Cost in editor** turns it off.
