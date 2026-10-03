@@ -28,7 +28,7 @@ require (
 	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.25
+	github.com/wailsapp/wails/v3 v3.0.0-beta.26
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/bbolt v1.5.0
 	go.mongodb.org/mongo-driver/v2 v2.9.1
@@ -46,7 +46,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.1
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.1
 	github.com/aymanbagabas/go-pty v0.2.3
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 )
 
