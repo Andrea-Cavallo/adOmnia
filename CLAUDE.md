@@ -157,8 +157,8 @@ adomnia/
 │   ├── docker/ loadtest/ plugins/      # lab, load testing, JS plugin runtime
 │   ├── themes/ templates/ git/         # customization and versioning
 │   ├── ide/                   #   IDE Platform core: language-agnostic (language registry,
-│   │                          #   project model, process, sdk…) — never imports languages/*
-│   ├── languages/golang/      #   Go adapter: detection, SDK, gopls, commands/test2json, Delve/runtime extensions
+│   │                          #   project model, run/workflows, testing, process, sdk…) — never imports languages/*
+│   ├── languages/golang/      #   Go adapter: detection, SDK, gopls, run options/test2json/race reports, Delve/runtime extensions
 │   ├── goide/                 #   Go Studio host: composition root + Service facade for Wails
 │   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend

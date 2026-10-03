@@ -1,6 +1,6 @@
 # gO Studio → adOmnia IDE Platform: refactor multi-language
 
-> Stato: **Fasi 1–7 e implementazione backend della Fase 9 completate; Fase 8 parziale.** Run/processi/configurazioni e albero test estratti; resta l'orchestrazione Run/Test nell'host. La UI multi-language (Fase 10) non è iniziata. Il completamento automatico non sostituisce lo smoke nativo della nuova build, ancora da osservare. Ultimo aggiornamento: 2026-10-03.
+> Stato: **Fasi 1–9 completate nel backend.** Run/Test sono orchestrati dal core e gli adapter possiedono comandi e parser. La UI multi-language (Fase 10) non è iniziata. Lo smoke nativo completo e le verifiche multipiattaforma restano in Fase 12. Ultimo aggiornamento: 2026-10-03.
 > Obiettivo: trasformare gO Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
 > riscritture e senza regressioni. Java/Rust/Python/TypeScript sono solo *scenari di validazione*:
 > **non** si implementano in questo refactor.
@@ -525,15 +525,15 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] Capability `UsageClassifier` e `DeclarationExtractor` nel core; Go le implementa con `go/ast` (`golang/usage.go`, `golang/declaration.go`). Usages e Quick Definition le usano tramite il registry: un linguaggio senza capability riceve il risultato LSP grezzo.
   - [x] Wails conserva gli alias Go come alias TS: il frontend non cambia (`LanguageServerSettings` = `golang.GoplsSettings`).
   - Scelta: **nessuna interfaccia `LanguageServerProvider` per ora.** L'unico consumatore sarebbe l'host, che chiama `golang.GoplsServerSpec` con impostazioni tipizzate Go; un provider generico richiederebbe impostazioni opache senza un consumatore reale. Entra nella Fase 10, quando la UI avvierà i server per linguaggio dalla facciata generica.
-- [ ] **Fase 8 — Run/Build/Test (parziale, non dichiarata conclusa).**
+- [x] **Fase 8 — Run/Build/Test (backend completato).**
   - [x] `ide/run.ProcessManager`: lifecycle, process tree, stdin, output UTF-8, limiti, storico, stop e shutdown. `SessionID`, `RunID`, `Execution`, `CommandSpec` e modelli comuni nel core; alias di compatibilità in `goide`.
   - [x] `ide/run.Manager`: CRUD, ordine, isolamento per sessione, import condiviso e redazione segreti. `Configuration` contiene `LanguageOptions` opaco e nessun campo Go. La normalizzazione specifica è iniettata dall'host.
   - [x] Capability `Runner` / `TestRunner` derivata dal registry. `golang.Language.CommandSpec` dichiara i kind Go; eliminato `supportedRunKinds`. `golang.TestCommand` costruisce il comando strutturato e fornisce il parser.
   - [x] `golang.RunOptions` e conversione dei campi legacy in lettura/nel manager; facciata e file condivisi continuano a leggere/scrivere i campi piatti per il frontend attuale. Test di caricamento legacy, round-trip opaco e segreti; validazione dei percorsi anche nei target extra delle opzioni opache.
   - [x] `ide/testing.Tree` aggrega eventi neutrali; `golang.Test2JSONParser` possiede JSON, benchmark, shuffle, timeout e riferimenti ai sorgenti Go. Builder e validazione dei flag Go nell'adapter.
-  - [ ] Completare `ide/testing.Manager`: proprietà delle run, storico e pubblicazione sono ancora in `goide/tests.go` / `service_tests.go`, con coverage e race report Go.
-  - [ ] Estrarre l'orchestrazione compound/pre-post, env file, porte e i comandi generici Make/Docker/command dall'host. Il core possiede già modelli, configurazioni e processi, ma non l'intero workflow.
-  - [ ] Eliminare la dipendenza della facciata di esecuzione dalla toolchain Go per linguaggi diversi; verificare un runner fittizio e `command` con PATH senza Go. Migrare la UI alle opzioni opache nella Fase 10; rimuovere i campi piatti nella Fase 11.
+  - [x] `ide/testing.Manager` possiede avvio, framing stdout, albero, snapshot/output, storico limitato, isolamento e pubblicazione progressiva/finale. Gestisce anche la coda senza newline e registra l’identità prima della callback di fine. Hook iniettati per metadati specifici: `golang.RaceCollector` e risoluzione sorgenti Go nell’adapter; coverage e conversione dei modelli Wails nel layer di compatibilità dell’host. Test su 23 run, storico di 20, isolamento degli snapshot, chiusura sessione e un solo evento finale.
+  - [x] `ide/run.Chain` / `Compound`, parametri comuni, env file, controllo porte e comandi generici nel core. `run.Tools` possiede Make, Docker build/run/compose e stop dei container; l’host inietta il percorso Make, autorizzazione e aggiornamento della richiesta per Rerun. `golang.ApplyRunOptions` / `ValidateRunOptions` possiedono GOOS/GOARCH, race, coverage e profiling. Gli identificatori persistiti e la label Docker legacy restano compatibili.
+  - [x] Run/Test scelgono capability dal registry; gli ambienti non-Go e Make/Docker/command/binary usano il preparatore comune senza selezione SDK Go. Runner fittizio reale con PATH privo di Go: apertura progetto/documento, configurazione salvata con opzioni opache, env file/precedenza esplicita/porta, Run via facade e `run.Manager`, Test con parser neutrale, storico/output e `command`. Anche le opzioni Go opache applicano flag/ambiente e coverage; package test opachi confinati al progetto. La migrazione UI resta in Fase 10, la rimozione dei campi piatti in Fase 11.
 - [x] **Fase 9 — Debug/Delve (implementazione backend verificata automaticamente).**
   - [x] `ide/dap.DebugManager` e store breakpoint nel core: nessun import dell'host o dell'adapter. Thread, stack, scope, variabili, watch, console, stepping e disassembly parlano solo DAP.
   - [x] `dap.AdapterSpec` fornisce ID, eseguibile, argomenti, ambiente, directory, titolo, launch/attach e hook per errori/evaluate/panic. Trasporti `Stdio` e `TCPListen` con pattern di readiness configurabile; remoto senza processo locale. Validazione della spec prima dello spawn, stderr separato dal protocollo stdio, chiusura di stream/processi e cleanup.
@@ -618,7 +618,7 @@ Manuale (per fase): checklist di `todo-ide.md` — apertura progetto, completame
 
 ## 21. Verifica e pubblicazione delle prime nove fasi — 2026-10-03
 
-Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incremento chiude le due osservazioni dell'audit LSP (argomenti di startup nella `ServerSpec`; richieste workspace/symbol parallele con timeout indipendenti e risultati parziali), pubblica le estrazioni Run/Test effettivamente realizzate e completa il backend DAP/Delve della Fase 9. **Non dichiara concluse tutte le prime nove fasi:** i residui della Fase 8 sono elencati sopra.
+Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incremento chiude le due osservazioni dell'audit LSP (argomenti di startup nella `ServerSpec`; richieste workspace/symbol parallele con timeout indipendenti e risultati parziali), pubblica le estrazioni Run/Test effettivamente realizzate e completa il backend DAP/Delve della Fase 9. **Alla pubblicazione di `daa2e89` la Fase 8 era ancora parziale.** Il completamento successivo è documentato nella sezione 22.
 
 | Verifica eseguita | Esito / limite |
 |---|---|
@@ -635,4 +635,26 @@ Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incr
 | `wails3 task dev` con CLI beta.26 | Compilazione frontend e binario Windows riuscite. Lo smoke della nuova build non è osservato: l'istanza già aperta ha intercettato l'avvio single-instance. |
 | Altre piattaforme | Build macOS/Linux e relativo smoke non eseguiti in questo ambiente Windows. |
 
-Prossimo lavoro: completare i tre residui di Fase 8, quindi Fase 10 (contribuzioni UI e capability per linguaggio), Fase 11 (alias/campi legacy/cache/store coupling) e Fase 12 (smoke completo e verifiche multipiattaforma). Il frontend corrente continua a essere Go Studio; non esiste ancora un workflow utente per un secondo linguaggio.
+Dopo il completamento della Fase 8 (sezione 22), il prossimo lavoro è la Fase 10 (contribuzioni UI e capability per linguaggio), Fase 11 (alias/campi legacy/cache/store coupling) e Fase 12 (smoke completo e verifiche multipiattaforma). Il frontend corrente continua a essere Go Studio; non esiste ancora un workflow utente per un secondo linguaggio.
+
+## 22. Completamento della Fase 8 — 2026-10-03
+
+I tre residui di Fase 8 sono chiusi. Il core assume il lifecycle dei test e dei workflow Run; la facciata compone autorizzazione, documenti, registry, SDK Go solo per Go e metadati compatibili con Wails. Le API pubbliche e i JSON legacy non cambiano. Le configurazioni di altri linguaggi conservano `LanguageOptions` fino all’esecuzione e possono usare i kind dichiarati dal loro adapter, senza un elenco globale nel core.
+
+Le nuove regressioni verificano il workflow con eseguibili reali, non solo la costruzione di argomenti: nessun Go nel PATH; runner e parser di un linguaggio fittizio; `.env` e porte; comando generico; identità delle run veloci; flush della riga finale; storico limitato e isolamento degli snapshot. Le opzioni Go opache sono coperte per race/coverage/profiling/GOOS/GOARCH e per i test con coverage reale e package confinati.
+
+| Verifica | Esito |
+|---|---|
+| `go build ./...` / `go vet ./...` | PASS; controllo vet mirato ripetuto dopo l’ultima correzione delle callback. |
+| `go test ./... -count=1 -timeout=240s` | PASS; host `internal/goide` 144.153 s, core testing 2.930 s; PATH include gopls e Delve gestiti. |
+| Regressioni mirate `-race` | PASS: workflow senza Go, opzioni opache Go, storico/snapshot, catene e configurazioni, callback contemporanee build/container. Le ultime correzioni sono verificate anche dopo la suite generale. |
+| Make reale | PASS; Docker reale SKIP per daemon non attivo. |
+| Test architetturali core/adapter | PASS, compresi nella suite completa. |
+| Binding Wails `v3.0.0-beta.26` | PASS: 17 servizi, 588 metodi, 315 modelli; contratti pubblici invariati. |
+| `npx tsc --noEmit` / `npm run build` | PASS. Nessuna modifica funzionale alla UI. |
+| `npm run check:startup` | PASS: 620.225 byte JS iniziali, nessun deferred sullo startup. |
+| `git diff --check` | PASS. |
+
+La callback che memorizza le richieste Make/Docker copia i dati per ogni invocazione: una build molto rapida e il container successivo non modificano più la stessa richiesta catturata. La regressione esegue entrambe le callback contemporaneamente e controlla separatamente le richieste di Rerun, anche con il race detector.
+
+Limiti osservati: Make end-to-end passa; Docker end-to-end è saltato perché il daemon Docker Desktop non è attivo (costruzione comandi, percorsi e segreti sono coperti dai test). Nessuna verifica manuale della nuova build desktop o di macOS/Linux in questo incremento: restano nella Fase 12. Restano aperte soltanto le Fasi 10, 11 e 12.

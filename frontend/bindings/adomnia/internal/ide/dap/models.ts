@@ -115,7 +115,7 @@ export class DebugFrame {
 }
 
 /**
- * DebugInstruction è un'istruzione macchina con la riga Go che l'ha generata, se nota.
+ * DebugInstruction è un'istruzione macchina con la riga sorgente che l'ha generata, se nota.
  */
 export class DebugInstruction {
     "address": string;

@@ -77,7 +77,12 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		}
 		config = normalized
 	default:
-		return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+		if config.Language == "" || config.Language == golang.ID {
+			return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+		}
+		if !json.Valid(config.LanguageOptions) {
+			return RunConfiguration{}, fmt.Errorf("opzioni del linguaggio non valide")
+		}
 	}
 	if config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
 		config.Docker = DockerOptions{}

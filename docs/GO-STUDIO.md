@@ -12,7 +12,7 @@ The debugger lifecycle, breakpoint store and DAP operations live in `internal/id
 
 Run configurations also have additive `language` / `languageOptions` fields. The core stores language options as opaque JSON. Legacy Go fields remain accepted and exposed by the facade for the current frontend; persisted state keys, workspace schema and `.adomnia/run-configurations.json` format/version remain unchanged. Explicit secret environment values are still removed from snapshots and shared files.
 
-Phases 1–7 and the phase 9 backend implementation are complete. Phase 8 remains partial: process ownership, configuration storage, Go command builders and the neutral test tree are extracted, while Run/Test orchestration remains in the host. Phase 10 (frontend contributions), phase 11 (remaining coupling) and phase 12 (complete native validation) remain open. See [the migration plan](architecture/ide-multilanguage-refactor.md) for the precise checklist and verification limits.
+Phases 1–9 are complete in the backend. The shared core owns processes, configurations, Run chains/compound execution, generic Make/Docker/command workflows and test lifecycle/history/publication. Go adapters own command options, test2json, race reports and Go source interpretation; the Wails facade preserves existing APIs and persisted fields. A fixture language runs and tests through the registry with no Go on PATH, including saved opaque options, environment files and generic commands. Phase 10 (frontend contributions), phase 11 (remaining coupling) and phase 12 (complete native validation) remain open. See [the migration plan](architecture/ide-multilanguage-refactor.md) for the precise checklist and verification limits.
 
 ## Using Go Studio
 

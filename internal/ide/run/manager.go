@@ -3,6 +3,7 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -22,7 +23,29 @@ type Manager struct {
 }
 
 func NewManager(normalize func(Configuration) (Configuration, error)) *Manager {
+	if normalize == nil {
+		normalize = NormalizeParameters
+	}
 	return &Manager{normalize: normalize, configs: make(map[SessionID][]Configuration)}
+}
+
+func (m *Manager) CommandSpec(runner Runner, request Request) (CommandSpec, error) {
+	if runner == nil || !slices.Contains(runner.RunKinds(), request.Kind) {
+		return CommandSpec{}, fmt.Errorf("tipo di esecuzione non supportato: %s", request.Kind)
+	}
+	return runner.CommandSpec(request)
+}
+
+func (m *Manager) Start(processes *ProcessManager, session SessionID, runner Runner, request Request) (Execution, error) {
+	spec, err := m.CommandSpec(runner, request)
+	if err != nil {
+		return Execution{}, err
+	}
+	spec.SessionID, spec.Kind, spec.WorkingDirectory = session, request.Kind, request.WorkingDirectory
+	if spec.Environment == nil {
+		spec.Environment = request.Environment
+	}
+	return processes.Start(spec)
 }
 
 // List restituisce le configurazioni della sessione ordinate come le vede l'utente.

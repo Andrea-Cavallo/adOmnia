@@ -6,6 +6,7 @@ import (
 )
 
 type Request struct {
+	Root             string
 	Executable       string
 	WorkingDirectory string
 	Environment      []string

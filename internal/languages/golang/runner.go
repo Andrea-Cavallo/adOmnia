@@ -9,6 +9,7 @@ import (
 
 	"adomnia/internal/ide/project"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/ide/sdk"
 )
 
 // RunOptions belongs to the Go adapter; the core stores its JSON unchanged.
@@ -32,12 +33,30 @@ func (l *Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if !slices.Contains(l.RunKinds(), request.Kind) {
 		return run.CommandSpec{}, fmt.Errorf("tipo Go non supportato: %s", request.Kind)
 	}
+	if request.Kind == "go-tool" && !ValidSubcommand(request.Target) {
+		return run.CommandSpec{}, fmt.Errorf("comando go non valido: %q", request.Target)
+	}
 	var options RunOptions
 	if len(request.LanguageOptions) > 0 {
 		if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
 			return run.CommandSpec{}, fmt.Errorf("opzioni Go non valide: %w", err)
 		}
 	}
+	if err := project.EnsureWithin(request.Root, request.WorkingDirectory); err != nil {
+		return run.CommandSpec{}, err
+	}
+	environment := make(map[string]string)
+	for _, entry := range request.Environment {
+		if k, v, ok := strings.Cut(entry, "="); ok {
+			environment[k] = v
+		}
+	}
+	var err error
+	options.GoArguments, err = ApplyRunOptions(request.WorkingDirectory, request.Kind, options, environment)
+	if err != nil {
+		return run.CommandSpec{}, err
+	}
+	request.Environment = sdk.EnvironmentList(environment)
 	if err := ValidateGoArguments(request.Root, request.WorkingDirectory, options.GoArguments); err != nil {
 		return run.CommandSpec{}, err
 	}

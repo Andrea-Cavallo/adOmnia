@@ -15,6 +15,11 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
 		return run.CommandSpec{}, nil, fmt.Errorf("opzioni test Go non valide: %w", err)
 	}
+	for _, pattern := range options.Packages {
+		if err := run.ValidateTarget(request.Root, request.WorkingDirectory, strings.TrimSuffix(pattern, "/...")); err != nil {
+			return run.CommandSpec{}, nil, err
+		}
+	}
 	arguments, err := TestArguments(options, request.CoverageFile)
 	if err != nil {
 		return run.CommandSpec{}, nil, err

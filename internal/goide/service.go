@@ -636,7 +636,14 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	})
 }
 
-// Generic commands belong to the host; language kinds are declared by adapters.
+func (s *Service) executionEnvironment(id SessionID, languageID string, overrides map[string]string) ([]string, error) {
+	if languageID == golang.ID || languageID == "" {
+		return s.toolchain.Environment(id, overrides)
+	}
+	return run.Environment(overrides)
+}
+
+// Language kinds are declared by adapters.
 func (s *Service) runAdapter(id, kind string) (language.Runner, error) {
 	if id == "" {
 		id = golang.ID
@@ -687,7 +694,11 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 	if err != nil {
 		return CommandSpec{}, err
 	}
-	return runner.CommandSpec(run.Request{Kind: kind, Root: session.Project.RealPath, WorkingDirectory: workingDirectory, Target: target, Executable: binary, ProgramArguments: request.ProgramArguments, LanguageOptions: options})
+	environment, err := s.executionEnvironment(sessionID, request.Language, request.Environment)
+	if err != nil {
+		return CommandSpec{}, err
+	}
+	return s.runConfigs.core.CommandSpec(runner, run.Request{Environment: environment, Kind: kind, Root: session.Project.RealPath, WorkingDirectory: workingDirectory, Target: target, Executable: binary, ProgramArguments: request.ProgramArguments, LanguageOptions: options})
 }
 
 // resolveProjectBinary risolve un binario già compilato, confinato al progetto e non una cartella.
@@ -743,7 +754,11 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if err := validateGoArguments(session.Project.RealPath, workingDirectory, request.GoArguments); err != nil {
 		return Execution{}, err
 	}
-	environment, err := s.toolchain.Environment(session.ID, request.Environment)
+	languageID := request.Language
+	if kind == "binary" {
+		languageID = "generic"
+	}
+	environment, err := s.executionEnvironment(session.ID, languageID, request.Environment)
 	if err != nil {
 		return Execution{}, err
 	}
@@ -751,7 +766,10 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if err != nil {
 		return Execution{}, err
 	}
-	spec.SessionID, spec.Kind, spec.WorkingDirectory, spec.Environment = session.ID, kind, workingDirectory, environment
+	spec.SessionID, spec.Kind, spec.WorkingDirectory = session.ID, kind, workingDirectory
+	if spec.Environment == nil {
+		spec.Environment = environment
+	}
 	execution, err := s.processes.Start(spec)
 	if err != nil {
 		return Execution{}, err
@@ -770,24 +788,7 @@ func (s *Service) rememberRunRequest(runID RunID, request RunRequest) {
 	s.runMu.Unlock()
 }
 
-func validateRunTarget(root, workingDirectory, target string) error {
-	trimmed := strings.TrimSpace(target)
-	if trimmed == "" || strings.HasPrefix(trimmed, "-") || strings.ContainsRune(trimmed, '\x00') {
-		return fmt.Errorf("target Go non valido")
-	}
-	converted := filepath.FromSlash(trimmed)
-	if filepath.IsAbs(converted) || filepath.VolumeName(converted) != "" {
-		return fmt.Errorf("il target deve restare relativo al progetto")
-	}
-	candidate := filepath.Clean(filepath.Join(workingDirectory, converted))
-	if err := ensureWithinRoot(root, candidate); err != nil {
-		return err
-	}
-	if resolved, err := filepath.EvalSymlinks(candidate); err == nil {
-		return ensureWithinRoot(root, resolved)
-	}
-	return nil
-}
+var validateRunTarget = run.ValidateTarget
 
 var validateGoArguments = golang.ValidateGoArguments
 

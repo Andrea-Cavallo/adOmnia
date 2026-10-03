@@ -4953,14 +4953,7 @@ export class TerminalSession {
 export const TestResult = testing$0.TestResult;
 export type TestResult = testing$0.TestResult;
 
-/**
- * TestRunRequest descrive un'esecuzione di `go test -json`: package, filtro -run, benchmark e coverage.
- */
 export const TestRunRequest = golang$0.TestOptions;
-
-/**
- * TestRunRequest descrive un'esecuzione di `go test -json`: package, filtro -run, benchmark e coverage.
- */
 export type TestRunRequest = golang$0.TestOptions;
 
 /**

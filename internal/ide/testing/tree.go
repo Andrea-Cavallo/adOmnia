@@ -251,6 +251,10 @@ func (t *Tree) Snapshot() ([]TestResult, TestSummary) {
 	summary := TestSummary{}
 	for _, id := range t.order {
 		node := *t.nodes[id]
+		if node.Failure != nil {
+			location := *node.Failure
+			node.Failure = &location
+		}
 		results = append(results, node)
 		if t.hasChild[id] {
 			continue
