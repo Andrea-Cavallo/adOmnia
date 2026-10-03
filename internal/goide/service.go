@@ -68,7 +68,7 @@ type Service struct {
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	service := &Service{
-		workspace:        NewWorkspaceManager(),
+		workspace:        NewWorkspaceManager(newLanguageRegistry()),
 		studioWorkspaces: newStudioWorkspaceRegistry(),
 		documents:        NewDocumentManager(),
 		toolchain:        NewToolchainManager(),
@@ -101,7 +101,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	})
 	service.debug.SetEmitter(service.emit)
 	service.installer = NewToolchainInstaller(func(eventType string, installation ToolchainInstallation) {
-		service.emit(eventType, installation.SessionID, installation.ID, installation)
+		service.emit(eventType, SessionID(installation.SessionID), installation.ID, installation)
 	})
 	service.processes.SetEventSink(func(eventType string, execution Execution, payload any) {
 		if eventType == "run.finished" {
@@ -434,7 +434,7 @@ func (s *Service) DetectToolchain(sessionID string) (ToolchainInfo, error) {
 	if err != nil {
 		return ToolchainInfo{}, err
 	}
-	info := s.toolchain.Detect(session)
+	info := s.toolchain.Detect(session.ID, session.Project.RealPath)
 	s.emit("toolchain.detected", session.ID, string(session.ID), info)
 	if info.Available && !info.Cached {
 		_ = s.saveState()
@@ -532,7 +532,7 @@ func (s *Service) InstallToolchain(request InstallToolchainRequest) (ToolchainIn
 		if installErr != nil || !request.Activate {
 			return
 		}
-		_ = s.configureInstalledToolchain(request.SessionID, binary)
+		_ = s.configureInstalledToolchain(SessionID(request.SessionID), binary)
 	})
 }
 

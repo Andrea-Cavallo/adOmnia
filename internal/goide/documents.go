@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"adomnia/internal/ide/project"
 )
 
 const (
@@ -21,11 +23,6 @@ const (
 	MaxQuickOpenFiles         = 20_000
 	MaxQuickOpenResults       = 100
 )
-
-var ignoredProjectDirectories = map[string]struct{}{
-	".git": {}, ".idea": {}, ".vscode": {}, "node_modules": {}, "vendor": {},
-	"bin": {}, "build": {}, "dist": {}, "coverage": {}, ".cache": {},
-}
 
 type documentRecord struct {
 	document  Document
@@ -345,14 +342,7 @@ func (m *DocumentManager) resolveDirectory(project Project, relativePath string)
 }
 
 func ensureWithinRoot(root, candidate string) error {
-	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
-	if err != nil {
-		return fmt.Errorf("impossibile verificare il percorso: %w", err)
-	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
-		return fmt.Errorf("il percorso richiesto è esterno al progetto")
-	}
-	return nil
+	return project.EnsureWithin(root, candidate)
 }
 
 // imageMimeType restituisce il MIME di un'immagine supportata dall'anteprima, se il percorso ne ha l'estensione.
@@ -509,6 +499,5 @@ func languageForPath(path string) string {
 }
 
 func isIgnoredDirectory(name string) bool {
-	_, ignored := ignoredProjectDirectories[strings.ToLower(name)]
-	return ignored
+	return project.IgnoredDirectory(name)
 }

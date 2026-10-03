@@ -184,7 +184,7 @@ func parseEnvFile(data []byte) (map[string]string, error) {
 		line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
 		key, value, found := strings.Cut(line, "=")
 		key = strings.TrimSpace(key)
-		if !found || !environmentNamePattern.MatchString(key) {
+		if !found || !validEnvironmentName(key) {
 			return nil, fmt.Errorf("env file, riga %d: atteso NOME=valore", number)
 		}
 		value = strings.TrimSpace(value)

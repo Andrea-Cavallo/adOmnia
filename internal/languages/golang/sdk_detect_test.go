@@ -1,106 +1,18 @@
-package goide
+package golang
 
 import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	"adomnia/internal/languages/golang/golangtest"
 )
 
-// fakeGoSource è un `go` finto: version risponde subito, env dorme FAKE_GO_ENV_SLEEP e annota la cartella di lavoro.
-const fakeGoSource = `package main
-
-import (
-	"fmt"
-	"os"
-	"time"
-)
-
-func main() {
-	wd, _ := os.Getwd()
-	if log := os.Getenv("FAKE_GO_LOG"); log != "" {
-		f, _ := os.OpenFile(log, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		fmt.Fprintf(f, "%s|%s|%s\n", os.Args[1], wd, os.Getenv("GOTOOLCHAIN"))
-		f.Close()
-	}
-	switch os.Args[1] {
-	case "version":
-		fmt.Println("go version go1.26.0 fake/amd64")
-	case "env":
-		if d, err := time.ParseDuration(os.Getenv("FAKE_GO_ENV_SLEEP")); err == nil {
-			time.Sleep(d)
-		}
-		for _, key := range os.Args[2:] {
-			switch key {
-			case "GOPATH":
-				fmt.Println("/fake/gopath")
-			case "GOPROXY":
-				fmt.Println(os.Getenv("GOPROXY"))
-			case "GOTOOLCHAIN":
-				fmt.Println("auto")
-			default:
-				fmt.Println("")
-			}
-		}
-	}
-}
-`
-
-var buildFakeGoOnce sync.Once
-var fakeGoBuilt string
-
-// fakeGoSDK crea <root>/bin/go(.exe) e, se withVersionFile, <root>/VERSION come in un SDK ufficiale.
-func fakeGoSDK(t *testing.T, withVersionFile bool) string {
-	t.Helper()
-	buildFakeGoOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "fakego")
-		if err != nil {
-			return
-		}
-		source := filepath.Join(dir, "main.go")
-		_ = os.WriteFile(source, []byte(fakeGoSource), 0o644)
-		output := filepath.Join(dir, "go"+exeSuffix())
-		build := exec.Command("go", "build", "-o", output, source)
-		build.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOFLAGS=")
-		if out, err := build.CombinedOutput(); err == nil {
-			fakeGoBuilt = output
-		} else {
-			t.Logf("build fake go: %v %s", err, out)
-		}
-	})
-	if fakeGoBuilt == "" {
-		t.Skip("impossibile compilare il go finto")
-	}
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "bin"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(fakeGoBuilt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binary := filepath.Join(root, "bin", "go"+exeSuffix())
-	if err := os.WriteFile(binary, data, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if withVersionFile {
-		if err := os.WriteFile(filepath.Join(root, "VERSION"), []byte("go1.26.0\ntime 2026-01-01T00:00:00Z\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return binary
-}
-
-func exeSuffix() string {
-	if runtime.GOOS == "windows" {
-		return ".exe"
-	}
-	return ""
-}
+// testSession è il minimo che il manager conosce di una sessione: ID e cartella del progetto.
+type testSession struct{ ID, Root string }
 
 func timingOf(info ToolchainInfo, phase string) (ToolchainTiming, bool) {
 	for _, timing := range info.Timings {
@@ -111,14 +23,14 @@ func timingOf(info ToolchainInfo, phase string) (ToolchainTiming, bool) {
 	return ToolchainTiming{}, false
 }
 
-func detectSession(t *testing.T, manager *ToolchainManager, binary string) Session {
+func detectSession(t *testing.T, manager *ToolchainManager[string], binary string) testSession {
 	t.Helper()
 	project := t.TempDir()
 	// Un go.mod che chiede una toolchain più nuova: dentro il progetto go tenterebbe un download.
 	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module x\n\ngo 1.26\n\ntoolchain go1.99.0\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	session := Session{ID: SessionID("s-" + filepath.Base(project)), Project: Project{RealPath: project, RootPath: project}}
+	session := testSession{ID: "s-" + filepath.Base(project), Root: project}
 	if err := manager.Configure(session.ID, ToolchainConfiguration{GoBinary: binary}); err != nil {
 		t.Fatal(err)
 	}
@@ -126,17 +38,17 @@ func detectSession(t *testing.T, manager *ToolchainManager, binary string) Sessi
 }
 
 func TestDetectIsUsableBeforeSlowGoEnvAndNeverRunsInTheProject(t *testing.T) {
-	binary := fakeGoSDK(t, true)
+	binary := golangtest.FakeSDK(t, true)
 	logFile := filepath.Join(t.TempDir(), "calls.log")
 	t.Setenv("FAKE_GO_LOG", logFile)
 	t.Setenv("FAKE_GO_ENV_SLEEP", "1500ms")
-	manager := NewToolchainManager()
+	manager := NewToolchainManager[string]()
 	done := make(chan ToolchainInfo, 1)
-	manager.SetNotifier(func(_ SessionID, info ToolchainInfo) { done <- info })
+	manager.SetNotifier(func(_ string, info ToolchainInfo) { done <- info })
 	session := detectSession(t, manager, binary)
 
 	started := time.Now()
-	info := manager.Detect(session)
+	info := manager.Detect(session.ID, session.Root)
 	elapsed := time.Since(started)
 	if !info.Available || !info.EnvPending || info.SDKVersion != "go1.26.0" {
 		t.Fatalf("SDK non disponibile subito: %+v", info)
@@ -165,7 +77,7 @@ func TestDetectIsUsableBeforeSlowGoEnvAndNeverRunsInTheProject(t *testing.T) {
 		t.Fatal("go env in background mai completato")
 	}
 	calls, _ := os.ReadFile(logFile)
-	if strings.Contains(strings.ToLower(string(calls)), strings.ToLower(session.Project.RealPath)) {
+	if strings.Contains(strings.ToLower(string(calls)), strings.ToLower(session.Root)) {
 		t.Fatalf("go è stato eseguito nella cartella del progetto:\n%s", calls)
 	}
 	if strings.Contains(string(calls), "version|") {
@@ -174,13 +86,13 @@ func TestDetectIsUsableBeforeSlowGoEnvAndNeverRunsInTheProject(t *testing.T) {
 }
 
 func TestGoEnvTimeoutKeepsAWorkingSDKAndCachedValues(t *testing.T) {
-	binary := fakeGoSDK(t, true)
-	manager := NewToolchainManager()
+	binary := golangtest.FakeSDK(t, true)
+	manager := NewToolchainManager[string]()
 	results := make(chan ToolchainInfo, 2)
-	manager.SetNotifier(func(_ SessionID, info ToolchainInfo) { results <- info })
+	manager.SetNotifier(func(_ string, info ToolchainInfo) { results <- info })
 	session := detectSession(t, manager, binary)
 	t.Setenv("FAKE_GO_ENV_SLEEP", "0s")
-	manager.Detect(session)
+	manager.Detect(session.ID, session.Root)
 	first := <-results
 	if first.GOPATH != "/fake/gopath" {
 		t.Fatalf("primo go env: %+v", first)
@@ -192,7 +104,7 @@ func TestGoEnvTimeoutKeepsAWorkingSDKAndCachedValues(t *testing.T) {
 	t.Cleanup(func() { envQueryTimeout = previous })
 	t.Setenv("FAKE_GO_ENV_SLEEP", "5s")
 	started := time.Now()
-	cached := manager.Detect(session)
+	cached := manager.Detect(session.ID, session.Root)
 	if !cached.Available || !cached.Cached || time.Since(started) > 200*time.Millisecond {
 		t.Fatalf("il secondo avvio deve usare la cache subito: %+v (%s)", cached, time.Since(started))
 	}
@@ -212,12 +124,12 @@ func TestGoEnvTimeoutKeepsAWorkingSDKAndCachedValues(t *testing.T) {
 }
 
 func TestDetectFallsBackToGoVersionOutsideTheProjectAndRevalidatesAChangedBinary(t *testing.T) {
-	binary := fakeGoSDK(t, false)
+	binary := golangtest.FakeSDK(t, false)
 	logFile := filepath.Join(t.TempDir(), "calls.log")
 	t.Setenv("FAKE_GO_LOG", logFile)
-	manager := NewToolchainManager()
+	manager := NewToolchainManager[string]()
 	session := detectSession(t, manager, binary)
-	info := manager.Detect(session)
+	info := manager.Detect(session.ID, session.Root)
 	if !info.Available || info.SDKVersion != "go1.26.0" {
 		t.Fatalf("ripiego su go version fallito: %+v", info)
 	}
@@ -230,57 +142,8 @@ func TestDetectFallsBackToGoVersionOutsideTheProjectAndRevalidatesAChangedBinary
 	if err := os.Chtimes(binary, future, future); err != nil {
 		t.Fatal(err)
 	}
-	if again := manager.Detect(session); again.Cached {
+	if again := manager.Detect(session.ID, session.Root); again.Cached {
 		t.Fatalf("un binario cambiato non deve usare la cache: %+v", again)
-	}
-}
-
-func TestDetectedToolchainSurvivesRestart(t *testing.T) {
-	binary := fakeGoSDK(t, true)
-	t.Setenv("FAKE_GO_ENV_SLEEP", "0s")
-	project := t.TempDir()
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module x\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	store := &memoryStore{}
-	recorder := &eventRecorder{}
-	first := NewService(store, recorder.record)
-	session, err := first.OpenProject(project)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config := ToolchainConfiguration{GoBinary: binary, Environment: map[string]string{"GOPRIVATE": "corp.example.com/*"}}
-	if err := first.ConfigureToolchain(string(session.ID), config); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := first.DetectToolchain(string(session.ID)); err != nil {
-		t.Fatal(err)
-	}
-	recorder.waitFor(t, 10*time.Second, func(event EventEnvelope) bool {
-		info, ok := event.Payload.(ToolchainInfo)
-		return event.Type == "toolchain.detected" && ok && !info.EnvPending
-	})
-	first.Shutdown()
-
-	second := NewService(store, nil)
-	t.Cleanup(second.Shutdown)
-	if err := second.restore(); err != nil {
-		t.Fatal(err)
-	}
-	restored, ok := second.toolchain.LastDetected(session.ID)
-	if !ok || restored.GoBinary == "" || restored.GOPATH != "/fake/gopath" {
-		t.Fatalf("SDK salvato non ripristinato dopo il riavvio: %+v", restored)
-	}
-	if settings := second.toolchain.Settings(session.ID); settings.Project == nil || settings.Project.Environment["GOPRIVATE"] != "corp.example.com/*" {
-		t.Fatalf("configurazione utente persa al riavvio: %+v", settings)
-	}
-	started := time.Now()
-	info, err := second.DetectToolchain(string(session.ID))
-	if err != nil || !info.Available || !info.Cached {
-		t.Fatalf("al riavvio la config salvata va caricata senza discovery completa: %v %+v", err, info)
-	}
-	if load, ok := timingOf(info, "Load saved Go config"); !ok || load.Millis >= 100 || time.Since(started) > 300*time.Millisecond {
-		t.Fatalf("caricamento della config salvata troppo lento: %+v (%s)", info.Timings, time.Since(started))
 	}
 }
 
@@ -294,7 +157,7 @@ func TestProcessEnvironmentInheritsCorporateVariablesWithoutOverriding(t *testin
 	}
 	t.Setenv("GOTOOLCHAIN", "")
 	os.Unsetenv("GOTOOLCHAIN")
-	manager := NewToolchainManager()
+	manager := NewToolchainManager[string]()
 	environment, err := manager.Environment("s", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -339,12 +202,12 @@ func TestRealGoDetectionIgnoresAnUnreachableProxy(t *testing.T) {
 	}
 	t.Setenv("GOPROXY", "http://10.255.255.1:3128")
 	t.Setenv("HTTPS_PROXY", "http://10.255.255.1:3128")
-	manager := NewToolchainManager()
+	manager := NewToolchainManager[string]()
 	done := make(chan ToolchainInfo, 1)
-	manager.SetNotifier(func(_ SessionID, info ToolchainInfo) { done <- info })
+	manager.SetNotifier(func(_ string, info ToolchainInfo) { done <- info })
 	session := detectSession(t, manager, "")
 	started := time.Now()
-	info := manager.Detect(session)
+	info := manager.Detect(session.ID, session.Root)
 	if !info.Available || time.Since(started) > 2*time.Second {
 		t.Fatalf("Go reale non disponibile subito: %+v (%s)", info, time.Since(started))
 	}
@@ -359,46 +222,5 @@ func TestRealGoDetectionIgnoresAnUnreachableProxy(t *testing.T) {
 		t.Logf("timings: %+v", refreshed.Timings)
 	case <-time.After(15 * time.Second):
 		t.Fatal("go env bloccato dal proxy")
-	}
-}
-
-// Un gopls o un golangci-lint rotti non devono toccare l'SDK rilevato.
-func TestToolFailuresDoNotInvalidateTheGoSDK(t *testing.T) {
-	binary := fakeGoSDK(t, true)
-	t.Setenv("FAKE_GO_ENV_SLEEP", "0s")
-	project := t.TempDir()
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module x\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	service := NewService(&memoryStore{}, nil)
-	t.Cleanup(service.Shutdown)
-	session, err := service.OpenProject(project)
-	if err != nil {
-		t.Fatal(err)
-	}
-	id := string(session.ID)
-	if _, err := service.SetToolAuthorization(id, true); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ConfigureToolchain(id, ToolchainConfiguration{GoBinary: binary}); err != nil {
-		t.Fatal(err)
-	}
-	if info, err := service.DetectToolchain(id); err != nil || !info.Available {
-		t.Fatalf("SDK: %v %+v", err, info)
-	}
-	broken := filepath.Join(t.TempDir(), "broken"+exeSuffix())
-	if err := os.WriteFile(broken, []byte("not an executable"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	_ = service.ConfigureGopls(id, broken)
-	if _, err := service.StartLanguageServer(id, LanguageServerSettings{}); err == nil {
-		t.Log("gopls rotto accettato all'avvio: l'errore arriverà dal processo")
-	}
-	_ = service.ConfigureLinter(id, broken)
-	if _, err := service.RunLint(t.Context(), id); err == nil {
-		t.Fatal("un linter rotto deve fallire")
-	}
-	if info, ok := service.toolchain.LastDetected(session.ID); !ok || info.GoBinary != binary {
-		t.Fatalf("un errore di gopls o del linter ha invalidato l'SDK: %+v", info)
 	}
 }

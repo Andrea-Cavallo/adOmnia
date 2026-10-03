@@ -1,6 +1,10 @@
 package goide
 
-import "time"
+import (
+	"time"
+
+	"adomnia/internal/ide/project"
+)
 
 type SessionID string
 type DocumentID string
@@ -39,6 +43,9 @@ type Project struct {
 	Modules       []GoModule         `json:"modules"`
 	LooseGoDirs   []string           `json:"looseGoDirs,omitempty"`
 	Authorization AuthorizationState `json:"authorization"`
+	// Units sono le unità di build rilevate dai language adapter (multi-linguaggio);
+	// i campi Go qui sopra ne sono derivati finché il frontend li legge.
+	Units []project.Unit `json:"units"`
 }
 
 type Session struct {

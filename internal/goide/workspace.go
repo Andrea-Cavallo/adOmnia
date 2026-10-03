@@ -1,7 +1,7 @@
 package goide
 
 import (
-	"bufio"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -9,26 +9,24 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
-)
 
-const (
-	maxModuleScanDirectories = 4_000
-	maxLooseGoDirectories    = 50
+	"adomnia/internal/ide/language"
+	"adomnia/internal/languages/golang"
 )
 
 var projectNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$`)
 
 type WorkspaceManager struct {
-	mu       sync.RWMutex
-	sessions map[SessionID]Session
+	mu        sync.RWMutex
+	sessions  map[SessionID]Session
+	languages *language.Registry
 }
 
-func NewWorkspaceManager() *WorkspaceManager {
-	return &WorkspaceManager{sessions: make(map[SessionID]Session)}
+func NewWorkspaceManager(languages *language.Registry) *WorkspaceManager {
+	return &WorkspaceManager{sessions: make(map[SessionID]Session), languages: languages}
 }
 
 // OpenProject registra una cartella locale nel workspace Go Studio indicato, senza eseguire comandi.
@@ -40,7 +38,7 @@ func (m *WorkspaceManager) OpenProject(path, workspaceID string) (Session, error
 	}
 
 	now := time.Now().UTC()
-	project := inspectProject(root, realRoot)
+	project := inspectProject(m.languages, root, realRoot)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, existing := range m.sessions {
@@ -139,7 +137,8 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 	if !ok {
 		return Session{}, fmt.Errorf("sessione Go Studio non trovata")
 	}
-	fresh := inspectProject(session.Project.RootPath, session.Project.RealPath)
+	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath)
+	session.Project.Units = fresh.Units
 	session.Project.Modules, session.Project.LooseGoDirs = fresh.Modules, fresh.LooseGoDirs
 	session.Project.GoModPath, session.Project.GoWorkPath = fresh.GoModPath, fresh.GoWorkPath
 	session.UpdatedAt = time.Now().UTC()
@@ -210,8 +209,9 @@ func resolveProjectRoot(path string) (string, string, error) {
 	return abs, realRoot, nil
 }
 
-func inspectProject(root, realRoot string) Project {
-	project := Project{
+// inspectProject chiede ai language adapter le unità del progetto, senza eseguire comandi.
+func inspectProject(languages *language.Registry, root, realRoot string) Project {
+	result := Project{
 		ID:            newID("project"),
 		Name:          filepath.Base(root),
 		RootPath:      root,
@@ -219,102 +219,34 @@ func inspectProject(root, realRoot string) Project {
 		Modules:       []GoModule{},
 		Authorization: AuthorizationOpened,
 	}
-	project.Modules, project.LooseGoDirs = discoverModules(root)
-	for _, module := range project.Modules {
-		if samePath(module.Path, root) {
-			project.GoModPath = filepath.Join(root, "go.mod")
-			break
-		}
-	}
-	goWork := filepath.Join(root, "go.work")
-	if info, err := os.Stat(goWork); err == nil && !info.IsDir() {
-		project.GoWorkPath = goWork
-	}
-	return project
+	// La detection di un linguaggio non blocca l'apertura: un detector in errore restituisce
+	// comunque le unità trovate (come prima, quando gli errori del walk venivano ignorati).
+	result.Units, _ = languages.DetectUnits(context.Background(), root)
+	applyGoUnits(&result)
+	return result
 }
 
-// discoverModules trova i go.mod del progetto e le cartelle con file .go non coperte da alcun modulo.
-func discoverModules(root string) ([]GoModule, []string) {
-	modules := make([]GoModule, 0, 4)
-	goDirectories := make(map[string]struct{})
-	visited := 0
-	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if entry != nil && entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if entry.IsDir() {
-			if path != root && isIgnoredDirectory(entry.Name()) {
-				return filepath.SkipDir
-			}
-			visited++
-			if visited > maxModuleScanDirectories {
-				return filepath.SkipAll
-			}
-			return nil
-		}
-		name := entry.Name()
-		if strings.EqualFold(name, "go.mod") {
-			modules = append(modules, GoModule{Path: filepath.Dir(path), ModulePath: readModulePath(path)})
-			return nil
-		}
-		if strings.EqualFold(filepath.Ext(name), ".go") {
-			goDirectories[filepath.Dir(path)] = struct{}{}
-		}
-		return nil
-	})
-	sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
-	return modules, looseGoDirectories(root, modules, goDirectories)
-}
-
-func looseGoDirectories(root string, modules []GoModule, goDirectories map[string]struct{}) []string {
-	loose := make([]string, 0)
-	for directory := range goDirectories {
-		if insideAnyModule(directory, modules) {
+// applyGoUnits deriva i campi Go legacy di Project dalle unità Go, finché il frontend li legge
+// (rimozione prevista nella Fase 11 del refactor multi-language).
+func applyGoUnits(target *Project) {
+	for _, unit := range target.Units {
+		if unit.Language != golang.ID {
 			continue
 		}
-		rel, err := filepath.Rel(root, directory)
-		if err != nil {
-			continue
-		}
-		loose = append(loose, filepath.ToSlash(rel))
-	}
-	sort.Strings(loose)
-	if len(loose) > maxLooseGoDirectories {
-		loose = loose[:maxLooseGoDirectories]
-	}
-	return loose
-}
-
-func insideAnyModule(directory string, modules []GoModule) bool {
-	for _, module := range modules {
-		if ensureWithinRoot(module.Path, directory) == nil {
-			return true
+		switch unit.Kind {
+		case golang.UnitModule:
+			target.Modules = append(target.Modules, GoModule{Path: unit.Root, ModulePath: unit.Name})
+			if samePath(unit.Root, target.RootPath) {
+				target.GoModPath = filepath.Join(target.RootPath, "go.mod")
+			}
+		case golang.UnitWorkspace:
+			target.GoWorkPath = unit.Manifest
+		case golang.UnitLoose:
+			if rel, err := filepath.Rel(target.RootPath, unit.Root); err == nil {
+				target.LooseGoDirs = append(target.LooseGoDirs, filepath.ToSlash(rel))
+			}
 		}
 	}
-	return false
-}
-
-func readModulePath(path string) string {
-	file, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
-		}
-	}
-	return ""
-}
-
-func samePath(left, right string) bool {
-	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
 }
 
 func newID(prefix string) string {

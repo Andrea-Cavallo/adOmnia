@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"adomnia/internal/languages/golang"
 )
 
 const baseCoverageTimeout = 10 * time.Minute
@@ -150,7 +152,7 @@ func runBaseCoverage(ctx context.Context, binary string, environment []string, b
 		}
 		return CoverageReport{}, false, fmt.Errorf("go test sul branch base non ha prodotto coverage: %s", message)
 	}
-	report, err := buildCoverageReport(baseProject, module, readModulePath(filepath.Join(moduleDir, "go.mod")), data)
+	report, err := buildCoverageReport(baseProject, module, golang.ReadModulePath(filepath.Join(moduleDir, "go.mod")), data)
 	return report, runErr != nil, err
 }
 

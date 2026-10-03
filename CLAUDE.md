@@ -32,6 +32,15 @@ The *primary goal* is a **professional, coherent, modern, and truly usable FINAL
 
 **Rule:** when in doubt, bias toward what the user sees and touches. Internal code quality matters only insofar as it enables a better product.
 
+### Build to extend, reuse what exists (MANTRA)
+
+Every change should leave the codebase **easier to extend tomorrow** and should **reuse what already exists** instead of copying it:
+
+- **Look before you write.** Search for an existing manager, helper, store, component or binding that already does (most of) the job, and extend or extract it. Five copies of the same "find this tool on PATH" logic is a bug, not a style.
+- **Generic in the core, specific in the adapter.** Logic that would work for another language, protocol or provider goes in the shared layer; only what is truly specific goes in the specific module (see *Multi-language IDE Platform* below).
+- **Extract behind a small interface when a second consumer is real or imminent**, not "just in case". Extensible is not the same as speculative: no interface with one imaginary implementation, no config for a value that never changes.
+- **Keep public contracts stable while you refactor.** Wails binding names, persisted JSON and workspace files stay compatible; migrate in loaders, alias during moves.
+
 ---
 
 ## Current Project Status (HONEST ASSESSMENT)
@@ -61,6 +70,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
 | `docs/GO-STUDIO.md` | Go Studio (the integrated Go IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `todo-ide.md`. |
+| `docs/architecture/ide-multilanguage-refactor.md` | Go Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration plan with live status. Read it before touching anything under `internal/goide`, `internal/ide` or `internal/languages`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -88,7 +98,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 Requires Go 1.26.5+, Node.js 22.13.0+, and the Wails 3 CLI:
 
 ```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.25
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.26
 ```
 
 ### Development
@@ -146,6 +156,10 @@ adomnia/
 │   ├── database/ storage/ vault/       # local data and secrets
 │   ├── docker/ loadtest/ plugins/      # lab, load testing, JS plugin runtime
 │   ├── themes/ templates/ git/         # customization and versioning
+│   ├── ide/                   #   IDE Platform core: language-agnostic (language registry,
+│   │                          #   project model, process, sdk…) — never imports languages/*
+│   ├── languages/golang/      #   Go language adapter (detection, Go SDK, later gopls/Delve/runner)
+│   ├── goide/                 #   Go Studio host: composition root + Service facade for Wails
 │   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend
 │   ├── src/components/        # UI panels and components
@@ -215,7 +229,7 @@ The `@wailsio/runtime` npm version is **version-locked** to `github.com/wailsapp
 | Docker Lab | `internal/docker`, `frontend/src/lib/dockerlab-api.ts` |
 | Customization | `internal/themes`, `internal/plugins`, `internal/templates` |
 | Git Sync | `internal/git`, `git_bindings.go`, `git_bindings_ops.go` |
-| Go Studio (Go IDE) | `internal/goide` (+ `lsp`, `dap`), `internal/goidewindow`, `goide_bindings.go`, `frontend/src/components/goide/`, `frontend/src/stores/goide*.ts` |
+| Go Studio (Go IDE) | `internal/goide` (host: composition root + facade, + `lsp`, `dap` until moved), `internal/ide/*` (language-agnostic core), `internal/languages/golang` (Go adapter), `internal/goidewindow`, `goide_bindings.go`, `frontend/src/components/goide/`, `frontend/src/stores/goide*.ts` |
 
 **IPC:** Frontend calls backend through Wails generated bindings.  
 **CORS:** Desktop backend has system/network access; do not add unsafe browser-side workarounds.  
@@ -387,9 +401,20 @@ if (request.auth.type === 'aws4') {
 2. Keep logic local unless reusable elsewhere
 3. Follow existing switch/state patterns
 
+### Multi-language IDE Platform (Go Studio)
+
+Go Studio is being refactored from "a Go IDE" into **adOmnia IDE Platform + Go Language Adapter** (plan and status: `docs/architecture/ide-multilanguage-refactor.md`). Rules that already apply:
+
+- **Dependency direction:** `internal/goide` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/goide`.
+- **Languages are registered in one place:** `internal/goide/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.
+- **Capabilities are small interfaces** in `internal/ide/language` (`Language`, `ProjectDetector`, …), discovered by type assertion. Add a capability only together with its first real consumer in the core.
+- **Projects are made of `project.Unit`s** (a `go.mod`, tomorrow a `pom.xml`/`package.json`), so one folder can mix languages. Go-only `Project` fields (`GoModPath`, `Modules`…) are derived from units for the current UI and will be removed in a later phase.
+- **The Wails service `GoIDE` stays the stable facade** (213 methods) during the migration; moved types are re-exported as aliases in `internal/goide` so bindings and call sites keep working.
+- The Go adapter package is named `golang` (`go` is a keyword).
+
 ### Add a Go Studio feature
 
-1. Put the logic in `internal/goide`, owned by the manager for that resource (processes, LSP, debug, terminal…), and keep the `Service` method thin. Any feature that starts a process must check `session.Project.Authorization == AuthorizationPermitted`.
+1. Decide where it belongs: language-agnostic behaviour (editor, terminal, processes, search, SDK plumbing…) goes in `internal/ide/*`; Go-only behaviour (gopls, Delve, go.mod, pprof…) goes in `internal/languages/golang`; the `internal/goide` `Service` method only wires and stays thin. Existing code not yet migrated still lives in `internal/goide`: extend it in place, or move it if you are already touching it and the phase plan says so. Any feature that starts a process must check `session.Project.Authorization == AuthorizationPermitted`.
 2. Expose it in `goide_bindings.go` and regenerate the bindings with the `wails3` version pinned in `go.mod`.
 3. Add a command to `frontend/src/components/goide/goStudioCommands.ts` (menu, label, binding, and an availability reason when disabled), then handle it in `GoStudioPanel.tsx`. Menus, shortcuts and the help dialog all read that registry.
 4. Route backend events by `sessionId`/`resourceId` in the matching `stores/goide*.ts` store; never let state cross sessions.
@@ -481,7 +506,7 @@ When working in this repo, think like a **product engineer**, not a code monkey:
 4. **Connect backend and frontend** — if a Go method/binding exists without UI, that's the priority
 5. **Every panel must feel like part of the same product** — visual cohesion, same UX patterns, same design language
 6. **Prefer small, surgical edits** — don't refactor unrelated code
-7. **Reuse existing patterns** — follow component structure, storage keys, auth flows
+7. **Reuse and extend, don't duplicate** — follow component structure, storage keys, auth flows; extract shared code instead of copying it, and design for the next consumer (another language, protocol, provider) without speculative abstractions
 8. **Keep it local-first** — no external network calls without explicit user action
 9. **Document breaking changes** — especially in workspace format or storage keys
 10. Before finalizing, summarize changed files and verification commands
@@ -514,6 +539,7 @@ Four files live at the root — everything else is under `docs/`:
 
 | File | Purpose |
 |------|---------|
+| `docs/architecture/ide-multilanguage-refactor.md` | IDE Platform + language adapters: architecture, rules, migration plan and status |
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |

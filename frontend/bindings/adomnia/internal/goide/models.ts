@@ -5,6 +5,13 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as project$0 from "../ide/project/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as golang$0 from "../languages/golang/models.js";
+
 export enum AuthorizationState {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -3178,63 +3185,29 @@ export class InlayHintsResult {
     }
 }
 
-export class InstallToolchainRequest {
-    "sessionId": SessionID;
-    "version": string;
-    "confirmed": boolean;
-    "activate": boolean;
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const InstallToolchainRequest = golang$0.InstallToolchainRequest;
 
-    /** Creates a new InstallToolchainRequest instance. */
-    constructor($$source: Partial<InstallToolchainRequest> = {}) {
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("version" in $$source)) {
-            this["version"] = "";
-        }
-        if (!("confirmed" in $$source)) {
-            this["confirmed"] = false;
-        }
-        if (!("activate" in $$source)) {
-            this["activate"] = false;
-        }
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type InstallToolchainRequest = golang$0.InstallToolchainRequest;
 
-        Object.assign(this, $$source);
-    }
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const InstalledToolchain = golang$0.InstalledToolchain;
 
-    /**
-     * Creates a new InstallToolchainRequest instance from a string or object.
-     */
-    static createFrom($$source: any = {}): InstallToolchainRequest {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new InstallToolchainRequest($$parsedSource as Partial<InstallToolchainRequest>);
-    }
-}
-
-export class InstalledToolchain {
-    "version": string;
-    "goBinary": string;
-
-    /** Creates a new InstalledToolchain instance. */
-    constructor($$source: Partial<InstalledToolchain> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = "";
-        }
-        if (!("goBinary" in $$source)) {
-            this["goBinary"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new InstalledToolchain instance from a string or object.
-     */
-    static createFrom($$source: any = {}): InstalledToolchain {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new InstalledToolchain($$parsedSource as Partial<InstalledToolchain>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type InstalledToolchain = golang$0.InstalledToolchain;
 
 /**
  * LanguageServerFeatures descrive le funzioni opzionali annunciate da gopls all'avvio.
@@ -4230,6 +4203,12 @@ export class Project {
     "looseGoDirs"?: string[];
     "authorization": AuthorizationState;
 
+    /**
+     * Units sono le unità di build rilevate dai language adapter (multi-linguaggio);
+     * i campi Go qui sopra ne sono derivati finché il frontend li legge.
+     */
+    "units": project$0.Unit[];
+
     /** Creates a new Project instance. */
     constructor($$source: Partial<Project> = {}) {
         if (!("id" in $$source)) {
@@ -4250,6 +4229,9 @@ export class Project {
         if (!("authorization" in $$source)) {
             this["authorization"] = AuthorizationState.$zero;
         }
+        if (!("units" in $$source)) {
+            this["units"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -4260,12 +4242,16 @@ export class Project {
     static createFrom($$source: any = {}): Project {
         const $$createField6_0 = $$createType83;
         const $$createField7_0 = $$createType2;
+        const $$createField9_0 = $$createType85;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField6_0($$parsedSource["modules"]);
         }
         if ("looseGoDirs" in $$parsedSource) {
             $$parsedSource["looseGoDirs"] = $$createField7_0($$parsedSource["looseGoDirs"]);
+        }
+        if ("units" in $$parsedSource) {
+            $$parsedSource["units"] = $$createField9_0($$parsedSource["units"]);
         }
         return new Project($$parsedSource as Partial<Project>);
     }
@@ -4377,7 +4363,7 @@ export class ProjectTemplateList {
      * Creates a new ProjectTemplateList instance from a string or object.
      */
     static createFrom($$source: any = {}): ProjectTemplateList {
-        const $$createField0_0 = $$createType85;
+        const $$createField0_0 = $$createType87;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("templates" in $$parsedSource) {
             $$parsedSource["templates"] = $$createField0_0($$parsedSource["templates"]);
@@ -4605,7 +4591,7 @@ export class RecursiveCallsResult {
      * Creates a new RecursiveCallsResult instance from a string or object.
      */
     static createFrom($$source: any = {}): RecursiveCallsResult {
-        const $$createField1_0 = $$createType87;
+        const $$createField1_0 = $$createType89;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("calls" in $$parsedSource) {
             $$parsedSource["calls"] = $$createField1_0($$parsedSource["calls"]);
@@ -4781,7 +4767,7 @@ export class RunConfiguration {
         const $$createField9_0 = $$createType2;
         const $$createField10_0 = $$createType2;
         const $$createField11_0 = $$createType37;
-        const $$createField12_0 = $$createType88;
+        const $$createField12_0 = $$createType90;
         const $$createField19_0 = $$createType2;
         const $$createField21_0 = $$createType2;
         const $$createField22_0 = $$createType2;
@@ -4937,7 +4923,7 @@ export class RunRequest {
         const $$createField6_0 = $$createType2;
         const $$createField7_0 = $$createType2;
         const $$createField8_0 = $$createType19;
-        const $$createField9_0 = $$createType88;
+        const $$createField9_0 = $$createType90;
         const $$createField10_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("extraTargets" in $$parsedSource) {
@@ -5079,7 +5065,7 @@ export class SearchResult {
      * Creates a new SearchResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SearchResult {
-        const $$createField0_0 = $$createType90;
+        const $$createField0_0 = $$createType92;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("matches" in $$parsedSource) {
             $$parsedSource["matches"] = $$createField0_0($$parsedSource["matches"]);
@@ -5108,7 +5094,7 @@ export class SemanticTokensResult {
      * Creates a new SemanticTokensResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SemanticTokensResult {
-        const $$createField1_0 = $$createType91;
+        const $$createField1_0 = $$createType93;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("data" in $$parsedSource) {
             $$parsedSource["data"] = $$createField1_0($$parsedSource["data"]);
@@ -5150,7 +5136,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField1_0 = $$createType92;
+        const $$createField1_0 = $$createType94;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField1_0($$parsedSource["project"]);
@@ -5225,12 +5211,12 @@ export class SessionView {
      */
     static createFrom($$source: any = {}): SessionView {
         const $$createField0_0 = $$createType2;
-        const $$createField10_0 = $$createType94;
-        const $$createField11_0 = $$createType96;
-        const $$createField13_0 = $$createType99;
+        const $$createField10_0 = $$createType96;
+        const $$createField11_0 = $$createType98;
+        const $$createField13_0 = $$createType101;
         const $$createField14_0 = $$createType47;
-        const $$createField16_0 = $$createType101;
-        const $$createField17_0 = $$createType103;
+        const $$createField16_0 = $$createType103;
+        const $$createField17_0 = $$createType105;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openPaths" in $$parsedSource) {
             $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
@@ -5311,7 +5297,7 @@ export class SignatureEntry {
      * Creates a new SignatureEntry instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureEntry {
-        const $$createField2_0 = $$createType105;
+        const $$createField2_0 = $$createType107;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("parameters" in $$parsedSource) {
             $$parsedSource["parameters"] = $$createField2_0($$parsedSource["parameters"]);
@@ -5370,7 +5356,7 @@ export class SignatureResult {
      * Creates a new SignatureResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SignatureResult {
-        const $$createField1_0 = $$createType107;
+        const $$createField1_0 = $$createType109;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("signatures" in $$parsedSource) {
             $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
@@ -5501,9 +5487,9 @@ export class SonarScanResult {
      * Creates a new SonarScanResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SonarScanResult {
-        const $$createField2_0 = $$createType109;
-        const $$createField5_0 = $$createType110;
-        const $$createField6_0 = $$createType110;
+        const $$createField2_0 = $$createType111;
+        const $$createField5_0 = $$createType112;
+        const $$createField6_0 = $$createType112;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("issues" in $$parsedSource) {
             $$parsedSource["issues"] = $$createField2_0($$parsedSource["issues"]);
@@ -5635,7 +5621,7 @@ export class StudioWorkspaces {
      * Creates a new StudioWorkspaces instance from a string or object.
      */
     static createFrom($$source: any = {}): StudioWorkspaces {
-        const $$createField0_0 = $$createType112;
+        const $$createField0_0 = $$createType114;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("workspaces" in $$parsedSource) {
             $$parsedSource["workspaces"] = $$createField0_0($$parsedSource["workspaces"]);
@@ -5929,7 +5915,7 @@ export class TestResult {
      * Creates a new TestResult instance from a string or object.
      */
     static createFrom($$source: any = {}): TestResult {
-        const $$createField8_0 = $$createType114;
+        const $$createField8_0 = $$createType116;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("failure" in $$parsedSource) {
             $$parsedSource["failure"] = $$createField8_0($$parsedSource["failure"]);
@@ -6087,10 +6073,10 @@ export class TestRunSnapshot {
      * Creates a new TestRunSnapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): TestRunSnapshot {
-        const $$createField2_0 = $$createType115;
-        const $$createField5_0 = $$createType116;
-        const $$createField6_0 = $$createType118;
-        const $$createField10_0 = $$createType120;
+        const $$createField2_0 = $$createType117;
+        const $$createField5_0 = $$createType118;
+        const $$createField6_0 = $$createType120;
+        const $$createField10_0 = $$createType122;
         const $$createField11_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
@@ -6148,263 +6134,65 @@ export class TestSummary {
     }
 }
 
-export class ToolchainConfiguration {
-    "goBinary": string;
-    "environment"?: { [_ in string]?: string };
-
-    /** Creates a new ToolchainConfiguration instance. */
-    constructor($$source: Partial<ToolchainConfiguration> = {}) {
-        if (!("goBinary" in $$source)) {
-            this["goBinary"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ToolchainConfiguration instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainConfiguration {
-        const $$createField1_0 = $$createType19;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
-        }
-        return new ToolchainConfiguration($$parsedSource as Partial<ToolchainConfiguration>);
-    }
-}
-
-export class ToolchainInfo {
-    "available": boolean;
-    "goBinary"?: string;
-    "version"?: string;
-    "goroot"?: string;
-    "gopath"?: string;
-    "goproxy"?: string;
-    "goprivate"?: string;
-    "gomodcache"?: string;
-    "gonosumdb"?: string;
-    "gonoproxy"?: string;
-    "cgoEnabled"?: string;
-    "goos"?: string;
-    "goarch"?: string;
-    "goflags"?: string;
-    "gotoolchain"?: string;
-
-    /**
-     * GoDirective e ToolchainDirective vengono dal go.mod alla radice del progetto.
-     */
-    "goDirective"?: string;
-    "toolchainDirective"?: string;
-
-    /**
-     * Scope vale "project" se la sessione ha una configurazione propria, altrimenti "global".
-     */
-    "scope"?: string;
-    "warning"?: string;
-    "error"?: string;
-
-    /**
-     * EnvPending: le variabili di go env sono in lettura in background; EnvError non invalida l'SDK.
-     */
-    "envPending"?: boolean;
-    "envError"?: string;
-
-    /**
-     * Cached: valori di go env presi dall'ultimo rilevamento salvato (stesso binario, stessa data).
-     */
-    "cached"?: boolean;
-    "timings"?: ToolchainTiming[];
-
-    /**
-     * BinaryStamp (dimensione e data del binario) valida la cache senza eseguire go.
-     */
-    "binaryStamp"?: string;
-
-    /**
-     * SDKVersion è la versione locale dell'SDK (es. go1.26.3), letta senza avviare go quando possibile.
-     */
-    "sdkVersion"?: string;
-
-    /** Creates a new ToolchainInfo instance. */
-    constructor($$source: Partial<ToolchainInfo> = {}) {
-        if (!("available" in $$source)) {
-            this["available"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ToolchainInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType122;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("timings" in $$parsedSource) {
-            $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
-        }
-        return new ToolchainInfo($$parsedSource as Partial<ToolchainInfo>);
-    }
-}
-
-export class ToolchainInstallation {
-    "id": string;
-    "sessionId": SessionID;
-    "version": string;
-    "status": string;
-    "downloadedBytes": number;
-    "totalBytes": number;
-    "message"?: string;
-    "goBinary"?: string;
-    "log": string[];
-
-    /** Creates a new ToolchainInstallation instance. */
-    constructor($$source: Partial<ToolchainInstallation> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("version" in $$source)) {
-            this["version"] = "";
-        }
-        if (!("status" in $$source)) {
-            this["status"] = "";
-        }
-        if (!("downloadedBytes" in $$source)) {
-            this["downloadedBytes"] = 0;
-        }
-        if (!("totalBytes" in $$source)) {
-            this["totalBytes"] = 0;
-        }
-        if (!("log" in $$source)) {
-            this["log"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ToolchainInstallation instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainInstallation {
-        const $$createField8_0 = $$createType2;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("log" in $$parsedSource) {
-            $$parsedSource["log"] = $$createField8_0($$parsedSource["log"]);
-        }
-        return new ToolchainInstallation($$parsedSource as Partial<ToolchainInstallation>);
-    }
-}
-
-export class ToolchainRelease {
-    "version": string;
-    "filename": string;
-    "sha256": string;
-    "size": number;
-    "stable": boolean;
-    "os": string;
-    "arch": string;
-
-    /** Creates a new ToolchainRelease instance. */
-    constructor($$source: Partial<ToolchainRelease> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = "";
-        }
-        if (!("filename" in $$source)) {
-            this["filename"] = "";
-        }
-        if (!("sha256" in $$source)) {
-            this["sha256"] = "";
-        }
-        if (!("size" in $$source)) {
-            this["size"] = 0;
-        }
-        if (!("stable" in $$source)) {
-            this["stable"] = false;
-        }
-        if (!("os" in $$source)) {
-            this["os"] = "";
-        }
-        if (!("arch" in $$source)) {
-            this["arch"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ToolchainRelease instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainRelease {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ToolchainRelease($$parsedSource as Partial<ToolchainRelease>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const ToolchainConfiguration = golang$0.ToolchainConfiguration;
 
 /**
- * ToolchainSettings espone la configurazione del progetto (se presente) e quella globale.
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
  */
-export class ToolchainSettings {
-    "project"?: ToolchainConfiguration | null;
-    "global": ToolchainConfiguration;
-
-    /** Creates a new ToolchainSettings instance. */
-    constructor($$source: Partial<ToolchainSettings> = {}) {
-        if (!("global" in $$source)) {
-            this["global"] = (new ToolchainConfiguration());
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ToolchainSettings instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType124;
-        const $$createField1_0 = $$createType123;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("project" in $$parsedSource) {
-            $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
-        }
-        if ("global" in $$parsedSource) {
-            $$parsedSource["global"] = $$createField1_0($$parsedSource["global"]);
-        }
-        return new ToolchainSettings($$parsedSource as Partial<ToolchainSettings>);
-    }
-}
+export type ToolchainConfiguration = golang$0.ToolchainConfiguration;
 
 /**
- * ToolchainTiming è la durata di una fase del rilevamento, per capire cosa rallenta.
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
  */
-export class ToolchainTiming {
-    "phase": string;
-    "ms": number;
-    "note"?: string;
+export const ToolchainInfo = golang$0.ToolchainInfo;
 
-    /** Creates a new ToolchainTiming instance. */
-    constructor($$source: Partial<ToolchainTiming> = {}) {
-        if (!("phase" in $$source)) {
-            this["phase"] = "";
-        }
-        if (!("ms" in $$source)) {
-            this["ms"] = 0;
-        }
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type ToolchainInfo = golang$0.ToolchainInfo;
 
-        Object.assign(this, $$source);
-    }
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const ToolchainInstallation = golang$0.ToolchainInstallation;
 
-    /**
-     * Creates a new ToolchainTiming instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ToolchainTiming {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ToolchainTiming($$parsedSource as Partial<ToolchainTiming>);
-    }
-}
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type ToolchainInstallation = golang$0.ToolchainInstallation;
+
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const ToolchainRelease = golang$0.ToolchainRelease;
+
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type ToolchainRelease = golang$0.ToolchainRelease;
+
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export const ToolchainSettings = golang$0.ToolchainSettings;
+
+/**
+ * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
+ * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
+ */
+export type ToolchainSettings = golang$0.ToolchainSettings;
 
 /**
  * TraceEvent è un evento puntuale della timeline (log, task, regione, metrica).
@@ -6435,7 +6223,7 @@ export class TraceEvent {
      * Creates a new TraceEvent instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceEvent {
-        const $$createField4_0 = $$createType126;
+        const $$createField4_0 = $$createType124;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
@@ -6523,8 +6311,8 @@ export class TraceGoroutine {
      * Creates a new TraceGoroutine instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceGoroutine {
-        const $$createField4_0 = $$createType126;
-        const $$createField5_0 = $$createType128;
+        const $$createField4_0 = $$createType124;
+        const $$createField5_0 = $$createType126;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("startStack" in $$parsedSource) {
             $$parsedSource["startStack"] = $$createField4_0($$parsedSource["startStack"]);
@@ -6563,7 +6351,7 @@ export class TraceProc {
      * Creates a new TraceProc instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceProc {
-        const $$createField2_0 = $$createType128;
+        const $$createField2_0 = $$createType126;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("spans" in $$parsedSource) {
             $$parsedSource["spans"] = $$createField2_0($$parsedSource["spans"]);
@@ -6605,7 +6393,7 @@ export class TraceRange {
      * Creates a new TraceRange instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceRange {
-        const $$createField5_0 = $$createType126;
+        const $$createField5_0 = $$createType124;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField5_0($$parsedSource["stack"]);
@@ -6662,11 +6450,11 @@ export class TraceReport {
      * Creates a new TraceReport instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceReport {
-        const $$createField3_0 = $$createType130;
-        const $$createField4_0 = $$createType132;
-        const $$createField5_0 = $$createType134;
-        const $$createField6_0 = $$createType136;
-        const $$createField7_0 = $$createType137;
+        const $$createField3_0 = $$createType128;
+        const $$createField4_0 = $$createType130;
+        const $$createField5_0 = $$createType132;
+        const $$createField6_0 = $$createType134;
+        const $$createField7_0 = $$createType135;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField3_0($$parsedSource["goroutines"]);
@@ -6716,7 +6504,7 @@ export class TraceSpan {
      * Creates a new TraceSpan instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceSpan {
-        const $$createField4_0 = $$createType126;
+        const $$createField4_0 = $$createType124;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
@@ -7019,7 +6807,7 @@ export class VCSStatus {
      */
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField7_0 = $$createType2;
-        const $$createField8_0 = $$createType139;
+        const $$createField8_0 = $$createType137;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("branches" in $$parsedSource) {
             $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
@@ -7122,7 +6910,7 @@ export class WorkspaceChange {
      * Creates a new WorkspaceChange instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType141;
+        const $$createField1_0 = $$createType139;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
@@ -7311,61 +7099,59 @@ const $$createType80 = ProfileLine.createFrom;
 const $$createType81 = $Create.Array($$createType80);
 const $$createType82 = GoModule.createFrom;
 const $$createType83 = $Create.Array($$createType82);
-const $$createType84 = ProjectTemplate.createFrom;
+const $$createType84 = project$0.Unit.createFrom;
 const $$createType85 = $Create.Array($$createType84);
-const $$createType86 = RecursiveCall.createFrom;
+const $$createType86 = ProjectTemplate.createFrom;
 const $$createType87 = $Create.Array($$createType86);
-const $$createType88 = DockerOptions.createFrom;
-const $$createType89 = SearchMatch.createFrom;
-const $$createType90 = $Create.Array($$createType89);
-const $$createType91 = $Create.Array($Create.Any);
-const $$createType92 = Project.createFrom;
-const $$createType93 = Bookmark.createFrom;
-const $$createType94 = $Create.Array($$createType93);
-const $$createType95 = NavigationEntry.createFrom;
+const $$createType88 = RecursiveCall.createFrom;
+const $$createType89 = $Create.Array($$createType88);
+const $$createType90 = DockerOptions.createFrom;
+const $$createType91 = SearchMatch.createFrom;
+const $$createType92 = $Create.Array($$createType91);
+const $$createType93 = $Create.Array($Create.Any);
+const $$createType94 = Project.createFrom;
+const $$createType95 = Bookmark.createFrom;
 const $$createType96 = $Create.Array($$createType95);
-const $$createType97 = Breakpoint.createFrom;
+const $$createType97 = NavigationEntry.createFrom;
 const $$createType98 = $Create.Array($$createType97);
-const $$createType99 = $Create.Map($Create.Any, $$createType98);
-const $$createType100 = CursorPosition.createFrom;
-const $$createType101 = $Create.Array($$createType100);
-const $$createType102 = SplitView.createFrom;
-const $$createType103 = $Create.Nullable($$createType102);
-const $$createType104 = SignatureParameter.createFrom;
-const $$createType105 = $Create.Array($$createType104);
-const $$createType106 = SignatureEntry.createFrom;
+const $$createType99 = Breakpoint.createFrom;
+const $$createType100 = $Create.Array($$createType99);
+const $$createType101 = $Create.Map($Create.Any, $$createType100);
+const $$createType102 = CursorPosition.createFrom;
+const $$createType103 = $Create.Array($$createType102);
+const $$createType104 = SplitView.createFrom;
+const $$createType105 = $Create.Nullable($$createType104);
+const $$createType106 = SignatureParameter.createFrom;
 const $$createType107 = $Create.Array($$createType106);
-const $$createType108 = SonarIssue.createFrom;
+const $$createType108 = SignatureEntry.createFrom;
 const $$createType109 = $Create.Array($$createType108);
-const $$createType110 = $Create.Map($Create.Any, $Create.Any);
-const $$createType111 = StudioWorkspace.createFrom;
-const $$createType112 = $Create.Array($$createType111);
-const $$createType113 = TestLocation.createFrom;
-const $$createType114 = $Create.Nullable($$createType113);
-const $$createType115 = TestRunRequest.createFrom;
-const $$createType116 = TestSummary.createFrom;
-const $$createType117 = TestResult.createFrom;
-const $$createType118 = $Create.Array($$createType117);
-const $$createType119 = CoverageReport.createFrom;
-const $$createType120 = $Create.Nullable($$createType119);
-const $$createType121 = ToolchainTiming.createFrom;
-const $$createType122 = $Create.Array($$createType121);
-const $$createType123 = ToolchainConfiguration.createFrom;
-const $$createType124 = $Create.Nullable($$createType123);
-const $$createType125 = TraceFrame.createFrom;
+const $$createType110 = SonarIssue.createFrom;
+const $$createType111 = $Create.Array($$createType110);
+const $$createType112 = $Create.Map($Create.Any, $Create.Any);
+const $$createType113 = StudioWorkspace.createFrom;
+const $$createType114 = $Create.Array($$createType113);
+const $$createType115 = TestLocation.createFrom;
+const $$createType116 = $Create.Nullable($$createType115);
+const $$createType117 = TestRunRequest.createFrom;
+const $$createType118 = TestSummary.createFrom;
+const $$createType119 = TestResult.createFrom;
+const $$createType120 = $Create.Array($$createType119);
+const $$createType121 = CoverageReport.createFrom;
+const $$createType122 = $Create.Nullable($$createType121);
+const $$createType123 = TraceFrame.createFrom;
+const $$createType124 = $Create.Array($$createType123);
+const $$createType125 = TraceSpan.createFrom;
 const $$createType126 = $Create.Array($$createType125);
-const $$createType127 = TraceSpan.createFrom;
+const $$createType127 = TraceGoroutine.createFrom;
 const $$createType128 = $Create.Array($$createType127);
-const $$createType129 = TraceGoroutine.createFrom;
+const $$createType129 = TraceProc.createFrom;
 const $$createType130 = $Create.Array($$createType129);
-const $$createType131 = TraceProc.createFrom;
+const $$createType131 = TraceRange.createFrom;
 const $$createType132 = $Create.Array($$createType131);
-const $$createType133 = TraceRange.createFrom;
+const $$createType133 = TraceEvent.createFrom;
 const $$createType134 = $Create.Array($$createType133);
-const $$createType135 = TraceEvent.createFrom;
-const $$createType136 = $Create.Array($$createType135);
-const $$createType137 = TraceStats.createFrom;
-const $$createType138 = VCSFileChange.createFrom;
+const $$createType135 = TraceStats.createFrom;
+const $$createType136 = VCSFileChange.createFrom;
+const $$createType137 = $Create.Array($$createType136);
+const $$createType138 = FileChange.createFrom;
 const $$createType139 = $Create.Array($$createType138);
-const $$createType140 = FileChange.createFrom;
-const $$createType141 = $Create.Array($$createType140);

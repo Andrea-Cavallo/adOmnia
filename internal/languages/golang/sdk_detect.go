@@ -1,4 +1,4 @@
-package goide
+package golang
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"adomnia/internal/devlog"
+	"adomnia/internal/ide/sdk"
 )
 
 // versionQueryTimeout vale solo per il ripiego `go version` quando manca il file VERSION dell'SDK.
@@ -27,15 +28,6 @@ var toolchainEnvKeys = []string{"GOROOT", "GOPATH", "GOPROXY", "GOPRIVATE", "GOM
 // lenta costava oltre 20 secondi e faceva scadere il rilevamento).
 func neutralDirectory() string {
 	return os.TempDir()
-}
-
-// binaryStamp identifica il binario Go senza eseguirlo: cambia se l'SDK viene aggiornato o sostituito.
-func binaryStamp(binary string) string {
-	info, err := os.Stat(binary)
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%d:%d", info.Size(), info.ModTime().UnixNano())
 }
 
 // sdkVersionFile legge la versione dal file VERSION dell'SDK (GOROOT/VERSION, accanto a bin/go):
@@ -57,27 +49,28 @@ func sdkVersionFile(binary string) string {
 
 // Detect rende disponibile l'SDK con sole operazioni locali (lookup del binario e versione) e legge
 // go env in background. Con lo stesso binario dell'ultima volta riusa subito i valori salvati.
-func (m *ToolchainManager) Detect(session Session) ToolchainInfo {
-	info := m.detectFast(session)
+// projectRoot è la cartella reale del progetto: serve solo a leggere le direttive del go.mod.
+func (m *ToolchainManager[K]) Detect(sessionID K, projectRoot string) ToolchainInfo {
+	info := m.detectFast(sessionID, projectRoot)
 	m.mu.Lock()
-	m.generation[session.ID]++
-	generation := m.generation[session.ID]
-	m.detected[session.ID] = info
+	m.generation[sessionID]++
+	generation := m.generation[sessionID]
+	m.detected[sessionID] = info
 	m.mu.Unlock()
 	if info.Available {
-		go m.refreshEnvironment(session, info, generation)
+		go m.refreshEnvironment(sessionID, projectRoot, info, generation)
 	}
 	return info
 }
 
-func (m *ToolchainManager) detectFast(session Session) ToolchainInfo {
+func (m *ToolchainManager[K]) detectFast(sessionID K, projectRoot string) ToolchainInfo {
 	started := time.Now()
-	config := m.Configuration(session.ID)
+	config := m.Configuration(sessionID)
 	scope := "global"
-	if m.Settings(session.ID).Project != nil {
+	if m.Settings(sessionID).Project != nil {
 		scope = "project"
 	}
-	goDirective, toolchainDirective := readModuleDirectives(session.Project.RealPath)
+	goDirective, toolchainDirective := readModuleDirectives(projectRoot)
 	base := ToolchainInfo{Scope: scope, GoDirective: goDirective, ToolchainDirective: toolchainDirective}
 	timed := func(phase, note string, since time.Time) {
 		base.Timings = append(base.Timings, ToolchainTiming{Phase: phase, Millis: time.Since(since).Milliseconds(), Note: note})
@@ -88,15 +81,15 @@ func (m *ToolchainManager) detectFast(session Session) ToolchainInfo {
 	timed("Go executable lookup", config.GoBinary, lookup)
 	if err != nil {
 		base.Error = "Go non trovato. Installa Go oppure configura il percorso del binario nelle impostazioni del progetto."
-		logToolchainTimings(session, base)
+		logToolchainTimings(projectRoot, base)
 		return base
 	}
 	base.GoBinary = binary
 
 	cacheCheck := time.Now()
-	stamp := binaryStamp(binary)
+	stamp := sdk.BinaryStamp(binary)
 	m.mu.RLock()
-	previous, hasPrevious := m.detected[session.ID]
+	previous, hasPrevious := m.detected[sessionID]
 	m.mu.RUnlock()
 	if hasPrevious && previous.Available && previous.GoBinary == binary && previous.BinaryStamp == stamp && stamp != "" && previous.SDKVersion != "" {
 		cached := previous
@@ -105,7 +98,7 @@ func (m *ToolchainManager) detectFast(session Session) ToolchainInfo {
 		cached.Timings = append(base.Timings, ToolchainTiming{Phase: "Load saved Go config", Millis: time.Since(cacheCheck).Milliseconds(), Note: "same binary, skipped go version"})
 		cached.Warning = toolchainWarning(cached.SDKVersion, goDirective, toolchainDirective, cached.GOTOOLCHAIN)
 		cached.Timings = append(cached.Timings, ToolchainTiming{Phase: "IDE usable", Millis: time.Since(started).Milliseconds()})
-		logToolchainTimings(session, cached)
+		logToolchainTimings(projectRoot, cached)
 		return cached
 	}
 
@@ -116,12 +109,12 @@ func (m *ToolchainManager) detectFast(session Session) ToolchainInfo {
 		timed("go version", "GOROOT/VERSION file, no process", versionStart)
 	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), versionQueryTimeout)
-		output, err := runToolchainQuery(ctx, binary, neutralDirectory(), queryEnvLocalToolchain(config.Environment), "version")
+		output, err := sdk.Query(ctx, "Go", binary, neutralDirectory(), queryEnvLocalToolchain(config.Environment), "version")
 		cancel()
 		timed("go version", "process in neutral dir, GOTOOLCHAIN=local", versionStart)
 		if err != nil {
 			base.Error = err.Error()
-			logToolchainTimings(session, base)
+			logToolchainTimings(projectRoot, base)
 			return base
 		}
 		base.Version = strings.TrimSpace(output)
@@ -134,17 +127,17 @@ func (m *ToolchainManager) detectFast(session Session) ToolchainInfo {
 	base.EnvPending = true
 	base.Warning = toolchainWarning(version, goDirective, toolchainDirective, "")
 	base.Timings = append(base.Timings, ToolchainTiming{Phase: "IDE usable", Millis: time.Since(started).Milliseconds()})
-	logToolchainTimings(session, base)
+	logToolchainTimings(projectRoot, base)
 	return base
 }
 
 // refreshEnvironment legge go env fuori dal progetto; un errore o un timeout lasciano l'SDK valido
 // e conservano i valori già noti (cache), segnalando solo EnvError.
-func (m *ToolchainManager) refreshEnvironment(session Session, info ToolchainInfo, generation int) {
-	config := m.Configuration(session.ID)
+func (m *ToolchainManager[K]) refreshEnvironment(sessionID K, projectRoot string, info ToolchainInfo, generation int) {
+	config := m.Configuration(sessionID)
 	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), envQueryTimeout)
-	output, err := runToolchainQuery(ctx, info.GoBinary, neutralDirectory(), config.Environment, append([]string{"env"}, toolchainEnvKeys...)...)
+	output, err := sdk.Query(ctx, "Go", info.GoBinary, neutralDirectory(), config.Environment, append([]string{"env"}, toolchainEnvKeys...)...)
 	cancel()
 	elapsed := time.Since(started)
 	updated := info
@@ -159,16 +152,16 @@ func (m *ToolchainManager) refreshEnvironment(session Session, info ToolchainInf
 	updated.Warning = toolchainWarning(updated.SDKVersion, updated.GoDirective, updated.ToolchainDirective, updated.GOTOOLCHAIN)
 	updated.Timings = append(append([]ToolchainTiming{}, info.Timings...), ToolchainTiming{Phase: "go env", Millis: elapsed.Milliseconds(), Note: "background, neutral dir"})
 	m.mu.Lock()
-	if m.generation[session.ID] != generation {
+	if m.generation[sessionID] != generation {
 		m.mu.Unlock()
 		return
 	}
-	m.detected[session.ID] = updated
+	m.detected[sessionID] = updated
 	notify := m.notify
 	m.mu.Unlock()
-	logToolchainTimings(session, updated)
+	logToolchainTimings(projectRoot, updated)
 	if notify != nil {
-		notify(session.ID, updated)
+		notify(sessionID, updated)
 	}
 }
 
@@ -180,8 +173,8 @@ func applyGoEnv(info *ToolchainInfo, output string) {
 	value := func(index int) string { return strings.TrimSpace(lines[index]) }
 	info.GOROOT = value(0)
 	info.GOPATH = value(1)
-	info.GOPROXY = sanitizeToolchainValue(value(2))
-	info.GOPRIVATE = sanitizeToolchainValue(value(3))
+	info.GOPROXY = sdk.RedactURLList(value(2))
+	info.GOPRIVATE = sdk.RedactURLList(value(3))
 	info.GOMODCACHE = value(4)
 	info.GONOSUMDB = value(5)
 	info.GONOPROXY = value(6)
@@ -194,13 +187,13 @@ func applyGoEnv(info *ToolchainInfo, output string) {
 
 // queryEnvLocalToolchain copia l'ambiente configurato forzando GOTOOLCHAIN=local per le sole query informative.
 func queryEnvLocalToolchain(environment map[string]string) map[string]string {
-	result := copyEnvironment(environment)
+	result := sdk.CopyEnvironment(environment)
 	result["GOTOOLCHAIN"] = "local"
 	return result
 }
 
-func logToolchainTimings(session Session, info ToolchainInfo) {
-	data := map[string]any{"project": session.Project.RealPath, "binary": info.GoBinary, "version": info.SDKVersion, "available": info.Available, "cached": info.Cached, "envPending": info.EnvPending}
+func logToolchainTimings(projectRoot string, info ToolchainInfo) {
+	data := map[string]any{"project": projectRoot, "binary": info.GoBinary, "version": info.SDKVersion, "available": info.Available, "cached": info.Cached, "envPending": info.EnvPending}
 	for _, timing := range info.Timings {
 		data[timing.Phase+" ms"] = timing.Millis
 	}
@@ -214,7 +207,7 @@ func logToolchainTimings(session Session, info ToolchainInfo) {
 }
 
 // RestoreDetected ripristina i rilevamenti salvati: al riavvio l'SDK è subito noto e viene solo convalidato.
-func (m *ToolchainManager) RestoreDetected(detected map[SessionID]ToolchainInfo) {
+func (m *ToolchainManager[K]) RestoreDetected(detected map[K]ToolchainInfo) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id, info := range detected {
@@ -224,10 +217,10 @@ func (m *ToolchainManager) RestoreDetected(detected map[SessionID]ToolchainInfo)
 }
 
 // DetectedSnapshot restituisce i rilevamenti riusciti da salvare, senza tempi né stati transitori.
-func (m *ToolchainManager) DetectedSnapshot() map[SessionID]ToolchainInfo {
+func (m *ToolchainManager[K]) DetectedSnapshot() map[K]ToolchainInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	snapshot := make(map[SessionID]ToolchainInfo, len(m.detected))
+	snapshot := make(map[K]ToolchainInfo, len(m.detected))
 	for id, info := range m.detected {
 		if !info.Available {
 			continue
@@ -239,14 +232,14 @@ func (m *ToolchainManager) DetectedSnapshot() map[SessionID]ToolchainInfo {
 }
 
 // SetNotifier collega l'avviso dei rilevamenti completati in background.
-func (m *ToolchainManager) SetNotifier(notify func(SessionID, ToolchainInfo)) {
+func (m *ToolchainManager[K]) SetNotifier(notify func(K, ToolchainInfo)) {
 	m.mu.Lock()
 	m.notify = notify
 	m.mu.Unlock()
 }
 
 // userChoseToolchain dice se go env (file di go env -w) riporta un GOTOOLCHAIN diverso dal predefinito auto.
-func (m *ToolchainManager) userChoseToolchain(sessionID SessionID) bool {
+func (m *ToolchainManager[K]) userChoseToolchain(sessionID K) bool {
 	m.mu.RLock()
 	info := m.detected[sessionID]
 	m.mu.RUnlock()
@@ -276,8 +269,8 @@ func provisionalGoEnv(info *ToolchainInfo, binary string, configured map[string]
 	if info.GOMODCACHE == "" && info.GOPATH != "" {
 		info.GOMODCACHE = filepath.Join(filepath.SplitList(info.GOPATH)[0], "pkg", "mod")
 	}
-	info.GOPROXY = sanitizeToolchainValue(lookup("GOPROXY"))
-	info.GOPRIVATE = sanitizeToolchainValue(lookup("GOPRIVATE"))
+	info.GOPROXY = sdk.RedactURLList(lookup("GOPROXY"))
+	info.GOPRIVATE = sdk.RedactURLList(lookup("GOPRIVATE"))
 	info.GONOPROXY = lookup("GONOPROXY")
 	info.GONOSUMDB = lookup("GONOSUMDB")
 	info.GOFLAGS = lookup("GOFLAGS")

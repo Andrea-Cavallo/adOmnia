@@ -93,7 +93,7 @@ func TestWorkspaceFindsNestedModules(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "services", "api", "go.mod"), []byte("module example.com/api\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	project := inspectProject(root, root)
+	project := inspectProject(newLanguageRegistry(), root, root)
 	if len(project.Modules) != 2 || project.GoModPath == "" {
 		t.Fatalf("moduli annidati non rilevati: %#v", project)
 	}
@@ -116,7 +116,7 @@ func TestWorkspaceDistinguishesGoFoldersWithoutModule(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	project := inspectProject(root, root)
+	project := inspectProject(newLanguageRegistry(), root, root)
 	if project.GoModPath != "" || len(project.Modules) != 1 {
 		t.Fatalf("moduli inattesi: %#v", project.Modules)
 	}

@@ -11,6 +11,9 @@ import * as git$0 from "./internal/git/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as goide$0 from "./internal/goide/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as golang$0 from "./internal/languages/golang/models.js";
 
 /**
  * AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
@@ -1787,7 +1790,7 @@ const $$createType34 = goide$0.GoplsInfo.createFrom;
 const $$createType35 = goide$0.LinterInfo.createFrom;
 const $$createType36 = goide$0.MakeInfo.createFrom;
 const $$createType37 = goide$0.SonarScannerInfo.createFrom;
-const $$createType38 = goide$0.ToolchainInfo.createFrom;
+const $$createType38 = golang$0.ToolchainInfo.createFrom;
 const $$createType39 = goide$0.HighlightsResult.createFrom;
 const $$createType40 = goide$0.DocumentSymbolsResult.createFrom;
 const $$createType41 = goide$0.RunConfiguration.createFrom;
@@ -1808,7 +1811,7 @@ const $$createType55 = goide$0.ImplementationMarker.createFrom;
 const $$createType56 = $Create.Array($$createType55);
 const $$createType57 = goide$0.InlayHintsResult.createFrom;
 const $$createType58 = goide$0.Execution.createFrom;
-const $$createType59 = goide$0.ToolchainInstallation.createFrom;
+const $$createType59 = golang$0.ToolchainInstallation.createFrom;
 const $$createType60 = goide$0.ProcessDescriptor.createFrom;
 const $$createType61 = $Create.Array($$createType60);
 const $$createType62 = goide$0.FileBreakpoints.createFrom;
@@ -1819,7 +1822,7 @@ const $$createType66 = goide$0.DependencyState.createFrom;
 const $$createType67 = goide$0.FileEntry.createFrom;
 const $$createType68 = $Create.Array($$createType67);
 const $$createType69 = goide$0.FunctionBreakpointsView.createFrom;
-const $$createType70 = goide$0.InstalledToolchain.createFrom;
+const $$createType70 = golang$0.InstalledToolchain.createFrom;
 const $$createType71 = $Create.Array($$createType70);
 const $$createType72 = goide$0.HistoryRevision.createFrom;
 const $$createType73 = $Create.Array($$createType72);
@@ -1840,7 +1843,7 @@ const $$createType87 = $Create.Array($$createType86);
 const $$createType88 = goide$0.TerminalSession.createFrom;
 const $$createType89 = $Create.Array($$createType88);
 const $$createType90 = $Create.Array($$createType52);
-const $$createType91 = goide$0.ToolchainRelease.createFrom;
+const $$createType91 = golang$0.ToolchainRelease.createFrom;
 const $$createType92 = $Create.Array($$createType91);
 const $$createType93 = goide$0.ProfileReport.createFrom;
 const $$createType94 = goide$0.TraceReport.createFrom;
@@ -1864,7 +1867,7 @@ const $$createType111 = goide$0.BreakpointState.createFrom;
 const $$createType112 = $Create.Array($$createType111);
 const $$createType113 = goide$0.SignatureResult.createFrom;
 const $$createType114 = goide$0.ModuleRegistryCheck.createFrom;
-const $$createType115 = goide$0.ToolchainSettings.createFrom;
+const $$createType115 = golang$0.ToolchainSettings.createFrom;
 const $$createType116 = goide$0.VCSBlameLine.createFrom;
 const $$createType117 = $Create.Array($$createType116);
 const $$createType118 = goide$0.VCSChangedSymbol.createFrom;

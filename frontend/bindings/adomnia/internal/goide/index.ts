@@ -155,7 +155,6 @@ export {
     ToolchainInstallation,
     ToolchainRelease,
     ToolchainSettings,
-    ToolchainTiming,
     TraceEvent,
     TraceFrame,
     TraceGoroutine,

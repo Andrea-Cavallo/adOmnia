@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"adomnia/internal/languages/golang"
 	"adomnia/internal/netpolicy"
 
 	"context"
@@ -117,7 +118,7 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 	if err != nil {
 		return DependencyGraphReport{}, err
 	}
-	modulePath := readModulePath(filepath.Join(directory, "go.mod"))
+	modulePath := golang.ReadModulePath(filepath.Join(directory, "go.mod"))
 	if modulePath == "" {
 		return DependencyGraphReport{}, fmt.Errorf("go.mod non valido: direttiva module assente")
 	}

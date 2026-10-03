@@ -1,4 +1,4 @@
-package goide
+package golang
 
 import (
 	"os"
@@ -42,7 +42,7 @@ func TestReadModuleDirectives(t *testing.T) {
 }
 
 func TestToolchainGlobalFallbackAndPersistence(t *testing.T) {
-	manager := NewToolchainManager()
+	manager := NewToolchainManager[string]()
 	if err := manager.ConfigureGlobal(ToolchainConfiguration{Environment: map[string]string{"CGO_ENABLED": "0", "GOPROXY": "https://user:secret@proxy.example"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestToolchainGlobalFallbackAndPersistence(t *testing.T) {
 	if _, leaked := global.Environment["GOPROXY"]; leaked || global.Environment["CGO_ENABLED"] != "0" {
 		t.Fatalf("credentials in URLs must not be persisted: %v", global.Environment)
 	}
-	restored := NewToolchainManager()
+	restored := NewToolchainManager[string]()
 	restored.Replace(configs, global)
 	restored.ResetSession("s1")
 	if restored.Configuration("s1").Environment["CGO_ENABLED"] != "0" {

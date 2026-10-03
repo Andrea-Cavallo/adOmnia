@@ -1,6 +1,6 @@
 # ADR 0001 — Architettura del Go Studio
 
-- Stato: accettata per la Fase 0
+- Stato: accettata per la Fase 0 · **superata (2026-10-03)** dall'architettura multi-language in [`docs/architecture/ide-multilanguage-refactor.md`](../architecture/ide-multilanguage-refactor.md)
 - Data: 2026-09-28
 - Ambito: nuova sezione Go Studio integrata in adOmnia
 

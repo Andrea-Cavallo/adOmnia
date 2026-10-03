@@ -1,13 +1,8 @@
-package goide
+package golang
 
 import (
-	"adomnia/internal/netpolicy"
-
-	"archive/tar"
-	"archive/zip"
-	"compress/gzip"
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -21,6 +16,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"adomnia/internal/ide/project"
+	"adomnia/internal/ide/sdk"
+	"adomnia/internal/netpolicy"
 )
 
 const (
@@ -45,22 +44,22 @@ type InstalledToolchain struct {
 }
 
 type InstallToolchainRequest struct {
-	SessionID SessionID `json:"sessionId"`
-	Version   string    `json:"version"`
-	Confirmed bool      `json:"confirmed"`
-	Activate  bool      `json:"activate"`
+	SessionID string `json:"sessionId"`
+	Version   string `json:"version"`
+	Confirmed bool   `json:"confirmed"`
+	Activate  bool   `json:"activate"`
 }
 
 type ToolchainInstallation struct {
-	ID              string    `json:"id"`
-	SessionID       SessionID `json:"sessionId"`
-	Version         string    `json:"version"`
-	Status          string    `json:"status"`
-	DownloadedBytes int64     `json:"downloadedBytes"`
-	TotalBytes      int64     `json:"totalBytes"`
-	Message         string    `json:"message,omitempty"`
-	GoBinary        string    `json:"goBinary,omitempty"`
-	Log             []string  `json:"log"`
+	ID              string   `json:"id"`
+	SessionID       string   `json:"sessionId"`
+	Version         string   `json:"version"`
+	Status          string   `json:"status"`
+	DownloadedBytes int64    `json:"downloadedBytes"`
+	TotalBytes      int64    `json:"totalBytes"`
+	Message         string   `json:"message,omitempty"`
+	GoBinary        string   `json:"goBinary,omitempty"`
+	Log             []string `json:"log"`
 }
 
 type goDownloadRelease struct {
@@ -165,7 +164,7 @@ func (i *ToolchainInstaller) ListInstalled() ([]InstalledToolchain, error) {
 		if !entry.IsDir() || !validGoVersion(entry.Name()) {
 			continue
 		}
-		binary := filepath.Join(root, entry.Name(), "go", "bin", goExecutableName())
+		binary := filepath.Join(root, entry.Name(), "go", "bin", GoExecutableName())
 		if info, statErr := os.Stat(binary); statErr == nil && !info.IsDir() {
 			result = append(result, InstalledToolchain{Version: entry.Name(), GoBinary: binary})
 		}
@@ -195,7 +194,7 @@ func (i *ToolchainInstaller) Start(request InstallToolchainRequest, release Tool
 		return ToolchainInstallation{}, fmt.Errorf("impossibile verificare la versione installata: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	state := ToolchainInstallation{ID: newID("install"), SessionID: request.SessionID, Version: release.Version, Status: "downloading", TotalBytes: release.Size, Message: "Download dall'archivio ufficiale Go", Log: []string{"Download avviato da https://go.dev/dl/" + release.Filename}}
+	state := ToolchainInstallation{ID: newInstallID(), SessionID: request.SessionID, Version: release.Version, Status: "downloading", TotalBytes: release.Size, Message: "Download dall'archivio ufficiale Go", Log: []string{"Download avviato da https://go.dev/dl/" + release.Filename}}
 	i.mu.Lock()
 	if len(i.operations) >= 50 {
 		for operationID, operation := range i.operations {
@@ -246,7 +245,7 @@ func (i *ToolchainInstaller) Remove(version string, confirmed bool) error {
 		return fmt.Errorf("versione Go non valida")
 	}
 	target := filepath.Join(root, version)
-	if err := ensureWithinRoot(root, target); err != nil {
+	if err := project.EnsureWithin(root, target); err != nil {
 		return err
 	}
 	return os.RemoveAll(target)
@@ -304,7 +303,7 @@ func (i *ToolchainInstaller) run(ctx context.Context, id string, release Toolcha
 		state.Log = appendInstallLog(state.Log, "Checksum SHA-256 verificato", "Estrazione nell'archivio locale adOmnia")
 	})
 	extractRoot := filepath.Join(temporary, "extracted")
-	if err = extractToolchainArchiveContext(ctx, archivePath, extractRoot); err != nil {
+	if err = sdk.ExtractArchive(ctx, "Go", archivePath, extractRoot, maxToolchainArchive); err != nil {
 		status := "failed"
 		if errors.Is(err, context.Canceled) {
 			status = "cancelled"
@@ -320,12 +319,12 @@ func (i *ToolchainInstaller) run(ctx context.Context, id string, release Toolcha
 		return
 	}
 	target := filepath.Join(root, release.Version)
-	if err = ensureWithinRoot(root, target); err != nil {
+	if err = project.EnsureWithin(root, target); err != nil {
 		i.finish(id, "failed", err.Error(), "", err)
 		completed("", err)
 		return
 	}
-	binary := filepath.Join(extractRoot, "go", "bin", goExecutableName())
+	binary := filepath.Join(extractRoot, "go", "bin", GoExecutableName())
 	if info, statErr := os.Stat(binary); statErr != nil || info.IsDir() {
 		err = fmt.Errorf("l'archivio non contiene un binario Go valido")
 		i.finish(id, "failed", err.Error(), "", err)
@@ -337,69 +336,18 @@ func (i *ToolchainInstaller) run(ctx context.Context, id string, release Toolcha
 		completed("", err)
 		return
 	}
-	binary = filepath.Join(target, "go", "bin", goExecutableName())
+	binary = filepath.Join(target, "go", "bin", GoExecutableName())
 	completed(binary, nil)
 	i.finish(id, "installed", "Installazione completata", binary, nil)
 }
 
 func (i *ToolchainInstaller) download(ctx context.Context, id string, release ToolchainRelease, destination string) error {
-	url := "https://go.dev/dl/" + release.Filename
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	response, err := toolchainDownloadClient().Do(request)
-	if err != nil {
-		return fmt.Errorf("download Go fallito: %w", err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("download Go: risposta HTTP %d", response.StatusCode)
-	}
-	if response.ContentLength > maxToolchainArchive || release.Size > maxToolchainArchive {
+	if release.Size > maxToolchainArchive {
 		return fmt.Errorf("archivio Go oltre il limite consentito")
 	}
-	file, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	hash := sha256.New()
-	reader := &progressReader{reader: io.LimitReader(response.Body, maxToolchainArchive+1), update: func(bytes int64) {
+	return sdk.Download(ctx, toolchainDownloadClient(), "Go", "https://go.dev/dl/"+release.Filename, destination, release.SHA256, maxToolchainArchive, func(bytes int64) {
 		i.update(id, func(state *ToolchainInstallation) { state.DownloadedBytes = bytes })
-	}}
-	written, copyErr := io.Copy(io.MultiWriter(file, hash), reader)
-	closeErr := file.Close()
-	if copyErr != nil {
-		return fmt.Errorf("download Go interrotto: %w", copyErr)
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	if written > maxToolchainArchive {
-		return fmt.Errorf("archivio Go oltre il limite consentito")
-	}
-	actual := hex.EncodeToString(hash.Sum(nil))
-	if !strings.EqualFold(actual, release.SHA256) {
-		return fmt.Errorf("checksum SHA-256 non valido")
-	}
-	return nil
-}
-
-type progressReader struct {
-	reader io.Reader
-	read   int64
-	last   time.Time
-	update func(int64)
-}
-
-func (r *progressReader) Read(buffer []byte) (int, error) {
-	count, err := r.reader.Read(buffer)
-	r.read += int64(count)
-	if time.Since(r.last) >= 150*time.Millisecond || err != nil {
-		r.last = time.Now()
-		r.update(r.read)
-	}
-	return count, err
+	})
 }
 
 func (i *ToolchainInstaller) update(id string, mutate func(*ToolchainInstallation)) {
@@ -460,7 +408,7 @@ func validGoVersion(version string) bool {
 	return true
 }
 
-func goExecutableName() string {
+func GoExecutableName() string {
 	if runtime.GOOS == "windows" {
 		return "go.exe"
 	}
@@ -468,123 +416,15 @@ func goExecutableName() string {
 }
 
 func extractToolchainArchive(archivePath, destination string) error {
-	return extractToolchainArchiveContext(context.Background(), archivePath, destination)
+	return sdk.ExtractArchive(context.Background(), "Go", archivePath, destination, maxToolchainArchive)
 }
 
-func extractToolchainArchiveContext(ctx context.Context, archivePath, destination string) error {
-	if err := os.MkdirAll(destination, 0o755); err != nil {
-		return err
+func newInstallID() string {
+	random := make([]byte, 12)
+	if _, err := rand.Read(random); err != nil {
+		return fmt.Sprintf("install-%d", time.Now().UnixNano())
 	}
-	if strings.HasSuffix(strings.ToLower(archivePath), ".zip") {
-		return extractZip(ctx, archivePath, destination)
-	}
-	if strings.HasSuffix(strings.ToLower(archivePath), ".tar.gz") {
-		return extractTarGzip(ctx, archivePath, destination)
-	}
-	return fmt.Errorf("formato archivio Go non supportato")
-}
-
-func extractZip(ctx context.Context, archivePath, destination string) error {
-	reader, err := zip.OpenReader(archivePath)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-	var expanded uint64
-	for _, entry := range reader.File {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		expanded += entry.UncompressedSize64
-		if expanded > maxToolchainArchive {
-			return fmt.Errorf("archivio Go espanso oltre il limite consentito")
-		}
-		target := filepath.Join(destination, filepath.FromSlash(entry.Name))
-		if err := ensureWithinRoot(destination, target); err != nil {
-			return fmt.Errorf("archivio Go non sicuro: %w", err)
-		}
-		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("archivio Go contiene un symlink non consentito")
-		}
-		if entry.FileInfo().IsDir() {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		source, err := entry.Open()
-		if err != nil {
-			return err
-		}
-		destinationFile, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, entry.Mode().Perm())
-		if err == nil {
-			_, err = io.Copy(destinationFile, io.LimitReader(source, maxToolchainArchive))
-			_ = destinationFile.Close()
-		}
-		_ = source.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func extractTarGzip(ctx context.Context, archivePath, destination string) error {
-	file, err := os.Open(archivePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		return err
-	}
-	defer gzipReader.Close()
-	reader := tar.NewReader(gzipReader)
-	var expanded int64
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		header, err := reader.Next()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(destination, filepath.FromSlash(header.Name))
-		if err := ensureWithinRoot(destination, target); err != nil {
-			return fmt.Errorf("archivio Go non sicuro: %w", err)
-		}
-		if header.Size < 0 || expanded+header.Size > maxToolchainArchive {
-			return fmt.Errorf("archivio Go espanso oltre il limite consentito")
-		}
-		expanded += header.Size
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return err
-			}
-			output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm())
-			if err == nil {
-				_, err = io.Copy(output, io.LimitReader(reader, maxToolchainArchive))
-				_ = output.Close()
-			}
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("archivio Go contiene un elemento non consentito")
-		}
-	}
+	return "install-" + hex.EncodeToString(random)
 }
 
 // toolchainDownloadClient segue proxy, CA e modo offline di adOmnia e accetta redirect solo verso go.dev.

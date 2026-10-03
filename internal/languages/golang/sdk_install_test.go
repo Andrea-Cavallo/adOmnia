@@ -1,4 +1,4 @@
-package goide
+package golang
 
 import (
 	"archive/zip"
@@ -78,12 +78,12 @@ func TestOfficialToolchainDownload(t *testing.T) {
 func TestToolchainArchiveExtractionAndTraversal(t *testing.T) {
 	root := t.TempDir()
 	archive := filepath.Join(root, "go.zip")
-	writeTestZip(t, archive, map[string]string{"go/bin/" + goExecutableName(): "go-binary"})
+	writeTestZip(t, archive, map[string]string{"go/bin/" + GoExecutableName(): "go-binary"})
 	destination := filepath.Join(root, "safe")
 	if err := extractToolchainArchive(archive, destination); err != nil {
 		t.Fatal(err)
 	}
-	if data, err := os.ReadFile(filepath.Join(destination, "go", "bin", goExecutableName())); err != nil || string(data) != "go-binary" {
+	if data, err := os.ReadFile(filepath.Join(destination, "go", "bin", GoExecutableName())); err != nil || string(data) != "go-binary" {
 		t.Fatalf("estrazione toolchain incompleta: %q, %v", data, err)
 	}
 
@@ -104,7 +104,7 @@ func TestInstalledToolchainsAreIsolatedAndRemovable(t *testing.T) {
 		t.Fatal(err)
 	}
 	version := "go1.26.5"
-	binary := filepath.Join(root, version, "go", "bin", goExecutableName())
+	binary := filepath.Join(root, version, "go", "bin", GoExecutableName())
 	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -123,39 +123,5 @@ func TestInstalledToolchainsAreIsolatedAndRemovable(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, version)); !os.IsNotExist(err) {
 		t.Fatalf("toolchain non rimossa: %v", err)
-	}
-}
-
-func TestSelectInstalledToolchainPinsItsOwnGOROOT(t *testing.T) {
-	root := t.TempDir()
-	service := NewService(&memoryStore{}, nil)
-	if err := service.ConfigureToolchainStorage(root); err != nil {
-		t.Fatal(err)
-	}
-	project := t.TempDir()
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.com/pinned\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	session, err := service.OpenProject(project)
-	if err != nil {
-		t.Fatal(err)
-	}
-	version := "go1.27.1"
-	binary := filepath.Join(root, version, "go", "bin", goExecutableName())
-	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(binary, []byte("binary"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.SelectInstalledToolchain(string(session.ID), version); err != nil {
-		t.Fatal(err)
-	}
-	config := service.toolchain.Configuration(session.ID)
-	if config.Environment["GOROOT"] != filepath.Join(root, version, "go") {
-		t.Fatalf("GOROOT gestito inatteso: %q", config.Environment["GOROOT"])
-	}
-	if config.Environment["GOTOOLCHAIN"] != "local" {
-		t.Fatalf("GOTOOLCHAIN non confinato: %q", config.Environment["GOTOOLCHAIN"])
 	}
 }

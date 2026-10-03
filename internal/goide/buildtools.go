@@ -140,7 +140,7 @@ func normalizeEntries(entries []EnvironmentEntry, label string) ([]EnvironmentEn
 		if key == "" {
 			continue
 		}
-		if !environmentNamePattern.MatchString(key) {
+		if !validEnvironmentName(key) {
 			return nil, fmt.Errorf("nome di %s non valido: %q", label, key)
 		}
 		if _, duplicate := seen[key]; duplicate {

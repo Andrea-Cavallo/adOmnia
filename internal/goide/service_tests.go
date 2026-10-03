@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"adomnia/internal/languages/golang"
 )
 
 // StartTests avvia `go test -json` sul perimetro richiesto; l'albero dei risultati arriva con gli eventi tests.updated.
@@ -49,7 +51,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	request.SessionID = session.ID
 	relativeModule := filepath.ToSlash(relativeWithin(session.Project.RealPath, moduleDir))
 	run := &testRun{
-		tree: newTestTree(), moduleDir: relativeModule, modulePath: readModulePath(filepath.Join(moduleDir, "go.mod")), coverageFile: coverageFile,
+		tree: newTestTree(), moduleDir: relativeModule, modulePath: golang.ReadModulePath(filepath.Join(moduleDir, "go.mod")), coverageFile: coverageFile,
 		snapshot: TestRunSnapshot{SessionID: session.ID, Request: request, Status: TestRunning, StartedAt: time.Now().UTC(), Results: []TestResult{}},
 	}
 	stopTicker := make(chan struct{})
