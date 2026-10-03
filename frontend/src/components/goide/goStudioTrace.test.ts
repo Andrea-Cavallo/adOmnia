@@ -51,3 +51,19 @@ describe('goStudioTrace', () => {
     expect(longRunningGoroutines(r, 10).map((g) => g.id)).toContain(2)
   })
 })
+
+describe('trace chart encoding', () => {
+  it('encodes state by thickness as well as colour', async () => {
+    const { traceSpanThickness, traceSpanTone } = await import('./goStudioTrace')
+    expect(traceSpanThickness({ state: 'running' })).toBe(1)
+    expect(traceSpanThickness({ state: 'runnable' })).toBeLessThan(1)
+    expect(traceSpanThickness({ state: 'waiting' })).toBeLessThan(traceSpanThickness({ state: 'runnable' }))
+    expect(traceSpanTone({ state: 'waiting' })).toBe('var(--gs-viz-wait)')
+  })
+
+  it('places ticks on round 1-2-5 steps', async () => {
+    const { traceTicks } = await import('./goStudioTrace')
+    expect(traceTicks(10_000_000)).toEqual([0, 2_000_000, 4_000_000, 6_000_000, 8_000_000, 10_000_000])
+    expect(traceTicks(0)).toEqual([])
+  })
+})

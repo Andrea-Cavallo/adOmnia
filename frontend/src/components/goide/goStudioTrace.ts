@@ -38,19 +38,41 @@ export function waitCategory(reason: string | undefined): 'network' | 'sync' | '
   return 'other'
 }
 
-export function traceSpanTone(span: TraceSpan): string {
+/** Colore dello stato: tre tinte validate per running, runnable e syscall; ogni attesa è neutra. */
+export function traceSpanTone(span: Pick<TraceSpan, 'state'>): string {
   switch (span.state) {
-    case 'running': return 'var(--color-success, #22c55e)'
-    case 'runnable': return 'var(--color-accent, #3b82f6)'
-    case 'syscall': return 'var(--color-warning, #f59e0b)'
-    default: {
-      const category = waitCategory(span.reason)
-      if (category === 'network') return 'var(--color-info, #06b6d4)'
-      if (category === 'sync') return 'var(--color-danger, #ef4444)'
-      if (category === 'gc') return 'var(--color-purple, #a855f7)'
-      return 'var(--color-text-4, #888)'
-    }
+    case 'running': return 'var(--gs-viz-running)'
+    case 'runnable': return 'var(--gs-viz-runnable)'
+    case 'syscall': return 'var(--gs-viz-syscall)'
+    default: return 'var(--gs-viz-wait)'
   }
+}
+
+/** Spessore relativo dello span: lo stato si legge anche senza colore (pieno = lavora, sottile = aspetta). */
+export function traceSpanThickness(span: Pick<TraceSpan, 'state'>): number {
+  switch (span.state) {
+    case 'running': case 'syscall': return 1
+    case 'runnable': return 0.62
+    default: return 0.34
+  }
+}
+
+export const TRACE_STATE_LEGEND = [
+  { id: 'running', label: 'Running', color: 'var(--gs-viz-running)', thickness: 1 },
+  { id: 'syscall', label: 'Syscall', color: 'var(--gs-viz-syscall)', thickness: 1 },
+  { id: 'runnable', label: 'Runnable (waiting for a P)', color: 'var(--gs-viz-runnable)', thickness: 0.62 },
+  { id: 'waiting', label: 'Blocked / waiting', color: 'var(--gs-viz-wait)', thickness: 0.34 },
+] as const
+
+/** Tacche "tonde" sull'asse del tempo: 1, 2 o 5 × 10^n, circa `target` tacche sulla durata. */
+export function traceTicks(durationNanos: number, target = 6): number[] {
+  if (durationNanos <= 0) return []
+  const rough = durationNanos / target
+  const magnitude = 10 ** Math.floor(Math.log10(rough))
+  const step = [1, 2, 5, 10].map((factor) => factor * magnitude).find((candidate) => candidate >= rough) ?? 10 * magnitude
+  const ticks: number[] = []
+  for (let tick = 0; tick <= durationNanos + 1e-6; tick += step) ticks.push(tick)
+  return ticks
 }
 
 /** Nome della funzione principale di un frame di stack. */
@@ -87,12 +109,12 @@ export function traceStatChips(report: TraceReport): TraceStatChip[] {
   return [
     { label: 'Duration', value: formatTraceDuration(report.durationNanos) },
     { label: 'Goroutines', value: `${stats.goroutines}` },
-    { label: 'Running', value: formatTraceDuration(stats.running), tone: 'var(--color-success, #22c55e)' },
-    { label: 'Waiting', value: formatTraceDuration(stats.waiting), tone: 'var(--color-text-3, #999)' },
-    { label: 'Syscall', value: formatTraceDuration(stats.syscall) },
-    { label: 'GC', value: formatTraceDuration(stats.gc), tone: 'var(--color-purple, #a855f7)' },
-    { label: 'Network wait', value: formatTraceDuration(stats.networkWait), tone: 'var(--color-info, #06b6d4)' },
-    { label: 'Sync wait', value: formatTraceDuration(stats.syncWait), tone: 'var(--color-danger, #ef4444)' },
+    { label: 'Running', value: formatTraceDuration(stats.running), tone: 'var(--gs-viz-running)' },
+    { label: 'Waiting', value: formatTraceDuration(stats.waiting), tone: 'var(--gs-viz-wait)' },
+    { label: 'Syscall', value: formatTraceDuration(stats.syscall), tone: 'var(--gs-viz-syscall)' },
+    { label: 'GC', value: formatTraceDuration(stats.gc), tone: 'var(--gs-viz-gc)' },
+    { label: 'Network wait', value: formatTraceDuration(stats.networkWait) },
+    { label: 'Sync wait', value: formatTraceDuration(stats.syncWait) },
   ]
 }
 

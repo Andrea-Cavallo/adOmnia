@@ -4,10 +4,14 @@ import type { GoIDESession } from '@/lib/goide-api'
 import { listGoIDETraceFiles, loadGoIDETrace, type GoIDEProfileFile } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
 import {
-  formatTraceDuration, longRunningGoroutines, traceSpanLeft, traceSpanPercent, traceSpanTone, traceStatChips,
+  formatTraceDuration, longRunningGoroutines, traceStatChips, goroutineTotal,
   visibleGoroutines, goroutinesByWait, frameFunction,
   type TraceEvent, type TraceFrame, type TraceGoroutine, type TraceReport, type TraceSpan,
 } from './goStudioTrace'
+import { GoStudioTraceTimeline, type TraceTimelineRow } from './GoStudioTraceTimeline'
+import { VizBar, VizSegmented } from './GoStudioVizKit'
+import { GoStudioPerfExport } from './GoStudioPerfExport'
+import { traceToMarkdown, markdownFileName } from './goStudioPerfMarkdown'
 
 interface GoStudioTracePanelProps {
   session: GoIDESession
@@ -29,35 +33,6 @@ function openFrame(frame: TraceFrame | undefined): void {
   const store = useGoIDEStore.getState()
   if (frame.relative) void store.openLocation(frame.relative, frame.line || 1)
   else if (frame.file && frame.file.endsWith('.go')) void store.openExternalLocation(frame.file, frame.line || 1)
-}
-
-function TraceTrack({ spans, duration, onSelect }: { spans: TraceSpan[]; duration: number; onSelect: (span: TraceSpan) => void }) {
-  return (
-    <div className="relative h-4 flex-1 overflow-hidden rounded bg-surface-2">
-      {spans.map((span, index) => (
-        <button
-          key={`${span.start}-${index}`}
-          type="button"
-          onClick={() => onSelect(span)}
-          title={`${span.state}${span.reason ? ` · ${span.reason}` : ''} · ${formatTraceDuration(span.end - span.start)}`}
-          className="absolute inset-y-0 rounded-[2px] opacity-90 hover:opacity-100"
-          style={{ left: `${traceSpanLeft(span, duration)}%`, width: `${Math.max(0.2, traceSpanPercent(span, duration))}%`, background: traceSpanTone(span) }}
-        />
-      ))}
-    </div>
-  )
-}
-
-function GoroutineRow({ goroutine, duration, onSelect }: { goroutine: TraceGoroutine; duration: number; onSelect: (span: TraceSpan) => void }) {
-  const start = goroutine.startStack?.[0]
-  return (
-    <div className="flex items-center gap-2 px-3 py-0.5">
-      <span className="w-14 shrink-0 text-right font-mono text-[10.5px] text-text-4">#{goroutine.id}</span>
-      <span className="w-56 shrink-0 truncate font-mono text-[11px] text-text-2" title={start?.function}>{start ? frameFunction(start) : '(unknown)'}</span>
-      <TraceTrack spans={goroutine.spans} duration={duration} onSelect={onSelect} />
-      <span className="w-16 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-text-4">{formatTraceDuration(goroutine.running + goroutine.waiting + goroutine.syscall)}</span>
-    </div>
-  )
 }
 
 /** Viewer della traccia Go: timeline per goroutine, scheduler, attese e eventi runtime, con salto al codice. */
@@ -109,6 +84,24 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
   const events = useMemo(() => (report ? report.events.slice(0, 500) : []), [report])
 
   const onSelectSpan = (span: TraceSpan) => openFrame(span.stack?.[0])
+  const goroutineRows = useMemo<TraceTimelineRow[]>(() => goroutines.map((goroutine) => {
+    const start = goroutine.startStack?.[0]
+    const name = start ? frameFunction(start) : '(unknown)'
+    return {
+      key: `g${goroutine.id}`,
+      title: start?.function ?? name,
+      label: <span className="flex items-baseline gap-2"><span className="w-12 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-text-4">#{goroutine.id}</span><span className="truncate font-mono text-[11.5px] text-text-2">{name}</span></span>,
+      spans: goroutine.spans,
+      total: formatTraceDuration(goroutine.running + goroutine.waiting + goroutine.syscall),
+    }
+  }), [goroutines])
+  const procRows = useMemo<TraceTimelineRow[]>(() => (report?.procs ?? []).map((proc) => ({
+    key: `p${proc.id}`,
+    title: `P${proc.id}`,
+    label: <span className="font-mono text-[11.5px] text-text-2">P{proc.id}</span>,
+    spans: proc.spans,
+    total: formatTraceDuration(proc.running),
+  })), [report])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -124,6 +117,7 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
         </label>
         <button type="button" onClick={() => void refresh()} aria-label="Refresh traces" title="Refresh" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} className={filesLoading ? 'animate-spin' : ''} /></button>
         {loading && <Loader2 size={14} className="animate-spin text-accent" aria-label="Loading trace" />}
+        {report && <span className="ml-auto"><GoStudioPerfExport fileName={markdownFileName(report.name, 'trace')} build={() => traceToMarkdown(report)} /></span>}
       </div>
 
       {error && <p className="border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11.5px] text-danger">{error}</p>}
@@ -137,36 +131,27 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
 
       {report && (
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-1 px-3 py-1 text-[11px]">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2 border-b border-border-1 px-3 py-2.5">
             {chips.map((chip) => (
-              <span key={chip.label} className="flex items-center gap-1 text-text-4">{chip.label}<span className="font-mono tabular-nums" style={{ color: chip.tone }}>{chip.value}</span></span>
+              <div key={chip.label} className="rounded-[10px] bg-[var(--gs-ground)] px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5 text-[10.5px] text-text-4">
+                  {chip.tone && <span aria-hidden="true" className="h-2 w-2 rounded-[3px]" style={{ background: chip.tone }} />}{chip.label}
+                </div>
+                <div className="mt-0.5 font-mono text-[13px] font-semibold text-text-1">{chip.value}</div>
+              </div>
             ))}
-            {report.truncated && <span className="text-warning">Trace truncated to keep the UI responsive</span>}
           </div>
-          <div className="flex items-center gap-1 border-b border-border-1 px-2 pt-0.5">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" onClick={() => setTab(id)} className={`flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-[11.5px] ${tab === id ? 'bg-surface-2 text-text-1' : 'text-text-3 hover:text-text-1'}`}><Icon size={12} />{label}</button>
-            ))}
+          {report.truncated && <p className="border-b border-warning/30 bg-warning/10 px-3 py-1 text-[11px] text-warning">Trace truncated to keep the UI responsive.</p>}
+          <div className="flex items-center gap-3 border-b border-border-1 px-3 py-1.5">
+            <VizSegmented segments={TABS} value={tab} onChange={setTab} label="Trace views" />
           </div>
 
           {tab === 'timeline' && (
-            <div className="min-h-0 flex-1 overflow-auto py-1">
-              {goroutines.length === 0 && <p className="p-4 text-[12px] text-text-4">No goroutine matches the filter.</p>}
-              {goroutines.map((goroutine) => <GoroutineRow key={goroutine.id} goroutine={goroutine} duration={duration} onSelect={onSelectSpan} />)}
-            </div>
+            <GoStudioTraceTimeline rows={goroutineRows} durationNanos={duration} gc={report.gc} labelHeader="Goroutine" empty="No goroutine matches the filter." onSelect={onSelectSpan} />
           )}
 
           {tab === 'scheduler' && (
-            <div className="min-h-0 flex-1 overflow-auto py-1">
-              {report.procs.length === 0 && <p className="p-4 text-[12px] text-text-4">No scheduler activity captured.</p>}
-              {report.procs.map((proc) => (
-                <div key={proc.id} className="flex items-center gap-2 px-3 py-0.5">
-                  <span className="w-14 shrink-0 text-right font-mono text-[10.5px] text-text-4">P{proc.id}</span>
-                  <TraceTrack spans={proc.spans} duration={duration} onSelect={onSelectSpan} />
-                  <span className="w-16 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-text-4">{formatTraceDuration(proc.running)}</span>
-                </div>
-              ))}
-            </div>
+            <GoStudioTraceTimeline rows={procRows} durationNanos={duration} gc={report.gc} labelHeader="Processor (P)" empty="No scheduler activity captured." onSelect={onSelectSpan} />
           )}
 
           {tab === 'waits' && (
@@ -174,14 +159,17 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
               <WaitSection title="Network blocking" rows={network} onSelect={onSelectSpan} />
               <WaitSection title="Synchronization" rows={sync} onSelect={onSelectSpan} />
               <WaitSection title="GC blocking" rows={gcWait} onSelect={onSelectSpan} />
-              <h4 className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wide text-text-4">Long-running / live goroutines</h4>
+              <h4 className="mb-1.5 mt-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Long-running / live goroutines</h4>
               {longRunning.length === 0 && <p className="text-[11.5px] text-text-4">None over {formatTraceDuration(LONG_RUNNING_NANOS)}.</p>}
               {longRunning.map((goroutine) => (
-                <button key={goroutine.id} type="button" onClick={() => openFrame(goroutine.startStack?.[0])} className="flex w-full items-center gap-2 border-b border-border-1/50 py-0.5 text-left hover:bg-surface-2/60">
-                  <span className="w-14 shrink-0 font-mono text-[10.5px] text-text-4">#{goroutine.id}</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text-2">{goroutine.startStack?.[0] ? frameFunction(goroutine.startStack[0]) : '(unknown)'}</span>
-                  {goroutine.alive && <span className="rounded bg-warning/15 px-1 text-[10px] text-warning">live</span>}
-                  <span className="w-16 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-text-4">{formatTraceDuration(goroutine.running + goroutine.waiting + goroutine.syscall)}</span>
+                <button key={goroutine.id} type="button" onClick={() => openFrame(goroutine.startStack?.[0])} className="grid w-full grid-cols-[3.5rem_minmax(0,1fr)_140px_4.5rem] items-center gap-3 rounded-md px-1.5 py-1 text-left hover:bg-surface-2/60">
+                  <span className="text-right font-mono text-[10.5px] tabular-nums text-text-4">#{goroutine.id}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-mono text-[11.5px] text-text-2">{goroutine.startStack?.[0] ? frameFunction(goroutine.startStack[0]) : '(unknown)'}</span>
+                    {goroutine.alive && <span className="shrink-0 rounded-full bg-warning/15 px-1.5 text-[10px] font-medium text-warning">live at end</span>}
+                  </span>
+                  <GoroutineMix goroutine={goroutine} />
+                  <span className="text-right font-mono text-[10.5px] tabular-nums text-text-3">{formatTraceDuration(goroutine.running + goroutine.waiting + goroutine.syscall)}</span>
                 </button>
               ))}
             </div>
@@ -200,18 +188,20 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
 }
 
 function WaitSection({ title, rows, onSelect }: { title: string; rows: Array<{ goroutine: TraceGoroutine; span: TraceSpan }>; onSelect: (span: TraceSpan) => void }) {
+  const max = rows.reduce((value, row) => Math.max(value, row.span.end - row.span.start), 0)
   return (
-    <div className="mb-3">
-      <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-4">{title}</h4>
+    <section className="mb-4">
+      <h4 className="mb-1.5 flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">{title}<span className="font-normal normal-case tracking-normal">· {rows.length}</span></h4>
       {rows.length === 0 && <p className="text-[11.5px] text-text-4">None.</p>}
       {rows.map(({ goroutine, span }) => (
-        <button key={goroutine.id} type="button" onClick={() => onSelect(span)} className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1/50 py-0.5 text-left hover:bg-surface-2/60">
-          <span className="font-mono text-[10.5px] text-text-4">#{goroutine.id}</span>
+        <button key={goroutine.id} type="button" onClick={() => onSelect(span)} title={span.stack?.[0]?.function} className="grid w-full grid-cols-[3.5rem_minmax(0,1fr)_140px_4.5rem] items-center gap-3 rounded-md px-1.5 py-1 text-left hover:bg-surface-2/60">
+          <span className="text-right font-mono text-[10.5px] tabular-nums text-text-4">#{goroutine.id}</span>
           <span className="min-w-0 truncate font-mono text-[11.5px] text-text-2" title={span.reason}>{span.reason || '(waiting)'}</span>
-          <span className="font-mono text-[10.5px] tabular-nums text-text-4">{formatTraceDuration(span.end - span.start)}</span>
+          <VizBar value={span.end - span.start} max={max} color="var(--gs-viz-wait)" width={140} />
+          <span className="text-right font-mono text-[10.5px] tabular-nums text-text-3">{formatTraceDuration(span.end - span.start)}</span>
         </button>
       ))}
-    </div>
+    </section>
   )
 }
 
@@ -223,9 +213,25 @@ function EventRow({ event }: { event: TraceEvent }) {
       className="grid w-full grid-cols-[5rem_auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1/50 px-3 py-0.5 text-left hover:bg-surface-2/60"
     >
       <span className="font-mono text-[10.5px] tabular-nums text-text-4">{formatTraceDuration(event.time)}</span>
-      <span className="rounded bg-surface-3 px-1 text-[10px] uppercase tracking-wide text-text-3">{event.category}</span>
+      <span className="rounded-full bg-surface-3 px-2 py-px text-[10px] font-medium uppercase tracking-wide text-text-3">{event.category}</span>
       <span className="min-w-0 truncate text-[11.5px] text-text-2" title={event.label}>{event.label || '(event)'}</span>
       {event.goroutine ? <span className="font-mono text-[10.5px] text-text-4">#{event.goroutine}</span> : <span />}
     </button>
+  )
+}
+
+/** Composizione del tempo di una goroutine in una barra impilata: running, syscall, runnable, attesa. */
+function GoroutineMix({ goroutine }: { goroutine: TraceGoroutine }) {
+  const total = goroutineTotal(goroutine)
+  const parts = [
+    { key: 'running', value: goroutine.running, color: 'var(--gs-viz-running)' },
+    { key: 'syscall', value: goroutine.syscall, color: 'var(--gs-viz-syscall)' },
+    { key: 'runnable', value: goroutine.runnable, color: 'var(--gs-viz-runnable)' },
+    { key: 'waiting', value: goroutine.waiting, color: 'var(--gs-viz-wait)' },
+  ].filter((part) => part.value > 0)
+  return (
+    <span className="flex h-[6px] w-[140px] gap-[2px] overflow-hidden rounded-full" style={{ background: 'var(--gs-viz-track)' }} title={parts.map((part) => `${part.key} ${formatTraceDuration(part.value)}`).join(' · ')}>
+      {parts.map((part) => <span key={part.key} className="h-full first:rounded-l-full last:rounded-r-full" style={{ width: `${total > 0 ? (part.value / total) * 100 : 0}%`, background: part.color }} />)}
+    </span>
   )
 }
