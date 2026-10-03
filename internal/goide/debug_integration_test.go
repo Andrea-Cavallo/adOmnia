@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -285,11 +286,11 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 	waitDebugState(t, recorder, started.ID, DebugRunning, 0)
 	time.Sleep(500 * time.Millisecond)
 	// La cartella di build è univoca per sessione: il pattern non può coincidere con altri processi.
-	running, err := ide.debug.get(started.ID)
+	buildDir, err := ide.debug.BuildDirectory(started.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(running.buildDir, debugBinaryName())
+	binary := filepath.Join(buildDir, debugBinaryName())
 	if !processExists(binary) {
 		t.Skip("impossibile osservare il processo debuggato in questo ambiente")
 	}
@@ -304,7 +305,7 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	for _, statErr := os.Stat(running.buildDir); statErr == nil; _, statErr = os.Stat(running.buildDir) {
+	for _, statErr := os.Stat(buildDir); statErr == nil; _, statErr = os.Stat(buildDir) {
 		if time.Now().After(deadline) {
 			t.Fatal("la cartella temporanea del binario di debug non è stata rimossa")
 		}
@@ -629,7 +630,8 @@ func TestDebuggerReadsMemoryFromAnExpression(t *testing.T) {
 	frames, _ := ide.DebugStackTrace(string(started.ID), stopped.ThreadID)
 	// values è []int{1, 2, 3}: 24 byte little-endian su amd64/arm64, oltre il blocco da 64 per il chunking.
 	memory, err := ide.DebugReadMemory(string(started.ID), "&values[0]", 24, frames[0].ID)
-	if err != nil || len(memory.Bytes) != 24 || memory.Bytes[0] != 1 || memory.Bytes[8] != 2 || memory.Bytes[16] != 3 || !hexAddress.MatchString(memory.Address) {
+	validAddress, _ := regexp.MatchString(`^0[xX][0-9a-fA-F]{1,16}$`, memory.Address)
+	if err != nil || len(memory.Bytes) != 24 || memory.Bytes[0] != 1 || memory.Bytes[8] != 2 || memory.Bytes[16] != 3 || !validAddress {
 		t.Fatalf("memoria inattesa: %v %+v", err, memory)
 	}
 	again, err := ide.DebugReadMemory(string(started.ID), memory.Address, 100, frames[0].ID)

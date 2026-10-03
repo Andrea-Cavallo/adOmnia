@@ -1,13 +1,12 @@
 package goide
 
 import (
+	"adomnia/internal/languages/golang"
 	"bytes"
 	"fmt"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,31 +19,8 @@ const (
 	maxTestRepeat      = 1000
 )
 
-var shuffleSeed = regexp.MustCompile(`^(on|-?\d{1,19})$`)
-
 // TestRunRequest descrive un'esecuzione di `go test -json`: package, filtro -run, benchmark e coverage.
-type TestRunRequest struct {
-	SessionID SessionID `json:"sessionId"`
-	// WorkingDirectory è la cartella del modulo, relativa al progetto ('' per la radice).
-	WorkingDirectory string `json:"workingDirectory"`
-	// Packages sono pattern relativi al modulo, es. "./..." o "./internal/api".
-	Packages []string `json:"packages"`
-	// Run è l'espressione regolare di -run; vuota esegue tutti i test.
-	Run string `json:"run,omitempty"`
-	// Bench abilita i benchmark con l'espressione indicata (i test vengono esclusi con -run ^$ se Run è vuoto).
-	Bench    string `json:"bench,omitempty"`
-	Coverage bool   `json:"coverage,omitempty"`
-	// Race attiva il race detector (-race): i report finiscono in TestRunSnapshot.RaceReports.
-	Race        bool              `json:"race,omitempty"`
-	BuildTags   []string          `json:"buildTags,omitempty"`
-	Environment map[string]string `json:"environment,omitempty"`
-	// Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
-	Repeat int `json:"repeat,omitempty"`
-	// Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
-	Shuffle string `json:"shuffle,omitempty"`
-	// CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.
-	CPU []int `json:"cpu,omitempty"`
-}
+type TestRunRequest = golang.TestOptions
 
 // TestRunSnapshot è lo stato di un'esecuzione di test; Results non include l'output dei singoli nodi.
 type TestRunSnapshot struct {
@@ -90,59 +66,7 @@ func NewTestManager() *TestManager {
 }
 
 // testArguments costruisce gli argomenti di go test senza shell, rifiutando espressioni non valide.
-func testArguments(request TestRunRequest, coverageFile string) ([]string, error) {
-	packages := request.Packages
-	if len(packages) == 0 {
-		packages = []string{"./..."}
-	}
-	if len(packages) > maxTestPatterns {
-		return nil, fmt.Errorf("troppi package: massimo %d", maxTestPatterns)
-	}
-	for _, expression := range []string{request.Run, request.Bench} {
-		if _, err := regexp.Compile(strings.ReplaceAll(expression, "/", "|")); err != nil {
-			return nil, fmt.Errorf("espressione di filtro non valida %q: %w", expression, err)
-		}
-	}
-	if request.Repeat < 0 || request.Repeat > maxTestRepeat {
-		return nil, fmt.Errorf("ripetizioni non valide: da 1 a %d", maxTestRepeat)
-	}
-	if request.Shuffle != "" && !shuffleSeed.MatchString(request.Shuffle) {
-		return nil, fmt.Errorf("shuffle non valido %q: usa \"on\" o un seed numerico", request.Shuffle)
-	}
-	arguments := []string{"test", "-json", fmt.Sprintf("-count=%d", max(1, request.Repeat))}
-	if request.Shuffle != "" {
-		arguments = append(arguments, "-shuffle="+request.Shuffle)
-	}
-	if len(request.CPU) > 0 {
-		values := make([]string, 0, len(request.CPU))
-		for _, cpu := range request.CPU {
-			if cpu < 1 || cpu > 1024 || len(request.CPU) > 16 {
-				return nil, fmt.Errorf("valori -cpu non validi: da 1 a 1024, al massimo 16")
-			}
-			values = append(values, strconv.Itoa(cpu))
-		}
-		arguments = append(arguments, "-cpu="+strings.Join(values, ","))
-	}
-	if len(request.BuildTags) > 0 {
-		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
-	}
-	if request.Race {
-		arguments = append(arguments, "-race")
-	}
-	switch {
-	case request.Run != "":
-		arguments = append(arguments, "-run", request.Run)
-	case request.Bench != "":
-		arguments = append(arguments, "-run", "^$")
-	}
-	if request.Bench != "" {
-		arguments = append(arguments, "-bench", request.Bench, "-benchmem")
-	}
-	if coverageFile != "" {
-		arguments = append(arguments, "-coverprofile", coverageFile)
-	}
-	return append(arguments, packages...), nil
-}
+var testArguments = golang.TestArguments
 
 func (m *TestManager) register(run *testRun) {
 	m.mu.Lock()
@@ -219,7 +143,7 @@ func (run *testRun) snapshotLocked(withOutput bool) TestRunSnapshot {
 	snapshot := run.snapshot
 	snapshot.Results = results
 	snapshot.Summary = summary
-	snapshot.Overflow = run.tree.overflowed
+	snapshot.Overflow = run.tree.Overflowed()
 	snapshot.RaceReports = run.races.reports()
 	return snapshot
 }
@@ -260,7 +184,7 @@ func (m *TestManager) Output(runID RunID, nodeID string) (string, error) {
 	}
 	run.mu.Lock()
 	defer run.mu.Unlock()
-	node, ok := run.tree.nodes[nodeID]
+	node, ok := run.tree.Node(nodeID)
 	if !ok {
 		return "", fmt.Errorf("test non trovato")
 	}

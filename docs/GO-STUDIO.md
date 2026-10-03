@@ -4,6 +4,16 @@ Go Studio is the Go IDE built into adOmnia. It opens real Go projects, understan
 
 Everything stays on your machine. Nothing in a project runs until you trust it.
 
+## IDE platform refactor status (2026-10-03)
+
+The product still exposes the Go Studio UI and the existing `GoIDE` Wails service. The backend now separates the shared IDE core (`internal/ide`) from the Go adapter (`internal/languages/golang`); this does not add another language or change the trust model.
+
+The debugger lifecycle, breakpoint store and DAP operations live in `internal/ide/dap`. Adapter startup supports both stdio and TCP readiness; Delve supplies its launch/attach parameters, Go error messages and explicit console evaluation retry. Goroutines, runtime defer chains, memory inspection and register configuration belong to the Go adapter and use the core's `dap.Session` interface. Existing saved line-number breakpoints and current breakpoint options remain readable.
+
+Run configurations also have additive `language` / `languageOptions` fields. The core stores language options as opaque JSON. Legacy Go fields remain accepted and exposed by the facade for the current frontend; persisted state keys, workspace schema and `.adomnia/run-configurations.json` format/version remain unchanged. Explicit secret environment values are still removed from snapshots and shared files.
+
+Phases 1–7 and the phase 9 backend implementation are complete. Phase 8 remains partial: process ownership, configuration storage, Go command builders and the neutral test tree are extracted, while Run/Test orchestration remains in the host. Phase 10 (frontend contributions), phase 11 (remaining coupling) and phase 12 (complete native validation) remain open. See [the migration plan](architecture/ide-multilanguage-refactor.md) for the precise checklist and verification limits.
+
 ## Using Go Studio
 
 1. **Open a project** with *File → Open Project* (Ctrl+O), a recent project, or *New Go Project* (which runs `go mod init` after you confirm). New Go Project offers templates — empty module, CLI, REST service, gRPC service, worker, Kafka producer/consumer, library — plus your own templates: folders in `<user config dir>/adomnia/go-templates/`, where `__MODULE__`, `__NAME__` and `__PACKAGE__` are replaced in file contents and paths. The gRPC and Kafka templates run `go mod tidy`, pinned to the versions adOmnia itself uses, so they resolve from the module cache; if that fails (offline) the project is still created and a warning asks you to run Tidy. A project may be a module, a `go.work` workspace, or a folder inside a larger repository.

@@ -166,3 +166,9 @@ func childPIDFromEvents(t *testing.T, events <-chan processEvent, runID RunID) i
 	}
 	return pid
 }
+
+type processEvent struct {
+	eventType string
+	execution Execution
+	payload   any
+}

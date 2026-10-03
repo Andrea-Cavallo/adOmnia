@@ -9,8 +9,11 @@ package language
 import (
 	"context"
 
+	"adomnia/internal/ide/dap"
 	"adomnia/internal/ide/lsp"
 	"adomnia/internal/ide/project"
+	"adomnia/internal/ide/run"
+	idetesting "adomnia/internal/ide/testing"
 )
 
 // Language è l'unica interfaccia obbligatoria per un language adapter.
@@ -20,6 +23,10 @@ type Language interface {
 	// Name è il nome mostrato all'utente (es. "Go").
 	Name() string
 }
+
+type Runner = run.Runner
+type DebugAdapterProvider = dap.DebugAdapterProvider
+type TestRunner = idetesting.TestRunner
 
 // ProjectDetector riconosce le unità di build del linguaggio sotto root.
 type ProjectDetector interface {
@@ -54,6 +61,9 @@ type DeclarationExtractor interface {
 
 // Capabilities è derivato dalle interfacce implementate: non si dichiara a mano.
 type Capabilities struct {
+	Debug            bool `json:"debug"`
+	Run              bool `json:"run"`
+	Tests            bool `json:"tests"`
 	ProjectDetection bool `json:"projectDetection"`
 	Documents        bool `json:"documents"`
 	Usages           bool `json:"usages"`
@@ -66,5 +76,8 @@ func CapabilitiesOf(l Language) Capabilities {
 	_, selects := l.(DocumentSelector)
 	_, classifies := l.(UsageClassifier)
 	_, extracts := l.(DeclarationExtractor)
-	return Capabilities{ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts}
+	_, runs := l.(Runner)
+	_, tests := l.(TestRunner)
+	_, debugs := l.(DebugAdapterProvider)
+	return Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts}
 }

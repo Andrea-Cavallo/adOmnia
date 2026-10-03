@@ -9,6 +9,7 @@ type ServerSpec struct {
 	// Name è il nome del server nei messaggi e nei log (es. "gopls").
 	Name        string
 	Binary      string
+	Arguments   []string
 	Version     string
 	Environment []string
 	// InitializationOptions va in initialize; Configuration risponde a workspace/configuration

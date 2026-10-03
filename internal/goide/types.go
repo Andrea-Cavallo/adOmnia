@@ -1,17 +1,20 @@
 package goide
 
 import (
+	"adomnia/internal/ide/dap"
+	"adomnia/internal/ide/run"
+	"encoding/json"
 	"time"
 
 	"adomnia/internal/ide/project"
 )
 
-type SessionID string
+type SessionID = run.SessionID
 type DocumentID string
-type RunID string
+type RunID = run.RunID
 type TerminalID string
 type LSPRequestID string
-type DebugSessionID string
+type DebugSessionID = dap.DebugSessionID
 
 type AuthorizationState string
 
@@ -132,31 +135,16 @@ const (
 
 // DockerOptions completa le configurazioni docker-build e docker-run. I build
 // arg segreti, come le variabili d'ambiente segrete, non persistono il valore.
-type DockerOptions struct {
-	// Context è la cartella di build, relativa alla working directory ("." se vuoto).
-	Context string `json:"context,omitempty"`
-	// Tag dell'immagine; vuoto significa <nome progetto>:dev.
-	Tag string `json:"tag,omitempty"`
-	// Stage è lo stage multi-stage da costruire (--target).
-	Stage     string             `json:"stage,omitempty"`
-	BuildArgs []EnvironmentEntry `json:"buildArgs,omitempty"`
-	NoCache   bool               `json:"noCache,omitempty"`
-	// Ports nel formato di docker run -p: "8080", "8080:80", "127.0.0.1:8080:80/tcp".
-	Ports []string `json:"ports,omitempty"`
-	// Volumes nel formato "percorso/relativo:/percorso/container[:ro]", confinati al progetto.
-	Volumes []string `json:"volumes,omitempty"`
-}
+type DockerOptions = run.DockerOptions
 
 // EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
 // Le voci marcate Secret non persistono il valore: viene richiesto all'avvio e
 // resta soltanto in memoria per la durata della sessione.
-type EnvironmentEntry struct {
-	Key    string `json:"key"`
-	Value  string `json:"value,omitempty"`
-	Secret bool   `json:"secret,omitempty"`
-}
+type EnvironmentEntry = run.EnvironmentEntry
 
 type RunConfiguration struct {
+	Language         string               `json:"language,omitempty"`
+	LanguageOptions  json.RawMessage      `json:"languageOptions,omitempty"`
 	ID               string               `json:"id"`
 	SessionID        SessionID            `json:"sessionId"`
 	Name             string               `json:"name"`
@@ -286,25 +274,14 @@ type RecoveredBuffer struct {
 	SnapshotHash string `json:"snapshotHash,omitempty"`
 }
 
-type Execution struct {
-	ID               RunID      `json:"id"`
-	SessionID        SessionID  `json:"sessionId"`
-	Kind             string     `json:"kind"`
-	Status           string     `json:"status"`
-	Command          string     `json:"command"`
-	WorkingDirectory string     `json:"workingDirectory"`
-	PID              int        `json:"pid,omitempty"`
-	StartedAt        time.Time  `json:"startedAt"`
-	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
-	ExitCode         *int       `json:"exitCode,omitempty"`
-	DurationMillis   int64      `json:"durationMillis"`
-	Error            string     `json:"error,omitempty"`
-}
+type Execution = run.Execution
 
 type RunRequest struct {
-	SessionID SessionID `json:"sessionId"`
-	Kind      string    `json:"kind"`
-	Target    string    `json:"target"`
+	Language        string          `json:"language,omitempty"`
+	LanguageOptions json.RawMessage `json:"languageOptions,omitempty"`
+	SessionID       SessionID       `json:"sessionId"`
+	Kind            string          `json:"kind"`
+	Target          string          `json:"target"`
 	// ExtraTargets contiene i target aggiuntivi di una configurazione a lista
 	// di file: vengono accodati subito dopo Target, prima degli argomenti del
 	// programma, per rispettare l'ordine richiesto da `go run`.
@@ -321,12 +298,7 @@ type RunRequest struct {
 	Secrets []string `json:"secrets,omitempty"`
 }
 
-type ProcessOutput struct {
-	RunID     RunID  `json:"runId"`
-	Stream    string `json:"stream"`
-	Text      string `json:"text"`
-	Truncated bool   `json:"truncated,omitempty"`
-}
+type ProcessOutput = run.ProcessOutput
 
 type CreateProjectRequest struct {
 	ParentPath string `json:"parentPath"`

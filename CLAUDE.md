@@ -158,7 +158,7 @@ adomnia/
 │   ├── themes/ templates/ git/         # customization and versioning
 │   ├── ide/                   #   IDE Platform core: language-agnostic (language registry,
 │   │                          #   project model, process, sdk…) — never imports languages/*
-│   ├── languages/golang/      #   Go language adapter (detection, Go SDK, later gopls/Delve/runner)
+│   ├── languages/golang/      #   Go adapter: detection, SDK, gopls, commands/test2json, Delve/runtime extensions
 │   ├── goide/                 #   Go Studio host: composition root + Service facade for Wails
 │   └── ...                    #   see `ls internal/` for the full list
 ├── frontend/                  # React frontend

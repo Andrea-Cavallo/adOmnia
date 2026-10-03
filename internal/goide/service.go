@@ -1,7 +1,10 @@
 package goide
 
 import (
+	"adomnia/internal/ide/language"
+	"adomnia/internal/ide/run"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,6 +19,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/languages/golang"
 )
 
 const maxRecentProjects = 20
@@ -632,11 +636,20 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	})
 }
 
-// supportedRunKinds elenca i comandi rapidi eseguibili da StartRun.
-var supportedRunKinds = map[string]bool{
-	"build": true, "run": true, "test": true, "vet": true, "generate": true, "install": true, "tidy": true, "binary": true,
-	"make": true, "docker-build": true, "docker-run": true, "docker-compose": true,
-	"command": true, "go-tool": true,
+// Generic commands belong to the host; language kinds are declared by adapters.
+func (s *Service) runAdapter(id, kind string) (language.Runner, error) {
+	if id == "" {
+		id = golang.ID
+	}
+	adapter, ok := s.workspace.languages.Get(id)
+	if !ok {
+		return nil, fmt.Errorf("linguaggio non registrato: %s", id)
+	}
+	runner, ok := adapter.(language.Runner)
+	if !ok || !slices.Contains(runner.RunKinds(), kind) {
+		return nil, fmt.Errorf("tipo di esecuzione non supportato: %s", kind)
+	}
+	return runner, nil
 }
 
 // runCommandSpec traduce il tipo richiesto nell'eseguibile e negli argomenti strutturati, mai in una riga di shell.
@@ -652,30 +665,29 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 		}
 		return CommandSpec{Executable: executable, Arguments: append([]string(nil), request.ProgramArguments...), DisplayCommand: display}, nil
 	}
-	binary, err := s.toolchain.GoBinary(sessionID)
+	runner, err := s.runAdapter(request.Language, kind)
 	if err != nil {
-		return CommandSpec{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
+		return CommandSpec{}, err
 	}
-	if kind == "tidy" {
-		arguments := []string{"mod", "tidy"}
-		return CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: displayCommand("go", arguments)}, nil
-	}
-	arguments := append([]string{kind}, request.GoArguments...)
-	if len(request.BuildTags) > 0 && kind != "generate" {
-		arguments = append(arguments, "-tags", strings.Join(request.BuildTags, ","))
-	}
-	arguments = append(arguments, target)
-	arguments = append(arguments, request.ExtraTargets...)
-	display := displayCommand("go", arguments)
-	if kind == "run" || kind == "test" {
-		arguments = append(arguments, request.ProgramArguments...)
-		if kind == "run" && len(request.ProgramArguments) > 0 {
-			display += fmt.Sprintf(" <%d program args>", len(request.ProgramArguments))
-		} else if kind == "test" {
-			display = displayCommand("go", arguments)
+	var binary string
+	if request.Language == "" || request.Language == golang.ID {
+		binary, err = s.toolchain.GoBinary(sessionID)
+		if err != nil {
+			return CommandSpec{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
 		}
 	}
-	return CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: display}, nil
+	options := request.LanguageOptions
+	if len(options) == 0 {
+		options, err = json.Marshal(golang.RunOptions{GoArguments: request.GoArguments, BuildTags: request.BuildTags, ExtraTargets: request.ExtraTargets})
+		if err != nil {
+			return CommandSpec{}, err
+		}
+	}
+	session, err := s.session(string(sessionID))
+	if err != nil {
+		return CommandSpec{}, err
+	}
+	return runner.CommandSpec(run.Request{Kind: kind, Root: session.Project.RealPath, WorkingDirectory: workingDirectory, Target: target, Executable: binary, ProgramArguments: request.ProgramArguments, LanguageOptions: options})
 }
 
 // resolveProjectBinary risolve un binario già compilato, confinato al progetto e non una cartella.
@@ -701,8 +713,10 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
 	}
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
-	if !supportedRunKinds[kind] {
-		return Execution{}, fmt.Errorf("tipo di esecuzione non supportato")
+	if !isToolRunKind(kind) && kind != string(RunKindCommand) && kind != "binary" {
+		if _, err := s.runAdapter(request.Language, kind); err != nil {
+			return Execution{}, err
+		}
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {
@@ -775,42 +789,7 @@ func validateRunTarget(root, workingDirectory, target string) error {
 	return nil
 }
 
-func validateGoArguments(root, workingDirectory string, arguments []string) error {
-	pathFlags := map[string]bool{"-o": true, "-overlay": true, "-modfile": true, "-pkgdir": true}
-	for index := 0; index < len(arguments); index++ {
-		argument := arguments[index]
-		if strings.ContainsRune(argument, '\x00') {
-			return fmt.Errorf("flag Go non valido")
-		}
-		flag, value, hasValue := strings.Cut(argument, "=")
-		if !pathFlags[flag] {
-			continue
-		}
-		if !hasValue {
-			index++
-			if index >= len(arguments) {
-				return fmt.Errorf("%s richiede un percorso", flag)
-			}
-			value = arguments[index]
-		}
-		if strings.TrimSpace(value) == "" {
-			return fmt.Errorf("%s richiede un percorso", flag)
-		}
-		candidate := filepath.FromSlash(value)
-		if !filepath.IsAbs(candidate) {
-			candidate = filepath.Join(workingDirectory, candidate)
-		}
-		if err := ensureWithinRoot(root, filepath.Clean(candidate)); err != nil {
-			return fmt.Errorf("percorso di %s non consentito: %w", flag, err)
-		}
-		if resolved, err := filepath.EvalSymlinks(candidate); err == nil {
-			if err := ensureWithinRoot(root, resolved); err != nil {
-				return fmt.Errorf("percorso di %s non consentito: %w", flag, err)
-			}
-		}
-	}
-	return nil
-}
+var validateGoArguments = golang.ValidateGoArguments
 
 // StopRun arresta in modo idempotente l'esecuzione indicata.
 func (s *Service) StopRun(runID string) error {

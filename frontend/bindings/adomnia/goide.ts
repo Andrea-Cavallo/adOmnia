@@ -13,6 +13,12 @@ import * as git$0 from "./internal/git/models.js";
 import * as goide$0 from "./internal/goide/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as dap$0 from "./internal/ide/dap/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as run$0 from "./internal/ide/run/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as golang$0 from "./internal/languages/golang/models.js";
 
 /**
@@ -1763,21 +1769,21 @@ const $$createType7 = goide$0.CompletionResult.createFrom;
 const $$createType8 = goide$0.CrashStatus.createFrom;
 const $$createType9 = goide$0.CreateProjectResult.createFrom;
 const $$createType10 = goide$0.StudioWorkspaces.createFrom;
-const $$createType11 = goide$0.DebugInstruction.createFrom;
+const $$createType11 = dap$0.DebugInstruction.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = goide$0.EvaluateResult.createFrom;
-const $$createType14 = goide$0.GoroutineCreation.createFrom;
-const $$createType15 = goide$0.GoroutineOverview.createFrom;
-const $$createType16 = goide$0.PendingDefer.createFrom;
+const $$createType13 = dap$0.EvaluateResult.createFrom;
+const $$createType14 = golang$0.GoroutineCreation.createFrom;
+const $$createType15 = golang$0.GoroutineOverview.createFrom;
+const $$createType16 = golang$0.PendingDefer.createFrom;
 const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = goide$0.DebugMemory.createFrom;
-const $$createType19 = goide$0.DebugScope.createFrom;
+const $$createType18 = golang$0.DebugMemory.createFrom;
+const $$createType19 = dap$0.DebugScope.createFrom;
 const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = goide$0.DebugFrame.createFrom;
+const $$createType21 = dap$0.DebugFrame.createFrom;
 const $$createType22 = $Create.Array($$createType21);
-const $$createType23 = goide$0.DebugThread.createFrom;
+const $$createType23 = dap$0.DebugThread.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = goide$0.DebugVariable.createFrom;
+const $$createType25 = dap$0.DebugVariable.createFrom;
 const $$createType26 = $Create.Array($$createType25);
 const $$createType27 = goide$0.DependencyGraphReport.createFrom;
 const $$createType28 = goide$0.DependencyUpdate.createFrom;
@@ -1810,18 +1816,18 @@ const $$createType54 = goide$0.HoverResult.createFrom;
 const $$createType55 = goide$0.ImplementationMarker.createFrom;
 const $$createType56 = $Create.Array($$createType55);
 const $$createType57 = goide$0.InlayHintsResult.createFrom;
-const $$createType58 = goide$0.Execution.createFrom;
+const $$createType58 = run$0.Execution.createFrom;
 const $$createType59 = golang$0.ToolchainInstallation.createFrom;
 const $$createType60 = goide$0.ProcessDescriptor.createFrom;
 const $$createType61 = $Create.Array($$createType60);
-const $$createType62 = goide$0.FileBreakpoints.createFrom;
+const $$createType62 = dap$0.FileBreakpoints.createFrom;
 const $$createType63 = $Create.Array($$createType62);
-const $$createType64 = goide$0.DebugSessionInfo.createFrom;
+const $$createType64 = dap$0.DebugSessionInfo.createFrom;
 const $$createType65 = $Create.Array($$createType64);
 const $$createType66 = goide$0.DependencyState.createFrom;
 const $$createType67 = goide$0.FileEntry.createFrom;
 const $$createType68 = $Create.Array($$createType67);
-const $$createType69 = goide$0.FunctionBreakpointsView.createFrom;
+const $$createType69 = dap$0.FunctionBreakpointsView.createFrom;
 const $$createType70 = golang$0.InstalledToolchain.createFrom;
 const $$createType71 = $Create.Array($$createType70);
 const $$createType72 = goide$0.HistoryRevision.createFrom;
@@ -1863,7 +1869,7 @@ const $$createType107 = goide$0.LintResult.createFrom;
 const $$createType108 = goide$0.SonarConfig.createFrom;
 const $$createType109 = goide$0.SearchResult.createFrom;
 const $$createType110 = goide$0.SemanticTokensResult.createFrom;
-const $$createType111 = goide$0.BreakpointState.createFrom;
+const $$createType111 = dap$0.BreakpointState.createFrom;
 const $$createType112 = $Create.Array($$createType111);
 const $$createType113 = goide$0.SignatureResult.createFrom;
 const $$createType114 = goide$0.ModuleRegistryCheck.createFrom;

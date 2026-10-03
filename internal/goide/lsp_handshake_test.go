@@ -55,10 +55,17 @@ func (f *fakeGopls) HandleRequest(_ context.Context, method string, _ json.RawMe
 		time.Sleep(400 * time.Millisecond)
 		return map[string]any{"capabilities": map[string]any{}}, nil
 	}
+	if method == "workspace/symbol" {
+		if os.Getenv("ADOMNIA_FAKE_LSP_SLOW") != "" {
+			time.Sleep(time.Second)
+		}
+		return []lsp.SymbolInformation{{Name: "HealthySymbol", Kind: 12, Location: lsp.Location{URI: fileURI(os.Getenv("ADOMNIA_FAKE_LSP_ROOT") + "/main.go")}}}, nil
+	}
 	return nil, nil
 }
 
 func runFakeGopls() {
+	fmt.Fprintln(os.Stderr, "ARGS "+strings.Join(os.Args[1:], " "))
 	conn := lsp.NewConn(os.Stdin, os.Stdout, &fakeGopls{})
 	conn.Run()
 }

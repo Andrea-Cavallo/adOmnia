@@ -1,6 +1,9 @@
 package goide
 
 import (
+	"adomnia/internal/ide/language"
+	idetesting "adomnia/internal/ide/testing"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -36,15 +39,31 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 			return TestRunSnapshot{}, err
 		}
 	}
-	arguments, err := testArguments(request, coverageFile)
-	if err != nil {
-		return TestRunSnapshot{}, err
-	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
 		return TestRunSnapshot{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire i test")
 	}
 	environment, err := s.toolchain.Environment(session.ID, request.Environment)
+	if err != nil {
+		return TestRunSnapshot{}, err
+	}
+	id := request.Language
+	if id == "" {
+		id = golang.ID
+	}
+	adapter, found := s.workspace.languages.Get(id)
+	runner, supported := adapter.(language.TestRunner)
+	if !found || !supported {
+		return TestRunSnapshot{}, fmt.Errorf("test non disponibili per %s", id)
+	}
+	options := request.LanguageOptions
+	if len(options) == 0 {
+		options, err = json.Marshal(request)
+		if err != nil {
+			return TestRunSnapshot{}, err
+		}
+	}
+	spec, parser, err := runner.TestCommand(idetesting.Request{Executable: binary, WorkingDirectory: moduleDir, Environment: environment, CoverageFile: coverageFile, LanguageOptions: options})
 	if err != nil {
 		return TestRunSnapshot{}, err
 	}
@@ -54,19 +73,17 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		tree: newTestTree(), moduleDir: relativeModule, modulePath: golang.ReadModulePath(filepath.Join(moduleDir, "go.mod")), coverageFile: coverageFile,
 		snapshot: TestRunSnapshot{SessionID: session.ID, Request: request, Status: TestRunning, StartedAt: time.Now().UTC(), Results: []TestResult{}},
 	}
+	run.tree.parser = parser
 	stopTicker := make(chan struct{})
-	spec := CommandSpec{
-		SessionID: session.ID, Kind: "tests", Executable: binary, Arguments: arguments, WorkingDirectory: moduleDir,
-		Environment: environment, DisplayCommand: displayCommand("go", arguments), QuietStdout: true,
-		OutputTap: func(stream string, data []byte) {
-			if stream == "stdout" {
-				run.consume(data)
-			}
-		},
-		OnExit: func(execution Execution) {
-			close(stopTicker)
-			s.finishTests(session, run, execution)
-		},
+	spec.SessionID, spec.Kind = session.ID, "tests"
+	spec.OutputTap = func(stream string, data []byte) {
+		if stream == "stdout" {
+			run.consume(data)
+		}
+	}
+	spec.OnExit = func(execution Execution) {
+		close(stopTicker)
+		s.finishTests(session, run, execution)
 	}
 	execution, err := s.processes.Start(spec)
 	if err != nil {

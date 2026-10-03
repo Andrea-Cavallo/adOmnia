@@ -96,7 +96,7 @@ func TestProcessStartNeverExceedsLimitUnderConcurrency(t *testing.T) {
 		wg.Go(func() { _, _ = manager.Start(helperSpec("child")) })
 	}
 	wg.Wait()
-	if active := len(manager.activeProcesses("")); active > MaxConcurrentRuns {
+	if active := manager.ActiveCount(); active > MaxConcurrentRuns {
 		t.Fatalf("processi attivi %d oltre il limite %d", active, MaxConcurrentRuns)
 	}
 }

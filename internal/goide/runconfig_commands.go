@@ -2,7 +2,6 @@ package goide
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -78,12 +77,10 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 		if !goSubcommandPattern.MatchString(target) {
 			return Execution{}, fmt.Errorf("comando go non valido: %q", target)
 		}
-		binary, err := s.toolchain.GoBinary(session.ID)
+		spec, err = s.runCommandSpec(session.ID, kind, workingDirectory, target, request)
 		if err != nil {
-			return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
+			return Execution{}, err
 		}
-		arguments := append([]string{target}, request.ProgramArguments...)
-		spec = CommandSpec{Executable: binary, Arguments: arguments, DisplayCommand: displayCommand("go", arguments)}
 	} else {
 		executable, err := resolveCommandExecutable(session.Project.RealPath, workingDirectory, target)
 		if err != nil {
@@ -236,29 +233,7 @@ func (m *RunConfigManager) Import(sessionID SessionID, config RunConfiguration) 
 	if err != nil {
 		return false
 	}
-	normalized.ID, normalized.SessionID, normalized.Shared = config.ID, sessionID, true
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	existing := m.configs[sessionID]
-	for index, current := range existing {
-		if current.ID != config.ID {
-			continue
-		}
-		normalized.Pinned, normalized.RestartOnSave = current.Pinned, current.RestartOnSave
-		normalized.Order, normalized.CreatedAt, normalized.UpdatedAt = current.Order, current.CreatedAt, current.UpdatedAt
-		// I segreti non sono nel file: si tiene la versione locale senza perderli.
-		if sameSharedContent(current, normalized) {
-			return false
-		}
-		existing[index] = normalized
-		return true
-	}
-	if len(existing) >= maxRunConfigurationsPerSession {
-		return false
-	}
-	normalized.Order = len(existing)
-	m.configs[sessionID] = append(existing, normalized)
-	return true
+	return m.core.Import(sessionID, toCoreConfiguration(normalized))
 }
 
 func sameSharedContent(left, right RunConfiguration) bool {
