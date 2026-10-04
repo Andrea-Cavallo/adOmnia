@@ -235,3 +235,9 @@
 /* Albero grande: le righe fuori vista non vengono impaginate né dipinte. */
 .go-studio-tree-row { content-visibility: auto; contain-intrinsic-size: auto 26px; }
 .go-studio-console-line { content-visibility: auto; contain-intrinsic-size: auto 21px; }
+
+/* Better Comments: TODO arancio, FIXME/BUG/! rosso, NOTE/? blu, * importante. Colori dai token di stato del tema. */
+.monaco-editor .go-studio-comment-todo { color: var(--color-warning) !important; font-style: normal; }
+.monaco-editor .go-studio-comment-fixme { color: var(--color-error) !important; font-style: normal; font-weight: 600; }
+.monaco-editor .go-studio-comment-note { color: var(--color-info) !important; font-style: normal; }
+.monaco-editor .go-studio-comment-important { color: var(--color-accent) !important; font-style: normal; font-weight: 700; }

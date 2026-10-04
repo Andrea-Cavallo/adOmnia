@@ -26,6 +26,7 @@ import { indentationFor, useEditorConfig } from './goStudioEditorConfig'
 import { recordCaretPosition, useGoStudioBookmarks } from './goStudioNavigationEditor'
 import { openImplementationMarker, useGoStudioImplementationMarkers } from './goStudioImplementationMarkers'
 import { useGoStudioContextMarkers } from './goStudioContextMarkers'
+import { useGoStudioCommentTags } from './goStudioCommentTags'
 import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
 import { registerGoStudioExtraLanguages } from './goStudioExtraLanguages'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
@@ -162,6 +163,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   useGoStudioBookmarks(editorRef, document, mountCount)
   useGoStudioImplementationMarkers(editorRef, document, mountCount)
   useGoStudioContextMarkers(editorRef, document, mountCount)
+  useGoStudioCommentTags(editorRef, document, mountCount)
   useGoStudioVcsGutter(editorRef, document, mountCount)
   useGoStudioProfileHeatDecorations(editorRef, document, mountCount)
 
