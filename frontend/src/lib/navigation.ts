@@ -36,6 +36,7 @@ export const RAIL_ITEMS = [
   'mcp',
   'apidocs',
   'goide',
+  'kube',
 ] as const
 
 export type RailItem = (typeof RAIL_ITEMS)[number]

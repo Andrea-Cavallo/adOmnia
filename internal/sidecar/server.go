@@ -7,6 +7,7 @@ import (
 	igrpc "adomnia/internal/grpc"
 	"adomnia/internal/jsonutil"
 	"adomnia/internal/kafka"
+	"adomnia/internal/kube"
 	"adomnia/internal/loadtest"
 	"adomnia/internal/logindex"
 	"adomnia/internal/logstream"
@@ -101,6 +102,9 @@ func Start() int {
 
 	// Live log acquisition: file tail, kubectl/oc/docker logs
 	logstream.RegisterHandlers(mux)
+
+	// Kubernetes Studio — read-only cluster exploration
+	kube.RegisterHandlers(mux)
 
 	// On-disk index for log files larger than the available RAM
 	logindex.RegisterHandlers(mux)

@@ -52,6 +52,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   // Docker Lab is a Power Tools Studio workspace. Keeping it there avoids a
   // second, redundant Infrastructure entry in the primary rail.
   { id: 'dockerlab', title: 'Docker Lab', group: 'Power Tools', keywords: 'containers compose local lab dependencies kafka postgres redis', maturity: 'advanced' },
+  { id: 'kube', title: 'Kubernetes', group: 'Remote', keywords: 'kubernetes k8s cluster pod namespace context deployment logs exec', maturity: 'advanced' },
 
   { id: 'browser', title: 'Browser Debug', group: 'Debugging', keywords: 'cdp chrome network page debug console dom storage headers security', maturity: 'advanced', railLabel: 'Browser Debug' },
   { id: 'har', title: 'HAR Viewer', group: 'Debugging', keywords: 'archive waterfall import network capture replay', maturity: 'advanced' },
