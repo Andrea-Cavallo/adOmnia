@@ -91,6 +91,7 @@ describe('Go Studio command availability', () => {
   it('explains why run commands are blocked without trust or SDK', () => {
     expect(commandAvailability('run.run', { ...ready, authorized: false })).toMatch(/Trust/)
     expect(commandAvailability('run.build', { ...ready, toolchainReady: false })).toMatch(/Go SDK/)
+    expect(commandAvailability('run.startWorkspace', { ...ready, toolchainReady: false })).toBe(true)
     expect(commandAvailability('run.run', ready)).toBe(true)
   })
 
@@ -123,6 +124,7 @@ describe('Go Studio command availability', () => {
   it('only allows stop while running and blocks tidy meanwhile', () => {
     expect(commandAvailability('run.stop', ready)).not.toBe(true)
     expect(commandAvailability('run.stop', { ...ready, running: true })).toBe(true)
+    expect(commandAvailability('run.stopWorkspace', { ...ready, running: true })).toBe(true)
     expect(commandAvailability('go.tidy', { ...ready, running: true })).not.toBe(true)
   })
 

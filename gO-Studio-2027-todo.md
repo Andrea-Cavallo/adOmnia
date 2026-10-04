@@ -24,8 +24,8 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
 | **P1** | Workflow Go migliore di GoLand | 74 | 15 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 219 | 54 |
-| **P3** | Remote ed estensibilità | 29 | 3 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 214 | 52 |
+| **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 152 | 57 |
 
@@ -211,7 +211,7 @@ _Il flusso North Star: dal codice alla chiamata, al debug, a DB, broker, log e t
 
 Lo scenario ideale da raggiungere:
 
-- [ ] Parte l'ambiente locale. — *Parziale: Handoff verso Docker Lab con preset dei servizi; avvio manuale, non automatico.*
+- [x] Parte l'ambiente locale. — *Run → **Start Workspace** avvia una configurazione compound condivisa/pinnata "Start workspace"; se manca, apre la bozza corretta nelle Run configurations. Restano espliciti Trust e segreti runtime, nessun processo parte senza azione utente.*
 - [ ] Il consumer di un altro servizio riceve il messaggio.
 - [ ] Il distributed debugger collega i due servizi.
 - [ ] Vedo log e trace della stessa operazione. — *Parziale: Log e timeline per request; nessun trace/OTLP receiver.*
@@ -341,15 +341,15 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### One-click environment
 
-- [ ] `Start workspace`.
-- [ ] Start required containers. — *Parziale: Compose Up per servizio dal gutter e preset Docker Lab; nessun avvio automatico dei container richiesti.*
+- [x] `Start workspace`. — *Comando dedicato nel menu Run/Search Everywhere: usa la compound "Start workspace" e raccoglie i segreti anche dalle configurazioni figlie.*
+- [x] Start required containers. — *`Start Workspace` interroga il contesto locale del progetto, rileva tutti i file Compose dai servizi indicizzati, riusa o crea configurazioni Compose Up condivise e le inserisce nella compound prima dell'avvio. Se non trova Compose apre la configurazione manuale; nulla parte senza il comando utente.*
 - [ ] Run migrations.
 - [ ] Seed DB.
-- [ ] Start services.
+- [x] Start services. — *Lo stesso bootstrap rileva i package Go `main` dal contesto locale, riusa o crea configurazioni Package condivise con restart-on-save e le avvia nella compound insieme ai container. I segreti delle configurazioni riusate vengono richiesti prima dell'avvio.*
 - [ ] Wait health checks.
 - [ ] Open API. — *Parziale: CodeLens Open in API Client sugli handler e opener route in palette; non fa parte di un flusso Start workspace.*
 - [ ] Open logs. — *Parziale: ServiceLogsDrawer apre i log della sessione nel Log Inspector; non c'è un flusso unico.*
-- [ ] Stop workspace.
+- [x] Stop workspace. — *Run → Stop Workspace arresta tutte le esecuzioni attive della sessione, non soltanto quella selezionata; per Compose il backend esegue lo stop controllato dei servizi.*
 - [ ] Clean workspace.
 
 ## §40 · Logs Studio
@@ -570,10 +570,10 @@ _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 
 ## §30 · Kubernetes / Remote Development
 
-- [ ] Kubernetes contexts.
-- [ ] Namespace selector.
-- [ ] Pod viewer.
-- [ ] Logs. — *Parziale: Il Log Inspector esegue `kubectl logs -f` con context/namespace/pod/container digitati a mano (internal/logstream); non è in Go Studio e non c'è un pod viewer.*
+- [x] Kubernetes contexts. — *Kubernetes Studio (rail Remote): `kubectl config get-contexts` letto e mostrato con il contesto corrente (internal/kube).*
+- [x] Namespace selector. — *Dropdown namespace alimentato da `kubectl get namespaces` per il contesto scelto.*
+- [x] Pod viewer. — *Tabella pod (ready, status, restart, età, node) da `kubectl get pods -o json`, parsing in-app.*
+- [x] Logs. — *Dal pod viewer si seleziona container e si fa stream con `kubectl logs -f` (logstream riusato) nel pannello, con stop e buffer limitato.*
 - [ ] Exec.
 - [ ] Port forward.
 - [ ] Copy file.
@@ -897,7 +897,7 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 - [ ] Service Map runtime-aware. — *§31: va progettato prima.*
 - [ ] Reproduction Studio. — *§33: va progettato prima.*
 - [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
-- [ ] Unified local environment. — *Parziale: Project Services e Docker Lab (`GoStudioProjectServicesDialog.tsx`). Manca la vista unica.*
+- [ ] Unified local environment. — *Parziale: Project Services, Docker Lab (`GoStudioProjectServicesDialog.tsx`) e Run → Start Workspace rilevano e avviano Compose + servizi Go in una compound condivisa. Manca ancora la vista unica con health, migrations, seed e log.*
 
 ### P3 — Funzioni “2027”
 

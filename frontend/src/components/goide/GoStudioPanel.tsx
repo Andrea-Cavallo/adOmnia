@@ -88,6 +88,19 @@ import { GoStudioLocalHistoryDialog } from './GoStudioLocalHistoryDialog'
 import { GoStudioAttachDialog, type GoStudioAttachMode } from './GoStudioAttachDialog'
 import { GoStudioGoToolDialog, type GoStudioGoToolDialogState } from './GoStudioGoToolDialog'
 import { goToolDialogFor } from './goStudioGoToolCommands'
+import {
+  activeWorkspaceRunIds,
+  composeConfigurationForDetectedFile,
+  composeConfigurationForFile,
+  detectedComposeFiles,
+  detectedGoServices,
+  requiredSecretKeysForRun,
+  serviceConfigurationForDetectedDirectory,
+  serviceConfigurationForDirectory,
+  workspaceStartConfiguration,
+  workspaceStartDraft,
+} from './goStudioWorkspaceStart'
+import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -202,11 +215,13 @@ export function GoStudioPanel() {
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
   const activeExecution = sessionExecutions.find((execution) => execution.id === activeRunId) ?? sessionExecutions[sessionExecutions.length - 1] ?? null
+  const workspaceRunIds = activeSession ? activeWorkspaceRunIds(sessionExecutions, activeSession.id) : []
   const toolchain = store.activeSessionId ? store.toolchains[store.activeSessionId] ?? null : null
   const runConfigurations = pinnedFirst(store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : [])
   const activeConfigId = store.activeSessionId ? store.activeConfigBySession[store.activeSessionId] ?? null : null
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
-  const [pendingSecrets, setPendingSecrets] = useState<string[] | null>(null)
+  const [pendingSecrets, setPendingSecrets] = useState<{ config: GoIDERunConfiguration; keys: string[] } | null>(null)
+  const workspaceStartPending = useRef(false)
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
@@ -319,9 +334,9 @@ export function GoStudioPanel() {
 
   const startConfigured = useCallback((kind: 'build' | 'run') => {
     // Variabili d'ambiente e build arg segreti: stesso nome, stesso valore richiesto una sola volta.
-    const secretKeys = [...new Set([...(activeConfig?.environment ?? []), ...(activeConfig?.docker?.buildArgs ?? [])].filter((entry) => entry.secret).map((entry) => entry.key))]
+    const secretKeys = requiredSecretKeysForRun(activeConfig, runConfigurations)
     if (kind === 'run' && activeConfig && secretKeys.length > 0) {
-      setPendingSecrets(secretKeys)
+      setPendingSecrets({ config: activeConfig, keys: secretKeys })
       return
     }
     if (kind === 'run' && activeConfig) {
@@ -334,7 +349,63 @@ export function GoStudioPanel() {
       return
     }
     void store.startRun(kind, configuredRequest())
-  }, [activeConfig, configuredRequest, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
+  }, [activeConfig, configuredRequest, runConfigurations, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
+
+  const startWorkspace = useCallback(async () => {
+    if (!activeSession || workspaceStartPending.current) return
+    const workspaceConfig = workspaceStartConfiguration(runConfigurations)
+    if (workspaceConfig) {
+      const secretKeys = requiredSecretKeysForRun(workspaceConfig, runConfigurations)
+      if (secretKeys.length > 0) {
+        setPendingSecrets({ config: workspaceConfig, keys: secretKeys })
+        return
+      }
+      void store.startConfiguredRun(workspaceConfig.id, {})
+      return
+    }
+
+    workspaceStartPending.current = true
+    useGoIDELspStore.setState({ message: 'Detecting local containers from Compose files…' })
+    try {
+      const snapshot = await DevContextBindings.GetContext(activeSession.id)
+      const files = detectedComposeFiles(snapshot.entities)
+      const services = detectedGoServices(snapshot.entities)
+      if (files.length === 0 && services.length === 0) {
+        openConfigurations(workspaceStartDraft(activeSession.id))
+        useGoIDELspStore.setState({ message: 'No Compose stack or Go service detected. Add containers, services or migrations to the Start workspace compound, then run it again.' })
+        return
+      }
+
+      const members: GoIDERunConfiguration[] = []
+      for (const file of files) {
+        const existing = composeConfigurationForDetectedFile(runConfigurations, file)
+        const config = existing ?? await useGoIDEStore.getState().saveRunConfiguration(composeConfigurationForFile(activeSession.id, file))
+        if (!config) throw new Error(`Could not save the Compose configuration for ${file}`)
+        members.push(config)
+      }
+      for (const service of services) {
+        const existing = serviceConfigurationForDetectedDirectory(runConfigurations, service.directory)
+        const config = existing ?? await useGoIDEStore.getState().saveRunConfiguration(serviceConfigurationForDirectory(activeSession.id, service))
+        if (!config) throw new Error(`Could not save the service configuration for ${service.name}`)
+        members.push(config)
+      }
+      const savedWorkspace = await useGoIDEStore.getState().saveRunConfiguration(workspaceStartDraft(activeSession.id, members.map((config) => config.id)))
+      if (!savedWorkspace) throw new Error('Could not save the Start workspace configuration')
+      const secretKeys = requiredSecretKeysForRun(savedWorkspace, [...runConfigurations, ...members, savedWorkspace])
+      if (secretKeys.length > 0) {
+        setPendingSecrets({ config: savedWorkspace, keys: secretKeys })
+        useGoIDELspStore.setState({ message: `Detected ${files.length} Compose ${files.length === 1 ? 'stack' : 'stacks'} and ${services.length} Go ${services.length === 1 ? 'service' : 'services'}. Provide runtime secrets to start.` })
+        return
+      }
+      useGoIDELspStore.setState({ message: `Starting ${files.length} Compose ${files.length === 1 ? 'stack' : 'stacks'} and ${services.length} Go ${services.length === 1 ? 'service' : 'services'}…` })
+      void useGoIDEStore.getState().startConfiguredRun(savedWorkspace.id, {})
+    } catch (error) {
+      openConfigurations(workspaceStartDraft(activeSession.id))
+      useGoIDELspStore.setState({ message: `Compose detection failed: ${error instanceof Error ? error.message : String(error)}. Configure Start workspace manually.` })
+    } finally {
+      workspaceStartPending.current = false
+    }
+  }, [activeSession, runConfigurations, store.startConfiguredRun])
 
   const saveDocumentWithActions = async (documentId?: string) => {
     const sessionId = store.activeSessionId
@@ -459,7 +530,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     linting: !!activeSession && lsp.linting,
     authorized,
     toolchainReady: !!toolchain?.available,
-    running: activeExecution?.status === 'running',
+    running: workspaceRunIds.length > 0,
     restartable: !!activeExecution && activeExecution.kind !== 'dependency',
     hasEditor: !!summary.activeId && hasGoStudioEditor(),
     activeDocumentDirty: summary.activeDirty,
@@ -585,6 +656,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.trust': return void authorize(!authorized)
       case 'run.run': return startConfigured('run')
       case 'run.build': return startConfigured('build')
+      case 'run.startWorkspace': return startWorkspace()
+      case 'run.stopWorkspace': return void Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
       case 'run.stop': return void store.stopRun()
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)
@@ -678,13 +751,14 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       {sharedDialogs}
       {store.activeSessionId && <GoStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <GoStudioSecretsPrompt
-        open={!!pendingSecrets && !!activeConfig}
-        configurationName={activeConfig?.name ?? ''}
-        keys={pendingSecrets ?? []}
+        open={!!pendingSecrets}
+        configurationName={pendingSecrets?.config.name ?? ''}
+        keys={pendingSecrets?.keys ?? []}
         onCancel={() => setPendingSecrets(null)}
         onSubmit={(secrets) => {
+          const config = pendingSecrets?.config
           setPendingSecrets(null)
-          if (activeConfig) void store.startConfiguredRun(activeConfig.id, secrets)
+          if (config) void store.startConfiguredRun(config.id, secrets)
         }}
       />
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
