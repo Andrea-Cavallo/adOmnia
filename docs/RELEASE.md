@@ -4,6 +4,15 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.58 release notes: modules in their own windows, Security Studio and live profiles
+
+See [the full v0.9.58 notes](releases/v0.9.58.md): any module (API workspace,
+Database, Broker, Mock and more) opens in its own window next to the code,
+Go Studio gets a Security panel with govulncheck reachability and an offline
+code scan, Start/Stop Workspace for the whole local environment, profiles from
+a running service with a call graph and line cost in the editor, colour-coded
+comment tags and a cleaner one-screen Hub.
+
 ## v0.9.57 release notes: the IDE Platform, SonarQube and one-click profiles
 
 See [the full v0.9.57 notes](releases/v0.9.57.md): Go Studio runs on a

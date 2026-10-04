@@ -6,19 +6,23 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.58] - 2026-10-04
+
 ### Added
+- **Any module in its own window:** the ⧉ button in a panel's header opens that module — API Workspace, Database Studio, Broker Studio, Mock Server, Docker Lab and the other studios — in its own native window, so code, API, database and messages can sit side by side or on separate monitors. One window edits a module at a time: while it is detached, the main window shows *Show window* and *Bring back here* instead of a second copy, pending saves are written before the window opens, and the main window re-reads the API workspace from disk when it comes back. Closing the window also brings the module back. The Hub, Settings and Go Studio stay in the main window (Go Studio projects already move with *File → Open Project in New Window*).
+- **Start and stop the whole local environment:** *Run → Start Workspace* detects the project's Compose files and Go `main` packages, reuses or creates shared Compose Up and Package run configurations (with restart on save), groups them in a pinned "Start workspace" compound and starts it, asking for runtime secrets of every member first. Without a Compose stack or service it opens the compound for manual setup. *Run → Stop Workspace* stops every running process of the project, with a controlled Compose stop. Nothing starts without the command and a trusted project.
+- **Colour-coded comments in Go Studio:** comment tags stand out in the editor like Better Comments — `TODO`/`HACK`/`XXX` in amber, `FIXME`/`BUG`/`!` in red and bold, `NOTE`/`INFO`/`?` in blue, `* important` in the accent colour and bold. It works for `//` comments and for `#` comments in YAML, shell, Makefile and Dockerfile, ignores `//` inside strings and `//go:` directives, follows the theme colours and updates as you type.
 - **Security panel: offline code scan in Go Studio.** *View → Security* (or **Security** in the status bar) now has a *Code* view next to *Dependencies* (govulncheck). It finds hardcoded secrets and committed private keys (masked), disabled TLS verification and old TLS versions, weak crypto and short RSA keys, plain HTTP, SQL and shell commands built from strings, path traversal and zip slip, gob decoding of untrusted input, unbounded request bodies and world-writable permissions. Every suppression needs a written reason (panel or `// adomnia:security-ignore <rule>: <reason>`); a versionable baseline in `.adomnia/security.json` keeps legacy projects readable; *Copy for AI*, *Save .md* and *Ask Copilot* export the active findings. Secrets are generic for every language (`internal/ide/security`), Go rules live in the Go adapter.
-
-### Added
 - **Vulnerabilities panel in Go Studio (govulncheck):** *View → Vulnerabilities* (or **Vulns** in the status bar) scans the module on demand and ranks findings by reachability (called, imported, required only), with advisory details and aliases, found → fixed version, vulnerable symbols, up to five clickable call paths from your code to the vulnerable symbol (dependencies and stdlib open read-only), the module dependency path, an upgrade preview of the `go.mod` change with a confirmed `go get module@fixed`, and *Copy for AI* / *Save .md* / *Ask Copilot* Markdown export.
-
-### Fixed
-- **Dependency Graph vulnerability scan always came back empty:** govulncheck `-json` prints a stream of JSON messages, which the old parser read as a single object and silently discarded. Both the Dependency Graph and the new panel now read the stream, verified against real govulncheck v1.8.0 output.
-
-### Added
 - **Profiles from a running service:** Performance Studio → **From service** downloads a profile from `/debug/pprof` of a service on this machine (goroutines, heap, allocations, CPU for 1–60 s, block, mutex, thread creation), checks that it is a real pprof and saves it in the project root, where it opens. Goroutine and thread-creation profiles were the two that `go test` cannot produce. Localhost only, no proxy, trusted projects only.
 - **Call graph view:** Performance Studio draws the most expensive functions as a layered graph from callers to callees, with edge thickness by cost and colours by code origin. Recursion does not break the layout. Click highlights a function's calls; double-click opens its source.
 - **Line cost in the editor:** the open profile marks hot source lines in the editor with a heat bar in the gutter, the cost and share at the end of the lines that matter (≥ 1%), and a hover with the profile name. **Cost in editor** turns it off.
+
+### Changed
+- **A cleaner Hub:** the Hub fits on one screen down to 1280×720 with the headline "Call it. cOde it. Ship it.", a language-neutral **cO Studio** card instead of the Go-only one, new key art in dark, light and sketch variants, and the generic `</>` icon for the studio in the rail.
+
+### Fixed
+- **Dependency Graph vulnerability scan always came back empty:** govulncheck `-json` prints a stream of JSON messages, which the old parser read as a single object and silently discarded. Both the Dependency Graph and the new panel now read the stream, verified against real govulncheck v1.8.0 output.
 
 ## [0.9.57] - 2026-10-03
 
