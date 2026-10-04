@@ -68,6 +68,13 @@ export function ClearNetworkActivity(): $CancellablePromise<void> {
     return $Call.ByID(2652940309);
 }
 
+/**
+ * ClosePanelWindow closes the module window, returning the module to the main window.
+ */
+export function ClosePanelWindow(panel: string): $CancellablePromise<void> {
+    return $Call.ByID(610457355, panel);
+}
+
 export function CompareFolders(left: string, right: string, maxFileMB: number): $CancellablePromise<string> {
     return $Call.ByID(3985885649, left, right, maxFileMB);
 }
@@ -104,6 +111,13 @@ export function DetachRequestAndResponse(tabID: string, snapshotJSON: string, ti
  */
 export function ExecuteHTTP(reqJSON: string): $CancellablePromise<string> {
     return $Call.ByID(3390070976, reqJSON);
+}
+
+/**
+ * FocusPanelWindow brings a detached module to the front; false when it is not detached.
+ */
+export function FocusPanelWindow(panel: string): $CancellablePromise<boolean> {
+    return $Call.ByID(1918435019, panel);
 }
 
 /**
@@ -195,18 +209,27 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
 }
 
 /**
+ * ListPanelWindows returns the modules currently shown in their own window.
+ */
+export function ListPanelWindows(): $CancellablePromise<string[]> {
+    return $Call.ByID(998307998).then(($result: any) => {
+        return $$createType9($result);
+    });
+}
+
+/**
  * LoadBootstrapState keeps the Wails binding thin while the internal package
  * performs one transaction for all state required by the first workspace.
  */
 export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
     return $Call.ByID(705221870).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
 export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
     return $Call.ByID(1584322926).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
@@ -242,6 +265,13 @@ export function OnStartup(): $CancellablePromise<void> {
  */
 export function OpenDevLogsFolder(): $CancellablePromise<void> {
     return $Call.ByID(410991487);
+}
+
+/**
+ * OpenPanelWindow shows a module (rail item) in its own native window, or focuses it.
+ */
+export function OpenPanelWindow(panel: string, title: string): $CancellablePromise<void> {
+    return $Call.ByID(3614562593, panel, title);
 }
 
 /**
@@ -365,13 +395,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType9($result);
     });
 }
 
@@ -405,8 +435,8 @@ const $$createType5 = markdown$0.WorkspaceInfo.createFrom;
 const $$createType6 = $models.LogFileEntry.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = $Create.Array($$createType1);
-const $$createType9 = bootstrap$0.State.createFrom;
-const $$createType10 = bootstrap$0.StateV2.createFrom;
-const $$createType11 = $models.StorageEntry.createFrom;
-const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = $Create.Array($Create.Any);
+const $$createType9 = $Create.Array($Create.Any);
+const $$createType10 = bootstrap$0.State.createFrom;
+const $$createType11 = bootstrap$0.StateV2.createFrom;
+const $$createType12 = $models.StorageEntry.createFrom;
+const $$createType13 = $Create.Array($$createType12);

@@ -1,17 +1,19 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Columns2, X } from 'lucide-react'
+import { AppWindow, ArrowLeft, Columns2, X } from 'lucide-react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DRAG, TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
 import { useAppStore, type RailItem } from '@/stores/app'
-import { useCollectionsStore } from '@/stores/collections'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
-import { useT } from '@/lib/i18n'
-import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { useUiTranslation } from '@/lib/uiI18n'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 import { markStartup } from '@/lib/startupPerformance'
 import { PanelActiveContext } from '@/components/layout/PanelActivity'
+import { DetachedPanelPlaceholder } from '@/components/layout/DetachedPanelPlaceholder'
+import { usePanelLabel } from '@/components/layout/panelLabel'
+import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
+import { usePanelWindowsStore } from '@/stores/panelWindows'
 
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
@@ -39,6 +41,7 @@ const SettingsPanel        = React.lazy(() => import('@/components/settings/Sett
 const GitSyncPanel         = React.lazy(() => import('@/components/workspace/GitSyncPanel').then(m => ({ default: m.GitSyncPanel })))
 const McpPanel             = React.lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
 const GoStudioPanel        = React.lazy(() => import('@/components/goide/GoStudioPanel').then(m => ({ default: m.GoStudioPanel })))
+const KubePanel            = React.lazy(() => import('@/components/kube/KubePanel').then(m => ({ default: m.KubePanel })))
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -75,22 +78,22 @@ function PanelSkeleton() {
   )
 }
 
+/** Moves the module to its own window; errors surface as the usual save-error toast. */
+function detachPanel(rail: RailItem, label: string): void {
+  openPanelWindow(rail, label).catch((error: unknown) => {
+    window.dispatchEvent(new CustomEvent('adomnia:save-error', { detail: error instanceof Error ? error.message : String(error) }))
+  })
+}
+
 function PanelHeader({ titleKey }: { titleKey?: string }) {
   const tr = useUiTranslation()
-  const nav = useNavigationTranslation()
   const goBack = useAppStore((s) => s.goBack)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const activeRail = useAppStore((s) => s.activeRail)
   const hasHistory = useAppStore((s) => s.railHistory.length > 0)
-  const workspaces = useCollectionsStore((s) => s.workspaces)
-  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
-  const t = useT()
   const titlebar = useWindowTitlebar()
-  const label = activeRail === 'collections'
-    ? (workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? tr('Workspace'))
-    : titleKey && titleKey in t.rail
-      ? t.rail[titleKey as keyof typeof t.rail]
-      : nav(titleKey || '')
+  const label = usePanelLabel(activeRail, titleKey)
+  const detached = usePanelWindowsStore((s) => s.detached.includes(activeRail))
 
   return (
     <div {...titlebar.props} className={`h-10 flex items-center gap-2 pl-3 border-b border-border-1 bg-surface-1 flex-shrink-0 ${titlebar.active ? 'app-titlebar' : 'pr-3'}`}>
@@ -98,6 +101,16 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
         <ArrowLeft size={13} />
       </button>
       <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">{label}</span>
+      {canDetachPanel(activeRail) && !detached && (
+        <button
+          onClick={() => detachPanel(activeRail, label)}
+          title={tr('Open in a new window')}
+          aria-label={tr('Open in a new window')}
+          className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-accent hover:bg-surface-3 transition-colors"
+        >
+          <AppWindow size={13} />
+        </button>
+      )}
       <button
         onClick={() => hasHistory ? goBack() : setActiveRail(activeRail === 'collections' ? 'welcome' : 'collections')}
         title={tr('Close panel')}
@@ -110,12 +123,12 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
   )
 }
 
-type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
+export type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
 
 /** Panels that stay mounted once visited: the developer moves between code and API without losing either. */
 export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'goide']
 
-function panelFor(activeRail: RailItem): PanelDef {
+export function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
     case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
     case 'scenarios': return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
@@ -153,6 +166,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'gitsync': return { component: <GitSyncPanel />, titleKey: 'Git Sync', overflow: true }
     case 'mcp': return { component: <McpPanel />, titleKey: 'MCP Client', overflow: true }
     case 'goide': return { component: <GoStudioPanel />, titleKey: 'goide', overflow: true }
+    case 'kube': return { component: <KubePanel />, titleKey: 'Kubernetes', overflow: true }
     case 'settings': return { component: <SettingsPanel />, titleKey: 'settings' }
     default: return { component: <WelcomePanel /> }
   }
@@ -167,6 +181,12 @@ export function MainAreaRouter() {
   const workspaceHydrating = activeRail === 'collections' && workspaceShellPhase !== 'ready'
   const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
+  const startPanelWindows = usePanelWindowsStore((s) => s.start)
+  useEffect(() => { startPanelWindows() }, [startPanelWindows])
+  const detachedPanels = usePanelWindowsStore((s) => s.detached)
+  // A module open in its own window is edited there only: here it becomes a placeholder.
+  const activeDetached = detachedPanels.includes(activeRail)
+
   const keptPanels = useAppStore((s) => s.keptPanels)
   const keepPanel = useAppStore((s) => s.keepPanel)
   const activeKept = KEEP_ALIVE_PANELS.includes(activeRail)
@@ -177,7 +197,7 @@ export function MainAreaRouter() {
   // Split Debug View: Go Studio and the API workspace visible together. The
   // pane that last received focus owns the keyboard shortcuts.
   const splitView = useAppStore((s) => s.splitView)
-  const split = splitView && (activeRail === 'collections' || activeRail === 'goide') && workspaceShellPhase === 'ready'
+  const split = splitView && (activeRail === 'collections' || activeRail === 'goide') && workspaceShellPhase === 'ready' && !detachedPanels.includes('collections')
   const [focusedPane, setFocusedPane] = useState<RailItem>('collections')
   const [splitRatio, setSplitRatio] = useState(0.55)
   const splitRef = useRef<HTMLDivElement>(null)
@@ -227,13 +247,17 @@ export function MainAreaRouter() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
           <WorkspaceMainSkeleton quiet={quietWorkspaceShell} />
         </div>
+      ) : activeDetached ? (
+        <div key={`${activeRail}-detached`} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
+          <DetachedPanelPlaceholder rail={activeRail} titleKey={titleKey} />
+        </div>
       ) : !activeKept && (
         <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
           <Suspense fallback={fallback}>{component}</Suspense>
         </div>
       )}
       <div ref={splitRef} className={split ? 'flex flex-1 min-h-0 min-w-0' : 'contents'}>
-        {keptRails(split ? [...keptPanels, 'goide', 'collections'] : keptPanels, activeRail).map((rail) => {
+        {keptRails(split ? [...keptPanels, 'goide', 'collections'] : keptPanels, activeRail).filter((rail) => !detachedPanels.includes(rail)).map((rail) => {
           const shown = split ? (rail === 'goide' || rail === 'collections') : rail === activeRail && !workspaceHydrating
           // The API workspace needs hydrated collections before it mounts.
           if (rail === 'collections' && workspaceShellPhase !== 'ready') return null

@@ -19,6 +19,7 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
+	"adomnia/internal/panelwindow"
 	pluginRuntime "adomnia/internal/plugins"
 	"adomnia/internal/proxy"
 	"adomnia/internal/requestwindow"
@@ -40,6 +41,7 @@ type App struct {
 	mainWindow     *application.WebviewWindow
 	requestWindows *requestwindow.Manager
 	swaggerWindow  *swaggerwindow.Manager
+	panelWindows   *panelwindow.Manager
 	startupStages  map[string]any
 }
 
@@ -84,6 +86,7 @@ func (a *App) AttachDesktop(desktop *application.App) {
 	a.desktop = desktop
 	a.requestWindows = requestwindow.New(desktop)
 	a.swaggerWindow = swaggerwindow.New(desktop)
+	a.panelWindows = panelwindow.New(desktop, isAppChrome(startupWindowChrome))
 }
 
 func (a *App) SetMainWindow(window *application.WebviewWindow) {

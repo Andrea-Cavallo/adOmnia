@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { detachedPanelOfThisWindow } from './lib/panel-windows-api'
 
 const DetachedRequestWindow = React.lazy(() =>
   import('./components/requestwindow/DetachedRequestWindow').then((module) => ({
@@ -10,6 +11,11 @@ const DetachedRequestWindow = React.lazy(() =>
 const DetachedGoStudioWindow = React.lazy(() =>
   import('./components/goide/DetachedGoStudioWindow').then((module) => ({
     default: module.DetachedGoStudioWindow,
+  })),
+)
+const DetachedPanelWindow = React.lazy(() =>
+  import('./components/layout/DetachedPanelWindow').then((module) => ({
+    default: module.DetachedPanelWindow,
   })),
 )
 const DetachedSwaggerEditorWindow = React.lazy(() =>
@@ -118,7 +124,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           ? <DetachedSwaggerEditorWindow />
           : new URLSearchParams(window.location.search).get('window') === 'go-studio'
             ? <DetachedGoStudioWindow />
-            : <App />}
+            : detachedPanelOfThisWindow()
+              ? <DetachedPanelWindow rail={detachedPanelOfThisWindow()!} />
+              : <App />}
     </Suspense>
   </React.StrictMode>,
 )
