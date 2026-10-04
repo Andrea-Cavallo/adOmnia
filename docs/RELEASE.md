@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.59 release notes: every studio beside the code
+
+See [the full v0.9.59 notes](releases/v0.9.59.md): open any module in its own
+window from the rail (right-click or Shift+click) or from the new Studios
+launcher in Go Studio, links from the code reach the window where the module
+lives, and module windows save before closing and never overwrite each other.
+
 ## v0.9.58 release notes: modules in their own windows, Security Studio and live profiles
 
 See [the full v0.9.58 notes](releases/v0.9.58.md): any module (API workspace,

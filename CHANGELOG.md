@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.59] - 2026-10-04
+
 ### Added
 - **Open modules in windows from the rail:** right-click a module in the rail menu → *Open in a new window* (or *Show window* when it is already detached), or Shift+click it. Detached modules show a window mark in the menu.
 - **Studios launcher in Go Studio:** the grid button in the Go Studio toolbar lists API Workspace, Database Studio, Broker Studio, Mock Server, gRPC and Docker Lab; one click opens the studio in its own window beside the code, or brings it forward. It also works from a project that is already in its own window.
