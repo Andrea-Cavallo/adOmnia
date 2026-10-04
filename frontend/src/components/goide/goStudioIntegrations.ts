@@ -1,10 +1,9 @@
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
 import type { ProjectService } from '../../../bindings/adomnia/internal/goide/models'
-import { BROKER_PENDING_KEY, DATABASE_PENDING_CONNECTION_KEY, DOCKER_LAB_PENDING_KEY, handOff, type DockerLabHandoff } from '@/lib/moduleHandoff'
-import { useAppStore } from '@/stores/app'
+import { BROKER_PENDING_KEY, DATABASE_PENDING_CONNECTION_KEY, DOCKER_LAB_PENDING_KEY, type DockerLabHandoff } from '@/lib/moduleHandoff'
+import { showModule } from '@/lib/moduleRouting'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
-import { useTabsStore } from '@/stores/tabs'
 import { requestFromRoute, resolveGoBaseUrl, type GoStudioHttpRoute } from './goStudioHttpRoutes'
 
 export type GoStudioProjectService = ProjectService
@@ -41,28 +40,24 @@ export function openRouteInApiClient(route: GoStudioHttpRoute, source: string, o
   const baseUrl = resolveGoBaseUrl(source, useEnvironmentsStore.getState().getResolvedVars())
   const requestSettings = useSettingsStore.getState().settings.requests
   const request = { ...requestFromRoute(route, baseUrl, origin), timeout: requestSettings.defaultTimeoutMs, followRedirects: requestSettings.followRedirects }
-  useTabsStore.getState().openTab(request)
-  useAppStore.getState().setActiveRail('collections')
+  showModule('collections', { kind: 'open-request', request })
 }
 
 /** Apre il Docker Lab con i preset dei servizi usati dal progetto in evidenza; l'avvio resta all'utente. */
 export function openInDockerLab(services: readonly GoStudioProjectService[], projectName: string): void {
-  handOff(DOCKER_LAB_PENDING_KEY, { presetIds: services.map((service) => service.id), source: projectName } satisfies DockerLabHandoff)
-  useAppStore.getState().setActiveRail('dockerlab')
+  showModule('dockerlab', { kind: 'handoff', key: DOCKER_LAB_PENDING_KEY, value: { presetIds: services.map((service) => service.id), source: projectName } satisfies DockerLabHandoff })
 }
 
 /** Apre Database Studio con una connessione locale per il database del progetto (credenziali da inserire). */
 export function openInDatabaseStudio(service: GoStudioProjectService, projectName: string): void {
   const target = DATABASE_DRIVERS[service.id]
   if (!target) return
-  handOff(DATABASE_PENDING_CONNECTION_KEY, { name: `${projectName} · ${service.name}`, driver: target.driver, host: LOCAL_HOST, port: target.port, sslMode: 'disable' })
-  useAppStore.getState().setActiveRail('database')
+  showModule('database', { kind: 'handoff', key: DATABASE_PENDING_CONNECTION_KEY, value: { name: `${projectName} · ${service.name}`, driver: target.driver, host: LOCAL_HOST, port: target.port, sslMode: 'disable' } })
 }
 
 /** Apre Broker Studio sul broker usato dal progetto, all'indirizzo locale standard. */
 export function openInBrokerStudio(service: GoStudioProjectService): void {
   const profile = BROKER_PROFILES[service.id]
   if (!profile) return
-  handOff(BROKER_PENDING_KEY, profile)
-  useAppStore.getState().setActiveRail('broker')
+  showModule('broker', { kind: 'handoff', key: BROKER_PENDING_KEY, value: profile })
 }

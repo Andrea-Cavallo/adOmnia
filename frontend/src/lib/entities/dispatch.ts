@@ -1,30 +1,17 @@
 import { useEffect, useRef } from 'react'
-import { useAppStore } from '@/stores/app'
+import { showModule } from '@/lib/moduleRouting'
 import type { RailItem } from '@/stores/app'
 import { showEntityNotice } from './notice'
 import type { EntityRef } from './types'
 
 export const ENTITY_HANDOFF_EVENT = 'adomnia:entity-handoff'
 
-const HANDOFF_TIMEOUT_MS = 5000
-
 /**
- * Switch to a panel and deliver an event once it is mounted: the event is
- * re-dispatched every frame until a listener sets detail.handled, for at most
- * 5 s of wall time (frame caps expire early on high refresh-rate displays).
+ * Show a panel and deliver an event once it is mounted, in the window where the panel lives: the
+ * event is re-dispatched every frame until a listener sets detail.handled, for at most 5 s.
  */
 export function dispatchToPanel(rail: RailItem, eventName: string, detail: Record<string, unknown> = {}, onTimeout?: () => void): void {
-  useAppStore.getState().setActiveRail(rail)
-  const deadline = performance.now() + HANDOFF_TIMEOUT_MS
-  const dispatchWhenMounted = () => {
-    if (useAppStore.getState().activeRail !== rail) return
-    const eventDetail = { ...detail, handled: false }
-    document.dispatchEvent(new CustomEvent(eventName, { detail: eventDetail }))
-    if (eventDetail.handled) return
-    if (performance.now() < deadline) window.requestAnimationFrame(dispatchWhenMounted)
-    else onTimeout?.()
-  }
-  window.requestAnimationFrame(dispatchWhenMounted)
+  showModule(rail, { kind: 'dispatch', eventName, detail }, onTimeout)
 }
 
 export function handoffToPanel(rail: RailItem, ref: EntityRef, intent: string, payload: Record<string, unknown> = {}): void {

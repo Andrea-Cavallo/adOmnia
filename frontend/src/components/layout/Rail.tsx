@@ -10,13 +10,15 @@ import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { normalizeRailItem } from '@/lib/navigation'
+import { canDetachPanel } from '@/lib/panel-windows-api'
+import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
 import './Rail.css'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, MoreVertical, CodeXml, Boxes,
+  BookOpen, MoreVertical, CodeXml, Boxes, AppWindow,
 } from 'lucide-react'
 
 interface SubItem {
@@ -111,10 +113,11 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
   const tr = useUiTranslation()
   const openToolTab = useTabsStore((s) => s.openToolTab)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
-  const [menuFor, setMenuFor] = useState<ToolTabId | null>(null)
+  const [menuFor, setMenuFor] = useState<RailItem | null>(null)
+  const detached = usePanelWindowsStore((s) => s.detached)
 
-  const openInNewTab = (tool: ToolTabId) => {
-    openToolTab(tool)
+  const openInNewTab = (tool: RailItem) => {
+    openToolTab(tool as ToolTabId)
     // Tool tabs live in the request workspace, so go there to reveal it.
     setActiveRail('collections')
     setMenuFor(null)
@@ -167,12 +170,17 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
               <button
                 key={item.id}
                 role="menuitem"
-                onClick={() => onSelect(item.id)}
-                onContextMenu={(e) => {
-                  if (!TOOL_TAB_RAILS.has(item.id)) return
-                  e.preventDefault()
-                  setMenuFor(item.id as ToolTabId)
+                onClick={(e) => {
+                  // Shift+click: straight into its own window.
+                  if (e.shiftKey && canDetachPanel(item.id)) { openRailItemInWindow(item.id, nav(label)); onClose(); return }
+                  onSelect(item.id)
                 }}
+                onContextMenu={(e) => {
+                  if (!TOOL_TAB_RAILS.has(item.id) && !canDetachPanel(item.id)) return
+                  e.preventDefault()
+                  setMenuFor(item.id)
+                }}
+                title={canDetachPanel(item.id) ? tr('Shift+click or right-click to open in a new window') : undefined}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors text-left',
                   active
@@ -182,18 +190,31 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
               >
                 <ItemIcon size={12} />
                 <span className="flex-1">{nav(label)}</span>
+                {detached.includes(item.id) && <AppWindow size={11} className="text-accent" aria-label={tr('Open in its own window')} />}
                 {active && <ChevronRight size={10} className="text-accent" />}
               </button>
             )
           })}
           {menuFor && group.items.some((i) => i.id === menuFor) && (
-            <div className="px-3 py-1">
-              <button
-                onClick={() => openInNewTab(menuFor)}
-                className="w-full text-left px-2 py-1.5 text-[11px] rounded bg-surface-2 text-text-1 hover:bg-accent/15 transition-colors"
-              >
-                {tr('Open in New Tab')}
-              </button>
+            <div className="flex flex-col gap-1 px-3 py-1">
+              {canDetachPanel(menuFor) && (
+                <button
+                  role="menuitem"
+                  onClick={() => { openRailItemInWindow(menuFor, nav(group.items.find((i) => i.id === menuFor)?.label ?? getFeatureLabel(menuFor))); setMenuFor(null); onClose() }}
+                  className="flex w-full items-center gap-2 text-left px-2 py-1.5 text-[11px] rounded bg-surface-2 text-text-1 hover:bg-accent/15 transition-colors"
+                >
+                  <AppWindow size={11} className="text-accent" />{detached.includes(menuFor) ? tr('Show window') : tr('Open in a new window')}
+                </button>
+              )}
+              {TOOL_TAB_RAILS.has(menuFor) && (
+                <button
+                  role="menuitem"
+                  onClick={() => openInNewTab(menuFor)}
+                  className="w-full text-left px-2 py-1.5 text-[11px] rounded bg-surface-2 text-text-1 hover:bg-accent/15 transition-colors"
+                >
+                  {tr('Open in New Tab')}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -225,8 +246,13 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelHover = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }
   useEffect(() => cancelHover, [])
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
     const destination = cat.directItem ?? quickItem ?? allItems[0]?.id
+    if (destination && event.shiftKey && canDetachPanel(destination)) {
+      openRailItemInWindow(destination, nav(getFeatureLabel(destination)))
+      onClose()
+      return
+    }
     if (destination) {
       onSelect(destination)
       onClose()

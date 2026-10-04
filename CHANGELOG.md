@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Open modules in windows from the rail:** right-click a module in the rail menu → *Open in a new window* (or *Show window* when it is already detached), or Shift+click it. Detached modules show a window mark in the menu.
+- **Studios launcher in Go Studio:** the grid button in the Go Studio toolbar lists API Workspace, Database Studio, Broker Studio, Mock Server, gRPC and Docker Lab; one click opens the studio in its own window beside the code, or brings it forward. It also works from a project that is already in its own window.
+- **Links from the code follow the module's window:** *Open in API Client*, *Send request*, *Add to Mock Server*, the Project Services handoffs (Database Studio, Broker Studio, Docker Lab), entity handoffs (database, topics, gRPC, WebSocket) and *Open in Power Tools* run in the window where that module lives and bring it forward, instead of switching the main window. From a module window, *open in Go* returns to the main window's Go Studio. Importing a collection from the project writes it where the API workspace is open, so a detached workspace is never overwritten by a stale copy.
+
 ## [0.9.58] - 2026-10-04
 
 ### Added

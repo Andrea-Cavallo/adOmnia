@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { RailItem } from '@/lib/navigation'
-import { detachedPanelOfThisWindow, listPanelWindows, subscribePanelWindows } from '@/lib/panel-windows-api'
+import { detachedPanelOfThisWindow, focusPanelWindow, listPanelWindows, openPanelWindow, subscribePanelWindows } from '@/lib/panel-windows-api'
 import { useCollectionsStore } from './collections'
 import { useEnvironmentsStore } from './environments'
 import { useHostsStore } from './hosts'
@@ -45,4 +45,12 @@ export const usePanelWindowsStore = create<PanelWindowsState>((set, get) => ({
 
 export function useIsPanelDetached(rail: RailItem): boolean {
   return usePanelWindowsStore((state) => state.detached.includes(rail))
+}
+
+/** Opens a module in its own window, or brings that window forward; errors use the save-error toast. */
+export function openRailItemInWindow(id: RailItem, label: string): void {
+  const run = usePanelWindowsStore.getState().detached.includes(id) ? focusPanelWindow(id) : openPanelWindow(id, label)
+  Promise.resolve(run).catch((error: unknown) => {
+    window.dispatchEvent(new CustomEvent('adomnia:save-error', { detail: error instanceof Error ? error.message : String(error) }))
+  })
 }

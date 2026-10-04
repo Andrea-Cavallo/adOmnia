@@ -114,6 +114,13 @@ export function ExecuteHTTP(reqJSON: string): $CancellablePromise<string> {
 }
 
 /**
+ * FocusMainWindow brings the main adOmnia window to the front, for actions sent from a detached window.
+ */
+export function FocusMainWindow(): $CancellablePromise<void> {
+    return $Call.ByID(1159429910);
+}
+
+/**
  * FocusPanelWindow brings a detached module to the front; false when it is not detached.
  */
 export function FocusPanelWindow(panel: string): $CancellablePromise<boolean> {

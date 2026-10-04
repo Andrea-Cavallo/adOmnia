@@ -5,7 +5,8 @@ import { useAppStore } from '@/stores/app'
 import type { RailItem } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useGoIDEStore } from '@/stores/goide'
-import { useTabsStore } from '@/stores/tabs'
+import { showModule } from '@/lib/moduleRouting'
+import { windowSearch } from '@/lib/panel-windows-api'
 import { handoffToPanel } from './dispatch'
 import { showEntityNotice } from './notice'
 import { registerOpener } from './router'
@@ -32,18 +33,15 @@ export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): st
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }
 
 async function openInGo(file: string, line: number): Promise<void> {
+  // From a module window, the code opens in the main window's Go Studio.
+  if (new URLSearchParams(windowSearch()).get('window')) return showModule('goide', { kind: 'open-location', file, line })
   useAppStore.getState().setActiveRail('goide')
   await useGoIDEStore.getState().openLocation(file, line, 1)
 }
 
 function sendRoute(ref: EntityRef): void {
-  const tabs = useTabsStore.getState()
-  useAppStore.getState().setActiveRail('collections')
-  tabs.newTab(httpMethodForRoute(ref.attrs.method ?? 'GET'))
-  const { activeTabId, tabs: open } = useTabsStore.getState()
-  const tab = open.find((t) => t.id === activeTabId)
-  if (!tab) throw new Error('could not open a request tab')
-  useTabsStore.getState().updateRequest(tab.id, { ...tab.request, name: ref.label, url: requestUrlForRoute(ref.attrs.path ?? '/') })
+  const request = { ...blankRequest(httpMethodForRoute(ref.attrs.method ?? 'GET'), ref.label), url: requestUrlForRoute(ref.attrs.path ?? '/') }
+  showModule('collections', { kind: 'open-request', request })
 }
 
 async function mockRoute(ref: EntityRef): Promise<void> {
@@ -51,7 +49,8 @@ async function mockRoute(ref: EntityRef): Promise<void> {
   const endpoint = createMockEndpointFromRequest(request)
   if (!endpoint) throw new Error(`${request.method} cannot be mocked`)
   await appendMockEndpoints([endpoint])
-  useAppStore.getState().setActiveRail('mock')
+  // The mock panel may be open in another window: tell it to reload its endpoints.
+  showModule('mock', { kind: 'event', name: 'adomnia:mock-endpoints-updated' })
   showEntityNotice(`Mock endpoint ${request.method} ${request.url} added.`)
 }
 

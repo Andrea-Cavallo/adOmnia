@@ -9,6 +9,7 @@ import { useAppearance } from '@/hooks/useAppearance'
 import { useWorkspaceHydration } from '@/hooks/useWorkspaceHydration'
 import type { RailItem } from '@/lib/navigation'
 import { closePanelWindow } from '@/lib/panel-windows-api'
+import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { panelFor } from './MainAreaRouter'
@@ -27,6 +28,9 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
   const hydrated = useWorkspaceHydration()
   const { component, titleKey } = panelFor(rail)
   const label = usePanelLabel(rail, titleKey)
+  const epoch = useModuleEpoch(rail)
+  // Links from the code (Go Studio, other windows) reach this module here.
+  useEffect(() => { startModuleActionListener() }, [])
 
   // Panels that read the active rail behave as if they were selected in the main window.
   useEffect(() => { useAppStore.setState({ activeRail: rail }) }, [rail])
@@ -49,7 +53,7 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
             </button>
             <TitlebarWindowControls />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div key={epoch} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {rail === 'collections' && !hydrated ? <Loading /> : <Suspense fallback={<Loading />}>{component}</Suspense>}
           </div>
         </div>

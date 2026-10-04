@@ -59,6 +59,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Cancel request': 'Annulla richiesta',
   'Recording': 'Registrazione',
   'Open in a new window': 'Apri in una nuova finestra',
+  'Shift+click or right-click to open in a new window': 'Shift+clic o tasto destro per aprire in una nuova finestra',
+  'Open in its own window': 'Aperto in una finestra separata',
   '{name} is open in its own window': '{name} è aperto in una finestra separata',
   'It is edited there, so nothing is overwritten. Bring it back here when you are done, or simply close that window.': 'Si modifica lì, così niente viene sovrascritto. Riportalo qui quando hai finito, oppure chiudi quella finestra.',
   'Show window': 'Mostra finestra',

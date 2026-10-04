@@ -16,8 +16,13 @@ export function canDetachPanel(rail: RailItem): boolean {
   return !NOT_DETACHABLE.has(rail)
 }
 
+/** This window's query string; empty outside a browser window. */
+export function windowSearch(): string {
+  return typeof window === 'undefined' ? '' : window.location?.search ?? ''
+}
+
 /** The module shown by this window when it was opened with ?window=panel&panel=…; null in the main window. */
-export function detachedPanelOfThisWindow(search: string = typeof window === 'undefined' ? '' : window.location.search): RailItem | null {
+export function detachedPanelOfThisWindow(search: string = windowSearch()): RailItem | null {
   const params = new URLSearchParams(search)
   if (params.get('window') !== 'panel') return null
   const rail = normalizeRailItem(params.get('panel'))

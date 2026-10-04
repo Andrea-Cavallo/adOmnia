@@ -29,3 +29,11 @@ func (a *App) ListPanelWindows() []string {
 	}
 	return a.panelWindows.List()
 }
+
+// FocusMainWindow brings the main adOmnia window to the front, for actions sent from a detached window.
+func (a *App) FocusMainWindow() {
+	if a.mainWindow != nil {
+		a.mainWindow.Restore()
+		a.mainWindow.Focus()
+	}
+}

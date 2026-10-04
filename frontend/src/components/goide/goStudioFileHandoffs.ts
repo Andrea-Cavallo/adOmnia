@@ -1,7 +1,6 @@
 import { closeGoIDEDocument, openGoIDEDocument } from '@/lib/goide-api'
 import { showEntityNotice } from '@/lib/entities/notice'
-import { useAppStore } from '@/stores/app'
-import { useCollectionsStore } from '@/stores/collections'
+import { routeToModule, showModule } from '@/lib/moduleRouting'
 import { useGoIDEStore } from '@/stores/goide'
 
 const IMPORTABLE = /\.(json|ya?ml)$/i
@@ -27,12 +26,12 @@ export async function sendFileToApiWorkspace(sessionId: string, relativePath: st
     const { importCollectionsFromText } = await import('@/lib/collectionTransfer')
     const result = importCollectionsFromText(await fileText(sessionId, relativePath))
     if (result.collections.length === 0) throw new Error('no collection found')
-    const { importCollection } = useCollectionsStore.getState()
-    result.collections.forEach((collection) => importCollection(collection))
+    // Imported where the API workspace lives, even when it is open in its own window.
+    routeToModule('collections', { kind: 'import-collections', collections: result.collections }, { reveal: false })
     const count = result.collections.length
     showEntityNotice(
       `${name}: ${count} ${result.format} collection${count === 1 ? '' : 's'} added to the API Workspace${result.warnings.length ? ` (${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'})` : ''}.`,
-      { label: 'Open API Workspace', run: () => useAppStore.getState().setActiveRail('collections') },
+      { label: 'Open API Workspace', run: () => showModule('collections') },
     )
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
@@ -53,9 +52,7 @@ export async function openPemInPowerTools(sessionId: string, relativePath: strin
   try {
     const text = await fileText(sessionId, relativePath)
     if (!text.includes('-----BEGIN ')) throw new Error('no PEM block found')
-    const app = useAppStore.getState()
-    app.queueFileImport({ kind: 'pem', name, text })
-    app.setActiveRail('powertools')
+    showModule('powertools', { kind: 'tool-file', file: { kind: 'pem', name, text } })
   } catch (error) {
     showEntityNotice(`${name} cannot be opened in Power Tools: ${error instanceof Error ? error.message : String(error)}`)
   }

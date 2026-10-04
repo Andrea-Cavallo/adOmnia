@@ -14,6 +14,7 @@ import { DetachedPanelPlaceholder } from '@/components/layout/DetachedPanelPlace
 import { usePanelLabel } from '@/components/layout/panelLabel'
 import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
+import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
 const WebSocketPanel       = React.lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 const RequestHistoryPanel  = React.lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
@@ -181,8 +182,8 @@ export function MainAreaRouter() {
   const workspaceHydrating = activeRail === 'collections' && workspaceShellPhase !== 'ready'
   const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
-  const startPanelWindows = usePanelWindowsStore((s) => s.start)
-  useEffect(() => { startPanelWindows() }, [startPanelWindows])
+  useEffect(() => { startModuleActionListener() }, [])
+  const activeEpoch = useModuleEpoch(activeRail)
   const detachedPanels = usePanelWindowsStore((s) => s.detached)
   // A module open in its own window is edited there only: here it becomes a placeholder.
   const activeDetached = detachedPanels.includes(activeRail)
@@ -252,7 +253,7 @@ export function MainAreaRouter() {
           <DetachedPanelPlaceholder rail={activeRail} titleKey={titleKey} />
         </div>
       ) : !activeKept && (
-        <div key={activeRail} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
+        <div key={`${activeRail}:${activeEpoch}`} className="flex-1 flex flex-col min-w-0 overflow-hidden panel-enter">
           <Suspense fallback={fallback}>{component}</Suspense>
         </div>
       )}

@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
 import { Bug, ChevronDown, Hammer, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
+import { Container, Database, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
+import type { RailItem } from '@/lib/navigation'
+import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/goide-api'
 import { GoStudioFolderIcon } from './GoStudioFolderIcon'
@@ -45,7 +48,18 @@ interface GoStudioToolbarProps {
   onToggleMaximize?: () => void
 }
 
-type ToolbarMenu = 'project' | 'config' | 'more'
+type ToolbarMenu = 'project' | 'config' | 'more' | 'studios'
+
+/** The adOmnia modules you use next to the code: each opens in its own window, beside the IDE. */
+const STUDIOS: ReadonlyArray<{ rail: RailItem; label: string; icon: typeof Send }> = [
+  { rail: 'collections', label: 'API Workspace', icon: LayoutList },
+  { rail: 'database', label: 'Database Studio', icon: Database },
+  { rail: 'broker', label: 'Broker Studio', icon: Server },
+  { rail: 'mock', label: 'Mock Server', icon: ServerCog },
+  { rail: 'grpc', label: 'gRPC Client', icon: Send },
+  { rail: 'dockerlab', label: 'Docker Lab', icon: Container },
+]
+const STUDIO_PREFIX = 'studio:'
 
 interface OpenMenu {
   kind: ToolbarMenu
@@ -67,6 +81,9 @@ function goVersion(toolchain: GoIDEToolchainInfo | null): string {
 export function GoStudioToolbar(props: GoStudioToolbarProps) {
   const { sessions, activeSession, mainMenu, extra, trailing, activeExecution, toolchain, loading, runConfigurations, activeConfigId } = props
   const [menu, setMenu] = useState<OpenMenu | null>(null)
+  const detachedStudios = usePanelWindowsStore((state) => state.detached)
+  const startPanelWindows = usePanelWindowsStore((state) => state.start)
+  useEffect(() => { startPanelWindows() }, [startPanelWindows])
   const authorized = activeSession.project.authorization === 'tooling-permitted'
   const running = activeExecution?.status === 'running'
   const toolsReady = !!(authorized && toolchain?.available)
@@ -101,6 +118,13 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       { id: 'clone', label: 'Clone Repository…', icon: GitBranch },
       { id: 'close', label: `Close “${activeSession.project.name}”`, icon: FolderX, separatorBefore: true },
     ]
+    if (kind === 'studios') return STUDIOS.map((studio) => ({
+      id: `${STUDIO_PREFIX}${studio.rail}`,
+      label: detachedStudios.includes(studio.rail) ? `${studio.label} · show window` : studio.label,
+      icon: studio.icon,
+      iconClassName: detachedStudios.includes(studio.rail) ? 'text-accent' : undefined,
+      checked: detachedStudios.includes(studio.rail) || undefined,
+    }))
     if (kind === 'config') return [
       ...runConfigurations.map((config) => ({ id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined })),
       { id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 },
@@ -118,6 +142,10 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
     setMenu(null)
     if (id.startsWith(SESSION_PREFIX)) return props.onSelect(id.slice(SESSION_PREFIX.length))
     if (id.startsWith(RECENT_PREFIX)) return props.onOpenRecent?.(id.slice(RECENT_PREFIX.length))
+    if (id.startsWith(STUDIO_PREFIX)) {
+      const studio = STUDIOS.find((item) => `${STUDIO_PREFIX}${item.rail}` === id)
+      return studio ? openRailItemInWindow(studio.rail, studio.label) : undefined
+    }
     if (id.startsWith(CONFIG_PREFIX)) return props.onSelectConfiguration(id.slice(CONFIG_PREFIX.length) || null)
     switch (id) {
       case 'open': return props.onOpenProject()
@@ -165,6 +193,10 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       </div>
       <button type="button" onClick={props.onBuild} disabled={!toolsReady || loading} aria-label="Build" title="Build · Ctrl/Cmd+Shift+B" className="go-studio-icon-button h-8 w-8"><Hammer size={15} /></button>
       <button type="button" aria-label="More Go actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title="Toolchain, dependencies, go mod tidy" className={`go-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><MoreVertical size={15} /></button>
+      <button type="button" aria-label="Open an adOmnia studio in its own window" aria-haspopup="menu" aria-expanded={menu?.kind === 'studios'} onClick={(event) => openMenu('studios', event.currentTarget)} title="Studios: API, Database, Broker, Mock… each in its own window beside the code" className={`go-studio-icon-button relative h-8 w-8 ${menu?.kind === 'studios' ? 'is-active' : ''}`}>
+        <LayoutGrid size={15} />
+        {detachedStudios.length > 0 && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />}
+      </button>
       {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
       {props.onToggleMaximize && (
         <button type="button" onClick={props.onToggleMaximize} aria-label={props.maximized ? 'Restore adOmnia layout' : 'Maximize Go Studio'} aria-pressed={!!props.maximized} title={`${props.maximized ? 'Restore adOmnia rail and header' : 'Maximize Go Studio: hide adOmnia rail and header'} · Ctrl/Cmd+Shift+F11`} className={`go-studio-icon-button h-8 w-8 ${props.maximized ? 'is-active' : ''}`}>
