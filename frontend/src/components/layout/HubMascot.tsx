@@ -5,11 +5,11 @@ import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useThemesStore } from '@/stores/themes'
-import heroDark from './assets/hub/hero-dark-stickers.webp'
-import heroLight from './assets/hub/hero-light-stickers.webp'
-import heroSketch from './assets/hub/hero-sketch-stickers.webp'
+import heroDark from './assets/hub/hero-dark.webp'
+import heroLight from './assets/hub/hero-light.webp'
+import heroSketch from './assets/hub/hero-sketch.webp'
 
-/** a0 at the laptop, the Hub's key art. One scene per skin (dark / light / sketch),
+/** a0 holding the gopher, the Hub's key art. One scene per skin (dark / light / sketch),
  *  picked by CSS from the <html> class and data-skin. Clicking it opens the assistant. */
 export function HubMascot() {
   const tr = useUiTranslation()

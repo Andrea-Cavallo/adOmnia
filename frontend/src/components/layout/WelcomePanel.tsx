@@ -3,9 +3,9 @@ import { ArrowRight, Search, Wrench } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { HubMascot } from './HubMascot'
-import goDark from './assets/hub/go-dark.webp'
-import goLight from './assets/hub/go-light.webp'
-import goSketch from './assets/hub/go-sketch.webp'
+import codeDark from './assets/hub/code-dark.webp'
+import codeLight from './assets/hub/code-light.webp'
+import codeSketch from './assets/hub/code-sketch.webp'
 import apiDark from './assets/hub/api-dark.webp'
 import apiLight from './assets/hub/api-light.webp'
 import apiSketch from './assets/hub/api-sketch.webp'
@@ -21,7 +21,7 @@ import gitSketch from './assets/hub/git-sketch.webp'
 import './WelcomePanel.css'
 
 /**
- * The hub: headline + key art on top, five studio cards below. The same markup
+ * The hub: headline + key art on top, six studio cards below, one screen, no scroll. The same markup
  * serves every theme; WelcomePanel.css swaps the artwork (dark / light / sketch)
  * from the <html> class and data-skin, and dresses each variant.
  */
@@ -37,8 +37,16 @@ type HubCard = {
 
 type HubCardTarget = string | null
 
+/** The studio is language-neutral: "cO" (code) replaces the old Go-only "gO" brand. */
+const STUDIO_CARD_POSE = 'code'
+
+/** The brand mark lives in the first two letters of "Code it."; translations that
+ *  do not start with "co" keep the line plain instead of a broken mark. */
+const BRAND_MARK_PREFIX = 'co'
+const BRAND_MARK = 'cO'
+
 const HUB_CARDS: HubCard[] = [
-  { pose: 'go', title: 'Go Studio', description: 'Build, debug and run Go services locally.', target: 'goide', art: { dark: goDark, light: goLight, sketch: goSketch } },
+  { pose: STUDIO_CARD_POSE, title: 'cO Studio', description: 'Build, debug and run services locally.', target: 'goide', art: { dark: codeDark, light: codeLight, sketch: codeSketch } },
   { pose: 'api', title: 'API & Protocols', description: 'REST, SOAP, gRPC and more.', target: 'collections', art: { dark: apiDark, light: apiLight, sketch: apiSketch } },
   { pose: 'data', title: 'Data & Messaging', description: 'Databases, Kafka, MQTT, Streams.', target: 'database', art: { dark: dataDark, light: dataLight, sketch: dataSketch } },
   { pose: 'docs', title: 'Docs & Payloads', description: 'JSON, OpenAPI, examples and more.', target: 'jsonviewer', art: { dark: docsDark, light: docsLight, sketch: docsSketch } },
@@ -54,19 +62,18 @@ export function WelcomePanel() {
   const activeCard = hoveredCard ?? focusedCard
 
   return (
-    <div className="relative h-full overflow-auto text-text-1" data-hub-page>
-      <div className="relative mx-auto flex min-h-full max-w-[1600px] flex-col px-10 py-4 max-lg:px-5">
-        <header data-hub-hero className="relative grid shrink-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center max-xl:grid-cols-1">
-          <div className="relative z-10 min-w-0 py-4">
+    <div className="relative h-full overflow-y-auto overflow-x-hidden text-text-1" data-hub-page>
+      <div className="relative mx-auto flex h-full max-w-[1600px] flex-col px-10 py-3 max-lg:h-auto max-lg:min-h-full max-lg:px-5">
+        <header data-hub-hero className="relative grid shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center max-xl:grid-cols-1">
+          <div className="relative z-10 min-w-0 py-2">
+            <p data-hub-eyebrow className="m-0">{tr('Welcome to adOmnia' as UiMessage)}</p>
             <h1 data-hub-headline className="m-0">
-              <span data-hub-headline-lead>{tr('Call it. Code it.')}</span>
-              <br />
-              <span data-hub-headline-go>{tr('Ship it.')}</span>
+              <span data-hub-headline-line>{tr('Call it.' as UiMessage)}</span>
+              <span data-hub-headline-line><BrandMarkedLine text={tr('Code it.' as UiMessage)} /></span>
+              <span data-hub-headline-line>{tr('Ship it.')}</span>
             </h1>
-            <p data-hub-lede className="mb-0 mt-4 text-text-2">
-              {tr('Everything you need for modern development.' as UiMessage)}
-              <br />
-              {tr('Local-first. Flexible. Powerful.' as UiMessage)}
+            <p data-hub-lede className="mb-0 mt-3 text-text-2">
+              {tr('Everything you need to design, code and ship modern software.' as UiMessage)}
             </p>
 
             <button
@@ -103,6 +110,12 @@ export function WelcomePanel() {
   )
 }
 
+/** Renders "Code it." as "cOde it.", with the cO brand mark in the accent gradient. */
+function BrandMarkedLine({ text }: { text: string }) {
+  if (!text.toLowerCase().startsWith(BRAND_MARK_PREFIX)) return <>{text}</>
+  return <><span data-hub-brand-mark>{BRAND_MARK}</span>{text.slice(BRAND_MARK_PREFIX.length)}</>
+}
+
 function HubCardView({ card, onOpen, active, onHover, onFocus }: {
   card: HubCard
   onOpen: (id: RailItem) => void
@@ -119,7 +132,7 @@ function HubCardView({ card, onOpen, active, onHover, onFocus }: {
       data-hub-card
       data-hub-card-kind={card.pose}
       data-hub-card-active={active ? 'true' : undefined}
-      data-hub-card-featured={card.pose === 'go' ? 'true' : undefined}
+      data-hub-card-featured={card.pose === STUDIO_CARD_POSE ? 'true' : undefined}
       onPointerEnter={() => onHover(card.pose)}
       onPointerLeave={() => onHover(null)}
       onFocusCapture={() => onFocus(card.pose)}
