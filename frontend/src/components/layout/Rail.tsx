@@ -10,14 +10,13 @@ import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { normalizeRailItem } from '@/lib/navigation'
-import goRailIcon from './assets/go-rail.png'
 import './Rail.css'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, MoreVertical,
+  BookOpen, MoreVertical, CodeXml,
 } from 'lucide-react'
 
 interface SubItem {
@@ -43,10 +42,6 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
   return <img src="/icon95.png" alt="" style={{ width: size, height: size }} className="object-contain" />
 }
 
-function GoStudioIcon({ size = 20 }: { size?: number }) {
-  return <img src={goRailIcon} alt="" aria-hidden="true" style={{ width: size, height: size }} className="adomnia-rail__go-mark" />
-}
-
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
@@ -55,7 +50,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   tools: Wrench,
   docs: FileText,
   workspace: GitBranch,
-  development: GoStudioIcon,
+  development: CodeXml,
 }
 
 const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
@@ -92,7 +87,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   themes: Settings,
   templates: FileText,
   plugins: Puzzle,
-  goide: GoStudioIcon,
+  goide: CodeXml,
 }
 
 const CATEGORIES: CategoryDef[] = RAIL_CATEGORIES
@@ -225,7 +220,6 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
   const allItems = cat.groups.flatMap((g) => g.items)
   const anyActive = allItems.some((item) => item.id === activeRail)
-  const featured = cat.key === 'development'
   const triggerRef = useRef<HTMLButtonElement>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelHover = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }
@@ -244,7 +238,6 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
     <div
       className="adomnia-rail__category relative flex items-center justify-center"
       data-active={anyActive || isOpen ? 'true' : 'false'}
-      data-featured={featured ? 'true' : undefined}
       onMouseEnter={() => { if (!cat.directItem && !isOpen) { cancelHover(); hoverTimer.current = setTimeout(onOpen, 220) } }}
       onMouseLeave={cancelHover}>
       <button
@@ -268,8 +261,8 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
           anyRunning && !isOpen && !anyActive && 'text-success',
         )}
       >
-        <Icon size={featured ? 27 : 20} strokeWidth={1.7} />
-        {cat.directItem && !featured && <ChevronRight aria-hidden="true" className="adomnia-rail__chevron" size={12} strokeWidth={2} />}
+        <Icon size={20} strokeWidth={1.7} />
+        {cat.directItem && <ChevronRight aria-hidden="true" className="adomnia-rail__chevron" size={12} strokeWidth={2} />}
         {anyRunning && (
           <span className="adomnia-rail__running absolute w-2.5 h-2.5 bg-success rounded-full border-2 border-surface-0 animate-pulse" />
         )}

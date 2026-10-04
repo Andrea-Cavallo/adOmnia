@@ -103,10 +103,6 @@
   height: 28px;
 }
 
-.adomnia-rail__category[data-featured='true'][data-active='true']::before {
-  height: 26px;
-}
-
 .adomnia-rail__category-menu {
   top: 5px;
   right: -1px;
@@ -143,51 +139,6 @@
 .adomnia-rail__running {
   top: 2px;
   right: 3px;
-}
-
-.adomnia-rail__category[data-featured='true'] {
-  height: 42px;
-  margin: 2px 0;
-}
-
-.adomnia-rail__category[data-featured='true']::after {
-  position: absolute;
-  inset: 7px 4px;
-  border-radius: 50%;
-  background: color-mix(in srgb, #159dff 8%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 30%, transparent);
-  content: '';
-  pointer-events: none;
-}
-
-.adomnia-rail__category[data-featured='true'] .adomnia-rail__category-main {
-  z-index: 1;
-  width: 40px;
-  height: 40px;
-  justify-content: center;
-  padding: 0;
-  overflow: visible;
-  border: 0;
-  border-radius: 10px;
-  color: var(--color-text-1);
-  background: transparent;
-  box-shadow: none;
-}
-
-.adomnia-rail__category[data-featured='true'] .adomnia-rail__category-main:hover,
-.adomnia-rail__category[data-featured='true'][data-active='true'] .adomnia-rail__category-main {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, #159dff 68%, transparent));
-  transform: translateY(-1px);
-}
-
-.adomnia-rail__go-mark {
-  display: block;
-  flex: 0 0 auto;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 4px color-mix(in srgb, #159dff 45%, transparent));
 }
 
 .adomnia-rail__divider {
@@ -257,15 +208,6 @@
     top: 3px;
   }
 
-  .adomnia-rail__category[data-featured='true'] {
-    height: 38px;
-    margin-block: 1px;
-  }
-
-  .adomnia-rail__category[data-featured='true'] .adomnia-rail__category-main {
-    height: 37px;
-  }
-
   .adomnia-rail__utility,
   .adomnia-rail__settings {
     height: 33px;
@@ -297,11 +239,6 @@
   .adomnia-rail__category-menu {
     top: 1px;
     height: 27px;
-  }
-
-  .adomnia-rail__category[data-featured='true'],
-  .adomnia-rail__category[data-featured='true'] .adomnia-rail__category-main {
-    height: 33px;
   }
 
   .adomnia-rail__divider {
