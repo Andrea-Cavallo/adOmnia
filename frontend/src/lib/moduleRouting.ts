@@ -75,8 +75,9 @@ function isMainWindow(): boolean {
  */
 function deliverWhenMounted(rail: RailItem, eventName: string, detail: Record<string, unknown>, onTimeout?: () => void): void {
   const deadline = performance.now() + HANDOFF_TIMEOUT_MS
+  const here = detachedPanelOfThisWindow()
   const attempt = () => {
-    if (useAppStore.getState().activeRail !== rail) return
+    if ((here ?? useAppStore.getState().activeRail) !== rail) return
     const eventDetail = { ...detail, handled: false }
     document.dispatchEvent(new CustomEvent(eventName, { detail: eventDetail }))
     if (eventDetail.handled) return

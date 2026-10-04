@@ -1,5 +1,20 @@
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 const pending = new Map<string, () => Promise<void>>()
+/** Keys whose data another window currently owns: saving them here would overwrite newer edits. */
+const suspended = new Set<string>()
+
+export function setSavesSuspended(keys: readonly string[], value: boolean): void {
+  for (const key of keys) {
+    if (value) {
+      suspended.add(key)
+      clearTimeout(timers.get(key))
+      timers.delete(key)
+      pending.delete(key)
+    } else {
+      suspended.delete(key)
+    }
+  }
+}
 
 // Default debounce delay, kept in sync with general.autoSaveIntervalMs by the
 // settings store (set via a setter to avoid a circular import).
@@ -9,6 +24,7 @@ export function setAutoSaveDelay(ms: number): void {
 }
 
 export function debouncedSave(key: string, fn: () => Promise<void>, delay = autoSaveDelay): void {
+  if (suspended.has(key)) return
   const existing = timers.get(key)
   if (existing) clearTimeout(existing)
   pending.set(key, fn)

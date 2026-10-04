@@ -6,7 +6,7 @@ import type { RailItem } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useGoIDEStore } from '@/stores/goide'
 import { showModule } from '@/lib/moduleRouting'
-import { windowSearch } from '@/lib/panel-windows-api'
+import { detachedPanelOfThisWindow } from '@/lib/panel-windows-api'
 import { handoffToPanel } from './dispatch'
 import { showEntityNotice } from './notice'
 import { registerOpener } from './router'
@@ -34,7 +34,7 @@ const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc'
 
 async function openInGo(file: string, line: number): Promise<void> {
   // From a module window, the code opens in the main window's Go Studio.
-  if (new URLSearchParams(windowSearch()).get('window')) return showModule('goide', { kind: 'open-location', file, line })
+  if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line })
   useAppStore.getState().setActiveRail('goide')
   await useGoIDEStore.getState().openLocation(file, line, 1)
 }

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { ArrowDownToLine, Bug, Check, Columns2, Loader2, Play, Redo2, RotateCcw, Square, X } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
@@ -9,7 +10,6 @@ import { runForTab } from '@/stores/devSessionModel'
 import { openFrameInGoStudio } from '@/lib/devsession/navigation'
 import { streamSessionToLogInspector } from '@/lib/devsession/logInspectorSource'
 import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
-import { useAppStore } from '@/stores/app'
 import { LiveLogList, LiveMessageList, LiveQueryList, RequestSummary, RequestTimeline } from './LiveRequestViews'
 import { basename, LiveDot } from './liveUi'
 
@@ -96,7 +96,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
       <LiveLogList entries={logs} goSessionId={session?.goSessionId} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`}
         toolbar={session && (
           <button type="button" title={`Stream ${session.service} into the Log Inspector, filtered on this request`}
-            onClick={() => { streamSessionToLogInspector(session.id, session.service); requestLogInspectorQuery(run.correlationId); useAppStore.getState().setActiveRail('loginspector') }}
+            onClick={() => { streamSessionToLogInspector(session.id, session.service); requestLogInspectorQuery(run.correlationId); showModule('loginspector') }}
             className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Log Inspector</button>
         )} />
     )

@@ -5,6 +5,8 @@ import { flushPendingSaves } from '@/lib/storeSave'
 
 /** Emitted by internal/panelwindow after every open or close, with the sorted list of detached modules. */
 const PANEL_WINDOWS_CHANGED = 'panelwindow:changed'
+/** Emitted when a module window is about to close: it writes its pending saves, then confirms. */
+const PANEL_WINDOW_CLOSE_REQUESTED = 'panelwindow:close-requested'
 
 /**
  * Modules that cannot live in their own window: the Hub, the settings pages (one shared settings
@@ -48,14 +50,21 @@ export async function focusPanelWindow(rail: RailItem): Promise<boolean> {
   return AppBindings.FocusPanelWindow(rail)
 }
 
-/** Closes the module's window: the module comes back to the main window. */
+/** Closes the module's window (it saves first): the module comes back to the main window. */
 export async function closePanelWindow(rail: RailItem): Promise<void> {
-  await flushPendingSaves()
   await AppBindings.ClosePanelWindow(rail)
 }
 
 export async function listPanelWindows(): Promise<RailItem[]> {
   return toRails(await AppBindings.ListPanelWindows())
+}
+
+/** In a module window: save what is queued, then let the window close. */
+export function closeAfterSavingOnRequest(rail: RailItem): () => void {
+  return Events.On(PANEL_WINDOW_CLOSE_REQUESTED, (event) => {
+    if (event.data !== rail) return
+    void flushPendingSaves().finally(() => AppBindings.ConfirmPanelWindowClose(rail))
+  })
 }
 
 export function subscribePanelWindows(callback: (detached: RailItem[]) => void): () => void {

@@ -1,5 +1,5 @@
-import type { monaco } from '@/lib/monacoSetup'
-import { useAppStore } from '@/stores/app'
+import type { monaco } from '@/lib/monacoSetup'
+import { showModule } from '@/lib/moduleRouting'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { openHttpRouteAt } from './goStudioCodeLens'
@@ -11,7 +11,7 @@ const NO_ROUTE_MESSAGE = 'Place the caret on a route registration (http.HandleFu
 export function runIntegrationCommand(id: GoStudioCommandId, document: GoIDEEditorDocument | null, editor: monaco.editor.ICodeEditor | null, openServices: () => void): boolean {
   switch (id) {
     case 'tools.services': openServices(); return true
-    case 'tools.plugins': useAppStore.getState().setActiveRail('plugins'); return true
+    case 'tools.plugins': showModule('plugins'); return true
     case 'tools.httpRequest': {
       const line = editor?.getPosition()?.lineNumber
       if (!document || !line || !openHttpRouteAt(document, line)) useGoIDELspStore.setState({ message: NO_ROUTE_MESSAGE })

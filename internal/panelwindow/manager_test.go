@@ -24,3 +24,14 @@ func TestOpenWithoutDesktopFails(t *testing.T) {
 		t.Fatal("expected an error without a desktop runtime")
 	}
 }
+
+func TestCloseAllThenWithoutWindowsDoesNotHoldTheMainWindow(t *testing.T) {
+	called := false
+	if New(nil, false).CloseAllThen(func() { called = true }) {
+		t.Fatal("no panel window is open: the main window must close normally")
+	}
+	var manager *Manager
+	if manager.CloseAllThen(func() { called = true }) || called {
+		t.Fatal("nil manager must not hold the close nor call done")
+	}
+}

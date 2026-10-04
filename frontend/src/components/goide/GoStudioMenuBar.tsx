@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { History, Menu } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useAppIcon } from '@/lib/brandAssets'
-import { useAppStore } from '@/stores/app'
 import type { GoIDERecentProject } from '@/lib/goide-api'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, commandShortcut, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
 import { GO_STUDIO_COMMAND_ICONS, GO_STUDIO_MENU_ICONS } from './goStudioCommandIcons'
@@ -88,7 +88,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
   return (
     <>
       {/* Logo adOmnia: torna all'hub principale (la rail e il menu di adOmnia ricompaiono). */}
-      <button type="button" onClick={() => useAppStore.getState().setActiveRail('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button go-studio-brand-button h-9 w-9">
+      <button type="button" onClick={() => showModule('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button go-studio-brand-button h-9 w-9">
         <img src={appIcon} alt="" data-brand-mark className="h-7 w-7 object-contain" />
       </button>
       <button

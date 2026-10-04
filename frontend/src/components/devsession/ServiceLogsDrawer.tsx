@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { X } from 'lucide-react'
 import { liveLogs, type LiveLogEntry } from '@/lib/devsession-api'
 import { cn } from '@/lib/utils'
 import { useDevSessionStore } from '@/stores/devSession'
 import { LiveLogList } from './LiveRequestViews'
 import { streamSessionToLogInspector } from '@/lib/devsession/logInspectorSource'
-import { useAppStore } from '@/stores/app'
 import { ServiceView } from './ServiceView'
 import { LiveDot, stateLabel } from './liveUi'
 
@@ -61,7 +61,7 @@ export function ServiceLogsDrawer({ sessionId, onClose }: { sessionId: string; o
             Only lines tied to API requests
           </label>
           <LiveLogList entries={entries} goSessionId={session.goSessionId} empty={`${session.service} has not printed anything yet.`}
-            toolbar={<button type="button" onClick={() => { streamSessionToLogInspector(session.id, session.service); useAppStore.getState().setActiveRail('loginspector'); onClose() }}
+            toolbar={<button type="button" onClick={() => { streamSessionToLogInspector(session.id, session.service); showModule('loginspector'); onClose() }}
               className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Log Inspector</button>} />
         </>
       ) : <ServiceView session={session} />}

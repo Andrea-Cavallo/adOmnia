@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { ArrowRight, FlaskConical, History, Loader2, Play, Search, Settings, Terminal } from 'lucide-react'
 import { quickOpenGoIDEFiles, type GoIDEQuickOpenResult } from '@/lib/goide-api'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { COMMAND_PALETTE_PANEL_FEATURES, isFeatureVisible, type FeatureDef } from '@/lib/featureRegistry'
-import { useAppStore } from '@/stores/app'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDETestsStore } from '@/stores/goideTests'
@@ -72,7 +72,7 @@ function actionRow(command: GoStudioCommand, availability: true | string, run: (
 function openSettingsSection(entry: GoStudioSettingEntry): void {
   // Come la mascotte dell'Hub: la sezione richiesta sopravvive al montaggio lazy del pannello Settings.
   try { sessionStorage.setItem('adomnia.settings.requested-section', entry.section) } catch { /* solo navigazione */ }
-  useAppStore.getState().setActiveRail('settings')
+  showModule('settings')
   window.requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('adomnia:open-settings-section', { detail: entry.section })))
 }
 
@@ -168,7 +168,7 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
         key: `setting:${entry.label}`, section: 'Settings' as const, title: entry.label, detail: `Settings · ${entry.section}`,
         icon: <Settings size={12} className="text-text-3" aria-hidden="true" />, run: close(() => openSettingsSection(entry)),
       })),
-      ...panels.map((feature) => panelRow(feature, (target) => close(() => useAppStore.getState().setActiveRail(target.id))())),
+      ...panels.map((feature) => panelRow(feature, (target) => close(() => showModule(target.id))())),
     ]
   }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols])
 

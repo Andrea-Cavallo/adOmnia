@@ -64,6 +64,8 @@ const initialRail = initialRailFromMemento()
 markStartup('startup:memento-restored')
 
 function rememberActiveRail(rail: RailItem): void {
+  // Only the main window decides where adOmnia reopens: module and project windows share this storage.
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location?.search ?? '').get('window')) return
   const general = useSettingsStore.getState().settings.general
   saveUiSessionMemento(
     rail,

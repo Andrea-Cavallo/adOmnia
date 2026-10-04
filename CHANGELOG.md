@@ -11,6 +11,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Studios launcher in Go Studio:** the grid button in the Go Studio toolbar lists API Workspace, Database Studio, Broker Studio, Mock Server, gRPC and Docker Lab; one click opens the studio in its own window beside the code, or brings it forward. It also works from a project that is already in its own window.
 - **Links from the code follow the module's window:** *Open in API Client*, *Send request*, *Add to Mock Server*, the Project Services handoffs (Database Studio, Broker Studio, Docker Lab), entity handoffs (database, topics, gRPC, WebSocket) and *Open in Power Tools* run in the window where that module lives and bring it forward, instead of switching the main window. From a module window, *open in Go* returns to the main window's Go Studio. Importing a collection from the project writes it where the API workspace is open, so a detached workspace is never overwritten by a stale copy.
 
+### Fixed
+- **Module windows never lose or overwrite edits:** closing a module window (its X, *Bring back here*, or quitting adOmnia) first writes the edits still queued there, with a 3-second safety net for a frozen window. Closing the main window closes the module windows first instead of leaving adOmnia running with only a module window. While the API workspace is open in its own window, the other windows never write their copy of collections, tabs, environments and hosts, and re-read it when it comes back.
+- **Handoffs to a module window:** a module window keeps its module selected even after startup restores the main window's last view, so database, broker, gRPC and WebSocket handoffs sent to it are delivered instead of timing out. Module and project windows no longer change where adOmnia reopens.
+- **Links from a Go Studio project window:** *open in Go* from a project window opens the code in that window, and Git, plugins, Search Everywhere panels, Log Inspector and Mock links bring the right window forward.
+
 ## [0.9.58] - 2026-10-04
 
 ### Added

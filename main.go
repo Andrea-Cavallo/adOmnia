@@ -149,6 +149,7 @@ func main() {
 	})
 	app.SetMainWindow(mainWindow)
 	goIDE.attachMainWindow(mainWindow)
+	app.attachPanelWindowsToMain(mainWindow)
 	if err := desktopApp.Run(); err != nil {
 		log.Fatal("[app] ", err)
 	}

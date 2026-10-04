@@ -79,6 +79,13 @@ export function CompareFolders(left: string, right: string, maxFileMB: number): 
     return $Call.ByID(3985885649, left, right, maxFileMB);
 }
 
+/**
+ * ConfirmPanelWindowClose closes a module window after it has written its pending saves.
+ */
+export function ConfirmPanelWindowClose(panel: string): $CancellablePromise<void> {
+    return $Call.ByID(1023639653, panel);
+}
+
 export function CreateMarkdownFile(root: string, relPath: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3160060858, root, relPath, content).then(($result: any) => {
         return $$createType1($result);

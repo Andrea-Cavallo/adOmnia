@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
 import type { LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
-import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { codePathFor, timeOf } from '@/stores/devSessionModel'
@@ -207,7 +207,7 @@ async function mockRunResponse(run: RequestRun) {
   if (!endpoint) return showEntityNotice(`${run.method} cannot be mocked.`)
   try {
     await appendMockEndpoints([endpoint])
-    showEntityNotice(`Mock endpoint ${endpoint.method} ${endpoint.path} added with the captured ${run.status} response.`, { label: 'Open Mock Server', run: () => useAppStore.getState().setActiveRail('mock') })
+    showEntityNotice(`Mock endpoint ${endpoint.method} ${endpoint.path} added with the captured ${run.status} response.`, { label: 'Open Mock Server', run: () => showModule('mock') })
   } catch (error) {
     showEntityNotice(`Could not add the mock endpoint: ${error instanceof Error ? error.message : String(error)}`)
   }

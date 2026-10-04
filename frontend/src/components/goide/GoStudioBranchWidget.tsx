@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { showModule } from '@/lib/moduleRouting'
 import { ChevronDown, GitBranch, GitCommitHorizontal, GitPullRequestArrow } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
-import { useAppStore } from '@/stores/app'
 import { dirtyGoIDEDocuments, useGoIDEStore } from '@/stores/goide'
 import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
 
@@ -48,7 +48,7 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
   const select = (id: string) => {
     setMenu(null)
     if (id === COMMIT_ITEM) return onCommit()
-    if (id === GIT_STUDIO_ITEM) return useAppStore.getState().setActiveRail('gitsync')
+    if (id === GIT_STUDIO_ITEM) return showModule('gitsync')
     if (id.startsWith('branch:')) void checkout(id.slice('branch:'.length))
   }
 

@@ -8,7 +8,7 @@ import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
 import { useWorkspaceHydration } from '@/hooks/useWorkspaceHydration'
 import type { RailItem } from '@/lib/navigation'
-import { closePanelWindow } from '@/lib/panel-windows-api'
+import { closeAfterSavingOnRequest, closePanelWindow } from '@/lib/panel-windows-api'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
@@ -31,9 +31,15 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
   const epoch = useModuleEpoch(rail)
   // Links from the code (Go Studio, other windows) reach this module here.
   useEffect(() => { startModuleActionListener() }, [])
+  // Closing (X, Bring back, or quitting adOmnia) first writes the edits still queued here.
+  useEffect(() => closeAfterSavingOnRequest(rail), [rail])
 
-  // Panels that read the active rail behave as if they were selected in the main window.
-  useEffect(() => { useAppStore.setState({ activeRail: rail }) }, [rail])
+  // Panels that read the active rail behave as if they were selected in the main window. Startup
+  // restores the main window's last rail, so the rail stays pinned to this window's module.
+  useEffect(() => {
+    useAppStore.setState({ activeRail: rail })
+    return useAppStore.subscribe((state) => { if (state.activeRail !== rail) useAppStore.setState({ activeRail: rail }) })
+  }, [rail])
   useEffect(() => { document.title = `${label} · adOmnia` }, [label])
 
   return (

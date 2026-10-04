@@ -1,4 +1,4 @@
-import { useAppStore } from '@/stores/app'
+import { showModule } from '@/lib/moduleRouting'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
@@ -16,7 +16,7 @@ export function runVcsCommand(id: GoStudioCommandId, sessionId: string | null, d
     case 'vcs.gitStudio':
       // Git Studio si apre sul repository del progetto, anche se prima era stato scelto a mano un altro.
       if (sessionId) syncGitStudioToSession(sessionId, true)
-      useAppStore.getState().setActiveRail('gitsync')
+      showModule('gitsync')
       return true
     case 'vcs.annotate':
       if (sessionId && document) {
