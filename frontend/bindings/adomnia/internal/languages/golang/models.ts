@@ -16,6 +16,32 @@ import * as run$0 from "../../ide/run/models.js";
 import * as json$0 from "../../../../encoding/json/models.js";
 
 /**
+ * ArchBody è il tipo del corpo di una richiesta o risposta; Ref punta a uno schema del report.
+ */
+export class ArchBody {
+    "type": string;
+    "ref"?: string;
+    "array"?: boolean;
+
+    /** Creates a new ArchBody instance. */
+    constructor($$source: Partial<ArchBody> = {}) {
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ArchBody instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ArchBody {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ArchBody($$parsedSource as Partial<ArchBody>);
+    }
+}
+
+/**
  * ArchEdge collega due nodi (package o funzioni) con un peso.
  */
 export class ArchEdge {
@@ -49,7 +75,7 @@ export class ArchEdge {
 
 /**
  * ArchEntry è un punto d'ingresso o un servizio rilevato nel codice.
- * Kind: main, init, http, grpc, kafka-producer, kafka-consumer, repository, job, cli.
+ * Kind: main, init, http, middleware, grpc, kafka-producer, kafka-consumer, repository, job, cli.
  */
 export class ArchEntry {
     "kind": string;
@@ -59,6 +85,15 @@ export class ArchEntry {
     "function"?: string;
     "topics"?: string[];
     "site": ArchSite;
+
+    /**
+     * Solo per le route HTTP: handler, middleware e corpi di richiesta e risposta riconosciuti.
+     */
+    "handler"?: string;
+    "handlerSite"?: ArchSite | null;
+    "middleware"?: string[];
+    "request"?: ArchBody | null;
+    "response"?: ArchBody | null;
 
     /** Creates a new ArchEntry instance. */
     constructor($$source: Partial<ArchEntry> = {}) {
@@ -84,6 +119,10 @@ export class ArchEntry {
     static createFrom($$source: any = {}): ArchEntry {
         const $$createField5_0 = $$createType0;
         const $$createField6_0 = $$createType1;
+        const $$createField8_0 = $$createType2;
+        const $$createField9_0 = $$createType0;
+        const $$createField10_0 = $$createType4;
+        const $$createField11_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("topics" in $$parsedSource) {
             $$parsedSource["topics"] = $$createField5_0($$parsedSource["topics"]);
@@ -91,7 +130,60 @@ export class ArchEntry {
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField6_0($$parsedSource["site"]);
         }
+        if ("handlerSite" in $$parsedSource) {
+            $$parsedSource["handlerSite"] = $$createField8_0($$parsedSource["handlerSite"]);
+        }
+        if ("middleware" in $$parsedSource) {
+            $$parsedSource["middleware"] = $$createField9_0($$parsedSource["middleware"]);
+        }
+        if ("request" in $$parsedSource) {
+            $$parsedSource["request"] = $$createField10_0($$parsedSource["request"]);
+        }
+        if ("response" in $$parsedSource) {
+            $$parsedSource["response"] = $$createField11_0($$parsedSource["response"]);
+        }
         return new ArchEntry($$parsedSource as Partial<ArchEntry>);
+    }
+}
+
+export class ArchField {
+    "name": string;
+    "goName": string;
+
+    /**
+     * string, integer, number, boolean, array, object
+     */
+    "type": string;
+    "format"?: string;
+    "ref"?: string;
+
+    /**
+     * tipo degli elementi di un array
+     */
+    "items"?: string;
+    "required"?: boolean;
+
+    /** Creates a new ArchField instance. */
+    constructor($$source: Partial<ArchField> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("goName" in $$source)) {
+            this["goName"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ArchField instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ArchField {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ArchField($$parsedSource as Partial<ArchField>);
     }
 }
 
@@ -255,11 +347,11 @@ export class ArchInterface {
         const $$createField2_0 = $$createType1;
         const $$createField3_0 = $$createType0;
         const $$createField4_0 = $$createType0;
-        const $$createField5_0 = $$createType3;
-        const $$createField6_0 = $$createType5;
-        const $$createField8_0 = $$createType7;
-        const $$createField9_0 = $$createType9;
-        const $$createField10_0 = $$createType11;
+        const $$createField5_0 = $$createType6;
+        const $$createField6_0 = $$createType8;
+        const $$createField8_0 = $$createType10;
+        const $$createField9_0 = $$createType12;
+        const $$createField10_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField2_0($$parsedSource["site"]);
@@ -488,6 +580,50 @@ export class ArchRef {
 }
 
 /**
+ * ArchSchema è uno struct usato come DTO, con i campi come li vede JSON.
+ */
+export class ArchSchema {
+    "name": string;
+    "package": string;
+    "fields": ArchField[];
+    "site": ArchSite;
+
+    /** Creates a new ArchSchema instance. */
+    constructor($$source: Partial<ArchSchema> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("fields" in $$source)) {
+            this["fields"] = [];
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ArchSchema instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ArchSchema {
+        const $$createField2_0 = $$createType16;
+        const $$createField3_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("fields" in $$parsedSource) {
+            $$parsedSource["fields"] = $$createField2_0($$parsedSource["fields"]);
+        }
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
+        }
+        return new ArchSchema($$parsedSource as Partial<ArchSchema>);
+    }
+}
+
+/**
  * ArchSite è una posizione nel sorgente: Path e Offset dall'analisi, poi Resolve la traduce in
  * percorso relativo al progetto, riga e colonna dell'editor.
  */
@@ -529,6 +665,7 @@ export class ArchitectureReport {
     "modules": ArchModule[];
     "interfaces": ArchInterface[];
     "entries": ArchEntry[];
+    "schemas": ArchSchema[];
     "truncated"?: boolean;
 
     /** Creates a new ArchitectureReport instance. */
@@ -557,6 +694,9 @@ export class ArchitectureReport {
         if (!("entries" in $$source)) {
             this["entries"] = [];
         }
+        if (!("schemas" in $$source)) {
+            this["schemas"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -565,14 +705,15 @@ export class ArchitectureReport {
      * Creates a new ArchitectureReport instance from a string or object.
      */
     static createFrom($$source: any = {}): ArchitectureReport {
-        const $$createField0_0 = $$createType13;
-        const $$createField1_0 = $$createType15;
-        const $$createField2_0 = $$createType15;
-        const $$createField3_0 = $$createType17;
-        const $$createField4_0 = $$createType15;
-        const $$createField5_0 = $$createType19;
-        const $$createField6_0 = $$createType21;
-        const $$createField7_0 = $$createType23;
+        const $$createField0_0 = $$createType18;
+        const $$createField1_0 = $$createType20;
+        const $$createField2_0 = $$createType20;
+        const $$createField3_0 = $$createType22;
+        const $$createField4_0 = $$createType20;
+        const $$createField5_0 = $$createType24;
+        const $$createField6_0 = $$createType26;
+        const $$createField7_0 = $$createType28;
+        const $$createField8_0 = $$createType30;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField0_0($$parsedSource["packages"]);
@@ -597,6 +738,9 @@ export class ArchitectureReport {
         }
         if ("entries" in $$parsedSource) {
             $$parsedSource["entries"] = $$createField7_0($$parsedSource["entries"]);
+        }
+        if ("schemas" in $$parsedSource) {
+            $$parsedSource["schemas"] = $$createField8_0($$parsedSource["schemas"]);
         }
         return new ArchitectureReport($$parsedSource as Partial<ArchitectureReport>);
     }
@@ -633,7 +777,7 @@ export class DebugMemory {
      * Creates a new DebugMemory instance from a string or object.
      */
     static createFrom($$source: any = {}): DebugMemory {
-        const $$createField1_0 = $$createType24;
+        const $$createField1_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("bytes" in $$parsedSource) {
             $$parsedSource["bytes"] = $$createField1_0($$parsedSource["bytes"]);
@@ -704,7 +848,7 @@ export class DebugRequest {
     static createFrom($$source: any = {}): DebugRequest {
         const $$createField7_0 = $$createType0;
         const $$createField8_0 = $$createType0;
-        const $$createField9_0 = $$createType25;
+        const $$createField9_0 = $$createType32;
         const $$createField11_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("programArguments" in $$parsedSource) {
@@ -822,7 +966,7 @@ export class DocProblem {
      */
     static createFrom($$source: any = {}): DocProblem {
         const $$createField3_0 = $$createType1;
-        const $$createField4_0 = $$createType27;
+        const $$createField4_0 = $$createType34;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
@@ -879,10 +1023,10 @@ export class DocType {
      */
     static createFrom($$source: any = {}): DocType {
         const $$createField3_0 = $$createType1;
-        const $$createField4_0 = $$createType29;
-        const $$createField5_0 = $$createType29;
-        const $$createField6_0 = $$createType31;
-        const $$createField7_0 = $$createType31;
+        const $$createField4_0 = $$createType36;
+        const $$createField5_0 = $$createType36;
+        const $$createField6_0 = $$createType38;
+        const $$createField7_0 = $$createType38;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
@@ -1003,7 +1147,7 @@ export class ErrorFix {
      * Creates a new ErrorFix instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorFix {
-        const $$createField1_0 = $$createType33;
+        const $$createField1_0 = $$createType40;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("edits" in $$parsedSource) {
             $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
@@ -1151,7 +1295,7 @@ export class GoroutineCreation {
      * Creates a new GoroutineCreation instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineCreation {
-        const $$createField0_0 = $$createType35;
+        const $$createField0_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
@@ -1184,7 +1328,7 @@ export class GoroutineOverview {
      * Creates a new GoroutineOverview instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineOverview {
-        const $$createField0_0 = $$createType37;
+        const $$createField0_0 = $$createType44;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField0_0($$parsedSource["goroutines"]);
@@ -1248,9 +1392,9 @@ export class GoroutineSummary {
      * Creates a new GoroutineSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineSummary {
-        const $$createField5_0 = $$createType35;
-        const $$createField7_0 = $$createType35;
-        const $$createField8_0 = $$createType38;
+        const $$createField5_0 = $$createType42;
+        const $$createField7_0 = $$createType42;
+        const $$createField8_0 = $$createType45;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField5_0($$parsedSource["location"]);
@@ -1383,12 +1527,12 @@ export class PackageDoc {
      * Creates a new PackageDoc instance from a string or object.
      */
     static createFrom($$source: any = {}): PackageDoc {
-        const $$createField5_0 = $$createType29;
-        const $$createField6_0 = $$createType29;
-        const $$createField7_0 = $$createType31;
-        const $$createField8_0 = $$createType40;
-        const $$createField9_0 = $$createType41;
-        const $$createField10_0 = $$createType43;
+        const $$createField5_0 = $$createType36;
+        const $$createField6_0 = $$createType36;
+        const $$createField7_0 = $$createType38;
+        const $$createField8_0 = $$createType47;
+        const $$createField9_0 = $$createType48;
+        const $$createField10_0 = $$createType50;
         const $$createField11_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("consts" in $$parsedSource) {
@@ -1449,7 +1593,7 @@ export class PendingDefer {
      * Creates a new PendingDefer instance from a string or object.
      */
     static createFrom($$source: any = {}): PendingDefer {
-        const $$createField1_0 = $$createType35;
+        const $$createField1_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
@@ -1527,8 +1671,8 @@ export class TestOptions {
     static createFrom($$source: any = {}): TestOptions {
         const $$createField4_0 = $$createType0;
         const $$createField9_0 = $$createType0;
-        const $$createField10_0 = $$createType25;
-        const $$createField13_0 = $$createType24;
+        const $$createField10_0 = $$createType32;
+        const $$createField13_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
@@ -1563,7 +1707,7 @@ export class ToolchainConfiguration {
      * Creates a new ToolchainConfiguration instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainConfiguration {
-        const $$createField1_0 = $$createType25;
+        const $$createField1_0 = $$createType32;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("environment" in $$parsedSource) {
             $$parsedSource["environment"] = $$createField1_0($$parsedSource["environment"]);
@@ -1637,7 +1781,7 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType45;
+        const $$createField23_0 = $$createType52;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("timings" in $$parsedSource) {
             $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
@@ -1762,8 +1906,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType47;
-        const $$createField1_0 = $$createType46;
+        const $$createField0_0 = $$createType54;
+        const $$createField1_0 = $$createType53;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -1807,49 +1951,56 @@ export class ToolchainTiming {
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = ArchSite.createFrom;
-const $$createType2 = ArchImplementation.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = ArchRef.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = ArchMethodUse.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = ArchNearMiss.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = ArchHint.createFrom;
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = ArchPackage.createFrom;
-const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = ArchEdge.createFrom;
-const $$createType15 = $Create.Array($$createType14);
-const $$createType16 = ArchFunction.createFrom;
-const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = ArchModule.createFrom;
-const $$createType19 = $Create.Array($$createType18);
-const $$createType20 = ArchInterface.createFrom;
-const $$createType21 = $Create.Array($$createType20);
-const $$createType22 = ArchEntry.createFrom;
-const $$createType23 = $Create.Array($$createType22);
-const $$createType24 = $Create.Array($Create.Any);
-const $$createType25 = $Create.Map($Create.Any, $Create.Any);
-const $$createType26 = ErrorFix.createFrom;
-const $$createType27 = $Create.Nullable($$createType26);
-const $$createType28 = DocValue.createFrom;
-const $$createType29 = $Create.Array($$createType28);
-const $$createType30 = DocFunc.createFrom;
-const $$createType31 = $Create.Array($$createType30);
-const $$createType32 = ErrorEdit.createFrom;
-const $$createType33 = $Create.Array($$createType32);
-const $$createType34 = dap$0.DebugFrame.createFrom;
-const $$createType35 = $Create.Nullable($$createType34);
-const $$createType36 = GoroutineSummary.createFrom;
-const $$createType37 = $Create.Array($$createType36);
-const $$createType38 = $Create.Array($$createType34);
-const $$createType39 = DocType.createFrom;
+const $$createType2 = $Create.Nullable($$createType1);
+const $$createType3 = ArchBody.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);
+const $$createType5 = ArchImplementation.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = ArchRef.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = ArchMethodUse.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = ArchNearMiss.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = ArchHint.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = ArchField.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = ArchPackage.createFrom;
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = ArchEdge.createFrom;
+const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = ArchFunction.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = ArchModule.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = ArchInterface.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = ArchEntry.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = ArchSchema.createFrom;
+const $$createType30 = $Create.Array($$createType29);
+const $$createType31 = $Create.Array($Create.Any);
+const $$createType32 = $Create.Map($Create.Any, $Create.Any);
+const $$createType33 = ErrorFix.createFrom;
+const $$createType34 = $Create.Nullable($$createType33);
+const $$createType35 = DocValue.createFrom;
+const $$createType36 = $Create.Array($$createType35);
+const $$createType37 = DocFunc.createFrom;
+const $$createType38 = $Create.Array($$createType37);
+const $$createType39 = ErrorEdit.createFrom;
 const $$createType40 = $Create.Array($$createType39);
-const $$createType41 = $Create.Map($Create.Any, $$createType0);
-const $$createType42 = DocProblem.createFrom;
-const $$createType43 = $Create.Array($$createType42);
-const $$createType44 = ToolchainTiming.createFrom;
-const $$createType45 = $Create.Array($$createType44);
-const $$createType46 = ToolchainConfiguration.createFrom;
-const $$createType47 = $Create.Nullable($$createType46);
+const $$createType41 = dap$0.DebugFrame.createFrom;
+const $$createType42 = $Create.Nullable($$createType41);
+const $$createType43 = GoroutineSummary.createFrom;
+const $$createType44 = $Create.Array($$createType43);
+const $$createType45 = $Create.Array($$createType41);
+const $$createType46 = DocType.createFrom;
+const $$createType47 = $Create.Array($$createType46);
+const $$createType48 = $Create.Map($Create.Any, $$createType0);
+const $$createType49 = DocProblem.createFrom;
+const $$createType50 = $Create.Array($$createType49);
+const $$createType51 = ToolchainTiming.createFrom;
+const $$createType52 = $Create.Array($$createType51);
+const $$createType53 = ToolchainConfiguration.createFrom;
+const $$createType54 = $Create.Nullable($$createType53);

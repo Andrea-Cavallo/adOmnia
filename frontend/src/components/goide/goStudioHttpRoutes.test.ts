@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_GO_BASE_URL, findHttpRoutes, findServerBaseUrl, requestFromRoute, resolveGoBaseUrl, routeAtLine } from './goStudioHttpRoutes'
+import { DEFAULT_GO_BASE_URL, findHttpRoutes, findServerBaseUrl, requestFromRoute, resolveGoBaseUrl, routeAtLine, routeCurl } from './goStudioHttpRoutes'
 
 describe('findHttpRoutes', () => {
   it('reads net/http patterns with and without a method', () => {
@@ -86,5 +86,13 @@ describe('route to API request', () => {
   it('warns when the handler accepts any method', () => {
     const [route] = findHttpRoutes('http.HandleFunc("/ping", ping)')
     expect(requestFromRoute(route, '{{baseUrl}}', 'main.go:1').description).toContain('accepts any method')
+  })
+})
+
+describe('routeCurl', () => {
+  const route = { line: 3, method: 'POST' as const, path: '/orders/{id}', anyMethod: false }
+  it('uses the environment base URL, then the address found in the code', () => {
+    expect(routeCurl(route, '', { baseUrl: 'http://api.local:9000/' })).toContain('http://api.local:9000/orders/{id}')
+    expect(routeCurl(route, 'http.ListenAndServe(":7070", nil)', {})).toMatch(/curl[\s\S]*-X POST[\s\S]*localhost:7070\/orders/)
   })
 })

@@ -47,6 +47,12 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	}
 	for index := range r.Entries {
 		fix(&r.Entries[index].Site)
+		if r.Entries[index].HandlerSite != nil {
+			fix(r.Entries[index].HandlerSite)
+		}
+	}
+	for index := range r.Schemas {
+		fix(&r.Schemas[index].Site)
 	}
 	for index := range r.Interfaces {
 		item := &r.Interfaces[index]
@@ -81,6 +87,7 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.Modules = append(r.Modules, other.Modules...)
 	r.Interfaces = append(r.Interfaces, other.Interfaces...)
 	r.Entries = append(r.Entries, other.Entries...)
+	r.Schemas = append(r.Schemas, other.Schemas...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -127,24 +134,43 @@ type ArchitectureReport struct {
 	Modules      []ArchModule    `json:"modules"`
 	Interfaces   []ArchInterface `json:"interfaces"`
 	Entries      []ArchEntry     `json:"entries"`
+	Schemas      []ArchSchema    `json:"schemas"`
 	Truncated    bool            `json:"truncated,omitempty"`
 }
 
+// funcDecl è la dichiarazione di una funzione del progetto con il suo file.
+type funcDecl struct {
+	decl *ast.FuncDecl
+	file typedFile
+}
+
 type architecture struct {
-	fset      *token.FileSet
-	files     []typedFile
-	project   map[string]bool // import path dei package del progetto
-	report    ArchitectureReport
-	functions map[string]*ArchFunction
-	calls     map[[2]string]int
-	pkgCalls  map[[2]string]int
+	decls          map[*types.Func]funcDecl
+	middlewareSeen map[string]bool
+	schemaNames    map[string]string // tipo → nome dello schema
+	schemaTaken    map[string]bool
+	fset           *token.FileSet
+	files          []typedFile
+	project        map[string]bool // import path dei package del progetto
+	report         ArchitectureReport
+	functions      map[string]*ArchFunction
+	calls          map[[2]string]int
+	pkgCalls       map[[2]string]int
 }
 
 // AnalyzeArchitecture costruisce il modello dell'architettura dai package caricati.
 func AnalyzeArchitecture(fset *token.FileSet, loaded []*packages.Package, read func(string) ([]byte, error)) ArchitectureReport {
 	a := &architecture{fset: fset, files: typedFiles(loaded, read), project: map[string]bool{}, functions: map[string]*ArchFunction{}, calls: map[[2]string]int{}, pkgCalls: map[[2]string]int{}}
+	a.decls, a.middlewareSeen, a.schemaNames, a.schemaTaken = map[*types.Func]funcDecl{}, map[string]bool{}, map[string]string{}, map[string]bool{}
 	for _, file := range a.files {
 		a.project[file.pkg.PkgPath] = true
+		for _, decl := range file.file.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
+				if object, ok := file.pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
+					a.decls[object] = funcDecl{decl: fn, file: file}
+				}
+			}
+		}
 	}
 	a.collectPackages(loaded, read)
 	a.collectModules(loaded, read)
@@ -351,4 +377,8 @@ func (a *architecture) finish() {
 	if a.report.Entries == nil {
 		a.report.Entries = []ArchEntry{}
 	}
+	if a.report.Schemas == nil {
+		a.report.Schemas = []ArchSchema{}
+	}
+	sortSchemas(a.report.Schemas)
 }

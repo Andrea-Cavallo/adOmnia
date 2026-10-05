@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
 | **P1** | Workflow Go migliore di GoLand | 1 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 213 | 51 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 206 | 49 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -143,19 +143,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 È il punto in cui **adOmnia diventa un ambiente di sviluppo completo per sistemi Go**.
 
 ## §24 · API Integration — REST
-
-### Code detection
-
-- [ ] Framework adapter estendibile.
-- [ ] Individuare middleware.
-- [ ] Individuare request DTO.
-- [ ] Individuare response DTO.
-
-### Azioni inline
-
-- [ ] `MOCK`. — *Parziale: Esiste l'opener route "Add to Mock Server" (entities/openers.ts), raggiungibile da command palette; manca una lens inline sul codice.*
-- [ ] `COPY CURL`.
-- [ ] `OPENAPI`. — *Parziale: Route da OpenAPI come entità contratto (devcontext/contracts.go) e avviso route mancante; manca azione inline "OpenAPI" sul handler.*
 
 ### Debug integration
 

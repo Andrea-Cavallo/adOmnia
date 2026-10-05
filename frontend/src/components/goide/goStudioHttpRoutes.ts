@@ -1,3 +1,4 @@
+import { generateCode } from '@/lib/codegen'
 import { requestWithUrlInput } from '@/lib/requestUrl'
 import { blankRequest, type HttpMethod, type RequestItem } from '@/lib/types'
 
@@ -124,4 +125,10 @@ export function requestFromRoute(route: GoStudioHttpRoute, baseUrl: string, orig
     ...requestWithUrlInput(request, `${baseUrl}${route.path}`),
     description: `Opened from Go Studio: ${origin}.${anyMethodNote}`,
   }
+}
+
+/** cURL con l'indirizzo reale: la variabile baseUrl dell'ambiente se c'è, altrimenti quello trovato nel codice. */
+export function routeCurl(route: GoStudioHttpRoute, source: string, variables: Record<string, string>): string {
+  const baseUrl = (variables[BASE_URL_VARIABLE] || findServerBaseUrl(source) || DEFAULT_GO_BASE_URL).replace(/\/+$/, '')
+  return generateCode(requestFromRoute(route, baseUrl, 'Go Studio'), 'curl')
 }

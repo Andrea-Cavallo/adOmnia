@@ -77,13 +77,13 @@ export function packageMermaid(report: GoIDEArchitecture, limit = 30): string {
 }
 
 const ENTRY_TITLES: Record<string, string> = {
-  main: 'Entry points', http: 'HTTP routes', grpc: 'gRPC services', 'kafka-producer': 'Kafka producers', 'kafka-consumer': 'Kafka consumers',
+  main: 'Entry points', http: 'HTTP routes', middleware: 'HTTP middleware', grpc: 'gRPC services', 'kafka-producer': 'Kafka producers', 'kafka-consumer': 'Kafka consumers',
   repository: 'DB repositories', job: 'Scheduled jobs', cli: 'CLI commands',
 }
 
 function entryRow(entry: GoIDEArchEntry): string {
   const where = sourceLink(entry.site, `${entry.site.relativePath}:${entry.site.line}`)
-  const extra = [entry.detail, entry.topics?.length ? `topics: ${entry.topics.join(', ')}` : ''].filter(Boolean).join(' · ')
+  const extra = [entry.detail, entry.handler ? `handler ${entry.handler}` : '', entry.request ? `in ${entry.request.ref || entry.request.type}` : '', entry.response ? `out ${entry.response.array ? '[]' : ''}${entry.response.ref || entry.response.type}` : '', entry.middleware?.length ? `via ${entry.middleware.join(' › ')}` : '', entry.topics?.length ? `topics: ${entry.topics.join(', ')}` : ''].filter(Boolean).join(' · ')
   return `| ${entry.kind === 'main' ? shortPackage(entry.name) : entry.name} | ${extra || '—'} | ${where} |`
 }
 
@@ -148,34 +148,63 @@ export function openApiPath(path: string): { path: string; parameters: string[] 
   return { path: normalized || '/', parameters }
 }
 
+type ArchSchema = GoIDEArchitecture['schemas'][number]
+type ArchBody = NonNullable<GoIDEArchEntry['request']>
+
+function fieldSchema(field: ArchSchema['fields'][number]): Record<string, unknown> {
+  if (field.type === 'array') return { type: 'array', items: field.ref ? { $ref: `#/components/schemas/${field.ref}` } : { type: field.items || 'string' } }
+  if (field.ref) return { $ref: `#/components/schemas/${field.ref}` }
+  return field.format ? { type: field.type, format: field.format } : { type: field.type }
+}
+
+/** Gli struct DTO trovati nel codice come components.schemas, con campi e required dai tag json. */
+export function openApiSchemas(schemas: readonly ArchSchema[]): Record<string, unknown> {
+  return Object.fromEntries(schemas.map((schema) => {
+    const required = schema.fields.filter((field) => field.required).map((field) => field.name)
+    return [schema.name, { type: 'object', properties: Object.fromEntries(schema.fields.map((field) => [field.name, fieldSchema(field)])), ...(required.length ? { required } : {}) }]
+  }))
+}
+
+function bodySchema(body: ArchBody): Record<string, unknown> {
+  const item = body.ref ? { $ref: `#/components/schemas/${body.ref}` } : { type: 'object' }
+  return body.array ? { type: 'array', items: item } : item
+}
+
 /**
  * OpenAPI 3.0 dalle route HTTP trovate nel codice: percorsi, metodi, parametri di path, operationId
- * dalla funzione e tag dal package. Le risposte non sono inventate: restano "default".
+ * dall'handler, tag dal package, corpi di richiesta e risposta dai DTO riconosciuti nell'handler.
+ * Le risposte non trovate nel codice restano "default", senza inventare nulla.
  */
-export function openApiFromRoutes(entries: readonly GoIDEArchEntry[], title: string): Record<string, unknown> {
+export function openApiFromRoutes(entries: readonly GoIDEArchEntry[], title: string, schemas: readonly ArchSchema[] = []): Record<string, unknown> {
   const paths: Record<string, Record<string, unknown>> = {}
   const usedIds = new Set<string>()
   for (const entry of entries.filter((item) => item.kind === 'http')) {
     const [first, second] = entry.name.split(' ')
     const method = second ? first.toLowerCase() : 'get'
     const route = openApiPath(second ?? first)
-    const methods = method === 'any' ? ['get', 'post', 'put', 'patch', 'delete'] : HTTP_METHODS.has(method) ? [method] : ['get']
+    const methods = method.split(',').flatMap((verb) => verb === 'any' ? ['get', 'post', 'put', 'patch', 'delete'] : HTTP_METHODS.has(verb) ? [verb] : ['get'])
     for (const verb of methods) {
-      let operationId = `${verb}${(entry.function ?? '').replace(/[^A-Za-z0-9]/g, '') || route.path.replace(/[^A-Za-z0-9]/g, '')}`
+      const source = (entry.handler && entry.handler !== 'func literal' ? entry.handler : entry.function ?? '').replace(/[^A-Za-z0-9]/g, '')
+      let operationId = `${verb}${source || route.path.replace(/[^A-Za-z0-9]/g, '')}`
       for (let suffix = 2; usedIds.has(operationId); suffix++) operationId = `${operationId.replace(/\d+$/, '')}${suffix}`
       usedIds.add(operationId)
+      const handledIn = entry.handlerSite?.relativePath ? `${entry.handler} (${entry.handlerSite.relativePath}:${entry.handlerSite.line})` : `${entry.function ?? 'unknown'} (${entry.site.relativePath}:${entry.site.line})`
       paths[route.path] = {
         ...paths[route.path],
         [verb]: {
           operationId,
           tags: [shortPackage(entry.package)],
           summary: `${verb.toUpperCase()} ${route.path}`,
-          description: `Handled in ${entry.function ?? 'unknown'} (${entry.site.relativePath}:${entry.site.line}).`,
+          description: `Handled by ${handledIn}.${entry.middleware?.length ? ` Middleware: ${entry.middleware.join(', ')}.` : ''}`,
           ...(route.parameters.length ? { parameters: route.parameters.map((name) => ({ name, in: 'path', required: true, schema: { type: 'string' } })) } : {}),
-          responses: { default: { description: 'Response (not described in the code yet)' } },
+          ...(entry.request ? { requestBody: { required: true, content: { 'application/json': { schema: bodySchema(entry.request) } } } } : {}),
+          responses: entry.response
+            ? { 200: { description: `${entry.response.array ? 'List of ' : ''}${entry.response.type}`, content: { 'application/json': { schema: bodySchema(entry.response) } } } }
+            : { default: { description: 'Response (not described in the code yet)' } },
         },
       }
     }
   }
-  return { openapi: '3.0.3', info: { title, version: '0.0.0', description: 'Generated by adOmnia Go Studio from the HTTP routes found in the code.' }, paths }
+  const referenced = schemas.length ? { components: { schemas: openApiSchemas(schemas) } } : {}
+  return { openapi: '3.0.3', info: { title, version: '0.0.0', description: 'Generated by adOmnia Go Studio from the HTTP routes found in the code.' }, paths, ...referenced }
 }

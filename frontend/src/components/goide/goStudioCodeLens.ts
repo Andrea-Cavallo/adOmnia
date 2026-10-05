@@ -10,6 +10,7 @@ import { useDevContextStore } from '@/stores/devcontext'
 import { entityRefFrom, type DevEntity } from '@/lib/devcontext-api'
 import { actionsFor, openEntity } from '@/lib/entities/router'
 import { runHandlerAction, type HandlerAction } from '@/lib/devsession/codeToApi'
+import { ROUTE_INLINE_ACTIONS, runRouteInlineAction, type RouteInlineAction } from './goStudioRouteActions'
 
 const LANGUAGE = 'go'
 const GO_MOD_COMMAND = 'goStudio.goModAction'
@@ -17,6 +18,7 @@ const PACKAGE_COMMAND = 'goStudio.packageCommand'
 const HTTP_ROUTE_COMMAND = 'goStudio.openHttpRoute'
 const ENTITY_COMMAND = 'goStudio.openEntity'
 const HANDLER_COMMAND = 'goStudio.handlerRequest'
+const ROUTE_ACTION_COMMAND = 'goStudio.routeAction'
 const HANDLER_ACTIONS: Array<{ action: HandlerAction; title: (route: DevEntity) => string; tooltip: string }> = [
   { action: 'open', title: (route) => `⇄ ${route.label}`, tooltip: 'Open the linked request in the API workspace' },
   { action: 'send', title: () => 'Run', tooltip: 'Send the linked request to the running service' },
@@ -51,10 +53,10 @@ function lensesFor(document: GoIDEEditorDocument, text: string): monaco.language
     command: { id: PACKAGE_COMMAND, title: lens.title, tooltip: lens.tooltip, arguments: [id, lens.kind] },
   }))
   if (relativePath.endsWith('_test.go')) return packages
-  const routes = findHttpRoutes(text).map((route) => ({
-    range: lensRange(route.line),
-    command: { id: HTTP_ROUTE_COMMAND, title: `Open ${route.method} ${route.path} in API Client`, tooltip: 'Creates a prefilled request in the adOmnia API client', arguments: [id, route.line] },
-  }))
+  const routes = findHttpRoutes(text).flatMap((route) => [
+    { range: lensRange(route.line), command: { id: HTTP_ROUTE_COMMAND, title: `Open ${route.method} ${route.path} in API Client`, tooltip: 'Creates a prefilled request in the adOmnia API client', arguments: [id, route.line] } },
+    ...ROUTE_INLINE_ACTIONS.map((item) => ({ range: lensRange(route.line), command: { id: ROUTE_ACTION_COMMAND, title: item.title, tooltip: item.tooltip, arguments: [id, route.line, item.action] } })),
+  ])
   return [...packages, ...routes, ...entityLenses(document), ...handlerLenses(document)]
 }
 
@@ -130,6 +132,10 @@ export function registerGoStudioCodeLens(): void {
   monaco.editor.registerCommand(HTTP_ROUTE_COMMAND, (_accessor, documentId: string, line: number) => {
     const document = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
     if (document) openHttpRouteAt(document, line)
+  })
+  monaco.editor.registerCommand(ROUTE_ACTION_COMMAND, (_accessor, documentId: string, line: number, action: RouteInlineAction) => {
+    const document = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
+    if (document) void runRouteInlineAction(document, line, action)
   })
   monaco.editor.registerCommand(ENTITY_COMMAND, (_accessor, sessionId: string, entityId: string, line: number) => {
     const entity = lensEntities.get(entityId)

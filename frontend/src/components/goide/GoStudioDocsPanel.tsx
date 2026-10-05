@@ -77,7 +77,7 @@ export function GoStudioDocsPanel({ session }: { session: GoIDESession }) {
         const result = await architectureFor(sessionId)
         const routes = result.report.entries.filter((entry) => entry.kind === 'http')
         if (!routes.length) return 'No HTTP routes found in the code.'
-        const text = `${JSON.stringify(openApiFromRoutes(routes, project), null, 2)}\n`
+        const text = `${JSON.stringify(openApiFromRoutes(routes, project, result.report.schemas), null, 2)}\n`
         await writeProjectDocument(sessionId, 'docs/openapi.json', text)
         handoffToPanel('apidocs', { kind: 'contract', id: 'contract:docs/openapi.json', label: 'openapi.json', attrs: { type: 'oas', path: 'docs/openapi.json' }, sessionId }, 'open', { text, name: 'openapi.json' })
         return `OpenAPI with ${routes.length} route${routes.length === 1 ? '' : 's'} written to docs/openapi.json and opened in API Docs.`

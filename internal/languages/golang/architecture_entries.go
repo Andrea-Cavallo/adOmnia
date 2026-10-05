@@ -14,7 +14,7 @@ import (
 )
 
 // ArchEntry è un punto d'ingresso o un servizio rilevato nel codice.
-// Kind: main, init, http, grpc, kafka-producer, kafka-consumer, repository, job, cli.
+// Kind: main, init, http, middleware, grpc, kafka-producer, kafka-consumer, repository, job, cli.
 type ArchEntry struct {
 	Kind     string   `json:"kind"`
 	Name     string   `json:"name"`
@@ -23,11 +23,13 @@ type ArchEntry struct {
 	Function string   `json:"function,omitempty"`
 	Topics   []string `json:"topics,omitempty"`
 	Site     ArchSite `json:"site"`
+	// Solo per le route HTTP: handler, middleware e corpi di richiesta e risposta riconosciuti.
+	Handler     string    `json:"handler,omitempty"`
+	HandlerSite *ArchSite `json:"handlerSite,omitempty"`
+	Middleware  []string  `json:"middleware,omitempty"`
+	Request     *ArchBody `json:"request,omitempty"`
+	Response    *ArchBody `json:"response,omitempty"`
 }
-
-var httpRouterPackages = []string{"go-chi/chi", "gin-gonic/gin", "labstack/echo", "gorilla/mux", "gofiber/fiber", "julienschmidt/httprouter"}
-
-var httpVerbs = map[string]string{"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE", "head": "HEAD", "options": "OPTIONS", "any": "ANY"}
 
 // Librerie Kafka: package → metodi che producono o consumano.
 var kafkaLibraries = []struct {
@@ -87,6 +89,7 @@ func (a *architecture) collectEntries() {
 				a.addEntry(ArchEntry{Kind: fn.Name.Name, Name: file.pkg.PkgPath, Package: file.pkg.PkgPath, Function: name, Site: a.site(fn.Name.Pos())})
 			}
 			a.collectFunctionEntries(file, fn, name)
+			a.collectRoutes(file, fn, name)
 		}
 	}
 }
@@ -130,17 +133,6 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 			site := a.site(node.Pos())
 			base := ArchEntry{Package: file.pkg.PkgPath, Function: function, Site: site}
 			switch {
-			case packagePath == "net/http" && (name == "Handle" || name == "HandleFunc") && len(node.Args) >= 1:
-				if pattern, ok := constantString(info, node.Args[0]); ok {
-					base.Kind, base.Name, base.Detail = "http", pattern, "net/http"
-					a.addEntry(base)
-				}
-			case containsAny(packagePath, httpRouterPackages) && len(node.Args) >= 2:
-				if path, ok := constantString(info, node.Args[0]); ok && strings.HasPrefix(path, "/") {
-					verb := httpVerbs[strings.ToLower(name)]
-					base.Kind, base.Name, base.Detail = "http", strings.TrimSpace(verb+" "+path), packagePath[strings.LastIndex(packagePath, "/")+1:]
-					a.addEntry(base)
-				}
 			case strings.HasPrefix(name, "Register") && strings.HasSuffix(name, "Server") && len(node.Args) == 2 && strings.Contains(types.TypeString(info.Types[node.Args[0]].Type, nil), "grpc"):
 				base.Kind, base.Name = "grpc", strings.TrimSuffix(strings.TrimPrefix(name, "Register"), "Server")
 				base.Detail = types.TypeString(info.Types[node.Args[1]].Type, types.RelativeTo(file.pkg.Types))
@@ -192,15 +184,6 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 }
 
 func (a *architecture) offset(pos token.Pos) int { return a.fset.Position(pos).Offset }
-
-func containsAny(value string, needles []string) bool {
-	for _, needle := range needles {
-		if strings.Contains(value, needle) {
-			return true
-		}
-	}
-	return false
-}
 
 // collectCLI riconosce i comandi cobra (Use) e urfave/cli (Name) dichiarati come letterali.
 func (a *architecture) collectCLI(file typedFile, literal *ast.CompositeLit, function string) {

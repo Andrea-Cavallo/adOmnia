@@ -156,7 +156,11 @@ function ServicesView({ report, query, sessionId }: { report: GoIDEArchitecture;
               <div key={index} className="flex items-center gap-2 px-2 py-0.5 hover:bg-surface-2">
                 <SiteLink site={entry.site} label={entry.kind === 'main' || entry.kind === 'init' ? shortPackage(entry.name) : entry.name} />
                 {entry.detail && <span className="truncate text-text-3">{entry.detail}</span>}
-                {entry.function && entry.function !== entry.name && <span className="truncate font-mono text-[10px] text-text-4">{entry.function}</span>}
+                {entry.handler && <span className="truncate text-[10px] text-text-3">→ <SiteLink site={entry.handlerSite ?? undefined} label={entry.handler} /></span>}
+                {entry.request && <span className="shrink-0 rounded bg-info/10 px-1 font-mono text-[10px] text-info" title="Request body decoded by the handler">in: {entry.request.array ? '[]' : ''}{entry.request.ref || entry.request.type}</span>}
+                {entry.response && <span className="shrink-0 rounded bg-success/10 px-1 font-mono text-[10px] text-success" title="Response body written by the handler">out: {entry.response.array ? '[]' : ''}{entry.response.ref || entry.response.type}</span>}
+                {(entry.middleware ?? []).length > 0 && <span className="truncate text-[10px] text-text-4" title="Middleware, outermost first">via {(entry.middleware ?? []).join(' › ')}</span>}
+                {!entry.handler && entry.function && entry.function !== entry.name && <span className="truncate font-mono text-[10px] text-text-4">{entry.function}</span>}
                 <span className="ml-auto flex shrink-0 gap-1">
                   {refs.map((ref) => (
                     <button key={ref.id} type="button" onClick={() => void openEntity(ref)} title={ref.kind === 'route' ? 'Send in API Client' : ref.kind === 'grpc' ? 'Call in gRPC client' : 'Open in Broker Studio'} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">

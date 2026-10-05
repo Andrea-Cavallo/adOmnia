@@ -71,3 +71,23 @@ describe('documentation generators', () => {
     expect(markdown).toContain('> Could not read this file: syntax error')
   })
 })
+
+describe('OpenAPI with DTO schemas', () => {
+  it('adds request and response bodies and component schemas from the handler', () => {
+    const schemas = [
+      { name: 'CreateOrder', package: 'p', site: site('a.go', 1), fields: [{ name: 'item', goName: 'Item', type: 'string', required: true }, { name: 'tags', goName: 'Tags', type: 'array', items: 'string' }, { name: 'ship', goName: 'Ship', type: 'object', ref: 'Address' }, { name: 'at', goName: 'At', type: 'string', format: 'date-time', required: true }] },
+      { name: 'Address', package: 'p', site: site('a.go', 5), fields: [{ name: 'city', goName: 'City', type: 'string', required: true }] },
+    ]
+    const spec = openApiFromRoutes([{ kind: 'http', name: 'POST /api/v1/orders', package: 'example.com/api', handler: 'Handlers.Create', handlerSite: site('api/h.go', 20), middleware: ['Logging', 'Auth'], request: { type: 'api.CreateOrder', ref: 'CreateOrder' }, response: { type: 'api.Order', ref: 'Order', array: true }, site: site('api/r.go', 4) }] as any, 'Shop', schemas as any) as any
+    const operation = spec.paths['/api/v1/orders'].post
+    expect(operation.operationId).toBe('postHandlersCreate')
+    expect(operation.description).toBe('Handled by Handlers.Create (api/h.go:20). Middleware: Logging, Auth.')
+    expect(operation.requestBody.content['application/json'].schema).toEqual({ $ref: '#/components/schemas/CreateOrder' })
+    expect(operation.responses[200].content['application/json'].schema).toEqual({ type: 'array', items: { $ref: '#/components/schemas/Order' } })
+    expect(spec.components.schemas.CreateOrder).toEqual({
+      type: 'object',
+      properties: { item: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } }, ship: { $ref: '#/components/schemas/Address' }, at: { type: 'string', format: 'date-time' } },
+      required: ['item', 'at'],
+    })
+  })
+})

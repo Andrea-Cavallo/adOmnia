@@ -149,6 +149,7 @@ export function moduleGraph(report: GoIDEArchitecture): ArchGraph {
 export const ENTRY_KINDS: Array<{ kind: string; title: string }> = [
   { kind: 'main', title: 'Entry points' },
   { kind: 'http', title: 'HTTP routes' },
+  { kind: 'middleware', title: 'HTTP middleware' },
   { kind: 'grpc', title: 'gRPC services' },
   { kind: 'kafka-producer', title: 'Kafka producers' },
   { kind: 'kafka-consumer', title: 'Kafka consumers' },
