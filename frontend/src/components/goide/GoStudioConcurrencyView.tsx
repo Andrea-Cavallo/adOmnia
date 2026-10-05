@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeftRight, ArrowRight, Copy, Droplets, Layers, Lock, OctagonAlert, RefreshCw, Rocket, Search, Trash2, Users, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, Copy, Droplets, Gauge, Layers, Lock, OctagonAlert, RefreshCw, Rocket, Search, Trash2, Users, Zap, type LucideIcon } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDEGoroutine } from '@/lib/goide-debug-api'
 import { useGoIDEStore } from '@/stores/goide'
@@ -25,6 +25,7 @@ const DIAGNOSTIC_ICON: Record<DiagnosticKind, LucideIcon> = {
   race: Zap,
   waitgroup: Users,
   count: Layers,
+  pool: Gauge,
 }
 
 const EVIDENCE: Record<DiagnosticEvidence, { label: string; title: string; className: string }> = {

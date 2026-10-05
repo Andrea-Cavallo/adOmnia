@@ -73,7 +73,7 @@ export function groupGoroutines(goroutines: GoIDEGoroutine[]): GoroutinePackage[
     .sort((left, right) => rank(left) - rank(right) || left.pkg.localeCompare(right.pkg))
 }
 
-export type DiagnosticKind = 'deadlock' | 'channel' | 'mutex' | 'leak' | 'race' | 'waitgroup' | 'count'
+export type DiagnosticKind = 'deadlock' | 'channel' | 'mutex' | 'leak' | 'race' | 'waitgroup' | 'count' | 'pool'
 
 /**
  * Origine dell'evidenza, come nella checklist 2027: STATIC dall'analisi del codice, OBSERVED da
@@ -197,6 +197,40 @@ function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? '' : 's'}`
 }
 
+/** Un pool ha almeno tanti worker avviati dalla stessa funzione. */
+export const POOL_MIN_WORKERS = 3
+/** Stati di un worker in attesa di lavoro: libero, non saturo. */
+const IDLE_WORKER_STATES = new Set<string>(['chan receive', 'select'])
+
+/**
+ * Worker pool saturo: tutti i worker avviati dalla stessa funzione sono occupati mentre altre
+ * goroutine aspettano di inviare su un canale, cioè il lavoro si accoda a monte del pool.
+ */
+export function poolSaturation(goroutines: GoIDEGoroutine[]): ConcurrencyDiagnostic[] {
+  const pools = new Map<string, GoIDEGoroutine[]>()
+  for (const goroutine of goroutines) {
+    const origin = goroutine.origin?.name
+    if (!origin || goroutine.id === MAIN_GOROUTINE_ID || splitFunctionName(origin).pkg === RUNTIME_GROUP) continue
+    pools.set(origin, [...(pools.get(origin) ?? []), goroutine])
+  }
+  const diagnostics: ConcurrencyDiagnostic[] = []
+  for (const [origin, workers] of pools) {
+    if (workers.length < POOL_MIN_WORKERS || workers.some((worker) => IDLE_WORKER_STATES.has(worker.state))) continue
+    const waiting = goroutines.filter((goroutine) => goroutine.state === 'chan send' && goroutine.origin?.name !== origin)
+    if (!waiting.length) continue
+    const first = waiting[0]
+    const target = first.blockedOn ? ` on ${first.blockedOn}` : ''
+    diagnostics.push({
+      id: `pool:${origin}`, kind: 'pool', severity: 'warning', evidence: 'observed',
+      title: 'Worker pool saturated',
+      detail: `All ${workers.length} workers started by ${splitFunctionName(origin).name} are busy and ${plural(waiting.length, 'goroutine')} wait to send${target}. Work is queuing upstream: add workers, buffer the channel or speed up the work.`,
+      goroutineIds: [...workers, ...waiting].map((goroutine) => goroutine.id),
+      relativePath: first.location?.relativePath, line: first.location?.line,
+    })
+  }
+  return diagnostics
+}
+
 /** Problemi di concorrenza deducibili da un'istantanea in pausa, dal più grave. */
 export function diagnoseConcurrency(goroutines: GoIDEGoroutine[]): ConcurrencyDiagnostic[] {
   const diagnostics: ConcurrencyDiagnostic[] = []
@@ -227,6 +261,7 @@ export function diagnoseConcurrency(goroutines: GoIDEGoroutine[]): ConcurrencyDi
       diagnostics.push({ ...base, id: `mutex:${resource.key}`, kind: 'mutex', severity: 'info', title: 'Waiting for a mutex', detail: `Goroutine #${ids[0]} waiting to lock ${describeTarget(resource)}.` })
     }
   }
+  diagnostics.push(...poolSaturation(goroutines))
   if (goroutines.length >= EXCESSIVE_GOROUTINES) {
     diagnostics.push({ id: 'count', kind: 'count', severity: 'warning', evidence: 'observed', title: 'Excessive goroutine count', detail: `${goroutines.length} goroutines at this pause. Look for goroutines started per request or per message that never exit.`, goroutineIds: [] })
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEGoroutine } from '@/lib/goide-debug-api'
-import { EXCESSIVE_GOROUTINES, LEAK_THRESHOLD, diagnoseConcurrency, goroutineRelations, groupByStack, groupGoroutines, mergeRaceSources, parseRaceReports, raceDiagnostics, splitFunctionName, waitResources } from './goStudioConcurrency'
+import { EXCESSIVE_GOROUTINES, LEAK_THRESHOLD, diagnoseConcurrency, goroutineRelations, groupByStack, groupGoroutines, mergeRaceSources, parseRaceReports, poolSaturation, raceDiagnostics, splitFunctionName, waitResources } from './goStudioConcurrency'
 import { frameVariables, inlineValueText } from './goStudioDebugInlineValues'
 
 function goroutine(id: number, state: string, origin: string, extra: Partial<GoIDEGoroutine> = {}): GoIDEGoroutine {
@@ -155,5 +155,24 @@ describe('Go Studio inline debug values', () => {
       { 1: [{ name: 'count', value: '3', variablesReference: 0 }, { name: '~r0', value: '0', variablesReference: 0 }], 2: [{ name: 'Version', value: '"1"', variablesReference: 0 }] },
     )
     expect(variables).toEqual([{ name: 'count', value: '3' }])
+  })
+})
+
+describe('worker pool saturation', () => {
+  const worker = (id: number, state: string) => goroutine(id, state, 'main.worker')
+  const producer = (id: number) => goroutine(id, 'chan send', 'main.dispatch', { blockedOn: 'jobs' })
+
+  it('flags a pool whose workers are all busy while producers wait to send', () => {
+    const snapshot = [worker(2, 'running'), worker(3, 'io wait'), worker(4, 'mutex'), producer(5), producer(6)]
+    const [diagnostic] = poolSaturation(snapshot)
+    expect(diagnostic).toMatchObject({ kind: 'pool', title: 'Worker pool saturated', goroutineIds: [2, 3, 4, 5, 6] })
+    expect(diagnostic.detail).toContain('All 3 workers started by worker are busy and 2 goroutines wait to send on jobs')
+    expect(diagnoseConcurrency(snapshot).some((item) => item.kind === 'pool')).toBe(true)
+  })
+
+  it('stays quiet with an idle worker, too few workers or no queued work', () => {
+    expect(poolSaturation([worker(2, 'running'), worker(3, 'running'), worker(4, 'chan receive'), producer(5)])).toEqual([])
+    expect(poolSaturation([worker(2, 'running'), worker(3, 'running'), producer(5)])).toEqual([])
+    expect(poolSaturation([worker(2, 'running'), worker(3, 'running'), worker(4, 'running')])).toEqual([])
   })
 })

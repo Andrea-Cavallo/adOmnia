@@ -23,8 +23,8 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 60 | 15 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 214 | 52 |
+| **P1** | Workflow Go migliore di GoLand | 59 | 15 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 213 | 51 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 152 | 57 |
@@ -93,12 +93,6 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 ## §20 · Security Studio
 
 - [x] SonarQube (opzionale). — *Scansione `sonar-scanner` del progetto autorizzato + import issue dalla Web API (`internal/goide/sonar.go`), pannello con severità, navigazione al codice, filtro security, **Copy problems** (`file:line [SEVERITY rule] message`), **Resolve with AI** (preview) e baseline versionabile `.adomnia/sonar-baseline.json`. Token solo in memoria, Offline mode rispettato, nessun processo senza trust.*
-
-## §8 · Concurrency View — Feature distintiva
-
-### Diagnostica
-
-- [ ] Worker pool saturation.
 
 ## §18 · Error Handling Intelligence
 
@@ -294,7 +288,7 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §28 · WebSocket Integration
 
-- [ ] Binary payload viewer. — *Parziale: I frame binari sono mostrati come "[binary base64]"; nessuna vista hex/ASCII.*
+- [x] Binary payload viewer. — *L'Inspector WebSocket mostra byte in Hex/ASCII, dimensione decodificata e anteprima limitata a 4 KiB; il Base64 originale resta copiabile.*
 - [ ] Debug handler.
 - [ ] Connection → goroutine.
 - [ ] Connection → trace/log.

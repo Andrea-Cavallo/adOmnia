@@ -150,7 +150,9 @@ pause and explains it.
   - A state summary and diagnostics: possible deadlock (every goroutine
     waits on another one), blocked channels, mutex contention, possible
     goroutine leaks (10 or more goroutines from the same function stuck at
-    the same line) and data races.
+    the same line), saturated worker pools (every goroutine started by
+    the same function, at least 3, is busy while others wait to send on a
+    channel) and data races.
   - A flow lays out, for every starting function, its goroutines and the
     channels, mutexes and WaitGroups they wait on. A resource shared by
     several functions is highlighted.
