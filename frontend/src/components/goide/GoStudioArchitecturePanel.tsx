@@ -6,9 +6,10 @@ import { showModule } from '@/lib/moduleRouting'
 import { callNeighbourhood, entityRefsForEntry, groupEntries, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
+import { GoStudioDataAccessView } from './GoStudioDataAccessView'
 import { layoutLayered, type LayeredNode } from './goStudioLayeredGraph'
 
-export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'modules'
+export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules'
 
 const NODE_COLOR: Record<ArchNode['kind'], string> = {
   package: 'var(--color-accent)',
@@ -73,6 +74,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['calls', 'Call graph'],
     ['interfaces', `Interfaces${report ? ` (${report.interfaces.length})` : ''}`],
     ['services', `Entry points & services${report ? ` (${report.entries.length})` : ''}`],
+    ['data', `Data access${report ? ` (${report.queries.length})` : ''}`],
     ['modules', `Modules${report ? ` (${report.modules.length})` : ''}`],
   ]
   return (
@@ -98,6 +100,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
             : tab === 'calls' ? <CallsView report={report} query={query} />
               : tab === 'interfaces' ? <GoStudioInterfaceExplorer report={report} query={query} />
                 : tab === 'services' ? <ServicesView report={report} query={query} sessionId={sessionId} />
+                  : tab === 'data' ? <GoStudioDataAccessView report={report} query={query} />
                   : <ModulesView report={report} />}
       </div>
     </div>

@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
 | **P1** | Workflow Go migliore di GoLand | 1 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 206 | 49 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 198 | 46 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -150,16 +150,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §27 · Database Integration
 
-### Code intelligence
-
-- [ ] Detect `database/sql`. — *Parziale: goliterals.go riconosce solo i nomi dei metodi (Query/Exec…) senza verificare l'import di database/sql.*
-- [ ] Detect pgx. — *Parziale: Query/Exec/QueryRow riconosciuti solo per nome di metodo, nessun rilevamento dell'import pgx.*
-- [ ] Detect GORM.
-- [ ] Detect sqlx. — *Parziale: goliterals.go ha Queryx/Select/Get/NamedExec per nome; nessun controllo dell'import sqlx.*
-- [ ] Adapter architecture per ORM/driver.
-- [ ] Detect transaction.
-- [ ] Detect prepared statements.
-
 ### SQL editor
 
 - [ ] Completion.
@@ -170,7 +160,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Code ↔ database
 
 - [ ] Query → schema.
-- [ ] Table → repository methods.
 - [ ] Runtime query duration.
 - [ ] Rows returned.
 - [ ] Slow query detection.

@@ -14,6 +14,7 @@ export {
     ArchModule,
     ArchNearMiss,
     ArchPackage,
+    ArchQuery,
     ArchRef,
     ArchSchema,
     ArchSite,

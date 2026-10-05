@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, packageGraph, searchFunctions, shortPackage } from './goStudioArchitecture'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, isWrite, packageGraph, queriesByTable, searchFunctions, shortPackage } from './goStudioArchitecture'
 
 const site = (relativePath: string, line = 1) => ({ relativePath, line, column: 1 })
 const pkg = (path: string) => ({ path, name: path.split('/').pop()!, module: 'example.com/shop', files: 2, site: site(`${path}.go`), external: [], std: 1 })
@@ -55,5 +55,24 @@ describe('architecture helpers', () => {
     expect(entityRefsForEntry(entries[0], 's1')[0]).toMatchObject({ kind: 'route', attrs: { method: 'GET', path: '/orders/{id}' }, source: { file: 'main.go', line: 9 } })
     expect(entityRefsForEntry(entries[1], 's1').map((ref) => ref.label)).toEqual(['orders', 'payments'])
     expect(entityRefsForEntry(entries[2], 's1')[0]).toMatchObject({ kind: 'grpc', label: 'Greeter' })
+  })
+})
+
+describe('data access', () => {
+  const q = (fn: string, tables: string[], extra: Record<string, unknown> = {}) => ({ library: 'database/sql', operation: 'query', method: 'QueryContext', tables, function: fn, package: 'p', site: site('a.go'), ...extra }) as any
+  it('groups queries by table with reads, writes and the functions that touch it', () => {
+    const tables = queriesByTable([
+      q('List', ['orders', 'customers']),
+      q('Pay', ['orders'], { operation: 'exec', method: 'ExecContext' }),
+      q('Rename', ['order_items'], { operation: 'orm', method: 'Updates', tableGuess: true }),
+      q('Count', []),
+    ])
+    expect(tables.map((item) => [item.table, item.reads, item.writes, item.functions.join(','), item.guess])).toEqual([
+      ['orders', 1, 1, 'List,Pay', false],
+      ['customers', 1, 0, 'List', false],
+      ['order_items', 0, 1, 'Rename', true],
+    ])
+    expect(queriesByTable([q('List', ['orders'])], 'cust')).toEqual([])
+    expect(isWrite(q('x', [], { sql: '  INSERT INTO a VALUES (1)' }))).toBe(true)
   })
 })

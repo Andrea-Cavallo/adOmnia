@@ -90,6 +90,7 @@ func (a *architecture) collectEntries() {
 			}
 			a.collectFunctionEntries(file, fn, name)
 			a.collectRoutes(file, fn, name)
+			a.collectQueries(file, fn, name)
 		}
 	}
 }

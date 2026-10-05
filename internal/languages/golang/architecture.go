@@ -54,6 +54,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	for index := range r.Schemas {
 		fix(&r.Schemas[index].Site)
 	}
+	for index := range r.Queries {
+		fix(&r.Queries[index].Site)
+	}
 	for index := range r.Interfaces {
 		item := &r.Interfaces[index]
 		fix(&item.Site)
@@ -88,6 +91,7 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.Interfaces = append(r.Interfaces, other.Interfaces...)
 	r.Entries = append(r.Entries, other.Entries...)
 	r.Schemas = append(r.Schemas, other.Schemas...)
+	r.Queries = append(r.Queries, other.Queries...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -135,6 +139,7 @@ type ArchitectureReport struct {
 	Interfaces   []ArchInterface `json:"interfaces"`
 	Entries      []ArchEntry     `json:"entries"`
 	Schemas      []ArchSchema    `json:"schemas"`
+	Queries      []ArchQuery     `json:"queries"`
 	Truncated    bool            `json:"truncated,omitempty"`
 }
 
@@ -381,4 +386,8 @@ func (a *architecture) finish() {
 		a.report.Schemas = []ArchSchema{}
 	}
 	sortSchemas(a.report.Schemas)
+	if a.report.Queries == nil {
+		a.report.Queries = []ArchQuery{}
+	}
+	sortQueries(a.report.Queries)
 }

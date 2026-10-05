@@ -186,3 +186,40 @@ export function entityRefsForEntry(entry: GoIDEArchEntry, sessionId: string): En
   }
   return []
 }
+
+export type ArchQuery = GoIDEArchitecture['queries'][number]
+
+export interface TableAccess {
+  table: string
+  queries: ArchQuery[]
+  reads: number
+  writes: number
+  functions: string[]
+  guess: boolean
+}
+
+/** Tabella → funzioni che la leggono o scrivono (le query senza tabella nota restano fuori). */
+export function queriesByTable(queries: readonly ArchQuery[], query = ''): TableAccess[] {
+  const needle = query.trim().toLowerCase()
+  const tables = new Map<string, TableAccess>()
+  for (const item of queries) {
+    for (const table of item.tables) {
+      if (needle && !`${table} ${item.function}`.toLowerCase().includes(needle)) continue
+      const entry = tables.get(table) ?? { table, queries: [], reads: 0, writes: 0, functions: [], guess: true }
+      entry.queries.push(item)
+      if (isWrite(item)) entry.writes++
+      else entry.reads++
+      if (!entry.functions.includes(item.function)) entry.functions.push(item.function)
+      entry.guess = entry.guess && !!item.tableGuess
+      tables.set(table, entry)
+    }
+  }
+  return [...tables.values()].sort((a, b) => b.queries.length - a.queries.length || a.table.localeCompare(b.table))
+}
+
+const WRITE_SQL = /^\s*(insert|update|delete|merge|upsert|replace|create|alter|drop|truncate)\b/i
+const WRITE_ORM = new Set(['Create', 'Save', 'Delete', 'Update', 'Updates', 'UpdateColumn', 'UpdateColumns', 'FirstOrCreate'])
+
+export function isWrite(query: ArchQuery): boolean {
+  return query.operation === 'exec' || WRITE_SQL.test(query.sql ?? '') || (query.operation === 'orm' && WRITE_ORM.has(query.method))
+}
