@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
-import { AlertCircle, AlertTriangle, Info, GitBranch, Timer, Network } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Info, GitBranch, Timer, Network, Loader2, RefreshCw } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
+import type { GoIDEArchitectureResult } from '@/lib/goide-api'
+import { cachedArchitecture } from '@/lib/goide/architectureCache'
+import { architectureFor } from './GoStudioArchitecturePanel'
+import { GoStudioGraphView } from './GoStudioGraphView'
+import { SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
+import { layoutLayered } from './goStudioLayeredGraph'
+import { fileContextGraph, projectContextGraph, type ContextGraph, type ContextNode } from './goStudioContextGraph'
 import {
   analyzeContextPropagation,
   contextFindingSummary,
@@ -72,16 +79,21 @@ export function GoStudioContextPanel({ sessionId }: GoStudioContextPanelProps) {
     return buckets.filter((bucket) => bucket.findings.length > 0)
   }, [analysis.findings])
 
-  // Catene di propagazione: sorgente → destinazioni, per un "grafo" leggibile senza SVG.
-  const chains = useMemo(() => {
-    const bySource = new Map<string, Array<{ to: string; via?: string; line: number }>>()
-    for (const edge of analysis.edges) {
-      const list = bySource.get(edge.from) ?? []
-      list.push({ to: edge.to, via: edge.via, line: edge.line })
-      bySource.set(edge.from, list)
-    }
-    return [...bySource.entries()].sort((left, right) => left[0].localeCompare(right[0]))
-  }, [analysis.edges])
+  const [scope, setScope] = useState<'file' | 'project'>('file')
+  const session = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId) ?? null)
+  const authorized = session?.project.authorization === 'tooling-permitted'
+  const [project, setProject] = useState<GoIDEArchitectureResult | null>(() => cachedArchitecture(sessionId))
+  const [loadingProject, setLoadingProject] = useState(false)
+  const [projectError, setProjectError] = useState<string | null>(null)
+  const loadProject = (fresh: boolean) => {
+    setLoadingProject(true)
+    setProjectError(null)
+    architectureFor(sessionId, fresh).then(setProject, (reason) => setProjectError(reason instanceof Error ? reason.message : String(reason))).finally(() => setLoadingProject(false))
+  }
+  const graph = useMemo<ContextGraph | null>(() => {
+    if (scope === 'file') return isGo ? fileContextGraph(analysis) : null
+    return project?.report ? projectContextGraph(project.report) : null
+  }, [scope, isGo, analysis, project])
 
   return (
     <div className="flex h-full min-h-0 flex-col text-[11px]">
@@ -123,25 +135,63 @@ export function GoStudioContextPanel({ sessionId }: GoStudioContextPanelProps) {
             </div>
           ))}
 
-          {analysis.nodes.length > 0 && (
-            <div className="mt-1 border-t border-border-1">
-              <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><Network size={12} className="text-accent" />Context graph <span className="text-[9px] text-text-4">{analysis.nodes.length} functions</span></div>
-              {chains.length === 0 && <p className="px-2 py-1 text-[10px] text-text-4">No cross-function propagation detected in this file.</p>}
-              {chains.map(([source, targets]) => (
-                <div key={source} className="flex flex-wrap items-center gap-1 px-2 py-0.5 font-mono text-[10px]">
-                  <span className="text-text-2">{source}</span>
-                  {targets.map((target) => (
-                    <span key={`${source}-${target.to}-${target.line}`} className="flex items-center gap-1">
-                      <span className="text-text-4">→</span>
-                      <button type="button" onClick={() => open(target.line)} className="rounded px-1 text-accent hover:bg-surface-3 hover:underline focus:outline-none" title={`${source} passes "${target.via ?? ''}" to ${target.to} at line ${target.line}`}>{target.to}</button>
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
+
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-1 px-2 py-1">
+        <span className="flex items-center gap-1.5 font-medium text-text-2"><Network size={12} className="text-accent" />Context graph</span>
+        {(['file', 'project'] as const).map((value) => (
+          <button key={value} type="button" aria-pressed={scope === value} onClick={() => { setScope(value); if (value === 'project' && !project && authorized) loadProject(false) }} className={`h-5 rounded px-1.5 text-[10px] capitalize ${scope === value ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3'}`}>{value}</button>
+        ))}
+        {scope === 'project' && authorized && <button type="button" onClick={() => loadProject(true)} disabled={loadingProject} title="Analyze the project again" className="ml-auto rounded p-0.5 text-text-3 hover:bg-surface-3 disabled:opacity-40">{loadingProject ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}</button>}
+      </div>
+      <div className="max-h-[45%] min-h-[96px] shrink-0 overflow-auto">
+        {scope === 'project' && !authorized && <p className="p-2 text-[10px] text-text-4">Trust the project to trace context.Context across packages with typed analysis.</p>}
+        {scope === 'project' && projectError && <p className="p-2 text-[10px] text-danger">{projectError}</p>}
+        {scope === 'project' && authorized && !project && !projectError && <p className="p-2 text-[10px] text-text-4">{loadingProject ? 'Loading packages…' : 'No analysis yet.'}</p>}
+        {graph && graph.breaks.length > 0 && (
+          <div className="px-2 py-1">
+            {graph.breaks.map((item) => (
+              <div key={`${item.site.relativePath}:${item.site.line}`} className="flex items-center gap-1.5 text-[10.5px]">
+                <AlertCircle size={11} className="shrink-0 text-danger" />
+                <span className="min-w-0 flex-1 truncate text-text-2">{item.from} passes context.Background/TODO to {item.to}{item.crossPackage ? ' (other package)' : ''}</span>
+                <SiteLink site={item.site} label={`${item.site.relativePath.split('/').pop()}:${item.site.line}`} />
+              </div>
+            ))}
+          </div>
+        )}
+        {graph && <ContextGraphView graph={graph} onOpenLine={open} />}
+      </div>
+    </div>
+  )
+}
+
+const TONE_COLOR: Record<ContextNode['tone'], string> = {
+  broken: 'var(--color-danger)',
+  root: 'var(--color-warning)',
+  timeout: 'var(--color-success)',
+  plain: 'var(--color-info)',
+}
+
+const TONE_LABEL: Record<ContextNode['tone'], string> = {
+  broken: 'drops the caller context',
+  root: 'creates a root context',
+  timeout: 'applies a timeout',
+  plain: 'propagates the context',
+}
+
+function ContextGraphView({ graph, onOpenLine }: { graph: ContextGraph; onOpenLine: (line: number) => void }) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const layout = useMemo(() => layoutLayered(graph.nodes, graph.links), [graph])
+  if (!layout.nodes.length) return <p className="p-2 text-[10px] text-text-4">No function passes a context.Context to another one.</p>
+  return (
+    <div className="p-2">
+      <GoStudioGraphView layout={layout} label="Context propagation graph" selected={selected}
+        look={(node) => ({ title: node.data.title, subtitle: node.data.subtitle, tooltip: `${node.data.title}: ${TONE_LABEL[node.data.tone]}`, color: TONE_COLOR[node.data.tone] })}
+        edgeTitle={(from, to, value) => `${from.data.title} passes a context to ${to.data.title}${value > 1 ? ` (${value} calls)` : ''}`}
+        onSelect={(node) => setSelected(node.id === selected ? null : node.id)}
+        onOpen={(node) => node.data.site ? openArchSite(node.data.site) : node.data.line && onOpenLine(node.data.line)} />
+      {graph.hidden > 0 && <p className="pt-1 text-[10px] text-text-4">{graph.hidden} less connected functions not shown.</p>}
     </div>
   )
 }

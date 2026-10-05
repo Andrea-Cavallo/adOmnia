@@ -47,77 +47,7 @@ _Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi
 
 # P1 — Workflow Go migliore di GoLand
 
-_Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmark, fuzzing, analisi statica Go-specifica._
-
-## §13 · Performance Studio
-
-### Profiler
-
-- [x] CPU profile. — *cpu.pprof dalle config di test; parsing diretto con `github.com/google/pprof/profile` e viste Top/flame/callers/diff.*
-- [x] Heap profile. — *Il viewer seleziona i sample type inuse_space/inuse_objects del mem.pprof.*
-- [x] Allocations profile. — *I sample type alloc_objects/alloc_space dello stesso mem.pprof restano separati da quelli in uso nel selettore.*
-- [x] Goroutine profile. — *Performance → **From service**: scarica `/debug/pprof/goroutine` da un servizio locale con net/http/pprof (`pprof_capture.go`), lo valida e lo salva nel progetto.*
-- [x] Mutex profile. — *mutex.pprof dalle config di test, visualizzato.*
-- [x] Block profile. — *block.pprof dalle config di test, visualizzato.*
-- [x] Thread creation profile dove disponibile. — *Stessa cattura da servizio vivo (`threadcreate`), insieme a heap, allocs, block, mutex e CPU con durata 1–60 s. Solo localhost.*
-- [x] `pprof` integration. — *Parsing pprof in Go (google/pprof), Top/flame/edge/line calcolati in app; `go tool pprof` non viene invocato.*
-
-### Visualizzazioni
-
-- [x] Top functions.
-- [x] Call graph. — *Vista **Call graph**: le 24 funzioni più costose a livelli chiamante→chiamato, archi pesati, colori per origine, ricorsione gestita; clic evidenzia, doppio clic apre il sorgente.*
-- [x] Flame graph.
-- [x] Icicle view. — *Toggle Flame/Icicle.*
-- [x] Source line cost. — *Il profilo aperto colora le righe nell'editor (barra calda nel gutter, costo e % a fine riga per le righe ≥ 1%, hover); toggle **Cost in editor**.*
-- [x] Package grouping.
-- [x] Hide runtime internals.
-- [x] Diff profiles.
-- [x] Search function.
-- [x] Navigate to source. — *File del progetto nell'editor, stdlib in sola lettura.*
-
-### Go trace
-
-> Viewer implementato: `internal/goide/trace.go` interpreta i file `trace.out`/`*.trace` del progetto con `golang.org/x/exp/trace`; `GoStudioTracePanel.tsx` li mostra (View → Go Trace, bottone Trace nella status bar). Nessun `go tool trace` invocato.
-
-- [x] Trace capture. — *-trace=trace.out dalle config di test e parsing in-app.*
-- [x] Goroutine timeline. — *Un track per goroutine con span running/runnable/waiting/syscall.*
-- [x] Scheduler activity. — *Un track per P con i suoi intervalli di esecuzione.*
-- [x] GC. — *Range GC/STW in timeline e totale; sezione GC blocking.*
-- [x] Syscalls. — *Stato syscall nelle timeline e totale nei chip statistiche.*
-- [x] Network blocking. — *Attese con reason network, ordinate per durata.*
-- [x] Synchronization. — *Attese chan/sync/mutex/select, ordinate per durata.*
-- [x] Long-running goroutines. — *Goroutine vive o sopra soglia, con funzione di partenza.*
-- [x] Runtime events. — *Log, task e regioni con tempo e goroutine.*
-- [x] Navigate trace event → code. — *Clic su span/evento/goroutine apre il frame sorgente (progetto o stdlib).*
-
-## §20 · Security Studio
-
-- [x] SonarQube (opzionale). — *Scansione `sonar-scanner` del progetto autorizzato + import issue dalla Web API (`internal/goide/sonar.go`), pannello con severità, navigazione al codice, filtro security, **Copy problems** (`file:line [SEVERITY rule] message`), **Resolve with AI** (preview) e baseline versionabile `.adomnia/sonar-baseline.json`. Token solo in memoria, Offline mode rispettato, nessun processo senza trust.*
-
-## §17 · Context Propagation Inspector
-
-- [x] Traccia `context.Context`. — *Parziale: l'analisi statica (`goStudioContextAnalysis.ts`) segue parametri, radici e variabili derivate per file; non attraversa i confini tra package.*
-- [x] Evidenzia `context.Background()` dentro call chain.
-- [x] Evidenzia `context.TODO()`.
-- [x] Detect cancellation chain broken.
-- [x] Detect missing timeout.
-- [x] Detect timeout troppo ampio configurabile. — *Soglia configurabile nel pannello (default 30s, persistita in localStorage).*
-- [x] Detect context stored in struct quando sospetto.
-- [x] Detect ignored cancellation.
-- [x] Detect leaked cancel function.
-- [x] Visual context graph. — *Parziale: grafo di propagazione testuale (nodi funzione + archi) nel pannello Context, non un grafo visuale SVG/force-directed.*
-- [x] Trace ID correlation. — *Parziale: correlazione statica (`WithValue` con chiavi trace/request + letterali); nessuna correlazione runtime con trace OTLP.*
-
-## §15 · Architecture Explorer
-
-### UX
-
-- [x] Clic trace → distributed debugger. — *Il clic apre il dettaglio multi-servizio della trace ricostruita dai log strutturati; ogni span con ID richiesta e servizio corrispondenti può aprire la relativa Split Debug View in Delve. La cattura OTLP e la propagazione automatica restano in P2.*
-
-## §43 · Documentation Intelligence
-
-- [x] Dependency report. — *Il Dependency Graph esporta un report JSON locale con moduli, archi, licenze, peso e duplicati; include aggiornamenti e conteggi vulnerabilità solo se richiesti esplicitamente.*
-- [x] ADR links. — *Tools → Architecture Decisions elenca gli ADR Markdown in `docs/adr` del progetto e li apre direttamente nell'editor.*
+_Chiusa il 2026-10-05: profiler, trace, sicurezza, Context Propagation Inspector (anche fra package, con grafo visuale e trace ID runtime), Architecture Explorer e Documentation Intelligence sono nel `CHANGELOG.md`._
 
 ---
 
@@ -901,7 +831,7 @@ Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 - [ ] Performance Studio.
 - [ ] Go trace.
 - [ ] Interface Explorer. — *Parziale: Implement Interface, implementation markers e type hierarchy; manca una vista dedicata.*
-- [ ] Context Inspector. — *Parziale: Inspector runtime di context.Context in debug e analisi statica della propagazione (`goStudioContextAnalysis.ts`) con pannello e gutter marker; manca la verifica manuale.*
+- [ ] Context Inspector. — *Parziale: inspector runtime, analisi per file e per progetto (tipata, fra package) con grafo; manca la verifica manuale.*
 - [ ] Error intelligence. — *Parziale: Error chain viewer e panic inspector; manca l'analisi statica.*
 - [ ] Security. — *Parziale: Vulnerability Diagnostics opt-in via gopls; nessuna Security Studio o govulncheck dedicato.*
 - [ ] Dependency Studio. — *Parziale: GoStudioDependencies.tsx con azioni go.mod; mancano grafo, impatto e dimensione binario.*

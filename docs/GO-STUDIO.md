@@ -223,6 +223,14 @@ pause and explains it.
 - **Runtime SQL.** With SQL capture on (Live Session service tools), each statement of a request shows its time and the rows returned or affected, failed statements show the database error and code (with hints for deadlocks, lock waits and statement timeouts), and repeated statements are flagged as possible N+1. Transactions appear with how long they stayed open. *Code* jumps to the line that runs the statement when the Architecture Explorer analysis is available, otherwise it searches the project.
 - **Modules.** The project's modules, how they require each other and their external requirements.
 
+## Context propagation
+
+*View → Context Propagation Inspector* (Alt+9) checks how `context.Context` flows.
+
+- **File.** Offline, on the unsaved buffer, with editor markers: `Background()`/`TODO()` in call chains, missing or too-wide timeouts (limit configurable, default 30s), context in structs, leaked `cancel`, ignored cancellation, broken chains, trace-ID keys.
+- **Graph.** *Context graph* draws who passes a context to whom: red = drops the caller's context for `Background`/`TODO`, amber = creates a root, green = applies a timeout. *File* uses the buffer; *Project* uses the typed Architecture Explorer analysis (trusted project), so it follows calls across packages and lists every broken chain with its line. Double-click a node opens its code.
+- **Runtime.** In the debugger, the context inspector of a `context.WithValue` with a trace/request/correlation id key shows *Trace … in logs*, which opens the Log Inspector on that id.
+
 ## Error Handling Intelligence
 
 - **Open it.** *View → Error Handling Intelligence*, then **Analyze**. Every module is loaded with `go/packages` (it runs `go list`, so the project must be trusted) and checked with full type information; nothing is sent anywhere.

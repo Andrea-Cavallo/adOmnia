@@ -57,6 +57,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	for index := range r.Queries {
 		fix(&r.Queries[index].Site)
 	}
+	for index := range r.ContextCalls {
+		fix(&r.ContextCalls[index].Site)
+	}
 	for index := range r.Interfaces {
 		item := &r.Interfaces[index]
 		fix(&item.Site)
@@ -92,6 +95,7 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.Entries = append(r.Entries, other.Entries...)
 	r.Schemas = append(r.Schemas, other.Schemas...)
 	r.Queries = append(r.Queries, other.Queries...)
+	r.ContextCalls = append(r.ContextCalls, other.ContextCalls...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -118,6 +122,7 @@ type ArchFunction struct {
 	Name     string   `json:"name"`
 	Package  string   `json:"package"`
 	Abstract bool     `json:"abstract,omitempty"`
+	Context  bool     `json:"context,omitempty"` // riceve un context.Context
 	Site     ArchSite `json:"site"`
 }
 
@@ -130,17 +135,18 @@ type ArchModule struct {
 }
 
 type ArchitectureReport struct {
-	Packages     []ArchPackage   `json:"packages"`
-	Imports      []ArchEdge      `json:"imports"`
-	PackageCalls []ArchEdge      `json:"packageCalls"`
-	Functions    []ArchFunction  `json:"functions"`
-	Calls        []ArchEdge      `json:"calls"`
-	Modules      []ArchModule    `json:"modules"`
-	Interfaces   []ArchInterface `json:"interfaces"`
-	Entries      []ArchEntry     `json:"entries"`
-	Schemas      []ArchSchema    `json:"schemas"`
-	Queries      []ArchQuery     `json:"queries"`
-	Truncated    bool            `json:"truncated,omitempty"`
+	Packages     []ArchPackage     `json:"packages"`
+	Imports      []ArchEdge        `json:"imports"`
+	PackageCalls []ArchEdge        `json:"packageCalls"`
+	Functions    []ArchFunction    `json:"functions"`
+	Calls        []ArchEdge        `json:"calls"`
+	Modules      []ArchModule      `json:"modules"`
+	Interfaces   []ArchInterface   `json:"interfaces"`
+	Entries      []ArchEntry       `json:"entries"`
+	Schemas      []ArchSchema      `json:"schemas"`
+	Queries      []ArchQuery       `json:"queries"`
+	ContextCalls []ArchContextCall `json:"contextCalls"`
+	Truncated    bool              `json:"truncated,omitempty"`
 }
 
 // funcDecl è la dichiarazione di una funzione del progetto con il suo file.
@@ -182,6 +188,7 @@ func AnalyzeArchitecture(fset *token.FileSet, loaded []*packages.Package, read f
 	for _, file := range a.files {
 		a.collectCalls(file)
 	}
+	a.collectContextFlow()
 	a.collectInterfaces()
 	a.collectEntries()
 	a.finish()
@@ -390,4 +397,8 @@ func (a *architecture) finish() {
 		a.report.Queries = []ArchQuery{}
 	}
 	sortQueries(a.report.Queries)
+	if a.report.ContextCalls == nil {
+		a.report.ContextCalls = []ArchContextCall{}
+	}
+	sortContextCalls(a.report.ContextCalls)
 }

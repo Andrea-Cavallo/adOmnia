@@ -1,12 +1,14 @@
 import { Fragment, memo, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { ChevronDown, ChevronRight, Copy, Cpu, Eye, LoaderCircle, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Cpu, Eye, ScrollText, LoaderCircle, Plus, X } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { evaluateGoIDEDebug, showGoIDEDebugRegisters, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
 import { useGoIDEDebugStore, type GoIDEDebugConsoleLine, type GoIDEDebugView, type GoIDEWatchValue } from '@/stores/goideDebug'
 import { PaneHeader, valueTone } from './GoStudioDebugUi'
 import { goStudioUnwrapCandidates, isNilGoStudioDebugValue } from './goStudioErrorChain'
 import { goStudioCollectionExpressions } from './goStudioCollectionInspector'
-import { goStudioContextFields } from './goStudioContextInspector'
+import { goStudioContextFields, goStudioContextTraceId } from './goStudioContextInspector'
+import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
+import { showModule } from '@/lib/moduleRouting'
 import { summarizeGoStudioDebugValue } from './goStudioDebugValueInspector'
 
 const EMPTY_WATCHES: string[] = []
@@ -177,10 +179,14 @@ function GoStudioContextInspector({ debugId, variable }: { debugId: string; vari
   if (!children) return <p className="mt-1 text-[10.5px] text-text-4">Reading context fields…</p>
   const fields = goStudioContextFields(children)
   if (fields.length === 0) return <p className="mt-1 text-[10.5px] text-text-4">No key/value, deadline, cancellation or parent field was exposed by this adapter.</p>
+  const traceId = goStudioContextTraceId(fields)
   return (
+    <>
+    {traceId && <button type="button" onClick={() => { requestLogInspectorQuery(traceId); showModule('loginspector') }} title="Search the runtime logs for the trace id carried by this context" className="mt-1 inline-flex h-6 items-center gap-1 rounded border border-border-1 px-2 text-[10.5px] text-accent hover:border-accent"><ScrollText size={11} />Trace {traceId} in logs</button>}
     <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5 font-mono text-[10.5px]">
       {fields.map((field) => <Fragment key={field.name}><dt className="text-text-4">{field.name}</dt><dd className="min-w-0 truncate text-text-1" title={field.type ? `${field.value} (${field.type})` : field.value}>{field.value}</dd></Fragment>)}
     </dl>
+    </>
   )
 }
 
