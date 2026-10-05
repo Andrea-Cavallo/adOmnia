@@ -80,6 +80,13 @@ export interface LiveQuery {
   sql: string
   source: 'log' | 'proxy'
   datasource?: string
+  /** Esito visto dal proxy SQL: "transaction" è una transazione intera, da BEGIN a COMMIT/ROLLBACK. */
+  kind?: 'statement' | 'transaction'
+  durationMs?: number | null
+  rows?: number | null
+  error?: string
+  errorCode?: string
+  incomplete?: boolean
 }
 
 export interface LiveMessage {

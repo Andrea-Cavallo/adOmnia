@@ -135,6 +135,14 @@ type Query struct {
 	// Source is "log" or "proxy".
 	Source     string `json:"source"`
 	Datasource string `json:"datasource,omitempty"`
+	// Statement outcome, known only for statements seen by the SQL proxy.
+	// Kind is "statement" or "transaction" (a whole transaction, from its first statement to COMMIT/ROLLBACK).
+	Kind       string   `json:"kind,omitempty"`
+	DurationMs *float64 `json:"durationMs,omitempty"`
+	Rows       *int64   `json:"rows,omitempty"`
+	Error      string   `json:"error,omitempty"`
+	ErrorCode  string   `json:"errorCode,omitempty"`
+	Incomplete bool     `json:"incomplete,omitempty"`
 }
 
 // Message is a broker message produced while a request was in flight.

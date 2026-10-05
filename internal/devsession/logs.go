@@ -223,13 +223,25 @@ func (m *Manager) Messages(runID string) []Message {
 	return out
 }
 
-// RecordQuery adds a statement seen by the SQL capture proxy.
-func (m *Manager) RecordQuery(sessionID, datasource, sql string) {
+// RecordStatement adds a statement seen by the SQL capture proxy, with its outcome. It is
+// attributed to the request that was running when the statement was sent.
+func (m *Manager) RecordStatement(sessionID, datasource string, statement Statement) {
 	m.mu.Lock()
-	now := m.now()
-	query := Query{ID: newID("q-"), SessionID: sessionID, At: now, SQL: sql, Source: "proxy", Datasource: datasource}
+	at := statement.Started
+	if at.IsZero() {
+		at = m.now()
+	}
+	query := Query{ID: newID("q-"), SessionID: sessionID, At: at, SQL: statement.SQL, Source: "proxy", Datasource: datasource, Kind: statement.Kind, Error: statement.Error, ErrorCode: statement.Code, Incomplete: !statement.Completed}
+	if statement.Completed {
+		duration := float64(statement.Duration.Microseconds()) / 1000
+		query.DurationMs = &duration
+		if statement.Rows >= 0 {
+			rows := statement.Rows
+			query.Rows = &rows
+		}
+	}
 	events := []Event{}
-	if run, match := m.attributeLocked(sessionID, sql, now); run != nil {
+	if run, match := m.attributeLocked(sessionID, statement.SQL, at); run != nil {
 		query.RequestRunID, query.Match = run.ID, match
 		run.Queries++
 		events = append(events, Event{Type: "request.updated", SessionID: sessionID, Payload: cloneRun(run)})

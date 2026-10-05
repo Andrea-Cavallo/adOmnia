@@ -33,9 +33,9 @@ func TestPostgresProxyReadsQueriesAndRefusesTLS(t *testing.T) {
 	}()
 	var mu sync.Mutex
 	var statements []string
-	proxy, err := StartSQLProxy("postgres", upstream.Addr().String(), 0, func(sql string) {
+	proxy, err := StartSQLProxy("postgres", upstream.Addr().String(), 0, func(statement Statement) {
 		mu.Lock()
-		statements = append(statements, sql)
+		statements = append(statements, statement.SQL)
 		mu.Unlock()
 	})
 	if err != nil {
@@ -74,7 +74,9 @@ func TestPostgresProxyReadsQueriesAndRefusesTLS(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(statements) != 2 || statements[0] != "SELECT 1" || statements[1] != "UPDATE users SET name = $1 WHERE id = $2" {
+	// Il server finto non risponde: alla chiusura la query resta "non completata". Parse da solo
+	// prepara soltanto: non è un'esecuzione e non viene registrato.
+	if len(statements) != 1 || statements[0] != "SELECT 1" {
 		t.Fatalf("unexpected statements %q", statements)
 	}
 }
@@ -102,10 +104,17 @@ func TestMySQLProxyClearsSSLAndReadsCommands(t *testing.T) {
 		}
 		defer conn.Close()
 		_, _ = conn.Write(mysqlPacket(0, greeting))
+		// handshake response, poi il comando: risponde OK con 2 righe toccate.
+		for range 2 {
+			if _, _, err := readMySQLPacket(conn); err != nil {
+				return
+			}
+		}
+		_, _ = conn.Write(mysqlPacket(1, []byte{0x00, 2, 0, 2, 0, 0, 0}))
 		_, _ = io.ReadAll(conn)
 	}()
 	statements := make(chan string, 4)
-	proxy, err := StartSQLProxy("mysql", upstream.Addr().String(), 0, func(sql string) { statements <- sql })
+	proxy, err := StartSQLProxy("mysql", upstream.Addr().String(), 0, func(statement Statement) { statements <- statement.SQL })
 	if err != nil {
 		t.Fatal(err)
 	}

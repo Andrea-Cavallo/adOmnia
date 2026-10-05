@@ -25,7 +25,7 @@ type SQLProxy struct {
 	Target   string `json:"target"`
 	Listen   string `json:"listen"`
 	listener net.Listener
-	record   func(sql string)
+	record   func(Statement)
 	wg       sync.WaitGroup
 	mu       sync.Mutex
 	conns    map[net.Conn]struct{}
@@ -33,7 +33,7 @@ type SQLProxy struct {
 }
 
 // StartSQLProxy listens on 127.0.0.1 (port 0 = any free port).
-func StartSQLProxy(kind, target string, port int, record func(sql string)) (*SQLProxy, error) {
+func StartSQLProxy(kind, target string, port int, record func(Statement)) (*SQLProxy, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if kind != "postgres" && kind != "mysql" {
 		return nil, fmt.Errorf("SQL capture supports postgres and mysql, not %q", kind)
@@ -106,24 +106,27 @@ func (p *SQLProxy) serve(client net.Conn) {
 		p.track(client, false)
 		p.track(server, false)
 	}()
+	// Il tracker accoppia ogni istruzione alla sua risposta: durata, righe, errori, transazioni.
+	tracker := newStatementTracker(p.record)
 	done := make(chan struct{}, 2)
 	go func() {
 		if p.Kind == "postgres" {
-			_ = pgClientToServer(client, server, p.record)
+			_ = pgClientToServer(client, server, tracker)
 		} else {
-			_ = mysqlClientToServer(client, server, p.record)
+			_ = mysqlClientToServer(client, server, tracker)
 		}
 		done <- struct{}{}
 	}()
 	go func() {
 		if p.Kind == "mysql" {
-			_ = mysqlServerToClient(server, client)
+			_ = mysqlServerToClient(server, client, tracker)
 		} else {
-			_, _ = io.Copy(client, server)
+			_ = pgServerToClient(server, client, tracker)
 		}
 		done <- struct{}{}
 	}()
 	<-done
+	tracker.flush()
 }
 
 // Close stops listening and drops open connections.
@@ -144,8 +147,8 @@ const (
 	maxSQLMessage   = 64 << 20
 )
 
-// pgClientToServer forwards the Postgres frontend stream and reads 'Q' and 'P'.
-func pgClientToServer(client io.ReadWriter, server io.Writer, record func(string)) error {
+// pgClientToServer forwards the Postgres frontend stream and reads Query, Parse, Bind and Execute.
+func pgClientToServer(client io.ReadWriter, server io.Writer, tracker *statementTracker) error {
 	reader := bufio.NewReader(client)
 	// Startup phase: untyped messages (length + code), possibly several
 	// encryption requests before the real startup packet.
@@ -187,15 +190,31 @@ func pgClientToServer(client io.ReadWriter, server io.Writer, record func(string
 		if _, err := io.ReadFull(reader, body); err != nil {
 			return err
 		}
-		switch header[0] {
-		case 'Q':
-			recordSQL(record, cString(body))
-		case 'P': // Parse: statement name \0 query \0 ...
-			if _, after, ok := strings.Cut(string(body), "\x00"); ok {
-				recordSQL(record, cString([]byte(after)))
-			}
-		}
+		tracker.pgClientMessage(header[0], body)
 		if _, err := server.Write(append(header, body...)); err != nil {
+			return err
+		}
+	}
+}
+
+// pgServerToClient forwards the backend stream and reads completions, errors and transaction state.
+func pgServerToClient(server io.Reader, client io.Writer, tracker *statementTracker) error {
+	reader := bufio.NewReader(server)
+	for {
+		header := make([]byte, 5)
+		if _, err := io.ReadFull(reader, header); err != nil {
+			return err
+		}
+		length := binary.BigEndian.Uint32(header[1:])
+		if length < 4 || length > maxSQLMessage {
+			return errors.New("invalid postgres message")
+		}
+		body := make([]byte, length-4)
+		if _, err := io.ReadFull(reader, body); err != nil {
+			return err
+		}
+		tracker.pgServerMessage(header[0], body)
+		if _, err := client.Write(append(header, body...)); err != nil {
 			return err
 		}
 	}
@@ -206,18 +225,6 @@ func cString(b []byte) string {
 		return string(b[:i])
 	}
 	return string(b)
-}
-
-func recordSQL(record func(string), sql string) {
-	// MySQL query attributes prefix the text with a parameter count and set id.
-	sql = strings.TrimSpace(strings.TrimLeftFunc(sql, func(r rune) bool { return r < ' ' }))
-	if sql == "" || record == nil {
-		return
-	}
-	if len(sql) > 4000 {
-		sql = sql[:4000]
-	}
-	record(sql)
 }
 
 const (
@@ -239,8 +246,8 @@ func readMySQLPacket(reader io.Reader) ([]byte, []byte, error) {
 	return header, payload, nil
 }
 
-// mysqlServerToClient clears CLIENT_SSL in the server greeting, then copies.
-func mysqlServerToClient(server io.Reader, client io.Writer) error {
+// mysqlServerToClient clears CLIENT_SSL in the server greeting, then follows the responses.
+func mysqlServerToClient(server io.Reader, client io.Writer, tracker *statementTracker) error {
 	reader := bufio.NewReader(server)
 	header, payload, err := readMySQLPacket(reader)
 	if err != nil {
@@ -253,26 +260,48 @@ func mysqlServerToClient(server io.Reader, client io.Writer) error {
 			if offset+2 <= len(payload) {
 				flags := binary.LittleEndian.Uint16(payload[offset:])
 				binary.LittleEndian.PutUint16(payload[offset:], flags&^mysqlClientSSL)
+				capabilities := uint32(flags &^ mysqlClientSSL)
+				// charset (1) and status (2), then the upper capability bytes.
+				if upper := offset + 2 + 3; upper+2 <= len(payload) {
+					capabilities |= uint32(binary.LittleEndian.Uint16(payload[upper:])) << 16
+				}
+				tracker.mysqlCapabilities(capabilities, 0)
 			}
 		}
 	}
 	if _, err := client.Write(append(header, payload...)); err != nil {
 		return err
 	}
-	_, err = io.Copy(client, reader)
-	return err
+	responses := &mysqlResponses{tracker: tracker}
+	for {
+		header, payload, err := readMySQLPacket(reader)
+		if err != nil {
+			return err
+		}
+		// Prima del primo comando del client i pacchetti sono dell'autenticazione.
+		if tracker.commandsStarted() {
+			responses.packet(payload)
+		}
+		if _, err := client.Write(append(header, payload...)); err != nil {
+			return err
+		}
+	}
 }
 
 // mysqlClientToServer forwards client packets and reads commands (sequence 0).
-func mysqlClientToServer(client io.Reader, server io.Writer, record func(string)) error {
+func mysqlClientToServer(client io.Reader, server io.Writer, tracker *statementTracker) error {
 	reader := bufio.NewReader(client)
 	for {
 		header, payload, err := readMySQLPacket(reader)
 		if err != nil {
 			return err
 		}
-		if header[3] == 0 && len(payload) > 1 && (payload[0] == mysqlComQuery || payload[0] == mysqlComStmtPrepare) {
-			recordSQL(record, string(payload[1:]))
+		switch {
+		case header[3] == 1 && !tracker.commandsStarted() && len(payload) >= 4:
+			tracker.mysqlCapabilities(0, binary.LittleEndian.Uint32(payload[:4]))
+		case header[3] == 0:
+			tracker.startCommands()
+			tracker.mysqlCommand(payload)
 		}
 		if _, err := server.Write(append(header, payload...)); err != nil {
 			return err

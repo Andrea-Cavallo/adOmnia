@@ -136,6 +136,14 @@ func (m *Manager) attributeLocked(sessionID, text string, at time.Time) (*Reques
 			return inFlight[i], MatchTime
 		}
 	}
+	// Something that started while a request was in flight but is recorded later (a SQL statement
+	// recorded when the database answers) still belongs to that request.
+	for i := len(m.runOrder) - 1; i >= 0; i-- {
+		run := m.runs[m.runOrder[i]]
+		if run.SessionID == sessionID && run.CompletedAt != nil && !run.StartedAt.After(at) && !at.After(*run.CompletedAt) {
+			return run, MatchTime
+		}
+	}
 	// A service often logs or publishes right after writing the response.
 	for i := len(m.runOrder) - 1; i >= 0; i-- {
 		run := m.runs[m.runOrder[i]]

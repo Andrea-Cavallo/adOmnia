@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+
 import { showModule } from '@/lib/moduleRouting'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
-import type { LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
+import type { LiveFrame, LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
+import { cachedArchitecture } from '@/lib/goide/architectureCache'
+import { SLOW_QUERY_MS, lockHint, nPlusOneHints, searchFragment, sourceForStatement, summarizeQueries } from '@/lib/devsession/sqlInsights'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
@@ -86,23 +89,82 @@ function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSes
   )
 }
 
-/** SQL statements the request caused; each opens in Database Studio without running. */
-export function LiveQueryList({ queries, run }: { queries: LiveQuery[]; run?: RequestRun | null }) {
+/** Torna al codice che esegue l'istruzione: dall'analisi dell'architettura se c'è, altrimenti cercandola. */
+async function findQueryInCode(query: LiveQuery, goSessionId: string): Promise<void> {
+  const site = sourceForStatement(query.sql, cachedArchitecture(goSessionId)?.report.queries ?? [])
+  if (site) {
+    await openLocationInGoStudio(goSessionId, { function: '', relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
+    return
+  }
+  if (!(await openLocationInGoStudio(goSessionId, null))) return
+  const { useGoIDELspStore } = await import('@/stores/goideLsp')
+  useGoIDELspStore.getState().requestFind(searchFragment(query.sql))
+}
+
+function QueryOutcome({ query }: { query: LiveQuery }) {
+  if (query.incomplete) return <span className="shrink-0 rounded bg-warning/15 px-1 text-[10px] text-warning" title="The connection closed before the database answered">no answer</span>
+  if (query.durationMs == null) return null
+  const slow = query.durationMs >= SLOW_QUERY_MS
+  return (
+    <>
+      <span className={`shrink-0 rounded px-1 font-mono text-[10px] ${slow ? 'bg-danger/15 text-danger' : 'bg-surface-3 text-text-3'}`} title={slow ? `Slow: over ${SLOW_QUERY_MS} ms` : 'Time until the database answered'}>{query.durationMs.toFixed(query.durationMs < 10 ? 1 : 0)} ms</span>
+      {query.rows != null && <span className="shrink-0 rounded bg-surface-3 px-1 font-mono text-[10px] text-text-3" title="Rows returned or affected">{query.rows} row{query.rows === 1 ? '' : 's'}</span>}
+    </>
+  )
+}
+
+/** SQL statements the request caused, with time, rows, errors, N+1 and lock hints; each opens in Database Studio without running. */
+export function LiveQueryList({ queries, run, goSessionId }: { queries: LiveQuery[]; run?: RequestRun | null; goSessionId?: string }) {
   if (queries.length === 0) {
     return <EmptyNote icon={<Database size={16} />} text="No SQL seen for this request. Queries appear when the service logs them, or through SQL capture (debug bar → service tools)." />
   }
+  const summary = summarizeQueries(queries)
+  const repeated = nPlusOneHints(queries)
   return (
-    <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
-      {queries.map((query) => (
-        <li key={query.id} className="flex items-start gap-2 px-3 py-2">
-          <span className="mt-0.5 shrink-0 text-[10.5px] text-text-4">{time(query.at)}</span>
-          <MatchHint match={query.match} />
-          <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-[11.5px] text-text-1">{query.sql}</code>
-          <button type="button" onClick={() => openQuery(query, run)}
-            className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Database</button>
-        </li>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {summary.totalMs > 0 && (
+        <div className="flex shrink-0 flex-wrap gap-x-3 border-b border-border-1 bg-surface-2/50 px-3 py-1 text-[10.5px] text-text-3">
+          <span>{summary.statements} statement{summary.statements === 1 ? '' : 's'} · {summary.totalMs.toFixed(1)} ms in the database</span>
+          {summary.slow > 0 && <span className="text-danger">{summary.slow} slow (≥ {SLOW_QUERY_MS} ms)</span>}
+          {summary.errors > 0 && <span className="text-danger">{summary.errors} failed</span>}
+          {summary.transactions > 0 && <span>{summary.transactions} transaction{summary.transactions === 1 ? '' : 's'}</span>}
+        </div>
+      )}
+      {repeated.map((group) => (
+        <div key={group.sql} className="shrink-0 border-b border-warning/30 bg-warning/5 px-3 py-1 text-[11px] text-warning">
+          Possible N+1: the same statement ran {group.count} times ({group.totalMs.toFixed(1)} ms) — <code className="text-text-2">{group.sql.slice(0, 90)}</code>. Load the rows in one query (JOIN or IN) instead of one per item.
+        </div>
       ))}
-    </ul>
+      <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
+        {queries.map((query) => query.kind === 'transaction' ? (
+          <li key={query.id} className="flex items-center gap-2 bg-accent/5 px-3 py-1.5 text-[11px]">
+            <span className="shrink-0 text-[10.5px] text-text-4">{time(query.at)}</span>
+            <span className={query.error ? 'text-danger' : 'text-accent'}>Transaction {query.error ? 'rolled back' : 'closed'}</span>
+            {query.durationMs != null && <span className={`font-mono text-[10px] ${query.durationMs >= SLOW_QUERY_MS * 5 ? 'text-danger' : 'text-text-3'}`} title="From its first statement to COMMIT/ROLLBACK: long transactions hold locks">{query.durationMs.toFixed(1)} ms open</span>}
+            {query.error && <span className="truncate text-text-3">{query.error}</span>}
+          </li>
+        ) : (
+          <li key={query.id} className="px-3 py-2">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0 text-[10.5px] text-text-4">{time(query.at)}</span>
+              <MatchHint match={query.match} />
+              <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-[11.5px] text-text-1">{query.sql}</code>
+              <QueryOutcome query={query} />
+              {goSessionId && <button type="button" onClick={() => void findQueryInCode(query, goSessionId)} title="Open the code that runs this statement"
+                className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Code</button>}
+              <button type="button" onClick={() => openQuery(query, run)}
+                className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Database</button>
+            </div>
+            {query.error && (
+              <div className="mt-1 pl-14 text-[11px]">
+                <span className="text-danger">{query.errorCode ? `${query.errorCode} · ` : ''}{query.error}</span>
+                {lockHint(query.errorCode) && <div className="text-warning">{lockHint(query.errorCode)}</div>}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

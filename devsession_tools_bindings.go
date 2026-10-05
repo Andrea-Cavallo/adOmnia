@@ -66,8 +66,8 @@ func newSQLProxies(manager *devsession.Manager) *sqlProxies {
 
 func (s *sqlProxies) start(sessionID, kind, target string, port int) (*devsession.SQLProxy, error) {
 	s.stop(sessionID)
-	proxy, err := devsession.StartSQLProxy(kind, target, port, func(sql string) {
-		s.manager.RecordQuery(sessionID, kind+"://"+target, sql)
+	proxy, err := devsession.StartSQLProxy(kind, target, port, func(statement devsession.Statement) {
+		s.manager.RecordStatement(sessionID, kind+"://"+target, statement)
 	})
 	if err != nil {
 		return nil, err

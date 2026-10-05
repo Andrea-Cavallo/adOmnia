@@ -3,6 +3,7 @@ import { ArrowUpRight, Loader2, Play, Search } from 'lucide-react'
 import { analyzeGoIDEArchitecture, type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession } from '@/lib/goide-api'
 import { openEntity } from '@/lib/entities/router'
 import { showModule } from '@/lib/moduleRouting'
+import { cachedArchitecture, rememberArchitecture } from '@/lib/goide/architectureCache'
 import { callNeighbourhood, entityRefsForEntry, groupEntries, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
@@ -20,15 +21,13 @@ const NODE_COLOR: Record<ArchNode['kind'], string> = {
   module: 'var(--color-warning)',
 }
 
-// L'ultima analisi per sessione: Architecture, Interface Explorer e Documentation la condividono.
-const lastResult = new Map<string, GoIDEArchitectureResult>()
 
 /** Analisi dell'architettura: riusa l'ultima della sessione, altrimenti la esegue (progetto autorizzato). */
 export async function architectureFor(sessionId: string, fresh = false): Promise<GoIDEArchitectureResult> {
-  const cached = lastResult.get(sessionId)
+  const cached = cachedArchitecture(sessionId)
   if (cached && !fresh) return cached
   const next = await analyzeGoIDEArchitecture(sessionId)
-  lastResult.set(sessionId, next)
+  rememberArchitecture(sessionId, next)
   return next
 }
 
@@ -54,7 +53,7 @@ function Graph({ graph, label, selected, onSelect }: { graph: ArchGraph; label: 
 export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: { session: GoIDESession; initialTab?: ArchitectureTab }) {
   const sessionId = session.id
   const authorized = session.project.authorization === 'tooling-permitted'
-  const [result, setResult] = useState<GoIDEArchitectureResult | null>(() => lastResult.get(session.id) ?? null)
+  const [result, setResult] = useState<GoIDEArchitectureResult | null>(() => cachedArchitecture(session.id))
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<ArchitectureTab>(initialTab)

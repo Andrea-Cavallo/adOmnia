@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
 | **P1** | Workflow Go migliore di GoLand | 1 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 198 | 46 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 191 | 46 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -160,13 +160,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Code ↔ database
 
 - [ ] Query → schema.
-- [ ] Runtime query duration.
-- [ ] Rows returned.
-- [ ] Slow query detection.
-- [ ] N+1-like behavior hints.
-- [ ] Transaction duration.
-- [ ] Lock/wait hints quando disponibili.
-- [ ] DB error → source line.
 
 ## §26 · Kafka / Broker Integration
 

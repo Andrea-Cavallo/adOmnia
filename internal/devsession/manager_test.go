@@ -294,3 +294,26 @@ func TestWaitReadyWithHealthPath(t *testing.T) {
 		t.Fatal("the health path was never probed")
 	}
 }
+
+// A statement recorded when the database answers, after the response, still belongs to the
+// request that was running when it was sent; its outcome is kept.
+func TestStatementsAttributedBySendTime(t *testing.T) {
+	manager, _ := testManager(Hooks{})
+	manager.RunStarted("go-1", "r1", "run", "go run .", 42)
+	_ = manager.SetPort("run:r1", 8080)
+	run, _ := manager.Begin(BeginRequest{Method: "GET", URL: "http://localhost:8080/orders"})
+	sent := time.Now()
+	if _, err := manager.End(run.ID, 200, 15, ""); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Millisecond)
+	manager.RecordStatement("run:r1", "postgres://db:5432", Statement{SQL: "SELECT * FROM orders", Kind: "statement", Started: sent, Duration: 7 * time.Millisecond, Rows: 3, Completed: true})
+	manager.RecordStatement("run:r1", "postgres://db:5432", Statement{SQL: "INSERT INTO orders VALUES (1)", Kind: "statement", Started: sent, Rows: -1, Error: "duplicate key", Code: "23505", Completed: true})
+	queries := manager.Queries(run.ID)
+	if len(queries) != 2 || queries[0].Match != MatchTime {
+		t.Fatalf("queries not attributed: %+v", queries)
+	}
+	if *queries[0].DurationMs != 7 || *queries[0].Rows != 3 || queries[1].ErrorCode != "23505" || queries[1].Rows != nil || queries[1].Incomplete {
+		t.Fatalf("outcome lost: %+v %+v", queries[0], queries[1])
+	}
+}

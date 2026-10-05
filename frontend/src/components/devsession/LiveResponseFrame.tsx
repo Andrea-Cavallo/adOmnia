@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+
 import { showModule } from '@/lib/moduleRouting'
 import { ArrowDownToLine, Bug, Check, Columns2, Loader2, Play, Redo2, RotateCcw, Square, X } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
@@ -101,7 +102,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
         )} />
     )
   }
-  if (tab === 'db') return <LiveQueryList queries={queries} run={run} />
+  if (tab === 'db') return <LiveQueryList queries={queries} run={run} goSessionId={session?.goSessionId} />
   if (tab === 'kafka') return <LiveMessageList messages={messages} run={run} />
   if (tab === 'timeline') return <RequestTimeline run={run} session={session} logs={logs} queries={queries} messages={messages} />
   return <HitList run={run} session={session} />

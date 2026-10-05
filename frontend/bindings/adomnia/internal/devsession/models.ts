@@ -325,6 +325,17 @@ export class Query {
     "source": string;
     "datasource"?: string;
 
+    /**
+     * Statement outcome, known only for statements seen by the SQL proxy.
+     * Kind is "statement" or "transaction" (a whole transaction, from its first statement to COMMIT/ROLLBACK).
+     */
+    "kind"?: string;
+    "durationMs"?: number | null;
+    "rows"?: number | null;
+    "error"?: string;
+    "errorCode"?: string;
+    "incomplete"?: boolean;
+
     /** Creates a new Query instance. */
     constructor($$source: Partial<Query> = {}) {
         if (!("id" in $$source)) {
