@@ -16,6 +16,7 @@ import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
 import { GoStudioContextPanel } from './GoStudioContextPanel'
 import { GoStudioProfilePanel } from './GoStudioProfilePanel'
 import { GoStudioTracePanel } from './GoStudioTracePanel'
+import { GoStudioFuzzPanel } from './GoStudioFuzzPanel'
 import { GoStudioSonarPanel } from './GoStudioSonarPanel'
 import { GoStudioSecurityPanel } from './GoStudioSecurityPanel'
 import { GoStudioReferences } from './GoStudioReferences'
@@ -148,6 +149,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   trace: 'Trace',
   sonar: 'SonarQube',
   vulns: 'Security',
+  fuzz: 'Fuzzing',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -286,6 +288,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'profile' && <div className="min-h-0 flex-1"><GoStudioProfilePanel session={session} /></div>}
       {view === 'trace' && <div className="min-h-0 flex-1"><GoStudioTracePanel session={session} /></div>}
       {view === 'sonar' && <div className="min-h-0 flex-1"><GoStudioSonarPanel session={session} /></div>}
+      {view === 'fuzz' && <div className="min-h-0 flex-1"><GoStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>

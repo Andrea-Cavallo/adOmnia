@@ -643,6 +643,26 @@ func (g *GoIDE) LoadTrace(sessionID, relativePath string) (goide.TraceReport, er
 	return g.service.LoadTrace(sessionID, relativePath)
 }
 
+// ListFuzzTargets elenca le funzioni Fuzz* con il corpus in testdata/fuzz e nella cache di Go.
+func (g *GoIDE) ListFuzzTargets(sessionID string) ([]goide.FuzzTarget, error) {
+	return g.service.ListFuzzTargets(sessionID)
+}
+
+// ReadFuzzInput interpreta un input del corpus fuzz.
+func (g *GoIDE) ReadFuzzInput(sessionID, packageDir, target, source, name string) (goide.FuzzInputContent, error) {
+	return g.service.ReadFuzzInput(sessionID, packageDir, target, source, name)
+}
+
+// PromoteFuzzInput copia un input generato in testdata/fuzz, dove ogni go test lo riesegue.
+func (g *GoIDE) PromoteFuzzInput(sessionID, packageDir, target, name string) (string, error) {
+	return g.service.PromoteFuzzInput(sessionID, packageDir, target, name)
+}
+
+// DeleteFuzzInput cancella un input dal corpus del progetto o dalla cache di Go.
+func (g *GoIDE) DeleteFuzzInput(sessionID, packageDir, target, source, name string) error {
+	return g.service.DeleteFuzzInput(sessionID, packageDir, target, source, name)
+}
+
 // DetectSonarScanner cerca sonar-scanner per la sessione.
 func (g *GoIDE) DetectSonarScanner(sessionID string) (goide.SonarScannerInfo, error) {
 	return g.service.DetectSonarScanner(sessionID)

@@ -6,6 +6,7 @@ export {
     DebugMemory,
     DebugRequest,
     DelveInfo,
+    FuzzValue,
     GoplsInfo,
     GoplsSettings,
     GoroutineCreation,

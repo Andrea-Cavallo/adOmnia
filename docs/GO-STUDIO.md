@@ -180,6 +180,7 @@ pause and explains it.
 - **Possible causes.** For a flaky test the detail lists hints read from the output of every repetition: data race, deadlock, timing, port conflict, unreachable service, channel or map misuse, or (with shuffling and no other hint) test-order dependency. *×N with -race* repeats it with the race detector. These are hints, not a diagnosis.
 - **Flaky history.** Tests found flaky in a repeated run are remembered per project in local storage (package, name, runs and failures, never output). Later runs mark them *was flaky*, the flaky filter includes them, and the trash button next to it forgets them.
 - **Reproducible scenario.** The copy button in a test's detail copies the `go test` command that reproduces it outside the IDE: working directory, `-run` filter, `-count`, the `-shuffle` seed the package printed, `-race` and build tags.
+- **Benchmark comparisons.** A benchmark's detail compares it with a chosen baseline: the previous run, measurements saved on main/master (default when you are on another branch), any earlier commit, or a run pinned with *Pin as baseline* (before a refactor). With `-count=N` every repetition is kept: medians are compared with a Mann-Whitney U test like benchstat (*significant* or *~ noise*, at least 4 runs per side). Slowdowns over the *Regression ≥ N%* threshold (default 5%, per project) are highlighted. Saved history stores branch and commit, never output.
 - **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
 
 ## Linting
@@ -199,6 +200,15 @@ pause and explains it.
 - **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
 - **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
 - **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Fuzzing Studio
+
+- **Open it.** *View → Fuzzing Studio* lists every `func FuzzXxx(f *testing.F)` of the project. Nothing runs until you press **Fuzz** or **Replay**, and both need a trusted project.
+- **Fuzz.** Pick the duration (`-fuzztime`, or *Until stopped*) and the workers (`-parallel`, *Auto* = GOMAXPROCS); the run appears in the Run console and can be stopped there.
+- **Corpus.** *Seeds and failures* are the files in `testdata/fuzz/FuzzXxx/` (run by every `go test`); *Generated* are the inputs Go keeps in `$GOCACHE/fuzz/<import path>/FuzzXxx/` (`GOCACHE` from the environment or Go's default). Selecting an input shows its typed values; identical inputs are marked *dup*.
+- **Crashes.** Every finished fuzz run is parsed: the failing input Go wrote (already minimized when the output says so), the failure message and the throughput. Crashes with the same normalized message are grouped with a ×N counter.
+- **Actions.** *Replay* reruns the target on one testdata input (`-run=^FuzzXxx$/^name$`) or the whole corpus; *Promote to test* copies a generated input into `testdata/fuzz`, so `go test` runs it as a regression case; *Copy f.Add* copies the values as a seed call; delete removes an input from the project or the cache.
+- **Sessions.** Duration, executions, executions per second, new interesting inputs, corpus size and workers of each run, stored per project in local storage (never the output).
+
 ## Go trace
 
 - **Capture.** A test run configuration with the *Execution trace* (`-trace`) profiling option writes `trace.out` in the package directory.

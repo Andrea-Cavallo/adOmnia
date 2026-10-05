@@ -413,6 +413,30 @@ export async function loadGoIDETrace(sessionId: string, relativePath: string): P
   return GoIDEBindings.LoadTrace(sessionId, relativePath)
 }
 
+// --- Fuzzing Studio -------------------------------------------------------------
+
+export type GoIDEFuzzTarget = Awaited<ReturnType<typeof GoIDEBindings.ListFuzzTargets>>[number]
+export type GoIDEFuzzInput = GoIDEFuzzTarget['seeds'][number]
+export type GoIDEFuzzInputContent = Awaited<ReturnType<typeof GoIDEBindings.ReadFuzzInput>>
+export type GoIDEFuzzSource = 'testdata' | 'cache'
+
+export async function listGoIDEFuzzTargets(sessionId: string): Promise<GoIDEFuzzTarget[]> {
+  return GoIDEBindings.ListFuzzTargets(sessionId)
+}
+
+export async function readGoIDEFuzzInput(sessionId: string, target: GoIDEFuzzTarget, source: GoIDEFuzzSource, name: string): Promise<GoIDEFuzzInputContent> {
+  return GoIDEBindings.ReadFuzzInput(sessionId, target.packageDir, target.name, source, name)
+}
+
+/** Copia un input generato in testdata/fuzz; restituisce il percorso relativo al progetto. */
+export async function promoteGoIDEFuzzInput(sessionId: string, target: GoIDEFuzzTarget, name: string): Promise<string> {
+  return GoIDEBindings.PromoteFuzzInput(sessionId, target.packageDir, target.name, name)
+}
+
+export async function deleteGoIDEFuzzInput(sessionId: string, target: GoIDEFuzzTarget, source: GoIDEFuzzSource, name: string): Promise<void> {
+  return GoIDEBindings.DeleteFuzzInput(sessionId, target.packageDir, target.name, source, name)
+}
+
 // --- SonarQube (opzionale) ---------------------------------------------------
 
 export type GoIDESonarConfig = Awaited<ReturnType<typeof GoIDEBindings.SonarConfigFor>>

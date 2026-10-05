@@ -8,6 +8,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Added
 - **Benchmark comparisons:** a benchmark result compares with a chosen baseline — the previous run, the measurements saved on main/master (picked automatically when you work on another branch), any earlier commit, or a run pinned as the baseline before a refactor. Runs with `-count=N` keep every repetition: the panel compares medians and runs a Mann-Whitney U test like benchstat, marking a change *significant* or *~ noise* (at least 4 runs per side). A configurable regression threshold (default 5%) highlights slowdowns; saved history records branch and commit, also in the CSV export.
+- **Fuzzing Studio:** *View → Fuzzing Studio* lists the project's fuzz targets with their corpus — seeds and failing inputs in `testdata/fuzz` and the inputs Go generated in its cache — and shows each input's typed values. Fuzz with a chosen duration and number of workers, replay one input or the whole corpus, promote a generated input to a regression case, copy it as `f.Add(...)`, delete inputs. Finished runs are recorded with throughput and new coverage; crashes are grouped by failure message, with the minimized failing input one click away.
 
 ## [0.9.59] - 2026-10-04
 

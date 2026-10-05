@@ -165,6 +165,42 @@ export class DelveInfo {
 }
 
 /**
+ * FuzzValue è un argomento di un input del corpus: il tipo e il letterale Go così come scritti da go test.
+ */
+export class FuzzValue {
+    "type": string;
+    "literal": string;
+
+    /**
+     * Expression è la riga originale, già un'espressione Go valida da usare in f.Add(...).
+     */
+    "expression": string;
+
+    /** Creates a new FuzzValue instance. */
+    constructor($$source: Partial<FuzzValue> = {}) {
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("literal" in $$source)) {
+            this["literal"] = "";
+        }
+        if (!("expression" in $$source)) {
+            this["expression"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FuzzValue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FuzzValue {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FuzzValue($$parsedSource as Partial<FuzzValue>);
+    }
+}
+
+/**
  * GoplsInfo descrive il gopls trovato per una sessione.
  */
 export class GoplsInfo {

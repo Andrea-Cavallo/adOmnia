@@ -1,4 +1,5 @@
 import { isGoModPath, syncLocalReplaces } from '@/lib/goModLocalReplaces'
+import { fuzzTargetOfCommand, parseFuzzSession, recordFuzzSession } from '@/lib/goide/goStudioFuzzSessions'
 import { recordRunHistory } from '@/lib/goide/goStudioRunHistory'
 import { caretsFor, restoreCarets } from '@/lib/goide/goStudioCaretMemory'
 import { create } from 'zustand'
@@ -291,6 +292,16 @@ function recordConfiguredRun(state: Pick<GoIDEState, 'configByRun' | 'sessions' 
     configId, configName: config?.name ?? configId, status: execution.status, exitCode: execution.exitCode ?? null,
     startedAt: execution.startedAt, durationMillis: execution.durationMillis, command: execution.command,
   })
+}
+
+/** Archivia statistiche e crash di una sessione `go test -fuzz` terminata, per il Fuzzing Studio. */
+function recordFuzzRun(state: Pick<GoIDEState, 'sessions' | 'consoleByRun'>, execution: GoIDEExecution): void {
+  if (execution.kind !== 'test' || !fuzzTargetOfCommand(execution.command)) return
+  const session = state.sessions.find((item) => item.id === execution.sessionId)
+  if (!session) return
+  const output = (state.consoleByRun[execution.id] ?? []).map((chunk) => chunk.text).join('')
+  const parsed = parseFuzzSession({ id: execution.id, command: execution.command, status: execution.status, startedAt: execution.startedAt, durationMillis: execution.durationMillis }, output)
+  if (parsed) recordFuzzSession(session.project.realPath, parsed)
 }
 
 function replaceExecution(executions: GoIDEExecution[], next: GoIDEExecution): GoIDEExecution[] {
@@ -1207,7 +1218,10 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         consoleByRun: event.type === 'run.started' ? withConsoleHeader(state.consoleByRun, execution) : withConsoleFooter(state.consoleByRun, execution, event.sequence),
       }))
       if (event.type === 'run.finished' && MODULE_CHANGING_KINDS.has(execution.kind)) void get().refreshModuleFiles(execution.sessionId)
-      if (event.type === 'run.finished') recordConfiguredRun(get(), execution)
+      if (event.type === 'run.finished') {
+        recordConfiguredRun(get(), execution)
+        recordFuzzRun(get(), execution)
+      }
     }
   },
 

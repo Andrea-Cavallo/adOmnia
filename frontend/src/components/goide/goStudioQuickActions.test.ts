@@ -6,7 +6,7 @@ vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: vi.fn(), setState:
 vi.mock('@/stores/goideTests', () => ({ useGoIDETestsStore: { getState: vi.fn() } }))
 vi.mock('@/stores/goideVcs', () => ({ useGoIDEVCSStore: { getState: vi.fn() } }))
 
-import { changedPackageTestRequests, fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
+import { changedPackageTestRequests, fuzzReplayRequestForTarget, fuzzRunRequestForTarget, moduleScopeFor, quickRunFor, testRequestForTarget } from './goStudioQuickActions'
 
 const session = (modules: string[]) => ({
   project: { realPath: '/work/repo', units: modules.map((root) => ({ language: 'go', kind: 'module', root, name: '' })) },
@@ -52,6 +52,9 @@ describe('testRequestForTarget', () => {
     expect(fuzzRunRequestForTarget(repo, { line: 9, kind: 'fuzz', name: 'FuzzParse', packagePath: './tools/gen/parser' })).toEqual({
       workingDirectory: 'tools/gen', target: './parser', programArguments: ['-run', '^$', '-fuzz', '^FuzzParse$', '-fuzztime=30s'],
     })
+    const target = { line: 9, kind: 'fuzz' as const, name: 'FuzzParse', packagePath: './tools/gen/parser' }
+    expect(fuzzRunRequestForTarget(repo, target, '', 4).programArguments).toEqual(['-run', '^$', '-fuzz', '^FuzzParse$', '-parallel=4'])
+    expect(fuzzReplayRequestForTarget(repo, target, 'a1b2').programArguments).toEqual(['-run', '^FuzzParse$/^a1b2$', '-v'])
   })
 })
 

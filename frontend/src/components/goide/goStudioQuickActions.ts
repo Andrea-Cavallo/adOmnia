@@ -210,9 +210,18 @@ export function testRequestForTarget(session: Pick<GoIDESession, 'id' | 'project
 }
 
 /** Fuzzing esplicito e limitato: il tempo è visibile nel menu e l'utente può sempre fermare il processo. */
-export function fuzzRunRequestForTarget(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget, fuzzTime = '30s') {
+export function fuzzRunRequestForTarget(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget, fuzzTime = '30s', workers = 0) {
   const scope = targetScope(session, target)
-  return { workingDirectory: scope.moduleDirectory, target: scope.packageTarget, programArguments: ['-run', '^$', '-fuzz', runPatternFor(target.name), `-fuzztime=${fuzzTime}`] }
+  // fuzzTime vuoto: fuzzing finché l'utente non ferma il processo. workers 0: GOMAXPROCS, il default di Go.
+  const programArguments = ['-run', '^$', '-fuzz', runPatternFor(target.name), ...(fuzzTime ? [`-fuzztime=${fuzzTime}`] : []), ...(workers > 0 ? [`-parallel=${workers}`] : [])]
+  return { workingDirectory: scope.moduleDirectory, target: scope.packageTarget, programArguments }
+}
+
+/** Riesegue il target sul corpus in testdata/fuzz (tutto o un solo input), senza fuzzing. */
+export function fuzzReplayRequestForTarget(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget, inputName?: string) {
+  const scope = targetScope(session, target)
+  const pattern = runPatternFor(inputName ? `${target.name}/${inputName}` : target.name)
+  return { workingDirectory: scope.moduleDirectory, target: scope.packageTarget, programArguments: ['-run', pattern, '-v'] }
 }
 
 /** Richiesta di debug per il ▶ del gutter: func main, un test o un benchmark (eseguito una volta). */

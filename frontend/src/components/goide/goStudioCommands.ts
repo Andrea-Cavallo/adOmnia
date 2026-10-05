@@ -12,7 +12,7 @@ export type GoStudioCommandId =
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
-  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
@@ -125,6 +125,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.profile', menu: 'view', label: 'Performance Studio', binding: { key: '0', alt: true } },
   { id: 'view.trace', menu: 'view', label: 'Go Trace' },
   { id: 'view.sonar', menu: 'view', label: 'SonarQube' },
+  { id: 'view.fuzz', menu: 'view', label: 'Fuzzing Studio' },
   { id: 'view.vulnerabilities', menu: 'view', label: 'Security (Code and Dependencies)' },
   { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
