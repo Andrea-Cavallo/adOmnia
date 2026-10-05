@@ -23,7 +23,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 9 | 1 |
+| **P1** | Workflow Go migliore di GoLand | 1 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 213 | 51 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
@@ -116,14 +116,6 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 
 ## §43 · Documentation Intelligence
 
-- [ ] Package docs. — *Parziale: Il tool go doc mostra la documentazione di un package; non c'è una vista dedicata.*
-- [ ] Missing docs hints opzionali.
-- [ ] Generate docs.
-- [ ] Diagram embedding.
-- [ ] Architecture docs generation.
-- [ ] API docs generation.
-- [ ] OpenAPI generation/preview.
-- [ ] Proto docs.
 - [x] Dependency report. — *Il Dependency Graph esporta un report JSON locale con moduli, archi, licenze, peso e duplicati; include aggiornamenti e conteggi vulnerabilità solo se richiesti esplicitamente.*
 - [x] ADR links. — *Tools → Architecture Decisions elenca gli ADR Markdown in `docs/adr` del progetto e li apre direttamente nell'editor.*
 

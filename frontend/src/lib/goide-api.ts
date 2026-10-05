@@ -438,6 +438,17 @@ export async function analyzeGoIDEArchitecture(sessionId: string): Promise<GoIDE
   return GoIDEBindings.AnalyzeArchitecture(sessionId)
 }
 
+// --- Documentation Intelligence ------------------------------------------------
+
+export type GoIDEDocumentation = Awaited<ReturnType<typeof GoIDEBindings.Documentation>>
+export type GoIDEPackageDoc = GoIDEDocumentation['packages'][number]
+export type GoIDEProtoFile = GoIDEDocumentation['protos'][number]
+
+/** Documentazione dei package Go (go/doc) e dei file .proto: solo parsing, nessun processo. */
+export async function loadGoIDEDocumentation(sessionId: string): Promise<GoIDEDocumentation> {
+  return GoIDEBindings.Documentation(sessionId)
+}
+
 // --- Fuzzing Studio -------------------------------------------------------------
 
 export type GoIDEFuzzTarget = Awaited<ReturnType<typeof GoIDEBindings.ListFuzzTargets>>[number]

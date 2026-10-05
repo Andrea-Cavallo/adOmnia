@@ -81,7 +81,11 @@ export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: G
   const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(substituteMarkdownAssets(document.buffer, assets), path)), [document.buffer, path, mode, assets])
   const openLink = (href: string) => {
     const target = resolveMarkdownLink(path, href)
-    if (target) void openDocument(target)
+    if (!target) return
+    // file.go#L12 (anche nei documenti generati da Documentation) apre la riga, come su GitHub.
+    const line = /#L(\d+)$/.exec(href)
+    if (line) void useGoIDEStore.getState().openLocation(target, Number(line[1]), 1)
+    else void openDocument(target)
   }
 
   return (

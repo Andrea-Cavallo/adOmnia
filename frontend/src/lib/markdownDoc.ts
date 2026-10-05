@@ -228,7 +228,8 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
       '</pre></div>',
     ].join('')
     const idx = codeBlocks.length
-    codeBlocks.push(html)
+    // Un blocco mermaid resta leggibile come codice finché l'anteprima non lo sostituisce con il diagramma.
+    codeBlocks.push(label.toLowerCase() === 'mermaid' ? `<div class="md-mermaid" data-mermaid="${esc(code)}">${html}</div>` : html)
     return `\x00BLK${idx}\x00`
   })
 

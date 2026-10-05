@@ -40,7 +40,8 @@ function LocationLink({ location, label }: { location: GoIDEErrorLocation; label
   )
 }
 
-async function applyFix(finding: GoIDEErrorFinding): Promise<string | null> {
+/** Applica il fix di un finding (errori o documentazione) al buffer, solo se il codice non è cambiato. */
+export async function applyErrorFinding(finding: GoIDEErrorFinding): Promise<string | null> {
   if (!finding.fix) return null
   const document = await useGoIDEStore.getState().ensureDocumentLoaded(finding.location.relativePath)
   if (!document) return 'The file could not be opened.'
@@ -80,7 +81,7 @@ export function GoStudioErrorsPanel({ session }: { session: GoIDESession }) {
     }
   }
   const fix = async (finding: GoIDEErrorFinding) => {
-    const problem = await applyFix(finding)
+    const problem = await applyErrorFinding(finding)
     setMessage(problem)
     if (!problem) setApplied((current) => new Set(current).add(finding))
   }

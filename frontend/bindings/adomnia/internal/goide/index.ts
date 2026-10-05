@@ -48,6 +48,7 @@ export {
     Document,
     DocumentDiskState,
     DocumentSymbolsResult,
+    DocumentationReport,
     DuplicateDependency,
     EditorDiagnostic,
     EditorLocation,

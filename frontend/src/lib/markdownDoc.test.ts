@@ -229,3 +229,12 @@ describe('safe rendering', () => {
     expect(html).toContain('href="#"')
   })
 })
+
+describe('renderMarkdown mermaid blocks', () => {
+  it('marks mermaid fences for the diagram renderer and keeps the escaped source as fallback', () => {
+    const html = renderMarkdown('```mermaid\ngraph TD\n  A["<b>"] --> B\n```\n')
+    expect(html).toContain('class="md-mermaid" data-mermaid="graph TD\n  A[&quot;&lt;b&gt;&quot;] --&gt; B\n"')
+    expect(html).toContain('<span class="font-mono font-semibold text-text-4 uppercase" style="font-size:9px">mermaid</span>')
+    expect(renderMarkdown('```go\nfunc main() {}\n```')).not.toContain('data-mermaid')
+  })
+})

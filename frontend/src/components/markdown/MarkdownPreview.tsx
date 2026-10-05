@@ -1,6 +1,7 @@
-import { forwardRef, type UIEventHandler } from 'react'
+import { forwardRef, useImperativeHandle, useRef, type UIEventHandler } from 'react'
 
 import { cn } from '@/lib/utils'
+import { useMermaidBlocks } from './mermaidBlocks'
 
 interface MarkdownPreviewProps {
   className?: string
@@ -15,9 +16,12 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
   onInternalLink,
   onScroll,
 }, ref) {
+  const container = useRef<HTMLDivElement>(null)
+  useImperativeHandle(ref, () => container.current as HTMLDivElement)
+  useMermaidBlocks(container, html)
   return (
     <div
-      ref={ref}
+      ref={container}
       data-a11y-click-exempt="delegated-native-links"
       className={cn('flex-1 p-5 overflow-y-auto bg-surface-0', className)}
       onScroll={onScroll}

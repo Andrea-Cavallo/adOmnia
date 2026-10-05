@@ -19,8 +19,17 @@ const NODE_COLOR: Record<ArchNode['kind'], string> = {
   module: 'var(--color-warning)',
 }
 
-// L'ultima analisi per sessione: Architecture e Interface Explorer la condividono senza rieseguirla.
+// L'ultima analisi per sessione: Architecture, Interface Explorer e Documentation la condividono.
 const lastResult = new Map<string, GoIDEArchitectureResult>()
+
+/** Analisi dell'architettura: riusa l'ultima della sessione, altrimenti la esegue (progetto autorizzato). */
+export async function architectureFor(sessionId: string, fresh = false): Promise<GoIDEArchitectureResult> {
+  const cached = lastResult.get(sessionId)
+  if (cached && !fresh) return cached
+  const next = await analyzeGoIDEArchitecture(sessionId)
+  lastResult.set(sessionId, next)
+  return next
+}
 
 function errorText(problem: unknown): string {
   return problem instanceof Error ? problem.message : String(problem)
@@ -55,9 +64,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     setRunning(true)
     setError(null)
     try {
-      const next = await analyzeGoIDEArchitecture(sessionId)
-      lastResult.set(sessionId, next)
-      setResult(next)
+      setResult(await architectureFor(sessionId, true))
     } catch (problem) { setError(errorText(problem)) } finally { setRunning(false) }
   }
 

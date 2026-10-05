@@ -751,6 +751,267 @@ export class DelveInfo {
     }
 }
 
+export class DocFunc {
+    "name": string;
+    "recv"?: string;
+    "doc": string;
+    "decl": string;
+    "site": ArchSite;
+
+    /** Creates a new DocFunc instance. */
+    constructor($$source: Partial<DocFunc> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("doc" in $$source)) {
+            this["doc"] = "";
+        }
+        if (!("decl" in $$source)) {
+            this["decl"] = "";
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocFunc instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocFunc {
+        const $$createField4_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField4_0($$parsedSource["site"]);
+        }
+        return new DocFunc($$parsedSource as Partial<DocFunc>);
+    }
+}
+
+/**
+ * DocProblem è un simbolo esportato senza documentazione o con un commento che non inizia col nome.
+ */
+export class DocProblem {
+    "kind": string;
+    "name": string;
+    "problem": string;
+    "site": ArchSite;
+    "fix"?: ErrorFix | null;
+
+    /** Creates a new DocProblem instance. */
+    constructor($$source: Partial<DocProblem> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("problem" in $$source)) {
+            this["problem"] = "";
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocProblem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocProblem {
+        const $$createField3_0 = $$createType1;
+        const $$createField4_0 = $$createType27;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
+        }
+        if ("fix" in $$parsedSource) {
+            $$parsedSource["fix"] = $$createField4_0($$parsedSource["fix"]);
+        }
+        return new DocProblem($$parsedSource as Partial<DocProblem>);
+    }
+}
+
+export class DocType {
+    "name": string;
+    "doc": string;
+    "decl": string;
+    "site": ArchSite;
+    "consts": DocValue[];
+    "vars": DocValue[];
+    "funcs": DocFunc[];
+    "methods": DocFunc[];
+
+    /** Creates a new DocType instance. */
+    constructor($$source: Partial<DocType> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("doc" in $$source)) {
+            this["doc"] = "";
+        }
+        if (!("decl" in $$source)) {
+            this["decl"] = "";
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+        if (!("consts" in $$source)) {
+            this["consts"] = [];
+        }
+        if (!("vars" in $$source)) {
+            this["vars"] = [];
+        }
+        if (!("funcs" in $$source)) {
+            this["funcs"] = [];
+        }
+        if (!("methods" in $$source)) {
+            this["methods"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocType instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocType {
+        const $$createField3_0 = $$createType1;
+        const $$createField4_0 = $$createType29;
+        const $$createField5_0 = $$createType29;
+        const $$createField6_0 = $$createType31;
+        const $$createField7_0 = $$createType31;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
+        }
+        if ("consts" in $$parsedSource) {
+            $$parsedSource["consts"] = $$createField4_0($$parsedSource["consts"]);
+        }
+        if ("vars" in $$parsedSource) {
+            $$parsedSource["vars"] = $$createField5_0($$parsedSource["vars"]);
+        }
+        if ("funcs" in $$parsedSource) {
+            $$parsedSource["funcs"] = $$createField6_0($$parsedSource["funcs"]);
+        }
+        if ("methods" in $$parsedSource) {
+            $$parsedSource["methods"] = $$createField7_0($$parsedSource["methods"]);
+        }
+        return new DocType($$parsedSource as Partial<DocType>);
+    }
+}
+
+export class DocValue {
+    "names": string[];
+    "doc": string;
+    "decl": string;
+    "site": ArchSite;
+
+    /** Creates a new DocValue instance. */
+    constructor($$source: Partial<DocValue> = {}) {
+        if (!("names" in $$source)) {
+            this["names"] = [];
+        }
+        if (!("doc" in $$source)) {
+            this["doc"] = "";
+        }
+        if (!("decl" in $$source)) {
+            this["decl"] = "";
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocValue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocValue {
+        const $$createField0_0 = $$createType0;
+        const $$createField3_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("names" in $$parsedSource) {
+            $$parsedSource["names"] = $$createField0_0($$parsedSource["names"]);
+        }
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
+        }
+        return new DocValue($$parsedSource as Partial<DocValue>);
+    }
+}
+
+/**
+ * ErrorEdit sostituisce [Offset, End) con Text; Original è il testo atteso, per non applicare fix obsoleti.
+ */
+export class ErrorEdit {
+    "offset": number;
+    "end": number;
+    "original": string;
+    "text": string;
+
+    /** Creates a new ErrorEdit instance. */
+    constructor($$source: Partial<ErrorEdit> = {}) {
+        if (!("offset" in $$source)) {
+            this["offset"] = 0;
+        }
+        if (!("end" in $$source)) {
+            this["end"] = 0;
+        }
+        if (!("original" in $$source)) {
+            this["original"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ErrorEdit instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ErrorEdit {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ErrorEdit($$parsedSource as Partial<ErrorEdit>);
+    }
+}
+
+/**
+ * ErrorFix è una correzione applicabile con un clic (tutti gli edit sullo stesso file).
+ */
+export class ErrorFix {
+    "label": string;
+    "edits": ErrorEdit[];
+
+    /** Creates a new ErrorFix instance. */
+    constructor($$source: Partial<ErrorFix> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("edits" in $$source)) {
+            this["edits"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ErrorFix instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ErrorFix {
+        const $$createField1_0 = $$createType33;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("edits" in $$parsedSource) {
+            $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
+        }
+        return new ErrorFix($$parsedSource as Partial<ErrorFix>);
+    }
+}
+
 /**
  * FuzzValue è un argomento di un input del corpus: il tipo e il letterale Go così come scritti da go test.
  */
@@ -890,7 +1151,7 @@ export class GoroutineCreation {
      * Creates a new GoroutineCreation instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineCreation {
-        const $$createField0_0 = $$createType27;
+        const $$createField0_0 = $$createType35;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
@@ -923,7 +1184,7 @@ export class GoroutineOverview {
      * Creates a new GoroutineOverview instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineOverview {
-        const $$createField0_0 = $$createType29;
+        const $$createField0_0 = $$createType37;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField0_0($$parsedSource["goroutines"]);
@@ -987,9 +1248,9 @@ export class GoroutineSummary {
      * Creates a new GoroutineSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineSummary {
-        const $$createField5_0 = $$createType27;
-        const $$createField7_0 = $$createType27;
-        const $$createField8_0 = $$createType30;
+        const $$createField5_0 = $$createType35;
+        const $$createField7_0 = $$createType35;
+        const $$createField8_0 = $$createType38;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField5_0($$parsedSource["location"]);
@@ -1062,6 +1323,99 @@ export class InstalledToolchain {
     }
 }
 
+export class PackageDoc {
+    "importPath": string;
+    "name": string;
+    "dir": string;
+    "synopsis": string;
+    "doc": string;
+    "consts": DocValue[];
+    "vars": DocValue[];
+    "funcs": DocFunc[];
+    "types": DocType[];
+    "notes": { [_ in string]?: string[] };
+    "problems": DocProblem[];
+    "site": ArchSite;
+
+    /** Creates a new PackageDoc instance. */
+    constructor($$source: Partial<PackageDoc> = {}) {
+        if (!("importPath" in $$source)) {
+            this["importPath"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("dir" in $$source)) {
+            this["dir"] = "";
+        }
+        if (!("synopsis" in $$source)) {
+            this["synopsis"] = "";
+        }
+        if (!("doc" in $$source)) {
+            this["doc"] = "";
+        }
+        if (!("consts" in $$source)) {
+            this["consts"] = [];
+        }
+        if (!("vars" in $$source)) {
+            this["vars"] = [];
+        }
+        if (!("funcs" in $$source)) {
+            this["funcs"] = [];
+        }
+        if (!("types" in $$source)) {
+            this["types"] = [];
+        }
+        if (!("notes" in $$source)) {
+            this["notes"] = {};
+        }
+        if (!("problems" in $$source)) {
+            this["problems"] = [];
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PackageDoc instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PackageDoc {
+        const $$createField5_0 = $$createType29;
+        const $$createField6_0 = $$createType29;
+        const $$createField7_0 = $$createType31;
+        const $$createField8_0 = $$createType40;
+        const $$createField9_0 = $$createType41;
+        const $$createField10_0 = $$createType43;
+        const $$createField11_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("consts" in $$parsedSource) {
+            $$parsedSource["consts"] = $$createField5_0($$parsedSource["consts"]);
+        }
+        if ("vars" in $$parsedSource) {
+            $$parsedSource["vars"] = $$createField6_0($$parsedSource["vars"]);
+        }
+        if ("funcs" in $$parsedSource) {
+            $$parsedSource["funcs"] = $$createField7_0($$parsedSource["funcs"]);
+        }
+        if ("types" in $$parsedSource) {
+            $$parsedSource["types"] = $$createField8_0($$parsedSource["types"]);
+        }
+        if ("notes" in $$parsedSource) {
+            $$parsedSource["notes"] = $$createField9_0($$parsedSource["notes"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField10_0($$parsedSource["problems"]);
+        }
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField11_0($$parsedSource["site"]);
+        }
+        return new PackageDoc($$parsedSource as Partial<PackageDoc>);
+    }
+}
+
 /**
  * PendingDefer è un defer registrato a runtime e non ancora eseguito.
  */
@@ -1095,7 +1449,7 @@ export class PendingDefer {
      * Creates a new PendingDefer instance from a string or object.
      */
     static createFrom($$source: any = {}): PendingDefer {
-        const $$createField1_0 = $$createType27;
+        const $$createField1_0 = $$createType35;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
@@ -1283,7 +1637,7 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType32;
+        const $$createField23_0 = $$createType45;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("timings" in $$parsedSource) {
             $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
@@ -1408,8 +1762,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType34;
-        const $$createField1_0 = $$createType33;
+        const $$createField0_0 = $$createType47;
+        const $$createField1_0 = $$createType46;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -1477,12 +1831,25 @@ const $$createType22 = ArchEntry.createFrom;
 const $$createType23 = $Create.Array($$createType22);
 const $$createType24 = $Create.Array($Create.Any);
 const $$createType25 = $Create.Map($Create.Any, $Create.Any);
-const $$createType26 = dap$0.DebugFrame.createFrom;
+const $$createType26 = ErrorFix.createFrom;
 const $$createType27 = $Create.Nullable($$createType26);
-const $$createType28 = GoroutineSummary.createFrom;
+const $$createType28 = DocValue.createFrom;
 const $$createType29 = $Create.Array($$createType28);
-const $$createType30 = $Create.Array($$createType26);
-const $$createType31 = ToolchainTiming.createFrom;
-const $$createType32 = $Create.Array($$createType31);
-const $$createType33 = ToolchainConfiguration.createFrom;
-const $$createType34 = $Create.Nullable($$createType33);
+const $$createType30 = DocFunc.createFrom;
+const $$createType31 = $Create.Array($$createType30);
+const $$createType32 = ErrorEdit.createFrom;
+const $$createType33 = $Create.Array($$createType32);
+const $$createType34 = dap$0.DebugFrame.createFrom;
+const $$createType35 = $Create.Nullable($$createType34);
+const $$createType36 = GoroutineSummary.createFrom;
+const $$createType37 = $Create.Array($$createType36);
+const $$createType38 = $Create.Array($$createType34);
+const $$createType39 = DocType.createFrom;
+const $$createType40 = $Create.Array($$createType39);
+const $$createType41 = $Create.Map($Create.Any, $$createType0);
+const $$createType42 = DocProblem.createFrom;
+const $$createType43 = $Create.Array($$createType42);
+const $$createType44 = ToolchainTiming.createFrom;
+const $$createType45 = $Create.Array($$createType44);
+const $$createType46 = ToolchainConfiguration.createFrom;
+const $$createType47 = $Create.Nullable($$createType46);

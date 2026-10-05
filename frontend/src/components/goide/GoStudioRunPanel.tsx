@@ -19,6 +19,7 @@ import { GoStudioTracePanel } from './GoStudioTracePanel'
 import { GoStudioFuzzPanel } from './GoStudioFuzzPanel'
 import { GoStudioErrorsPanel } from './GoStudioErrorsPanel'
 import { GoStudioArchitecturePanel } from './GoStudioArchitecturePanel'
+import { GoStudioDocsPanel } from './GoStudioDocsPanel'
 import { GoStudioSonarPanel } from './GoStudioSonarPanel'
 import { GoStudioSecurityPanel } from './GoStudioSecurityPanel'
 import { GoStudioReferences } from './GoStudioReferences'
@@ -155,6 +156,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   errors: 'Error Handling',
   architecture: 'Architecture',
   interfaces: 'Interfaces',
+  docs: 'Documentation',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -293,6 +295,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'profile' && <div className="min-h-0 flex-1"><GoStudioProfilePanel session={session} /></div>}
       {view === 'trace' && <div className="min-h-0 flex-1"><GoStudioTracePanel session={session} /></div>}
       {view === 'sonar' && <div className="min-h-0 flex-1"><GoStudioSonarPanel session={session} /></div>}
+      {view === 'docs' && <div className="min-h-0 flex-1"><GoStudioDocsPanel session={session} /></div>}
       {view === 'architecture' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} /></div>}
       {view === 'interfaces' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} initialTab="interfaces" /></div>}
       {view === 'errors' && <div className="min-h-0 flex-1"><GoStudioErrorsPanel session={session} /></div>}

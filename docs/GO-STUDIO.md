@@ -202,6 +202,15 @@ pause and explains it.
 - **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
 - **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
 - **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Documentation
+
+- **Open it.** *View → Documentation*. It reads the doc comments of every Go package with `go/doc` and every `.proto` file with its comments — parsing only, no process, so it works before the project is trusted.
+- **Packages.** Each package rendered like `go doc`: overview, index, constants, variables, functions, types with their constructors and methods, and `BUG`/`TODO` notes. Every *source* link opens the declaration.
+- **Missing docs.** Optional hints: exported symbols without a doc comment, or whose comment does not start with their name. *Add doc comment* inserts `// Name ` above the declaration (in groups, above the single spec) for you to complete.
+- **Proto.** Services with their RPCs (streaming marked), messages with fields, numbers and comments, enums. A file that cannot be parsed is listed with the reason; imports do not need to resolve.
+- **Generate.** *API docs* (`docs/API.md`), *Architecture docs* (`docs/ARCHITECTURE.md`, with Mermaid diagrams of packages and modules, entry points, services and interfaces), *OpenAPI from the routes* (`docs/openapi.json`, also opened in API Docs) and *Proto docs* (`docs/PROTO.md`). A new file is created and opened; an existing one is updated in the editor without saving, so the change can be reviewed and undone. Architecture and OpenAPI reuse the Architecture Explorer analysis (trusted project).
+- **Diagrams.** ` ```mermaid ` blocks render as diagrams in the Markdown preview of Go Studio and of the Markdown module. Source links such as `/pkg/file.go#L12` open that line (and work on GitHub too).
+
 ## Architecture and Interface Explorer
 
 - **Open it.** *View → Architecture Explorer* (or *Interface Explorer* for the Interfaces tab), then **Analyze**. Every module is loaded with `go/packages` (trusted project only) and the model is built from the types; no code runs. Both windows share the last analysis.

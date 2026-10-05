@@ -1480,3 +1480,8 @@ func (g *GoIDE) AnalyzeErrorHandling(sessionID string) (goide.ErrorHandlingRepor
 func (g *GoIDE) AnalyzeArchitecture(sessionID string) (goide.ArchitectureResult, error) {
 	return g.service.AnalyzeArchitecture(sessionID)
 }
+
+// Documentation legge la documentazione dei package Go e dei file .proto del progetto (solo parsing).
+func (g *GoIDE) Documentation(sessionID string) (goide.DocumentationReport, error) {
+	return g.service.Documentation(sessionID)
+}
