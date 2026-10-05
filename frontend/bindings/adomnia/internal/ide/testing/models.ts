@@ -48,6 +48,11 @@ export class TestResult {
     "truncated"?: boolean;
     "failure"?: TestLocation | null;
     "benchmark"?: string;
+
+    /**
+     * BenchmarkSamples tiene ogni riga di risultato con -count=N, per confronti e significatività.
+     */
+    "benchmarkSamples"?: string[];
     "buildFailed"?: boolean;
 
     /**
@@ -102,9 +107,13 @@ export class TestResult {
      */
     static createFrom($$source: any = {}): TestResult {
         const $$createField8_0 = $$createType1;
+        const $$createField10_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("failure" in $$parsedSource) {
             $$parsedSource["failure"] = $$createField8_0($$parsedSource["failure"]);
+        }
+        if ("benchmarkSamples" in $$parsedSource) {
+            $$parsedSource["benchmarkSamples"] = $$createField10_0($$parsedSource["benchmarkSamples"]);
         }
         return new TestResult($$parsedSource as Partial<TestResult>);
     }
@@ -149,3 +158,4 @@ export class TestSummary {
 // Private type creation functions
 const $$createType0 = TestLocation.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $Create.Array($Create.Any);

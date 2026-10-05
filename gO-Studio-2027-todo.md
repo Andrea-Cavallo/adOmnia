@@ -23,7 +23,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 74 | 15 |
+| **P1** | Workflow Go migliore di GoLand | 69 | 15 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 214 | 52 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
@@ -93,16 +93,6 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 ## §20 · Security Studio
 
 - [x] SonarQube (opzionale). — *Scansione `sonar-scanner` del progetto autorizzato + import issue dalla Web API (`internal/goide/sonar.go`), pannello con severità, navigazione al codice, filtro security, **Copy problems** (`file:line [SEVERITY rule] message`), **Resolve with AI** (preview) e baseline versionabile `.adomnia/sonar-baseline.json`. Token solo in memoria, Offline mode rispettato, nessun processo senza trust.*
-
-## §12 · Benchmark Studio
-
-### Comparazioni
-
-- [ ] Compare branch vs main.
-- [ ] Compare commit vs commit.
-- [ ] Compare before/after refactor.
-- [ ] Significance indicator quando calcolabile.
-- [ ] Regression threshold configurabile.
 
 ## §11 · Fuzzing Studio
 

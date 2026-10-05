@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Benchmark comparisons:** a benchmark result compares with a chosen baseline — the previous run, the measurements saved on main/master (picked automatically when you work on another branch), any earlier commit, or a run pinned as the baseline before a refactor. Runs with `-count=N` keep every repetition: the panel compares medians and runs a Mann-Whitney U test like benchstat, marking a change *significant* or *~ noise* (at least 4 runs per side). A configurable regression threshold (default 5%) highlights slowdowns; saved history records branch and commit, also in the CSV export.
+
 ## [0.9.59] - 2026-10-04
 
 ### Added

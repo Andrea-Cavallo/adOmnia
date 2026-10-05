@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { benchmarkHistoryCsv, benchmarkHistoryKey, clearBenchmarkHistory, loadBenchmarkHistory, previousSavedBenchmark, saveBenchmarkHistory } from './goStudioBenchmarkHistory'
+import { benchmarkHistoryCsv, loadBenchmarkCompareSettings, saveBenchmarkCompareSettings, benchmarkHistoryKey, clearBenchmarkHistory, loadBenchmarkHistory, previousSavedBenchmark, saveBenchmarkHistory } from './goStudioBenchmarkHistory'
 
 const values = new Map<string, string>()
 const project = 'C:/work/acme-api'
@@ -29,5 +29,22 @@ describe('Go Studio benchmark history', () => {
     saveBenchmarkHistory(project, [run('done', '2026-09-30T10:00:00Z')])
     clearBenchmarkHistory(project)
     expect(values.has(benchmarkHistoryKey(project))).toBe(false)
+  })
+
+  it('stamps new runs with the Git context once and keeps -count samples', () => {
+    const repeated = { ...run('a', '2026-09-30T10:00:00Z'), results: [{ id: 'B', package: 'example.com/acme', name: 'BenchmarkParse', status: 'bench', benchmark: '100 13 ns/op', benchmarkSamples: ['100 12 ns/op', '100 13 ns/op'] }] } as any
+    saveBenchmarkHistory(project, [repeated], { branch: 'main', commit: 'abc', dirty: false })
+    const [saved] = saveBenchmarkHistory(project, [repeated], { branch: 'feature', commit: 'def', dirty: true })
+    expect(saved).toMatchObject({ branch: 'main', commit: 'abc', dirty: false })
+    expect(saved.samples?.map((sample) => sample.metrics[0].value)).toEqual([12, 13])
+    expect(benchmarkHistoryCsv([saved])).toContain(',main,abc')
+  })
+
+  it('persists the pinned baseline and validates the regression threshold', () => {
+    expect(loadBenchmarkCompareSettings(project)).toEqual({ pinnedRunId: null, thresholdPercent: 5 })
+    saveBenchmarkCompareSettings(project, { pinnedRunId: 'r1', thresholdPercent: 12 })
+    expect(loadBenchmarkCompareSettings(project)).toEqual({ pinnedRunId: 'r1', thresholdPercent: 12 })
+    values.set([...values.keys()].find((key) => key.includes('compare'))!, '{"thresholdPercent":-3}')
+    expect(loadBenchmarkCompareSettings(project).thresholdPercent).toBe(5)
   })
 })

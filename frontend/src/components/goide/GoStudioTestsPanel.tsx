@@ -13,8 +13,10 @@ import { GoStudioPatchCoverage } from './GoStudioPatchCoverage'
 import { clearFlakyHistory, flakyRecords, loadFlakyHistory, saveFlakyHistory, type GoStudioFlakyHistoryEntry, type GoStudioFlakyRecord } from './goStudioFlakyHistory'
 import { navigateToLocation } from './goStudioLanguageFeatures'
 import { runGoStudioBenchmarks } from './goStudioQuickActions'
-import { benchmarkMeasurementFor, benchmarkRunDurationMillis, compareBenchmarkMetrics, formatBenchmarkValue, previousBenchmarkRun } from './goStudioBenchmarks'
-import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkHistory, previousSavedBenchmark, saveBenchmarkHistory, type GoStudioBenchmarkHistoryEntry } from './goStudioBenchmarkHistory'
+import { benchmarkMeasurementFor } from './goStudioBenchmarks'
+import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkCompareSettings, loadBenchmarkHistory, saveBenchmarkCompareSettings, saveBenchmarkHistory, type GoStudioBenchmarkCompareSettings, type GoStudioBenchmarkHistoryEntry } from './goStudioBenchmarkHistory'
+import { GoStudioBenchmarkDetail } from './GoStudioBenchmarkDetail'
+import { useGoIDEVCSStore } from '@/stores/goideVcs'
 
 interface GoStudioTestsPanelProps {
   session: GoIDESession
@@ -183,42 +185,6 @@ function CoverageSummary({ report, sessionId }: { report: GoIDECoverageReport; s
   )
 }
 
-function BenchmarkDetail({ run, result, runs, history }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; history: GoStudioBenchmarkHistoryEntry[] }) {
-  const measurement = benchmarkMeasurementFor(result)
-  if (!measurement) return null
-  const previousRun = previousBenchmarkRun(runs, run, result)
-  const previousResult = previousRun?.results.find((item) => item.package === result.package && item.name === result.name) ?? null
-  const savedPrevious = previousRun ? null : previousSavedBenchmark(history, run.startedAt, result.package, result.name ?? '')
-  const previous = previousResult ? benchmarkMeasurementFor(previousResult) : savedPrevious?.measurement ?? null
-  const comparisons = compareBenchmarkMetrics(measurement, previous)
-  const duration = benchmarkRunDurationMillis(run)
-  return (
-    <div className="min-h-0 flex-1 overflow-auto p-3 text-[11px]">
-      <div className="mb-3 flex items-center gap-2 text-text-2">
-        <Gauge size={14} className="text-accent" aria-hidden="true" />
-        <span className="font-semibold">Benchmark result</span>
-        <span className="text-text-4">· {formatBenchmarkValue(measurement.iterations)} iterations</span>
-        {duration !== null && <span className="text-text-4">· {formatDuration(duration)} run</span>}
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {comparisons.map(({ current, previous: before, changePercent, direction }) => (
-          <div key={current.unit} className="rounded-lg border border-border-1 bg-surface-2/60 px-2.5 py-2">
-            <div className="text-[10px] text-text-4">{current.unit}</div>
-            <div className="mt-0.5 font-mono text-[13px] font-semibold text-text-1">{formatBenchmarkValue(current.value)}</div>
-            {before && changePercent !== null ? (
-              <div className={`mt-1 text-[10px] ${direction === 'better' ? 'text-success' : direction === 'worse' ? 'text-danger' : 'text-text-4'}`}>
-                {changePercent > 0 ? '+' : ''}{changePercent.toFixed(1)}% vs previous
-              </div>
-            ) : <div className="mt-1 text-[10px] text-text-4">{previousRun ? 'Metric added in this run' : 'No earlier matching run'}</div>}
-          </div>
-        ))}
-      </div>
-      {(previousRun || savedPrevious) && <p className="mt-3 text-[10px] text-text-4">Compared with the matching benchmark from {new Date((previousRun?.startedAt ?? savedPrevious!.startedAt)).toLocaleString()}{savedPrevious ? ' (saved local history)' : ''}.</p>}
-      <div className="mt-3 border-t border-border-1 pt-2 font-mono text-[10px] leading-4 text-text-3">{result.benchmark}</div>
-    </div>
-  )
-}
-
 /** Esito delle ripetizioni (-count=N) e seed di -shuffle per riprodurre l'ordine. */
 function RepetitionSummary({ run, result, output }: { run: GoIDETestRun; result: GoIDETestResult; output: string | null }) {
   const stats = repetitionStats(result)
@@ -270,7 +236,14 @@ function RepetitionSummary({ run, result, output }: { run: GoIDETestRun; result:
   )
 }
 
-function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; history: GoStudioBenchmarkHistoryEntry[] }) {
+interface BenchmarkContext {
+  history: GoStudioBenchmarkHistoryEntry[]
+  branch?: string
+  settings: GoStudioBenchmarkCompareSettings
+  onSettingsChange: (settings: GoStudioBenchmarkCompareSettings) => void
+}
+
+function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; benchmark: BenchmarkContext }) {
   const [output, setOutput] = useState<string | null>(null)
   const openLocation = useGoIDEStore((state) => state.openLocation)
   useEffect(() => {
@@ -296,7 +269,7 @@ function TestDetail({ run, result, runs, history }: { run: GoIDETestRun; result:
       <RepetitionSummary run={run} result={result} output={output} />
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
         {benchmarkMeasurementFor(result)
-          ? <BenchmarkDetail run={run} result={result} runs={runs} history={history} />
+          ? <GoStudioBenchmarkDetail run={run} result={result} runs={runs} {...benchmark} />
           : output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? output.split('\n').map((line, index) => <OutputLine key={index} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
         {result.truncated && <div className="mt-1 text-text-4">Output truncated at 64 KB.</div>}
       </div>
@@ -317,20 +290,33 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const [showOnlyFlaky, setShowOnlyFlaky] = useState(false)
   const [repeat, setRepeat] = useState(20)
   const [benchmarkHistory, setBenchmarkHistory] = useState<GoStudioBenchmarkHistoryEntry[]>([])
+  const [benchmarkSettings, setBenchmarkSettings] = useState<GoStudioBenchmarkCompareSettings>(() => loadBenchmarkCompareSettings(session.project.rootPath))
+  const vcs = useGoIDEVCSStore((state) => state.status[sessionId] ?? null)
   const [flakyHistory, setFlakyHistory] = useState<GoStudioFlakyHistoryEntry[]>([])
   const records = useMemo(() => flakyRecords(flakyHistory), [flakyHistory])
   const { rerunAll, rerunFailed, selectRun, toggleOnlyFailed, toggleCoverage, loadRuns, start } = useGoIDETestsStore.getState()
   const stopRun = useGoIDEStore((state) => state.stopRun)
   useEffect(() => { void loadRuns(sessionId) }, [loadRuns, sessionId])
+  useEffect(() => { if (!vcs) void useGoIDEVCSStore.getState().refreshStatus(sessionId) }, [sessionId, vcs])
   useEffect(() => {
     setBenchmarkHistory(loadBenchmarkHistory(session.project.rootPath))
+    setBenchmarkSettings(loadBenchmarkCompareSettings(session.project.rootPath))
     setFlakyHistory(loadFlakyHistory(session.project.rootPath))
   }, [session.project.rootPath])
   useEffect(() => {
     if (!runs?.length) return
-    setBenchmarkHistory(saveBenchmarkHistory(session.project.rootPath, runs))
+    const git = vcs?.available ? { branch: vcs.branch, commit: vcs.head, dirty: vcs.changes.length > 0 } : null
+    setBenchmarkHistory(saveBenchmarkHistory(session.project.rootPath, runs, git))
     setFlakyHistory(saveFlakyHistory(session.project.rootPath, runs))
+    // ponytail: vcs volutamente fuori dalle dipendenze, il contesto Git si legge solo quando arrivano run nuove.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs, session.project.rootPath])
+  const benchmarkContext = useMemo<BenchmarkContext>(() => ({
+    history: benchmarkHistory,
+    branch: vcs?.available ? vcs.branch : undefined,
+    settings: benchmarkSettings,
+    onSettingsChange: (next) => { setBenchmarkSettings(next); saveBenchmarkCompareSettings(session.project.rootPath, next) },
+  }), [benchmarkHistory, benchmarkSettings, session.project.rootPath, vcs])
   const tree = useMemo(() => {
     const nodes = buildTestTree(run?.results ?? [])
     const knownFlaky = (result: GoIDETestResult) => isFlaky(result) || (!!result.name && records.has(`${result.package}\u0000${result.name}`))
@@ -399,7 +385,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
           {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
-        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} history={benchmarkHistory} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
+        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} benchmark={benchmarkContext} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
       </div>
     </div>
   )

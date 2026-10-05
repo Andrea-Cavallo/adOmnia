@@ -1,9 +1,11 @@
 import type { GoIDETestRun } from '@/lib/goide-tests-api'
 import { safeSetItem } from '@/lib/safeLocalStorage'
-import { benchmarkMeasurementFor, type GoStudioBenchmarkMeasurement } from './goStudioBenchmarks'
+import { benchmarkMeasurementFor, parseBenchmarkMeasurement, type GoStudioBenchmarkMeasurement } from './goStudioBenchmarks'
 
 const STORAGE_PREFIX = 'adomnia.goide.benchmark-history.v1.'
+const SETTINGS_PREFIX = 'adomnia.goide.benchmark-compare.v1.'
 const MAX_MEASUREMENTS = 120
+const MAX_SAMPLES = 20
 
 export interface GoStudioBenchmarkHistoryEntry {
   id: string
@@ -13,6 +15,19 @@ export interface GoStudioBenchmarkHistoryEntry {
   startedAt: string
   finishedAt?: string | null
   measurement: GoStudioBenchmarkMeasurement
+  /** Ogni ripetizione di -count=N (al massimo 20), per mediane e significatività. */
+  samples?: GoStudioBenchmarkMeasurement[]
+  /** Branch e commit HEAD al momento in cui la run è stata archiviata; dirty = modifiche non committate. */
+  branch?: string
+  commit?: string
+  dirty?: boolean
+}
+
+/** Stato Git al momento dell'archiviazione; null fuori da un repository. */
+export interface GoStudioBenchmarkGitContext {
+  branch?: string
+  commit?: string
+  dirty: boolean
 }
 
 export function benchmarkHistoryKey(projectRoot: string): string {
@@ -39,16 +54,23 @@ export function loadBenchmarkHistory(projectRoot: string): GoStudioBenchmarkHist
 }
 
 /** Persists completed benchmark metrics, without test output, coverage, environment or source files. */
-export function saveBenchmarkHistory(projectRoot: string, runs: readonly GoIDETestRun[]): GoStudioBenchmarkHistoryEntry[] {
+export function saveBenchmarkHistory(projectRoot: string, runs: readonly GoIDETestRun[], git?: GoStudioBenchmarkGitContext | null): GoStudioBenchmarkHistoryEntry[] {
   if (!projectRoot.trim()) return []
-  const fresh = runs.flatMap((run) => run.status === 'running' ? [] : run.results.flatMap((result) => {
+  const saved = loadBenchmarkHistory(projectRoot)
+  const savedById = new Map(saved.map((entry) => [entry.id, entry]))
+  const fresh = runs.flatMap((run) => run.status === 'running' ? [] : run.results.flatMap((result): GoStudioBenchmarkHistoryEntry[] => {
     const measurement = benchmarkMeasurementFor(result)
     if (!measurement || !result.name) return []
-    return [{ id: `${run.runId}:${result.id}`, runId: run.runId, package: result.package, name: result.name, startedAt: run.startedAt, finishedAt: run.finishedAt, measurement }]
+    const id = `${run.runId}:${result.id}`
+    const samples = (result.benchmarkSamples ?? []).slice(-MAX_SAMPLES).map(parseBenchmarkMeasurement).filter((item): item is GoStudioBenchmarkMeasurement => !!item)
+    // Il contesto Git vale solo per le run appena finite: una run già archiviata conserva il suo.
+    const previous = savedById.get(id)
+    const where = previous ? { branch: previous.branch, commit: previous.commit, dirty: previous.dirty } : git ? { branch: git.branch, commit: git.commit, dirty: git.dirty } : {}
+    return [{ id, runId: run.runId, package: result.package, name: result.name, startedAt: run.startedAt, finishedAt: run.finishedAt, measurement, ...(samples.length > 1 ? { samples } : {}), ...where }]
   }))
-  if (fresh.length === 0) return loadBenchmarkHistory(projectRoot)
+  if (fresh.length === 0) return saved
   const freshIds = new Set(fresh.map((entry) => entry.id))
-  const next = [...fresh, ...loadBenchmarkHistory(projectRoot).filter((entry) => !freshIds.has(entry.id))]
+  const next = [...fresh, ...saved.filter((entry) => !freshIds.has(entry.id))]
     .sort((left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt))
     .slice(0, MAX_MEASUREMENTS)
   safeSetItem(benchmarkHistoryKey(projectRoot), JSON.stringify(next))
@@ -67,10 +89,10 @@ function csvValue(value: string | number | null | undefined): string {
 
 /** Portable CSV: one row per metric, ready for a CI artifact or a spreadsheet. */
 export function benchmarkHistoryCsv(entries: readonly GoStudioBenchmarkHistoryEntry[]): string {
-  const rows = ['started_at,finished_at,package,benchmark,iterations,metric,value']
+  const rows = ['started_at,finished_at,package,benchmark,iterations,metric,value,branch,commit']
   for (const entry of entries) {
     for (const metric of entry.measurement.metrics) {
-      rows.push([entry.startedAt, entry.finishedAt, entry.package, entry.name, entry.measurement.iterations, metric.unit, metric.value].map(csvValue).join(','))
+      rows.push([entry.startedAt, entry.finishedAt, entry.package, entry.name, entry.measurement.iterations, metric.unit, metric.value, entry.branch, entry.commit].map(csvValue).join(','))
     }
   }
   return `${rows.join('\r\n')}\r\n`
@@ -82,4 +104,33 @@ export function previousSavedBenchmark(entries: readonly GoStudioBenchmarkHistor
   return entries
     .filter((entry) => entry.package === packageName && entry.name === benchmarkName && (Number.isNaN(current) || Date.parse(entry.startedAt) < current))
     .sort((left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt))[0] ?? null
+}
+
+export interface GoStudioBenchmarkCompareSettings {
+  /** Run fissata come baseline "prima del refactor". */
+  pinnedRunId: string | null
+  /** Peggioramento minimo, in percentuale, perché una differenza sia segnalata come regressione. */
+  thresholdPercent: number
+}
+
+export const DEFAULT_BENCHMARK_THRESHOLD = 5
+
+export function loadBenchmarkCompareSettings(projectRoot: string): GoStudioBenchmarkCompareSettings {
+  const fallback = { pinnedRunId: null, thresholdPercent: DEFAULT_BENCHMARK_THRESHOLD }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(`${SETTINGS_PREFIX}${encodeURIComponent(projectRoot.trim())}`) || 'null')
+    if (!parsed || typeof parsed !== 'object') return fallback
+    const threshold = Number(parsed.thresholdPercent)
+    return {
+      pinnedRunId: typeof parsed.pinnedRunId === 'string' ? parsed.pinnedRunId : null,
+      thresholdPercent: Number.isFinite(threshold) && threshold >= 0 && threshold <= 1000 ? threshold : DEFAULT_BENCHMARK_THRESHOLD,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+export function saveBenchmarkCompareSettings(projectRoot: string, settings: GoStudioBenchmarkCompareSettings): void {
+  if (!projectRoot.trim()) return
+  safeSetItem(`${SETTINGS_PREFIX}${encodeURIComponent(projectRoot.trim())}`, JSON.stringify(settings))
 }

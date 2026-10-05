@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"slices"
 	"sort"
 	"strings"
 )
@@ -9,6 +10,8 @@ const (
 	maxTestNodes       = 5000
 	maxTestOutputBytes = 64 * 1024
 	maxTestOutcomes    = 4096
+	// maxBenchmarkSamples limita le righe tenute per benchmark con -count=N (benchstat ne usa ~10).
+	maxBenchmarkSamples = 200
 )
 
 // Stati di un nodo dell'albero dei test, ricavati dagli eventi di `go test -json`.
@@ -43,7 +46,9 @@ type TestResult struct {
 	Truncated     bool          `json:"truncated,omitempty"`
 	Failure       *TestLocation `json:"failure,omitempty"`
 	Benchmark     string        `json:"benchmark,omitempty"`
-	BuildFailed   bool          `json:"buildFailed,omitempty"`
+	// BenchmarkSamples tiene ogni riga di risultato con -count=N, per confronti e significatività.
+	BenchmarkSamples []string `json:"benchmarkSamples,omitempty"`
+	BuildFailed      bool     `json:"buildFailed,omitempty"`
 	// Directory è la cartella del package relativa al progetto (solo sui nodi package).
 	Directory string `json:"directory,omitempty"`
 	// Runs e Failures contano gli esiti con -count=N; Min/MaxMillis danno la distribuzione delle durate.
@@ -210,6 +215,9 @@ func (t *Tree) outputEvent(event Event, name string) {
 	}
 	if event.Benchmark != "" {
 		node.Benchmark = event.Benchmark
+		if len(node.BenchmarkSamples) < maxBenchmarkSamples {
+			node.BenchmarkSamples = append(node.BenchmarkSamples, event.Benchmark)
+		}
 		node.Status = TestBenchmarked
 	}
 }
@@ -255,6 +263,7 @@ func (t *Tree) Snapshot() ([]TestResult, TestSummary) {
 			location := *node.Failure
 			node.Failure = &location
 		}
+		node.BenchmarkSamples = slices.Clone(node.BenchmarkSamples)
 		results = append(results, node)
 		if t.hasChild[id] {
 			continue
