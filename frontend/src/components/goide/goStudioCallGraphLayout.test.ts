@@ -17,14 +17,14 @@ describe('layoutCallGraph', () => {
       { caller: fn('parse'), callee: fn('runtime.mallocgc'), value: [30] },
     ]
     const layout = layoutCallGraph(top, edges, 0)
-    const layer = (name: string) => layout.nodes.find((item) => item.fn.name === name)!.layer
+    const layer = (name: string) => layout.nodes.find((item) => item.data.name === name)!.layer
     expect(layer('main')).toBe(0)
     expect(layer('serve')).toBeLessThan(layer('parse'))
     expect(layer('parse')).toBeLessThan(layer('runtime.mallocgc'))
     expect(layout.edges.some((edge) => edge.from === edge.to)).toBe(false)
     expect(layout.maxEdge).toBe(90)
     expect(layout.width).toBeGreaterThan(0)
-    expect(layoutCallGraph(top, edges, 0, { hideRuntime: true }).nodes.map((item) => item.fn.name)).not.toContain('runtime.mallocgc')
+    expect(layoutCallGraph(top, edges, 0, { hideRuntime: true }).nodes.map((item) => item.data.name)).not.toContain('runtime.mallocgc')
   })
 
   it('keeps only the most expensive functions', () => {

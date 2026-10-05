@@ -202,6 +202,15 @@ pause and explains it.
 - **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
 - **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
 - **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Architecture and Interface Explorer
+
+- **Open it.** *View → Architecture Explorer* (or *Interface Explorer* for the Interfaces tab), then **Analyze**. Every module is loaded with `go/packages` (trusted project only) and the model is built from the types; no code runs. Both windows share the last analysis.
+- **Packages.** The import graph, or the volume of calls between packages. Click a package to focus on it and its neighbours (its external imports are listed), double-click to open it; the filter jumps to a package by name.
+- **Call graph.** Find a function: its callers (two levels up) and callees (two levels down) as a graph. Calls through an interface point to the interface method. Click to move the focus, double-click to open the code.
+- **Interfaces.** Every interface with its methods (the ones never called through the interface are dimmed), its implementations, *almost* implementations with the missing methods, who uses it (parameters, fields, results, variables, assertions) and a graph of consumers above and implementations below. Non-invasive hints: interface too broad for its callers, implemented only once, declared next to its implementation but consumed elsewhere.
+- **Entry points and services.** `main` and `init`, HTTP routes (`net/http`, chi, gin, echo, gorilla/mux, fiber, httprouter), gRPC services (`Register…Server`), Kafka producers and consumers with their topics (sarama, kafka-go, confluent-kafka-go, franz-go), DB repositories (structs holding `database/sql`, sqlx, GORM, pgx, MongoDB or Redis handles), scheduled jobs (tickers, `time.AfterFunc`, cron, gocron) and CLI commands (cobra, urfave/cli, `flag`). Routes open in the API Client, gRPC services in the gRPC client, topics in Broker Studio, repositories in Database Studio.
+- **Modules.** The project's modules, how they require each other and their external requirements.
+
 ## Error Handling Intelligence
 
 - **Open it.** *View → Error Handling Intelligence*, then **Analyze**. Every module is loaded with `go/packages` (it runs `go list`, so the project must be trusted) and checked with full type information; nothing is sent anywhere.

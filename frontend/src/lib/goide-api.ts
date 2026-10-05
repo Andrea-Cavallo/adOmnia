@@ -425,6 +425,19 @@ export async function analyzeGoIDEErrorHandling(sessionId: string): Promise<GoID
   return GoIDEBindings.AnalyzeErrorHandling(sessionId)
 }
 
+// --- Architecture Explorer --------------------------------------------------------
+
+export type GoIDEArchitectureResult = Awaited<ReturnType<typeof GoIDEBindings.AnalyzeArchitecture>>
+export type GoIDEArchitecture = NonNullable<GoIDEArchitectureResult['report']>
+export type GoIDEArchInterface = GoIDEArchitecture['interfaces'][number]
+export type GoIDEArchEntry = GoIDEArchitecture['entries'][number]
+export type GoIDEArchSite = GoIDEArchEntry['site']
+
+/** Package, chiamate, moduli, interfacce ed entry point di ogni modulo (go/packages: progetto autorizzato). */
+export async function analyzeGoIDEArchitecture(sessionId: string): Promise<GoIDEArchitectureResult> {
+  return GoIDEBindings.AnalyzeArchitecture(sessionId)
+}
+
 // --- Fuzzing Studio -------------------------------------------------------------
 
 export type GoIDEFuzzTarget = Awaited<ReturnType<typeof GoIDEBindings.ListFuzzTargets>>[number]

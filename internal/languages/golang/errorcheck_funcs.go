@@ -14,7 +14,7 @@ import (
 
 // errorFunc è il contesto di una funzione analizzata (dichiarata o letterale).
 type errorFunc struct {
-	file      errorFile
+	file      typedFile
 	name      string
 	decl      *ast.FuncDecl
 	signature *types.Signature
@@ -34,7 +34,7 @@ type errorWrite struct {
 	block ast.Node // blocco (o case) che contiene l'assegnazione
 }
 
-func (a *errorAnalysis) analyzeFile(file errorFile) {
+func (a *errorAnalysis) analyzeFile(file typedFile) {
 	info := file.pkg.TypesInfo
 	deferred := map[*ast.FuncLit]bool{}
 	ast.Inspect(file.file, func(node ast.Node) bool {
@@ -661,7 +661,7 @@ func (a *errorAnalysis) checkTypeSwitch(fn *errorFunc, statement *ast.TypeSwitch
 }
 
 // importEdit aggiunge un import mancante dopo la clausola package (gofmt lo raggruppa al salvataggio).
-func (a *errorAnalysis) importEdit(file errorFile, path string) (ErrorEdit, bool) {
+func (a *errorAnalysis) importEdit(file typedFile, path string) (ErrorEdit, bool) {
 	for _, spec := range file.file.Imports {
 		if strings.Trim(spec.Path.Value, "\"`") == path && (spec.Name == nil || spec.Name.Name != "_") {
 			return ErrorEdit{}, false

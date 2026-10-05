@@ -132,16 +132,16 @@ func implementsError(t types.Type) bool {
 	return types.Implements(t, errorIface) || types.Implements(types.NewPointer(t), errorIface)
 }
 
-type errorFile struct {
+type typedFile struct {
 	pkg  *packages.Package
 	file *ast.File
 	path string
 	text []byte
 }
 
-// errorFiles sceglie per ogni file la variante di package più completa (la variante di test include i file normali).
-func errorFiles(loaded []*packages.Package, read func(string) ([]byte, error)) []errorFile {
-	chosen := map[string]errorFile{}
+// typedFiles (condiviso da errori e architettura) sceglie per ogni file la variante di package più completa (la variante di test include i file normali).
+func typedFiles(loaded []*packages.Package, read func(string) ([]byte, error)) []typedFile {
+	chosen := map[string]typedFile{}
 	for _, pkg := range loaded {
 		if pkg.TypesInfo == nil {
 			continue
@@ -154,10 +154,10 @@ func errorFiles(loaded []*packages.Package, read func(string) ([]byte, error)) [
 			if current, ok := chosen[key]; ok && len(current.pkg.Syntax) >= len(pkg.Syntax) {
 				continue
 			}
-			chosen[key] = errorFile{pkg: pkg, file: pkg.Syntax[index], path: key}
+			chosen[key] = typedFile{pkg: pkg, file: pkg.Syntax[index], path: key}
 		}
 	}
-	files := make([]errorFile, 0, len(chosen))
+	files := make([]typedFile, 0, len(chosen))
 	for _, file := range chosen {
 		text, err := read(file.path)
 		if err != nil {
@@ -172,7 +172,7 @@ func errorFiles(loaded []*packages.Package, read func(string) ([]byte, error)) [
 
 // AnalyzeErrorHandling analizza i package caricati con sintassi e tipi.
 func AnalyzeErrorHandling(fset *token.FileSet, loaded []*packages.Package, read func(string) ([]byte, error)) ErrorReport {
-	files := errorFiles(loaded, read)
+	files := typedFiles(loaded, read)
 	analysis := &errorAnalysis{fset: fset, sentinels: map[*types.Var]*SentinelError{}, errorTypes: map[*types.TypeName]*ErrorTypeInfo{}}
 	for _, file := range files {
 		analysis.collectDeclarations(file)
@@ -195,7 +195,7 @@ func (a *errorAnalysis) offset(pos token.Pos) int {
 	return a.fset.Position(pos).Offset
 }
 
-func (a *errorAnalysis) add(file errorFile, finding ErrorFinding) {
+func (a *errorAnalysis) add(file typedFile, finding ErrorFinding) {
 	if len(a.findings) >= maxErrorFindings {
 		return
 	}
@@ -204,7 +204,7 @@ func (a *errorAnalysis) add(file errorFile, finding ErrorFinding) {
 }
 
 // collectDeclarations registra sentinel e tipi d'errore dichiarati nei file del progetto.
-func (a *errorAnalysis) collectDeclarations(file errorFile) {
+func (a *errorAnalysis) collectDeclarations(file typedFile) {
 	info := file.pkg.TypesInfo
 	for _, decl := range file.file.Decls {
 		gen, ok := decl.(*ast.GenDecl)
@@ -243,7 +243,7 @@ func (a *errorAnalysis) collectDeclarations(file errorFile) {
 	}
 }
 
-func describeErrorType(typeName *types.TypeName, file errorFile, offset int) *ErrorTypeInfo {
+func describeErrorType(typeName *types.TypeName, file typedFile, offset int) *ErrorTypeInfo {
 	named := typeName.Type()
 	pointerSet := types.NewMethodSet(types.NewPointer(named))
 	has := func(method string) bool { return pointerSet.Lookup(typeName.Pkg(), method) != nil }
@@ -312,7 +312,7 @@ func (a *errorAnalysis) report() ErrorReport {
 	return report
 }
 
-func (a *errorAnalysis) ref(file errorFile, kind string, pos token.Pos, function string) ErrorRef {
+func (a *errorAnalysis) ref(file typedFile, kind string, pos token.Pos, function string) ErrorRef {
 	return ErrorRef{Kind: kind, Path: file.path, Offset: a.offset(pos), Function: function}
 }
 

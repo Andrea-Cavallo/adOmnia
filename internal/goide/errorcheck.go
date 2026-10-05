@@ -98,49 +98,73 @@ type ErrorHandlingReport struct {
 
 // AnalyzeErrorHandling analizza la gestione degli errori di ogni modulo Go del progetto.
 func (s *Service) AnalyzeErrorHandling(sessionID string) (ErrorHandlingReport, error) {
-	session, err := s.session(sessionID)
+	report := ErrorHandlingReport{Findings: []ErrorHandlingFinding{}, Sentinels: []ErrorSentinel{}, Types: []ErrorTypeEntry{}, Paths: []ErrorFunctionPath{}, Problems: []string{}}
+	var texts *errorTexts
+	problems, err := s.forEachGoModule(sessionID, func(root string, module loadedGoModule) {
+		if texts == nil {
+			texts = newErrorTexts(root)
+		}
+		report.Modules++
+		texts.merge(&report, golang.AnalyzeErrorHandling(module.fset, module.packages, texts.read))
+	})
 	if err != nil {
 		return ErrorHandlingReport{}, err
 	}
+	report.Problems = problems
+	return report, nil
+}
+
+// loadedGoModule è un modulo caricato con sintassi e tipi.
+type loadedGoModule struct {
+	dir      string
+	fset     *token.FileSet
+	packages []*packages.Package
+}
+
+// forEachGoModule carica ogni modulo del progetto con go/packages (avvia `go list`: serve un
+// progetto autorizzato) e lo passa a visit. Gli errori di caricamento sono restituiti come problemi.
+func (s *Service) forEachGoModule(sessionID string, visit func(root string, module loadedGoModule)) ([]string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return ErrorHandlingReport{}, errors.New("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, errors.New("autorizza esplicitamente gli strumenti per questo progetto")
 	}
 	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
 	if err != nil {
-		return ErrorHandlingReport{}, err
+		return nil, err
 	}
 	binary, err := s.toolchain.GoBinary(SessionID(sessionID))
 	if err != nil {
-		return ErrorHandlingReport{}, errors.New("go non disponibile: rileva o configura la toolchain")
+		return nil, errors.New("go non disponibile: rileva o configura la toolchain")
 	}
 	environment = withGoFirstInPath(environment, binary)
 	root := session.Project.RealPath
-	report := ErrorHandlingReport{Findings: []ErrorHandlingFinding{}, Sentinels: []ErrorSentinel{}, Types: []ErrorTypeEntry{}, Paths: []ErrorFunctionPath{}, Problems: []string{}}
+	problems := []string{}
 	ctx, cancel := context.WithTimeout(context.Background(), errorAnalysisTimeout)
 	defer cancel()
-	texts := newErrorTexts(root)
 	for _, module := range goLayoutOf(session.Project).Modules {
 		fset := token.NewFileSet()
 		config := &packages.Config{
 			Context: ctx, Dir: module.Path, Env: environment, Tests: true, Fset: fset,
-			Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+			Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedModule,
 		}
 		loaded, err := packages.Load(config, "./...")
 		if err != nil {
-			report.Problems = append(report.Problems, fmt.Sprintf("%s: %v", relativeOrDot(root, module.Path), err))
+			problems = append(problems, fmt.Sprintf("%s: %v", relativeOrDot(root, module.Path), err))
 			continue
 		}
-		report.Modules++
 		for _, pkg := range loaded {
 			for _, loadErr := range pkg.Errors {
-				if len(report.Problems) < 20 {
-					report.Problems = append(report.Problems, loadErr.Error())
+				if len(problems) < 20 {
+					problems = append(problems, loadErr.Error())
 				}
 			}
 		}
-		texts.merge(&report, golang.AnalyzeErrorHandling(fset, loaded, texts.read))
+		visit(root, loadedGoModule{dir: module.Path, fset: fset, packages: loaded})
 	}
-	return report, nil
+	return problems, nil
 }
 
 // errorTexts legge una volta i file del progetto e converte offset in posizioni dell'editor.

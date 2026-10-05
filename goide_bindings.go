@@ -1475,3 +1475,8 @@ func (g *GoIDE) SetActiveStudioWorkspace(id string) (goide.StudioWorkspaces, err
 func (g *GoIDE) AnalyzeErrorHandling(sessionID string) (goide.ErrorHandlingReport, error) {
 	return g.service.AnalyzeErrorHandling(sessionID)
 }
+
+// AnalyzeArchitecture costruisce package graph, call graph, moduli, interfacce ed entry point (progetto autorizzato).
+func (g *GoIDE) AnalyzeArchitecture(sessionID string) (goide.ArchitectureResult, error) {
+	return g.service.AnalyzeArchitecture(sessionID)
+}

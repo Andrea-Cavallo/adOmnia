@@ -23,11 +23,11 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 46 | 14 |
+| **P1** | Workflow Go migliore di GoLand | 9 | 1 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 213 | 51 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
-| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 152 | 57 |
+| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
 ---
 
@@ -108,38 +108,10 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 - [x] Visual context graph. — *Parziale: grafo di propagazione testuale (nodi funzione + archi) nel pannello Context, non un grafo visuale SVG/force-directed.*
 - [x] Trace ID correlation. — *Parziale: correlazione statica (`WithValue` con chiavi trace/request + letterali); nessuna correlazione runtime con trace OTLP.*
 
-## §16 · Interface Explorer
-
-- [ ] Lista interface.
-- [ ] Lista implementazioni. — *Parziale: I marker I↓/I↑ e il popup elencano le implementazioni del singolo simbolo (`goStudioImplementationMarkers.ts`). Manca una lista globale.*
-- [ ] Visual graph. — *Parziale: Esiste solo l'albero Type Hierarchy (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
-- [ ] “Who uses this interface?”. — *Parziale: Usages gopls e Code Vision con conteggio usi (`goStudioCodeVision.ts`). Non c'è una vista specifica per le interfacce.*
-- [ ] Missing methods. — *Parziale: Il quick fix gopls "Declare missing methods" è usato in `goStudioImplementInterface.ts`. Non c'è una vista dei metodi mancanti.*
-- [ ] Detect interface too broad.
-- [ ] Detect interface implemented only once.
-- [ ] Consumer-side interface hint non invasivo.
-
 ## §15 · Architecture Explorer
-
-### Static architecture
-
-- [ ] Package graph.
-- [ ] Import graph.
-- [ ] Call graph. — *Parziale: Esiste solo la Call Hierarchy ad albero espandibile (`GoStudioHierarchyDialog.tsx`, gopls). Manca un grafo visuale complessivo.*
-- [ ] Interface implementation graph. — *Parziale: Esiste la Type Hierarchy ad albero (`GoStudioHierarchyDialog.tsx`), non un grafo visuale.*
-- [ ] Module graph.
-- [ ] Entry points. — *Parziale: `detectMain` in `internal/devcontext/gofile.go` rileva solo `func main` come entità service, mostrata nel Developer Context. Mancano altri entry point e una vista dedicata.*
-- [ ] gRPC services. — *Parziale: Entità `grpc` da `goprotocols.go` con CodeLens verso il gRPC client. Manca una vista architettura che elenchi i servizi.*
-- [ ] Kafka producers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
-- [ ] Kafka consumers. — *Parziale: Rilevati solo i topic (`goliterals.go`), senza distinguere producer da consumer. Manca una vista architettura.*
-- [ ] DB repositories.
-- [ ] Scheduled jobs.
-- [ ] CLI commands.
 
 ### UX
 
-- [ ] Clic nodo → codice. — *Parziale: Nelle gerarchie call/type il clic sul nodo apre il codice (`navigateToLocation`). Non esiste un architecture graph con nodi.*
-- [ ] Clic service → service workspace. — *Parziale: Il dialog Project Services apre Docker Lab, Database Studio o Broker Studio (`goStudioIntegrations.ts`). Manca un service workspace unico.*
 - [ ] Clic trace → distributed debugger.
 
 ## §43 · Documentation Intelligence
