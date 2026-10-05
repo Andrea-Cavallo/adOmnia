@@ -41,6 +41,7 @@ import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
 import { safeEval } from '@/lib/safeEval'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { binaryPayloadPreview } from './binaryPayload'
 
 type AuthType = 'none' | 'bearer' | 'basic'
 type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting'
@@ -784,6 +785,7 @@ function StreamList({
 function Inspector({ message, onCopy }: { message: WSMessage | null; onCopy: (text: string) => void }) {
   const parsed = message && !message.binary ? tryParseJson(message.content) : null
   const pretty = message ? (parsed === null ? message.content : JSON.stringify(parsed, null, 2)) : ''
+  const binary = useMemo(() => message?.binary ? binaryPayloadPreview(message.content) : null, [message])
 
   return (
     <div className="flex min-h-0 flex-col rounded-md border border-border-1 bg-surface-1">
@@ -820,21 +822,22 @@ function Inspector({ message, onCopy }: { message: WSMessage | null; onCopy: (te
             </div>
             <div className="rounded-md border border-border-2 bg-surface-0 p-3">
               <div className="mb-1 text-[10px] uppercase tracking-wide text-text-4">Payload Size</div>
-              <div className="font-mono text-[12px] text-text-1">{byteSize(message.content)} B</div>
+              <div className="font-mono text-[12px] text-text-1">{message.binary && binary ? binary.size : byteSize(message.content)} B</div>
             </div>
           </div>
 
           <div className="mt-3 rounded-md border border-border-2 bg-surface-0">
             <div className="flex h-8 items-center gap-2 border-b border-border-2 px-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4">{parsed === null ? 'Payload' : 'Payload JSON'}</span>
-              <button type="button" onClick={() => onCopy(pretty)} className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1"><Copy size={12} /></button>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4">{message.binary ? 'Payload Hex / ASCII' : parsed === null ? 'Payload' : 'Payload JSON'}</span>
+              <button type="button" title={message.binary ? 'Copy Base64 payload' : 'Copy payload'} onClick={() => onCopy(message.binary ? message.content : pretty)} className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1"><Copy size={12} /></button>
             </div>
-            <pre className="max-h-[310px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-text-1">{pretty}</pre>
+            <pre className="max-h-[310px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-text-1">{message.binary ? binary ? binary.rows.join('\n') || '(empty)' : 'Invalid Base64 payload' : pretty}</pre>
+            {binary?.truncated && <div className="border-t border-border-2 px-3 py-2 text-[10px] text-text-4">Showing first 4 KiB of {binary.size.toLocaleString()} bytes</div>}
           </div>
 
           <div className="mt-3 rounded-md border border-border-2 bg-surface-0">
             <div className="flex h-8 items-center gap-2 border-b border-border-2 px-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4">Raw Payload</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-4">{message.binary ? 'Raw Base64' : 'Raw Payload'}</span>
               <button type="button" onClick={() => onCopy(message.content)} className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1"><Copy size={12} /></button>
             </div>
             <pre className="max-h-[120px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[10px] leading-4 text-text-3">{message.content}</pre>

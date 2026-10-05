@@ -55,13 +55,21 @@ export function openRequestTab(tabId: string | undefined): void {
  */
 export async function openSplitDebugView(tabId: string, session: LiveSession | null): Promise<void> {
   const tabs = useTabsStore.getState()
-  if (tabs.tabs.some((tab) => tab.id === tabId)) tabs.setActiveTab(tabId)
+  if (!tabs.tabs.some((tab) => tab.id === tabId)) {
+    showEntityNotice('The request tab was closed.')
+    return
+  }
+  tabs.setActiveTab(tabId)
   const app = useAppStore.getState()
   app.keepPanel('goide')
   app.keepPanel('collections')
   if (app.activeRail !== 'collections' && app.activeRail !== 'goide') app.setActiveRail('collections')
   app.setSplitView(true)
-  if (session) await openFrameInGoStudio(session, null, { switchRail: false })
+  if (session) {
+    await openFrameInGoStudio(session, null, { switchRail: false })
+    const { useGoIDELspStore } = await import('@/stores/goideLsp')
+    useGoIDELspStore.getState().showToolWindow('debug')
+  }
 }
 
 /** Goes to where a request came from: its API tab, the Interceptor or Browser Debug. */

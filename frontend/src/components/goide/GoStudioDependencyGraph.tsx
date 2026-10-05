@@ -1,6 +1,6 @@
 import { goModules } from '@/lib/goide/goProject'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpCircle, Loader2, RefreshCw, ShieldAlert, X } from 'lucide-react'
+import { ArrowUpCircle, Download, Loader2, RefreshCw, ShieldAlert, X } from 'lucide-react'
 import {
   getGoIDEDependencyGraph,
   listGoIDEDependencyUpdates,
@@ -94,6 +94,22 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
 
   const nodes = (report?.nodes ?? []).filter((node) => !node.main)
 
+  const exportReport = () => {
+    if (!report) return
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      ...report,
+      updates,
+      vulnerabilityCounts: vulns,
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${report.modulePath.split('/').pop() || 'module'}-dependency-report.json`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Dependency graph" tabIndex={-1} className="flex max-h-[82vh] w-[760px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
@@ -125,6 +141,7 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
               )}
 
               <div className="mb-3 flex gap-2">
+                <button type="button" disabled={!report || loading} onClick={exportReport} title="Export the current local dependency report as JSON" className="inline-flex h-7 items-center gap-1.5 rounded border border-border-1 px-2.5 text-[10px] text-text-2 hover:border-accent disabled:opacity-40"><Download size={11} />Export report</button>
                 <button type="button" disabled={checking !== null} onClick={() => void checkUpdates()} className="inline-flex h-7 items-center gap-1.5 rounded border border-border-1 px-2.5 text-[10px] text-text-2 hover:border-accent disabled:opacity-40">{checking === 'updates' ? <Loader2 size={11} className="animate-spin" /> : <ArrowUpCircle size={11} />}Check updates</button>
                 <button type="button" disabled={checking !== null} onClick={() => void scanVulns()} className="inline-flex h-7 items-center gap-1.5 rounded border border-border-1 px-2.5 text-[10px] text-text-2 hover:border-accent disabled:opacity-40">{checking === 'vulns' ? <Loader2 size={11} className="animate-spin" /> : <ShieldAlert size={11} />}Scan vulnerabilities</button>
                 <span className="ml-auto text-[9px] leading-6 text-text-4">{Object.keys(vulns).length > 0 ? 'vulnerability badges loaded' : 'updates and vulnerabilities need the network'}</span>

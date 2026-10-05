@@ -23,8 +23,8 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
-| **P1** | Workflow Go migliore di GoLand | 1 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 191 | 46 |
+| **P1** | Workflow Go migliore di GoLand | 0 | 0 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -112,7 +112,7 @@ _Visualizzare ciò che oggi finisce nel terminale: profiler, sicurezza, benchmar
 
 ### UX
 
-- [ ] Clic trace → distributed debugger.
+- [x] Clic trace → distributed debugger. — *Il clic apre il dettaglio multi-servizio della trace ricostruita dai log strutturati; ogni span con ID richiesta e servizio corrispondenti può aprire la relativa Split Debug View in Delve. La cattura OTLP e la propagazione automatica restano in P2.*
 
 ## §43 · Documentation Intelligence
 
@@ -248,7 +248,7 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 - [ ] OpenTelemetry compatibility. — *Parziale: ObservabilityPanel.tsx legge trace_id/span_id/otel.* dai log; manca un receiver OTLP.*
 - [ ] Local traces. — *Parziale: Trace ricostruite dai log; nessuna raccolta di trace vere.*
-- [ ] Trace tree. — *Parziale: Span in lista con barre; waterfall.ts ha parentId ma non c'è un albero parent/child.*
+- [x] Trace tree. — *La vista Observability ordina le span per parent/child con indentazione, mantenendo le barre temporali; parent assenti e cicli restano visibili come radici.*
 - [ ] Service colors/theme coherent.
 - [ ] DB spans.
 - [ ] HTTP spans. — *Parziale: Le span riportano http.method/url/status; nessuna vista specifica degli HTTP span.*
@@ -256,7 +256,7 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 - [ ] Kafka spans.
 - [ ] Custom spans.
 - [ ] Span → source.
-- [ ] Trace → distributed debugger.
+- [ ] Trace → distributed debugger. — *Parziale: le trace strutturate dei servizi aprono una vista multi-servizio con link al debugger per span correlati; manca la raccolta OTLP e la propagazione automatica della trace.*
 - [ ] Compare traces.
 
 ## §42 · Config & Environment Intelligence
@@ -344,16 +344,16 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Capture
 
-- [ ] Supportare trace ID.
+- [ ] Supportare trace ID. — *Parziale: la vista correla span dei log strutturati da più servizi tramite trace ID; manca acquisizione OTLP e propagazione automatica.*
 - [ ] Collegare gRPC.
 - [ ] Collegare goroutines.
-- [ ] Collegare spans.
+- [ ] Collegare spans. — *Parziale: parent_span_id costruisce l'albero nella vista distribuita; manca il collegamento da span OTLP acquisiti direttamente.*
 - [ ] Collegare retries.
 
 ### Timeline
 
 - [ ] Timeline unica. — *Parziale: RequestTimeline unisce invio, frame, breakpoint, SQL, messaggi, log di errore e risposta; solo per il servizio locale, senza confini fra servizi.*
-- [ ] Service boundaries.
+- [ ] Service boundaries. — *Parziale: la vista distribuita mostra il servizio di ogni span e l'elenco dei servizi della trace; mancano confini basati su acquisizione runtime completa.*
 - [ ] Network duration.
 - [ ] Handler duration.
 - [ ] DB duration.

@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { traceTreeRows } from './traceTree'
+import { debugRunForTrace } from './traceDebugLink'
+import { structuredLiveTraceEntries } from './liveTraceLogs'
+import { useDevSessionStore } from '@/stores/devSession'
+import { openSplitDebugView } from '@/lib/devsession/navigation'
+import type { LiveSession, RequestRun } from '@/lib/devsession-api'
 import {
   listLogFiles,
   readLogFile,
@@ -93,7 +99,8 @@ function hasCorrelationId(entry: BackendDevLogEntry, id: string): boolean {
 function pickString(data: Record<string, unknown> | undefined, keys: string[]) {
   if (!data) return ''
   for (const key of keys) {
-    const value = data[key]
+    const value = data[key] ?? key.split('.').reduce<unknown>((part, segment) =>
+      part && typeof part === 'object' && !Array.isArray(part) ? (part as Record<string, unknown>)[segment] : undefined, data)
     if (value !== undefined && value !== null && value !== '') return String(value)
   }
   return ''
@@ -133,6 +140,70 @@ function extractTraceSpans(entries: BackendDevLogEntry[]): TraceSpan[] {
   return spans.sort((a, b) => a.startMs - b.startMs)
 }
 
+function DistributedTraceDetail({ traceId, spans, selectedSpanId, onSelectSpan, onClose, onFilterLogs, runs, runOrder, sessions }: {
+  traceId: string
+  spans: TraceSpan[]
+  selectedSpanId: string
+  onSelectSpan: (id: string) => void
+  onClose: () => void
+  onFilterLogs: () => void
+  runs: Record<string, RequestRun>
+  runOrder: string[]
+  sessions: Record<string, LiveSession>
+}) {
+  const rows = traceTreeRows(spans)
+  const selected = spans.find((span) => span.spanId === selectedSpanId) ?? spans[0]
+  const services = [...new Set(spans.map((span) => span.service))]
+  const start = spans.length ? Math.min(...spans.map((span) => span.startMs)) : 0
+  const end = spans.length ? Math.max(...spans.map((span) => span.startMs + Math.max(span.durationMs, 1))) : 0
+  const duration = Math.max(end - start, 1)
+  const linked = selected ? debugRunForTrace([selected], runs, runOrder, sessions) : null
+
+  return (
+    <section aria-label="Distributed trace" className="mt-3 border-t border-border-1 pt-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-semibold text-text-1">Distributed trace</span>
+        <span className="min-w-0 truncate font-mono text-[10px] text-text-3" title={traceId}>{traceId}</span>
+        <span className="text-[10px] text-text-4">{services.length} services · {spans.length} spans · {Math.round(duration)} ms</span>
+        <button type="button" onClick={onFilterLogs} title="Filter logs for this trace" className="ml-auto flex h-6 w-6 items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"><Search size={12} /></button>
+        <button type="button" onClick={onClose} title="Close trace" className="flex h-6 w-6 items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={12} /></button>
+      </div>
+      {spans.length === 0 ? <p className="text-[11px] text-text-4">No spans remain in the selected log file.</p> : <>
+        <div className="mb-2 flex flex-wrap gap-1 text-[10px] text-text-3">
+          {services.map((service) => <span key={service} className="rounded border border-border-2 px-1.5 py-0.5">{service}</span>)}
+        </div>
+        <div className="flex min-h-0 flex-wrap gap-3">
+          <div role="listbox" aria-label="Trace spans" className="min-h-0 min-w-[280px] flex-[2_1_360px] overflow-y-auto border-y border-border-1">
+            {rows.map(({ span, depth }, index) => {
+              const left = ((span.startMs - start) / duration) * 100
+              const width = Math.max(1, (Math.max(span.durationMs, 1) / duration) * 100)
+              return <button key={`${span.spanId}-${index}`} type="button" role="option" aria-selected={span.spanId === selected.spanId} onClick={() => onSelectSpan(span.spanId)}
+                className={cn('grid w-full grid-cols-[minmax(0,1fr)_minmax(65px,1fr)_48px] items-center gap-2 border-b border-border-1/50 px-2 py-1 text-left last:border-0 hover:bg-surface-2', span.spanId === selected.spanId && 'bg-accent/10')}>
+                <span className="min-w-0 truncate font-mono text-[10px] text-text-2" style={{ paddingLeft: `${Math.min(depth, 8) * 10}px` }} title={`${span.service}: ${span.name}`}>
+                  {depth > 0 && <span aria-hidden="true">↳ </span>}<span className="text-text-4">{span.service}</span> {span.name}
+                </span>
+                <span className="relative h-2.5 bg-surface-2"><span className={cn('absolute inset-y-0', span.status.toUpperCase().includes('ERROR') ? 'bg-error' : 'bg-accent')} style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }} /></span>
+                <span className="text-right font-mono text-[10px] text-text-4">{Math.round(span.durationMs)}ms</span>
+              </button>
+            })}
+          </div>
+          <div className="min-w-[220px] flex-[1_1_230px] space-y-1 text-[11px] text-text-3">
+            <div className="font-semibold text-text-1">{selected.service} · {selected.name}</div>
+            <div>Status: <span className="text-text-1">{selected.status}</span></div>
+            <div>Span: <code className="break-all text-text-2">{selected.spanId}</code></div>
+            {selected.parentSpanId && <div>Parent: <code className="break-all text-text-2">{selected.parentSpanId}</code></div>}
+            {selected.http?.method && <div>HTTP: <span className="text-text-1">{selected.http.method} {selected.http.status}</span></div>}
+            {selected.http?.url && <div className="break-all text-text-2">{selected.http.url}</div>}
+            {selected.correlationId && <div>Request ID: <code className="break-all text-text-2">{selected.correlationId}</code></div>}
+            {linked && <button type="button" onClick={() => void openSplitDebugView(linked.run.tabId!, linked.session)} className="mt-2 inline-flex items-center gap-1 rounded border border-accent/40 px-2 py-1 text-[11px] text-accent hover:bg-accent/10"><Bug size={12} />Open {linked.session.service} debugger</button>}
+            {!linked && <div className="pt-1 text-text-4">No active Debug Request matched this span.</div>}
+          </div>
+        </div>
+      </>}
+    </section>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ObservabilityPanel() {
@@ -142,6 +213,8 @@ export function ObservabilityPanel() {
   const [entries, setEntries] = useState<BackendDevLogEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [live, setLive] = useState(false)
+  const [selectedTraceId, setSelectedTraceId] = useState('')
+  const [selectedSpanId, setSelectedSpanId] = useState('')
   const eventSourceRef = useRef<EventSource | null>(null)
   const entriesRef = useRef<BackendDevLogEntry[]>([])
   const [filters, setFilters] = useState<FilterState>({
@@ -150,6 +223,10 @@ export function ObservabilityPanel() {
     search: '',
     correlationId: '',
   })
+  const debugRuns = useDevSessionStore((state) => state.runs)
+  const debugRunOrder = useDevSessionStore((state) => state.runOrder)
+  const debugSessions = useDevSessionStore((state) => state.sessions)
+  const liveLogs = useDevSessionStore((state) => state.logs)
 
   // Keep entriesRef in sync
   entriesRef.current = entries
@@ -226,6 +303,8 @@ export function ObservabilityPanel() {
   // Load entries when file is selected
   useEffect(() => {
     if (!selectedFile) return
+    setSelectedTraceId('')
+    setSelectedSpanId('')
     const load = async () => {
       setLoading(true)
       const data = await readLogFile(selectedFile)
@@ -260,7 +339,9 @@ export function ObservabilityPanel() {
     return c
   }, [entries])
 
-  const traceSpans = useMemo(() => extractTraceSpans(filtered), [filtered])
+  const liveTraceEntries = useMemo(() => structuredLiveTraceEntries(liveLogs, debugSessions), [liveLogs, debugSessions])
+  const traceSpans = useMemo(() => extractTraceSpans([...filtered, ...liveTraceEntries]), [filtered, liveTraceEntries])
+  const selectedTraceSpans = useMemo(() => selectedTraceId ? extractTraceSpans([...entries, ...liveTraceEntries]).filter((span) => span.traceId === selectedTraceId) : [], [entries, liveTraceEntries, selectedTraceId])
   const traceGroups = useMemo(() => {
     const groups = new Map<string, TraceSpan[]>()
     for (const span of traceSpans) {
@@ -269,6 +350,7 @@ export function ObservabilityPanel() {
       groups.set(span.traceId, list)
     }
     return Array.from(groups.entries()).map(([traceId, spans]) => ({ traceId, spans }))
+      .sort((a, b) => b.spans[b.spans.length - 1].startMs - a.spans[a.spans.length - 1].startMs)
   }, [traceSpans])
   const correlatedRequests = useMemo(() => traceSpans.filter((span) => span.http?.url || span.correlationId).slice(0, 20), [traceSpans])
 
@@ -457,7 +539,7 @@ export function ObservabilityPanel() {
 
       {/* ── Log entries table ───────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        {traceGroups.length > 0 && (
+        {(traceGroups.length > 0 || selectedTraceId) && (
           <div className="border-b border-border-1 bg-surface-0 p-3">
             <div className="mb-2 flex items-center gap-2">
               <Activity size={12} className="text-accent" />
@@ -465,27 +547,32 @@ export function ObservabilityPanel() {
               <span className="text-[10px] text-text-4">{traceGroups.length} trace(s), {traceSpans.length} span(s)</span>
             </div>
             <div className="flex max-h-52 flex-col gap-2 overflow-y-auto">
-              {traceGroups.slice(0, 8).map(({ traceId, spans }) => {
+              {traceGroups.slice(0, 50).map(({ traceId, spans }) => {
                 const minStart = Math.min(...spans.map((span) => span.startMs))
                 const maxEnd = Math.max(...spans.map((span) => span.startMs + Math.max(span.durationMs, 1)))
                 const total = Math.max(maxEnd - minStart, 1)
+                const linked = debugRunForTrace(spans, debugRuns, debugRunOrder, debugSessions)
                 return (
                   <div key={traceId} className="rounded border border-border-1 bg-surface-1 p-2">
                     <div className="mb-1 flex items-center gap-2">
                       <button
-                        onClick={() => setFilters((p) => ({ ...p, correlationId: spans.find((span) => span.correlationId)?.correlationId || traceId }))}
-                        className="font-mono text-[10px] text-accent hover:underline"
+                        onClick={() => { setSelectedTraceId(traceId); setSelectedSpanId('') }}
+                        title="Open distributed trace"
+                        className="inline-flex items-center gap-1 font-mono text-[10px] text-accent hover:underline"
                       >
+                        {linked && <Bug size={11} />}
                         {traceId}
                       </button>
                       <span className="text-[10px] text-text-4">{spans.length} spans · {Math.round(total)}ms</span>
                     </div>
-                    {spans.map((span) => {
+                    {traceTreeRows(spans).map(({ span, depth }, index) => {
                       const left = ((span.startMs - minStart) / total) * 100
                       const width = Math.max((Math.max(span.durationMs, 1) / total) * 100, 1)
                       return (
-                        <div key={span.spanId} className="grid grid-cols-[170px_1fr_56px] items-center gap-2 py-0.5">
-                          <span className="truncate font-mono text-[9px] text-text-3" title={span.name}>{span.name}</span>
+                        <div key={`${span.spanId}-${index}`} className="grid grid-cols-[170px_1fr_56px] items-center gap-2 py-0.5">
+                          <span className="min-w-0 truncate font-mono text-[9px] text-text-3" style={{ paddingLeft: `${Math.min(depth, 8) * 12}px` }} title={`${span.service}: ${span.name}`} aria-label={`${span.name}, level ${depth + 1}`}>
+                            {depth > 0 && <span className="mr-1 text-text-4" aria-hidden="true">↳</span>}{span.name}
+                          </span>
                           <div className="relative h-3 rounded bg-surface-2">
                             <div className={cn('absolute top-0 h-3 rounded', span.status.toUpperCase().includes('ERROR') ? 'bg-error' : 'bg-accent')} style={{ left: `${left}%`, width: `${width}%` }} />
                           </div>
@@ -497,6 +584,17 @@ export function ObservabilityPanel() {
                 )
               })}
             </div>
+            {selectedTraceId && <DistributedTraceDetail
+              traceId={selectedTraceId}
+              spans={selectedTraceSpans}
+              selectedSpanId={selectedSpanId}
+              onSelectSpan={setSelectedSpanId}
+              onClose={() => setSelectedTraceId('')}
+              onFilterLogs={() => setFilters((previous) => ({ ...previous, correlationId: selectedTraceId }))}
+              runs={debugRuns}
+              runOrder={debugRunOrder}
+              sessions={debugSessions}
+            />}
             {correlatedRequests.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {correlatedRequests.map((span) => (

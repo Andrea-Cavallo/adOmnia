@@ -10,6 +10,7 @@ import { DEFAULT_RUN_DRAFT, runRequest } from './goStudioRunDraft'
 import { ToolchainDialog } from './GoStudioToolchains'
 import { GoStudioDependencies } from './GoStudioDependencies'
 import { GoStudioDependencyGraph } from './GoStudioDependencyGraph'
+import { GoStudioADRLinks } from './GoStudioADRLinks'
 import { GoStudioRuntimeEnrichment } from './GoStudioRuntimeEnrichment'
 import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
@@ -188,6 +189,7 @@ export function GoStudioPanel() {
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [dependencyGraphOpen, setDependencyGraphOpen] = useState(false)
+  const [adrLinksOpen, setADRLinksOpen] = useState(false)
   const [runtimeEnrichmentOpen, setRuntimeEnrichmentOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -699,6 +701,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
+      case 'tools.adrLinks': return setADRLinksOpen(true)
       case 'tools.runtimeEnrichment': return setRuntimeEnrichmentOpen(true)
     }
   }
@@ -764,6 +767,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <GoStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
+      <GoStudioADRLinks open={adrLinksOpen} sessionId={activeSession.id} onClose={() => setADRLinksOpen(false)} />
       <GoStudioRuntimeEnrichment open={runtimeEnrichmentOpen} session={activeSession} onClose={() => setRuntimeEnrichmentOpen(false)} />
       <GoStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />
       <GoStudioCommitDialog sessionId={activeSession.id} open={vcsDialog === 'commit'} onClose={() => setVcsDialog(null)} onResolveConflicts={() => setVcsDialog('conflicts')} />
