@@ -202,6 +202,15 @@ pause and explains it.
 - **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
 - **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
 - **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Error Handling Intelligence
+
+- **Open it.** *View → Error Handling Intelligence*, then **Analyze**. Every module is loaded with `go/packages` (it runs `go list`, so the project must be trusted) and checked with full type information; nothing is sent anywhere.
+- **Problems, grouped by rule.** Returned error ignored; error discarded with `_` (not in tests); unhandled error (assigned, then overwritten or forgotten before any check — a rewrite in another `if`/`else` branch does not count); `:=` shadowing an outer `err` that is read after the block; errors formatted with `%v`/`%s` instead of wrapped with `%w`; `%w` with a non-error; `err.Error()` passed to a constructor; `==` with a sentinel instead of `errors.Is`; type assertions and type switches instead of `errors.As`; `errors.As` with a target that is not a pointer to an error type; errors from other packages returned without context; `panic` in library code; `recover()` that has no effect or swallows the panic; `return nil, nil`.
+- **One-click fixes.** *Wrap with %w*, *Use errors.Is* (adds the import) and *Wrap with context*, which generates `fmt.Errorf("read file: %w", err)` from the failing call. A fix is applied to the open buffer (unsaved, undoable) only if the code still matches the analysis.
+- **Sentinel errors.** Every package-level error variable with its message and its uses: `errors.Is` checks, `==` comparisons, `case` clauses, returns and wrapping. Each use opens the code.
+- **Error types.** Every type implementing `error`, whether it has `Unwrap`/`Is`/`As`, the errors it holds (with a warning when it holds one but has no `Unwrap`) and where it is created, matched with `errors.As` or asserted.
+- **Error paths.** For each function of the file in the editor (or any file), every `return` classified by where its error comes from: `nil`, a new error, a wrap with `%w`, a sentinel, a typed error or an error propagated from a named call.
+
 ## Fuzzing Studio
 
 - **Open it.** *View → Fuzzing Studio* lists every `func FuzzXxx(f *testing.F)` of the project. Nothing runs until you press **Fuzz** or **Replay**, and both need a trusted project.

@@ -1470,3 +1470,8 @@ func (g *GoIDE) DeleteStudioWorkspace(id string) (goide.StudioWorkspaces, error)
 func (g *GoIDE) SetActiveStudioWorkspace(id string) (goide.StudioWorkspaces, error) {
 	return g.service.SetActiveStudioWorkspace(id)
 }
+
+// AnalyzeErrorHandling analizza la gestione degli errori del progetto (richiede un progetto autorizzato).
+func (g *GoIDE) AnalyzeErrorHandling(sessionID string) (goide.ErrorHandlingReport, error) {
+	return g.service.AnalyzeErrorHandling(sessionID)
+}

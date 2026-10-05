@@ -413,6 +413,18 @@ export async function loadGoIDETrace(sessionId: string, relativePath: string): P
   return GoIDEBindings.LoadTrace(sessionId, relativePath)
 }
 
+// --- Error Handling Intelligence ----------------------------------------------
+
+export type GoIDEErrorReport = Awaited<ReturnType<typeof GoIDEBindings.AnalyzeErrorHandling>>
+export type GoIDEErrorFinding = GoIDEErrorReport['findings'][number]
+export type GoIDEErrorFix = NonNullable<GoIDEErrorFinding['fix']>
+export type GoIDEErrorLocation = GoIDEErrorFinding['location']
+
+/** Analizza la gestione degli errori di ogni modulo (go/packages: richiede un progetto autorizzato). */
+export async function analyzeGoIDEErrorHandling(sessionId: string): Promise<GoIDEErrorReport> {
+  return GoIDEBindings.AnalyzeErrorHandling(sessionId)
+}
+
 // --- Fuzzing Studio -------------------------------------------------------------
 
 export type GoIDEFuzzTarget = Awaited<ReturnType<typeof GoIDEBindings.ListFuzzTargets>>[number]

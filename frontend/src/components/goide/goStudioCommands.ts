@@ -12,7 +12,7 @@ export type GoStudioCommandId =
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
-  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -126,6 +126,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.trace', menu: 'view', label: 'Go Trace' },
   { id: 'view.sonar', menu: 'view', label: 'SonarQube' },
   { id: 'view.fuzz', menu: 'view', label: 'Fuzzing Studio' },
+  { id: 'view.errorHandling', menu: 'view', label: 'Error Handling Intelligence' },
   { id: 'view.vulnerabilities', menu: 'view', label: 'Security (Code and Dependencies)' },
   { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
@@ -235,6 +236,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.a0Chat', menu: 'tools', label: 'Open a0' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'tools.dependencyGraph', menu: 'tools', label: 'Dependency Graph…' },
+  { id: 'tools.adrLinks', menu: 'tools', label: 'Architecture Decisions…' },
   { id: 'tools.runtimeEnrichment', menu: 'tools', label: 'Runtime Enrichment…' },
   { id: 'vcs.commit', menu: 'git', label: 'Commit…', binding: { key: 'k', mod: true } },
   { id: 'vcs.history', menu: 'git', label: 'Show File History…' },
