@@ -40,6 +40,7 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 import './goStudioChrome.css'
 import { GoStudioCopilotDialog } from './GoStudioCopilotDialog'
+import { GoStudioMilkDialog } from './GoStudioMilkDialog'
 import { useGoStudioCopilot } from './useGoStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
@@ -696,8 +697,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'tools.copilotChat':
         useGoStudioAssistantStore.getState().open('copilot')
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
-      case 'tools.a0Chat':
-        useGoStudioAssistantStore.getState().open('a0')
+      case 'tools.milkChat':
+        useGoStudioAssistantStore.getState().open('milk')
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
@@ -787,6 +788,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioBreakpointsDialog sessionId={activeSession.id} />
       <GoStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
       <GoStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
+      <GoStudioMilkDialog />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
       <GoStudioQualityDialog session={activeSession} open={qualityOpen} onClose={() => setQualityOpen(false)} />

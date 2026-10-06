@@ -13,6 +13,7 @@ import * as GitSync from "./gitsync.js";
 import * as GoIDE from "./goide.js";
 import * as MCPClient from "./mcpclient.js";
 import * as MCPServerGenerator from "./mcpservergenerator.js";
+import * as Milk from "./milk.js";
 import * as OASLint from "./oaslint.js";
 import * as PluginManager from "./pluginmanager.js";
 import * as TemplateStore from "./templatestore.js";
@@ -31,6 +32,7 @@ export {
     GoIDE,
     MCPClient,
     MCPServerGenerator,
+    Milk,
     OASLint,
     PluginManager,
     TemplateStore,

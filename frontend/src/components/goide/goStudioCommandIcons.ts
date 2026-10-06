@@ -234,7 +234,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'tools.plugins': icon(Plug),
   'tools.copilot': icon(Sparkles),
   'tools.copilotChat': icon(Sparkles),
-  'tools.a0Chat': icon(Bot),
+  'tools.milkChat': icon(Bot),
   'tools.copilotCompletions': icon(Sparkles),
 
   'vcs.commit': icon(GitCommitHorizontal),

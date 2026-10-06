@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.a0Chat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -236,7 +236,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
-  { id: 'tools.a0Chat', menu: 'tools', label: 'Open a0' },
+  { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'tools.dependencyGraph', menu: 'tools', label: 'Dependency Graph…' },
   { id: 'tools.adrLinks', menu: 'tools', label: 'Architecture Decisions…' },

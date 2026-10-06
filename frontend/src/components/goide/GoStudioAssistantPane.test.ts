@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest'
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
 
 describe('Go Studio right assistant column', () => {
-  it('hosts both Copilot and a0 as closable tool-window choices', () => {
+  it('hosts both Copilot and milk as closable tool-window choices', () => {
     const pane = source('src/components/goide/GoStudioSidePane.tsx')
     const stripe = source('src/components/goide/GoStudioToolStripes.tsx')
     expect(pane).toContain("label: 'Copilot'")
-    expect(pane).toContain("label: 'a0'")
+    expect(pane).toContain("label: 'milk'")
     expect(stripe).toContain("toggleAssistant('copilot')")
-    expect(stripe).toContain("toggleAssistant('a0')")
+    expect(stripe).toContain("toggleAssistant('milk')")
   })
 
   it('removes the old global floating assistant', () => {

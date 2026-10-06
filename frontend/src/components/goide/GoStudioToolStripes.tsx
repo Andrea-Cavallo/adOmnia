@@ -1,4 +1,6 @@
-import { Bookmark, Bot, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { Bookmark, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { MilkLogo } from './GoStudioMilkDialog'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
@@ -17,7 +19,7 @@ const BADGE_CLASS: Record<BadgeTone, string> = {
 
 interface StripeButtonProps {
   label: string
-  icon: LucideIcon
+  icon: ComponentType<{ size?: number; strokeWidth?: number }>
   pressed: boolean
   badge?: BadgeTone | null
   onClick: () => void
@@ -120,7 +122,7 @@ export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps
     <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
       <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen && !assistantPane} onClick={() => { useGoStudioAssistantStore.getState().close(); updateLayout({ structureOpen: !!assistantPane || !structureOpen }) }} />
       <StripeButton label="Copilot Chat" icon={Sparkles} pressed={structureOpen && assistantPane === 'copilot'} onClick={() => toggleAssistant('copilot')} />
-      <StripeButton label="a0" icon={Bot} pressed={structureOpen && assistantPane === 'a0'} onClick={() => toggleAssistant('a0')} />
+      <StripeButton label="milk" icon={MilkLogo} pressed={structureOpen && assistantPane === 'milk'} onClick={() => toggleAssistant('milk')} />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
     </nav>
   )

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type GoStudioAssistantPane = 'copilot' | 'a0' | null
+export type GoStudioAssistantPane = 'copilot' | 'milk' | 'a0' | null
 
 interface GoStudioAssistantState {
   pane: GoStudioAssistantPane
