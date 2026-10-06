@@ -1,5 +1,6 @@
-// Package kube drives kubectl for read-only cluster exploration: contexts,
-// namespaces and pods. Every command is explicit — nothing is inferred from a
+// Package kube drives kubectl for cluster exploration (contexts, namespaces,
+// pods, deployments, services, config maps, secret metadata) and for the few
+// actions a developer runs by hand: exec, file copy and port forward. Every command is explicit — nothing is inferred from a
 // kube context the user did not choose — and runs only when the user acts.
 //
 // All output is parsed in-process from `kubectl ... -o json`; `kubectl` is
@@ -9,9 +10,11 @@ package kube
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -90,6 +93,11 @@ func withContext(args []string, contextName string) ([]string, error) {
 // run executes kubectl with the given context (empty means the current one)
 // and returns its stdout. stderr is folded into the returned error.
 func run(ctx context.Context, contextName string, args ...string) ([]byte, error) {
+	return runWith(ctx, contextName, nil, commandTimeout, args...)
+}
+
+// runWith is run with an optional stdin and a caller-chosen timeout.
+func runWith(ctx context.Context, contextName string, stdin io.Reader, timeout time.Duration, args ...string) ([]byte, error) {
 	if !Available() {
 		return nil, errors.New("kubectl is not installed or not on PATH")
 	}
@@ -97,11 +105,12 @@ func run(ctx context.Context, contextName string, args ...string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	runCtx, cancel := context.WithTimeout(ctx, commandTimeout)
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(runCtx, "kubectl", args...)
 	hideConsole(cmd)
+	cmd.Stdin = stdin
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -110,7 +119,7 @@ func run(ctx context.Context, contextName string, args ...string) ([]byte, error
 		if message == "" {
 			message = err.Error()
 		}
-		return nil, fmt.Errorf("kubectl %s: %s", strings.Join(args, " "), message)
+		return out, fmt.Errorf("kubectl %s: %s", args[0], message)
 	}
 	return out, nil
 }
@@ -126,7 +135,7 @@ func ListContexts(ctx context.Context) (ContextsResult, error) {
 	defer cancel()
 
 	var list struct {
-		Contexts       []struct {
+		Contexts []struct {
 			Name string `json:"name"`
 		} `json:"contexts"`
 		Current string `json:"current-context"`
@@ -318,13 +327,26 @@ func humanAgeAt(timestamp string, now time.Time) string {
 
 // ─── HTTP ────────────────────────────────────────────────────────────────────
 
+// decodePost accepts only POST with a JSON body; it answers the error itself.
+func decodePost(w http.ResponseWriter, r *http.Request, into any) bool {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
+		return false
+	}
+	if err := json.NewDecoder(r.Body).Decode(into); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return false
+	}
+	return true
+}
+
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-// RegisterHandlers mounts the read-only cluster endpoints on the sidecar mux.
+// RegisterHandlers mounts the cluster endpoints on the sidecar mux.
 func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/kube/tool", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]bool{"kubectl": Available()})
@@ -347,6 +369,97 @@ func RegisterHandlers(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"namespaces": namespaces, "error": ""})
+	})
+
+	mux.HandleFunc("/kube/resources", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		items, err := ListResources(r.Context(), q.Get("context"), q.Get("namespace"), q.Get("kind"))
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items, "error": ""})
+	})
+
+	// Everything below acts on the cluster or the machine: POST only.
+	mux.HandleFunc("/kube/exec", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			PodTarget
+			Command string `json:"command"`
+		}
+		if !decodePost(w, r, &body) {
+			return
+		}
+		writeJSON(w, http.StatusOK, Exec(r.Context(), body.PodTarget, body.Command))
+	})
+
+	mux.HandleFunc("/kube/file/read", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			PodTarget
+			Path string `json:"path"`
+		}
+		if !decodePost(w, r, &body) {
+			return
+		}
+		data, err := ReadFile(r.Context(), body.PodTarget, body.Path)
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"data": base64.StdEncoding.EncodeToString(data), "size": len(data), "error": ""})
+	})
+
+	mux.HandleFunc("/kube/file/write", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			PodTarget
+			Path string `json:"path"`
+			Data string `json:"data"`
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, maxFileBytes*2)
+		if !decodePost(w, r, &body) {
+			return
+		}
+		data, err := base64.StdEncoding.DecodeString(body.Data)
+		if err == nil {
+			err = WriteFile(r.Context(), body.PodTarget, body.Path, data)
+		}
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"error": ""})
+	})
+
+	mux.HandleFunc("/kube/forwards", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"forwards": ListForwards()})
+	})
+
+	mux.HandleFunc("/kube/forwards/start", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Context    string `json:"context"`
+			Namespace  string `json:"namespace"`
+			Target     string `json:"target"`
+			LocalPort  int    `json:"localPort"`
+			RemotePort int    `json:"remotePort"`
+		}
+		if !decodePost(w, r, &body) {
+			return
+		}
+		forward, err := StartForward(body.Context, body.Namespace, body.Target, body.LocalPort, body.RemotePort)
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"id": forward.ID, "error": ""})
+	})
+
+	mux.HandleFunc("/kube/forwards/stop", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
+			return
+		}
+		StopForward(r.URL.Query().Get("id"))
+		writeJSON(w, http.StatusOK, map[string]string{"error": ""})
 	})
 
 	mux.HandleFunc("/kube/pods", func(w http.ResponseWriter, r *http.Request) {

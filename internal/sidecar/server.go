@@ -33,6 +33,7 @@ func Stop() {
 	// Live sources own processes and goroutines: closing the sidecar must not
 	// leave a kubectl or docker follow running.
 	logstream.CloseAll()
+	kube.CloseAll()
 	logindex.CloseAll()
 	if httpSidecar == nil {
 		return

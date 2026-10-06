@@ -15,9 +15,19 @@ import {
   startLiveSource,
   stopLiveSource,
 } from '@/lib/logstream-api'
+import { ConfigMapsView, DeploymentsView, ForwardsView, SecretsView, ServicesView } from './KubeResources'
+import { ForwardForm, PodExec, PodFiles } from './PodTools'
 
 const POLL_MS = 1500
 const MAX_LOG_LINES = 2000
+
+const TABS = ['pods', 'deployments', 'services', 'configmaps', 'secrets', 'forwards'] as const
+type Tab = typeof TABS[number]
+const TAB_LABEL: Record<Tab, string> = {
+  pods: 'Pods', deployments: 'Deployments', services: 'Services', configmaps: 'ConfigMaps', secrets: 'Secrets', forwards: 'Port forwards',
+}
+const POD_TOOLS = ['logs', 'exec', 'files', 'forward'] as const
+type PodTool = typeof POD_TOOLS[number]
 
 const SELECT = 'h-7 rounded border border-border-2 bg-surface-0 px-2 text-xs text-text-1 outline-none focus:border-accent/50'
 
@@ -43,6 +53,9 @@ export function KubePanel() {
   const [selectedPod, setSelectedPod] = useState<KubePod | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<Tab>('pods')
+  const [podTool, setPodTool] = useState<PodTool>('logs')
+  const [reloadKey, setReloadKey] = useState(0)
 
   const loadContexts = useCallback(async () => {
     if (!port) return
@@ -103,6 +116,7 @@ export function KubePanel() {
 
   const refresh = async () => {
     setError('')
+    setReloadKey((key) => key + 1)
     if (context && namespace) void loadPods(context, namespace)
     else if (context) void loadNamespaces(context)
     else void loadContexts()
@@ -134,14 +148,34 @@ export function KubePanel() {
           {namespaces.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <div className="flex-1" />
-        <button onClick={() => void refresh()} disabled={busy} className="flex h-7 items-center gap-1.5 rounded border border-border-2 px-2 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40" title="Refresh pods">
+        <button onClick={() => void refresh()} disabled={busy} className="flex h-7 items-center gap-1.5 rounded border border-border-2 px-2 text-[10px] text-text-2 hover:text-text-1 disabled:opacity-40" title="Refresh">
           <RefreshCw size={11} className={busy ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
+      <div role="tablist" className="flex items-center gap-0.5 border-b border-border-1 bg-surface-1 px-2">
+        {TABS.map((id) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={cn('-mb-px border-b-2 px-2.5 py-1.5 text-[11px] transition-colors', tab === id ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1')}
+          >
+            {TAB_LABEL[id]}
+          </button>
+        ))}
+      </div>
+
       {error && <div className="border-b border-border-1 bg-red-500/5 px-3 py-1.5 text-[11px] text-red-400">{error}</div>}
 
-      <div className="flex-1 flex min-h-0">
+      {tab === 'deployments' && <DeploymentsView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
+      {tab === 'services' && <ServicesView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
+      {tab === 'configmaps' && <ConfigMapsView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
+      {tab === 'secrets' && <SecretsView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
+      {tab === 'forwards' && <ForwardsView reloadKey={reloadKey} />}
+
+      {tab === 'pods' && <div className="flex-1 flex min-h-0">
         <div className="flex-1 min-w-0 overflow-auto">
           <table className="w-full text-left text-[11px]">
             <thead className="sticky top-0 bg-surface-1 text-text-4">
@@ -184,15 +218,53 @@ export function KubePanel() {
         </div>
 
         {selectedPod && (
-          <aside className="w-80 shrink-0 border-l border-border-1 bg-surface-1">
+          <aside className="flex w-96 shrink-0 flex-col border-l border-border-1 bg-surface-1">
             <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
               <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-1" title={selectedPod.name}>{selectedPod.name}</span>
               <button onClick={() => setSelectedPod(null)} className="grid h-6 w-6 place-items-center rounded text-text-4 hover:bg-surface-2 hover:text-text-1" title="Close"><X size={12} /></button>
             </div>
-            <PodLogs pod={selectedPod} context={context} namespace={namespace} />
+            <div role="tablist" className="flex gap-0.5 border-b border-border-1 px-2">
+              {POD_TOOLS.map((id) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={podTool === id}
+                  onClick={() => setPodTool(id)}
+                  className={cn('-mb-px border-b-2 px-2 py-1 text-[10px] capitalize', podTool === id ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1')}
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
+            {podTool === 'logs' && <PodLogs key={selectedPod.name} pod={selectedPod} context={context} namespace={namespace} />}
+            {podTool !== 'logs' && podTool !== 'forward' && (
+              <PodContainerTool key={selectedPod.name} pod={selectedPod} context={context} namespace={namespace} tool={podTool} />
+            )}
+            {podTool === 'forward' && (
+              <ForwardForm key={selectedPod.name} context={context} namespace={namespace} target={`pod/${selectedPod.name}`} onStarted={() => setTab('forwards')} />
+            )}
           </aside>
         )}
-      </div>
+      </div>}
+    </div>
+  )
+}
+
+/** Exec and file copy share the container picker. */
+function PodContainerTool({ pod, context, namespace, tool }: { pod: KubePod; context: string; namespace: string; tool: 'exec' | 'files' }) {
+  const [container, setContainer] = useState(pod.containers[0] ?? '')
+  const target = { context, namespace, pod: pod.name, container }
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {pod.containers.length > 1 && (
+        <div className="flex items-center gap-1.5 border-b border-border-1 px-3 py-2">
+          <label className="text-[10px] uppercase tracking-wider text-text-4">Container</label>
+          <select value={container} onChange={(e) => setContainer(e.target.value)} className={cn(SELECT, 'min-w-[120px]')}>
+            {pod.containers.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </div>
+      )}
+      {tool === 'exec' ? <PodExec key={container} target={target} /> : <PodFiles target={target} />}
     </div>
   )
 }

@@ -25,7 +25,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
-| **P3** | Remote ed estensibilità | 25 | 2 |
+| **P3** | Remote ed estensibilità | 18 | 2 |
 | **P4** | AI e intelligenza del workspace | 178 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
@@ -383,13 +383,13 @@ _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 - [x] Namespace selector. — *Dropdown namespace alimentato da `kubectl get namespaces` per il contesto scelto.*
 - [x] Pod viewer. — *Tabella pod (ready, status, restart, età, node) da `kubectl get pods -o json`, parsing in-app.*
 - [x] Logs. — *Dal pod viewer si seleziona container e si fa stream con `kubectl logs -f` (logstream riusato) nel pannello, con stop e buffer limitato.*
-- [ ] Exec.
-- [ ] Port forward.
-- [ ] Copy file.
-- [ ] Deployment overview.
-- [ ] Service overview.
-- [ ] ConfigMap.
-- [ ] Secret metadata senza mostrare valori di default.
+- [x] Exec. — *Tab Exec del pod: comando one-shot via `kubectl exec -- sh -c`, timeout 60 s, output limitato all'ultimo MB, storico delle ultime 20 run.*
+- [x] Port forward. — *Da pod o service, solo su 127.0.0.1; tab Port forwards con stato live e stop; chiusi con il sidecar (internal/kube/portforward.go).*
+- [x] Copy file. — *Tab Files del pod: download (salvataggio nativo) e upload fino a 16 MB via `cat`; il path arriva alla shell come `$1`, mai interpolato.*
+- [x] Deployment overview. — *Tab Deployments: ready/desired, up-to-date, available, età, immagini.*
+- [x] Service overview. — *Tab Services: tipo, cluster/external IP, porte, selector, port forward dall'inspector.*
+- [x] ConfigMap. — *Tab ConfigMaps con inspector chiave → valore.*
+- [x] Secret metadata senza mostrare valori di default. — *Tab Secrets: solo nomi delle chiavi e dimensioni; i valori sono scartati nel parser Go (test `TestParseSecretsDropsValues`).*
 - [ ] Attach remote debugger.
 - [ ] Remote profile.
 - [ ] Remote trace.

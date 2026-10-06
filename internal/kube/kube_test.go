@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -156,5 +158,59 @@ func TestWithContext(t *testing.T) {
 	}
 	if len(args) != 2 {
 		t.Fatalf("expected no context flag, got %+v", args)
+	}
+}
+
+func TestParseSecretsDropsValues(t *testing.T) {
+	raw := []byte(`{"items":[{"metadata":{"name":"db"},"type":"Opaque","data":{"password":"c2VjcmV0","user":"YWRtaW4="}}]}`)
+	secrets, err := parseSecrets(raw)
+	if err != nil {
+		t.Fatalf("parseSecrets: %v", err)
+	}
+	if len(secrets) != 1 || len(secrets[0].Keys) != 2 {
+		t.Fatalf("unexpected secrets: %+v", secrets)
+	}
+	if secrets[0].Keys[0] != (SecretKey{Name: "password", Bytes: 6}) || secrets[0].Keys[1] != (SecretKey{Name: "user", Bytes: 5}) {
+		t.Fatalf("unexpected keys: %+v", secrets[0].Keys)
+	}
+	if encoded := fmt.Sprintf("%+v", secrets); strings.Contains(encoded, "c2VjcmV0") || strings.Contains(encoded, "secret") {
+		t.Fatalf("secret value leaked: %s", encoded)
+	}
+}
+
+func TestParseDeploymentsAndServices(t *testing.T) {
+	deployments, err := parseDeployments([]byte(`{"items":[{"metadata":{"name":"api"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"api"}},"template":{"spec":{"containers":[{"image":"api:1.2"}]}}},"status":{"readyReplicas":2,"updatedReplicas":3,"availableReplicas":2}}]}`))
+	if err != nil || len(deployments) != 1 || deployments[0].Ready != "2/3" || deployments[0].Images[0] != "api:1.2" {
+		t.Fatalf("deployments: %+v %v", deployments, err)
+	}
+	services, err := parseServices([]byte(`{"items":[{"metadata":{"name":"api"},"spec":{"type":"ClusterIP","clusterIP":"10.0.0.1","ports":[{"name":"http","port":80,"targetPort":"http","protocol":"TCP"},{"port":9090,"targetPort":9090}]}}]}`))
+	if err != nil || len(services) != 1 || services[0].Ports[0].TargetPort != "http" || services[0].Ports[1].TargetPort != "9090" {
+		t.Fatalf("services: %+v %v", services, err)
+	}
+}
+
+func TestStartForwardValidation(t *testing.T) {
+	if !Available() {
+		t.Skip("kubectl not installed")
+	}
+	cases := []struct {
+		target        string
+		local, remote int
+	}{
+		{"deploy/api", 8080, 80}, {"pod/", 8080, 80}, {"pod/api", 0, 80}, {"svc/api", 8080, 70000},
+	}
+	for _, c := range cases {
+		if _, err := StartForward("", "default", c.target, c.local, c.remote); err == nil {
+			t.Fatalf("expected an error for %+v", c)
+		}
+	}
+}
+
+func TestRemotePathRejectsControlChars(t *testing.T) {
+	if _, err := remotePath("/tmp/a\nb"); err == nil {
+		t.Fatal("expected control characters to be rejected")
+	}
+	if _, err := remotePath("  "); err == nil {
+		t.Fatal("expected an empty path to be rejected")
 	}
 }

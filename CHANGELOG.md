@@ -6,6 +6,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Kubernetes Studio, beyond pods:** tabs for Deployments (ready/desired, images), Services (type, IPs, ports, selector), ConfigMaps (full data) and Secrets (key names and sizes only — values are dropped in the backend and never reach the UI). From a pod: run one-shot commands in a container (`sh -c`, 60 s, last 1 MB of output), download or upload single files (up to 16 MB), and start a port forward. Services forward too. Every forward listens on 127.0.0.1 only, shows its live status in *Port forwards* and stops with the app.
+
+### Fixed
+- **Kubernetes Studio context and namespace pickers** read the backend's `{ name }` objects as names: the selectors showed `[object Object]` and never preselected the current context.
+
 ## [0.9.60] - 2026-10-06
 
 ### Added
