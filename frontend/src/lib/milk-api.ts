@@ -55,6 +55,7 @@ export interface MilkPermissionEvent {
 export const getMilkStatus = (): Promise<MilkStatus> => MilkBindings.Status()
 export const getMilkSettings = (): Promise<MilkSettings> => MilkBindings.Settings()
 export const saveMilkSettings = (settings: MilkSettings): Promise<MilkSettings> => MilkBindings.SaveSettings(settings)
+export const installMilk = (): Promise<MilkStatus> => MilkBindings.Install()
 export const restartMilk = (): Promise<void> => MilkBindings.Restart()
 export const getMilkLog = (): Promise<string[]> => MilkBindings.Log()
 export const setMilkWorkspace = (root: string): Promise<void> => MilkBindings.SetActiveWorkspace(root)

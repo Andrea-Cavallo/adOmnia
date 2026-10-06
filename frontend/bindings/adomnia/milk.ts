@@ -29,11 +29,20 @@ export function CancelSession(sessionID: string): $CancellablePromise<void> {
 }
 
 /**
+ * Install scarica e installa l'ultima release di milk dal repo upstream.
+ */
+export function Install(): $CancellablePromise<milk$0.Status> {
+    return $Call.ByID(1880388504).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * Log restituisce le ultime righe di log del processo.
  */
 export function Log(): $CancellablePromise<string[]> {
     return $Call.ByID(657099561).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
@@ -42,7 +51,7 @@ export function Log(): $CancellablePromise<string[]> {
  */
 export function Prompt(request: milk$0.PromptRequest): $CancellablePromise<milk$0.PromptResponse> {
     return $Call.ByID(1998047459, request).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -72,7 +81,7 @@ export function Restart(): $CancellablePromise<void> {
  */
 export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(4063823965, settings).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -88,7 +97,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
  */
 export function Settings(): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(3002270608).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -97,12 +106,12 @@ export function Settings(): $CancellablePromise<milk$0.Settings> {
  */
 export function Status(): $CancellablePromise<milk$0.Status> {
     return $Call.ByID(3201629911).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType0($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = milk$0.PromptResponse.createFrom;
-const $$createType2 = milk$0.Settings.createFrom;
-const $$createType3 = milk$0.Status.createFrom;
+const $$createType0 = milk$0.Status.createFrom;
+const $$createType1 = $Create.Array($Create.Any);
+const $$createType2 = milk$0.PromptResponse.createFrom;
+const $$createType3 = milk$0.Settings.createFrom;

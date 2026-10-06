@@ -3,6 +3,7 @@ import {
   cancelMilkPrompt,
   getMilkSettings,
   getMilkStatus,
+  installMilk,
   resetMilkSession,
   restartMilk,
   respondMilkPermission,
@@ -54,6 +55,8 @@ interface MilkState {
   saveSettings: (settings: MilkSettings) => Promise<boolean>
   setEnabled: (enabled: boolean) => Promise<boolean>
   restart: () => Promise<void>
+  /** Downloads the latest milk release from its repository, then enables and starts it. */
+  install: () => Promise<void>
   setDialogOpen: (open: boolean) => void
   setWorkspace: (root: string) => Promise<void>
   sendChat: (root: string, message: string) => Promise<void>
@@ -165,6 +168,12 @@ export const useMilkStore = create<MilkState>((set, get) => {
     },
 
     restart: async () => { await run(restartMilk) },
+    install: async () => {
+      await run(async () => {
+        const status = await installMilk()
+        set({ status, settings: await getMilkSettings() })
+      })
+    },
     setDialogOpen: (dialogOpen) => set({ dialogOpen, error: null }),
 
     setWorkspace: async (root) => {

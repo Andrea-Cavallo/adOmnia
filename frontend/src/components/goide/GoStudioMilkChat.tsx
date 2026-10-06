@@ -119,9 +119,9 @@ export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
         {!ready ? (
           <div className="mt-6 rounded-xl border border-border-1 bg-surface-0 p-3 text-center">
             <MilkLogo size={36} className="mx-auto mb-2" />
-            <p className="text-[11px] font-medium text-text-2">milk needs a working agent host.</p>
+            <p className="text-[11px] font-medium text-text-2">{status?.state === 'installing' ? 'Installing milk…' : status?.state === 'outdated' ? 'This milk is too old for gO Studio.' : status?.state === 'not-installed' ? 'milk is not installed yet.' : 'milk needs a working agent host.'}</p>
             <p className="mt-1 text-[9px] leading-4 text-text-4">{status?.message || 'Install milk (milk serve --acp) and enable it, then configure its agents in milk.'}</p>
-            <button type="button" onClick={() => useMilkStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[10px] font-semibold text-white"><Settings2 size={11} />Open settings</button>
+            <button type="button" onClick={() => useMilkStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[10px] font-semibold text-white"><Settings2 size={11} />{status?.state === 'not-installed' ? 'Install milk' : status?.state === 'outdated' ? 'Update milk' : 'Open settings'}</button>
           </div>
         ) : !thread?.messages.length ? (
           <div className="mt-4 text-center">

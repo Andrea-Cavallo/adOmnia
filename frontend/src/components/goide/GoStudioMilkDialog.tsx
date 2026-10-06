@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, ExternalLink } from 'lucide-react'
+import { AlertCircle, Download, ExternalLink } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import milkAvatar from '../../../../assets/images/milk-avatar.png'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
@@ -49,6 +49,8 @@ export function GoStudioMilkDialog() {
   }, [open, settings])
 
   if (!open || !draft) return null
+  const installing = status?.state === 'installing'
+  const missing = status?.state === 'not-installed' || status?.state === 'outdated'
 
   const save = async () => {
     if (await useMilkStore.getState().saveSettings(draft)) close()
@@ -78,10 +80,16 @@ export function GoStudioMilkDialog() {
           Agents, models and their keys stay in milk&apos;s own config (<span className="gs-mono">~/.milk</span>).
         </p>
         <div className="flex flex-wrap gap-2">
+          <GoStudioButton small variant={missing ? 'primary' : 'secondary'} icon={Download} loading={installing} disabled={busy || installing} onClick={() => void useMilkStore.getState().install()}>
+            {status?.state === 'not-installed' ? 'Install milk' : 'Update milk'}
+          </GoStudioButton>
           <button type="button" onClick={() => void Browser.OpenURL(MILK_REPO_URL)} className={BUTTON}><ExternalLink size={12} /> github.com/scoutme/milk</button>
           <button type="button" disabled={busy || !settings?.enabled} onClick={() => void useMilkStore.getState().restart()} className={BUTTON}>Restart</button>
           <button type="button" onClick={() => void getMilkLog().then(setLog)} className={BUTTON}>Show logs</button>
         </div>
+        <p className="text-[11.5px] text-text-4">
+          Install/Update downloads the newest release (v0.4.0 or later) from the milk repository, checks its SHA-256 and puts it where milk&apos;s own installer would.
+        </p>
         {log && <pre className="gs-surface gs-mono max-h-44 overflow-auto p-3 text-[11px] leading-5 text-text-3">{log.length ? log.join('\n') : 'No log lines yet.'}</pre>}
       </section>
 

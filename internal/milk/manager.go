@@ -1,6 +1,8 @@
 package milk
 
 import (
+	"adomnia/internal/netpolicy"
+
 	"bufio"
 	"context"
 	"errors"
@@ -25,6 +27,7 @@ const (
 	maxLogLines         = 400
 	maxPromptBytes      = 256 * 1024
 	checkStatusDebounce = 500 * time.Millisecond
+	installTimeout      = 10 * time.Minute
 )
 
 // ErrNotInstalled indica che il binario milk non è stato trovato nel PATH.
@@ -177,7 +180,23 @@ func (m *Manager) Start() error {
 		m.setStatus(func(status *Status) { status.State = state; status.Message = err.Error() })
 		return err
 	}
-	m.setStatus(func(status *Status) { status.State = StateStarting; status.Message = ""; status.Binary = binary })
+	version, err := installedVersion(binary)
+	if err == nil && !versionAtLeast(version, MinVersion) {
+		err = fmt.Errorf("milk %s is too old: gO Studio needs v%s or later (milk serve --acp). Update it from milk settings", version, MinVersion)
+		m.setStatus(func(status *Status) {
+			status.State = StateOutdated
+			status.Message = err.Error()
+			status.Binary = binary
+			status.Version = version
+		})
+		return err
+	}
+	m.setStatus(func(status *Status) {
+		status.State = StateStarting
+		status.Message = ""
+		status.Binary = binary
+		status.Version = version
+	})
 	if err := m.launch(binary, root); err != nil {
 		m.appendLog("start failed: " + err.Error())
 		m.setStatus(func(status *Status) { status.State = StateError; status.Message = err.Error() })
@@ -282,7 +301,9 @@ func (m *Manager) launch(binary, root string) error {
 	m.setStatus(func(status *Status) {
 		status.State = StateReady
 		status.Message = ""
-		status.Version = result.Info.Version
+		if result.Info.Version != "" {
+			status.Version = result.Info.Version
+		}
 	})
 	return nil
 }
@@ -544,6 +565,55 @@ func (m *Manager) RespondPermission(requestID string, allow bool) {
 		default:
 		}
 	}
+}
+
+// Install scarica l'ultima release di milk dal repo upstream (SHA-256 verificato)
+// nella cartella degli installer ufficiali, attiva milk e lo avvia. Se un altro
+// milk avrebbe la precedenza (es. uno vecchio nel PATH), salva il percorso nuovo.
+func (m *Manager) Install(ctx context.Context) (Status, error) {
+	m.mu.Lock()
+	if m.status.State == StateInstalling {
+		m.mu.Unlock()
+		return m.Status(), errors.New("milk is already being installed")
+	}
+	m.mu.Unlock()
+	destination, err := DefaultInstallPath()
+	if err != nil {
+		return m.Status(), err
+	}
+	m.Stop() // Windows non sostituisce un .exe in esecuzione
+	report := func(message string) {
+		m.setStatus(func(status *Status) { status.State = StateInstalling; status.Message = message })
+	}
+	report("Preparing…")
+	client := netpolicy.Client("milk", installTimeout)
+	tag, err := installRelease(ctx, client, destination, report)
+	if err != nil {
+		m.appendLog("install failed: " + err.Error())
+		m.setStatus(func(status *Status) { status.State = StateError; status.Message = err.Error() })
+		return m.Status(), err
+	}
+	m.appendLog("installed milk " + tag + " at " + destination)
+
+	settings := m.Settings()
+	settings.Enabled = true
+	if resolved, err := resolveBinary(settings); err != nil || !samePath(resolved, destination) {
+		settings.BinaryPath = destination
+	}
+	m.mu.Lock()
+	m.crashes = 0
+	m.mu.Unlock()
+	if _, err := m.SaveSettings(settings); err != nil {
+		return m.Status(), err
+	}
+	if err := m.Start(); err != nil {
+		return m.Status(), err
+	}
+	return m.Status(), nil
+}
+
+func samePath(a, b string) bool {
+	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
 }
 
 // Shutdown arresta il processo alla chiusura dell'app.

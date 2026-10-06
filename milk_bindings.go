@@ -45,6 +45,9 @@ func (m *Milk) SaveSettings(settings milk.Settings) (milk.Settings, error) {
 	return m.manager.SaveSettings(settings)
 }
 
+// Install scarica e installa l'ultima release di milk dal repo upstream.
+func (m *Milk) Install(ctx context.Context) (milk.Status, error) { return m.manager.Install(ctx) }
+
 // Restart riavvia il processo azzerando il contatore dei crash.
 func (m *Milk) Restart() error { return m.manager.Restart() }
 

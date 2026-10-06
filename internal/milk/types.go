@@ -9,6 +9,10 @@ const (
 	StateStarting     State = "starting"
 	StateReady        State = "ready"
 	StateError        State = "error"
+	// StateOutdated: il milk trovato non ha ancora `serve --acp`.
+	StateOutdated State = "outdated"
+	// StateInstalling: adOmnia sta scaricando una release di milk.
+	StateInstalling State = "installing"
 )
 
 // Status è lo stato pubblicato al frontend.

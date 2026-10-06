@@ -119,6 +119,16 @@ export enum State {
     StateStarting = "starting",
     StateReady = "ready",
     StateError = "error",
+
+    /**
+     * StateOutdated: il milk trovato non ha ancora `serve --acp`.
+     */
+    StateOutdated = "outdated",
+
+    /**
+     * StateInstalling: adOmnia sta scaricando una release di milk.
+     */
+    StateInstalling = "installing",
 };
 
 /**
