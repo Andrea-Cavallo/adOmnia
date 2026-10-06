@@ -134,3 +134,52 @@ func TestKillDuringSnapshotWritesKeepsEveryBuffer(t *testing.T) {
 		}
 	}
 }
+
+// Responsività con 10 file dirty sullo store reale (bbolt): ogni snapshot gira via IPC asincrono dopo
+// 750 ms di pausa nella digitazione, quindi deve chiudersi ben prima del debounce successivo; il
+// ripristino all'apertura deve essere percepito come immediato.
+func TestRecoveryLatencyWithTenDirtyFiles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("misura su disco")
+	}
+	const (
+		snapshotBudget = 150 * time.Millisecond
+		restoreBudget  = 300 * time.Millisecond
+	)
+	if err := storage.Open(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
+	manager := NewRecoveryManager(bboltRecoveryStore{})
+	manager.BindWorkspace("s", "ws-a")
+	manager.BindWorkspace("t", "ws-b")
+	padding := strings.Repeat("x", 64*1024)
+	var slowest time.Duration
+	for round := 0; round < 5; round++ {
+		for file := 0; file < killDirtyFiles; file++ {
+			start := time.Now()
+			if err := manager.Remember(SessionID([]string{"s", "t"}[file%2]), fmt.Sprintf("f%d.go", file), fmt.Sprintf("round %d\n%s", round, padding), ""); err != nil {
+				t.Fatal(err)
+			}
+			slowest = max(slowest, time.Since(start))
+		}
+	}
+	if slowest > snapshotBudget {
+		t.Fatalf("snapshot più lenta %v oltre %v", slowest, snapshotBudget)
+	}
+
+	start := time.Now()
+	restored := NewRecoveryManager(bboltRecoveryStore{})
+	if err := restored.Load(); err != nil {
+		t.Fatal(err)
+	}
+	entries := append(restored.List("s"), restored.List("t")...)
+	elapsed := time.Since(start)
+	if len(entries) != killDirtyFiles {
+		t.Fatalf("recuperati %d buffer su %d", len(entries), killDirtyFiles)
+	}
+	if elapsed > restoreBudget {
+		t.Fatalf("ripristino in %v oltre %v", elapsed, restoreBudget)
+	}
+	t.Logf("snapshot più lenta %v, ripristino di %d buffer in %v", slowest, killDirtyFiles, elapsed)
+}

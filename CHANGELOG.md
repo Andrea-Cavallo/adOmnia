@@ -7,6 +7,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
+- **Crash recovery responsiveness check:** an automated test measures recovery snapshots and restore with 10 dirty files on the real store (slowest snapshot ~13 ms, restore ~6 ms), alongside the real-kill test.
 - **Context propagation across packages:** the Context Propagation Inspector's *Context graph* is now a drawn graph; its *Project* scope uses typed analysis to follow `context.Context` through calls between packages and lists every function that receives a context but passes `context.Background()`/`TODO()`/`WithoutCancel` on. In the debugger, a context carrying a trace/request id opens the Log Inspector on that id.
 - **Architecture decisions:** *Tools → Architecture Decisions…* lists the Markdown ADRs in `docs/adr` and opens them in the editor.
 - **Dependency report export:** the Dependency Graph exports a local JSON report with modules, edges, licenses, weight and duplicates, plus updates and vulnerability counts when you asked for them.

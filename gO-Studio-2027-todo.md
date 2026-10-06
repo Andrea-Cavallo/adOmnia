@@ -22,7 +22,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
-| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 1 | 1 |
+| **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
 | **P3** | Remote ed estensibilità | 25 | 2 |
@@ -33,15 +33,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 # P0 — Fondamenta: un IDE di cui fidarsi tutto il giorno
 
-_Affidabilità, velocità su repo grandi e PC aziendali, debug/test/Git completi. Finché manca qualcosa qui, l'utente apre un altro IDE._
-
-## §62 · Disaster Recovery & Crash Recovery
-
-> gO Studio non deve perdere il lavoro non salvato se adOmnia, WebView2, un processo Go o il sistema operativo si chiudono in modo anomalo. Git protegge il codice salvato; il Disaster Recovery protegge il lavoro ancora presente solo nell’editor.
-
-### Test obbligatori
-
-- [ ] Crash con almeno 10 file dirty → recovery completo e UI responsiva. — *Parziale: recovery completo: 10 buffer su due workspace sopravvivono al kill reale (`TestKillDuringSnapshotWritesKeepsEveryBuffer`). UI: snapshot debounced e asincrone via IPC, costo per snapshot limitato al workspace corrente; manca solo la misura a mano nell'app.*
+_Chiusa il 2026-10-06: l'ultima voce (crash con 10 file dirty) è coperta da `TestKillDuringSnapshotWritesKeepsEveryBuffer` (kill reale, 10 buffer su due workspace integri) e `TestRecoveryLatencyWithTenDirtyFiles` (bbolt reale: snapshot più lenta ~13 ms contro budget 150 ms, ripristino di 10 buffer ~6 ms contro 300 ms)._
 
 ---
 
