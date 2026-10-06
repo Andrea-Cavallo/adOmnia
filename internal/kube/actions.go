@@ -100,7 +100,7 @@ func ReadFile(ctx context.Context, target PodTarget, path string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	out, err := runWith(ctx, target.Context, nil, execTimeout, append(args, "head", "-c", strconv.Itoa(maxFileBytes+1), path)...)
+	out, err := runWith(ctx, target.Context, nil, execTimeout, append(args, "head", "-c", strconv.Itoa(maxFileBytes+1), "--", path)...)
 	if err != nil {
 		return nil, err
 	}
