@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useRef } from 'react'
 import { Rail } from '@/components/layout/Rail'
 import { MainAreaRouter } from '@/components/layout/MainAreaRouter'
 import { StatusBar } from '@/components/layout/StatusBar'
@@ -6,18 +6,16 @@ import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
-import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DropOverlay } from '@/components/layout/DropOverlay'
 import { DropToast } from '@/components/layout/DropToast'
 import { PluginNotificationToast } from '@/components/plugins/PluginNotificationToast'
-import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
+import { WorkspaceSidebarColumn, loadSidebarModule } from '@/components/layout/WorkspaceSidebarColumn'
 import { useAppStore } from '@/stores/app'
 import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useFileDrop } from '@/hooks/useFileDrop'
 import { useSettingsStore } from '@/stores/settings'
-import { useUiTranslation } from '@/lib/uiI18n'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { markStartup, reportStartupPerformance } from '@/lib/startupPerformance'
 import { useDevLogsStore } from '@/stores/devLogs'
@@ -26,12 +24,6 @@ import { saveWorkspaceStartupHint } from '@/lib/startupHints'
 import { findSpatialFocusIndex, focusableElements, ownsArrowKey } from '@/lib/accessibility'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 
-const SIDEBAR_WIDTH_KEY = 'adomnia.sidebarWidth'
-let sidebarModulePromise: Promise<typeof import('@/components/layout/Sidebar')> | undefined
-function loadSidebarModule() {
-  return sidebarModulePromise ??= import('@/components/layout/Sidebar')
-}
-const Sidebar = React.lazy(() => loadSidebarModule().then((module) => ({ default: module.Sidebar })))
 // Restored API workspaces fetch their sidebar alongside bootstrap, rather than
 // waiting for React. A fresh Hub never requests this optional chunk.
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
@@ -44,23 +36,7 @@ const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioC
 const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
 const DevLogOverlay = React.lazy(() => import('@/components/ui/DevLogOverlay').then((module) => ({ default: module.DevLogOverlay })))
-const SIDEBAR_WIDTH_MIN = 180
-const SIDEBAR_WIDTH_MAX = 0.40
-
-function clampSidebarWidth(w: number): number {
-  return Math.max(SIDEBAR_WIDTH_MIN, Math.min(w, Math.round(window.innerWidth * SIDEBAR_WIDTH_MAX)))
-}
-
-function loadSidebarWidth(): number {
-  try {
-    const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY)
-    if (stored) return clampSidebarWidth(parseInt(stored, 10))
-  } catch { /* ignore */ }
-  return 256
-}
-
 function App() {
-  const tr = useUiTranslation()
   const { commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
   const devLogVisible  = useAppStore((s) => s.devToolsVisible)
@@ -76,10 +52,7 @@ function App() {
   useAppearance()
   useKeyboardShortcuts({ setCommandPaletteOpen })
 
-  const [sidebarWidth, setSidebarWidth] = useState<number>(loadSidebarWidth)
   const appRootRef = useRef<HTMLDivElement>(null)
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
-  const isDragging = useRef(false)
 
   useEffect(() => {
     // Dynamic import keeps the gO store out of the startup bundle (check:startup budget).
@@ -137,41 +110,6 @@ function App() {
     }
   }, [workspaceShellPhase, addDevLog])
 
-  const handleSidebarResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    dragRef.current = { startX: e.clientX, startWidth: sidebarWidth }
-    isDragging.current = true
-
-    const handleMove = (me: MouseEvent) => {
-      if (!dragRef.current) return
-      const newW = clampSidebarWidth(dragRef.current.startWidth + (me.clientX - dragRef.current.startX))
-      setSidebarWidth(newW)
-      try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(newW)) } catch { /* ignore */ }
-    }
-
-    const handleUp = () => {
-      isDragging.current = false
-      dragRef.current = null
-      document.removeEventListener('mousemove', handleMove)
-      document.removeEventListener('mouseup', handleUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    document.body.style.cursor = 'ew-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', handleMove)
-    document.addEventListener('mouseup', handleUp)
-  }, [sidebarWidth])
-
-  useEffect(() => {
-    const onResize = () => {
-      if (!isDragging.current) setSidebarWidth((w) => clampSidebarWidth(w))
-    }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
   return (
     <ErrorBoundary>
       <ThemeProvider>
@@ -189,21 +127,8 @@ function App() {
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             {!goStudioMaximized && <Rail />}
-            {/* Resizable sidebar wrapper — hidden on welcome hub */}
-            {showSidebar && (
-              <>
-                <div className="shrink-0 flex flex-col min-h-0 overflow-hidden" style={{ width: sidebarWidth }}>
-                  <Suspense fallback={<WorkspaceSidebarSkeleton quiet />}><Sidebar /></Suspense>
-                </div>
-                {/* Sidebar drag handle */}
-                <ResizeHandle
-                  label={tr('Drag to resize sidebar')}
-                  onMouseDown={handleSidebarResizeMouseDown}
-                  withLine={false}
-                  className="border-r border-border-1"
-                />
-              </>
-            )}
+            {/* Resizable collections sidebar — hidden on welcome hub */}
+            {showSidebar && <WorkspaceSidebarColumn />}
             <ErrorBoundary><MainAreaRouter /></ErrorBoundary>
           </div>
           {!goStudioMaximized && firstStableFrame && <Suspense fallback={null}><DebugBar /></Suspense>}

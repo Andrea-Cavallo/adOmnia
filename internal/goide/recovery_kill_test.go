@@ -136,15 +136,16 @@ func TestKillDuringSnapshotWritesKeepsEveryBuffer(t *testing.T) {
 }
 
 // Responsività con 10 file dirty sullo store reale (bbolt): ogni snapshot gira via IPC asincrono dopo
-// 750 ms di pausa nella digitazione, quindi deve chiudersi ben prima del debounce successivo; il
-// ripristino all'apertura deve essere percepito come immediato.
+// 750 ms di pausa nella digitazione, quindi deve chiudersi prima del debounce successivo; il
+// ripristino all'apertura deve essere percepito come immediato. I budget lasciano margine ai runner CI
+// con fsync lento (locale ~13 ms, Linux CI fino a ~160 ms): falliscono solo su una regressione reale.
 func TestRecoveryLatencyWithTenDirtyFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("misura su disco")
 	}
 	const (
-		snapshotBudget = 150 * time.Millisecond
-		restoreBudget  = 300 * time.Millisecond
+		snapshotBudget = 500 * time.Millisecond
+		restoreBudget  = 500 * time.Millisecond
 	)
 	if err := storage.Open(t.TempDir()); err != nil {
 		t.Fatal(err)

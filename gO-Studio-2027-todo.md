@@ -33,7 +33,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 
 # P0 — Fondamenta: un IDE di cui fidarsi tutto il giorno
 
-_Chiusa il 2026-10-06: l'ultima voce (crash con 10 file dirty) è coperta da `TestKillDuringSnapshotWritesKeepsEveryBuffer` (kill reale, 10 buffer su due workspace integri) e `TestRecoveryLatencyWithTenDirtyFiles` (bbolt reale: snapshot più lenta ~13 ms contro budget 150 ms, ripristino di 10 buffer ~6 ms contro 300 ms)._
+_Chiusa il 2026-10-06: l'ultima voce (crash con 10 file dirty) è coperta da `TestKillDuringSnapshotWritesKeepsEveryBuffer` (kill reale, 10 buffer su due workspace integri) e `TestRecoveryLatencyWithTenDirtyFiles` (bbolt reale: snapshot più lenta ~13 ms in locale e ~160 ms sulla CI Linux contro budget 500 ms, sotto il debounce di 750 ms; ripristino di 10 buffer ~6 ms contro 500 ms)._
 
 ---
 

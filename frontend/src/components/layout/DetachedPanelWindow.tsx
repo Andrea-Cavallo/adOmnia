@@ -12,6 +12,8 @@ import { closeAfterSavingOnRequest, closePanelWindow } from '@/lib/panel-windows
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
+import { WorkspaceSidebarColumn } from './WorkspaceSidebarColumn'
 import { panelFor } from './MainAreaRouter'
 import { usePanelLabel } from './panelLabel'
 
@@ -29,6 +31,9 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
   const { component, titleKey } = panelFor(rail)
   const label = usePanelLabel(rail, titleKey)
   const epoch = useModuleEpoch(rail)
+  const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
+  // The API Workspace is collections + request/response: its sidebar lives outside the panel, as in the main window.
+  const showSidebar = rail === 'collections' && hydrated && !sidebarCollapsed
   // Links from the code (Go Studio, other windows) reach this module here.
   useEffect(() => { startModuleActionListener() }, [])
   // Closing (X, Bring back, or quitting adOmnia) first writes the edits still queued here.
@@ -59,8 +64,11 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
             </button>
             <TitlebarWindowControls />
           </div>
-          <div key={epoch} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {rail === 'collections' && !hydrated ? <Loading /> : <Suspense fallback={<Loading />}>{component}</Suspense>}
+          <div className="flex min-h-0 flex-1">
+            {showSidebar && <WorkspaceSidebarColumn />}
+            <div key={epoch} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              {rail === 'collections' && !hydrated ? <Loading /> : <Suspense fallback={<Loading />}>{component}</Suspense>}
+            </div>
           </div>
         </div>
         <ConfirmDialogHost />
