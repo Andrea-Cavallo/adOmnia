@@ -83,6 +83,15 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const editorMode = useGoIDELspStore((state) => state.preferences.editorMode)
   const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(preference.matches)
+    update()
+    preference.addEventListener('change', update)
+    return () => preference.removeEventListener('change', update)
+  }, [])
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
@@ -225,6 +234,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       onMount={onMount}
       options={{
         automaticLayout: true,
+        // Avoid forcing the text onto a separate composited layer: WebKitGTK
+        // can rasterize it differently from normal browser text on that layer.
+        disableLayerHinting: true,
         fontSize,
         lineHeight: Math.round(fontSize * 1.65),
         fontLigatures,
@@ -239,6 +251,11 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },
         matchBrackets: 'always',
         scrollBeyondLastLine: false,
+        // Monaco owns scrolling: its device classifier preserves continuous input.
+        inertialScroll: !reducedMotion,
+        smoothScrolling: !reducedMotion,
+        cursorSmoothCaretAnimation: reducedMotion ? 'off' : 'on',
+        cursorBlinking: reducedMotion ? 'solid' : 'smooth',
         renderLineHighlight: 'line',
         readOnly: !!document.document.readOnly,
         glyphMargin: true,

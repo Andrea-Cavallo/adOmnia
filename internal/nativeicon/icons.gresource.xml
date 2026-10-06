@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/adomnia/icons">
+    <file alias="256x256/apps/adomnia.png">adOmnia_256x256.png</file>
+  </gresource>
+</gresources>

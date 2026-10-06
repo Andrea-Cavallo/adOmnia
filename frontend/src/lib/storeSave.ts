@@ -1,5 +1,6 @@
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 const pending = new Map<string, () => Promise<void>>()
+const writes = new Map<string, Promise<void>>()
 /** Keys whose data another window currently owns: saving them here would overwrite newer edits. */
 const suspended = new Set<string>()
 
@@ -14,6 +15,37 @@ export function setSavesSuspended(keys: readonly string[], value: boolean): void
       suspended.delete(key)
     }
   }
+}
+
+function reportSaveError(e: unknown): void {
+  window.dispatchEvent(new CustomEvent('adomnia:save-error', {
+    detail: e instanceof Error ? e.message : 'Save failed',
+  }))
+}
+
+/** Start immediately, serializing writes so an older snapshot cannot win. */
+export function immediateSave(key: string, fn: () => Promise<void>): void {
+  if (suspended.has(key)) return
+  // A queued debounced snapshot is older than this one: drop it.
+  clearTimeout(timers.get(key))
+  timers.delete(key)
+  pending.delete(key)
+  const previous = writes.get(key)
+  let write: Promise<void>
+  if (previous) {
+    write = previous.then(fn).catch(reportSaveError)
+  } else {
+    try {
+      write = fn().catch(reportSaveError)
+    } catch (e) {
+      reportSaveError(e)
+      return
+    }
+  }
+  writes.set(key, write)
+  void write.then(() => {
+    if (writes.get(key) === write) writes.delete(key)
+  })
 }
 
 // Default debounce delay, kept in sync with general.autoSaveIntervalMs by the
@@ -39,9 +71,7 @@ async function runSave(key: string): Promise<void> {
   try {
     await fn()
   } catch (e) {
-    window.dispatchEvent(new CustomEvent('adomnia:save-error', {
-      detail: e instanceof Error ? e.message : 'Save failed',
-    }))
+    reportSaveError(e)
   }
 }
 
@@ -49,5 +79,5 @@ async function runSave(key: string): Promise<void> {
 export async function flushPendingSaves(): Promise<void> {
   const keys = [...timers.keys()]
   keys.forEach((key) => clearTimeout(timers.get(key)))
-  await Promise.all(keys.map(runSave))
+  await Promise.all([...keys.map(runSave), ...writes.values()])
 }

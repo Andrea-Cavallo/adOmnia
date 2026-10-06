@@ -21,6 +21,15 @@ export function configureMonacoLoader(): void {
     },
   }
   loader.config({ monaco })
+
+  // CSS chunks can arrive before their local font files. Monaco caches glyph
+  // widths, so discard fallback-font measurements once the real fonts load.
+  // Keep this in the lazy Monaco module, not the application's startup path.
+  if (document.fonts) {
+    const remeasure = () => monaco.editor.remeasureFonts()
+    document.fonts.addEventListener('loadingdone', remeasure)
+    void document.fonts.ready.then(remeasure)
+  }
 }
 
 const DARK_COLORS: monaco.editor.IColors = {

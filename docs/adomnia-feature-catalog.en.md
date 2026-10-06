@@ -898,7 +898,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | G2.2 | **Embedded bbolt Database** | Single-file ACID key-value database with multiple buckets; auto-creation and migration. |
 | G2.3 | **HTTP Sidecar Go** | Local HTTP server on OS-random port for frontend↔backend communication. |
 | G2.4 | **Single Binary** | Self-contained desktop executable; no external runtime dependencies. |
-| G2.5 | **Configurable Titlebar** | Default frameless mode with app titlebar; on Linux explicit choice between native Wayland, XWayland, and system titlebar on restart. |
+| G2.5 | **Configurable Titlebar** | App or system titlebar on restart (Linux defaults to system). Linux uses the native session backend, Wayland or X11, without forcing XWayland; legacy XWayland settings load as app chrome. App titlebar controls are frontend-rendered, not GTK-themed native controls. System titlebar permits native theme shadows and rounded corners where supported. Settings changes start saving immediately, independently of the workspace autosave interval, with ordered writes. |
 | G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Stores: app, collections, environments, tabs, settings, devLogs, themes, plugin, browser-debug. |

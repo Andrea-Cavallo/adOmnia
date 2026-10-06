@@ -26,6 +26,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Error Handling Intelligence:** *View → Error Handling Intelligence* analyzes every module with full type information and groups problems by rule — ignored, discarded, unhandled and shadowed errors, `%v` instead of `%w`, `err.Error()` breaking the chain, `==` instead of `errors.Is`, type assertions instead of `errors.As`, invalid `errors.As` targets, errors returned without context, `panic` in library code, ineffective or swallowing `recover()`, `return nil, nil`. One-click fixes wrap with `%w`, switch to `errors.Is` and generate a contextual `fmt.Errorf`. Tabs list sentinel errors with their checks, error types with what they wrap, and each function's error paths.
 - **Worker pool saturation:** the debugger's Concurrency view reports a saturated pool when every worker started by the same function (at least three) is busy at the pause while other goroutines wait to send on a channel, and selects the workers and the waiting producers.
 
+### Changed
+- **Native Linux sessions and local GTK4 builds:** local builds now use GTK4/WebKitGTK 6 by default, while release packaging explicitly keeps GTK3/WebKitGTK 4.1. Linux follows the detected Wayland or X11 session without forcing XWayland; legacy `app-xwayland` settings remain compatible and load as app chrome.
+- **Smoother code editing:** Go Studio enables Monaco inertial scrolling, smooth scrolling and smooth caret movement/blinking. Reduced-motion preferences are respected live. Font families, sizes, weights and ligatures are unchanged; font smoothing follows the platform, forced editor text-layer hints are disabled, and Monaco refreshes glyph measurements when local fonts finish loading.
+
+### Fixed
+- **Settings save immediately:** settings no longer wait for the workspace autosave interval. Writes are serialized to preserve update order and save errors remain visible.
+- **GTK4 window icon:** native windows explicitly select the embedded adOmnia icon from an in-memory GTK resource, without installing files in the user's profile. Linux's program name matches the packaged `adomnia.desktop` entry.
+
 ## [0.9.59] - 2026-10-04
 
 ### Added
