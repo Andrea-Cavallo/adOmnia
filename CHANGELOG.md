@@ -6,7 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.61] - 2026-10-06
+
 ### Added
+- **milk in gO Studio:** [milk](https://github.com/scoutme/milk) is now an AI chat beside the editor (side pane, tool stripe, *Tools → Open milk*). milk routes each prompt between a cheap primary agent and a deep escalation agent, with tools, MCP and memory. adOmnia starts the milk you installed as `milk serve --acp` (Agent Client Protocol over stdin/stdout) and never bundles a copy, so updating milk from its repository is all it takes to get its new features. The chat shows the routed agent, the tool calls, the model's reasoning apart from the answer, and asks before every tool call unless you turn that off. *milk settings* enables it, sets a custom binary path and shows the process logs. Agents and their keys stay in milk's own config (`~/.milk`).
 - **Kubernetes Studio, beyond pods:** tabs for Deployments (ready/desired, images), Services (type, IPs, ports, selector), ConfigMaps (full data) and Secrets (key names and sizes only — values are dropped in the backend and never reach the UI). From a pod: run one-shot commands in a container (`sh -c`, 60 s, last 1 MB of output), download or upload single files (up to 16 MB), and start a port forward. Services forward too. Every forward listens on 127.0.0.1 only, shows its live status in *Port forwards* and stops with the app.
 
 ### Fixed

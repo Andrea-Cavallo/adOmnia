@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.61 release notes: milk in gO Studio and a fuller Kubernetes Studio
+
+See [the full v0.9.61 notes](releases/v0.9.61.md): [milk](https://github.com/scoutme/milk)
+as an AI chat beside the editor (cheap/deep agent routing over ACP, always the
+milk you installed, so its updates arrive by updating milk), and Kubernetes
+Studio with deployments, services, config maps, secret metadata, exec, file copy
+and port forward.
+
 ## v0.9.60 release notes: P0 and P1 closed, the project understood from the code
 
 See [the full v0.9.60 notes](releases/v0.9.60.md): Architecture and Interface
