@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.63] - 2026-10-06
+
+### Changed
+- **milk chat made to be read:** Geist at 13.5 px with full-contrast text for answers, Markdown rendered (lists, emphasis, code, tables; sanitized, no remote images, links open in the browser), JetBrains Mono only for machine output. Slash-command output such as `/agent list` keeps its aligned columns. A chip shows which agent answered (sky for the primary, night blue with ✦ for the escalation), reasoning and tool calls fold away, and the composer, permission prompts and empty states are larger and clearer.
+
+### Fixed
+- **Project tree icons:** every folder shows its icon when a folder is opened; before, folders without Git changes could appear without it.
+
 ## [0.9.62] - 2026-10-06
 
 ### Added

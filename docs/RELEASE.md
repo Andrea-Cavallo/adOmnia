@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.63 release notes: a milk chat you can read
+
+The [milk](https://github.com/scoutme/milk) chat is redesigned for reading:
+Geist prose with real Markdown, aligned slash-command output, a chip for the
+agent that answered, foldable reasoning and tool calls. Project tree folders
+always show their icon.
+
 ## v0.9.62 release notes: install and update milk from gO Studio
 
 See [the full v0.9.62 notes](releases/v0.9.62.md): *milk settings* installs or
