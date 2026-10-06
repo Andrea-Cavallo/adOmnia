@@ -1,0 +1,256 @@
+/*
+ * milk chat — made to be read. Geist for prose (13.5/1.6, full-strength text),
+ * JetBrains Mono only for what a machine printed. milk's own colours appear in
+ * one place: the route chip that says which agent answered.
+ */
+.milk-chat {
+  --milk-sky: #7cb4ec;
+  --milk-night: #16304f;
+  --milk-cream: #f6f1e7;
+  --milk-font: 'Geist', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --milk-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  font-family: var(--milk-font);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  color: var(--color-text-1);
+}
+
+/* Header */
+.milk-bar {
+  display: flex;
+  height: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--color-border-1);
+}
+.milk-bar-title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+.milk-bar-version { font-family: var(--milk-mono); font-size: 11px; color: var(--color-text-4); }
+
+.milk-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 16px 14px 20px; }
+
+/* Thread */
+.milk-thread { display: flex; flex-direction: column; gap: 20px; }
+
+.milk-ask {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 12px 12px 4px 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-1);
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.milk-reply { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.milk-reply-head { display: flex; align-items: center; gap: 7px; min-height: 20px; }
+.milk-reply-name { font-size: 12.5px; font-weight: 600; color: var(--color-text-2); }
+
+.milk-route {
+  display: inline-flex;
+  max-width: 60%;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.milk-route-primary {
+  background: color-mix(in srgb, var(--milk-sky) 16%, transparent);
+  color: color-mix(in srgb, var(--milk-sky) 70%, var(--color-text-1));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--milk-sky) 35%, transparent);
+}
+.milk-route-deep { background: var(--milk-night); color: var(--milk-cream); }
+
+/* Prose from the model (renderMarkdown output, re-styled for a narrow reading column) */
+.milk-prose { font-size: 13.5px; line-height: 1.6; overflow-wrap: anywhere; }
+.milk-prose > :first-child { margin-top: 0; }
+.milk-prose > :last-child { margin-bottom: 0; }
+.milk-prose p { margin: 0 0 0.7em; }
+.milk-prose h1, .milk-prose h2, .milk-prose h3, .milk-prose h4 {
+  margin: 1.1em 0 0.4em;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.35;
+  color: var(--color-text-1) !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+.milk-prose ul, .milk-prose ol { margin: 0 0 0.7em; padding-left: 1.25em; }
+.milk-prose li { margin: 0.2em 0; }
+.milk-prose li::marker { color: var(--color-text-4); }
+.milk-prose strong { font-weight: 600; color: var(--color-text-1); }
+.milk-prose em { color: inherit; }
+.milk-prose a { color: var(--color-accent-light); text-decoration: underline; text-underline-offset: 2px; }
+.milk-prose blockquote { margin: 0 0 0.7em; padding-left: 10px; border-left: 2px solid var(--color-border-2); color: var(--color-text-2); }
+.milk-prose code {
+  font-family: var(--milk-mono) !important;
+  font-size: 12px !important;
+  padding: 1px 4px !important;
+  border-radius: 4px;
+  color: var(--color-text-1) !important;
+  background: var(--color-surface-2) !important;
+  border: 1px solid var(--color-border-1) !important;
+}
+/* Fenced code: renderMarkdown's wrapper, with its tiny uppercase label made legible. */
+.milk-prose div:has(> pre) { margin: 0.4em 0 0.8em !important; border-radius: 8px !important; border-color: var(--color-border-1) !important; }
+.milk-prose div:has(> pre) > div:first-child { padding: 4px 10px !important; background: var(--color-surface-2) !important; }
+.milk-prose div:has(> pre) > div:first-child span { font-size: 11px !important; text-transform: none !important; letter-spacing: 0; }
+.milk-prose pre { margin: 0 !important; padding: 10px 12px !important; background: var(--color-surface-1) !important; }
+.milk-prose pre code { padding: 0 !important; border: 0 !important; background: none !important; font-size: 12px !important; line-height: 1.55; }
+.milk-prose table { width: 100%; margin: 0 0 0.8em; border-collapse: collapse; font-size: 12.5px; }
+.milk-prose th, .milk-prose td { padding: 4px 8px; border: 1px solid var(--color-border-1); text-align: left; }
+.milk-prose hr { margin: 1em 0; border: 0; border-top: 1px solid var(--color-border-1); }
+
+/* Machine output: slash commands, tool results */
+.milk-output {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-1);
+  background: var(--color-surface-1);
+  font-family: var(--milk-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-1);
+  white-space: pre;
+  tab-size: 4;
+}
+.milk-command-output { max-height: none; }
+
+/* Reasoning and tools: present, but quieter than the answer */
+.milk-thought summary, .milk-tools summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.milk-thought summary::-webkit-details-marker, .milk-tools summary::-webkit-details-marker { display: none; }
+.milk-thought summary { font-size: 12.5px; color: var(--color-text-3); }
+.milk-thought summary:hover { color: var(--color-text-1); }
+.milk-thought-chevron { transition: transform 120ms ease; }
+.milk-thought[open] .milk-thought-chevron { transform: rotate(90deg); }
+.milk-thought p {
+  margin: 6px 0 0 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-border-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-2);
+  white-space: pre-wrap;
+}
+
+.milk-tools { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.milk-tools summary { min-height: 24px; padding: 0 6px; border-radius: 6px; font-size: 12px; }
+.milk-tools summary:hover { background: var(--color-surface-2); }
+.milk-tools details[open] .milk-output { margin-top: 4px; }
+.milk-tool-name { font-family: var(--milk-mono); font-size: 12px; color: var(--color-text-1); }
+.milk-tool-status { margin-left: auto; color: var(--color-text-3); }
+.milk-tool-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--color-text-4); }
+.milk-tool-pending, .milk-tool-in_progress { background: var(--color-info); animation: milk-pulse 1.2s ease-in-out infinite; }
+.milk-tool-completed { background: var(--color-success); }
+.milk-tool-failed { background: var(--color-error); }
+.milk-tool-cancelled { background: var(--color-warning); }
+
+.milk-waiting { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--color-text-3); }
+.milk-waiting-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--milk-sky); animation: milk-pulse 1.2s ease-in-out infinite; }
+.milk-stopped { margin: 0; font-size: 12.5px; color: var(--color-warning); }
+
+.milk-error {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-error);
+}
+
+/* Permission request */
+.milk-permission {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 9%, transparent);
+}
+.milk-permission-title { margin: 0; font-size: 13px; font-weight: 600; }
+.milk-permission-detail { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--color-text-2); overflow-wrap: anywhere; }
+.milk-permission-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* Empty and setup states */
+.milk-empty { display: flex; flex-direction: column; align-items: center; margin-top: 28px; padding: 0 8px; text-align: center; }
+.milk-empty h2 { margin: 12px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.milk-empty p { max-width: 34ch; margin: 6px 0 16px; font-size: 13px; line-height: 1.55; color: var(--color-text-3); }
+.milk-suggestions { display: flex; width: 100%; flex-direction: column; gap: 6px; }
+.milk-suggestions button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-1);
+  background: var(--color-surface-1);
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text-2);
+}
+.milk-suggestions button:hover { border-color: color-mix(in srgb, var(--milk-sky) 50%, transparent); color: var(--color-text-1); }
+
+/* Composer */
+.milk-composer { flex-shrink: 0; padding: 10px; border-top: 1px solid var(--color-border-1); }
+.milk-composer textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  padding: 10px 12px 4px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid var(--color-border-2);
+  border-bottom: 0;
+  background: var(--color-surface-0);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-1);
+  outline: none;
+}
+.milk-composer textarea::placeholder { color: var(--color-text-4); }
+.milk-composer textarea:disabled { opacity: 0.6; }
+.milk-composer-bar {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid var(--color-border-2);
+  border-top: 0;
+  background: var(--color-surface-0);
+  font-size: 11.5px;
+  color: var(--color-text-4);
+}
+.milk-composer:focus-within textarea, .milk-composer:focus-within .milk-composer-bar { border-color: color-mix(in srgb, var(--color-accent) 55%, transparent); }
+.milk-composer-bar > span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.milk-send, .milk-stop { display: inline-flex; height: 28px; align-items: center; justify-content: center; gap: 6px; border-radius: 7px; font-size: 12.5px; }
+.milk-send { width: 28px; background: var(--color-accent); color: #fff; }
+.milk-send:disabled { background: var(--color-surface-3); color: var(--color-text-4); }
+.milk-stop { padding: 0 10px; background: color-mix(in srgb, var(--color-error) 14%, transparent); color: var(--color-error); }
+.milk-send:focus-visible, .milk-stop:focus-visible, .milk-suggestions button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+@keyframes milk-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .milk-tool-dot, .milk-waiting-dot { animation: none; }
+  .milk-thought-chevron { transition: none; }
+}
