@@ -76,7 +76,7 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
 }
 
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
-// ponytail: righe native (content-visibility) + cartelle enormi a pagine; lista piatta virtualizzata solo se un progetto reale lo richiede.
+// ponytail: righe native + cartelle enormi a pagine; lista piatta virtualizzata solo se un progetto reale lo richiede.
 const TREE_PAGE = 500
 
 /** "Show more" per cartelle con migliaia di voci: l'albero resta reattivo anche in un monorepo o su file generati. */
