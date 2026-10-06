@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check, Loader2, Settings2, TriangleAlert } from 'lucide-react'
+import { Check, Loader2, RefreshCw, Settings2, TriangleAlert } from 'lucide-react'
 import { listInstalledGoIDEToolchains, selectInstalledGoIDEToolchain, type GoIDEInstalledToolchain, type GoIDEToolchainInfo } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 
 interface Props {
   sessionId: string
@@ -29,6 +30,7 @@ export function GoStudioToolchainSwitcher({ sessionId, toolchain, className, onM
     try {
       await selectInstalledGoIDEToolchain(sessionId, version)
       await useGoIDEStore.getState().detectToolchain()
+      await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
       setOpen(false)
     } catch (reason) { setError(String(reason)) } finally { setSwitching(null) }
   }
@@ -54,7 +56,8 @@ export function GoStudioToolchainSwitcher({ sessionId, toolchain, className, onM
           })}
           {error && <div role="alert" className="px-3 py-1 text-[10px] text-danger">{error}</div>}
           <div className="my-1 border-t border-border-1" />
-          <button type="button" role="menuitem" onClick={() => { setOpen(false); onManage() }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-text-2 hover:bg-surface-3"><Settings2 size={11} className="text-text-4" /> Manage toolchains…</button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); void useGoIDEStore.getState().detectToolchain().then(() => useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-text-2 hover:bg-surface-3"><RefreshCw size={11} className="text-text-4" /> Reload Go and gopls</button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onManage() }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-text-2 hover:bg-surface-3"><Settings2 size={11} className="text-text-4" /> Install or manage Go…</button>
         </div>
       </>}
     </div>

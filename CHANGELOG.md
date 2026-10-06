@@ -7,7 +7,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Added
-- **Crash recovery responsiveness check:** an automated test measures recovery snapshots and restore with 10 dirty files on the real store (slowest snapshot ~13 ms, restore ~6 ms), alongside the real-kill test.
+- **Crash recovery responsiveness check:** an automated test measures recovery snapshots and restore with 10 dirty files on the real store (slowest snapshot ~13 ms locally and ~160 ms on the Linux CI runner, within a 500 ms budget below the 750 ms typing debounce; restore ~6 ms), alongside the real-kill test.
 - **Context propagation across packages:** the Context Propagation Inspector's *Context graph* is now a drawn graph; its *Project* scope uses typed analysis to follow `context.Context` through calls between packages and lists every function that receives a context but passes `context.Background()`/`TODO()`/`WithoutCancel` on. In the debugger, a context carrying a trace/request id opens the Log Inspector on that id.
 - **Architecture decisions:** *Tools → Architecture Decisions…* lists the Markdown ADRs in `docs/adr` and opens them in the editor.
 - **Dependency report export:** the Dependency Graph exports a local JSON report with modules, edges, licenses, weight and duplicates, plus updates and vulnerability counts when you asked for them.
@@ -27,10 +27,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Worker pool saturation:** the debugger's Concurrency view reports a saturated pool when every worker started by the same function (at least three) is busy at the pause while other goroutines wait to send on a channel, and selects the workers and the waiting producers.
 
 ### Changed
+- **Go toolchain switching keeps code intelligence in sync:** choosing, installing or resetting a Go SDK re-detects it and restarts gopls; *Reload Go + gopls* and *Install latest stable* in the toolchain dialog, a gopls *Restart* and *Choose binary* in the tools list. Releases and installed SDKs are ordered by real version (go1.26 before go1.9), and a failed gopls install says so instead of staying silent.
+- **SonarQube setup is clearer:** the panel says why a scan cannot start (not enabled, project not trusted, scanner missing, token missing), labels the fields as the SonarQube server and project key, and explains that the scan reads the local project, not the service's API URL. `sonar-scanner.bat` on the Windows PATH is detected.
 - **Native Linux sessions and local GTK4 builds:** local builds now use GTK4/WebKitGTK 6 by default, while release packaging explicitly keeps GTK3/WebKitGTK 4.1. Linux follows the detected Wayland or X11 session without forcing XWayland; legacy `app-xwayland` settings remain compatible and load as app chrome.
 - **Smoother code editing:** Go Studio enables Monaco inertial scrolling, smooth scrolling and smooth caret movement/blinking. Reduced-motion preferences are respected live. Font families, sizes, weights and ligatures are unchanged; font smoothing follows the platform, forced editor text-layer hints are disabled, and Monaco refreshes glyph measurements when local fonts finish loading.
 
 ### Fixed
+- **API Workspace in its own window shows the collections:** opened from Go Studio's Studios launcher (or detached from the rail), the API Workspace window now has the collections sidebar next to request and response, with the same width and resize handle as the main window.
 - **Settings save immediately:** settings no longer wait for the workspace autosave interval. Writes are serialized to preserve update order and save errors remain visible.
 - **GTK4 window icon:** native windows explicitly select the embedded adOmnia icon from an in-memory GTK resource, without installing files in the user's profile. Linux's program name matches the packaged `adomnia.desktop` entry.
 

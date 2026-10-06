@@ -6,9 +6,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 )
+
+func TestGoReleaseOrderUsesNumericVersions(t *testing.T) {
+	versions := []string{"go1.9.9", "go1.26.5", "go1.25.10", "go1.25.9"}
+	sort.Slice(versions, func(left, right int) bool { return newerGoVersion(versions[left], versions[right]) })
+	want := []string{"go1.26.5", "go1.25.10", "go1.25.9", "go1.9.9"}
+	for index, version := range versions {
+		if version != want[index] {
+			t.Fatalf("release order: got %v, want %v", versions, want)
+		}
+	}
+}
 
 func writeTestZip(t *testing.T, path string, entries map[string]string) {
 	t.Helper()

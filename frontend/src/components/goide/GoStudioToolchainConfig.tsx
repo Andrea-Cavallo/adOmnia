@@ -5,6 +5,7 @@ import { GoStudioButton, GoStudioField } from './GoStudioModal'
 import { GoStudioPrivateModules } from './GoStudioPrivateModules'
 import { configureGoIDEGlobalToolchain, getGoIDEToolchainSettings, resetGoIDEToolchainToGlobal, type GoIDEToolchainSettings } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 import { corporateNetworkOf, modulePatternProblem, networkModeOf, proxyProblem, withCorporateNetwork, type GoStudioCorporateNetwork, suggestedPrivatePattern, toolchainEnvFromForm, toolchainFormFromEnv, withNetworkMode, type GoStudioNetworkMode, type ToolchainField, type ToolchainForm } from './goStudioToolchainEnv'
 
 type Scope = 'project' | 'global'
@@ -72,16 +73,18 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
       const environment = toolchainEnvFromForm(form)
       if (scope === 'project') {
         if (!await configureToolchain(goBinary, environment)) onError('The configured Go binary could not be validated.')
+        else await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
       } else {
         await configureGoIDEGlobalToolchain({ goBinary, environment })
         await detectToolchain()
+        await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
       }
       await refresh()
     } catch (reason) { onError(String(reason)) } finally { setBusy(false) }
   }
   const useGlobal = async () => {
     setBusy(true); onError(null)
-    try { await resetGoIDEToolchainToGlobal(sessionId); await refresh(); await detectToolchain(); switchScope('global') } catch (reason) { onError(String(reason)) } finally { setBusy(false) }
+    try { await resetGoIDEToolchainToGlobal(sessionId); await refresh(); await detectToolchain(); await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId); switchScope('global') } catch (reason) { onError(String(reason)) } finally { setBusy(false) }
   }
 
   const scopeButton = (value: Scope, label: string, Icon: typeof Globe) => (

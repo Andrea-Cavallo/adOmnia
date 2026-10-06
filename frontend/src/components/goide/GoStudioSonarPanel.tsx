@@ -161,6 +161,17 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
 
   const settings = showSettings || !config.enabled
   const seconds = busy ? Math.max(0, Math.round((now - startedAt) / 1000)) : 0
+  const scanBlockedReason = !config.enabled
+    ? 'Enable SonarQube and save the settings before scanning.'
+    : !authorized
+      ? 'Trust the project tools before scanning.'
+      : scanner === null
+        ? 'Checking for sonar-scanner…'
+        : !scanner.available
+          ? (scanner.error || 'Install sonar-scanner or set its path below.')
+          : !config.hasToken && !token.trim()
+            ? 'Enter a SonarQube token before scanning.'
+            : null
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -182,6 +193,7 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
       {!authorized && <p className="border-b border-warning/30 bg-warning/10 px-3 py-1 text-[11.5px] text-warning">Trust the project tools to run SonarQube scans.</p>}
       {error && <p className="border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11.5px] text-danger">{error}</p>}
       {notice && <p className="border-b border-border-1 bg-surface-2/60 px-3 py-1 text-[11.5px] text-text-3">{notice}</p>}
+      {!settings && scanBlockedReason && <div role="status" className="flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-1 text-[11.5px] text-warning"><span>{scanBlockedReason}</span><button type="button" onClick={() => setShowSettings(true)} className="ml-auto shrink-0 underline">Settings</button></div>}
 
       {settings && (
         <div className="min-h-0 overflow-auto border-b border-border-1 p-3">
@@ -190,20 +202,21 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
               <input type="checkbox" checked={draft.enabled} onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
               Enable SonarQube for this project <Power size={12} className="text-text-4" />
             </label>
-            <label className="gs-field-label">Server URL<input value={draft.serverUrl} onChange={(event) => setDraft({ ...draft, serverUrl: event.target.value })} placeholder="https://sonar.example.com" className="gs-input gs-mono" /></label>
-            <label className="gs-field-label">Project key<input value={draft.projectKey} onChange={(event) => setDraft({ ...draft, projectKey: event.target.value })} placeholder="my-service" className="gs-input gs-mono" /></label>
+            <label className="gs-field-label">SonarQube server URL<input value={draft.serverUrl} onChange={(event) => setDraft({ ...draft, serverUrl: event.target.value })} placeholder="http://localhost:9000" className="gs-input gs-mono" /></label>
+            <label className="gs-field-label">SonarQube project key<input value={draft.projectKey} onChange={(event) => setDraft({ ...draft, projectKey: event.target.value })} placeholder="my-service" className="gs-input gs-mono" /></label>
             <label className="gs-field-label">Sources<input value={draft.sources} onChange={(event) => setDraft({ ...draft, sources: event.target.value })} placeholder="." className="gs-input gs-mono" /></label>
             <label className="gs-field-label">Exclusions<input value={draft.exclusions} onChange={(event) => setDraft({ ...draft, exclusions: event.target.value })} placeholder="**/*_test.go,**/vendor/**" className="gs-input gs-mono" /></label>
             <label className="gs-field-label">Token (memory only)<input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder={config.hasToken ? '•••••• (set)' : 'SonarQube user token'} className="gs-input gs-mono" autoComplete="off" /></label>
             <label className="gs-field-label">sonar-scanner path (optional)<input value={scannerPath} onChange={(event) => setScannerPath(event.target.value)} placeholder={scanner?.binary || 'found on PATH'} className="gs-input gs-mono" /></label>
           </div>
+          <p className="mt-2 break-all text-[11px] text-text-4">Scans local project files in {session.project.realPath}. Enter the SonarQube server address above, not the microservice API URL.</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => void saveSettings()} className="rounded-md bg-accent/15 px-2.5 py-1 text-[12px] font-medium text-accent hover:bg-accent/25">Save settings</button>
             <button type="button" onClick={() => void saveToken()} className="rounded-md bg-surface-2 px-2.5 py-1 text-[12px] text-text-2 hover:bg-surface-3">Save token</button>
             <button type="button" onClick={() => void configureScanner()} className="rounded-md bg-surface-2 px-2.5 py-1 text-[12px] text-text-2 hover:bg-surface-3">Use scanner path</button>
-            <button type="button" onClick={() => void runScan()} disabled={!config.enabled || !scanner?.available || !!busy} title={scanner?.available ? 'Run sonar-scanner and import issues' : scanner?.error} className="ml-auto flex items-center gap-1.5 rounded-md bg-success/15 px-2.5 py-1 text-[12px] font-medium text-success hover:bg-success/25 disabled:opacity-50"><Bug size={13} />Scan now</button>
+            <button type="button" onClick={() => void runScan()} disabled={!!scanBlockedReason || !!busy} title={scanBlockedReason || 'Run sonar-scanner and import issues'} className="ml-auto flex items-center gap-1.5 rounded-md bg-success/15 px-2.5 py-1 text-[12px] font-medium text-success hover:bg-success/25 disabled:opacity-50"><Bug size={13} />Scan now</button>
           </div>
-          {scanner?.error && <p className="mt-2 text-[11px] text-text-4">{scanner.error}</p>}
+          {scanBlockedReason && <p role="status" className="mt-2 text-[11px] text-warning">{scanBlockedReason}</p>}
         </div>
       )}
 
@@ -219,7 +232,7 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
             </select>
             <label className="flex items-center gap-1.5 text-text-3"><input type="checkbox" checked={securityOnly} onChange={(event) => setSecurityOnly(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Security only</label>
             <div className="ml-auto flex items-center gap-1">
-              <button type="button" onClick={() => void runScan()} disabled={!scanner?.available || !!busy} title={scanner?.available ? 'Run sonar-scanner again' : scanner?.error} className="go-studio-icon-button h-7 w-7 text-success"><Bug size={13} /></button>
+              <button type="button" onClick={() => void runScan()} disabled={!!scanBlockedReason || !!busy} title={scanBlockedReason || 'Run sonar-scanner again'} className="go-studio-icon-button h-7 w-7 text-success"><Bug size={13} /></button>
               <button type="button" onClick={copyProblems} disabled={visible.length === 0} title="Copy all problems" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
               <button type="button" onClick={fixWithAI} disabled={visible.length === 0 || !aiReady} title={aiReady ? 'Resolve with AI (preview before applying)' : 'Enable an AI provider in Settings → AI'} className="go-studio-icon-button h-7 w-7 text-accent"><Sparkles size={13} /></button>
               <button type="button" onClick={() => void saveBaseline()} disabled={!!busy} title="Save baseline (hide current problems)" className="go-studio-icon-button h-7 w-7"><ShieldCheck size={13} /></button>

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -110,6 +111,27 @@ func TestRunSonarScanRequiresTrustAndOnline(t *testing.T) {
 	t.Cleanup(func() { _, _ = netpolicy.Save(previous) })
 	if _, err := service.RunSonarScan(context.Background(), id, "token"); err == nil {
 		t.Fatal("expected offline error")
+	}
+}
+
+func TestDetectSonarScannerWindowsBatchOnPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows sonar-scanner launcher")
+	}
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "sonar-scanner.bat"), []byte("@echo off\r\necho SonarScanner CLI 8.1.0.6389\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := service.DetectSonarScanner(string(session.ID))
+	if err != nil || !info.Available || info.Version != "8.1.0.6389" || info.Source != "PATH" {
+		t.Fatalf("scanner batch not detected: %#v, %v", info, err)
 	}
 }
 

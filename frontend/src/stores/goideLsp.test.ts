@@ -6,8 +6,9 @@ vi.mock('@/lib/goide-lsp-api', () => ({
   stopLanguageServer: vi.fn(), getLanguageServerStatus: vi.fn(), openExternalDocument: vi.fn(),
 }))
 
-import { diagnosticCounts, useGoIDELspStore } from './goideLsp'
+import { diagnosticCounts, isGoplsInstall, useGoIDELspStore } from './goideLsp'
 import { restartLanguageServer } from '@/lib/goide-lsp-api'
+import { useGoIDEStore } from './goide'
 
 const report = (uri: string, severity: number) => ({
   uri, path: uri.replace('file://', ''), relativePath: 'main.go',
@@ -25,6 +26,46 @@ describe('Go Studio language server store', () => {
     expect(useGoIDELspStore.getState().activity.a?.label).toContain('Restarting')
     await promise
     expect(useGoIDELspStore.getState().activity.a).toBeNull()
+  })
+
+  it('identifies gopls installations without confusing other tools', () => {
+    expect(isGoplsInstall({ kind: 'install', command: 'go install golang.org/x/tools/gopls@v0.23.0' })).toBe(true)
+    expect(isGoplsInstall({ kind: 'install', command: 'go install honnef.co/go/tools/cmd/staticcheck@latest' })).toBe(false)
+  })
+
+  it('routes only a completed gopls install to language-server refresh', () => {
+    const original = useGoIDELspStore.getState()
+    const refresh = vi.fn(async () => undefined)
+    const detectLinter = vi.fn(async () => null)
+    useGoIDELspStore.setState({ refreshAfterToolchainChange: refresh, detectLinter })
+    try {
+      const { handleEvent } = useGoIDELspStore.getState()
+      handleEvent(event('a', 'run.finished', { kind: 'install', status: 'exited', command: 'go install honnef.co/go/tools/cmd/staticcheck@latest' }))
+      handleEvent(event('a', 'run.finished', { kind: 'install', status: 'failed', command: 'go install golang.org/x/tools/gopls@latest' }))
+      expect(useGoIDELspStore.getState().activity.a?.error).toBe(true)
+      handleEvent(event('a', 'run.finished', { kind: 'install', status: 'exited', command: 'go install golang.org/x/tools/gopls@v0.23.0' }))
+      expect(refresh).toHaveBeenCalledTimes(1)
+      expect(refresh).toHaveBeenCalledWith('a')
+    } finally {
+      useGoIDELspStore.setState({ refreshAfterToolchainChange: original.refreshAfterToolchainChange, detectLinter: original.detectLinter })
+    }
+  })
+
+  it('restarts gopls after selecting a different Go SDK for a trusted project', async () => {
+    const originalLsp = useGoIDELspStore.getState()
+    const originalSessions = useGoIDEStore.getState().sessions
+    const detect = vi.fn(async () => ({ available: true }))
+    const restart = vi.fn(async () => undefined)
+    useGoIDEStore.setState({ sessions: [{ id: 'a', project: { authorization: 'tooling-permitted' } } as never] })
+    useGoIDELspStore.setState({ detectGopls: detect as never, restart, status: { a: { state: 'ready' } as never } })
+    try {
+      await useGoIDELspStore.getState().refreshAfterToolchainChange('a')
+      expect(detect).toHaveBeenCalledWith('a')
+      expect(restart).toHaveBeenCalledWith('a')
+    } finally {
+      useGoIDEStore.setState({ sessions: originalSessions })
+      useGoIDELspStore.setState({ detectGopls: originalLsp.detectGopls, restart: originalLsp.restart })
+    }
   })
 
   it('keeps an error activity when gopls crashes', () => {

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Check, CloudDownload, Cpu, Download, HardDrive, Loader2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import { cancelGoIDEToolchainInstall, installGoIDEToolchain, listGoIDEToolchainReleases, listInstalledGoIDEToolchains, removeInstalledGoIDEToolchain, selectInstalledGoIDEToolchain, type GoIDEInstalledToolchain, type GoIDEToolchainRelease } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore } from '@/stores/goide'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { ToolchainConfigSection } from './GoStudioToolchainConfig'
 import { ToolchainToolsSection } from './GoStudioToolchainTools'
@@ -28,6 +29,8 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
   const [releases, setReleases] = useState<GoIDEToolchainRelease[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const handledInstall = useRef<string | null>(null)
+  const trusted = useGoIDEStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.authorization === 'tooling-permitted')
   const operation = useMemo(() => {
     const items = Object.values(installations).filter((item) => item.sessionId === sessionId)
     return items.find((item) => item.status === 'downloading' || item.status === 'extracting') ?? items[items.length - 1] ?? null
@@ -45,8 +48,15 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
   }, [open, sessionId])
 
   useEffect(() => {
-    if (operation?.status === 'installed') void refreshInstalled().catch((reason) => setError(String(reason)))
-  }, [operation?.status])
+    if (!sessionId || operation?.status !== 'installed' || handledInstall.current === operation.id) return
+    handledInstall.current = operation.id
+    void (async () => {
+      await refreshInstalled()
+      if (useGoIDEStore.getState().activeSessionId !== sessionId) return
+      await detectToolchain()
+      await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
+    })().catch((reason) => setError(String(reason)))
+  }, [operation?.id, operation?.status, sessionId])
 
   if (!open || !sessionId) return null
 
@@ -55,13 +65,40 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
     try { setReleases(await listGoIDEToolchainReleases(sessionId)) } catch (reason) { setError(String(reason)) }
     finally { setBusy(false) }
   }
+  const reload = async () => {
+    setBusy(true); setError(null)
+    try {
+      await detectToolchain()
+      await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
+    } catch (reason) { setError(String(reason)) }
+    finally { setBusy(false) }
+  }
   const install = async (release: GoIDEToolchainRelease) => {
     const approved = await confirm({ title: `Install ${release.version}?`, message: `Official archive: ${release.filename}\nSize: ${bytes(release.size)}\nSHA-256: ${release.sha256}\n\nThe archive is downloaded from go.dev, verified, and extracted into adOmnia's local toolchain store.`, confirmLabel: 'Download & install' })
     if (!approved) return
     try { await installGoIDEToolchain(sessionId, release.version, true) } catch (reason) { setError(String(reason)) }
   }
   const activate = async (toolchain: GoIDEInstalledToolchain) => {
-    try { await selectInstalledGoIDEToolchain(sessionId, toolchain.version); await detectToolchain() } catch (reason) { setError(String(reason)) }
+    try {
+      await selectInstalledGoIDEToolchain(sessionId, toolchain.version)
+      await detectToolchain()
+      await useGoIDELspStore.getState().refreshAfterToolchainChange(sessionId)
+    } catch (reason) { setError(String(reason)) }
+  }
+  const installLatest = async () => {
+    setBusy(true); setError(null)
+    try {
+      const catalog = await listGoIDEToolchainReleases(sessionId)
+      setReleases(catalog)
+      const latest = catalog.find((release) => release.stable)
+      if (!latest) throw new Error('No stable Go release is available for this platform.')
+      const installedNow = await listInstalledGoIDEToolchains(sessionId)
+      setInstalled(installedNow)
+      const existing = installedNow.find((item) => item.version === latest.version)
+      if (existing) await activate(existing)
+      else await install(latest)
+    } catch (reason) { setError(String(reason)) }
+    finally { setBusy(false) }
   }
   const remove = async (toolchain: GoIDEInstalledToolchain) => {
     const approved = await confirm({ title: `Remove ${toolchain.version}?`, message: 'This removes only the isolated copy managed by adOmnia. Projects and system Go installations are untouched.', confirmLabel: 'Remove', variant: 'danger' })
@@ -80,6 +117,7 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
       icon={Cpu}
       title="Go SDKs & toolchains"
       subtitle="The Go SDK and environment used by this project. The global default applies to projects without their own."
+      actions={<GoStudioButton small variant="ghost" icon={RefreshCw} loading={busy} onClick={() => void reload()}>Reload Go + gopls</GoStudioButton>}
       footer={<GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>}
     >
       {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
@@ -118,6 +156,7 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
           {operation.log.length > 0 && <div className="gs-mono max-h-16 w-full overflow-auto text-[11px] leading-4 text-text-4">{operation.log.map((line, index) => <div key={`${index}-${line}`}>{line}</div>)}</div>}
         </div>
       )}
+      <ToolchainToolsSection sessionId={sessionId} goAvailable={info?.available === true} onRunCommand={onRunCommand} />
       <section className="flex flex-col gap-2">
         <div className="flex items-center"><h3 className="gs-section-title flex items-center gap-1.5"><HardDrive size={12} /> Installed versions</h3><GoStudioButton small variant="ghost" className="gs-btn-icon ml-auto" onClick={() => void refreshInstalled()} aria-label="Refresh installed versions" title="Refresh"><RefreshCw size={13} /></GoStudioButton></div>
         <div className="gs-list">
@@ -138,19 +177,18 @@ export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialog
         </div>
       </section>
       <section className="flex flex-col gap-2">
-        <div className="flex items-center"><h3 className="gs-section-title flex items-center gap-1.5"><CloudDownload size={12} /> Official releases</h3><GoStudioButton small variant="secondary" className="ml-auto" icon={RefreshCw} loading={busy} onClick={() => void loadCatalog()}>Load from go.dev</GoStudioButton></div>
+        <div className="flex flex-wrap items-center gap-2"><h3 className="gs-section-title flex items-center gap-1.5"><CloudDownload size={12} /> Official releases</h3><div className="ml-auto flex items-center gap-2"><GoStudioButton small variant="primary" icon={Download} loading={busy} disabled={!trusted || installing} title={trusted ? 'Download the latest stable Go SDK' : 'Trust this project before downloading'} onClick={() => void installLatest()}>Install latest</GoStudioButton><GoStudioButton small variant="secondary" icon={RefreshCw} loading={busy} disabled={!trusted} onClick={() => void loadCatalog()}>Choose version</GoStudioButton></div></div>
         {releases.length === 0
-          ? <p className="gs-surface gs-list-empty">The network is contacted only when you load this catalog. Nothing downloads on its own.</p>
+          ? <p className="gs-surface gs-list-empty">Choose a version or install the latest stable release. Downloads require confirmation.</p>
           : <div className="gs-list max-h-48">{releases.map((release) => (
               <div key={release.filename} className="gs-list-row">
                 <span className="w-24 shrink-0 font-medium text-text-1">{release.version}</span>
                 <span className="gs-mono flex-1 truncate text-[11px] text-text-4">{release.filename} · {bytes(release.size)}</span>
-                <GoStudioButton small variant="secondary" icon={Download} onClick={() => void install(release)}>Install</GoStudioButton>
+                <GoStudioButton small variant="secondary" icon={Download} disabled={installing || !trusted} onClick={() => void install(release)}>Install</GoStudioButton>
               </div>
             ))}</div>}
       </section>
       <ToolchainConfigSection sessionId={sessionId} onError={setError} />
-      <ToolchainToolsSection sessionId={sessionId} goAvailable={info?.available === true} onRunCommand={onRunCommand} />
     </GoStudioModal>
   )
 }

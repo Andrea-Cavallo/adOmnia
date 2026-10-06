@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	goversion "go/version"
 	"io"
 	"net/http"
 	"os"
@@ -142,9 +143,10 @@ func (i *ToolchainInstaller) ListReleases(ctx context.Context) ([]ToolchainRelea
 			result = append(result, ToolchainRelease{Version: release.Version, Filename: file.Filename, SHA256: file.SHA256, Size: file.Size, Stable: release.Stable, OS: file.OS, Arch: file.Arch})
 			break
 		}
-		if len(result) >= 30 {
-			break
-		}
+	}
+	sort.Slice(result, func(left, right int) bool { return newerGoVersion(result[left].Version, result[right].Version) })
+	if len(result) > 30 {
+		result = result[:30]
 	}
 	return result, nil
 }
@@ -169,9 +171,11 @@ func (i *ToolchainInstaller) ListInstalled() ([]InstalledToolchain, error) {
 			result = append(result, InstalledToolchain{Version: entry.Name(), GoBinary: binary})
 		}
 	}
-	sort.Slice(result, func(left, right int) bool { return result[left].Version > result[right].Version })
+	sort.Slice(result, func(left, right int) bool { return newerGoVersion(result[left].Version, result[right].Version) })
 	return result, nil
 }
+
+func newerGoVersion(left, right string) bool { return goversion.Compare(left, right) > 0 }
 
 // Start avvia download, verifica ed estrazione senza bloccare il chiamante.
 func (i *ToolchainInstaller) Start(request InstallToolchainRequest, release ToolchainRelease, completed func(string, error)) (ToolchainInstallation, error) {

@@ -180,7 +180,7 @@ func (s *Service) DetectSonarScanner(sessionID string) (SonarScannerInfo, error)
 		return sonarScannerVersion(candidate.Binary)
 	})
 	if !found {
-		return SonarScannerInfo{Error: "sonar-scanner non trovato: installalo e aggiungilo al PATH, oppure indica il percorso in Go Tool Paths"}, nil
+		return SonarScannerInfo{Error: "sonar-scanner non trovato: installalo e aggiungilo al PATH, oppure indica il percorso nel pannello SonarQube"}, nil
 	}
 	return SonarScannerInfo{Available: located.Available, Binary: located.Binary, Version: located.Version, Source: located.Source, Error: located.Error}, nil
 }

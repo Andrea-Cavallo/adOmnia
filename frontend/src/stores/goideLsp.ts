@@ -153,6 +153,7 @@ interface GoIDELspState {
   start: (sessionId: string) => Promise<void>
   stop: (sessionId: string) => Promise<void>
   restart: (sessionId: string) => Promise<void>
+  refreshAfterToolchainChange: (sessionId: string) => Promise<void>
   install: (sessionId: string) => Promise<GoIDEExecution | null>
   detectLinter: (sessionId: string) => Promise<GoIDELinterInfo | null>
   installLinter: (sessionId: string, kind: GoIDELinterKind) => Promise<GoIDEExecution | null>
@@ -205,6 +206,10 @@ function loadPersisted(): PersistedSettings {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+export function isGoplsInstall(execution: Pick<GoIDEExecution, 'kind' | 'command'>): boolean {
+  return execution.kind === 'install' && execution.command.includes('golang.org/x/tools/gopls@')
 }
 
 function isTrusted(sessionId: string): boolean {
@@ -314,6 +319,14 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       const detail = errorMessage(error)
       set((state) => ({ message: detail, activity: { ...state.activity, [sessionId]: { label: 'gopls did not restart', detail, startedAt: Date.now(), forceReload: true, error: true } } }))
     }
+  },
+
+  refreshAfterToolchainChange: async (sessionId) => {
+    const info = await get().detectGopls(sessionId)
+    if (!info?.available || !isTrusted(sessionId)) return
+    const state = get().status[sessionId]?.state
+    if (state === 'ready' || state === 'starting') await get().restart(sessionId)
+    else if (!get().userStopped[sessionId]) await get().start(sessionId)
   },
 
   install: async (sessionId) => {
@@ -446,9 +459,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       const execution = event.payload as GoIDEExecution
       if (execution?.kind !== 'install') return
       void get().detectLinter(sessionId)
-      void get().detectGopls(sessionId).then((info) => {
-        if (info?.available && execution.status === 'exited') void get().start(sessionId)
-      })
+      if (!isGoplsInstall(execution)) return
+      if (execution.status === 'exited') void get().refreshAfterToolchainChange(sessionId)
+      else set((state) => ({ activity: { ...state.activity, [sessionId]: { label: 'gopls installation failed', detail: execution.error || 'Check the Run console for details.', startedAt: Date.now(), error: true } } }))
     }
   },
 

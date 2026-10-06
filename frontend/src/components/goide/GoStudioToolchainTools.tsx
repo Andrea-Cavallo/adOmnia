@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, CircleAlert, Stethoscope, Wrench } from 'lucide-react'
+import { CheckCircle2, CircleAlert, RefreshCw, Stethoscope, Wrench } from 'lucide-react'
 import { GoStudioButton } from './GoStudioModal'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
@@ -29,6 +29,14 @@ export function ToolchainToolsSection({ sessionId, goAvailable, onRunCommand }: 
     await Promise.allSettled([lsp.detectGopls(sessionId), lsp.detectLinter(sessionId), useGoIDEDebugStore.getState().detectDelve(sessionId)])
     setChecking(false)
   }
+  const reloadGopls = async () => {
+    setChecking(true)
+    try {
+      const lsp = useGoIDELspStore.getState()
+      const info = await lsp.detectGopls(sessionId)
+      if (info?.available) await lsp.restart(sessionId)
+    } finally { setChecking(false) }
+  }
   useEffect(() => { void check() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const linterKind = linter?.kind === 'staticcheck' ? 'staticcheck' : 'golangci-lint'
@@ -48,18 +56,23 @@ export function ToolchainToolsSection({ sessionId, goAvailable, onRunCommand }: 
         {rows.map(({ name, purpose, status, install }) => {
           const healthy = status?.available === true
           return (
-            <div key={name} className="gs-list-row">
+            <div key={name} className="gs-list-row flex-wrap">
               {healthy ? <CheckCircle2 size={15} className="shrink-0 text-success" /> : <CircleAlert size={15} className="shrink-0 text-warning" />}
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-text-1">{name} <span className="font-normal text-text-4">· {purpose}{healthy && status?.version ? ` · ${status.version}` : ''}{healthy && status?.source ? ` (${status.source})` : ''}</span></div>
                 <div className="gs-mono truncate text-[11px] text-text-4" title={healthy ? status?.binary : status?.error}>{healthy ? status?.binary : status?.error ?? 'Not checked yet'}</div>
               </div>
-              <GoStudioButton small variant="secondary" disabled={!goAvailable} title={goAvailable ? `go install ${name}@latest with the project SDK` : 'Needs a Go SDK'} onClick={() => onRunCommand(install)}>{healthy ? 'Update' : 'Install'}</GoStudioButton>
+              <div className="flex flex-wrap items-center gap-1">
+                <GoStudioButton small variant="secondary" disabled={!goAvailable || !trusted} title={goAvailable ? `go install ${name}@latest with the project SDK` : 'Needs a Go SDK'} onClick={() => onRunCommand(install)}>{healthy ? 'Update' : 'Install'}</GoStudioButton>
+                {name === 'gopls' && <>
+                  <GoStudioButton small variant="ghost" icon={RefreshCw} disabled={!healthy || !trusted || checking} title="Restart gopls and reload code intelligence" onClick={() => void reloadGopls()}>Reload</GoStudioButton>
+                  <GoStudioButton small variant="ghost" disabled={!trusted} onClick={() => onRunCommand('go.toolPaths')}>Choose binary</GoStudioButton>
+                </>}
+              </div>
             </div>
           )
         })}
       </div>
-      <p className="gs-hint">Install and update run in the Run console. Run the health check again when they finish.</p>
       <GoStudioExtraTools sessionId={sessionId} goAvailable={goAvailable} trusted={trusted} />
     </section>
   )
