@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.62] - 2026-10-06
+
+### Added
+- **Install and update milk from adOmnia:** *milk settings → Install milk / Update milk* downloads the newest [milk release](https://github.com/scoutme/milk/releases) (v0.4.0 or later) for your platform, verifies its published SHA-256 and puts it where milk's own installer would (`%LOCALAPPDATA%\milkin` or `~/.local/bin`), then enables and starts it. The download goes through adOmnia's network policy (proxy, corporate CA, offline mode) and is listed in network activity.
+
+### Fixed
+- **Old milk versions:** a milk older than v0.4.0 (no `milk serve --acp`) is now recognized and reported as *too old* with an *Update milk* button, instead of failing with "milk process is not available".
+
 ## [0.9.61] - 2026-10-06
 
 ### Added

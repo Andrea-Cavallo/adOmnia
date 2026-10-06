@@ -4,6 +4,12 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.62 release notes: install and update milk from gO Studio
+
+See [the full v0.9.62 notes](releases/v0.9.62.md): *milk settings* installs or
+updates [milk](https://github.com/scoutme/milk) from its official releases with
+SHA-256 verification, and an old milk is reported as too old instead of failing.
+
 ## v0.9.61 release notes: milk in gO Studio and a fuller Kubernetes Studio
 
 See [the full v0.9.61 notes](releases/v0.9.61.md): [milk](https://github.com/scoutme/milk)
