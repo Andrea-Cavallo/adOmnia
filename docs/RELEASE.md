@@ -4,6 +4,14 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.60 release notes: P0 and P1 closed, the project understood from the code
+
+See [the full v0.9.60 notes](releases/v0.9.60.md): Architecture and Interface
+Explorer, data access and REST routes from the types, documentation generation,
+context propagation across packages with a drawn graph, Error Handling
+Intelligence, statistical benchmark comparisons, Fuzzing Studio, the API
+Workspace window with its collections, and native Linux sessions.
+
 ## v0.9.59 release notes: every studio beside the code
 
 See [the full v0.9.59 notes](releases/v0.9.59.md): open any module in its own

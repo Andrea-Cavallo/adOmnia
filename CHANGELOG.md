@@ -6,8 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.60] - 2026-10-06
+
 ### Added
-- **Crash recovery responsiveness check:** an automated test measures recovery snapshots and restore with 10 dirty files on the real store (slowest snapshot ~13 ms locally and ~160 ms on the Linux CI runner, within a 500 ms budget below the 750 ms typing debounce; restore ~6 ms), alongside the real-kill test.
 - **Context propagation across packages:** the Context Propagation Inspector's *Context graph* is now a drawn graph; its *Project* scope uses typed analysis to follow `context.Context` through calls between packages and lists every function that receives a context but passes `context.Background()`/`TODO()`/`WithoutCancel` on. In the debugger, a context carrying a trace/request id opens the Log Inspector on that id.
 - **Architecture decisions:** *Tools → Architecture Decisions…* lists the Markdown ADRs in `docs/adr` and opens them in the editor.
 - **Dependency report export:** the Dependency Graph exports a local JSON report with modules, edges, licenses, weight and duplicates, plus updates and vulnerability counts when you asked for them.
@@ -25,6 +26,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Interface Explorer:** every interface with its implementations, near-implementations and their missing methods, who uses it and which methods callers really call, a consumers/implementations graph and gentle hints for interfaces that are too broad, implemented only once or declared on the producer side.
 - **Error Handling Intelligence:** *View → Error Handling Intelligence* analyzes every module with full type information and groups problems by rule — ignored, discarded, unhandled and shadowed errors, `%v` instead of `%w`, `err.Error()` breaking the chain, `==` instead of `errors.Is`, type assertions instead of `errors.As`, invalid `errors.As` targets, errors returned without context, `panic` in library code, ineffective or swallowing `recover()`, `return nil, nil`. One-click fixes wrap with `%w`, switch to `errors.Is` and generate a contextual `fmt.Errorf`. Tabs list sentinel errors with their checks, error types with what they wrap, and each function's error paths.
 - **Worker pool saturation:** the debugger's Concurrency view reports a saturated pool when every worker started by the same function (at least three) is busy at the pause while other goroutines wait to send on a channel, and selects the workers and the waiting producers.
+- **Crash recovery responsiveness check:** an automated test measures recovery snapshots and restore with 10 dirty files on the real store (slowest snapshot ~13 ms locally and ~160 ms on the Linux CI runner, within a 500 ms budget below the 750 ms typing debounce; restore ~6 ms), alongside the real-kill test.
 
 ### Changed
 - **Go toolchain switching keeps code intelligence in sync:** choosing, installing or resetting a Go SDK re-detects it and restarts gopls; *Reload Go + gopls* and *Install latest stable* in the toolchain dialog, a gopls *Restart* and *Choose binary* in the tools list. Releases and installed SDKs are ordered by real version (go1.26 before go1.9), and a failed gopls install says so instead of staying silent.
