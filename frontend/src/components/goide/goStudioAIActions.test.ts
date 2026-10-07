@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GO_STUDIO_AI_ACTIONS, buildAIActionPrompt, enclosingTopLevelBlock, unifiedDiff, type GoStudioAIContext } from './goStudioAIActions'
+import { GO_STUDIO_AI_ACTIONS, architectureBrief, buildAIActionPrompt, enclosingTopLevelBlock, unifiedDiff, type GoStudioAIContext } from './goStudioAIActions'
 
 const SOURCE = [
   'package demo',
@@ -78,5 +78,30 @@ describe('buildAIActionPrompt', () => {
   it('stays under the chat limit', () => {
     const huge = { ...base, focus: { ...base.focus, code: 'x'.repeat(200_000) }, diff: 'y'.repeat(200_000) }
     expect(buildAIActionPrompt(action, huge).length).toBeLessThanOrEqual(56 * 1024)
+  })
+})
+
+describe('architectureBrief', () => {
+  const site = { relativePath: 'api/handler.go', line: 12, column: 1 }
+  const report = {
+    packages: [{ path: 'demo/api', name: 'api', files: 2, site, external: ['github.com/go-chi/chi/v5'], std: 3 }],
+    imports: [{ from: 'demo/api', to: 'demo/store', count: 1 }],
+    modules: [{ path: 'demo', requires: [], external: ['github.com/go-chi/chi/v5'], site }],
+    entries: [
+      { kind: 'http', name: 'POST /orders', package: 'demo/api', site, request: { type: 'object', ref: 'Order' }, response: { type: 'object', ref: 'Order' } },
+      { kind: 'kafka-producer', name: 'publish', detail: 'segmentio/kafka-go', package: 'demo/api', topics: ['orders'], site },
+    ],
+    schemas: [{ name: 'Order', package: 'demo/api', fields: [{ name: 'id', goName: 'ID', type: 'string' }], site }],
+    queries: [{ library: 'database/sql', operation: 'exec', method: 'ExecContext', sql: 'INSERT INTO orders\n (id) VALUES ($1)', tables: ['orders'], function: 'Save', package: 'demo/store', site }],
+  } as unknown as Parameters<typeof architectureBrief>[0]
+
+  it('gives each action only the part it needs', () => {
+    expect(architectureBrief(report, 'api')).toContain('- http POST /orders request: Order response: Order — api/handler.go:12')
+    expect(architectureBrief(report, 'api')).toContain('Order {id string}')
+    expect(architectureBrief(report, 'data')).toContain('exec orders in Save: INSERT INTO orders (id) VALUES ($1)')
+    expect(architectureBrief(report, 'events')).toContain('topics: orders')
+    expect(architectureBrief(report, 'events')).not.toContain('POST /orders')
+    expect(architectureBrief(report, 'dependencies')).toContain('demo/api: github.com/go-chi/chi/v5')
+    expect(architectureBrief(report, 'architecture')).toContain('demo/api -> demo/store')
   })
 })

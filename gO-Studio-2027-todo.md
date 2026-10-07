@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
 | **P3** | Remote ed estensibilità | 18 | 2 |
-| **P4** | AI e intelligenza del workspace | 162 | 19 |
+| **P4** | AI e intelligenza del workspace | 154 | 21 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
 ---
@@ -486,20 +486,13 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 - [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI e le azioni AI passano errori e warning (gopls + linter) del file; mancano gli errori di build degli altri package.*
 - [ ] Deve conoscere profiler.
 - [ ] Deve conoscere runtime traces.
-- [ ] Deve conoscere API.
-- [ ] Deve conoscere DB schema.
-- [ ] Deve conoscere broker metadata.
+- [ ] Deve conoscere DB schema. — *Parziale: Generate SQL Query/Migration allegano query, tabelle e tipi trovati nel codice (Architecture Explorer); manca lo schema letto dal database collegato.*
+- [ ] Deve conoscere broker metadata. — *Parziale: Generate Kafka Message allega producer, consumer e topic trovati nel codice; mancano i metadati letti dal broker (partizioni, schema registry).*
 - [ ] Deve conoscere logs.
-- [ ] Deve conoscere architecture graph.
 
 ### Azioni contestuali
 
-- [ ] Explain dependency.
-- [ ] Explain architecture.
-- [ ] Generate migration.
-- [ ] Generate API call.
-- [ ] Generate SQL query.
-- [ ] Generate Kafka message.
+_Chiusa il 2026-10-07: le 18 azioni AI dell'editor sono nel `CHANGELOG.md` (0.9.64)._
 
 ## §35 · AI Debugging
 

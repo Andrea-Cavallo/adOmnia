@@ -5,7 +5,7 @@ import { handoffToPanel } from '@/lib/entities/dispatch'
 import { renderMarkdown } from '@/lib/markdownDoc'
 import { useGoIDEStore } from '@/stores/goide'
 import { MarkdownPreview } from '@/components/markdown/MarkdownPreview'
-import { architectureFor } from './GoStudioArchitecturePanel'
+import { architectureFor } from '@/lib/goide/architectureCache'
 import { applyErrorFinding } from './GoStudioErrorsPanel'
 import { apiDocsMarkdown, architectureMarkdown, openApiFromRoutes, packageDocMarkdown, parseSourceLink, protoMarkdown } from './goStudioDocsGen'
 

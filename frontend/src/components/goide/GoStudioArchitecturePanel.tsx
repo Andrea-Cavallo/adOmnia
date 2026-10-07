@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { ArrowUpRight, Loader2, Play, Search } from 'lucide-react'
-import { analyzeGoIDEArchitecture, type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession } from '@/lib/goide-api'
+import { type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession } from '@/lib/goide-api'
 import { openEntity } from '@/lib/entities/router'
 import { showModule } from '@/lib/moduleRouting'
-import { cachedArchitecture, rememberArchitecture } from '@/lib/goide/architectureCache'
+import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import { callNeighbourhood, entityRefsForEntry, groupEntries, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
@@ -22,14 +22,6 @@ const NODE_COLOR: Record<ArchNode['kind'], string> = {
 }
 
 
-/** Analisi dell'architettura: riusa l'ultima della sessione, altrimenti la esegue (progetto autorizzato). */
-export async function architectureFor(sessionId: string, fresh = false): Promise<GoIDEArchitectureResult> {
-  const cached = cachedArchitecture(sessionId)
-  if (cached && !fresh) return cached
-  const next = await analyzeGoIDEArchitecture(sessionId)
-  rememberArchitecture(sessionId, next)
-  return next
-}
 
 function errorText(problem: unknown): string {
   return problem instanceof Error ? problem.message : String(problem)

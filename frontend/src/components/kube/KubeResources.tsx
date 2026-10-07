@@ -120,7 +120,7 @@ export function ServicesView({ context, namespace, reloadKey, onForwardStarted }
         <div className="min-h-0 flex-1 overflow-auto">
           <Table head={['Service', 'Type', 'Cluster IP', 'External', 'Ports', 'Age']} empty="No services in this namespace." busy={busy}>
             {items.map((s) => (
-              <tr key={s.name} onClick={() => setSelected(s.name)} className={rowClass(s.name === selected)}>
+              <tr key={s.name} role="button" tabIndex={0} aria-pressed={s.name === selected} onClick={() => setSelected(s.name)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelected(s.name) } }} className={rowClass(s.name === selected)}>
                 <td className={cn(TD, 'text-text-1')}>{s.name}</td>
                 <td className={cn(TD, 'text-text-2')}>{s.type}</td>
                 <td className={cn(TD, 'text-text-3')}>{s.clusterIP}</td>
@@ -160,7 +160,7 @@ export function ConfigMapsView({ context, namespace, reloadKey }: ViewProps) {
         <div className="min-h-0 flex-1 overflow-auto">
           <Table head={['ConfigMap', 'Keys', 'Age']} empty="No config maps in this namespace." busy={busy}>
             {items.map((m) => (
-              <tr key={m.name} onClick={() => setSelected(m.name)} className={rowClass(m.name === selected)}>
+              <tr key={m.name} role="button" tabIndex={0} aria-pressed={m.name === selected} onClick={() => setSelected(m.name)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelected(m.name) } }} className={rowClass(m.name === selected)}>
                 <td className={cn(TD, 'text-text-1')}>{m.name}</td>
                 <td className={cn(TD, 'text-text-2')}>{Object.keys(m.data).length}</td>
                 <td className={cn(TD, 'text-text-3')}>{m.age}</td>

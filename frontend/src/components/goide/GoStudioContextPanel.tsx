@@ -3,7 +3,7 @@ import { AlertCircle, AlertTriangle, Info, GitBranch, Timer, Network, Loader2, R
 import { useGoIDEStore } from '@/stores/goide'
 import type { GoIDEArchitectureResult } from '@/lib/goide-api'
 import { cachedArchitecture } from '@/lib/goide/architectureCache'
-import { architectureFor } from './GoStudioArchitecturePanel'
+import { architectureFor } from '@/lib/goide/architectureCache'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { layoutLayered } from './goStudioLayeredGraph'

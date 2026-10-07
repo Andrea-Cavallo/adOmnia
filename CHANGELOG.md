@@ -6,9 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.64] - 2026-10-07
+
 ### Added
-- **AI actions in the gO Studio editor:** right-click → *AI: Explain Code, Explain Error, Generate Tests, Improve Error Handling, Find Race Risks, Generate Docs*; the command palette (F1) adds *Generate Benchmark, Generate Fuzz Target, Generate Mock, Find Goroutine Leaks, Find Allocation Hotspots, Find Missing Context Propagation*. Each action writes a prompt with the real workspace context: the selection or the enclosing declaration, the file's compiler and linter problems, gopls references to the symbol at the cursor, the uncommitted Git diff, the failing tests of the last run and the file's coverage. The prompt opens in the milk or Copilot chat, ready to review before you send it. Secrets are redacted, and `.adomnia/aiignore` and the project AI policy are respected.
+- **AI actions in the gO Studio editor:** right-click → *AI: Explain Code, Explain Error, Generate Tests, Improve Error Handling, Find Race Risks, Generate Docs*; the command palette (F1) adds *Generate Benchmark, Generate Fuzz Target, Generate Mock, Find Goroutine Leaks, Find Allocation Hotspots, Find Missing Context Propagation, Explain Dependency, Explain Architecture, Generate API Call, Generate SQL Query, Generate Migration, Generate Kafka Message*. The last six attach the Architecture Explorer's analysis (packages and imports, modules and external packages, HTTP/gRPC endpoints with request types, queries and tables, Kafka producers and consumers with topics). Each action writes a prompt with the real workspace context: the selection or the enclosing declaration, the file's compiler and linter problems, gopls references to the symbol at the cursor, the uncommitted Git diff, the failing tests of the last run and the file's coverage. The prompt opens in the milk or Copilot chat, ready to review before you send it. Secrets are redacted, and `.adomnia/aiignore` and the project AI policy are respected.
 - **milk agents from your environment:** *milk settings → Models from your environment* detects DeepSeek, OpenAI, Gemini, OpenRouter, Groq and Mistral keys already set as environment variables (names only, never values). One click adds the agent to `~/.milk/config.json` as primary or escalation, with a `token_cmd` that reads the variable each time milk starts, so the key is never written to disk. milk restarts by itself.
+
+### Fixed
+- **Accessibility audit:** Kubernetes service and config map rows can be selected with the keyboard (Enter/Space), and the milk chat's link handler is marked as a delegate, so the source accessibility audit is green again.
 
 ## [0.9.63] - 2026-10-06
 

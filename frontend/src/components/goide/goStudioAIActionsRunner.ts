@@ -9,9 +9,10 @@ import { useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useMilkStore } from '@/stores/milk'
 import { documentForModel } from './goStudioLanguageFeatures'
+import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import {
-  GO_STUDIO_AI_ACTIONS, buildAIActionPrompt, enclosingTopLevelBlock, unifiedDiff,
-  type GoStudioAIAction, type GoStudioAIContext,
+  GO_STUDIO_AI_ACTIONS, architectureBrief, buildAIActionPrompt, enclosingTopLevelBlock, unifiedDiff,
+  type GoStudioAIAction, type GoStudioAIBrief, type GoStudioAIContext,
 } from './goStudioAIActions'
 
 const MAX_REFERENCES = 25
@@ -77,6 +78,16 @@ async function diffAgainstHead(sessionId: string, relativePath: string, buffer: 
   }
 }
 
+/** Analisi dell'Architecture Explorer (in cache se già fatta); senza analisi l'azione parte col solo codice. */
+async function briefFor(sessionId: string, brief: GoStudioAIBrief): Promise<string | undefined> {
+  try {
+    if (!cachedArchitecture(sessionId)) notify('Analysing the project architecture for the AI…')
+    return architectureBrief((await architectureFor(sessionId)).report, brief) || undefined
+  } catch {
+    return undefined // progetto non autorizzato o go/packages non disponibile
+  }
+}
+
 async function blockedByPolicy(sessionId: string, relativePath: string): Promise<string | null> {
   // ponytail: milk e Copilot sono trattati come provider remoti (milk può avere agenti cloud).
   const excluded = await listGoIDEAIExcludedPaths(sessionId, [relativePath], false)
@@ -109,8 +120,12 @@ export async function runGoStudioAIAction(editor: monaco.editor.ICodeEditor, act
     }
     notify(`${action.label}: collecting context…`)
     const buffer = model.getValue()
-    const [references, diff] = await Promise.all([referencesAt(editor, sessionId, documentId), diffAgainstHead(sessionId, relativePath, buffer)])
-    const context: GoStudioAIContext = { relativePath, focus: focusOf(editor, model), problems, diff, ...references, ...testContext(sessionId, relativePath) }
+    const [references, diff, architecture] = await Promise.all([
+      referencesAt(editor, sessionId, documentId),
+      diffAgainstHead(sessionId, relativePath, buffer),
+      action.brief ? briefFor(sessionId, action.brief) : Promise.resolve(undefined),
+    ])
+    const context: GoStudioAIContext = { relativePath, focus: focusOf(editor, model), problems, diff, architecture, ...references, ...testContext(sessionId, relativePath) }
     // I segreti nel codice restano sulla macchina anche quando il prompt si rilegge prima dell'invio.
     const prompt = createAIRedactor().redact(buildAIActionPrompt(action, context))
     notify(null)

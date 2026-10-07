@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.64 release notes: AI that knows your workspace
+
+See [the full v0.9.64 notes](releases/v0.9.64.md): 18 AI actions in the gO Studio
+editor build prompts from the real workspace (problems, references, Git diff,
+failing tests, coverage, architecture analysis). milk settings add agents for
+API keys already in your environment, without writing the key to disk.
+
 ## v0.9.63 release notes: a milk chat you can read
 
 The [milk](https://github.com/scoutme/milk) chat is redesigned for reading:
