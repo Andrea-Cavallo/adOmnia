@@ -226,6 +226,30 @@ export async function startForward(
   }
 }
 
+/**
+ * Opens a forward on a free 127.0.0.1 port and resolves once kubectl reports it is listening,
+ * so the caller can connect right away (Delve, pprof).
+ */
+export async function openReadyForward(
+  port: number | null,
+  request: { context: string; namespace: string; target: string; remotePort: number },
+  timeoutMs = 15_000,
+): Promise<{ id: string; localPort: number }> {
+  const result = await call(port, '/kube/forwards/start', { ...request, localPort: 0 })
+  if (result.error) throw new Error(String(result.error))
+  const id = String(result.id)
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const forward = (await listForwards(port)).find((item) => item.id === id)
+    if (!forward) throw new Error('The port forward was stopped.')
+    if (forward.status.startsWith('Forwarding from')) return { id, localPort: forward.localPort }
+    if (!forward.running) throw new Error(forward.status || 'kubectl port-forward exited.')
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  await stopForward(port, id)
+  throw new Error(`kubectl did not open the forward to port ${request.remotePort} in time.`)
+}
+
 export async function stopForward(port: number | null, id: string): Promise<void> {
   try {
     await call(port, `/kube/forwards/stop?id=${encodeURIComponent(id)}`, {})

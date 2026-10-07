@@ -17,6 +17,7 @@ import {
 } from '@/lib/logstream-api'
 import { ConfigMapsView, DeploymentsView, ForwardsView, SecretsView, ServicesView } from './KubeResources'
 import { ForwardForm, PodExec, PodFiles } from './PodTools'
+import { PodGoTools } from './PodGoTools'
 
 const POLL_MS = 1500
 const MAX_LOG_LINES = 2000
@@ -26,7 +27,7 @@ type Tab = typeof TABS[number]
 const TAB_LABEL: Record<Tab, string> = {
   pods: 'Pods', deployments: 'Deployments', services: 'Services', configmaps: 'ConfigMaps', secrets: 'Secrets', forwards: 'Port forwards',
 }
-const POD_TOOLS = ['logs', 'exec', 'files', 'forward'] as const
+const POD_TOOLS = ['logs', 'exec', 'files', 'forward', 'go'] as const
 type PodTool = typeof POD_TOOLS[number]
 
 const SELECT = 'h-7 rounded border border-border-2 bg-surface-0 px-2 text-xs text-text-1 outline-none focus:border-accent/50'
@@ -237,7 +238,8 @@ export function KubePanel() {
               ))}
             </div>
             {podTool === 'logs' && <PodLogs key={selectedPod.name} pod={selectedPod} context={context} namespace={namespace} />}
-            {podTool !== 'logs' && podTool !== 'forward' && (
+            {podTool === 'go' && <PodGoTools key={selectedPod.name} context={context} namespace={namespace} pod={selectedPod.name} />}
+            {(podTool === 'exec' || podTool === 'files') && (
               <PodContainerTool key={selectedPod.name} pod={selectedPod} context={context} namespace={namespace} tool={podTool} />
             )}
             {podTool === 'forward' && (

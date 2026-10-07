@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -197,7 +198,7 @@ func TestStartForwardValidation(t *testing.T) {
 		target        string
 		local, remote int
 	}{
-		{"deploy/api", 8080, 80}, {"pod/", 8080, 80}, {"pod/api", 0, 80}, {"svc/api", 8080, 70000},
+		{"deploy/api", 8080, 80}, {"pod/", 8080, 80}, {"pod/api", -1, 80}, {"svc/api", 8080, 70000},
 	}
 	for _, c := range cases {
 		if _, err := StartForward("", "default", c.target, c.local, c.remote); err == nil {
@@ -213,4 +214,16 @@ func TestRemotePathRejectsControlChars(t *testing.T) {
 	if _, err := remotePath("  "); err == nil {
 		t.Fatal("expected an empty path to be rejected")
 	}
+}
+
+func TestFreeLocalPortIsBindable(t *testing.T) {
+	port, err := freeLocalPort()
+	if err != nil || !validPort(port) {
+		t.Fatalf("port %d, err %v", port, err)
+	}
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		t.Fatalf("port %d not bindable: %v", port, err)
+	}
+	listener.Close()
 }

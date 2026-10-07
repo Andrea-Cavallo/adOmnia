@@ -450,7 +450,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			writeJSON(w, http.StatusOK, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"id": forward.ID, "error": ""})
+		writeJSON(w, http.StatusOK, map[string]any{"id": forward.ID, "localPort": forward.LocalPort, "error": ""})
 	})
 
 	mux.HandleFunc("/kube/forwards/stop", func(w http.ResponseWriter, r *http.Request) {

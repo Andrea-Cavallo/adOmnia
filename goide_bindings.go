@@ -633,6 +633,11 @@ func (g *GoIDE) LoadProfile(sessionID, relativePath string) (goide.ProfileReport
 	return g.service.LoadProfile(sessionID, relativePath)
 }
 
+// CaptureLiveTrace salva nel progetto una trace di esecuzione registrata da /debug/pprof/trace.
+func (g *GoIDE) CaptureLiveTrace(ctx context.Context, request goide.LiveProfileRequest) (goide.ProfileFile, error) {
+	return g.service.CaptureLiveTrace(ctx, request)
+}
+
 // ListTraceFiles elenca i file di esecuzione trace (`trace.out`, `*.trace`) del progetto.
 func (g *GoIDE) ListTraceFiles(sessionID string) ([]goide.ProfileFile, error) {
 	return g.service.ListTraceFiles(sessionID)

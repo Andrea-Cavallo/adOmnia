@@ -88,6 +88,7 @@ import { runVcsCommand, type GoStudioVcsDialog } from './goStudioVcsCommands'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioLocalHistoryDialog } from './GoStudioLocalHistoryDialog'
 import { GoStudioAttachDialog, type GoStudioAttachMode } from './GoStudioAttachDialog'
+import { useGoStudioRemoteHandoff } from './useGoStudioRemoteHandoff'
 import { GoStudioGoToolDialog, type GoStudioGoToolDialogState } from './GoStudioGoToolDialog'
 import { goToolDialogFor } from './goStudioGoToolCommands'
 import {
@@ -291,6 +292,9 @@ export function GoStudioPanel() {
     document.addEventListener('adomnia:go-studio-command', onCommand)
     return () => document.removeEventListener('adomnia:go-studio-command', onCommand)
   }, [])
+
+  // Pod e servizi remoti (Kubernetes Studio): debug, profilo e trace attraverso un port forward.
+  useGoStudioRemoteHandoff()
 
   // Debug Request dall'API Workspace: avvia la configurazione Debug attiva del progetto indicato.
   useEffect(() => {

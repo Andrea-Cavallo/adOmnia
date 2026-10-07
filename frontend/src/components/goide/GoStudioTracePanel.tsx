@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Activity, Cpu, FileWarning, Flame, GitBranch, Loader2, RefreshCw, Search } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
+import { useFocusedArtifact } from '@/lib/goide/goStudioRemote'
 import { listGoIDETraceFiles, loadGoIDETrace, type GoIDEProfileFile } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
 import {
@@ -63,6 +64,8 @@ export function GoStudioTracePanel({ session }: GoStudioTracePanelProps) {
   }, [sessionId])
 
   useEffect(() => { void refresh() }, [refresh])
+  // Trace appena catturata da un servizio remoto: la si mostra appena compare nell'elenco.
+  useFocusedArtifact('trace', useCallback((path: string) => { setSelectedPath(path); void refresh() }, [refresh]))
 
   const traceCreated = useCallback((path: string) => {
     setSelectedPath(path)

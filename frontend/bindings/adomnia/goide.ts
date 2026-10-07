@@ -105,6 +105,15 @@ export function CaptureLiveProfile(request: goide$0.LiveProfileRequest): $Cancel
 }
 
 /**
+ * CaptureLiveTrace salva nel progetto una trace di esecuzione registrata da /debug/pprof/trace.
+ */
+export function CaptureLiveTrace(request: goide$0.LiveProfileRequest): $CancellablePromise<goide$0.ProfileFile> {
+    return $Call.ByID(1298245663, request).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
  * ResolveCodeAction calcola l'anteprima delle modifiche dell'azione.
  * ChangeSignature riordina o rimuove parametri e risultati della funzione al cursore (anteprima).
  */

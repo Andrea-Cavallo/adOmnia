@@ -13,6 +13,7 @@ import { VizBar, VizLegend, VizSegmented } from './GoStudioVizKit'
 import { GoStudioPerfExport } from './GoStudioPerfExport'
 import { GoStudioCreateProfile } from './GoStudioCreateProfile'
 import { GoStudioCaptureLiveProfile } from './GoStudioCaptureLiveProfile'
+import { useFocusedArtifact } from '@/lib/goide/goStudioRemote'
 import { markdownFileName, profileToMarkdown } from './goStudioPerfMarkdown'
 import { profileHeatFrom, useGoStudioProfileHeat } from './goStudioProfileHeat'
 
@@ -127,6 +128,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
   }, [sessionId])
 
   useEffect(() => { void refresh() }, [refresh])
+  useFocusedArtifact('profile', useCallback((path: string) => { setSelectedPath(path); void refresh() }, [refresh]))
 
   const profileCreated = useCallback((path: string) => {
     setSelectedPath(path)

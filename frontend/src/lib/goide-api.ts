@@ -401,6 +401,11 @@ export async function captureGoIDELiveProfile(request: GoIDELiveProfileRequest):
   return GoIDEBindings.CaptureLiveProfile(request)
 }
 
+/** Registra qualche secondo di /debug/pprof/trace e salva la trace nel progetto. */
+export async function captureGoIDELiveTrace(request: Omit<GoIDELiveProfileRequest, 'kind'>): Promise<GoIDEProfileFile> {
+  return GoIDEBindings.CaptureLiveTrace({ ...request, kind: 'trace' })
+}
+
 export type GoIDETraceReport = Awaited<ReturnType<typeof GoIDEBindings.LoadTrace>>
 
 /** File di esecuzione trace (`trace.out`, `*.trace`) trovati nel progetto. */

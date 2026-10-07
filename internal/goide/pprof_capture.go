@@ -24,7 +24,9 @@ import (
 const (
 	defaultCPUCaptureSeconds = 10
 	maxCPUCaptureSeconds     = 60
-	liveProfileTimeout       = 20 * time.Second
+	// Una trace di esecuzione pesa molto più di un profilo: pochi secondi bastano a vedere scheduler e GC.
+	defaultTraceCaptureSeconds = 5
+	liveProfileTimeout         = 20 * time.Second
 )
 
 // liveProfileFiles è il nome dell'endpoint pprof → prefisso del file salvato (profileKind lo riconosce).
@@ -105,10 +107,13 @@ func liveProfileEndpoint(request LiveProfileRequest) (string, time.Duration, err
 	parsed.Path = base + "/debug/pprof/" + request.Kind
 	parsed.RawQuery, parsed.Fragment = "", ""
 	timeout := liveProfileTimeout
-	if request.Kind == "profile" {
+	if request.Kind == "profile" || request.Kind == "trace" {
 		seconds := request.Seconds
 		if seconds <= 0 {
 			seconds = defaultCPUCaptureSeconds
+			if request.Kind == "trace" {
+				seconds = defaultTraceCaptureSeconds
+			}
 		}
 		seconds = min(seconds, maxCPUCaptureSeconds)
 		parsed.RawQuery = url.Values{"seconds": {fmt.Sprint(seconds)}}.Encode()

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
 	"os/exec"
 	"sort"
 	"strings"
@@ -34,7 +35,18 @@ var (
 
 func validPort(port int) bool { return port > 0 && port < 65536 }
 
-// StartForward opens a port forward to a pod or service. The process lives
+// freeLocalPort asks the OS for a free loopback port (local port 0 = "pick one for me").
+// ponytail: the port is released before kubectl binds it; a race is possible but kubectl then fails visibly.
+func freeLocalPort() (int, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, fmt.Errorf("no free local port: %w", err)
+	}
+	defer listener.Close()
+	return listener.Addr().(*net.TCPAddr).Port, nil
+}
+
+// StartForward opens a port forward to a pod or service; localPort 0 picks a free port. The process lives
 // until StopForward, sidecar shutdown, or kubectl exits on its own.
 func StartForward(contextName, namespace, target string, localPort, remotePort int) (*Forward, error) {
 	if !Available() {
@@ -48,6 +60,13 @@ func StartForward(contextName, namespace, target string, localPort, remotePort i
 	}
 	if err := validateIdentifier(strings.SplitN(target, "/", 2)[1], "target"); err != nil {
 		return nil, err
+	}
+	if localPort == 0 {
+		free, err := freeLocalPort()
+		if err != nil {
+			return nil, err
+		}
+		localPort = free
 	}
 	if !validPort(localPort) || !validPort(remotePort) {
 		return nil, fmt.Errorf("ports must be between 1 and 65535")
