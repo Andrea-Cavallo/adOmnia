@@ -25,7 +25,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
-| **P3** | Remote ed estensibilità | 18 | 2 |
+| **P3** | Remote ed estensibilità | 12 | 2 |
 | **P4** | AI e intelligenza del workspace | 151 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
@@ -390,13 +390,13 @@ _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 - [x] Service overview. — *Tab Services: tipo, cluster/external IP, porte, selector, port forward dall'inspector.*
 - [x] ConfigMap. — *Tab ConfigMaps con inspector chiave → valore.*
 - [x] Secret metadata senza mostrare valori di default. — *Tab Secrets: solo nomi delle chiavi e dimensioni; i valori sono scartati nel parser Go (test `TestParseSecretsDropsValues`).*
-- [ ] Attach remote debugger.
-- [ ] Remote profile.
-- [ ] Remote trace.
-- [ ] Remote logs correlated to source.
-- [ ] SSH development.
-- [ ] WSL development.
-- [ ] Container development.
+- [x] Attach remote debugger. — *Tab Go del pod: port forward di Delve su una porta libera di 127.0.0.1 (internal/kube, localPort 0) e attach remoto nel progetto aperto in Go Studio (useGoStudioRemoteHandoff.ts).*
+- [x] Remote profile. — *Tab Go del pod: forward di pprof e CaptureLiveProfile (CPU, heap, goroutine, allocs, block, mutex); il profilo si apre selezionato nel pannello Profile.*
+- [x] Remote trace. — *Nuovo CaptureLiveTrace (/debug/pprof/trace, default 5 s, validato con x/exp/trace, test con net/http/pprof reale); dal pod o da qualunque servizio su localhost, si apre nel Trace viewer.*
+- [ ] Remote logs correlated to source. — *Da fare: nei log del pod rendere cliccabili i `file.go:riga` verso il progetto aperto (routeToModule open-location).*
+- [x] SSH development. — *Run configuration → "Run on" host di ~/.ssh/config: run/test/build/comandi via `ssh -T -o BatchMode=yes` nella cartella remota indicata (internal/ide/remote); host SSH anche come profili terminale. Il codice non viene sincronizzato: serve lo stesso checkout sul server.*
+- [x] WSL development. — *"Run on" distro WSL: percorsi tradotti (/mnt/c, \wsl.localhost), toolchain della distro, variabili via WSLENV (mai in riga di comando); Stop termina il process group remoto. Provato su Ubuntu reale.*
+- [x] Container development. — *"Run on" container in esecuzione: `docker exec -i` con -e KEY (valori dall'ambiente del client) nella cartella montata; container anche come profili terminale. Limite: l'input interattivo non arriva al processo remoto (stdin fa da guardia per lo Stop).*
 
 ## §47 · Plugin / Extension Architecture
 
