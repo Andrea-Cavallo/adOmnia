@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.67] - 2026-10-07
+
+### Changed
+- README and release notes now describe the modular Go Studio workspace: movable, maximizable and detachable tools, with automatic expansion of the editor and remaining views. The complete native smoke check and future docking features remain explicitly tracked.
+
+### Fixed
+- **Sidebar navigation to Git Sync:** opening Git Sync with no active request and no collection no longer crashes with `Cannot read properties of undefined (reading 'request')`. Missing or closed active tabs and tool tabs are ignored when finding a collection request. Two component regression tests reproduce the original exception and cover a stale active-tab ID.
+
 ## [0.9.66] - 2026-10-07
 
 ### Added

@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.67 release notes: modular workspace and stable Git Sync navigation
+
+See [the full v0.9.67 notes](releases/v0.9.67.md): modular Go Studio tools detach
+into native windows and automatically free space in the main IDE. Git Sync opens safely from
+the sidebar when there is no active request or collection, including a closed
+active tab. This fixes the reported `request` exception.
+
 ## v0.9.66 release notes: flexible tools, remote execution and extensions
 
 See [the full v0.9.66 notes](releases/v0.9.66.md): movable, maximizable and

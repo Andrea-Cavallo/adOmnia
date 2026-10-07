@@ -331,7 +331,8 @@ export function GitSyncPanel() {
   )
   const activeCollectionRequest = useMemo(() => {
     const tab = tabs.find((candidate) => candidate.id === activeTabId)
-    return tab?.collectionId === selectedCollection?.id ? tab.request : null
+    if (!tab || !selectedCollection || tab.tool) return null
+    return tab.collectionId === selectedCollection.id ? tab.request : null
   }, [activeTabId, selectedCollection?.id, tabs])
   const targetCollectionFolder = useMemo(
     () => repoPath && selectedCollection ? collectionFolderPath(repoPath, selectedCollection.id, selectedCollection.name) : '',

@@ -21,6 +21,8 @@ adOmnia runs on Windows, macOS and Linux. It needs no account, collects no telem
 
 ## gO Studio: the Go IDE
 
+**A modular workspace:** move Run output, Terminal, service logs, Copilot Chat and milk to the left, right or bottom, maximize a tool, or detach it into a native window. Detached tools disappear from the main IDE; the editor and remaining tools automatically expand into the freed space. Bring a tool back or close its child window to restore its position. See [the modular workspace guide](docs/architecture/modular-workspace.md) for supported behavior and remaining work.
+
 gO Studio is the Go IDE built into adOmnia. It is designed for day-to-day Go work on real machines, including corporate PCs behind a VPN or proxy.
 
 | Area | What you get |
