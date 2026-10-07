@@ -15,6 +15,15 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as milk$0 from "./internal/milk/models.js";
 
 /**
+ * Agents restituisce gli agenti di milk e i provider con una chiave nell'env (mai i valori).
+ */
+export function Agents(): $CancellablePromise<milk$0.AgentsInfo> {
+    return $Call.ByID(425628551).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * CancelPrompt interrompe il turno individuando la sessione dal token.
  */
 export function CancelPrompt(token: string): $CancellablePromise<void> {
@@ -33,7 +42,7 @@ export function CancelSession(sessionID: string): $CancellablePromise<void> {
  */
 export function Install(): $CancellablePromise<milk$0.Status> {
     return $Call.ByID(1880388504).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
@@ -42,7 +51,7 @@ export function Install(): $CancellablePromise<milk$0.Status> {
  */
 export function Log(): $CancellablePromise<string[]> {
     return $Call.ByID(657099561).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -51,7 +60,7 @@ export function Log(): $CancellablePromise<string[]> {
  */
 export function Prompt(request: milk$0.PromptRequest): $CancellablePromise<milk$0.PromptResponse> {
     return $Call.ByID(1998047459, request).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -81,7 +90,7 @@ export function Restart(): $CancellablePromise<void> {
  */
 export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(4063823965, settings).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -97,7 +106,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
  */
 export function Settings(): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(3002270608).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -106,12 +115,23 @@ export function Settings(): $CancellablePromise<milk$0.Settings> {
  */
 export function Status(): $CancellablePromise<milk$0.Status> {
     return $Call.ByID(3201629911).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * UseProvider aggiunge al config di milk l'agente di un provider rilevato nell'env e lo
+ * assegna al ruolo (primary | escalation); milk riparte per leggere il config nuovo.
+ */
+export function UseProvider(id: string, role: string): $CancellablePromise<milk$0.AgentsInfo> {
+    return $Call.ByID(2886595737, id, role).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = milk$0.Status.createFrom;
-const $$createType1 = $Create.Array($Create.Any);
-const $$createType2 = milk$0.PromptResponse.createFrom;
-const $$createType3 = milk$0.Settings.createFrom;
+const $$createType0 = milk$0.AgentsInfo.createFrom;
+const $$createType1 = milk$0.Status.createFrom;
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = milk$0.PromptResponse.createFrom;
+const $$createType4 = milk$0.Settings.createFrom;

@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
 | **P3** | Remote ed estensibilità | 18 | 2 |
-| **P4** | AI e intelligenza del workspace | 178 | 19 |
+| **P4** | AI e intelligenza del workspace | 162 | 19 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
 ---
@@ -481,13 +481,9 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 ### Principio
 
-- [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: Fix with AI invia il file con l'errore più fino a 3 file del package locale citato; non c'è semantic graph né contesto di workspace.*
+- [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: le azioni AI dell'editor (`goStudioAIActions.ts`) allegano funzione o selezione, riferimenti gopls, diff Git, test falliti e coverage; manca il semantic graph del workspace.*
 - [ ] Deve poter usare il semantic graph del workspace.
-- [ ] Deve conoscere symbol references.
-- [ ] Deve conoscere Git diff.
-- [ ] Deve conoscere test results.
-- [ ] Deve conoscere coverage.
-- [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI passa l'errore e gli altri problemi del file; mancano gli errori di build completi e le altre fonti.*
+- [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI e le azioni AI passano errori e warning (gopls + linter) del file; mancano gli errori di build degli altri package.*
 - [ ] Deve conoscere profiler.
 - [ ] Deve conoscere runtime traces.
 - [ ] Deve conoscere API.
@@ -498,21 +494,9 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 ### Azioni contestuali
 
-- [ ] Explain code.
-- [ ] Explain error.
-- [ ] Generate tests.
-- [ ] Generate benchmark.
-- [ ] Generate fuzz target.
-- [ ] Find race risks.
-- [ ] Find goroutine leaks.
-- [ ] Find allocation hotspots.
-- [ ] Find missing context propagation.
-- [ ] Improve error handling.
 - [ ] Explain dependency.
 - [ ] Explain architecture.
-- [ ] Generate docs.
 - [ ] Generate migration.
-- [ ] Generate mock.
 - [ ] Generate API call.
 - [ ] Generate SQL query.
 - [ ] Generate Kafka message.

@@ -1,6 +1,7 @@
 import * as MilkBindings from '../../bindings/adomnia/milk'
 import { Events } from '@wailsio/runtime'
 import type {
+  AgentsInfo,
   PromptRequest,
   PromptResponse,
   Settings,
@@ -9,6 +10,8 @@ import type {
 
 export type MilkStatus = Status
 export type MilkSettings = Settings
+export type MilkAgentsInfo = AgentsInfo
+export type MilkAgentRole = 'primary' | 'escalation'
 export type MilkPromptRequest = PromptRequest
 export type MilkPromptResponse = PromptResponse
 
@@ -55,6 +58,8 @@ export interface MilkPermissionEvent {
 export const getMilkStatus = (): Promise<MilkStatus> => MilkBindings.Status()
 export const getMilkSettings = (): Promise<MilkSettings> => MilkBindings.Settings()
 export const saveMilkSettings = (settings: MilkSettings): Promise<MilkSettings> => MilkBindings.SaveSettings(settings)
+export const getMilkAgents = (): Promise<MilkAgentsInfo> => MilkBindings.Agents()
+export const assignMilkProvider = (id: string, role: MilkAgentRole): Promise<MilkAgentsInfo> => MilkBindings.UseProvider(id, role)
 export const installMilk = (): Promise<MilkStatus> => MilkBindings.Install()
 export const restartMilk = (): Promise<void> => MilkBindings.Restart()
 export const getMilkLog = (): Promise<string[]> => MilkBindings.Log()

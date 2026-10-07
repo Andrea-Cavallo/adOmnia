@@ -6,6 +6,46 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AgentsInfo è lo stato degli agenti di milk visto da adOmnia.
+ */
+export class AgentsInfo {
+    "configPath": string;
+    "primary": string;
+    "escalation": string;
+    "providers": ProviderStatus[];
+
+    /** Creates a new AgentsInfo instance. */
+    constructor($$source: Partial<AgentsInfo> = {}) {
+        if (!("configPath" in $$source)) {
+            this["configPath"] = "";
+        }
+        if (!("primary" in $$source)) {
+            this["primary"] = "";
+        }
+        if (!("escalation" in $$source)) {
+            this["escalation"] = "";
+        }
+        if (!("providers" in $$source)) {
+            this["providers"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AgentsInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AgentsInfo {
+        const $$createField3_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("providers" in $$parsedSource) {
+            $$parsedSource["providers"] = $$createField3_0($$parsedSource["providers"]);
+        }
+        return new AgentsInfo($$parsedSource as Partial<AgentsInfo>);
+    }
+}
+
+/**
  * PromptRequest descrive un turno di chat milk. Token è generato dal frontend e
  * collega progress/cancel; Root è la cartella del progetto attivo.
  */
@@ -60,6 +100,50 @@ export class PromptResponse {
     static createFrom($$source: any = {}): PromptResponse {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new PromptResponse($$parsedSource as Partial<PromptResponse>);
+    }
+}
+
+/**
+ * ProviderStatus descrive un provider per la UI: mai il valore della chiave, solo il nome della variabile.
+ */
+export class ProviderStatus {
+    "id": string;
+    "label": string;
+    "envVar": string;
+    "model": string;
+    "detected": boolean;
+    "configured": boolean;
+
+    /** Creates a new ProviderStatus instance. */
+    constructor($$source: Partial<ProviderStatus> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("envVar" in $$source)) {
+            this["envVar"] = "";
+        }
+        if (!("model" in $$source)) {
+            this["model"] = "";
+        }
+        if (!("detected" in $$source)) {
+            this["detected"] = false;
+        }
+        if (!("configured" in $$source)) {
+            this["configured"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProviderStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProviderStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProviderStatus($$parsedSource as Partial<ProviderStatus>);
     }
 }
 
@@ -166,3 +250,7 @@ export class Status {
         return new Status($$parsedSource as Partial<Status>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = ProviderStatus.createFrom;
+const $$createType1 = $Create.Array($$createType0);

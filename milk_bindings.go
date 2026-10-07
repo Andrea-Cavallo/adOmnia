@@ -75,3 +75,18 @@ func (m *Milk) CancelPrompt(token string) { m.manager.CancelPrompt(token) }
 func (m *Milk) RespondPermission(requestID string, allow bool) {
 	m.manager.RespondPermission(requestID, allow)
 }
+
+// Agents restituisce gli agenti di milk e i provider con una chiave nell'env (mai i valori).
+func (m *Milk) Agents() (milk.AgentsInfo, error) { return milk.Agents() }
+
+// UseProvider aggiunge al config di milk l'agente di un provider rilevato nell'env e lo
+// assegna al ruolo (primary | escalation); milk riparte per leggere il config nuovo.
+func (m *Milk) UseProvider(id, role string) (milk.AgentsInfo, error) {
+	if err := milk.UseProvider(id, role); err != nil {
+		return milk.AgentsInfo{}, err
+	}
+	if m.manager.Settings().Enabled {
+		go func() { _ = m.manager.Restart() }()
+	}
+	return milk.Agents()
+}

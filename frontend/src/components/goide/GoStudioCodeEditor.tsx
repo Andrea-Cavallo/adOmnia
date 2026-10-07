@@ -9,6 +9,7 @@ import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { useSettingsStore } from '@/stores/settings'
 import { registerGoStudioEditor } from './goStudioEditorRegistry'
 import { installGoStudioEditorActions } from './goStudioEditorActions'
+import { installGoStudioAIActions } from './goStudioAIActionsRunner'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
 import { registerGoStudioCodeVision } from './goStudioCodeVision'
@@ -103,6 +104,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       if (position) callbacks.current.onCursor(position.lineNumber, position.column)
     })
     installGoStudioEditorActions(editor)
+    installGoStudioAIActions(editor)
     installRecursiveCallMarkers(editor)
     decorationsRef.current = editor.createDecorationsCollection()
     coverageDecorationsRef.current = editor.createDecorationsCollection()

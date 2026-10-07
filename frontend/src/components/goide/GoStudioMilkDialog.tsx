@@ -3,7 +3,7 @@ import { AlertCircle, Download, ExternalLink } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import milkAvatar from '../../../../assets/images/milk-avatar.png'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
-import { getMilkLog, type MilkSettings } from '@/lib/milk-api'
+import { assignMilkProvider, getMilkAgents, getMilkLog, type MilkAgentRole, type MilkAgentsInfo, type MilkSettings } from '@/lib/milk-api'
 import { useMilkStore } from '@/stores/milk'
 
 /** Upstream project: adOmnia drives the milk binary installed on this machine, so updating milk updates the chat. */
@@ -23,6 +23,79 @@ export function MilkLogo({ size = 16, className = '' }: { size?: number; classNa
     >
       <img src={milkAvatar} alt="" width={size} height={size} draggable={false} />
     </span>
+  )
+}
+
+const ROLES: { role: MilkAgentRole; label: string }[] = [
+  { role: 'primary', label: 'Primary' },
+  { role: 'escalation', label: 'Escalation' },
+]
+
+/**
+ * Models whose key is already in the environment: one click adds the agent to milk's config with a
+ * token_cmd that reads the variable, so the key itself never lands in a file.
+ */
+function MilkAgentsSection() {
+  const [info, setInfo] = useState<MilkAgentsInfo | null>(null)
+  const [pending, setPending] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getMilkAgents().then(setInfo, (reason: unknown) => setError(String(reason)))
+  }, [])
+
+  const assign = (id: string, role: MilkAgentRole) => {
+    setPending(`${id}:${role}`)
+    setError('')
+    assignMilkProvider(id, role)
+      .then(setInfo, (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .finally(() => setPending(''))
+  }
+
+  return (
+    <section className="flex flex-col gap-2.5">
+      <h3 className="gs-section-title">Models from your environment</h3>
+      <p className="text-[12.5px] text-text-2">
+        Pick the model milk answers with (primary) and the one it hands harder turns to (escalation).
+        The key is read from the variable each time milk starts and is never written to disk.
+      </p>
+      {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
+      {info && (
+        <ul className="gs-surface flex flex-col divide-y divide-border-1">
+          {info.providers.map((provider) => (
+            <li key={provider.id} className="flex items-center gap-3 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[12.5px] text-text-1">{provider.label} <span className="text-text-4">· {provider.model}</span></div>
+                <div className={`gs-mono text-[11px] ${provider.detected ? 'text-success' : 'text-text-4'}`}>
+                  {provider.envVar} {provider.detected ? 'found' : 'not set'}
+                </div>
+              </div>
+              {ROLES.map(({ role, label }) => {
+                const active = (role === 'primary' ? info.primary : info.escalation) === provider.id
+                return (
+                  <GoStudioButton
+                    key={role}
+                    small
+                    variant={active ? 'primary' : 'secondary'}
+                    loading={pending === `${provider.id}:${role}`}
+                    disabled={!provider.detected || active || pending !== ''}
+                    onClick={() => assign(provider.id, role)}
+                  >
+                    {label}
+                  </GoStudioButton>
+                )
+              })}
+            </li>
+          ))}
+        </ul>
+      )}
+      {info && (
+        <p className="text-[11.5px] text-text-4">
+          Now: primary <span className="gs-mono">{info.primary || '—'}</span>, escalation <span className="gs-mono">{info.escalation || 'claude'}</span>.
+          Set a variable after starting adOmnia? Restart adOmnia so it can see it. Other agents and models: <span className="gs-mono">{info.configPath}</span>.
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -92,6 +165,8 @@ export function GoStudioMilkDialog() {
         </p>
         {log && <pre className="gs-surface gs-mono max-h-44 overflow-auto p-3 text-[11px] leading-5 text-text-3">{log.length ? log.join('\n') : 'No log lines yet.'}</pre>}
       </section>
+
+      <MilkAgentsSection />
 
       <section className="flex flex-col gap-2.5">
         <h3 className="gs-section-title">Binary</h3>
