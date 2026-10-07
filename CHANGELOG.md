@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.68] - 2026-10-07
+
+### Fixed
+- **AI chat editor context:** milk and Copilot now attach the active file path and live editor buffer, including unsaved changes, at send time. Project context includes a bounded, filtered file index rather than assuming the provider knows the editor. Copilot no longer depends on its language server having already tracked the document. milk displays file/project attachment switches and the actual attachment labels; Copilot preserves its switches across detachment. Detached milk receives active-file snapshots and forwards context choices to the project owner. Exclusions, remote-provider project policy and inline-secret redaction apply before sending; missing files are reported explicitly and milk slash commands remain unchanged. Regression tests cover both outbound transports, detached snapshots, project isolation, policy, selections and multibyte prompt limits.
+
 ## [0.9.67] - 2026-10-07
 
 ### Changed

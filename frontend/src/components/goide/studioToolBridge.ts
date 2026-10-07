@@ -36,7 +36,7 @@ function snapshot(sessionId: string, tool: StudioTool) {
   const document = ide.documents.find((item) => item.document.id === ide.activeDocumentBySession[sessionId])
   return {
     key: toolKey(sessionId, tool), session,
-    document: tool === 'copilot' ? document ?? null : null,
+    document: tool === 'copilot' || tool === 'milk' ? document ?? null : null,
     executions, activeRun: ide.activeRunBySession[sessionId],
     consoleByRun: tool === 'run' || tool === 'logs' ? Object.fromEntries(executions.map((run) => [run.id, ide.consoleByRun[run.id] ?? []])) : {},
     milk: tool === 'milk' ? { status: milk.status, settings: milk.settings, chatThreads: { [root]: milk.chatThreads[root] }, permissions: milk.permissions } : null,
@@ -83,7 +83,7 @@ export function startStudioToolOwner() {
   useGoIDEStore.subscribe((state, previous) => {
     if (state.sessions !== previous.sessions) schedule(STUDIO_TOOLS)
     if (state.executions !== previous.executions || state.consoleByRun !== previous.consoleByRun || state.activeRunBySession !== previous.activeRunBySession) schedule(['run', 'logs'])
-    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot'])
+    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk'])
   })
   useMilkStore.subscribe(() => schedule(['milk']))
   useCopilotStore.subscribe(() => schedule(['copilot']))
@@ -170,7 +170,7 @@ async function runOwnerAction(message: Request, state: NonNullable<Snapshot>): P
     switch (action) {
       case 'ensure': return milk.ensure()
       case 'setWorkspace': return milk.setWorkspace(root)
-      case 'sendChat': void milk.sendChat(root, String(args[1] ?? '')); return null
+      case 'sendChat': void milk.sendChat(root, String(args[1] ?? ''), args[2] as Parameters<typeof milk.sendChat>[2]); return null
       case 'stopChat': return milk.stopChat(root)
       case 'newChat': return milk.newChat(root)
       case 'respondPermission': return milk.respondPermission(String(args[0]), args[1] === true)

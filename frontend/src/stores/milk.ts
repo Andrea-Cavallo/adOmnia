@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { prepareStudioChat, type StudioChatContext } from '@/lib/goide/studioChatContext'
 import {
   cancelMilkPrompt,
   getMilkSettings,
@@ -27,6 +28,7 @@ export interface MilkToolActivity {
 }
 
 export interface MilkChatMessage {
+  context?: string[]
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -59,7 +61,7 @@ interface MilkState {
   install: () => Promise<void>
   setDialogOpen: (open: boolean) => void
   setWorkspace: (root: string) => Promise<void>
-  sendChat: (root: string, message: string) => Promise<void>
+  sendChat: (root: string, message: string, context?: StudioChatContext) => Promise<void>
   stopChat: (root: string) => Promise<void>
   newChat: (root: string) => Promise<void>
   respondPermission: (requestId: string, allow: boolean) => Promise<void>
@@ -181,7 +183,7 @@ export const useMilkStore = create<MilkState>((set, get) => {
       await setMilkWorkspace(root).catch(() => undefined)
     },
 
-    sendChat: async (root, rawMessage) => {
+    sendChat: async (root, rawMessage, context = { includeDocument: true, includeWorkspace: true }) => {
       const message = rawMessage.trim()
       if (!message) return
       const thread = get().chatThreads[root] ?? emptyThread()
@@ -203,7 +205,14 @@ export const useMilkStore = create<MilkState>((set, get) => {
         },
       }))
       try {
-        await sendMilkPrompt({ token, root, message })
+        const prepared = await prepareStudioChat(root, message, context, true)
+        set((state) => {
+          const current = state.chatThreads[root]
+          if (!current || current.busyToken !== token) return state
+          return { chatThreads: { ...state.chatThreads, [root]: { ...current, messages: current.messages.map((entry) => entry.id === `${token}-user` ? { ...entry, context: prepared.labels } : entry) } } }
+        })
+        if (get().chatThreads[root]?.busyToken !== token) return
+        await sendMilkPrompt({ token, root, message: prepared.message })
         // The turn is over even if milk never sent its closing "idle" update.
         set((state) => {
           const current = state.chatThreads[root]

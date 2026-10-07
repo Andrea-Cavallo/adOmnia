@@ -15,7 +15,7 @@ interface GoStudioCopilotChatProps {
   document: GoIDEEditorDocument | null
 }
 
-function selectedRange(document: GoIDEEditorDocument | null): CopilotChatSelection | null {
+export function selectedRange(document: GoIDEEditorDocument | null): CopilotChatSelection | null {
   const editor = activeGoStudioEditor()
   const selection = editor?.getSelection()
   if (!document || !editor || !selection || selection.isEmpty() || editor.getModel()?.uri.toString() !== editorModelUri(document.document)) return null
@@ -90,9 +90,9 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
     if (next !== null) setDraft(next)
   }, [pendingDraft])
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  const [includeFile, setIncludeFile] = useState(true)
-  const [includeSelection, setIncludeSelection] = useState(true)
-  const [includeWorkspace, setIncludeWorkspace] = useState(true)
+  const [includeFile, setIncludeFile] = useToolView(session.id, 'copilot', 'includeFile', true)
+  const [includeSelection, setIncludeSelection] = useToolView(session.id, 'copilot', 'includeSelection', true)
+  const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, 'copilot', 'includeWorkspace', true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const busy = !!thread?.busyToken
   const ready = status?.state === 'ready'
@@ -177,9 +177,9 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
 
       <div className="shrink-0 border-t border-border-1 p-2">
         <div className="mb-1.5 flex flex-wrap gap-1">
-          <ContextToggle icon={FileCode2} label={document?.document.relativePath || 'No file'} active={includeFile && !!document} disabled={!document} onClick={() => setIncludeFile((value) => !value)} />
-          <ContextToggle icon={TextSelect} label="Selection" active={includeSelection} disabled={!document} onClick={() => setIncludeSelection((value) => !value)} />
-          <ContextToggle icon={FolderTree} label="Workspace" active={includeWorkspace} onClick={() => setIncludeWorkspace((value) => !value)} />
+          <ContextToggle icon={FileCode2} label={document?.document.relativePath || 'No file'} active={includeFile && !!document} disabled={!document} onClick={() => setIncludeFile(!includeFile)} />
+          <ContextToggle icon={TextSelect} label="Selection" active={includeSelection} disabled={!document} onClick={() => setIncludeSelection(!includeSelection)} />
+          <ContextToggle icon={FolderTree} label="Workspace" active={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} />
         </div>
         <div className="rounded-xl border border-border-2 bg-surface-0 focus-within:border-accent/50">
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} disabled={!ready || busy} rows={3} placeholder={ready ? 'Ask Copilot…' : 'Set up Copilot to chat'} className="block w-full resize-none bg-transparent px-2.5 pt-2 text-[11px] leading-4 text-text-1 outline-none placeholder:text-text-4 disabled:opacity-50" />

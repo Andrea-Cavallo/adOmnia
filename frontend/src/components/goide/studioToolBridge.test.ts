@@ -51,6 +51,7 @@ vi.mock('@/stores/app', async () => {
 
 import { startStudioToolOwner } from './studioToolBridge'
 import { useStudioTools } from './studioToolState'
+import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 
 beforeAll(async () => {
   startStudioToolOwner()
@@ -72,6 +73,16 @@ describe('tool owner routing', () => {
   it('acknowledges chat submission while its response continues streaming in the owner', async () => {
     transport.handlers.get('studio-tool:request')?.({ data: { session: 'session-1', tool: 'milk', id: 'chat', action: 'sendChat', args: ['/ignored-client-root', 'hello'] } })
     await vi.waitFor(() => expect(transport.emit).toHaveBeenCalledWith('studio-tool:response', expect.objectContaining({ id: 'chat', result: null })))
-    expect(transport.sendChat).toHaveBeenCalledWith('/project', 'hello')
+    expect(transport.sendChat).toHaveBeenCalledWith('/project', 'hello', undefined)
+  })
+  it('sends active document updates to the detached milk window', async () => {
+    const document = { document: { id: 'editor-1', sessionId: 'session-1', relativePath: 'Current.java' }, buffer: 'class Current {}' } as GoIDEEditorDocument
+    useGoIDEStore.setState({ documents: [document], activeDocumentBySession: { 'session-1': 'editor-1' } })
+    await vi.waitFor(() => expect(transport.emit).toHaveBeenCalledWith('studio-tool:snapshot', expect.objectContaining({ key: 'tool-session-1-milk', document })))
+  })
+  it('forwards detached milk attachment switches to the project owner', async () => {
+    const context = { includeDocument: false, includeWorkspace: true }
+    transport.handlers.get('studio-tool:request')?.({ data: { session: 'session-1', tool: 'milk', id: 'context', action: 'sendChat', args: ['/ignored', 'read', context] } })
+    await vi.waitFor(() => expect(transport.sendChat).toHaveBeenCalledWith('/project', 'read', context))
   })
 })

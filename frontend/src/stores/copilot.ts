@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { prepareStudioChat } from '@/lib/goide/studioChatContext'
 import {
   cancelCopilotChat,
   copilotSignIn,
@@ -222,16 +223,23 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
         },
       } }))
       try {
+        const prepared = await prepareStudioChat(root, message, context)
+        set((state) => {
+          const current = state.chatThreads[root]
+          if (!current || current.busyToken !== token) return state
+          return { chatThreads: { ...state.chatThreads, [root]: { ...current, messages: current.messages.map((entry) => entry.id === `${token}-user` ? { ...entry, context: prepared.labels } : entry) } } }
+        })
+        if (get().chatThreads[root]?.busyToken !== token) return
         const response = await sendCopilotChat({
           token,
           model: thread.model,
           conversationId: thread.conversationId,
           turnId: thread.turnId,
-          message,
+          message: prepared.message,
           documentId: context.documentId ?? '',
-          selection: context.selection ?? null,
-          includeDocument: context.includeDocument,
-          includeWorkspace: context.includeWorkspace,
+          selection: null,
+          includeDocument: false,
+          includeWorkspace: false,
         })
         set((state) => {
           const current = state.chatThreads[root]

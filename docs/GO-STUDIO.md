@@ -511,6 +511,8 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 ## GitHub Copilot
 
+**Editor context in milk and Copilot.** Sending an ordinary chat message attaches the active file path and its live buffer, including unsaved edits, when the file switch is enabled. Project context adds a bounded file index, not every file's contents. The question remains readable in the conversation and attachment labels identify what was included. milk has file/project switches; its slash commands remain commands. Detached milk follows active-file updates from its project window. Both chats prepare source context in that owner, apply `.adomnia/aiignore`, project AI policy and inline-secret redaction, and state explicitly when the current file is unavailable or excluded. Copilot source attachment does not depend on its language server already knowing the document. File/selection/project options are shared across detachment; selection capture is available in the editor's own window.
+
 Go Studio integrates GitHub Copilot through the official **GitHub Copilot Language Server** (`@github/copilot-language-server`). It is not the VS Code extension: the UI is adOmnia's, the language server is the engine. gopls stays the semantic engine (types, diagnostics, completion, navigation, refactoring); Copilot adds the generative layer on top.
 
 **Turn it on.** *Tools → GitHub Copilot…* or the Copilot item in the status bar. Copilot is off until you enable it, and nothing is downloaded on its own: *Install* downloads the native language server for your platform from the npm registry and refuses it unless its SHA-512 matches the integrity npm publishes. A custom binary path is also accepted.

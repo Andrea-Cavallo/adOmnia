@@ -13,10 +13,12 @@ import { useMilkStore, type MilkChatMessage, type MilkToolActivity } from '@/sto
 import type { MilkRouteInfo } from '@/lib/milk-api'
 import { MilkLogo } from './GoStudioMilkDialog'
 import { useToolView } from './studioToolState'
+import type { GoIDEEditorDocument } from '@/stores/goide'
+import { selectedRange } from './GoStudioCopilotChat'
 
 interface GoStudioMilkChatProps {
   session: GoIDESession
-  document?: unknown
+  document?: GoIDEEditorDocument | null
 }
 
 const SUGGESTIONS = ['What does this project do?', 'Find possible bugs in the open file', '/agent list']
@@ -99,12 +101,14 @@ function Reply({ message, command }: { message: MilkChatMessage; command: boolea
   )
 }
 
-export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
+export function GoStudioMilkChat({ session, document }: GoStudioMilkChatProps) {
   const root = session.project.realPath
   const status = useMilkStore((state) => state.status)
   const thread = useMilkStore((state) => state.chatThreads[root])
   const permissions = useMilkStore((state) => state.permissions)
   const [draft, setDraft] = useToolView(session.id, 'milk', 'draft', '')
+  const [includeFile, setIncludeFile] = useToolView(session.id, 'milk', 'includeFile', true)
+  const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, 'milk', 'includeWorkspace', true)
   const pendingDraft = useGoStudioAssistantStore((state) => state.draft)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -131,7 +135,12 @@ export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
     if (!ready || busy || !draft.trim()) return
     const message = draft
     setDraft('')
-    void useMilkStore.getState().sendChat(root, message)
+    void useMilkStore.getState().sendChat(root, message, {
+      documentId: document?.document.id,
+      selection: includeFile ? selectedRange(document ?? null) : null,
+      includeDocument: includeFile,
+      includeWorkspace,
+    })
   }
 
   const setupTitle = status?.state === 'installing' ? 'Installing milk…'
@@ -171,7 +180,7 @@ export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
         ) : (
           <div className="milk-thread">
             {messages.map((message, index) => message.role === 'user'
-              ? <p key={message.id} className="milk-ask">{message.content}</p>
+              ? <div key={message.id}><p className="milk-ask">{message.content}</p>{!!message.context?.length && <p className="break-words px-2 text-[10px] text-text-4">Attached: {message.context.join(' · ')}</p>}</div>
               : <Reply key={message.id} message={message} command={messages[index - 1]?.content.trimStart().startsWith('/') ?? false} />)}
             {thread?.error && <div role="alert" className="milk-error">{thread.error}</div>}
           </div>
@@ -189,6 +198,10 @@ export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
       </div>
 
       <div className="milk-composer">
+        <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label="milk context">
+          <button type="button" aria-pressed={includeFile} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>
+          <button type="button" aria-pressed={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} title={session.project.name} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeWorkspace ? '✓ ' : ''}{session.project.name}</button>
+        </div>
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

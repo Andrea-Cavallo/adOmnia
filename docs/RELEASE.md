@@ -4,6 +4,12 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.68 release notes: chat understands the open file
+
+See [the full v0.9.68 notes](releases/v0.9.68.md): milk and Copilot receive the
+current editor buffer and a filtered project index, including from detached
+windows, with visible attachment choices and project AI rules respected.
+
 ## v0.9.67 release notes: modular workspace and stable Git Sync navigation
 
 See [the full v0.9.67 notes](releases/v0.9.67.md): modular Go Studio tools detach

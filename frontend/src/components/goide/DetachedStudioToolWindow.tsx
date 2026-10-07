@@ -41,7 +41,7 @@ export function DetachedStudioToolWindow() {
       </div>
       {error && <p role="alert" className="p-2 text-xs text-danger">{error}</p>}
       {!ready || !session ? <p className="p-4 text-sm text-text-3">Connecting to the project window…</p> : <div className="flex min-h-0 flex-1 flex-col">
-        {context.tool === 'milk' ? <GoStudioMilkChat session={session} /> : context.tool === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : <GoStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
+        {context.tool === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : context.tool === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : <GoStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
       </div>}
     </div>
   </ThemeProvider></ErrorBoundary>
