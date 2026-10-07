@@ -75,6 +75,18 @@ describe('buildAIActionPrompt', () => {
     expect(prompt).toContain('Add (50%)')
   })
 
+  it('adds workspace errors and live database and broker data', () => {
+    const prompt = buildAIActionPrompt(action, {
+      ...base,
+      workspaceErrors: [{ path: 'store/db.go', line: 7, message: 'undefined: sql.Open2' }],
+      databaseSchema: 'postgres database "shop":\n- orders(id uuid NOT NULL)',
+      brokerMetadata: 'Kafka at localhost:9092:\n- orders: 3 partitions',
+    })
+    expect(prompt).toContain('- store/db.go:7: undefined: sql.Open2')
+    expect(prompt).toContain('Live database schema:\npostgres database "shop"')
+    expect(prompt).toContain('Live broker metadata:\nKafka at localhost:9092')
+  })
+
   it('stays under the chat limit', () => {
     const huge = { ...base, focus: { ...base.focus, code: 'x'.repeat(200_000) }, diff: 'y'.repeat(200_000) }
     expect(buildAIActionPrompt(action, huge).length).toBeLessThanOrEqual(56 * 1024)

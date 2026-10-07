@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
 | **P3** | Remote ed estensibilità | 18 | 2 |
-| **P4** | AI e intelligenza del workspace | 154 | 21 |
+| **P4** | AI e intelligenza del workspace | 151 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
 ---
@@ -483,11 +483,8 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 - [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: le azioni AI dell'editor (`goStudioAIActions.ts`) allegano funzione o selezione, riferimenti gopls, diff Git, test falliti e coverage; manca il semantic graph del workspace.*
 - [ ] Deve poter usare il semantic graph del workspace.
-- [ ] Deve conoscere compiler errors. — *Parziale: Fix with AI e le azioni AI passano errori e warning (gopls + linter) del file; mancano gli errori di build degli altri package.*
 - [ ] Deve conoscere profiler.
 - [ ] Deve conoscere runtime traces.
-- [ ] Deve conoscere DB schema. — *Parziale: Generate SQL Query/Migration allegano query, tabelle e tipi trovati nel codice (Architecture Explorer); manca lo schema letto dal database collegato.*
-- [ ] Deve conoscere broker metadata. — *Parziale: Generate Kafka Message allega producer, consumer e topic trovati nel codice; mancano i metadati letti dal broker (partizioni, schema registry).*
 - [ ] Deve conoscere logs.
 
 ### Azioni contestuali

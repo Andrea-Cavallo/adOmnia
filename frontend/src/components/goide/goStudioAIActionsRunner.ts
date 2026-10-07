@@ -9,7 +9,10 @@ import { useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useMilkStore } from '@/stores/milk'
 import { documentForModel } from './goStudioLanguageFeatures'
+import type { GoIDEArchitecture } from '@/lib/goide-api'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
+import { mergedReports } from '@/stores/goideLsp'
+import { liveDatabaseSchema, liveKafkaMetadata } from './goStudioAILiveContext'
 import {
   GO_STUDIO_AI_ACTIONS, architectureBrief, buildAIActionPrompt, enclosingTopLevelBlock, unifiedDiff,
   type GoStudioAIAction, type GoStudioAIBrief, type GoStudioAIContext,
@@ -17,6 +20,7 @@ import {
 
 const MAX_REFERENCES = 25
 const MAX_FAILING_TESTS = 5
+const MAX_WORKSPACE_ERRORS = 20
 
 function notify(message: string | null): void {
   useGoIDELspStore.setState({ message })
@@ -79,13 +83,34 @@ async function diffAgainstHead(sessionId: string, relativePath: string, buffer: 
 }
 
 /** Analisi dell'Architecture Explorer (in cache se già fatta); senza analisi l'azione parte col solo codice. */
-async function briefFor(sessionId: string, brief: GoStudioAIBrief): Promise<string | undefined> {
+async function briefFor(sessionId: string, brief: GoStudioAIBrief): Promise<Pick<GoStudioAIContext, 'architecture' | 'databaseSchema' | 'brokerMetadata'>> {
+  let report: GoIDEArchitecture
   try {
     if (!cachedArchitecture(sessionId)) notify('Analysing the project architecture for the AI…')
-    return architectureBrief((await architectureFor(sessionId)).report, brief) || undefined
+    report = (await architectureFor(sessionId)).report
   } catch {
-    return undefined // progetto non autorizzato o go/packages non disponibile
+    return {} // progetto non autorizzato o go/packages non disponibile
   }
+  const architecture = architectureBrief(report, brief) || undefined
+  // I servizi veri del progetto, quando ci sono: un database o un broker spento non blocca l'azione.
+  if (brief === 'data') {
+    const tables = report.queries.flatMap((query) => query.tables)
+    return { architecture, databaseSchema: await liveDatabaseSchema(sessionId, tables).catch(() => undefined) }
+  }
+  if (brief === 'events') {
+    const topics = [...new Set(report.entries.flatMap((entry) => entry.topics ?? []))]
+    return { architecture, brokerMetadata: await liveKafkaMetadata(sessionId, topics).catch(() => undefined) }
+  }
+  return { architecture }
+}
+
+/** Errori di compilazione degli altri file del workspace (gopls e linter): spesso la causa sta lì. */
+function workspaceErrors(sessionId: string, relativePath: string): GoStudioAIContext['workspaceErrors'] {
+  const state = useGoIDELspStore.getState()
+  return Object.values(mergedReports(state.diagnostics[sessionId], state.lint[sessionId]?.reports))
+    .filter((report) => report.relativePath && report.relativePath !== relativePath)
+    .flatMap((report) => report.diagnostics.filter((diagnostic) => diagnostic.severity === 1).map((diagnostic) => ({ path: report.relativePath!, line: diagnostic.range.startLine, message: diagnostic.message })))
+    .slice(0, MAX_WORKSPACE_ERRORS)
 }
 
 async function blockedByPolicy(sessionId: string, relativePath: string): Promise<string | null> {
@@ -120,12 +145,15 @@ export async function runGoStudioAIAction(editor: monaco.editor.ICodeEditor, act
     }
     notify(`${action.label}: collecting context…`)
     const buffer = model.getValue()
-    const [references, diff, architecture] = await Promise.all([
+    const [references, diff, project] = await Promise.all([
       referencesAt(editor, sessionId, documentId),
       diffAgainstHead(sessionId, relativePath, buffer),
-      action.brief ? briefFor(sessionId, action.brief) : Promise.resolve(undefined),
+      action.brief ? briefFor(sessionId, action.brief) : Promise.resolve({}),
     ])
-    const context: GoStudioAIContext = { relativePath, focus: focusOf(editor, model), problems, diff, architecture, ...references, ...testContext(sessionId, relativePath) }
+    const context: GoStudioAIContext = {
+      relativePath, focus: focusOf(editor, model), problems, diff, workspaceErrors: workspaceErrors(sessionId, relativePath),
+      ...project, ...references, ...testContext(sessionId, relativePath),
+    }
     // I segreti nel codice restano sulla macchina anche quando il prompt si rilegge prima dell'invio.
     const prompt = createAIRedactor().redact(buildAIActionPrompt(action, context))
     notify(null)

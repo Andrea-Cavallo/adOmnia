@@ -3,6 +3,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
+import { Window } from '@wailsio/runtime'
 
 /** Riduci / ingrandisci / chiudi della finestra frameless: usati dalla barra di adOmnia e dalla toolbar di gO Studio. */
 export function WindowControls({ height = 'h-8' }: { height?: string }) {
@@ -27,8 +28,7 @@ export function WindowControls({ height = 'h-8' }: { height?: string }) {
   }, [])
 
   const onClose = useCallback(async () => {
-    const { Quit } = await import('../../wailsjs/runtime/runtime')
-    Quit()
+    await Window.Close()
   }, [])
 
   const button = `grid ${height} w-11 place-items-center text-text-3 transition-colors`

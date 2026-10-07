@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.65] - 2026-10-07
+
+### Added
+- **AI actions read the live project:** *Generate SQL Query* and *Generate Migration* attach the real schema (tables, columns, types, NOT NULL, defaults) read from the project's database when a Database Studio connection matches one of its datasources (.env, compose, config). *Generate Kafka Message* attaches partitions, replication, message counts and non-default configs of the code's topics, read from the project's Kafka broker (with the Broker Studio credentials when saved). Every AI action also attaches compiler errors from the other files of the workspace. Read-only, with a 5 s timeout; a service that is down never blocks the action.
+
+### Fixed
+- **Collection export tests:** the single-request export comparison no longer depends on a random id; the *Exporting collection...* toast is translated.
+
 ## [0.9.64] - 2026-10-07
 
 ### Added

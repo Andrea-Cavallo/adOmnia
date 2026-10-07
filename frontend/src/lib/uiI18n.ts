@@ -125,6 +125,7 @@ export const ITALIAN_UI_MESSAGES = {
   'No folders in this collection': 'Nessuna cartella in questa raccolta',
   'Import Postman, Insomnia, Bruno, adOmnia or OpenAPI': 'Importa Postman, Insomnia, Bruno, adOmnia o OpenAPI',
   'Export all collections': 'Esporta tutte le raccolte',
+  'Exporting collection...': 'Esportazione della raccolta...',
   'New request': 'Nuova richiesta',
   'New collection': 'Nuova raccolta',
   'Search requests...': 'Cerca richieste...',

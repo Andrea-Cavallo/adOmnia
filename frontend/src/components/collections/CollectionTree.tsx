@@ -28,13 +28,11 @@ import { DialogOverlay, DialogContent, DialogHeader, DialogBody } from '@/compon
 import { copyToClipboard, generateCode } from '@/lib/codegen'
 import {
   cloneCollection,
-  exportAllCollectionsPayload,
-  exportCollectionPayload,
-  exportNodePayload,
   importCollectionsFromText,
   type ExportFormat,
 } from '@/lib/collectionTransfer'
-import { collectionToOAS } from '@/lib/oasExport'
+import { exportCollectionInBackground } from '@/lib/collectionExport'
+import type { CollectionExportJob } from '@/lib/collectionExport.worker'
 
 interface CollectionTreeProps {
   collections: Collection[]
@@ -463,6 +461,7 @@ export function CollectionTree({
   const [folderPrompt, setFolderPrompt] = useState<{ collectionId: string; parentId: string | null } | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ItemContextTarget | null>(null)
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(() => new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -734,26 +733,35 @@ export function CollectionTree({
     }
   }
 
-  const exportCollection = (collection: Collection, format: ExportFormat) => {
-    downloadText(`${slug(collection.name)}.${format}.json`, exportCollectionPayload(collection, format))
+  const runExport = async (filename: string, job: CollectionExportJob, type?: string) => {
+    if (exporting) return
+    setExporting(true)
     setContext(null)
+    try {
+      downloadText(filename, await exportCollectionInBackground(job), type)
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Collection export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const exportCollection = (collection: Collection, format: ExportFormat) => {
+    void runExport(`${slug(collection.name)}.${format}.json`, { kind: 'collection', collection, format })
   }
 
   const exportCollectionOASYaml = (collection: Collection) => {
-    downloadText(`${slug(collection.name)}.openapi.yaml`, collectionToOAS(collection, 'yaml'), 'text/yaml')
-    setContext(null)
+    void runExport(`${slug(collection.name)}.openapi.yaml`, { kind: 'oas-yaml', collection }, 'text/yaml')
   }
 
   const exportNode = (collectionId: string, node: TreeNode, format: ExportFormat) => {
     const collection = collections.find((item) => item.id === collectionId)
     if (!collection) return
-    downloadText(`${slug(node.name)}.${format}.json`, exportNodePayload(collection, node, format))
-    setContext(null)
+    void runExport(`${slug(node.name)}.${format}.json`, { kind: 'node', collection, node, format })
   }
 
   const exportAll = (format: ExportFormat) => {
-    downloadText(`adomnia-collections.${format}.json`, exportAllCollectionsPayload(collections, format))
-    setContext(null)
+    void runExport(`adomnia-collections.${format}.json`, { kind: 'all', collections, format })
   }
 
   const openMoveDialog = (collectionId: string, requestId: string) => {
@@ -855,8 +863,8 @@ export function CollectionTree({
         <button onClick={() => fileInputRef.current?.click()} title={tr('Import Postman, Insomnia, Bruno, adOmnia or OpenAPI')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
           <Upload size={14} />
         </button>
-        <button onClick={() => exportAll('adomnia')} title={tr('Export all collections')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
-          <Download size={14} />
+        <button onClick={() => exportAll('adomnia')} disabled={exporting} title={exporting ? 'Exporting collections' : tr('Export all collections')} className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">
+          <Download size={14} className={exporting ? 'animate-pulse' : undefined} />
         </button>
         <button
           onClick={() => {
@@ -1150,6 +1158,7 @@ export function CollectionTree({
           </button>
         </div>
       )}
+      {exporting && <div role="status" className="absolute bottom-2 left-2 right-2 z-50 rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs text-text-2 shadow-lg">{tr('Exporting collection...')}</div>}
 
       <Prompt
         open={Boolean(folderPrompt)}

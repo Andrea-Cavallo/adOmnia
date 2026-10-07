@@ -68,6 +68,12 @@ export interface GoStudioAIContext {
   coverage?: { percent: number; uncovered: string[] }
   /** Riassunto dell'architettura (architectureBrief) per le azioni che lo chiedono. */
   architecture?: string
+  /** Errori di compilazione negli altri file del workspace. */
+  workspaceErrors?: Array<{ path: string; line: number; message: string }>
+  /** Schema letto dal database del progetto (goStudioAILiveContext). */
+  databaseSchema?: string
+  /** Metadati dei topic letti dal broker del progetto. */
+  brokerMetadata?: string
 }
 
 /** Il backend di Copilot accetta messaggi fino a 64 KiB: il prompt resta sotto con margine. */
@@ -183,7 +189,10 @@ export function buildAIActionPrompt(action: GoStudioAIAction, context: GoStudioA
     context.references.length ? `References to ${context.symbol ?? 'this symbol'} (gopls):\n${context.references.map((reference) => `- ${reference}`).join('\n')}` : '',
     context.diff ? `Uncommitted changes in this file (git diff against HEAD):\n\`\`\`diff\n${clip(context.diff, MAX_DIFF_CHARS)}\n\`\`\`` : '',
     context.failingTests.length ? `Failing tests in the last run:\n${context.failingTests.map((test) => `- ${test.name}\n\`\`\`\n${clip(test.output.trim(), MAX_TEST_OUTPUT_CHARS)}\n\`\`\``).join('\n')}` : '',
+    context.workspaceErrors?.length ? `Compiler errors in other files of the workspace:\n${context.workspaceErrors.map((error) => `- ${error.path}:${error.line}: ${error.message}`).join('\n')}` : '',
     context.architecture ? `Project analysis (adOmnia Architecture Explorer):\n${clip(context.architecture, MAX_ARCHITECTURE_CHARS)}` : '',
+    context.databaseSchema ? `Live database schema:\n${clip(context.databaseSchema, MAX_ARCHITECTURE_CHARS)}` : '',
+    context.brokerMetadata ? `Live broker metadata:\n${clip(context.brokerMetadata, MAX_DIFF_CHARS)}` : '',
     context.coverage ? `Test coverage of this file: ${context.coverage.percent.toFixed(1)}%.${context.coverage.uncovered.length ? ` Functions not fully covered: ${context.coverage.uncovered.join(', ')}.` : ''}` : '',
   ]
   const prompt = sections.filter(Boolean).join('\n\n')
