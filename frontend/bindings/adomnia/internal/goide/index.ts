@@ -134,6 +134,7 @@ export {
     RecoveredBuffer,
     RecursiveCall,
     RecursiveCallsResult,
+    RemoteTarget,
     RenameTarget,
     RunConfiguration,
     RunConfigurationKind,

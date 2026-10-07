@@ -61,6 +61,12 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 		if err != nil {
 			return Execution{}, err
 		}
+	} else if request.Remote != nil {
+		// Il comando esiste nell'ambiente remoto: non si cerca sul PATH locale.
+		if target == "" || strings.HasPrefix(target, "-") {
+			return Execution{}, fmt.Errorf("comando non valido: %q", target)
+		}
+		spec = CommandSpec{Executable: target, Arguments: append([]string(nil), request.ProgramArguments...)}
 	} else {
 		spec, err = run.Command(session.Project.RealPath, workingDirectory, target, request.ProgramArguments)
 		if err != nil {
@@ -68,6 +74,9 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 		}
 	}
 	spec.SessionID, spec.Kind, spec.WorkingDirectory, spec.Environment = session.ID, kind, workingDirectory, environment
+	if spec, err = applyRemote(session, request, spec); err != nil {
+		return Execution{}, err
+	}
 	execution, err := s.processes.Start(spec)
 	if err != nil {
 		return Execution{}, err

@@ -689,6 +689,9 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 	var binary string
 	if request.Language == "" || request.Language == golang.ID {
 		binary, err = s.toolchain.GoBinary(sessionID)
+		if err != nil && request.Remote != nil {
+			binary, err = "go", nil // nell'ambiente remoto conta il go del suo PATH, non quello locale
+		}
 		if err != nil {
 			return CommandSpec{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
 		}
@@ -779,6 +782,9 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	spec.SessionID, spec.Kind, spec.WorkingDirectory = session.ID, kind, workingDirectory
 	if spec.Environment == nil {
 		spec.Environment = environment
+	}
+	if spec, err = applyRemote(session, request, spec); err != nil {
+		return Execution{}, err
 	}
 	execution, err := s.processes.Start(spec)
 	if err != nil {

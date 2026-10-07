@@ -26,13 +26,3 @@ func TestTerminalProfilesDetectedAndResolved(t *testing.T) {
 		t.Fatal("un profilo non rilevato non deve essere accettato")
 	}
 }
-
-func TestDecodeWSLOutput(t *testing.T) {
-	utf16le := []byte{'U', 0, 'b', 0, 'u', 0, '\r', 0, '\n', 0, 'D', 0, 0x0, 0}
-	if got := decodeWSLOutput(utf16le); got != "Ubu\r\nD\x00" {
-		t.Fatalf("decode: %q", got)
-	}
-	if got := decodeWSLOutput([]byte("Ubuntu\n")); got != "Ubuntu\n" {
-		t.Fatalf("utf-8 passthrough: %q", got)
-	}
-}

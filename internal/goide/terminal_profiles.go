@@ -1,10 +1,13 @@
 package goide
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"sync"
 	"time"
-	"unicode/utf16"
+
+	"adomnia/internal/ide/remote"
 )
 
 // TerminalProfile è una shell rilevata sulla macchina (PowerShell, Git Bash, una distro WSL, zsh…).
@@ -35,7 +38,7 @@ func ListTerminalProfiles() []TerminalProfile {
 		return profiles
 	}
 	terminalProfilesMu.Unlock()
-	profiles := detectTerminalProfiles()
+	profiles := append(detectTerminalProfiles(), remoteTerminalProfiles()...)
 	terminalProfilesMu.Lock()
 	terminalProfilesCached, terminalProfilesAt = profiles, time.Now()
 	terminalProfilesMu.Unlock()
@@ -65,14 +68,19 @@ func resolveTerminalProfile(id string) (TerminalProfile, error) {
 	return TerminalProfile{}, fmt.Errorf("profilo terminale %q non disponibile", id)
 }
 
-// decodeWSLOutput converte l'output UTF-16LE di `wsl -l` in stringa; fuori da Windows serve solo ai test.
-func decodeWSLOutput(output []byte) string {
-	if len(output) < 2 || len(output)%2 != 0 || output[1] != 0 && !(output[0] == 0xff && output[1] == 0xfe) {
-		return string(output) // WSL_UTF8=1 o versioni che scrivono già UTF-8
+// remoteTerminalProfiles aggiunge un terminale per ogni host di ~/.ssh/config e ogni container in esecuzione.
+func remoteTerminalProfiles() []TerminalProfile {
+	var profiles []TerminalProfile
+	if ssh, err := exec.LookPath("ssh"); err == nil {
+		for _, host := range remote.SSHHosts() {
+			profiles = append(profiles, TerminalProfile{ID: "ssh:" + host, Name: host + " (SSH)", Kind: "ssh", Shell: ssh, Arguments: []string{host}})
+		}
 	}
-	units := make([]uint16, 0, len(output)/2)
-	for i := 0; i+1 < len(output); i += 2 {
-		units = append(units, uint16(output[i])|uint16(output[i+1])<<8)
+	if docker, err := exec.LookPath("docker"); err == nil {
+		for _, container := range remote.Containers(context.Background()) {
+			profiles = append(profiles, TerminalProfile{ID: "container:" + container, Name: container + " (container)", Kind: "container", Shell: docker,
+				Arguments: []string{"exec", "-it", container, "sh", "-c", "command -v bash >/dev/null && exec bash || exec sh"}})
+		}
 	}
-	return string(utf16.Decode(units))
+	return profiles
 }

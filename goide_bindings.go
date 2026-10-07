@@ -1333,6 +1333,11 @@ func (g *GoIDE) ListTerminalProfiles() []goide.TerminalProfile {
 	return goide.ListTerminalProfiles()
 }
 
+// ListRemoteTargets elenca gli ambienti in cui eseguire run e test: distro WSL, host SSH, container.
+func (g *GoIDE) ListRemoteTargets() []goide.RemoteTarget {
+	return g.service.ListRemoteTargets()
+}
+
 // OpenTerminal apre una shell interattiva reale nella working directory del progetto.
 func (g *GoIDE) OpenTerminal(request goide.TerminalRequest) (goide.TerminalSession, error) {
 	return g.service.OpenTerminal(request)

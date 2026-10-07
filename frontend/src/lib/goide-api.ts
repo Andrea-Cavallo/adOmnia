@@ -527,6 +527,17 @@ export async function listGoIDETerminalProfiles(): Promise<GoIDETerminalProfile[
   return GoIDEBindings.ListTerminalProfiles()
 }
 
+/** Ambiente in cui eseguire run e test: distro WSL, host SSH o container. */
+export interface GoIDERemoteTarget {
+  kind: 'wsl' | 'ssh' | 'container'
+  name: string
+  directory?: string
+}
+
+export async function listGoIDERemoteTargets(): Promise<GoIDERemoteTarget[]> {
+  return (await GoIDEBindings.ListRemoteTargets()) as GoIDERemoteTarget[]
+}
+
 export async function openGoIDETerminal(request: GoIDETerminalRequest): Promise<GoIDETerminalSession> {
   return GoIDEBindings.OpenTerminal(request)
 }

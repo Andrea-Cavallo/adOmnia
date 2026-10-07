@@ -2,6 +2,7 @@ package goide
 
 import (
 	"adomnia/internal/ide/dap"
+	"adomnia/internal/ide/remote"
 	"adomnia/internal/ide/run"
 	"encoding/json"
 	"time"
@@ -180,10 +181,13 @@ type RunConfiguration struct {
 	// RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
 	RestartOnSave bool `json:"restartOnSave,omitempty"`
 	// RestartPolicy dopo un crash di adOmnia: "" o prompt (si chiede), never, always.
-	RestartPolicy string    `json:"restartPolicy,omitempty"`
-	Order         int       `json:"order"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	RestartPolicy string `json:"restartPolicy,omitempty"`
+	// Remote: dove eseguire (WSL, host SSH, container); nil = questa macchina. Vale per run, test, build,
+	// binari e comandi; è condivisibile in .adomnia/run-configurations.json come il resto.
+	Remote    *remote.Target `json:"remote,omitempty"`
+	Order     int            `json:"order"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
 // RequiredSecrets elenca le chiavi il cui valore deve essere fornito a runtime.
@@ -293,6 +297,8 @@ type RunRequest struct {
 	// Secrets sono i nomi di Environment e Docker.BuildArgs il cui valore non deve
 	// comparire nella riga di comando: passano solo dall'ambiente del processo.
 	Secrets []string `json:"secrets,omitempty"`
+	// Remote esegue il comando in WSL, su un host SSH o in un container invece che in locale.
+	Remote *remote.Target `json:"remote,omitempty"`
 }
 
 type ProcessOutput = run.ProcessOutput

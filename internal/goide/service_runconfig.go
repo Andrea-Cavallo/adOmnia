@@ -212,6 +212,7 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 		Environment:      environment,
 		Docker:           docker,
 		Secrets:          config.RequiredSecrets(),
+		Remote:           config.Remote,
 	}
 	switch config.Kind {
 	case RunKindBuild:

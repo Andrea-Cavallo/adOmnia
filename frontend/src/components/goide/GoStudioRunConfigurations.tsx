@@ -7,6 +7,7 @@ import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { GoStudioEntryList } from './GoStudioEntryList'
 import { GoStudioRunParameters } from './GoStudioRunParameters'
+import { GoStudioRunTarget, supportsRemoteTarget } from './GoStudioRunTarget'
 import { readRunHistory } from '@/lib/goide/goStudioRunHistory'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
@@ -255,6 +256,7 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
               )}
 
               {!isCompound && textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
+              {supportsRemoteTarget(draft.kind) && <GoStudioRunTarget draft={draft} patch={patch} />}
               {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-v -trimpath')}
               {draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose
                 ? textField('Command and services', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'up api db  ·  down')
