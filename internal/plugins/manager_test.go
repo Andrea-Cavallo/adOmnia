@@ -326,11 +326,14 @@ func TestPluginRuntimeEnforcesPermissionAndTimeout(t *testing.T) {
 	}
 }
 
-func TestPluginManagerRejectsNewWASMPlugin(t *testing.T) {
+func TestPluginManagerAcceptsWASMRuntime(t *testing.T) {
 	manager, _ := newTestPluginManager(t)
-	_, err := manager.InstallPlugin(`{"id":"legacy-wasm","name":"Legacy WASM","runtime":"wasm","entryPoint":"plugin.wasm"}`)
-	if err == nil || !strings.Contains(err.Error(), "WASM plugins are not executable") {
-		t.Fatalf("InstallPlugin() error = %v", err)
+	inst, err := manager.InstallPlugin(`{"id":"wasm-plugin","name":"WASM","runtime":"wasm","entryPoint":"plugin.wasm"}`)
+	if err != nil {
+		t.Fatalf("InstallPlugin() rejected wasm runtime: %v", err)
+	}
+	if inst.Manifest.Runtime != "wasm" {
+		t.Fatalf("runtime = %q, want wasm", inst.Manifest.Runtime)
 	}
 }
 

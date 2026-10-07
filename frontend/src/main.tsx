@@ -13,6 +13,9 @@ const DetachedGoStudioWindow = React.lazy(() =>
     default: module.DetachedGoStudioWindow,
   })),
 )
+const DetachedStudioToolWindow = React.lazy(() =>
+  import('./components/goide/DetachedStudioToolWindow').then((module) => ({ default: module.DetachedStudioToolWindow })),
+)
 const DetachedPanelWindow = React.lazy(() =>
   import('./components/layout/DetachedPanelWindow').then((module) => ({
     default: module.DetachedPanelWindow,
@@ -118,7 +121,9 @@ console.info('DevLog interceptor active — press Ctrl+Shift+D or click LOG icon
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Suspense fallback={<div className="h-screen w-screen bg-surface-0" />}>
-      {new URLSearchParams(window.location.search).get('window') === 'api-request'
+      {new URLSearchParams(window.location.search).get('window') === 'studio-tool'
+        ? <DetachedStudioToolWindow />
+        : new URLSearchParams(window.location.search).get('window') === 'api-request'
         ? <DetachedRequestWindow />
         : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
           ? <DetachedSwaggerEditorWindow />

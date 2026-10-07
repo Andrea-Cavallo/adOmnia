@@ -8,6 +8,8 @@ import { GoStudioCopilotChat } from './GoStudioCopilotChat'
 import { GoStudioMilkChat } from './GoStudioMilkChat'
 import { MilkLogo } from './GoStudioMilkDialog'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { StudioToolControls } from './StudioToolControls'
+import { toolKey, useStudioTools } from './studioToolState'
 
 const AICompanion = lazy(() => import('@/components/assistant/AICompanion').then((module) => ({ default: module.AICompanion })))
 
@@ -28,6 +30,7 @@ const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: ComponentType<
 export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
   const [tab, setTab] = useState<SidePaneTab>('structure')
   const pane = useGoStudioAssistantStore((state) => state.pane)
+  const detached = useStudioTools((state) => (pane === 'milk' || pane === 'copilot') && state.detached.includes(toolKey(session.id, pane)))
   const activeAssistant: SidePaneTab | null = pane === 'copilot' ? 'copilot' : pane === 'milk' ? 'milk' : null
   const visibleTab: SidePaneTab = activeAssistant ?? (tab === 'copilot' || tab === 'milk' ? 'structure' : tab)
   const selectTab = (next: SidePaneTab) => {
@@ -47,7 +50,8 @@ export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
         ))}
         <button type="button" onClick={() => useGoIDEStore.getState().updateLayout({ structureOpen: false })} aria-label="Hide Structure pane" title="Hide · Alt+7" className="go-studio-icon-button ml-auto mr-1 h-6 w-6"><Minus size={14} /></button>
       </div>
-      {content}
+      {(pane === 'milk' || pane === 'copilot') && <div className="flex justify-end border-b border-border-1 px-2"><StudioToolControls session={session.id} tool={pane} defaultPlacement="right" /></div>}
+      {!detached && content}
     </aside>
   )
 }

@@ -7,6 +7,8 @@ import { detectGoCommand, projectRelativePath, pushHistory, terminalLinkTarget, 
 import { readSavedTerminals, snapshotTerminals, writeSavedTerminals } from './goStudioTerminalRestore'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDEStore } from '@/stores/goide'
+import { useToolView } from './studioToolState'
+import { consumeTerminalRequest } from './studioToolBridge'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import {
   listGoIDETerminalProfiles,
@@ -72,10 +74,10 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   const [loaded, setLoaded] = useState(false)
   const autoOpened = useRef(false)
   const openedProfiles = useRef(new Map<string, string>())
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useToolView<string | null>(session.id, 'terminal', 'activeId', null)
   // Il secondo terminale mostrato accanto al primo; null quando il pannello non è diviso.
-  const [splitId, setSplitId] = useState<string | null>(null)
-  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [splitId, setSplitId] = useToolView<string | null>(session.id, 'terminal', 'splitId', null)
+  const [focusedId, setFocusedId] = useToolView<string | null>(session.id, 'terminal', 'focusedId', null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -89,7 +91,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   const [history, setHistory] = useState<string[]>(() => readHistory(session.project.realPath))
   const [detected, setDetected] = useState<DetectedTest | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useToolView(session.id, 'terminal', 'query', '')
   const searchInput = useRef<HTMLInputElement | null>(null)
   const openLocation = useGoIDEStore((state) => state.openLocation)
   const openExternalLocation = useGoIDEStore((state) => state.openExternalLocation)
@@ -107,8 +109,6 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
     let cancelled = false
     // Il pannello resta montato passando fra progetti: lo stato del progetto precedente non va riusato.
     setTerminals([])
-    setActiveId(null)
-    setSplitId(null)
     setDetected(null)
     setHistory(readHistory(session.project.realPath))
     void listGoIDETerminals(session.id)
@@ -124,7 +124,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
       setLoaded(false)
       autoOpened.current = false
     }
-  }, [session.id, session.project.realPath])
+  }, [session.id, session.project.realPath, setActiveId])
 
   const open = useCallback(async (profile?: string, workingDirectory = '', asSplit = false, name = '') => {
     setBusy(true)
@@ -157,7 +157,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   const terminalRequest = useGoIDELspStore((state) => state.terminalRequest)
   useEffect(() => {
     if (!terminalRequest || !loaded || !profilesLoaded) return
-    useGoIDELspStore.setState({ terminalRequest: null })
+    consumeTerminalRequest()
     autoOpened.current = true
     void open(undefined, terminalRequest.workingDirectory)
   }, [loaded, open, profilesLoaded, terminalRequest])

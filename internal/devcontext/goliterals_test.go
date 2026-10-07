@@ -85,6 +85,42 @@ func f(bus *Bus) { bus.Publish("not.a.topic", nil); _ = Msg{Topic: "nope"} }`)
 	}
 }
 
+func TestKafkaTopicRolesSurviveMerge(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "events.go", `package events
+import (
+  s "github.com/Shopify/sarama"
+  k "github.com/segmentio/kafka-go"
+  f "github.com/twmb/franz-go/pkg/kgo"
+)
+func run() {
+  _ = s.ProducerMessage{Topic: "shared"}
+  _ = k.ReaderConfig{Topic: "shared"}
+  _ = k.Writer{Topic: "written"}
+  _ = f.ConsumeTopics("consumed")
+  _ = f.Record{Topic: "ambiguous-record"}
+  _ = k.Message{Topic: "ambiguous-message"}
+  _ = k.Writer{Topic: dynamic}
+}`, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := byID(merge(detectLiterals("events.go", fset, file)))
+	for topic, roles := range map[string][2]string{
+		"shared": {"true", "true"}, "written": {"true", ""},
+		"consumed": {"", "true"}, "ambiguous-record": {"", ""},
+		"ambiguous-message": {"", ""},
+	} {
+		e, ok := got["topic:"+topic]
+		if !ok || e.Attrs["producer"] != roles[0] || e.Attrs["consumer"] != roles[1] {
+			t.Errorf("topic %s: got %+v, want producer=%q consumer=%q", topic, e, roles[0], roles[1])
+		}
+	}
+	if len(got) != 5 || len(got["topic:shared"].Sources) != 2 {
+		t.Fatalf("dynamic topics must be ignored and both role sources retained: %+v", got)
+	}
+}
+
 func TestDetectGoFileMainAndBrokenSource(t *testing.T) {
 	got, err := detectGoFile("cmd/api/main.go", []byte("package main\nfunc main() {}\n"))
 	if err != nil || byID(got)["service:go:cmd/api"].Label != "api" {

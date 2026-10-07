@@ -6,6 +6,329 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * ContributedAdapter recognizes a framework, broker or database from the project's direct Go dependencies.
+ */
+export class ContributedAdapter {
+    /**
+     * framework, broker, database
+     */
+    "kind": string;
+    "id": string;
+    "name": string;
+    "modules": string[];
+
+    /** Creates a new ContributedAdapter instance. */
+    constructor($$source: Partial<ContributedAdapter> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("modules" in $$source)) {
+            this["modules"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedAdapter instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedAdapter {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("modules" in $$parsedSource) {
+            $$parsedSource["modules"] = $$createField3_0($$parsedSource["modules"]);
+        }
+        return new ContributedAdapter($$parsedSource as Partial<ContributedAdapter>);
+    }
+}
+
+/**
+ * ContributedAnalyzer runs Action with the saved file's text and returns {diagnostics: [...]}.
+ */
+export class ContributedAnalyzer {
+    "id": string;
+    "name": string;
+    "action": string;
+    "languages"?: string[];
+
+    /** Creates a new ContributedAnalyzer instance. */
+    constructor($$source: Partial<ContributedAnalyzer> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedAnalyzer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedAnalyzer {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("languages" in $$parsedSource) {
+            $$parsedSource["languages"] = $$createField3_0($$parsedSource["languages"]);
+        }
+        return new ContributedAnalyzer($$parsedSource as Partial<ContributedAnalyzer>);
+    }
+}
+
+/**
+ * ContributedCodeAction runs Action on the current file and selection; empty Languages = every language.
+ */
+export class ContributedCodeAction {
+    "id": string;
+    "title": string;
+    "action": string;
+    "languages"?: string[];
+
+    /** Creates a new ContributedCodeAction instance. */
+    constructor($$source: Partial<ContributedCodeAction> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedCodeAction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedCodeAction {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("languages" in $$parsedSource) {
+            $$parsedSource["languages"] = $$createField3_0($$parsedSource["languages"]);
+        }
+        return new ContributedCodeAction($$parsedSource as Partial<ContributedCodeAction>);
+    }
+}
+
+/**
+ * ContributedCommand runs Action with the IDE context (project, file, selection).
+ */
+export class ContributedCommand {
+    "id": string;
+    "title": string;
+    "action": string;
+
+    /** Creates a new ContributedCommand instance. */
+    constructor($$source: Partial<ContributedCommand> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedCommand instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedCommand {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ContributedCommand($$parsedSource as Partial<ContributedCommand>);
+    }
+}
+
+/**
+ * ContributedLanguage adds a language to the IDE: file extensions, the Monaco grammar to reuse
+ * for highlighting, and a language server started on demand for trusted projects.
+ */
+export class ContributedLanguage {
+    "id": string;
+    "name": string;
+    "extensions": string[];
+    "monaco"?: string;
+    "server"?: ContributedLanguageServer | null;
+
+    /** Creates a new ContributedLanguage instance. */
+    constructor($$source: Partial<ContributedLanguage> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("extensions" in $$source)) {
+            this["extensions"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedLanguage instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedLanguage {
+        const $$createField2_0 = $$createType0;
+        const $$createField4_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("extensions" in $$parsedSource) {
+            $$parsedSource["extensions"] = $$createField2_0($$parsedSource["extensions"]);
+        }
+        if ("server" in $$parsedSource) {
+            $$parsedSource["server"] = $$createField4_0($$parsedSource["server"]);
+        }
+        return new ContributedLanguage($$parsedSource as Partial<ContributedLanguage>);
+    }
+}
+
+/**
+ * ContributedLanguageServer is an executable on the PATH speaking LSP over stdio.
+ */
+export class ContributedLanguageServer {
+    "command": string;
+    "args"?: string[];
+
+    /** Creates a new ContributedLanguageServer instance. */
+    constructor($$source: Partial<ContributedLanguageServer> = {}) {
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedLanguageServer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedLanguageServer {
+        const $$createField1_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("args" in $$parsedSource) {
+            $$parsedSource["args"] = $$createField1_0($$parsedSource["args"]);
+        }
+        return new ContributedLanguageServer($$parsedSource as Partial<ContributedLanguageServer>);
+    }
+}
+
+/**
+ * ContributedTemplate is a project template: Directory (inside the plugin) is copied into the new project.
+ */
+export class ContributedTemplate {
+    "id": string;
+    "name": string;
+    "description"?: string;
+    "directory": string;
+
+    /** Creates a new ContributedTemplate instance. */
+    constructor($$source: Partial<ContributedTemplate> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("directory" in $$source)) {
+            this["directory"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContributedTemplate instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContributedTemplate {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ContributedTemplate($$parsedSource as Partial<ContributedTemplate>);
+    }
+}
+
+/**
+ * Contribution is one contributed item with the plugin that owns it, as the IDE consumes it.
+ */
+export class Contribution {
+    "pluginId": string;
+    "pluginName": string;
+
+    /**
+     * Kind is command, codeAction, analyzer, template, language or adapter.
+     */
+    "kind": string;
+    "id": string;
+    "title": string;
+    "action"?: string;
+    "languages"?: string[];
+    "description"?: string;
+    "directory"?: string;
+    "extensions"?: string[];
+    "monaco"?: string;
+    "server"?: ContributedLanguageServer | null;
+    "adapterKind"?: string;
+    "modules"?: string[];
+
+    /** Creates a new Contribution instance. */
+    constructor($$source: Partial<Contribution> = {}) {
+        if (!("pluginId" in $$source)) {
+            this["pluginId"] = "";
+        }
+        if (!("pluginName" in $$source)) {
+            this["pluginName"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Contribution instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Contribution {
+        const $$createField6_0 = $$createType0;
+        const $$createField9_0 = $$createType0;
+        const $$createField11_0 = $$createType2;
+        const $$createField13_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("languages" in $$parsedSource) {
+            $$parsedSource["languages"] = $$createField6_0($$parsedSource["languages"]);
+        }
+        if ("extensions" in $$parsedSource) {
+            $$parsedSource["extensions"] = $$createField9_0($$parsedSource["extensions"]);
+        }
+        if ("server" in $$parsedSource) {
+            $$parsedSource["server"] = $$createField11_0($$parsedSource["server"]);
+        }
+        if ("modules" in $$parsedSource) {
+            $$parsedSource["modules"] = $$createField13_0($$parsedSource["modules"]);
+        }
+        return new Contribution($$parsedSource as Partial<Contribution>);
+    }
+}
+
+/**
  * ExecRequest describes a function call to execute in a plugin sandbox.
  */
 export class ExecRequest {
@@ -32,7 +355,7 @@ export class ExecRequest {
      * Creates a new ExecRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): ExecRequest {
-        const $$createField2_0 = $$createType0;
+        const $$createField2_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField2_0($$parsedSource["args"]);
@@ -96,7 +419,7 @@ export class HookResult {
      * Creates a new HookResult instance from a string or object.
      */
     static createFrom($$source: any = {}): HookResult {
-        const $$createField1_0 = $$createType0;
+        const $$createField1_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("data" in $$parsedSource) {
             $$parsedSource["data"] = $$createField1_0($$parsedSource["data"]);
@@ -142,6 +465,81 @@ export class PluginAction {
 }
 
 /**
+ * PluginContributes is the public extension API of a plugin: what it adds to the IDE beyond hooks and
+ * actions. Everything that runs code points at an action of the same manifest, so it goes through the
+ * sandbox, permissions and limits like any other action.
+ */
+export class PluginContributes {
+    /**
+     * Commands appear in the Go Studio command palette and Plugins menu.
+     */
+    "commands"?: ContributedCommand[];
+
+    /**
+     * CodeActions appear in the editor lightbulb / context menu and may rewrite the selection or the file.
+     */
+    "codeActions"?: ContributedCodeAction[];
+
+    /**
+     * Analyzers run on save and return diagnostics shown as editor markers and in Problems.
+     */
+    "analyzers"?: ContributedAnalyzer[];
+
+    /**
+     * Templates are file trees under the plugin directory offered by New Project.
+     */
+    "templates"?: ContributedTemplate[];
+
+    /**
+     * Languages register file extensions and an optional language server (any LSP over stdio).
+     */
+    "languages"?: ContributedLanguage[];
+
+    /**
+     * Adapters teach service detection about frameworks, brokers and databases by Go module path.
+     */
+    "adapters"?: ContributedAdapter[];
+
+    /** Creates a new PluginContributes instance. */
+    constructor($$source: Partial<PluginContributes> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PluginContributes instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PluginContributes {
+        const $$createField0_0 = $$createType5;
+        const $$createField1_0 = $$createType7;
+        const $$createField2_0 = $$createType9;
+        const $$createField3_0 = $$createType11;
+        const $$createField4_0 = $$createType13;
+        const $$createField5_0 = $$createType15;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("commands" in $$parsedSource) {
+            $$parsedSource["commands"] = $$createField0_0($$parsedSource["commands"]);
+        }
+        if ("codeActions" in $$parsedSource) {
+            $$parsedSource["codeActions"] = $$createField1_0($$parsedSource["codeActions"]);
+        }
+        if ("analyzers" in $$parsedSource) {
+            $$parsedSource["analyzers"] = $$createField2_0($$parsedSource["analyzers"]);
+        }
+        if ("templates" in $$parsedSource) {
+            $$parsedSource["templates"] = $$createField3_0($$parsedSource["templates"]);
+        }
+        if ("languages" in $$parsedSource) {
+            $$parsedSource["languages"] = $$createField4_0($$parsedSource["languages"]);
+        }
+        if ("adapters" in $$parsedSource) {
+            $$parsedSource["adapters"] = $$createField5_0($$parsedSource["adapters"]);
+        }
+        return new PluginContributes($$parsedSource as Partial<PluginContributes>);
+    }
+}
+
+/**
  * PluginEvent carries event data through the hook system.
  */
 export class PluginEvent {
@@ -164,7 +562,7 @@ export class PluginEvent {
      * Creates a new PluginEvent instance from a string or object.
      */
     static createFrom($$source: any = {}): PluginEvent {
-        const $$createField1_0 = $$createType0;
+        const $$createField1_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("payload" in $$parsedSource) {
             $$parsedSource["payload"] = $$createField1_0($$parsedSource["payload"]);
@@ -212,6 +610,16 @@ export class PluginInstance {
     "installedAt": string;
     "error"?: string;
 
+    /**
+     * Signature is the result of verifying signature.json (nil until checked).
+     */
+    "signature"?: PluginSignature | null;
+
+    /**
+     * DevSource is the source folder of a plugin linked in developer mode (hot reload).
+     */
+    "devSource"?: string;
+
     /** Creates a new PluginInstance instance. */
     constructor($$source: Partial<PluginInstance> = {}) {
         if (!("manifest" in $$source)) {
@@ -237,8 +645,9 @@ export class PluginInstance {
      * Creates a new PluginInstance instance from a string or object.
      */
     static createFrom($$source: any = {}): PluginInstance {
-        const $$createField0_0 = $$createType1;
-        const $$createField2_0 = $$createType2;
+        const $$createField0_0 = $$createType16;
+        const $$createField2_0 = $$createType17;
+        const $$createField6_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("manifest" in $$parsedSource) {
             $$parsedSource["manifest"] = $$createField0_0($$parsedSource["manifest"]);
@@ -246,7 +655,46 @@ export class PluginInstance {
         if ("settings" in $$parsedSource) {
             $$parsedSource["settings"] = $$createField2_0($$parsedSource["settings"]);
         }
+        if ("signature" in $$parsedSource) {
+            $$parsedSource["signature"] = $$createField6_0($$parsedSource["signature"]);
+        }
         return new PluginInstance($$parsedSource as Partial<PluginInstance>);
+    }
+}
+
+/**
+ * PluginLogEntry is one line of a plugin's log.
+ */
+export class PluginLogEntry {
+    "time": string;
+
+    /**
+     * info, error, reload
+     */
+    "level": string;
+    "message": string;
+
+    /** Creates a new PluginLogEntry instance. */
+    constructor($$source: Partial<PluginLogEntry> = {}) {
+        if (!("time" in $$source)) {
+            this["time"] = "";
+        }
+        if (!("level" in $$source)) {
+            this["level"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PluginLogEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PluginLogEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PluginLogEntry($$parsedSource as Partial<PluginLogEntry>);
     }
 }
 
@@ -270,6 +718,11 @@ export class PluginManifest {
     "icon": string;
     "ui_slots"?: string[];
     "actions"?: PluginAction[];
+
+    /**
+     * Contributes is the IDE extension API: commands, code actions, analyzers, templates, languages, adapters.
+     */
+    "contributes"?: PluginContributes;
 
     /** Creates a new PluginManifest instance. */
     constructor($$source: Partial<PluginManifest> = {}) {
@@ -323,11 +776,12 @@ export class PluginManifest {
      * Creates a new PluginManifest instance from a string or object.
      */
     static createFrom($$source: any = {}): PluginManifest {
-        const $$createField9_0 = $$createType3;
-        const $$createField10_0 = $$createType5;
-        const $$createField11_0 = $$createType7;
-        const $$createField14_0 = $$createType3;
-        const $$createField15_0 = $$createType9;
+        const $$createField9_0 = $$createType0;
+        const $$createField10_0 = $$createType21;
+        const $$createField11_0 = $$createType23;
+        const $$createField14_0 = $$createType0;
+        const $$createField15_0 = $$createType25;
+        const $$createField16_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("permissions" in $$parsedSource) {
             $$parsedSource["permissions"] = $$createField9_0($$parsedSource["permissions"]);
@@ -343,6 +797,9 @@ export class PluginManifest {
         }
         if ("actions" in $$parsedSource) {
             $$parsedSource["actions"] = $$createField15_0($$parsedSource["actions"]);
+        }
+        if ("contributes" in $$parsedSource) {
+            $$parsedSource["contributes"] = $$createField16_0($$parsedSource["contributes"]);
         }
         return new PluginManifest($$parsedSource as Partial<PluginManifest>);
     }
@@ -420,7 +877,7 @@ export class PluginSetting {
      * Creates a new PluginSetting instance from a string or object.
      */
     static createFrom($$source: any = {}): PluginSetting {
-        const $$createField4_0 = $$createType3;
+        const $$createField4_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField4_0($$parsedSource["options"]);
@@ -429,14 +886,97 @@ export class PluginSetting {
     }
 }
 
+/**
+ * PluginSignature is the verification outcome shown in the Plugin Manager.
+ */
+export class PluginSignature {
+    /**
+     * Status is unsigned, valid or invalid.
+     */
+    "status": string;
+    "keyId"?: string;
+    "trusted": boolean;
+    "detail"?: string;
+
+    /** Creates a new PluginSignature instance. */
+    constructor($$source: Partial<PluginSignature> = {}) {
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("trusted" in $$source)) {
+            this["trusted"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PluginSignature instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PluginSignature {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PluginSignature($$parsedSource as Partial<PluginSignature>);
+    }
+}
+
+/**
+ * PluginSigningKey is a freshly generated key pair, base64-encoded. The private key is shown once
+ * to the developer and never stored by adOmnia.
+ */
+export class PluginSigningKey {
+    "publicKey": string;
+    "privateKey": string;
+    "keyId": string;
+
+    /** Creates a new PluginSigningKey instance. */
+    constructor($$source: Partial<PluginSigningKey> = {}) {
+        if (!("publicKey" in $$source)) {
+            this["publicKey"] = "";
+        }
+        if (!("privateKey" in $$source)) {
+            this["privateKey"] = "";
+        }
+        if (!("keyId" in $$source)) {
+            this["keyId"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PluginSigningKey instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PluginSigningKey {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PluginSigningKey($$parsedSource as Partial<PluginSigningKey>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = $Create.Map($Create.Any, $Create.Any);
-const $$createType1 = PluginManifest.createFrom;
-const $$createType2 = $Create.Map($Create.Any, $Create.Any);
-const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = PluginHook.createFrom;
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = ContributedLanguageServer.createFrom;
+const $$createType2 = $Create.Nullable($$createType1);
+const $$createType3 = $Create.Map($Create.Any, $Create.Any);
+const $$createType4 = ContributedCommand.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = PluginSetting.createFrom;
+const $$createType6 = ContributedCodeAction.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = PluginAction.createFrom;
+const $$createType8 = ContributedAnalyzer.createFrom;
 const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = ContributedTemplate.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = ContributedLanguage.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = ContributedAdapter.createFrom;
+const $$createType15 = $Create.Array($$createType14);
+const $$createType16 = PluginManifest.createFrom;
+const $$createType17 = $Create.Map($Create.Any, $Create.Any);
+const $$createType18 = PluginSignature.createFrom;
+const $$createType19 = $Create.Nullable($$createType18);
+const $$createType20 = PluginHook.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = PluginSetting.createFrom;
+const $$createType23 = $Create.Array($$createType22);
+const $$createType24 = PluginAction.createFrom;
+const $$createType25 = $Create.Array($$createType24);
+const $$createType26 = PluginContributes.createFrom;

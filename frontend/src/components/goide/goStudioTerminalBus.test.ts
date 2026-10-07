@@ -2,11 +2,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: vi.fn(() => () => undefined) }))
 
-import { attachTerminal, forgetTerminal, terminalBusForTests } from './goStudioTerminalBus'
+import { attachTerminal, forgetTerminal, terminalBusForTests, exportTerminalHistory, importTerminalHistory } from './goStudioTerminalBus'
 
 afterEach(() => terminalBusForTests.reset())
 
 describe('goStudioTerminalBus', () => {
+  it('bootstraps another window without duplicating live events received during the transfer', () => {
+    terminalBusForTests.append('t1', 'before\n', 10)
+    const saved = exportTerminalHistory()
+    terminalBusForTests.reset()
+    terminalBusForTests.append('t1', 'before\n', 10)
+    terminalBusForTests.append('t1', 'during\n', 11)
+    importTerminalHistory(saved)
+    const received: string[] = []
+    attachTerminal('t1', (data) => received.push(data), () => undefined)
+    terminalBusForTests.append('t1', 'after\n', 12)
+    expect(received).toEqual(['before\nduring\n', 'after\n'])
+  })
   it('replays output that arrived before the view mounted, then streams new output', () => {
     terminalBusForTests.append('t1', '$ ')
     const received: string[] = []

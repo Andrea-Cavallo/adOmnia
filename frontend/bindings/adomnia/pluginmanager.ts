@@ -19,6 +19,13 @@ export function ApplyEventJSON(eventType: string, payloadJSON: string): $Cancell
 }
 
 /**
+ * ClearPluginLogs empties a plugin's log.
+ */
+export function ClearPluginLogs(id: string): $CancellablePromise<void> {
+    return $Call.ByID(325309327, id);
+}
+
+/**
  * DisablePlugin disables a plugin and unregisters its hooks.
  */
 export function DisablePlugin(id: string): $CancellablePromise<void> {
@@ -59,11 +66,29 @@ export function FireEvent(event: plugins$0.PluginEvent): $CancellablePromise<boo
 }
 
 /**
+ * GeneratePluginSigningKey creates an ed25519 key pair for signing plugins (developer mode).
+ */
+export function GeneratePluginSigningKey(): $CancellablePromise<plugins$0.PluginSigningKey> {
+    return $Call.ByID(1189407500).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * GetAvailableEvents returns the list of all hookable event names.
  */
 export function GetAvailableEvents(): $CancellablePromise<string[]> {
     return $Call.ByID(3176042976).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
+    });
+}
+
+/**
+ * GetContributions lists what the enabled, healthy plugins add to the IDE, in a stable order.
+ */
+export function GetContributions(): $CancellablePromise<plugins$0.Contribution[]> {
+    return $Call.ByID(2829225313).then(($result: any) => {
+        return $$createType6($result);
     });
 }
 
@@ -72,7 +97,16 @@ export function GetAvailableEvents(): $CancellablePromise<string[]> {
  */
 export function GetPlugin(id: string): $CancellablePromise<plugins$0.PluginInstance | null> {
     return $Call.ByID(3817304437, id).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType8($result);
+    });
+}
+
+/**
+ * GetPluginLogs returns the latest log lines of a plugin, oldest first.
+ */
+export function GetPluginLogs(id: string): $CancellablePromise<plugins$0.PluginLogEntry[]> {
+    return $Call.ByID(1719388470, id).then(($result: any) => {
+        return $$createType10($result);
     });
 }
 
@@ -81,7 +115,7 @@ export function GetPlugin(id: string): $CancellablePromise<plugins$0.PluginInsta
  */
 export function GetPluginSettings(id: string): $CancellablePromise<{ [_ in string]?: string }> {
     return $Call.ByID(110070424, id).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType11($result);
     });
 }
 
@@ -90,7 +124,7 @@ export function GetPluginSettings(id: string): $CancellablePromise<{ [_ in strin
  */
 export function GetPlugins(): $CancellablePromise<plugins$0.PluginInstance[]> {
     return $Call.ByID(876014706).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType12($result);
     });
 }
 
@@ -99,7 +133,16 @@ export function GetPlugins(): $CancellablePromise<plugins$0.PluginInstance[]> {
  */
 export function GetRegisteredHooks(): $CancellablePromise<{ [_ in string]?: string[] }> {
     return $Call.ByID(3398471290).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType13($result);
+    });
+}
+
+/**
+ * GetTrustedPluginKeys returns the public keys whose signatures mark a plugin as trusted.
+ */
+export function GetTrustedPluginKeys(): $CancellablePromise<string[]> {
+    return $Call.ByID(1008046658).then(($result: any) => {
+        return $$createType4($result);
     });
 }
 
@@ -115,7 +158,7 @@ export function Init(): $CancellablePromise<void> {
  */
 export function InstallPlugin(manifestJSON: string): $CancellablePromise<plugins$0.PluginInstance | null> {
     return $Call.ByID(1241939322, manifestJSON).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType8($result);
     });
 }
 
@@ -126,7 +169,7 @@ export function InstallPlugin(manifestJSON: string): $CancellablePromise<plugins
  */
 export function InstallPluginDirectory(sourceDir: string): $CancellablePromise<plugins$0.PluginInstance | null> {
     return $Call.ByID(2566198873, sourceDir).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType8($result);
     });
 }
 
@@ -137,7 +180,16 @@ export function InstallPluginDirectory(sourceDir: string): $CancellablePromise<p
  */
 export function InstallPluginPackage(manifestJSON: string, encodedFiles: { [_ in string]?: string }): $CancellablePromise<plugins$0.PluginInstance | null> {
     return $Call.ByID(1738750450, manifestJSON, encodedFiles).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType8($result);
+    });
+}
+
+/**
+ * LinkDevPlugin installs a plugin from a source folder and reloads it whenever the folder changes.
+ */
+export function LinkDevPlugin(sourceDir: string): $CancellablePromise<plugins$0.PluginInstance | null> {
+    return $Call.ByID(4275440594, sourceDir).then(($result: any) => {
+        return $$createType8($result);
     });
 }
 
@@ -146,6 +198,13 @@ export function InstallPluginPackage(manifestJSON: string, encodedFiles: { [_ in
  */
 export function LoadPluginState(): $CancellablePromise<void> {
     return $Call.ByID(2700767946);
+}
+
+/**
+ * ReloadDevPlugin reinstalls a linked plugin from its source folder now.
+ */
+export function ReloadDevPlugin(id: string): $CancellablePromise<void> {
+    return $Call.ByID(8056269, id);
 }
 
 /**
@@ -170,19 +229,55 @@ export function Shutdown(): $CancellablePromise<void> {
 }
 
 /**
+ * SignPluginDirectory writes signature.json into a plugin source directory with the given private key.
+ */
+export function SignPluginDirectory(sourceDir: string, privateKey: string): $CancellablePromise<plugins$0.PluginSignature> {
+    return $Call.ByID(3696934339, sourceDir, privateKey).then(($result: any) => {
+        return $$createType14($result);
+    });
+}
+
+/**
+ * TrustPluginKey adds a public key to the trusted list and re-verifies installed plugins.
+ */
+export function TrustPluginKey(publicKey: string): $CancellablePromise<void> {
+    return $Call.ByID(2758430278, publicKey);
+}
+
+/**
  * UninstallPlugin removes a plugin directory and unregisters its hooks.
  */
 export function UninstallPlugin(id: string): $CancellablePromise<void> {
     return $Call.ByID(4068609467, id);
 }
 
+/**
+ * UnlinkDevPlugin stops watching the source folder; the installed copy stays.
+ */
+export function UnlinkDevPlugin(id: string): $CancellablePromise<void> {
+    return $Call.ByID(205789339, id);
+}
+
+/**
+ * UntrustPluginKey removes a public key from the trusted list.
+ */
+export function UntrustPluginKey(publicKey: string): $CancellablePromise<void> {
+    return $Call.ByID(2448848985, publicKey);
+}
+
 // Private type creation functions
 const $$createType0 = plugins$0.HookResult.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = plugins$0.ExecResult.createFrom;
-const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = plugins$0.PluginInstance.createFrom;
-const $$createType5 = $Create.Nullable($$createType4);
-const $$createType6 = $Create.Map($Create.Any, $Create.Any);
-const $$createType7 = $Create.Array($$createType4);
-const $$createType8 = $Create.Map($Create.Any, $$createType3);
+const $$createType3 = plugins$0.PluginSigningKey.createFrom;
+const $$createType4 = $Create.Array($Create.Any);
+const $$createType5 = plugins$0.Contribution.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = plugins$0.PluginInstance.createFrom;
+const $$createType8 = $Create.Nullable($$createType7);
+const $$createType9 = plugins$0.PluginLogEntry.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = $Create.Map($Create.Any, $Create.Any);
+const $$createType12 = $Create.Array($$createType7);
+const $$createType13 = $Create.Map($Create.Any, $$createType4);
+const $$createType14 = plugins$0.PluginSignature.createFrom;

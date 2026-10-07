@@ -128,7 +128,7 @@ func (w *literalWalker) call(call *ast.CallExpr) {
 	if pkg != nil && w.imports[pkg.Name] == "kafka" && name == "ConsumeTopics" {
 		for _, arg := range args {
 			if s, ok := stringLit(arg); ok {
-				w.add("topic", s, map[string]string{"broker": "kafka"}, arg.Pos())
+				w.add("topic", s, map[string]string{"broker": "kafka", "consumer": "true"}, arg.Pos())
 			}
 		}
 	}
@@ -212,7 +212,17 @@ func (w *literalWalker) composite(lit *ast.CompositeLit) {
 		}
 		if key, ok := kv.Key.(*ast.Ident); ok && key.Name == "Topic" {
 			if s, ok := stringLit(kv.Value); ok && s != "" {
-				w.add("topic", s, map[string]string{"broker": "kafka"}, kv.Pos())
+				attrs := map[string]string{"broker": "kafka"}
+				// Separate flags survive entity merging when a topic is used in
+				// both directions. Record and Message are ambiguous: both can
+				// represent received data, so their type alone proves no role.
+				switch sel.Sel.Name {
+				case "ProducerMessage", "Writer":
+					attrs["producer"] = "true"
+				case "ReaderConfig":
+					attrs["consumer"] = "true"
+				}
+				w.add("topic", s, attrs, kv.Pos())
 			}
 		}
 	}

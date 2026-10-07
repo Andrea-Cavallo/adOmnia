@@ -1,0 +1,35 @@
+app-id: com.adomnia.app
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: adomnia
+finish-args:
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: adomnia
+    buildsystem: simple
+    sources:
+      - type: file
+        only-arches: [x86_64]
+        url: https://github.com/Andrea-Cavallo/adOmnia/releases/download/v__VERSION__/adomnia-__VERSION__-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
+        sha256: __SHA256_LINUX__
+    build-commands:
+      - tar -xzf adomnia-__VERSION__-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
+      - install -Dm755 adomnia /app/bin/adomnia
+      - install -Dm644 adomnia.desktop /app/share/applications/com.adomnia.app.desktop
+      - |
+        for sz in 16 24 32 48 64 128 256 512; do
+          if [ -f "icons/adOmnia_${sz}x${sz}.png" ]; then
+            install -Dm644 "icons/adOmnia_${sz}x${sz}.png" \
+              "/app/share/icons/hicolor/${sz}x${sz}/apps/com.adomnia.app.png"
+          fi
+        done
+      - sed -i 's|^Exec=.*|Exec=adomnia|' /app/share/applications/com.adomnia.app.desktop
+      - sed -i 's|^Icon=.*|Icon=com.adomnia.app|' /app/share/applications/com.adomnia.app.desktop

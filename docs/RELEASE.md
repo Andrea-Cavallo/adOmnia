@@ -4,6 +4,13 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+## v0.9.66 release notes: flexible tools, remote execution and extensions
+
+See [the full v0.9.66 notes](releases/v0.9.66.md): movable, maximizable and
+native detached Go Studio tool views; Kafka producer/consumer roles; WSL/SSH/container
+execution; pod debug/profile/trace; WASI, signed plugins and developer hot reload;
+and package-manager templates with explicit publication requirements.
+
 ## v0.9.64 release notes: AI that knows your workspace
 
 See [the full v0.9.64 notes](releases/v0.9.64.md): 18 AI actions in the gO Studio
@@ -462,4 +469,13 @@ Find them in:
 
 - Windows artifacts are unsigned unless code signing is configured.
 - macOS artifacts are unsigned/not notarized unless Apple signing credentials are configured.
-- Linux packages are portable artifacts, not `.deb`, `.rpm`, Snap, or AppImage yet.
+- Linux packages are portable artifacts; `.deb` and `.rpm` are not produced. Snap and Flatpak manifests are maintained in `packaging/` (see `packaging/README.md`) and are not auto-published from CI.
+
+## Package managers
+
+On release publish, `.github/workflows/packaging.yml` renders the Scoop and
+Homebrew manifests from the `packaging/` templates and pushes them to the
+configured bucket/tap repos. Set the repository secrets `SCOOP_BUCKET_REPO`,
+`HOMEBREW_TAP_REPO` and `PACKAGING_PAT` to enable auto-publish. Snap and Flatpak
+are published by hand (`snapcraft upload`, Flathub review); see
+[`packaging/README.md`](../packaging/README.md).

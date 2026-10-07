@@ -1,0 +1,50 @@
+name: adomnia
+base: core24
+version: '__VERSION__'
+summary: Local-first API developer toolbox
+description: |
+  adOmnia is a local-first API developer toolbox: REST, GraphQL, SOAP, gRPC,
+  WebSocket, Kafka and more, with a mock server, proxy, browser debugging,
+  load testing, database explorers and an encrypted vault. No cloud, no
+  accounts, no telemetry.
+
+grade: stable
+confinement: strict
+
+apps:
+  adomnia:
+    command: bin/adomnia
+    desktop: usr/share/applications/adomnia.desktop
+    plugs:
+      - desktop
+      - desktop-legacy
+      - network
+      - network-bind
+      - x11
+      - wayland
+      - opengl
+      - home
+
+parts:
+  adomnia:
+    plugin: dump
+    source: https://github.com/Andrea-Cavallo/adOmnia/releases/download/v__VERSION__/adomnia-__VERSION__-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
+    source-type: tar
+    source-checksum: sha256/__SHA256_LINUX__
+    organize:
+      adomnia: bin/adomnia
+      adomnia.desktop: usr/share/applications/adomnia.desktop
+    override-build: |
+      craftctl default
+      # The tarball's desktop entry points at /opt/adomnia/adomnia; snap needs
+      # the bare command name (and a snap-relative icon name).
+      sed -i 's|^Exec=.*|Exec=adomnia|' "$CRAFT_PART_INSTALL/usr/share/applications/adomnia.desktop"
+      sed -i 's|^Icon=.*|Icon=adomnia|' "$CRAFT_PART_INSTALL/usr/share/applications/adomnia.desktop"
+    stage-packages:
+      - libgtk-3-0
+      - libwebkit2gtk-4.1-0
+      - libayatana-appindicator3-1
+      - libglib2.0-0
+      - libcairo2
+      - libpango-1.0-0
+      - libgdk-pixbuf-2.0-0

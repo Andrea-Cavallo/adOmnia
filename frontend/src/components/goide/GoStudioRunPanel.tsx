@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, memo } from 'react'
+import { useEffect, useMemo, useRef, memo } from 'react'
 import { Copy, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
@@ -25,9 +25,16 @@ import { GoStudioSecurityPanel } from './GoStudioSecurityPanel'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
+import { StudioToolControls } from './StudioToolControls'
+import { toolKey, useStudioTools, useToolView } from './studioToolState'
+import { selectToolRun } from './studioToolBridge'
 
 interface GoStudioRunPanelProps {
   session: GoIDESession
+  fixedView?: 'run' | 'terminal'
+  logsOnly?: boolean
+  standalone?: boolean
+  visible?: boolean
 }
 
 interface ParsedLine {
@@ -177,14 +184,18 @@ function statusClass(status: string): string {
 /** Righe disegnate nella Run console; le precedenti restano nel buffer. */
 const MAX_RENDERED_LINES = 5000
 
-export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoStudioRunPanelProps) {
+export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedView, logsOnly = false, standalone = false, visible = true }: GoStudioRunPanelProps) {
   const sessionId = session.id
-  const view = useGoIDELspStore((state) => state.toolWindow)
+  const selectedView = useGoIDELspStore((state) => state.toolWindow)
+  const view = fixedView ?? selectedView
+  const tool = view === 'terminal' ? 'terminal' : logsOnly ? 'logs' : 'run'
+  const detached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, tool))) && !standalone
+  const terminalDetached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, 'terminal'))) && !standalone
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId])
   const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports)
-  const [search, setSearch] = useState('')
-  const [input, setInput] = useState('')
+  const [search, setSearch] = useToolView(sessionId, tool, 'filter', '')
+  const [input, setInput] = useToolView(sessionId, tool, 'stdin', '')
   const allExecutions = useGoIDEStore((state) => state.executions)
   const executions = useMemo(() => allExecutions.filter((execution) => execution.sessionId === sessionId), [allExecutions, sessionId])
   const activeRunId = useGoIDEStore((state) => state.activeRunBySession[sessionId] ?? null)
@@ -197,11 +208,11 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
   // Una nuova esecuzione porta in primo piano la finestra Run, come in GoLand; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
-    if (!activeRunId || activeRunId === seenRunId.current) return
+    if (standalone || fixedView || !activeRunId || activeRunId === seenRunId.current) return
     seenRunId.current = activeRunId
     const started = executions.find((execution) => execution.id === activeRunId)
     if (started?.status === 'running' && started.kind !== 'tests') showToolWindow('run')
-  }, [activeRunId, executions, showToolWindow])
+  }, [activeRunId, executions, showToolWindow, standalone, fixedView])
   const chunks = active ? consoleByRun[active.id] ?? [] : []
   const lines = useMemo(() => parseLines(chunks), [chunks])
   const buildProblems = useMemo<GoStudioBuildProblem[]>(() => lines
@@ -211,7 +222,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
   const debugState = useGoIDEDebugStore(selectDebugState(sessionId))
   const failedTests = useGoIDETestsStore((state) => selectedTestRun(state, sessionId)?.summary.failed ?? 0)
   const problemCount = counts.errors + counts.warnings + buildProblems.length
-  const matchingLines = lines.filter((line) => !search || line.text.toLowerCase().includes(search.toLowerCase()))
+  const matchingLines = lines.filter((line) => (!logsOnly || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase())))
   // Output intenso: si disegna solo la coda; Copy e la ricerca lavorano comunque su tutto il buffer (4 MB).
   const hiddenLines = Math.max(0, matchingLines.length - MAX_RENDERED_LINES)
   const visibleLines = hiddenLines ? matchingLines.slice(hiddenLines) : matchingLines
@@ -222,12 +233,12 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
     setInput('')
   }
 
-  const hide = () => useGoIDEStore.getState().updateLayout({ bottomOpen: false })
+  const hide = () => logsOnly ? useStudioTools.setState((state) => ({ views: { ...state.views, [toolKey(sessionId, 'logs')]: { ...state.views[toolKey(sessionId, 'logs')], open: false } } })) : useGoIDEStore.getState().updateLayout({ bottomOpen: false })
 
   return (
     <section aria-label="Go Studio tool window" className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header">
-        <span className="go-studio-tool-title pr-2">{TOOL_WINDOW_TITLES[view]}</span>
+        <span className="go-studio-tool-title pr-2">{logsOnly ? 'Service logs' : TOOL_WINDOW_TITLES[view]}</span>
         {view === 'problems' && <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${counts.errors || buildProblems.length ? 'bg-danger/15 text-danger' : counts.warnings ? 'bg-warning/15 text-warning' : 'bg-surface-3 text-text-3'}`}>{problemCount}</span>}
         {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
         {view === 'debug' && debugState !== 'none' && <span className={`flex items-center gap-1.5 text-[11px] ${debugState === 'stopped' ? 'text-warning' : 'text-success'}`}><span className={`h-1.5 w-1.5 rounded-full ${debugState === 'stopped' ? 'bg-warning' : 'bg-success'}`} />{debugState === 'stopped' ? 'Paused' : 'Debugging'}</span>}
@@ -235,7 +246,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
           <select
             aria-label="Active run"
             value={active.id}
-            onChange={(event) => useGoIDEStore.setState((state) => ({ activeRunBySession: { ...state.activeRunBySession, [sessionId]: event.target.value } }))}
+            onChange={(event) => void selectToolRun(sessionId, tool, event.target.value)}
             className="h-7 max-w-60 rounded-lg border-0 bg-[var(--gs-raised)] px-2.5 font-mono text-[11.5px] text-text-1 outline-none focus:ring-1 focus:ring-accent"
           >
             {executions.map((execution) => <option key={execution.id} value={execution.id}>{execution.kind} · {execution.id.slice(-6)} · {execution.status}</option>)}
@@ -251,10 +262,11 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
               <Search size={12} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find in output" aria-label="Filter console output" className="min-w-0 flex-1 bg-transparent text-[11.5px] text-text-2 outline-none" />
             </label>
           )}
-          <button type="button" onClick={hide} aria-label="Hide tool window" title="Hide · Alt+4" className="go-studio-icon-button h-7 w-7"><Minus size={14} /></button>
+          {(view === 'run' || view === 'terminal') && !standalone && <StudioToolControls session={sessionId} tool={tool} />}
+          {!standalone && <button type="button" onClick={hide} aria-label="Hide tool window" title="Hide · Alt+4" className="go-studio-icon-button h-7 w-7"><Minus size={14} /></button>}
         </div>
       </div>
-      {view === 'run' && <div className="flex min-h-0 flex-1">
+      {view === 'run' && !detached && <div className="flex min-h-0 flex-1">
         <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 pt-0.5" role="toolbar" aria-label="Run actions" aria-orientation="vertical">
           <button type="button" onClick={() => active && void restartRun(active.id)} disabled={!active || active.kind === 'dependency' || active.kind === 'install'} aria-label="Rerun" title="Rerun" className="go-studio-icon-button h-7 w-7 text-success"><RefreshCw size={14} /></button>
           <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="go-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
@@ -302,7 +314,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session }: GoSt
       {view === 'fuzz' && <div className="min-h-0 flex-1"><GoStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
-      <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal'} /></div>
+      {!terminalDetached && !logsOnly && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
     </section>
   )
 })

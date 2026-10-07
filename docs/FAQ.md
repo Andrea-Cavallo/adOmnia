@@ -30,9 +30,9 @@ Not yet by default. Windows and macOS may show warnings for unsigned development
 
 It aims to cover HTTP API workflows and extend beyond them with local-first behavior, browser debugging, brokers, SOAP/WSDL, proxy, mock, database, and enterprise tooling.
 
-## Can it import Postman collections?
+## Can it import Postman, Insomnia or Bruno collections?
 
-Yes, import support exists and is expected to improve as workspace workflows mature.
+Yes. adOmnia imports Postman (v2.1), Insomnia (v4 export) and Bruno (JSON and `.bru` files), and it can export back to the same formats. OpenAPI 3 and Swagger 2 documents are also imported as collections. Drop a file anywhere in the app or use the collection toolbar import button.
 
 ## Are secrets encrypted?
 

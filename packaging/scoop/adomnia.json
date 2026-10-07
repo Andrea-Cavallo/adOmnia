@@ -1,0 +1,26 @@
+{
+    "version": "__VERSION__",
+    "description": "Local-first API developer toolbox: REST/GraphQL/SOAP/gRPC/WebSocket/Kafka client, mock server, proxy, browser debugging, load testing, databases and more.",
+    "homepage": "https://github.com/Andrea-Cavallo/adOmnia",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/Andrea-Cavallo/adOmnia/releases/download/v__VERSION__/adomnia-__VERSION__-windows-amd64.exe#/adomnia.exe",
+            "hash": "__SHA256_WINDOWS__"
+        }
+    },
+    "bin": "adomnia.exe",
+    "shortcuts": [
+        ["adomnia.exe", "adOmnia"]
+    ],
+    "checkver": {
+        "github": "https://github.com/Andrea-Cavallo/adOmnia"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/Andrea-Cavallo/adOmnia/releases/download/v$version/adomnia-$version-windows-amd64.exe#/adomnia.exe"
+            }
+        }
+    }
+}

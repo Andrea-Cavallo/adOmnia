@@ -10,7 +10,7 @@ on:
 
 env:
   APP_NAME: adomnia
-  WAILS_VERSION: v3.0.0-beta.5
+  WAILS_VERSION: v3.0.0-beta.26
   NODE_VERSION: '22.13.0'
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
 
       - name: Frontend build
         working-directory: frontend
-        run: npm ci && npm run build
+        run: npm ci && npm test && npm run build
 
       - name: Startup bundle budget
         working-directory: frontend
@@ -52,7 +52,7 @@ jobs:
         # Linux artifacts intentionally target Wails' GTK3/WebKitGTK 4.1
         # compatibility backend. Without this tag Wails defaults to GTK4 and
         # WebKitGTK 6.0, which are not the libraries installed above.
-        run: go test -tags gtk3 ./...
+        run: go test -count=1 -timeout=10m -tags gtk3 ./...
 
   windows:
     name: Windows exe

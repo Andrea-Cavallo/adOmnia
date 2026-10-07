@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, type MouseEvent } from 'react'
 import { ChevronRight, Plus, Send, Settings2, Square } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { Browser } from '@wailsio/runtime'
@@ -12,6 +12,7 @@ import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useMilkStore, type MilkChatMessage, type MilkToolActivity } from '@/stores/milk'
 import type { MilkRouteInfo } from '@/lib/milk-api'
 import { MilkLogo } from './GoStudioMilkDialog'
+import { useToolView } from './studioToolState'
 
 interface GoStudioMilkChatProps {
   session: GoIDESession
@@ -103,7 +104,7 @@ export function GoStudioMilkChat({ session }: GoStudioMilkChatProps) {
   const status = useMilkStore((state) => state.status)
   const thread = useMilkStore((state) => state.chatThreads[root])
   const permissions = useMilkStore((state) => state.permissions)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useToolView(session.id, 'milk', 'draft', '')
   const pendingDraft = useGoStudioAssistantStore((state) => state.draft)
   const scrollRef = useRef<HTMLDivElement>(null)
 

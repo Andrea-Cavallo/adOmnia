@@ -16,6 +16,14 @@ Phases 1–12 are complete. The shared core owns processes, configurations, Run 
 
 Phase 8 was published in [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/commit/fe3456ac351ebae9ce7d8cbd76b2ca0b070df4e4), following the phase 9 backend in `daa2e89`. Validation passed: full Go suite with managed gopls/Delve, build/vet, focused race regressions, pinned Wails bindings, TypeScript, frontend build and startup budget. Real Make passed; real Docker integration was skipped because the daemon was stopped. The new desktop build has not received the complete manual smoke check, and macOS/Linux validation remains open in phase 12.
 
+## Flexible tool views
+
+Run output, Terminal, Service logs, Copilot Chat and milk have common controls: choose **Bottom / Left / Right**, **Maximize tool**, or **Open tool in separate window**. Open Service logs with its left tool-stripe button; it shows the selected run's stdout/stderr without the command/exit headers, with an independent text filter. Run and logs can be visible together.
+
+Native tool windows share the existing project's processes and AI conversations. **Bring back to project**, or closing the tool window, returns its view without stopping the process or cancelling the conversation. Settings and source links open in the owning project window. Closing or moving the project closes its detached tool views.
+
+Tool positions are saved locally per session in the additive `adomnia.studio.toolLayout.v1` key. Chat drafts, console filters/stdin and terminal active/split selections are shared between the project and its tool windows for the current app session; they are not written to disk by this feature. Existing workspace and IDE persistence schemas are unchanged. Native window bounds, drag-and-drop docking, arbitrary tab groups and named layout presets are future work; see [the modular workspace plan](architecture/modular-workspace.md).
+
 ## Using Go Studio
 
 1. **Open a project** with *File → Open Project* (Ctrl+O), a recent project, or *New Go Project* (which runs `go mod init` after you confirm). New Go Project offers templates — empty module, CLI, REST service, gRPC service, worker, Kafka producer/consumer, library — plus your own templates: folders in `<user config dir>/adomnia/go-templates/`, where `__MODULE__`, `__NAME__` and `__PACKAGE__` are replaced in file contents and paths. The gRPC and Kafka templates run `go mod tidy`, pinned to the versions adOmnia itself uses, so they resolve from the module cache; if that fails (offline) the project is still created and a warning asks you to run Tidy. A project may be a module, a `go.work` workspace, or a folder inside a larger repository.
@@ -544,3 +552,5 @@ Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases,
 - **Code → everything**: CodeLens above SQL tables, broker topics, gRPC service registrations and WebSocket endpoints open them in Database Studio, Broker Studio, the gRPC client (with reflection) and the WebSocket client.
 - **Layout**: Go Studio opens maximized; the adOmnia logo in the top-left corner returns to the hub. The button next to Save maximizes the editor alone (Ctrl+Shift+F12).
 
+
+Detached tool views reserve no space in the IDE: the code and remaining tools expand automatically; bringing a tool back restores its docked area.

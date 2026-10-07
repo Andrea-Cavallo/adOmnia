@@ -33,6 +33,7 @@ const closeGrace = 3 * time.Second
 const windowNamePrefix = "panel-"
 
 var panelPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)
+var toolSessionPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}$`)
 
 // ValidPanel reports whether id is a safe panel identifier (a rail item id).
 func ValidPanel(id string) bool {
@@ -63,11 +64,38 @@ func New(app *application.App, frameless bool) *Manager {
 
 // Open shows the panel in its own window, or focuses the window already showing it.
 func (m *Manager) Open(panel, title string) error {
-	if m == nil || m.app == nil {
-		return errors.New("desktop runtime not initialised")
-	}
 	if !ValidPanel(panel) {
 		return fmt.Errorf("invalid panel %q", panel)
+	}
+	return m.open(panel, title, url.Values{"window": {"panel"}, "panel": {panel}})
+}
+
+// ToolWindowKey validates the resource before putting it in a native window URL.
+func ToolWindowKey(sessionID, tool string) (string, error) {
+	if !toolSessionPattern.MatchString(sessionID) {
+		return "", errors.New("invalid tool session")
+	}
+	switch tool {
+	case "run", "logs", "terminal", "copilot", "milk":
+		return "tool-" + sessionID + "-" + tool, nil
+	default:
+		return "", errors.New("invalid tool")
+	}
+}
+
+// OpenTool reuses the same lifecycle as module windows; closing returns the
+// view to its owner, without stopping the underlying process or chat.
+func (m *Manager) OpenTool(sessionID, tool, title string) error {
+	key, err := ToolWindowKey(sessionID, tool)
+	if err != nil {
+		return err
+	}
+	return m.open(key, title, url.Values{"window": {"studio-tool"}, "session": {sessionID}, "tool": {tool}, "panel": {key}})
+}
+
+func (m *Manager) open(panel, title string, query url.Values) error {
+	if m == nil || m.app == nil {
+		return errors.New("desktop runtime not initialised")
 	}
 	m.mu.Lock()
 	if existing, ok := m.windows[panel]; ok {
@@ -80,14 +108,18 @@ func (m *Manager) Open(panel, title string) error {
 	if title == "" {
 		title = panel
 	}
+	minWidth, minHeight := 760, 520
+	if query.Get("window") == "studio-tool" {
+		minWidth, minHeight = 480, 320
+	}
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      windowNamePrefix + panel,
 		Title:     title + " · adOmnia",
 		Width:     1280,
 		Height:    840,
-		MinWidth:  760,
-		MinHeight: 520,
-		URL:       "/?" + url.Values{"window": {"panel"}, "panel": {panel}}.Encode(),
+		MinWidth:  minWidth,
+		MinHeight: minHeight,
+		URL:       "/?" + query.Encode(),
 		Frameless: m.frameless,
 	})
 	current := &entry{window: window}

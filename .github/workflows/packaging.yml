@@ -1,0 +1,109 @@
+name: Publish Package Managers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v0.9.65)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  package-managers:
+    name: Scoop + Homebrew
+    runs-on: ubuntu-latest
+    env:
+      SCOOP_BUCKET_REPO: ${{ secrets.SCOOP_BUCKET_REPO }}
+      HOMEBREW_TAP_REPO: ${{ secrets.HOMEBREW_TAP_REPO }}
+      PACKAGING_PAT: ${{ secrets.PACKAGING_PAT }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+          [ -n "$TAG" ] || { echo "No tag to publish."; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download "${{ steps.ver.outputs.tag }}" \
+            --repo Andrea-Cavallo/adOmnia \
+            --dir dist \
+            --pattern 'adomnia-*'
+          ls -lh dist
+
+      - name: Compute checksums
+        id: sha
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          W="$(sha256sum "dist/adomnia-${V}-windows-amd64.exe" | cut -d' ' -f1)"
+          L="$(sha256sum "dist/adomnia-${V}-linux-amd64-gtk3-webkitgtk-4.1.tar.gz" | cut -d' ' -f1)"
+          M="$(sha256sum "dist/adomnia-${V}-macos-universal.dmg" | cut -d' ' -f1)"
+          echo "win=$W"     >> "$GITHUB_OUTPUT"
+          echo "linux=$L"   >> "$GITHUB_OUTPUT"
+          echo "macos=$M"   >> "$GITHUB_OUTPUT"
+
+      - name: Render manifests
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          W="${{ steps.sha.outputs.win }}"
+          L="${{ steps.sha.outputs.linux }}"
+          M="${{ steps.sha.outputs.macos }}"
+
+          sed -e "s/__VERSION__/$V/g" -e "s/__SHA256_WINDOWS__/sha256:$W/g" \
+            packaging/scoop/adomnia.json > scoop-adomnia.json
+
+          sed -e "s/__VERSION__/$V/g" -e "s/__SHA256_MACOS__/$M/g" \
+            packaging/homebrew/Casks/adomnia.rb > Casks-adomnia.rb
+
+          sed -e "s/__VERSION__/$V/g" -e "s/__SHA256_LINUX__/$L/g" \
+            packaging/homebrew/Formula/adomnia.rb > Formula-adomnia.rb
+
+          echo "--- scoop-adomnia.json ---"; cat scoop-adomnia.json
+          echo "--- Casks-adomnia.rb ---"; cat Casks-adomnia.rb
+          echo "--- Formula-adomnia.rb ---"; cat Formula-adomnia.rb
+
+      - name: Publish Scoop bucket
+        if: ${{ env.SCOOP_BUCKET_REPO != '' && env.PACKAGING_PAT != '' }}
+        run: |
+          git clone "https://x-access-token:${{ secrets.PACKAGING_PAT }}@github.com/${{ secrets.SCOOP_BUCKET_REPO }}.git" scoop-bucket
+          cp scoop-adomnia.json scoop-bucket/adomnia.json
+          cd scoop-bucket
+          git config user.name  "adOmnia CI"
+          git config user.email "ci@adomnia.local"
+          git add adomnia.json
+          git commit -m "adomnia: bump to ${{ steps.ver.outputs.version }}" || echo "no changes to commit"
+          git push
+
+      - name: Publish Homebrew tap
+        if: ${{ env.HOMEBREW_TAP_REPO != '' && env.PACKAGING_PAT != '' }}
+        run: |
+          git clone "https://x-access-token:${{ secrets.PACKAGING_PAT }}@github.com/${{ secrets.HOMEBREW_TAP_REPO }}.git" homebrew-tap
+          mkdir -p homebrew-tap/Casks homebrew-tap/Formula
+          cp Casks-adomnia.rb homebrew-tap/Casks/adomnia.rb
+          cp Formula-adomnia.rb homebrew-tap/Formula/adomnia.rb
+          cd homebrew-tap
+          git config user.name  "adOmnia CI"
+          git config user.email "ci@adomnia.local"
+          git add Casks/adomnia.rb Formula/adomnia.rb
+          git commit -m "adomnia: bump to ${{ steps.ver.outputs.version }}" || echo "no changes to commit"
+          git push
+
+      - name: Notice when publishing is not configured
+        if: ${{ env.SCOOP_BUCKET_REPO == '' || env.HOMEBREW_TAP_REPO == '' || env.PACKAGING_PAT == '' }}
+        run: |
+          echo "::notice::Manifests rendered but not published. Set SCOOP_BUCKET_REPO, HOMEBREW_TAP_REPO and PACKAGING_PAT repository secrets to enable auto-publish (see packaging/README.md)."

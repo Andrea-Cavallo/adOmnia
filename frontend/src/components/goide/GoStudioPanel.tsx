@@ -1,4 +1,5 @@
 import { heavyFeatureEnabled } from './goStudioResourceMode'
+import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './goStudioRunOnSave'
 import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
@@ -246,6 +247,7 @@ export function GoStudioPanel() {
   }))
 
   useEffect(() => { void store.initialize() }, [store.initialize])
+  useEffect(() => { startStudioToolOwner() }, [])
   useEffect(() => { void useGoIDEWindowsStore.getState().load() }, [])
 
   // Progetti già autorizzati: rileva l'SDK e avvia gopls senza clic extra; quelli non autorizzati restano inerti.

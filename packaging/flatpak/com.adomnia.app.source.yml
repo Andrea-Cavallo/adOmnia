@@ -1,0 +1,60 @@
+# Source-build Flatpak manifest (for Flathub / offline builds).
+#
+# Unlike com.adomnia.app.yml (which packages the prebuilt tarball), this builds
+# adOmnia from source inside the org.gnome.Sdk runtime. It uses the GTK4 /
+# WebKitGTK 6.0 backend that ships with the GNOME runtime, so no GTK3 tag.
+#
+# PREREQUISITES before this builds offline (Flathub disallows network during the
+# build phase — sources are fetched by flatpak-builder first):
+#   1. Commit `go mod vendor` output (vendor/ dir) and build with -mod=vendor.
+#   2. Vendor the frontend node_modules (npm ci must run offline), or commit a
+#      node_modules tarball as an additional `source`.
+#   3. Replace __TAG__/__COMMIT__/__VERSION__ with the real release values.
+#
+# Build + test locally:
+#   flatpak-builder --user --install --force-clean builddir com.adomnia.app.source.yml
+#   flatpak run com.adomnia.app
+app-id: com.adomnia.app
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node22
+command: adomnia
+build-options:
+  append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node22/bin
+finish-args:
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: adomnia
+    buildsystem: simple
+    sources:
+      - type: git
+        url: https://github.com/Andrea-Cavallo/adOmnia.git
+        tag: __TAG__
+        commit: __COMMIT__
+    build-commands:
+      - npm --prefix frontend ci
+      - npm --prefix frontend run build
+      - |
+        VERSION="__VERSION__"
+        BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        GIT_COMMIT="$(git rev-parse HEAD)"
+        go build -buildvcs=false -mod=vendor -trimpath -tags production -ldflags "-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}" -o adomnia .
+      - install -Dm755 adomnia /app/bin/adomnia
+      - install -Dm644 build/linux/adOmnia.desktop /app/share/applications/com.adomnia.app.desktop
+      - sed -i 's|^Exec=.*|Exec=adomnia|' /app/share/applications/com.adomnia.app.desktop
+      - sed -i 's|^Icon=.*|Icon=com.adomnia.app|' /app/share/applications/com.adomnia.app.desktop
+      - |
+        for sz in 16 24 32 48 64 128 256 512; do
+          f="assets/icons/linux/adOmnia_${sz}x${sz}.png"
+          [ -f "$f" ] && install -Dm644 "$f" "/app/share/icons/hicolor/${sz}x${sz}/apps/com.adomnia.app.png"
+        done

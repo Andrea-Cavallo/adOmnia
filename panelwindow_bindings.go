@@ -1,11 +1,26 @@
 package main
 
 import (
+	"adomnia/internal/panelwindow"
 	"fmt"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
+
+// OpenStudioToolWindow opens a view of a live project's tool, never a new project.
+func (a *App) OpenStudioToolWindow(sessionID, tool, title string) error {
+	if a.panelWindows == nil {
+		return fmt.Errorf("desktop runtime is not initialized")
+	}
+	return a.panelWindows.OpenTool(sessionID, tool, title)
+}
+
+func (a *App) CloseStudioToolWindow(sessionID, tool string) {
+	if key, err := panelwindow.ToolWindowKey(sessionID, tool); err == nil && a.panelWindows != nil {
+		a.panelWindows.Close(key)
+	}
+}
 
 // OpenPanelWindow shows a module (rail item) in its own native window, or focuses it.
 func (a *App) OpenPanelWindow(panel, title string) error {

@@ -58,3 +58,38 @@ chmod +x adOmnia
 ```
 
 Some distributions may require WebKitGTK/GTK runtime packages installed by the system package manager.
+
+## Package managers
+
+Package-manager templates are maintained in [`packaging/`](../packaging/README.md). The commands below apply after the bucket/tap or store entry is published. Scoop/Homebrew automation requires repository secrets; Snap Store and Flathub require separate publication. Availability has not been verified; use GitHub Releases for current downloads.
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add adomnia https://github.com/Andrea-Cavallo/scoop-bucket
+scoop install adomnia
+```
+
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap Andrea-Cavallo/homebrew-tap
+brew install --cask adomnia   # macOS
+brew install adomnia          # Linuxbrew
+```
+
+### Snap (Linux)
+
+```bash
+snap install adomnia
+```
+
+### Flatpak (Linux)
+
+```bash
+flatpak install flathub com.adomnia.app
+```
+
+Package-manager builds are unsigned; macOS Gatekeeper, Windows SmartScreen or
+Linux sandboxes may show warnings on first launch. See [`packaging/README.md`](../packaging/README.md)
+for publishing details and caveats.

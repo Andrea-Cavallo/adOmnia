@@ -6,6 +6,21 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.66] - 2026-10-07
+
+### Added
+- **Flexible Go Studio tool views:** Run output, service logs, Terminal, Copilot Chat and milk can move to the left, right or bottom, maximize inside the workspace, or open in a native window. Detached tools disappear from the IDE layout; their column/row is reclaimed automatically by the editor and remaining tools, without a placeholder. Closing or bringing back a tool returns its view while its process/conversation remains owned by the project. Drafts, filters and terminal selection stay shared in memory; PTY history bootstraps with a sequence checkpoint. Positions are saved locally per session. Drag docking, arbitrary tab groups, window-bound persistence and a complete multi-monitor/streaming native smoke remain tracked in `docs/architecture/modular-workspace.md`.
+- **Kafka roles in Developer Context (P2):** topics detected from Sarama `ProducerMessage` and kafka-go `Writer` now carry a producer flag; kafka-go `ReaderConfig` and franz-go `ConsumeTopics` carry a consumer flag. A topic used in both directions keeps both flags and its source locations across files; saving a file refreshes removed roles. Detection is static and local, for literal topic names; ambiguous `Record`/`Message` values remain unclassified. Detector/merge and manager scan/invalidation tests cover the behavior; no new UI or native interaction was introduced.
+- **Plugin extension architecture (P3):** plugins can now run as WASI modules (`runtime: "wasm"`, wazero) with no filesystem, network or environment — stdin JSON, stdout JSON, stderr as log lines, under the sandbox memory and time limits; a plugin can be signed (`signature.json`, ed25519) so install verifies it, a trusted key marks it *trusted*, and any file change after signing disables it; and plugin developer mode (`LinkDevPlugin`) hot-reloads a plugin from its source folder on every change (fsnotify, 300 ms debounce) with dedicated `info`/`error`/`reload` logs. A validated `contributes` block declares commands, code actions, analyzers, templates, languages and adapters, exposed through `GetContributions`. `go test ./internal/plugins` exercises a real WASI module built in-test, signing/trust/tamper detection, contribution validation and hot reload; `go build ./...` passes.
+
+- **Remote development (P3):** Run configurations select WSL distributions, SSH hosts or running containers. Commands map project paths and stop remote process groups when their input closes; SSH hosts and containers also appear as terminal profiles. This executes commands remotely; it does not move the editor or language server to the remote host.
+- **Go tools for Kubernetes pods:** the pod Go tab forwards Delve or pprof on a free loopback port and opens Go Studio for remote debug attach, live profiles and execution traces. The pod must already expose the selected tooling endpoint.
+- **Distribution templates:** Scoop, Homebrew, Snap and Flatpak manifests, a checksum renderer and optional Scoop/Homebrew publishing workflow. Store/bucket publication remains separately configured; templates do not establish store availability.
+
+### Changed
+- Import/export documentation and AI capability aliases now include Insomnia and Bruno. The obsolete `adomniatodolist.md` was removed; Go Studio and OpenShift work queues remain in their dedicated Markdown files.
+- CI runs the complete frontend test suite and uncached Go tests before building release artifacts. Desktop release workflows now use the same Wails `v3.0.0-beta.26` pin as the application. Package publishing conditions read secrets through job environment variables.
+
 ## [0.9.65] - 2026-10-07
 
 ### Added

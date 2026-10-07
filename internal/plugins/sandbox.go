@@ -215,11 +215,24 @@ func (wr *WasmRuntime) Execute(req ExecRequest) ExecResult {
 	if err != nil {
 		return timedExecError(start, err)
 	}
-	if plugin.Manifest.Runtime != "js" {
+	var (
+		data    interface{}
+		memUsed int64
+	)
+	switch plugin.Manifest.Runtime {
+	case "js":
+		data, memUsed, err = executeJavaScriptPlugin(plugin, req.Function, req.Args, sandbox.HostFuncs, timeLimit, memoryLimit)
+	case "wasm":
+		var logs []string
+		data, memUsed, logs, err = executeWasmPlugin(plugin, req.Function, req.Args, timeLimit, memoryLimit)
+		for _, line := range logs {
+			appendPluginLog(req.PluginID, "info", line)
+		}
+	default:
 		return timedExecError(start, fmt.Errorf("runtime %s is not executable", plugin.Manifest.Runtime))
 	}
-	data, memUsed, err := executeJavaScriptPlugin(plugin, req.Function, req.Args, sandbox.HostFuncs, timeLimit, memoryLimit)
 	if err != nil {
+		appendPluginLog(req.PluginID, "error", req.Function+": "+err.Error())
 		result := timedExecError(start, err)
 		result.MemUsed = memUsed
 		return result
@@ -301,10 +314,10 @@ func (wr *WasmRuntime) SetTimeLimit(pluginID string, ms int64) error {
 // GetRuntimeMode returns the current execution mode of the plugin runtime.
 func (wr *WasmRuntime) GetRuntimeMode() map[string]interface{} {
 	return map[string]interface{}{
-		"mode":        "javascript",
-		"description": "Installed JavaScript entrypoints execute in an isolated goja runtime with permissions, timeout and I/O memory limits.",
+		"mode":        "javascript+wasm",
+		"description": "JavaScript entrypoints run in an isolated goja runtime with permissions; WASI modules run in wazero with no filesystem or network. Both have timeout and memory limits.",
 		"jsReady":     true,
-		"wasmReady":   false,
+		"wasmReady":   true,
 	}
 }
 
@@ -567,6 +580,7 @@ func hostLogInfo(_ context.Context, args json.RawMessage) (json.RawMessage, erro
 	}
 
 	log.Printf("[plugin:%s] INFO: %s", params.PluginID, params.Message)
+	appendPluginLog(params.PluginID, "info", params.Message)
 
 	result := map[string]interface{}{"ok": true}
 	return json.Marshal(result)
@@ -583,6 +597,7 @@ func hostLogError(_ context.Context, args json.RawMessage) (json.RawMessage, err
 	}
 
 	log.Printf("[plugin:%s] ERROR: %s", params.PluginID, params.Message)
+	appendPluginLog(params.PluginID, "error", params.Message)
 
 	result := map[string]interface{}{"ok": true}
 	return json.Marshal(result)

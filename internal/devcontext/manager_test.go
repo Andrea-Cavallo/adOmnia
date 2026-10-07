@@ -100,6 +100,44 @@ func TestManagerInvalidateAndBrokenSave(t *testing.T) {
 	}
 }
 
+func TestManagerRefreshesKafkaRolesAcrossFiles(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"producer.go": `package events
+import "github.com/IBM/sarama"
+var message = sarama.ProducerMessage{Topic: "payments"}`,
+		"consumer.go": `package events
+import kafka "github.com/segmentio/kafka-go"
+var reader = kafka.ReaderConfig{Topic: "payments"}`,
+	}
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m, _ := newTestManager(root)
+	snap, err := m.Get("s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	topic := byID(snap.Entities)["topic:payments"]
+	if topic.Attrs["producer"] != "true" || topic.Attrs["consumer"] != "true" || len(topic.Sources) != 2 {
+		t.Fatalf("snapshot must preserve both roles across files: %+v", topic)
+	}
+	if err := os.WriteFile(filepath.Join(root, "consumer.go"), []byte("package events\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.Invalidate("s1", "consumer.go")
+	snap, err = m.Get("s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	topic = byID(snap.Entities)["topic:payments"]
+	if topic.Attrs["producer"] != "true" || topic.Attrs["consumer"] != "" || len(topic.Sources) != 1 {
+		t.Fatalf("removed consumer role must disappear without losing producer: %+v", topic)
+	}
+}
+
 func TestManagerDotenvChangeRefreshesCompose(t *testing.T) {
 	root := copyFixture(t)
 	m, _ := newTestManager(root)

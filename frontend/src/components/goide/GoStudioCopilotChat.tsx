@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { Bot, Check, ChevronDown, Code2, Copy, FileCode2, FolderTree, Plus, Send, Settings2, Square, TextSelect } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
+import { useToolView } from './studioToolState'
 import type { CopilotChatSelection } from '@/lib/copilot-api'
 import { useCopilotStore, type CopilotChatMessage } from '@/stores/copilot'
 import type { GoIDEEditorDocument } from '@/stores/goide'
@@ -80,7 +81,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
   const thread = useCopilotStore((state) => state.chatThreads[root])
   const chatModels = useCopilotStore((state) => state.chatModels)
   const chatModelsError = useCopilotStore((state) => state.chatModelsError)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useToolView(session.id, 'copilot', 'draft', '')
   // Un report (profilo, traccia…) arriva già pronto da inviare: lo si legge una volta e si lascia modificare.
   const pendingDraft = useGoStudioAssistantStore((state) => state.draft)
   useEffect(() => {

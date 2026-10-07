@@ -7,6 +7,7 @@ import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { selectDebugState } from './goStudioDebugCommands'
 import { useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
+import { useToolView } from './studioToolState'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -75,6 +76,7 @@ interface GoStudioLeftStripeProps {
 
 /** Barra sinistra: Project, Commit e Bookmarks in alto, le tool window del pannello inferiore in basso. */
 export function GoStudioLeftStripe({ sessionId, onCommit, onBookmarks }: GoStudioLeftStripeProps) {
+  const [logsOpen, setLogsOpen] = useToolView(sessionId, 'logs', 'open', false)
   const projectOpen = useGoIDEStore((state) => state.layout.projectOpen)
   const bottomOpen = useGoIDEStore((state) => state.layout.bottomOpen)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
@@ -93,6 +95,7 @@ export function GoStudioLeftStripe({ sessionId, onCommit, onBookmarks }: GoStudi
       <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={onCommit} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={onBookmarks} />
       <div className="flex-1" />
+      <StripeButton label="Service logs" icon={ListTree} pressed={logsOpen} onClick={() => setLogsOpen(!logsOpen)} />
       {TOOL_WINDOWS.map((entry) => (
         <StripeButton key={entry.id} label={entry.label} icon={entry.icon} pressed={bottomOpen && toolWindow === entry.id} badge={badges[entry.id]} onClick={() => toggleToolWindow(entry.id)} />
       ))}

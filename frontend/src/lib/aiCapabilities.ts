@@ -14,7 +14,7 @@ export interface AdomniaCapability {
  * instead of inventing generic API-tool features.
  */
 export const ADOMNIA_CAPABILITIES: AdomniaCapability[] = [
-  { id: 'http', label: 'HTTP Collections', panel: 'collections', aliases: ['api', 'http', 'request', 'collection', 'postman', 'curl'], summary: 'Create, send, organize, import and export API requests.' },
+  { id: 'http', label: 'HTTP Collections', panel: 'collections', aliases: ['api', 'http', 'request', 'collection', 'postman', 'insomnia', 'bruno', 'curl'], summary: 'Create, send, organize, import and export API requests.' },
   { id: 'scenarios', label: 'Daily Scenarios', panel: 'scenarios', aliases: ['scenario', 'workflow', 'daily'], summary: 'Run guided end-to-end API development scenarios.' },
   { id: 'history', label: 'Request History', panel: 'history', aliases: ['history', 'cronologia'], summary: 'Inspect and reopen previously sent requests.' },
   { id: 'flows', label: 'API Flows', panel: 'flows', aliases: ['flow', 'workflow', 'chain', 'catena'], summary: 'Build multi-step API workflows with variables and assertions.' },

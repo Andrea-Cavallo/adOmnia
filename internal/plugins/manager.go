@@ -72,6 +72,8 @@ type PluginManifest struct {
 	Icon          string          `json:"icon"`
 	UISlots       []string        `json:"ui_slots,omitempty"`
 	Actions       []PluginAction  `json:"actions,omitempty"`
+	// Contributes is the IDE extension API: commands, code actions, analyzers, templates, languages, adapters.
+	Contributes PluginContributes `json:"contributes,omitempty"`
 }
 
 // UnmarshalJSON accepts both entryPoint and entrypoint for compatibility with
@@ -180,6 +182,10 @@ type PluginInstance struct {
 	InstallDir  string            `json:"installDir"`
 	InstalledAt string            `json:"installedAt"`
 	Error       string            `json:"error,omitempty"`
+	// Signature is the result of verifying signature.json (nil until checked).
+	Signature *PluginSignature `json:"signature,omitempty"`
+	// DevSource is the source folder of a plugin linked in developer mode (hot reload).
+	DevSource string `json:"devSource,omitempty"`
 }
 
 // PluginEvent carries event data through the hook system.
@@ -366,14 +372,11 @@ func normalizePluginManifest(manifest *PluginManifest) error {
 	if manifest.Runtime == "none" && (len(manifest.Hooks) > 0 || len(manifest.Actions) > 0) {
 		return fmt.Errorf("runtime none cannot declare hooks or actions")
 	}
-	return nil
+	return validateContributes(manifest)
 }
 
 func validateExecutableRuntime(manifest PluginManifest) error {
-	if manifest.Runtime == "wasm" {
-		return fmt.Errorf("WASM plugins are not executable in this build; use runtime js")
-	}
-	if manifest.Runtime != "js" && manifest.Runtime != "none" {
+	if manifest.Runtime != "js" && manifest.Runtime != "wasm" && manifest.Runtime != "none" {
 		return fmt.Errorf("unsupported plugin runtime: %s", manifest.Runtime)
 	}
 	return nil
@@ -521,6 +524,12 @@ func (pm *PluginManager) Init() error {
 		}
 	}
 
+	// Verify signatures before hooks: an invalid signature disables the plugin.
+	trusted := pm.trustedKeySet()
+	for _, inst := range pm.plugins {
+		pm.applySignatureLocked(inst, trusted)
+	}
+
 	// Register hooks for enabled plugins
 	for _, inst := range pm.plugins {
 		if inst.Enabled {
@@ -530,6 +539,7 @@ func (pm *PluginManager) Init() error {
 
 	log.Printf("[plugins] initialized: %d plugins loaded from %s", len(pm.plugins), pm.pluginDir)
 	go pm.eventDispatchLoop()
+	go pm.resumeDevLinks()
 	log.Printf("[plugins] event dispatch loop started")
 	return nil
 }
@@ -751,9 +761,8 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 	}
 
 	for relativePath, data := range files {
-		if strings.EqualFold(relativePath, "manifest.json") {
-			continue
-		}
+		// Write every file verbatim, including manifest.json, so a signed plugin
+		// installs byte-for-byte what was signed (install must not rewrite it).
 		target := filepath.Join(instance.InstallDir, relativePath)
 		if !isUnderDir(instance.InstallDir, target) {
 			rollbackNewInstall()
@@ -816,6 +825,7 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 		pm.mu.Unlock()
 		log.Printf("[plugins] installed package files: %s v%s", manifest.Name, manifest.Version)
 	}
+	pm.refreshSignatures()
 	return instance, nil
 }
 
@@ -936,6 +946,9 @@ func (pm *PluginManager) EnablePlugin(id string) error {
 
 	if inst.Enabled {
 		return nil
+	}
+	if inst.Signature != nil && inst.Signature.Status == "invalid" {
+		return fmt.Errorf("plugin %s has an invalid signature: %s", id, inst.Signature.Detail)
 	}
 	if err := validatePluginEntrypoint(inst); err != nil {
 		inst.Error = err.Error()
@@ -1219,8 +1232,9 @@ func (pm *PluginManager) unregisterHooksInternal(pluginID string) {
 
 // pluginState is the serialized form for persistence.
 type pluginState struct {
-	Enabled  bool              `json:"enabled"`
-	Settings map[string]string `json:"settings"`
+	Enabled   bool              `json:"enabled"`
+	Settings  map[string]string `json:"settings"`
+	DevSource string            `json:"devSource,omitempty"`
 }
 
 func (pm *PluginManager) savePluginStateInternal() error {
@@ -1231,8 +1245,9 @@ func (pm *PluginManager) savePluginStateInternal() error {
 	states := make(map[string]pluginState)
 	for id, inst := range pm.plugins {
 		states[id] = pluginState{
-			Enabled:  inst.Enabled,
-			Settings: inst.Settings,
+			Enabled:   inst.Enabled,
+			Settings:  inst.Settings,
+			DevSource: inst.DevSource,
 		}
 	}
 
@@ -1283,6 +1298,7 @@ func (pm *PluginManager) loadPluginStateInternal() error {
 	for id, state := range states {
 		if inst, ok := pm.plugins[id]; ok {
 			inst.Enabled = state.Enabled
+			inst.DevSource = state.DevSource
 			if state.Settings != nil {
 				inst.Settings = state.Settings
 			}
@@ -1293,6 +1309,7 @@ func (pm *PluginManager) loadPluginStateInternal() error {
 				Enabled:  state.Enabled,
 				Settings: state.Settings,
 				Error:    "plugin directory not found",
+				DevSource: state.DevSource,
 			}
 		}
 	}

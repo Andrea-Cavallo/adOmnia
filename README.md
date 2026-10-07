@@ -67,6 +67,11 @@ Download the latest build from **[GitHub Releases](https://github.com/Andrea-Cav
 
 Each release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTALL.md) for platform-specific steps.
 
+Package-manager templates for Scoop, Homebrew, Snap and Flatpak are available
+in [`packaging/`](packaging/README.md). Bucket/tap publication requires configured
+repositories and credentials; Snap Store and Flathub publication require a
+separate submission. Use GitHub Releases until those channels are published.
+
 ### Getting started
 
 1. **Go project:** open **gO Studio**, choose *Open Folder* on a folder with a `go.mod`, then trust it to enable gopls, Run, Debug and tests.
@@ -79,7 +84,7 @@ Each release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTAL
 
 | Area | Summary |
 | --- | --- |
-| **API client** | REST and GraphQL requests, environments and variables, authentication (OAuth 2.0, AWS Signature v4, Digest and others), pre/post scripts, assertions, response history, code generation, Postman/cURL/OpenAPI import, OpenAPI editor with governance rules. |
+| **API client** | REST and GraphQL requests, environments and variables, authentication (OAuth 2.0, AWS Signature v4, Digest and others), pre/post scripts, assertions, response history, code generation, Postman, Insomnia, Bruno, cURL and OpenAPI import, OpenAPI editor with governance rules. |
 | **Testing and flows** | Collection runner with CSV datasets, recorded or AI-assisted flows, variables extracted from responses, failure branches, contract checks, and flow load tests with latency, throughput and APDEX thresholds. |
 | **Protocols and brokers** | SOAP/WSDL with WS-Security, gRPC (including streaming), WebSocket, SSE, Kafka, RabbitMQ, MQTT, Redis Pub/Sub and NATS. |
 | **Mocking and traffic** | Schema-based mock responses, conditional expectations, record/replay, HTTPS interception, breakpoints, map local/remote, throttling, HTTP/gRPC load testing and a local Docker lab. |

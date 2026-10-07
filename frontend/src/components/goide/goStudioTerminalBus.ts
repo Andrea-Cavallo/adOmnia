@@ -7,6 +7,7 @@ type Listener = (data: string) => void
 
 interface TerminalChannel {
   history: string[]
+  sequences: number[]
   size: number
   exited: boolean
   listeners: Set<Listener>
@@ -19,18 +20,20 @@ let subscribed = false
 function channel(terminalId: string): TerminalChannel {
   let current = channels.get(terminalId)
   if (!current) {
-    current = { history: [], size: 0, exited: false, listeners: new Set(), exitListeners: new Set() }
+    current = { history: [], sequences: [], size: 0, exited: false, listeners: new Set(), exitListeners: new Set() }
     channels.set(terminalId, current)
   }
   return current
 }
 
-function append(terminalId: string, data: string): void {
+function append(terminalId: string, data: string, sequence = 0): void {
   const current = channel(terminalId)
   current.history.push(data)
+  current.sequences.push(sequence)
   current.size += data.length
   while (current.size > MAX_HISTORY_CHARS && current.history.length > 1) {
     current.size -= current.history.shift()!.length
+    current.sequences.shift()
   }
   for (const listener of current.listeners) listener(data)
 }
@@ -49,11 +52,34 @@ export function startGoStudioTerminalBus(): void {
     if (!event.resourceId) return
     if (event.type === 'terminal.output') {
       const payload = event.payload as GoIDETerminalOutput | undefined
-      if (payload?.data) append(event.resourceId, payload.data)
+      if (payload?.data) append(event.resourceId, payload.data, event.sequence)
     } else if (event.type === 'terminal.exited') {
       markExited(event.resourceId)
     }
   })
+}
+
+/** Bootstrap a new native view without replaying events already in its history. */
+export function exportTerminalHistory(ids?: string[]) {
+  return Object.fromEntries([...channels].filter(([id]) => !ids || ids.includes(id)).map(([id, value]) => [id, { history: value.history, sequences: value.sequences, exited: value.exited }]))
+}
+export function importTerminalHistory(value: unknown) {
+  if (!value || typeof value !== 'object') return
+  for (const [id, raw] of Object.entries(value)) {
+    const saved = raw as { history: string[]; sequences: number[]; exited: boolean }
+    if (!Array.isArray(saved.history) || !Array.isArray(saved.sequences)) continue
+    const current = channel(id)
+    const checkpoint = saved.sequences.reduce((last, sequence) => Math.max(last, sequence), 0)
+    const tail = current.history.flatMap((data, index) => current.sequences[index] > checkpoint ? [{ data, sequence: current.sequences[index] }] : [])
+    current.history = [...saved.history, ...tail.map((item) => item.data)]
+    current.sequences = [...saved.sequences, ...tail.map((item) => item.sequence)]
+    current.size = current.history.reduce((size, data) => size + data.length, 0)
+    while (current.size > MAX_HISTORY_CHARS && current.history.length > 1) {
+      current.size -= current.history.shift()!.length
+      current.sequences.shift()
+    }
+    current.exited ||= saved.exited
+  }
 }
 
 /** Collega una vista: riceve prima la cronologia già arrivata, poi l'output nuovo. */

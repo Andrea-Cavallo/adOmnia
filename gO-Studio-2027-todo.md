@@ -24,8 +24,8 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 190 | 49 |
-| **P3** | Remote ed estensibilità | 12 | 2 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 188 | 47 |
+| **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 151 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
@@ -87,8 +87,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Detection
 
-- [ ] Detect producer. — *Parziale: goliterals.go rileva topic da ProducerMessage/Writer ma l'entità topic non ha il ruolo producer.*
-- [ ] Detect consumer. — *Parziale: goliterals.go rileva ConsumeTopics e ReaderConfig.Topic ma non marca il ruolo consumer.*
 - [ ] Detect consumer group.
 - [ ] Detect serializers.
 - [ ] Detect retry topic.
@@ -400,7 +398,7 @@ _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 
 ## §47 · Plugin / Extension Architecture
 
-- [ ] Public extension API. — *Parziale: Contratto v1 con eventi Go Studio read-only (internal/goide/integrations.go) e host API del sandbox; nessuna API per comandi o estensioni dell'IDE.*
+- [ ] Public extension API. — *Parziale: contratto `contributes` (commands, codeActions, analyzers, templates, languages, adapters) con validazione in internal/plugins e GetContributions; manca il consumo lato IDE (palette, editor, New Project) e l'API per estensioni dell'IDE.*
 - [ ] Language extension points.
 - [ ] Framework adapters.
 - [ ] Broker adapters.
@@ -408,9 +406,9 @@ _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 - [ ] Analyzer extensions.
 - [ ] Custom code actions.
 - [ ] Custom templates.
-- [ ] WASM plugins.
-- [ ] Signed plugin support.
-- [ ] Plugin developer mode. — *Parziale: PluginDevTools.tsx: host functions, eventi, stato sandbox ed esecuzione manuale; mancano hot reload e log dedicati.*
+- [x] WASM plugins. — *Runtime WASI (wazero) in internal/plugins: modulo wasip1 senza filesystem/rete/env, stdin JSON → stdout JSON, stderr come log, sotto i limiti memoria/tempo del sandbox; il test esegue un vero modulo Go wasip1 (GOOS=wasip1 GOARCH=wasm).*
+- [x] Signed plugin support. — *signature.json ed25519 su ogni file (escluso signature.json); install verifica, una chiave trusted marca il plugin trusted, e qualunque modifica dopo la firma lo disabilita (internal/plugins/signature.go).*
+- [x] Plugin developer mode. — *LinkDevPlugin lega il plugin alla cartella sorgente e lo reinstalla a ogni modifica (fsnotify, debounce 300 ms) con log dedicati info/error/reload in GetPluginLogs (internal/plugins/devmode.go); PluginDevTools.tsx resta per host functions, eventi, stato sandbox ed esecuzione manuale.*
 
 ---
 

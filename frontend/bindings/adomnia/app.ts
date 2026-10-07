@@ -75,6 +75,10 @@ export function ClosePanelWindow(panel: string): $CancellablePromise<void> {
     return $Call.ByID(610457355, panel);
 }
 
+export function CloseStudioToolWindow(sessionID: string, tool: string): $CancellablePromise<void> {
+    return $Call.ByID(3955840043, sessionID, tool);
+}
+
 export function CompareFolders(left: string, right: string, maxFileMB: number): $CancellablePromise<string> {
     return $Call.ByID(3985885649, left, right, maxFileMB);
 }
@@ -286,6 +290,13 @@ export function OpenDevLogsFolder(): $CancellablePromise<void> {
  */
 export function OpenPanelWindow(panel: string, title: string): $CancellablePromise<void> {
     return $Call.ByID(3614562593, panel, title);
+}
+
+/**
+ * OpenStudioToolWindow opens a view of a live project's tool, never a new project.
+ */
+export function OpenStudioToolWindow(sessionID: string, tool: string, title: string): $CancellablePromise<void> {
+    return $Call.ByID(3233506537, sessionID, tool, title);
 }
 
 /**
