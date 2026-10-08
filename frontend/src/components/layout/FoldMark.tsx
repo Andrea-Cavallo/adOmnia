@@ -206,13 +206,17 @@ interface FoldMarkProps {
   busy: boolean
   /** Shown when WebGL is unavailable. */
   fallback: ReactNode
+  /** Called when the wordmark is clicked (instead of switching to the forms). */
+  onWordClick?: () => void
 }
 
-export function FoldMark({ busy, fallback }: FoldMarkProps) {
+export function FoldMark({ busy, fallback, onWordClick }: FoldMarkProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const busyRef = useRef(busy)
   const [failed, setFailed] = useState(false)
   busyRef.current = busy
+  const wordClickRef = useRef(onWordClick)
+  wordClickRef.current = onWordClick
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -286,8 +290,9 @@ export function FoldMark({ busy, fallback }: FoldMarkProps) {
       let frame = 0
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
       const start = performance.now()
-      // Opens by gathering the dust into the adOmnia wordmark. A click dissolves it into the
-      // cycling forms (and a click on the forms brings it back); untouched, it fades after 5 minutes.
+      // Opens by gathering the dust into the adOmnia wordmark. A click on it calls onWordClick (or,
+      // without one, dissolves into the cycling forms); a click on the forms brings it back.
+      // Untouched, the wordmark fades into the forms after 5 minutes.
       let from = SEARCHING, to = WORD, changedAt = 0, nextAt = 0, morphSeconds = WORD_MORPH_SECONDS, wordSince = 0, clicked = false, raf = 0
       const go = (next: number, t: number, seconds: number) => {
         from = to; to = next; changedAt = t; nextAt = t + STATE_SECONDS; morphSeconds = reduced ? 0.001 : seconds
@@ -310,7 +315,11 @@ export function FoldMark({ busy, fallback }: FoldMarkProps) {
       document.addEventListener('pointerleave', onLeave)
 
       const render = (t: number) => {
-        if (clicked) { clicked = false; go(to === WORD ? 0 : WORD, t, WORD_MORPH_SECONDS) }
+        if (clicked) {
+          clicked = false
+          if (to === WORD && wordClickRef.current) wordClickRef.current()
+          else go(to === WORD ? 0 : WORD, t, WORD_MORPH_SECONDS)
+        }
         else if (to === WORD) { if (t - wordSince >= WORD_IDLE_SECONDS) go(0, t, WORD_FADE_SECONDS) }
         // Forms: hold "thinking" while a request is in flight, otherwise cycle.
         else if (busyRef.current && to !== THINKING) go(THINKING, t, MORPH_SECONDS)
