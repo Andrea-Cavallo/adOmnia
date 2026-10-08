@@ -419,6 +419,9 @@
     -webkit-backdrop-filter: blur(14px) saturate(1.2);
     backdrop-filter: blur(14px) saturate(1.2);
   }
+  /* Brand logos (components/ui/BrandIcon): official color when readable on the theme. */
+  .brand-icon { fill: var(--brand-on-light); }
+  html.dark .brand-icon { fill: var(--brand-on-dark); }
   .panel-enter {
     animation: panelSlideIn 120ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }

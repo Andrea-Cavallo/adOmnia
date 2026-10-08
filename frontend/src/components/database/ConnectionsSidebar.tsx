@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { CheckCircle2, Database, Eye, EyeOff, MoreVertical, Plus, Search, Shield, Trash2, Wand2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  DRIVER_META, SELECTABLE_DRIVERS,
+  DRIVER_META, DbDriverIcon, SELECTABLE_DRIVERS,
   type DbConnection, type DbDriver, type SelectableDbDriver,
 } from './dbShared'
 import { databaseCredentialState } from './dbSecrets'
@@ -94,7 +94,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
               >
                 <button type="button" aria-pressed={isActive} onClick={() => onSelect(conn.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none">
                   <span className="grid h-8 w-8 flex-none place-items-center rounded-md border" style={{ borderColor: `${meta.accent}44`, background: `${meta.accent}14` }}>
-                    <Database size={15} style={{ color: meta.accent }} />
+                    <DbDriverIcon driver={conn.driver} size={16} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={cn('block truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</span>
@@ -149,12 +149,13 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                 key={driver}
                 onClick={() => onSetDriver(driver)}
                 className={cn(
-                  'rounded-md border py-1.5 text-[10.5px] font-medium transition-colors',
+                  'flex flex-col items-center gap-1 rounded-md border py-1.5 text-[10.5px] font-medium transition-colors',
                   isActive
                     ? 'border-accent bg-accent text-white shadow-none'
                     : 'border-border-2 bg-surface-2 text-text-3 hover:border-border-3 hover:text-text-1'
                 )}
               >
+                <DbDriverIcon driver={driver} size={16} mono={isActive} />
                 {DRIVER_META[driver].short}
               </button>
             )

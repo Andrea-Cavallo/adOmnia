@@ -240,8 +240,6 @@ html.light .go-studio-root .go-studio-run-group,
 
 /* Loghi dei marchi (Simple Icons): colore ufficiale se leggibile sul tema attivo, altrimenti il
    colore del testo. I valori per tema li calcola brandColors() dal contrasto WCAG. */
-.go-studio-brand-icon { fill: var(--brand-on-light); }
-html.dark .go-studio-brand-icon { fill: var(--brand-on-dark); }
 
 /* Cartelle stile Finder: blu di sistema Apple, più luminoso sul tema scuro. */
 .go-studio-root {

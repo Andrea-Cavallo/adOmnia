@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react'
+import { Database } from 'lucide-react'
+import { BrandIcon } from '@/components/ui/BrandIcon'
+import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import { cn } from '@/lib/utils'
 import type { EntityRef } from '@/lib/entities/types'
 
@@ -71,12 +74,20 @@ export const FAVORITES_KEY = 'favorites'
 export const WORKSPACE_KEY = 'query-workspace-v1'
 
 // ── driver metadata ────────────────────────────────────────────────────────
-export const DRIVER_META: Record<DbDriver, { label: string; short: string; port: number; accent: string }> = {
-  sqlite:   { label: 'SQLite',     short: 'SQLite',     port: 0,     accent: '#3FB950' },
-  postgres: { label: 'PostgreSQL', short: 'PostgreSQL', port: 5432,  accent: '#38BDF8' },
-  mysql:    { label: 'MySQL',      short: 'MySQL',      port: 3306,  accent: '#E3B341' },
+// icon: Simple Icons slug (scripts/generate-brand-icons.mjs); Db2 has none, so it falls back to a generic glyph.
+export const DRIVER_META: Record<DbDriver, { label: string; short: string; port: number; accent: string; icon?: BrandIconSlug }> = {
+  sqlite:   { label: 'SQLite',     short: 'SQLite',     port: 0,     accent: '#3FB950', icon: 'sqlite' },
+  postgres: { label: 'PostgreSQL', short: 'PostgreSQL', port: 5432,  accent: '#38BDF8', icon: 'postgresql' },
+  mysql:    { label: 'MySQL',      short: 'MySQL',      port: 3306,  accent: '#E3B341', icon: 'mysql' },
   db2:      { label: 'IBM Db2',    short: 'Db2',        port: 50000, accent: '#8B3DFF' },
-  mongodb:  { label: 'MongoDB',    short: 'MongoDB',    port: 27017, accent: '#3FB950' },
+  mongodb:  { label: 'MongoDB',    short: 'MongoDB',    port: 27017, accent: '#3FB950', icon: 'mongodb' },
+}
+
+/** Logo of a database driver, or a generic database glyph when it has no brand icon. */
+export function DbDriverIcon({ driver, size = 15, mono = false }: { driver: DbDriver; size?: number; mono?: boolean }) {
+  const meta = DRIVER_META[driver]
+  if (meta.icon) return <BrandIcon slug={meta.icon} size={size} mono={mono} />
+  return <Database size={size} style={mono ? undefined : { color: meta.accent }} />
 }
 export const SELECTABLE_DRIVERS: SelectableDbDriver[] = ['sqlite', 'postgres', 'mysql', 'mongodb']
 

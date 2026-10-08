@@ -1,26 +1,16 @@
-import { memo, type CSSProperties } from 'react'
+import { memo } from 'react'
 import { Archive, BookOpen, Database, File, FileCode2, FileImage, FileText, Key, Lock, Scale, SquareTerminal, Workflow } from 'lucide-react'
-import { BRAND_ICONS, type BrandIconSlug } from '@/lib/brandIcons.generated'
+import { BrandIcon } from '@/components/ui/BrandIcon'
 import { GoGopherIcon } from './GoGopherIcon'
-import { brandColors, resolveGoStudioFileIcon } from './goStudioFileIcons'
+import { resolveGoStudioFileIcon } from './goStudioFileIcons'
 import jenkinsEmblem from './assets/jenkins.png'
+
+export { BrandIcon }
 
 const GENERIC_ICONS = {
   text: FileText, pdf: FileText, image: FileImage, archive: Archive, lock: Lock,
   license: Scale, readme: BookOpen, code: FileCode2, key: Key, sql: Database, terminal: SquareTerminal, schema: Workflow, file: File,
 } as const
-
-/** Logo di un marchio (Simple Icons, 24×24) con il colore adatto al tema attivo. */
-export const BrandIcon = memo(function BrandIcon({ slug, size = 14, dimmed = false }: { slug: BrandIconSlug; size?: number; dimmed?: boolean }) {
-  const icon = BRAND_ICONS[slug]
-  const colors = brandColors(icon.hex)
-  const style = { '--brand-on-dark': colors.onDark, '--brand-on-light': colors.onLight } as CSSProperties
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} style={style} className={`go-studio-brand-icon shrink-0 text-text-2 ${dimmed ? 'opacity-55' : ''}`} role="img" aria-label={icon.title}>
-      <path d={icon.path} />
-    </svg>
-  )
-})
 
 /** Icona di un file in tutto Go Studio: gopher per i sorgenti Go, loghi reali, icone generiche. */
 export const GoStudioFileIcon = memo(function GoStudioFileIcon({ name, relativePath, size = 14 }: { name: string; relativePath?: string; size?: number }) {
