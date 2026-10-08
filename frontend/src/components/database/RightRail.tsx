@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { relativeTime, type HistoryItem, type SchemaItem } from './dbShared'
 
 interface RightRailProps {
+  width: number
   isMongo: boolean
   favorites: string[]
   history: HistoryItem[]
@@ -40,7 +41,7 @@ function queryLabel(q: string): string {
 
 export function RightRail(props: RightRailProps) {
   const {
-    isMongo, favorites, history,
+    width, isMongo, favorites, history,
     schemaItems, schemaDb, schemaLoading, schemaError, schemaSearch, currentQuery,
     onAddFavorite, onPickQuery,
     onClearHistory, onRefreshSchema, onSchemaSearch, onPickCollection, onCreateObject,
@@ -50,7 +51,7 @@ export function RightRail(props: RightRailProps) {
   const filteredSchema = schemaItems.filter((s) => !schemaSearch.trim() || s.name.toLowerCase().includes(schemaSearch.toLowerCase()))
 
   return (
-    <aside className="flex w-[280px] flex-none flex-col overflow-y-auto border-l border-border-1 bg-surface-1">
+    <aside className="flex flex-none flex-col overflow-y-auto bg-surface-1" style={{ width }}>
       {/* ── Favorites ─────────────────────────────────────────────────── */}
       <SectionHeader
         icon={<Star size={14} />}

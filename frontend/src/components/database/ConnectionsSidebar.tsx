@@ -8,6 +8,7 @@ import {
 import { databaseCredentialState } from './dbSecrets'
 
 interface ConnectionsSidebarProps {
+  width: number
   connections: DbConnection[]
   active: DbConnection
   running: boolean
@@ -34,7 +35,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 const inputCls = 'h-8 w-full rounded-md border border-border-2 bg-surface-2 px-2.5 text-[12px] text-text-1 outline-none transition-colors focus:border-accent/60 focus:bg-surface-3'
 
 export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
-  const { connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite } = props
+  const { width, connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite } = props
   const [search, setSearch] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [vaultPassphrase, setVaultPassphrase] = useState('')
@@ -48,7 +49,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
   )
 
   return (
-    <aside className="flex w-[336px] flex-none flex-col border-r border-border-1 bg-surface-1">
+    <aside className="flex flex-none flex-col bg-surface-1" style={{ width }}>
       {/* header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <h2 className="text-[15px] font-semibold tracking-tight text-text-1">Connections</h2>

@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import { useResizableSize } from '@/hooks/useResizableSize'
 import { Braces, ChevronLeft, ChevronRight, Code2, Download, FileJson, Gauge, List, Loader2, Plus, RefreshCw, Table2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { download, highlightedJson, type DbConnection } from '../dbShared'
@@ -56,6 +58,7 @@ function withoutId(doc: BsonDoc): BsonDoc {
 }
 
 export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }: MongoWorkspaceProps) {
+  const navigator = useResizableSize({ storageKey: 'adomnia.database.mongoNavigatorWidth', defaultSize: 240, min: 180, maxRatio: 0.35 })
   const m = useMongoBrowser(connection, runMongo, reloadToken)
   const [tab, setTab] = useState<WorkspaceTab>('documents')
   const [view, setView] = useState<ViewMode>('list')
@@ -147,6 +150,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <MongoNavigator
+        width={navigator.size}
         databases={m.databases}
         expanded={m.expanded}
         loading={m.treeLoading}
@@ -158,6 +162,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
         onCreateCollection={m.createCollection}
         onDropCollection={m.dropCollection}
       />
+      <ResizeHandle label="Drag to resize databases" onMouseDown={navigator.startResize} />
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0">
         {/* header: breadcrumb, stats, mode switch */}

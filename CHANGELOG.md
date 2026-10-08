@@ -7,6 +7,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ## [Unreleased]
 
 ### Changed
+- **Database Studio resizes like the rest of adOmnia:** the Connections column, the Favorites/History/Schema column, the MongoDB database navigator and the split between query editor and results use the shared drag handle and keep their size across restarts. The logic lives in the reusable `useResizableSize` hook.
 - **Database Studio logos:** connections and the Database Type picker show the SQLite, PostgreSQL, MySQL and MongoDB logos (Simple Icons) in readable brand colors on Dark and White; the selected type shows the logo in white. `BrandIcon` moved to `components/ui` so any module can use it without loading Go Studio.
 - **Rail order:** Go Studio is first, followed by API Core. Browser Debug moves from its own rail entry into Power Tools › Debugging.
 

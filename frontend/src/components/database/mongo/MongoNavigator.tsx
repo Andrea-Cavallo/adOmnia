@@ -12,6 +12,7 @@ export interface MongoDbNode {
 }
 
 interface MongoNavigatorProps {
+  width: number
   databases: MongoDbNode[]
   expanded: string[]
   loading: boolean
@@ -25,7 +26,7 @@ interface MongoNavigatorProps {
 }
 
 export function MongoNavigator(props: MongoNavigatorProps) {
-  const { databases, expanded, loading, error, selected, onRefresh, onToggle, onSelect, onCreateCollection, onDropCollection } = props
+  const { width, databases, expanded, loading, error, selected, onRefresh, onToggle, onSelect, onCreateCollection, onDropCollection } = props
   const [search, setSearch] = useState('')
   const [creatingIn, setCreatingIn] = useState('')
   const [newName, setNewName] = useState('')
@@ -61,7 +62,7 @@ export function MongoNavigator(props: MongoNavigatorProps) {
   }
 
   return (
-    <aside aria-label="MongoDB databases" className="flex w-[240px] flex-none flex-col border-r border-border-1 bg-surface-1">
+    <aside aria-label="MongoDB databases" className="flex flex-none flex-col bg-surface-1" style={{ width }}>
       <div className="flex h-9 flex-none items-center justify-between border-b border-border-1 px-3">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">Databases</span>
         <button type="button" onClick={onRefresh} title="Refresh databases" aria-label="Refresh databases" className="grid h-6 w-6 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">

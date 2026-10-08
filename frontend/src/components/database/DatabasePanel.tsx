@@ -12,6 +12,8 @@ import { QueryEditor } from './QueryEditor'
 import { ResultsView } from './ResultsView'
 import { RightRail } from './RightRail'
 import { MongoWorkspace } from './mongo/MongoWorkspace'
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import { useResizableSize } from '@/hooks/useResizableSize'
 import {
   CONNECTIONS_KEY, DRIVER_META, FAVORITES_KEY, HISTORY_KEY, MONGO_DEFAULT_QUERY,
   SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
@@ -32,6 +34,9 @@ import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 
 export function DatabasePanel() {
+  const connectionsPane = useResizableSize({ storageKey: 'adomnia.database.connectionsWidth', defaultSize: 336, min: 260, maxRatio: 0.4 })
+  const rightPane = useResizableSize({ storageKey: 'adomnia.database.sideWidth', defaultSize: 280, min: 220, maxRatio: 0.4, direction: -1 })
+  const editorPane = useResizableSize({ storageKey: 'adomnia.database.editorHeight', defaultSize: 320, min: 140, maxRatio: 0.7, axis: 'y' })
   const port = useServerPort()
   const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
   const vars = getResolvedVars()
@@ -523,6 +528,7 @@ export function DatabasePanel() {
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden bg-surface-0">
       <ConnectionsSidebar
+        width={connectionsPane.size}
         connections={connections}
         active={active}
         running={running}
@@ -535,12 +541,14 @@ export function DatabasePanel() {
         onVault={protectConnectionSecrets}
         onCreateLocalSQLite={() => void createLocalSQLite()}
       />
+      <ResizeHandle label="Drag to resize connections" onMouseDown={connectionsPane.startResize} />
 
       {isMongo && mongoView === 'documents' ? (
         <MongoWorkspace connection={active} runMongo={runMongo} reloadToken={mongoReload} modeSwitch={mongoModeSwitch} />
       ) : (<>
-      <section className={cn('grid min-w-0 flex-1', isMongo ? 'grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)_minmax(0,1fr)]')}>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         {isMongo && <div className="flex h-9 items-center justify-end border-b border-border-1 bg-surface-1 px-3">{mongoModeSwitch}</div>}
+        <div className="flex min-h-0 flex-none flex-col [&>*]:flex-1" style={{ height: editorPane.size }}>
         <QueryEditor
           tabs={tabs}
           activeTabId={activeTabId}
@@ -562,6 +570,8 @@ export function DatabasePanel() {
           onFormat={formatQuery}
           onSave={saveQuery}
         />
+        </div>
+        <ResizeHandle orientation="horizontal" withLine={false} label="Drag to resize editor and results" onMouseDown={editorPane.startResize} />
         <ResultsView
           result={result}
           isMongo={isMongo}
@@ -573,7 +583,9 @@ export function DatabasePanel() {
         />
       </section>
 
+      <ResizeHandle label="Drag to resize favorites, history and schema" onMouseDown={rightPane.startResize} />
       <RightRail
+        width={rightPane.size}
         isMongo={isMongo}
         favorites={favorites}
         history={history}
