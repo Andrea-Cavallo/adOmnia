@@ -18,7 +18,7 @@ Release files:
 
 ## CI Artifacts from Every Push
 
-Every push to `master`, `main`, or `develop` runs the desktop build workflow.
+Every push to `main` or `develop` runs the desktop build workflow.
 
 To download a CI build:
 

@@ -4,6 +4,11 @@ adOmnia releases are driven by Git tags and GitHub Actions.
 
 ## Unreleased
 
+Recovery latency checks retain the 500 ms budget at the 95th percentile, with
+repeated recovery loads validating every buffer and content hash. Maximum snapshot
+latency stays in the test logs to expose isolated runner filesystem spikes.
+`main` is the default branch; `develop` remains the development branch.
+
 ## v0.9.68 release notes: chat understands the open file
 
 See [the full v0.9.68 notes](releases/v0.9.68.md): milk and Copilot receive the
@@ -472,7 +477,7 @@ GitHub Actions will:
 
 ## CI Builds Without Release
 
-Pushes to `master`, `main`, or `develop` produce downloadable Actions artifacts but do not create a public Release.
+Pushes to `main` or `develop` produce downloadable Actions artifacts but do not create a public Release.
 
 Find them in:
 

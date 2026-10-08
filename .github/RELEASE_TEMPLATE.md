@@ -42,7 +42,7 @@ Download the new artifact for your platform and replace the previous application
 
 ## Links
 
-- Full changelog: https://github.com/Andrea-Cavallo/adOmnia/blob/master/CHANGELOG.md
-- Install guide: https://github.com/Andrea-Cavallo/adOmnia/blob/master/docs/INSTALL.md
+- Full changelog: https://github.com/Andrea-Cavallo/adOmnia/blob/main/CHANGELOG.md
+- Install guide: https://github.com/Andrea-Cavallo/adOmnia/blob/main/docs/INSTALL.md
 - Report issues: https://github.com/Andrea-Cavallo/adOmnia/issues
-- Security policy: https://github.com/Andrea-Cavallo/adOmnia/blob/master/.github/SECURITY.md
+- Security policy: https://github.com/Andrea-Cavallo/adOmnia/blob/main/.github/SECURITY.md

@@ -6,6 +6,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- **Recovery latency checks on shared CI runners:** the original 500 ms budget now applies to the nearest-rank 95th percentile across 50 snapshot writes and 20 recovery loads. Isolated filesystem scheduling spikes remain visible in logs without failing the release; repeated slow writes still fail. Every recovery load verifies all ten buffers and their content hashes.
+
+### Changed
+- `main` is the canonical default branch, with `develop` retained for development. CI branch filters, documentation and release links no longer reference the redundant `master` branch.
+
 ## [0.9.68] - 2026-10-07
 
 ### Fixed

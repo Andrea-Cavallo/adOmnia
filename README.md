@@ -11,7 +11,7 @@ Write the service. Run it. Call it. Debug it. Inspect its database, messages and
 adOmnia runs on Windows, macOS and Linux. It needs no account, collects no telemetry and keeps your data on your machine; AI features are optional and connect only to the provider you configure.
 
 [![Release](https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2)](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=master&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=main&label=build)](https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 [![Website](https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2)](https://www.adomnia-dev.com)
 
