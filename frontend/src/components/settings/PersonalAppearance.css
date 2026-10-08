@@ -1,0 +1,215 @@
+.personal-appearance {
+  margin: 0 0 20px;
+  padding: 20px;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  color: var(--color-text-1);
+}
+.personal-appearance header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.personal-appearance h3 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.4px;
+}
+.personal-appearance header > span {
+  font-size: 32px;
+  color: var(--color-accent);
+}
+.personal-appearance p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--color-text-3);
+  margin: 6px 0 12px;
+}
+.personal-appearance button {
+  font-size: 11px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-1);
+  cursor: pointer;
+}
+.personal-appearance button:hover,
+.personal-appearance button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+}
+.personal-appearance button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.personal-appearance button:focus-visible,
+.personal-appearance input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.personal-modes,
+.personal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.personal-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.personal-color-grid label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.personal-color-input {
+  display: flex;
+  gap: 8px;
+}
+.personal-appearance input {
+  min-width: 0;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-0);
+  color: var(--color-text-1);
+  padding: 8px;
+  font-size: 12px;
+}
+.personal-color-input input[type='color'] {
+  width: 44px;
+  height: 36px;
+  padding: 4px;
+  cursor: pointer;
+}
+.personal-color-input input:not([type='color']) {
+  width: 120px;
+  font-family: var(--font-mono);
+}
+.personal-preview {
+  display: flex;
+  margin-top: 20px;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-0);
+  color: var(--color-text-1);
+  overflow: hidden;
+}
+.personal-preview-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 12px;
+  background: var(--color-surface-1);
+  border-right: 1px solid var(--color-border-1);
+}
+.personal-preview-rail i {
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+}
+.personal-preview-content {
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+}
+.personal-preview-content small {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  font-size: 10px;
+}
+.personal-preview-content strong {
+  display: block;
+  font-size: 18px;
+  margin: 8px 0 16px;
+}
+.personal-preview-content > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--color-border-1);
+  background: var(--color-surface-1);
+  font-size: 10px;
+}
+.personal-preview-content code {
+  flex: 1;
+  overflow: hidden;
+}
+.personal-preview-content > div span {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+}
+.personal-preview-content b {
+  padding: 6px 12px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 500;
+}
+.personal-preview-content p {
+  color: var(--color-text-2);
+  margin: 12px 0 0;
+  font-family: var(--font-mono);
+}
+.personal-preview-content p span {
+  color: var(--color-text-3);
+  margin-left: 16px;
+}
+.personal-appearance .personal-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
+}
+.personal-profiles {
+  border-top: 1px solid var(--color-border-1);
+  padding-top: 16px;
+}
+.personal-profiles h4 {
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+.personal-profile-list > div {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.personal-profile-list > div > button:first-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+.personal-profile-list i {
+  width: 16px;
+  height: 16px;
+  border: 3px solid;
+  border-radius: 50%;
+}
+.personal-save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.personal-save input {
+  flex: 1;
+  min-width: 100px;
+}
+.personal-appearance .personal-error {
+  color: var(--color-error);
+}
+@media (max-width: 600px) {
+  .personal-color-grid {
+    grid-template-columns: 1fr;
+  }
+  .personal-appearance {
+    padding: 16px;
+  }
+  .personal-preview-content strong {
+    font-size: 15px;
+  }
+}

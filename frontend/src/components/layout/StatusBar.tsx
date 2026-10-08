@@ -9,6 +9,10 @@ import { inferThemeMode } from '@/lib/themeCatalog'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { AccentColorSetting } from '@/components/settings/AccentColorSetting'
+import { useSettingsStore } from '@/stores/settings'
+import { luminance, validAccent } from '@/lib/accentPalette'
+
+const BASE_PRESETS = { dark: ['#000000', '#0B1020', '#111827', '#1C1917'], light: ['#FFFFFF', '#F8FAFC', '#FAF7F0', '#EEF2F7'] } as const
 
 export function StatusBar() {
   const tr = useUiTranslation()
@@ -43,11 +47,20 @@ export function StatusBar() {
 
   type QuickMode = 'dark' | 'light'
   const currentQuickMode = currentMode
-  const applyQuickMode = useCallback((mode: QuickMode) => {
+  const updateAppearance = useSettingsStore((s) => s.updateAppearance)
+  // Each quick mode keeps its own base color: switching saves the current one and
+  // restores the other, instead of falling back to the adOmnia default.
+  const applyQuickMode = useCallback((mode: QuickMode, base?: string | null) => {
     const next = themes.find((t) => t.id === `builtin-${mode}`)
       ?? themes.find((t) => !['builtin-sketch', 'builtin-terminal-green'].includes(t.id) && inferThemeMode(t) === mode)
-    if (next) applyTheme(next)
-  }, [themes, applyTheme])
+    if (!next) return
+    const appearance = useSettingsStore.getState().settings.appearance
+    const bases = { ...appearance.modeBases, [currentMode]: appearance.baseColor }
+    if (base !== undefined) bases[mode] = base ?? undefined
+    applyTheme(next)
+    const baseColor = validAccent(bases[mode]) ? bases[mode] : undefined
+    updateAppearance({ modeBases: bases, baseColor, theme: baseColor ? (luminance(baseColor) > 0.179 ? 'light' : 'dark') : mode })
+  }, [themes, applyTheme, currentMode, updateAppearance])
   const toggleTheme = useCallback(() => applyQuickMode(currentMode === 'dark' ? 'light' : 'dark'), [currentMode, applyQuickMode])
 
   // Ctrl+Shift+L — toggle dark/light theme
@@ -62,7 +75,11 @@ export function StatusBar() {
     return () => window.removeEventListener('keydown', handler)
   }, [toggleTheme])
 
-  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [paletteMode, setPaletteMode] = useState<QuickMode | null>(null)
+  const paletteOpen = paletteMode !== null
+  const setPaletteOpen = (open: boolean) => { if (!open) setPaletteMode(null) }
+  const modeBases = useSettingsStore((s) => s.settings.appearance.modeBases)
+  const activeBase = useSettingsStore((s) => s.settings.appearance.baseColor)
   const appearanceRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!paletteOpen) return
@@ -144,6 +161,11 @@ export function StatusBar() {
           {paletteOpen && (
             <div role="dialog" aria-label={tr('Accent color')} className="absolute bottom-full right-0 z-50 mb-2 w-72 rounded-lg border border-border-2 bg-surface-1 px-3 text-text-1 shadow-xl [&>div]:border-b-0">
               <AccentColorSetting />
+              <BaseColorPicker
+                mode={paletteMode!}
+                value={paletteMode === currentMode ? activeBase : modeBases?.[paletteMode!]}
+                onChange={(color) => applyQuickMode(paletteMode!, color)}
+              />
             </div>
           )}
           {([
@@ -153,8 +175,8 @@ export function StatusBar() {
             <button
               key={mode}
               onClick={() => applyQuickMode(mode)}
-              onContextMenu={(event) => { event.preventDefault(); setPaletteOpen((open) => !open) }}
-              title={`${label} · ${tr('Right-click: accent color')}`}
+              onContextMenu={(event) => { event.preventDefault(); setPaletteMode((open) => (open === mode ? null : mode)) }}
+              title={`${label} · ${tr('Right-click: accent and base color')}`}
               aria-label={label}
               aria-pressed={currentQuickMode === mode}
               className={cn(
@@ -171,4 +193,16 @@ export function StatusBar() {
       </div>
     </footer>
   )
+}
+
+function BaseColorPicker({ mode, value, onChange }: { mode: 'dark' | 'light'; value?: string; onChange: (color: string | null) => void }) {
+  const tr = useUiTranslation()
+  const fallback = mode === 'dark' ? '#000000' : '#FFFFFF'
+  return <div className="space-y-3 border-t border-border-1 py-4">
+    <div className="flex items-center justify-between gap-3"><span className="text-xs font-medium text-text-1">{tr(mode === 'dark' ? 'Dark base color' : 'White base color')}</span><button type="button" onClick={() => onChange(null)} className="text-xs text-accent hover:underline">{tr('Use theme color')}</button></div>
+    <div className="flex flex-wrap items-center gap-2">
+      {BASE_PRESETS[mode].map(color => <button key={color} type="button" aria-label={color} aria-pressed={value?.toLowerCase() === color.toLowerCase()} onClick={() => onChange(color)} style={{ backgroundColor: color }} className="h-7 w-7 rounded-full border-2 border-surface-1 outline outline-1 outline-border-2 focus-visible:ring-2 focus-visible:ring-accent aria-pressed:ring-2 aria-pressed:ring-accent" />)}
+      <input type="color" aria-label={tr('Base color')} value={validAccent(value) ? value : fallback} onChange={e => onChange(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-border-2 bg-surface-1 p-1" />
+    </div>
+  </div>
 }

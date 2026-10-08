@@ -1,3 +1,5 @@
+import { normalizeProfiles, type AppearanceProfile, type PersonalColors } from '@/lib/personalAppearance'
+import { validAccent } from '@/lib/accentPalette'
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings } from '../wailsjs/go/main/App'
 import { immediateSave, setAutoSaveDelay } from '@/lib/storeSave'
@@ -49,6 +51,10 @@ export interface AppSettings {
     language: 'en' | 'it'
     sidebarWidth: number
     showRailIconsOnly: boolean
+    baseColor?: string
+    /** Base color remembered per quick mode (status bar Dark/White), restored when switching back. */
+    modeBases?: { dark?: string; light?: string }
+    profiles?: AppearanceProfile[]
     accentColor?: string
     accentColorPreset: string
     sidebarCollapsed: boolean
@@ -184,7 +190,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 13,
+  version: 14,
   general: {
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -207,7 +213,7 @@ const defaultSettings: AppSettings = {
     language: 'en',
     sidebarWidth: 280,
     showRailIconsOnly: false,
-    accentColorPreset: 'cyan',
+    accentColorPreset: 'monochrome',
     sidebarCollapsed: false,
   },
   requests: {
@@ -288,6 +294,8 @@ const defaultSettings: AppSettings = {
 }
 
 interface SettingsState {
+  appearancePreview: PersonalColors | null
+  previewAppearance: (colors: PersonalColors | null) => void
   settings: AppSettings
   loaded: boolean
   load: (rawOverride?: unknown) => Promise<void>
@@ -306,6 +314,8 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
+  appearancePreview: null,
+  previewAppearance: appearancePreview => set({ appearancePreview }),
   settings: defaultSettings,
   loaded: false,
 
@@ -314,6 +324,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const raw = rawOverride ?? await LoadSettings()
       const parsed = decodePersistedJSON<Partial<AppSettings>>(raw)
       const appearance = mergeBlock(defaultSettings.appearance, parsed.appearance)
+      appearance.baseColor = validAccent(appearance.baseColor) ? appearance.baseColor : undefined
+      appearance.profiles = normalizeProfiles(appearance.profiles)
+      appearance.modeBases = Object.fromEntries(Object.entries(appearance.modeBases ?? {}).filter(([k, v]) => (k === 'dark' || k === 'light') && validAccent(v)))
       if (!appearance.themeId) {
         appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'
       }

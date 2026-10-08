@@ -1,5 +1,7 @@
 import { useThemesStore } from '@/stores/themes'
 import { inferThemeMode } from '@/lib/themeCatalog'
+import { useSettingsStore } from '@/stores/settings'
+import { luminance, validAccent } from '@/lib/accentPalette'
 
 const APP_ICON = '/icon.png'
 const APP_ICON_WIN95 = '/icon95.png'
@@ -23,8 +25,13 @@ export function getAppIconForTheme(themeId?: string, mode?: 'dark' | 'light') {
 
 export function useAppIcon() {
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
-  const theme = useThemesStore((s) => s.themes.find(t => t.id === s.activeThemeId))
-  return getAppIconForTheme(activeThemeId, theme ? inferThemeMode(theme) : undefined)
+  const appearance = useSettingsStore(s => s.settings.appearance)
+  const preview = useSettingsStore(s => s.appearancePreview)
+  const themeId = preview?.themeId ?? activeThemeId
+  const theme = useThemesStore(s => s.themes.find(t => t.id === themeId))
+  const base = (preview ?? appearance).baseColor
+  const mode = validAccent(base) ? (luminance(base) > .179 ? 'light' : 'dark') : theme ? inferThemeMode(theme) : undefined
+  return getAppIconForTheme(themeId, mode)
 }
 
 /**

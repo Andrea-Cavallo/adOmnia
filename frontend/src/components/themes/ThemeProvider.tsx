@@ -1,4 +1,5 @@
-import { accentTokens, accentHue, validAccent } from '@/lib/accentPalette'
+import { personalColors } from '@/lib/personalAppearance'
+import { accentHue, validAccent, luminance } from '@/lib/accentPalette'
 import { createContext, useCallback, useContext, useEffect } from 'react'
 import type { Theme } from '@/stores/themes'
 import { useThemesStore } from '@/stores/themes'
@@ -27,10 +28,12 @@ function injectThemeVariables(theme: Theme) {
   root.removeProperty('--font-sans')
   root.removeProperty('--font-serif')
 
-  const customAccent = useSettingsStore.getState().settings.appearance.accentColor
+  const store = useSettingsStore.getState()
+  const chosen = store.appearancePreview ?? store.settings.appearance
+  const customAccent = chosen.accentColor
   document.documentElement.toggleAttribute('data-custom-accent', validAccent(customAccent))
   root.setProperty('--brand-palette-filter', validAccent(customAccent) ? `hue-rotate(${accentHue(customAccent) - 190}deg)` : 'none')
-  const colors = { ...theme.colors, ...accentTokens(customAccent ?? '', inferThemeMode(theme), theme.colors['surface-1']) }
+  const colors = personalColors(theme.colors, chosen, inferThemeMode(theme))
 
   // Remove tokens owned by the previous theme so missing values fall back
   // to the current mode instead of retaining the previous palette.
@@ -45,8 +48,7 @@ function injectThemeVariables(theme: Theme) {
   // Themes own their accent. This used to be skipped and overwritten with a
   // fixed accent, which silently gutted every accent-defined theme (obsidian
   // -neon is *only* its neon-mint accent) and made the accent fields in the
-  // advanced editor decorative. The default cyan lives where it belongs:
-  // as the default theme's accent, not as a runtime override.
+  // advanced editor decorative. The default accent lives in the theme.
   Object.entries(colors).forEach(([key, value]) => {
     root.setProperty(`--color-${key}`, value)
   })
@@ -94,10 +96,16 @@ function syncDocumentIcon(themeId: string, mode?: 'dark' | 'light') {
   link.href = href
 }
 
+function effectiveMode(theme: Theme): 'dark' | 'light' {
+  const store = useSettingsStore.getState()
+  const base = (store.appearancePreview ?? store.settings.appearance).baseColor
+  return validAccent(base) ? (luminance(base) > .179 ? 'light' : 'dark') : inferThemeMode(theme)
+}
+
 function syncDocumentMode(theme: Theme) {
   const html = document.documentElement
   html.setAttribute('data-theme', theme.id)
-  const mode = inferThemeMode(theme)
+  const mode = effectiveMode(theme)
   syncNativeIcon(mode)
   html.classList.toggle('light', mode === 'light')
   html.classList.toggle('dark', mode === 'dark')
@@ -115,16 +123,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { themes, activeThemeId, setThemes, setActiveThemeId: setStoreActiveId } = useThemesStore()
   const settingsThemeId = useSettingsStore((s) => s.settings.appearance.themeId)
   const accentColor = useSettingsStore(s => s.settings.appearance.accentColor)
+  const baseColor = useSettingsStore(s => s.settings.appearance.baseColor)
+  const preview = useSettingsStore(s => s.appearancePreview)
   const settingsLoaded = useSettingsStore((s) => s.loaded)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
 
   const applyTheme = useCallback((theme: Theme) => {
     injectThemeVariables(theme)
     syncDocumentMode(theme)
-    syncDocumentIcon(theme.id, inferThemeMode(theme))
+    syncDocumentIcon(theme.id, effectiveMode(theme))
     void setActiveThemeId(theme.id)
     setStoreActiveId(theme.id)
-    updateAppearance({ themeId: theme.id, theme: inferThemeMode(theme) })
+    updateAppearance({ themeId: theme.id, theme: inferThemeMode(theme), baseColor: undefined })
   }, [setStoreActiveId, updateAppearance])
 
   useEffect(() => {
@@ -144,7 +154,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (active) {
         injectThemeVariables(active)
         syncDocumentMode(active)
-        syncDocumentIcon(active.id, inferThemeMode(active))
+        syncDocumentIcon(active.id, effectiveMode(active))
         setStoreActiveId(active.id)
         if (active.id !== activeId) void setActiveThemeId(active.id)
         if (active.id !== settingsThemeId) {
@@ -157,15 +167,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!activeThemeId) return
-    const active = themes.find((t) => t.id === activeThemeId)
+    const active = themes.find((t) => t.id === (preview?.themeId ?? activeThemeId))
     if (active) {
       injectThemeVariables(active)
       syncDocumentMode(active)
-      syncDocumentIcon(activeThemeId, inferThemeMode(active))
+      syncDocumentIcon(active.id, effectiveMode(active))
       return
     }
     syncDocumentIcon(activeThemeId)
-  }, [activeThemeId, themes, accentColor])
+  }, [activeThemeId, themes, accentColor, baseColor, preview])
 
   return (
     <ThemeContext.Provider value={{ applyTheme }}>

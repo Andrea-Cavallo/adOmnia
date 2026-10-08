@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.76 release notes: your colors, a smarter Tris
+
+See [the full v0.9.76 notes](releases/v0.9.76.md): primary and base colors
+with saved profiles, base color from the Dark/White right-click menu kept
+per mode, a perfect Tris AI and an arcade trimmed to Snake, Tris and Pong.
+
 ## v0.9.75 release notes: the Hub fits on one page
 
 See [the full v0.9.75 notes](releases/v0.9.75.md): a lighter Today column

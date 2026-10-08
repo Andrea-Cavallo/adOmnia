@@ -4,10 +4,7 @@ import type { DotGame, GameId, GameKey, Ink, Painter } from './types'
 import { snakeGame } from './snake'
 import { tictactoeGame } from './tictactoe'
 import { pongGame } from './pong'
-import { asteroidsGame } from './asteroids'
 
-import { bubbleGame } from './bubble'
-import { racerGame } from './racer'
 
 import { GAME_IDS, GAME_TITLES } from './gameCatalog'
 
@@ -53,13 +50,13 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
     let visible = true
     let matrix: Path2D | null = null, matrixWidth = -1, matrixHeight = -1
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
-    let colors = { ink: '#e8edf5', accent: '#7dd3fc', bubble1: '#34d399', bubble2: '#f472b6' }
+    let colors = { ink: '#e8edf5', accent: '#7dd3fc' }
     const schedule = () => { if (!raf && visible && !document.hidden) raf = requestAnimationFrame(tick) }
     const held = new Set<GameKey>()
     const setPhaseBoth = (p: Phase) => { phaseNow = p; setPhase(p) }
     const readColors = () => {
       const css = getComputedStyle(wrap)
-      colors = { ink: css.getPropertyValue('--color-text-1').trim() || colors.ink, accent: css.getPropertyValue('--color-accent').trim() || colors.accent, bubble1: css.getPropertyValue('--color-success').trim() || colors.bubble1, bubble2: css.getPropertyValue('--color-error').trim() || colors.bubble2 }
+      colors = { ink: css.getPropertyValue('--color-text-1').trim() || colors.ink, accent: css.getPropertyValue('--color-accent').trim() || colors.accent }
     }
 
     const grid = () => ({ cols: boardCols || 24, rows: boardRows || 14 })
@@ -92,22 +89,6 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
       ctx.fill(matrix)
       const lit = new Map<number, { ink: Ink; size: number; x: number; y: number }>()
       const paint: Painter = {
-        bubble(x, y, kind) {
-          const px = ox + x * cell, py = oy + y * cell
-          ctx.fillStyle = kind === 0 ? colors.accent : kind === 1 ? colors.bubble1 : colors.bubble2
-          ctx.globalAlpha = phaseNow === 'paused' ? 0.5 : 1
-          ctx.beginPath()
-          for (let i = 0; i < 16; i++) {
-            const a = i * Math.PI / 8, bx = px + Math.cos(a) * cell * 1.12, by = py + Math.sin(a) * cell * 1.12
-            ctx.moveTo(bx + cell * 0.12, by); ctx.arc(bx, by, cell * 0.12, 0, Math.PI * 2)
-          }
-          ctx.fill()
-          // The matching kind is also encoded by a dot, plus or cross.
-          ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = Math.max(1, cell * 0.13); ctx.beginPath()
-          if (kind === 0) { ctx.arc(px, py, cell * 0.2, 0, Math.PI * 2); ctx.fill() }
-          else if (kind === 1) { ctx.moveTo(px-cell*0.35,py); ctx.lineTo(px+cell*0.35,py); ctx.moveTo(px,py-cell*0.35); ctx.lineTo(px,py+cell*0.35); ctx.stroke() }
-          else { ctx.moveTo(px-cell*0.28,py-cell*0.28); ctx.lineTo(px+cell*0.28,py+cell*0.28); ctx.moveTo(px-cell*0.28,py+cell*0.28); ctx.lineTo(px+cell*0.28,py-cell*0.28); ctx.stroke() }
-        },
         dot(x, y, ink = 'ink', size = 1) {
           const cx = Math.round(x), cy = Math.round(y)
           if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) return
@@ -117,7 +98,7 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
       }
       game.draw(state, paint, reducedMotion.matches ? 0 : time)
       for (const { ink, size, x: cx, y: cy } of lit.values()) {
-        ctx.fillStyle = ink === 'accent' || ink === 'bubble0' ? colors.accent : ink === 'bubble1' ? colors.bubble1 : ink === 'bubble2' ? colors.bubble2 : colors.ink
+        ctx.fillStyle = ink === 'accent' ? colors.accent : colors.ink
         ctx.globalAlpha = (ink === 'soft' ? 0.42 : 1) * (phaseNow === 'paused' ? 0.5 : 1)
         ctx.beginPath(); ctx.arc(ox + cx * cell, oy + cy * cell, cell * 0.34 * Math.min(1.35, size), 0, Math.PI * 2); ctx.fill()
       }
@@ -177,7 +158,7 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
         return
       }
       if (!key || !state) return
-      if (e.repeat && (game.id === 'racer' || key === 'action')) return
+      if (e.repeat && key === 'action') return
       if (phaseNow === 'over') { if (key === 'action') restart(); return }
       held.add(key)
       begin()
@@ -267,9 +248,6 @@ export function DotArcade({ id, onExit, onSelect }: DotArcadeProps) {
     case 'snake': return <Arcade game={snakeGame} onExit={onExit}/>
     case 'tictactoe': return <Arcade game={tictactoeGame} onExit={onExit}/>
     case 'pong': return <Arcade game={pongGame} onExit={onExit}/>
-    case 'asteroids': return <Arcade game={asteroidsGame} onExit={onExit}/>
-    case 'bubble': return <Arcade game={bubbleGame} onExit={onExit}/>
-    case 'racer': return <Arcade game={racerGame} onExit={onExit}/>
   } })()
   return <>{onSelect && <nav className="hub-arcade-tabs" aria-label="Arcade">{GAME_IDS.map(key => <button type="button" key={key} aria-pressed={key === id} onClick={() => onSelect(key)}>{GAME_TITLES[key]}</button>)}</nav>}{content}</>
 }

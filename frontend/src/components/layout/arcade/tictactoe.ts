@@ -1,9 +1,8 @@
-// Tic-tac-toe (Tris) against a minimax AI that sometimes slips, so it can be beaten.
+// Tic-tac-toe (Tris) against a perfect minimax AI: the best you can get is a draw.
 import type { DotGame } from './types'
 
 export type Mark = 0 | 1 | 2 // empty, player (X), AI (O)
 export const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]]
-const AI_SLIP = 0.2 // chance the AI plays a random move instead of the best one
 const AI_DELAY = 0.45
 
 export function winner(cells: readonly Mark[]): { mark: Mark; line: number[] } | null {
@@ -14,15 +13,17 @@ export function winner(cells: readonly Mark[]): { mark: Mark; line: number[] } |
   return null
 }
 
-function minimax(cells: Mark[], turn: Mark): number {
+// Depth-aware: a win sooner scores higher and a loss later scores higher, so the AI
+// finishes the game when it can and always blocks the immediate threat.
+function minimax(cells: Mark[], turn: Mark, depth: number): number {
   const win = winner(cells)
-  if (win) return win.mark === 2 ? 1 : -1
+  if (win) return win.mark === 2 ? 10 - depth : depth - 10
   if (cells.every(Boolean)) return 0
-  let best = turn === 2 ? -2 : 2
+  let best = turn === 2 ? -Infinity : Infinity
   for (let i = 0; i < 9; i++) {
     if (cells[i]) continue
     cells[i] = turn
-    const score = minimax(cells, turn === 2 ? 1 : 2)
+    const score = minimax(cells, turn === 2 ? 1 : 2, depth + 1)
     cells[i] = 0
     best = turn === 2 ? Math.max(best, score) : Math.min(best, score)
   }
@@ -30,17 +31,19 @@ function minimax(cells: Mark[], turn: Mark): number {
 }
 
 /** The AI's best square (O), or -1 when the board is full. */
-export function bestMove(cells: readonly Mark[]): number {
+export function bestMove(cells: readonly Mark[], random: () => number = Math.random): number {
   const work = [...cells]
-  let best = -1, bestScore = -2
+  let best: number[] = [], bestScore = -Infinity
   for (let i = 0; i < 9; i++) {
     if (work[i]) continue
     work[i] = 2
-    const score = minimax(work, 1)
+    const score = minimax(work, 1, 1)
     work[i] = 0
-    if (score > bestScore) { bestScore = score; best = i }
+    if (score > bestScore) { bestScore = score; best = [i] }
+    else if (score === bestScore) best.push(i)
   }
-  return best
+  // Equal moves: pick one at random so games do not repeat.
+  return best.length ? best[Math.floor(random() * best.length)] : -1
 }
 
 interface Tris {
@@ -50,13 +53,13 @@ interface Tris {
   aiWait: number // > 0 while the AI "thinks"
   result: 'win' | 'lose' | 'draw' | null
   line: number[] | null
-  wins: number
+  wins: number // points: 3 per win, 1 per draw (a perfect AI makes a draw the usual best)
 }
 
 function settle(s: Tris): Tris {
   const win = winner(s.cells)
-  if (win) return { ...s, result: win.mark === 1 ? 'win' : 'lose', line: win.line, wins: s.wins + (win.mark === 1 ? 1 : 0), aiWait: 0 }
-  if (s.cells.every(Boolean)) return { ...s, result: 'draw', aiWait: 0 }
+  if (win) return { ...s, result: win.mark === 1 ? 'win' : 'lose', line: win.line, wins: s.wins + (win.mark === 1 ? 3 : 0), aiWait: 0 }
+  if (s.cells.every(Boolean)) return { ...s, result: 'draw', wins: s.wins + 1, aiWait: 0 }
   return s
 }
 
@@ -98,8 +101,7 @@ export const tictactoeGame: DotGame<Tris> = {
     if (s.result || s.aiWait <= 0) return s
     const aiWait = s.aiWait - dt
     if (aiWait > 0) return { ...s, aiWait }
-    const free = s.cells.map((m, i) => (m ? -1 : i)).filter(i => i >= 0)
-    const move = Math.random() < AI_SLIP ? free[Math.floor(Math.random() * free.length)] : bestMove(s.cells)
+    const move = bestMove(s.cells)
     const cells = [...s.cells]
     cells[move] = 2
     return settle({ ...s, cells, aiWait: 0 })

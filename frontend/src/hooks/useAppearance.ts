@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { getUIFontStack } from '@/lib/uiFonts'
 import { loadUIFont } from '@/lib/uiFontLoader'
+import { useThemesStore } from '@/stores/themes'
+import { inferThemeMode } from '@/lib/themeCatalog'
+import { luminance, validAccent } from '@/lib/accentPalette'
 
 const FONT_SIZE_MAP = { small: '12px', medium: '15px', large: '20px' } as const
 const MONO_SIZE_MAP = { small: '11px', medium: '14px', large: '19px' } as const
@@ -18,17 +21,21 @@ export function typographyVariables(uiFont?: string, fontSize?: string, monoFont
 
 export function useAppearance(): void {
   const appearance = useSettingsStore((s) => s.settings.appearance)
+  const preview = useSettingsStore(s => s.appearancePreview)
+  const theme = useThemesStore(s => s.themes.find(t => t.id === (preview?.themeId ?? appearance.themeId)))
+  const base = (preview ?? appearance).baseColor
+  const mode = validAccent(base) ? (luminance(base) > .179 ? 'light' : 'dark') : theme ? inferThemeMode(theme) : appearance.theme
 
   useEffect(() => {
     const html = document.documentElement
-    if (appearance.theme === 'light') {
+    if (mode === 'light') {
       html.classList.remove('dark')
       html.classList.add('light')
     } else {
       html.classList.add('dark')
       html.classList.remove('light')
     }
-  }, [appearance.theme])
+  }, [mode])
 
   useEffect(() => {
     let cancelled = false
@@ -49,7 +56,7 @@ export function useAppearance(): void {
     document.documentElement.style.fontSize = `calc(${fontSize} * ${scale})`
   }, [appearance.density, appearance.fontSize])
 
-  // No accent override here. adOmnia's cyan is the :root default in
+  // No accent override here. adOmnia's monochrome palette is the :root default in
   // globals.css, so an unthemed app still looks like adOmnia while an active
   // theme keeps its own accent instead of being repainted on every mount.
 }

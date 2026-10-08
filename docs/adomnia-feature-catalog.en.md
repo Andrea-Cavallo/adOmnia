@@ -743,6 +743,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | F1.11 | **Design Token Schema** | 27 colori, 3 font, 7 spaziatura, 5 raggio, 4 ombra. |
 | F1.12 | **HTTP Method Tokens** | Colors for method-get/post/put/patch/delete/head. |
 | F1.13 | **Theme Provider** | React context that applies CSS custom properties to the root. |
+| F1.14 | **Personal Appearance** | Primary/base colors, monochrome dark/light defaults, isolated and temporary whole-app previews, and up to 50 named local profiles. Readable surface/text/action shades are derived automatically. Cancel or leaving Appearance restores the saved style. Settings schema 14 preserves existing explicit accents and custom themes. |
 
 ---
 

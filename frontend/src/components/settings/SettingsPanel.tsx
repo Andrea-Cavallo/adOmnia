@@ -1,4 +1,4 @@
-import { AccentColorSetting } from './AccentColorSetting'
+import { PersonalAppearance } from './PersonalAppearance'
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { exportGoStudioSettings, importGoStudioSettings } from '@/stores/goideLsp'
 import { useGoIDEStore } from '@/stores/goide'
@@ -42,7 +42,6 @@ import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 import { redactSensitiveData } from '@/lib/secretRedaction'
 import * as AppBindings from '../../../bindings/adomnia/app'
-
 const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((module) => ({ default: module.ThemePanel })))
 const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
 const PluginManager = lazy(() => import('@/components/plugins/PluginManager').then((module) => ({ default: module.PluginManager })))
@@ -447,6 +446,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {section === 'appearance' && (
           <>
             <SectionHeader title={s.appearance.title} subtitle={s.appearance.subtitle} />
+            <PersonalAppearance />
             <SettingsCard>
               <Select
                 label={s.appearance.language}
@@ -467,7 +467,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   : [{ value: selectedThemeId, label: s.appearance.themeOptions.loading }]}
                 onChange={handleThemeChange}
               />
-              <AccentColorSetting />
+
               <Select
                 label={s.appearance.windowChrome}
                 desc={s.appearance.windowChromeDesc}

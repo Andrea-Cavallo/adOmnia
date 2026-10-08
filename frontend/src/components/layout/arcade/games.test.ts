@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bestMove, tictactoeGame, winner, type Mark } from './tictactoe'
 import { advanceBall, pongGame } from './pong'
-import { asteroidsGame, collide } from './asteroids'
 import { GAME_IDS, GAME_TITLES } from './gameCatalog'
 
 describe('tris', () => {
@@ -11,6 +10,10 @@ describe('tris', () => {
     expect(bestMove(block)).toBe(2)
     const win: Mark[] = [2, 2, 0, 1, 1, 0, 0, 0, 0]
     expect(bestMove(win)).toBe(2)
+    // Opening corner: only the center keeps the draw, the AI must take it.
+    expect(bestMove([1, 0, 0, 0, 0, 0, 0, 0, 0])).toBe(4)
+    // Prefers winning now over blocking: it has 2-2-_ and the player 1-1-_.
+    expect(bestMove([2, 2, 0, 1, 1, 0, 1, 0, 0], () => 0)).toBe(2)
   })
 
   it('places the player mark and hands the turn to the AI', () => {
@@ -38,24 +41,10 @@ describe('pong', () => {
   })
 })
 
-describe('asteroids', () => {
-  it('splits a big rock hit by a bullet and ends on a crash', () => {
-    const s = asteroidsGame.init(30, 18)
-    const rock = { x: 5, y: 5, vx: 1, vy: 0, r: 2 }
-    const hit = collide({ ...s, rocks: [rock], bullets: [{ x: 5.5, y: 5, vx: 0, vy: 0, life: 1 }] })
-    expect(hit.score).toBe(1)
-    expect(hit.rocks).toHaveLength(2)
-    expect(hit.bullets).toHaveLength(0)
-    const crash = collide({ ...s, shield: 0, rocks: [{ ...rock, x: s.ship.x, y: s.ship.y }], bullets: [] })
-    expect(crash.over).toBe(true)
-  })
-})
-
 describe('arcade menu', () => {
-  it('exposes all six explicit game titles', () => {
-    expect(GAME_IDS).toHaveLength(6)
-    expect(GAME_TITLES.bubble).toBe('Dot Bubble')
-    expect(GAME_TITLES.racer).toBe('Glyph Racer')
+  it('keeps Snake, Tris and Pong', () => {
+    expect(GAME_IDS).toEqual(['snake', 'tictactoe', 'pong'])
+    expect(GAME_TITLES.tictactoe).toBe('Tris')
   })
 })
 
@@ -85,13 +74,6 @@ describe('arcade regressions', () => {
     const first = tictactoeGame.press(tictactoeGame.init(30, 18), 'action')
     expect(tictactoeGame.press({ ...first, cursor: 0 }, 'action').cells[0]).toBe(0)
     expect(tictactoeGame.next!(first).cells.every(m => m === 0)).toBe(true)
-  })
-  it('Asteroids shields the ship and detects collisions across wrapping edges', () => {
-    const s = asteroidsGame.init(30, 18)
-    const ship = { ...s.ship, x: 0, y: 5 }
-    const rocks = [{ x: 29.5, y: 5, vx: 0, vy: 0, r: 1 }]
-    expect(collide({ ...s, ship, rocks, shield: 1 }).over).toBe(false)
-    expect(collide({ ...s, ship, rocks, shield: 0 }).over).toBe(true)
   })
 })
 

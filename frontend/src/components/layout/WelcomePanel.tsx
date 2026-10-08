@@ -5,6 +5,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { FoldMark } from './FoldMark'
 import { ArcadeMenu } from './arcade/ArcadeMenu'
 import type { GameId } from './arcade/types'
+import { GAME_IDS } from './arcade/gameCatalog'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
@@ -103,7 +104,7 @@ function TodayPanel() {
       ? game
         ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
         : <ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/>
-      : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>06 ↗</span></button></>}</div>
+      : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>

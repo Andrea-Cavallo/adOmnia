@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { validAccent } from '@/lib/accentPalette'
@@ -10,7 +10,8 @@ export function AccentColorSetting() {
   const mode = useSettingsStore(s => s.settings.appearance.theme)
   const update = useSettingsStore(s => s.updateAppearance)
   const [draft, setDraft] = useState(selected ?? '')
-  const value = validAccent(selected) ? selected : mode === 'dark' ? '#7DD3FC' : '#087D9B'
+  const value = validAccent(selected) ? selected : mode === 'dark' ? '#FFFFFF' : '#000000'
+  useEffect(() => setDraft(selected ?? ''), [selected])
   const choose = (color: string) => { setDraft(color); update({ accentColor: color }) }
   return <div className="space-y-3 border-b border-border-1 py-4">
     <div className="flex items-center justify-between gap-3"><label htmlFor="app-accent-color" className="text-xs font-medium text-text-1">{tr('Accent color')}</label><button type="button" onClick={() => { setDraft(''); update({ accentColor: undefined }) }} className="text-xs text-accent hover:underline">{tr('Use theme color')}</button></div>

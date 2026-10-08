@@ -6,31 +6,31 @@
     color-scheme: dark;
 
     /* Surface / backgrounds */
-    --color-surface-0: #0B0F13;
-    --color-surface-1: #11171D;
-    --color-surface-2: #18212B;
-    --color-surface-3: #222D39;
-    --color-surface-4: #2D3B4A;
+    --color-surface-0: #000000;
+    --color-surface-1: #080808;
+    --color-surface-2: #111111;
+    --color-surface-3: #191919;
+    --color-surface-4: #222222;
 
     /* Text */
-    --color-text-1: #E8EDF5;
-    --color-text-2: #B5C0CF;
-    --color-text-3: #97A5B9;
-    --color-text-4: #78899F;
+    --color-text-1: #FFFFFF;
+    --color-text-2: #D4D4D4;
+    --color-text-3: #A8A8A8;
+    --color-text-4: #909090;
 
     /* Borders */
-    --color-border-1: #28313C;
-    --color-border-2: #364352;
-    --color-border-3: #4A5A6C;
+    --color-border-1: #242424;
+    --color-border-2: #363636;
+    --color-border-3: #4A4A4A;
 
     /* Accent */
-    --color-accent: #7DD3FC;
-    --color-accent-light: #BAE6FD;
-    --color-accent-dark: #38BDF8;
-    --color-accent-glow: rgba(125, 211, 252, 0.14);
-    --color-accent-hover: #A5E3FF;
+    --color-accent: #FFFFFF;
+    --color-accent-light: #FFFFFF;
+    --color-accent-dark: #D4D4D4;
+    --color-accent-glow: rgba(255, 255, 255, 0.14);
+    --color-accent-hover: #E8E8E8;
 
-    --color-on-accent: #08202B;
+    --color-on-accent: #000000;
 
     /* Status */
     --color-success: oklch(0.78 0.15 145);
@@ -95,26 +95,26 @@
   .light {
     color-scheme: light;
 
-    --color-surface-0: #FAFBFC;
-    --color-surface-1: #FFFFFF;
-    --color-surface-2: #F1F5F8;
-    --color-surface-3: #E5ECF2;
-    --color-surface-4: #D7E1EA;
+    --color-surface-0: #FFFFFF;
+    --color-surface-1: #FAFAFA;
+    --color-surface-2: #F3F3F3;
+    --color-surface-3: #ECECEC;
+    --color-surface-4: #E4E4E4;
 
-    --color-text-1: #172331;
-    --color-text-2: #405165;
-    --color-text-3: #5C6D82;
-    --color-text-4: #6D7F93;
+    --color-text-1: #000000;
+    --color-text-2: #303030;
+    --color-text-3: #555555;
+    --color-text-4: #666666;
 
-    --color-border-1: #DBE1E8;
-    --color-border-2: #C3CEDA;
-    --color-border-3: #A5B5C7;
+    --color-border-1: #D8D8D8;
+    --color-border-2: #BFBFBF;
+    --color-border-3: #999999;
 
-    --color-accent: #087D9B;
-    --color-accent-light: #096F89;
-    --color-accent-dark: #06586C;
-    --color-accent-glow: rgba(8, 125, 155, 0.12);
-    --color-accent-hover: #06677F;
+    --color-accent: #000000;
+    --color-accent-light: #000000;
+    --color-accent-dark: #000000;
+    --color-accent-glow: rgba(0, 0, 0, 0.12);
+    --color-accent-hover: #222222;
 
     --color-on-accent: #FFFFFF;
 

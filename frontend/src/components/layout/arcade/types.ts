@@ -2,14 +2,13 @@
 // DOM: it only says which dots are lit; DotArcade owns the grid, colors, keys,
 // pause, score bar and best score, so every game looks and feels the same.
 
-export type GameId = 'snake' | 'tictactoe' | 'pong' | 'asteroids' | 'bubble' | 'racer'
+export type GameId = 'snake' | 'tictactoe' | 'pong'
 export type GameKey = 'up' | 'down' | 'left' | 'right' | 'action'
 /** ink = text color, soft = dimmed text color, accent = palette color. */
-export type Ink = 'ink' | 'soft' | 'accent' | 'bubble0' | 'bubble1' | 'bubble2'
+export type Ink = 'ink' | 'soft' | 'accent'
 
 export interface Painter {
   /** Lights the dot nearest to (x, y) in grid cells; size scales the dot (1 = normal). */
-  bubble?(x: number, y: number, kind: number): void
   dot(x: number, y: number, ink?: Ink, size?: number): void
 }
 

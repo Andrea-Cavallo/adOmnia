@@ -6,6 +6,19 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.76] - 2026-10-08
+
+### Added
+- **Personal appearance:** Settings > Appearance chooses a primary and a base color, previews them on a card or across the whole app, and saves up to 50 named local profiles. Surface, text and action shades are derived automatically for readable contrast.
+- **Base color from the status bar:** right-click Dark or White to pick that mode's base color next to the accent color.
+
+### Fixed
+- Clicking Dark or White no longer resets the chosen base color to the adOmnia default: each mode remembers its own base and restores it when you switch back.
+
+### Changed
+- **Tris AI plays perfectly:** depth-aware minimax that wins as soon as it can and always blocks; it no longer makes random mistakes. Score: 3 points per win, 1 per draw.
+- **Arcade trimmed to Snake, Tris and Pong:** Asteroids, Dot Bubble and Glyph Racer are removed.
+
 ## [0.9.75] - 2026-10-08
 
 ### Changed
