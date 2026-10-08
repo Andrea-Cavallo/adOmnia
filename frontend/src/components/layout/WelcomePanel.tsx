@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
 import { ArrowRight, ArrowUpRight, ChevronRight, Plus, Layers, CircleDot, BarChart3 } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { DAILY_STATS_EVENT, readDailyStats } from '@/lib/dailyStats'
 import { FoldMark } from './FoldMark'
-import { DotArcade, pickGame } from './arcade/DotArcade'
+import { ArcadeMenu } from './arcade/ArcadeMenu'
 import type { GameId } from './arcade/types'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
+
+const DotArcade = lazy(() => import('./arcade/DotArcade').then(module => ({ default: module.DotArcade })))
 
 const cards = [
   { title: 'gO Studio', description: 'Your code, in focus', target: 'goide' },
@@ -101,10 +103,9 @@ function TodayPanel() {
   const history = useTabsStore(s => s.responseHistory)
   const newTab = useTabsStore(s => s.newTab)
   const now = useNow()
-  // Clicking the FOLD wordmark opens a random dot-matrix mini game in the same box.
   const [game, setGame] = useState<GameId | null>(null)
-  const lastGame = useRef<GameId | null>(null)
-  const openGame = () => { const id = pickGame(lastGame.current); lastGame.current = id; setGame(id) }
+  const [arcadeOpen, setArcadeOpen] = useState(false)
+  const openGame = () => setArcadeOpen(true)
   const stats = useDailyStats(now.toDateString())
   const workspace = workspaces.find(w => w.id === workspaceId)
   const openTabs = tabs.filter(tab => tab.workspaceId === workspaceId).length
@@ -119,9 +120,11 @@ function TodayPanel() {
   ]
   return <aside className="hub-today">
     <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
-    <div className="hub-clock-wrap">{game
-      ? <DotArcade key={game} id={game} onExit={() => setGame(null)}/>
-      : <FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/>}</div>
+    <div className="hub-clock-wrap">{arcadeOpen
+      ? game
+        ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
+        : <ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/>
+      : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>06 ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <button className="hub-ws" onClick={() => open('collections')}>

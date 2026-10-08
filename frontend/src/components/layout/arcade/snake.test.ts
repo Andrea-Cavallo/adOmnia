@@ -29,3 +29,12 @@ describe('snake rules', () => {
     expect(game.snake.some(c => c.x === game.food.x && c.y === game.food.y)).toBe(false)
   })
 })
+
+
+it('Snake finishes when the last free cell is eaten', () => {
+  const state = base({ cols: 2, rows: 2, dir: 'right', snake: [{x:0,y:0},{x:0,y:1},{x:1,y:1}], food: {x:1,y:0} })
+  const after = step(state)
+  expect(after.snake).toHaveLength(4)
+  expect(after.score).toBe(1)
+  expect(after.over).toBe(true)
+})

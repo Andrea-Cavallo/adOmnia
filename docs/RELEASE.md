@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.74 release notes: choose your game
+
+See [the full v0.9.74 notes](releases/v0.9.74.md): an explicit six-game
+Arcade menu, Dot Bubble and Glyph Racer, coherent theme accents, improved
+collisions and an arcade engine loaded on demand.
+
 ## v0.9.73 release notes: an arcade in the Hub
 
 See [the full v0.9.73 notes](releases/v0.9.73.md): Snake, Tris, Pong and

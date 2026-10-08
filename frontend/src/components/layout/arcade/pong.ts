@@ -38,8 +38,8 @@ export function advanceBall(s: Pong, dt: number): Pong {
   if (y > s.rows - 1) { y = 2 * (s.rows - 1) - y; vy = -Math.abs(vy) }
   const hit = (top: number) => y >= top - 0.6 && y <= top + s.paddle - 0.4
   const english = (top: number) => (y - (top + (s.paddle - 1) / 2)) * 3
-  if (vx < 0 && x <= 1.5 && x >= 0.4 && hit(s.you)) { x = 1.5; vx = Math.min(MAX_SPEED, Math.abs(vx) * 1.07); vy += english(s.you) }
-  if (vx > 0 && x >= s.cols - 2.5 && x <= s.cols - 1.4 && hit(s.ai)) { x = s.cols - 2.5; vx = -Math.min(MAX_SPEED, Math.abs(vx) * 1.07); vy += english(s.ai) }
+  if (vx < 0 && x <= 1.5 && s.ball.x >= 1.5 && hit(s.you)) { x = 1.5; vx = Math.min(MAX_SPEED, Math.abs(vx) * 1.07); vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, vy + english(s.you))) }
+  if (vx > 0 && x >= s.cols - 2.5 && s.ball.x <= s.cols - 2.5 && hit(s.ai)) { x = s.cols - 2.5; vx = -Math.min(MAX_SPEED, Math.abs(vx) * 1.07); vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, vy + english(s.ai))) }
   if (x < -1) return { ...s, scoreAi: s.scoreAi + 1, ...serve(s.cols, s.rows, false) }
   if (x > s.cols) return { ...s, scoreYou: s.scoreYou + 1, ...serve(s.cols, s.rows, true) }
   return { ...s, ball: { x, y, vx, vy } }
@@ -72,7 +72,7 @@ export const pongGame: DotGame<Pong> = {
     for (let y = 0; y < s.rows; y += 2) paint.dot(mid, y, 'soft', 0.5)
     digit(paint, s.scoreYou, mid - 5, 1)
     digit(paint, s.scoreAi, mid + 3, 1)
-    for (let i = 0; i < s.paddle; i++) { paint.dot(0, s.you + i, 'ink'); paint.dot(s.cols - 1, s.ai + i, 'ink') }
+    for (let i = 0; i < s.paddle; i++) { paint.dot(0, s.you + i, 'accent'); paint.dot(s.cols - 1, s.ai + i, 'ink') }
     paint.dot(s.ball.x, s.ball.y, 'accent', 1.15)
   },
   status: s => ({ score: s.scoreYou, over: s.scoreYou >= WIN || s.scoreAi >= WIN, message: s.scoreYou >= WIN ? 'You win' : 'AI wins' }),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { bestMove, tictactoeGame, winner, type Mark } from './tictactoe'
 import { advanceBall, pongGame } from './pong'
 import { asteroidsGame, collide } from './asteroids'
-import { pickGame } from './DotArcade'
+import { GAME_IDS, GAME_TITLES } from './gameCatalog'
 
 describe('tris', () => {
   it('finds the winner and the AI blocks or wins', () => {
@@ -51,8 +51,54 @@ describe('asteroids', () => {
   })
 })
 
-describe('arcade', () => {
-  it('never picks the same game twice in a row', () => {
-    for (const r of [0, 0.5, 0.99]) expect(pickGame('pong', () => r)).not.toBe('pong')
+describe('arcade menu', () => {
+  it('exposes all six explicit game titles', () => {
+    expect(GAME_IDS).toHaveLength(6)
+    expect(GAME_TITLES.bubble).toBe('Dot Bubble')
+    expect(GAME_TITLES.racer).toBe('Glyph Racer')
   })
+})
+
+describe('arcade regressions', () => {
+  it('Pong catches a paddle when a fast ball crosses the collision plane', () => {
+    const s = { ...pongGame.init(30, 18), serve: 0, you: 7 }
+    const after = advanceBall({ ...s, ball: { x: 1.6, y: 8, vx: -30, vy: 0 } }, 0.05)
+    expect(after.ball.vx).toBeGreaterThan(0)
+  })
+  it('optimal Tris AI never loses across every player continuation', () => {
+    function explore(cells: Mark[]) {
+      const result = winner(cells)
+      expect(result?.mark).not.toBe(1)
+      if (result || cells.every(Boolean)) return
+      for (let i = 0; i < 9; i++) {
+        if (cells[i]) continue
+        const next = [...cells]; next[i] = 1
+        expect(winner(next)?.mark).not.toBe(1)
+        if (next.every(Boolean)) continue
+        next[bestMove(next)] = 2
+        explore(next)
+      }
+    }
+    explore(Array<Mark>(9).fill(0))
+  })
+  it('Tris cannot place twice during the AI turn and restart clears the board', () => {
+    const first = tictactoeGame.press(tictactoeGame.init(30, 18), 'action')
+    expect(tictactoeGame.press({ ...first, cursor: 0 }, 'action').cells[0]).toBe(0)
+    expect(tictactoeGame.next!(first).cells.every(m => m === 0)).toBe(true)
+  })
+  it('Asteroids shields the ship and detects collisions across wrapping edges', () => {
+    const s = asteroidsGame.init(30, 18)
+    const ship = { ...s.ship, x: 0, y: 5 }
+    const rocks = [{ x: 29.5, y: 5, vx: 0, vy: 0, r: 1 }]
+    expect(collide({ ...s, ship, rocks, shield: 1 }).over).toBe(false)
+    expect(collide({ ...s, ship, rocks, shield: 0 }).over).toBe(true)
+  })
+})
+
+
+it('Tris draws inside the smallest arcade board and ignores grid dividers', () => {
+  const state = tictactoeGame.init(12, 9)
+  tictactoeGame.draw(state, { dot(x, y) { expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThan(12); expect(y).toBeGreaterThanOrEqual(0); expect(y).toBeLessThan(9) } }, 0)
+  const board = tictactoeGame.init(30,18)
+  expect(tictactoeGame.pointer!(board, 11, 0).cells.every(m => m === 0)).toBe(true)
 })

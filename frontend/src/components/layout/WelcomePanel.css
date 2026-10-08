@@ -15,3 +15,34 @@
 @media(max-width:1100px){.hub-content{padding:26px 24px;gap:20px}.hub-studio{gap:12px;grid-template-columns:44px minmax(0,1fr) 18px}.hub-studio-icon svg{width:38px}.hub-studio:nth-child(even){padding-left:16px}.hub-today{padding-left:20px}.hub-history-row{grid-template-columns:50px minmax(0,1fr) 65px}.hub-history-row time{display:none}}@media(max-width:820px){.hub-content{grid-template-columns:1fr}.hub-today{padding:24px 0 0;border-left:0;border-top:1px solid var(--hub-line)}}@media(max-width:480px){.hub-grid{grid-template-columns:1fr}.hub-studio:nth-child(n){border-right:0;border-bottom:1px solid var(--hub-line);padding:18px 0;min-height:90px}.hub-content{padding:24px 18px}}@media(prefers-reduced-motion:reduce){.hub-studio,.hub-open-ws,.hub-ws>svg:last-child{transition:none}}
 /* Snake on a dot matrix, inside the FOLD box */
 .hub-snake{position:relative;height:clamp(170px,21vw,250px);margin:-6px 0 -4px;display:flex;flex-direction:column;outline:none;font-family:Doto,var(--font-mono);font-weight:800;color:var(--hub-ink)}.hub-snake-bar{display:flex;align-items:center;gap:14px;font-size:14px;letter-spacing:2px;text-transform:uppercase;padding:2px 2px 6px;color:var(--hub-muted)}.hub-snake-bar strong{font-weight:800;color:var(--hub-accent)}.hub-snake-bar span{color:var(--hub-ink)}.hub-snake-bar .hub-snake-best{margin-left:auto;color:var(--hub-muted)}.hub-snake-board{flex:1;width:100%;min-height:0;display:block;cursor:pointer;border:1px solid var(--hub-line);border-radius:10px}.hub-snake-msg{position:absolute;left:0;right:0;bottom:16px;margin:0;text-align:center;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;pointer-events:none;color:var(--hub-ink)}.hub-snake-exit{font:inherit;font-size:11px;letter-spacing:1px;color:var(--hub-muted)!important;padding:2px 6px;border:1px solid var(--hub-line);border-radius:4px;background:var(--hub-bg)}.hub-snake-exit:hover{color:var(--hub-accent)!important;border-color:var(--hub-accent)}
+
+/* Shared Nothing-inspired arcade: theme ink, restrained geometry, stable HUD. */
+.hub-snake{height:clamp(220px,24vw,300px);gap:8px;margin:4px 0 12px}
+.hub-snake-bar{gap:8px;font-size:12px;letter-spacing:1px;padding:4px 0;flex-wrap:wrap}
+.hub-snake-bar strong{margin-right:auto;font-size:16px;letter-spacing:2px}
+.hub-snake-bar>span:first-of-type{color:var(--hub-accent);font-variant-numeric:tabular-nums}
+.hub-snake-bar .hub-snake-best{margin-left:0;font-size:10px;letter-spacing:.5px}
+.hub-snake-board{border-radius:4px;background:color-mix(in srgb,var(--hub-accent) 3%,var(--hub-bg));border-color:color-mix(in srgb,var(--hub-accent) 22%,var(--hub-line))}
+.hub-snake[data-phase=playing] .hub-snake-board{border-color:color-mix(in srgb,var(--hub-accent) 55%,var(--hub-line))}
+.hub-snake-msg{left:8px;right:8px;bottom:38px;padding:8px 12px;background:color-mix(in srgb,var(--hub-bg) 94%,transparent);border:1px solid var(--hub-line);font-family:var(--font-mono);font-size:10px;line-height:1.5;letter-spacing:.5px}
+.hub-arcade-controls{display:flex;justify-content:space-between;gap:8px;color:var(--hub-muted);font-family:var(--font-mono);font-size:9px;line-height:1.5}
+.hub-arcade-controls>span:first-child{min-width:0}
+.hub-arcade-controls>span:last-child{white-space:nowrap;color:var(--hub-accent)}
+.hub-snake-exit{border-radius:2px;padding:4px 6px}
+
+.hub-arcade-tabs{display:flex;gap:12px;border-bottom:1px solid var(--hub-line);padding:0 0 8px;margin:4px 0 8px;flex-wrap:wrap}
+.hub-arcade-tabs button{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--hub-muted);padding:4px 0;border-bottom:2px solid transparent}
+.hub-arcade-tabs button[aria-pressed=true]{color:var(--hub-accent);border-color:var(--hub-accent)}
+
+.hub-arcade-open{display:flex;justify-content:space-between;width:100%;padding:8px 0;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;border-bottom:1px solid var(--hub-line);color:var(--hub-muted)!important}
+.hub-arcade-open span{color:var(--hub-accent)}
+.hub-arcade-menu{padding:8px 0 12px;color:var(--hub-ink)}
+.hub-arcade-menu header{display:flex;align-items:center;justify-content:space-between;font-family:Doto,var(--font-mono);font-size:17px;letter-spacing:2px;color:var(--hub-accent)}
+.hub-arcade-menu header button{padding:4px 8px;font-family:var(--font-mono);font-size:18px}
+.hub-arcade-menu p{font-size:11px;color:var(--hub-muted);margin:8px 0 16px}
+.hub-arcade-menu>div{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--hub-line)}
+.hub-arcade-menu>div>button{display:flex;gap:8px;align-items:center;min-height:64px;padding:12px 8px;border-bottom:1px solid var(--hub-line);font-family:Doto,var(--font-mono);font-size:15px;font-weight:800}
+.hub-arcade-menu>div>button:nth-child(odd){border-right:1px solid var(--hub-line)}
+.hub-arcade-menu small{font-family:var(--font-mono);font-size:9px;font-weight:400;color:var(--hub-muted)}
+.hub-arcade-menu b{margin-left:auto;color:var(--hub-accent);font-family:var(--font-mono);font-size:12px}
+.hub-arcade-menu>div>button:hover{background:color-mix(in srgb,var(--hub-accent) 6%,transparent);color:var(--hub-accent)}

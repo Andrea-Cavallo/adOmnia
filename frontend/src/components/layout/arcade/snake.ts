@@ -46,7 +46,7 @@ export function step(state: SnakeState, random: () => number = Math.random): Sna
   if (hitsWall || body.some(c => same(c, head))) return { ...state, over: true }
   const snake = [head, ...body]
   return eats
-    ? { ...state, snake, score: state.score + 1, food: placeFood(state.cols, state.rows, snake, random) }
+    ? { ...state, snake, score: state.score + 1, food: placeFood(state.cols, state.rows, snake, random), over: snake.length === state.cols * state.rows }
     : { ...state, snake }
 }
 
@@ -78,16 +78,14 @@ export const snakeGame: DotGame<SnakeGame> = {
     return { ...s, board, acc, time, ateAt }
   },
   draw(s, paint, time) {
-    const { snake, food, over } = s.board
-    const blink = over && Math.floor(time * 5) % 2 === 0
+    const { snake, food } = s.board
     snake.forEach((c, i) => {
-      if (blink) return
-      if (i === 0) paint.dot(c.x, c.y, 'ink', 1.2)
-      else paint.dot(c.x, c.y, i < snake.length * 0.6 ? 'ink' : 'soft', Math.max(0.7, 1 - i * 0.012))
+      if (i === 0) paint.dot(c.x, c.y, 'accent', 1.2)
+      else paint.dot(c.x, c.y, 'accent', Math.max(0.7, 1 - i * 0.012))
     })
-    paint.dot(food.x, food.y, 'accent', 1.05 + Math.sin(time * 8) * 0.15)
+    paint.dot(food.x, food.y, 'ink', 1.05 + Math.sin(time * 8) * 0.15)
     // A short accent ring around the head when it eats.
     if (s.time - s.ateAt < 0.18) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) paint.dot(snake[0].x + dx, snake[0].y + dy, 'accent', 0.6)
   },
-  status: s => ({ score: s.board.score, over: s.board.over, message: 'Game over' }),
+  status: s => ({ score: s.board.score, over: s.board.over, message: s.board.snake.length === s.board.cols * s.board.rows ? 'You win' : 'Game over' }),
 }

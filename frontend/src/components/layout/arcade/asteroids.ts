@@ -100,7 +100,7 @@ export const asteroidsGame: DotGame<Asteroids> = {
       else for (let k = 0; k < 12; k++) { const t = (k / 12) * Math.PI * 2; paint.dot(wrap(r.x + Math.cos(t) * 2, s.cols), wrap(r.y + Math.sin(t) * 2, s.rows), 'ink', 0.9) }
     }
     for (const b of s.bullets) paint.dot(b.x, b.y, 'accent', 0.7)
-    if (s.over && Math.floor(time * 5) % 2 === 0) return
+
     const shipInk = s.shield > 0 && Math.floor(time * 8) % 2 === 0 ? 'soft' : 'accent'
     paint.dot(wrap(x + Math.cos(a) * 1.3, s.cols), wrap(y + Math.sin(a) * 1.3, s.rows), shipInk, 1.1)
     paint.dot(x, y, shipInk)

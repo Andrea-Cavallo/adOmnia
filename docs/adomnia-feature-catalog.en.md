@@ -1093,3 +1093,10 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
 | **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 38 |
 | **Total** | 44 sections | **~573** |
+
+
+### Hub dot-matrix arcade
+
+The Home hub contains Snake, Asteroids, Pong, Tris against a local AI, Dot Bubble and Glyph Racer. Click Arcade or the animated wordmark to open the six-title menu, then explicitly select a game; no game is launched randomly. Esc returns from a game to this menu. The shared HUD, matrix and player glyphs follow the theme accent immediately, including in pause. Arrow keys/WASD control movement; Enter/Space acts or restarts a finished round, P pauses real-time games, and Esc closes the active arcade. Tris also accepts clicks. Pong ends at five points; Snake speeds up as it grows; Asteroids adds waves; Tris uses minimax with occasional random moves to remain beatable. Dot Bubble uses Left/Right to aim and Space/Enter to shoot; match three adjacent bubbles, drop disconnected groups and clear the ceiling before bubbles reach the danger line. After six shots a new row descends. Colors also carry dot/plus/cross symbols. Glyph Racer uses Left/Right or A/D to switch between three lanes, avoid obstacles and collect plus-shaped energy; speed rises gradually and each obstacle row leaves escape lanes open.
+
+The arcade pauses on window blur, hidden documents and when scrolled out of view. Idle and paused games do not run a continuous animation loop. The background matrix is cached, real-time physics uses small substeps and resizing preserves the logical board. Best scores stay local; the former Snake best-score key remains readable.

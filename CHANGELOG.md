@@ -6,6 +6,23 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.74] - 2026-10-08
+
+### Added
+- **Dot Bubble:** aim and shoot patterned bubbles, match three, drop disconnected groups and clear the board. Dot, plus and cross symbols distinguish the three colors; a new ceiling row descends every six shots.
+- **Glyph Racer:** switch between three lanes, dodge obstacles and collect energy. Speed increases gradually, with escape lanes preserved in every generated obstacle row.
+- **Arcade menu:** six explicit game titles in the Hub. The wordmark and Arcade button open the menu; games are no longer selected randomly. Esc returns to the menu.
+
+### Changed
+- All six games share a Nothing-inspired dot-matrix HUD, theme-aware player accents and local best scores. Snake now follows the selected accent palette.
+- The arcade engine loads only when a game is selected, keeping optional games outside the app startup bundle.
+- Cached background geometry, smooth continuous movement, idle rendering suspension, focus/visibility pause and physics substeps reduce unnecessary rendering and improve collision reliability.
+
+### Fixed
+- Fast Pong balls no longer skip paddle collisions; vertical speed is capped.
+- Resizing preserves the logical game board. Snake ends with a win on a full board; Tris fits small boards and ignores grid-divider clicks.
+- Finished game pieces remain visible instead of blinking away on a frozen final frame.
+
 ## [0.9.73] - 2026-10-08
 
 ### Added
