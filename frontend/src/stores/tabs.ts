@@ -7,6 +7,7 @@ import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { decodePersistedJSON } from '@/lib/persistedJson'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
+import { recordDailyRequest } from '@/lib/dailyStats'
 
 const BUCKET = 'tabs'
 const LEGACY_KEY = 'session-v1'
@@ -579,6 +580,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   },
 
   setResponse: (tabId, response) => {
+    if (response) recordDailyRequest(!!response.error || response.status >= 400)
     set((s) => {
       const tab = s.tabs.find((current) => current.id === tabId)
       const entry: RequestHistoryEntry | null = response && tab && shouldSaveResponses()

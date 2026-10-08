@@ -310,14 +310,15 @@ function SplitHeader() {
   )
 }
 
-/** Pannelli senza header (Welcome): controlli della finestra e una maniglia di trascinamento in alto a destra. */
+/** Pannelli senza header (Welcome): striscia invisibile su tutta la larghezza per trascinare la finestra, controlli a destra. */
 function FloatingWindowControls() {
   const titlebar = useWindowTitlebar()
   if (!titlebar.active) return null
   return (
-    <div {...titlebar.props} className="app-titlebar absolute right-0 top-0 z-30 flex h-8 items-stretch rounded-bl-md border-b border-l border-border-1 bg-surface-1/90 backdrop-blur" style={DRAG}>
-      <span className="absolute right-full top-0 h-full w-16" title="Drag to move the window" />
-      <WindowControls height="h-8" />
+    <div {...titlebar.props} className="app-titlebar absolute inset-x-0 top-0 z-30 flex h-8 justify-end" style={DRAG}>
+      <div className="flex rounded-bl-md border-b border-l border-border-1 bg-surface-1/90 backdrop-blur">
+        <WindowControls height="h-8" />
+      </div>
     </div>
   )
 }
