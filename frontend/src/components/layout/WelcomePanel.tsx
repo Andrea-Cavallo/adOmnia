@@ -4,7 +4,9 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { DAILY_STATS_EVENT, readDailyStats } from '@/lib/dailyStats'
+import { FoldMark } from './FoldMark'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
 
 const cards = [
@@ -19,14 +21,14 @@ const cards = [
 function StudioIcon({ target }: { target: string }) {
   const id = `hub-metal-${target}`
   return <svg viewBox="0 0 64 64" width="58" height="58" aria-hidden="true">
-    <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e5ecf8"/><stop offset=".5" stopColor="#b1bfd5"/><stop offset="1" stopColor="#75849b"/></linearGradient></defs>
+    <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 35%, #ffffff)' }}/><stop offset=".5" style={{ stopColor: 'var(--color-accent)' }}/><stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 55%, #0b1020)' }}/></linearGradient></defs>
     <g fill={`url(#${id})`}>
       {target === 'goide' && <><path d="M26 23v23c0 8-5 12-13 12-4 0-7-1-10-3l3-4c2 2 4 2 7 2 5 0 8-2 8-7v-3a12 12 0 1 1 0-18v-2zm-5 11a7 7 0 1 0-14 0 7 7 0 0 0 14 0" fillRule="evenodd"/><circle cx="44" cy="31" r="17" fill="none" stroke={`url(#${id})`} strokeWidth="5"/></>}
       {target === 'collections' && <><path d="M32 4a28 28 0 0 0-15 52l7-12a15 15 0 0 1 8-28z"/><path d="M36 8a25 25 0 0 1 0 50V45a12 12 0 0 0 0-24z"/></>}
       {target === 'database' && <><ellipse cx="32" cy="14" rx="24" ry="11"/><path d="M8 22q24 16 48 0v10q-24 18-48 0zM8 37q24 16 48 0v10q-24 18-48 0z"/></>}
       {target === 'jsonviewer' && <><path d="m32 3 28 16-28 16L4 19zM4 32l9-5 19 11 19-11 9 5-28 16zM4 45l9-5 19 11 19-11 9 5-28 16z"/></>}
       {target === 'gitsync' && <><path d="m20 48 13-28M25 46l20 4" fill="none" stroke={`url(#${id})`} strokeWidth="3" strokeDasharray="5 4"/><circle cx="35" cy="12" r="8"/><circle cx="13" cy="53" r="9"/><circle cx="52" cy="53" r="9"/></>}
-      {target === 'powertools' && <><path d="m32 3 27 15v30L32 63 5 48V18zm0 15L18 26v16l14 8 14-8V26z" fillRule="evenodd"/><path d="M32 3v15M5 18l13 8M59 18l-13 8M5 48l13-6M59 48l-13-6M32 50v13" fill="none" stroke="#65748b" strokeWidth="1"/></>}
+      {target === 'powertools' && <><path d="m32 3 27 15v30L32 63 5 48V18zm0 15L18 26v16l14 8 14-8V26z" fillRule="evenodd"/><path d="M32 3v15M5 18l13 8M59 18l-13 8M5 48l13-6M59 48l-13-6M32 50v13" fill="none" style={{ stroke: 'color-mix(in srgb, var(--color-accent) 50%, #0b1020)' }} strokeWidth="1"/></>}
     </g>
   </svg>
 }
@@ -111,8 +113,8 @@ function TodayPanel() {
   ]
   return <aside className="hub-today">
     <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
-    <time className="hub-clock-wrap" dateTime={now.toISOString()}><DotClock text={clock}/></time>
-    <p className="hub-date">{date}</p>
+    <div className="hub-clock-wrap"><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>}/></div>
+    <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <button className="hub-ws" onClick={() => open('collections')}>
       <Layers size={36} strokeWidth={1.3}/>

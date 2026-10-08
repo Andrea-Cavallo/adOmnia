@@ -264,3 +264,7 @@
 .adomnia-rail::before,.adomnia-rail::after{display:none}
 .adomnia-rail__brand{width:36px;height:36px;border-radius:8px;filter:none}
 .adomnia-rail__home:hover .adomnia-rail__brand,.adomnia-rail__home--active .adomnia-rail__brand{filter:none;transform:none}
+/* Palette: the mark and the rail icons take the accent color. */
+.adomnia-rail__brand--mono{display:block;background:var(--color-accent);-webkit-mask:center/contain no-repeat;mask:center/contain no-repeat}
+.adomnia-rail .adomnia-rail__category-main:not(.text-success),.adomnia-rail .adomnia-rail__utility,.adomnia-rail .adomnia-rail__settings{color:color-mix(in srgb,var(--color-accent) 72%,var(--color-text-3))}
+.adomnia-rail .adomnia-rail__category-main:hover,.adomnia-rail .adomnia-rail__category[data-active='true'] .adomnia-rail__category-main,.adomnia-rail .adomnia-rail__utility:hover,.adomnia-rail .adomnia-rail__settings:hover,.adomnia-rail .adomnia-rail__settings--active{color:var(--color-accent)}

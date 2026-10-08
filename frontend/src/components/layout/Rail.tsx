@@ -317,6 +317,8 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   )
 }
 
+const MONO_MARKS = new Set(['/icon-white.png', '/icon-black.png'])
+
 // ─── Rail ─────────────────────────────────────────────────────────────────────
 
 export function Rail() {
@@ -421,7 +423,10 @@ export function Rail() {
         )}
         title={tr('Home')}
       >
-        <img src={appIcon} alt="adOmnia" data-palette-logo className="adomnia-rail__brand object-contain" />
+        {MONO_MARKS.has(appIcon)
+          // The plain mark is drawn in the accent color so the logo follows the palette.
+          ? <span role="img" aria-label="adOmnia" className="adomnia-rail__brand adomnia-rail__brand--mono" style={{ WebkitMaskImage: `url(${appIcon})`, maskImage: `url(${appIcon})` }} />
+          : <img src={appIcon} alt="adOmnia" data-palette-logo className="adomnia-rail__brand object-contain" />}
       </button>
 
       {visibleCategories.map((cat) => (

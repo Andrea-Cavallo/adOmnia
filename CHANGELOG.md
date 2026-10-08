@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **FOLD in the Hub:** the Today column shows FOLD (Ship Notes, MIT), a folded-metal object drawn with Three.js. It opens with the adOmnia wordmark made of particles; clicking it dissolves into six cycling forms and clicking again brings the wordmark back. Untouched, the wordmark fades after five minutes. It holds the "thinking" form while a request is in flight, leans toward the pointer and stays white in every palette. Three.js loads only with the Hub.
+- **Dot-matrix time and date:** time, date and time zone in the Today column use the Doto dot-matrix font, bundled locally.
+- **Spanish README:** `README.es-ES.md` is rewritten from the current README, and both READMEs link to each other.
+
+### Changed
+- **The palette colors the brand:** the rail logo, the rail icons and the Hub studio icons follow the accent color in Dark and White.
+
 ## [0.9.71] - 2026-10-08
 
 ### Changed
