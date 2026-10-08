@@ -15,6 +15,6 @@ describe('Go Studio navigation integration', () => {
 
   it('does not move existing Git Sync ownership out of Workspace', () => {
     const workspace = RAIL_CATEGORIES.find((category) => category.key === 'workspace')
-    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync'])
+    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync', 'collab'])
   })
 })

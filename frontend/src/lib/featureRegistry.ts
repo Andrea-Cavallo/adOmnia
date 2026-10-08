@@ -74,6 +74,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
   { id: 'gitsync', title: 'Git Sync', group: 'Workspace', keywords: 'git compare diff workspace sync version control branch commit push stash', maturity: 'advanced' },
+  { id: 'collab', title: 'Live Collaboration', group: 'Workspace', keywords: 'collaboration share invite lan team pair live session collection request environment', maturity: 'advanced' },
   { id: 'goide', title: 'Go Studio', group: 'Workspace', keywords: 'go golang ide editor project module workspace development', maturity: 'core', railLabel: 'Go Studio' },
   { id: 'workspace', title: 'Workspace Settings', group: 'Workspace', keywords: 'workspace import export settings local file', maturity: 'advanced' },
   { id: 'themes', title: 'Themes', group: 'Workspace', keywords: 'theme skin appearance colors design', maturity: 'advanced' },
@@ -134,6 +135,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     key: 'workspace', label: 'Workspace', code: 'WORK',
     groups: [
       { title: 'Versioning', items: ['gitsync'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Collaboration', items: ['collab'].map((id) => ({ id: id as RailItem })) },
     ],
   },
 ]

@@ -18,7 +18,7 @@ import {
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, MoreVertical, CodeXml, Boxes, AppWindow,
+  BookOpen, MoreVertical, CodeXml, Boxes, AppWindow, Users,
 } from 'lucide-react'
 
 interface SubItem {
@@ -86,6 +86,7 @@ const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   latex: FileCode,
   pdfeditor: FileText,
   gitsync: GitBranch,
+  collab: Users,
   themes: Settings,
   templates: FileText,
   plugins: Puzzle,

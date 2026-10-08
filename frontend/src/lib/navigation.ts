@@ -33,6 +33,7 @@ export const RAIL_ITEMS = [
   'settings',
   'welcome',
   'gitsync',
+  'collab',
   'mcp',
   'apidocs',
   'goide',

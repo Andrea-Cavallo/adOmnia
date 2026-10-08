@@ -126,9 +126,9 @@ describe('stable UI localization', () => {
     expect(FEATURE_REGISTRY.find((feature) => feature.id === 'dockerlab')?.group).toBe('Power Tools')
   })
 
-  it('keeps Workspace rail focused on Git Sync and moves customization into Settings', () => {
+  it('keeps Workspace rail focused on Git Sync + Collaboration and moves customization into Settings', () => {
     const workspace = RAIL_CATEGORIES.find((category) => category.key === 'workspace')
-    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync'])
+    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync', 'collab'])
     expect(workspace?.groups.some((group) => group.title === 'Customize')).toBe(false)
   })
 

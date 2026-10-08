@@ -682,6 +682,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E3.5 | **Import/Export `.adomnia`** | Portable JSON format (v1.0) with mandatory secret redaction; encrypted `vault:` references remain portable. |
 | E3.6 | **Import OpenAPI 3.0** | Parses JSON/YAML specs; operations converted into folders grouped by tag. |
 | E3.7 | **Reset Demo** | Loads the adOmnia Lab demo workspace with one click. |
+| E3.8 | **Live Collaboration (LAN)** | Workspace › Live Collaboration: host a session on a chosen interface (TLS 1.3, per-session self-signed cert pinned by the invite), single-use expiring invites with Viewer/Editor/Controller roles, revoke, and share collections / open requests / non-private environments. Secrets are stripped in Go before anything leaves the machine (preview shows what was removed); received content waits in an inbox and is imported only on consent, with a warning when it carries scripts. Backend `internal/collab`. |
 
 ---
 
