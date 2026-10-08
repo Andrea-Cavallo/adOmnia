@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Live Collaboration (LAN):** Workspace › Live Collaboration hosts or joins a session on the local network over TLS 1.3 with the host certificate pinned by the invite. Invites are single-use and expiring; roles are Viewer, Editor and Controller and are enforced by the host, which can change roles or remove participants. Collections, open requests and non-private environments can be shared. The backend strips secrets before anything leaves the machine, and a preview shows what is sent. Received items wait in an inbox and are imported only on consent, with a warning when they contain scripts.
+
+### Changed
+- **Go root is a thin binding layer again:** logic moved from root files into `internal/`: `update`, `dropfiles`, `windowchrome`, `devlog`, `aigateway`, `mcp`, `devsession`, `goide` and `copilot`. Wails binding names are unchanged and bindings are regenerated.
+- **Working notes moved to `mds/`:** todo lists, the collaboration plan and `PRIVACY.md`. The root keeps README, LICENSE, CHANGELOG, CLAUDE/AGENTS and the GitHub community files.
+- **Credits:** Settings shows "All rights reserved · Developed by Andrea Cavallo"; About lists Andrea Cavallo.
+
 ## [0.9.69] - 2026-10-08
 
 ### Added

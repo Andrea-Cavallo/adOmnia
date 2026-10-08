@@ -798,6 +798,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Use theme color': 'Ripristina colore del tema',
   'Hex color': 'Colore esadecimale',
   'One color across the app. Shades adapt for readable text in Dark and White.': 'Un colore per tutta l’app. Le tonalità si adattano per testi leggibili in Dark e White.',
+  'All rights reserved · Developed by Andrea Cavallo': 'Tutti i diritti riservati · Sviluppato da Andrea Cavallo',
 } as const
 
 export type UiMessage = keyof typeof ITALIAN_UI_MESSAGES

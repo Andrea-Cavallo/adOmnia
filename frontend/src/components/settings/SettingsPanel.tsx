@@ -6,6 +6,7 @@ import type { AppSettings } from '@/stores/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemesStore } from '@/stores/themes'
 import { useT } from '@/lib/i18n'
+import { useUiTranslation } from '@/lib/uiI18n'
 import { UI_FONTS, type UIFontId } from '@/lib/uiFonts'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
@@ -139,6 +140,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const { themes, activeThemeId, setThemes, setLoading } = useThemesStore()
   const { applyTheme } = useThemeContext()
   const t = useT()
+  const tu = useUiTranslation()
   const appIcon = useAppIcon()
 
   const s = t.settings
@@ -368,6 +370,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {sectionDefs.length === 0 && (
           <p className="px-3 py-2 text-[10px] leading-relaxed text-text-4">No setting matches "{search.trim()}".</p>
         )}
+        <p className="mt-auto px-2.5 pt-4 text-[10px] leading-relaxed text-text-4">© {tu('All rights reserved · Developed by Andrea Cavallo')}</p>
       </aside>
 
       {/* Content */}
@@ -1055,7 +1058,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div>
                 <div className="text-sm font-bold text-text-1">adOmnia</div>
                 <div className="text-[10px] text-text-4">A local-first API development toolbox</div>
-                <div className="mt-1 text-[10px] text-text-3">Developed by Andrea Cavallo · Alberto Vito (aka Albertize)</div>
+                <div className="mt-1 text-[10px] text-text-3">Andrea Cavallo</div>
               </div>
             </div>
             <SettingsCard>
@@ -1077,7 +1080,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               </div>
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">Developer</span>
-                <span className="text-xs text-text-2">Andrea Cavallo · Alberto Vito (aka Albertize)</span>
+                <span className="text-xs text-text-2">Andrea Cavallo</span>
               </div>
               <UpdateCheckRow />
             </SettingsCard>
