@@ -4,7 +4,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
-import { useAppIcon } from '@/lib/brandAssets'
+import hubLogo from '../../../../assets/images/363d5c87-526d-4305-97bb-030712ca156b.png'
 import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
@@ -329,7 +329,7 @@ export function Rail() {
   const sseRunning = useAppStore((s) => s.sseRunning)
   const browserRunning = useAppStore((s) => s.browserRunning)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
-  const appIcon = useAppIcon()
+  const appIcon = hubLogo
 
   const features = useSettingsStore((s) => s.settings.features)
 
@@ -421,7 +421,7 @@ export function Rail() {
         )}
         title={tr('Home')}
       >
-        <img src={appIcon} alt="adOmnia" data-brand-mark className="adomnia-rail__brand object-contain" />
+        <img src={appIcon} alt="adOmnia" data-palette-logo className="adomnia-rail__brand object-contain" />
       </button>
 
       {visibleCategories.map((cat) => (

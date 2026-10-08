@@ -32,7 +32,7 @@ export function Base64Tool({
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 border-b border-border-1 pb-3">
-        <button onClick={() => onRun('encode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-accent/40 bg-accent px-4 text-xs font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,.28)] hover:bg-accent-light">
+        <button onClick={() => onRun('encode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-accent/40 bg-accent px-4 text-xs font-semibold text-white shadow-none hover:bg-accent-light">
           <FileText size={14} /> Encode
         </button>
         <button onClick={() => onRun('decode')} className="inline-flex h-9 items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-4 text-xs font-semibold text-text-2 hover:border-accent/40 hover:text-text-1">

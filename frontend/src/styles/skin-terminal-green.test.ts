@@ -15,13 +15,15 @@ describe('Terminal Green skin and hub', () => {
     expect(entrypoint).toContain("import './styles/skin-terminal-green.css'")
     expect(stylesheet).toContain("[data-skin='terminal-green'] img[data-brand-mark]")
     expect(stylesheet).toContain('hue-rotate(235deg)')
-    expect(statusBarSource).toContain("const TERMINAL_GREEN_THEME_ID = 'builtin-terminal-green'")
+    expect(statusBarSource).not.toContain('TERMINAL_GREEN_THEME_ID')
+    expect(statusBarSource).toContain("text: 'Dark'")
+    expect(statusBarSource).toContain("text: 'White'")
   })
 
-  it('keeps the hub logo but removes its decorative card and Bug Hunt replay action', () => {
-    expect(welcomeSource).toContain('<HubMascot />')
-    expect(welcomeSource).toContain("data-hub-card-active={active ? 'true' : undefined}")
-    expect(welcomeSource).toContain('onFocusCapture={() => onFocus(card.pose)}')
+  it('uses the editorial hub without the decorative mascot or Bug Hunt replay action', () => {
+    expect(welcomeSource).not.toContain('<HubMascot />')
+    expect(welcomeSource).toContain('hub-studio')
+    expect(welcomeSource).toContain('gO Studio')
     expect(welcomeSource).not.toContain('data-hub-polaroid')
     expect(welcomeSource).not.toContain("tr('your local toolbox' as UiMessage)")
     expect(welcomeSource).not.toContain("tr('Replay Bug Hunt')")

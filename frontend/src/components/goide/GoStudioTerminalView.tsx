@@ -46,6 +46,7 @@ export function GoStudioTerminalView({ terminalId, active, onExit, onOpenLink, o
   const host = useRef<HTMLDivElement | null>(null)
   const terminal = useRef<Terminal | null>(null)
   const fit = useRef<FitAddon | null>(null)
+  const accentColor = useSettingsStore(state => state.settings.appearance.accentColor)
   const theme = useSettingsStore((state) => (state.settings.appearance.theme === 'light' ? 'light' : 'dark'))
   // I callback cambiano a ogni render del pannello: il terminale legge sempre l'ultima versione.
   const callbacks = useRef({ onExit, onOpenLink, onCommand, onFind, onFocus })
@@ -60,7 +61,7 @@ export function GoStudioTerminalView({ terminalId, active, onExit, onOpenLink, o
       fontSize: 13,
       lineHeight: 1.25,
       scrollback: 5000,
-      theme: goStudioTerminalTheme(theme),
+      theme: goStudioTerminalTheme(theme, accentColor),
       allowProposedApi: true,
     })
     const fitAddon = new FitAddon()
@@ -180,8 +181,8 @@ export function GoStudioTerminalView({ terminalId, active, onExit, onOpenLink, o
   }, [terminalId])
 
   useEffect(() => {
-    if (terminal.current) terminal.current.options.theme = goStudioTerminalTheme(theme)
-  }, [theme])
+    if (terminal.current) terminal.current.options.theme = goStudioTerminalTheme(theme, accentColor)
+  }, [theme, accentColor])
 
   useEffect(() => {
     if (!active || !terminal.current || !fit.current) return

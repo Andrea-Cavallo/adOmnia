@@ -44,12 +44,20 @@ func (d *DevContext) handleGoIDEEvent(event goide.EventEnvelope) {
 
 // GetContext returns the context of a gO session, scanning it on first use.
 func (d *DevContext) GetContext(sessionID string) (devcontext.Snapshot, error) {
-	return d.manager.Get(sessionID)
+	snapshot, err := d.manager.Get(sessionID)
+	if err == nil && globalPluginManager != nil {
+		snapshot = devcontext.WithPluginAdapters(snapshot, globalPluginManager.GetContributions())
+	}
+	return snapshot, err
 }
 
 // RescanContext forces a full rescan of the session folder.
 func (d *DevContext) RescanContext(sessionID string) (devcontext.Snapshot, error) {
-	return d.manager.Rescan(sessionID)
+	snapshot, err := d.manager.Rescan(sessionID)
+	if err == nil && globalPluginManager != nil {
+		snapshot = devcontext.WithPluginAdapters(snapshot, globalPluginManager.GetContributions())
+	}
+	return snapshot, err
 }
 
 // CheckStale rescans files changed outside gO; true when something changed.

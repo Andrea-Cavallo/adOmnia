@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -234,6 +234,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
+  { id: 'tools.extensions', menu: 'tools', label: 'IDE Extensions…' },
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },

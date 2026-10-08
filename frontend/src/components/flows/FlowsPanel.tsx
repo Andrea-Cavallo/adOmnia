@@ -128,7 +128,7 @@ function methodTone(method?: string) {
 function statusTheme(status?: FlowRunStatus) {
   if (status === 'success') return 'border-success/45 bg-success/10 text-success'
   if (status === 'failed') return 'border-error/45 bg-error/10 text-error'
-  if (status === 'running') return 'border-accent/60 bg-accent/12 text-accent shadow-[0_0_0_3px_rgba(139,61,255,0.16)]'
+  if (status === 'running') return 'border-accent/60 bg-accent/12 text-accent ring-2 ring-accent/15'
   if (status === 'skipped') return 'border-warning/45 bg-warning/10 text-warning opacity-70'
   if (status === 'missing-binding') return 'border-warning/45 bg-warning/10 text-warning'
   if (status === 'broken') return 'border-error/45 bg-error/10 text-error'

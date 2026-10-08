@@ -2904,6 +2904,48 @@ export class HoverResult {
     }
 }
 
+export class IDEExtensionRequest {
+    "sessionId": string;
+    "pluginId": string;
+    "id": string;
+    "kind": string;
+    "documentId": string;
+    "text": string;
+    "selection"?: any;
+
+    /** Creates a new IDEExtensionRequest instance. */
+    constructor($$source: Partial<IDEExtensionRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("pluginId" in $$source)) {
+            this["pluginId"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("documentId" in $$source)) {
+            this["documentId"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new IDEExtensionRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): IDEExtensionRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new IDEExtensionRequest($$parsedSource as Partial<IDEExtensionRequest>);
+    }
+}
+
 /**
  * ImplementationMarker è un marcatore del gutter: un'interfaccia (o un suo metodo) implementata altrove,
  * oppure un tipo (o metodo) che implementa interfacce. Locations sono le destinazioni della navigazione.

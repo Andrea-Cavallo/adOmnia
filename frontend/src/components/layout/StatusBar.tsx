@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FolderKanban, Leaf, Moon, Sun, Pencil } from 'lucide-react'
+import { FolderKanban, Moon, Sun } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -40,42 +40,14 @@ export function StatusBar() {
   const activeTheme = themes.find((t) => t.id === activeThemeId)
   const currentMode = activeTheme ? inferThemeMode(activeTheme) : 'dark'
 
-  const SKETCH_THEME_ID = 'builtin-sketch'
-  const TERMINAL_GREEN_THEME_ID = 'builtin-terminal-green'
-  type QuickMode = 'dark' | 'light' | 'sketch' | 'terminal-green'
-  const currentQuickMode: QuickMode = activeThemeId === SKETCH_THEME_ID
-    ? 'sketch'
-    : activeThemeId === TERMINAL_GREEN_THEME_ID
-      ? 'terminal-green'
-      : currentMode
-
+  type QuickMode = 'dark' | 'light'
+  const currentQuickMode = currentMode
   const applyQuickMode = useCallback((mode: QuickMode) => {
-    if (mode === 'sketch') {
-      const sketch = themes.find((t) => t.id === SKETCH_THEME_ID)
-      if (sketch) applyTheme(sketch)
-      return
-    }
-    if (mode === 'terminal-green') {
-      const terminalGreen = themes.find((t) => t.id === TERMINAL_GREEN_THEME_ID)
-      if (terminalGreen) applyTheme(terminalGreen)
-      return
-    }
-    // Prefer the opposite theme in the same family (builtin-dark → builtin-light)
-    // so switching mode does not also throw away the user's chosen palette.
-    const family = activeThemeId?.replace(/-dark$|-light$/, '') ?? ''
-    const sameFamily = themes.find(
-      (t) => t.id !== activeThemeId && t.id.startsWith(family) && inferThemeMode(t) === mode
-    )
-    const next = sameFamily ?? themes.find((t) => inferThemeMode(t) === mode)
+    const next = themes.find((t) => t.id === `builtin-${mode}`)
+      ?? themes.find((t) => !['builtin-sketch', 'builtin-terminal-green'].includes(t.id) && inferThemeMode(t) === mode)
     if (next) applyTheme(next)
-  }, [activeThemeId, themes, applyTheme])
-
-  const toggleTheme = useCallback(() => {
-    // The shortcut cycles every quick appearance, so the keyboard reaches
-    // each explicit button too.
-    const order: QuickMode[] = ['dark', 'light', 'sketch', 'terminal-green']
-    applyQuickMode(order[(order.indexOf(currentQuickMode) + 1) % order.length])
-  }, [currentQuickMode, applyQuickMode])
+  }, [themes, applyTheme])
+  const toggleTheme = useCallback(() => applyQuickMode(currentMode === 'dark' ? 'light' : 'dark'), [currentMode, applyQuickMode])
 
   // Ctrl+Shift+L — toggle dark/light theme
   useEffect(() => {
@@ -90,7 +62,7 @@ export function StatusBar() {
   }, [toggleTheme])
 
   return (
-    <footer className="flex h-5 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
+    <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
       <div className="flex items-center gap-3">
         {response && !response.error && (
           <>
@@ -158,11 +130,9 @@ export function StatusBar() {
             keyboard shortcut cycles the same set. */}
         <div className="flex items-center gap-0.5" role="group" aria-label={tr('Appearance')}>
           {([
-            { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme') },
-            { mode: 'light' as const, Icon: Sun, label: tr('Light theme') },
-            { mode: 'sketch' as const, Icon: Pencil, label: tr('Sketch theme') },
-            { mode: 'terminal-green' as const, Icon: Leaf, label: tr('Terminal Green theme') },
-          ]).map(({ mode, Icon, label }) => (
+            { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme'), text: 'Dark' },
+            { mode: 'light' as const, Icon: Sun, label: tr('Light theme'), text: 'White' },
+          ]).map(({ mode, Icon, label, text }) => (
             <button
               key={mode}
               onClick={() => applyQuickMode(mode)}
@@ -170,13 +140,13 @@ export function StatusBar() {
               aria-label={label}
               aria-pressed={currentQuickMode === mode}
               className={cn(
-                'h-5 w-5 flex items-center justify-center rounded transition-colors',
+                'h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors',
                 currentQuickMode === mode
                   ? 'bg-surface-3 text-accent'
                   : 'text-text-4 hover:bg-surface-3 hover:text-text-2',
               )}
             >
-              <Icon size={11} />
+              <Icon size={11} /><span>{text}</span>
             </button>
           ))}
         </div>

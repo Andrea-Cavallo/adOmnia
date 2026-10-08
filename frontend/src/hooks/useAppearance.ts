@@ -10,7 +10,7 @@ const DENSITY_SCALE = { compact: '0.85', comfortable: '1', spacious: '1.2' } as 
 export function typographyVariables(uiFont?: string, fontSize?: string, monoFontSize?: string): Record<string, string> {
   return {
     '--font-ui': getUIFontStack(uiFont),
-    '--font-mono': getUIFontStack(uiFont),
+    '--font-mono': getUIFontStack(uiFont === 'inter' || uiFont === 'geist' ? 'jetbrains-mono' : uiFont),
     '--app-font-size': FONT_SIZE_MAP[fontSize as keyof typeof FONT_SIZE_MAP] ?? '15px',
     '--app-mono-size': MONO_SIZE_MAP[monoFontSize as keyof typeof MONO_SIZE_MAP] ?? '14px',
   }
@@ -49,7 +49,7 @@ export function useAppearance(): void {
     document.documentElement.style.fontSize = `calc(${fontSize} * ${scale})`
   }, [appearance.density, appearance.fontSize])
 
-  // No accent override here. adOmnia's purple is the :root default in
+  // No accent override here. adOmnia's cyan is the :root default in
   // globals.css, so an unthemed app still looks like adOmnia while an active
   // theme keeps its own accent instead of being repainted on every mount.
 }

@@ -29,7 +29,7 @@ export type ModuleAction =
   /** An event re-sent every frame until the mounted panel marks detail.handled (entity handoffs). */
   | { kind: 'dispatch'; eventName: string; detail: Record<string, unknown> }
   /** A source location in Go Studio. */
-  | { kind: 'open-location'; file: string; line: number }
+  | { kind: 'open-location'; file: string; line: number; sessionId?: string }
 
 export interface RouteOptions {
   /** false: change the module's data without switching to it (e.g. "imported, stay in Go Studio"). */
@@ -100,7 +100,7 @@ function runLocally(rail: RailItem, action: ModuleAction | null, reveal: boolean
     case 'event': document.dispatchEvent(new CustomEvent(action.name)); break
     case 'dispatch': deliverWhenMounted(rail, action.eventName, action.detail, onTimeout); break
     // Go Studio stays out of the startup bundle: loaded only when a link really opens code.
-    case 'open-location': void import('@/stores/goide').then(({ useGoIDEStore }) => useGoIDEStore.getState().openLocation(action.file, action.line, 1)); break
+    case 'open-location': void import('@/stores/goide').then(async ({ useGoIDEStore }) => { if (action.sessionId) { if (!useGoIDEStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useGoIDEStore.getState().selectSession(action.sessionId) }; await useGoIDEStore.getState().openLocation(action.file, action.line, 1) }); break
   }
 }
 

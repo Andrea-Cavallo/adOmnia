@@ -49,6 +49,19 @@ func (r *Registry) Get(id string) (Language, bool) {
 	return l, ok
 }
 
+// Unregister removes an optional adapter. Built-in ownership is enforced by the host.
+func (r *Registry) Unregister(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.byID, id)
+	for i, adapter := range r.languages {
+		if adapter.ID() == id {
+			r.languages = append(r.languages[:i], r.languages[i+1:]...)
+			break
+		}
+	}
+}
+
 // All restituisce i linguaggi in ordine di registrazione (deterministico per UI e test).
 func (r *Registry) All() []Language {
 	r.mu.RLock()

@@ -129,3 +129,24 @@ func TestSketchThemeContrast(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultPaletteReadableTextAndActions(t *testing.T) {
+	for _, theme := range NewThemeManager().GetBuiltinThemes() {
+		if theme.ID != "builtin-dark" && theme.ID != "builtin-light" {
+			continue
+		}
+		for _, pair := range [][2]string{{"text-1", "surface-0"}, {"text-3", "surface-1"}, {"on-accent", "accent"}, {"on-accent", "accent-hover"}, {"on-accent", "accent-light"}} {
+			foreground, err := relativeLuminance(theme.Colors[pair[0]])
+			if err != nil {
+				t.Fatal(err)
+			}
+			background, err := relativeLuminance(theme.Colors[pair[1]])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ratio := contrastRatio(foreground, background); ratio < 4.5 {
+				t.Errorf("%s %s/%s contrast %.2f is below AA", theme.ID, pair[0], pair[1], ratio)
+			}
+		}
+	}
+}

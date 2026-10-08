@@ -2317,7 +2317,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
                         className={cn(
                           'mx-1 rounded-md px-8 py-1.5 text-left text-xs transition-colors',
                           activeTool === tool.id
-                            ? 'bg-accent/25 text-white shadow-[inset_2px_0_0_rgba(139,92,246,.9)]'
+                            ? 'bg-accent/15 text-accent shadow-[inset_2px_0_0_var(--color-accent)]'
                             : 'text-text-3 hover:bg-surface-1 hover:text-text-1',
                         )}
                       >

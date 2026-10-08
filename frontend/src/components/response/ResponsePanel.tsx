@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown, ArrowDownToLine } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { prettyJson } from '@/lib/prettyJson'
@@ -15,8 +15,6 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { bodyContextItems } from '@/components/ui/bodyContextActions'
 import { uid } from '@/lib/types'
-import defaultResponseLogo from '../../../../assets/images/spinner.png'
-import { useResponseLogo, useIsSketchSkin } from '@/lib/brandAssets'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ResponsePanelProps {
@@ -58,35 +56,6 @@ function ResponseHeaderBar({ state, headerActions, children }: {
 
 function ResponseWaitingState({ loading, headerActions }: { loading: boolean; headerActions?: ReactNode }) {
   const tr = useUiTranslation()
-  const responseLogo = useResponseLogo(defaultResponseLogo)
-  const isSketch = useIsSketchSkin()
-
-  // Skeleton blocks are a screen convention and look wrong drawn on paper, so
-  // the sketch skin spins the hand-drawn mark instead while the request is in
-  // flight. (The spin class further down is unreachable: this branch returns
-  // first, so without this the logo never actually spun for anyone.)
-  if (loading && isSketch) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <ResponseHeaderBar state="sending" headerActions={headerActions} />
-        <div className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="flex flex-col items-center text-center">
-          <img
-            src={responseLogo}
-            alt=""
-            aria-hidden="true"
-            data-brand-mark
-            width={120}
-            height={120}
-            className="mb-4 h-[120px] w-[120px] shrink-0 object-contain motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse"
-          />
-          <p role="status" className="text-sm text-text-3">{tr('Sending…')}</p>
-        </div>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -112,26 +81,13 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ResponseHeaderBar state="idle" headerActions={headerActions} />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-        <img
-          src={responseLogo}
-          alt="adOmnia"
-          data-brand-mark
-          width={120}
-          height={120}
-          className={cn(
-            'mb-4 h-[120px] w-[120px] shrink-0 object-contain drop-shadow-[0_0_14px_var(--color-accent-glow)]',
-            loading && 'motion-safe:animate-[spin_1.2s_linear_infinite] motion-reduce:animate-pulse',
-          )}
-        />
-        <p className="text-sm text-text-3">
-          {tr('Ready for the response.')}
-        </p>
-        <p className="mt-1 text-xs text-text-4">
-          {tr('or press')} <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Ctrl</kbd>
-          <span className="mx-0.5">+</span>
-          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-[10px]">Enter</kbd>
-        </p>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+        <div aria-hidden="true" className="mb-5 grid h-12 w-12 place-items-center rounded-xl border border-border-1 bg-surface-1 text-accent"><ArrowDownToLine size={22} strokeWidth={1.5} /></div>
+        <p className="text-[15px] font-medium tracking-tight text-text-1">{tr('Every request starts a conversation.')}</p>
+        <p className="mt-2 max-w-xs text-xs leading-relaxed text-text-3">{tr('Send your request. The response appears here.')}</p>
+        <div className="mt-6 inline-flex items-center gap-2 text-[11px] text-text-3">
+          <kbd className="rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10px]">Ctrl / Cmd + Enter</kbd><span>{tr('to send')}</span>
+        </div>
       </div>
     </div>
   )

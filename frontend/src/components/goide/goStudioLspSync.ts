@@ -1,6 +1,7 @@
 import { updateDocumentBuffer } from '@/lib/goide-lsp-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { copilotCompletionsActive, useCopilotStore } from '@/stores/copilot'
+import { extensionLanguageForPath, useIDEExtensionsStore } from '@/stores/ideExtensions'
 
 const SYNC_DEBOUNCE_MS = 120
 
@@ -20,7 +21,7 @@ function isSynced(document: GoIDEEditorDocument): boolean {
   if (document.document.readOnly || document.document.external) return false
   const name = document.document.name.toLowerCase()
   // gopls vuole solo i file Go; con Copilot attivo il backend inoltra ogni file editabile anche a Copilot.
-  return name.endsWith('.go') || name === 'go.mod' || name === 'go.work' || copilotCompletionsActive(useCopilotStore.getState())
+  return name.endsWith('.go') || name === 'go.mod' || name === 'go.work' || !!extensionLanguageForPath(document.document.relativePath)?.server || copilotCompletionsActive(useCopilotStore.getState())
 }
 
 function send(documentId: string): Promise<void> {
@@ -79,10 +80,20 @@ export function startGoStudioLspSync(): void {
   useGoIDEStore.subscribe((state, previous) => {
     if (state.documents !== previous.documents) reconcile(state.documents)
   })
+  useIDEExtensionsStore.subscribe(() => reconcile(useGoIDEStore.getState().documents))
   // Copilot acceso dopo l'apertura dei file: i documenti non Go entrano nella sincronizzazione.
   useCopilotStore.subscribe((state, previous) => {
     if (copilotCompletionsActive(state) !== copilotCompletionsActive(previous)) reconcile(useGoIDEStore.getState().documents)
   })
+}
+
+/** Force a fresh didChange after a newly started optional server begins tracking the file. */
+export async function resyncGoStudioDocument(documentId: string): Promise<void> {
+  const document = useGoIDEStore.getState().documents.find(doc => doc.document.id === documentId)
+  if (!document) return
+  reconcile(useGoIDEStore.getState().documents)
+  const entry = entries.get(documentId)
+  if (entry) { entry.pendingText = document.buffer; await send(documentId) }
 }
 
 /** Invia subito eventuali modifiche in attesa e restituisce la versione che gopls conosce. */

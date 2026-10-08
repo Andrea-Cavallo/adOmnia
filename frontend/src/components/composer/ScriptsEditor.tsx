@@ -140,7 +140,7 @@ ${script}` : script)
           </span>
         </div>
       )}
-      <div className="min-h-[240px] flex-1 overflow-hidden rounded border border-border-2 bg-[#05070D] focus-within:border-accent">
+      <div className="min-h-[240px] flex-1 overflow-hidden rounded border border-border-2 bg-surface-0 focus-within:border-accent">
         <Editor
           path={`inmemory://adomnia/request-scripts/${tab}.js`}
           language="javascript"

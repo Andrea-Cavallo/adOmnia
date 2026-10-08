@@ -78,6 +78,11 @@ var customTemplatesRoot = func() (string, error) {
 // ListProjectTemplates restituisce i template integrati e quelli nella cartella utente.
 func (s *Service) ListProjectTemplates() (ProjectTemplateList, error) {
 	list := ProjectTemplateList{Templates: append([]ProjectTemplate(nil), builtinTemplates...)}
+	for _, c := range s.IDEContributions() {
+		if c.Kind == "template" {
+			list.Templates = append(list.Templates, ProjectTemplate{ID: "plugin:" + c.PluginID + ":" + c.ID, Name: c.Title, Description: c.Description + " (" + c.PluginName + ")", Custom: true})
+		}
+	}
 	root, err := customTemplatesRoot()
 	if err != nil {
 		return list, nil
@@ -177,6 +182,13 @@ func renderProjectTemplate(sources []fs.FS, target string, replacer *strings.Rep
 			if count++; count > maxTemplateFiles {
 				return fmt.Errorf("il template supera %d file", maxTemplateFiles)
 			}
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			if info.Size() > maxTemplateFileBytes {
+				return fmt.Errorf("template file %s exceeds 1 MiB", name)
+			}
 			data, err := fs.ReadFile(source, name)
 			if err != nil {
 				return err
@@ -217,6 +229,10 @@ func applyProjectTemplate(binary, target, modulePath, name, templateID string) (
 	if err != nil {
 		return "", err
 	}
+	return applyResolvedProjectTemplate(binary, target, modulePath, name, sources, template)
+}
+
+func applyResolvedProjectTemplate(binary, target, modulePath, name string, sources []fs.FS, template ProjectTemplate) (string, error) {
 	replacer := strings.NewReplacer(templateModuleToken, modulePath, templateNameToken, name, templatePackageToken, packageNameFor(modulePath))
 	if err := renderProjectTemplate(sources, target, replacer); err != nil {
 		return "", err

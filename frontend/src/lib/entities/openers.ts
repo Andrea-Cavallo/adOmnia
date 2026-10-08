@@ -32,9 +32,13 @@ export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): st
 }
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }
 
-async function openInGo(file: string, line: number): Promise<void> {
+async function openInGo(file: string, line: number, sessionId?: string): Promise<void> {
   // From a module window, the code opens in the main window's Go Studio.
-  if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line })
+  if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line, sessionId })
+  if (sessionId) {
+    if (!useGoIDEStore.getState().sessions.some(session => session.id === sessionId)) throw new Error('The source project is no longer open')
+    await useGoIDEStore.getState().selectSession(sessionId)
+  }
   useAppStore.getState().setActiveRail('goide')
   await useGoIDEStore.getState().openLocation(file, line, 1)
 }
@@ -89,7 +93,7 @@ export function registerDefaultOpeners(): () => void {
       available: (ref) => ref.kind !== 'symbol' && !!ref.source,
       run: (ref) => openInGo(ref.source!.file, ref.source!.line),
     }),
-    registerOpener('symbol', { intent: 'open', title: 'Open in gO', isDefault: true, run: (ref) => openInGo(ref.source!.file, ref.source!.line) }),
+    registerOpener('symbol', { intent: 'open', title: 'Open in gO', isDefault: true, run: (ref) => openInGo(ref.source!.file, ref.source!.line, ref.sessionId) }),
     registerOpener('route', { intent: 'send', title: 'Send in API Client', isDefault: true, run: sendRoute }),
     registerOpener('route', {
       intent: 'handler', title: 'Go to handler',

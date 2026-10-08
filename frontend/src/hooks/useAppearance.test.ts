@@ -11,4 +11,10 @@ describe('typographyVariables', () => {
       '--font-mono': selectedFont,
     })
   })
+  it.each(['inter', 'geist'])('keeps code monospace when the UI uses %s', (font) => {
+    expect(typographyVariables(font, 'medium', 'medium')).toMatchObject({
+      '--font-ui': getUIFontStack(font),
+      '--font-mono': getUIFontStack('jetbrains-mono'),
+    })
+  })
 })

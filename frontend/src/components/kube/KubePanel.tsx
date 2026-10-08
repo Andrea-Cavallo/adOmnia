@@ -18,6 +18,9 @@ import {
 import { ConfigMapsView, DeploymentsView, ForwardsView, SecretsView, ServicesView } from './KubeResources'
 import { ForwardForm, PodExec, PodFiles } from './PodTools'
 import { PodGoTools } from './PodGoTools'
+import { PodLogLine } from './PodLogLine'
+import { useGoIDEStore } from '@/stores/goide'
+import { RemoteSourceFiles } from '../../../bindings/adomnia/goide'
 
 const POLL_MS = 1500
 const MAX_LOG_LINES = 2000
@@ -272,6 +275,19 @@ function PodContainerTool({ pod, context, namespace, tool }: { pod: KubePod; con
 }
 
 function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; namespace: string }) {
+  const sessions = useGoIDEStore((state) => state.sessions)
+  const activeSessionId = useGoIDEStore((state) => state.activeSessionId)
+  const [sourceProject, setSourceProject] = useState(activeSessionId ?? '')
+  const [sourcePaths, setSourcePaths] = useState<string[]>([])
+  const [sourceError, setSourceError] = useState('')
+  const [sourceRefresh, setSourceRefresh] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    setSourcePaths([])
+    setSourceError('')
+    if (sourceProject && sessions.some(session => session.id === sourceProject)) void RemoteSourceFiles(sourceProject).then(files => { if (!cancelled) setSourcePaths(files) }).catch(error => { if (!cancelled) setSourceError(String(error)) })
+    return () => { cancelled = true }
+  }, [sourceProject, sessions, sourceRefresh])
   const port = useServerPort()
   const [container, setContainer] = useState(pod.containers[0] ?? '')
   const [sourceId, setSourceId] = useState('')
@@ -355,11 +371,14 @@ function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; n
 
       <div ref={scrollRef} className="h-72 overflow-auto px-3 py-2 font-mono text-[10px] leading-relaxed text-text-2">
         {lines.length === 0 && !running && <p className="italic text-text-4">Stream the pod logs to inspect them here.</p>}
-        {lines.map((line, index) => <div key={index} className="whitespace-pre-wrap break-all">{line}</div>)}
+        {sourceError && <p role="status" className="text-warning">Source links unavailable: {sourceError}</p>}
+        {lines.map((line, index) => <PodLogLine key={index} text={line} sessionId={sourceProject} paths={sourcePaths} />)}
         {running && lines.length === 0 && <p className="italic text-text-4">Waiting for output…</p>}
       </div>
 
       <div className="flex items-center gap-2 border-t border-border-1 px-3 py-1.5 text-[9px] text-text-4">
+        <label>Source project <select aria-label="Pod log source project" value={sourceProject} onChange={event => setSourceProject(event.target.value)} className={SELECT}><option value="">No source links</option>{sessions.map(session => <option key={session.id} value={session.id}>{session.project.name}</option>)}</select></label>
+        <button type="button" disabled={!sourceProject} onClick={() => setSourceRefresh(value => value+1)} title="Refresh source file index" className="text-accent disabled:opacity-40">Refresh links</button>
         {running ? <span className="flex items-center gap-1"><Square size={8} className="text-success" /> streaming</span> : <span>idle</span>}
         <span className="ml-auto font-mono">{lines.length} lines</span>
       </div>

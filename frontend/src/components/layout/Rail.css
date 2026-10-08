@@ -259,3 +259,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.adomnia-rail{margin:0;border:0;border-right:1px solid var(--color-border-1);border-radius:0;background:var(--color-surface-0);box-shadow:none;width:56px;min-width:56px;padding-top:12px}
+.adomnia-rail::before,.adomnia-rail::after{display:none}
+.adomnia-rail__brand{width:36px;height:36px;border-radius:8px;filter:none}
+.adomnia-rail__home:hover .adomnia-rail__brand,.adomnia-rail__home--active .adomnia-rail__brand{filter:none;transform:none}

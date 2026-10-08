@@ -1,4 +1,6 @@
 import { languageServerEditorLanguages } from '@/components/ide/languages'
+import { extensionLanguageForPath } from '@/stores/ideExtensions'
+import { ExtensionLanguageStatus } from '../../../bindings/adomnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
 import {
@@ -25,7 +27,7 @@ import { editorModelUri, fileUri } from './goStudioModelUri'
 import { fixGoStudioProblemWithAI, goStudioAIFixAvailable } from './goStudioAIFixRunner'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
-const LANGUAGE = languageServerEditorLanguages()
+let LANGUAGE = languageServerEditorLanguages()
 const MARKER_OWNER = 'gopls'
 const LINT_MARKER_OWNER = 'lint'
 export const APPLY_CODE_ACTION_COMMAND = 'goStudio.applyCodeAction'
@@ -45,6 +47,8 @@ interface PreparedDocument {
 
 const locationCache = new Map<string, GoIDEEditorLocation>()
 let registered = false
+let commandsRegistered = false
+const registeredLanguages = new Set<string>()
 
 export function toMonacoRange(range: GoIDEEditorRange): monaco.IRange {
   return { startLineNumber: range.startLine, startColumn: range.startColumn, endLineNumber: range.endLine, endColumn: range.endColumn }
@@ -71,7 +75,11 @@ function languageServerReady(sessionId: string): boolean {
 /** Sincronizza il buffer e verifica che gopls sia pronto prima di una richiesta semantica. */
 export async function prepareDocument(model: monaco.editor.ITextModel): Promise<PreparedDocument | null> {
   const document = documentForModel(model)
-  if (!document || !languageServerReady(document.document.sessionId)) return null
+  if (!document) return null
+  const extension = extensionLanguageForPath(document.document.relativePath)
+  if (extension) {
+    if (!extension.server || (await ExtensionLanguageStatus(document.document.sessionId,extension.id).catch(() => null))?.state !== 'ready') return null
+  } else if (!languageServerReady(document.document.sessionId)) return null
   await flushGoStudioDocument(document.document.id)
   return { document, sessionId: document.document.sessionId, documentId: document.document.id }
 }
@@ -280,6 +288,8 @@ function registerProviders(): void {
     },
   }, { providedCodeActionKinds: ['quickfix'] })
 
+  if (commandsRegistered) return
+  commandsRegistered = true
   monaco.editor.registerCommand(AI_FIX_COMMAND, (_accessor, relativePath: string, marker: monaco.editor.IMarkerData, others: monaco.editor.IMarkerData[] = []) => {
     const problem = (item: monaco.editor.IMarkerData) => ({ message: item.message, line: item.startLineNumber, source: typeof item.source === 'string' ? item.source : undefined })
     void fixGoStudioProblemWithAI(relativePath, problem(marker), others.map(problem))
@@ -348,10 +358,13 @@ function applyMarkers(): void {
 }
 
 /** Registra una sola volta provider, comandi, opener e marker per il linguaggio Go. */
-export function registerGoStudioLanguageFeatures(): void {
+export function registerGoStudioLanguageFeatures(additionalLanguages?: string[]): void {
+  LANGUAGE = (additionalLanguages ?? languageServerEditorLanguages()).filter(id => !registeredLanguages.has(id))
+  if (!LANGUAGE.length) return
+  LANGUAGE.forEach(id => registeredLanguages.add(id))
+  registerProviders()
   if (registered) return
   registered = true
-  registerProviders()
   applyMarkers()
   monaco.editor.onDidCreateModel(() => applyMarkers())
   useGoIDELspStore.subscribe((state, previous) => {

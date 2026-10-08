@@ -7,6 +7,7 @@ import { navigateToLocation } from './goStudioLanguageFeatures'
 import { MAX_RESOLVE_ALL_FILES, fixGoStudioProblemWithAI, resolveAllGoStudioProblemsWithAI, type AIFixTarget } from './goStudioAIFixRunner'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useSettingsStore } from '@/stores/settings'
+import { useIDEExtensionsStore } from '@/stores/ideExtensions'
 
 export interface GoStudioBuildProblem {
   path: string
@@ -35,9 +36,10 @@ function sortReports(reports: GoIDEDiagnosticsReport[]): GoIDEDiagnosticsReport[
 }
 
 export function GoStudioProblems({ sessionId, buildProblems, onOpenBuildProblem }: GoStudioProblemsProps) {
+  const extensionReports = useIDEExtensionsStore(state => state.reports[sessionId] ?? EMPTY_REPORTS)
   const reports = useGoIDELspStore((state) => state.diagnostics[sessionId] ?? EMPTY_REPORTS)
   const lintReports = useGoIDELspStore((state) => state.lint[sessionId]?.reports ?? EMPTY_REPORTS)
-  const sorted = useMemo(() => sortReports(Object.values(mergedReports(reports, lintReports))), [lintReports, reports])
+  const sorted = useMemo(() => sortReports([...Object.values(mergedReports(reports, lintReports)),...Object.values(extensionReports).filter(report => report.diagnostics.length)]), [lintReports, reports,extensionReports])
   const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
   const [resolving, setResolving] = useState(false)
   const problem = (item: GoIDEDiagnostic) => ({ message: item.message, line: item.range.startLine, source: item.source || undefined })

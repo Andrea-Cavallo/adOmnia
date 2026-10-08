@@ -69,7 +69,7 @@ const TECHNICAL_JSX_TEXT = new Set([
   'adOmnia paratus.', 'commit · branch · diff · merge · stash · push', 'main', 'local', 'Diff',
   'PSD2', 'Ctrl/Cmd + F', 'Ctrl/Cmd&nbsp;+&nbsp;F', 'host:port', 'api.example.com:443', 'http://127.0.0.1', 'n', 'p', 'Esc', '\\n',
   'ms', 'vault', '+', '−',
-  'Mock', 'Proxy', 'Aa', 'Ab', 'gO',
+  'Mock', 'Proxy', 'Aa', 'Ab', 'gO', 'adOmnia', 'Ctrl K', 'Ctrl / Cmd + Enter',
 ])
 
 function normalized(value: string): string {

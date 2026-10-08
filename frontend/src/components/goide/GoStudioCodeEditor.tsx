@@ -32,6 +32,8 @@ import { openVcsHunk, useGoStudioVcsGutter } from './goStudioVcsEditor'
 import { registerGoStudioExtraLanguages } from './goStudioExtraLanguages'
 import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDecorations } from './goStudioDebugEditor'
 import './goStudioEditor.css'
+import { startGoStudioExtensions, installIDEExtensionActions } from './goStudioExtensions'
+import { extensionLanguageForPath, useIDEExtensionsStore } from '@/stores/ideExtensions'
 
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
@@ -42,6 +44,7 @@ registerGoStudioSemanticFeatures()
 startGoStudioLspSync()
 registerGoStudioDebugHover()
 registerGoStudioExtraLanguages()
+startGoStudioExtensions()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
@@ -84,6 +87,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const editorMode = useGoIDELspStore((state) => state.preferences.editorMode)
   const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
+  const extensions = useIDEExtensionsStore(state => state.items)
+  const extensionLanguage = extensionLanguageForPath(document.document.relativePath,extensions)
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
 
   useEffect(() => {
@@ -104,6 +109,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       if (position) callbacks.current.onCursor(position.lineNumber, position.column)
     })
     installGoStudioEditorActions(editor)
+    installIDEExtensionActions(editor)
     installGoStudioAIActions(editor)
     installRecursiveCallMarkers(editor)
     decorationsRef.current = editor.createDecorationsCollection()
@@ -229,7 +235,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     <div className="min-h-0 flex-1">
     <Editor
       path={editorModelUri(document.document)}
-      language={document.document.language}
+      language={extensionLanguage?.monaco || extensionLanguage?.id || document.document.language}
       value={document.buffer}
       theme={theme}
       beforeMount={beforeGoStudioMount}

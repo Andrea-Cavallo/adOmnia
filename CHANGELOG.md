@@ -6,13 +6,21 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.69] - 2026-10-08
+
 ### Added
+- **Custom accent palette:** Appearance settings offer presets, a color picker and HEX input. The locally saved accent updates shared UI tokens, the brand mark, Monaco selections and terminal cursors immediately in Dark and White; reset restores the theme palette. Derived colors preserve readable text and actions, while semantic status and syntax colors remain distinct.
+- **IDE plugin contributions:** enabled plugins integrate commands, code actions, analyzers, project templates, language-server lifecycle and Developer Context adapters through the existing sandbox and trust controls.
+- **Kubernetes log source links:** pod logs resolve Go file locations against the explicitly selected local project; ambiguous paths remain plain text.
+- Community launch material and a collaboration planning document.
 - **AI test failure analysis (P4):** the Tests detail view offers Analyze failure for a failed result. It prepares a reviewable milk/Copilot draft with recorded output, failure location and the existing scoped reproduction command (repeat count, shuffle seed, race and build tags). No provider call or rerun happens automatically. Project AI policy and source-location exclusions are checked before preparing the draft; recognized secrets are redacted before limiting output to 40 KiB. Switching test, run or project during preparation discards the stale draft. Native desktop/provider smoke remains tracked separately.
 
 ### Fixed
 - **Recovery latency checks on shared CI runners:** the original 500 ms budget now applies to the nearest-rank 95th percentile across 50 snapshot writes and 20 recovery loads. Isolated filesystem scheduling spikes remain visible in logs without failing the release; repeated slow writes still fail. Every recovery load verifies all ten buffers and their content hashes.
 
 ### Changed
+- Editorial main Hub with shared theme tokens, real workspace and request activity, metallic studio icons and the gO Studio entry.
+- Consistent Dark/White surfaces and default typography across studios. The footer exposes only Dark and White; API response waiting/loading views use a compact layout without the logo.
 - `main` is the canonical default branch, with `develop` retained for development. CI branch filters, documentation and release links no longer reference the redundant `master` branch.
 
 ## [0.9.68] - 2026-10-07

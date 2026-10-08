@@ -86,6 +86,7 @@ var (
 	extensionPattern      = regexp.MustCompile(`^\.[a-zA-Z0-9_+-]{1,16}$`)
 	commandNamePattern    = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.+-]{0,127}$`)
 	modulePathPattern     = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._~/-]{1,255}$`)
+	languageIDPattern     = regexp.MustCompile(`^[a-z][a-z0-9+#._-]{0,31}$`)
 )
 
 // Reserved language IDs belong to built-in adapters: a plugin cannot replace Go.
@@ -97,7 +98,19 @@ func validateContributes(manifest *PluginManifest) error {
 	for _, action := range manifest.Actions {
 		actions[action.ID] = true
 	}
+	seen := map[string]bool{}
+	unique := func(kind, id string) error {
+		key := kind + ":" + id
+		if seen[key] {
+			return fmt.Errorf("contributes.%s: duplicate id %q", kind, id)
+		}
+		seen[key] = true
+		return nil
+	}
 	needsAction := func(kind, id, action string) error {
+		if err := unique(kind, id); err != nil {
+			return err
+		}
 		if !contributionIDPattern.MatchString(id) {
 			return fmt.Errorf("contributes.%s: invalid id %q", kind, id)
 		}
@@ -131,6 +144,9 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for _, template := range c.Templates {
+		if err := unique("templates", template.ID); err != nil {
+			return err
+		}
 		if !contributionIDPattern.MatchString(template.ID) || strings.TrimSpace(template.Name) == "" {
 			return fmt.Errorf("contributes.templates: id and name are required")
 		}
@@ -140,7 +156,10 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for _, language := range c.Languages {
-		if !contributionIDPattern.MatchString(language.ID) || reservedLanguages[strings.ToLower(language.ID)] {
+		if err := unique("languages", language.ID); err != nil {
+			return err
+		}
+		if !languageIDPattern.MatchString(language.ID) || reservedLanguages[strings.ToLower(language.ID)] {
 			return fmt.Errorf("contributes.languages: invalid or reserved id %q", language.ID)
 		}
 		if len(language.Extensions) == 0 {
@@ -156,6 +175,9 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for _, adapter := range c.Adapters {
+		if err := unique("adapters", adapter.ID); err != nil {
+			return err
+		}
 		if adapter.Kind != "framework" && adapter.Kind != "broker" && adapter.Kind != "database" {
 			return fmt.Errorf("contributes.adapters %s: kind must be framework, broker or database", adapter.ID)
 		}
@@ -192,6 +214,7 @@ type Contribution struct {
 
 // GetContributions lists what the enabled, healthy plugins add to the IDE, in a stable order.
 func (pm *PluginManager) GetContributions() []Contribution {
+	pm.refreshSignatures()
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 	var out []Contribution

@@ -78,6 +78,7 @@ func main() {
 	oasLint := NewOASLint()
 	goIDE := NewGoIDE()
 	devContext := NewDevContext(goIDE)
+	goIDE.service.SetExtensionManager(pluginManager.PluginManager)
 	devSession := NewDevSession(goIDE)
 	copilotService := NewCopilot(goIDE)
 	milkService := NewMilk()

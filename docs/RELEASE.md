@@ -2,7 +2,10 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
-## Unreleased
+## v0.9.69 release notes: coherent design and personal palettes
+
+See [the full v0.9.69 notes](releases/v0.9.69.md) for the editorial Hub, shared
+Dark/White visual system, locally saved custom accent and IDE extension integration.
 
 Recovery latency checks retain the 500 ms budget at the 95th percentile, with
 repeated recovery loads validating every buffer and content hash. Maximum snapshot

@@ -89,6 +89,7 @@ import { runVcsCommand, type GoStudioVcsDialog } from './goStudioVcsCommands'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { GoStudioLocalHistoryDialog } from './GoStudioLocalHistoryDialog'
 import { GoStudioAttachDialog, type GoStudioAttachMode } from './GoStudioAttachDialog'
+import { GoStudioExtensionsDialog } from './GoStudioExtensionsDialog'
 import { useGoStudioRemoteHandoff } from './useGoStudioRemoteHandoff'
 import { GoStudioGoToolDialog, type GoStudioGoToolDialogState } from './GoStudioGoToolDialog'
 import { goToolDialogFor } from './goStudioGoToolCommands'
@@ -191,6 +192,7 @@ export function GoStudioPanel() {
   const openConfigurations = (draft: GoIDERunConfiguration | null = null) => { setConfigDraft(draft); setConfigureOpen(true) }
   const [toolchainOpen, setToolchainOpen] = useState(false)
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
+  const [extensionsOpen, setExtensionsOpen] = useState(false)
   const [dependencyGraphOpen, setDependencyGraphOpen] = useState(false)
   const [adrLinksOpen, setADRLinksOpen] = useState(false)
   const [runtimeEnrichmentOpen, setRuntimeEnrichmentOpen] = useState(false)
@@ -700,6 +702,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.lspLog': return setLspLogOpen(true)
       case 'go.toolPaths': return setToolPathsOpen(true)
       case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
+      case 'tools.extensions': return setExtensionsOpen(true)
       case 'tools.copilotChat':
         useGoStudioAssistantStore.getState().open('copilot')
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
@@ -773,6 +776,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       />
       <ToolchainDialog open={toolchainOpen} onClose={() => setToolchainOpen(false)} onRunCommand={runCommand} />
       <GoStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
+      <GoStudioExtensionsDialog open={extensionsOpen} sessionId={activeSession.id} onClose={() => setExtensionsOpen(false)} />
       <GoStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
       <GoStudioADRLinks open={adrLinksOpen} sessionId={activeSession.id} onClose={() => setADRLinksOpen(false)} />
       <GoStudioRuntimeEnrichment open={runtimeEnrichmentOpen} session={activeSession} onClose={() => setRuntimeEnrichmentOpen(false)} />

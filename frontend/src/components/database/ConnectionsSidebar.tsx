@@ -151,7 +151,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                 className={cn(
                   'rounded-md border py-1.5 text-[10.5px] font-medium transition-colors',
                   isActive
-                    ? 'border-accent bg-accent text-white shadow-[0_0_12px_rgba(139,61,255,0.35)]'
+                    ? 'border-accent bg-accent text-white shadow-none'
                     : 'border-border-2 bg-surface-2 text-text-3 hover:border-border-3 hover:text-text-1'
                 )}
               >

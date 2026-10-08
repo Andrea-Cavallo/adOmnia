@@ -16,7 +16,7 @@ export const UI_FONTS = [
 
 export type UIFontId = typeof UI_FONTS[number]['id']
 
-export const DEFAULT_UI_FONT_ID: UIFontId = 'ibm-plex-mono'
+export const DEFAULT_UI_FONT_ID: UIFontId = 'inter'
 
 export function getUIFontStack(id?: string) {
   return UI_FONTS.find((font) => font.id === id)?.stack

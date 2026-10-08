@@ -1,3 +1,4 @@
+import { AccentColorSetting } from './AccentColorSetting'
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { exportGoStudioSettings, importGoStudioSettings } from '@/stores/goideLsp'
 import { useGoIDEStore } from '@/stores/goide'
@@ -463,6 +464,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   : [{ value: selectedThemeId, label: s.appearance.themeOptions.loading }]}
                 onChange={handleThemeChange}
               />
+              <AccentColorSetting />
               <Select
                 label={s.appearance.windowChrome}
                 desc={s.appearance.windowChromeDesc}

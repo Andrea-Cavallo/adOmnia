@@ -1,3 +1,4 @@
+import { accentTokens } from '@/lib/accentPalette'
 import type { ITheme } from '@xterm/xterm'
 
 /**
@@ -5,11 +6,11 @@ import type { ITheme } from '@xterm/xterm'
  * il terminale non sembra un widget incollato dentro Go Studio. Lo sfondo è quello delle isole.
  */
 const darkTheme: ITheme = {
-  background: '#0B0D14',
+  background: '#11171D',
   foreground: '#F8FAFC',
-  cursor: '#8B3DFF',
-  cursorAccent: '#0B0D14',
-  selectionBackground: 'rgba(139, 61, 255, 0.30)',
+  cursor: '#7DD3FC',
+  cursorAccent: '#11171D',
+  selectionBackground: 'rgba(125, 211, 252, 0.25)',
   black: '#2E3447',
   red: '#F87171',
   green: '#4ADE80',
@@ -31,9 +32,9 @@ const darkTheme: ITheme = {
 const lightTheme: ITheme = {
   background: '#FFFFFF',
   foreground: '#151821',
-  cursor: '#7C2FF5',
+  cursor: '#087D9B',
   cursorAccent: '#FFFFFF',
-  selectionBackground: 'rgba(124, 47, 245, 0.22)',
+  selectionBackground: 'rgba(8, 125, 155, 0.18)',
   black: '#1F2333',
   red: '#B91C1C',
   green: '#15803D',
@@ -52,6 +53,8 @@ const lightTheme: ITheme = {
   brightWhite: '#0F172A',
 }
 
-export function goStudioTerminalTheme(theme: 'light' | 'dark'): ITheme {
-  return theme === 'light' ? lightTheme : darkTheme
+export function goStudioTerminalTheme(theme: 'light' | 'dark', customAccent?: string): ITheme {
+  const base = theme === 'light' ? lightTheme : darkTheme
+  const tokens = accentTokens(customAccent ?? '', theme)
+  return tokens.accent ? { ...base, cursor: tokens.accent, selectionBackground: tokens['accent-glow'] } : base
 }

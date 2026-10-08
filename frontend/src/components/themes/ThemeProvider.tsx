@@ -1,3 +1,4 @@
+import { accentTokens, accentHue, validAccent } from '@/lib/accentPalette'
 import { createContext, useCallback, useContext, useEffect } from 'react'
 import type { Theme } from '@/stores/themes'
 import { useThemesStore } from '@/stores/themes'
@@ -18,15 +19,34 @@ export function useThemeContext() {
   return useContext(ThemeContext)
 }
 
+let injectedProperties = new Set<string>()
+
 function injectThemeVariables(theme: Theme) {
   const root = document.documentElement.style
+  root.removeProperty('--font-sans')
+  root.removeProperty('--font-serif')
+
+  const customAccent = useSettingsStore.getState().settings.appearance.accentColor
+  document.documentElement.toggleAttribute('data-custom-accent', validAccent(customAccent))
+  root.setProperty('--brand-palette-filter', validAccent(customAccent) ? `hue-rotate(${accentHue(customAccent) - 190}deg)` : 'none')
+  const colors = { ...theme.colors, ...accentTokens(customAccent ?? '', inferThemeMode(theme), theme.colors['surface-1']) }
+
+  // Remove tokens owned by the previous theme so missing values fall back
+  // to the current mode instead of retaining the previous palette.
+  for (const property of injectedProperties) root.removeProperty(property)
+  injectedProperties = new Set([
+    ...Object.keys(colors).map(key => `--color-${key}`),
+    ...Object.keys(theme.spacing).map(key => `--spacing-${key}`),
+    ...Object.keys(theme.radii).map(key => `--radius-${key}`),
+    ...Object.keys(theme.shadows).map(key => `--shadow-${key}`),
+  ])
 
   // Themes own their accent. This used to be skipped and overwritten with a
-  // fixed purple, which silently gutted every accent-defined theme (obsidian
+  // fixed accent, which silently gutted every accent-defined theme (obsidian
   // -neon is *only* its neon-mint accent) and made the accent fields in the
-  // advanced editor decorative. adOmnia's purple now lives where it belongs:
+  // advanced editor decorative. The default cyan lives where it belongs:
   // as the default theme's accent, not as a runtime override.
-  Object.entries(theme.colors).forEach(([key, value]) => {
+  Object.entries(colors).forEach(([key, value]) => {
     root.setProperty(`--color-${key}`, value)
   })
 
@@ -75,6 +95,7 @@ function syncDocumentIcon(themeId: string) {
 
 function syncDocumentMode(theme: Theme) {
   const html = document.documentElement
+  html.setAttribute('data-theme', theme.id)
   const mode = inferThemeMode(theme)
   html.classList.toggle('light', mode === 'light')
   html.classList.toggle('dark', mode === 'dark')
@@ -91,6 +112,7 @@ function syncDocumentMode(theme: Theme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { themes, activeThemeId, setThemes, setActiveThemeId: setStoreActiveId } = useThemesStore()
   const settingsThemeId = useSettingsStore((s) => s.settings.appearance.themeId)
+  const accentColor = useSettingsStore(s => s.settings.appearance.accentColor)
   const settingsLoaded = useSettingsStore((s) => s.loaded)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
 
@@ -141,7 +163,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return
     }
     syncDocumentIcon(activeThemeId)
-  }, [activeThemeId, themes])
+  }, [activeThemeId, themes, accentColor])
 
   return (
     <ThemeContext.Provider value={{ applyTheme }}>

@@ -49,6 +49,7 @@ export interface AppSettings {
     language: 'en' | 'it'
     sidebarWidth: number
     showRailIconsOnly: boolean
+    accentColor?: string
     accentColorPreset: string
     sidebarCollapsed: boolean
   }
@@ -206,7 +207,7 @@ const defaultSettings: AppSettings = {
     language: 'en',
     sidebarWidth: 280,
     showRailIconsOnly: false,
-    accentColorPreset: 'purple',
+    accentColorPreset: 'cyan',
     sidebarCollapsed: false,
   },
   requests: {

@@ -94,6 +94,7 @@ export {
     HighlightsResult,
     HistoryRevision,
     HoverResult,
+    IDEExtensionRequest,
     ImplementationMarker,
     InlayHintEntry,
     InlayHintsResult,

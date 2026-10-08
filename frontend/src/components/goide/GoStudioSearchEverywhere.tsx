@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+
 import { showModule } from '@/lib/moduleRouting'
 import { ArrowRight, FlaskConical, History, Loader2, Play, Search, Settings, Terminal } from 'lucide-react'
 import { quickOpenGoIDEFiles, type GoIDEQuickOpenResult } from '@/lib/goide-api'
@@ -17,6 +18,8 @@ import { testRequestForTarget } from './goStudioQuickActions'
 import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
 import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, rememberCommand, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
 import { GoStudioPalette } from './GoStudioModal'
+import { useIDEExtensionsStore } from '@/stores/ideExtensions'
+import { runIDEContribution } from './goStudioExtensions'
 
 const SEARCH_DEBOUNCE_MS = 120
 const FILE_LIMIT = 8
@@ -86,6 +89,7 @@ function panelRow(feature: FeatureDef, open: (feature: FeatureDef) => void): Res
 /** Search Everywhere (Shift Shift): file, simboli del progetto, azioni dell'IDE e pannelli di adOmnia in un'unica ricerca. */
 export function GoStudioSearchEverywhere({ open, sessionId, availability, onCommand, onClose }: GoStudioSearchEverywhereProps) {
   const [query, setQuery] = useState('')
+  const extensions = useIDEExtensionsStore(state => state.items)
   const [files, setFiles] = useState<GoIDEQuickOpenResult[]>([])
   const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
   const [loading, setLoading] = useState(false)
@@ -164,13 +168,14 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
         run: close(() => { useGoIDEStore.getState().selectRunConfiguration(config.id); onCommand('run.run') }),
       })),
       ...actions.map((command) => ({ ...actionRow(command, availability(command.id), onCommand), run: runCommand(command.id) })),
+      ...extensions.filter(c => c.kind === 'command' && (!query.trim() || matchScore(query,c.title+' '+c.pluginName) !== null)).slice(0,ACTION_LIMIT).map(c => ({key:`plugin:${c.pluginId}:${c.id}`,section:'Actions' as const,title:c.title,detail:c.pluginName,icon:<Terminal size={12} />,disabled:session?.project.authorization === 'tooling-permitted' ? undefined : 'Trust the project before running extensions',run:close(() => void runIDEContribution(c))})),
       ...settings.map((entry) => ({
         key: `setting:${entry.label}`, section: 'Settings' as const, title: entry.label, detail: `Settings · ${entry.section}`,
         icon: <Settings size={12} className="text-text-3" aria-hidden="true" />, run: close(() => openSettingsSection(entry)),
       })),
       ...panels.map((feature) => panelRow(feature, (target) => close(() => showModule(target.id))())),
     ]
-  }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols])
+  }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols,extensions])
 
   useEffect(() => { setSelected((value) => Math.min(value, Math.max(0, rows.length - 1))) }, [rows.length])
 

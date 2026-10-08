@@ -27,7 +27,8 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
-	workspace *WorkspaceManager
+	extensions extensionHost
+	workspace  *WorkspaceManager
 	// studioWorkspaces raggruppa le sessioni in workspace Go Studio, separati da quelli di adOmnia.
 	studioWorkspaces *studioWorkspaceRegistry
 	documents        *DocumentManager
@@ -136,6 +137,7 @@ func (s *Service) ConfigureToolchainStorage(root string) error {
 
 // GetCapabilities dichiara soltanto le capacità realmente disponibili nello stato corrente.
 func (s *Service) GetCapabilities() Capabilities {
+	s.IDEContributions()
 	return Capabilities{
 		SchemaVersion:    3,
 		ProjectOpen:      true,
@@ -161,6 +163,7 @@ func (s *Service) languageInfos() []language.Info {
 
 // OpenProject apre una sessione non autorizzata all'esecuzione e non avvia alcuno strumento.
 func (s *Service) OpenProject(path string) (Session, error) {
+	s.IDEContributions()
 	if err := s.restore(); err != nil {
 		return Session{}, err
 	}
@@ -192,7 +195,8 @@ func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResu
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
 		return CreateProjectResult{}, fmt.Errorf("module path non valido")
 	}
-	if _, _, err := resolveProjectTemplate(request.Template); err != nil {
+	sources, template, err := s.resolveProjectTemplate(request.Template)
+	if err != nil {
 		return CreateProjectResult{}, err
 	}
 	target, err := s.workspace.CreateProjectDirectory(request.ParentPath, request.Name)
@@ -208,7 +212,7 @@ func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResu
 		_ = os.RemoveAll(target)
 		return CreateProjectResult{}, fmt.Errorf("go mod init fallito: %w", err)
 	}
-	warning, err := applyProjectTemplate(binary, target, modulePath, strings.TrimSpace(request.Name), request.Template)
+	warning, err := applyResolvedProjectTemplate(binary, target, modulePath, strings.TrimSpace(request.Name), sources, template)
 	if err != nil {
 		_ = os.RemoveAll(target)
 		return CreateProjectResult{}, err

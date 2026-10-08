@@ -280,7 +280,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
         {(['publish', 'consume', 'info'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-[#f87171]/20 text-[#f87171] border border-[#f87171]/40' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
@@ -304,7 +304,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
           </div>
           <button onClick={() => post('/broker/rabbitmq/publish', { config: { url, exchange, queue }, routingKey, body, contentType, headers: hdrsObj, persistent })}
             disabled={loading || !url || !queue}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#f87171] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Send size={13} /> {loading ? 'Publishing…' : 'Publish'}
           </button>
         </div>
@@ -324,7 +324,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
           </div>
           <button onClick={() => post('/broker/rabbitmq/consume', { config: { url, exchange, queue }, maxWait, maxMsgs, autoAck })}
             disabled={loading || !url || !queue}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#f87171] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Timer size={13} /> {loading ? 'Consuming…' : 'Consume'}
           </button>
         </div>
@@ -426,7 +426,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-[#34d399]/20 text-[#34d399] border border-[#34d399]/40' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
@@ -453,7 +453,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           </Field>
           <button onClick={() => post('/broker/mqtt/publish', { config: cfg, topic, payload, qos, retained })}
             disabled={loading || !broker || !topic}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#34d399] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Send size={13} /> {loading ? 'Publishing…' : 'Publish'}
           </button>
         </div>
@@ -474,7 +474,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           </div>
           <button onClick={() => post('/broker/mqtt/subscribe', { config: cfg, topic, qos, maxWait, maxMsgs })}
             disabled={loading || !broker || !topic}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#34d399] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Timer size={13} /> {loading ? 'Subscribing…' : 'Subscribe'}
           </button>
         </div>
@@ -578,7 +578,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-[#60a5fa]/20 text-[#60a5fa] border border-[#60a5fa]/40' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
@@ -595,7 +595,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
           </Field>
           <button onClick={() => post('/broker/redis/publish', { config: cfg, channel, message })}
             disabled={loading || !addr || !channel}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#60a5fa] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Send size={13} /> {loading ? 'Publishing…' : 'Publish'}
           </button>
         </div>
@@ -616,7 +616,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
           </div>
           <button onClick={() => post('/broker/redis/subscribe', { config: cfg, channels: channel.split(',').map(c => c.trim()).filter(Boolean), maxWait, maxMsgs })}
             disabled={loading || !addr || !channel}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#60a5fa] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Timer size={13} /> {loading ? 'Subscribing…' : 'Subscribe'}
           </button>
         </div>
@@ -716,7 +716,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
@@ -737,7 +737,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           </div>
           <button onClick={() => post('/broker/nats/publish', { config: cfg, subject, payload, headers: hdrsObj })}
             disabled={loading || !natsUrl || !subject}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#a78bfa] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Send size={13} /> {loading ? 'Publishing…' : 'Publish'}
           </button>
         </div>
@@ -758,7 +758,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
           </div>
           <button onClick={() => post('/broker/nats/subscribe', { config: cfg, subject, maxWait, maxMsgs })}
             disabled={loading || !natsUrl || !subject}
-            className="self-start inline-flex items-center gap-2 rounded bg-[#a78bfa] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            className="self-start inline-flex items-center gap-2 rounded bg-accent px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
             <Timer size={13} /> {loading ? 'Subscribing…' : 'Subscribe'}
           </button>
         </div>

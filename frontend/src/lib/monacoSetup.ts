@@ -1,3 +1,5 @@
+import { accentTokens } from './accentPalette'
+import { useSettingsStore } from '@/stores/settings'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
@@ -33,33 +35,38 @@ export function configureMonacoLoader(): void {
 }
 
 const DARK_COLORS: monaco.editor.IColors = {
-  'editor.background': '#05070D',
+  'editor.background': '#0B0F13',
   'editor.foreground': '#F8FAFC',
   'editorLineNumber.foreground': '#4B5563',
   'editorLineNumber.activeForeground': '#94A3B8',
-  'editor.selectionBackground': '#2563EB44',
-  'editor.lineHighlightBackground': '#0E111A',
-  'editorIndentGuide.background1': '#1F2333',
-  'editorGutter.background': '#05070D',
-  'editorWidget.background': '#0B0D14',
-  'editorWidget.border': '#1F2333',
-  'input.background': '#0E111A',
-  'dropdown.background': '#0E111A',
+  'editor.selectionBackground': '#7DD3FC33',
+  'editor.lineHighlightBackground': '#18212B',
+  'editorIndentGuide.background1': '#28313C',
+  'editorGutter.background': '#0B0F13',
+  'editorWidget.background': '#11171D',
+  'editorWidget.border': '#28313C',
+  'input.background': '#18212B',
+  'dropdown.background': '#18212B',
 }
 
 const LIGHT_COLORS: monaco.editor.IColors = {
-  'editor.background': '#F7F8FB',
-  'editor.foreground': '#151821',
+  'editor.background': '#FAFBFC',
+  'editor.foreground': '#172331',
   'editorLineNumber.foreground': '#9AA1AF',
   'editorLineNumber.activeForeground': '#4B5563',
-  'editor.selectionBackground': '#7C3AED22',
-  'editor.lineHighlightBackground': '#EEF0F5',
-  'editorIndentGuide.background1': '#D8DCE5',
-  'editorGutter.background': '#F7F8FB',
+  'editor.selectionBackground': '#087D9B22',
+  'editor.lineHighlightBackground': '#F1F5F8',
+  'editorIndentGuide.background1': '#DBE1E8',
+  'editorGutter.background': '#FAFBFC',
   'editorWidget.background': '#FFFFFF',
-  'editorWidget.border': '#D8DCE5',
+  'editorWidget.border': '#DBE1E8',
   'input.background': '#FFFFFF',
   'dropdown.background': '#FFFFFF',
+}
+
+function editorAccent(mode: 'dark' | 'light'): monaco.editor.IColors {
+  const tokens = accentTokens(useSettingsStore.getState().settings.appearance.accentColor ?? '', mode)
+  return tokens.accent ? { 'editor.selectionBackground': tokens.accent + '33', 'editorCursor.foreground': tokens.accent, 'focusBorder': tokens.accent } : {}
 }
 
 export function applyAdomniaMonacoTheme(m: typeof monaco): void {
@@ -67,13 +74,13 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
     base: 'vs-dark',
     inherit: true,
     rules: [],
-    colors: DARK_COLORS,
+    colors: { ...DARK_COLORS, ...editorAccent('dark') },
   })
   m.editor.defineTheme('adomnia-light', {
     base: 'vs',
     inherit: true,
     rules: [],
-    colors: LIGHT_COLORS,
+    colors: { ...LIGHT_COLORS, ...editorAccent('light') },
   })
 }
 
@@ -105,11 +112,11 @@ export const GO_STUDIO_THEMES = { dark: 'adomnia-go-dark', light: 'adomnia-go-li
 /** Sfondo dell'editor uguale alle isole di Go Studio (--gs-island in goStudioChrome.css). */
 const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
   ...DARK_COLORS,
-  'editor.background': '#0B0D14',
-  'editorGutter.background': '#0B0D14',
-  'editor.lineHighlightBackground': '#131722',
+  'editor.background': '#11171D',
+  'editorGutter.background': '#11171D',
+  'editor.lineHighlightBackground': '#222D39',
   'editor.lineHighlightBorder': '#00000000',
-  'editorWidget.background': '#131722',
+  'editorWidget.background': '#222D39',
 }
 
 const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
@@ -123,8 +130,12 @@ const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
 /** Temi di Go Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyGoStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: GO_STUDIO_DARK_COLORS })
-  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: GO_STUDIO_LIGHT_COLORS })
+  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...GO_STUDIO_DARK_COLORS, ...editorAccent('dark') } })
+  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...GO_STUDIO_LIGHT_COLORS, ...editorAccent('light') } })
 }
+
+useSettingsStore.subscribe((state, previous) => {
+  if (state.settings.appearance.accentColor !== previous.settings.appearance.accentColor) applyGoStudioMonacoThemes(monaco)
+})
 
 export { monaco }
