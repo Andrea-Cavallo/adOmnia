@@ -18,7 +18,7 @@
   <a href="#download">Download</a> ·
   <a href="#go-studio">gO Studio</a> ·
   <a href="#api-and-runtime-toolbox">API toolbox</a> ·
-  <a href="#live-collaboration">Collaboration</a> ·
+  <a href="#understand-your-code">Code insight</a> ·
   <a href="#command-line-and-ci">CLI</a> ·
   <a href="#building-from-source">Build</a> ·
   <a href="#documentation">Docs</a>
@@ -34,6 +34,7 @@ Most developers juggle an IDE, an API client, a database GUI, a Kafka tool, a lo
 - **One workflow.** `code → running service → API request → breakpoint → code → response`.
 - **Enterprise-ready.** SOAP/WSDL with WS-Security, mTLS with PEM and JKS, OAuth 2.0, AWS Signature v4, and proxies or VPNs on corporate PCs.
 - **Cross-platform.** Windows, macOS and Linux, shipped as a single executable.
+- **Side by side.** Any module — API Workspace, Database, Broker, Mock Server, Docker Lab — opens in its own native window, next to the code or on another monitor.
 
 ![The adOmnia Hub](docs/screenshots/hub-dark.png)
 
@@ -67,10 +68,34 @@ gO Studio is the Go IDE built into adOmnia, designed for day-to-day Go work on r
 | **Run and test** | Run from the gutter, a test explorer with coverage, Makefile targets, Dockerfiles and compose services, and a Run console that colours log levels. |
 | **Debugging** | Delve with conditional, hit-count and function breakpoints, logpoints and Run to Cursor. A concurrency-first view groups goroutines by origin. |
 | **Go insight** | Dependency graph with versions, licenses, updates and `govulncheck`; a visual `go.mod` editor; a `context.Context` propagation inspector. |
-| **Workspace** | Git in the editor, an integrated terminal, local history, crash recovery of unsaved buffers, and a modular layout where any tool can be moved or detached into its own window. |
-| **Toolchain** | Uses the project's Go SDK, per-project `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` and build tags; no silent toolchain downloads. |
+| **Workspace** | Git in the editor with a two-pane commit dialog, an integrated terminal, local history, crash recovery of unsaved buffers, and a modular layout where any tool can be moved, maximized or detached into its own window. |
+| **Start everything** | *Run → Start Workspace* detects Compose files and `main` packages and starts the whole local environment as one compound run. |
+| **Remote and cloud** | Run configurations target WSL distributions, SSH hosts or running containers. Kubernetes Studio covers pods, deployments, services, config maps and secrets (key names only), with Delve and pprof forwarded from a pod. |
+| **Toolchain** | Uses the project's Go SDK, per-project `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` and build tags; switching SDK restarts gopls; no silent toolchain downloads. |
 
 **Trust model.** A newly opened project can be browsed and edited, but no Go tool, build or process runs against it until you trust it. See the [gO Studio guide](docs/GO-STUDIO.md).
+
+### Understand your code
+
+Static analysis built on Go's type information, without running the code:
+
+- **Architecture Explorer:** import graph, calls between packages, call graphs around any function, entry points and services — `main`, HTTP routes, gRPC services, Kafka producers and consumers — plus data access per table for database/sql, sqlx, pgx and GORM.
+- **REST routes from the code:** route groups, handlers, middleware and request/response DTOs, with *Open in API Client*, *Mock*, *Copy cURL* and *OpenAPI* lenses above every route.
+- **Interface Explorer** and **Error Handling Intelligence:** implementations and near-misses, ignored or shadowed errors, `%v` instead of `%w`, `==` instead of `errors.Is`.
+- **Context propagation:** follows `context.Context` across packages and flags functions that drop it.
+- **Documentation:** every package as `go doc` shows it, `.proto` services and messages, Mermaid diagrams in Markdown and ADRs from `docs/adr`.
+
+### Measure and harden
+
+- **Performance Studio:** pprof profiles from tests or straight from a running service's `/debug/pprof`, flame graph, call graph and per-line cost in the editor gutter; reports exportable as Markdown for an AI assistant.
+- **Go Trace:** execution traces read locally with Go's own parser — goroutines, GC, scheduler latency and blocking.
+- **Benchmarks and fuzzing:** compare benchmarks with the previous run, `main` or any commit; the Fuzzing Studio lists targets and corpus, replays inputs and promotes failures to tests.
+- **Coverage:** gutter coverage, patch coverage and the total compared with the base branch in a temporary worktree.
+- **Security:** `govulncheck` findings ranked by reachability with call paths, plus an offline code scan for hardcoded secrets, weak TLS and crypto, and injection risks.
+
+### AI in the editor
+
+GitHub Copilot, [milk](https://github.com/scoutme/milk) (cheap/deep agent routing over ACP) and the a0 assistant sit beside the editor and receive the open file, unsaved changes included. Right-click actions explain code and errors, generate tests, benchmarks, fuzz targets and docs, and look for race risks and goroutine leaks. *Analyze failure* turns a failed test into a reviewable prompt with its output and reproduction command. Database and Kafka actions read the project's real schema and topics. `.adomnia/aiignore` and the project AI policy decide what never leaves the machine.
 
 ### From code to runtime
 
@@ -78,7 +103,7 @@ Start a service with Run or Debug and it becomes a [Live Development Session](do
 
 - **Debug Request** starts the service under Delve if needed, waits for its port, sends the request and stops at your breakpoint, with code and request side by side.
 - **Request ↔ handler:** the API Workspace shows the Go handler serving a request; a CodeLens on the handler opens, runs or debugs it.
-- **Everything one request touched:** the SQL queries, Kafka messages and log lines a request caused appear next to its response.
+- **Everything one request touched:** the SQL queries (with timing, row counts, slow statements and N+1 hints), Kafka messages and log lines a request caused appear next to its response.
 - **Runtime enrichment:** gO Studio overlays what actually ran — routes, datasources, topics, latency, errors — on the static dependency picture.
 
 ## API and runtime toolbox
@@ -95,18 +120,9 @@ Start a service with Run or Debug and it becomes a [Live Development Session](do
 | **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB explorers; Markdown, Mermaid and LaTeX; PDF annotation, forms and digital signatures. |
 | **Git** | Clone, staging, commits, history graph, branches, merge, push/pull, conflict resolution and collections exported to a reviewable folder layout. |
 | **AI and MCP** | Optional cloud or local models, the a0 assistant, GitHub Copilot and milk in gO Studio, a local agent gateway, an MCP client and an MCP server generator. |
-| **Security and customization** | Encrypted vault, private environments, certificate tools, JavaScript plugins, templates, themes and a personal accent colour. |
+| **Security and customization** | Encrypted vault, private environments, certificate tools, JavaScript and sandboxed WASI plugins (optionally signed), templates, themes and a personal accent colour. |
 
 The [feature catalog](docs/adomnia-feature-catalog.en.md) describes every module.
-
-## Live Collaboration
-
-Share work with colleagues on the same network, with no cloud account involved. One adOmnia hosts a session; others join with an invite code.
-
-- Traffic is encrypted with TLS 1.3, and the host certificate is verified against the fingerprint in the invite.
-- Invites are single-use and expire. Participants are Viewer, Editor or Controller, and the host can change roles or remove anyone.
-- Share a collection, an open request or non-private environments. Secrets are removed before anything leaves the machine, and a preview shows exactly what is sent.
-- Received items wait in an inbox and are imported only when you accept them. Items carrying scripts are flagged.
 
 ## AI
 
@@ -119,7 +135,7 @@ Keys are read from environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 - No account, no telemetry, no automatic cloud sync.
 - Editing and inspection work offline; network traffic goes only to endpoints you call.
 - Cloud AI providers receive only the prompt and context you supply; Ollama or another local endpoint keeps inference on your machine.
-- Local storage is not encrypted by default: keep secrets in the **encrypted vault**. Private environments are excluded from exports and from collaboration.
+- Local storage is not encrypted by default: keep secrets in the **encrypted vault**. Private environments are excluded from exports.
 
 ## Command line and CI
 
