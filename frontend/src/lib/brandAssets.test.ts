@@ -12,4 +12,11 @@ describe('getAppIconForTheme', () => {
     expect(getAppIconForTheme('builtin-sketch')).toBe('/icon-sketch.png')
     expect(getAppIconForTheme('custom-theme')).toBe('/icon.png')
   })
+  it('keeps the mark visible on light and dark surfaces, including custom themes', () => {
+    expect(getAppIconForTheme('builtin-light')).toBe('/icon-black.png')
+    expect(getAppIconForTheme('builtin-dark')).toBe('/icon-white.png')
+    expect(getAppIconForTheme('custom-theme', 'light')).toBe('/icon-black.png')
+    expect(getAppIconForTheme('custom-theme', 'dark')).toBe('/icon-white.png')
+    expect(getAppIconForTheme('builtin-win95', 'light')).toBe('/icon95.png')
+  })
 })

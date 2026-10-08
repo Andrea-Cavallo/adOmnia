@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowRight, ArrowUpRight, Search, Plus, Layers, CircleDot } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, ArrowUpRight, Plus, Layers, CircleDot } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
@@ -49,12 +49,18 @@ export function WelcomePanel() {
     { title: 'New request', detail: 'Create and send an API request', run: () => { newTab(); open('collections') } },
     { title: 'Add connection', detail: 'Open Database Studio', run: () => open('database') },
   ]
+  useEffect(() => {
+    // Hub has no visible search bar: Ctrl/Cmd+F opens the command palette.
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        document.dispatchEvent(new CustomEvent('adomnia:open-palette'))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return <div data-hub-page>
-    <header className="hub-topbar">
-      <span className="hub-breadcrumb">adOmnia <span>/</span> <strong>{t('Overview')}</strong></span>
-      <button className="hub-search" onClick={() => document.dispatchEvent(new CustomEvent('adomnia:open-palette'))}><Search size={18}/><span>{t('Search tools, requests, docs, code...')}</span><kbd>Ctrl K</kbd></button>
-      <span className="hub-local">{t('Local')} <i/></span>
-    </header>
     <main className="hub-content">
       <section className="hub-primary">
         <div className="hub-studios">

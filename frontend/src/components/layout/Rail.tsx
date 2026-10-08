@@ -4,7 +4,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
-import hubLogo from '../../../../assets/images/363d5c87-526d-4305-97bb-030712ca156b.png'
+import { useAppIcon } from '@/lib/brandAssets'
 import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
@@ -18,7 +18,7 @@ import {
   Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
-  BookOpen, MoreVertical, CodeXml, Boxes, AppWindow, Users,
+  BookOpen, Search, CodeXml, Boxes, AppWindow, Users,
 } from 'lucide-react'
 
 interface SubItem {
@@ -330,7 +330,7 @@ export function Rail() {
   const sseRunning = useAppStore((s) => s.sseRunning)
   const browserRunning = useAppStore((s) => s.browserRunning)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
-  const appIcon = hubLogo
+  const appIcon = useAppIcon()
 
   const features = useSettingsStore((s) => s.settings.features)
 
@@ -440,20 +440,20 @@ export function Rail() {
           />
       ))}
 
+      <div className="flex-1" />
+
       <div className="adomnia-rail__divider" aria-hidden="true" />
 
-      {/* The reference's ellipsis is a real action: it opens global navigation. */}
+      {/* Global search sits with the persistent utilities at the bottom. */}
       <button
         data-rail-control
-        onClick={() => document.dispatchEvent(new CustomEvent('adomnia:open-palette'))}
+        onClick={() => { setOpenKey(null); document.dispatchEvent(new CustomEvent('adomnia:open-palette')) }}
         className="adomnia-rail__utility group/btn relative flex items-center justify-center text-text-3 transition-all hover:text-text-1"
         title={nav('Search all tools')}
         aria-label={nav('Search all tools')}
       >
-        <MoreVertical size={19} strokeWidth={2.2} />
+        <Search size={21} strokeWidth={1.7} />
       </button>
-
-      <div className="flex-1" />
 
       {/* Settings */}
       <button

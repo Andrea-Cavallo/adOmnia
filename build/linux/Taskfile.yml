@@ -12,6 +12,7 @@ tasks:
       # Suppress GDK deprecation annotations only, not other compiler warnings.
       CGO_CFLAGS: '{{.CGO_CFLAGS | default "-O2 -g"}} -DGDK_DISABLE_DEPRECATION_WARNINGS'
     cmds:
+      - glib-compile-resources internal/nativeicon/icons.gresource.xml --sourcedir=assets/icons/linux --target=internal/nativeicon/icons.gresource
       # Local builds use Wails' default GTK4/WebKitGTK 6 backend.
       # Packaging can explicitly select the GTK3 compatibility backend.
       - go build -buildvcs=false -trimpath -tags '{{.LINUX_BUILD_TAGS | default "production"}}' -ldflags="-s -w {{.LD_VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}} .

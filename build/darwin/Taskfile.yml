@@ -17,7 +17,7 @@ tasks:
   generate:icons:
     summary: Build iconfile.icns from build/appicon.png (macOS only, uses sips/iconutil).
     status:
-      - test -f build/darwin/iconfile.icns
+      - test -f build/darwin/iconfile.icns && test build/darwin/iconfile.icns -nt build/appicon.png
     cmds:
       - rm -rf build/darwin/iconfile.iconset
       - mkdir -p build/darwin/iconfile.iconset

@@ -404,6 +404,13 @@ export function SetMainWindow(window: application$0.WebviewWindow | null): $Canc
 }
 
 /**
+ * SetNativeIconMode updates running windows; executable/shortcut resources stay static.
+ */
+export function SetNativeIconMode(mode: string): $CancellablePromise<void> {
+    return $Call.ByID(1658110022, mode);
+}
+
+/**
  * SetVaultTimeout sets the vault auto-lock timeout in minutes.
  */
 export function SetVaultTimeout(minutes: number): $CancellablePromise<void> {

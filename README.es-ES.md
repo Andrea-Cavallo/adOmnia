@@ -1,7 +1,7 @@
 
 
 # adOmnia
-![banner de adOmnia](assets/images/banner.png)
+![banner de adOmnia](docs/screenshots/banner.png)
 
 **La cadena de herramientas API completa — desde REST hasta Kafka, desde mocks hasta proxy MITM, desde bases de datos hasta firma de PDF — en una sola aplicación portátil que nunca abandona tu máquina.**
 
@@ -23,11 +23,11 @@ Cliente MCP + Generador de servidor · Carpetas de colecciones versionables · E
 
 ---
 
-![interfaz de adOmnia](assets/images/adOmniaInterface1.png)
+![interfaz de adOmnia](docs/screenshots/api-dark.png)
 
 o tema claro:
 
-![interfaz de adOmnia en tema claro](assets/images/white.png)
+![interfaz de adOmnia en tema claro](docs/screenshots/api-light.png)
 
 ### ¿Por qué adOmnia?
 
@@ -46,7 +46,7 @@ Cuatro cosas lo diferencian, y **ninguna otra herramienta combina las cuatro**:
 
 probar APIs REST:
 
-![adOmnia rest](assets/images/REST.png)
+![adOmnia rest](docs/screenshots/hub-dark.png)
 
 ### ⬇️ Descarga
 

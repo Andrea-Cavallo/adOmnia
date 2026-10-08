@@ -252,9 +252,9 @@ const CLS_MAP: Record<string, string> = {
   'json-null':      'var(--color-json-null)',
   'text-text-3':    'var(--color-text-3)',
   'text-text-1':    'var(--color-text-1)',
-  'json-bracket-1': 'var(--color-json-bracket-1, #FACC15)',
-  'json-bracket-2': 'var(--color-json-bracket-2, #22D3EE)',
-  'json-bracket-3': 'var(--color-json-bracket-3, #F472B6)',
+  'json-bracket-1': 'var(--color-json-bracket-1, var(--color-text-2))',
+  'json-bracket-2': 'var(--color-json-bracket-2, var(--color-text-2))',
+  'json-bracket-3': 'var(--color-json-bracket-3, var(--color-text-2))',
 }
 
 function escapeHtml(s: string): string {

@@ -1,4 +1,5 @@
 import { useThemesStore } from '@/stores/themes'
+import { inferThemeMode } from '@/lib/themeCatalog'
 
 const APP_ICON = '/icon.png'
 const APP_ICON_WIN95 = '/icon95.png'
@@ -12,13 +13,18 @@ const THEME_ICONS: Record<string, string> = {
   'builtin-sketch': APP_ICON_SKETCH,
 }
 
-export function getAppIconForTheme(themeId?: string) {
-  return (themeId && THEME_ICONS[themeId]) || APP_ICON
+export function getAppIconForTheme(themeId?: string, mode?: 'dark' | 'light') {
+  if (themeId && THEME_ICONS[themeId]) return THEME_ICONS[themeId]
+  if (mode) return mode === 'light' ? '/icon-black.png' : '/icon-white.png'
+  if (themeId === 'builtin-light') return '/icon-black.png'
+  if (themeId === 'builtin-dark') return '/icon-white.png'
+  return APP_ICON
 }
 
 export function useAppIcon() {
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
-  return getAppIconForTheme(activeThemeId)
+  const theme = useThemesStore((s) => s.themes.find(t => t.id === s.activeThemeId))
+  return getAppIconForTheme(activeThemeId, theme ? inferThemeMode(theme) : undefined)
 }
 
 /**
@@ -28,7 +34,8 @@ export function useAppIcon() {
  */
 export function useResponseLogo(fallback: string): string {
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
-  return activeThemeId === 'builtin-sketch' ? APP_ICON_SKETCH : fallback
+  const icon = useAppIcon()
+  return activeThemeId ? icon : fallback
 }
 
 /** True while a skin that redraws the product is active. */

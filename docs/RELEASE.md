@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.70 release notes: Live Collaboration and a new identity
+
+See [the full v0.9.70 notes](releases/v0.9.70.md): secure LAN sharing of
+collections, requests and environments, a new theme-aware icon, a quieter
+interface and a thinner Go binding layer.
+
 ## v0.9.69 release notes: coherent design and personal palettes
 
 See [the full v0.9.69 notes](releases/v0.9.69.md) for the editorial Hub, shared

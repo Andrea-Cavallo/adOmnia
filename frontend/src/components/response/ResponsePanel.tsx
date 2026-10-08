@@ -41,7 +41,6 @@ function ResponseHeaderBar({ state, headerActions, children }: {
   const tr = useUiTranslation()
   return (
     <div data-response-header className="flex h-9 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
-      <span className="min-w-0 truncate text-xs font-medium text-text-2">{tr('Response')}</span>
       {state && (
         <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-text-3">
           <span className={cn('h-1.5 w-1.5 rounded-full', state === 'sending' ? 'bg-accent motion-safe:animate-pulse' : 'bg-text-4')} />
@@ -757,7 +756,6 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
       <div className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
         {/* Status bar with validation badge */}
         <div className="flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
-          <span className="min-w-0 truncate text-xs font-medium text-text-2">{tr('Response')}</span>
           <span className={cn('shrink-0 px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>
             {response.status} {response.statusText}
           </span>

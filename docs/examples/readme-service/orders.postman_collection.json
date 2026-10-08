@@ -1,0 +1,15 @@
+{
+  "info": { "name": "Orders API · Local demo", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "item": [
+    { "name": "Health check", "request": { "method": "GET", "url": "http://127.0.0.1:18080/health" } },
+    { "name": "List orders", "request": { "method": "GET", "url": "http://127.0.0.1:18080/orders" } },
+    {
+      "name": "Create order",
+      "request": {
+        "method": "POST", "url": "http://127.0.0.1:18080/orders",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"customerId\": \"usr_1001\",\n  \"items\": [\n    { \"sku\": \"coffee-001\", \"quantity\": 2 },\n    { \"sku\": \"mug-002\", \"quantity\": 1 }\n  ]\n}", "options": { "raw": { "language": "json" } } }
+      }
+    }
+  ]
+}

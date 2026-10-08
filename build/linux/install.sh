@@ -33,6 +33,11 @@ for sz in "${ICON_SIZES[@]}"; do
     fi
 done
 
+if [ -f "$SCRIPT_DIR/icons/adomnia-symbolic.svg" ]; then
+    mkdir -p "$HICOLOR_BASE/scalable/apps"
+    cp "$SCRIPT_DIR/icons/adomnia-symbolic.svg" "$HICOLOR_BASE/scalable/apps/"
+fi
+
 # Fallback single-icon copy (for environments that look in app dir)
 if [ -f "$SCRIPT_DIR/adomnia.png" ]; then
     cp "$SCRIPT_DIR/adomnia.png" "$INSTALL_DIR/adomnia.png"

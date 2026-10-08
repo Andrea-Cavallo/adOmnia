@@ -81,11 +81,14 @@
     --shadow-glow: 0 0 20px color-mix(in oklab, var(--color-accent) 15%, transparent);
 
     /* JSON syntax highlight */
-    --color-json-key: #C8E6FF;
-    --color-json-string: #A8F0A8;
-    --color-json-number: #FFD280;
-    --color-json-bool: #D8B4FE;
-    --color-json-null: #94A3B8;
+    --color-json-key: #E8EDF5;
+    --color-json-string: #B5C0CF;
+    --color-json-number: #B8CBE0;
+    --color-json-bool: #B8CBE0;
+    --color-json-null: #97A5B9;
+    --color-json-bracket-1: #97A5B9;
+    --color-json-bracket-2: #97A5B9;
+    --color-json-bracket-3: #97A5B9;
   }
 
   /* Light theme overrides */
@@ -125,11 +128,14 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
     --shadow-glow: 0 0 20px var(--color-accent-glow);
 
-    --color-json-key: #1D4ED8;
-    --color-json-string: #15803D;
-    --color-json-number: #B45309;
-    --color-json-bool: #7C3AED;
-    --color-json-null: #64748B;
+    --color-json-key: #172331;
+    --color-json-string: #405165;
+    --color-json-number: #334E68;
+    --color-json-bool: #334E68;
+    --color-json-null: #5C6D82;
+    --color-json-bracket-1: #5C6D82;
+    --color-json-bracket-2: #5C6D82;
+    --color-json-bracket-3: #5C6D82;
   }
 }
 

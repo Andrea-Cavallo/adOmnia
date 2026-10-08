@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { getActiveThemeId, setActiveThemeId } from '@/lib/themes-api'
 import { getAppIconForTheme } from '@/lib/brandAssets'
 import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
+import { syncNativeIcon } from '@/lib/native-icon-api'
 
 interface ThemeContextValue {
   applyTheme: (theme: Theme) => void
@@ -82,8 +83,8 @@ function injectThemeVariables(theme: Theme) {
   })
 }
 
-function syncDocumentIcon(themeId: string) {
-  const href = getAppIconForTheme(themeId)
+function syncDocumentIcon(themeId: string, mode?: 'dark' | 'light') {
+  const href = getAppIconForTheme(themeId, mode)
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
   if (!link) {
     link = document.createElement('link')
@@ -97,6 +98,7 @@ function syncDocumentMode(theme: Theme) {
   const html = document.documentElement
   html.setAttribute('data-theme', theme.id)
   const mode = inferThemeMode(theme)
+  syncNativeIcon(mode)
   html.classList.toggle('light', mode === 'light')
   html.classList.toggle('dark', mode === 'dark')
 
@@ -119,7 +121,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const applyTheme = useCallback((theme: Theme) => {
     injectThemeVariables(theme)
     syncDocumentMode(theme)
-    syncDocumentIcon(theme.id)
+    syncDocumentIcon(theme.id, inferThemeMode(theme))
     void setActiveThemeId(theme.id)
     setStoreActiveId(theme.id)
     updateAppearance({ themeId: theme.id, theme: inferThemeMode(theme) })
@@ -142,7 +144,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (active) {
         injectThemeVariables(active)
         syncDocumentMode(active)
-        syncDocumentIcon(active.id)
+        syncDocumentIcon(active.id, inferThemeMode(active))
         setStoreActiveId(active.id)
         if (active.id !== activeId) void setActiveThemeId(active.id)
         if (active.id !== settingsThemeId) {
@@ -159,7 +161,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (active) {
       injectThemeVariables(active)
       syncDocumentMode(active)
-      syncDocumentIcon(activeThemeId)
+      syncDocumentIcon(activeThemeId, inferThemeMode(active))
       return
     }
     syncDocumentIcon(activeThemeId)

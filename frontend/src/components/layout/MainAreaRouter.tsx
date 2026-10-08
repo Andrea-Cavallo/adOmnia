@@ -1,7 +1,7 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppWindow, ArrowLeft, Columns2, X } from 'lucide-react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
-import { DRAG, TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
+import { DRAG, TitlebarWindowControls, WindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
@@ -316,8 +316,8 @@ function FloatingWindowControls() {
   if (!titlebar.active) return null
   return (
     <div {...titlebar.props} className="app-titlebar absolute right-0 top-0 z-30 flex h-8 items-stretch rounded-bl-md border-b border-l border-border-1 bg-surface-1/90 backdrop-blur" style={DRAG}>
-      <span className="w-16" title="Drag to move the window" />
-      <TitlebarWindowControls height="h-8" />
+      <span className="absolute right-full top-0 h-full w-16" title="Drag to move the window" />
+      <WindowControls height="h-8" />
     </div>
   )
 }

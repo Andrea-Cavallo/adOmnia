@@ -23,6 +23,7 @@ echo "==> Removing hicolor icons ..."
 for sz in 16 24 32 48 64 128 256 512; do
     rm -f "$HICOLOR_BASE/${sz}x${sz}/apps/adomnia.png"
 done
+rm -f "$HICOLOR_BASE/scalable/apps/adomnia-symbolic.svg"
 
 gtk-update-icon-cache -f -t "$HICOLOR_BASE" 2>/dev/null || true
 xdg-icon-resource forceupdate 2>/dev/null || true

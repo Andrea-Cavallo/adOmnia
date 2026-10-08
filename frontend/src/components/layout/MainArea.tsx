@@ -254,15 +254,6 @@ function loadRequestResponseLayout(): RequestResponseLayout {
   }
 }
 
-function RequestPaneHeader() {
-  const tr = useUiTranslation()
-  return (
-    <div className="flex h-9 shrink-0 items-center border-b border-border-1 bg-surface-1 px-3">
-      <span className="text-xs font-medium text-text-2">{tr('Request')}</span>
-    </div>
-  )
-}
-
 /**
  * Request/Response arrangement switch. It lives in the response header so the
  * whole workflow keeps a single row of layout controls at the top right.
@@ -1067,7 +1058,6 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
             )}
             style={requestResponseLayout === 'horizontal' ? { width: composerWidth } : { height: composerHeight }}
           >
-            <RequestPaneHeader />
             <Composer
               key={activeTab.id}
               tabId={activeTab.id}

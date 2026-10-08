@@ -33,6 +33,8 @@ package_tarball() {
         fi
     done
 
+    cp assets/icons/linux/adomnia-symbolic.svg "$stage/icons/"
+
     if [ -f assets/icons/linux/adOmnia_256x256.png ]; then
         cp assets/icons/linux/adOmnia_256x256.png "$stage/adomnia.png"
     fi

@@ -6,6 +6,20 @@ package nativeicon
 /*
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
+#include <stdlib.h>
+
+static void set_theme_icon(void *handle, const char *path, const char *name) {
+    GtkWindow *window = GTK_WINDOW(handle);
+    GtkIconTheme *theme = gtk_icon_theme_get_for_display(gtk_widget_get_display(GTK_WIDGET(window)));
+    char **paths = gtk_icon_theme_get_search_path(theme);
+    gboolean found = FALSE;
+    for (int i = 0; paths != NULL && paths[i] != NULL; i++) {
+        if (g_strcmp0(paths[i], path) == 0) { found = TRUE; break; }
+    }
+    g_strfreev(paths);
+    if (!found) gtk_icon_theme_add_search_path(theme, path);
+    gtk_window_set_icon_name(window, name);
+}
 
 static gboolean register_adomnia_icon(const void *data, gsize size) {
     GBytes *bytes = g_bytes_new(data, size);
@@ -41,6 +55,14 @@ var icons []byte
 
 var registerOnce sync.Once
 var registered bool
+
+func setThemeIcon(window unsafe.Pointer, path, mode string) {
+	cPath := C.CString(path)
+	cName := C.CString("adomnia-theme-" + mode)
+	defer C.free(unsafe.Pointer(cPath))
+	defer C.free(unsafe.Pointer(cName))
+	C.set_theme_icon(window, cPath, cName)
+}
 
 // Set must be called on the GTK main thread with a live GtkWindow.
 func Set(window unsafe.Pointer) bool {
