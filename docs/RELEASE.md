@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.73 release notes: an arcade in the Hub
+
+See [the full v0.9.73 notes](releases/v0.9.73.md): Snake, Tris, Pong and
+Asteroids on one dot-matrix renderer behind the FOLD wordmark, chosen at
+random, and arrow keys that no longer leak to the app while playing.
+
 ## v0.9.72 release notes: FOLD, a wordmark and a game of Snake
 
 See [the full v0.9.72 notes](releases/v0.9.72.md): FOLD in the Hub with the

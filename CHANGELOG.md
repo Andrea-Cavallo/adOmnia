@@ -6,6 +6,17 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.73] - 2026-10-08
+
+### Added
+- **Hub arcade:** clicking the FOLD wordmark now opens a random mini game (never the same twice in a row) in the Today box: **Snake**, **Tris** (tic-tac-toe against a minimax AI that sometimes slips), **Pong** (first to 5 against the AI) and **Asteroids** (turn, thrust, fire; big rocks split). All four share one dot-matrix renderer, so they look the same: Nothing-style dots, text color and accent color, score and per-game best in the Doto font. Arrows/WASD, Space or Enter as the action key, P to pause, Enter to play again, Esc to return to the wordmark.
+
+### Changed
+- **Snake:** an accent flash when it eats, a fading tail and a blinking snake on game over. P pauses (Space is now the action key shared by all games).
+
+### Fixed
+- **Arrow keys leaked to the app while playing:** the game now owns the arrow keys only while it is active; clicking outside the box pauses it and hands the keyboard back to the app.
+
 ## [0.9.72] - 2026-10-08
 
 ### Added
