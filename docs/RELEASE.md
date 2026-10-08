@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.71 release notes: a Hub that knows your day
+
+See [the full v0.9.71 notes](releases/v0.9.71.md): a Nothing-inspired Today
+column with a live dot-matrix clock and a daily request/error counter, an
+executable icon that matches the app, and resizable Database Studio columns.
+
 ## v0.9.70 release notes: Live Collaboration and a new identity
 
 See [the full v0.9.70 notes](releases/v0.9.70.md): secure LAN sharing of

@@ -6,15 +6,22 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.71] - 2026-10-08
+
 ### Changed
+- **Hub "Today" column:** the right side of the Hub is redesigned in a Nothing-inspired style: a live dot-matrix clock with date and local time zone, the active workspace with open tabs and time since the last request, an Open workspace button, today's request count and the Start something new actions. Clock, workspace icon and button follow the accent palette in Dark and White.
+- **Executable icon matches the app:** the exe, launcher, `appicon.png`, Linux icons and the running window icon use the white mark on the dark tile instead of the neon gradient. The neon tile is kept as `assets/icons/icon-neon.ico`.
 - **Database Studio resizes like the rest of adOmnia:** the Connections column, the Favorites/History/Schema column, the MongoDB database navigator and the split between query editor and results use the shared drag handle and keep their size across restarts. The logic lives in the reusable `useResizableSize` hook.
 - **Database Studio logos:** connections and the Database Type picker show the SQLite, PostgreSQL, MySQL and MongoDB logos (Simple Icons) in readable brand colors on Dark and White; the selected type shows the logo in white. `BrandIcon` moved to `components/ui` so any module can use it without loading Go Studio.
 - **Rail order:** Go Studio is first, followed by API Core. Browser Debug moves from its own rail entry into Power Tools › Debugging.
 
 ### Added
+- **Today's requests:** every sent request is counted per day, with errors (network failures and HTTP status >= 400) counted separately. The counter is stored locally, survives restarts, resets at midnight and does not depend on response history size or the save-responses setting.
 - **Accent color from the status bar:** right-click Dark or White in the bottom-right corner to pick the accent from presets, the color wheel or a HEX value.
 
 ### Fixed
+- **Moving the window from the Hub:** with the app titlebar enabled, the whole top strip of the Hub is an invisible drag area (double-click maximizes); before, only a small handle next to the window controls worked.
+- **Smaller embedded frontend:** two unused PNGs (old logo and neon icon) are no longer shipped inside the executable.
 - **Dark column next to the rail:** panels now fade in without sliding, so Chromium/WebView2 no longer leaves an unpainted dark strip beside the rail in White.
 - **Go Studio code dark in White:** the request Scripts editor and the OpenAPI spec editor forced Monaco's dark theme, which is shared by every editor on the page. They now follow the app theme.
 - **Windows and Linux build scripts use the new icon:** `build.ps1` and `build-linux.ps1` regenerate icons from `adomnia-mark.svg` through `scripts/sync-icons.ps1` (keeping the committed icons when sharp is unavailable) instead of the old ImageMagick pipeline. The plain `go build` fallback also embeds the icon.
