@@ -116,6 +116,7 @@ describe('stable UI localization', () => {
       'jsonviewer',
       'loginspector',
       'powertools',
+      'browser',
     ])
     expect(TOOL_CATEGORIES.flatMap((category) => category.tools.map((tool) => tool.id))).not.toContain('loginspector')
   })

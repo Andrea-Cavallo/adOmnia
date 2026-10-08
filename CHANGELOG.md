@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+- **Rail order:** Go Studio is first, followed by API Core. Browser Debug moves from its own rail entry into Power Tools › Debugging.
+
 ### Added
 - **Accent color from the status bar:** right-click Dark or White in the bottom-right corner to pick the accent from presets, the color wheel or a HEX value.
 

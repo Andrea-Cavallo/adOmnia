@@ -89,6 +89,11 @@ export const FEATURE_BY_ID = Object.fromEntries(
 
 export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
+    key: 'development', label: 'Go Studio', code: 'GO',
+    directItem: 'goide',
+    groups: [{ title: 'Development', items: [{ id: 'goide' }] }],
+  },
+  {
     key: 'api', label: 'API Core', code: 'API',
     groups: [
       { title: 'Requests', items: ['collections', 'history', 'scenarios'].map((id) => ({ id: id as RailItem })) },
@@ -102,11 +107,6 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
       { title: 'Streaming', items: ['websocket', 'broker', 'sse'].map((id) => ({ id: id as RailItem })) },
       { title: 'Enterprise', items: ['grpc', 'soap', 'mcp'].map((id) => ({ id: id as RailItem })) },
     ],
-  },
-  {
-    key: 'debug', label: 'Browser Debug', code: 'DEBUG',
-    directItem: 'browser',
-    groups: [{ title: 'Debugging', items: [{ id: 'browser' }] }],
   },
   {
     key: 'data', label: 'Local Data', code: 'DATA',
@@ -124,12 +124,8 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     key: 'tools', label: 'Power Tools', code: 'TOOLS',
     groups: [
       { title: 'Focused Tools', items: ['jsonviewer', 'loginspector', 'powertools'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Debugging', items: [{ id: 'browser' }] },
     ],
-  },
-  {
-    key: 'development', label: 'Go Studio', code: 'GO',
-    directItem: 'goide',
-    groups: [{ title: 'Development', items: [{ id: 'goide' }] }],
   },
   {
     key: 'workspace', label: 'Workspace', code: 'WORK',

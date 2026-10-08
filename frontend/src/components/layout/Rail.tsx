@@ -47,7 +47,6 @@ function Soap95Icon({ size = 12 }: { size?: number }) {
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
-  debug: Bug,
   data: Database,
   tools: Wrench,
   docs: FileText,
@@ -385,7 +384,7 @@ export function Rail() {
     api:       mockRunning || proxyRunning,
     protocols: websocketRunning || sseRunning,
     infra:     false,
-    debug:     browserRunning,
+    tools:     browserRunning,
     data:      false,
   }
 
