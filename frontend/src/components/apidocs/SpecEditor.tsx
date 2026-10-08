@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { configureMonacoYaml } from 'monaco-yaml'
 import { openapi } from '@apidevtools/openapi-schemas'
-import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
+import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco, useAdomniaEditorTheme } from '@/lib/monacoSetup'
 
 configureMonacoLoader()
 
@@ -90,6 +90,7 @@ function registerProviders(m: typeof monaco): void {
 }
 
 export function SpecEditor({ value, language, markers, onChange, onCursor }: SpecEditorProps) {
+  const editorTheme = useAdomniaEditorTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   const beforeMount: BeforeMount = (m) => registerProviders(m)
@@ -108,7 +109,7 @@ export function SpecEditor({ value, language, markers, onChange, onCursor }: Spe
     <Editor
       language={language}
       value={value}
-      theme="adomnia-dark"
+      theme={editorTheme}
       beforeMount={beforeMount}
       onMount={onMount}
       onChange={(next) => onChange(next ?? '')}

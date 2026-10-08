@@ -6,6 +6,7 @@ black marks follow the app theme on every platform; Win95 and Sketch keep
 their dedicated artwork. This changes the app logo and favicon immediately.
 
 Generate PNGs and multi-resolution ICOs with `node scripts/generate-concept-icons.mjs`
+(`build.ps1` and `build-linux.ps1` run it through `scripts/sync-icons.ps1` when the mark is newer than the icons)
 (requires `sharp`, also discoverable through `NODE_PATH`). Windows embeds
 `build/windows/icon.ico`; macOS generates ICNS from `build/appicon.png`;
 Linux packages the PNG sizes and `adomnia-symbolic.svg`. GTK4 builds regenerate

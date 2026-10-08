@@ -39,7 +39,6 @@ $WailsOutDir = Join-Path $ProjectRoot "bin"
 $WailsOutExe = Join-Path $WailsOutDir "adomnia.exe"
 $AppIcon = Join-Path $ProjectRoot "build\appicon.png"
 $WindowsIcon = Join-Path $ProjectRoot "build\windows\icon.ico"
-$SourceIcon = Join-Path $ProjectRoot "assets\images\icon.png"
 
 if ($Output -eq "") {
     $Output = Join-Path $ProjectRoot "adomnia.exe"
@@ -147,30 +146,8 @@ if (-not $GoOnly) {
 Write-Host ""
 
 # ---- Icon assets -------------------------------------------------------------
-$iconScript = Join-Path $ProjectRoot "scripts\generate-icons.ps1"
-$iconsMissing = -not (Test-Path $AppIcon) -or -not (Test-Path $WindowsIcon)
-$iconsStale = $false
-if ((Test-Path $SourceIcon) -and (Test-Path $AppIcon) -and (Test-Path $WindowsIcon)) {
-    $sourceTime = (Get-Item $SourceIcon).LastWriteTimeUtc
-    $iconsStale = ((Get-Item $AppIcon).LastWriteTimeUtc -lt $sourceTime) -or ((Get-Item $WindowsIcon).LastWriteTimeUtc -lt $sourceTime)
-}
-
-if ($iconsMissing -or $iconsStale) {
-    if (Test-Path $iconScript) {
-        Write-Host "==> Preparing app icons..." -ForegroundColor Cyan
-        & $iconScript -SourceIcon $SourceIcon
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "ERR Icon generation failed." -ForegroundColor Red
-            exit 1
-        }
-    }
-}
-
-if (-not (Test-Path $WindowsIcon)) {
-    Write-Host "ERR Windows icon not found at: $WindowsIcon" -ForegroundColor Red
-    exit 1
-}
-Write-Host "OK  Windows icon: $WindowsIcon" -ForegroundColor Green
+& (Join-Path $ProjectRoot "scripts\sync-icons.ps1")
+if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host ""
 
 # ---- Build info --------------------------------------------------------------
@@ -270,7 +247,7 @@ if ($wailsBin -and (-not $GoOnly)) {
     Pop-Location
 
     Write-Host ""
-    Write-Host "--- Building Go binary (no PE metadata -- install Wails for full build)..." -ForegroundColor Yellow
+    Write-Host "--- Building Go binary (icon only, no version metadata -- install Wails for full build)..." -ForegroundColor Yellow
     Write-Host "==> Version:  $Version"
     Write-Host "==> Commit:   $gitCommit"
     Write-Host "==> Output:   $Output"
@@ -279,8 +256,18 @@ if ($wailsBin -and (-not $GoOnly)) {
     $ldflags = "-s -w -X main.Version=$Version -X main.BuildDate=$buildDate -X main.GitCommit=$gitCommit -H windowsgui"
 
     Set-Location $ProjectRoot
+    # Embed the icon in the .exe: go build links any wails_windows_*.syso in the root.
+    $syso = Join-Path $ProjectRoot "wails_windows_amd64.syso"
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & go run "github.com/wailsapp/wails/v3/cmd/wails3@$wailsModuleVersion" generate syso -arch amd64 -icon $WindowsIcon -out $syso
+    $ErrorActionPreference = $previousPreference
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARN Could not embed the icon (wails3 generate syso failed); the .exe will use the default icon." -ForegroundColor Yellow
+    }
     $env:CGO_ENABLED = "1"
     go build -buildvcs=false -trimpath -tags production -ldflags $ldflags -o $Output .
+    Remove-Item -Force -ErrorAction SilentlyContinue $syso
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERR Go build failed." -ForegroundColor Red

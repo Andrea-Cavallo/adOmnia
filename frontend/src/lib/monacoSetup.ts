@@ -84,6 +84,14 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
   })
 }
 
+/**
+ * Monaco has one theme for the whole page: every editor must follow the app
+ * mode, or a single hardcoded dark editor turns Go Studio dark in White.
+ */
+export function useAdomniaEditorTheme(): 'adomnia-light' | 'adomnia-dark' {
+  return useSettingsStore((state) => state.settings.appearance.theme === 'light' ? 'adomnia-light' : 'adomnia-dark')
+}
+
 /** Semantic tokens di gopls: solo nei temi di Go Studio, così gli altri editor di adOmnia restano invariati. */
 const GO_SEMANTIC_RULES_DARK: monaco.editor.ITokenThemeRule[] = [
   { token: 'parameter', foreground: 'E6B673' },

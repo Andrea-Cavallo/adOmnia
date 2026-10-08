@@ -63,17 +63,9 @@ if ($Compress) {
 
 # ---- [1] Icon generation -----------------------------------------------------
 if (-not $SkipIcons) {
-    $iconScript = Join-Path $PSScriptRoot "generate-icons.ps1"
-    if (Test-Path $iconScript) {
-        Write-Host ""
-        Write-Host "==> [1] Generating icons..." -ForegroundColor Cyan
-        & $iconScript
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "WARN Icon generation failed (ImageMagick missing?). Using existing icons." -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "WARN generate-icons.ps1 not found  -  using existing icons." -ForegroundColor Yellow
-    }
+    Write-Host ""
+    & (Join-Path $PSScriptRoot "sync-icons.ps1")
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 } else {
     Write-Host "SKIP Icon generation (-SkipIcons)" -ForegroundColor DarkGray
 }

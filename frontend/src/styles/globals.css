@@ -357,9 +357,11 @@
     0% { filter: brightness(1.35); }
     100% { filter: brightness(1); }
   }
+  /* Opacity only: sliding the panel uncovered a strip beside the rail that
+     Chromium/WebView2 did not repaint, leaving a dark column after a theme change. */
   @keyframes panelSlideIn {
-    from { opacity: 0; transform: translateX(8px); }
-    to   { opacity: 1; transform: translateX(0); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
   .palette-backdrop-enter {
     animation: paletteBackdropIn 140ms ease-out both;
@@ -418,7 +420,7 @@
     backdrop-filter: blur(14px) saturate(1.2);
   }
   .panel-enter {
-    animation: panelSlideIn 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: panelSlideIn 120ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

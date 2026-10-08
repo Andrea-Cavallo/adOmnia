@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FolderKanban, Moon, Sun } from 'lucide-react'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
@@ -8,6 +8,7 @@ import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { AccentColorSetting } from '@/components/settings/AccentColorSetting'
 
 export function StatusBar() {
   const tr = useUiTranslation()
@@ -60,6 +61,17 @@ export function StatusBar() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [toggleTheme])
+
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const appearanceRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!paletteOpen) return
+    const close = (event: MouseEvent) => { if (!appearanceRef.current?.contains(event.target as Node)) setPaletteOpen(false) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setPaletteOpen(false) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', onKey) }
+  }, [paletteOpen])
 
   return (
     <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
@@ -128,7 +140,12 @@ export function StatusBar() {
         )}
         {/* Quick appearance buttons make the available skins discoverable; the
             keyboard shortcut cycles the same set. */}
-        <div className="flex items-center gap-0.5" role="group" aria-label={tr('Appearance')}>
+        <div ref={appearanceRef} className="relative flex items-center gap-0.5" role="group" aria-label={tr('Appearance')}>
+          {paletteOpen && (
+            <div role="dialog" aria-label={tr('Accent color')} className="absolute bottom-full right-0 z-50 mb-2 w-72 rounded-lg border border-border-2 bg-surface-1 px-3 text-text-1 shadow-xl [&>div]:border-b-0">
+              <AccentColorSetting />
+            </div>
+          )}
           {([
             { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme'), text: 'Dark' },
             { mode: 'light' as const, Icon: Sun, label: tr('Light theme'), text: 'White' },
@@ -136,7 +153,8 @@ export function StatusBar() {
             <button
               key={mode}
               onClick={() => applyQuickMode(mode)}
-              title={label}
+              onContextMenu={(event) => { event.preventDefault(); setPaletteOpen((open) => !open) }}
+              title={`${label} · ${tr('Right-click: accent color')}`}
               aria-label={label}
               aria-pressed={currentQuickMode === mode}
               className={cn(

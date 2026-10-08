@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **Accent color from the status bar:** right-click Dark or White in the bottom-right corner to pick the accent from presets, the color wheel or a HEX value.
+
+### Fixed
+- **Dark column next to the rail:** panels now fade in without sliding, so Chromium/WebView2 no longer leaves an unpainted dark strip beside the rail in White.
+- **Go Studio code dark in White:** the request Scripts editor and the OpenAPI spec editor forced Monaco's dark theme, which is shared by every editor on the page. They now follow the app theme.
+- **Windows and Linux build scripts use the new icon:** `build.ps1` and `build-linux.ps1` regenerate icons from `adomnia-mark.svg` through `scripts/sync-icons.ps1` (keeping the committed icons when sharp is unavailable) instead of the old ImageMagick pipeline. The plain `go build` fallback also embeds the icon.
+
 ## [0.9.70] - 2026-10-08
 
 ### Added

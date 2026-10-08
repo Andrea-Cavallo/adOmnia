@@ -4,7 +4,7 @@ import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
 import { generateScript, findSpecForRequest } from '@/lib/aiScripts'
 import type { RequestItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
+import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco, useAdomniaEditorTheme } from '@/lib/monacoSetup'
 import { useUiTranslation } from '@/lib/uiI18n'
 
 interface ScriptsEditorProps {
@@ -49,6 +49,7 @@ function configureJavaScript(m: typeof monaco): void {
 configureMonacoLoader()
 
 export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', editableTabs = ['pre', 'post', 'tests'], request }: ScriptsEditorProps) {
+  const editorTheme = useAdomniaEditorTheme()
   const tr = useUiTranslation()
   const [tab, setTab] = useState<ScriptTab>(editableTabs.includes(initialTab) ? initialTab : editableTabs[0])
   const [diagnostic, setDiagnostic] = useState<ScriptDiagnostic | null>(null)
@@ -145,7 +146,7 @@ ${script}` : script)
           path={`inmemory://adomnia/request-scripts/${tab}.js`}
           language="javascript"
           value={value}
-          theme="adomnia-dark"
+          theme={editorTheme}
           beforeMount={beforeMount}
           onChange={(next) => handleChange(next ?? '')}
           onValidate={(markers) => {
