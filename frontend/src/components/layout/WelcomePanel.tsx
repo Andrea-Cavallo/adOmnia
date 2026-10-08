@@ -1,9 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
-import { ArrowRight, ArrowUpRight, ChevronRight, Plus, Layers, CircleDot, BarChart3 } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Plus, CircleDot } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
-import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
-import { DAILY_STATS_EVENT, readDailyStats } from '@/lib/dailyStats'
 import { FoldMark } from './FoldMark'
 import { ArcadeMenu } from './arcade/ArcadeMenu'
 import type { GameId } from './arcade/types'
@@ -75,17 +73,6 @@ function useNow() {
   return now
 }
 
-function useDailyStats(day: string) {
-  const [stats, setStats] = useState(() => readDailyStats())
-  useEffect(() => {
-    const update = () => setStats(readDailyStats())
-    update() // `day` changes at midnight: re-read so the counter starts from zero
-    window.addEventListener(DAILY_STATS_EVENT, update)
-    return () => window.removeEventListener(DAILY_STATS_EVENT, update)
-  }, [day])
-  return stats
-}
-
 function timeZoneLabel(now: Date) {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
   const city = zone.split('/').pop()?.replace(/_/g, ' ') ?? ''
@@ -97,20 +84,12 @@ function TodayPanel() {
   const tr = useUiTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
   const open = useAppStore(s => s.setActiveRail)
-  const workspaces = useCollectionsStore(s => s.workspaces)
-  const workspaceId = useCollectionsStore(s => s.activeWorkspaceId)
   const tabs = useTabsStore(s => s.tabs)
-  const history = useTabsStore(s => s.responseHistory)
   const newTab = useTabsStore(s => s.newTab)
   const now = useNow()
   const [game, setGame] = useState<GameId | null>(null)
   const [arcadeOpen, setArcadeOpen] = useState(false)
   const openGame = () => setArcadeOpen(true)
-  const stats = useDailyStats(now.toDateString())
-  const workspace = workspaces.find(w => w.id === workspaceId)
-  const openTabs = tabs.filter(tab => tab.workspaceId === workspaceId).length
-  const lastAt = history.find(h => h.recordedAt)?.recordedAt
-  const lastMinutes = lastAt ? Math.max(0, Math.floor((now.getTime() - new Date(lastAt).getTime()) / 60000)) : null
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = now.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '').toUpperCase()
   const actions: { title: string; detail: string; run: () => void }[] = [
@@ -127,19 +106,6 @@ function TodayPanel() {
       : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>06 ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
-    <button className="hub-ws" onClick={() => open('collections')}>
-      <Layers size={36} strokeWidth={1.3}/>
-      <span><strong>{workspace?.name ?? 'adOmnia'}</strong>
-        <small>{openTabs} {t('open tabs')} <b>•</b> {t('Local-first ready')}</small>
-        <small>{lastMinutes === null ? t('No requests yet') : `${t('Last request')} ${lastMinutes < 1 ? t('just now') : `${lastMinutes} ${t('min ago')}`}`}</small>
-      </span><ChevronRight size={18}/>
-    </button>
-    <button className="hub-open-ws" onClick={() => open('collections')}><span>{t('Open workspace')}</span><ArrowRight size={19}/></button>
-    <div className="hub-signals">
-      <button onClick={() => open('history')}>
-        <BarChart3 size={28} strokeWidth={1.3}/><span><strong>{t("Today's requests")}</strong><small>{stats.requests} {t('requests')} <b>•</b> <em data-error={stats.errors > 0}>{stats.errors} {t('errors')}</em></small></span><i data-on={stats.requests > 0} data-error={stats.errors > 0}/>
-      </button>
-    </div>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>
   </aside>
 }

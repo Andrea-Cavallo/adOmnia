@@ -2,6 +2,11 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.75 release notes: the Hub fits on one page
+
+See [the full v0.9.75 notes](releases/v0.9.75.md): a lighter Today column
+with Start something new moved up, so the whole Hub fits without scrolling.
+
 ## v0.9.74 release notes: choose your game
 
 See [the full v0.9.74 notes](releases/v0.9.74.md): an explicit six-game

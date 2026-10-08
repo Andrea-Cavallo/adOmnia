@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.75] - 2026-10-08
+
+### Changed
+- **Hub fits one page:** the Today column drops the workspace card, the Open workspace button and the daily request counter. Start something new (Open project, New request, Add connection) moves up under the clock, and tighter studio cards keep the whole Hub visible without scrolling, down to 1280×760.
+
 ## [0.9.74] - 2026-10-08
 
 ### Added
