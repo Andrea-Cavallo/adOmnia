@@ -13,6 +13,8 @@ const mark = source.replace(/<defs>[\s\S]*?<\/defs>/, '').replaceAll('url(#metal
 const black = mark.replaceAll('#f3f7ff', '#101522')
 const tile = `<rect x="12" y="12" width="488" height="488" rx="110" fill="#0b1020" stroke="url(#metal)" stroke-width="4"/>`
 const neon = source.replace('</defs>', '</defs>' + tile)
+// Default launcher/executable icon: the white mark on the dark tile, as shown in the app.
+const dark = mark.replace(/(<svg[^>]*>)/, '$1<rect x="12" y="12" width="488" height="488" rx="110" fill="#0b1020" stroke="#2a3550" stroke-width="4"/>')
 const light = black.replace(/(<svg[^>]*>)/, '$1<rect x="12" y="12" width="488" height="488" rx="110" fill="#f3f7ff"/>')
 async function png(svg, size) {
   return sharp(Buffer.from(svg), { density: 384 }).resize(size, size).png().toBuffer()
@@ -37,20 +39,20 @@ async function ico(svg, file) {
   })
   await save(file, Buffer.concat([header, ...frames]))
 }
-for (const [name, svg] of [['icon', neon], ['icon-white', mark], ['icon-black', black]]) {
+for (const [name, svg] of [['icon', dark], ['icon-neon', neon], ['icon-white', mark], ['icon-black', black]]) {
   const image = await png(svg, 1024)
   await save(`assets/images/${name}.png`, image)
   await save(`frontend/public/${name}.png`, image)
   await ico(svg, `assets/icons/${name}.ico`)
 }
-await ico(neon, 'build/windows/icon.ico')
-for (const [name, svg] of [['dark', neon], ['light', light]]) {
+await ico(dark, 'build/windows/icon.ico')
+for (const [name, svg] of [['dark', dark], ['light', light]]) {
   await ico(svg, `internal/nativeicon/artwork/${name}.ico`)
   await save(`internal/nativeicon/artwork/${name}.png`, await png(svg, 256))
 }
-await save('build/appicon.png', await png(neon, 1024))
-await save('winres/icon.png', await png(neon, 256))
+await save('build/appicon.png', await png(dark, 1024))
+await save('winres/icon.png', await png(dark, 256))
 await save('frontend/public/logo.png', await png(mark, 1024))
-for (const size of sizes) await save(`assets/icons/linux/adOmnia_${size}x${size}.png`, await png(neon, size))
+for (const size of sizes) await save(`assets/icons/linux/adOmnia_${size}x${size}.png`, await png(dark, size))
 await save('assets/icons/linux/adomnia-symbolic.svg', black.replaceAll('#101522', '#2e3436'))
-console.log('Generated neon, white and black PNG/ICO assets and Linux symbolic icon.')
+console.log('Generated dark-tile, neon, white and black PNG/ICO assets and Linux symbolic icon.')
