@@ -200,7 +200,7 @@ pause and explains it.
 ## Flaky tests
 
 - **Run N times.** In the Tests panel, **↻ ×** with 10/20/50/100 reruns the current run with `-count=N -shuffle=on`; the ↻ on a test row runs that test 20 times. Repetitions are counted from the `go test -json` events, never from text.
-- **Analyze failure.** Select a failed test or package and use **Analyze failure** in its detail header. This prepares a draft in the currently selected milk/Copilot chat (milk by default), with recorded output, reported source location and the scoped reproduction command. Review before sending: preparing the draft never calls a provider or reruns a test. Project AI policy and source-location exclusions apply; recognized secrets are redacted and output is capped at 40 KiB with a visible truncation marker. Source files are not read by this action. Native desktop/provider smoke remains tracked in `todo-ide.md`.
+- **Analyze failure.** Select a failed test or package and use **Analyze failure** in its detail header. This prepares a draft in the currently selected milk/Copilot chat (milk by default), with recorded output, reported source location and the scoped reproduction command. Review before sending: preparing the draft never calls a provider or reruns a test. Project AI policy and source-location exclusions apply; recognized secrets are redacted and output is capped at 40 KiB with a visible truncation marker. Source files are not read by this action. Native desktop/provider smoke remains tracked in `mds/todo-ide.md`.
 - **Flaky badge and filter.** A test that both passed and failed shows *flaky failed/runs*; a test that always failed stays a plain failure. The *N flaky* toggle shows only flaky tests. One failed repetition keeps the test red even if the last one passed.
 - **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
 - **Possible causes.** For a flaky test the detail lists hints read from the output of every repetition: data race, deadlock, timing, port conflict, unreachable service, channel or map misuse, or (with shuffling and no other hint) test-order dependency. *×N with -race* repeats it with the race detector. These are hints, not a diagnosis.
@@ -504,7 +504,7 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 | Platform | Status |
 | --- | --- |
-| **Windows** | All automated suites pass with `-race`, real gopls and Delve, including process-tree cleanup, the ConPTY terminal and debugger orphan checks. `build.ps1` builds the Wails 3 executable. Manual checks in the running app are still open (M1–M31 in `todo-ide.md`). |
+| **Windows** | All automated suites pass with `-race`, real gopls and Delve, including process-tree cleanup, the ConPTY terminal and debugger orphan checks. `build.ps1` builds the Wails 3 executable. Manual checks in the running app are still open (M1–M31 in `mds/todo-ide.md`). |
 | **Linux** | The automated suites run in CI (`go test -tags gtk3 ./...` on Ubuntu) and passed in the container used during development, including process-tree and PTY cleanup. Manual checks in a desktop session are still open. |
 | **macOS** | The package cross-builds. No runtime verification yet. |
 
@@ -532,7 +532,7 @@ Go Studio integrates GitHub Copilot through the official **GitHub Copilot Langua
 
 **Resilience.** If the language server crashes it restarts after 1, 2, 5 and 10 seconds; after that Copilot pauses with *Restart* and *Show logs*. gopls, the debugger, Git, the terminal and the rest of Go Studio keep working whether Copilot is on, off or failing.
 
-Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `todo-ide.md`. Ask chat is implemented and automatically tested, with its real-account manual check still open.
+Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `mds/todo-ide.md`. Ask chat is implemented and automatically tested, with its real-account manual check still open.
 
 ## Known limits
 

@@ -69,7 +69,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/SOUL.md` | Product soul, UX philosophy, visual/product expectations, and long-term direction. Read this for any UX, theme, workflow, or product-quality decision. |
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
-| `docs/GO-STUDIO.md` | Go Studio (the integrated Go IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `todo-ide.md`. |
+| `docs/GO-STUDIO.md` | Go Studio (the integrated Go IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `mds/todo-ide.md`. |
 | `docs/architecture/ide-multilanguage-refactor.md` | Go Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/goide`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
@@ -146,9 +146,8 @@ adomnia/
 ├── app.go                     # App struct, lifecycle, storage bindings
 ├── *_bindings.go              # Wails binding layer (ai, git, mcp, oaslint,
 │                              #   pdf, psd2, markdown, collectionfs)
-├── update.go                  # In-app update check
+├── update.go                  # In-app update check binding (logic in internal/update)
 ├── platform_options_*.go      # Per-OS Wails options (build tags)
-├── window_chrome_*.go         # Per-OS window chrome (build tags)
 ├── hide_windows.go            # Hide spawned CLI consoles on Windows
 ├── internal/                  # All backend feature logic (one pkg per domain)
 │   ├── mock/ proxy/ browser/  #   mock server, interceptor, CDP debugging
@@ -425,7 +424,7 @@ Go Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase mi
 3. Add a command to `frontend/src/components/goide/goStudioCommands.ts` (menu, label, binding, and an availability reason when disabled) — or, for a language-specific command, to that language's `components/ide/languages/<lang>/commands.ts` with `requires: { language }` — then handle it in `GoStudioPanel.tsx`. Menus, shortcuts and the help dialog all read that registry.
 4. Route backend events by `sessionId`/`resourceId` (and `language` for language servers) in the matching `stores/goide*.ts` store; never let state cross sessions. Stores import pure helpers from `lib/goide/`, not from `components/`.
 5. Keep Go Studio lazy: never import its modules from `App.tsx` or other startup code (`npm run check:startup` enforces this).
-6. Update `docs/GO-STUDIO.md` and `todo-ide.md` when behaviour, storage or shortcuts change.
+6. Update `docs/GO-STUDIO.md` and `mds/todo-ide.md` when behaviour, storage or shortcuts change.
 
 ### Add a protocol (SOAP, gRPC, etc.)
 

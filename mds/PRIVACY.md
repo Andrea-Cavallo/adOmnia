@@ -50,4 +50,4 @@ adOmnia does not require a third-party account. If you connect to external APIs,
 
 ## Changes
 
-Privacy-relevant behavior changes should be documented in this file and in [CHANGELOG.md](CHANGELOG.md).
+Privacy-relevant behavior changes should be documented in this file and in [CHANGELOG.md](../CHANGELOG.md).

@@ -1,6 +1,6 @@
 # TODO — Go Studio integrato in adOmnia
 
-Questo file contiene **solo il lavoro ancora aperto**. Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
+Questo file contiene **solo il lavoro ancora aperto**. Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](../docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
 
 ## Stato
 

@@ -611,7 +611,7 @@ Regressione Go (esistenti, devono restare verdi): detection `go.mod`/`go.work`, 
 
 Frontend: `vitest` su registry comandi con `requires`, provider Monaco registrati per `languageId` fittizio, tool-window registry; `check:startup`.
 
-Manuale (per fase): checklist di `todo-ide.md` — apertura progetto, completamento/hover/rename, run/test/debug con breakpoint, terminale, Git, Performance Studio.
+Manuale (per fase): checklist di `mds/todo-ide.md` — apertura progetto, completamento/hover/rename, run/test/debug con breakpoint, terminale, Git, Performance Studio.
 
 ---
 

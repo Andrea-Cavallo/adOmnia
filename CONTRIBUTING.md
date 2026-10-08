@@ -42,7 +42,7 @@ go test ./...
 - Preserve local-first behavior: no telemetry, no hidden sync, no external calls without explicit user action.
 - For UI changes, keep the dense professional developer-tool aesthetic.
 - For storage/workspace changes, preserve backward compatibility and document migrations.
-- For security-sensitive changes, update [.github/SECURITY.md](.github/SECURITY.md) or [PRIVACY.md](PRIVACY.md) when behavior changes.
+- For security-sensitive changes, update [.github/SECURITY.md](.github/SECURITY.md) or [mds/PRIVACY.md](mds/PRIVACY.md) when behavior changes.
 
 ## Pull Requests
 

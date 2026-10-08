@@ -37,13 +37,13 @@ Backend, correlation and the Delve loop are covered end to end by `internal/goid
 
 ### Go Studio (Go IDE) — shipped through v0.9.39, manual verification open
 
-Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Go Studio workspaces and separate project windows. Details: [GO-STUDIO.md](GO-STUDIO.md). The work queue lives in `todo-ide.md`.
+Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Go Studio workspaces and separate project windows. Details: [GO-STUDIO.md](GO-STUDIO.md). The work queue lives in `mds/todo-ide.md`.
 
 Copilot ghost text and the per-project Ask chat are implemented. The chat streams answers, supports Stop/New Chat and filters file, selection and workspace-manifest context through the same secret and `.adomnia/aiignore` boundary. Automated coverage is present; the real-account UI check remains open.
 
 Open:
 
-- [ ] **P1 — Manual checks in the running app** (M1–M31 in `todo-ide.md`): real-project flows on Windows, Task Manager clean-up, ConPTY in the window, debugger from the UI, themes, and the quality bar compared with the approved mocks.
+- [ ] **P1 — Manual checks in the running app** (M1–M31 in `mds/todo-ide.md`): real-project flows on Windows, Task Manager clean-up, ConPTY in the window, debugger from the UI, themes, and the quality bar compared with the approved mocks.
 - [ ] **P2 — Separate windows not declared yet**: implemented and tested automatically; to be declared in the release notes after the real-window check (M31).
 - [ ] **P1 — Docker Build & Run by hand** (v0.9.39): with Docker Desktop running, Build image, Build & Run and Stop on a real Dockerfile (container removed, `docker ps` clean). The automated test skips without a daemon; Make is already covered end to end.
 - [ ] **P3 — macOS runtime not verified**: the package cross-builds, but nothing has run on macOS.
