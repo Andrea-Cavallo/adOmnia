@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **AI test failure analysis (P4):** the Tests detail view offers Analyze failure for a failed result. It prepares a reviewable milk/Copilot draft with recorded output, failure location and the existing scoped reproduction command (repeat count, shuffle seed, race and build tags). No provider call or rerun happens automatically. Project AI policy and source-location exclusions are checked before preparing the draft; recognized secrets are redacted before limiting output to 40 KiB. Switching test, run or project during preparation discards the stale draft. Native desktop/provider smoke remains tracked separately.
+
 ### Fixed
 - **Recovery latency checks on shared CI runners:** the original 500 ms budget now applies to the nearest-rank 95th percentile across 50 snapshot writes and 20 recovery loads. Isolated filesystem scheduling spikes remain visible in logs without failing the release; repeated slow writes still fail. Every recovery load verifies all ten buffers and their content hashes.
 

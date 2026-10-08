@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 188 | 47 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
-| **P4** | AI e intelligenza del workspace | 151 | 18 |
+| **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
 
 ---
@@ -492,7 +492,7 @@ _Chiusa il 2026-10-07: le 18 azioni AI dell'editor sono nel `CHANGELOG.md` (0.9.
 ## §35 · AI Debugging
 
 - [ ] Panic analysis. — *Parziale: Panic inspector nel debugger rileva il panic e il frame di origine; nessuna analisi AI.*
-- [ ] Test failure analysis.
+_Analisi dei test falliti implementata il 2026-10-08: Tests → Analyze failure prepara una bozza milk/Copilot con output registrato, posizione e comando di riproduzione. Policy AI, esclusioni, redazione e limite dell'output sono coperti da test; lo smoke desktop/provider resta in `todo-ide.md`._
 - [ ] Race analysis. — *Parziale: Race detector con card dei due accessi e confronto fra run; analisi euristica, non AI.*
 - [ ] Deadlock analysis. — *Parziale: La Concurrency View segnala possibile deadlock e canali bloccati in modo euristico; nessuna spiegazione AI.*
 - [ ] Slow request analysis.

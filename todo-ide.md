@@ -12,6 +12,10 @@ Questo file contiene **solo il lavoro ancora aperto**. Le 347 voci completate de
 
 # ▶ PROVE MANUALI DA FARE
 
+### P4 — Analisi AI dei test falliti
+
+- [ ] Nell'app desktop, eseguire un test fallito, selezionarlo e usare **Analyze failure**: bozza nella chat milk/Copilot con output, posizione e comando della run; nessuna chiamata AI prima di Send. Controllare errore leggibile con policy `off`/`local-only` o file escluso e cambio di progetto/test durante la preparazione. Inviare esplicitamente a un provider configurato e verificare la risposta sul caso reale.
+
 Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** in fondo e spunta i gate che sblocca.
 
 **Setup**: Windows, `wails3 task dev` (CLI `wails3` alla versione di `go.mod`), un progetto Go reale (più package, test, `go.mod` con dipendenze, repository Git con modifiche non committate), Task Manager aperto.

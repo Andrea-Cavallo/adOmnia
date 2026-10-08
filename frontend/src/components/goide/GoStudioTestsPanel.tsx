@@ -17,6 +17,8 @@ import { benchmarkMeasurementFor } from './goStudioBenchmarks'
 import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkCompareSettings, loadBenchmarkHistory, saveBenchmarkCompareSettings, saveBenchmarkHistory, type GoStudioBenchmarkCompareSettings, type GoStudioBenchmarkHistoryEntry } from './goStudioBenchmarkHistory'
 import { GoStudioBenchmarkDetail } from './GoStudioBenchmarkDetail'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { testFailureDraft } from '@/lib/goide/testFailureAI'
+import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 
 interface GoStudioTestsPanelProps {
   session: GoIDESession
@@ -245,14 +247,32 @@ interface BenchmarkContext {
 
 function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; benchmark: BenchmarkContext }) {
   const [output, setOutput] = useState<string | null>(null)
+  const [aiBusy, setAIBusy] = useState(false)
+  const [aiError, setAIError] = useState<string | null>(null)
   const openLocation = useGoIDEStore((state) => state.openLocation)
   useEffect(() => {
     let cancelled = false
     setOutput(null)
+    setAIError(null)
     void getGoIDETestOutput(run.runId, result.id).then((text) => { if (!cancelled) setOutput(text) }).catch(() => { if (!cancelled) setOutput('') })
     return () => { cancelled = true }
   }, [run.runId, result.id, result.status])
   const baseDirectory = result.buildFailed ? run.request.workingDirectory : packageDirectory(run, result.package)
+  const analyzeFailure = async () => {
+    setAIBusy(true)
+    setAIError(null)
+    try {
+      const root = useGoIDEStore.getState().sessions.find((session) => session.id === run.sessionId)?.project.realPath
+      if (!root) throw new Error('The project is no longer open.')
+      const draft = await testFailureDraft(run, result, output ?? '', root)
+      const state = useGoIDETestsStore.getState()
+      if (useGoIDEStore.getState().activeSessionId !== run.sessionId || state.selectedNode[run.sessionId] !== result.id || selectedTestRun(state, run.sessionId)?.runId !== run.runId) return
+      const assistant = useGoStudioAssistantStore.getState()
+      assistant.openWithDraft(assistant.pane === 'copilot' ? 'copilot' : 'milk', draft)
+    } catch (reason) {
+      setAIError(reason instanceof Error ? reason.message : String(reason))
+    } finally { setAIBusy(false) }
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[11px]">
@@ -262,11 +282,13 @@ function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun; resul
           <button type="button" onClick={() => void openLocation(result.failure!.relativePath!, result.failure!.line, 1)} className="shrink-0 font-mono text-[10px] text-danger underline decoration-danger/40 underline-offset-2">{result.failure.relativePath}:{result.failure.line}</button>
         )}
         <span className="ml-auto shrink-0 text-[10px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
+        {isFailed(result) && <button type="button" onClick={() => void analyzeFailure()} disabled={aiBusy || !output?.trim()} title="Prepare a failure analysis draft in AI chat; review it before sending" className="shrink-0 rounded border border-border-2 px-1.5 py-0.5 text-text-2 hover:border-accent hover:text-accent disabled:opacity-40">{aiBusy ? 'Preparing…' : 'Analyze failure'}</button>}
         <button type="button" onClick={() => void WailsClipboard.SetText(reproduceCommandFor(run, result))} title="Copy the go test command that reproduces this run (filter, repetitions, -shuffle seed, -race, tags)" className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1">
           <Copy size={10} aria-hidden="true" />
         </button>
       </div>
       <RepetitionSummary run={run} result={result} output={output} />
+      {aiError && <p role="alert" className="shrink-0 px-3 py-1 text-[11px] text-danger">{aiError}</p>}
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-4 text-text-2">
         {benchmarkMeasurementFor(result)
           ? <GoStudioBenchmarkDetail run={run} result={result} runs={runs} {...benchmark} />
@@ -385,7 +407,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
           {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
-        {selected ? <TestDetail run={run} result={selected} runs={runs ?? []} benchmark={benchmarkContext} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
+        {selected ? <TestDetail key={`${run.runId}:${selected.id}`} run={run} result={selected} runs={runs ?? []} benchmark={benchmarkContext} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
       </div>
     </div>
   )
