@@ -9,17 +9,14 @@ import (
 	"adomnia/internal/plugins"
 	"adomnia/internal/templates"
 	"adomnia/internal/themes"
+	"adomnia/internal/windowchrome"
 	"embed"
-	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
-	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
-	bolt "go.etcd.io/bbolt"
 )
 
 //go:embed all:frontend/dist
@@ -33,14 +30,11 @@ var (
 )
 
 const (
-	windowChromeApp    = "app"
-	windowChromeAppX11 = "app-xwayland"
-	windowChromeSystem = "system"
-	settingsBucket     = "workspace"
-	settingsKey        = "settings"
+	settingsBucket = "workspace"
+	settingsKey    = "settings"
 )
 
-var startupWindowChrome = readStartupWindowChrome()
+var startupWindowChrome = windowchrome.ReadStartup(filepath.Join(dataDir(), "adomnia", "adomnia.db"), settingsBucket, settingsKey, runtime.GOOS)
 
 // singleInstanceKey only protects the local hand-off payload between two
 // launches. It is not used for application or user data encryption.
@@ -57,7 +51,7 @@ func main() {
 	}
 
 	netpolicy.Configure(dataDir())
-	configureWindowChromeBackend(startupWindowChrome)
+	windowchrome.ConfigureBackend(startupWindowChrome)
 
 	app := NewApp()
 	browserDebug := NewBrowserDebug()
@@ -149,7 +143,7 @@ func main() {
 		MinWidth:  900,
 		MinHeight: 600,
 		URL:       "/",
-		Frameless: isAppChrome(startupWindowChrome),
+		Frameless: windowchrome.IsApp(startupWindowChrome),
 		// Carries over the v2 DragAndDrop.EnableFileDrop behaviour. Without it
 		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
 		EnableFileDrop: true,
@@ -172,76 +166,6 @@ func dataDir() string {
 	p := filepath.Join(dir, "adomnia")
 	_ = os.MkdirAll(p, 0755)
 	return p
-}
-
-func normalizeWindowChrome(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case windowChromeAppX11:
-		// Backward-compatible alias: never force XWayland for old settings.
-		return windowChromeApp
-	case windowChromeSystem:
-		return windowChromeSystem
-	default:
-		return windowChromeApp
-	}
-}
-
-// defaultWindowChrome: barra integrata nell'app, tranne su Linux dove WebKitGTK/Wayland resta sulla cornice di sistema.
-func defaultWindowChrome(goos string) string {
-	if goos == "linux" {
-		return windowChromeSystem
-	}
-	return windowChromeApp
-}
-
-func readStartupWindowChrome() string {
-	path := filepath.Join(dataDir(), "adomnia", "adomnia.db")
-	if _, err := os.Stat(path); err != nil {
-		return defaultWindowChrome(runtime.GOOS)
-	}
-	db, err := bolt.Open(path, 0600, &bolt.Options{ReadOnly: true, Timeout: 250 * time.Millisecond})
-	if err != nil {
-		return defaultWindowChrome(runtime.GOOS)
-	}
-	defer db.Close()
-	var settingsJSON []byte
-	_ = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(settingsBucket))
-		if bucket != nil {
-			settingsJSON = append([]byte(nil), bucket.Get([]byte(settingsKey))...)
-		}
-		return nil
-	})
-	return startupWindowChromeFromSettings(settingsJSON, runtime.GOOS)
-}
-
-// startupWindowChromeFromSettings rispecchia le migrazioni del frontend (settings.ts) per decidere la cornice
-// prima che il frontend riscriva le impostazioni: così il cambio vale già a questo avvio.
-func startupWindowChromeFromSettings(settingsJSON []byte, goos string) string {
-	fallback := defaultWindowChrome(goos)
-	var parsed struct {
-		Version    int `json:"version"`
-		Appearance struct {
-			WindowChrome string `json:"windowChrome"`
-		} `json:"appearance"`
-	}
-	if json.Unmarshal(settingsJSON, &parsed) != nil || parsed.Appearance.WindowChrome == "" {
-		return fallback
-	}
-	chrome := parsed.Appearance.WindowChrome
-	// v3: il vecchio default 'app' era diventato 'system'.
-	if parsed.Version < 3 && chrome == windowChromeApp {
-		chrome = windowChromeSystem
-	}
-	// v13: la barra integrata torna predefinita fuori da Linux, una volta sola (v12 la saltava per chi aveva scelto System).
-	if parsed.Version < 13 && chrome == windowChromeSystem && goos != "linux" {
-		chrome = windowChromeApp
-	}
-	return normalizeWindowChrome(chrome)
-}
-
-func isAppChrome(mode string) bool {
-	return mode == windowChromeApp || mode == windowChromeAppX11
 }
 
 // The adapters below keep Wails runtime method names under go.main for React.

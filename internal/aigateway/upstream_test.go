@@ -1,4 +1,4 @@
-package main
+package aigateway
 
 import (
 	"adomnia/internal/ai"
@@ -18,7 +18,7 @@ func TestGatewayUpstreamBaseURL(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := gatewayUpstreamBaseURL(tc.cfg)
+			got, err := UpstreamBaseURL(tc.cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -30,7 +30,7 @@ func TestGatewayUpstreamBaseURL(t *testing.T) {
 }
 
 func TestGatewayRejectsNonCompatibleProvider(t *testing.T) {
-	if _, err := gatewayUpstreamBaseURL(ai.Config{Provider: ai.ProviderAnthropic}); err == nil {
+	if _, err := UpstreamBaseURL(ai.Config{Provider: ai.ProviderAnthropic}); err == nil {
 		t.Fatal("expected unsupported provider error")
 	}
 }

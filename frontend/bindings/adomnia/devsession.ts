@@ -15,10 +15,6 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // @ts-ignore: Unused imports
 import * as devsession$0 from "./internal/devsession/models.js";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as $models from "./models.js";
-
 /**
  * BeginRequest registers a request about to be sent; an empty id means the
  * URL does not point at a live session.
@@ -118,7 +114,7 @@ export function SetServiceName(goSessionID: string, name: string): $CancellableP
  * StartSQLCapture opens a loopback proxy in front of the service's database.
  * Point the service's DSN at the returned address to see its queries.
  */
-export function StartSQLCapture(sessionID: string, kind: string, target: string, port: number): $CancellablePromise<$models.SessionTools> {
+export function StartSQLCapture(sessionID: string, kind: string, target: string, port: number): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(398041767, sessionID, kind, target, port).then(($result: any) => {
         return $$createType9($result);
     });
@@ -141,7 +137,7 @@ export function Stop(sessionID: string): $CancellablePromise<void> {
 /**
  * StopSQLCapture closes the SQL capture proxy of a session.
  */
-export function StopSQLCapture(sessionID: string): $CancellablePromise<$models.SessionTools> {
+export function StopSQLCapture(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(1386855709, sessionID).then(($result: any) => {
         return $$createType9($result);
     });
@@ -150,7 +146,7 @@ export function StopSQLCapture(sessionID: string): $CancellablePromise<$models.S
 /**
  * Tools returns the capture tools attached to a session.
  */
-export function Tools(sessionID: string): $CancellablePromise<$models.SessionTools> {
+export function Tools(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(1256491582, sessionID).then(($result: any) => {
         return $$createType9($result);
     });
@@ -159,7 +155,7 @@ export function Tools(sessionID: string): $CancellablePromise<$models.SessionToo
 /**
  * UnwatchKafka stops the Kafka watch of a session.
  */
-export function UnwatchKafka(sessionID: string): $CancellablePromise<$models.SessionTools> {
+export function UnwatchKafka(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(2754274663, sessionID).then(($result: any) => {
         return $$createType9($result);
     });
@@ -176,7 +172,7 @@ export function WaitReady(sessionID: string, healthPath: string, timeoutMs: numb
 /**
  * WatchKafka reads new messages of the given topics while the session runs.
  */
-export function WatchKafka(sessionID: string, brokers: string[], topics: string[]): $CancellablePromise<$models.SessionTools> {
+export function WatchKafka(sessionID: string, brokers: string[], topics: string[]): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(2204050460, sessionID, brokers, topics).then(($result: any) => {
         return $$createType9($result);
     });
@@ -192,4 +188,4 @@ const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = devsession$0.Query.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = devsession$0.RuntimeEnrichment.createFrom;
-const $$createType9 = $models.SessionTools.createFrom;
+const $$createType9 = devsession$0.SessionTools.createFrom;

@@ -10,10 +10,16 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as bootstrap$0 from "./internal/bootstrap/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as devlog$0 from "./internal/devlog/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as markdown$0 from "./internal/markdown/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as netpolicy$0 from "./internal/netpolicy/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as update$0 from "./internal/update/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.js";
@@ -47,11 +53,9 @@ export function CancelHTTP(id: string): $CancellablePromise<void> {
 }
 
 /**
- * CheckForUpdate queries the latest GitHub release after an explicit user action
- * and reports whether a newer version exists. Returns a frontend-safe error on
- * failure.
+ * CheckForUpdate queries the latest GitHub release after an explicit user action.
  */
-export function CheckForUpdate(): $CancellablePromise<$models.UpdateInfo> {
+export function CheckForUpdate(): $CancellablePromise<update$0.UpdateInfo> {
     return $Call.ByID(2347956003).then(($result: any) => {
         return $$createType0($result);
     });
@@ -214,7 +218,7 @@ export function IsDevMode(): $CancellablePromise<boolean> {
 /**
  * ListLogFiles returns the list of JSONL log files in the logs directory.
  */
-export function ListLogFiles(): $CancellablePromise<$models.LogFileEntry[]> {
+export function ListLogFiles(): $CancellablePromise<devlog$0.FileInfo[]> {
     return $Call.ByID(2963318464).then(($result: any) => {
         return $$createType7($result);
     });
@@ -451,13 +455,13 @@ export function WriteMarkdownFile(path: string, content: string): $CancellablePr
 }
 
 // Private type creation functions
-const $$createType0 = $models.UpdateInfo.createFrom;
+const $$createType0 = update$0.UpdateInfo.createFrom;
 const $$createType1 = markdown$0.FileEntry.createFrom;
 const $$createType2 = netpolicy$0.Event.createFrom;
 const $$createType3 = $Create.Array($$createType2);
 const $$createType4 = netpolicy$0.Settings.createFrom;
 const $$createType5 = markdown$0.WorkspaceInfo.createFrom;
-const $$createType6 = $models.LogFileEntry.createFrom;
+const $$createType6 = devlog$0.FileInfo.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = $Create.Array($$createType1);
 const $$createType9 = $Create.Array($Create.Any);

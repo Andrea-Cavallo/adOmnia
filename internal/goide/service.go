@@ -225,6 +225,23 @@ func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResu
 }
 
 // ListSessions restituisce le sessioni ripristinate e attualmente aperte.
+// SessionRoot returns the real folder of an open session.
+func (s *Service) SessionRoot(sessionID string) (string, error) {
+	sessions, err := s.ListSessions()
+	if err != nil {
+		return "", err
+	}
+	for _, session := range sessions {
+		if string(session.ID) == sessionID {
+			if session.Project.RealPath != "" {
+				return session.Project.RealPath, nil
+			}
+			return session.Project.RootPath, nil
+		}
+	}
+	return "", fmt.Errorf("gO session %s is not open", sessionID)
+}
+
 func (s *Service) ListSessions() ([]Session, error) {
 	if err := s.restore(); err != nil {
 		return nil, err

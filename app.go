@@ -1,22 +1,20 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	stdRuntime "runtime"
 	"strings"
 	"time"
 
 	"adomnia/internal/bootstrap"
 	"adomnia/internal/collectionsstore"
 	"adomnia/internal/devlog"
+	"adomnia/internal/dropfiles"
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
 	"adomnia/internal/panelwindow"
@@ -29,6 +27,7 @@ import (
 	"adomnia/internal/storage"
 	"adomnia/internal/swaggerwindow"
 	"adomnia/internal/vault"
+	"adomnia/internal/windowchrome"
 	"adomnia/internal/ws"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -45,36 +44,6 @@ type App struct {
 	startupStages  map[string]any
 }
 
-type DroppedFileData struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Text        string `json:"text,omitempty"`
-	BytesBase64 string `json:"bytesBase64,omitempty"`
-}
-
-const maxDroppedFileBytes = 50 * 1024 * 1024
-
-func isSupportedDroppedFile(name string) bool {
-	lower := strings.ToLower(name)
-	switch {
-	case strings.HasSuffix(lower, ".class"),
-		strings.HasSuffix(lower, ".pdf"),
-		strings.HasSuffix(lower, ".har"),
-		strings.HasSuffix(lower, ".wsdl"),
-		strings.HasSuffix(lower, ".mmd"),
-		strings.HasSuffix(lower, ".mermaid"),
-		strings.HasSuffix(lower, ".tex"),
-		strings.HasSuffix(lower, ".json"),
-		strings.HasSuffix(lower, ".yaml"),
-		strings.HasSuffix(lower, ".yml"),
-		strings.HasSuffix(lower, ".adomnia"),
-		strings.HasSuffix(lower, ".bru"):
-		return true
-	default:
-		return false
-	}
-}
-
 func NewApp() *App {
 	return &App{}
 }
@@ -86,7 +55,7 @@ func (a *App) AttachDesktop(desktop *application.App) {
 	a.desktop = desktop
 	a.requestWindows = requestwindow.New(desktop)
 	a.swaggerWindow = swaggerwindow.New(desktop)
-	a.panelWindows = panelwindow.New(desktop, isAppChrome(startupWindowChrome))
+	a.panelWindows = panelwindow.New(desktop, windowchrome.IsApp(startupWindowChrome))
 }
 
 func (a *App) SetMainWindow(window *application.WebviewWindow) {
@@ -233,40 +202,11 @@ func (a *App) GetSidecarToken() string {
 }
 
 func (a *App) ReadDroppedFiles(paths []string) (string, error) {
-	result := make([]DroppedFileData, 0, len(paths))
-	for _, rawPath := range paths {
-		path := strings.TrimSpace(rawPath)
-		if path == "" {
-			continue
-		}
-		cleaned := filepath.Clean(path)
-		info, err := os.Stat(cleaned)
-		if err != nil {
-			return "", fmt.Errorf("could not read dropped file %q: %w", filepath.Base(cleaned), err)
-		}
-		if info.IsDir() {
-			return "", fmt.Errorf("%s is a folder; drop a supported file instead", filepath.Base(cleaned))
-		}
-		if info.Size() > maxDroppedFileBytes {
-			return "", fmt.Errorf("%s is too large to import from drag and drop", filepath.Base(cleaned))
-		}
-		if !isSupportedDroppedFile(info.Name()) {
-			return "", fmt.Errorf("%s is not a supported drag-and-drop file type", filepath.Base(cleaned))
-		}
-		data, err := os.ReadFile(cleaned)
-		if err != nil {
-			return "", fmt.Errorf("could not read dropped file %q: %w", filepath.Base(cleaned), err)
-		}
-		entry := DroppedFileData{Name: filepath.Base(cleaned), Path: cleaned}
-		lower := strings.ToLower(entry.Name)
-		if strings.HasSuffix(lower, ".pdf") || strings.HasSuffix(lower, ".class") {
-			entry.BytesBase64 = base64.StdEncoding.EncodeToString(data)
-		} else {
-			entry.Text = string(data)
-		}
-		result = append(result, entry)
+	files, err := dropfiles.Read(paths)
+	if err != nil {
+		return "", err
 	}
-	out, err := json.Marshal(result)
+	out, err := json.Marshal(files)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize dropped files: %w", err)
 	}
@@ -319,39 +259,20 @@ func (a *App) SelectFolder(title string) (string, error) {
 
 func (a *App) GetDevLogs() string {
 	path := devlog.CurrentPath()
-	file, err := os.Open(path)
+	entries, err := devlog.ReadEntries(path, 2000)
 	if err != nil {
 		devlog.Err("GetDevLogs", "lettura file dev logs fallita", err, map[string]any{"path": path})
-		return "[]"
 	}
-	defer file.Close()
+	return marshalLogEntries(entries)
+}
 
-	entries := make([]devlog.Entry, 0, 256)
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		var entry devlog.Entry
-		if err := json.Unmarshal([]byte(line), &entry); err == nil {
-			if entry.Source == "" {
-				entry.Source = "backend"
-			}
-			entries = append(entries, entry)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		devlog.Err("GetDevLogs", "scansione file dev logs fallita", err, map[string]any{"path": path})
-	}
-	if len(entries) > 2000 {
-		entries = entries[len(entries)-2000:]
+func marshalLogEntries(entries []devlog.Entry) string {
+	if entries == nil {
+		return "[]"
 	}
 	out, err := json.Marshal(entries)
 	if err != nil {
-		devlog.Err("GetDevLogs", "serializzazione dev logs fallita", err, nil)
+		devlog.Err("marshalLogEntries", "serializzazione dev logs fallita", err, nil)
 		return "[]"
 	}
 	return string(out)
@@ -383,20 +304,9 @@ func (a *App) SetDevMode(enabled bool) {
 
 // OpenDevLogsFolder opens the dev logs directory in the OS file manager.
 func (a *App) OpenDevLogsFolder() {
-	logsDir := devlog.Dir()
-	var cmd *exec.Cmd
-	switch stdRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", logsDir)
-	case "linux":
-		cmd = exec.Command("xdg-open", logsDir)
-	default:
-		cmd = exec.Command("explorer", logsDir)
+	if err := devlog.OpenDir(); err != nil {
+		devlog.Err("OpenDevLogsFolder", "apertura cartella log fallita", err, map[string]any{"path": devlog.Dir()})
 	}
-	if err := cmd.Start(); err != nil {
-		devlog.Err("OpenDevLogsFolder", "apertura cartella log fallita", err, map[string]any{"path": logsDir})
-	}
-	devlog.Info("OpenDevLogsFolder", "cartella log aperta", map[string]any{"path": logsDir})
 }
 
 // GetVaultTimeout returns the vault auto-lock timeout in minutes.
@@ -416,86 +326,22 @@ func (a *App) SetVaultTimeout(minutes int) {
 	devlog.Info("SetVaultTimeout", "vault timeout aggiornato", map[string]any{"minutes": minutes})
 }
 
-// LogFileEntry represents a log file in the logs directory.
-type LogFileEntry struct {
-	Name    string `json:"name"`
-	Size    int64  `json:"size"`
-	ModTime string `json:"modTime"`
-}
-
 // ListLogFiles returns the list of JSONL log files in the logs directory.
-func (a *App) ListLogFiles() []LogFileEntry {
-	dir := devlog.Dir()
-	entries, err := os.ReadDir(dir)
+func (a *App) ListLogFiles() []devlog.FileInfo {
+	files, err := devlog.ListFiles()
 	if err != nil {
-		devlog.Err("ListLogFiles", "lettura cartella log fallita", err, map[string]any{"dir": dir})
-		return nil
+		devlog.Err("ListLogFiles", "lettura cartella log fallita", err, map[string]any{"dir": devlog.Dir()})
 	}
-
-	var result []LogFileEntry
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		result = append(result, LogFileEntry{
-			Name:    e.Name(),
-			Size:    info.Size(),
-			ModTime: info.ModTime().UTC().Format(time.RFC3339),
-		})
-	}
-	devlog.Log("ListLogFiles", "elenco file log", map[string]any{"count": len(result)})
-	return result
+	return files
 }
 
 // ReadLogFile reads a JSONL log file and returns its entries as a JSON array.
 func (a *App) ReadLogFile(filename string) string {
-	// Prevent path traversal
-	cleaned := filepath.Clean(filename)
-	if strings.Contains(cleaned, "..") || filepath.IsAbs(cleaned) {
-		devlog.Err("ReadLogFile", "percorso file non valido", nil, map[string]any{"filename": filename})
-		return "[]"
-	}
-
-	path := filepath.Join(devlog.Dir(), cleaned)
-	file, err := os.Open(path)
+	entries, err := devlog.ReadFile(filename)
 	if err != nil {
-		devlog.Err("ReadLogFile", "apertura file fallita", err, map[string]any{"path": path})
-		return "[]"
+		devlog.Err("ReadLogFile", "lettura file log fallita", err, map[string]any{"filename": filename})
 	}
-	defer file.Close()
-
-	entries := make([]devlog.Entry, 0, 256)
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		var entry devlog.Entry
-		if err := json.Unmarshal([]byte(line), &entry); err == nil {
-			if entry.Source == "" {
-				entry.Source = "backend"
-			}
-			entries = append(entries, entry)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		devlog.Err("ReadLogFile", "scansione file fallita", err, map[string]any{"path": path})
-	}
-
-	out, err := json.Marshal(entries)
-	if err != nil {
-		devlog.Err("ReadLogFile", "serializzazione fallita", err, nil)
-		return "[]"
-	}
-	devlog.Log("ReadLogFile", "file log letto", map[string]any{"path": cleaned, "count": len(entries)})
-	return string(out)
+	return marshalLogEntries(entries)
 }
 
 func (a *App) OnDomReady(ctx context.Context) {

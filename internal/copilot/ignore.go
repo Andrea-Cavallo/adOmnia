@@ -38,6 +38,18 @@ func LoadContextFilterFor(root string, localProvider bool) ContextFilter {
 	return filter
 }
 
+// ExcludedPaths returns the relative paths the project's AI filter hides from a provider.
+func ExcludedPaths(root string, relativePaths []string, localProvider bool) []string {
+	filter := LoadContextFilterFor(root, localProvider)
+	excluded := []string{}
+	for _, relativePath := range relativePaths {
+		if filter.Excluded(relativePath) {
+			excluded = append(excluded, relativePath)
+		}
+	}
+	return excluded
+}
+
 func loadIgnorePatterns(root string) ContextFilter {
 	patterns := append([]string(nil), builtinSensitivePatterns...)
 	file, err := os.Open(filepath.Join(root, filepath.FromSlash(AIIgnoreFile)))

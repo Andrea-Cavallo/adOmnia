@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package windowchrome
 
 import (
 	"log"
@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-func configureWindowChromeBackend(mode string) {
+// ConfigureBackend prepares the native GTK backend before the window opens (Linux only).
+func ConfigureBackend(mode string) {
 	_ = os.Setenv("LC_NUMERIC", "C")
 
 	if backend := nativeSessionBackend(os.Getenv("XDG_SESSION_TYPE"), os.Getenv("WAYLAND_DISPLAY")); backend != "" {

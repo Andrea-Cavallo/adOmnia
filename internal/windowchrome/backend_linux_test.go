@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package windowchrome
 
 import (
 	"os"
@@ -29,8 +29,8 @@ func TestWindowChromeUsesNativeBackendForLegacySettings(t *testing.T) {
 	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
 	t.Setenv("GDK_BACKEND", "x11")
 	t.Setenv("LC_NUMERIC", "C")
-	configureWindowChromeBackend(windowChromeAppX11)
-	if got := normalizeWindowChrome(windowChromeAppX11); got != windowChromeApp {
+	ConfigureBackend(AppX11)
+	if got := Normalize(AppX11); got != App {
 		t.Fatalf("legacy chrome mode = %q, want app", got)
 	}
 	if got := os.Getenv("GDK_BACKEND"); got != "wayland" {

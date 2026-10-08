@@ -5,10 +5,7 @@ import (
 	"adomnia/internal/aigateway"
 	"adomnia/internal/devlog"
 	"adomnia/internal/mock"
-	"adomnia/internal/storage"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -119,8 +116,6 @@ type aiGatewayStatus struct {
 	Token string `json:"token,omitempty"`
 }
 
-const aiGatewayTokenKey = "ai-gateway-token"
-
 // StartGateway exposes the selected OpenAI-compatible provider on a stable,
 // loopback-only endpoint for local coding agents. The client-facing token is
 // never forwarded upstream; the configured provider credential replaces it.
@@ -133,11 +128,11 @@ func (a *AIEngine) StartGateway(cfgJSON string, port int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	baseURL, err := gatewayUpstreamBaseURL(resolved)
+	baseURL, err := aigateway.UpstreamBaseURL(resolved)
 	if err != nil {
 		return "", err
 	}
-	token, err := loadOrCreateGatewayToken()
+	token, err := aigateway.LoadOrCreateToken()
 	if err != nil {
 		return "", err
 	}
@@ -170,68 +165,13 @@ func (a *AIEngine) GatewayStatus() (string, error) {
 	status := a.gateway.Status()
 	view := aiGatewayStatus{Status: status}
 	if status.Running {
-		token, err := loadOrCreateGatewayToken()
+		token, err := aigateway.LoadOrCreateToken()
 		if err != nil {
 			return "", err
 		}
 		view.Token = token
 	}
 	return marshalGatewayStatus(view)
-}
-
-func gatewayUpstreamBaseURL(cfg ai.Config) (string, error) {
-	base := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
-	switch cfg.Provider {
-	case ai.ProviderOllama:
-		if base == "" {
-			base = "http://localhost:11434"
-		}
-		if strings.HasSuffix(base, "/v1") {
-			return base, nil
-		}
-		return base + "/v1", nil
-	case ai.ProviderOpenAI:
-		if base == "" {
-			base = "https://api.openai.com/v1"
-		}
-		return base, nil
-	case ai.ProviderDeepSeek:
-		if base == "" {
-			base = "https://api.deepseek.com"
-		}
-		return base, nil
-	case ai.ProviderHuggingFace:
-		if base == "" {
-			base = "https://router.huggingface.co/v1"
-		}
-		return base, nil
-	case ai.ProviderOpenAICompatible:
-		if base == "" {
-			base = "http://localhost:1234/v1"
-		}
-		return base, nil
-	default:
-		return "", fmt.Errorf("AI gateway requires Ollama, OpenAI, DeepSeek, Hugging Face, or an OpenAI-compatible provider")
-	}
-}
-
-func loadOrCreateGatewayToken() (string, error) {
-	stored, err := storage.Get("workspace", aiGatewayTokenKey)
-	if err != nil {
-		return "", fmt.Errorf("load AI gateway token: %w", err)
-	}
-	if token := strings.TrimSpace(string(stored)); token != "" {
-		return token, nil
-	}
-	raw := make([]byte, 24)
-	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("generate AI gateway token: %w", err)
-	}
-	token := hex.EncodeToString(raw)
-	if err := storage.Put("workspace", aiGatewayTokenKey, []byte(token)); err != nil {
-		return "", fmt.Errorf("save AI gateway token: %w", err)
-	}
-	return token, nil
 }
 
 func marshalGatewayStatus(status aiGatewayStatus) (string, error) {

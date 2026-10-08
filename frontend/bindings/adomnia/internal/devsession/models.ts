@@ -716,6 +716,36 @@ export class Session {
 }
 
 /**
+ * SessionTools reports the capture tools attached to a live session.
+ */
+export class SessionTools {
+    "kafka"?: KafkaWatch | null;
+    "sql"?: SQLProxy | null;
+
+    /** Creates a new SessionTools instance. */
+    constructor($$source: Partial<SessionTools> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionTools instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionTools {
+        const $$createField0_0 = $$createType13;
+        const $$createField1_0 = $$createType15;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("kafka" in $$parsedSource) {
+            $$parsedSource["kafka"] = $$createField0_0($$parsedSource["kafka"]);
+        }
+        if ("sql" in $$parsedSource) {
+            $$parsedSource["sql"] = $$createField1_0($$parsedSource["sql"]);
+        }
+        return new SessionTools($$parsedSource as Partial<SessionTools>);
+    }
+}
+
+/**
  * Snapshot is the whole live state, fetched once by the frontend at start.
  */
 export class Snapshot {
@@ -738,8 +768,8 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField0_0 = $$createType13;
-        const $$createField1_0 = $$createType15;
+        const $$createField0_0 = $$createType17;
+        const $$createField1_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sessions" in $$parsedSource) {
             $$parsedSource["sessions"] = $$createField0_0($$parsedSource["sessions"]);
@@ -764,7 +794,11 @@ const $$createType8 = RuntimeEdge.createFrom;
 const $$createType9 = $Create.Array($$createType8);
 const $$createType10 = Pause.createFrom;
 const $$createType11 = $Create.Nullable($$createType10);
-const $$createType12 = Session.createFrom;
-const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = RequestRun.createFrom;
-const $$createType15 = $Create.Array($$createType14);
+const $$createType12 = KafkaWatch.createFrom;
+const $$createType13 = $Create.Nullable($$createType12);
+const $$createType14 = SQLProxy.createFrom;
+const $$createType15 = $Create.Nullable($$createType14);
+const $$createType16 = Session.createFrom;
+const $$createType17 = $Create.Array($$createType16);
+const $$createType18 = RequestRun.createFrom;
+const $$createType19 = $Create.Array($$createType18);

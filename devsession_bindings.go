@@ -2,41 +2,31 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"adomnia/internal/devsession"
 	"adomnia/internal/goide"
-	"adomnia/internal/nettools"
-	"adomnia/internal/storage"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-const (
-	devSessionBucket      = "devsession"
-	devSessionServicesKey = "services"
-	maxReadyWait          = 2 * time.Minute
-)
+const maxReadyWait = 2 * time.Minute
 
 // DevSession exposes the Live Development Sessions to the frontend: the Go
 // services started from gO, the requests sent to them and what they caused.
 type DevSession struct {
-	manager  *devsession.Manager
-	goIDE    *GoIDE
-	desktop  *application.App
-	namesMu  sync.Mutex
-	names    map[string]string // project root → declared service name
-	watchers *brokerWatchers
-	proxies  *sqlProxies
+	manager *devsession.Manager
+	goIDE   *GoIDE
+	desktop *application.App
+	names   *devsession.ServiceNames
+	tools   *devsession.CaptureTools
 }
 
 func NewDevSession(goIDE *GoIDE) *DevSession {
-	d := &DevSession{goIDE: goIDE, names: loadServiceNames()}
+	d := &DevSession{goIDE: goIDE, names: devsession.LoadServiceNames()}
 	d.manager = devsession.NewManager(devsession.Hooks{
 		Stack: d.stack,
 		Step: func(debugID, action string, threadID int) error {
@@ -45,16 +35,15 @@ func NewDevSession(goIDE *GoIDE) *DevSession {
 		StopDebug: goIDE.service.StopDebug,
 		StopRun:   goIDE.service.StopRun,
 		RunPort:   d.runPort,
-		ListPorts: listPorts,
+		ListPorts: devsession.ListLocalPorts,
 		Project:   d.project,
 	}, func(event devsession.Event) {
 		if d.desktop != nil {
 			d.desktop.Event.Emit("devsession:event", event)
 		}
 	})
-	d.watchers = newBrokerWatchers(d.manager)
-	d.proxies = newSQLProxies(d.manager)
-	attachTrafficSources(d.manager)
+	d.tools = devsession.NewCaptureTools(d.manager)
+	devsession.AttachTrafficSources(d.manager)
 	goIDE.onServiceEvent(d.handleGoIDEEvent)
 	return d
 }
@@ -75,13 +64,13 @@ func (d *DevSession) handleGoIDEEvent(event goide.EventEnvelope) {
 	case "run.finished":
 		if execution, ok := event.Payload.(goide.Execution); ok {
 			d.manager.RunFinished(string(execution.ID), execution.Error)
-			d.stopSessionTools("run:" + string(execution.ID))
+			d.tools.StopAll("run:" + string(execution.ID))
 		}
 	case "debug.state":
 		if info, ok := event.Payload.(goide.DebugSessionInfo); ok {
 			d.manager.DebugState(goSession, string(info.ID), info.State, info.Title, info.StopReason, info.ThreadID, info.Error)
 			if info.State == goide.DebugTerminated {
-				d.stopSessionTools("debug:" + string(info.ID))
+				d.tools.StopAll("debug:" + string(info.ID))
 			}
 		}
 	case "debug.output":
@@ -90,14 +79,9 @@ func (d *DevSession) handleGoIDEEvent(event goide.EventEnvelope) {
 		}
 	case "session.closed":
 		for _, id := range d.manager.GoSessionClosed(goSession) {
-			d.stopSessionTools(id)
+			d.tools.StopAll(id)
 		}
 	}
-}
-
-func (d *DevSession) stopSessionTools(sessionID string) {
-	d.watchers.stop(sessionID)
-	d.proxies.stop(sessionID)
 }
 
 func (d *DevSession) stack(debugID string, threadID int) ([]devsession.Frame, error) {
@@ -121,41 +105,17 @@ func (d *DevSession) runPort(runID string) int {
 	return port
 }
 
-func listPorts() ([]devsession.Port, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	entries, err := nettools.ListListeningPorts(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ports := make([]devsession.Port, 0, len(entries))
-	for _, entry := range entries {
-		ports = append(ports, devsession.Port{Port: entry.Port, PID: entry.PID, Process: entry.Process})
-	}
-	return ports, nil
-}
-
 // project names a gO session: the declared service name or the folder name.
 func (d *DevSession) project(goSessionID string) (string, string) {
 	root, err := d.goIDE.sessionRoot(goSessionID)
 	if err != nil {
 		return "service", ""
 	}
-	d.namesMu.Lock()
-	name := d.names[root]
-	d.namesMu.Unlock()
+	name := d.names.Get(root)
 	if name == "" {
 		name = filepath.Base(root)
 	}
 	return name, root
-}
-
-func loadServiceNames() map[string]string {
-	names := map[string]string{}
-	if data, err := storage.Get(devSessionBucket, devSessionServicesKey); err == nil && len(data) > 0 {
-		_ = json.Unmarshal(data, &names)
-	}
-	return names
 }
 
 // GetSnapshot returns the live sessions and recent request runs.
@@ -235,16 +195,7 @@ func (d *DevSession) SetServiceName(goSessionID, name string) error {
 	if err != nil {
 		return err
 	}
-	name = strings.TrimSpace(name)
-	d.namesMu.Lock()
-	if name == "" {
-		delete(d.names, root)
-	} else {
-		d.names[root] = name
-	}
-	data, _ := json.Marshal(d.names)
-	d.namesMu.Unlock()
-	if err := storage.Put(devSessionBucket, devSessionServicesKey, data); err != nil {
+	if err := d.names.Set(root, name); err != nil {
 		return err
 	}
 	service, _ := d.project(goSessionID)

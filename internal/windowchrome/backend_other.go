@@ -1,5 +1,6 @@
 //go:build !linux
 
-package main
+package windowchrome
 
-func configureWindowChromeBackend(mode string) {}
+// ConfigureBackend prepares the native GTK backend before the window opens (Linux only).
+func ConfigureBackend(mode string) {}

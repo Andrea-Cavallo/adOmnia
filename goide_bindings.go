@@ -6,125 +6,16 @@ import (
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
 	"adomnia/internal/plugins"
-	"adomnia/internal/storage"
 	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 
+	"adomnia/internal/windowchrome"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
-
-const (
-	goIDEStorageKey    = "state"
-	goIDERecoveryKey   = "recovery"
-	goIDESupervisorKey = "supervisor"
-	goIDEHistoryKey    = "localHistory"
-)
-
-// goIDEHistoryStore conserva la local history in una chiave separata, con i propri limiti.
-type goIDEHistoryStore struct{}
-
-func (goIDEHistoryStore) Load() ([]byte, error) {
-	if storage.DB() == nil {
-		return nil, nil
-	}
-	return storage.Get("goide", goIDEHistoryKey)
-}
-
-func (goIDEHistoryStore) Save(data []byte) error {
-	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
-	}
-	return storage.Put("goide", goIDEHistoryKey, data)
-}
-
-// goIDEStore conserva lo stato di sessione, configurazioni Run e layout.
-type goIDEStore struct{}
-
-func (goIDEStore) Load() ([]byte, error) {
-	if storage.DB() == nil {
-		return nil, nil
-	}
-	return storage.Get("goide", goIDEStorageKey)
-}
-
-func (goIDEStore) Save(data []byte) error {
-	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
-	}
-	return storage.Put("goide", goIDEStorageKey, data)
-}
-
-// goIDERecoveryStore conserva i buffer non salvati in una chiave separata, per
-// non far crescere lo stato di sessione con contenuti di lavoro.
-// goIDESupervisorStore conserva le esecuzioni in corso: dopo un crash restano quelle interrotte.
-type goIDESupervisorStore struct{}
-
-func (goIDESupervisorStore) Load() ([]byte, error) {
-	if storage.DB() == nil {
-		return nil, nil
-	}
-	return storage.Get("goide", goIDESupervisorKey)
-}
-
-func (goIDESupervisorStore) Save(data []byte) error {
-	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
-	}
-	return storage.Put("goide", goIDESupervisorKey, data)
-}
-
-type goIDERecoveryStore struct{}
-
-func (goIDERecoveryStore) Load() ([]byte, error) {
-	if storage.DB() == nil {
-		return nil, nil
-	}
-	return storage.Get("goide", goIDERecoveryKey)
-}
-
-func (goIDERecoveryStore) Save(data []byte) error {
-	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
-	}
-	if len(data) == 0 {
-		return storage.Delete("goide", goIDERecoveryKey)
-	}
-	return storage.Put("goide", goIDERecoveryKey, data)
-}
-
-// LoadWorkspaces legge le chiavi recovery/<workspace-id>: una per progetto.
-func (goIDERecoveryStore) LoadWorkspaces() (map[string][]byte, error) {
-	if storage.DB() == nil {
-		return nil, nil
-	}
-	keys, err := storage.List("goide", goide.RecoveryWorkspacePrefix)
-	if err != nil {
-		return nil, err
-	}
-	workspaces := make(map[string][]byte, len(keys))
-	for _, key := range keys {
-		data, err := storage.Get("goide", key)
-		if err != nil {
-			return nil, err
-		}
-		workspaces[strings.TrimPrefix(key, goide.RecoveryWorkspacePrefix)] = data
-	}
-	return workspaces, nil
-}
-
-func (goIDERecoveryStore) SaveWorkspace(workspaceID string, data []byte) error {
-	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
-	}
-	if len(data) == 0 {
-		return storage.Delete("goide", goide.RecoveryWorkspacePrefix+workspaceID)
-	}
-	return storage.Put("goide", goide.RecoveryWorkspacePrefix+workspaceID, data)
-}
 
 type GoIDE struct {
 	service            *goide.Service
@@ -142,7 +33,7 @@ type GoIDE struct {
 
 func NewGoIDE() *GoIDE {
 	var binding *GoIDE
-	service := goide.NewService(goIDEStore{}, func(event goide.EventEnvelope) {
+	service := goide.NewService(goide.StateBoltStore, func(event goide.EventEnvelope) {
 		if binding != nil && binding.desktop != nil {
 			binding.desktop.Event.Emit("goide:event", event)
 		}
@@ -154,9 +45,9 @@ func NewGoIDE() *GoIDE {
 		}
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
-	_ = service.ConfigureRecoveryStore(goIDERecoveryStore{})
-	_ = service.ConfigureHistoryStore(goIDEHistoryStore{})
-	_ = service.ConfigureSupervisorStore(goIDESupervisorStore{})
+	_ = service.ConfigureRecoveryStore(goide.RecoveryBoltStore)
+	_ = service.ConfigureHistoryStore(goide.HistoryBoltStore)
+	_ = service.ConfigureSupervisorStore(goide.SupervisorBoltStore)
 	binding = &GoIDE{service: service}
 	if lock, status, err := goide.AcquireRuntimeLock(filepath.Join(dataDir(), "goide"), nil); err == nil {
 		binding.runtimeLock = lock
@@ -186,7 +77,7 @@ func (g *GoIDE) ProjectServices(sessionID string) ([]goide.ProjectService, error
 
 func (g *GoIDE) attachDesktop(desktop *application.App) {
 	g.desktop = desktop
-	g.windows = goidewindow.New(desktop, isAppChrome(startupWindowChrome), func(windowID string) {
+	g.windows = goidewindow.New(desktop, windowchrome.IsApp(startupWindowChrome), func(windowID string) {
 		g.service.ReleaseWindow(windowID)
 	})
 }
@@ -213,19 +104,7 @@ func (g *GoIDE) onServiceEvent(listener func(goide.EventEnvelope)) {
 
 // sessionRoot resolves the project folder of an open gO session.
 func (g *GoIDE) sessionRoot(sessionID string) (string, error) {
-	sessions, err := g.service.ListSessions()
-	if err != nil {
-		return "", err
-	}
-	for _, session := range sessions {
-		if string(session.ID) == sessionID {
-			if session.Project.RealPath != "" {
-				return session.Project.RealPath, nil
-			}
-			return session.Project.RootPath, nil
-		}
-	}
-	return "", fmt.Errorf("gO session %s is not open", sessionID)
+	return g.service.SessionRoot(sessionID)
 }
 
 // WorkspaceModuleGraph restituisce le dipendenze tra i moduli del progetto, lette dai go.mod.
@@ -284,14 +163,7 @@ func (g *GoIDE) AIExcludedPaths(sessionID string, relativePaths []string, localP
 	if err != nil {
 		return nil, err
 	}
-	filter := copilot.LoadContextFilterFor(root, localProvider)
-	excluded := []string{}
-	for _, relativePath := range relativePaths {
-		if filter.Excluded(relativePath) {
-			excluded = append(excluded, relativePath)
-		}
-	}
-	return excluded, nil
+	return copilot.ExcludedPaths(root, relativePaths, localProvider), nil
 }
 
 // cancelMainClose annulla la chiusura quando restano buffer non salvati o

@@ -1,11 +1,10 @@
-package main
+package devsession
 
 import (
 	"sync"
 	"time"
 
 	"adomnia/internal/browser"
-	"adomnia/internal/devsession"
 	"adomnia/internal/proxy"
 )
 
@@ -15,7 +14,7 @@ const maxBrowserRuns = 500
 // Interceptor or from a page under Browser Debug to its session, like the
 // requests sent from the API workspace.
 type trafficSources struct {
-	manager *devsession.Manager
+	manager *Manager
 	mu      sync.Mutex
 	browser map[string]browserRun
 }
@@ -25,7 +24,9 @@ type browserRun struct {
 	started time.Time
 }
 
-func attachTrafficSources(manager *devsession.Manager) {
+// AttachTrafficSources makes the Interceptor and Browser Debug report the
+// requests they see to the manager.
+func AttachTrafficSources(manager *Manager) {
 	sources := &trafficSources{manager: manager, browser: map[string]browserRun{}}
 	proxy.SetTrafficObserver(sources)
 	browser.SetNetworkObserver(sources.observeBrowser)
@@ -34,12 +35,12 @@ func attachTrafficSources(manager *devsession.Manager) {
 // Started implements proxy.TrafficObserver: the forwarded request carries the
 // session's correlation id, so the service's logs tie back to it.
 func (s *trafficSources) Started(method, url string) (map[string]string, func(int, string)) {
-	run, err := s.manager.Begin(devsession.BeginRequest{Method: method, URL: url, Name: "Interceptor"})
+	run, err := s.manager.Begin(BeginRequest{Method: method, URL: url, Name: "Interceptor"})
 	if err != nil || run.ID == "" {
 		return nil, nil
 	}
 	started := time.Now()
-	return map[string]string{devsession.CorrelationHeader: run.CorrelationID}, func(status int, errText string) {
+	return map[string]string{CorrelationHeader: run.CorrelationID}, func(status int, errText string) {
 		_, _ = s.manager.End(run.ID, status, time.Since(started).Milliseconds(), errText)
 	}
 }
@@ -47,7 +48,7 @@ func (s *trafficSources) Started(method, url string) (map[string]string, func(in
 func (s *trafficSources) observeBrowser(observation browser.NetworkObservation) {
 	switch observation.Kind {
 	case "started":
-		run, err := s.manager.Begin(devsession.BeginRequest{Method: observation.Method, URL: observation.URL, Name: "Browser Debug"})
+		run, err := s.manager.Begin(BeginRequest{Method: observation.Method, URL: observation.URL, Name: "Browser Debug"})
 		if err != nil || run.ID == "" {
 			return
 		}

@@ -16,5 +16,6 @@ export {
     RuntimeEnrichment,
     SQLProxy,
     Session,
+    SessionTools,
     Snapshot
 } from "./models.js";
