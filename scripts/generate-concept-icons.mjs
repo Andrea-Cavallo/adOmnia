@@ -42,7 +42,7 @@ async function ico(svg, file) {
 for (const [name, svg] of [['icon', dark], ['icon-neon', neon], ['icon-white', mark], ['icon-black', black]]) {
   const image = await png(svg, 1024)
   await save(`assets/images/${name}.png`, image)
-  await save(`frontend/public/${name}.png`, image)
+  if (name !== 'icon-neon') await save(`frontend/public/${name}.png`, image) // neon is not used by the UI
   await ico(svg, `assets/icons/${name}.ico`)
 }
 await ico(dark, 'build/windows/icon.ico')
