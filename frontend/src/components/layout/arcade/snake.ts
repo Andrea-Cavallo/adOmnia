@@ -1,4 +1,5 @@
-// Pure Snake rules for the Hub's dot-matrix game: no DOM, no timers.
+// Snake: pure rules (newGame/step/turn) plus the DotGame adapter for the Hub arcade.
+import type { DotGame } from './types'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export interface Cell { x: number; y: number }
@@ -47,4 +48,46 @@ export function step(state: SnakeState, random: () => number = Math.random): Sna
   return eats
     ? { ...state, snake, score: state.score + 1, food: placeFood(state.cols, state.rows, snake, random) }
     : { ...state, snake }
+}
+
+// ---- Arcade adapter ---------------------------------------------------------
+
+interface SnakeGame { board: SnakeState; next: Dir; acc: number; time: number; ateAt: number }
+
+// Faster as the snake grows, never below 55 ms per step.
+const stepSeconds = (score: number) => Math.max(0.055, 0.12 - score * 0.003)
+
+export const snakeGame: DotGame<SnakeGame> = {
+  id: 'snake',
+  title: 'Snake',
+  help: 'Arrows to steer · P to pause',
+  realtime: true,
+  init: (cols, rows) => ({ board: newGame(cols, rows), next: 'right', acc: 0, time: 0, ateAt: -1 }),
+  press: (s, key) => (key === 'action' ? s : { ...s, next: key }),
+  update(s, dt) {
+    let { board, acc } = s
+    const time = s.time + dt
+    let ateAt = s.ateAt
+    acc += dt
+    while (acc >= stepSeconds(board.score) && !board.over) {
+      acc -= stepSeconds(board.score)
+      const before = board.score
+      board = step({ ...board, dir: turn(board.dir, s.next) })
+      if (board.score > before) ateAt = time
+    }
+    return { ...s, board, acc, time, ateAt }
+  },
+  draw(s, paint, time) {
+    const { snake, food, over } = s.board
+    const blink = over && Math.floor(time * 5) % 2 === 0
+    snake.forEach((c, i) => {
+      if (blink) return
+      if (i === 0) paint.dot(c.x, c.y, 'ink', 1.2)
+      else paint.dot(c.x, c.y, i < snake.length * 0.6 ? 'ink' : 'soft', Math.max(0.7, 1 - i * 0.012))
+    })
+    paint.dot(food.x, food.y, 'accent', 1.05 + Math.sin(time * 8) * 0.15)
+    // A short accent ring around the head when it eats.
+    if (s.time - s.ateAt < 0.18) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) paint.dot(snake[0].x + dx, snake[0].y + dy, 'accent', 0.6)
+  },
+  status: s => ({ score: s.board.score, over: s.board.over, message: 'Game over' }),
 }
