@@ -104,8 +104,9 @@ const POINTS_VERTEX = DEFORMATION + `
 attribute float seed;attribute vec3 target;uniform float uPixel,uScan,uWord;varying float vLight;
 void main(){vec3 p=deform(param);p+=vec3(sin(seed*170.+uTime),cos(seed*117.+uTime*.7),sin(seed*92.-uTime))*.021;p=mix(p,target+vec3(sin(seed*170.+uTime*2.),cos(seed*117.+uTime*1.4),0.)*.006,uWord);vec4 world=modelMatrix*vec4(p,1.);vWorld=world.xyz;vParam=param;vec4 mv=viewMatrix*world;gl_Position=projectionMatrix*mv;gl_PointSize=(1.4+seed*1.7)*uPixel*(7.5/-mv.z);float scan=exp(-pow((p.y-uScan)*4.,2.));vLight=.30+seed*.6+scan*1.7;}
 `
-// On a light page the dust is drawn in the text color (uInk) so it stays visible.
-const POINTS_FRAGMENT = `precision highp float;uniform vec3 uTint,uInk;uniform float uOpacity,uDark;varying float vLight;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=smoothstep(.5,.16,d);vec3 c=mix(mix(uTint,vec3(.88,.98,1.),min(1.,vLight*.6)),uInk,uDark);gl_FragColor=vec4(c,a*uOpacity*mix(vLight,min(1.,.55+vLight*.5),uDark));}`
+// On a light page the dust is drawn in the text color (uInk) so it stays visible;
+// the wordmark (uWord) takes the accent color of the palette.
+const POINTS_FRAGMENT = `precision highp float;uniform vec3 uTint,uInk,uAccent;uniform float uOpacity,uDark,uWord;varying float vLight;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=smoothstep(.5,.16,d);vec3 c=mix(mix(uTint,vec3(.88,.98,1.),min(1.,vLight*.6)),uInk,uDark);c=mix(c,uAccent*mix(.8+.35*min(1.,vLight*.5),1.,uDark),uWord);gl_FragColor=vec4(c,a*uOpacity*mix(vLight,min(1.,.55+vLight*.5),uDark));}`
 
 const STATE_SECONDS = 3.2 // each form holds this long before folding into the next
 const WORD_IDLE_SECONDS = 300 // untouched, the wordmark slowly dissolves after five minutes
@@ -189,10 +190,10 @@ function fillWordmark(target: Float32Array, family: string, width: number) {
   }
 }
 
-// Resolves the page text color (any CSS color format) to sRGB 0..1.
-function textColor(el: HTMLElement): [number, number, number] {
+// Resolves a color token (any CSS color format) to sRGB 0..1.
+function tokenColor(el: HTMLElement, token: string): [number, number, number] {
   const ctx = document.createElement('canvas').getContext('2d')
-  const css = getComputedStyle(el).getPropertyValue('--color-text-1').trim()
+  const css = getComputedStyle(el).getPropertyValue(token).trim()
   if (!ctx || !css) return [0.9, 0.93, 0.96]
   ctx.fillStyle = css
   ctx.fillRect(0, 0, 1, 1)
@@ -239,7 +240,7 @@ export function FoldMark({ busy, fallback }: FoldMarkProps) {
         uTime: { value: 0 }, uFrom: { value: 0 }, uTo: { value: 0 }, uMorph: { value: 1 },
         uTint: { value: tint }, uExplode: { value: 0 }, uPixel: { value: 1 }, uOpacity: { value: 1 }, uScan: { value: 0 },
       }
-      const pointUniforms = { ...uniforms, uOpacity: { value: 0 }, uWord: { value: 0 }, uInk: { value: new THREE.Color() }, uDark: { value: 0 } }
+      const pointUniforms = { ...uniforms, uOpacity: { value: 0 }, uWord: { value: 0 }, uInk: { value: new THREE.Color() }, uAccent: { value: new THREE.Color() }, uDark: { value: 0 } }
       const metalGeometry = ribbons(THREE)
       const metalMaterial = new THREE.ShaderMaterial({ uniforms, vertexShader: VERTEX, fragmentShader: FRAGMENT, side: THREE.DoubleSide, transparent: true })
       const metal = new THREE.Mesh(metalGeometry, metalMaterial)
@@ -273,7 +274,8 @@ export function FoldMark({ busy, fallback }: FoldMarkProps) {
 
       // Dark text means a light page: draw the dust in ink with normal blending.
       const syncInk = () => {
-        const [r, g, b] = textColor(canvas)
+        const [r, g, b] = tokenColor(canvas, '--color-text-1')
+        pointUniforms.uAccent.value.setRGB(...tokenColor(canvas, '--color-accent'), THREE.SRGBColorSpace)
         const dark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5
         pointUniforms.uInk.value.setRGB(r, g, b, THREE.SRGBColorSpace)
         pointUniforms.uDark.value = dark ? 1 : 0
