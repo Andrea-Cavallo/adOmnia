@@ -15,6 +15,10 @@
 </p>
 
 <p align="center">
+  <strong>English</strong> · <a href="README.es-ES.md">Español</a>
+</p>
+
+<p align="center">
   <a href="#download">Download</a> ·
   <a href="#go-studio">gO Studio</a> ·
   <a href="#api-and-runtime-toolbox">API toolbox</a> ·
