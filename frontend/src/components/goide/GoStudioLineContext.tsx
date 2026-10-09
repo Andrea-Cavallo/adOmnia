@@ -189,7 +189,7 @@ export function GoStudioLineContext({ session, document }: { session: GoIDESessi
       {context.module && (
         <Section icon={<Package size={11} />} title="Dependency">
           <p className="font-mono text-text-1">{context.module}</p>
-          <p className="text-text-3">{importers.length ? `Imported by ${importers.map((pkg) => pkg.name).join(', ')}` : arch ? 'No package of the project imports it directly.' : 'Analyzing the project…'}</p>
+          <p className="text-text-3">{importers.length ? `Imported by ${importers.map((pkg) => pkg.path).join(', ')}` : arch ? 'No package of the project imports it directly.' : 'Analyzing the project…'}</p>
           <div className="flex flex-wrap gap-1">
             <Action onClick={() => useGoIDELspStore.getState().showToolWindow('vulns')} title="govulncheck: is a vulnerable function of it reachable?">Vulnerabilities</Action>
             {importers[0] && <Action onClick={() => openArchSite(importers[0].site)}>First importer</Action>}
