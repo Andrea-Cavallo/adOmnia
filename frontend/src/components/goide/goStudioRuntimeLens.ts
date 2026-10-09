@@ -88,3 +88,8 @@ export function registerGoStudioRuntimeLens(): void {
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
   schedule(provider)
 }
+
+/** Runtime Lens stats of one file (last poll), for the Context pane. */
+export function runtimeLensStats(sessionId: string, relativePath: string): OtlpLensStat[] {
+  return byFile.get(`${sessionId}\u0000${relativePath}`) ?? []
+}

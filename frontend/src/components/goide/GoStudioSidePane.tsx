@@ -1,9 +1,10 @@
 import { Suspense, lazy, useState, type ComponentType } from 'react'
-import { Braces, FolderTree, Minus, Sparkles } from 'lucide-react'
+import { Braces, Crosshair, FolderTree, Minus, Sparkles } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioProjectOverview } from './GoStudioProjectOverview'
 import { GoStudioStructure } from './GoStudioStructure'
+import { GoStudioLineContext } from './GoStudioLineContext'
 import { GoStudioCopilotChat } from './GoStudioCopilotChat'
 import { GoStudioMilkChat } from './GoStudioMilkChat'
 import { MilkLogo } from './GoStudioMilkDialog'
@@ -13,7 +14,7 @@ import { toolKey, useStudioTools } from './studioToolState'
 
 const AICompanion = lazy(() => import('@/components/assistant/AICompanion').then((module) => ({ default: module.AICompanion })))
 
-type SidePaneTab = 'structure' | 'project' | 'copilot' | 'milk'
+type SidePaneTab = 'structure' | 'context' | 'project' | 'copilot' | 'milk'
 
 interface GoStudioSidePaneProps {
   session: GoIDESession
@@ -22,6 +23,7 @@ interface GoStudioSidePaneProps {
 
 const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: ComponentType<{ size?: number }> }> = [
   { id: 'structure', label: 'Structure', icon: Braces },
+  { id: 'context', label: 'Context', icon: Crosshair },
   { id: 'project', label: 'Project', icon: FolderTree },
   { id: 'copilot', label: 'Copilot', icon: Sparkles },
   { id: 'milk', label: 'milk', icon: MilkLogo },
@@ -38,7 +40,7 @@ export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
     else useGoStudioAssistantStore.getState().close()
     setTab(next)
   }
-  const content = pane === 'a0' ? <Suspense fallback={<div className="p-3 text-[10px] text-text-4">Loading a0…</div>}><AICompanion /></Suspense> : activeAssistant === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : activeAssistant === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : visibleTab === 'structure' ? <GoStudioStructure sessionId={session.id} document={document} /> : <GoStudioProjectOverview session={session} />
+  const content = pane === 'a0' ? <Suspense fallback={<div className="p-3 text-[10px] text-text-4">Loading a0…</div>}><AICompanion /></Suspense> : activeAssistant === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : activeAssistant === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : visibleTab === 'structure' ? <GoStudioStructure sessionId={session.id} document={document} /> : visibleTab === 'context' ? <GoStudioLineContext session={session} document={document} /> : <GoStudioProjectOverview session={session} />
   return (
     <aside aria-label="Structure and project overview" className="flex h-full min-w-0 flex-col">
       <div role="tablist" className="go-studio-tool-header gap-1 pl-2">
