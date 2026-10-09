@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Code2, Copy, Download, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2, Upload } from 'lucide-react'
+import { Bug, Code2, Copy, Download, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2, Upload } from 'lucide-react'
 import { readFileSmart, saveBase64File } from '@/lib/fileUtils'
 import { openTraceLogs } from '@/lib/otlp-logs'
 import { parseStackTrace } from '@/lib/loginspector/stackTrace'
@@ -9,7 +9,7 @@ import { clearOtlp, getOtlpMap, getOtlpTrace, importOtlpTrace, listOtlpTraces, o
 import { ServiceMapView } from './ServiceMapView'
 import { traceTreeRows } from './traceTree'
 import { compareTraces, serviceColor, spanInsights, spanSource, type SpanInsight } from './traceStudioModel'
-import { openSpanSource } from './openSpanSource'
+import { breakAtSpanSource, openSpanSource } from './openSpanSource'
 
 const CATEGORY_LABEL: Record<string, string> = { http: 'HTTP', db: 'DB', rpc: 'RPC', messaging: 'MSG' }
 const ENDPOINT_HINT = 'OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318'
@@ -53,6 +53,19 @@ function ExceptionStack({ stack }: { stack: string }) {
   )
 }
 
+/** Trace → debugger: breakpoint on the span's line in its project. */
+function BreakHere({ file, line }: { file: string; line: number }) {
+  const [note, setNote] = useState('')
+  return (
+    <div>
+      <button type="button" onClick={() => void breakAtSpanSource(file, line).then(setNote)} title="Set a breakpoint on this span's line in its project: the next request through this service stops there under the debugger" className="flex items-center gap-1 rounded border border-warning/50 px-2 py-1 text-warning hover:bg-warning/10">
+        <Bug size={12} aria-hidden="true" /> Break here
+      </button>
+      {note && <p className="mt-1 text-[10.5px] text-text-3">{note}</p>}
+    </div>
+  )
+}
+
 function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }) {
   const source = spanSource(span)
   const attrs = Object.entries(span.attributes ?? {}).filter(([key]) => !key.startsWith('code.'))
@@ -75,6 +88,7 @@ function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }
           <Code2 size={12} aria-hidden="true" /> <span className="truncate">Open {source.function ?? 'source'} · {source.file.split(/[\\/]/).pop()}:{source.line}</span>
         </button>
       )}
+      {source && <BreakHere file={source.file} line={source.line} />}
       <button type="button" onClick={() => openTraceLogs(span.traceId)} title="Log Inspector filtered on traceId: the service logs must carry it (trace_id / traceId field)" className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">
         <ScrollText size={12} aria-hidden="true" /> Logs of this trace
       </button>
