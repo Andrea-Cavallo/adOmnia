@@ -5,7 +5,7 @@ import { useServerPort } from '@/lib/useServerPort'
 import { clearOtlp, getOtlpMap, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
 import { ServiceMapView } from './ServiceMapView'
 import { traceTreeRows } from './traceTree'
-import { compareTraces, serviceColor, spanSource } from './traceStudioModel'
+import { compareTraces, serviceColor, spanInsights, spanSource, type SpanInsight } from './traceStudioModel'
 import { openSpanSource } from './openSpanSource'
 
 const CATEGORY_LABEL: Record<string, string> = { http: 'HTTP', db: 'DB', rpc: 'RPC', messaging: 'MSG' }
@@ -19,7 +19,20 @@ function ServiceDot({ service }: { service: string }) {
   return <span className="inline-block h-2 w-2 flex-none rounded-full" style={{ background: serviceColor(service) }} aria-hidden="true" />
 }
 
-function SpanDetail({ span }: { span: OtlpSpan }) {
+function InsightBadges({ insight }: { insight?: SpanInsight }) {
+  if (!insight) return null
+  return (
+    <>
+      {insight.errorOrigin && <span title="The error starts here: the failing spans above only propagate it" className="rounded bg-error/15 px-1 text-[9px] font-semibold text-error">error origin</span>}
+      {insight.networkMs !== undefined && <span title="Client time not spent in the server handler: network, TLS, queues" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">net {ms(insight.networkMs)}</span>}
+      {insight.brokerDelayMs !== undefined && <span title="Time the message waited in the broker before the consumer picked it up" className="rounded bg-warning/10 px-1 text-[9px] text-warning">queued {ms(insight.brokerDelayMs)}</span>}
+      {insight.parallel && <span title="Runs at the same time as a sibling" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">parallel</span>}
+      {insight.async && <span title="Finishes after its parent: asynchronous work" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">async</span>}
+    </>
+  )
+}
+
+function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }) {
   const source = spanSource(span)
   const attrs = Object.entries(span.attributes ?? {}).filter(([key]) => !key.startsWith('code.'))
   return (
@@ -34,6 +47,7 @@ function SpanDetail({ span }: { span: OtlpSpan }) {
         {CATEGORY_LABEL[span.category] && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-accent">{CATEGORY_LABEL[span.category]}</span>}
         <span className={cn('rounded px-1.5 py-0.5', span.statusCode === 'ERROR' ? 'bg-error/10 text-error' : 'bg-surface-3 text-text-3')}>{span.statusCode}{span.statusMessage ? `: ${span.statusMessage}` : ''}</span>
         <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2">{ms(span.durationMs)}</span>
+        <InsightBadges insight={insight} />
       </div>
       {source && (
         <button type="button" onClick={() => void openSpanSource(source.file, source.line)} title={`${source.file}:${source.line}`} className="flex max-w-full items-center gap-1 rounded border border-accent/50 px-2 py-1 text-accent hover:bg-accent/10">
@@ -126,6 +140,7 @@ export function TraceStudio() {
   const end = spans.length ? Math.max(...spans.map((span) => span.startMs + span.durationMs)) : 0
   const total = Math.max(end - start, 0.001)
   const current = spans.find((span) => span.spanId === spanId)
+  const insights = useMemo(() => spanInsights(spans), [spans])
 
   return (
     <div className="flex min-h-[480px] flex-1 flex-col">
@@ -207,6 +222,7 @@ export function TraceStudio() {
                         <ServiceDot service={span.service} />
                         {CATEGORY_LABEL[span.category] && <span className="rounded bg-surface-3 px-1 text-[9px] text-text-3">{CATEGORY_LABEL[span.category]}</span>}
                         <span className="truncate text-text-1" title={`${span.service}: ${span.name}`}>{span.name}</span>
+                        <InsightBadges insight={insights.get(span.spanId)} />
                       </span>
                       <span className="relative h-2.5 rounded-sm bg-surface-2">
                         <span className={cn('absolute inset-y-0 rounded-sm', span.statusCode === 'ERROR' && 'ring-1 ring-error')} style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%`, background: span.statusCode === 'ERROR' ? 'var(--color-error)' : serviceColor(span.service) }} />
@@ -217,7 +233,7 @@ export function TraceStudio() {
                 })}
               </div>
               <div className="min-h-0 w-[320px] min-w-[240px] overflow-y-auto border-l border-border-1 p-3">
-                {current && <SpanDetail span={current} />}
+                {current && <SpanDetail span={current} insight={insights.get(current.spanId)} />}
               </div>
             </div>
           )}

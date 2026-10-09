@@ -50,3 +50,48 @@ export function compareTraces(left: readonly OtlpSpan[], right: readonly OtlpSpa
   }
   return [...rows.values()].map((row) => (row.left !== undefined && row.right !== undefined ? { ...row, deltaMs: row.right - row.left } : row))
 }
+
+export interface SpanInsight {
+  /** Client span minus the server span it caused, in another service: time on the wire and queues. */
+  networkMs?: number
+  /** Consumer start minus producer end: how long the message waited in the broker. */
+  brokerDelayMs?: number
+  /** The deepest failing span: the error starts here, its ancestors only propagate it. */
+  errorOrigin?: boolean
+  /** Overlaps a sibling in time. */
+  parallel?: boolean
+  /** Ends after its parent ended (fire-and-forget, goroutine, message). */
+  async?: boolean
+}
+
+export function spanInsights(spans: readonly OtlpSpan[]): Map<string, SpanInsight> {
+  const byId = new Map(spans.map((span) => [span.spanId, span]))
+  const children = new Map<string, OtlpSpan[]>()
+  for (const span of spans) {
+    if (!span.parentSpanId) continue
+    children.set(span.parentSpanId, [...(children.get(span.parentSpanId) ?? []), span])
+  }
+  const end = (span: OtlpSpan) => span.startMs + span.durationMs
+  const hasErrorBelow = (span: OtlpSpan): boolean => (children.get(span.spanId) ?? []).some((child) => child.statusCode === 'ERROR' || hasErrorBelow(child))
+  const out = new Map<string, SpanInsight>()
+  const set = (id: string, patch: SpanInsight) => out.set(id, { ...out.get(id), ...patch })
+  for (const span of spans) {
+    const kids = children.get(span.spanId) ?? []
+    if (span.kind === 'client') {
+      const server = kids.find((child) => child.kind === 'server' && child.service !== span.service)
+      if (server) set(span.spanId, { networkMs: Math.max(0, span.durationMs - server.durationMs) })
+    }
+    const parent = span.parentSpanId ? byId.get(span.parentSpanId) : undefined
+    if (span.kind === 'consumer' && parent?.kind === 'producer') set(span.spanId, { brokerDelayMs: Math.max(0, span.startMs - end(parent)) })
+    if (span.statusCode === 'ERROR' && !hasErrorBelow(span)) set(span.spanId, { errorOrigin: true })
+    if (parent && end(span) > end(parent) + 0.001) set(span.spanId, { async: true })
+    for (let i = 0; i < kids.length; i++) {
+      for (let j = i + 1; j < kids.length; j++) {
+        const a = kids[i]
+        const b = kids[j]
+        if (a.startMs < end(b) && b.startMs < end(a)) { set(a.spanId, { parallel: true }); set(b.spanId, { parallel: true }) }
+      }
+    }
+  }
+  return out
+}
