@@ -5,6 +5,7 @@ import {
   caretPosition, highlightedJson, highlightedSql, jsonValidity,
   type QueryTab,
 } from './dbShared'
+import { sqlCompletions, type SqlCompletion, type SqlCompletionItem, type SqlSchema } from './sqlComplete'
 
 interface QueryEditorProps {
   tabs: QueryTab[]
@@ -17,6 +18,8 @@ interface QueryEditorProps {
   timeoutMs: number
   running: boolean
   focusToken: number
+  /** table → columns, drives SQL completion (empty until the schema is loaded). */
+  schema: SqlSchema
   onSelectTab: (id: string) => void
   onAddTab: () => void
   onCloseTab: (id: string) => void
@@ -26,6 +29,21 @@ interface QueryEditorProps {
   onRun: (explain: boolean) => void
   onFormat: () => void
   onSave: () => void
+}
+
+const LINE_HEIGHT = 21
+const PAD = 12
+const KIND_STYLE: Record<SqlCompletionItem['kind'], string> = {
+  table: 'text-accent',
+  column: 'text-success',
+  keyword: 'text-text-3',
+}
+
+function charWidth(el: HTMLElement): number {
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx) return 7.5
+  ctx.font = getComputedStyle(el).font
+  return ctx.measureText('0000000000').width / 10 || 7.5
 }
 
 const LIMIT_OPTIONS = [100, 200, 500, 1000, 5000]
@@ -48,13 +66,15 @@ function ToolButton({ icon, label, onClick, disabled, active }: { icon: ReactNod
 
 export function QueryEditor(props: QueryEditorProps) {
   const {
-    tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running, focusToken,
+    tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running, focusToken, schema,
     onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave,
   } = props
 
   const taRef = useRef<HTMLTextAreaElement>(null)
   const [caret, setCaret] = useState({ line: 1, col: 1 })
   const [runMenu, setRunMenu] = useState(false)
+  const [completion, setCompletion] = useState<(SqlCompletion & { caret: number }) | null>(null)
+  const [selected, setSelected] = useState(0)
   const lineCount = Math.max(query.split('\n').length, 1)
   const validity = isMongo ? jsonValidity(query) : null
 
@@ -66,6 +86,32 @@ export function QueryEditor(props: QueryEditorProps) {
     const el = taRef.current
     if (el) setCaret(caretPosition(query, el.selectionStart))
   }
+
+  const suggest = (value: string, caretAt: number, explicit = false) => {
+    const next = isMongo ? null : sqlCompletions(value, caretAt, schema, explicit)
+    setCompletion(next && { ...next, caret: caretAt })
+    setSelected(0)
+  }
+
+  const accept = (item: SqlCompletionItem) => {
+    const el = taRef.current
+    if (!completion || !el) return
+    const next = query.slice(0, completion.start) + item.label + query.slice(completion.caret)
+    const pos = completion.start + item.label.length
+    onChangeQuery(next)
+    setCompletion(null)
+    requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = pos; el.focus(); updateCaret() })
+  }
+
+  const popupStyle = (() => {
+    const el = taRef.current
+    if (!completion || !el) return undefined
+    const at = caretPosition(query, completion.start)
+    const top = PAD + at.line * LINE_HEIGHT - el.scrollTop
+    const left = Math.max(4, PAD + (at.col - 1) * charWidth(el) - el.scrollLeft)
+    const flip = top + 200 > el.clientHeight && top > 220
+    return flip ? { left, bottom: el.clientHeight - top + LINE_HEIGHT + 2 } : { left, top: top + 2 }
+  })()
 
   return (
     <div className="flex min-h-0 flex-col border-b border-border-1 bg-surface-1">
@@ -197,15 +243,40 @@ export function QueryEditor(props: QueryEditorProps) {
           <textarea
             ref={taRef}
             value={query}
-            onChange={(e) => { onChangeQuery(e.target.value); updateCaret() }}
+            onChange={(e) => { onChangeQuery(e.target.value); updateCaret(); suggest(e.target.value, e.target.selectionStart) }}
             onKeyUp={updateCaret}
-            onClick={updateCaret}
+            onClick={() => { updateCaret(); setCompletion(null) }}
+            onBlur={() => setCompletion(null)}
+            onScroll={() => setCompletion((c) => c && { ...c })}
             spellCheck={false}
             aria-label="Database query editor"
             placeholder={isMongo ? 'Enter a MongoDB JSON operation...' : 'Enter a SQL query...'}
             className="absolute inset-0 h-full w-full resize-none bg-transparent px-3 py-3 font-mono text-[12.5px] text-transparent caret-accent outline-none placeholder:text-text-4"
             style={{ tabSize: 2, lineHeight: '21px' }}
+            aria-autocomplete="list"
+            aria-expanded={!!completion}
             onKeyDown={(e) => {
+              if (completion) {
+                const n = completion.items.length
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setSelected((i) => (i + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
+                  return
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault()
+                    accept(completion.items[Math.min(selected, n - 1)])
+                    return
+                  }
+                }
+                if (e.key === 'Escape') { e.preventDefault(); setCompletion(null); return }
+              }
+              if (e.key === ' ' && e.ctrlKey) {
+                e.preventDefault()
+                suggest(query, e.currentTarget.selectionStart, true)
+                return
+              }
               if (e.key === 'Tab') {
                 e.preventDefault()
                 const t = e.currentTarget
@@ -220,6 +291,33 @@ export function QueryEditor(props: QueryEditorProps) {
               }
             }}
           />
+          {completion && popupStyle && (
+            <div
+              role="listbox"
+              aria-label="SQL suggestions"
+              className="absolute z-20 max-h-[200px] w-64 overflow-y-auto rounded-md border border-border-2 bg-surface-3 py-1 shadow-xl"
+              style={popupStyle}
+            >
+              {completion.items.map((item, i) => (
+                <div
+                  key={`${item.kind}:${item.label}:${item.detail ?? ''}`}
+                  role="option"
+                  aria-selected={i === selected}
+                  ref={i === selected ? (node) => node?.scrollIntoView({ block: 'nearest' }) : undefined}
+                  onMouseDown={(e) => { e.preventDefault(); accept(item) }}
+                  onMouseEnter={() => setSelected(i)}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 px-2.5 py-1 font-mono text-[11.5px]',
+                    i === selected ? 'bg-accent/15 text-text-1' : 'text-text-2'
+                  )}
+                >
+                  <span className={cn('w-3 flex-none text-center text-[10px] font-bold uppercase', KIND_STYLE[item.kind])}>{item.kind[0]}</span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.detail && <span className="flex-none truncate text-[10px] text-text-4">{item.detail}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

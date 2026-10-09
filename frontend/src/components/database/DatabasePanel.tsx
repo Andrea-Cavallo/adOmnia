@@ -17,8 +17,8 @@ import { useResizableSize } from '@/hooks/useResizableSize'
 import {
   CONNECTIONS_KEY, DRIVER_META, FAVORITES_KEY, HISTORY_KEY, MONGO_DEFAULT_QUERY,
   SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
-  blankConnection, blankTab, browseQuery, countQuery, csvEscape, download,
-  createObjectQuery, defaultConnectionName, extractCount, extractNames, introspectionQuery,
+  blankConnection, blankTab, browseQuery, columnsQuery, countQuery, csvEscape, download,
+  createObjectQuery, defaultConnectionName, extractColumns, extractCount, extractNames, introspectionQuery,
   isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, parseQueryWorkspace, substituteVars, validateConnection,
   type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type QueryWorkspaceState, type SchemaItem,
   upsertConnectionFromRef,
@@ -60,6 +60,7 @@ export function DatabasePanel() {
   const [mongoReload, setMongoReload] = useState(0)
 
   const [schemaItems, setSchemaItems] = useState<SchemaItem[]>([])
+  const [schemaColumns, setSchemaColumns] = useState<Record<string, string[]>>({})
   const [schemaDb, setSchemaDb] = useState('')
   const [schemaLoading, setSchemaLoading] = useState(false)
   const [schemaError, setSchemaError] = useState('')
@@ -74,6 +75,10 @@ export function DatabasePanel() {
   const isMongo = active.driver === 'mongodb'
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
   const dangerous = isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
+  const completionSchema = useMemo(
+    () => Object.fromEntries(schemaItems.map((t) => [t.name, schemaColumns[t.name] ?? []])),
+    [schemaItems, schemaColumns],
+  )
 
   // ── auto-dismiss success toast ────────────────────────────────────────────
   useEffect(() => {
@@ -186,6 +191,7 @@ export function DatabasePanel() {
     setError('')
     setSchemaError('')
     setSchemaItems([])
+    setSchemaColumns({})
     if (driver === 'mongodb' && !query.trim().startsWith('{')) setQuery(MONGO_DEFAULT_QUERY)
     else if (driver !== 'mongodb' && query.trim().startsWith('{')) setQuery(SQL_DEFAULT_QUERY)
   }
@@ -195,6 +201,7 @@ export function DatabasePanel() {
     setResult(null)
     setError('')
     setSchemaItems([])
+    setSchemaColumns({})
     setSchemaError('')
   }
 
@@ -371,6 +378,13 @@ export function DatabasePanel() {
       const names = extractNames(data)
       const baseItems: SchemaItem[] = names.map((name) => ({ name, count: null }))
       setSchemaItems(baseItems)
+      const colQuery = columnsQuery(target.driver)
+      // Column names only feed editor completion: a failure here must not hide the table list.
+      if (colQuery) {
+        api('/database/query', { connection: runtimeConnection, query: colQuery, limit: 20000, timeoutMs, explain: false, confirm: false })
+          .then((r) => setSchemaColumns(extractColumns(r as DbResult)))
+          .catch(() => setSchemaColumns({}))
+      }
       setSchemaDb(target.database || (target.driver === 'sqlite' ? target.sqlitePath.split(/[\\/]/).pop() || 'SQLite' : DRIVER_META[target.driver].short))
       const capped = names.slice(0, 30)
       const counts = await Promise.allSettled(
@@ -382,6 +396,7 @@ export function DatabasePanel() {
       }))
     } catch (e) {
       setSchemaItems([])
+      setSchemaColumns({})
       setSchemaError(e instanceof Error ? e.message : String(e))
     } finally {
       setSchemaLoading(false)
@@ -560,6 +575,7 @@ export function DatabasePanel() {
           timeoutMs={timeoutMs}
           running={running}
           focusToken={focusToken}
+          schema={completionSchema}
           onSelectTab={selectTab}
           onAddTab={addTab}
           onCloseTab={closeTab}
