@@ -53,9 +53,26 @@ async function call<T>(port: number | null, path: string, body?: unknown): Promi
   return data
 }
 
+export interface OtlpLensStat {
+  file: string
+  line: number
+  function?: string
+  name: string
+  count: number
+  errors: number
+  avgMs: number
+  p50Ms: number
+  p95Ms: number
+  p99Ms: number
+  maxMs: number
+  lastMs: number
+  category: string
+}
+
 export const otlpStatus = (port: number | null) => call<OtlpStatus>(port, '/otlp/status')
 export const startOtlp = (port: number | null, httpPort = 4318, grpcPort = 4317) => call<OtlpStatus>(port, '/otlp/start', { httpPort, grpcPort })
 export const stopOtlp = (port: number | null) => call<OtlpStatus>(port, '/otlp/stop', {})
 export const clearOtlp = (port: number | null) => call<OtlpStatus>(port, '/otlp/clear', {})
 export const listOtlpTraces = (port: number | null, limit = 200) => call<OtlpTraceSummary[]>(port, `/otlp/traces?limit=${limit}`)
 export const getOtlpTrace = (port: number | null, traceId: string) => call<OtlpSpan[]>(port, `/otlp/trace?id=${encodeURIComponent(traceId)}`)
+export const getOtlpLens = (port: number | null) => call<OtlpLensStat[]>(port, '/otlp/lens')

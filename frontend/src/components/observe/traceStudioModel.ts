@@ -1,6 +1,7 @@
 // Pure helpers for the Trace Studio: where a span's code lives, a stable color per service,
 // and the comparison of two traces of the same operation.
 import type { OtlpSpan } from '@/lib/otlp-api'
+export { relativeToRoots } from '@/lib/sourcePaths'
 
 /** Source location from the OpenTelemetry code.* attributes (old and stable names). */
 export function spanSource(span: Pick<OtlpSpan, 'attributes'>): { file: string; line: number; function?: string } | null {
@@ -10,20 +11,6 @@ export function spanSource(span: Pick<OtlpSpan, 'attributes'>): { file: string; 
   const line = Number(attrs['code.lineno'] ?? attrs['code.line.number']) || 1
   const fn = attrs['code.function'] ?? attrs['code.function.name']
   return { file, line, ...(fn ? { function: fn } : {}) }
-}
-
-/** Project-relative path when the file lives under one of the open project roots. */
-export function relativeToRoots(file: string, roots: readonly { id: string; root: string }[]): { sessionId: string; relativePath: string } | null {
-  const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
-  const target = normalize(file)
-  for (const { id, root } of roots) {
-    const base = normalize(root)
-    if (!base) continue
-    const caseInsensitive = /^[a-z]:\//i.test(base)
-    const [a, b] = caseInsensitive ? [target.toLowerCase(), base.toLowerCase()] : [target, base]
-    if (a.startsWith(`${b}/`)) return { sessionId: id, relativePath: target.slice(base.length + 1) }
-  }
-  return null
 }
 
 /** Stable hue per service name, readable on dark and light surfaces. */

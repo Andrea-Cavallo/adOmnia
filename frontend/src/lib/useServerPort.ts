@@ -26,6 +26,17 @@ export function useServerPort(): number | null {
   return port
 }
 
+/** The sidecar port outside React (CodeLens providers, stores); null until Wails answers. */
+export async function getServerPort(): Promise<number | null> {
+  if (cachedPort !== null) return cachedPort
+  try {
+    cachedPort = await GetServerPort()
+    return cachedPort
+  } catch {
+    return null
+  }
+}
+
 export function serverUrl(port: number | null, path: string): string {
   if (!port) return ''
   // ponytail: use 127.0.0.1, not localhost. The sidecar binds IPv4-only
