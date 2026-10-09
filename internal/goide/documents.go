@@ -468,7 +468,7 @@ var languageByExtension = map[string]string{
 	".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "javascript",
 	".ts": "typescript", ".tsx": "typescript", ".mts": "typescript",
 	".xml": "xml", ".xsd": "xml", ".wsdl": "xml", ".svg": "xml",
-	".sql": "sql", ".proto": "protobuf", ".graphql": "graphql", ".gql": "graphql",
+	".sql": "sql", ".proto": "proto", ".graphql": "graphql", ".gql": "graphql",
 	".sh": "shell", ".bash": "shell", ".zsh": "shell",
 	".ps1": "powershell", ".psm1": "powershell", ".bat": "bat", ".cmd": "bat",
 	".ini": "ini", ".toml": "ini", ".cfg": "ini", ".conf": "ini", ".properties": "ini",

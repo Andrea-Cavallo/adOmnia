@@ -132,6 +132,7 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		"Dockerfile": "dockerfile", "build/Dockerfile.dev": "dockerfile", "api.dockerfile": "dockerfile",
 		"Makefile": "makefile", "rules.mk": "makefile", "pipeline.yaml": "yaml",
 		".env": "ini", ".env.local": "ini", "query.sql": "sql", "README.md": "markdown", "LICENSE": "plaintext",
+		"api/orders.proto": "proto", // Monaco id is "proto" ("protobuf" is only an alias: no colors)
 	}
 	for path, want := range cases {
 		if got := languageForPath(path); got != want {
