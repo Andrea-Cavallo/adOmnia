@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 89 | 26 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 86 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -54,11 +54,8 @@ Lo scenario ideale da raggiungere:
 - [x] Parte l'ambiente locale. — *Run → **Start Workspace** avvia una configurazione compound condivisa/pinnata "Start workspace"; se manca, apre la bozza corretta nelle Run configurations. Restano espliciti Trust e segreti runtime, nessun processo parte senza azione utente.*
 - [ ] Il consumer di un altro servizio riceve il messaggio.
 - [ ] Il distributed debugger collega i due servizi.
-- [ ] Vedo log e trace della stessa operazione. — *Parziale: Log e timeline per request; nessun trace/OTLP receiver.*
-- [ ] Se qualcosa fallisce posso salvarne la riproduzione.
-- [ ] Posso generare un regression test. — *Parziale: Solo lo starter di test per i race; non per request fallite.*
+- [ ] Vedo log e trace della stessa operazione. — *Parziale: log e timeline per request nella Live Session; trace OTLP nel Trace Studio; le due viste non sono ancora unite per trace ID.*
 - [ ] Posso profilare la stessa richiesta.
-- [ ] Posso confrontare performance prima/dopo il fix.
 
 Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad adOmnia”.
 
