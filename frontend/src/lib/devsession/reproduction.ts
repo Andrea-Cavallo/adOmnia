@@ -190,6 +190,12 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
     add('stack.txt', `${run.hits.map((hit) => [`${hit.at} ${hit.function} ${hit.relativePath ?? hit.file ?? ''}:${hit.line}`, ...(hit.stack ?? []).map((frame) => `    ${frame.function} ${frame.relativePath ?? frame.file ?? ''}:${frame.line}`)].join('\n')).join('\n\n')}\n`)
   }
 
+  const steps = [
+    `Start ${input.service} with the configuration of \`.env.example\` (fill the values).`,
+    ...(input.queries.length ? ['Bring the database to the state the statements in `queries.sql` expect.'] : []),
+    ...(input.messages.length ? ['If the flow starts from a message, load the `kafka/*.kafka.json` fixtures in Broker Studio (Producer → Load fixture).'] : []),
+    `Send \`request.http\` (adOmnia, VS Code REST Client or IntelliJ), or run \`BASE_URL=http://localhost:PORT go test ./${dir}/\`.`,
+  ]
   const index = files.map((file) => `- \`${file.relativePath.slice(dir.length + 1)}\``).join('\n')
   add('README.md', `# Reproduction: ${run.method} ${pathOf(request.url)}
 
@@ -203,8 +209,7 @@ Captured by adOmnia on ${input.createdAt} from **${input.service}**.
 
 ## Steps
 
-1. Start ${input.service} with the configuration of \`.env.example\` (fill the values).
-${input.queries.length ? '2. Bring the database to the state the statements in `queries.sql` expect.\n' : ''}${input.messages.length ? `${input.queries.length ? 3 : 2}. Load the \`kafka/*.kafka.json\` fixtures in Broker Studio (Producer → Load fixture) if the flow starts from a message.\n` : ''}- Send \`request.http\` (adOmnia, VS Code REST Client or IntelliJ), or run \`BASE_URL=http://localhost:PORT go test ./${dir}/\`.
+${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
 
 ## Things that will differ on replay
 

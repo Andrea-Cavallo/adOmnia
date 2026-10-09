@@ -47,6 +47,7 @@ describe('reproduction', () => {
     expect(file('.env.example')).toBe('# Values the request needs (the captured ones are not written here)\nBASE_URL=\nAUTHORIZATION=\nbaseUrl=\n')
     expect(file('logs.txt')).toContain('token=<redacted>')
     expect(file('README.md')).toContain('SQL NOW()')
+    expect(file('README.md')).toMatch(/1\. Start orders[\s\S]*2\. Bring the database[\s\S]*3\. If the flow starts from a message[\s\S]*4\. Send `request\.http`/)
     expect(file('README.md')).toContain('2 secret value(s)')
     expect(result.secretsStripped).toBe(2)
   })

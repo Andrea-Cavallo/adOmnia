@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 104 | 26 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 89 | 26 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -231,31 +231,18 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ## §33 · Reproduction Studio
 
 > Trasformare un bug osservato in uno scenario ripetibile.
+>
+> *Base esistente:* **Save reproduction** sulla risposta live (API Workspace) e nel tab Request del debug: scrive `repro/<data>-<request>/` nel progetto con README, `request.http`, test Go di regressione, `queries.sql`, fixture Kafka, `.env.example`, `logs.txt`, `stack.txt`; segreti rimossi, valori non deterministici elencati.
 
-- [ ] Capture request.
-- [ ] Capture headers.
-- [ ] Capture body.
-- [ ] Capture env references.
 - [ ] Capture relevant DB state.
-- [ ] Capture broker message.
 - [ ] Capture config.
 - [ ] Capture feature flags.
-- [ ] Capture stack.
-- [ ] Capture logs.
 - [ ] Capture trace.
 
 ### Output
 
 - [ ] Generate unit test.
-- [ ] Generate integration test.
-- [ ] Generate HTTP request fixture.
-- [ ] Generate Kafka fixture.
-- [ ] Generate SQL fixture.
-- [ ] Generate env template.
 - [ ] Generate Docker/Compose reproduction where useful.
-- [ ] Generate README reproduction steps.
-- [ ] Strip secrets automatically.
-- [ ] Mark non-deterministic dependencies.
 
 ## §48 · Enterprise — protocolli legacy in gO Studio
 
