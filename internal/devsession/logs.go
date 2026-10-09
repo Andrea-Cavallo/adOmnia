@@ -265,6 +265,10 @@ func (m *Manager) RecordMessage(message Message) {
 	if correlation == "" {
 		correlation = message.Headers[strings.ToLower(CorrelationHeader)]
 	}
+	if correlation == "" {
+		// OpenTelemetry instrumentation propagates the request's traceparent into the message.
+		correlation = message.Headers["traceparent"]
+	}
 	if run, match := m.attributeLocked(message.SessionID, correlation, message.At); run != nil {
 		message.RequestRunID, message.Match = run.ID, match
 		run.Messages++

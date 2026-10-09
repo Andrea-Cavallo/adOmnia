@@ -125,7 +125,7 @@ func (m *Manager) attributeLocked(sessionID, text string, at time.Time) (*Reques
 	if text != "" {
 		for i := len(m.runOrder) - 1; i >= 0; i-- {
 			run := m.runs[m.runOrder[i]]
-			if run.SessionID == sessionID && strings.Contains(text, run.CorrelationID) {
+			if run.SessionID == sessionID && (strings.Contains(text, run.CorrelationID) || strings.Contains(strings.ToLower(text), TraceIDFor(run.CorrelationID))) {
 				return run, MatchID
 			}
 		}
@@ -156,3 +156,19 @@ func (m *Manager) attributeLocked(sessionID, text string, at time.Time) (*Reques
 
 // afterResponseGrace is how long after the response a line still counts as the request's.
 const afterResponseGrace = time.Second
+
+// TraceIDFor is the W3C trace id adOmnia sends in the traceparent of a live request:
+// "a" + the hex characters of the correlation id, left-padded to 32. Keep in sync with
+// frontend/src/lib/devsession/traceparent.ts.
+func TraceIDFor(correlationID string) string {
+	hex := make([]byte, 0, len(correlationID))
+	for _, c := range []byte(strings.ToLower(correlationID)) {
+		if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') {
+			hex = append(hex, c)
+		}
+	}
+	if len(hex) > 31 {
+		hex = hex[len(hex)-31:]
+	}
+	return "a" + strings.Repeat("0", 31-len(hex)) + string(hex)
+}

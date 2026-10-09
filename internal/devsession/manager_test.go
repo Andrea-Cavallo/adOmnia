@@ -329,3 +329,23 @@ func TestClonedRunEncodesEmptyHitsAsArray(t *testing.T) {
 		t.Fatalf("hits must be an array for the UI: %s", data)
 	}
 }
+
+func TestTraceIDForMatchesFrontend(t *testing.T) {
+	// Same vector as frontend/src/lib/devsession/traceparent.test.ts.
+	if got := TraceIDFor("adm-bd07ddbfce35"); got != "a00000000000000000adbd07ddbfce35" {
+		t.Fatalf("TraceIDFor = %s (%d)", got, len(got))
+	}
+}
+
+func TestMessagesMatchPropagatedTraceparent(t *testing.T) {
+	manager, _ := testManager(Hooks{})
+	manager.RunStarted("go-1", "r1", "run", "go run .", 42)
+	_ = manager.SetPort("run:r1", 8080)
+	run, _ := manager.Begin(BeginRequest{Method: "POST", URL: "http://localhost:8080/orders"})
+	_, _ = manager.Begin(BeginRequest{Method: "GET", URL: "http://localhost:8080/later"})
+	traceparent := "00-" + TraceIDFor(run.CorrelationID) + "-00f067aa0ba902b7-01"
+	manager.RecordMessage(Message{SessionID: "run:r1", Broker: "kafka", Topic: "orders.created", Headers: map[string]string{"traceparent": traceparent}})
+	if messages := manager.Messages(run.ID); len(messages) != 1 || messages[0].Match != MatchID {
+		t.Fatalf("message not tied to the request by trace id: %+v", messages)
+	}
+}
