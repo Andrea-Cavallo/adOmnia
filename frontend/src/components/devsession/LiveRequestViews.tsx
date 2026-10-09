@@ -14,6 +14,7 @@ import { codePathFor, timeOf } from '@/stores/devSessionModel'
 import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
 import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
+import { replayBlocker, replayMessage } from '@/lib/devsession/replayMessage'
 import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
 import { useServerPort } from '@/lib/useServerPort'
 import { traceIdFor } from '@/lib/devsession/traceparent'
@@ -235,11 +236,32 @@ export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; ru
             <button key={role} type="button" onClick={() => void openKafkaCode(message.topic, role, goSessionIds)} title={`Open the code that ${role === 'kafka-producer' ? 'publishes to' : 'consumes'} ${message.topic}`}
               className={cn('shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent', role === 'kafka-producer' && 'ml-auto')}>{role === 'kafka-producer' ? 'Producer' : 'Consumer'}</button>
           ))}
+          <ReplayButton message={message} />
           <button type="button" onClick={() => openMessage(message, run)}
             className={cn('shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent', goSessionIds.length === 0 && 'ml-auto')}>Open in Kafka</button>
         </li>
       ))}
     </ul>
+  )
+}
+
+function ReplayButton({ message }: { message: LiveMessage }) {
+  const [state, setState] = useState<{ busy: boolean; text: string; error: boolean }>({ busy: false, text: '', error: false })
+  const blocker = replayBlocker(message)
+  const replay = async () => {
+    setState({ busy: true, text: '', error: false })
+    try {
+      setState({ busy: false, text: await replayMessage(message), error: false })
+    } catch (error) {
+      setState({ busy: false, text: error instanceof Error ? error.message : String(error), error: true })
+    }
+  }
+  return (
+    <button type="button" onClick={() => void replay()} disabled={state.busy || !!blocker}
+      title={blocker ?? (state.text || `Produce the same key, value and headers to ${message.topic} again (without this request's ids)`)}
+      className={cn('shrink-0 rounded border px-2 py-0.5 text-[11px] hover:border-accent hover:text-accent disabled:opacity-50', state.text ? (state.error ? 'border-error/50 text-error' : 'border-success/50 text-success') : 'border-border-2 text-text-2')}>
+      {state.busy ? 'Replaying…' : state.text && !state.error ? 'Replayed' : 'Replay'}
+    </button>
   )
 }
 
