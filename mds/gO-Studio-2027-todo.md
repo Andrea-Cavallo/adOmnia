@@ -60,11 +60,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 È il punto in cui **adOmnia diventa un ambiente di sviluppo completo per sistemi Go**.
 
-## §24 · API Integration — REST
-
-### Debug integration
-
-
 ## §26 · Kafka / Broker Integration
 
 ### Code ↔ broker
