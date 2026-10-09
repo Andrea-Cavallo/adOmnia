@@ -1426,6 +1426,8 @@ function GrpcLoadTestDialog({ port, address, service, method, payload, tls, caCe
   </div>
 }
 
+const DEBUG_CALL_TIMEOUT_MS = 300_000 // the timeout field maximum
+
 export function GrpcPanel() {
   const port = useServerPort()
   const consumeFileImport = useAppStore((s) => s.consumeFileImport)
@@ -1650,6 +1652,8 @@ export function GrpcPanel() {
       // From a Debug in Go Studio: the service is running, connect to it keeping the rpc selected.
       if (!payload.address) return
       setAddress(String(payload.address))
+      // The call will stop on a breakpoint: give the developer time before the deadline cancels it.
+      setRequestTimeoutMs((current) => Math.max(current, DEBUG_CALL_TIMEOUT_MS))
       setPendingReflect(preferred ?? true)
     })
     return true
