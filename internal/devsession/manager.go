@@ -107,7 +107,8 @@ func cloneSession(session *Session) Session {
 
 func cloneRun(run *RequestRun) RequestRun {
 	out := *run
-	out.Hits = append([]Hit(nil), run.Hits...)
+	// Never nil: the UI reads hits.length, and a nil slice would reach it as JSON null.
+	out.Hits = append([]Hit{}, run.Hits...)
 	return out
 }
 

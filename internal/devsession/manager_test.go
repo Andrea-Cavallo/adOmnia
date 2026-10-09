@@ -2,9 +2,11 @@ package devsession
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -315,5 +317,15 @@ func TestStatementsAttributedBySendTime(t *testing.T) {
 	}
 	if *queries[0].DurationMs != 7 || *queries[0].Rows != 3 || queries[1].ErrorCode != "23505" || queries[1].Rows != nil || queries[1].Incomplete {
 		t.Fatalf("outcome lost: %+v %+v", queries[0], queries[1])
+	}
+}
+
+func TestClonedRunEncodesEmptyHitsAsArray(t *testing.T) {
+	data, err := json.Marshal(cloneRun(&RequestRun{ID: "r1"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"hits":[]`) {
+		t.Fatalf("hits must be an array for the UI: %s", data)
 	}
 }

@@ -35,7 +35,9 @@ function withSession(model: LiveModel, session: LiveSession): LiveModel {
   return { ...model, sessions: { ...model.sessions, [session.id]: session }, order: known ? model.order : [...model.order, session.id] }
 }
 
-function withRun(model: LiveModel, run: RequestRun): LiveModel {
+function withRun(model: LiveModel, incoming: RequestRun): LiveModel {
+  // Older backends sent "hits": null for a run that stopped nowhere.
+  const run = Array.isArray(incoming.hits) ? incoming : { ...incoming, hits: [] }
   const known = run.id in model.runs
   const runOrder = known ? model.runOrder : [...model.runOrder, run.id].slice(-MAX_UI_RUNS)
   const runs = known ? { ...model.runs, [run.id]: run } : Object.fromEntries(runOrder.map((id) => [id, id === run.id ? run : model.runs[id]]))

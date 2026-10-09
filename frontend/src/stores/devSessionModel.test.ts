@@ -89,3 +89,10 @@ describe('timestamps', () => {
     expect(timeOf('2026-09-30T10:00:00+02:00')).toBeGreaterThan(timeOf('2026-09-30T07:59:00Z'))
   })
 })
+
+describe('null hits', () => {
+  it('normalizes a run without hits to an empty list', () => {
+    const model = applyLiveEvent(emptyModel(), { type: 'request.completed', payload: { ...run({}), hits: null } })
+    expect(Object.values(model.runs)[0].hits).toEqual([])
+  })
+})
