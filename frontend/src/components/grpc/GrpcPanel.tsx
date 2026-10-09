@@ -1588,7 +1588,8 @@ export function GrpcPanel() {
     }
   }
 
-  const handleProtoFile = async (file: File | undefined) => {
+  /** preferred: the method to select (a .proto opened from Go Studio on a given rpc). */
+  const handleProtoFile = async (file: File | undefined, preferred?: { service: string; method: string }) => {
     if (!file) return
     setLoading(true)
     setError('')
@@ -1605,8 +1606,9 @@ export function GrpcPanel() {
       setRequestFields([])
       setResponseFields([])
       log(`loaded ${file.name} with ${nextServices.length} services`)
-      const firstService = nextServices[0]
-      const firstMethod = firstService?.methods[0]
+      const wanted = preferred && nextServices.find((service) => service.name === preferred.service || service.name.endsWith(`.${preferred.service}`))
+      const firstService = wanted ?? nextServices[0]
+      const firstMethod = firstService?.methods.find((method) => method.name === preferred?.method) ?? firstService?.methods[0]
       if (firstService && firstMethod) {
         setSelectedService(firstService.name)
         setSelectedMethod(firstMethod.name)
@@ -1642,7 +1644,8 @@ export function GrpcPanel() {
       setPendingReflect(true)
       return true
     }
-    void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')))
+    const preferred = payload.method ? { service: String(payload.service ?? ''), method: String(payload.method) } : undefined
+    void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')), preferred)
     return true
   })
 

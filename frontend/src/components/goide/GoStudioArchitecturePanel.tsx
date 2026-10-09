@@ -156,10 +156,10 @@ function KafkaDebugButton({ entry, sessionId, onStatus }: { entry: GoIDEArchitec
       onClick={async () => {
         setBusy(true)
         try {
-          const { debugKafkaFunction, kafkaBreakSite } = await import('@/lib/devsession/debugMessage')
+          const { debugGoAt, kafkaBreakSite } = await import('@/lib/devsession/debugMessage')
           const site = kafkaBreakSite(entry)
           onStatus(`Breakpoint at ${site.relativePath}:${site.line} · starting Delve…`)
-          await debugKafkaFunction({ goSessionId: sessionId, projectName: '', entry, ...site })
+          await debugGoAt({ goSessionId: sessionId, ...site })
           onStatus(consumer ? `Debugging ${entry.name}: send or replay a message on ${(entry.topics ?? []).join(', ')} to stop at ${site.relativePath}:${site.line}.` : `Debugging ${entry.name}: it stops at ${site.relativePath}:${site.line} when it sends.`)
         } catch (error) {
           onStatus(`Debug failed: ${error instanceof Error ? error.message : String(error)}`)

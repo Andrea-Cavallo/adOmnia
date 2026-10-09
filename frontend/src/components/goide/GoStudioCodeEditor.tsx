@@ -12,6 +12,7 @@ import { installGoStudioEditorActions } from './goStudioEditorActions'
 import { installGoStudioAIActions } from './goStudioAIActionsRunner'
 import { documentForModel, registerGoStudioLanguageFeatures } from './goStudioLanguageFeatures'
 import { registerGoStudioCodeLens } from './goStudioCodeLens'
+import { registerGoStudioProtoLens } from './goStudioProtoLens'
 import { registerGoStudioCodeVision } from './goStudioCodeVision'
 import { registerGoStudioCopilotCompletions } from './goStudioCopilotCompletions'
 import { editorModelUri } from './goStudioModelUri'
@@ -38,6 +39,7 @@ import { extensionLanguageForPath, useIDEExtensionsStore } from '@/stores/ideExt
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
 registerGoStudioCodeLens()
+registerGoStudioProtoLens()
 registerGoStudioCodeVision()
 registerGoStudioCopilotCompletions()
 registerGoStudioSemanticFeatures()

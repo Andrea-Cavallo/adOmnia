@@ -1075,7 +1075,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
   const debugConsumer = async (message: KafkaMessage) => {
     setReplayState({ busy: true, text: 'Looking for the Go consumer of this topic…' })
     try {
-      const { findKafkaFunction, debugKafkaFunction } = await import('@/lib/devsession/debugMessage')
+      const { findKafkaFunction, debugGoAt } = await import('@/lib/devsession/debugMessage')
       const target = await findKafkaFunction(topic, 'kafka-consumer')
       if (!target) {
         setReplayState({ busy: false, text: `No trusted project open in Go Studio consumes ${topic}. Open it there (Architecture Explorer finds consumers) and try again.` })
@@ -1083,7 +1083,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
       }
       const where = `${target.entry.name} (${target.relativePath}:${target.line})`
       setReplayState({ busy: true, text: `Breakpoint in ${where} · starting ${target.projectName} under Delve…` })
-      await debugKafkaFunction(target)
+      await debugGoAt(target)
       const replayed = await onReplay(message)
       if (!replayed) {
         setReplayState({ busy: false, text: 'Replay failed: see the error above.' })

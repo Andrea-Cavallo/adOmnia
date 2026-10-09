@@ -39,8 +39,8 @@ export async function findKafkaFunction(topic: string, role: KafkaRole): Promise
   return null
 }
 
-/** Sets the breakpoint and makes sure the project runs under Delve; resolves with the live debug session. */
-export async function debugKafkaFunction(target: KafkaDebugTarget): Promise<LiveSession> {
+/** Sets a line breakpoint and makes sure the project runs under Delve; resolves with the live debug session. */
+export async function debugGoAt(target: { goSessionId: string; relativePath: string; line: number }): Promise<LiveSession> {
   const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
   await useGoIDEDebugStore.getState().putBreakpoint(target.goSessionId, target.relativePath, { line: target.line })
   const running = liveSessions(useDevSessionStore.getState()).find((s) => s.goSessionId === target.goSessionId && s.kind === 'debug')
