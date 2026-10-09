@@ -14,12 +14,14 @@ import {
   Plus,
   Radio,
   RefreshCcw,
+  RotateCcw,
   Search,
   Send,
   Settings,
   Split,
   Timer,
   Trash2,
+  Upload,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -30,6 +32,8 @@ import { resolveBrokerPayload } from '@/lib/brokerConnections'
 import { ConnectionProfiles } from './ConnectionProfiles'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
+import { downloadText } from '@/lib/fileUtils'
+import { fixtureFileName, parseFixture, toFixture } from './kafkaFixture'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
 type ProduceMode = 'single' | 'bulk'
@@ -736,6 +740,11 @@ export function KafkaPanel({
               <MessageList
                 messages={browseResult?.messages ?? []}
                 empty={readMode === 'inspect' ? 'No messages returned for this bounded broker scan.' : 'No messages delivered to this consumer group in the selected window.'}
+                topic={cfg.topic}
+                onReplay={async (message) => {
+                  const data = await post<KafkaResult>('/kafka/produce', { ...producePayload, key: message.key ?? '', value: message.value ?? '', headers: message.headers ?? {}, partition: undefined }, 'replay')
+                  return data?.ok ? `Replayed to ${data.topic ?? cfg.topic} · partition ${data.partition ?? '-'} · offset ${data.offset ?? '-'}` : null
+                }}
                 onRepublish={(message) => {
                   setKey(message.key ?? '')
                   setValue(message.value ?? '')
@@ -751,6 +760,29 @@ export function KafkaPanel({
               <div className="rounded border border-border-1 bg-surface-1 p-3">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-text-1">Producer</h3>
+                  <label className="ml-auto mr-2 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded border border-border-2 px-2 text-[11px] text-text-2 hover:border-accent hover:text-accent" title="Load a message saved with Save fixture">
+                    <Upload size={12} /> Load fixture
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      className="hidden"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0]
+                        event.target.value = ''
+                        if (!file) return
+                        try {
+                          const fixture = parseFixture(await file.text())
+                          setKey(fixture.key)
+                          setValue(fixture.value)
+                          setHeaders(Object.entries(fixture.headers).map(([headerKey, headerValue]) => ({ key: headerKey, value: headerValue })))
+                          if (fixture.topic) setCfg((current) => ({ ...current, topic: fixture.topic }))
+                          setError('')
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : String(err))
+                        }
+                      }}
+                    />
+                  </label>
                   <div className="inline-flex rounded border border-border-1 bg-surface-0 p-1">
                     <button onClick={() => setProduceMode('single')} className={cn('rounded px-3 py-1 text-xs', produceMode === 'single' ? 'bg-accent text-white' : 'text-text-3')}>Single</button>
                     <button onClick={() => setProduceMode('bulk')} className={cn('rounded px-3 py-1 text-xs', produceMode === 'bulk' ? 'bg-accent text-white' : 'text-text-3')}>Bulk</button>
@@ -1011,8 +1043,19 @@ function ConsumerGroupDetail({
   )
 }
 
-function MessageList({ messages, empty, onRepublish }: { messages: KafkaMessage[]; empty: string; onRepublish: (message: KafkaMessage) => void }) {
+interface MessageListProps {
+  messages: KafkaMessage[]
+  empty: string
+  topic: string
+  onRepublish: (message: KafkaMessage) => void
+  /** Produces the message again on the current topic; resolves to a status line, or null on failure. */
+  onReplay: (message: KafkaMessage) => Promise<string | null>
+}
+
+function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageListProps) {
+  const [replayState, setReplayState] = useState<{ busy: boolean; text: string }>({ busy: false, text: '' })
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  useEffect(() => { setReplayState({ busy: false, text: '' }) }, [selectedIndex])
   const selected = selectedIndex === null ? null : messages[selectedIndex]
 
   useEffect(() => {
@@ -1054,8 +1097,18 @@ function MessageList({ messages, empty, onRepublish }: { messages: KafkaMessage[
         <section className="mt-3 rounded border border-accent/30 bg-surface-0">
           <div className="flex items-center justify-between border-b border-border-1 px-3 py-2">
             <div><p className="text-xs font-semibold text-text-1">Message detail</p><p className="mt-0.5 font-mono text-[10px] text-text-4">partition {selected.partition ?? '-'} / offset {selected.offset ?? '-'} / {selected.timestamp || 'no timestamp'}</p></div>
-            <div className="flex items-center gap-2"><button onClick={() => void copyPayload()} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy payload</button><button onClick={() => onRepublish(selected)} className="rounded bg-accent px-2 py-1 text-[11px] font-semibold text-white hover:bg-accent/90">Open in composer</button></div>
+            <div className="flex items-center gap-2"><button onClick={() => void copyPayload()} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy payload</button><button onClick={() => downloadText(fixtureFileName(toFixture(topic, selected)), `${JSON.stringify(toFixture(topic, selected), null, 2)}\n`, 'application/json')} title="Save key, headers and payload as a JSON fixture you can commit and load back in the producer" className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Save fixture</button><button onClick={() => onRepublish(selected)} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in composer</button><button
+                disabled={replayState.busy || !topic}
+                title={`Produce this message again on ${topic || 'the selected topic'} with the same key and headers`}
+                onClick={async () => {
+                  setReplayState({ busy: true, text: '' })
+                  const text = await onReplay(selected)
+                  setReplayState({ busy: false, text: text ?? 'Replay failed: see the error above.' })
+                }}
+                className="inline-flex items-center gap-1 rounded bg-accent px-2 py-1 text-[11px] font-semibold text-white hover:bg-accent/90 disabled:opacity-50"
+              ><RotateCcw size={11} /> {replayState.busy ? 'Replaying…' : 'Replay'}</button></div>
           </div>
+          {replayState.text && <p className={cn('border-b border-border-1 px-3 py-1.5 text-[11px]', replayState.text.startsWith('Replayed') ? 'text-success' : 'text-error')}>{replayState.text}</p>}
           <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_220px]">
             <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{selected.value || '(empty payload)'}</pre>
             <div className="space-y-3 text-[11px]"><div><p className="mb-1 uppercase tracking-wider text-text-4">Key</p><p className="break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-text-2">{selected.key || '(no key)'}</p></div><div><p className="mb-1 uppercase tracking-wider text-text-4">Headers</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-[10px] text-text-3">{Object.keys(selected.headers ?? {}).length ? JSON.stringify(selected.headers, null, 2) : '(none)'}</pre></div></div>
