@@ -41,6 +41,9 @@ const GO_LOCATION = /([\w./-]+\.go):(\d+)/
 /** Service log lines, filterable; used by the response Logs tab and the service logs drawer. */
 export function LiveLogList({ entries, empty, goSessionId, toolbar }: { entries: LiveLogEntry[]; empty: string; goSessionId?: string; toolbar?: React.ReactNode }) {
   const runs = useDevSessionStore((state) => state.runs)
+  const sessions = useDevSessionStore((state) => state.sessions)
+  // Name the service only when the list mixes services (a request's lines from a consumer elsewhere).
+  const mixed = new Set(entries.map((entry) => entry.sessionId)).size > 1
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<'all' | 'warn' | 'error'>('all')
   const shown = useMemo(() => {
@@ -70,6 +73,7 @@ export function LiveLogList({ entries, empty, goSessionId, toolbar }: { entries:
           <div key={entry.seq} className="flex items-start gap-2 px-2 hover:bg-surface-2/60">
             <span className="shrink-0 text-text-4">{time(entry.at)}</span>
             <MatchHint match={entry.match} />
+            {mixed && <span className="shrink-0 rounded bg-surface-3 px-1 font-sans text-[10px] text-text-3">{sessions[entry.sessionId]?.service ?? entry.sessionId}</span>}
             <span className={cn('min-w-0 flex-1 whitespace-pre-wrap break-all', LEVEL_TONE[entry.level ?? ''] ?? 'text-text-2', entry.stream === 'stderr' && !entry.level && 'text-text-3')}>{entry.text}</span>
             <LineActions entry={entry} goSessionId={goSessionId} tabId={entry.requestRunId ? runs[entry.requestRunId]?.tabId : undefined} />
           </div>

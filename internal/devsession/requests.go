@@ -123,9 +123,10 @@ func localPort(raw string) int {
 // otherwise to the newest request in flight at that moment.
 func (m *Manager) attributeLocked(sessionID, text string, at time.Time) (*RequestRun, string) {
 	if text != "" {
+		// An id is unique: it ties output of any service (a consumer elsewhere) to the request.
 		for i := len(m.runOrder) - 1; i >= 0; i-- {
 			run := m.runs[m.runOrder[i]]
-			if run.SessionID == sessionID && (strings.Contains(text, run.CorrelationID) || strings.Contains(strings.ToLower(text), TraceIDFor(run.CorrelationID))) {
+			if run.CorrelationID != "" && (strings.Contains(text, run.CorrelationID) || strings.Contains(strings.ToLower(text), TraceIDFor(run.CorrelationID))) {
 				return run, MatchID
 			}
 		}

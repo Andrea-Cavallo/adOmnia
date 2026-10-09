@@ -3,6 +3,7 @@ package devsession
 import (
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -184,12 +185,19 @@ func sqlFromLog(line string) string {
 func (m *Manager) Logs(sessionID, runID string, limit int) []LogEntry {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	source := m.logs[sessionID]
-	out := make([]LogEntry, 0, len(source))
-	for _, entry := range source {
-		if runID == "" || entry.RequestRunID == runID {
-			out = append(out, entry)
+	var out []LogEntry
+	if runID == "" {
+		out = append(out, m.logs[sessionID]...)
+	} else {
+		// A request's lines can come from other services (matched by its id).
+		for _, source := range m.logs {
+			for _, entry := range source {
+				if entry.RequestRunID == runID {
+					out = append(out, entry)
+				}
+			}
 		}
+		sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
 	}
 	if limit > 0 && len(out) > limit {
 		out = out[len(out)-limit:]

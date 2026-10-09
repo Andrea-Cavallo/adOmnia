@@ -349,3 +349,16 @@ func TestMessagesMatchPropagatedTraceparent(t *testing.T) {
 		t.Fatalf("message not tied to the request by trace id: %+v", messages)
 	}
 }
+
+func TestLogsOfAnotherServiceJoinTheRequestByTraceID(t *testing.T) {
+	manager, _ := testManager(Hooks{})
+	manager.RunStarted("go-1", "r1", "run", "go run .", 42)
+	_ = manager.SetPort("run:r1", 8080)
+	manager.RunStarted("go-2", "r2", "run", "go run ./billing", 43)
+	run, _ := manager.Begin(BeginRequest{Method: "POST", URL: "http://localhost:8080/orders"})
+	manager.Output("run", "r2", "stdout", "billed order trace_id="+TraceIDFor(run.CorrelationID)+"\n")
+	logs := manager.Logs("run:r1", run.ID, 0)
+	if len(logs) != 1 || logs[0].SessionID != "run:r2" || logs[0].Match != MatchID {
+		t.Fatalf("consumer line not tied to the request: %+v", logs)
+	}
+}

@@ -77,8 +77,9 @@ const TAB_LABEL: Record<LiveTab, (run: RequestRun) => string> = {
 }
 
 function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; run: RequestRun; session: LiveSession | null }) {
-  const sessionLogs = useDevSessionStore((state) => state.logs[run.sessionId])
-  const storeLogs = useMemo(() => (sessionLogs ?? []).filter((entry) => entry.requestRunId === run.id), [sessionLogs, run.id])
+  // Every service's lines: a consumer elsewhere logs the request's trace id too.
+  const allLogs = useDevSessionStore((state) => state.logs)
+  const storeLogs = useMemo(() => Object.values(allLogs).flat().filter((entry) => entry.requestRunId === run.id).sort((a, b) => a.seq - b.seq), [allLogs, run.id])
   const storeQueries = useDevSessionStore((state) => state.queries)
   const storeMessages = useDevSessionStore((state) => state.messages)
   const [fetched, setFetched] = useState<{ logs: typeof storeLogs; queries: typeof storeQueries; messages: typeof storeMessages } | null>(null)
