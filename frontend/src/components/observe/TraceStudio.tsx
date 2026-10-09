@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Code2, Copy, GitCompare, Play, Radio, Search, Square, Trash2 } from 'lucide-react'
+import { Code2, Copy, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2 } from 'lucide-react'
+import { openTraceLogs } from '@/lib/otlp-logs'
 import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
 import { clearOtlp, getOtlpMap, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
@@ -54,6 +55,9 @@ function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }
           <Code2 size={12} aria-hidden="true" /> <span className="truncate">Open {source.function ?? 'source'} · {source.file.split(/[\\/]/).pop()}:{source.line}</span>
         </button>
       )}
+      <button type="button" onClick={() => openTraceLogs(span.traceId)} title="Log Inspector filtered on traceId: the service logs must carry it (trace_id / traceId field)" className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">
+        <ScrollText size={12} aria-hidden="true" /> Logs of this trace
+      </button>
       {attrs.length > 0 && (
         <table className="w-full table-fixed font-mono text-[10.5px]">
           <tbody>{attrs.map(([key, value]) => (

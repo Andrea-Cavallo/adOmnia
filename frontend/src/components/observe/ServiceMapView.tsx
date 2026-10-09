@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Code2, Database, Globe, Radio, Server } from 'lucide-react'
+import { ArrowUpRight, Code2, Database, Globe, Radio, ScrollText, Server } from 'lucide-react'
+import { openTraceLogs } from '@/lib/otlp-logs'
 import { cn } from '@/lib/utils'
 import { layoutLayered, type LayeredBox } from '@/lib/layeredGraph'
 import { handoffToPanel } from '@/lib/entities/dispatch'
@@ -37,6 +38,7 @@ function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Ma
       <div className="flex flex-wrap gap-1.5">
         {edge.sampleTraceId && <button type="button" onClick={() => onOpenTrace(edge.sampleTraceId!)} className="rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">Open a trace</button>}
         {edge.errorTraceId && <button type="button" onClick={() => onOpenTrace(edge.errorTraceId!)} className="rounded border border-error/40 px-2 py-1 text-error hover:bg-error/10">Open a failing trace</button>}
+        {edge.errorTraceId && <button type="button" onClick={() => openTraceLogs(edge.errorTraceId!)} title="Log Inspector filtered on the failing trace id" className="flex items-center gap-1 rounded border border-error/40 px-2 py-1 text-error hover:bg-error/10"><ScrollText size={11} /> Logs of the failure</button>}
         {edge.sourceFile && (
           <button type="button" onClick={() => void openSpanSource(edge.sourceFile!, edge.sourceLine || 1)} title={`${edge.sourceFile}:${edge.sourceLine}`} className="flex items-center gap-1 rounded border border-accent/50 px-2 py-1 text-accent hover:bg-accent/10">
             <Code2 size={11} /> Calling code

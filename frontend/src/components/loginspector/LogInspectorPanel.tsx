@@ -117,6 +117,7 @@ export function LogInspectorPanel() {
     ui: { filters, selectedId, bookmarks, notes, showFilters, sortDir, masked, deduplicated },
   }), [bookmarks, deduplicated, filters, masked, notes, selectedId, showFilters, sortDir, sources])
 
+  const handedOffRef = useRef(false)
   useEffect(() => {
     if (restoreStartedRef.current) return
     restoreStartedRef.current = true
@@ -128,7 +129,8 @@ export function LogInspectorPanel() {
         clockOffsetMs: metadata.clockOffsetMs ?? metadata.parsingProfile?.timestamp?.clockOffsetMs ?? 0,
       }))
       await restoreSources(restoredSources)
-      setFilters(restored.ui.filters)
+      // A query handed over by another panel while the session was loading wins over the saved one.
+      setFilters((current) => (handedOffRef.current ? { ...restored.ui.filters, query: current.query } : restored.ui.filters))
       setSelectedId(restored.ui.selectedId)
       setBookmarks(restored.ui.bookmarks)
       setNotes(restored.ui.notes)
@@ -173,6 +175,7 @@ export function LogInspectorPanel() {
   // this panel before it is even mounted, so a parked query is read on mount.
   useEffect(() => {
     const apply = (query: string) => {
+      handedOffRef.current = true
       setFilters((current) => ({ ...current, query }))
       clearSelection()
     }
