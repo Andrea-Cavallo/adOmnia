@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
-import { ArrowDownToLine, Bug, Check, Columns2, Loader2, Play, Redo2, RotateCcw, Square, X } from 'lucide-react'
+import { ArrowDownToLine, Bug, Check, Columns2, Flame, Loader2, Play, Redo2, RotateCcw, Square, X } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
 import { liveLogs, liveMessages, liveQueries } from '@/lib/devsession-api'
@@ -14,6 +14,7 @@ import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
 import { LiveLogList, LiveMessageList, LiveQueryList, RequestSummary, RequestTimeline } from './LiveRequestViews'
 import { basename, LiveDot } from './liveUi'
 import { SaveReproductionButton } from './RequestContextView'
+import { profileRequest } from '@/lib/devsession/profileRequest'
 
 type LiveTab = 'response' | 'logs' | 'debug' | 'timeline' | 'db' | 'kafka'
 
@@ -59,11 +60,31 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
           </button>
         ))}
         {inFlight && <span className="ml-auto flex items-center gap-1 text-text-4"><Loader2 size={11} className="animate-spin" />in flight</span>}
-        {!inFlight && run.completedAt && <span className="ml-auto shrink-0"><SaveReproductionButton run={run} compact /></span>}
+        {!inFlight && run.completedAt && <span className="ml-auto flex shrink-0 items-center gap-1">{session && !session.endedAt && <ProfileButton run={run} session={session} />}<SaveReproductionButton run={run} compact /></span>}
       </div>
       {!inFlight && run.completedAt && tab === 'response' && <RequestSummary run={run} onTab={setTab} />}
       {tab === 'response' ? children : <LiveView tab={tab} run={run} session={session} />}
     </div>
+  )
+}
+
+/** Profile this request: CPU profile while the same request is sent again, opened in Performance Studio. */
+function ProfileButton({ run, session }: { run: RequestRun; session: LiveSession }) {
+  const [state, setState] = useState<{ busy: boolean; text: string; error: boolean }>({ busy: false, text: '', error: false })
+  const start = async () => {
+    setState({ busy: true, text: 'Profiling…', error: false })
+    try {
+      setState({ busy: false, text: await profileRequest(run, session, (text) => setState({ busy: true, text, error: false })), error: false })
+    } catch (error) {
+      setState({ busy: false, text: error instanceof Error ? error.message : String(error), error: true })
+    }
+  }
+  return (
+    <button type="button" onClick={() => void start()} disabled={state.busy} aria-label="Profile this request"
+      title={state.text || 'Profile this request: a CPU profile from /debug/pprof while the same request is sent again for a few seconds (the service needs net/http/pprof)'}
+      className={cn('flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:border-accent hover:text-accent disabled:opacity-60', state.error ? 'border-error/50 text-error' : state.text && !state.busy ? 'border-success/50 text-success' : 'border-border-2 text-text-2')}>
+      {state.busy ? <Loader2 size={11} className="animate-spin" /> : <Flame size={11} />}
+    </button>
   )
 }
 
