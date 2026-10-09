@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, Columns3, Download, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CellValue, detectCellType, inferColumnKind, type DbResult } from './dbShared'
+import { parsePlan } from './explainPlan'
+import { PlanView } from './PlanView'
 
-type ResultTab = 'results' | 'json' | 'stats' | 'logs'
+type ResultTab = 'plan' | 'results' | 'json' | 'stats' | 'logs'
 
 interface ResultsViewProps {
   result: DbResult | null
@@ -27,7 +29,8 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => { setPage(1); setTab('results'); setHiddenColumns([]) }, [result])
+  const plan = useMemo(() => (result ? parsePlan(result) : null), [result])
+  useEffect(() => { setPage(1); setTab(plan ? 'plan' : 'results'); setHiddenColumns([]) }, [result, plan])
 
   const rows = result?.rows ?? []
   const columns = result?.columns ?? []
@@ -45,6 +48,7 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   const rangeEnd = Math.min(page * pageSize, filtered.length)
 
   const tabs: { id: ResultTab; label: string }[] = [
+    ...(plan ? [{ id: 'plan' as const, label: 'Plan' }] : []),
     { id: 'results', label: 'Results' },
     { id: 'json', label: 'JSON' },
     { id: 'stats', label: 'Stats' },
@@ -155,6 +159,8 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
           <div className="m-4 rounded-lg border border-error/30 bg-error/8 p-4 font-mono text-[12px] leading-relaxed text-error">{error}</div>
         ) : !result ? (
           <EmptyState />
+        ) : tab === 'plan' && plan ? (
+          <PlanView plan={plan} analyzed={result.explain === 'analyze'} />
         ) : tab === 'json' ? (
           <pre className="p-4 font-mono text-[11.5px] leading-relaxed text-text-2">{JSON.stringify(result.rows, null, 2)}</pre>
         ) : tab === 'stats' ? (

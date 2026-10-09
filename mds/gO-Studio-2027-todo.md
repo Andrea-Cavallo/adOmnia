@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 186 | 47 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 184 | 46 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -74,8 +74,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### SQL editor
 
-- [ ] Explain. — *Parziale: QueryEditor.tsx pulsante Explain; database.go explainQuery restituisce il piano come testo, senza vista strutturata.*
-- [ ] Explain analyze.
 
 ### Code ↔ database
 

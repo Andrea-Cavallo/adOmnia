@@ -38,6 +38,8 @@ export interface DbResult {
   destructive: boolean
   statementType: string
   warning?: string
+  /** Set when the rows are an execution plan (EXPLAIN / EXPLAIN ANALYZE). */
+  explain?: 'plan' | 'analyze'
   /** Ordered canonical Extended JSON documents (Mongo commands sent with canonical: true). */
   documents?: Record<string, unknown>[]
 }

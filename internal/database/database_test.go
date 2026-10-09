@@ -114,3 +114,25 @@ func TestMongoRawDocRoundTripKeepsOrderAndTypes(t *testing.T) {
 		t.Fatalf("round trip changed document:\n got %s\nwant %s", out, want)
 	}
 }
+
+func TestExplainQueryModes(t *testing.T) {
+	cases := []struct {
+		driver, query string
+		analyze       bool
+		want          string
+		wantErr       bool
+	}{
+		{"postgres", "SELECT 1;", false, "EXPLAIN (FORMAT JSON) SELECT 1", false},
+		{"postgres", "select * from t", true, "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) select * from t", false},
+		{"postgres", "DELETE FROM t WHERE id=1", true, "", true},
+		{"mysql", "SELECT 1", true, "EXPLAIN ANALYZE SELECT 1", false},
+		{"sqlite", "SELECT 1", false, "EXPLAIN QUERY PLAN SELECT 1", false},
+		{"sqlite", "SELECT 1", true, "", true},
+	}
+	for _, c := range cases {
+		got, err := explainQuery(c.driver, c.query, c.analyze)
+		if (err != nil) != c.wantErr || got != c.want {
+			t.Errorf("explainQuery(%s,%q,%v) = %q, %v", c.driver, c.query, c.analyze, got, err)
+		}
+	}
+}

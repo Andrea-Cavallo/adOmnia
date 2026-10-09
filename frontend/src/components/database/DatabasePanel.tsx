@@ -308,7 +308,7 @@ export function DatabasePanel() {
     return text ? JSON.parse(text) : {}
   }
 
-  const runQuery = async (explain = false, confirmed = false) => {
+  const runQuery = async (explain = false, confirmed = false, analyze = false) => {
     setError('')
     const connectionError = validateConnection(active)
     if (connectionError) { setError(connectionError); return }
@@ -330,14 +330,14 @@ export function DatabasePanel() {
     }
     setRunning(true)
     try {
-      const data = await api('/database/query', { connection: await resolveDatabaseConnection(active), query: renderedQuery, limit, timeoutMs, explain, confirm: confirmed }) as DbResult
+      const data = await api('/database/query', { connection: await resolveDatabaseConnection(active), query: renderedQuery, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
       setResult(data)
       const item: HistoryItem = { query, ts: Date.now(), label: activeTab?.name }
       const nextHistory = [item, ...history.filter((h) => h.query !== query)].slice(0, 50)
       setHistory(nextHistory)
       await safeStoragePut(STORAGE_BUCKET, HISTORY_KEY, JSON.stringify(nextHistory))
       setLogs([
-        `[${new Date().toLocaleTimeString()}] ${explain ? 'EXPLAIN ' : ''}${data.statementType || 'query'} on ${data.driver}`,
+        `[${new Date().toLocaleTimeString()}] ${analyze ? 'EXPLAIN ANALYZE ' : explain ? 'EXPLAIN ' : ''}${data.statementType || 'query'} on ${data.driver}`,
         `→ ${data.columns?.length ? `${data.rows.length} rows` : `${data.rowsAffected} affected`} in ${data.durationMs} ms${data.limited ? ` (auto-limited to ${limit})` : ''}`,
       ])
     } catch (e) {
@@ -582,7 +582,8 @@ export function DatabasePanel() {
           onChangeQuery={setQuery}
           onSetLimit={setLimit}
           onSetTimeout={setTimeoutMs}
-          onRun={(explain) => void runQuery(explain)}
+          onRun={(explain, analyze) => void runQuery(explain, false, analyze)}
+          canAnalyze={active.driver === 'postgres' || active.driver === 'mysql'}
           onFormat={formatQuery}
           onSave={saveQuery}
         />

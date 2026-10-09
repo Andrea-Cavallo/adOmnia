@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlignLeft, ChevronDown, FilePlus2, Play, Save, Terminal, X, Zap, CheckCircle2, AlertCircle, Plus } from 'lucide-react'
+import { AlignLeft, ChevronDown, FilePlus2, Play, Save, Terminal, X, Zap, CheckCircle2, AlertCircle, Plus, Gauge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   caretPosition, highlightedJson, highlightedSql, jsonValidity,
@@ -26,7 +26,9 @@ interface QueryEditorProps {
   onChangeQuery: (q: string) => void
   onSetLimit: (n: number) => void
   onSetTimeout: (ms: number) => void
-  onRun: (explain: boolean) => void
+  /** analyze: EXPLAIN ANALYZE (runs the query; Postgres/MySQL only). */
+  onRun: (explain: boolean, analyze?: boolean) => void
+  canAnalyze: boolean
   onFormat: () => void
   onSave: () => void
 }
@@ -67,7 +69,7 @@ function ToolButton({ icon, label, onClick, disabled, active }: { icon: ReactNod
 export function QueryEditor(props: QueryEditorProps) {
   const {
     tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running, focusToken, schema,
-    onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave,
+    onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave, canAnalyze,
   } = props
 
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -181,6 +183,9 @@ export function QueryEditor(props: QueryEditorProps) {
                   <button onClick={() => { onRun(true); setRunMenu(false) }} disabled={isMongo} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1 disabled:opacity-40">
                     <Zap size={12} /> Explain plan
                   </button>
+                  <button onClick={() => { onRun(true, true); setRunMenu(false) }} disabled={!canAnalyze} title={canAnalyze ? 'Runs the query and measures every plan step' : 'Available for PostgreSQL and MySQL'} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1 disabled:opacity-40">
+                    <Gauge size={12} /> Explain analyze
+                  </button>
                 </div>
               </>
             )}
@@ -192,6 +197,7 @@ export function QueryEditor(props: QueryEditorProps) {
       <div className="flex h-9 flex-none items-center gap-1 border-b border-border-1 px-2">
         <ToolButton icon={<Play size={12} fill="currentColor" />} label="Run" onClick={() => onRun(false)} disabled={running} active />
         <ToolButton icon={<Zap size={12} />} label="Explain" onClick={() => onRun(true)} disabled={running || isMongo} />
+        {canAnalyze && <ToolButton icon={<Gauge size={12} />} label="Analyze" onClick={() => onRun(true, true)} disabled={running} />}
         <ToolButton icon={<AlignLeft size={12} />} label="Format" onClick={onFormat} />
         <div className="ml-1 flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-text-3">
           Variables <span className="rounded bg-accent/15 px-1.5 py-px font-semibold text-accent">{varsCount}</span>

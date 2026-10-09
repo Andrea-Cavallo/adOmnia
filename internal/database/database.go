@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -46,6 +47,7 @@ type dbQueryRequest struct {
 	Limit      int                 `json:"limit"`
 	Confirm    bool                `json:"confirm"`
 	Explain    bool                `json:"explain"`
+	Analyze    bool                `json:"analyze"`
 	TimeoutMS  int                 `json:"timeoutMs"`
 }
 
@@ -58,6 +60,8 @@ type dbQueryResponse struct {
 	Limited       bool                     `json:"limited"`
 	Destructive   bool                     `json:"destructive"`
 	StatementType string                   `json:"statementType"`
+	// Explain is "plan" or "analyze" when the rows are an execution plan.
+	Explain string `json:"explain,omitempty"`
 	Warning       string                   `json:"warning,omitempty"`
 	// Documents holds ordered canonical Extended JSON when a Mongo command sets
 	// canonical: true, so the document view keeps field order and BSON types.
@@ -159,8 +163,18 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer db.Close()
-	if req.Explain {
-		query = explainQuery(driver, query)
+	explainMode := ""
+	if req.Explain || req.Analyze {
+		explained, err := explainQuery(driver, query, req.Analyze)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		query = explained
+		explainMode = "plan"
+		if req.Analyze {
+			explainMode = "analyze"
+		}
 	}
 	stmtType := statementType(query)
 	limitedQuery, limited := applyLimit(driver, query, req.Limit)
@@ -171,7 +185,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 	start := time.Now()
-	resp := dbQueryResponse{Driver: driver, Limited: limited, Destructive: destructive, StatementType: stmtType}
+	resp := dbQueryResponse{Driver: driver, Limited: limited, Destructive: destructive, StatementType: stmtType, Explain: explainMode}
 	if isResultQuery(limitedQuery) {
 		cols, rows, err := runRows(ctx, db, limitedQuery)
 		if err != nil {
@@ -909,15 +923,36 @@ func applyLimit(driver, query string, limit int) (string, bool) {
 	return trimmed + " LIMIT " + strconv.Itoa(limit), true
 }
 
-func explainQuery(driver, query string) string {
+// explainQuery wraps a statement in the driver's plan syntax. ANALYZE really
+// executes the statement, so it is limited to read queries.
+func explainQuery(driver, query string, analyze bool) (string, error) {
 	trimmed := strings.TrimRight(strings.TrimSpace(query), ";")
+	if analyze {
+		if t := statementType(trimmed); t != "SELECT" && t != "WITH" {
+			return "", errors.New("EXPLAIN ANALYZE executes the statement: only SELECT and WITH queries can be analyzed")
+		}
+	}
 	switch driver {
+	case "postgres":
+		if analyze {
+			return "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + trimmed, nil
+		}
+		return "EXPLAIN (FORMAT JSON) " + trimmed, nil
 	case "mysql":
-		return "EXPLAIN " + trimmed
+		if analyze {
+			return "EXPLAIN ANALYZE " + trimmed, nil
+		}
+		return "EXPLAIN " + trimmed, nil
 	case "sqlite":
-		return "EXPLAIN QUERY PLAN " + trimmed
+		if analyze {
+			return "", errors.New("SQLite has no EXPLAIN ANALYZE: use Explain for the query plan")
+		}
+		return "EXPLAIN QUERY PLAN " + trimmed, nil
 	default:
-		return "EXPLAIN " + trimmed
+		if analyze {
+			return "", fmt.Errorf("EXPLAIN ANALYZE is not supported for %s", driver)
+		}
+		return "EXPLAIN " + trimmed, nil
 	}
 }
 
