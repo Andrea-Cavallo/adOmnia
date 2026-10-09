@@ -258,7 +258,7 @@ function useRunSpans(run: RequestRun): OtlpSpan[] {
 export function RequestTimeline({ run, session, logs, queries, messages }: { run: RequestRun; session: LiveSession | null; logs: LiveLogEntry[]; queries: LiveQuery[]; messages: LiveMessage[] }) {
   const spans = useRunSpans(run)
   const steps: TimelineStep[] = [{ at: run.startedAt, kind: 'sent', label: `${run.method} ${pathOf(run.url)}`, detail: 'sent' }]
-  for (const span of spans) {
+  for (const span of [...spans].sort((a, b) => a.startMs - b.startMs)) {
     const source = spanSource(span)
     steps.push({
       at: new Date(span.startMs).toISOString(), kind: 'span', label: `${span.service}: ${span.name}`,

@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 72 | 25 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 70 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -64,7 +64,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Debug integration
 
-- [ ] Trace. — *Parziale: la tab Timeline unisce breakpoint, SQL, messaggi e log; il ricevitore OTLP locale e il Trace Studio esistono (Observability → Traces) ma le span OTLP non entrano ancora nella Timeline della request.*
 
 ## §26 · Kafka / Broker Integration
 
@@ -175,7 +174,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Timeline
 
-- [ ] Timeline unica. — *Parziale: RequestTimeline unisce invio, frame, breakpoint, SQL, messaggi, log di errore e risposta; solo per il servizio locale, senza confini fra servizi.*
 - [ ] Service boundaries. — *Parziale: la vista distribuita mostra il servizio di ogni span e l'elenco dei servizi della trace; mancano confini basati su acquisizione runtime completa.*
 - [ ] Retry delay.
 
