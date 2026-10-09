@@ -37,6 +37,7 @@ import {
   type JsonViewerSummary,
 } from '@/lib/jsonViewer'
 import { cn } from '@/lib/utils'
+import { jsonToGo } from '@/lib/jsonToGo'
 
 const STORAGE_KEY = 'adomnia.jsonViewer.session'
 const HIGHLIGHT_LIMIT_BYTES = 1024 * 1024
@@ -168,6 +169,7 @@ export function JsonViewerPanel() {
   const [session, setSession] = useState<JsonViewerSession>(loadSession)
   const [errorFlash, setErrorFlash] = useState('')
   const [copied, setCopied] = useState(false)
+  const [goCopied, setGoCopied] = useState<'' | 'ok' | 'error'>('')
   const [matchIndex, setMatchIndex] = useState(0)
   const [dragging, setDragging] = useState(false)
 
@@ -231,6 +233,16 @@ export function JsonViewerPanel() {
     } catch (error) {
       setErrorFlash(error instanceof Error ? error.message : 'Invalid JSON')
     }
+  }
+
+  const copyGoStruct = async () => {
+    try {
+      await navigator.clipboard.writeText(jsonToGo(activeContent))
+      setGoCopied('ok')
+    } catch {
+      setGoCopied('error')
+    }
+    window.setTimeout(() => setGoCopied(''), 1500)
   }
 
   const copyJson = async () => {
@@ -480,6 +492,14 @@ export function JsonViewerPanel() {
           <input ref={rightFileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={(event) => { void readFile('right', event.target.files?.[0]); event.currentTarget.value = '' }} />
           <button onClick={() => (session.activePane === 'left' ? leftFileInputRef : rightFileInputRef).current?.click()} className="grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1" title={`Load ${paneLabel(session.activePane)}`}>
             <FileUp size={13} />
+          </button>
+          <button
+            onClick={() => void copyGoStruct()}
+            disabled={!activeContent}
+            className={cn('inline-flex h-7 items-center gap-1 rounded px-2 font-mono text-[10.5px] hover:bg-surface-2 disabled:opacity-35', goCopied === 'ok' ? 'text-success' : goCopied === 'error' ? 'text-error' : 'text-text-3 hover:text-text-1')}
+            title={goCopied === 'error' ? 'Not valid JSON' : `Copy Go structs with json tags for ${paneLabel(session.activePane)}`}
+          >
+            {goCopied === 'ok' ? <CheckCircle2 size={12} /> : <Copy size={12} />} Go
           </button>
           <button onClick={copyJson} disabled={!activeContent} className={cn('grid h-7 w-7 place-items-center rounded hover:bg-surface-2 disabled:opacity-35', copied ? 'text-success' : 'text-text-3 hover:text-text-1')} title={copied ? 'Copied' : `Copy ${paneLabel(session.activePane)}`}>
             {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}

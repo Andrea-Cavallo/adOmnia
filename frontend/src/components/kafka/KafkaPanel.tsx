@@ -33,6 +33,7 @@ import { ConnectionProfiles } from './ConnectionProfiles'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { downloadText } from '@/lib/fileUtils'
+import { goName, jsonToGo } from '@/lib/jsonToGo'
 import { fixtureFileName, parseFixture, toFixture } from './kafkaFixture'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
@@ -1054,8 +1055,9 @@ interface MessageListProps {
 
 function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageListProps) {
   const [replayState, setReplayState] = useState<{ busy: boolean; text: string }>({ busy: false, text: '' })
+  const [showGo, setShowGo] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  useEffect(() => { setReplayState({ busy: false, text: '' }) }, [selectedIndex])
+  useEffect(() => { setReplayState({ busy: false, text: '' }); setShowGo(false) }, [selectedIndex])
   const selected = selectedIndex === null ? null : messages[selectedIndex]
 
   useEffect(() => {
@@ -1063,6 +1065,10 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
   }, [messages.length, selectedIndex])
 
   const payloadPreview = (value?: string) => (value ?? '').replace(/\s+/g, ' ').slice(0, 110) || '(empty payload)'
+  const goStruct = useMemo(() => {
+    if (!selected?.value) return null
+    try { return jsonToGo(selected.value, goName(topic || 'Message')) } catch { return null }
+  }, [selected?.value, topic])
   const copyPayload = async () => {
     if (selected?.value) await navigator.clipboard?.writeText(selected.value)
   }
@@ -1097,7 +1103,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
         <section className="mt-3 rounded border border-accent/30 bg-surface-0">
           <div className="flex items-center justify-between border-b border-border-1 px-3 py-2">
             <div><p className="text-xs font-semibold text-text-1">Message detail</p><p className="mt-0.5 font-mono text-[10px] text-text-4">partition {selected.partition ?? '-'} / offset {selected.offset ?? '-'} / {selected.timestamp || 'no timestamp'}</p></div>
-            <div className="flex items-center gap-2"><button onClick={() => void copyPayload()} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy payload</button><button onClick={() => downloadText(fixtureFileName(toFixture(topic, selected)), `${JSON.stringify(toFixture(topic, selected), null, 2)}\n`, 'application/json')} title="Save key, headers and payload as a JSON fixture you can commit and load back in the producer" className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Save fixture</button><button onClick={() => onRepublish(selected)} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in composer</button><button
+            <div className="flex items-center gap-2"><button onClick={() => void copyPayload()} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy payload</button><button onClick={() => setShowGo((v) => !v)} disabled={!goStruct} title={goStruct ? 'Go types for this payload, with json tags' : 'The payload is not a JSON document'} className={cn('rounded border px-2 py-1 text-[11px] disabled:opacity-40', showGo ? 'border-accent text-accent' : 'border-border-2 text-text-2 hover:border-accent hover:text-accent')}>Go struct</button><button onClick={() => downloadText(fixtureFileName(toFixture(topic, selected)), `${JSON.stringify(toFixture(topic, selected), null, 2)}\n`, 'application/json')} title="Save key, headers and payload as a JSON fixture you can commit and load back in the producer" className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Save fixture</button><button onClick={() => onRepublish(selected)} className="rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in composer</button><button
                 disabled={replayState.busy || !topic}
                 title={`Produce this message again on ${topic || 'the selected topic'} with the same key and headers`}
                 onClick={async () => {
@@ -1109,6 +1115,15 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
               ><RotateCcw size={11} /> {replayState.busy ? 'Replaying…' : 'Replay'}</button></div>
           </div>
           {replayState.text && <p className={cn('border-b border-border-1 px-3 py-1.5 text-[11px]', replayState.text.startsWith('Replayed') ? 'text-success' : 'text-error')}>{replayState.text}</p>}
+          {showGo && goStruct && (
+            <div className="border-b border-border-1 p-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-text-4">Go types inferred from this message</p>
+                <button onClick={() => void navigator.clipboard?.writeText(goStruct)} className="rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy Go</button>
+              </div>
+              <pre className="max-h-72 overflow-auto rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{goStruct}</pre>
+            </div>
+          )}
           <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_220px]">
             <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{selected.value || '(empty payload)'}</pre>
             <div className="space-y-3 text-[11px]"><div><p className="mb-1 uppercase tracking-wider text-text-4">Key</p><p className="break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-text-2">{selected.key || '(no key)'}</p></div><div><p className="mb-1 uppercase tracking-wider text-text-4">Headers</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-[10px] text-text-3">{Object.keys(selected.headers ?? {}).length ? JSON.stringify(selected.headers, null, 2) : '(none)'}</pre></div></div>
