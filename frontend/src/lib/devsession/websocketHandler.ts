@@ -49,3 +49,46 @@ export async function debugWebSocketHandler(target: WebSocketHandler, progress: 
   await waitLiveReady(session.id, useDevSessionStore.getState().prefs.healthPaths[session.service] ?? '', READY_TIMEOUT_MS)
   return session
 }
+
+export interface LiveWebSocketRun {
+  runId: string
+  sessionId: string
+  service: string
+  correlationId: string
+  /** Sent with the handshake: the service can log them, OpenTelemetry propagates traceparent. */
+  headers: Record<string, string>
+}
+
+/**
+ * A WebSocket connection to a live service is a request run like an HTTP call: the handshake carries
+ * the run's correlation id and traceparent, so the lines the handler logs with them are tied to it.
+ */
+export async function beginLiveWebSocket(url: string): Promise<LiveWebSocketRun | null> {
+  const store = useDevSessionStore.getState()
+  const session = sessionForRequest(store, url, url)
+  if (!session || session.endedAt) return null
+  const [{ beginLiveRequest, CORRELATION_HEADER }, { traceparentFor }] = await Promise.all([import('@/lib/devsession-api'), import('./traceparent')])
+  const run = await beginLiveRequest({ sessionId: session.id, tabId: '', name: 'WebSocket', method: 'GET', url: url.replace(/^ws/i, 'http') })
+  if (!run.id) return null
+  useDevSessionStore.getState().apply({ type: 'request.started', sessionId: session.id, payload: run })
+  return { runId: run.id, sessionId: session.id, service: session.service, correlationId: run.correlationId, headers: { [CORRELATION_HEADER]: run.correlationId, traceparent: traceparentFor(run.correlationId) } }
+}
+
+/** Handshake outcome: 101 when the connection opened. */
+export async function endLiveWebSocket(run: LiveWebSocketRun, opened: boolean, durationMs: number, error = ''): Promise<void> {
+  try {
+    const { endLiveRequest } = await import('@/lib/devsession-api')
+    const done = await endLiveRequest(run.runId, opened ? 101 : 0, Math.round(durationMs), error)
+    useDevSessionStore.getState().apply({ type: 'request.completed', sessionId: done.sessionId, payload: done })
+  } catch {
+    // The run was pruned: nothing to update.
+  }
+}
+
+/** The connection's log lines (and the service's stream) in the Log Inspector. */
+export async function openWebSocketLogs(run: LiveWebSocketRun): Promise<void> {
+  const [{ streamSessionToLogInspector }, { requestLogInspectorQuery }, { showModule }] = await Promise.all([import('./logInspectorSource'), import('@/lib/loginspector/handoff'), import('@/lib/moduleRouting')])
+  streamSessionToLogInspector(run.sessionId, run.service)
+  requestLogInspectorQuery(run.correlationId)
+  showModule('loginspector')
+}

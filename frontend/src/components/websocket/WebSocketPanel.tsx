@@ -43,6 +43,7 @@ import { safeEval } from '@/lib/safeEval'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { binaryPayloadPreview } from './binaryPayload'
 import { LiveWebSocketHandler } from './LiveWebSocketHandler'
+import { beginLiveWebSocket, endLiveWebSocket, openWebSocketLogs, type LiveWebSocketRun } from '@/lib/devsession/websocketHandler'
 
 type AuthType = 'none' | 'bearer' | 'basic'
 type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting'
@@ -1131,6 +1132,7 @@ function SystemEvents({ events }: { events: WSMessage[] }) {
 export function WebSocketPanel() {
   const port = useServerPort()
   const getResolvedVars = useEnvironmentsStore((state) => state.getResolvedVars)
+  const [liveRun, setLiveRun] = useState<LiveWebSocketRun | null>(null)
 
   const [config, setConfig] = useState<WSConfig>(loadConfig)
   // Da gO: l'endpoint trovato nel codice diventa l'URL da connettere; la connessione resta all'utente.
@@ -1265,10 +1267,10 @@ export function WebSocketPanel() {
   }, [paused, queuedEvents])
 
   // POSTs /ws/connect with the current config (headers, subprotocols, auth).
-  const openSession = useCallback(async (resolvedUrl: string): Promise<{ sessionId?: string; error?: string }> => {
+  const openSession = useCallback(async (resolvedUrl: string, extraHeaders: Record<string, string> = {}): Promise<{ sessionId?: string; error?: string }> => {
     const vars = getResolvedVars()
     const cfg = configRef.current
-    const resolvedHeaders: Record<string, string> = {}
+    const resolvedHeaders: Record<string, string> = { ...extraHeaders }
     cfg.headers.forEach((row) => {
       if (row.enabled && row.key.trim()) resolvedHeaders[substVars(row.key, vars)] = substVars(row.value, vars)
     })
@@ -1304,7 +1306,12 @@ export function WebSocketPanel() {
     addSystem(`${reconnectAttemptsRef.current > 0 ? 'Reconnecting' : 'Connecting'} to ${resolvedUrl}`)
 
     try {
-      const data = await openSession(resolvedUrl)
+      // A live Go service: the handshake carries the run's ids, so the handler's log lines are tied to this connection.
+      const live = await beginLiveWebSocket(resolvedUrl).catch(() => null)
+      const startedAt = performance.now()
+      const data = await openSession(resolvedUrl, live?.headers)
+      if (live) void endLiveWebSocket(live, !!data.sessionId && !data.error, performance.now() - startedAt, data.error ?? '')
+      setLiveRun(data.sessionId ? live : null)
       if (data.error || !data.sessionId) {
         setStatus('error')
         addSystem(data.error ?? 'No session returned', 'error')
@@ -1627,6 +1634,12 @@ export function WebSocketPanel() {
           </button>
         </div>
         {!connected && <LiveWebSocketHandler url={resolveUrl(config, getResolvedVars())} onDebugReady={() => void handleConnect()} />}
+        {connected && liveRun && (
+          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-text-3">
+            <span>Live connection to <span className="text-text-1">{liveRun.service}</span> · id <span className="font-mono">{liveRun.correlationId}</span></span>
+            <button type="button" onClick={() => void openWebSocketLogs(liveRun)} title="The service's log lines for this connection (they carry its id) in the Log Inspector" className="inline-flex items-center gap-1 rounded border border-border-2 px-2 py-0.5 text-text-2 hover:border-accent hover:text-accent">Connection logs</button>
+          </div>
+        )}
 
         <div className="mt-2">
           <ConfigTabs
