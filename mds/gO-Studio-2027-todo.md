@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 165 | 44 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 163 | 44 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -78,8 +78,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §25 · gRPC Integration
 
-- [ ] Proto navigation.
-- [ ] Generate Go code.
 - [ ] Streaming support. — *Parziale: Server e client streaming supportati; bidi invia tutti i messaggi in batch e poi CloseSend, non interattivo.*
 - [ ] Client streaming. — *Parziale: GrpcPanel.tsx accetta una lista di messaggi inviata in blocco; non si inviano messaggi in modo interattivo.*
 - [ ] Bidirectional streaming. — *Parziale: Badge Bidi e invio batch di più messaggi con ricezione dello stream; manca scambio interattivo duplex.*
