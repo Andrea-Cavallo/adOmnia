@@ -150,13 +150,13 @@ export function LiveQueryList({ queries, run, goSessionId }: { queries: LiveQuer
           </li>
         ) : (
           <li key={query.id} className="px-3 py-2">
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               <span className="mt-0.5 shrink-0 text-[10.5px] text-text-4">{time(query.at)}</span>
               <MatchHint match={query.match} />
-              <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-[11.5px] text-text-1">{query.sql}</code>
+              <code className="min-w-[10rem] flex-1 whitespace-pre-wrap break-all text-[11.5px] text-text-1">{query.sql}</code>
               <QueryOutcome query={query} />
               {goSessionId && <button type="button" onClick={() => void findQueryInCode(query, goSessionId)} title="Open the code that runs this statement"
-                className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Code</button>}
+                className="ml-auto shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Code</button>}
               <button type="button" onClick={() => openQuery(query, run)}
                 className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Database</button>
             </div>
@@ -189,12 +189,13 @@ export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; ru
   return (
     <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
       {messages.map((message) => (
-        <li key={message.id} className="flex items-start gap-2 px-3 py-2 text-[11.5px]">
+        <li key={message.id} className="flex flex-wrap items-start gap-2 px-3 py-2 text-[11.5px]">
           <span className="mt-0.5 shrink-0 text-[10.5px] text-text-4">{time(message.at)}</span>
           <MatchHint match={message.match} />
-          <div className="min-w-0 flex-1">
+          {/* Wraps under the time in a narrow response pane instead of squeezing the payload. */}
+          <div className="min-w-[10rem] flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-              <span className="font-semibold text-text-1">{message.topic}</span>
+              <span className="break-all font-semibold text-text-1">{message.topic}</span>
               <span className="text-text-3">partition {message.partition}</span>
               <span className="text-text-3">offset {message.offset}</span>
               {message.key && <span className="font-mono text-text-3">key {message.key}</span>}
@@ -202,7 +203,7 @@ export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; ru
             {message.preview && <code className="mt-1 block max-h-24 overflow-auto whitespace-pre-wrap break-all text-[11px] text-text-2">{message.preview}</code>}
           </div>
           <button type="button" onClick={() => openMessage(message, run)}
-            className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Kafka</button>
+            className="ml-auto shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Kafka</button>
         </li>
       ))}
     </ul>
