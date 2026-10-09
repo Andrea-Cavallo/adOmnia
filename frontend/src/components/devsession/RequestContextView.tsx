@@ -1,4 +1,7 @@
 import { cn } from '@/lib/utils'
+import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
+import { getServerPort } from '@/lib/useServerPort'
+import { traceIdFor } from '@/lib/devsession/traceparent'
 import { useState, type ReactNode } from 'react'
 import { ExternalLink, FileArchive } from 'lucide-react'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -51,6 +54,17 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
  */
 /** Writes repro/<when>-<request>/ into the service's Go project and opens its README. */
 /** `compact`: icon only, for the narrow live response bar; the outcome goes in the tooltip and color. */
+/** The request's OpenTelemetry spans from the local receiver, or none when it is off. */
+async function requestSpans(correlationId: string): Promise<OtlpSpan[]> {
+  try {
+    const port = await getServerPort()
+    if (!port || !correlationId || !(await otlpStatus(port)).running) return []
+    return await getOtlpTrace(port, traceIdFor(correlationId))
+  } catch {
+    return []
+  }
+}
+
 export function SaveReproductionButton({ run, compact = false }: { run: RequestRun; compact?: boolean }) {
   const [state, setState] = useState<{ busy: boolean; text: string; error?: boolean }>({ busy: false, text: '' })
   const save = async () => {
@@ -65,9 +79,11 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
         : { method: run.method, url: run.url, headers: [] }
       const result = buildReproduction({
         run, request, service: session.service, createdAt: new Date().toISOString(),
-        logs: (store.logs[run.sessionId] ?? []).filter((entry) => entry.requestRunId === run.id),
+        // Every service's lines: a consumer elsewhere logs the request's id too.
+        logs: Object.values(store.logs).flat().filter((entry) => entry.requestRunId === run.id).sort((a, b) => a.seq - b.seq),
         queries: store.queries.filter((query) => query.requestRunId === run.id),
         messages: store.messages.filter((message) => message.requestRunId === run.id),
+        spans: await requestSpans(run.correlationId),
       })
       const [{ createGoIDEFiles }, { useGoIDEStore }] = await Promise.all([import('@/lib/goide-api'), import('@/stores/goide')])
       await createGoIDEFiles(session.goSessionId, result.files)

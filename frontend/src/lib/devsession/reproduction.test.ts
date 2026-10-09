@@ -35,10 +35,11 @@ describe('reproduction', () => {
       logs: [{ seq: 1, sessionId: 's1', at: '10:00:00', stream: 'stderr', text: 'panic: nil map token=abc', level: 'error' }],
       queries: [{ id: 'q', sessionId: 's1', at: '10:00:00', sql: 'INSERT INTO orders VALUES (now())', source: 'proxy', error: 'duplicate key' } as never],
       messages: [{ id: 'm', sessionId: 's1', at: '10:00:00', broker: 'kafka', topic: 'orders.created', partition: 0, offset: 7, key: 'o-1', preview: '{"id":1}' }],
+      spans: [{ traceId: 't1', spanId: 's', name: 'GET /orders', kind: 'server', service: 'orders', startMs: 1, durationMs: 2, statusCode: 'OK', category: 'http', attributes: { 'url.full': 'http://x/?token=abc' } } as never],
     })
     expect(result.dir).toBe('repro/20261009-100500-post-orders')
     const names = result.files.map((file) => file.relativePath.slice(result.dir.length + 1)).sort()
-    expect(names).toEqual(['.env.example', 'README.md', 'kafka/01-orders-created.kafka.json', 'logs.txt', 'queries.sql', 'repro_test.go', 'request.http', 'stack.txt'])
+    expect(names).toEqual(['.env.example', 'README.md', 'kafka/01-orders-created.kafka.json', 'logs.txt', 'queries.sql', 'repro_test.go', 'request.http', 'stack.txt', 'trace.json'])
     const file = (name: string) => result.files.find((item) => item.relativePath.endsWith(name))!.content
     expect(file('request.http')).toContain('Authorization: {{AUTHORIZATION}}')
     expect(file('request.http')).not.toContain('abc')
@@ -46,6 +47,7 @@ describe('reproduction', () => {
     expect(file('repro_test.go')).toContain('func TestReproducePostOrders(t *testing.T)')
     expect(file('.env.example')).toBe('# Values the request needs (the captured ones are not written here)\nBASE_URL=\nAUTHORIZATION=\nbaseUrl=\n')
     expect(file('logs.txt')).toContain('token=<redacted>')
+    expect(file('trace.json')).toContain('token=<redacted>')
     expect(file('README.md')).toContain('SQL NOW()')
     expect(file('README.md')).toMatch(/1\. Start orders[\s\S]*2\. Bring the database[\s\S]*3\. If the flow starts from a message[\s\S]*4\. Send `request\.http`/)
     expect(file('README.md')).toContain('2 secret value(s)')

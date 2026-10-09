@@ -2,6 +2,7 @@
 // README with steps, an .http fixture, a Go regression test, the SQL, Kafka fixtures, an env
 // template, logs and stacks. Secrets are stripped; non-deterministic values are listed.
 import type { LiveLogEntry, LiveMessage, LiveQuery, RequestRun } from '@/lib/devsession-api'
+import type { OtlpSpan } from '@/lib/otlp-api'
 import type { KVRow, RequestBody } from '@/lib/types'
 import { FIXTURE_FORMAT } from '@/lib/kafkaFixture'
 
@@ -20,6 +21,8 @@ export interface ReproInput {
   logs: LiveLogEntry[]
   queries: LiveQuery[]
   messages: LiveMessage[]
+  /** OpenTelemetry spans of the request's trace, when the services export them locally. */
+  spans?: OtlpSpan[]
   /** ISO timestamp used for the folder name. */
   createdAt: string
 }
@@ -186,6 +189,12 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
     }, null, 2)}\n`)
   })
   if (input.logs.length) add('logs.txt', `${input.logs.map((entry) => `${entry.at} ${entry.stream}${entry.level ? ` ${entry.level}` : ''} ${stripText(entry.text)}`).join('\n')}\n`)
+  if (input.spans?.length) {
+    // Attribute values can hold secrets (URLs with tokens, auth headers): same stripping as the logs.
+    const spans = input.spans.map((span) => ({ ...span, attributes: Object.fromEntries(Object.entries(span.attributes ?? {}).map(([key, value]) => [key, stripText(String(value))])) }))
+    add('trace.json', `${JSON.stringify({ traceId: spans[0].traceId, spans }, null, 2)}
+`)
+  }
   if (run.hits.length) {
     add('stack.txt', `${run.hits.map((hit) => [`${hit.at} ${hit.function} ${hit.relativePath ?? hit.file ?? ''}:${hit.line}`, ...(hit.stack ?? []).map((frame) => `    ${frame.function} ${frame.relativePath ?? frame.file ?? ''}:${frame.line}`)].join('\n')).join('\n\n')}\n`)
   }
