@@ -59,8 +59,10 @@ func detectDotenv(rel string, data []byte) ([]Entity, error) {
 	var out []Entity
 	for _, e := range parseDotenv(data) {
 		src := Source{"dotenv", rel, e.Line}
+		// value@<file> keeps each profile's (masked) value: attrs merge first-writer-wins per key.
+		shown := displayValue(e.Key, e.Value)
 		out = append(out, entity("envvar", e.Key, e.Key, ConfidenceCertain,
-			map[string]string{"value": displayValue(e.Key, e.Value)}, src))
+			map[string]string{"value": shown, "value@" + rel: shown}, src))
 		if ds, ok := datasourceFromValue(e.Key, e.Value, src); ok {
 			out = append(out, ds)
 		}

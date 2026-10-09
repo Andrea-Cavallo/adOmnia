@@ -56,6 +56,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.fuzz': lsp.showToolWindow('fuzz'); return true
     case 'view.errorHandling': lsp.showToolWindow('errors'); return true
     case 'view.architecture': lsp.showToolWindow('architecture'); return true
+    case 'view.config': lsp.showToolWindow('config'); return true
     case 'view.interfaces': lsp.showToolWindow('interfaces'); return true
     case 'view.documentation': lsp.showToolWindow('docs'); return true
     case 'view.vulnerabilities': lsp.showToolWindow('vulns'); return true

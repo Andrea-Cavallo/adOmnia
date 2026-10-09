@@ -189,3 +189,19 @@ ENC_URL=postgres://user:p%zzpw6@db:5432/app
 		t.Errorf("quoted DSN with trailing comment must still become a datasource: %+v", byID(got))
 	}
 }
+
+func TestDotenvProfilesKeepEachFilesValue(t *testing.T) {
+	dev, _ := detectDotenv(".env", []byte("PORT=8080\nDB_PASSWORD=dev-secret\n"))
+	staging, _ := detectDotenv(".env.staging", []byte("PORT=9090\n"))
+	byID := map[string]Entity{}
+	for _, e := range merge(dev, staging) {
+		byID[e.ID] = e
+	}
+	port := byID["envvar:PORT"]
+	if port.Attrs["value@.env"] != "8080" || port.Attrs["value@.env.staging"] != "9090" || len(port.Sources) != 2 {
+		t.Fatalf("PORT attrs=%v sources=%v", port.Attrs, port.Sources)
+	}
+	if got := byID["envvar:DB_PASSWORD"].Attrs["value@.env"]; got != secretMask {
+		t.Fatalf("secret leaked in profile value: %q", got)
+	}
+}
