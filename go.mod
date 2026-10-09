@@ -50,7 +50,7 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 )
 
-require golang.org/x/tools v0.50.0
+require golang.org/x/tools v0.51.0
 
 require golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 
