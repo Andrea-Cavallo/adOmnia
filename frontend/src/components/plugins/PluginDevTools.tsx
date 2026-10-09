@@ -190,13 +190,13 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
               Execute
             </button>
             {execResult && (
-              <div className="px-3 py-2 rounded-md bg-green-500/10 border border-green-500/20">
-                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{execResult}</pre>
+              <div className="px-3 py-2 rounded-md bg-success/10 border border-success/20">
+                <pre className="text-xs text-success font-mono whitespace-pre-wrap">{execResult}</pre>
               </div>
             )}
             {execError && (
-              <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
-                <p className="text-xs text-red-400">{execError}</p>
+              <div className="px-3 py-2 rounded-md bg-error/10 border border-error/20">
+                <p className="text-xs text-error">{execError}</p>
               </div>
             )}
           </div>
@@ -224,7 +224,7 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
                         className={cn(
                           'px-1.5 py-0.5 text-[10px] font-medium rounded',
                           status?.running
-                            ? 'bg-green-500/10 text-green-400'
+                            ? 'bg-success/10 text-success'
                             : 'bg-surface-2 text-text-4'
                         )}
                       >
@@ -244,9 +244,9 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
                             className={cn(
                               'h-full rounded-full transition-all',
                               status.memory / status.maxMemory > 0.8
-                                ? 'bg-red-500'
+                                ? 'bg-error'
                                 : status.memory / status.maxMemory > 0.5
-                                  ? 'bg-yellow-500'
+                                  ? 'bg-warning'
                                   : 'bg-accent'
                             )}
                             style={{ width: `${Math.min(100, (status.memory / status.maxMemory) * 100)}%` }}

@@ -87,7 +87,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       await onInstalled()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Installazione plugin fallita.')
+      setError(err instanceof Error ? err.message : 'Plugin installation failed.')
     } finally {
       setBusy(false)
     }
@@ -99,7 +99,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       .filter((file) => file.name.toLowerCase() === 'manifest.json')
       .sort((a, b) => a.webkitRelativePath.length - b.webkitRelativePath.length)[0]
     if (!manifestFile) {
-      setError('La cartella selezionata non contiene manifest.json.')
+      setError('The selected folder has no manifest.json.')
       return
     }
 
@@ -122,7 +122,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       await onInstalled()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Installazione cartella plugin fallita.')
+      setError(err instanceof Error ? err.message : 'Plugin folder installation failed.')
     } finally {
       setBusy(false)
     }
@@ -138,7 +138,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       await onInstalled()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Installazione cartella plugin fallita.')
+      setError(err instanceof Error ? err.message : 'Plugin folder installation failed.')
     } finally {
       setBusy(false)
     }
@@ -147,7 +147,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
   // File drop / file pick
   const handleFile = useCallback((file: File) => {
     if (!file.name.endsWith('.json')) {
-      setError('Seleziona un file manifest.json')
+      setError('Choose a manifest.json file')
       return
     }
     const reader = new FileReader()
@@ -157,7 +157,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
         JSON.parse(text) // validate
         doInstall(text)
       } catch {
-        setError('Il file non contiene JSON valido.')
+        setError('The file is not valid JSON.')
       }
     }
     reader.readAsText(file)
@@ -176,14 +176,14 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
 
   const handleFormInstall = () => {
     if (!form.name.trim() || !form.author.trim()) {
-      setError('Nome e autore sono obbligatori.')
+      setError('Name and author are required.')
       return
     }
     doInstall(formToJson(form))
   }
 
   const TABS: { id: InstallTab; icon: React.ElementType; label: string }[] = [
-    { id: 'file', icon: Upload,   label: 'Da file'  },
+    { id: 'file', icon: Upload,   label: 'From file' },
     { id: 'form', icon: FileJson, label: 'Form'     },
     { id: 'json', icon: Code2,    label: 'JSON raw' },
   ]
@@ -193,7 +193,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       <div className="bg-surface-0 border border-border-1 rounded-xl shadow-2xl w-[520px] flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
-          <h2 className="text-sm font-semibold text-text-1">Installa plugin</h2>
+          <h2 className="text-sm font-semibold text-text-1">Install plugin</h2>
           <button onClick={onClose} className="text-text-3 hover:text-text-1 transition-colors">
             <X size={15} />
           </button>
@@ -223,7 +223,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {error && (
-            <div className="rounded border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <div className="rounded border border-error/25 bg-error/10 px-3 py-2 text-xs text-error">
               {error}
             </div>
           )}
@@ -231,7 +231,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {/* ── Tab: file ─────────────────────────────────────── */}
           {tab === 'file' && (
             <div className="space-y-3">
-              <p className="text-xs text-text-3">Per un plugin JavaScript eseguibile installa la cartella completa, incluso l'entrypoint dichiarato.</p>
+              <p className="text-xs text-text-3">For a runnable JavaScript plugin, install the whole folder including its declared entry point.</p>
               <button
                 type="button"
                 disabled={busy}
@@ -239,11 +239,11 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                 className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 <Upload size={13} />
-                Installa cartella plugin (consigliato)
+                Install plugin folder (recommended)
               </button>
-              <p className="pt-2 text-[10px] uppercase tracking-wider text-text-4">Solo manifest</p>
+              <p className="pt-2 text-[10px] uppercase tracking-wider text-text-4">Manifest only</p>
               <p className="text-xs text-text-3">
-                Usa questa opzione solo per registrare un plugin senza file eseguibili.
+                Use this only to register a plugin without runnable files.
               </p>
               <button
                 type="button"
@@ -258,7 +258,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
               >
                 <Upload size={28} className={cn('transition-colors', dragging ? 'text-accent' : 'text-text-4')} />
                 <span className="text-xs text-text-3">
-                  {dragging ? 'Rilascia qui' : 'Seleziona manifest.json'}
+                  {dragging ? 'Drop it here' : 'Choose manifest.json'}
                 </span>
               </button>
               <input
@@ -275,14 +275,14 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {tab === 'form' && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nome *" value={form.name} onChange={v => { setF('name', v); setF('id', slugify(v)) }} placeholder="My Plugin" />
+                <Field label="Name *" value={form.name} onChange={v => { setF('name', v); setF('id', slugify(v)) }} placeholder="My Plugin" />
                 <Field label="ID" value={form.id} onChange={v => setF('id', v)} placeholder="auto" mono />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Autore *" value={form.author} onChange={v => setF('author', v)} placeholder="Nome Cognome" />
-                <Field label="Versione" value={form.version} onChange={v => setF('version', v)} placeholder="1.0.0" mono />
+                <Field label="Author *" value={form.author} onChange={v => setF('author', v)} placeholder="Jane Doe" />
+                <Field label="Version" value={form.version} onChange={v => setF('version', v)} placeholder="1.0.0" mono />
               </div>
-              <Field label="Descrizione" value={form.description} onChange={v => setF('description', v)} placeholder="Cosa fa il plugin..." />
+              <Field label="Description" value={form.description} onChange={v => setF('description', v)} placeholder="What the plugin does..." />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-medium text-text-3 mb-1 uppercase tracking-wider">Runtime</label>
@@ -297,11 +297,11 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                 <Field label="Entry point" value={form.entryPoint} onChange={v => setF('entryPoint', v)} placeholder="main.js" mono />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Licenza" value={form.license} onChange={v => setF('license', v)} placeholder="MIT" />
+                <Field label="License" value={form.license} onChange={v => setF('license', v)} placeholder="MIT" />
                 <Field label="Homepage" value={form.homepage} onChange={v => setF('homepage', v)} placeholder="https://..." />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-text-3 mb-1.5 uppercase tracking-wider">Permessi</label>
+                <label className="block text-[10px] font-medium text-text-3 mb-1.5 uppercase tracking-wider">Permissions</label>
                 <div className="flex flex-wrap gap-1.5">
                   {PERMISSIONS.map(p => (
                     <button
@@ -326,7 +326,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
               {/* JSON preview */}
               <details className="group">
                 <summary className="cursor-pointer text-[10px] text-text-4 hover:text-text-3 select-none">
-                  Anteprima JSON generato
+                  Generated JSON preview
                 </summary>
                 <pre className="mt-2 p-2 rounded bg-surface-1 border border-border-1 text-[10px] font-mono text-text-3 overflow-auto max-h-40">
                   {formToJson(form)}
@@ -339,7 +339,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
           {tab === 'json' && (
             <div className="space-y-2">
               <p className="text-xs text-text-3">
-                Incolla il manifest JSON completo. Per sviluppatori avanzati.
+                Paste the complete JSON manifest. For advanced users.
               </p>
               <textarea
                 value={rawJson}
@@ -358,7 +358,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
             onClick={onClose}
             className="px-3 py-1.5 text-xs text-text-2 hover:text-text-1 transition-colors"
           >
-            Annulla
+            Cancel
           </button>
           {tab === 'form' && (
             <button
@@ -371,7 +371,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                   : 'bg-surface-2 text-text-4 cursor-not-allowed'
               )}
             >
-              {busy ? 'Installazione…' : 'Installa'}
+              {busy ? 'Installing…' : 'Install'}
             </button>
           )}
           {tab === 'json' && (
@@ -385,12 +385,12 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                   : 'bg-surface-2 text-text-4 cursor-not-allowed'
               )}
             >
-              {busy ? 'Installazione…' : 'Installa'}
+              {busy ? 'Installing…' : 'Install'}
             </button>
           )}
           {tab === 'file' && (
             <span className="px-4 py-1.5 text-xs text-text-4 italic">
-              Seleziona o trascina un file
+              Choose or drop a file
             </span>
           )}
         </div>
@@ -438,7 +438,7 @@ export function PluginManager() {
       setPlugins(all)
     } catch (err) {
       setPlugins([])
-      setLoadError(err instanceof Error ? err.message : 'Impossibile caricare i plugin installati.')
+      setLoadError(err instanceof Error ? err.message : 'Could not load the installed plugins.')
     } finally {
       setLoading(false)
     }
@@ -500,7 +500,7 @@ export function PluginManager() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-2 hover:text-text-1 bg-surface-1 hover:bg-surface-2 border border-border-1 rounded-md transition-colors"
           >
             <Cpu size={13} />
-            {view === 'plugins' ? 'Dettagli sviluppatore' : 'Plugin installati'}
+            {view === 'plugins' ? 'Developer details' : 'Installed plugins'}
           </button>
           <button
             onClick={() => setInstallMode(true)}
@@ -517,10 +517,10 @@ export function PluginManager() {
       ) : (
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mb-5 rounded-md border border-border-1 bg-surface-1 px-4 py-3">
-          <p className="text-xs font-medium text-text-1">Come usare i plugin</p>
+          <p className="text-xs font-medium text-text-1">How to use plugins</p>
           <p className="mt-1 text-xs text-text-3">
-            Installa la cartella completa del plugin, abilitalo e apri il suo pannello per eseguire le azioni disponibili.
-            Se avevi importato solo il manifest, la cartella completa ripara l'installazione. Dettagli sviluppatore serve solo per diagnosi.
+            Install the complete plugin folder, enable it and open its panel to run its actions.
+            If you imported only the manifest, installing the complete folder repairs it. Developer details are only for diagnostics.
           </p>
         </div>
         {loadError && (
@@ -584,7 +584,7 @@ export function PluginManager() {
                   className={cn(
                     'rounded-lg border transition-all',
                     hasError
-                      ? 'border-red-500/30 bg-red-500/5'
+                      ? 'border-error/30 bg-error/5'
                       : 'border-border-1 bg-surface-1'
                   )}
                 >
@@ -607,7 +607,7 @@ export function PluginManager() {
                       <span
                         className={cn(
                           'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-surface-1',
-                          hasError ? 'bg-red-500' : plugin.enabled ? 'bg-green-500' : 'bg-text-4'
+                          hasError ? 'bg-error' : plugin.enabled ? 'bg-success' : 'bg-text-4'
                         )}
                       />
                     </div>
@@ -623,7 +623,7 @@ export function PluginManager() {
                     </div>
 
                     {hasError && (
-                      <div className="pointer-events-none relative z-10 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-red-400 bg-red-500/10 rounded">
+                      <div className="pointer-events-none relative z-10 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-error bg-error/10 rounded">
                         <AlertTriangle size={10} />
                         Error
                       </div>
@@ -666,8 +666,8 @@ export function PluginManager() {
                   {isExpanded && (
                     <div className="border-t border-border-1 px-4 py-4 space-y-4">
                       {hasError && (
-                        <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
-                          <p className="text-xs text-red-400 font-mono">{plugin.error}</p>
+                        <div className="px-3 py-2 rounded-md bg-error/10 border border-error/20">
+                          <p className="text-xs text-error font-mono">{plugin.error}</p>
                         </div>
                       )}
 
@@ -751,7 +751,7 @@ export function PluginManager() {
                             </button>
                             <button
                               onClick={() => handleUninstall(plugin.manifest.id)}
-                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 rounded transition-colors"
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-error hover:opacity-80 bg-error/10 rounded transition-colors"
                             >
                               <Trash2 size={11} />
                               Remove
@@ -760,7 +760,7 @@ export function PluginManager() {
                         ) : (
                           <button
                             onClick={() => setConfirmDelete(plugin.manifest.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-text-3 hover:text-red-400 transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-text-3 hover:text-error transition-colors"
                           >
                             <Trash2 size={11} />
                             Uninstall

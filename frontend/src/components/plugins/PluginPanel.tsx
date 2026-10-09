@@ -71,7 +71,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
       <div className="flex-1 overflow-y-auto p-6">
         {actions.length > 0 && (
           <div className="mb-4 rounded-md border border-border-1 bg-surface-1 px-3 py-2 text-xs text-text-3">
-            Scegli un'azione e premi <span className="font-medium text-text-1">Esegui</span>. Il risultato comparira sotto l'azione.
+            Choose an action and press <span className="font-medium text-text-1">Run</span>. The result appears below it.
           </div>
         )}
         {actions.length === 0 ? (
@@ -100,7 +100,7 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-text-4 font-mono">{action.id}</span>
                         {action.streaming && (
-                          <span className="px-1.5 py-0.5 text-[9px] font-medium bg-blue-500/10 text-blue-400 rounded">
+                          <span className="px-1.5 py-0.5 text-[9px] font-medium bg-info/10 text-info rounded">
                             streaming
                           </span>
                         )}
@@ -122,29 +122,29 @@ export function PluginPanel({ plugin }: PluginPanelProps) {
                       ) : (
                         <Play size={11} />
                       )}
-                      Esegui
+                      Run
                     </button>
                   </div>
 
                   {state.status === 'success' && state.result && (
-                    <div className="px-3 py-2 rounded-md bg-green-500/10 border border-green-500/20">
+                    <div className="px-3 py-2 rounded-md bg-success/10 border border-success/20">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <CheckCircle size={11} className="text-green-400" />
-                        <span className="text-[10px] font-medium text-green-400">Success</span>
+                        <CheckCircle size={11} className="text-success" />
+                        <span className="text-[10px] font-medium text-success">Success</span>
                       </div>
-                      <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      <pre className="text-xs text-success font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
                         {state.result}
                       </pre>
                     </div>
                   )}
 
                   {state.status === 'error' && state.error && (
-                    <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
+                    <div className="px-3 py-2 rounded-md bg-error/10 border border-error/20">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <AlertTriangle size={11} className="text-red-400" />
-                        <span className="text-[10px] font-medium text-red-400">Error</span>
+                        <AlertTriangle size={11} className="text-error" />
+                        <span className="text-[10px] font-medium text-error">Error</span>
                       </div>
-                      <p className="text-xs text-red-300">{state.error}</p>
+                      <p className="text-xs text-error">{state.error}</p>
                     </div>
                   )}
                 </div>
