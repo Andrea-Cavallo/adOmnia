@@ -3,7 +3,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens, type OtlpLensStat } from '@/lib/otlp-api'
 import { relativeToRoots } from '@/lib/sourcePaths'
-import { lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
+import { fileCounts, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
 import { documentForModel } from './goStudioLanguageFeatures'
 
 // Runtime Lens: above the code that started OpenTelemetry spans, how it behaved at runtime.
@@ -73,12 +73,12 @@ export function registerGoStudioRuntimeLens(): void {
       const document = documentForModel(model)
       const stats = document ? byFile.get(`${document.document.sessionId}\u0000${document.document.relativePath}`) : undefined
       if (!stats?.length) return { lenses: [], dispose: () => undefined }
-      const maxCount = Math.max(...stats.map((stat) => stat.count))
+      const counts = fileCounts(stats)
       const now = Date.now()
       return {
         lenses: stats.map((stat) => ({
           range: { startLineNumber: stat.line, startColumn: 1, endLineNumber: stat.line, endColumn: 1 },
-          command: { id: COMMAND, title: lensTitle(stat, maxCount, now), tooltip: lensTooltip(stat) },
+          command: { id: COMMAND, title: lensTitle(stat, counts, now), tooltip: lensTooltip(stat) },
         })),
         dispose: () => undefined,
       }

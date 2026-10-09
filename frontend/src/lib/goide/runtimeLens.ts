@@ -17,16 +17,28 @@ function ago(lastMs: number, now: number): string {
   return `${Math.round(seconds / 3600)}h ago`
 }
 
-/** Hot: the most called location of its file (2+ calls). Slow: high p95, or a tail 5× the median. */
-export function lensFlags(stat: OtlpLensStat, maxCountInFile: number): { hot: boolean; slow: boolean } {
+/** Counts of every lens in the file: hot is the single most called location (2+ calls). */
+export interface FileCounts {
+  max: number
+  /** How many locations share the max: a tie (spans of the same request) is not a hot path. */
+  atMax: number
+}
+
+export function fileCounts(stats: readonly OtlpLensStat[]): FileCounts {
+  const max = Math.max(0, ...stats.map((stat) => stat.count))
+  return { max, atMax: stats.filter((stat) => stat.count === max).length }
+}
+
+/** Hot: the single most called location of its file. Slow: high p95, or a tail 5× the median. */
+export function lensFlags(stat: OtlpLensStat, counts: FileCounts): { hot: boolean; slow: boolean } {
   return {
-    hot: stat.count > 1 && stat.count === maxCountInFile,
+    hot: stat.count > 1 && stat.count === counts.max && counts.atMax === 1,
     slow: stat.p95Ms >= SLOW_P95_MS || (stat.count >= 5 && stat.p95Ms >= 5 * Math.max(stat.p50Ms, 0.1)),
   }
 }
 
-export function lensTitle(stat: OtlpLensStat, maxCountInFile: number, now: number): string {
-  const { hot, slow } = lensFlags(stat, maxCountInFile)
+export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): string {
+  const { hot, slow } = lensFlags(stat, counts)
   const parts = [
     `runtime: ${stat.count} call${stat.count === 1 ? '' : 's'}`,
     `p50 ${ms(stat.p50Ms)}`,

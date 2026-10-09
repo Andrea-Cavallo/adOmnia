@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 134 | 30 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 119 | 30 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -225,30 +225,17 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ## §14 · Runtime Lens
 
 > Mostrare informazioni runtime direttamente sopra o accanto al codice.
+>
+> *Base esistente:* Runtime Lens (View → Toggle Runtime Lens) dalle span OpenTelemetry ricevute in locale: chiamate, p50/p95 (p99/avg/max nel tooltip), errori, ultima esecuzione, hot/slow path, per ogni `code.filepath:code.lineno`.
 
-- [ ] Call count.
-- [ ] Average duration.
-- [ ] P50.
-- [ ] P95.
-- [ ] P99.
-- [ ] Error count.
 - [ ] Allocation estimate.
 - [ ] CPU cost.
-- [ ] Last execution.
-- [ ] Hot path indicator.
-- [ ] Slow path indicator.
 - [ ] Runtime values opzionali.
-- [ ] Feature disattivabile.
 - [ ] Sampling per ridurre overhead.
-- [ ] Privacy/local-only.
 
 ### Esempi
 
-- [ ] Handler HTTP → request count.
-- [ ] DB call → duration.
-- [ ] Kafka publish → message count.
 - [ ] Kafka consume → throughput.
-- [ ] gRPC call → latency.
 - [ ] Retry loop → retry count.
 - [ ] Cache access → hit/miss.
 - [ ] Function → allocations.
