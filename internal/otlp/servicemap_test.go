@@ -16,7 +16,8 @@ func TestServiceMapFromTraces(t *testing.T) {
 		{TraceID: "t1", SpanID: "g1", Service: "gateway", Kind: "server", Category: "http", Name: "GET /api/orders", StartMs: 0, DurationMs: 50},
 		{TraceID: "t1", SpanID: "g2", ParentSpanID: "g1", Service: "gateway", Kind: "client", Category: "http", Name: "GET", StartMs: 1, DurationMs: 40,
 			Attributes: attrs("http.request.method", "GET", "code.filepath", "/src/gw/client.go", "code.lineno", "17")},
-		{TraceID: "t1", SpanID: "o1", ParentSpanID: "g2", Service: "orders", Kind: "server", Category: "http", Name: "GET /orders", StartMs: 2, DurationMs: 35},
+		{TraceID: "t1", SpanID: "o1", ParentSpanID: "g2", Service: "orders", Kind: "server", Category: "http", Name: "GET /orders", StartMs: 2, DurationMs: 35,
+			Attributes: attrs("code.filepath", "/src/orders/handler.go", "code.lineno", "42")},
 		{TraceID: "t1", SpanID: "o2", ParentSpanID: "o1", Service: "orders", Kind: "client", Category: "db", Name: "SELECT", StartMs: 3, DurationMs: 20, StatusCode: "ERROR",
 			Attributes: attrs("db.system", "postgresql", "db.name", "shop")},
 		{TraceID: "t1", SpanID: "o3", ParentSpanID: "o1", Service: "orders", Kind: "producer", Category: "messaging", Name: "publish", StartMs: 25, DurationMs: 2,
@@ -42,7 +43,7 @@ func TestServiceMapFromTraces(t *testing.T) {
 	for _, edge := range m.Edges {
 		edges[edge.From+"→"+edge.To] = edge
 	}
-	if e := edges["svc:gateway→svc:orders"]; e.Kind != "http" || e.Calls != 1 || e.P95Ms != 40 || e.SourceFile != "/src/gw/client.go" || e.SourceLine != 17 {
+	if e := edges["svc:gateway→svc:orders"]; e.Kind != "http" || e.Calls != 1 || e.P95Ms != 40 || e.SourceFile != "/src/gw/client.go" || e.SourceLine != 17 || e.HandlerFile != "/src/orders/handler.go" || e.HandlerLine != 42 {
 		t.Fatalf("gateway→orders: %+v", e)
 	}
 	if e := edges["svc:orders→db:postgresql · shop"]; e.Errors != 1 || e.ErrorTraceID != "t1" {

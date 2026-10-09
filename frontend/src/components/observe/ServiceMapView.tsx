@@ -44,6 +44,11 @@ function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Ma
             <Code2 size={11} /> Calling code
           </button>
         )}
+        {edge.handlerFile && (
+          <button type="button" onClick={() => void openSpanSource(edge.handlerFile!, edge.handlerLine || 1)} title={`${edge.handlerFile}:${edge.handlerLine}`} className="flex items-center gap-1 rounded border border-accent/50 px-2 py-1 text-accent hover:bg-accent/10">
+            <Code2 size={11} /> Handler
+          </button>
+        )}
         {topic && (
           <button type="button" onClick={() => handoffToPanel('broker', { kind: 'topic', id: `topic:${topic.label}`, label: topic.label, attrs: { broker: topic.system ?? 'kafka' } }, 'open')} className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">
             Topic in Broker Studio <ArrowUpRight size={10} />

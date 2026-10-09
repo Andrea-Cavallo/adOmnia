@@ -30,6 +30,9 @@ type MapEdge struct {
 	ErrorTraceID  string `json:"errorTraceId,omitempty"`
 	SourceFile    string `json:"sourceFile,omitempty"`
 	SourceLine    int    `json:"sourceLine,omitempty"`
+	// The handler that answers the call, from the server span of the callee.
+	HandlerFile string `json:"handlerFile,omitempty"`
+	HandlerLine int    `json:"handlerLine,omitempty"`
 }
 
 type ServiceMap struct {
@@ -75,7 +78,7 @@ func (s *Store) ServiceMap() ServiceMap {
 	edges := map[string]*edgeData{}
 	minStart, maxEnd := 0.0, 0.0
 	addNode := func(node MapNode) { nodes[node.ID] = node }
-	addCall := func(from, to, kind string, span Span) {
+	addCall := func(from, to, kind string, span Span) *MapEdge {
 		key := from + "\x00" + to + "\x00" + kind
 		data := edges[key]
 		if data == nil {
@@ -97,6 +100,7 @@ func (s *Store) ServiceMap() ServiceMap {
 				data.edge.SourceLine, _ = strconv.Atoi(firstAttr(span.Attributes, "code.lineno", "code.line.number"))
 			}
 		}
+		return &data.edge
 	}
 
 	s.mu.RLock()
@@ -143,7 +147,11 @@ func (s *Store) ServiceMap() ServiceMap {
 				for _, child := range children[span.SpanID] {
 					if child.Kind == "server" && child.Service != span.Service {
 						addNode(MapNode{ID: "svc:" + child.Service, Kind: "service", Label: child.Service})
-						addCall(service, "svc:"+child.Service, span.Category, span)
+						edge := addCall(service, "svc:"+child.Service, span.Category, span)
+						if file := firstAttr(child.Attributes, "code.filepath", "code.file.path"); file != "" && edge.HandlerFile == "" {
+							edge.HandlerFile = file
+							edge.HandlerLine, _ = strconv.Atoi(firstAttr(child.Attributes, "code.lineno", "code.line.number"))
+						}
 						answered = true
 					}
 				}

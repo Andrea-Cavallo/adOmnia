@@ -97,6 +97,8 @@ export interface OtlpMapEdge {
   errorTraceId?: string
   sourceFile?: string
   sourceLine?: number
+  handlerFile?: string
+  handlerLine?: number
 }
 
 export interface OtlpServiceMap {
