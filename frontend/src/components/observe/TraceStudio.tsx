@@ -2,26 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Code2, Copy, GitCompare, Play, Radio, Search, Square, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
-import { clearOtlp, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
+import { clearOtlp, getOtlpMap, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
+import { ServiceMapView } from './ServiceMapView'
 import { traceTreeRows } from './traceTree'
-import { compareTraces, relativeToRoots, serviceColor, spanSource } from './traceStudioModel'
+import { compareTraces, serviceColor, spanSource } from './traceStudioModel'
+import { openSpanSource } from './openSpanSource'
 
 const CATEGORY_LABEL: Record<string, string> = { http: 'HTTP', db: 'DB', rpc: 'RPC', messaging: 'MSG' }
 const ENDPOINT_HINT = 'OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318'
-
-/** Open the span's code in Go Studio: inside an open project when possible, else as an external file. */
-async function openSpanSource(file: string, line: number): Promise<void> {
-  const [{ useGoIDEStore }, { useAppStore }] = await Promise.all([import('@/stores/goide'), import('@/stores/app')])
-  const store = useGoIDEStore.getState()
-  const match = relativeToRoots(file, store.sessions.map((session) => ({ id: session.id, root: session.project.rootPath })))
-  useAppStore.getState().setActiveRail('goide')
-  if (match) {
-    if (store.activeSessionId !== match.sessionId) await store.selectSession(match.sessionId)
-    await useGoIDEStore.getState().openLocation(match.relativePath, line, 1)
-  } else {
-    await store.openExternalLocation(file, line, 1)
-  }
-}
 
 function ms(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(2)} s` : value >= 10 ? `${Math.round(value)} ms` : `${value.toFixed(2)} ms`
@@ -87,17 +75,20 @@ export function TraceStudio() {
   const [compare, setCompare] = useState<string[]>([])
   const [comparison, setComparison] = useState<ReturnType<typeof compareTraces> | null>(null)
   const [error, setError] = useState('')
+  const [view, setView] = useState<'traces' | 'map'>('traces')
+  const [serviceMap, setServiceMap] = useState<OtlpServiceMap | null>(null)
 
   const refresh = useCallback(async () => {
     if (!port) return
     try {
-      const [nextStatus, nextTraces] = await Promise.all([otlpStatus(port), listOtlpTraces(port)])
+      const [nextStatus, nextTraces, nextMap] = await Promise.all([otlpStatus(port), listOtlpTraces(port), view === 'map' ? getOtlpMap(port) : Promise.resolve(null)])
       setStatus(nextStatus)
       setTraces(nextTraces)
+      if (nextMap) setServiceMap(nextMap)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
-  }, [port])
+  }, [port, view])
 
   useEffect(() => { void refresh() }, [refresh])
   useEffect(() => {
@@ -139,7 +130,7 @@ export function TraceStudio() {
   return (
     <div className="flex min-h-[480px] flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border-1 bg-surface-0 px-3 py-1.5 text-[11px]">
-        <button type="button" onClick={() => void toggle()} disabled={!port} className={cn('flex h-7 items-center gap-1.5 rounded px-2.5 font-medium', status?.running ? 'border border-border-2 text-text-2 hover:text-text-1' : 'bg-accent text-white hover:bg-accent-hover')}>
+        <button type="button" onClick={() => void toggle()} disabled={!port || !status} className={cn('flex h-7 items-center gap-1.5 rounded px-2.5 font-medium', status?.running ? 'border border-border-2 text-text-2 hover:text-text-1' : 'bg-accent text-white hover:bg-accent-hover')}>
           {status?.running ? <><Square size={11} /> Stop receiver</> : <><Play size={11} /> Start OTLP receiver</>}
         </button>
         {status?.running ? (
@@ -150,11 +141,17 @@ export function TraceStudio() {
         <button type="button" onClick={() => void navigator.clipboard?.writeText(ENDPOINT_HINT)} title="Copy the environment variable for the OpenTelemetry SDK" className="flex items-center gap-1 rounded border border-border-2 px-1.5 py-0.5 font-mono text-[10px] text-text-3 hover:text-text-1">
           <Copy size={10} /> {ENDPOINT_HINT}
         </button>
-        <span className="ml-auto text-text-4">{status?.traces ?? 0} traces · {status?.spans ?? 0} spans</span>
+        <span className="ml-auto flex overflow-hidden rounded border border-border-2">
+          {(['traces', 'map'] as const).map((value) => (
+            <button key={value} type="button" onClick={() => setView(value)} className={cn('h-6 px-2 text-[10px] font-medium capitalize', view === value ? 'bg-accent text-white' : 'text-text-3 hover:bg-surface-2 hover:text-text-1')}>{value === 'map' ? 'Service map' : 'Traces'}</button>
+          ))}
+        </span>
+        <span className="text-text-4">{status?.traces ?? 0} traces · {status?.spans ?? 0} spans</span>
         <button type="button" onClick={() => { void clearOtlp(port).then(setStatus); setTraces([]); setSelected(''); setSpans([]); setCompare([]) }} title="Clear received traces" className="grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"><Trash2 size={12} /></button>
       </div>
       {error && <p className="border-b border-border-1 bg-error/10 px-3 py-1 text-[11px] text-error">{error}</p>}
 
+      {view === 'map' ? <ServiceMapView map={serviceMap} onOpenTrace={(traceId) => { setSelected(traceId); setCompare([]); setView('traces') }} /> : (
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-[300px] min-w-[220px] flex-col border-r border-border-1">
           <div className="relative border-b border-border-1 p-2">
@@ -226,6 +223,7 @@ export function TraceStudio() {
           )}
         </section>
       </div>
+      )}
     </div>
   )
 }

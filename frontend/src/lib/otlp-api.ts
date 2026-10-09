@@ -76,3 +76,33 @@ export const clearOtlp = (port: number | null) => call<OtlpStatus>(port, '/otlp/
 export const listOtlpTraces = (port: number | null, limit = 200) => call<OtlpTraceSummary[]>(port, `/otlp/traces?limit=${limit}`)
 export const getOtlpTrace = (port: number | null, traceId: string) => call<OtlpSpan[]>(port, `/otlp/trace?id=${encodeURIComponent(traceId)}`)
 export const getOtlpLens = (port: number | null) => call<OtlpLensStat[]>(port, '/otlp/lens')
+
+export interface OtlpMapNode {
+  id: string
+  kind: 'service' | 'database' | 'topic' | 'external'
+  label: string
+  system?: string
+}
+
+export interface OtlpMapEdge {
+  from: string
+  to: string
+  kind: 'http' | 'rpc' | 'db' | 'messaging'
+  calls: number
+  errors: number
+  p50Ms: number
+  p95Ms: number
+  ratePerMin: number
+  sampleTraceId?: string
+  errorTraceId?: string
+  sourceFile?: string
+  sourceLine?: number
+}
+
+export interface OtlpServiceMap {
+  nodes: OtlpMapNode[]
+  edges: OtlpMapEdge[]
+  windowMs: number
+}
+
+export const getOtlpMap = (port: number | null) => call<OtlpServiceMap>(port, '/otlp/map')

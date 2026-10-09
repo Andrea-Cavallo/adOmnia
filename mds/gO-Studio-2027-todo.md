@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 119 | 30 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 103 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -153,35 +153,21 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §31 · Service Map
 
+> *Base esistente:* Observability → Traces → **Service map** dalle trace OTLP: servizi, archi HTTP/gRPC/SQL/messaging/esterni con rate, p50/p95, errori; dall'arco si aprono una trace, una trace fallita, il codice chiamante, il topic o Database Studio. Redis compare come datastore (`db.system=redis`).
+
 ### Static
 
-- [ ] Identificare servizi. — *Parziale: devcontext rileva entità service da compose e da go.mod e il ServiceView mostra il singolo servizio; non esiste una mappa dei servizi.*
-- [ ] API edges. — *Parziale: devcontext rileva le route HTTP del servizio e il ServiceView le elenca; mancano archi tra servizi e una vista a grafo.*
-- [ ] gRPC edges. — *Parziale: devcontext rileva le registrazioni gRPC (goprotocols.go); non sono mostrate come archi in una mappa.*
-- [ ] Kafka edges. — *Parziale: Il ServiceView mostra i topic rilevati dal codice e permette il Kafka watch; non c'è un grafo con archi producer/consumer.*
-- [ ] DB edges. — *Parziale: Il ServiceView elenca i datasource rilevati con la cattura SQL; non ci sono archi in una mappa.*
-- [ ] Redis edges.
 - [ ] WebSocket edges. — *Parziale: devcontext rileva server e client WebSocket (goprotocols.go); non sono mostrati come archi.*
-- [ ] External HTTP edges.
 
 ### Runtime
 
-- [ ] Request rate.
-- [ ] Error rate.
-- [ ] Latency.
 - [ ] Active connections.
 - [ ] Kafka lag.
-- [ ] DB latency.
-- [ ] Downstream failures.
 - [ ] Retry activity.
 
 ### Navigazione
 
 - [ ] Endpoint → handler. — *Parziale: Le route portano handler, file e riga e RequestContextView mostra la sezione Handler; manca il salto al handler da una mappa.*
-- [ ] Kafka edge → topic.
-- [ ] DB edge → datasource.
-- [ ] Trace edge → source.
-- [ ] Error edge → logs.
 - [ ] Open full architecture.
 
 ## §32 · Distributed Request Debugger — Killer Feature
