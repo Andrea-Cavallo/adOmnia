@@ -6,6 +6,19 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **SQL completion in Database Studio:** the query editor suggests tables after `FROM`/`JOIN`, columns of the tables in the query (also through aliases like `u.`), and keywords. It opens while typing or with Ctrl+Space; arrows, Enter/Tab and Esc work as in Go Studio. Columns load with the schema for SQLite, PostgreSQL and MySQL.
+
+## [0.9.77] - 2026-10-09
+
+### Changed
+- Customizable Hub modules: reorder, add, remove, restore defaults, and swap the Today column.
+- Six palette-aware Glyph studio icons replace metallic artwork.
+- API workspace uses locally bundled Geist Sans and Geist Mono; custom skins retain typography overrides.
+- Monaco editor surfaces follow active theme and personal base colors.
+- Database Studio SQL completion suggests schema tables, columns, and keywords.
+
+
 ## [0.9.76] - 2026-10-08
 
 ### Added

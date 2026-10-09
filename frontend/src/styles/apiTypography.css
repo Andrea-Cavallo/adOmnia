@@ -1,0 +1,14 @@
+/* API workspace typography; colors remain owned by the active palette.
+   Custom skins keep their explicitly declared font overrides. */
+@import '@fontsource/geist/latin-400.css';
+@import '@fontsource/geist/latin-500.css';
+@import '@fontsource/geist/latin-600.css';
+@import '@fontsource/geist-mono/latin-400.css';
+@import '@fontsource/geist-mono/latin-500.css';
+@import '@fontsource/geist-mono/latin-600.css';
+
+:is([data-workspace-sidebar], [data-request-workspace], [data-request-composer], [data-api-response], [data-request-tabs]) {
+  --font-ui: 'Geist', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Consolas', ui-monospace, monospace;
+  font-family: var(--skin-font-ui, var(--font-ui));
+}

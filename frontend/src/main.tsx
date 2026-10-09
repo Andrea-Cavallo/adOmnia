@@ -38,6 +38,7 @@ import '@fontsource/ibm-plex-mono/500.css'
 // ────────────────────────────────────────────────────────────────────────────
 
 import './styles/globals.css'
+import './styles/apiTypography.css'
 // Skin treatments layer on top of the tokens; each is scoped to [data-skin].
 import './styles/skin-sketch.css'
 import './styles/skin-terminal-green.css'

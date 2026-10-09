@@ -1,7 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
-  "version": "0.9.76",
+  "version": "0.9.77",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
@@ -19,6 +19,7 @@
     "@fontsource/doto": "^5.3.0",
     "@fontsource/fira-code": "^5.3.0",
     "@fontsource/geist": "^5.3.0",
+    "@fontsource/geist-mono": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",

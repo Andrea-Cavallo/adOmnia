@@ -1,39 +1,36 @@
 import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
-import { ArrowRight, ArrowUpRight, Plus, CircleDot } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Plus, CircleDot, X, SlidersHorizontal, ArrowLeftRight, RotateCcw, Check } from 'lucide-react'
+import { FEATURE_REGISTRY, getFeatureLabel } from '@/lib/featureRegistry'
+import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout } from './hubLayout'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { FoldMark } from './FoldMark'
-import { ArcadeMenu } from './arcade/ArcadeMenu'
 import type { GameId } from './arcade/types'
 import { GAME_IDS } from './arcade/gameCatalog'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
 
+const ArcadeMenu = lazy(() => import('./arcade/ArcadeMenu').then(module => ({ default: module.ArcadeMenu })))
+
+const TileIcon = lazy(() => import('./HubStudioIcon').then(module => ({ default: module.TileIcon })))
+
 const DotArcade = lazy(() => import('./arcade/DotArcade').then(module => ({ default: module.DotArcade })))
 
-const cards = [
-  { title: 'gO Studio', description: 'Your code, in focus', target: 'goide' },
-  { title: 'API & Protocols', description: 'Requests and flows', target: 'collections' },
-  { title: 'Data & Messaging', description: 'Connections and streams', target: 'database' },
-  { title: 'Docs & Payloads', description: 'Schemas and specifications', target: 'jsonviewer' },
-  { title: 'Version Control', description: 'Branches and changes', target: 'gitsync' },
-  { title: 'Power Tools', description: 'Inspect and transform', target: 'powertools' },
-] as const
+// Curated copy for the default studios; any other rail falls back to the feature registry.
+const CARD_COPY: Partial<Record<RailItem, { title: string; description: string }>> = {
+  goide: { title: 'gO Studio', description: 'Your code, in focus' },
+  collections: { title: 'API & Protocols', description: 'Requests and flows' },
+  database: { title: 'Data & Messaging', description: 'Connections and streams' },
+  jsonviewer: { title: 'Docs & Payloads', description: 'Schemas and specifications' },
+  gitsync: { title: 'Version Control', description: 'Branches and changes' },
+  powertools: { title: 'Power Tools', description: 'Inspect and transform' },
+}
+const HUB_CANDIDATES = FEATURE_REGISTRY.filter(f => f.maturity !== 'deprecated' && !HUB_EXCLUDED.has(f.id))
 
-function StudioIcon({ target }: { target: string }) {
-  const id = `hub-metal-${target}`
-  return <svg viewBox="0 0 64 64" width="58" height="58" aria-hidden="true">
-    <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 35%, #ffffff)' }}/><stop offset=".5" style={{ stopColor: 'var(--color-accent)' }}/><stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 55%, #0b1020)' }}/></linearGradient></defs>
-    <g fill={`url(#${id})`}>
-      {target === 'goide' && <><path d="M26 23v23c0 8-5 12-13 12-4 0-7-1-10-3l3-4c2 2 4 2 7 2 5 0 8-2 8-7v-3a12 12 0 1 1 0-18v-2zm-5 11a7 7 0 1 0-14 0 7 7 0 0 0 14 0" fillRule="evenodd"/><circle cx="44" cy="31" r="17" fill="none" stroke={`url(#${id})`} strokeWidth="5"/></>}
-      {target === 'collections' && <><path d="M32 4a28 28 0 0 0-15 52l7-12a15 15 0 0 1 8-28z"/><path d="M36 8a25 25 0 0 1 0 50V45a12 12 0 0 0 0-24z"/></>}
-      {target === 'database' && <><ellipse cx="32" cy="14" rx="24" ry="11"/><path d="M8 22q24 16 48 0v10q-24 18-48 0zM8 37q24 16 48 0v10q-24 18-48 0z"/></>}
-      {target === 'jsonviewer' && <><path d="m32 3 28 16-28 16L4 19zM4 32l9-5 19 11 19-11 9 5-28 16zM4 45l9-5 19 11 19-11 9 5-28 16z"/></>}
-      {target === 'gitsync' && <><path d="m20 48 13-28M25 46l20 4" fill="none" stroke={`url(#${id})`} strokeWidth="3" strokeDasharray="5 4"/><circle cx="35" cy="12" r="8"/><circle cx="13" cy="53" r="9"/><circle cx="52" cy="53" r="9"/></>}
-      {target === 'powertools' && <><path d="m32 3 27 15v30L32 63 5 48V18zm0 15L18 26v16l14 8 14-8V26z" fillRule="evenodd"/><path d="M32 3v15M5 18l13 8M59 18l-13 8M5 48l13-6M59 48l-13-6M32 50v13" fill="none" style={{ stroke: 'color-mix(in srgb, var(--color-accent) 50%, #0b1020)' }} strokeWidth="1"/></>}
-    </g>
-  </svg>
+function cardCopy(id: RailItem) {
+  const feature = HUB_CANDIDATES.find(f => f.id === id)
+  return CARD_COPY[id] ?? { title: getFeatureLabel(id), description: feature?.description ?? feature?.group ?? '' }
 }
 
 // 5x7 dot-matrix glyphs for the Nothing-style clock face; '1' is a lit dot.
@@ -103,7 +100,7 @@ function TodayPanel() {
     <div className="hub-clock-wrap">{arcadeOpen
       ? game
         ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
-        : <ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/>
+        : <Suspense fallback={null}><ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/></Suspense>
       : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
@@ -119,6 +116,13 @@ export function WelcomePanel() {
   const history = useTabsStore(s => s.responseHistory)
   const openHistory = useTabsStore(s => s.openHistoryEntry)
   const [filter, setFilter] = useState<'all' | 'success' | 'errors'>('all')
+  const [layout, setLayout] = useState<HubLayout>(loadHubLayout)
+  const [editing, setEditing] = useState(false)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dropAt, setDropAt] = useState<number | null>(null)
+  const update = (next: HubLayout) => { setLayout(next); saveHubLayout(next) }
+  const setTiles = (tiles: RailItem[]) => update({ ...layout, tiles })
+  const addable = HUB_CANDIDATES.filter(f => !layout.tiles.includes(f.id))
   const recent = history.filter(h => filter === 'all' || (filter === 'errors' ? !!h.response.error || h.response.status >= 400 : !h.response.error && h.response.status < 400)).slice(0, 4)
   useEffect(() => {
     // Hub has no visible search bar: Ctrl/Cmd+F opens the command palette.
@@ -132,16 +136,49 @@ export function WelcomePanel() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return <div data-hub-page>
-    <main className="hub-content">
+    <main className="hub-content" data-today-side={layout.todaySide}>
       <section className="hub-left">
         <div className="hub-studios">
-          <p className="hub-eyebrow">{t('Workspace')}</p>
+          <div className="hub-studios-head"><p className="hub-eyebrow">{t('Workspace')}</p>
+            <div className="hub-customize">{editing && <>
+              <button type="button" onClick={() => update({ ...layout, todaySide: layout.todaySide === 'right' ? 'left' : 'right' })}><ArrowLeftRight size={13}/>{t('Swap sides')}</button>
+              <button type="button" onClick={() => update(DEFAULT_HUB_LAYOUT)}><RotateCcw size={13}/>{t('Reset')}</button>
+            </>}
+              <button type="button" aria-pressed={editing} onClick={() => setEditing(v => !v)}>{editing ? <><Check size={13}/>{t('Done')}</> : <><SlidersHorizontal size={13}/>{t('Customize')}</>}</button>
+            </div>
+          </div>
           <h1>{t('Make your next move.')}</h1>
           <p className="hub-lede">{t('Code. Connect. Build.')}</p>
-          <div className="hub-grid">{cards.map(({ title, description, target }) => <button key={target} className="hub-studio" onClick={() => open(target as RailItem)}>
-            <span className="hub-studio-icon" aria-hidden="true"><StudioIcon target={target}/></span>
-            <span><strong>{nav(title)}</strong><small>{t(description)}</small></span><ArrowUpRight size={21}/>
-          </button>)}</div>
+          <div className="hub-grid" data-editing={editing || undefined}>{layout.tiles.map((target, index) => {
+            const { title, description } = cardCopy(target)
+            return <button key={target} className="hub-studio" data-drop={dropAt === index || undefined}
+              draggable={editing}
+              onClick={() => { if (!editing) open(target) }}
+              onKeyDown={e => {
+                if (!editing) return
+                const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -2, ArrowDown: 2 } as Record<string, number>)[e.key]
+                if (delta) { e.preventDefault(); setTiles(moveTile(layout.tiles, index, index + delta)) }
+                if (e.key === 'Delete' || e.key === 'Backspace') setTiles(layout.tiles.filter(id => id !== target))
+              }}
+              onDragStart={e => { setDragFrom(index); e.dataTransfer.effectAllowed = 'move' }}
+              onDragOver={e => { if (dragFrom === null) return; e.preventDefault(); setDropAt(index) }}
+              onDragLeave={() => setDropAt(null)}
+              onDrop={e => { e.preventDefault(); if (dragFrom !== null) setTiles(moveTile(layout.tiles, dragFrom, index)); setDragFrom(null); setDropAt(null) }}
+              onDragEnd={() => { setDragFrom(null); setDropAt(null) }}>
+              <span className="hub-studio-icon" aria-hidden="true"><Suspense fallback={null}><TileIcon target={target}/></Suspense></span>
+              <span><strong>{nav(title)}</strong><small>{t(description)}</small></span>
+              {editing
+                ? <span className="hub-tile-remove" role="button" aria-label={`${t('Remove')} ${nav(title)}`} onClick={e => { e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) }}><X size={16}/></span>
+                : <ArrowUpRight size={21}/>}
+            </button>
+          })}
+          {editing && <div className="hub-studio hub-tile-add">{addable.length
+            ? <><Plus size={22} strokeWidth={1.3}/><select aria-label={t('Add module')} value="" onChange={e => { const id = e.target.value as RailItem; if (id) setTiles([...layout.tiles, id]) }}>
+                <option value="">{t('Add module')}…</option>
+                {addable.map(f => <option key={f.id} value={f.id}>{nav(getFeatureLabel(f.id))}</option>)}
+              </select></>
+            : <small>{t('All modules added')}</small>}</div>}
+          </div>
         </div>
         <div className="hub-activity">
           <p className="hub-eyebrow">{t('Recent activity')}</p>

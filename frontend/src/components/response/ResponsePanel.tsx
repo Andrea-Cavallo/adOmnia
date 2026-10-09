@@ -57,7 +57,7 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
   const tr = useUiTranslation()
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div data-api-response className="flex min-h-0 flex-1 flex-col">
         <ResponseHeaderBar state="sending" headerActions={headerActions} />
         <div className="flex items-center gap-0.5 border-b border-border-1 px-3">
           <span className="h-8 w-14 rounded-t adomnia-skeleton" />
@@ -78,7 +78,7 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-api-response className="flex min-h-0 flex-1 flex-col">
       <ResponseHeaderBar state="idle" headerActions={headerActions} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center">
         <div aria-hidden="true" className="mb-5 grid h-12 w-12 place-items-center rounded-xl border border-border-1 bg-surface-1 text-accent"><ArrowDownToLine size={22} strokeWidth={1.5} /></div>
@@ -726,7 +726,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
       message.toLowerCase().includes('network unreachable')
     ) ? 'CONN_ERR' : code
     return (
-      <div className="flex-1 flex flex-col">
+      <div data-api-response className="flex-1 flex flex-col">
         <ResponseHeaderBar headerActions={headerActions}>
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error">
             {humanCode[effectiveCode] ?? effectiveCode}
@@ -753,7 +753,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
 
   return (
     <>
-      <div className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
+      <div data-api-response className={cn('flex-1 flex flex-col min-h-0', responseFlash && 'response-arrived')}>
         {/* Status bar with validation badge */}
         <div className="flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
           <span className={cn('shrink-0 px-2 py-0.5 rounded text-[10px] font-medium', statusClass(response.status), responseFlash && (statusChanged || !previousMeta) && 'status-pulse-once')}>

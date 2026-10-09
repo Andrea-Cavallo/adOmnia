@@ -361,7 +361,7 @@ function ActiveRequestBar({
           value={request.method}
           onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
           className={cn(
-            'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-bold outline-none transition-colors focus:border-accent',
+            'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-mono font-bold outline-none transition-colors focus:border-accent',
             METHOD_COLORS[request.method] ?? 'text-text-1',
           )}
           title={tr('HTTP method')}

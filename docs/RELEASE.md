@@ -2,6 +2,10 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.77 release notes: Glyph icons and API typography
+
+See [the full v0.9.77 notes](releases/v0.9.77.md): customizable Hub modules, palette-aware Glyph icons, Geist API typography, and themed editor surfaces.
+
 ## v0.9.76 release notes: your colors, a smarter Tris
 
 See [the full v0.9.76 notes](releases/v0.9.76.md): primary and base colors

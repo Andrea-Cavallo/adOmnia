@@ -64,6 +64,51 @@ const LIGHT_COLORS: monaco.editor.IColors = {
   'dropdown.background': '#FFFFFF',
 }
 
+let probe: CanvasRenderingContext2D | null | undefined
+
+/** Resolves any CSS color (hex, rgb, oklch, color-mix…) to the #rrggbb Monaco requires. */
+function cssToken(name: string): string | undefined {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  if (!value) return undefined
+  probe ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+  if (!probe) return undefined
+  probe.clearRect(0, 0, 1, 1)
+  probe.fillStyle = '#000'
+  probe.fillStyle = value
+  probe.fillRect(0, 0, 1, 1)
+  const [r, g, b] = probe.getImageData(0, 0, 1, 1).data
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Editor surfaces follow the live theme tokens (theme + personal base color),
+ * so Monaco never stays white/black while the chrome around it is tinted.
+ * Only the active mode is sampled; the other mode keeps its static palette.
+ */
+function liveSurface(mode: 'dark' | 'light', island: boolean): monaco.editor.IColors {
+  const active = document.documentElement.classList.contains('light') ? 'light' : 'dark'
+  if (mode !== active) return {}
+  const bg = cssToken(island ? '--color-surface-1' : '--color-surface-0')
+  const raised = cssToken('--color-surface-2')
+  const colors: monaco.editor.IColors = {}
+  const set = (key: string, value: string | undefined) => { if (value) colors[key] = value }
+  set('editor.background', bg)
+  set('editorGutter.background', bg)
+  set('minimap.background', bg)
+  set('editor.lineHighlightBackground', raised)
+  set('editorWidget.background', raised)
+  set('editorHoverWidget.background', raised)
+  set('editorSuggestWidget.background', raised)
+  set('input.background', raised)
+  set('dropdown.background', raised)
+  set('editor.foreground', cssToken('--color-text-1'))
+  set('editorLineNumber.foreground', cssToken('--color-text-3'))
+  set('editorLineNumber.activeForeground', cssToken('--color-text-2'))
+  set('editorWidget.border', cssToken('--color-border-1'))
+  set('editorIndentGuide.background1', cssToken('--color-border-1'))
+  return colors
+}
+
 function editorAccent(mode: 'dark' | 'light'): monaco.editor.IColors {
   const tokens = accentTokens(useSettingsStore.getState().settings.appearance.accentColor ?? '', mode)
   return tokens.accent ? { 'editor.selectionBackground': tokens.accent + '33', 'editorCursor.foreground': tokens.accent, 'focusBorder': tokens.accent } : {}
@@ -74,13 +119,13 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
     base: 'vs-dark',
     inherit: true,
     rules: [],
-    colors: { ...DARK_COLORS, ...editorAccent('dark') },
+    colors: { ...DARK_COLORS, ...liveSurface('dark', false), ...editorAccent('dark') },
   })
   m.editor.defineTheme('adomnia-light', {
     base: 'vs',
     inherit: true,
     rules: [],
-    colors: { ...LIGHT_COLORS, ...editorAccent('light') },
+    colors: { ...LIGHT_COLORS, ...liveSurface('light', false), ...editorAccent('light') },
   })
 }
 
@@ -138,12 +183,14 @@ const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
 /** Temi di Go Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyGoStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...GO_STUDIO_DARK_COLORS, ...editorAccent('dark') } })
-  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...GO_STUDIO_LIGHT_COLORS, ...editorAccent('light') } })
+  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...GO_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark') } })
+  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...GO_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light') } })
 }
 
 useSettingsStore.subscribe((state, previous) => {
   if (state.settings.appearance.accentColor !== previous.settings.appearance.accentColor) applyGoStudioMonacoThemes(monaco)
 })
+// Redefining an active theme repaints every open editor immediately.
+window.addEventListener('adomnia:theme-tokens', () => applyGoStudioMonacoThemes(monaco))
 
 export { monaco }

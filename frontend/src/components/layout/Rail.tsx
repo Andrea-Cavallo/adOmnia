@@ -54,7 +54,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   development: CodeXml,
 }
 
-const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
+export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   collections: LayoutList,
   scenarios: Layers,
   history: History,

@@ -117,6 +117,8 @@ function syncDocumentMode(theme: Theme) {
   const skin = theme.meta?.skin
   if (skin) html.setAttribute('data-skin', skin)
   else html.removeAttribute('data-skin')
+  // Canvas-based consumers (Monaco) cannot read CSS variables: tell them to re-sample.
+  window.dispatchEvent(new Event('adomnia:theme-tokens'))
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

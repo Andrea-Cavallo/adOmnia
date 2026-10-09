@@ -311,7 +311,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 {tab.tool === 'jsonviewer' ? <Braces size={11} /> : <BookOpen size={11} />}
               </span>
             ) : (
-              <span className={cn('pointer-events-none relative z-10 text-[9px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
+              <span className={cn('pointer-events-none relative z-10 text-[9px] font-mono font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
                 {tab.request.method}
               </span>
             )}
