@@ -311,9 +311,10 @@ export function GoStudioPanel() {
           if (!store.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Go Studio.')
           if (store.activeSessionId !== detail.goSessionId) await store.selectSession(detail.goSessionId)
           await new Promise((resolve) => setTimeout(resolve, 60)) // i comandi leggono la sessione appena selezionata
-          const availability = availabilityRef.current('debug.debug')
+          const command = detail.command ?? 'debug.debug'
+          const availability = availabilityRef.current(command)
           if (availability !== true) return detail.done?.(availability)
-          runCommandRef.current('debug.debug')
+          runCommandRef.current(command)
           detail.done?.()
         } catch (error) {
           detail.done?.(error instanceof Error ? error.message : String(error))

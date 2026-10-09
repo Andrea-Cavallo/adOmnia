@@ -10,9 +10,10 @@ import { liveVars } from './liveRequest'
 const START_TIMEOUT_MS = 120_000
 const READY_TIMEOUT_MS = 60_000
 
-/** Detail of the `adomnia:go-debug-start` event Go Studio answers. */
+/** Detail of the `adomnia:go-debug-start` event Go Studio answers: runs `command` (default Debug) in the project. */
 export interface GoDebugStartDetail {
   goSessionId: string
+  command?: 'debug.debug' | 'run.runRace'
   handled: boolean
   done?: (error?: string) => void
 }
@@ -35,12 +36,17 @@ async function findGoSession(service: string | null): Promise<string | null> {
 }
 
 /** Asks Go Studio to start its active Debug configuration, mounting it (hidden) when never opened. */
-export async function startGoDebug(goSessionId: string): Promise<void> {
+export function startGoDebug(goSessionId: string): Promise<void> {
+  return startGoCommand(goSessionId, 'debug.debug')
+}
+
+/** Runs a start command of the project's active configuration in Go Studio (Debug, Run with Race Detector). */
+export async function startGoCommand(goSessionId: string, command: NonNullable<GoDebugStartDetail['command']>): Promise<void> {
   const deadline = Date.now() + 15_000
   useAppStore.getState().keepPanel('goide')
   while (Date.now() < deadline) {
     const outcome = await new Promise<string | null | undefined>((resolve) => {
-      const detail: GoDebugStartDetail = { goSessionId, handled: false, done: (error) => resolve(error ?? null) }
+      const detail: GoDebugStartDetail = { goSessionId, command, handled: false, done: (error) => resolve(error ?? null) }
       document.dispatchEvent(new CustomEvent('adomnia:go-debug-start', { detail }))
       if (!detail.handled) resolve(undefined)
     })
