@@ -3,6 +3,7 @@
 // template, logs and stacks. Secrets are stripped; non-deterministic values are listed.
 import type { LiveLogEntry, LiveMessage, LiveQuery, RequestRun } from '@/lib/devsession-api'
 import type { OtlpSpan } from '@/lib/otlp-api'
+import type { ConfigReport } from '@/lib/goide/configReport'
 import type { KVRow, RequestBody } from '@/lib/types'
 import { FIXTURE_FORMAT } from '@/lib/kafkaFixture'
 
@@ -23,6 +24,8 @@ export interface ReproInput {
   messages: LiveMessage[]
   /** OpenTelemetry spans of the request's trace, when the services export them locally. */
   spans?: OtlpSpan[]
+  /** Variables the service reads and the .env profiles that set them (secrets already masked). */
+  config?: ConfigReport
   /** ISO timestamp used for the folder name. */
   createdAt: string
 }
@@ -160,6 +163,20 @@ function pathOf(url: string): string {
   return withoutBase.startsWith('/') ? withoutBase : `/${withoutBase}`
 }
 
+/** The service's configuration when the bug was seen: variables read by the code and their .env values. */
+function configMarkdown(service: string, config: ConfigReport): string {
+  const profiles = config.profiles
+  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/\|/g, '\\|')}\``)
+  const rows = config.keys.map((key) => `| \`${key.name}\` | ${key.status} | ${profiles.map((profile) => cell(key.values[profile])).join(' | ')} |`)
+  return [
+    `# Configuration of ${service}`, '',
+    'Variables the code reads and the .env profiles that set them (secret values masked).', '',
+    `| Variable | Status | ${profiles.join(' | ')} |`,
+    `| --- | --- | ${profiles.map(() => '---').join(' | ')} |`,
+    ...rows, '',
+  ].join('\n')
+}
+
 export function buildReproduction(input: ReproInput): { dir: string; files: ReproFile[]; secretsStripped: number; nonDeterministic: string[] } {
   const { run, request } = input
   const name = slug(`${run.method} ${pathOf(request.url)}`)
@@ -178,7 +195,10 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
   const http = [`### ${run.name || `${run.method} ${pathOf(request.url)}`}`, `${run.method} ${request.url}`, ...headers.map((header) => `${header.key}: ${header.value}`)]
   add('request.http', `${http.join('\n')}\n${body ? `\n${body}\n` : ''}`)
   add('repro_test.go', goTest(name, run.method, pathOf(request.url), headers, body, run.status))
-  add('.env.example', `# Values the request needs (the captured ones are not written here)\nBASE_URL=\n${env.map((key) => `${key}=`).join('\n')}${env.length ? '\n' : ''}`)
+  const serviceKeys = (input.config?.keys ?? []).filter((key) => key.status !== 'unused').map((key) => key.name)
+  const serviceEnv = serviceKeys.length ? `\n# Variables ${input.service} reads\n${serviceKeys.map((key) => `${key}=`).join('\n')}\n` : ''
+  add('.env.example', `# Values the request needs (the captured ones are not written here)\nBASE_URL=\n${env.map((key) => `${key}=`).join('\n')}${env.length ? '\n' : ''}${serviceEnv}`)
+  if (input.config?.keys.length) add('config.md', configMarkdown(input.service, input.config))
   if (input.queries.length) {
     add('queries.sql', input.queries.map((query) => `-- ${query.at}${query.datasource ? ` · ${query.datasource}` : ''}${query.error ? ` · ERROR ${query.error}` : ''}\n${stripText(query.sql.trim())};\n`).join('\n'))
   }

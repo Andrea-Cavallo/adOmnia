@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
 import { getServerPort } from '@/lib/useServerPort'
 import { traceIdFor } from '@/lib/devsession/traceparent'
+import type { ConfigReport } from '@/lib/goide/configReport'
 import { useState, type ReactNode } from 'react'
 import { ExternalLink, FileArchive } from 'lucide-react'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -54,6 +55,17 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
  */
 /** Writes repro/<when>-<request>/ into the service's Go project and opens its README. */
 /** `compact`: icon only, for the narrow live response bar; the outcome goes in the tooltip and color. */
+/** Variables the project's code reads and their .env values, from the project scan (masked secrets). */
+async function serviceConfig(goSessionId: string): Promise<ConfigReport | undefined> {
+  try {
+    const [{ useDevContextStore }, { configReport }] = await Promise.all([import('@/stores/devcontext'), import('@/lib/goide/configReport')])
+    await useDevContextStore.getState().ensure(goSessionId)
+    return configReport(useDevContextStore.getState().snapshots[goSessionId]?.entities ?? [])
+  } catch {
+    return undefined
+  }
+}
+
 /** The request's OpenTelemetry spans from the local receiver, or none when it is off. */
 async function requestSpans(correlationId: string): Promise<OtlpSpan[]> {
   try {
@@ -84,6 +96,7 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
         queries: store.queries.filter((query) => query.requestRunId === run.id),
         messages: store.messages.filter((message) => message.requestRunId === run.id),
         spans: await requestSpans(run.correlationId),
+        config: await serviceConfig(session.goSessionId),
       })
       const [{ createGoIDEFiles }, { useGoIDEStore }] = await Promise.all([import('@/lib/goide-api'), import('@/stores/goide')])
       await createGoIDEFiles(session.goSessionId, result.files)
