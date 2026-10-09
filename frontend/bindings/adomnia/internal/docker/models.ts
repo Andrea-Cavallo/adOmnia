@@ -14,6 +14,11 @@ export class ContainerStatus {
     "ports": string;
     "running": boolean;
 
+    /**
+     * Health is the healthcheck state: healthy, unhealthy, starting, or empty without a healthcheck.
+     */
+    "health"?: string;
+
     /** Creates a new ContainerStatus instance. */
     constructor($$source: Partial<ContainerStatus> = {}) {
         if (!("id" in $$source)) {

@@ -43,6 +43,8 @@ export interface ContainerStatus {
   status: string
   ports: string
   running: boolean
+  /** healthy, unhealthy, starting; absent when the image has no healthcheck. */
+  health?: string
 }
 
 export interface LabRunResult {
@@ -110,4 +112,14 @@ export async function labList(): Promise<LabInfo[]> {
   } catch {
     return []
   }
+}
+
+/** Restarts one container of the lab, or every service when containerId is empty. */
+export async function labRestart(projectName: string, containerId = ''): Promise<string> {
+  return await DockerLabBindings.LabRestart(projectName, containerId)
+}
+
+/** Opens the OS terminal with an interactive shell (docker exec -it … sh) in a lab container. */
+export async function labShell(projectName: string, containerId: string): Promise<void> {
+  await DockerLabBindings.LabShell(projectName, containerId)
 }

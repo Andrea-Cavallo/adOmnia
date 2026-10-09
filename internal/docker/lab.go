@@ -63,6 +63,8 @@ type ContainerStatus struct {
 	Status  string `json:"status"`
 	Ports   string `json:"ports"`
 	Running bool   `json:"running"`
+	// Health is the healthcheck state: healthy, unhealthy, starting, or empty without a healthcheck.
+	Health string `json:"health,omitempty"`
 }
 
 type LabRunResult struct {
@@ -453,6 +455,7 @@ func (d *DockerLab) LabStatus(projectName string) ([]ContainerStatus, error) {
 			Status:  raw.Status,
 			Ports:   raw.Ports,
 			Running: raw.State == "running",
+			Health:  containerHealth(raw.Status),
 		})
 	}
 	return result, nil

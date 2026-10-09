@@ -35,6 +35,21 @@ export function LabLogs(projectName: string, lines: number): $CancellablePromise
     return $Call.ByID(3912795627, projectName, lines);
 }
 
+/**
+ * LabRestart restarts one container of the lab, or every service when containerID is empty.
+ * The container must belong to the lab: no arbitrary container can be restarted from here.
+ */
+export function LabRestart(projectName: string, containerID: string): $CancellablePromise<string> {
+    return $Call.ByID(4035052419, projectName, containerID);
+}
+
+/**
+ * LabShell opens a terminal with an interactive shell inside a lab container.
+ */
+export function LabShell(projectName: string, containerID: string): $CancellablePromise<void> {
+    return $Call.ByID(4091586458, projectName, containerID);
+}
+
 export function LabStatus(projectName: string): $CancellablePromise<docker$0.ContainerStatus[]> {
     return $Call.ByID(2757002282, projectName).then(($result: any) => {
         return $$createType7($result);

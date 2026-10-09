@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle, Check, ChevronRight, Copy, Cpu, Database, Download,
-  Loader2, Play, Radio, RefreshCw, Square, Terminal,
+  Loader2, Play, Radio, RefreshCw, RotateCcw, Square, Terminal,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,8 @@ import {
   labDown,
   labList,
   labLogs,
+  labRestart,
+  labShell,
   labStatus,
   labUp,
 } from '@/lib/dockerlab-api'
@@ -91,6 +93,12 @@ function friendlyDockerError(err: unknown) {
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
+
+const HEALTH_STYLE: Record<string, string> = {
+  healthy: 'bg-success/10 text-success',
+  unhealthy: 'bg-error/10 text-error',
+  starting: 'bg-warning/10 text-warning',
+}
 
 export function DockerLabPanel() {
   const [selected, setSelected] = useState<Preset | null>(null)
@@ -180,6 +188,26 @@ export function DockerLabPanel() {
     }
   }
 
+  // Restart / shell act on the lab's own containers only (the backend checks membership).
+  const [busyContainer, setBusyContainer] = useState('')
+  const [actionError, setActionError] = useState('')
+  const containerAction = async (containerId: string, action: 'restart' | 'shell') => {
+    if (!runningLab) return
+    setBusyContainer(containerId || '*')
+    setActionError('')
+    try {
+      if (action === 'shell') await labShell(runningLab.projectName, containerId)
+      else {
+        await labRestart(runningLab.projectName, containerId)
+        setContainers((await labStatus(runningLab.projectName)) ?? [])
+      }
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusyContainer('')
+    }
+  }
+
   const refreshLogs = async () => {
     if (!runningLab) return
     setLogsLoading(true)
@@ -255,7 +283,7 @@ export function DockerLabPanel() {
             <h2 className="text-sm font-semibold text-text-1">Lab presets</h2>
           </div>
           <p className="text-[10px] text-text-4 mt-0.5">
-            Lancia stack Docker precofigurati direttamente da adOmnia — nessun terminale necessario.
+            Launch preconfigured Docker stacks from adOmnia, no terminal needed.
           </p>
         </div>
 
@@ -401,13 +429,25 @@ export function DockerLabPanel() {
           <div className="p-4">
             {containers.length === 0 && !isRunning && (
               <div className="text-center py-12 text-text-4 text-xs">
-                Nessun container attivo — lancia il lab con il pulsante Launch.
+                No containers running. Start the lab with Launch.
               </div>
             )}
             {containers.length === 0 && isRunning && (
               <div className="flex items-center gap-2 justify-center py-12 text-text-4 text-xs">
                 <Loader2 size={14} className="animate-spin" />
-                Avvio containers in corso…
+                Starting containers…
+              </div>
+            )}
+            {containers.length > 0 && (
+              <div className="mb-2 flex items-center gap-2">
+                {actionError && <span className="flex items-center gap-1 text-[11px] text-error"><AlertCircle size={12} /> {actionError}</span>}
+                <button
+                  onClick={() => void containerAction('', 'restart')}
+                  disabled={!!busyContainer}
+                  className="ml-auto flex items-center gap-1 rounded border border-border-1 px-2 py-1 text-[10px] text-text-3 transition-colors hover:text-text-1 disabled:opacity-40"
+                >
+                  <RotateCcw size={10} className={busyContainer === '*' ? 'animate-spin' : ''} /> Restart all
+                </button>
               </div>
             )}
             {containers.length > 0 && (
@@ -417,8 +457,10 @@ export function DockerLabPanel() {
                     <th className="pb-2 pr-4 font-medium">Container</th>
                     <th className="pb-2 pr-4 font-medium">Image</th>
                     <th className="pb-2 pr-4 font-medium">State</th>
+                    <th className="pb-2 pr-4 font-medium">Health</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Ports</th>
+                    <th className="pb-2 pr-4 font-medium">Ports</th>
+                    <th className="pb-2 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
@@ -432,8 +474,33 @@ export function DockerLabPanel() {
                           {c.state}
                         </span>
                       </td>
+                      <td className="py-2 pr-4">
+                        {c.health
+                          ? <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', HEALTH_STYLE[c.health] ?? 'bg-surface-2 text-text-3')}>{c.health}</span>
+                          : <span className="text-text-4" title="The image declares no healthcheck">—</span>}
+                      </td>
                       <td className="py-2 pr-4 text-text-3">{c.status}</td>
-                      <td className="py-2 text-text-3 font-mono text-[10px] max-w-[200px] truncate">{c.ports || '—'}</td>
+                      <td className="py-2 pr-4 text-text-3 font-mono text-[10px] max-w-[200px] truncate">{c.ports || '—'}</td>
+                      <td className="py-2">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => void containerAction(c.id, 'shell')}
+                            disabled={!c.running || !!busyContainer}
+                            title={`Open a terminal: docker exec -it ${c.name} sh`}
+                            className="flex items-center gap-1 rounded border border-border-1 px-1.5 py-0.5 text-[10px] text-text-3 transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
+                          >
+                            <Terminal size={10} /> Shell
+                          </button>
+                          <button
+                            onClick={() => void containerAction(c.id, 'restart')}
+                            disabled={!!busyContainer}
+                            title={`docker restart ${c.name}`}
+                            className="flex items-center gap-1 rounded border border-border-1 px-1.5 py-0.5 text-[10px] text-text-3 transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
+                          >
+                            <RotateCcw size={10} className={busyContainer === c.id ? 'animate-spin' : ''} /> Restart
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -446,7 +513,7 @@ export function DockerLabPanel() {
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1">
               <span className="text-[10px] text-text-4">
-                {runningLab ? runningLab.projectName : 'Nessun lab attivo'}
+                {runningLab ? runningLab.projectName : 'No lab running'}
               </span>
               <div className="flex-1" />
               <button
@@ -455,12 +522,12 @@ export function DockerLabPanel() {
                 className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-3 hover:text-text-1 border border-border-1 rounded transition-colors disabled:opacity-40"
               >
                 <RefreshCw size={10} className={logsLoading ? 'animate-spin' : ''} />
-                Aggiorna
+                Refresh
               </button>
             </div>
             <div className="flex-1 overflow-auto bg-surface-0 p-3">
               <pre className="text-[10px] font-mono text-text-3 whitespace-pre-wrap leading-5">
-                {logs || (runningLab ? 'Premi Aggiorna per caricare i log.' : 'Avvia un lab per vedere i log.')}
+                {logs || (runningLab ? 'Press Refresh to load the logs.' : 'Start a lab to see its logs.')}
               </pre>
               <div ref={logsEndRef} />
             </div>
@@ -492,7 +559,7 @@ export function DockerLabPanel() {
           <>
             <button onClick={copyCurrent} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-border-1 text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors">
               {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-              {copied ? 'Copiato' : 'Copia'}
+              {copied ? 'Copied' : 'Copy'}
             </button>
             <button
               onClick={() => {
@@ -504,7 +571,7 @@ export function DockerLabPanel() {
               className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-border-1 text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors"
             >
               <Download size={12} />
-              Salva {tab === 'compose' ? 'compose.yml' : tab === 'env' ? '.env' : 'README.md'}
+              Save {tab === 'compose' ? 'compose.yml' : tab === 'env' ? '.env' : 'README.md'}
             </button>
           </>
         )}
