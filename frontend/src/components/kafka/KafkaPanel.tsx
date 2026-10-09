@@ -3,6 +3,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import {
   Activity,
   AlertTriangle,
+  Bug,
   CheckCircle2,
   Database,
   Eye,
@@ -34,6 +35,7 @@ import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { downloadText } from '@/lib/fileUtils'
 import { goName, jsonToGo } from '@/lib/jsonToGo'
+import { showModule } from '@/lib/moduleRouting'
 import { fixtureFileName, parseFixture, toFixture } from './kafkaFixture'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
@@ -1069,6 +1071,30 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
     if (!selected?.value) return null
     try { return jsonToGo(selected.value, goName(topic || 'Message')) } catch { return null }
   }, [selected?.value, topic])
+  // Debug consumer: breakpoint where the Go consumer has the message, project under Delve, then replay.
+  const debugConsumer = async (message: KafkaMessage) => {
+    setReplayState({ busy: true, text: 'Looking for the Go consumer of this topic…' })
+    try {
+      const { findKafkaFunction, debugKafkaFunction } = await import('@/lib/devsession/debugMessage')
+      const target = await findKafkaFunction(topic, 'kafka-consumer')
+      if (!target) {
+        setReplayState({ busy: false, text: `No trusted project open in Go Studio consumes ${topic}. Open it there (Architecture Explorer finds consumers) and try again.` })
+        return
+      }
+      const where = `${target.entry.name} (${target.relativePath}:${target.line})`
+      setReplayState({ busy: true, text: `Breakpoint in ${where} · starting ${target.projectName} under Delve…` })
+      await debugKafkaFunction(target)
+      const replayed = await onReplay(message)
+      if (!replayed) {
+        setReplayState({ busy: false, text: 'Replay failed: see the error above.' })
+        return
+      }
+      setReplayState({ busy: false, text: `Replayed under the debugger: Go Studio stops in ${where}.` })
+      showModule('goide')
+    } catch (error) {
+      setReplayState({ busy: false, text: `Debug failed: ${error instanceof Error ? error.message : String(error)}` })
+    }
+  }
   const copyPayload = async () => {
     if (selected?.value) await navigator.clipboard?.writeText(selected.value)
   }
@@ -1112,9 +1138,14 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
                   setReplayState({ busy: false, text: text ?? 'Replay failed: see the error above.' })
                 }}
                 className="inline-flex items-center gap-1 rounded bg-accent px-2 py-1 text-[11px] font-semibold text-white hover:bg-accent/90 disabled:opacity-50"
-              ><RotateCcw size={11} /> {replayState.busy ? 'Replaying…' : 'Replay'}</button></div>
+              ><RotateCcw size={11} /> {replayState.busy ? 'Working…' : 'Replay'}</button><button
+                disabled={replayState.busy || !topic}
+                title="Put a breakpoint where your Go consumer has read this message, run the project under Delve, and replay the message"
+                onClick={() => void debugConsumer(selected)}
+                className="inline-flex items-center gap-1 rounded border border-accent/60 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 disabled:opacity-50"
+              ><Bug size={11} /> Debug consumer</button></div>
           </div>
-          {replayState.text && <p className={cn('border-b border-border-1 px-3 py-1.5 text-[11px]', replayState.text.startsWith('Replayed') ? 'text-success' : 'text-error')}>{replayState.text}</p>}
+          {replayState.text && <p className={cn('border-b border-border-1 px-3 py-1.5 text-[11px]', /^Replayed/.test(replayState.text) ? 'text-success' : !replayState.busy && /fail|No trusted/i.test(replayState.text) ? 'text-error' : 'text-text-3')}>{replayState.text}</p>}
           {showGo && goStruct && (
             <div className="border-b border-border-1 p-3">
               <div className="mb-1.5 flex items-center justify-between">

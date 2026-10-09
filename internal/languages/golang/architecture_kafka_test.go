@@ -5,6 +5,9 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"go/ast"
+	"go/parser"
+	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
@@ -71,6 +74,9 @@ func TestKafkaGroupsSerializersAndTopicRoles(t *testing.T) {
 	if consumer.Group != "billing-worker" || consumer.Serializer != "JSON" || len(consumer.Topics) != 1 || consumer.Topics[0] != "invoices" {
 		t.Fatalf("consumer: %+v", consumer)
 	}
+	if consumer.BreakSite == nil || consumer.BreakSite.Offset <= consumer.Site.Offset {
+		t.Fatalf("consumer break site should follow the read: %+v", consumer)
+	}
 	if producer.Group != "" || producer.TopicRoles["invoices.retry.1"] != "retry" || producer.TopicRoles["invoices.DLQ"] != "dead-letter" {
 		t.Fatalf("producer: %+v", producer)
 	}
@@ -78,5 +84,48 @@ func TestKafkaGroupsSerializersAndTopicRoles(t *testing.T) {
 		if got := kafkaTopicRole(topic); got != want {
 			t.Errorf("kafkaTopicRole(%q) = %q, want %q", topic, got, want)
 		}
+	}
+}
+
+func TestStatementAfterRead(t *testing.T) {
+	src := `package p
+func run() {
+	for {
+		m, err := r.ReadMessage(ctx)
+		if err != nil {
+			return
+		}
+		handle(m)
+	}
+}
+func last() {
+	if m, err := r.ReadMessage(ctx); err == nil {
+		handle(m)
+	}
+}
+`
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "p.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lineAfter := func(fn int, needle string) int {
+		body := file.Decls[fn].(*ast.FuncDecl).Body
+		at := strings.Index(src, needle)
+		if fn > 0 {
+			at = strings.LastIndex(src, needle)
+		}
+		pos := file.Pos() + token.Pos(at)
+		next := statementAfter(body, pos)
+		if !next.IsValid() {
+			return 0
+		}
+		return fset.Position(next).Line
+	}
+	if got := lineAfter(0, "r.ReadMessage"); got != 5 {
+		t.Fatalf("loop read: next line %d, want 5", got)
+	}
+	if got := lineAfter(1, "r.ReadMessage"); got != 13 {
+		t.Fatalf("read in an if header: next line %d, want the body (13)", got)
 	}
 }

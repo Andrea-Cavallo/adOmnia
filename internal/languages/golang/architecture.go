@@ -50,6 +50,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 		if r.Entries[index].HandlerSite != nil {
 			fix(r.Entries[index].HandlerSite)
 		}
+		if r.Entries[index].BreakSite != nil {
+			fix(r.Entries[index].BreakSite)
+		}
 	}
 	for index := range r.Schemas {
 		fix(&r.Schemas[index].Site)

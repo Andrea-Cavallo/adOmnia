@@ -129,6 +129,11 @@ export class ArchEntry {
     "group"?: string;
     "serializer"?: string;
     "topicRoles"?: { [_ in string]?: string };
+
+    /**
+     * Solo consumer Kafka: la prima istruzione dopo la lettura, dove il messaggio è già ricevuto.
+     */
+    "breakSite"?: ArchSite | null;
     "site": ArchSite;
 
     /**
@@ -164,11 +169,12 @@ export class ArchEntry {
     static createFrom($$source: any = {}): ArchEntry {
         const $$createField5_0 = $$createType1;
         const $$createField8_0 = $$createType2;
-        const $$createField9_0 = $$createType0;
-        const $$createField11_0 = $$createType3;
-        const $$createField12_0 = $$createType1;
-        const $$createField13_0 = $$createType5;
+        const $$createField9_0 = $$createType3;
+        const $$createField10_0 = $$createType0;
+        const $$createField12_0 = $$createType3;
+        const $$createField13_0 = $$createType1;
         const $$createField14_0 = $$createType5;
+        const $$createField15_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("topics" in $$parsedSource) {
             $$parsedSource["topics"] = $$createField5_0($$parsedSource["topics"]);
@@ -176,20 +182,23 @@ export class ArchEntry {
         if ("topicRoles" in $$parsedSource) {
             $$parsedSource["topicRoles"] = $$createField8_0($$parsedSource["topicRoles"]);
         }
+        if ("breakSite" in $$parsedSource) {
+            $$parsedSource["breakSite"] = $$createField9_0($$parsedSource["breakSite"]);
+        }
         if ("site" in $$parsedSource) {
-            $$parsedSource["site"] = $$createField9_0($$parsedSource["site"]);
+            $$parsedSource["site"] = $$createField10_0($$parsedSource["site"]);
         }
         if ("handlerSite" in $$parsedSource) {
-            $$parsedSource["handlerSite"] = $$createField11_0($$parsedSource["handlerSite"]);
+            $$parsedSource["handlerSite"] = $$createField12_0($$parsedSource["handlerSite"]);
         }
         if ("middleware" in $$parsedSource) {
-            $$parsedSource["middleware"] = $$createField12_0($$parsedSource["middleware"]);
+            $$parsedSource["middleware"] = $$createField13_0($$parsedSource["middleware"]);
         }
         if ("request" in $$parsedSource) {
-            $$parsedSource["request"] = $$createField13_0($$parsedSource["request"]);
+            $$parsedSource["request"] = $$createField14_0($$parsedSource["request"]);
         }
         if ("response" in $$parsedSource) {
-            $$parsedSource["response"] = $$createField14_0($$parsedSource["response"]);
+            $$parsedSource["response"] = $$createField15_0($$parsedSource["response"]);
         }
         return new ArchEntry($$parsedSource as Partial<ArchEntry>);
     }

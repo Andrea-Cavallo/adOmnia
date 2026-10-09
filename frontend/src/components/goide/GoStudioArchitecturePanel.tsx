@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, Loader2, Play, Search } from 'lucide-react'
+import { ArrowUpRight, Bug, Loader2, Play, Search } from 'lucide-react'
 import { type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession } from '@/lib/goide-api'
 import { openEntity } from '@/lib/entities/router'
 import { showModule } from '@/lib/moduleRouting'
@@ -144,13 +144,45 @@ function TopicRole({ role }: { role?: string }) {
   return <span className={`shrink-0 rounded px-1 text-[10px] font-semibold ${TOPIC_ROLE_STYLE[role] ?? ''}`} title={role === 'dead-letter' ? 'Dead-letter topic (recognized by its name)' : 'Retry topic (recognized by its name)'}>{TOPIC_ROLE_LABEL[role] ?? role}</span>
 }
 
+/** Breakpoint dove il messaggio è in mano (consumer: dopo la lettura; producer: sull'invio) e avvio sotto Delve. */
+function KafkaDebugButton({ entry, sessionId, onStatus }: { entry: GoIDEArchitecture['entries'][number]; sessionId: string; onStatus: (text: string) => void }) {
+  const [busy, setBusy] = useState(false)
+  const consumer = entry.kind === 'kafka-consumer'
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      title={consumer ? 'Breakpoint after the message is read, then Debug: replay a message from Broker Studio to stop here' : 'Breakpoint on the send, then Debug'}
+      onClick={async () => {
+        setBusy(true)
+        try {
+          const { debugKafkaFunction, kafkaBreakSite } = await import('@/lib/devsession/debugMessage')
+          const site = kafkaBreakSite(entry)
+          onStatus(`Breakpoint at ${site.relativePath}:${site.line} · starting Delve…`)
+          await debugKafkaFunction({ goSessionId: sessionId, projectName: '', entry, ...site })
+          onStatus(consumer ? `Debugging ${entry.name}: send or replay a message on ${(entry.topics ?? []).join(', ')} to stop at ${site.relativePath}:${site.line}.` : `Debugging ${entry.name}: it stops at ${site.relativePath}:${site.line} when it sends.`)
+        } catch (error) {
+          onStatus(`Debug failed: ${error instanceof Error ? error.message : String(error)}`)
+        } finally {
+          setBusy(false)
+        }
+      }}
+      className="flex items-center gap-0.5 rounded px-1 text-[10px] text-accent hover:bg-accent/10 disabled:opacity-50"
+    >
+      <Bug size={10} aria-hidden="true" /> {busy ? 'Starting…' : 'Debug'}
+    </button>
+  )
+}
+
 /** Topic → funzioni che lo producono e lo consumano, con i consumer group. */
 function KafkaTopicsSection({ entries, query, sessionId }: { entries: GoIDEArchitecture['entries']; query: string; sessionId: string }) {
   const topics = useMemo(() => kafkaTopics(entries, query), [entries, query])
+  const [status, setStatus] = useState('')
   if (!topics.length) return null
   return (
     <section className="mb-2">
       <h4 className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-4">Kafka topics ({topics.length})</h4>
+      {status && <p className={`px-2 pb-1 text-[11px] ${status.startsWith('Debug failed') ? 'text-error' : 'text-text-2'}`}>{status}</p>}
       {topics.map((use) => (
         <div key={use.topic} className="border-b border-border-1 px-2 py-1 last:border-b-0">
           <div className="flex items-center gap-2">
@@ -162,7 +194,12 @@ function KafkaTopicsSection({ entries, query, sessionId }: { entries: GoIDEArchi
           {([['produced by', use.producers], ['consumed by', use.consumers]] as const).map(([label, list]) => (
             <div key={label} className="flex flex-wrap items-center gap-x-2 pl-3 text-[11px]">
               <span className="w-20 shrink-0 text-[10px] text-text-4">{label}</span>
-              {list.length ? list.map((entry, index) => <SiteLink key={index} site={entry.site} label={entry.name} />) : <span className="text-[10px] text-text-4">— not in this project</span>}
+              {list.length ? list.map((entry, index) => (
+                <span key={index} className="inline-flex items-center gap-1">
+                  <SiteLink site={entry.site} label={entry.name} />
+                  <KafkaDebugButton entry={entry} sessionId={sessionId} onStatus={setStatus} />
+                </span>
+              )) : <span className="text-[10px] text-text-4">— not in this project</span>}
             </div>
           ))}
         </div>

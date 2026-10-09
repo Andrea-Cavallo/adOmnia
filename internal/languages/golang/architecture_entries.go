@@ -27,6 +27,8 @@ type ArchEntry struct {
 	Group      string            `json:"group,omitempty"`
 	Serializer string            `json:"serializer,omitempty"`
 	TopicRoles map[string]string `json:"topicRoles,omitempty"`
+	// Solo consumer Kafka: la prima istruzione dopo la lettura, dove il messaggio è già ricevuto.
+	BreakSite *ArchSite `json:"breakSite,omitempty"`
 	Site     ArchSite `json:"site"`
 	// Solo per le route HTTP: handler, middleware e corpi di richiesta e risposta riconosciuti.
 	Handler     string    `json:"handler,omitempty"`
@@ -220,7 +222,7 @@ func (a *architecture) noteReaderTopics(info *types.Info, pkg string, literal *a
 func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, function string) {
 	info := file.pkg.TypesInfo
 	kafka := map[string]string{} // kind → libreria
-	var kafkaSite token.Pos
+	var kafkaSite, consumeSite token.Pos
 	topics := map[string]bool{}
 	group, serializer := "", ""
 	setGroup := func(expression ast.Expr) {
@@ -290,6 +292,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 				if slices.Contains(library.consume, name) {
 					kafka["kafka-consumer"] = library.label
 					kafkaSite = node.Pos()
+					consumeSite = node.Pos()
 					for _, argument := range node.Args {
 						if topic, ok := constantString(info, argument); ok {
 							topics[topic] = true
@@ -321,9 +324,58 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Serializer: serializer, TopicRoles: roles, Site: a.site(kafkaSite)}
 		if kind == "kafka-consumer" {
 			entry.Group = group
+			if next := statementAfter(fn.Body, consumeSite); next.IsValid() {
+				site := a.site(next)
+				entry.BreakSite = &site
+			}
 		}
 		a.addEntry(entry)
 	}
+}
+
+// statementAfter è la posizione dell'istruzione che segue quella contenente pos nel suo blocco
+// (o la prima del corpo di un for/if che la contiene come condizione); NoPos se non c'è.
+func statementAfter(body *ast.BlockStmt, pos token.Pos) token.Pos {
+	if !pos.IsValid() {
+		return token.NoPos
+	}
+	found := token.NoPos
+	ast.Inspect(body, func(node ast.Node) bool {
+		block, ok := node.(*ast.BlockStmt)
+		if !ok || found.IsValid() || pos < block.Pos() || pos >= block.End() {
+			return !found.IsValid()
+		}
+		for index, statement := range block.List {
+			if pos < statement.Pos() || pos >= statement.End() {
+				continue
+			}
+			if inner := innerBlock(statement, pos); inner != nil {
+				return true // la lettura è dentro un blocco annidato: scendi
+			}
+			// if m, err := r.ReadMessage(ctx); err == nil { … }: il messaggio è pronto nel corpo.
+			if branch, ok := statement.(*ast.IfStmt); ok && len(branch.Body.List) > 0 {
+				found = branch.Body.List[0].Pos()
+			} else if index+1 < len(block.List) {
+				found = block.List[index+1].Pos()
+			}
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// innerBlock è il blocco di statement che contiene pos, se pos non è nell'intestazione.
+func innerBlock(statement ast.Stmt, pos token.Pos) *ast.BlockStmt {
+	var inner *ast.BlockStmt
+	ast.Inspect(statement, func(node ast.Node) bool {
+		if block, ok := node.(*ast.BlockStmt); ok && pos >= block.Pos() && pos < block.End() {
+			inner = block
+			return false
+		}
+		return inner == nil
+	})
+	return inner
 }
 
 func (a *architecture) offset(pos token.Pos) int { return a.fset.Position(pos).Offset }

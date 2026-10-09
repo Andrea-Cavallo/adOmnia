@@ -52,7 +52,7 @@ export async function startGoDebug(goSessionId: string): Promise<void> {
 }
 
 /** Resolves once a live debug session of the project exists, or fails if it errors out. */
-function waitForDebugSession(goSessionId: string, since: string): Promise<LiveSession> {
+export function waitForDebugSession(goSessionId: string, since: string): Promise<LiveSession> {
   return new Promise((resolve, reject) => {
     const pick = () => {
       const state = useDevSessionStore.getState()
