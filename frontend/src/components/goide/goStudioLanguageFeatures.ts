@@ -111,6 +111,36 @@ export function navigateToLocation(location: GoIDEEditorLocation): void {
   else void store.openLocation(location.relativePath, startLine, startColumn)
 }
 
+const MAX_PREVIEW_MODELS = 20
+const previewModels: string[] = []
+
+/**
+ * Ctrl+hover shows the definition's code from a model at the location URI. Editor models carry the
+ * session in the fragment and stdlib/module files have none, so Monaco failed with "Model not found":
+ * read the target once (read-only, GOROOT/module cache allowed) and keep a small LRU of previews.
+ */
+async function ensurePreviewModel(sessionId: string, location: GoIDEEditorLocation): Promise<void> {
+  const uri = monaco.Uri.parse(location.uri)
+  if (monaco.editor.getModel(uri)) return
+  try {
+    const open = useGoIDEStore.getState().documents.find((item) => item.document.sessionId === sessionId && item.document.relativePath === location.relativePath && !location.external)
+    let content = open?.buffer
+    if (content === undefined) {
+      const { openGoIDEDocument, closeGoIDEDocument } = await import('@/lib/goide-api')
+      const { openExternalDocument } = await import('@/lib/goide-lsp-api')
+      const read = location.external || !location.relativePath ? await openExternalDocument(sessionId, location.path) : await openGoIDEDocument(sessionId, location.relativePath)
+      content = read.content
+      if (!useGoIDEStore.getState().documents.some((item) => item.document.id === read.document.id)) void closeGoIDEDocument(sessionId, read.document.id).catch(() => undefined)
+    }
+    if (monaco.editor.getModel(uri)) return
+    monaco.editor.createModel(content, location.path.endsWith('.go') ? 'go' : undefined, uri)
+    previewModels.push(uri.toString())
+    while (previewModels.length > MAX_PREVIEW_MODELS) monaco.editor.getModel(monaco.Uri.parse(previewModels.shift()!))?.dispose()
+  } catch {
+    // No preview: navigation (F12, Ctrl+click) opens the file through the store anyway.
+  }
+}
+
 export function rememberLocations(locations: GoIDEEditorLocation[]): monaco.languages.Location[] {
   return locations.map((location) => {
     const uri = monaco.Uri.parse(location.uri)
@@ -201,6 +231,7 @@ function registerProviders(): void {
       const prepared = await prepareDocument(model)
       if (!prepared) return null
       const locations = await cancellable(requestLocations(prepared.sessionId, prepared.documentId, kind, position.lineNumber, position.column), token)
+      if (locations?.[0]) await ensurePreviewModel(prepared.sessionId, locations[0])
       return locations ? rememberLocations(locations) : null
     },
   })
