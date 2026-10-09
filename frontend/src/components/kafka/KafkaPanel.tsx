@@ -36,7 +36,7 @@ import { showEntityNotice } from '@/lib/entities/notice'
 import { downloadText } from '@/lib/fileUtils'
 import { goName, jsonToGo } from '@/lib/jsonToGo'
 import { showModule } from '@/lib/moduleRouting'
-import { fixtureFileName, parseFixture, toFixture } from './kafkaFixture'
+import { fixtureFileName, parseFixture, toFixture } from '@/lib/kafkaFixture'
 
 type Tab = 'overview' | 'topics' | 'groups' | 'messages' | 'produce' | 'load'
 type ProduceMode = 'single' | 'bulk'
