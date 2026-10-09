@@ -40,6 +40,18 @@ describe('parseStackTrace', () => {
     expect(frames[1]).toMatchObject({ origin: 'framework', originReason: 'Go standard library' })
   })
 
+  it('treats a custom GOPATH module cache and a Windows GOROOT as framework', () => {
+    const stack = [
+      'go.opentelemetry.io/otel/sdk/trace.recordStackTrace()',
+      '\tC:/Users/dev/GO-WORKSPACE/pkg/mod/go.opentelemetry.io/otel/sdk@v1.38.0/trace/span.go:570 +0x45',
+      'runtime.goexit()',
+      '\tC:/Program Files/Go/src/runtime/asm_amd64.s.go:1700 +0x1',
+      'main.main()',
+      '\tC:/src/app/main.go:45 +0x2c',
+    ].join('\n')
+    expect(parseStackTrace(stack).sections.flatMap((section) => section.frames).map((frame) => frame.origin)).toEqual(['framework', 'framework', 'application'])
+  })
+
   it('reads javascript and python frames', () => {
     const js = parseStackTrace('Error: boom\n    at handler (/srv/app/src/index.js:10:5)')
     expect(js.sections[0].frames[0]).toMatchObject({ function: 'handler', file: '/srv/app/src/index.js', line: 10 })

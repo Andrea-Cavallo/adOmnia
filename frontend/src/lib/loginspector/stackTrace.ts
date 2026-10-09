@@ -46,8 +46,9 @@ const FRAMEWORK_PACKAGES = [
 ]
 
 const FRAMEWORK_PATHS = [
-  { needle: '/go/pkg/mod/', reason: 'Go module cache' },
-  { needle: '/usr/local/go/src/', reason: 'Go standard library' },
+  // Any GOPATH (custom ones too) keeps modules under pkg/mod; GOROOT is …/go/src on every OS.
+  { needle: '/pkg/mod/', reason: 'Go module cache' },
+  { needle: '/go/src/', reason: 'Go standard library' },
   { needle: '/vendor/', reason: 'vendored dependency' },
   { needle: 'node_modules', reason: 'npm dependency' },
   { needle: 'node:internal', reason: 'Node internals' },
@@ -56,7 +57,7 @@ const FRAMEWORK_PATHS = [
 ]
 
 function classify(language: StackLanguage, fn: string, file: string): { origin: FrameOrigin; reason: string } {
-  const path = file.replace(/\\/g, '/')
+  const path = file.replace(/\\/g, '/').toLowerCase()
   const hit = FRAMEWORK_PATHS.find((candidate) => path.includes(candidate.needle))
   if (hit) return { origin: 'framework', reason: hit.reason }
   if (language === 'java') {

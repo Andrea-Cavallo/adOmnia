@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Code2, Copy, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2 } from 'lucide-react'
 import { openTraceLogs } from '@/lib/otlp-logs'
+import { parseStackTrace } from '@/lib/loginspector/stackTrace'
 import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
 import { clearOtlp, getOtlpMap, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
@@ -27,10 +28,27 @@ function InsightBadges({ insight }: { insight?: SpanInsight }) {
       {insight.errorOrigin && <span title="The error starts here: the failing spans above only propagate it" className="rounded bg-error/15 px-1 text-[9px] font-semibold text-error">error origin</span>}
       {insight.networkMs !== undefined && <span title="Client time not spent in the server handler: network, TLS, queues" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">net {ms(insight.networkMs)}</span>}
       {insight.brokerDelayMs !== undefined && <span title="Time the message waited in the broker before the consumer picked it up" className="rounded bg-warning/10 px-1 text-[9px] text-warning">queued {ms(insight.brokerDelayMs)}</span>}
-      {!!insight.retry && <span title="Repeats an earlier attempt of the same call" className="rounded bg-warning/10 px-1 text-[9px] text-warning">retry {insight.retry}</span>}
+      {!!insight.retry && <span title={`Repeats an earlier attempt of the same call${insight.retryDelayMs !== undefined ? ` after waiting ${ms(insight.retryDelayMs)}` : ''}`} className="rounded bg-warning/10 px-1 text-[9px] text-warning">retry {insight.retry}{insight.retryDelayMs !== undefined ? ` · +${ms(insight.retryDelayMs)}` : ''}</span>}
       {insight.parallel && <span title="Runs at the same time as a sibling" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">parallel</span>}
       {insight.async && <span title="Finishes after its parent: asynchronous work" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">async</span>}
     </>
+  )
+}
+
+/** Stack of an exception event (a recovered panic): the project's frames open the code. */
+function ExceptionStack({ stack }: { stack: string }) {
+  const frames = parseStackTrace(stack).sections.flatMap((section) => section.frames)
+  if (!frames.length) return <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap text-[10px] text-text-3">{stack}</pre>
+  return (
+    <ol className="mt-1 space-y-0.5">
+      {frames.map((frame) => frame.origin === 'application' ? (
+        <li key={frame.index}>
+          <button type="button" onClick={() => void openSpanSource(frame.file, frame.line)} title={frame.raw} className="max-w-full truncate text-left text-accent hover:underline">{frame.function || 'frame'} · {frame.file.split(/[\\/]/).pop()}:{frame.line}</button>
+        </li>
+      ) : (
+        <li key={frame.index} className="truncate text-text-4" title={frame.raw}>{frame.function} · {frame.file.split(/[\\/]/).pop()}:{frame.line}</li>
+      ))}
+    </ol>
   )
 }
 
@@ -73,6 +91,7 @@ function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }
             <div key={index} className="border-t border-border-1 py-0.5 font-mono text-[10.5px]">
               <span className="text-text-1">{event.name}</span>
               {event.attributes?.['exception.message'] && <span className="ml-2 text-error">{event.attributes['exception.message']}</span>}
+              {event.attributes?.['exception.stacktrace'] && <ExceptionStack stack={event.attributes['exception.stacktrace']} />}
             </div>
           ))}
         </div>

@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 51 | 25 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 49 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -153,11 +153,9 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Timeline
 
 - [ ] Service boundaries. — *Parziale: la vista distribuita mostra il servizio di ogni span e l'elenco dei servizi della trace; mancano confini basati su acquisizione runtime completa.*
-- [ ] Retry delay.
 
 ### Source navigation
 
-- [ ] Click panic → stack.
 - [ ] Click retry → policy.
 
 ### Debug workflow

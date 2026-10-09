@@ -62,6 +62,8 @@ export interface SpanInsight {
   parallel?: boolean
   /** Repeats an earlier attempt of the same call: 1 = first retry. */
   retry?: number
+  /** Wait between the end of the previous attempt and this retry (the backoff actually applied). */
+  retryDelayMs?: number
   /** Ends after its parent ended (fire-and-forget, goroutine, message). */
   async?: boolean
 }
@@ -87,7 +89,8 @@ export function spanInsights(spans: readonly OtlpSpan[]): Map<string, SpanInsigh
     attempts.set(key, [...(attempts.get(key) ?? []), span])
   }
   for (const group of attempts.values()) {
-    ;[...group].sort((a, b) => a.startMs - b.startMs).slice(1).forEach((span, i) => set(span.spanId, { retry: i + 1 }))
+    const ordered = [...group].sort((a, b) => a.startMs - b.startMs)
+    ordered.slice(1).forEach((span, i) => set(span.spanId, { retry: i + 1, retryDelayMs: Math.max(0, span.startMs - end(ordered[i])) }))
   }
   for (const span of spans) {
     const kids = children.get(span.spanId) ?? []
