@@ -13,6 +13,7 @@ type LensStat struct {
 	Name     string  `json:"name"`
 	Count    int     `json:"count"`
 	Errors   int     `json:"errors"`
+	Retries  int     `json:"retries"`
 	AvgMs    float64 `json:"avgMs"`
 	P50Ms    float64 `json:"p50Ms"`
 	P95Ms    float64 `json:"p95Ms"`
@@ -47,6 +48,7 @@ func (s *Store) Lens() []LensStat {
 	buckets := map[string]*bucket{}
 	s.mu.RLock()
 	for _, spans := range s.traces {
+		retry := retryIDs(spans)
 		for _, span := range spans {
 			file := span.Attributes["code.filepath"]
 			if file == "" {
@@ -74,6 +76,9 @@ func (s *Store) Lens() []LensStat {
 			b.stat.Count++
 			if span.StatusCode == "ERROR" {
 				b.stat.Errors++
+			}
+			if retry[span.SpanID] {
+				b.stat.Retries++
 			}
 			if end := span.StartMs + span.DurationMs; end > b.stat.LastMs {
 				b.stat.LastMs = end

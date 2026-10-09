@@ -11,6 +11,7 @@ const stat = (over: Partial<OtlpLensStat>): OtlpLensStat => ({
 describe('runtime lens', () => {
   it('summarizes calls, percentiles, errors and recency', () => {
     expect(lensTitle(stat({ errors: 1 }), solo, 103_000)).toBe('runtime: 12 calls · p50 4.0 ms · p95 9.0 ms · 1 error · 3s ago · hot path')
+    expect(lensTitle(stat({ retries: 3 }), solo, 103_000)).toContain('· 3 retries ·')
     expect(lensTitle(stat({ count: 1, p50Ms: 1200, p95Ms: 1200 }), solo, 100_000 + 120_000)).toBe('runtime: 1 call · p50 1.2 s · p95 1.2 s · 2m ago · slow path')
   })
 

@@ -44,6 +44,7 @@ export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): 
     `p50 ${ms(stat.p50Ms)}`,
     `p95 ${ms(stat.p95Ms)}`,
     stat.errors ? `${stat.errors} error${stat.errors === 1 ? '' : 's'}` : '',
+    stat.retries ? `${stat.retries} retr${stat.retries === 1 ? 'y' : 'ies'}` : '',
     ago(stat.lastMs, now),
     hot ? 'hot path' : '',
     slow ? 'slow path' : '',
