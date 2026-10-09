@@ -1633,7 +1633,7 @@ export function WebSocketPanel() {
             <MoreVertical size={15} />
           </button>
         </div>
-        {!connected && <LiveWebSocketHandler url={resolveUrl(config, getResolvedVars())} onDebugReady={() => void handleConnect()} />}
+        <LiveWebSocketHandler url={resolveUrl(config, getResolvedVars())} connected={connected} onDebugReady={() => void handleConnect()} />
         {connected && liveRun && (
           <div className="mt-1.5 flex items-center gap-2 text-[11px] text-text-3">
             <span>Live connection to <span className="text-text-1">{liveRun.service}</span> · id <span className="font-mono">{liveRun.correlationId}</span></span>

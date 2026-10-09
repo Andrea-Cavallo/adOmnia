@@ -92,3 +92,29 @@ export async function openWebSocketLogs(run: LiveWebSocketRun): Promise<void> {
   requestLogInspectorQuery(run.correlationId)
   showModule('loginspector')
 }
+
+/**
+ * Connection → goroutine: pause the service under Delve, list its goroutines and select the ones
+ * running the WebSocket handler (one per open connection) in Go Studio's debugger.
+ */
+export async function showConnectionGoroutines(target: WebSocketHandler): Promise<string> {
+  const session = useDevSessionStore.getState().sessions[target.session.id] ?? target.session
+  if (session.kind !== 'debug' || session.endedAt) throw new Error('Start the service with Debug handler first: goroutines are read from Delve.')
+  const { stepLiveSession } = await import('@/lib/devsession-api')
+  if (!session.pause) {
+    await stepLiveSession(session.id, 'pause')
+    const deadline = Date.now() + 10_000
+    while (!useDevSessionStore.getState().sessions[session.id]?.pause && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 150))
+  }
+  const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
+  const debugId = session.resourceId
+  await useGoIDEDebugStore.getState().refreshGoroutines(debugId)
+  const goroutines = useGoIDEDebugStore.getState().debuggers[debugId]?.goroutines?.goroutines ?? []
+  const name = target.handler.split('.').pop() ?? target.handler
+  const serving = goroutines.filter((goroutine) => goroutine.frames.some((frame) => frame.name.split('.').pop() === name))
+  await openLocationInGoStudio(session.goSessionId, null)
+  if (serving[0]) await useGoIDEDebugStore.getState().selectThread(debugId, serving[0].id)
+  const { useGoIDELspStore } = await import('@/stores/goideLsp')
+  useGoIDELspStore.getState().showToolWindow('debug')
+  return serving.length ? `${serving.length} goroutine${serving.length === 1 ? '' : 's'} in ${target.handler}(): #${serving.map((goroutine) => goroutine.id).join(', #')}` : `No goroutine is running ${target.handler}() at this pause.`
+}
