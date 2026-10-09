@@ -4,13 +4,14 @@ import { FEATURE_REGISTRY, getFeatureLabel } from '@/lib/featureRegistry'
 import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout } from './hubLayout'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
-import { FoldMark } from './FoldMark'
 import type { GameId } from './arcade/types'
 import { GAME_IDS } from './arcade/gameCatalog'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
 
+// The WebGL mark is decorative and mostly shader source: keep it off the startup bundle.
+const FoldMark = lazy(() => import('./FoldMark').then(module => ({ default: module.FoldMark })))
 const ArcadeMenu = lazy(() => import('./arcade/ArcadeMenu').then(module => ({ default: module.ArcadeMenu })))
 
 const TileIcon = lazy(() => import('./HubStudioIcon').then(module => ({ default: module.TileIcon })))
@@ -101,7 +102,7 @@ function TodayPanel() {
       ? game
         ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
         : <Suspense fallback={null}><ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/></Suspense>
-      : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
+      : <><Suspense fallback={<DotClock text={clock}/>}><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/></Suspense><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>
