@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { useState, type ReactNode } from 'react'
 import { ExternalLink, FileArchive } from 'lucide-react'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -49,7 +50,8 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
  * the ids that tie it to logs and messages.
  */
 /** Writes repro/<when>-<request>/ into the service's Go project and opens its README. */
-export function SaveReproductionButton({ run }: { run: RequestRun }) {
+/** `compact`: icon only, for the narrow live response bar; the outcome goes in the tooltip and color. */
+export function SaveReproductionButton({ run, compact = false }: { run: RequestRun; compact?: boolean }) {
   const [state, setState] = useState<{ busy: boolean; text: string; error?: boolean }>({ busy: false, text: '' })
   const save = async () => {
     const store = useDevSessionStore.getState()
@@ -79,10 +81,12 @@ export function SaveReproductionButton({ run }: { run: RequestRun }) {
   }
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <button type="button" onClick={() => void save()} disabled={state.busy} title="Save the request, logs, SQL, messages and stacks as replayable files (README, .http, Go test, fixtures) in the service's project" className="flex shrink-0 items-center gap-1 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent disabled:opacity-50">
-        <FileArchive size={11} />{state.busy ? 'Saving…' : 'Save reproduction'}
+      <button type="button" onClick={() => void save()} disabled={state.busy} aria-label="Save reproduction"
+        title={compact && state.text ? state.text : "Save reproduction: the request, logs, SQL, messages and stacks as replayable files (README, .http, Go test, fixtures) in the service's project"}
+        className={cn('flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:border-accent hover:text-accent disabled:opacity-50', compact && state.text ? (state.error ? 'border-error/50 text-error' : 'border-success/50 text-success') : 'border-border-2 text-text-2')}>
+        <FileArchive size={11} />{compact ? null : state.busy ? 'Saving…' : 'Save reproduction'}
       </button>
-      {state.text && <span title={state.text} className={state.error ? 'min-w-0 truncate text-[11px] text-error' : 'min-w-0 truncate text-[11px] text-success'}>{state.text}</span>}
+      {!compact && state.text && <span title={state.text} className={state.error ? 'min-w-0 truncate text-[11px] text-error' : 'min-w-0 truncate text-[11px] text-success'}>{state.text}</span>}
     </span>
   )
 }

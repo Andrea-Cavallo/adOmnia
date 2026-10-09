@@ -49,17 +49,17 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div role="tablist" aria-label="Live request views" className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 bg-surface-1 px-2 text-[11px]">
+      <div role="tablist" aria-label="Live request views" className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-border-1 bg-surface-1 px-2 text-[11px] [scrollbar-width:none]">
         {session && <span className="mr-2 flex items-center gap-1.5 text-text-3" title={`${session.service} · live session`}><LiveDot session={session} />{session.service}</span>}
         {(['response', 'logs', 'debug', 'timeline', 'db', 'kafka'] as const).map((id) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            className={cn('relative h-8 px-2.5 transition-colors', tab === id ? 'text-text-1' : 'text-text-3 hover:text-text-2')}>
+            className={cn('relative h-8 shrink-0 px-2.5 transition-colors', tab === id ? 'text-text-1' : 'text-text-3 hover:text-text-2')}>
             {TAB_LABEL[id](run)}
             {tab === id && <span className="absolute inset-x-1.5 bottom-0 h-[2px] rounded-t bg-accent" />}
           </button>
         ))}
         {inFlight && <span className="ml-auto flex items-center gap-1 text-text-4"><Loader2 size={11} className="animate-spin" />in flight</span>}
-        {!inFlight && run.completedAt && <span className="ml-auto min-w-0"><SaveReproductionButton run={run} /></span>}
+        {!inFlight && run.completedAt && <span className="ml-auto shrink-0"><SaveReproductionButton run={run} compact /></span>}
       </div>
       {!inFlight && run.completedAt && tab === 'response' && <RequestSummary run={run} onTab={setTab} />}
       {tab === 'response' ? children : <LiveView tab={tab} run={run} session={session} />}
