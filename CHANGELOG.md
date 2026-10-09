@@ -27,6 +27,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Trace Studio insights:** each span shows where time and failures come from: network time of a call between services, time a message waited in the broker, the span where an error starts (not the ones that only propagate it), parallel and asynchronous work.
 - **Trace → logs:** a span in Trace Studio and a failing connection in the Service Map open the Log Inspector on the lines that carry the same trace id.
 - **Service Map → code architecture:** the map opens Go Studio's Architecture Explorer for the code side of the same system.
+- **Kafka lag on the Service Map:** a topic → consumer connection shows the consumer group's lag, asked to the brokers the spans name (`messaging.consumer.group.name`, `server.address`).
 - **Service Map → handler:** a connection between two services opens both the calling code and the handler that answers it, when the spans carry `code.filepath`.
 - **Exceptions and backoff in Trace Studio:** an exception event shows its stack with the project's frames clickable (recovered panics included), and a retry shows how long it waited after the previous attempt.
 - **Save and load traces:** Trace Studio saves the selected trace to a file and loads it back (also a reproduction's `trace.json`), so a request seen before a fix can be compared with the same request after it.

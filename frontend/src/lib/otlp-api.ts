@@ -105,6 +105,8 @@ export interface OtlpMapEdge {
   sourceLine?: number
   handlerFile?: string
   handlerLine?: number
+  group?: string
+  brokers?: string
 }
 
 export interface OtlpServiceMap {

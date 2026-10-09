@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { getServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { ArrowUpRight, Code2, Database, Globe, Radio, ScrollText, Server } from 'lucide-react'
 import { openTraceLogs } from '@/lib/otlp-logs'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,43 @@ function nodeColor(node: OtlpMapNode): string {
   return node.kind === 'service' ? serviceColor(node.label) : 'var(--color-text-3)'
 }
 
+interface GroupLag { totalLag: number; partitions: Array<{ partition: number; lag: number }> }
+
+/** Lag of a consumer group on one topic, asked to the brokers (Broker Studio's consumer-groups endpoint). */
+async function consumerLag(brokers: string, topic: string, group: string): Promise<GroupLag> {
+  const url = serverUrl(await getServerPort(), '/kafka/consumer-groups')
+  const response = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: { brokers: brokers.split(',').map((b) => b.trim()).filter(Boolean), topic }, group, topic }) })
+  const data = await response.json().catch(() => ({})) as { ok?: boolean; error?: string; groups?: Array<{ partitions?: Array<{ topic: string; partition: number; lag: number }> }> }
+  if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`)
+  const partitions = (data.groups?.[0]?.partitions ?? []).filter((item) => item.topic === topic)
+  return { totalLag: partitions.reduce((sum, item) => sum + Math.max(0, item.lag), 0), partitions }
+}
+
+function ConsumerLag({ topic, group, brokers }: { topic: string; group: string; brokers?: string }) {
+  const [address, setAddress] = useState(brokers || 'localhost:9092')
+  const [state, setState] = useState<{ busy: boolean; lag?: GroupLag; error?: string }>({ busy: false })
+  const load = async () => {
+    setState({ busy: true })
+    try { setState({ busy: false, lag: await consumerLag(address, topic, group) }) } catch (error) { setState({ busy: false, error: error instanceof Error ? error.message : String(error) }) }
+  }
+  useEffect(() => { if (brokers) void load() }, [topic, group, brokers]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="space-y-1 rounded border border-border-1 p-2">
+      <p className="text-text-3">Consumer group <span className="font-mono text-text-1">{group}</span></p>
+      <div className="flex items-center gap-1">
+        <input aria-label="Kafka brokers" value={address} onChange={(event) => setAddress(event.target.value)} className="h-6 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-1.5 font-mono text-[10.5px] text-text-1 outline-none focus:border-accent" />
+        <button type="button" onClick={() => void load()} disabled={state.busy} className="rounded border border-border-2 px-2 py-0.5 text-text-2 hover:border-accent hover:text-accent disabled:opacity-50">{state.busy ? '…' : 'Lag'}</button>
+      </div>
+      {state.lag && (
+        <p className={state.lag.totalLag > 0 ? 'text-warning' : 'text-success'}>
+          lag {state.lag.totalLag}{state.lag.partitions.length > 1 ? ` (${state.lag.partitions.map((item) => `p${item.partition}: ${item.lag}`).join(', ')})` : ''}
+        </p>
+      )}
+      {state.error && <p className="text-error">{state.error}</p>}
+    </div>
+  )
+}
+
 function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Map<string, OtlpMapNode>; onOpenTrace: (traceId: string) => void }) {
   const from = nodes.get(edge.from)
   const to = nodes.get(edge.to)
@@ -48,6 +86,7 @@ function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Ma
         <span className={cn('rounded px-1.5 py-0.5', edge.errors ? 'bg-error/10 text-error' : 'bg-surface-3 text-text-3')}>{edge.errors} errors ({Math.round((edge.errors / edge.calls) * 100)}%)</span>
         {!!edge.retries && <span title="Calls that repeat an earlier attempt of the same operation" className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">{edge.retries} retries</span>}
       </div>
+      {topic && edge.group && <ConsumerLag topic={topic.label} group={edge.group} brokers={edge.brokers} />}
       <div className="flex flex-wrap gap-1.5">
         {edge.sampleTraceId && <button type="button" onClick={() => onOpenTrace(edge.sampleTraceId!)} className="rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">Open a trace</button>}
         {edge.errorTraceId && <button type="button" onClick={() => onOpenTrace(edge.errorTraceId!)} className="rounded border border-error/40 px-2 py-1 text-error hover:bg-error/10">Open a failing trace</button>}

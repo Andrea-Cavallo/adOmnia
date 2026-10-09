@@ -35,6 +35,9 @@ type MapEdge struct {
 	// The handler that answers the call, from the server span of the callee.
 	HandlerFile string `json:"handlerFile,omitempty"`
 	HandlerLine int    `json:"handlerLine,omitempty"`
+	// Consumer side of a topic: the group and the brokers it reads from, to ask for its lag.
+	Group   string `json:"group,omitempty"`
+	Brokers string `json:"brokers,omitempty"`
 }
 
 type ServiceMap struct {
@@ -147,7 +150,16 @@ func (s *Store) ServiceMap() ServiceMap {
 				id := "topic:" + topic
 				addNode(MapNode{ID: id, Kind: "topic", Label: topic, System: system})
 				if span.Kind == "consumer" {
-					addCall(id, service, "messaging", span)
+					edge := addCall(id, service, "messaging", span)
+					if group := firstAttr(span.Attributes, "messaging.consumer.group.name", "messaging.kafka.consumer.group", "messaging.kafka.consumer_group"); group != "" && edge.Group == "" {
+						edge.Group = group
+					}
+					if host := firstAttr(span.Attributes, "server.address", "net.peer.name"); host != "" && edge.Brokers == "" {
+						if port := firstAttr(span.Attributes, "server.port", "net.peer.port"); port != "" {
+							host += ":" + port
+						}
+						edge.Brokers = host
+					}
 				} else {
 					addCall(service, id, "messaging", span)
 				}

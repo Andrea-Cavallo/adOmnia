@@ -23,7 +23,7 @@ func TestServiceMapFromTraces(t *testing.T) {
 		{TraceID: "t1", SpanID: "o3", ParentSpanID: "o1", Service: "orders", Kind: "producer", Category: "messaging", Name: "publish", StartMs: 25, DurationMs: 2,
 			Attributes: attrs("messaging.system", "kafka", "messaging.destination.name", "orders.created")},
 		{TraceID: "t1", SpanID: "b1", ParentSpanID: "o3", Service: "billing", Kind: "consumer", Category: "messaging", Name: "process", StartMs: 30, DurationMs: 5,
-			Attributes: attrs("messaging.system", "kafka", "messaging.destination.name", "orders.created")},
+			Attributes: attrs("messaging.system", "kafka", "messaging.destination.name", "orders.created", "messaging.consumer.group.name", "billing", "server.address", "127.0.0.1", "server.port", "59092")},
 		// an outgoing call nobody answered: external endpoint
 		{TraceID: "t1", SpanID: "b2", ParentSpanID: "b1", Service: "billing", Kind: "client", Category: "http", Name: "POST", StartMs: 31, DurationMs: 3,
 			Attributes: attrs("http.request.method", "POST", "url.full", "https://api.stripe.com/v1/charges")},
@@ -52,8 +52,8 @@ func TestServiceMapFromTraces(t *testing.T) {
 	if _, ok := edges["svc:orders→topic:orders.created"]; !ok {
 		t.Fatalf("producer edge missing: %v", edges)
 	}
-	if _, ok := edges["topic:orders.created→svc:billing"]; !ok {
-		t.Fatalf("consumer edge missing: %v", edges)
+	if e, ok := edges["topic:orders.created→svc:billing"]; !ok || e.Group != "billing" || e.Brokers != "127.0.0.1:59092" {
+		t.Fatalf("consumer edge: %+v", e)
 	}
 	if _, ok := edges["svc:billing→ext:api.stripe.com"]; !ok {
 		t.Fatalf("external edge missing: %v", edges)
