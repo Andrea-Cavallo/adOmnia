@@ -49,7 +49,7 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
  * the ids that tie it to logs and messages.
  */
 /** Writes repro/<when>-<request>/ into the service's Go project and opens its README. */
-function SaveReproductionButton({ run }: { run: RequestRun }) {
+export function SaveReproductionButton({ run }: { run: RequestRun }) {
   const [state, setState] = useState<{ busy: boolean; text: string; error?: boolean }>({ busy: false, text: '' })
   const save = async () => {
     const store = useDevSessionStore.getState()
@@ -78,12 +78,12 @@ function SaveReproductionButton({ run }: { run: RequestRun }) {
     }
   }
   return (
-    <>
+    <span className="flex min-w-0 items-center gap-2">
       <button type="button" onClick={() => void save()} disabled={state.busy} title="Save the request, logs, SQL, messages and stacks as replayable files (README, .http, Go test, fixtures) in the service's project" className="flex shrink-0 items-center gap-1 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent disabled:opacity-50">
         <FileArchive size={11} />{state.busy ? 'Saving…' : 'Save reproduction'}
       </button>
-      {state.text && <span className={state.error ? 'basis-full text-[11px] text-error' : 'basis-full text-[11px] text-success'}>{state.text}</span>}
-    </>
+      {state.text && <span title={state.text} className={state.error ? 'min-w-0 truncate text-[11px] text-error' : 'min-w-0 truncate text-[11px] text-success'}>{state.text}</span>}
+    </span>
   )
 }
 

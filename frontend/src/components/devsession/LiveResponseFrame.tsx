@@ -13,6 +13,7 @@ import { streamSessionToLogInspector } from '@/lib/devsession/logInspectorSource
 import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
 import { LiveLogList, LiveMessageList, LiveQueryList, RequestSummary, RequestTimeline } from './LiveRequestViews'
 import { basename, LiveDot } from './liveUi'
+import { SaveReproductionButton } from './RequestContextView'
 
 type LiveTab = 'response' | 'logs' | 'debug' | 'timeline' | 'db' | 'kafka'
 
@@ -58,6 +59,7 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
           </button>
         ))}
         {inFlight && <span className="ml-auto flex items-center gap-1 text-text-4"><Loader2 size={11} className="animate-spin" />in flight</span>}
+        {!inFlight && run.completedAt && <span className="ml-auto min-w-0"><SaveReproductionButton run={run} /></span>}
       </div>
       {!inFlight && run.completedAt && tab === 'response' && <RequestSummary run={run} onTab={setTab} />}
       {tab === 'response' ? children : <LiveView tab={tab} run={run} session={session} />}
