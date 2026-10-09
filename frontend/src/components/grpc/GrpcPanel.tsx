@@ -1556,7 +1556,7 @@ export function GrpcPanel() {
     if (methodName) void loadDescriptorFields(serviceName, methodName, loadedServices, descriptorSource)
   }
 
-  const handleReflect = async () => {
+  const handleReflect = async (preferred?: { service: string; method: string }) => {
     setLoading(true)
     setError('')
     try {
@@ -1575,8 +1575,9 @@ export function GrpcPanel() {
       setSourceName(address)
       setConnected(true)
       log(`reflection loaded ${nextServices.length} services from ${address}`)
-      const firstService = nextServices[0]
-      const firstMethod = firstService?.methods[0]
+      const wanted = preferred && nextServices.find((service) => service.name === preferred.service || service.name.endsWith(`.${preferred.service}`))
+      const firstService = wanted ?? nextServices[0]
+      const firstMethod = firstService?.methods.find((method) => method.name === preferred?.method) ?? firstService?.methods[0]
       if (firstService && firstMethod) selectMethod(firstService.name, firstMethod.name, nextServices, 'reflection')
     } catch (event) {
       const message = event instanceof Error ? event.message : String(event)
@@ -1630,11 +1631,11 @@ export function GrpcPanel() {
   }
 
   // Da gO: un .proto si carica, un servizio registrato nel codice si interroga via reflection all'indirizzo del server.
-  const [pendingReflect, setPendingReflect] = useState(false)
+  const [pendingReflect, setPendingReflect] = useState<false | true | { service: string; method: string }>(false)
   useEffect(() => {
     if (!pendingReflect) return
     setPendingReflect(false)
-    void handleReflect()
+    void handleReflect(pendingReflect === true ? undefined : pendingReflect)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleReflect legge l'indirizzo appena impostato
   }, [pendingReflect])
   useEntityHandoff('grpc', (_ref, intent, payload) => {
@@ -1645,7 +1646,12 @@ export function GrpcPanel() {
       return true
     }
     const preferred = payload.method ? { service: String(payload.service ?? ''), method: String(payload.method) } : undefined
-    void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')), preferred)
+    void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')), preferred).then(() => {
+      // From a Debug in Go Studio: the service is running, connect to it keeping the rpc selected.
+      if (!payload.address) return
+      setAddress(String(payload.address))
+      setPendingReflect(preferred ?? true)
+    })
     return true
   })
 
@@ -1965,7 +1971,7 @@ export function GrpcPanel() {
         showTls={showTls}
         onAddressChange={(value) => { setAddress(value); setConnected(false) }}
         onTlsChange={(value) => { setUseTls(value); setConnected(false) }}
-        onReflect={handleReflect}
+        onReflect={() => void handleReflect()}
         onInvoke={handleInvoke}
         onLoadTest={() => {
           if (currentMethod?.client_streaming) {

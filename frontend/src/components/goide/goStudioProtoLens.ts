@@ -44,12 +44,23 @@ function handlerOf(sessionId: string, service: string, method: string) {
   return report ? goHandlerFor(report, service, method) : null
 }
 
-function callInClient(documentId: string, rpc: Pick<ProtoRpc, 'service' | 'method'>): void {
+function callInClient(documentId: string, rpc: Pick<ProtoRpc, 'service' | 'method'>, address?: string): void {
   const document = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
   if (!document) return
   const name = document.document.relativePath.split('/').pop() ?? 'contract.proto'
   handoffToPanel('grpc', { kind: 'contract', id: `proto:${document.document.relativePath}`, label: name, attrs: { type: 'proto', path: document.document.relativePath } }, 'open',
-    { text: document.buffer, name, service: rpc.service, method: rpc.method })
+    { text: document.buffer, name, service: rpc.service, method: rpc.method, ...(address ? { address } : {}) })
+}
+
+/** The port the debugged service listens on, once the live session has detected it (up to 10 s). */
+async function livePort(liveId: string): Promise<number | undefined> {
+  const { useDevSessionStore } = await import('@/stores/devSession')
+  for (let i = 0; i < 40; i++) {
+    const port = useDevSessionStore.getState().sessions[liveId]?.port
+    if (port) return port
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return undefined
 }
 
 /** Registra i CodeLens dei file .proto, una sola volta per processo. */
@@ -69,8 +80,9 @@ export function registerGoStudioProtoLens(): void {
     if (!handler) return
     void (async () => {
       const { debugGoAt } = await import('@/lib/devsession/debugMessage')
-      await debugGoAt({ goSessionId: sessionId, relativePath: handler.site.relativePath, line: handler.site.line })
-      callInClient(documentId, { service, method })
+      const live = await debugGoAt({ goSessionId: sessionId, relativePath: handler.site.relativePath, line: handler.site.line })
+      const port = await livePort(live.id)
+      callInClient(documentId, { service, method }, port ? `127.0.0.1:${port}` : undefined)
     })()
   })
   const provider: monaco.languages.CodeLensProvider = {
