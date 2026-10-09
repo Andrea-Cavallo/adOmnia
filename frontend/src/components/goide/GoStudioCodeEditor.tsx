@@ -163,11 +163,16 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   useEffect(() => {
     if (!handlesReveal || revealLocation?.documentId !== document.document.id || !editorRef.current) return
     const position = { lineNumber: revealLocation.line, column: revealLocation.column }
-    editorRef.current.setPosition(position)
-    editorRef.current.revealPositionInCenter(position)
-    // A jump to a line start (navigation from other panels) must show the indentation, not keep the old horizontal scroll.
-    if (position.column <= 1) editorRef.current.setScrollLeft(0)
-    editorRef.current.focus()
+    const editor = editorRef.current
+    editor.setPosition(position)
+    editor.focus()
+    // After the next layout: a jump from another panel shows Go Studio in the same tick, before the editor has its size.
+    // No cleanup: clearing the location re-runs this effect and must not cancel the reveal.
+    requestAnimationFrame(() => {
+      editor.revealPositionInCenter(position)
+      // A jump to a line start must show the indentation, not keep the old horizontal scroll.
+      if (position.column <= 1) editor.setScrollLeft(0)
+    })
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
 
