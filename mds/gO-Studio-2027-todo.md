@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 155 | 37 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 147 | 36 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -125,17 +125,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 - [ ] Span → source.
 - [ ] Trace → distributed debugger. — *Parziale: le trace strutturate dei servizi aprono una vista multi-servizio con link al debugger per span correlati; manca la raccolta OTLP e la propagazione automatica della trace.*
 - [ ] Compare traces.
-
-## §42 · Config & Environment Intelligence
-
-- [ ] Detect config keys.
-- [ ] Show usages. — *Parziale: L'opener envvar mostra valore e file:riga della fonte; non l'elenco completo degli usi.*
-- [ ] Missing env warning.
-- [ ] Undefined config warning.
-- [ ] Unused config warning.
-- [ ] Environment profiles.
-- [ ] Config diff.
-- [ ] Dev/test/staging profiles.
 
 ## §44 · UX Layout proposta
 
