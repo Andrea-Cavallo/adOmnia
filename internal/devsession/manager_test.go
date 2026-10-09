@@ -362,3 +362,18 @@ func TestLogsOfAnotherServiceJoinTheRequestByTraceID(t *testing.T) {
 		t.Fatalf("consumer line not tied to the request: %+v", logs)
 	}
 }
+
+func TestPackageName(t *testing.T) {
+	for command, want := range map[string]string{
+		"go run .":                    "",
+		"go run ./cmd/billing":        "billing",
+		"go run -race ./cmd/billing/": "billing",
+		"go run cmd/worker/main.go":   "worker",
+		"go run main.go":              "",
+		`go run .\cmd\billing`:        "billing",
+	} {
+		if got := packageName(command); got != want {
+			t.Errorf("packageName(%q) = %q, want %q", command, got, want)
+		}
+	}
+}

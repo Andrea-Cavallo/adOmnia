@@ -97,7 +97,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
 
   if (tab === 'logs') {
     return (
-      <LiveLogList entries={logs} goSessionId={session?.goSessionId} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`}
+      <LiveLogList entries={logs} goSessionId={session?.goSessionId} ownerSessionId={run.sessionId} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`}
         toolbar={session && (
           <button type="button" title={`Stream ${session.service} into the Log Inspector, filtered on this request`}
             onClick={() => { streamSessionToLogInspector(session.id, session.service); requestLogInspectorQuery(run.correlationId); showModule('loginspector') }}

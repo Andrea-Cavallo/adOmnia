@@ -39,11 +39,10 @@ function MatchHint({ match }: { match?: string }) {
 const GO_LOCATION = /([\w./-]+\.go):(\d+)/
 
 /** Service log lines, filterable; used by the response Logs tab and the service logs drawer. */
-export function LiveLogList({ entries, empty, goSessionId, toolbar }: { entries: LiveLogEntry[]; empty: string; goSessionId?: string; toolbar?: React.ReactNode }) {
+/** `ownerSessionId`: lines printed by another service (matched by the request id) are labelled with it. */
+export function LiveLogList({ entries, empty, goSessionId, ownerSessionId, toolbar }: { entries: LiveLogEntry[]; empty: string; goSessionId?: string; ownerSessionId?: string; toolbar?: React.ReactNode }) {
   const runs = useDevSessionStore((state) => state.runs)
   const sessions = useDevSessionStore((state) => state.sessions)
-  // Name the service only when the list mixes services (a request's lines from a consumer elsewhere).
-  const mixed = new Set(entries.map((entry) => entry.sessionId)).size > 1
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<'all' | 'warn' | 'error'>('all')
   const shown = useMemo(() => {
@@ -70,11 +69,11 @@ export function LiveLogList({ entries, empty, goSessionId, toolbar }: { entries:
       <div className="min-h-0 flex-1 overflow-auto py-1 font-mono text-[11.5px] leading-[18px]" role="log" aria-live="polite">
         {shown.length === 0 && <p className="px-3 py-6 text-center font-sans text-[12px] text-text-4">{entries.length ? 'No line matches the filter.' : empty}</p>}
         {shown.map((entry) => (
-          <div key={entry.seq} className="flex items-start gap-2 px-2 hover:bg-surface-2/60">
+          <div key={entry.seq} className="flex flex-wrap items-start gap-x-2 px-2 hover:bg-surface-2/60">
             <span className="shrink-0 text-text-4">{time(entry.at)}</span>
             <MatchHint match={entry.match} />
-            {mixed && <span className="shrink-0 rounded bg-surface-3 px-1 font-sans text-[10px] text-text-3">{sessions[entry.sessionId]?.service ?? entry.sessionId}</span>}
-            <span className={cn('min-w-0 flex-1 whitespace-pre-wrap break-all', LEVEL_TONE[entry.level ?? ''] ?? 'text-text-2', entry.stream === 'stderr' && !entry.level && 'text-text-3')}>{entry.text}</span>
+            {ownerSessionId && entry.sessionId !== ownerSessionId && <span title="Printed by another service, tied to this request by its id" className="shrink-0 rounded bg-accent/10 px-1 font-sans text-[10px] text-accent">{sessions[entry.sessionId]?.service ?? entry.sessionId}</span>}
+            <span className={cn('min-w-[10rem] flex-1 whitespace-pre-wrap break-all', LEVEL_TONE[entry.level ?? ''] ?? 'text-text-2', entry.stream === 'stderr' && !entry.level && 'text-text-3')}>{entry.text}</span>
             <LineActions entry={entry} goSessionId={goSessionId} tabId={entry.requestRunId ? runs[entry.requestRunId]?.tabId : undefined} />
           </div>
         ))}

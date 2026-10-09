@@ -33,11 +33,11 @@ export function PortEditor({ session }: { session: LiveSession }) {
       />
     )
   }
-  const title = session.port ? `localhost:${session.port} · ${SOURCE_LABEL[session.portSource ?? ''] ?? ''} · click to change` : 'Port not detected yet · click to set it'
+  const title = session.port ? `localhost:${session.port} · ${SOURCE_LABEL[session.portSource ?? ''] ?? ''} · click to change` : 'No listening port detected (a worker or consumer has none) · click to set it'
   return (
     <button type="button" title={title} onClick={() => { setValue(session.port ? String(session.port) : ''); setEditing(true) }}
-      className={session.port ? 'font-mono text-text-2 hover:text-accent' : 'font-mono text-warning hover:text-accent'}>
-      {session.port ? `:${session.port}` : ':????'}
+      className={session.port ? 'font-mono text-text-2 hover:text-accent' : 'text-text-4 hover:text-accent'}>
+      {session.port ? `:${session.port}` : 'no port'}
     </button>
   )
 }

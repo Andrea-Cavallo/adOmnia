@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"path"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -149,6 +151,9 @@ func (m *Manager) startSession(goSessionID, kind, resourceID, title string, pid 
 	service, root := "", ""
 	if m.hooks.Project != nil {
 		service, root = m.hooks.Project(goSessionID)
+	}
+	if pkg := packageName(title); pkg != "" {
+		service = pkg
 	}
 	m.mu.Lock()
 	if _, exists := m.sessions[sessionKey(kind, resourceID)]; exists {
@@ -458,4 +463,29 @@ func (m *Manager) sortedLive() []Session {
 	}
 	sort.SliceStable(live, func(i, j int) bool { return live[i].StartedAt.After(live[j].StartedAt) })
 	return live
+}
+
+// packageName names a service started from a sub-package of the project ("go run ./cmd/billing"
+// is "billing"), so two services of one project are told apart. "" for the project root.
+func packageName(command string) string {
+	fields := strings.Fields(command)
+	for i, field := range fields {
+		if field != "run" || i+1 >= len(fields) {
+			continue
+		}
+		for _, arg := range fields[i+1:] {
+			if strings.HasPrefix(arg, "-") {
+				continue
+			}
+			target := strings.TrimSuffix(strings.ReplaceAll(arg, `\`, "/"), "/")
+			if strings.HasSuffix(target, ".go") {
+				target = path.Dir(target)
+			}
+			if name := path.Base(target); name != "." && name != "/" && target != "." {
+				return name
+			}
+			return ""
+		}
+	}
+	return ""
 }
