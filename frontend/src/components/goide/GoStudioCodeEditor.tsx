@@ -66,7 +66,8 @@ function revealWhenSized(editor: monaco.editor.IStandaloneCodeEditor, position: 
     if (position.column <= 1) editor.setScrollLeft(0)
   }
   reveal()
-  const sub = editor.onDidLayoutChange(reveal)
+  // The viewport takes the new size after this event: reveal on the next frame.
+  const sub = editor.onDidLayoutChange(() => requestAnimationFrame(reveal))
   window.setTimeout(() => sub.dispose(), 1000)
 }
 
