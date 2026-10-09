@@ -57,3 +57,70 @@ export function goHandlerFor(report: GoIDEArchitecture, service: string, method:
   }
   return null
 }
+
+export interface ProtoDeclaration {
+  name: string
+  kind: 'message' | 'enum' | 'service' | 'rpc'
+  line: number
+  column: number
+  /** Enclosing declaration for nested messages/enums and rpcs. */
+  parent?: string
+}
+
+const DECLARATION = /\b(message|enum|service|rpc)\s+([A-Za-z_]\w*)/g
+
+/** Top-level and nested declarations, with 1-based line/column of the name. */
+export function protoDeclarations(text: string): ProtoDeclaration[] {
+  const out: ProtoDeclaration[] = []
+  const stack: Array<{ name: string; depth: number }> = []
+  let depth = 0
+  text.split('\n').forEach((raw, index) => {
+    const line = raw.replace(/\/\/.*$/, '')
+    for (const match of line.matchAll(DECLARATION)) {
+      const column = (match.index ?? 0) + match[0].length - match[2].length + 1
+      out.push({ name: match[2], kind: match[1] as ProtoDeclaration['kind'], line: index + 1, column, parent: stack[stack.length - 1]?.name })
+      if (match[1] !== 'rpc') stack.push({ name: match[2], depth })
+    }
+    for (const ch of line) {
+      if (ch === '{') depth++
+      if (ch === '}') {
+        depth--
+        while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop()
+      }
+    }
+  })
+  return out
+}
+
+/** Paths of `import "…";` statements. */
+export function protoImports(text: string): string[] {
+  return [...text.matchAll(/^\s*import\s+(?:public\s+|weak\s+)?"([^"]+)"\s*;/gm)].map((m) => m[1])
+}
+
+/** The type declaration a (possibly qualified) name refers to, by its last segment. */
+export function findProtoType(declarations: ProtoDeclaration[], name: string): ProtoDeclaration | undefined {
+  const last = name.split('.').pop() ?? name
+  return declarations.find((item) => (item.kind === 'message' || item.kind === 'enum' || item.kind === 'service') && item.name === last)
+}
+
+/** Candidate project-relative paths for an import: relative to the project root and to the importing file. */
+export function importCandidates(fromRelativePath: string, importPath: string): string[] {
+  const dir = fromRelativePath.includes('/') ? fromRelativePath.slice(0, fromRelativePath.lastIndexOf('/')) : ''
+  const joined = dir ? `${dir}/${importPath}` : importPath
+  return [...new Set([importPath, joined])]
+}
+
+/** protoc arguments for Go (and gRPC when the file declares a service), output next to the .proto. */
+export function protocArguments(protoPath: string, plugins: { go: string; grpc?: string }): string[] {
+  const args = ['-I', '.', `--plugin=protoc-gen-go=${plugins.go}`, '--go_out=.', '--go_opt=paths=source_relative']
+  if (plugins.grpc) args.push(`--plugin=protoc-gen-go-grpc=${plugins.grpc}`, '--go-grpc_out=.', '--go-grpc_opt=paths=source_relative')
+  return [...args, protoPath]
+}
+
+/** Directories from the file's folder up to the project root ('' = root). */
+export function ancestorDirs(relativePath: string): string[] {
+  const parts = relativePath.split('/').slice(0, -1)
+  const dirs: string[] = []
+  for (let i = parts.length; i >= 0; i--) dirs.push(parts.slice(0, i).join('/'))
+  return dirs
+}

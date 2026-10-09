@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEArchitecture } from '@/lib/goide-api'
-import { goHandlerFor, protoRpcs } from './protoLinks'
+import { ancestorDirs, findProtoType, goHandlerFor, importCandidates, protoDeclarations, protoImports, protoRpcs, protocArguments } from './protoLinks'
 
 const PROTO = `syntax = "proto3";
 // service Fake { rpc Nope(A) returns (B); }
@@ -49,5 +49,47 @@ describe('goHandlerFor', () => {
   it('returns null when the service or method is not served in Go', () => {
     expect(goHandlerFor(report, 'Orders', 'Watch')).toBeNull()
     expect(goHandlerFor(report, 'Billing', 'Get')).toBeNull()
+  })
+})
+
+describe('proto navigation helpers', () => {
+  const text = `syntax = "proto3";
+import "common/money.proto";
+import public "types.proto";
+message Order {
+  message Line { string sku = 1; }
+  enum State { NEW = 0; }
+  Money total = 1;
+}
+service Orders {
+  rpc Get(GetRequest) returns (Order);
+}
+`
+  it('lists declarations with nesting and name columns', () => {
+    expect(protoDeclarations(text).map((d) => `${d.kind}:${d.name}@${d.line}:${d.column}${d.parent ? `<${d.parent}` : ''}`)).toEqual([
+      'message:Order@4:9', 'message:Line@5:11<Order', 'enum:State@6:8<Order', 'service:Orders@9:9', 'rpc:Get@10:7<Orders',
+    ])
+  })
+
+  it('reads imports and resolves types by their last segment', () => {
+    expect(protoImports(text)).toEqual(['common/money.proto', 'types.proto'])
+    expect(findProtoType(protoDeclarations(text), 'shop.v1.Order')?.line).toBe(4)
+    expect(findProtoType(protoDeclarations(text), 'Get')).toBeUndefined()
+    expect(importCandidates('api/v1/orders.proto', 'common/money.proto')).toEqual(['common/money.proto', 'api/v1/common/money.proto'])
+  })
+})
+
+describe('proto generation helpers', () => {
+  it('builds protoc arguments with explicit plugins', () => {
+    expect(protocArguments('api/orders.proto', { go: 'C:/bin/protoc-gen-go.exe', grpc: 'C:/bin/protoc-gen-go-grpc.exe' })).toEqual([
+      '-I', '.', '--plugin=protoc-gen-go=C:/bin/protoc-gen-go.exe', '--go_out=.', '--go_opt=paths=source_relative',
+      '--plugin=protoc-gen-go-grpc=C:/bin/protoc-gen-go-grpc.exe', '--go-grpc_out=.', '--go-grpc_opt=paths=source_relative', 'api/orders.proto',
+    ])
+    expect(protocArguments('m.proto', { go: 'g' })).not.toContain('--go-grpc_out=.')
+  })
+
+  it('walks up to the project root', () => {
+    expect(ancestorDirs('svc/api/v1/orders.proto')).toEqual(['svc/api/v1', 'svc/api', 'svc', ''])
+    expect(ancestorDirs('orders.proto')).toEqual([''])
   })
 })

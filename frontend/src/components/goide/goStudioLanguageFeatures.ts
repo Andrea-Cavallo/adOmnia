@@ -111,7 +111,7 @@ export function navigateToLocation(location: GoIDEEditorLocation): void {
   else void store.openLocation(location.relativePath, startLine, startColumn)
 }
 
-function rememberLocations(locations: GoIDEEditorLocation[]): monaco.languages.Location[] {
+export function rememberLocations(locations: GoIDEEditorLocation[]): monaco.languages.Location[] {
   return locations.map((location) => {
     const uri = monaco.Uri.parse(location.uri)
     locationCache.set(uri.toString(), location)

@@ -2,8 +2,13 @@ import { monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore } from '@/stores/goide'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
-import { goHandlerFor, protoRpcs, type ProtoRpc } from '@/lib/goide/protoLinks'
-import { documentForModel } from './goStudioLanguageFeatures'
+import { ancestorDirs, findProtoType, goHandlerFor, importCandidates, protocArguments, protoDeclarations, protoImports, protoRpcs, type ProtoRpc } from '@/lib/goide/protoLinks'
+import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool } from '@/lib/goide-api'
+import { showEntityNotice } from '@/lib/entities/notice'
+import { confirm } from '@/lib/confirmDialog'
+import { useGoIDELspStore } from '@/stores/goideLsp'
+import { readDevContextFile } from '@/lib/devcontext-api'
+import { documentForModel, rememberLocations } from './goStudioLanguageFeatures'
 import { openArchSite } from './GoStudioInterfaceExplorer'
 
 // .proto → Go: on every rpc, the Go method that serves it, Debug and a call in the gRPC client.
@@ -12,6 +17,11 @@ const HANDLER_COMMAND = 'goStudio.protoHandler'
 const CALL_COMMAND = 'goStudio.protoCall'
 const DEBUG_COMMAND = 'goStudio.protoDebug'
 const LINK_COMMAND = 'goStudio.protoLink'
+const GENERATE_COMMAND = 'goStudio.protoGenerate'
+const PLUGINS = {
+  go: { binary: 'protoc-gen-go', module: 'google.golang.org/protobuf/cmd/protoc-gen-go@latest' },
+  grpc: { binary: 'protoc-gen-go-grpc', module: 'google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest' },
+}
 
 let registered = false
 const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
@@ -21,10 +31,12 @@ function lens(line: number, id: string, title: string, tooltip: string, args: un
 }
 
 function lensesFor(sessionId: string, documentId: string, text: string): monaco.languages.CodeLens[] {
+  const syntaxLine = text.split('\n').findIndex((line) => /^\s*(syntax|edition)\s*=/.test(line)) + 1
+  const generate = lens(syntaxLine || 1, GENERATE_COMMAND, 'Generate Go code', 'buf generate when the module has buf.gen.yaml, otherwise protoc with protoc-gen-go (and protoc-gen-go-grpc for services)', [documentId])
   const rpcs = protoRpcs(text)
-  if (!rpcs.length) return []
+  if (!rpcs.length) return [generate]
   const report = cachedArchitecture(sessionId)?.report
-  const out: monaco.languages.CodeLens[] = []
+  const out: monaco.languages.CodeLens[] = [generate]
   if (!report) out.push(lens(rpcs[0].line, LINK_COMMAND, 'Link rpcs to Go handlers', 'Analyze the project (nothing runs) to find the Go method serving each rpc', [sessionId]))
   for (const rpc of rpcs) {
     const handler = report ? goHandlerFor(report, rpc.service, rpc.method) : null
@@ -63,10 +75,104 @@ async function livePort(liveId: string): Promise<number | undefined> {
   return undefined
 }
 
+const SYMBOL_KIND = { message: monaco.languages.SymbolKind.Struct, enum: monaco.languages.SymbolKind.Enum, service: monaco.languages.SymbolKind.Interface, rpc: monaco.languages.SymbolKind.Method }
+
+/** Outline: message, enum, service and rpc, nested under their parent. */
+function protoSymbols(model: monaco.editor.ITextModel): monaco.languages.DocumentSymbol[] {
+  const byName = new Map<string, monaco.languages.DocumentSymbol>()
+  const roots: monaco.languages.DocumentSymbol[] = []
+  for (const item of protoDeclarations(model.getValue())) {
+    const range = { startLineNumber: item.line, startColumn: item.column, endLineNumber: item.line, endColumn: item.column + item.name.length }
+    const symbol: monaco.languages.DocumentSymbol = { name: item.name, detail: item.kind, kind: SYMBOL_KIND[item.kind], tags: [], range, selectionRange: range, children: [] }
+    const parent = item.parent ? byName.get(item.parent) : undefined
+    if (parent) parent.children = [...(parent.children ?? []), symbol]
+    else roots.push(symbol)
+    if (item.kind !== 'rpc') byName.set(item.name, symbol)
+  }
+  return roots
+}
+
+/** Go to definition of a message/enum/service: this file first, then the files it imports. */
+async function protoDefinition(model: monaco.editor.ITextModel, position: monaco.Position): Promise<monaco.languages.Location[]> {
+  const word = model.getWordAtPosition(position)
+  if (!word) return []
+  // Qualified names (google.protobuf.Empty, shop.v1.Order): resolve the whole dotted token by its last part.
+  const lineText = model.getLineContent(position.lineNumber)
+  const dotted = /[\w.]+/g
+  let token = word.word
+  for (const match of lineText.matchAll(dotted)) {
+    const start = (match.index ?? 0) + 1
+    if (position.column >= start && position.column <= start + match[0].length) token = match[0]
+  }
+  const local = findProtoType(protoDeclarations(model.getValue()), token)
+  if (local) return [{ uri: model.uri, range: { startLineNumber: local.line, startColumn: local.column, endLineNumber: local.line, endColumn: local.column + local.name.length } }]
+  const document = documentForModel(model)
+  const session = document && useGoIDEStore.getState().sessions.find((item) => item.id === document.document.sessionId)
+  if (!document || !session) return []
+  for (const imported of protoImports(model.getValue())) {
+    for (const candidate of importCandidates(document.document.relativePath, imported)) {
+      const text = await readDevContextFile(session.id, candidate).catch(() => null)
+      if (text === null) continue
+      const found = findProtoType(protoDeclarations(text), token)
+      if (!found) break
+      const path = `${session.project.rootPath.replace(/[\\/]+$/, '')}/${candidate}`
+      const range = { startLine: found.line, startColumn: found.column, endLine: found.line, endColumn: found.column + found.name.length }
+      return rememberLocations([{ uri: monaco.Uri.file(path).toString(), path, relativePath: candidate, external: false, range }])
+    }
+  }
+  return []
+}
+
+async function exists(sessionId: string, relativePath: string): Promise<boolean> {
+  return readDevContextFile(sessionId, relativePath).then(() => true, () => false)
+}
+
+function showRun(sessionId: string, executionId: string): void {
+  useGoIDEStore.setState((state) => ({ activeRunBySession: { ...state.activeRunBySession, [sessionId]: executionId } }))
+  useGoIDELspStore.getState().showToolWindow('run')
+}
+
+/** Generate Go code for a .proto: buf generate if configured, else protoc in the nearest Go module. */
+async function generateGo(documentId: string): Promise<void> {
+  const document = useGoIDEStore.getState().documents.find((item) => item.document.id === documentId)
+  if (!document) return
+  const { sessionId, relativePath } = document.document
+  const dirs = ancestorDirs(relativePath)
+  const join = (dir: string, name: string) => (dir ? `${dir}/${name}` : name)
+  try {
+    for (const dir of dirs) {
+      if (!(await exists(sessionId, join(dir, 'buf.gen.yaml')))) continue
+      const buf = await detectGoIDEGoTool(sessionId, 'buf')
+      if (!buf.available) break // fall back to protoc
+      return showRun(sessionId, (await runGoIDEGoTool(sessionId, 'buf', ['generate'], dir)).id)
+    }
+    let moduleDir: string | null = null
+    for (const dir of dirs) if (moduleDir === null && await exists(sessionId, join(dir, 'go.mod'))) moduleDir = dir
+    if (moduleDir === null) return showEntityNotice('No go.mod above this .proto: open the Go module that owns it.')
+    const protoc = await detectGoIDEGoTool(sessionId, 'protoc')
+    if (!protoc.available) return showEntityNotice('protoc is not installed: get it from https://protobuf.dev/installation/ (or add buf.gen.yaml and install buf).')
+    const needed = protoRpcs(document.buffer).length > 0 ? [PLUGINS.go, PLUGINS.grpc] : [PLUGINS.go]
+    const found = await Promise.all(needed.map((plugin) => detectGoIDEGoTool(sessionId, plugin.binary)))
+    const missing = needed.filter((_, index) => !found[index].available)
+    if (missing.length) {
+      const approved = await confirm({ title: `Install ${missing.map((plugin) => plugin.binary).join(' and ')}?`, message: `${missing.map((plugin) => `go install ${plugin.module}`).join('\n')}\n\nThey go into adOmnia's tools folder, built with the project's Go SDK. Run Generate Go code again when the install finishes.`, confirmLabel: 'Install' })
+      if (!approved) return
+      for (const plugin of missing) showRun(sessionId, (await installGoIDEGoModule(sessionId, plugin.module)).id)
+      return
+    }
+    const protoPath = moduleDir ? relativePath.slice(moduleDir.length + 1) : relativePath
+    const args = protocArguments(protoPath, { go: found[0].path ?? PLUGINS.go.binary, grpc: found[1]?.path })
+    showRun(sessionId, (await runGoIDEGoTool(sessionId, 'protoc', args, moduleDir)).id)
+  } catch (error) {
+    showEntityNotice(`Generate Go code failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 /** Registra i CodeLens dei file .proto, una sola volta per processo. */
 export function registerGoStudioProtoLens(): void {
   if (registered) return
   registered = true
+  monaco.editor.registerCommand(GENERATE_COMMAND, (_accessor, documentId: string) => { void generateGo(documentId) })
   monaco.editor.registerCommand(LINK_COMMAND, (_accessor, sessionId: string) => {
     void architectureFor(sessionId).then(() => changed.fire(provider), () => undefined)
   })
@@ -94,4 +200,6 @@ export function registerGoStudioProtoLens(): void {
     },
   }
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
+  monaco.languages.registerDocumentSymbolProvider(LANGUAGE, { provideDocumentSymbols: (model) => protoSymbols(model) })
+  monaco.languages.registerDefinitionProvider(LANGUAGE, { provideDefinition: (model, position) => protoDefinition(model, position) })
 }
