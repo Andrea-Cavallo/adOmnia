@@ -137,7 +137,7 @@ function SessionPicker({ session, sessions, onPick }: { session: LiveSession; se
       <LiveDot session={session} />
       <select aria-label="Live service" value={session.id} onChange={(event) => onPick(event.target.value)}
         className="h-5 max-w-44 rounded border-0 bg-transparent pr-1 text-[11px] font-semibold text-text-1 outline-none focus:ring-1 focus:ring-accent">
-        {sessions.map((s) => <option key={s.id} value={s.id}>{s.service} · {stateLabel(s)}</option>)}
+        {sessions.map((s) => <option key={s.id} value={s.id}>{s.service}{s.kind === 'debug' ? ' (debug)' : ''}</option>)}
       </select>
     </label>
   )
