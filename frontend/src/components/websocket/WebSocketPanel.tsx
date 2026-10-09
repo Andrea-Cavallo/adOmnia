@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils'
 import { safeEval } from '@/lib/safeEval'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { binaryPayloadPreview } from './binaryPayload'
+import { LiveWebSocketHandler } from './LiveWebSocketHandler'
 
 type AuthType = 'none' | 'bearer' | 'basic'
 type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting'
@@ -1625,6 +1626,7 @@ export function WebSocketPanel() {
             <MoreVertical size={15} />
           </button>
         </div>
+        {!connected && <LiveWebSocketHandler url={resolveUrl(config, getResolvedVars())} onDebugReady={() => void handleConnect()} />}
 
         <div className="mt-2">
           <ConfigTabs

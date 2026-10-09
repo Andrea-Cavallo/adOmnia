@@ -95,6 +95,34 @@ export function retarget(url: string, vars: Record<string, string>, baseUrl: str
 }
 
 /**
+ * The service running under Delve: the live debug session, or the project (re)started with its Debug
+ * configuration after the developer confirms stopping a plain run. Shared by Debug Request and the
+ * WebSocket "Debug handler".
+ */
+export async function ensureDebugSession(session: LiveSession | null, service: string | null, progress: (message: string) => void = () => undefined): Promise<LiveSession> {
+  if (session?.kind === 'debug' && !session.endedAt) return session
+  const goSessionId = session?.goSessionId ?? await findGoSession(service)
+  if (!goSessionId) {
+    throw new DebugRequestError(service
+      ? `Open the ${service} project in Go Studio to debug it.`
+      : 'Open the Go project in Go Studio (or link the request with {{service:name}}) to debug it.')
+  }
+  if (session) {
+    const restart = await confirm({
+      title: `Restart ${session.service} with the debugger?`,
+      message: `${session.service} is running without Delve. adOmnia will stop it and start the active Debug configuration.`,
+      confirmLabel: 'Restart with debugger',
+    })
+    if (!restart) throw new DebugRequestError('Debug cancelled.')
+    await stopLiveSession(session.id)
+  }
+  const since = new Date(Date.now() - 1000).toISOString()
+  progress(`Starting ${service ?? session?.service ?? 'the service'} with Delve…`)
+  await startGoDebug(goSessionId)
+  return waitForDebugSession(goSessionId, since)
+}
+
+/**
  * One click: find or start the service under Delve, wait until it listens,
  * then hand the request (pointed at that service) back to the sender.
  */
@@ -107,28 +135,7 @@ export async function prepareDebugRequest(tabId: string, request: RequestItem, e
   let session = sessionForRequest(useDevSessionStore.getState(), request.url, substVars(request.url, vars))
   if (!session && service) session = liveSessions(useDevSessionStore.getState()).find((s) => s.service === service) ?? null
 
-  if (!session || session.kind !== 'debug') {
-    const goSessionId = session?.goSessionId ?? await findGoSession(service)
-    if (!goSessionId) {
-      throw new DebugRequestError(service
-        ? `Open the ${service} project in Go Studio to debug this request.`
-        : 'Open the Go project in Go Studio (or link the request with {{service:name}}) to debug it.')
-    }
-    if (session) {
-      const restart = await confirm({
-        title: `Restart ${session.service} with the debugger?`,
-        message: `${session.service} is running without Delve. adOmnia will stop it and start the active Debug configuration.`,
-        confirmLabel: 'Restart with debugger',
-      })
-      if (!restart) throw new DebugRequestError('Debug Request cancelled.')
-      await stopLiveSession(session.id)
-    }
-    const since = new Date(Date.now() - 1000).toISOString()
-    progress('debugger', `Starting ${service ?? 'the service'} with Delve…`)
-    await startGoDebug(goSessionId)
-    session = await waitForDebugSession(goSessionId, since)
-  }
-
+  if (!session || session.kind !== 'debug') session = await ensureDebugSession(session, service, (message) => progress('debugger', message))
   progress('ready', session.port ? `Waiting for ${session.service} on :${session.port}…` : `Waiting for ${session.service} to open its port…`)
   await waitLiveReady(session.id, useDevSessionStore.getState().prefs.healthPaths[session.service] ?? '', READY_TIMEOUT_MS)
   const ready = useDevSessionStore.getState().sessions[session.id] ?? session
