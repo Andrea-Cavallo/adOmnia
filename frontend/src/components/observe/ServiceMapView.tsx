@@ -34,6 +34,7 @@ function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Ma
         <span className="rounded bg-surface-3 px-1.5 py-0.5 text-text-2">{edge.calls} calls · {edge.ratePerMin.toFixed(1)}/min</span>
         <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2">p50 {ms(edge.p50Ms)} · p95 {ms(edge.p95Ms)}</span>
         <span className={cn('rounded px-1.5 py-0.5', edge.errors ? 'bg-error/10 text-error' : 'bg-surface-3 text-text-3')}>{edge.errors} errors ({Math.round((edge.errors / edge.calls) * 100)}%)</span>
+        {!!edge.retries && <span title="Calls that repeat an earlier attempt of the same operation" className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">{edge.retries} retries</span>}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {edge.sampleTraceId && <button type="button" onClick={() => onOpenTrace(edge.sampleTraceId!)} className="rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">Open a trace</button>}
@@ -112,7 +113,7 @@ export function ServiceMapView({ map, onOpenTrace }: { map: OtlpServiceMap | nul
                 <path d={path} fill="none" stroke={stroke} strokeWidth={1 + (edge.calls / maxCalls) * 3} markerEnd="url(#map-arrow)" opacity={key === selected ? 1 : 0.75} />
                 {/* Labels sit near the target end, so siblings leaving the same node do not overlap. */}
                 <text x={x1 * 0.3 + x2 * 0.7 + 6} y={back ? (a.y + y2 + BOX.height) / 2 : y1 * 0.3 + y2 * 0.7 - 4} className="fill-[var(--color-text-3)] font-mono text-[9.5px]">
-                  {EDGE_LABEL[edge.kind]} {edge.ratePerMin.toFixed(1)}/min · p95 {ms(edge.p95Ms)}{failing ? ` · ${edge.errors} err` : ''}
+                  {EDGE_LABEL[edge.kind]} {edge.ratePerMin.toFixed(1)}/min · p95 {ms(edge.p95Ms)}{failing ? ` · ${edge.errors} err` : ''}{edge.retries ? ` · ${edge.retries} retry` : ''}
                 </text>
               </g>
             )

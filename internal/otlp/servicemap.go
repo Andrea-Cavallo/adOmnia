@@ -17,11 +17,13 @@ type MapNode struct {
 
 // MapEdge aggregates the calls observed from one node to another.
 type MapEdge struct {
-	From       string  `json:"from"`
-	To         string  `json:"to"`
-	Kind       string  `json:"kind"` // http | rpc | db | messaging
-	Calls      int     `json:"calls"`
-	Errors     int     `json:"errors"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Kind   string `json:"kind"` // http | rpc | db | messaging
+	Calls  int    `json:"calls"`
+	Errors int    `json:"errors"`
+	// Retries counts calls that repeat an earlier attempt (see isRetry).
+	Retries    int     `json:"retries"`
 	P50Ms      float64 `json:"p50Ms"`
 	P95Ms      float64 `json:"p95Ms"`
 	RatePerMin float64 `json:"ratePerMin"`
@@ -78,6 +80,7 @@ func (s *Store) ServiceMap() ServiceMap {
 	edges := map[string]*edgeData{}
 	minStart, maxEnd := 0.0, 0.0
 	addNode := func(node MapNode) { nodes[node.ID] = node }
+	retry := map[string]bool{}
 	addCall := func(from, to, kind string, span Span) *MapEdge {
 		key := from + "\x00" + to + "\x00" + kind
 		data := edges[key]
@@ -86,6 +89,9 @@ func (s *Store) ServiceMap() ServiceMap {
 			edges[key] = data
 		}
 		data.edge.Calls++
+		if retry[span.SpanID] {
+			data.edge.Retries++
+		}
 		data.durations = append(data.durations, span.DurationMs)
 		if data.edge.SampleTraceID == "" {
 			data.edge.SampleTraceID = span.TraceID
@@ -114,6 +120,9 @@ func (s *Store) ServiceMap() ServiceMap {
 			if end := span.StartMs + span.DurationMs; end > maxEnd {
 				maxEnd = end
 			}
+		}
+		for id := range retryIDs(spans) {
+			retry[id] = true
 		}
 		for _, span := range spans {
 			service := "svc:" + span.Service
@@ -187,5 +196,35 @@ func (s *Store) ServiceMap() ServiceMap {
 		}
 		return out.Edges[i].To < out.Edges[j].To
 	})
+	return out
+}
+
+// retryIDs returns the client/producer spans that repeat an earlier attempt: the
+// semconv resend counter, or the same operation started again under the same parent.
+// ponytail: sibling heuristic, a loop that legitimately calls the same endpoint twice counts too.
+func retryIDs(spans []Span) map[string]bool {
+	out := map[string]bool{}
+	type key struct{ parent, service, kind, name string }
+	first := map[key]Span{}
+	for _, span := range spans {
+		if span.Kind != "client" && span.Kind != "producer" {
+			continue
+		}
+		if n, _ := strconv.Atoi(firstAttr(span.Attributes, "http.request.resend_count", "http.resend_count")); n > 0 {
+			out[span.SpanID] = true
+			continue
+		}
+		k := key{span.ParentSpanID, span.Service, span.Kind, span.Name}
+		if earlier, ok := first[k]; ok {
+			if span.StartMs >= earlier.StartMs {
+				out[span.SpanID] = true
+			} else {
+				out[earlier.SpanID] = true
+				first[k] = span
+			}
+			continue
+		}
+		first[k] = span
+	}
 	return out
 }

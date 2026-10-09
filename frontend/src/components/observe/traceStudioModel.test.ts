@@ -60,4 +60,8 @@ describe('span insights', () => {
     expect(insights.get('con')?.async).toBe(true)
     expect(insights.get('pub')?.async).toBeFalsy()
   })
+  it('numbers retries of the same call', () => {
+    const again = spanInsights([s('p', '', 'gw', 'server', 0, 100), s('c2', 'p', 'gw', 'client', 30, 5), s('c1', 'p', 'gw', 'client', 10, 5), s('c3', 'p', 'gw', 'client', 50, 5)].map((span) => ({ ...span, name: span.spanId === 'p' ? 'GET /x' : 'GET' })))
+    expect([again.get('c1')?.retry, again.get('c2')?.retry, again.get('c3')?.retry]).toEqual([undefined, 1, 2])
+  })
 })

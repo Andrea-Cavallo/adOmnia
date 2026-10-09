@@ -27,6 +27,7 @@ function InsightBadges({ insight }: { insight?: SpanInsight }) {
       {insight.errorOrigin && <span title="The error starts here: the failing spans above only propagate it" className="rounded bg-error/15 px-1 text-[9px] font-semibold text-error">error origin</span>}
       {insight.networkMs !== undefined && <span title="Client time not spent in the server handler: network, TLS, queues" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">net {ms(insight.networkMs)}</span>}
       {insight.brokerDelayMs !== undefined && <span title="Time the message waited in the broker before the consumer picked it up" className="rounded bg-warning/10 px-1 text-[9px] text-warning">queued {ms(insight.brokerDelayMs)}</span>}
+      {!!insight.retry && <span title="Repeats an earlier attempt of the same call" className="rounded bg-warning/10 px-1 text-[9px] text-warning">retry {insight.retry}</span>}
       {insight.parallel && <span title="Runs at the same time as a sibling" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">parallel</span>}
       {insight.async && <span title="Finishes after its parent: asynchronous work" className="rounded bg-surface-3 px-1 text-[9px] text-text-3">async</span>}
     </>

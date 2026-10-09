@@ -90,6 +90,7 @@ export interface OtlpMapEdge {
   kind: 'http' | 'rpc' | 'db' | 'messaging'
   calls: number
   errors: number
+  retries?: number
   p50Ms: number
   p95Ms: number
   ratePerMin: number

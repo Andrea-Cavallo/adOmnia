@@ -62,3 +62,18 @@ func TestServiceMapFromTraces(t *testing.T) {
 		t.Fatalf("edges: %+v", m.Edges)
 	}
 }
+
+func TestRetryIDs(t *testing.T) {
+	spans := []Span{
+		{SpanID: "p", Kind: "server", Name: "GET /x"},
+		{SpanID: "a2", ParentSpanID: "p", Kind: "client", Name: "GET", StartMs: 20},
+		{SpanID: "a1", ParentSpanID: "p", Kind: "client", Name: "GET", StartMs: 10},
+		{SpanID: "a3", ParentSpanID: "p", Kind: "client", Name: "GET", StartMs: 30},
+		{SpanID: "db", ParentSpanID: "p", Kind: "client", Name: "SELECT", StartMs: 5},
+		{SpanID: "r", ParentSpanID: "q", Kind: "client", Name: "POST", Attributes: map[string]string{"http.request.resend_count": "1"}},
+	}
+	got := retryIDs(spans)
+	if len(got) != 3 || !got["a2"] || !got["a3"] || !got["r"] {
+		t.Fatalf("retries: %v", got)
+	}
+}

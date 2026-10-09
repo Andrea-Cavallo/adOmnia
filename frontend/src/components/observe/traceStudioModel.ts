@@ -60,6 +60,8 @@ export interface SpanInsight {
   errorOrigin?: boolean
   /** Overlaps a sibling in time. */
   parallel?: boolean
+  /** Repeats an earlier attempt of the same call: 1 = first retry. */
+  retry?: number
   /** Ends after its parent ended (fire-and-forget, goroutine, message). */
   async?: boolean
 }
@@ -75,6 +77,18 @@ export function spanInsights(spans: readonly OtlpSpan[]): Map<string, SpanInsigh
   const hasErrorBelow = (span: OtlpSpan): boolean => (children.get(span.spanId) ?? []).some((child) => child.statusCode === 'ERROR' || hasErrorBelow(child))
   const out = new Map<string, SpanInsight>()
   const set = (id: string, patch: SpanInsight) => out.set(id, { ...out.get(id), ...patch })
+  // Same rule as the Service Map (internal/otlp retryIDs): resend counter, or the same call again under one parent.
+  const attempts = new Map<string, OtlpSpan[]>()
+  for (const span of spans) {
+    if (span.kind !== 'client' && span.kind !== 'producer') continue
+    const resend = Number(span.attributes?.['http.request.resend_count'] ?? 0)
+    if (resend > 0) { set(span.spanId, { retry: resend }); continue }
+    const key = `${span.parentSpanId}|${span.service}|${span.kind}|${span.name}`
+    attempts.set(key, [...(attempts.get(key) ?? []), span])
+  }
+  for (const group of attempts.values()) {
+    ;[...group].sort((a, b) => a.startMs - b.startMs).slice(1).forEach((span, i) => set(span.spanId, { retry: i + 1 }))
+  }
   for (const span of spans) {
     const kids = children.get(span.spanId) ?? []
     if (span.kind === 'client') {
