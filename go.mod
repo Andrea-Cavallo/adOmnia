@@ -18,7 +18,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/jhump/protoreflect v1.18.1
+	github.com/jhump/protoreflect v1.19.0
 	github.com/miekg/dns v1.1.73
 	github.com/nats-io/nats.go v1.54.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
