@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 59 | 25 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 51 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -121,17 +121,9 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Context panel intelligente
 
-- [ ] Seleziono handler → API context. — *Parziale: CodeLens "Open in API Client" sulle route HTTP; manca un context panel contestuale alla selezione.*
-- [ ] Seleziono SQL → DB context. — *Parziale: CodeLens e hand-off verso Database Studio; nessun context panel che reagisce alla selezione.*
-- [ ] Seleziono Kafka → broker context. — *Parziale: CodeLens topic/gRPC e hand-off a Broker Studio; manca il context panel.*
-- [ ] Seleziono test → test context.
-- [ ] Seleziono goroutine → concurrency context.
-- [ ] Seleziono errore → debugging context. — *Parziale: Ispettori debug per error chain e panic solo nel pannello debug; nessun context panel.*
-- [ ] Seleziono dependency → module/security context.
-- [ ] Seleziono interface → implementation context. — *Parziale: Marker di implementazione e dialog Hierarchy; manca il context panel dedicato.*
-- [ ] Seleziono trace → runtime context.
-- [ ] Panel collassabile.
-- [ ] Nessuna UI sovraccarica.
+- [ ] Seleziono goroutine → concurrency context. — *Parziale: il pannello Context riconosce le righe `go …` e, in pausa nel debugger, conta le goroutine create lì per stato; manca una vista di concorrenza (canali, lock) legata alla riga.*
+- [ ] Seleziono errore → debugging context. — *Parziale: il pannello Context mostra i problemi della riga; error chain e panic restano nel pannello debug.*
+- [ ] Seleziono trace → runtime context. — *Parziale: il pannello Context mostra i numeri Runtime Lens della riga; selezionare una trace non apre ancora un contesto runtime.*
 
 ## §31 · Service Map
 
