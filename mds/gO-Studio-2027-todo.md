@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 64 | 25 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 62 | 25 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -53,7 +53,6 @@ Lo scenario ideale da raggiungere:
 
 - [x] Parte l'ambiente locale. — *Run → **Start Workspace** avvia una configurazione compound condivisa/pinnata "Start workspace"; se manca, apre la bozza corretta nelle Run configurations. Restano espliciti Trust e segreti runtime, nessun processo parte senza azione utente.*
 - [ ] Il distributed debugger collega i due servizi.
-- [ ] Posso profilare la stessa richiesta.
 
 Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad adOmnia”.
 
@@ -172,7 +171,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Debug workflow
 
 - [ ] Re-run with race detector.
-- [ ] Re-run with profiler.
 - [ ] Save session.
 - [ ] Compare sessions.
 
