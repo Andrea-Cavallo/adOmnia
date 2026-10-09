@@ -53,19 +53,21 @@ startGoStudioExtensions()
 const RUN_TARGET_DEBOUNCE_MS = 250
 
 /**
- * Centers a position once the editor has a real size: a jump from another panel shows Go Studio in
- * the same tick, and a reveal computed on a hidden or not yet laid out editor is lost.
+ * Centers a position and keeps it centered while the editor settles: a jump from another panel shows
+ * Go Studio in the same tick, when the editor is still a few pixels tall, and grows right after.
+ * ponytail: a fixed 1 s settle window; tie it to the panel transition end if a slower one appears.
  */
 function revealWhenSized(editor: monaco.editor.IStandaloneCodeEditor, position: { lineNumber: number; column: number }): void {
   const reveal = () => {
+    const caret = editor.getPosition()
+    if (caret && (caret.lineNumber !== position.lineNumber || caret.column !== position.column)) return
     editor.revealPositionInCenter(position)
     // A jump to a line start must show the indentation, not keep the old horizontal scroll.
     if (position.column <= 1) editor.setScrollLeft(0)
   }
-  if (editor.getDomNode()?.offsetHeight) requestAnimationFrame(reveal)
-  else {
-    const sub = editor.onDidLayoutChange((layout) => { if (layout.height > 0 && editor.getDomNode()?.offsetHeight) { sub.dispose(); reveal() } })
-  }
+  reveal()
+  const sub = editor.onDidLayoutChange(reveal)
+  window.setTimeout(() => sub.dispose(), 1000)
 }
 
 export const beforeGoStudioMount: BeforeMount = (instance) => applyGoStudioMonacoThemes(instance)
