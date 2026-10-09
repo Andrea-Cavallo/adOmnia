@@ -52,6 +52,22 @@ startGoStudioExtensions()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
+/**
+ * Centers a position once the editor has a real size: a jump from another panel shows Go Studio in
+ * the same tick, and a reveal computed on a hidden or not yet laid out editor is lost.
+ */
+function revealWhenSized(editor: monaco.editor.IStandaloneCodeEditor, position: { lineNumber: number; column: number }): void {
+  const reveal = () => {
+    editor.revealPositionInCenter(position)
+    // A jump to a line start must show the indentation, not keep the old horizontal scroll.
+    if (position.column <= 1) editor.setScrollLeft(0)
+  }
+  if (editor.getDomNode()?.offsetHeight) requestAnimationFrame(reveal)
+  else {
+    const sub = editor.onDidLayoutChange((layout) => { if (layout.height > 0 && editor.getDomNode()?.offsetHeight) { sub.dispose(); reveal() } })
+  }
+}
+
 export const beforeGoStudioMount: BeforeMount = (instance) => applyGoStudioMonacoThemes(instance)
 
 export function useGoStudioEditorTheme(): string {
@@ -166,17 +182,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     const editor = editorRef.current
     editor.setPosition(position)
     editor.focus()
-    const reveal = () => {
-      editor.revealPositionInCenter(position)
-      // A jump to a line start must show the indentation, not keep the old horizontal scroll.
-      if (position.column <= 1) editor.setScrollLeft(0)
-    }
-    // A jump from another panel shows Go Studio in the same tick: the editor has no size yet, reveal once it has.
     // No cleanup: clearing the location re-runs this effect and must not cancel the reveal.
-    if (editor.getLayoutInfo().height > 0) reveal()
-    else {
-      const sub = editor.onDidLayoutChange((layout) => { if (layout.height > 0) { sub.dispose(); reveal() } })
-    }
+    revealWhenSized(editor, position)
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
 
@@ -188,7 +195,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     if (!editor || !caret || !position || position.lineNumber !== 1 || position.column !== 1) return
     const target = { lineNumber: caret.line, column: caret.column }
     editor.setPosition(target)
-    editor.revealPositionInCenterIfOutsideViewport(target)
+    revealWhenSized(editor, target)
   }, [document.document.id, document.document.relativePath, document.document.sessionId, mountCount])
 
   useGoStudioDebugDecorations(editorRef, document, mountCount)
