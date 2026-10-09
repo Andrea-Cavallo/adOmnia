@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { showModule } from '@/lib/moduleRouting'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
 import type { LiveFrame, LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
-import { cachedArchitecture } from '@/lib/goide/architectureCache'
+import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import { SLOW_QUERY_MS, lockHint, nPlusOneHints, searchFragment, sourceForStatement, summarizeQueries } from '@/lib/devsession/sqlInsights'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
@@ -182,7 +182,33 @@ function openQuery(query: LiveQuery, run?: RequestRun | null) {
 }
 
 /** Broker messages the request produced; each opens its topic in Broker Studio. */
+type KafkaRole = 'kafka-producer' | 'kafka-consumer'
+
+/**
+ * Producer or consumer code of a topic: this service's project first, then the other services
+ * open in Go Studio (the consumer often lives elsewhere). Analyzes a project only if needed.
+ */
+async function openKafkaCode(topic: string, role: KafkaRole, goSessionIds: string[]): Promise<void> {
+  for (const goSessionId of goSessionIds) {
+    let entries
+    try {
+      entries = (await architectureFor(goSessionId)).report?.entries ?? []
+    } catch {
+      continue
+    }
+    const entry = entries.find((item) => item.kind === role && item.topics?.includes(topic))
+    if (!entry) continue
+    const site = entry.breakSite ?? entry.site
+    await openLocationInGoStudio(goSessionId, { function: entry.name, relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
+    return
+  }
+  showEntityNotice(`No ${role === 'kafka-producer' ? 'producer' : 'consumer'} of ${topic} found in the projects open in Go Studio.`)
+}
+
 export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; run?: RequestRun | null }) {
+  const sessions = useDevSessionStore((state) => state.sessions)
+  const own = run ? sessions[run.sessionId]?.goSessionId : undefined
+  const goSessionIds = [...new Set([own, ...Object.values(sessions).filter((session) => !session.endedAt).map((session) => session.goSessionId)].filter((id): id is string => !!id))]
   if (messages.length === 0) {
     return <EmptyNote icon={<MessageSquare size={16} />} text="No message seen for this request. Watch the service's topics from the debug bar (service tools) to see what it produces." />
   }
@@ -202,8 +228,12 @@ export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; ru
             </div>
             {message.preview && <code className="mt-1 block max-h-24 overflow-auto whitespace-pre-wrap break-all text-[11px] text-text-2">{message.preview}</code>}
           </div>
+          {goSessionIds.length > 0 && (['kafka-producer', 'kafka-consumer'] as const).map((role) => (
+            <button key={role} type="button" onClick={() => void openKafkaCode(message.topic, role, goSessionIds)} title={`Open the code that ${role === 'kafka-producer' ? 'publishes to' : 'consumes'} ${message.topic}`}
+              className={cn('shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent', role === 'kafka-producer' && 'ml-auto')}>{role === 'kafka-producer' ? 'Producer' : 'Consumer'}</button>
+          ))}
           <button type="button" onClick={() => openMessage(message, run)}
-            className="ml-auto shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Kafka</button>
+            className={cn('shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent', goSessionIds.length === 0 && 'ml-auto')}>Open in Kafka</button>
         </li>
       ))}
     </ul>
