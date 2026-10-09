@@ -19,7 +19,7 @@ export async function profileRequest(run: RequestRun, session: LiveSession, onPr
   const [{ captureGoIDELiveProfile }, { focusArtifact }] = await Promise.all([import('@/lib/goide-api'), import('@/lib/goide/goStudioRemote')])
   const vars = liveVars(useEnvironmentsStore.getState().getResolvedVars())
   let settled = false
-  const capture = captureGoIDELiveProfile({ sessionId: session.goSessionId, url: `http://127.0.0.1:${session.port}`, kind: 'cpu', seconds: PROFILE_SECONDS })
+  const capture = captureGoIDELiveProfile({ sessionId: session.goSessionId, url: `http://127.0.0.1:${session.port}`, kind: 'profile', seconds: PROFILE_SECONDS })
     .finally(() => { settled = true })
   let sent = 0
   const deadline = Date.now() + PROFILE_SECONDS * 1000
