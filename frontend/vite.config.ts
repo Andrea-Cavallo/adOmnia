@@ -37,7 +37,8 @@ function manualChunks(id: string): string | undefined {
   // producing a circular runtime chunk where Call is read before it exists.
   if (/[\\/]node_modules[\\/]@wailsio[\\/]runtime[\\/]/.test(id)) return 'wails-runtime'
   if (/[\\/]node_modules[\\/](react|react-dom)[\\/]/.test(id)) return 'vendor-react'
-  if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return 'vendor-icons'
+  // lucide-react stays out of manualChunks: each icon module lands with the code that uses it,
+  // so icons of lazy panels no longer weigh on startup (a shared vendor-icons chunk was ~99 kB).
   if (/[\\/]node_modules[\\/](ajv|ajv-formats)[\\/]/.test(id)) return 'vendor-schema'
   // YAML is only needed for user-initiated imports/editors. Grouping it with
   // Zustand used to pull the complete parser onto every startup path.
