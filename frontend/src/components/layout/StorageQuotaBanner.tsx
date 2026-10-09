@@ -54,13 +54,13 @@ export function StorageQuotaBanner() {
       aria-live="assertive"
       className="
         flex items-center gap-3 px-4 py-2
-        bg-amber-500/15 border-b border-amber-500/30
-        text-amber-400 text-xs font-medium
+        bg-warning/15 border-b border-warning/30
+        text-warning text-xs font-medium
         select-none
       "
     >
-      <AlertTriangle size={14} className="shrink-0 text-amber-400" />
-      <HardDrive size={13} className="shrink-0 text-amber-400/70" />
+      <AlertTriangle size={14} className="shrink-0 text-warning" />
+      <HardDrive size={13} className="shrink-0 text-warning/70" />
       <span className="flex-1">
         <strong>{tr('Storage quota exceeded.')}</strong>{' '}
         {freed !== null
@@ -68,7 +68,7 @@ export function StorageQuotaBanner() {
           : <>{tr('Some local data may not have been saved.')}{' '}
               <button
                 onClick={() => setActiveRail('workspace')}
-                className="underline underline-offset-2 hover:text-amber-300 transition-colors"
+                className="underline underline-offset-2 hover:text-warning transition-colors"
               >
                 {tr('Export your workspace')}
               </button>{' '}
@@ -79,7 +79,7 @@ export function StorageQuotaBanner() {
         <button
           onClick={handleFreeUp}
           title={tr('Clear call/response history and caches to reclaim space')}
-          className="shrink-0 inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 font-semibold hover:bg-amber-500/25 transition-colors"
+          className="shrink-0 inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/15 px-2 py-0.5 font-semibold hover:bg-warning/25 transition-colors"
         >
           <Trash2 size={12} /> {tr('Free up space')}
         </button>
@@ -87,7 +87,7 @@ export function StorageQuotaBanner() {
       <button
         onClick={() => setVisible(false)}
         title={tr('Dismiss (data may still be at risk)')}
-        className="shrink-0 rounded p-0.5 hover:bg-amber-500/20 transition-colors"
+        className="shrink-0 rounded p-0.5 hover:bg-warning/20 transition-colors"
         aria-label={tr('Dismiss storage warning')}
       >
         <X size={13} />

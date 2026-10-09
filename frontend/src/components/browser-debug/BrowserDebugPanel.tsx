@@ -360,10 +360,10 @@ function ConnectedToolbar({
       {/* Connected indicator + tab info */}
       <button
         onClick={() => setShowTabInfo((v) => !v)}
-        className="flex items-center gap-1.5 h-7 px-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs hover:bg-emerald-500/20 transition-colors flex-shrink-0 max-w-[200px]"
+        className="flex items-center gap-1.5 h-7 px-2 rounded bg-success/10 border border-success/30 text-success text-xs hover:bg-success/20 transition-colors flex-shrink-0 max-w-[200px]"
         title={connectedTab?.url ?? ''}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
         <span className="truncate">{connectedTab?.title ?? 'Connected'}</span>
         <ChevronDown size={10} className="flex-shrink-0" />
       </button>
@@ -372,7 +372,7 @@ function ConnectedToolbar({
       <button
         onClick={onDisconnect}
         title="Disconnect"
-        className="h-7 px-2 rounded border border-border-1 bg-surface-2 text-xs text-text-3 hover:text-red-400 hover:border-red-400/40 transition-colors flex items-center gap-1 flex-shrink-0"
+        className="h-7 px-2 rounded border border-border-1 bg-surface-2 text-xs text-text-3 hover:text-error hover:border-error/40 transition-colors flex items-center gap-1 flex-shrink-0"
       >
         <Unplug size={12} />
       </button>

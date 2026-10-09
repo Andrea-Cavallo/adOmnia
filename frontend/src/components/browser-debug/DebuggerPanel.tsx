@@ -515,7 +515,7 @@ export function DebuggerPanel() {
           className={cn(
             'h-6 px-2 rounded text-[10px] font-medium flex items-center gap-1 transition-colors',
             enabled
-              ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+              ? 'bg-success/10 border border-success/30 text-success'
               : 'bg-surface-2 border border-border-1 text-text-2 hover:text-text-1'
           )}
         >
@@ -572,7 +572,7 @@ export function DebuggerPanel() {
         </button>
 
         {pausedState?.paused && (
-          <div className="ml-auto flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/5 px-2 h-6 text-[10px] text-yellow-300 font-mono">
+          <div className="ml-auto flex items-center gap-2 rounded border border-warning/30 bg-warning/5 px-2 h-6 text-[10px] text-warning font-mono">
             <Pause size={11} />
             {pausedState.reason || 'paused'} at {pausedState.scriptUrl || pausedState.scriptId || 'anonymous'}:
             {pausedState.lineNumber + 1}
@@ -652,7 +652,7 @@ export function DebuggerPanel() {
               </span>
             )}
             {selectedSource && !selectedSource.canSetBreakpoint && (
-              <span className="ml-auto text-[10px] text-yellow-300">
+              <span className="ml-auto text-[10px] text-warning">
                 Read-only resource
               </span>
             )}
@@ -717,7 +717,7 @@ export function DebuggerPanel() {
                       {isPausedLine ? (
                         <ChevronRight size={12} className="text-warning" />
                       ) : bp ? (
-                        <CircleDot size={9} className="text-red-400" />
+                        <CircleDot size={9} className="text-error" />
                       ) : (
                         <span className="h-2 w-2 rounded-full opacity-0 group-hover:opacity-40 bg-text-3" />
                       )}
@@ -765,14 +765,14 @@ export function DebuggerPanel() {
                   {bp.scriptUrl || bp.scriptId || bp.id}:{bp.lineNumber + 1}
                 </span>
                 {bp.condition && (
-                  <span className="text-yellow-400 text-[9px] truncate max-w-[90px]">
+                  <span className="text-warning text-[9px] truncate max-w-[90px]">
                     if: {bp.condition}
                   </span>
                 )}
                 <button
                   onClick={() => handleRemoveBreakpoint(bp.id)}
                   title="Remove breakpoint"
-                  className="h-4 w-4 rounded flex items-center justify-center text-text-3 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                  className="h-4 w-4 rounded flex items-center justify-center text-text-3 hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
                 >
                   <X size={10} />
                 </button>

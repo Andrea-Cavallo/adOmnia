@@ -30,9 +30,9 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const RISK_CONFIG: Record<RiskLevel, { icon: typeof AlertTriangle; className: string; label: string; badgeClass: string }> = {
-  high: { icon: AlertCircle, className: 'text-red-400', label: 'HIGH', badgeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
-  medium: { icon: AlertTriangle, className: 'text-yellow-400', label: 'MED', badgeClass: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
-  low: { icon: Info, className: 'text-blue-400', label: 'LOW', badgeClass: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+  high: { icon: AlertCircle, className: 'text-error', label: 'HIGH', badgeClass: 'bg-error/15 text-error border-error/30' },
+  medium: { icon: AlertTriangle, className: 'text-warning', label: 'MED', badgeClass: 'bg-warning/15 text-warning border-warning/30' },
+  low: { icon: Info, className: 'text-info', label: 'LOW', badgeClass: 'bg-info/15 text-info border-info/30' },
 }
 
 const TYPE_LABELS: Record<SecretFinding['type'], string> = {
@@ -137,7 +137,7 @@ export function SecretScannerPanel() {
     <div className="flex flex-col h-full overflow-hidden bg-surface-1">
       {/* ── Toolbar ──────────────────────────────────────────────────── */}
       <div className="flex items-center h-10 px-3 gap-2 border-b border-border-1 bg-surface-0 flex-shrink-0">
-        <Shield size={14} className={hasHigh ? 'text-red-400' : 'text-accent'} />
+        <Shield size={14} className={hasHigh ? 'text-error' : 'text-accent'} />
         <span className="text-[10px] font-semibold text-text-1 uppercase tracking-wider">
           Secret Scanner
         </span>
@@ -155,7 +155,7 @@ export function SecretScannerPanel() {
             <div className="w-px h-5 bg-border-1" />
             <span className={cn(
               'text-[10px] font-medium',
-              hasHigh ? 'text-red-400' : hasFindings ? 'text-yellow-400' : 'text-emerald-400',
+              hasHigh ? 'text-error' : hasFindings ? 'text-warning' : 'text-success',
             )}>
               {report.totalFindings === 0
                 ? 'Clean'
@@ -246,8 +246,8 @@ export function SecretScannerPanel() {
       {/* ── Clean result ─────────────────────────────────────────────── */}
       {report && report.totalFindings === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-3">
-          <ShieldCheck size={32} className="text-emerald-400 opacity-40" />
-          <span className="text-xs text-emerald-400">Workspace is clean</span>
+          <ShieldCheck size={32} className="text-success opacity-40" />
+          <span className="text-xs text-success">Workspace is clean</span>
           <span className="text-[10px] opacity-50">No secrets detected in {collections.length} collections and {environments.length} environments.</span>
         </div>
       )}
@@ -319,7 +319,7 @@ export function SecretScannerPanel() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-[600px] max-h-[80vh] bg-surface-0 border border-border-2 rounded-lg shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center h-8 px-3 gap-2 border-b border-border-1 bg-surface-1 flex-shrink-0">
-              <FileWarning size={12} className="text-yellow-400" />
+              <FileWarning size={12} className="text-warning" />
               <span className="text-[10px] font-semibold text-text-1 uppercase tracking-wider">
                 Masked Workspace Preview
               </span>

@@ -2,9 +2,9 @@ import { useBrowserDebugStore, type DebugNetworkEntry } from '@/stores/browser-d
 import { cn } from '@/lib/utils'
 
 function statusColor(status: number): string {
-  if (status >= 200 && status < 300) return 'bg-emerald-500'
-  if (status >= 300 && status < 400) return 'bg-yellow-500'
-  if (status >= 400) return 'bg-red-500'
+  if (status >= 200 && status < 300) return 'bg-success'
+  if (status >= 300 && status < 400) return 'bg-warning'
+  if (status >= 400) return 'bg-error'
   return 'bg-text-3'
 }
 

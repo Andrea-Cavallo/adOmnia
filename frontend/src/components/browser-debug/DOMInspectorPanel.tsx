@@ -539,7 +539,7 @@ export function DOMInspectorPanel() {
                       className={cn(
                         'h-6 px-2 rounded border text-[10px] flex items-center gap-1 transition-colors',
                         active
-                          ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                          ? 'border-error/40 bg-error/10 text-error'
                           : 'border-border-1 bg-surface-0 text-text-3 hover:text-text-1'
                       )}
                     >

@@ -139,7 +139,7 @@ export function AiMockDialog({ onClose, onImport }: Props) {
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+            <div className="flex items-start gap-2 px-3 py-2 bg-error/10 border border-error/30 rounded text-xs text-error">
               <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>

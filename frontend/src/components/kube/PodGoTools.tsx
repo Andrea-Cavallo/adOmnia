@@ -90,7 +90,7 @@ export function PodGoTools({ context, namespace, pod }: { context: string; names
         <p className="text-[10px] text-text-4">Saved in the open Go Studio project and shown in Profile or Trace. Seconds apply to CPU and trace.</p>
       </section>
 
-      {error && <p className="break-words text-[10px] text-red-400">{error}</p>}
+      {error && <p className="break-words text-[10px] text-error">{error}</p>}
       {notice && <p className="break-words text-[10px] text-success">{notice}</p>}
     </div>
   )

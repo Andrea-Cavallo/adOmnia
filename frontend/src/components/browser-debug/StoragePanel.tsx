@@ -194,14 +194,14 @@ function CookiesTable({ cookies, onDelete }: CookiesTableProps) {
             </td>
             <td className="px-2 py-1 text-center">
               {cookie.httpOnly ? (
-                <span className="text-emerald-400">Yes</span>
+                <span className="text-success">Yes</span>
               ) : (
                 <span className="text-text-3">No</span>
               )}
             </td>
             <td className="px-2 py-1 text-center">
               {cookie.secure ? (
-                <span className="text-emerald-400">Yes</span>
+                <span className="text-success">Yes</span>
               ) : (
                 <span className="text-text-3">No</span>
               )}
@@ -211,7 +211,7 @@ function CookiesTable({ cookies, onDelete }: CookiesTableProps) {
               <button
                 onClick={() => onDelete(cookie.name, cookie.domain)}
                 title="Delete cookie"
-                className="h-4 w-4 rounded flex items-center justify-center text-text-3 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="h-4 w-4 rounded flex items-center justify-center text-text-3 hover:text-error hover:bg-error/10 transition-colors"
               >
                 <Trash2 size={9} />
               </button>

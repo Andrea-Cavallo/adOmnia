@@ -68,7 +68,7 @@ interface ViewProps {
 }
 
 function ErrorBar({ error }: { error: string }) {
-  return error ? <div className="border-b border-border-1 bg-red-500/5 px-3 py-1.5 text-[11px] text-red-400">{error}</div> : null
+  return error ? <div className="border-b border-border-1 bg-error/5 px-3 py-1.5 text-[11px] text-error">{error}</div> : null
 }
 
 function Inspector({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -95,7 +95,7 @@ export function DeploymentsView({ context, namespace, reloadKey }: ViewProps) {
             return (
               <tr key={d.name} className="border-b border-border-1/50">
                 <td className={cn(TD, 'text-text-1')} title={labels(d.selector)}>{d.name}</td>
-                <td className={cn(TD, ready === desired ? 'text-success' : 'text-yellow-400')}>{d.ready}</td>
+                <td className={cn(TD, ready === desired ? 'text-success' : 'text-warning')}>{d.ready}</td>
                 <td className={cn(TD, 'text-text-2')}>{d.upToDate}</td>
                 <td className={cn(TD, 'text-text-2')}>{d.available}</td>
                 <td className={cn(TD, 'text-text-3')}>{d.age}</td>

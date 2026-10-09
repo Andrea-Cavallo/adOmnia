@@ -59,9 +59,9 @@ interface TraceSpan {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const LEVEL_CONFIG: Record<LogLevel, { icon: typeof AlertCircle; className: string; label: string }> = {
-  ERROR: { icon: AlertCircle, className: 'text-red-400 bg-red-500/10', label: 'ERR' },
-  WARN: { icon: AlertTriangle, className: 'text-yellow-400 bg-yellow-500/10', label: 'WRN' },
-  INFO: { icon: Info, className: 'text-blue-400 bg-blue-500/10', label: 'INF' },
+  ERROR: { icon: AlertCircle, className: 'text-error bg-error/10', label: 'ERR' },
+  WARN: { icon: AlertTriangle, className: 'text-warning bg-warning/10', label: 'WRN' },
+  INFO: { icon: Info, className: 'text-info bg-info/10', label: 'INF' },
   DEBUG: { icon: Bug, className: 'text-purple-400 bg-purple-500/10', label: 'DBG' },
   LOG: { icon: FileText, className: 'text-text-2 bg-surface-2', label: 'LOG' },
 }
@@ -662,8 +662,8 @@ export function ObservabilityPanel() {
                     key={`${entry.i}-${idx}`}
                     className={cn(
                       'border-b border-border-1/50 hover:bg-surface-2/50 transition-colors',
-                      lvl === 'ERROR' && 'bg-red-500/[0.03]',
-                      lvl === 'WARN' && 'bg-yellow-500/[0.02]',
+                      lvl === 'ERROR' && 'bg-error/[0.03]',
+                      lvl === 'WARN' && 'bg-warning/[0.02]',
                     )}
                   >
                     <td className="px-2 py-1 text-text-3 whitespace-nowrap">
@@ -679,7 +679,7 @@ export function ObservabilityPanel() {
                       <span className={cn(
                         'text-[8px] px-1 rounded',
                         entry.source === 'frontend'
-                          ? 'text-emerald-400 bg-emerald-500/10'
+                          ? 'text-success bg-success/10'
                           : 'text-text-3 bg-surface-2',
                       )}>
                         {entry.source === 'frontend' ? 'FE' : 'BE'}

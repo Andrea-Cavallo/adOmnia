@@ -38,8 +38,8 @@ const SELECT = 'h-7 rounded border border-border-2 bg-surface-0 px-2 text-xs tex
 function phaseClass(phase: string): string {
   switch (phase) {
     case 'Running': return 'bg-success/10 text-success'
-    case 'Pending': return 'bg-yellow-500/10 text-yellow-400'
-    case 'Failed': return 'bg-red-500/10 text-red-400'
+    case 'Pending': return 'bg-warning/10 text-warning'
+    case 'Failed': return 'bg-error/10 text-error'
     case 'Succeeded': return 'bg-accent/10 text-accent-light'
     default: return 'bg-surface-2 text-text-3'
   }
@@ -171,7 +171,7 @@ export function KubePanel() {
         ))}
       </div>
 
-      {error && <div className="border-b border-border-1 bg-red-500/5 px-3 py-1.5 text-[11px] text-red-400">{error}</div>}
+      {error && <div className="border-b border-border-1 bg-error/5 px-3 py-1.5 text-[11px] text-error">{error}</div>}
 
       {tab === 'deployments' && <DeploymentsView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
       {tab === 'services' && <ServicesView context={context} namespace={namespace} reloadKey={reloadKey} onForwardStarted={() => setTab('forwards')} />}
@@ -367,7 +367,7 @@ function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; n
         )}
       </div>
 
-      {error && <p className="px-3 py-1.5 text-[10px] text-red-400">{error}</p>}
+      {error && <p className="px-3 py-1.5 text-[10px] text-error">{error}</p>}
 
       <div ref={scrollRef} className="h-72 overflow-auto px-3 py-2 font-mono text-[10px] leading-relaxed text-text-2">
         {lines.length === 0 && !running && <p className="italic text-text-4">Stream the pod logs to inspect them here.</p>}

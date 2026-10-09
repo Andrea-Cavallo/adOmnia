@@ -43,7 +43,7 @@ export function PodExec({ target }: { target: KubePodTarget }) {
             <div className="text-accent-light">$ {run.command}</div>
             {run.truncated && <div className="text-text-4">… output truncated to the last 1 MB</div>}
             {run.output && <pre className="whitespace-pre-wrap break-all text-text-2">{run.output}</pre>}
-            {run.error && <pre className="whitespace-pre-wrap break-all text-red-400">{run.error}</pre>}
+            {run.error && <pre className="whitespace-pre-wrap break-all text-error">{run.error}</pre>}
           </div>
         ))}
       </div>
@@ -112,7 +112,7 @@ export function PodFiles({ target }: { target: KubePodTarget }) {
         {busy && <Loader2 size={12} className="animate-spin self-center text-text-4" />}
         <input ref={picker} type="file" hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void upload(file) }} />
       </div>
-      {status && <p className={cn('break-all text-[10px]', status.tone === 'ok' ? 'text-success' : 'text-red-400')}>{status.text}</p>}
+      {status && <p className={cn('break-all text-[10px]', status.tone === 'ok' ? 'text-success' : 'text-error')}>{status.text}</p>}
       <p className="text-[10px] text-text-4">Needs <code>head</code> (and <code>sh</code> + <code>cat</code> for uploads) in the container. An upload replaces the file.</p>
     </div>
   )
@@ -155,7 +155,7 @@ export function ForwardForm({ context, namespace, target, defaultRemote, onStart
           {busy ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />} Forward
         </button>
       </div>
-      {error && <p className="break-all text-[10px] text-red-400">{error}</p>}
+      {error && <p className="break-all text-[10px] text-error">{error}</p>}
       <p className="text-[10px] text-text-4">Listens on 127.0.0.1 only. <span className="font-mono">{target}</span></p>
     </div>
   )

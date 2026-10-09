@@ -22,9 +22,9 @@ const TYPE_ICON_MAP: Record<
   { icon: typeof Terminal; className: string }
 > = {
   log: { icon: Terminal, className: 'text-text-2' },
-  error: { icon: AlertCircle, className: 'text-red-400' },
-  warn: { icon: AlertTriangle, className: 'text-yellow-400' },
-  info: { icon: Info, className: 'text-blue-400' },
+  error: { icon: AlertCircle, className: 'text-error' },
+  warn: { icon: AlertTriangle, className: 'text-warning' },
+  info: { icon: Info, className: 'text-info' },
   result: { icon: ChevronRight, className: 'text-accent' },
 }
 
@@ -179,8 +179,8 @@ export function ConsolePanel() {
               key={entry.id}
               className={cn(
                 'flex items-start gap-2 py-0.5 border-b border-border-1/50',
-                entry.type === 'error' && 'bg-red-500/5',
-                entry.type === 'warn' && 'bg-yellow-500/5'
+                entry.type === 'error' && 'bg-error/5',
+                entry.type === 'warn' && 'bg-warning/5'
               )}
             >
               <Icon size={12} className={cn('mt-0.5 flex-shrink-0', iconClass)} />
@@ -190,9 +190,9 @@ export function ConsolePanel() {
               <span
                 className={cn(
                   'flex-1 break-all whitespace-pre-wrap',
-                  entry.type === 'error' && 'text-red-400',
-                  entry.type === 'warn' && 'text-yellow-400',
-                  entry.type === 'info' && 'text-blue-400',
+                  entry.type === 'error' && 'text-error',
+                  entry.type === 'warn' && 'text-warning',
+                  entry.type === 'info' && 'text-info',
                   entry.type === 'result' && 'text-accent',
                   entry.type === 'log' && 'text-text-1'
                 )}
