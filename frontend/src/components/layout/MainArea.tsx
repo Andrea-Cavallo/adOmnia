@@ -375,7 +375,13 @@ function ActiveRequestBar({
           <VarHighlightInput
             value={liveUrl}
             onChange={(url) => onChange(requestWithUrlInput(request, url))}
-            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSend() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.repeat) {
+                e.preventDefault()
+                e.stopPropagation()
+                if (request.url && !loading) onSend()
+              }
+            }}
             resolvedVars={vars}
             hasActiveEnv={hasActiveEnv}
             placeholder="https://api.your-domain.com/v1/users or {{base_url}}/health"

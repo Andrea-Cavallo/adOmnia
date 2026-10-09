@@ -735,7 +735,13 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
             <VarHighlightInput
               value={liveUrl}
               onChange={handleUrlChange}
-              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSend() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.repeat) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleSend()
+                }
+              }}
               resolvedVars={resolvedVars}
               hasActiveEnv={hasActiveEnv}
               placeholder="https://api.your-domain.com/v1/users"

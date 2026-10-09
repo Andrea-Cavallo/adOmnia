@@ -386,7 +386,10 @@ function TreeNodeRow({
             onCancel={() => onSetEditing(null)}
           />
         ) : (
-          <span className="min-w-0 flex-1 truncate">
+          <span
+            className="min-w-0 flex-1 truncate"
+            onDoubleClick={(event) => { event.stopPropagation(); onSetEditing(node.id) }}
+          >
             {node.name}
           </span>
         )}
