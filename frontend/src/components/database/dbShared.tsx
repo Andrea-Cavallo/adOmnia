@@ -68,6 +68,11 @@ export interface SchemaItem {
   count: number | null
 }
 
+export interface SchemaColumn {
+  name: string
+  type: string
+}
+
 // ── storage keys ───────────────────────────────────────────────────────────
 export const STORAGE_BUCKET = 'database'
 export const CONNECTIONS_KEY = 'connections'
@@ -243,19 +248,20 @@ export function introspectionQuery(driver: DbDriver): string {
 /** One query listing every table column, for schema-aware completion. Empty for Mongo. */
 export function columnsQuery(driver: DbDriver): string {
   switch (driver) {
-    case 'sqlite':   return "SELECT m.name AS table_name, p.name AS column_name FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, p.cid"
-    case 'postgres': return "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, ordinal_position"
-    case 'mysql':    return "SELECT table_name AS table_name, column_name AS column_name FROM information_schema.columns WHERE table_schema=DATABASE() ORDER BY table_name, ordinal_position"
+    case 'sqlite':   return "SELECT m.name AS table_name, p.name AS column_name, p.type AS data_type FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, p.cid"
+    case 'postgres': return "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, ordinal_position"
+    case 'mysql':    return "SELECT table_name AS table_name, column_name AS column_name, column_type AS data_type FROM information_schema.columns WHERE table_schema=DATABASE() ORDER BY table_name, ordinal_position"
     default:         return ''
   }
 }
 
-export function extractColumns(result: DbResult): Record<string, string[]> {
-  const out: Record<string, string[]> = {}
+export function extractColumns(result: DbResult): Record<string, SchemaColumn[]> {
+  const out: Record<string, SchemaColumn[]> = {}
   for (const row of result?.rows ?? []) {
     const table = String(row.table_name ?? row.TABLE_NAME ?? '')
-    const column = String(row.column_name ?? row.COLUMN_NAME ?? '')
-    if (table && column) out[table] = [...(out[table] ?? []), column]
+    const name = String(row.column_name ?? row.COLUMN_NAME ?? '')
+    const type = String(row.data_type ?? row.DATA_TYPE ?? '')
+    if (table && name) out[table] = [...(out[table] ?? []), { name, type }]
   }
   return out
 }

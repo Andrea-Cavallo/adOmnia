@@ -10,6 +10,7 @@ import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { ConnectionsSidebar } from './ConnectionsSidebar'
 import { QueryEditor } from './QueryEditor'
 import { ResultsView } from './ResultsView'
+import { sqlAliases } from './sqlComplete'
 import { RightRail } from './RightRail'
 import { MongoWorkspace } from './mongo/MongoWorkspace'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
@@ -20,7 +21,7 @@ import {
   blankConnection, blankTab, browseQuery, columnsQuery, countQuery, csvEscape, download,
   createObjectQuery, defaultConnectionName, extractColumns, extractCount, extractNames, introspectionQuery,
   isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, parseQueryWorkspace, substituteVars, validateConnection,
-  type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type QueryWorkspaceState, type SchemaItem,
+  type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type QueryWorkspaceState, type SchemaColumn, type SchemaItem,
   upsertConnectionFromRef,
 } from './dbShared'
 import {
@@ -60,7 +61,7 @@ export function DatabasePanel() {
   const [mongoReload, setMongoReload] = useState(0)
 
   const [schemaItems, setSchemaItems] = useState<SchemaItem[]>([])
-  const [schemaColumns, setSchemaColumns] = useState<Record<string, string[]>>({})
+  const [schemaColumns, setSchemaColumns] = useState<Record<string, SchemaColumn[]>>({})
   const [schemaDb, setSchemaDb] = useState('')
   const [schemaLoading, setSchemaLoading] = useState(false)
   const [schemaError, setSchemaError] = useState('')
@@ -76,8 +77,12 @@ export function DatabasePanel() {
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
   const dangerous = isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
   const completionSchema = useMemo(
-    () => Object.fromEntries(schemaItems.map((t) => [t.name, schemaColumns[t.name] ?? []])),
+    () => Object.fromEntries(schemaItems.map((t) => [t.name, (schemaColumns[t.name] ?? []).map((c) => c.name)])),
     [schemaItems, schemaColumns],
+  )
+  const queryTables = useMemo(
+    () => (isMongo ? [] : [...new Set(sqlAliases(renderedQuery, completionSchema).values())]),
+    [isMongo, renderedQuery, completionSchema],
   )
 
   // ── auto-dismiss success toast ────────────────────────────────────────────
@@ -611,6 +616,8 @@ export function DatabasePanel() {
         schemaLoading={schemaLoading}
         schemaError={schemaError}
         schemaSearch={schemaSearch}
+        schemaColumns={schemaColumns}
+        queryTables={queryTables}
         currentQuery={query}
         onAddFavorite={toggleFavorite}
         onPickQuery={pickQuery}

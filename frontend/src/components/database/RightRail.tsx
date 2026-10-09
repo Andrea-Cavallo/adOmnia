@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
-import { Clock, Database, Plus, RefreshCw, Search, Star, Table2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight, Clock, Database, Plus, RefreshCw, Search, Star, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { relativeTime, type HistoryItem, type SchemaItem } from './dbShared'
+import { relativeTime, type HistoryItem, type SchemaColumn, type SchemaItem } from './dbShared'
 
 interface RightRailProps {
   width: number
@@ -13,6 +13,10 @@ interface RightRailProps {
   schemaLoading: boolean
   schemaError: string
   schemaSearch: string
+  /** table → columns with types (SQL engines only). */
+  schemaColumns: Record<string, SchemaColumn[]>
+  /** Tables the current query reads or writes: shown first, expanded. */
+  queryTables: string[]
   currentQuery: string
   onAddFavorite: () => void
   onPickQuery: (q: string) => void
@@ -42,13 +46,18 @@ function queryLabel(q: string): string {
 export function RightRail(props: RightRailProps) {
   const {
     width, isMongo, favorites, history,
-    schemaItems, schemaDb, schemaLoading, schemaError, schemaSearch, currentQuery,
+    schemaItems, schemaDb, schemaLoading, schemaError, schemaSearch, schemaColumns, queryTables, currentQuery,
     onAddFavorite, onPickQuery,
     onClearHistory, onRefreshSchema, onSchemaSearch, onPickCollection, onCreateObject,
   } = props
 
   const isFav = favorites.includes(currentQuery)
-  const filteredSchema = schemaItems.filter((s) => !schemaSearch.trim() || s.name.toLowerCase().includes(schemaSearch.toLowerCase()))
+  const [toggled, setToggled] = useState<Record<string, boolean>>({})
+  const inQuery = new Set(queryTables)
+  const filteredSchema = schemaItems
+    .filter((s) => !schemaSearch.trim() || s.name.toLowerCase().includes(schemaSearch.toLowerCase()))
+    .sort((a, b) => Number(inQuery.has(b.name)) - Number(inQuery.has(a.name)))
+  const isOpen = (name: string) => toggled[name] ?? inQuery.has(name)
 
   return (
     <aside className="flex flex-none flex-col overflow-y-auto bg-surface-1" style={{ width }}>
@@ -150,19 +159,45 @@ export function RightRail(props: RightRailProps) {
               {schemaLoading ? 'Loading...' : schemaError || 'Refresh to load schema.'}
             </div>
           ) : (
-            filteredSchema.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => onPickCollection(item.name)}
-                className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/10"
-              >
-                <Table2 size={13} className="flex-none text-text-4 group-hover:text-accent" />
-                <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-2 group-hover:text-text-1">{item.name}</span>
-                {item.count != null && (
-                  <span className="flex-none rounded bg-surface-3 px-1.5 py-px text-[10px] tabular-nums text-text-3">{item.count}</span>
-                )}
-              </button>
-            ))
+            filteredSchema.map((item) => {
+              const columns = schemaColumns[item.name] ?? []
+              const open = columns.length > 0 && isOpen(item.name)
+              const used = inQuery.has(item.name)
+              return (
+                <div key={item.name} className={cn('rounded-md', used && 'bg-accent/5 ring-1 ring-inset ring-accent/25')}>
+                  <div className="group flex w-full items-center gap-1 rounded-md pr-2 transition-colors hover:bg-accent/10">
+                    <button
+                      type="button"
+                      aria-label={open ? `Hide columns of ${item.name}` : `Show columns of ${item.name}`}
+                      aria-expanded={open}
+                      disabled={!columns.length}
+                      onClick={() => setToggled((t) => ({ ...t, [item.name]: !open }))}
+                      className="grid h-7 w-5 flex-none place-items-center text-text-4 hover:text-text-1 disabled:invisible"
+                    >
+                      {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
+                    <button type="button" onClick={() => onPickCollection(item.name)} title={`Browse ${item.name}`} className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left">
+                      <Table2 size={13} className={cn('flex-none group-hover:text-accent', used ? 'text-accent' : 'text-text-4')} />
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-2 group-hover:text-text-1">{item.name}</span>
+                    </button>
+                    {used && <span className="flex-none rounded bg-accent/15 px-1.5 py-px text-[10px] font-medium text-accent">in query</span>}
+                    {item.count != null && (
+                      <span className="flex-none rounded bg-surface-3 px-1.5 py-px text-[10px] tabular-nums text-text-3">{item.count}</span>
+                    )}
+                  </div>
+                  {open && (
+                    <ul className="pb-1.5 pl-7 pr-2">
+                      {columns.map((col) => (
+                        <li key={col.name} className="flex items-center gap-2 py-0.5 font-mono text-[10.5px]">
+                          <span className="min-w-0 flex-1 truncate text-text-2">{col.name}</span>
+                          <span className="flex-none truncate text-text-4">{col.type.toLowerCase()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
 
