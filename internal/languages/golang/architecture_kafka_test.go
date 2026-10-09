@@ -68,7 +68,7 @@ func TestKafkaGroupsSerializersAndTopicRoles(t *testing.T) {
 		byKind[entry.Kind] = entry
 	}
 	consumer, producer := byKind["kafka-consumer"], byKind["kafka-producer"]
-	if consumer.Group != "billing-worker" || consumer.Serializer != "JSON" {
+	if consumer.Group != "billing-worker" || consumer.Serializer != "JSON" || len(consumer.Topics) != 1 || consumer.Topics[0] != "invoices" {
 		t.Fatalf("consumer: %+v", consumer)
 	}
 	if producer.Group != "" || producer.TopicRoles["invoices.retry.1"] != "retry" || producer.TopicRoles["invoices.DLQ"] != "dead-letter" {

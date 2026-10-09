@@ -152,23 +152,67 @@ func kafkaGroupArg(packagePath, name string, args []ast.Expr) ast.Expr {
 	return nil
 }
 
-func (a *architecture) noteKafkaGroup(pkg, group string) {
-	if a.kafkaGroups[pkg] == nil {
-		a.kafkaGroups[pkg] = map[string]bool{}
+func noteIn(sets map[string]map[string]bool, pkg, value string) {
+	if sets[pkg] == nil {
+		sets[pkg] = map[string]bool{}
 	}
-	a.kafkaGroups[pkg][group] = true
+	sets[pkg][value] = true
 }
 
-// fillKafkaGroups dà il group ai consumer che lo ricevono già configurato: se il package
-// nomina un solo consumer group (di solito nel costruttore), è quello.
+func (a *architecture) noteKafkaGroup(pkg, group string) { noteIn(a.kafkaGroups, pkg, group) }
+
+// fillKafkaGroups completa i consumer che ricevono il reader già configurato (di solito in un
+// costruttore): se il package nomina un solo consumer group è quello, e i topic dei ReaderConfig
+// del package sono quelli letti.
 func (a *architecture) fillKafkaGroups() {
 	for i := range a.report.Entries {
 		entry := &a.report.Entries[i]
-		if entry.Kind != "kafka-consumer" || entry.Group != "" || len(a.kafkaGroups[entry.Package]) != 1 {
+		if entry.Kind != "kafka-consumer" {
 			continue
 		}
-		for group := range a.kafkaGroups[entry.Package] {
-			entry.Group = group
+		if groups := a.kafkaGroups[entry.Package]; entry.Group == "" && len(groups) == 1 {
+			for group := range groups {
+				entry.Group = group
+			}
+		}
+		if topics := a.readerTopics[entry.Package]; len(entry.Topics) == 0 && len(topics) > 0 {
+			for topic := range topics {
+				entry.Topics = append(entry.Topics, topic)
+				if role := kafkaTopicRole(topic); role != "" {
+					if entry.TopicRoles == nil {
+						entry.TopicRoles = map[string]string{}
+					}
+					entry.TopicRoles[topic] = role
+				}
+			}
+			sort.Strings(entry.Topics)
+		}
+	}
+}
+
+// noteReaderTopics registra i topic di un ReaderConfig (kafka-go): sono letti da chi usa il reader.
+func (a *architecture) noteReaderTopics(info *types.Info, pkg string, literal *ast.CompositeLit) {
+	named, _ := pointerElem(info.Types[literal].Type).(*types.Named)
+	if named == nil || named.Obj().Name() != "ReaderConfig" || named.Obj().Pkg() == nil || !strings.HasPrefix(named.Obj().Pkg().Path(), "github.com/segmentio/kafka-go") {
+		return
+	}
+	for _, element := range literal.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if key, isIdent := pair.Key.(*ast.Ident); !isIdent || key.Name != "Topic" && key.Name != "GroupTopics" {
+			continue
+		}
+		if topic, ok := constantString(info, pair.Value); ok && topic != "" {
+			noteIn(a.readerTopics, pkg, topic)
+		}
+		if list, ok := pair.Value.(*ast.CompositeLit); ok {
+			for _, item := range list.Elts {
+				if topic, ok := constantString(info, item); ok && topic != "" {
+					noteIn(a.readerTopics, pkg, topic)
+				}
+			}
 		}
 	}
 }
@@ -201,6 +245,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 			}
 		case *ast.CompositeLit:
 			a.collectCLI(file, node, function)
+			a.noteReaderTopics(info, file.pkg.PkgPath, node)
 		case *ast.CallExpr:
 			callee, _ := typeutil.Callee(info, node).(*types.Func)
 			if callee == nil {
