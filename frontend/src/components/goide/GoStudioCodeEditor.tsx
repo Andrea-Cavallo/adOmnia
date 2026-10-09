@@ -165,6 +165,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     const position = { lineNumber: revealLocation.line, column: revealLocation.column }
     editorRef.current.setPosition(position)
     editorRef.current.revealPositionInCenter(position)
+    // A jump to a line start (navigation from other panels) must show the indentation, not keep the old horizontal scroll.
+    if (position.column <= 1) editorRef.current.setScrollLeft(0)
     editorRef.current.focus()
     clearRevealLocation()
   }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
