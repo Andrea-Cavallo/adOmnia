@@ -60,11 +60,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 È il punto in cui **adOmnia diventa un ambiente di sviluppo completo per sistemi Go**.
 
-## §26 · Kafka / Broker Integration
-
-### Code ↔ broker
-
-
 ## §28 · WebSocket Integration
 
 - [x] Binary payload viewer. — *L'Inspector WebSocket mostra byte in Hex/ASCII, dimensione decodificata e anteprima limitata a 4 KiB; il Base64 originale resta copiabile.*
