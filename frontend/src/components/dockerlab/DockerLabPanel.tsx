@@ -32,21 +32,21 @@ interface Preset {
 }
 
 const PRESETS: Preset[] = [
-  { id: 'postgres',           icon: '🐘', name: 'PostgreSQL',           tag: 'database',     services: ['PostgreSQL'],                    description: 'PostgreSQL 16 Alpine con volume persistente.' },
-  { id: 'mysql',              icon: '🐬', name: 'MySQL',                tag: 'database',     services: ['MySQL'],                         description: 'MySQL 8.4 con volume persistente.' },
-  { id: 'mongodb',            icon: '🍃', name: 'MongoDB',              tag: 'database',     services: ['MongoDB'],                       description: 'MongoDB 7 con volume persistente.' },
-  { id: 'redis',              icon: '🔴', name: 'Redis',                tag: 'cache',        services: ['Redis'],                         description: 'Redis 7 Alpine con autenticazione e persistenza AOF.' },
-  { id: 'rabbitmq',           icon: '🐰', name: 'RabbitMQ',             tag: 'messaging',    services: ['RabbitMQ', 'Management UI'],     description: 'RabbitMQ 4 con management UI sulla porta 15672.' },
-  { id: 'kafka',              icon: '📨', name: 'Kafka',                tag: 'messaging',    services: ['Kafka'],                         description: 'Apache Kafka in modalità KRaft — nessun ZooKeeper.' },
-  { id: 'kafka+ui',           icon: '📊', name: 'Kafka + UI',           tag: 'combo',        services: ['Kafka', 'Kafka UI'],             description: 'Kafka KRaft con Provectus Kafka UI per gestire topics.' },
-  { id: 'kafka-ui',           icon: '🖥️', name: 'Kafka UI',             tag: 'ui',           services: ['Kafka UI'],                      description: 'Solo Kafka UI — da usare con un Kafka esistente.' },
-  { id: 'mock-server',        icon: '🎭', name: 'Mock Server',          tag: 'api',          services: ['JSON Server'],                   description: 'JSON Server per simulare REST API da un file db.json.' },
-  { id: 'rest-mock+postgres', icon: '🔄', name: 'REST Mock + Postgres', tag: 'combo',        services: ['JSON Server', 'PostgreSQL'],     description: 'Mock REST API + PostgreSQL — stack completo per test.' },
-  { id: 'rest-mock+kafka',    icon: '⚡', name: 'REST Mock + Kafka',    tag: 'combo',        services: ['JSON Server', 'Kafka'],          description: 'Mock REST API + Kafka per architetture event-driven.' },
-  { id: 'otel',               icon: '📡', name: 'OpenTelemetry',        tag: 'observability', services: ['OTel Collector'],              description: 'OTel Collector per trace, metriche e log in locale.' },
-  { id: 'jaeger',             icon: '🔍', name: 'Jaeger',               tag: 'observability', services: ['Jaeger All-in-One'],           description: 'Jaeger per visualizzare distributed traces via OTLP.' },
-  { id: 'prometheus',         icon: '🔥', name: 'Prometheus',           tag: 'observability', services: ['Prometheus'],                  description: 'Prometheus per raccogliere e analizzare metriche.' },
-  { id: 'grafana',            icon: '📈', name: 'Grafana',              tag: 'observability', services: ['Grafana'],                      description: 'Grafana per dashboard di visualizzazione metriche.' },
+  { id: 'postgres',           icon: '🐘', name: 'PostgreSQL',           tag: 'database',     services: ['PostgreSQL'],                    description: 'PostgreSQL 16 Alpine with a persistent volume.' },
+  { id: 'mysql',              icon: '🐬', name: 'MySQL',                tag: 'database',     services: ['MySQL'],                         description: 'MySQL 8.4 with a persistent volume.' },
+  { id: 'mongodb',            icon: '🍃', name: 'MongoDB',              tag: 'database',     services: ['MongoDB'],                       description: 'MongoDB 7 with a persistent volume.' },
+  { id: 'redis',              icon: '🔴', name: 'Redis',                tag: 'cache',        services: ['Redis'],                         description: 'Redis 7 Alpine with authentication and AOF persistence.' },
+  { id: 'rabbitmq',           icon: '🐰', name: 'RabbitMQ',             tag: 'messaging',    services: ['RabbitMQ', 'Management UI'],     description: 'RabbitMQ 4 with the management UI on port 15672.' },
+  { id: 'kafka',              icon: '📨', name: 'Kafka',                tag: 'messaging',    services: ['Kafka'],                         description: 'Apache Kafka in KRaft mode, no ZooKeeper.' },
+  { id: 'kafka+ui',           icon: '📊', name: 'Kafka + UI',           tag: 'combo',        services: ['Kafka', 'Kafka UI'],             description: 'Kafka KRaft with Provectus Kafka UI to manage topics.' },
+  { id: 'kafka-ui',           icon: '🖥️', name: 'Kafka UI',             tag: 'ui',           services: ['Kafka UI'],                      description: 'Kafka UI only, for an existing Kafka.' },
+  { id: 'mock-server',        icon: '🎭', name: 'Mock Server',          tag: 'api',          services: ['JSON Server'],                   description: 'JSON Server serving a REST API from a db.json file.' },
+  { id: 'rest-mock+postgres', icon: '🔄', name: 'REST Mock + Postgres', tag: 'combo',        services: ['JSON Server', 'PostgreSQL'],     description: 'Mock REST API with PostgreSQL: a complete test stack.' },
+  { id: 'rest-mock+kafka',    icon: '⚡', name: 'REST Mock + Kafka',    tag: 'combo',        services: ['JSON Server', 'Kafka'],          description: 'Mock REST API with Kafka for event-driven setups.' },
+  { id: 'otel',               icon: '📡', name: 'OpenTelemetry',        tag: 'observability', services: ['OTel Collector'],              description: 'OTel Collector for local traces, metrics and logs.' },
+  { id: 'jaeger',             icon: '🔍', name: 'Jaeger',               tag: 'observability', services: ['Jaeger All-in-One'],           description: 'Jaeger to view distributed traces over OTLP.' },
+  { id: 'prometheus',         icon: '🔥', name: 'Prometheus',           tag: 'observability', services: ['Prometheus'],                  description: 'Prometheus to collect and query metrics.' },
+  { id: 'grafana',            icon: '📈', name: 'Grafana',              tag: 'observability', services: ['Grafana'],                      description: 'Grafana dashboards for your metrics.' },
 ]
 
 type TabId = 'compose' | 'env' | 'readme' | 'status' | 'logs'
@@ -335,7 +335,7 @@ export function DockerLabPanel() {
                   onClick={() => selectPreset(preset)}
                   className="flex-1 text-[10px] text-text-4 hover:text-text-2 text-left"
                 >
-                  Vedi config
+                  View config
                 </button>
                 <button
                   onClick={() => { void selectPreset(preset) }}
