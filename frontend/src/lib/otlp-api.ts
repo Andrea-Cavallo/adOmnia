@@ -78,6 +78,8 @@ export const stopOtlp = (port: number | null) => call<OtlpStatus>(port, '/otlp/s
 export const clearOtlp = (port: number | null) => call<OtlpStatus>(port, '/otlp/clear', {})
 export const listOtlpTraces = (port: number | null, limit = 200) => call<OtlpTraceSummary[]>(port, `/otlp/traces?limit=${limit}`)
 export const getOtlpTrace = (port: number | null, traceId: string) => call<OtlpSpan[]>(port, `/otlp/trace?id=${encodeURIComponent(traceId)}`)
+/** Loads a saved trace ({ traceId, spans }, as Trace Studio saves it or a reproduction's trace.json). */
+export const importOtlpTrace = (port: number | null, spans: OtlpSpan[]) => call<{ added: number }>(port, '/otlp/import', { spans })
 export const getOtlpLens = (port: number | null) => call<OtlpLensStat[]>(port, '/otlp/lens')
 
 export interface OtlpMapNode {

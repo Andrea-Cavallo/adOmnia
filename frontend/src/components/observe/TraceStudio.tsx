@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Code2, Copy, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2 } from 'lucide-react'
+import { Code2, Copy, Download, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2, Upload } from 'lucide-react'
+import { readFileSmart, saveBase64File } from '@/lib/fileUtils'
 import { openTraceLogs } from '@/lib/otlp-logs'
 import { parseStackTrace } from '@/lib/loginspector/stackTrace'
 import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
-import { clearOtlp, getOtlpMap, getOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
+import { clearOtlp, getOtlpMap, getOtlpTrace, importOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
 import { ServiceMapView } from './ServiceMapView'
 import { traceTreeRows } from './traceTree'
 import { compareTraces, serviceColor, spanInsights, spanSource, type SpanInsight } from './traceStudioModel'
@@ -148,6 +149,33 @@ export function TraceStudio() {
     void Promise.all(compare.map((id) => getOtlpTrace(port, id))).then(([left, right]) => setComparison(compareTraces(left, right)))
   }, [port, compare])
 
+  const saveTrace = async () => {
+    if (!spans.length) return
+    const root = spans.find((span) => !span.parentSpanId) ?? spans[0]
+    const name = `trace-${root.name.replace(/[^\w.-]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'request'}-${root.traceId.slice(-8)}.json`
+    const text = JSON.stringify({ traceId: root.traceId, spans }, null, 2)
+    try {
+      await saveBase64File(name, btoa(unescape(encodeURIComponent(text))))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const loadTrace = async (file: File) => {
+    setError('')
+    try {
+      const saved = JSON.parse((await readFileSmart(file)).text) as { spans?: OtlpSpan[] }
+      if (!Array.isArray(saved.spans) || !saved.spans.length) throw new Error('Not a saved trace: no spans.')
+      await importOtlpTrace(port, saved.spans)
+      await refresh()
+      setSelected(saved.spans[0].traceId)
+      setCompare([])
+      setView('traces')
+    } catch (err) {
+      setError(`${file.name}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   const toggle = async () => {
     setError('')
     const next = status?.running ? await stopOtlp(port) : await startOtlp(port)
@@ -180,6 +208,11 @@ export function TraceStudio() {
         <button type="button" onClick={() => void navigator.clipboard?.writeText(ENDPOINT_HINT)} title="Copy the environment variable for the OpenTelemetry SDK" className="flex items-center gap-1 rounded border border-border-2 px-1.5 py-0.5 font-mono text-[10px] text-text-3 hover:text-text-1">
           <Copy size={10} /> {ENDPOINT_HINT}
         </button>
+        <button type="button" onClick={() => void saveTrace()} disabled={!spans.length} title="Save the selected trace to a file, to load it again later (before/after a fix)" className="flex h-6 items-center gap-1 rounded border border-border-2 px-1.5 text-[10px] text-text-2 hover:border-accent hover:text-accent disabled:opacity-40"><Download size={10} /> Save</button>
+        <label title="Load a saved trace (Trace Studio file or a reproduction's trace.json) and compare it with a new one" className="flex h-6 cursor-pointer items-center gap-1 rounded border border-border-2 px-1.5 text-[10px] text-text-2 hover:border-accent hover:text-accent">
+          <Upload size={10} /> Load
+          <input type="file" accept=".json,application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void loadTrace(file) }} />
+        </label>
         <span className="ml-auto flex overflow-hidden rounded border border-border-2">
           {(['traces', 'map'] as const).map((value) => (
             <button key={value} type="button" onClick={() => setView(value)} className={cn('h-6 px-2 text-[10px] font-medium capitalize', view === value ? 'bg-accent text-white' : 'text-text-3 hover:bg-surface-2 hover:text-text-1')}>{value === 'map' ? 'Service map' : 'Traces'}</button>

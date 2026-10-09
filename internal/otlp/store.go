@@ -74,6 +74,21 @@ func (s *Store) Add(spans []Span) {
 	}
 }
 
+// Import loads saved traces (Trace Studio "Save", a reproduction's trace.json). A trace already in
+// the store is kept as is, so loading the same file twice does not duplicate its spans.
+func (s *Store) Import(spans []Span) (added int) {
+	s.mu.RLock()
+	fresh := make([]Span, 0, len(spans))
+	for _, span := range spans {
+		if _, exists := s.traces[span.TraceID]; !exists && span.TraceID != "" && span.SpanID != "" {
+			fresh = append(fresh, span)
+		}
+	}
+	s.mu.RUnlock()
+	s.Add(fresh)
+	return len(fresh)
+}
+
 func (s *Store) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
