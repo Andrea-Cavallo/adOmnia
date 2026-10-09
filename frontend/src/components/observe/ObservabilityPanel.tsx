@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { traceTreeRows } from './traceTree'
+import { TraceStudio } from './TraceStudio'
 import { debugRunForTrace } from './traceDebugLink'
 import { structuredLiveTraceEntries } from './liveTraceLogs'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -213,6 +214,8 @@ export function ObservabilityPanel() {
   const [entries, setEntries] = useState<BackendDevLogEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [live, setLive] = useState(false)
+  // Logs read from the dev log files; Traces are real OpenTelemetry spans received over OTLP.
+  const [mode, setMode] = useState<'logs' | 'traces'>('logs')
   const [selectedTraceId, setSelectedTraceId] = useState('')
   const [selectedSpanId, setSelectedSpanId] = useState('')
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -370,6 +373,24 @@ export function ObservabilityPanel() {
     setFilters((p) => ({ ...p, [key]: key === 'level' || key === 'source' ? 'all' : '' }))
   }
 
+
+  if (mode === 'traces') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden bg-surface-1">
+        <div className="flex items-center h-10 px-3 gap-2 border-b border-border-1 bg-surface-0 flex-shrink-0">
+          <Activity size={14} className="text-accent flex-shrink-0" />
+          <span className="text-[10px] font-semibold text-text-1 uppercase tracking-wider flex-shrink-0">Observability</span>
+        <div className="flex flex-shrink-0 overflow-hidden rounded border border-border-1">
+          {(['logs', 'traces'] as const).map((value) => (
+            <button key={value} type="button" onClick={() => setMode(value)} className={cn('h-6 px-2 text-[10px] font-medium capitalize', mode === value ? 'bg-accent text-white' : 'text-text-3 hover:bg-surface-2 hover:text-text-1')}>{value}</button>
+          ))}
+        </div>
+        </div>
+        <TraceStudio />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-surface-1">
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
@@ -378,6 +399,11 @@ export function ObservabilityPanel() {
         <span className="text-[10px] font-semibold text-text-1 uppercase tracking-wider flex-shrink-0">
           Observability
         </span>
+        <div className="flex flex-shrink-0 overflow-hidden rounded border border-border-1">
+          {(['logs', 'traces'] as const).map((value) => (
+            <button key={value} type="button" onClick={() => setMode(value)} className={cn('h-6 px-2 text-[10px] font-medium capitalize', mode === value ? 'bg-accent text-white' : 'text-text-3 hover:bg-surface-2 hover:text-text-1')}>{value}</button>
+          ))}
+        </div>
 
         {/* File selector */}
         <div className="relative flex-shrink-0">

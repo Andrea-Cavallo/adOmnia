@@ -57,6 +57,12 @@ require golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 require github.com/tetratelabs/wazero v1.12.0
 
 require (
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.11.1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
+)
+
+require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
@@ -120,7 +126,7 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect

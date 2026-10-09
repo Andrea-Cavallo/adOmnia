@@ -14,6 +14,7 @@ import (
 	"adomnia/internal/mock"
 	"adomnia/internal/nettools"
 	"adomnia/internal/oauth"
+	"adomnia/internal/otlp"
 	"adomnia/internal/proxy"
 	"adomnia/internal/sourcemap"
 	"adomnia/internal/sse"
@@ -35,6 +36,7 @@ func Stop() {
 	logstream.CloseAll()
 	kube.CloseAll()
 	logindex.CloseAll()
+	otlp.Shutdown()
 	if httpSidecar == nil {
 		return
 	}
@@ -118,6 +120,9 @@ func Start() int {
 
 	// DevLogs streaming
 	devlog.RegisterHandlers(mux)
+
+	// Local OpenTelemetry trace receiver (listens only after the user starts it)
+	otlp.RegisterHandlers(mux)
 
 	handler := WithSecurity(mux)
 
