@@ -3,8 +3,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import { ancestorDirs, findProtoType, goHandlerFor, importCandidates, protocArguments, protoDeclarations, protoImports, protoRpcs, type ProtoRpc } from '@/lib/goide/protoLinks'
-import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool } from '@/lib/goide-api'
-import { showEntityNotice } from '@/lib/entities/notice'
+import { detectGoIDEGoTool, installGoIDEGoModule, listGoIDEDirectory, runGoIDEGoTool } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { readDevContextFile } from '@/lib/devcontext-api'
@@ -13,6 +12,8 @@ import { openArchSite } from './GoStudioInterfaceExplorer'
 
 // .proto → Go: on every rpc, the Go method that serves it, Debug and a call in the gRPC client.
 const LANGUAGE = 'proto'
+// Go Studio shows action errors in its own banner.
+const notify = (message: string) => useGoIDEStore.setState({ error: message })
 const HANDLER_COMMAND = 'goStudio.protoHandler'
 const CALL_COMMAND = 'goStudio.protoCall'
 const DEBUG_COMMAND = 'goStudio.protoDebug'
@@ -123,8 +124,9 @@ async function protoDefinition(model: monaco.editor.ITextModel, position: monaco
   return []
 }
 
-async function exists(sessionId: string, relativePath: string): Promise<boolean> {
-  return readDevContextFile(sessionId, relativePath).then(() => true, () => false)
+async function hasFile(sessionId: string, dir: string, name: string): Promise<boolean> {
+  const entries = await listGoIDEDirectory(sessionId, dir, true).catch(() => [])
+  return entries.some((entry) => !entry.directory && entry.name === name)
 }
 
 function showRun(sessionId: string, executionId: string): void {
@@ -138,19 +140,18 @@ async function generateGo(documentId: string): Promise<void> {
   if (!document) return
   const { sessionId, relativePath } = document.document
   const dirs = ancestorDirs(relativePath)
-  const join = (dir: string, name: string) => (dir ? `${dir}/${name}` : name)
   try {
     for (const dir of dirs) {
-      if (!(await exists(sessionId, join(dir, 'buf.gen.yaml')))) continue
+      if (!(await hasFile(sessionId, dir, 'buf.gen.yaml'))) continue
       const buf = await detectGoIDEGoTool(sessionId, 'buf')
       if (!buf.available) break // fall back to protoc
       return showRun(sessionId, (await runGoIDEGoTool(sessionId, 'buf', ['generate'], dir)).id)
     }
     let moduleDir: string | null = null
-    for (const dir of dirs) if (moduleDir === null && await exists(sessionId, join(dir, 'go.mod'))) moduleDir = dir
-    if (moduleDir === null) return showEntityNotice('No go.mod above this .proto: open the Go module that owns it.')
+    for (const dir of dirs) if (moduleDir === null && await hasFile(sessionId, dir, 'go.mod')) moduleDir = dir
+    if (moduleDir === null) return notify('No go.mod above this .proto: open the Go module that owns it.')
     const protoc = await detectGoIDEGoTool(sessionId, 'protoc')
-    if (!protoc.available) return showEntityNotice('protoc is not installed: get it from https://protobuf.dev/installation/ (or add buf.gen.yaml and install buf).')
+    if (!protoc.available) return notify('protoc is not installed: get it from https://protobuf.dev/installation/ (or add buf.gen.yaml and install buf).')
     const needed = protoRpcs(document.buffer).length > 0 ? [PLUGINS.go, PLUGINS.grpc] : [PLUGINS.go]
     const found = await Promise.all(needed.map((plugin) => detectGoIDEGoTool(sessionId, plugin.binary)))
     const missing = needed.filter((_, index) => !found[index].available)
@@ -164,7 +165,7 @@ async function generateGo(documentId: string): Promise<void> {
     const args = protocArguments(protoPath, { go: found[0].path ?? PLUGINS.go.binary, grpc: found[1]?.path })
     showRun(sessionId, (await runGoIDEGoTool(sessionId, 'protoc', args, moduleDir)).id)
   } catch (error) {
-    showEntityNotice(`Generate Go code failed: ${error instanceof Error ? error.message : String(error)}`)
+    notify(`Generate Go code failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
