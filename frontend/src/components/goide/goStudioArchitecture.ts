@@ -167,6 +167,36 @@ export function groupEntries(entries: readonly GoIDEArchEntry[], query = ''): Ar
   })).filter((group) => group.entries.length > 0)
 }
 
+export interface KafkaTopicUse {
+  topic: string
+  /** 'retry' | 'dead-letter' when the name follows those conventions. */
+  role?: string
+  producers: GoIDEArchEntry[]
+  consumers: GoIDEArchEntry[]
+  groups: string[]
+}
+
+/** Topic → funzioni che producono e consumano, con i consumer group: la vista inversa delle entry Kafka. */
+export function kafkaTopics(entries: readonly GoIDEArchEntry[], query = ''): KafkaTopicUse[] {
+  const needle = query.trim().toLowerCase()
+  const byTopic = new Map<string, KafkaTopicUse>()
+  for (const entry of entries) {
+    if (entry.kind !== 'kafka-producer' && entry.kind !== 'kafka-consumer') continue
+    for (const topic of entry.topics ?? []) {
+      const use = byTopic.get(topic) ?? { topic, role: entry.topicRoles?.[topic], producers: [], consumers: [], groups: [] }
+      if (entry.kind === 'kafka-producer') use.producers.push(entry)
+      else {
+        use.consumers.push(entry)
+        if (entry.group && !use.groups.includes(entry.group)) use.groups.push(entry.group)
+      }
+      byTopic.set(topic, use)
+    }
+  }
+  return [...byTopic.values()]
+    .filter((use) => !needle || `${use.topic} ${[...use.producers, ...use.consumers].map((e) => e.name).join(' ')} ${use.groups.join(' ')}`.toLowerCase().includes(needle))
+    .sort((a, b) => a.topic.localeCompare(b.topic))
+}
+
 /** Entità adOmnia per aprire il servizio nello studio giusto (API client, gRPC, Broker Studio). */
 export function entityRefsForEntry(entry: GoIDEArchEntry, sessionId: string): EntityRef[] {
   const source = entry.site.relativePath ? { file: entry.site.relativePath, line: entry.site.line } : undefined

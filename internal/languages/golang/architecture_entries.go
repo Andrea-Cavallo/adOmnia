@@ -6,6 +6,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -22,6 +23,10 @@ type ArchEntry struct {
 	Package  string   `json:"package"`
 	Function string   `json:"function,omitempty"`
 	Topics   []string `json:"topics,omitempty"`
+	// Solo Kafka: consumer group, formato dei messaggi e topic di retry/dead-letter riconosciuti dal nome.
+	Group      string            `json:"group,omitempty"`
+	Serializer string            `json:"serializer,omitempty"`
+	TopicRoles map[string]string `json:"topicRoles,omitempty"`
 	Site     ArchSite `json:"site"`
 	// Solo per le route HTTP: handler, middleware e corpi di richiesta e risposta riconosciuti.
 	Handler     string    `json:"handler,omitempty"`
@@ -110,11 +115,76 @@ func receiverPackage(callee *types.Func) string {
 	return callee.Pkg().Path()
 }
 
+// Serializzatori riconosciuti dal package della funzione chiamata accanto al produce/consume.
+var kafkaSerializers = []struct{ prefix, label string }{
+	{"encoding/json", "JSON"}, {"github.com/goccy/go-json", "JSON"}, {"github.com/json-iterator/go", "JSON"},
+	{"google.golang.org/protobuf/proto", "Protobuf"}, {"github.com/golang/protobuf/proto", "Protobuf"}, {"github.com/gogo/protobuf/proto", "Protobuf"},
+	{"github.com/linkedin/goavro", "Avro"}, {"github.com/hamba/avro", "Avro"},
+	{"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry", "Schema Registry"}, {"github.com/riferrei/srclient", "Schema Registry"},
+	{"github.com/vmihailenco/msgpack", "MessagePack"}, {"encoding/xml", "XML"}, {"encoding/gob", "gob"},
+}
+
+var (
+	deadLetterTopic = regexp.MustCompile(`(?i)(^|[._-])(dlq|dlt|dead[._-]?letters?)([._-]|$)`)
+	retryTopic      = regexp.MustCompile(`(?i)(^|[._-])retr(y|ies)([._-]?\d+[a-z]*)?([._-]|$)`)
+)
+
+// kafkaTopicRole classifica un topic come retry o dead-letter dalle convenzioni di nome più diffuse.
+func kafkaTopicRole(topic string) string {
+	switch {
+	case deadLetterTopic.MatchString(topic):
+		return "dead-letter"
+	case retryTopic.MatchString(topic):
+		return "retry"
+	}
+	return ""
+}
+
+// kafkaGroupArg restituisce l'argomento che porta il consumer group nelle API note.
+func kafkaGroupArg(packagePath, name string, args []ast.Expr) ast.Expr {
+	switch {
+	case strings.HasSuffix(packagePath, "/sarama") && name == "NewConsumerGroup" && len(args) >= 2:
+		return args[1]
+	case strings.HasSuffix(packagePath, "/sarama") && name == "NewConsumerGroupFromClient" && len(args) >= 1,
+		strings.HasPrefix(packagePath, "github.com/twmb/franz-go") && name == "ConsumerGroup" && len(args) >= 1:
+		return args[0]
+	}
+	return nil
+}
+
+func (a *architecture) noteKafkaGroup(pkg, group string) {
+	if a.kafkaGroups[pkg] == nil {
+		a.kafkaGroups[pkg] = map[string]bool{}
+	}
+	a.kafkaGroups[pkg][group] = true
+}
+
+// fillKafkaGroups dà il group ai consumer che lo ricevono già configurato: se il package
+// nomina un solo consumer group (di solito nel costruttore), è quello.
+func (a *architecture) fillKafkaGroups() {
+	for i := range a.report.Entries {
+		entry := &a.report.Entries[i]
+		if entry.Kind != "kafka-consumer" || entry.Group != "" || len(a.kafkaGroups[entry.Package]) != 1 {
+			continue
+		}
+		for group := range a.kafkaGroups[entry.Package] {
+			entry.Group = group
+		}
+	}
+}
+
 func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, function string) {
 	info := file.pkg.TypesInfo
 	kafka := map[string]string{} // kind → libreria
 	var kafkaSite token.Pos
 	topics := map[string]bool{}
+	group, serializer := "", ""
+	setGroup := func(expression ast.Expr) {
+		if value, ok := constantString(info, expression); ok && value != "" {
+			group = value
+			a.noteKafkaGroup(file.pkg.PkgPath, value)
+		}
+	}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.KeyValueExpr:
@@ -122,6 +192,12 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 				if topic, ok := constantString(info, node.Value); ok {
 					topics[topic] = true
 				}
+			}
+			if key, ok := node.Key.(*ast.Ident); ok && key.Name == "GroupID" {
+				setGroup(node.Value)
+			}
+			if key, ok := constantString(info, node.Key); ok && key == "group.id" { // confluent ConfigMap
+				setGroup(node.Value)
 			}
 		case *ast.CompositeLit:
 			a.collectCLI(file, node, function)
@@ -131,6 +207,14 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 				return true
 			}
 			packagePath, name := receiverPackage(callee), callee.Name()
+			if argument := kafkaGroupArg(packagePath, name, node.Args); argument != nil {
+				setGroup(argument)
+			}
+			for _, candidate := range kafkaSerializers {
+				if serializer == "" && strings.HasPrefix(packagePath, candidate.prefix) {
+					serializer = candidate.label
+				}
+			}
 			site := a.site(node.Pos())
 			base := ArchEntry{Package: file.pkg.PkgPath, Function: function, Site: site}
 			switch {
@@ -179,8 +263,21 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 		names = append(names, topic)
 	}
 	sort.Strings(names)
+	var roles map[string]string
+	for _, topic := range names {
+		if role := kafkaTopicRole(topic); role != "" {
+			if roles == nil {
+				roles = map[string]string{}
+			}
+			roles[topic] = role
+		}
+	}
 	for kind, library := range kafka {
-		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Site: a.site(kafkaSite)})
+		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Serializer: serializer, TopicRoles: roles, Site: a.site(kafkaSite)}
+		if kind == "kafka-consumer" {
+			entry.Group = group
+		}
+		a.addEntry(entry)
 	}
 }
 

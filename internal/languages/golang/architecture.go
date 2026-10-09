@@ -167,11 +167,12 @@ type architecture struct {
 	functions      map[string]*ArchFunction
 	calls          map[[2]string]int
 	pkgCalls       map[[2]string]int
+	kafkaGroups    map[string]map[string]bool // package → consumer groups named in it
 }
 
 // AnalyzeArchitecture costruisce il modello dell'architettura dai package caricati.
 func AnalyzeArchitecture(fset *token.FileSet, loaded []*packages.Package, read func(string) ([]byte, error)) ArchitectureReport {
-	a := &architecture{fset: fset, files: typedFiles(loaded, read), project: map[string]bool{}, functions: map[string]*ArchFunction{}, calls: map[[2]string]int{}, pkgCalls: map[[2]string]int{}}
+	a := &architecture{fset: fset, files: typedFiles(loaded, read), project: map[string]bool{}, functions: map[string]*ArchFunction{}, calls: map[[2]string]int{}, pkgCalls: map[[2]string]int{}, kafkaGroups: map[string]map[string]bool{}}
 	a.decls, a.middlewareSeen, a.schemaNames, a.schemaTaken = map[*types.Func]funcDecl{}, map[string]bool{}, map[string]string{}, map[string]bool{}
 	for _, file := range a.files {
 		a.project[file.pkg.PkgPath] = true
@@ -340,6 +341,7 @@ func (a *architecture) collectCalls(file typedFile) {
 }
 
 func (a *architecture) finish() {
+	a.fillKafkaGroups()
 	for _, function := range a.functions {
 		a.report.Functions = append(a.report.Functions, *function)
 	}

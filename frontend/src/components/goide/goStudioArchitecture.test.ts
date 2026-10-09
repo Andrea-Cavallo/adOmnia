@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, isWrite, packageGraph, queriesByTable, searchFunctions, shortPackage } from './goStudioArchitecture'
+import type { GoIDEArchEntry } from '@/lib/goide-api'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, kafkaTopics, isWrite, packageGraph, queriesByTable, searchFunctions, shortPackage } from './goStudioArchitecture'
 
 const site = (relativePath: string, line = 1) => ({ relativePath, line, column: 1 })
 const pkg = (path: string) => ({ path, name: path.split('/').pop()!, module: 'example.com/shop', files: 2, site: site(`${path}.go`), external: [], std: 1 })
@@ -74,5 +75,23 @@ describe('data access', () => {
     ])
     expect(queriesByTable([q('List', ['orders'])], 'cust')).toEqual([])
     expect(isWrite(q('x', [], { sql: '  INSERT INTO a VALUES (1)' }))).toBe(true)
+  })
+})
+
+describe('kafka topics', () => {
+  it('inverts entries into topic → producers and consumers with groups and roles', () => {
+    const entries = [
+      { kind: 'kafka-producer', name: 'Publish', package: 'p', topics: ['orders', 'orders.DLQ'], topicRoles: { 'orders.DLQ': 'dead-letter' }, site: site('a.go') },
+      { kind: 'kafka-consumer', name: 'Consume', package: 'p', topics: ['orders'], group: 'billing', site: site('b.go') },
+      { kind: 'kafka-consumer', name: 'Audit', package: 'p', topics: ['orders'], group: 'audit', site: site('c.go') },
+      { kind: 'http', name: 'GET /x', package: 'p', site: site('d.go') },
+    ] as GoIDEArchEntry[]
+    const topics = kafkaTopics(entries)
+    expect(topics.map((t) => t.topic)).toEqual(['orders', 'orders.DLQ'])
+    expect(topics[0].producers.map((e) => e.name)).toEqual(['Publish'])
+    expect(topics[0].consumers.map((e) => e.name)).toEqual(['Consume', 'Audit'])
+    expect(topics[0].groups).toEqual(['billing', 'audit'])
+    expect(topics[1].role).toBe('dead-letter')
+    expect(kafkaTopics(entries, 'audit').map((t) => t.topic)).toEqual(['orders'])
   })
 })

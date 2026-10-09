@@ -4,7 +4,7 @@ import { type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession
 import { openEntity } from '@/lib/entities/router'
 import { showModule } from '@/lib/moduleRouting'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, kafkaTopics, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioDataAccessView } from './GoStudioDataAccessView'
@@ -136,11 +136,47 @@ function CallsView({ report, query }: { report: GoIDEArchitecture; query: string
   )
 }
 
+const TOPIC_ROLE_STYLE: Record<string, string> = { 'dead-letter': 'bg-error/10 text-error', retry: 'bg-warning/10 text-warning' }
+const TOPIC_ROLE_LABEL: Record<string, string> = { 'dead-letter': 'DLQ', retry: 'retry' }
+
+function TopicRole({ role }: { role?: string }) {
+  if (!role) return null
+  return <span className={`shrink-0 rounded px-1 text-[10px] font-semibold ${TOPIC_ROLE_STYLE[role] ?? ''}`} title={role === 'dead-letter' ? 'Dead-letter topic (recognized by its name)' : 'Retry topic (recognized by its name)'}>{TOPIC_ROLE_LABEL[role] ?? role}</span>
+}
+
+/** Topic → funzioni che lo producono e lo consumano, con i consumer group. */
+function KafkaTopicsSection({ entries, query, sessionId }: { entries: GoIDEArchitecture['entries']; query: string; sessionId: string }) {
+  const topics = useMemo(() => kafkaTopics(entries, query), [entries, query])
+  if (!topics.length) return null
+  return (
+    <section className="mb-2">
+      <h4 className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-4">Kafka topics ({topics.length})</h4>
+      {topics.map((use) => (
+        <div key={use.topic} className="border-b border-border-1 px-2 py-1 last:border-b-0">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-mono text-text-1">{use.topic}</span>
+            <TopicRole role={use.role} />
+            {use.groups.map((group) => <span key={group} className="shrink-0 rounded bg-accent/10 px-1 text-[10px] text-accent" title="Consumer group">group {group}</span>)}
+            <button type="button" onClick={() => void openEntity({ sessionId, kind: 'topic', id: `topic:${use.topic}`, label: use.topic, attrs: { broker: 'kafka' } })} title="Open in Broker Studio" className="ml-auto flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">Broker Studio <ArrowUpRight size={10} aria-hidden="true" /></button>
+          </div>
+          {([['produced by', use.producers], ['consumed by', use.consumers]] as const).map(([label, list]) => (
+            <div key={label} className="flex flex-wrap items-center gap-x-2 pl-3 text-[11px]">
+              <span className="w-20 shrink-0 text-[10px] text-text-4">{label}</span>
+              {list.length ? list.map((entry, index) => <SiteLink key={index} site={entry.site} label={entry.name} />) : <span className="text-[10px] text-text-4">— not in this project</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function ServicesView({ report, query, sessionId }: { report: GoIDEArchitecture; query: string; sessionId: string }) {
   const groups = useMemo(() => groupEntries(report.entries, query), [query, report.entries])
   if (!groups.length) return <p className="p-3 text-text-4">No entry points or services{query ? ' match the filter' : ''}.</p>
   return (
     <div className="min-h-0 flex-1 overflow-auto py-1">
+      <KafkaTopicsSection entries={report.entries} query={query} sessionId={sessionId} />
       {groups.map((group) => (
         <section key={group.kind} className="mb-2">
           <h4 className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-4">{group.title} ({group.entries.length})</h4>
@@ -155,10 +191,12 @@ function ServicesView({ report, query, sessionId }: { report: GoIDEArchitecture;
                 {entry.response && <span className="shrink-0 rounded bg-success/10 px-1 font-mono text-[10px] text-success" title="Response body written by the handler">out: {entry.response.array ? '[]' : ''}{entry.response.ref || entry.response.type}</span>}
                 {(entry.middleware ?? []).length > 0 && <span className="truncate text-[10px] text-text-4" title="Middleware, outermost first">via {(entry.middleware ?? []).join(' › ')}</span>}
                 {!entry.handler && entry.function && entry.function !== entry.name && <span className="truncate font-mono text-[10px] text-text-4">{entry.function}</span>}
+                {entry.group && <span className="shrink-0 rounded bg-accent/10 px-1 text-[10px] text-accent" title="Consumer group">group {entry.group}</span>}
+                {entry.serializer && <span className="shrink-0 rounded bg-surface-3 px-1 text-[10px] text-text-2" title="Message format, from the encoding calls next to the produce/consume call">{entry.serializer}</span>}
                 <span className="ml-auto flex shrink-0 gap-1">
                   {refs.map((ref) => (
                     <button key={ref.id} type="button" onClick={() => void openEntity(ref)} title={ref.kind === 'route' ? 'Send in API Client' : ref.kind === 'grpc' ? 'Call in gRPC client' : 'Open in Broker Studio'} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">
-                      {ref.kind === 'topic' ? ref.label : ref.kind === 'route' ? 'API Client' : 'gRPC client'} <ArrowUpRight size={10} aria-hidden="true" />
+                      {ref.kind === 'topic' ? ref.label : ref.kind === 'route' ? 'API Client' : 'gRPC client'}{ref.kind === 'topic' && entry.topicRoles?.[ref.label] && <TopicRole role={entry.topicRoles[ref.label]} />} <ArrowUpRight size={10} aria-hidden="true" />
                     </button>
                   ))}
                   {entry.kind === 'repository' && <button type="button" onClick={() => showModule('database')} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">Database Studio <ArrowUpRight size={10} aria-hidden="true" /></button>}
