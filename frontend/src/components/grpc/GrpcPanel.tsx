@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  Radio,
+  Send,
   Braces,
   CheckCircle2,
   ChevronDown,
@@ -248,7 +250,7 @@ async function postJson<T>(port: number | null, path: string, body: unknown): Pr
   return parsed as T
 }
 
-async function postGrpcStream(port: number | null, body: unknown, signal: AbortSignal, onUpdate: (result: InvokeResponse) => void): Promise<InvokeResponse> {
+async function postGrpcStream(port: number | null, body: unknown, signal: AbortSignal, onUpdate: (result: InvokeResponse) => void, onSession?: (id: string) => void): Promise<InvokeResponse> {
   const url = serverUrl(port, '/grpc/stream')
   if (!url) throw new Error('Backend sidecar non pronto.')
   const response = await sidecarFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
@@ -259,7 +261,8 @@ async function postGrpcStream(port: number | null, body: unknown, signal: AbortS
   const result: InvokeResponse = { status: 'RUNNING', messages: [], response_metadata: {}, response_trailers: {} }
   const consume = (line: string) => {
     if (!line.trim()) return
-    const event = JSON.parse(line) as { type: string; message?: unknown; metadata?: Record<string, string>; trailers?: Record<string, string>; status?: string; error?: string; time_ms?: number }
+    const event = JSON.parse(line) as { type: string; id?: string; message?: unknown; metadata?: Record<string, string>; trailers?: Record<string, string>; status?: string; error?: string; time_ms?: number }
+    if (event.type === 'session' && event.id) return onSession?.(event.id)
     if (event.type === 'message') result.messages = [...(result.messages ?? []), event.message]
     if (event.type === 'headers') result.response_metadata = event.metadata ?? {}
     if (event.type === 'complete') { result.status = event.status ?? 'UNKNOWN'; result.error = event.error; result.time_ms = event.time_ms; result.response_trailers = event.trailers ?? {} }
@@ -698,12 +701,52 @@ function GrpcRequestMetadataTable({ metadata, onChange }: { metadata: MetadataRo
   )
 }
 
+interface LiveStreamControls {
+  /** null: no live stream; open: sending allowed; closed: send side closed, replies may still arrive. */
+  state: 'open' | 'closed' | null
+  sent: number
+  available: boolean
+  onOpen: () => void
+  onClose: () => void
+}
+
+type LiveStreamProps = LiveStreamControls & { onSend: (message: string) => void }
+
+function LiveStreamBar({ live }: { live: LiveStreamProps }) {
+  if (!live.state) {
+    return (
+      <button
+        onClick={live.onOpen}
+        disabled={!live.available}
+        title={live.available ? 'Open the stream and send messages one at a time (duplex)' : 'Connect to the server first'}
+        className="ml-auto mr-2 flex h-7 items-center gap-1.5 rounded border border-accent/50 px-2 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
+      >
+        <Radio size={12} /> Open live stream
+      </button>
+    )
+  }
+  return (
+    <div className="ml-auto mr-2 flex items-center gap-2 text-[11px]">
+      <span className={cn('flex items-center gap-1.5 rounded px-2 py-0.5 font-semibold', live.state === 'open' ? 'bg-success/10 text-success' : 'bg-surface-3 text-text-3')}>
+        <span className={cn('h-1.5 w-1.5 rounded-full', live.state === 'open' ? 'animate-pulse bg-success' : 'bg-text-4')} />
+        {live.state === 'open' ? 'Live' : 'Send closed'} · {live.sent} sent
+      </span>
+      {live.state === 'open' && (
+        <button onClick={live.onClose} title="Half-close: the server sees the end of your messages" className="h-7 rounded border border-border-2 px-2 text-text-2 hover:border-accent hover:text-accent">
+          Close send
+        </button>
+      )}
+    </div>
+  )
+}
+
 function GrpcDynamicRequestForm({
   fields,
   schemas,
   values,
   streaming,
   streamMessages,
+  live,
   onValueChange,
   onStreamMessagesChange,
 }: {
@@ -712,6 +755,7 @@ function GrpcDynamicRequestForm({
   values: Record<string, unknown>
   streaming: boolean
   streamMessages: string[]
+  live?: LiveStreamProps
   onValueChange: (values: Record<string, unknown>) => void
   onStreamMessagesChange: (messages: string[]) => void
 }) {
@@ -721,8 +765,11 @@ function GrpcDynamicRequestForm({
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm font-semibold text-text-1">Streaming Request Messages</p>
-            <p className="text-[11px] text-text-4">Messages are prepared upfront and sent in order, matching grpcui's stream model.</p>
+            <p className="text-[11px] text-text-4">
+              {live?.state ? 'Live stream: send messages one at a time and watch the replies arrive.' : 'Invoke sends them all in order; Open live stream sends them one at a time.'}
+            </p>
           </div>
+          {live && <LiveStreamBar live={live} />}
           <button
             onClick={() => onStreamMessagesChange([...streamMessages, JSON.stringify(buildObjectFromFields(fields, schemas), null, 2)])}
             className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-accent hover:border-accent/45 flex items-center gap-1.5"
@@ -737,6 +784,15 @@ function GrpcDynamicRequestForm({
               <div className="h-8 px-3 border-b border-border-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-2">Message #{index + 1}</span>
                 <div className="flex items-center gap-2">
+                  {live?.state === 'open' && (
+                    <button
+                      onClick={() => live.onSend(message)}
+                      disabled={!isValidJson(message)}
+                      className="flex h-6 items-center gap-1 rounded bg-accent px-2 text-[11px] font-semibold text-white hover:bg-accent-hover disabled:opacity-40"
+                    >
+                      <Send size={11} /> Send
+                    </button>
+                  )}
                   <span className={cn('text-[10px]', isValidJson(message) ? 'text-success' : 'text-error')}>{isValidJson(message) ? 'valid' : 'invalid'}</span>
                   <button
                     onClick={() => {
@@ -1263,6 +1319,7 @@ function GrpcRequestWorkspace({
   values,
   rawJson,
   streamMessages,
+  live,
   metadata,
   activeTab,
   jsonError,
@@ -1285,6 +1342,7 @@ function GrpcRequestWorkspace({
   values: Record<string, unknown>
   rawJson: string
   streamMessages: string[]
+  live?: LiveStreamProps
   metadata: MetadataRow[]
   activeTab: MainTab
   jsonError: string
@@ -1349,6 +1407,7 @@ function GrpcRequestWorkspace({
               values={values}
               streaming={Boolean(method?.client_streaming)}
               streamMessages={streamMessages}
+              live={live}
               onValueChange={onValues}
               onStreamMessagesChange={onStreamMessages}
             />
@@ -1795,7 +1854,35 @@ export function GrpcPanel() {
     return { payload: parsed, messages: undefined }
   }
 
-  const handleInvoke = async () => {
+  const [liveStream, setLiveStream] = useState<{ id: string; closed: boolean; sent: number } | null>(null)
+  const liveSentRef = useRef<unknown[]>([]) // what a live stream sent, for its history row
+
+  const sendLive = async (raw: string) => {
+    if (!liveStream) return
+    try {
+      const message = JSON.parse(raw) as unknown
+      await postJson(port, '/grpc/stream/send', { id: liveStream.id, message })
+      liveSentRef.current = [...liveSentRef.current, message]
+      setLiveStream((current) => current && { ...current, sent: current.sent + 1 })
+      log(`live send #${liveStream.sent + 1} on ${selectedService}/${selectedMethod}`)
+    } catch (event) {
+      setError(event instanceof Error ? event.message : String(event))
+    }
+  }
+
+  const closeLive = async () => {
+    if (!liveStream) return
+    try {
+      await postJson(port, '/grpc/stream/close', { id: liveStream.id })
+      setLiveStream((current) => current && { ...current, closed: true })
+      log('live stream: send side closed')
+    } catch (event) {
+      setError(event instanceof Error ? event.message : String(event))
+    }
+  }
+
+  /** interactive: open a live client/bidi stream; messages are then sent one by one. */
+  const handleInvoke = async (interactive = false) => {
     if (!currentMethod) {
       setError('Select a service and method first.')
       return
@@ -1804,7 +1891,8 @@ export function GrpcPanel() {
     setError('')
     setLastResult(null)
     try {
-      const request = buildRequest()
+      if (interactive) liveSentRef.current = []
+      const request = interactive ? { payload: {}, messages: [] as unknown[] } : buildRequest()
       const started = Date.now()
       const invokeBody = {
         address,
@@ -1817,18 +1905,19 @@ export function GrpcPanel() {
         payload: request.payload,
         messages: request.messages,
         metadata: metadataObject(),
-        timeout_ms: requestTimeoutMs,
+        timeout_ms: interactive ? undefined : requestTimeoutMs,
+        interactive: interactive || undefined,
       }
       let result: InvokeResponse
-      if (currentMethod.server_streaming) {
+      if (currentMethod.server_streaming || interactive) {
         const controller = new AbortController()
         streamControllerRef.current = controller
         setStreaming(true)
         result = await postGrpcStream(port, invokeBody, controller.signal, (next) => {
           setLastResult(next)
           setBottomTab('response')
-          setMainTab('response')
-        })
+          if (!interactive) setMainTab('response')
+        }, (id) => setLiveStream({ id, closed: false, sent: 0 }))
       } else {
         result = await postJson<InvokeResponse>(port, '/grpc/invoke', invokeBody)
       }
@@ -1836,7 +1925,7 @@ export function GrpcPanel() {
       setLastResult(result)
       setBottomTab('response')
       setMainTab('response')
-      const requestJson = JSON.stringify(request.messages ?? request.payload, null, 2)
+      const requestJson = JSON.stringify(interactive ? liveSentRef.current : request.messages ?? request.payload, null, 2)
       const responseJson = JSON.stringify(result, null, 2)
       const historyRow: HistoryRow = {
         id: newId(),
@@ -1870,6 +1959,7 @@ export function GrpcPanel() {
       log(`invoke error: ${message}`)
     } finally {
       streamControllerRef.current = null
+      setLiveStream(null)
       setStreaming(false)
       setLoading(false)
     }
@@ -1976,7 +2066,7 @@ export function GrpcPanel() {
         onAddressChange={(value) => { setAddress(value); setConnected(false) }}
         onTlsChange={(value) => { setUseTls(value); setConnected(false) }}
         onReflect={() => void handleReflect()}
-        onInvoke={handleInvoke}
+        onInvoke={() => void handleInvoke()}
         onLoadTest={() => {
           if (currentMethod?.client_streaming) {
             setError('Load testing currently supports unary and server-streaming methods, not client-streaming RPCs.')
@@ -2067,6 +2157,14 @@ export function GrpcPanel() {
                 values={requestValues}
                 rawJson={rawJson}
                 streamMessages={streamMessages}
+                live={{
+                  state: liveStream ? (liveStream.closed ? 'closed' : 'open') : null,
+                  sent: liveStream?.sent ?? 0,
+                  available: connected && !loading,
+                  onOpen: () => void handleInvoke(true),
+                  onClose: () => void closeLive(),
+                  onSend: (message) => void sendLive(message),
+                }}
                 metadata={metadata}
                 activeTab={mainTab}
                 jsonError={jsonError}
