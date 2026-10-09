@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
@@ -14,6 +14,11 @@ import { codePathFor, timeOf } from '@/stores/devSessionModel'
 import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
 import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
+import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
+import { useServerPort } from '@/lib/useServerPort'
+import { traceIdFor } from '@/lib/devsession/traceparent'
+import { spanSource } from '@/components/observe/traceStudioModel'
+import { openSpanSource } from '@/components/observe/openSpanSource'
 
 const LEVEL_TONE: Record<string, string> = { error: 'text-error', warn: 'text-warning', info: 'text-text-2', debug: 'text-text-4' }
 const time = (iso: string) => {
@@ -223,11 +228,44 @@ const pathOf = (url: string) => {
   try { const parsed = new URL(url); return parsed.pathname + parsed.search } catch { return url }
 }
 
-type TimelineStep = { at: string; kind: 'sent' | 'frame' | 'hit' | 'sql' | 'message' | 'log' | 'response'; label: string; detail?: string; onOpen?: () => void }
+type TimelineStep = { at: string; kind: 'sent' | 'frame' | 'hit' | 'sql' | 'message' | 'log' | 'span' | 'response'; label: string; detail?: string; onOpen?: () => void }
+
+/** OpenTelemetry spans of the request, when the service exports them to the local receiver (traceparent is sent with every live request). */
+function useRunSpans(run: RequestRun): OtlpSpan[] {
+  const port = useServerPort()
+  const [spans, setSpans] = useState<OtlpSpan[]>([])
+  useEffect(() => {
+    if (!port || !run.completedAt || !run.correlationId) return
+    let cancelled = false
+    const timers: number[] = []
+    const load = async () => {
+      try {
+        if (!(await otlpStatus(port)).running) return
+        const found = await getOtlpTrace(port, traceIdFor(run.correlationId))
+        if (!cancelled && found.length) setSpans(found)
+      } catch {
+        // No trace yet: exporters batch spans for a few seconds.
+      }
+    }
+    // ponytail: three polls cover the default 5 s batch delay of the OpenTelemetry SDKs.
+    for (const delay of [0, 2000, 6000]) timers.push(window.setTimeout(() => void load(), delay))
+    return () => { cancelled = true; timers.forEach((timer) => window.clearTimeout(timer)) }
+  }, [port, run.completedAt, run.correlationId])
+  return spans
+}
 
 /** Local lifecycle of one request: what the debugger, the logs, the database and the broker saw, in order. */
 export function RequestTimeline({ run, session, logs, queries, messages }: { run: RequestRun; session: LiveSession | null; logs: LiveLogEntry[]; queries: LiveQuery[]; messages: LiveMessage[] }) {
+  const spans = useRunSpans(run)
   const steps: TimelineStep[] = [{ at: run.startedAt, kind: 'sent', label: `${run.method} ${pathOf(run.url)}`, detail: 'sent' }]
+  for (const span of spans) {
+    const source = spanSource(span)
+    steps.push({
+      at: new Date(span.startMs).toISOString(), kind: 'span', label: `${span.service}: ${span.name}`,
+      detail: `span · ${span.kind} · ${span.durationMs.toFixed(1)} ms${span.statusCode === 'ERROR' ? ' · error' : ''}${source ? ` · ${basename(source.file)}:${source.line}` : ''}`,
+      onOpen: source ? () => void openSpanSource(source.file, source.line) : undefined,
+    })
+  }
   for (const hit of run.hits) {
     const frames = [...(hit.stack ?? [])].reverse().filter((frame) => frame.relativePath && !frame.relativePath.startsWith('..'))
     for (const frame of frames.slice(0, -1)) {
@@ -248,7 +286,7 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
         <li key={index} className="relative flex gap-3 pb-3 last:pb-0">
           {index < steps.length - 1 && <span aria-hidden="true" className="absolute left-[5px] top-3 h-full w-px bg-border-2" />}
           <span aria-hidden="true" className={cn('relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full border-2 bg-surface-0',
-            step.kind === 'hit' ? 'border-warning bg-warning' : step.kind === 'response' ? (run.state === 'error' || (run.status ?? 0) >= 400 ? 'border-error' : 'border-success') : step.kind === 'log' ? 'border-error' : step.kind === 'sent' ? 'border-accent' : 'border-border-2')} />
+            step.kind === 'hit' ? 'border-warning bg-warning' : step.kind === 'response' ? (run.state === 'error' || (run.status ?? 0) >= 400 ? 'border-error' : 'border-success') : step.kind === 'log' ? 'border-error' : step.kind === 'span' ? 'border-accent/60' : step.kind === 'sent' ? 'border-accent' : 'border-border-2')} />
           <div className="min-w-0 flex-1">
             {step.onOpen
               ? <button type="button" onClick={step.onOpen} className="max-w-full truncate text-left font-mono text-[12px] text-text-1 hover:text-accent hover:underline">{step.label}</button>

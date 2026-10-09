@@ -2,6 +2,7 @@ import { CORRELATION_HEADER, beginLiveRequest, endLiveRequest, type LiveSession 
 import { substVars } from '@/lib/substVars'
 import { uid, type RequestItem, type ResponseData } from '@/lib/types'
 import { useDevSessionStore } from '@/stores/devSession'
+import { traceparentFor } from './traceparent'
 import { serviceVars, sessionForRequest } from '@/stores/devSessionModel'
 
 /** A request stopped at a breakpoint must not time out: the developer is stepping through it. */
@@ -49,7 +50,7 @@ export async function prepareLiveSend(tabId: string, request: RequestItem, vars:
   }
   if (!runId) return plain
   let live = request
-  if (state.prefs.correlationHeader) live = withHeader(live, CORRELATION_HEADER, correlationId)
+  if (state.prefs.correlationHeader) live = withHeader(withHeader(live, CORRELATION_HEADER, correlationId), 'traceparent', traceparentFor(correlationId))
   if (session.kind === 'debug') live = { ...live, timeout: Math.max(request.timeout ?? 0, DEBUG_REQUEST_TIMEOUT_MS) }
   return { request: live, vars: allVars, runId, session }
 }
