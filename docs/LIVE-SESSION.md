@@ -55,6 +55,17 @@ turned off in the service view, the header `X-AdOmnia-Request-ID`.
 Requests forwarded by the Interceptor to a live service carry the header
 too; requests of a page under Browser Debug are tracked by time.
 
+Live requests also carry a W3C `traceparent` whose trace id is derived from
+the request id (`a` + its hex digits, padded to 32). A service instrumented
+with OpenTelemetry propagates it: Kafka messages with that header, log lines
+with that trace id — from **any** service, a consumer elsewhere included —
+are tied to the request by id, and its spans join the request Timeline when
+the local OTLP receiver (Observability → Traces) is on.
+
+A **WebSocket** connection to a live service is a request run too: the
+handshake carries both headers, the client shows *Connection logs*, and
+*Debug handler* puts a breakpoint on the upgrade and connects under Delve.
+
 ## Ports
 
 In order: the `PORT` the run configuration injected, an address the service
