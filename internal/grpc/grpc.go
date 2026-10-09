@@ -113,6 +113,8 @@ type grpcInvokeRequest struct {
 	Messages       []json.RawMessage `json:"messages,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
 	TimeoutMs      int               `json:"timeout_ms,omitempty"`
+	// Interactive (only /grpc/stream): keep sending open; drive it with /grpc/stream/send and /close.
+	Interactive bool `json:"interactive,omitempty"`
 }
 
 type grpcInvokeResponse struct {
@@ -832,6 +834,9 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	timeout := 30 * time.Second
+	if req.Interactive {
+		timeout = interactiveStreamTimeout
+	}
 	if req.TimeoutMs > 0 {
 		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
 	}
@@ -850,18 +855,22 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": "method not found"})
 		return
 	}
-	if !method.IsServerStreaming() {
+	if req.Interactive && !method.IsClientStreaming() {
+		emit(map[string]any{"type": "complete", "status": "INVALID_ARGUMENT", "error": "interactive streams need a client- or bidi-streaming method"})
+		return
+	}
+	if !method.IsServerStreaming() && !req.Interactive {
 		emit(map[string]any{"type": "complete", "status": "INVALID_ARGUMENT", "error": "method is not server-streaming"})
 		return
 	}
 	inputs := []json.RawMessage{req.Payload}
 	if method.IsClientStreaming() {
 		inputs = req.Messages
-		if len(inputs) == 0 {
+		if len(inputs) == 0 && !req.Interactive {
 			inputs = []json.RawMessage{req.Payload}
 		}
 	}
-	streamDesc := &grpc.StreamDesc{StreamName: req.Method, ServerStreams: true, ClientStreams: method.IsClientStreaming()}
+	streamDesc := &grpc.StreamDesc{StreamName: req.Method, ServerStreams: method.IsServerStreaming(), ClientStreams: method.IsClientStreaming()}
 	var headers, trailers metadata.MD
 	started := time.Now()
 	stream, err := conn.NewStream(ctx, streamDesc, fmt.Sprintf("/%s/%s", req.Service, req.Method), grpc.Header(&headers), grpc.Trailer(&trailers))
@@ -869,6 +878,13 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		st, _ := status.FromError(err)
 		emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
 		return
+	}
+	var session *streamSession
+	if req.Interactive {
+		id, opened, done := registerStreamSession(stream, method.GetInputType())
+		defer done()
+		session = opened
+		emit(map[string]any{"type": "session", "id": id})
 	}
 	for index, raw := range inputs {
 		message := dynamic.NewMessage(method.GetInputType())
@@ -884,7 +900,9 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := stream.CloseSend(); err != nil {
+	if session != nil {
+		session.mu.Unlock()
+	} else if err := stream.CloseSend(); err != nil {
 		st, _ := status.FromError(err)
 		emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
 		return
@@ -913,6 +931,10 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		var value any
 		_ = json.Unmarshal(data, &value)
 		emit(map[string]any{"type": "message", "message": value})
+		if !method.IsServerStreaming() { // client streaming: one response, then the call is over
+			emit(map[string]any{"type": "complete", "status": "OK", "time_ms": time.Since(started).Milliseconds(), "trailers": metadataMap(stream.Trailer())})
+			return
+		}
 	}
 }
 
@@ -1082,6 +1104,8 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/grpc/describe", grpcDescribeHandler)
 	mux.HandleFunc("/grpc/invoke", grpcInvokeHandler)
 	mux.HandleFunc("/grpc/stream", grpcStreamHandler)
+	mux.HandleFunc("/grpc/stream/send", grpcStreamSendHandler)
+	mux.HandleFunc("/grpc/stream/close", grpcStreamCloseHandler)
 	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
 	mux.HandleFunc("/grpc/parse-protoset", grpcParseProtosetHandler)
 }
