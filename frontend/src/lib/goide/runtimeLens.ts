@@ -37,10 +37,17 @@ export function lensFlags(stat: OtlpLensStat, counts: FileCounts): { hot: boolea
   }
 }
 
+/** Messages per minute for a consumer location, over the time its spans cover (at least a minute). */
+export function consumeRate(stat: OtlpLensStat): number | undefined {
+  if (stat.kind !== 'consumer' || stat.firstMs === undefined) return undefined
+  return stat.count / Math.max(1, (stat.lastMs - stat.firstMs) / 60_000)
+}
+
 export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): string {
   const { hot, slow } = lensFlags(stat, counts)
   const parts = [
-    `runtime: ${stat.count} call${stat.count === 1 ? '' : 's'}`,
+    `runtime: ${stat.count} ${stat.kind === 'consumer' ? 'message' : 'call'}${stat.count === 1 ? '' : 's'}`,
+    consumeRate(stat) !== undefined ? `${consumeRate(stat)!.toFixed(1)} msg/min` : '',
     `p50 ${ms(stat.p50Ms)}`,
     `p95 ${ms(stat.p95Ms)}`,
     stat.errors ? `${stat.errors} error${stat.errors === 1 ? '' : 's'}` : '',

@@ -60,6 +60,8 @@ export interface OtlpLensStat {
   name: string
   count: number
   retries?: number
+  firstMs?: number
+  kind?: string
   errors: number
   avgMs: number
   p50Ms: number

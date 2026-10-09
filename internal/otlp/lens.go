@@ -20,6 +20,8 @@ type LensStat struct {
 	P99Ms    float64 `json:"p99Ms"`
 	MaxMs    float64 `json:"maxMs"`
 	LastMs   float64 `json:"lastMs"`
+	FirstMs  float64 `json:"firstMs"`
+	Kind     string  `json:"kind"`
 	Category string  `json:"category"`
 }
 
@@ -69,7 +71,7 @@ func (s *Store) Lens() []LensStat {
 				if function == "" {
 					function = span.Attributes["code.function.name"]
 				}
-				b = &bucket{stat: LensStat{File: file, Line: line, Function: function, Name: span.Name, Category: span.Category}}
+				b = &bucket{stat: LensStat{File: file, Line: line, Function: function, Name: span.Name, Category: span.Category, Kind: span.Kind, FirstMs: span.StartMs}}
 				buckets[key] = b
 			}
 			b.durations = append(b.durations, span.DurationMs)
@@ -79,6 +81,9 @@ func (s *Store) Lens() []LensStat {
 			}
 			if retry[span.SpanID] {
 				b.stat.Retries++
+			}
+			if span.StartMs < b.stat.FirstMs {
+				b.stat.FirstMs = span.StartMs
 			}
 			if end := span.StartMs + span.DurationMs; end > b.stat.LastMs {
 				b.stat.LastMs = end
