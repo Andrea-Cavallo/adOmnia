@@ -61,7 +61,8 @@ function revealWhenSized(editor: monaco.editor.IStandaloneCodeEditor, position: 
   const reveal = () => {
     const caret = editor.getPosition()
     if (caret && (caret.lineNumber !== position.lineNumber || caret.column !== position.column)) return
-    editor.revealPositionInCenter(position)
+    // Explicit scroll: revealPositionInCenter is a no-op here while the panel is being shown.
+    editor.setScrollTop(Math.max(0, editor.getTopForLineNumber(position.lineNumber) - editor.getLayoutInfo().height / 2))
     // A jump to a line start must show the indentation, not keep the old horizontal scroll.
     if (position.column <= 1) editor.setScrollLeft(0)
   }
