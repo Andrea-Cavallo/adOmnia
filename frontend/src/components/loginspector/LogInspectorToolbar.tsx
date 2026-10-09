@@ -26,6 +26,7 @@ import {
   ShieldOff,
   SlidersHorizontal,
   WrapText,
+  Rows3,
   X,
 } from 'lucide-react'
 import { exportEvents, type ExportFormat, type LogEvent, type LogFilterState } from '@/lib/loginspector'
@@ -316,6 +317,7 @@ export function LogInspectorToolbar({
         <span className="font-mono text-[10px]">{prefs.density === 'compact' ? 'Aa' : 'AA'}</span>
       </IconToggle>
       <IconToggle active={prefs.wrap} onClick={() => updatePrefs({ wrap: !prefs.wrap })} title="Word wrap"><WrapText size={12} /></IconToggle>
+      <IconToggle active={prefs.groupRepeats} onClick={() => updatePrefs({ groupRepeats: !prefs.groupRepeats })} title="Group repeated logs: one row per message, with a count"><Rows3 size={12} /></IconToggle>
       <IconToggle active={masked} onClick={onToggleMask} title="Clear sensitive fields (tokens, cookies, passwords)">
         {masked ? <ShieldOff size={12} /> : <EyeOff size={12} />}
       </IconToggle>

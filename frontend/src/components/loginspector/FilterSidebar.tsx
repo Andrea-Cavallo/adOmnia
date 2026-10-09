@@ -29,7 +29,7 @@ const FACET_LABELS: Record<FacetField, string> = {
   pod: 'Pod',
   container: 'Container',
   logger: 'Logger',
-  thread: 'Thread',
+  thread: 'Thread / goroutine',
 }
 
 const BUILDER_FIELDS = ['level', 'service', 'namespace', 'pod', 'container', 'logger', 'thread', 'correlationId', 'traceId', 'requestId', 'message'] as const

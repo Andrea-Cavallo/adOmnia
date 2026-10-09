@@ -20,6 +20,7 @@ import {
   exportInvestigationMetadata,
   exportEvents,
   filterEvents,
+  groupRepeated,
   fromText,
   maskEvents,
   loadInvestigation,
@@ -200,6 +201,7 @@ export function LogInspectorPanel() {
   const ordered = useMemo(() => sortChronologically(working, sortDir), [working, sortDir])
   const deferredFilters = useDeferredValue(filters)
   const filtered = useMemo(() => filterEvents(ordered, deferredFilters), [ordered, deferredFilters])
+  const repeatGroups = useMemo(() => (prefs.groupRepeats ? groupRepeated(filtered) : null), [prefs.groupRepeats, filtered])
   const compiled = useMemo(() => compileQuery(filters.query), [filters.query])
   const levelCounts = useMemo(() => countByLevel(working), [working])
   // Keys this shape carried in earlier imports but not in this one — still
@@ -486,7 +488,8 @@ export function LogInspectorPanel() {
             {!focusedDetail && (
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <EventList
-                  events={filtered}
+                  events={repeatGroups ? repeatGroups.events : filtered}
+                  repeatCounts={repeatGroups?.counts}
                   selectedId={selectedId}
                   onSelect={(event) => { setSelectedId(event.id); setRelated(null) }}
                   density={prefs.density}

@@ -11,6 +11,8 @@ export interface Prefs {
   columnsVersion: number
   density: Density
   wrap: boolean
+  /** One row per message template with a ×N count. */
+  groupRepeats: boolean
   columns: ListColumnId[]
   columnWidths: Record<string, number>
   columnPresets: Record<string, { columns: ListColumnId[]; widths: Record<string, number> }>
@@ -30,6 +32,7 @@ export const DEFAULT_PREFS: Prefs = {
   columnsVersion: 3,
   density: 'compact',
   wrap: false,
+  groupRepeats: false,
   columns: DEFAULT_COLUMNS,
   columnWidths: {},
   columnPresets: {},

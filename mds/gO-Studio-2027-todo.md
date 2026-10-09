@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 157 | 39 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 155 | 37 |
 | **P3** | Remote ed estensibilità | 9 | 1 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
@@ -110,11 +110,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 - [ ] Open logs. — *Parziale: ServiceLogsDrawer apre i log della sessione nel Log Inspector; non c'è un flusso unico.*
 - [x] Stop workspace. — *Run → Stop Workspace arresta tutte le esecuzioni attive della sessione, non soltanto quella selezionata; per Compose il backend esegue lo stop controllato dei servizi.*
 - [ ] Clean workspace.
-
-## §40 · Logs Studio
-
-- [ ] Filter goroutine. — *Parziale: normalize.ts mappa 'goroutine' al campo thread; nessun filtro dedicato.*
-- [ ] Group repeated logs. — *Parziale: analyze.ts raggruppa per errorFingerprint e dedupe.ts elimina duplicati; non raggruppa i log ripetuti in generale.*
 
 ## §41 · Trace Studio
 

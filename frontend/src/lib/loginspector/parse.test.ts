@@ -103,6 +103,7 @@ describe('stack traces', () => {
     expect(panic!.stack).toContain('goroutine 42 [running]:')
     expect(panic!.stack).toContain('/src/cmd/worker/main.go:57 +0x2d4')
     expect(panic!.stack).toContain('exit status 2')
+    expect(panic!.thread).toBe('goroutine 42') // filterable in the Thread / goroutine facet
     expect(events[events.length - 1].message).toContain('restarting ledger-worker')
   })
 })

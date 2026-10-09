@@ -91,6 +91,8 @@ interface EventListProps {
   highlights: string[]
   /** Scroll target requested from outside (e.g. from the related-events view). */
   scrollToId?: number | null
+  /** Group repeated logs: event id → how many events share its message template. */
+  repeatCounts?: ReadonlyMap<number, number>
 }
 
 /**
@@ -110,6 +112,7 @@ export function EventList({
   onColumnWidthChange,
   highlights,
   scrollToId = null,
+  repeatCounts,
 }: EventListProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -181,6 +184,7 @@ export function EventList({
                   columns={visibleColumns}
                   columnWidths={columnWidths}
                   highlights={highlights}
+                  repeats={repeatCounts?.get(event.id) ?? 0}
                   selected={event.id === selectedId}
                   onSelect={() => onSelect(event)}
                   onContextMenu={onContextMenu}
@@ -201,6 +205,7 @@ interface EventRowProps {
   columns: ListColumnId[]
   columnWidths: Record<string, number>
   highlights: string[]
+  repeats: number
   selected: boolean
   onSelect: () => void
   onContextMenu?: (event: LogEvent, position: { x: number; y: number }) => void
@@ -229,7 +234,7 @@ function columnValue(event: LogEvent, id: ListColumnId): string {
   return ''
 }
 
-function EventRow({ event, height, wrap, columns, columnWidths, highlights, selected, onSelect, onContextMenu }: EventRowProps) {
+function EventRow({ event, height, wrap, columns, columnWidths, highlights, repeats, selected, onSelect, onContextMenu }: EventRowProps) {
   const segments = highlightSegments(event.message, highlights)
   return (
     <div
@@ -281,6 +286,14 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, sele
       </span>
 
       <span className="flex shrink-0 items-center gap-1.5 pt-[1px]">
+        {repeats > 1 && (
+          <span
+            className="rounded bg-accent/15 px-1.5 font-mono text-[10px] font-semibold text-accent"
+            title={`${repeats} events with this message (numbers, ids and quoted values ignored)`}
+          >
+            ×{repeats.toLocaleString()}
+          </span>
+        )}
         {event.parseError && <AlertTriangle size={11} className="text-warning" aria-label="Unparsed line" />}
         {event.stack && <Layers size={11} className="text-accent-light" aria-label="Has stack trace" />}
       </span>

@@ -204,7 +204,20 @@ function compileProfilePattern(source: string | undefined): RegExp | null {
 // `2024-05-15 10:23:45.123  INFO 1 --- [nio-8080-exec-1] c.e.PaymentController : msg`
 const JAVA_THREAD_LOGGER = /\[([^\]]{1,80})\]\s+([\w$.]+)\s*:\s/
 
+const GO_GOROUTINE_HEADER = /^goroutine\s+(\d+)\s+\[/m
+
+/** Go panics and stack dumps name their goroutine: it becomes the thread when no field gave one. */
+function withGoroutine(event: LogEvent): LogEvent {
+  if (event.thread) return event
+  const match = GO_GOROUTINE_HEADER.exec(event.stack) ?? GO_GOROUTINE_HEADER.exec(event.raw)
+  return match ? { ...event, thread: `goroutine ${match[1]}` } : event
+}
+
 function buildEvent(draft: Draft, id: number, decodeNestedJson: boolean, options: ParseOptions): LogEvent {
+  return withGoroutine(buildEventFields(draft, id, decodeNestedJson, options))
+}
+
+function buildEventFields(draft: Draft, id: number, decodeNestedJson: boolean, options: ParseOptions): LogEvent {
   const head = draft.bodies[0]
   const stack = draft.bodies.slice(1).join('\n')
   const raw = draft.raws.join('\n')

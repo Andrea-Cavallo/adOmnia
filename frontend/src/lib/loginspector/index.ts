@@ -1,4 +1,5 @@
 export * from './types'
+export * from './repeats'
 export * from './detect'
 export * from './normalize'
 export * from './parse'
