@@ -37,6 +37,14 @@ func TestLookupCalls(t *testing.T) {
 	s.Lookup("a")
 }
 `
+	files["service/greeter.go"] = `package service
+
+func (greeter) SayHello(name string) string { return helper(name) }
+
+func (greeter) mustEmbedUnimplementedGreeterServer() {}
+
+func helper(name string) string { return "hi " + name }
+`
 	files["api/api.go"] = `package api
 
 import (
@@ -96,6 +104,20 @@ func TestTypeImpactReachesRoutesHandlersAndTests(t *testing.T) {
 	item, _ := index.Node("type:example.com/shop/api.Item")
 	if at, ok := index.TypeAt(item.File, item.Line+1); !ok || at.ID != item.ID {
 		t.Fatalf("TypeAt inside the struct = %+v %v", at, ok)
+	}
+}
+
+func TestGRPCMethodsAreSeparateNodes(t *testing.T) {
+	index := buildFixtureGraph(t)
+	if _, ok := index.Node("grpc:Greeter/SayHello"); !ok {
+		t.Fatal("Greeter/SayHello missing")
+	}
+	if _, ok := index.Node("grpc:Greeter/mustEmbedUnimplementedGreeterServer"); ok {
+		t.Fatal("unexported method became an RPC")
+	}
+	impact, _ := index.Impact("fn:example.com/shop/service.helper")
+	if got := refLabels(impact.RPCs); got != "Greeter/SayHello" {
+		t.Fatalf("rpcs: %s", got)
 	}
 }
 

@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 120 | 15 |
+| **P4** | AI e intelligenza del workspace | 119 | 14 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -166,7 +166,6 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 _Semantic Workspace Graph (`internal/ide/graph`, chiuso il 2026-10-10): file, package, moduli, funzioni, metodi, test, interfacce con implementazioni e dispatch, route HTTP, servizi gRPC, topic Kafka (producer/consumer), tabelle SQL, entry point; salvato in `goide/graphs` e riusato finché i sorgenti Go non cambiano. Restano:_
 
-- [ ] gRPC methods. — *Parziale: nodo per servizio gRPC servito da tutti i metodi del tipo registrato; manca il metodo RPC singolo.*
 - [ ] Topics NATS/AMQP. — *Parziale: nel grafo solo Kafka; devcontext rileva anche NATS/AMQP ma senza relazioni.*
 - [ ] Config keys.
 - [ ] Env vars. — *Parziale: devcontext rileva entità envvar da os.Getenv, tag e .env; non ancora agganciate alla funzione nel grafo (`graph.Fact` da reintrodurre col primo consumatore).*

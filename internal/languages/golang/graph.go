@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"go/ast"
 	"path"
 	"strconv"
 	"strings"
@@ -130,10 +131,16 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 			if _, short, ok := strings.Cut(server, "."); ok {
 				server = short
 			}
+			// Ogni metodo esportato del tipo registrato è un metodo RPC: Servizio/Metodo.
 			for _, function := range report.Functions {
-				if function.Package == entry.Package && strings.HasPrefix(function.Name, server+".") {
-					b.Edge(fnNode(function.ID), rpc, graph.EdgeHandles, "")
+				method, ok := strings.CutPrefix(function.Name, server+".")
+				if function.Package != entry.Package || !ok || method == "" || !ast.IsExported(method) || strings.HasPrefix(method, "mustEmbed") {
+					continue
 				}
+				methodID := rpc + "/" + method
+				b.Node(graph.Node{ID: methodID, Kind: graph.KindRPC, Label: entry.Name + "/" + method, Package: entry.Package, File: function.Site.Path, Line: function.Site.Line, Attrs: attrs("service", entry.Name)})
+				b.Edge(rpc, methodID, graph.EdgeContains, "")
+				b.Edge(fnNode(function.ID), methodID, graph.EdgeHandles, "")
 			}
 		case "kafka-producer", "kafka-consumer":
 			function := lookup(entry.Package, entry.Function)
