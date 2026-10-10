@@ -32,6 +32,12 @@ Three optional fields are added to `general`: `autoCheckUpdates`, `autoDownloadU
 
 ## Acceptance
 
+The Nothing-style update dialog follows the selected accent palette and shows download progress, verification, retry, postponement and **Save & restart**. Restart saves dirty main-editor documents and waits for serialized/debounced store writes; a save error blocks restart. Native `Window.Close` retains detached-window and running-task guards. Scheduled updates hide the destructive discard action for dirty Go Studio buffers.
+
+- [x] Save-before-restart ordering and refusal to close on editor/storage save failures (automated tests).
+- [x] Workspace, settings and request fixture files remain byte-identical after Windows executable replacement and rollback.
+- [ ] Native dialog, palette changes, cancel/save failure and detached-window guard acceptance in the packaged desktop application.
+
 Verified on Windows, 2026-10-10: Go updater tests with race detector and native fixture replacement/rollback, Go build, 1,318 frontend tests across 297 files, TypeScript/Vite build and startup budget (594,428 initial JavaScript bytes). Browser UI preview is in `.artifacts/updater-settings.png`; it is not packaged Wails acceptance.
 
 - [x] SemVer beta ordering, signed manifest/tamper rejection, archive traversal/symlink rejection and platform URL allowlist tests.
