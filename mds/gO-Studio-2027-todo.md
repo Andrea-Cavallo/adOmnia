@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 105 | 7 |
+| **P4** | AI e intelligenza del workspace | 102 | 7 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -172,10 +172,7 @@ _Chiusa il 2026-10-10: contratti pubblici usati da altri moduli, risk map del pr
 
 ### Principio
 
-_Chiuso il 2026-10-10: ogni chat (Claude Code, milk, Copilot) riceve il vicinato nel grafo della funzione sotto il cursore (chiamanti, test, route, topic, tabelle, rischio)._
-- [ ] Deve conoscere profiler.
-- [ ] Deve conoscere runtime traces.
-- [ ] Deve conoscere logs.
+_Chiuso il 2026-10-10: ogni chat (Claude Code, milk, Copilot) riceve il vicinato nel grafo della funzione sotto il cursore e il quadro runtime del file attivo (span OpenTelemetry, righe calde dell'ultimo profilo, log recenti del servizio)._
 
 ### Azioni contestuali
 

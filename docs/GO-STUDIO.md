@@ -573,7 +573,7 @@ On a `require` line of go.mod the analysis is about the dependency: the packages
 
 With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.
 
-Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it.
+Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it. It also carries the runtime picture of the active file when adOmnia has observed it: the OpenTelemetry spans started there (calls, p50/p95, errors), the hot lines of the last CPU or allocation profile, and the recent logs of the running service with errors first.
 
 ## Claude Code
 

@@ -15,6 +15,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Runtime-aware AI chats:** with workspace context on, Claude Code, milk and Copilot also receive what the running program did in the active file — OpenTelemetry spans (calls, p50/p95, errors), the last profile's CPU and allocation hot lines, and the live service's recent logs with errors first. Bounded and redacted like the rest of the context.
 - **Public contracts and risk map in Change Impact:** functions of other modules that use the changed code are listed as *Used by other modules* and raise the risk (public contract); the *Risk* view scores every function and ranks packages by high-risk functions, with the riskiest ones one click away.
 - **Change Impact suggests what to call and run:** *Send* on an impacted route opens (or reuses) its request in the API Workspace and sends it; *Open all in API* creates an `Impact: …` collection with every impacted route; *Run* starts an impacted `main`, *Up* a compose service that runs it.
 - **Runtime numbers in Change Impact:** the changed function, its callers and the routes that reach it show calls, p95 and errors from the OpenTelemetry spans adOmnia received (live or loaded from a saved trace).
