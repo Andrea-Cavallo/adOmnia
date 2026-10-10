@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 32 | 11 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 121 | 16 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
@@ -89,9 +89,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Context panel intelligente
 
-- [ ] Seleziono goroutine → concurrency context. — *Parziale: il pannello Context riconosce le righe `go …` e, in pausa nel debugger, conta le goroutine create lì per stato; manca una vista di concorrenza (canali, lock) legata alla riga.*
-- [ ] Seleziono errore → debugging context. — *Parziale: il pannello Context mostra i problemi della riga; error chain e panic restano nel pannello debug.*
-- [ ] Seleziono trace → runtime context. — *Parziale: il pannello Context mostra i numeri Runtime Lens della riga; selezionare una trace non apre ancora un contesto runtime.*
 
 ## §31 · Service Map
 
@@ -126,7 +123,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 - [ ] Allocation estimate.
 - [ ] CPU cost.
-- [ ] Runtime values opzionali.
 - [ ] Sampling per ridurre overhead.
 
 ### Esempi

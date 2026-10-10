@@ -131,6 +131,13 @@ Registrare nelle evidenze le differenze intenzionali rispetto ai mock.
 
 ## Evidenze
 
+### P2 Context — verifica desktop ancora aperta (2026-10-10)
+
+- [ ] Su una riga `go worker()`, verificare i canali/lock reali delle goroutine create e la navigazione al thread.
+- [ ] In pausa su un errore, leggere il valore e risolvere Unwrap su richiesta; riprendere e verificare che i valori della pausa non restino visibili.
+- [ ] Da Trace Studio aprire Runtime context in gO sul progetto del servizio; provare anche una finestra separata e cancellare la selezione.
+- [ ] Attivare/disattivare i valori opzionali del frame; nessuna lettura automatica che esegue codice del servizio.
+
 Da compilare man mano che passano le prove (una riga per sessione di collaudo).
 
 | Data | Commit / release | Piattaforma | Versioni Go / gopls / Delve | Progetto usato | Prove passate | Note e differenze dai mock |

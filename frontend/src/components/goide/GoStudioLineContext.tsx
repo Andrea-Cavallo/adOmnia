@@ -18,6 +18,8 @@ import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { openHttpRouteAt } from './goStudioCodeLens'
 import { runtimeLensStats } from './goStudioRuntimeLens'
 import { SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
+import { GoStudioLineDebugContext } from './GoStudioLineDebugContext'
+import { useGoStudioRuntimeContext } from '@/stores/goStudioRuntimeContext'
 
 const METHOD = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i
 
@@ -45,6 +47,7 @@ const ago = (iso: string) => {
  * interfaces, goroutines started here, a go.mod dependency, diagnostics and Runtime Lens numbers.
  */
 export function GoStudioLineContext({ session, document }: { session: GoIDESession; document: GoIDEEditorDocument | null }) {
+  const selectedRuntime = useGoStudioRuntimeContext(state => state.selected)
   const caret = useGoIDENavigationStore((state) => { const history = state.history[session.id]; return history?.entries[history.index] })
   const relativePath = document?.document.relativePath ?? ''
   const line = caret && caret.relativePath === relativePath ? caret.line : 0
@@ -87,6 +90,14 @@ export function GoStudioLineContext({ session, document }: { session: GoIDESessi
         <span className="font-mono text-text-1">{context.fn?.name ?? relativePath.split('/').pop()}</span>
         <span className="ml-1.5 text-text-4">{relativePath}:{line}</span>
       </div>
+      {selectedRuntime?.sessionId === session.id && <Section icon={<GitFork size={11}/>} title="Selected runtime span">
+        <p className="text-text-1">{selectedRuntime.span.service} · {selectedRuntime.span.name}</p>
+        <p className="text-text-3">{selectedRuntime.span.durationMs.toFixed(2)} ms · {selectedRuntime.span.statusCode} · {selectedRuntime.span.kind}</p>
+        <p className="break-all font-mono text-[10px] text-text-4">trace {selectedRuntime.span.traceId}</p>
+        {selectedRuntime.span.statusMessage && <p className="text-warning">{selectedRuntime.span.statusMessage}</p>}
+        {Object.entries(selectedRuntime.span.attributes ?? {}).slice(0,30).map(([name,value])=><p key={name} className="break-all text-text-3">{name}: {value}</p>)}
+        <Action onClick={()=>useGoStudioRuntimeContext.setState({selected:null})}>Clear runtime selection</Action>
+      </Section>}
 
       {problems.length > 0 && (
         <Section icon={<AlertTriangle size={11} />} title="Problems on this line">
@@ -185,6 +196,8 @@ export function GoStudioLineContext({ session, document }: { session: GoIDESessi
           ) : <p className="text-text-4">Pause in the debugger to see the goroutines created here; run with the race detector to check what they share.</p>}
         </Section>
       )}
+
+      <GoStudioLineDebugContext file={relativePath} line={line} source={document.buffer} view={debugView}/>
 
       {context.module && (
         <Section icon={<Package size={11} />} title="Dependency">

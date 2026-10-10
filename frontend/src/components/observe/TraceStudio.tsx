@@ -10,6 +10,7 @@ import { ServiceMapView } from './ServiceMapView'
 import { traceTreeRows } from './traceTree'
 import { compareTraces, serviceColor, spanInsights, spanSource, type SpanInsight } from './traceStudioModel'
 import { breakAtSpanSource, openSpanSource } from './openSpanSource'
+import { openEntity } from '@/lib/entities/router'
 
 const CATEGORY_LABEL: Record<string, string> = { http: 'HTTP', db: 'DB', rpc: 'RPC', messaging: 'MSG' }
 const ENDPOINT_HINT = 'OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318'
@@ -83,6 +84,9 @@ function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }
         <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2">{ms(span.durationMs)}</span>
         <InsightBadges insight={insight} />
       </div>
+      {source && (
+        <button type="button" onClick={() => void openEntity({ kind: 'service', id: `span:${span.traceId}:${span.spanId}`, label: span.name, attrs: { runtimeSpan: JSON.stringify(span) } }, 'runtime')} className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-accent hover:bg-accent/10"><Code2 size={12}/> Runtime context in gO</button>
+      )}
       {source && (
         <button type="button" onClick={() => void openSpanSource(source.file, source.line)} title={`${source.file}:${source.line}`} className="flex max-w-full items-center gap-1 rounded border border-accent/50 px-2 py-1 text-accent hover:bg-accent/10">
           <Code2 size={12} aria-hidden="true" /> <span className="truncate">Open {source.function ?? 'source'} · {source.file.split(/[\\/]/).pop()}:{source.line}</span>

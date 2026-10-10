@@ -213,7 +213,7 @@ function GoStudioCollectionInspector({ kind, debugId, frameId, expression }: { k
   )
 }
 
-function GoStudioErrorChainInspector({ debugId, frameId, expression, initial }: { debugId: string; frameId: number | null; expression: string; initial: GoIDEDebugVariable }) {
+export function GoStudioErrorChainInspector({ debugId, frameId, expression, initial }: { debugId: string; frameId: number | null; expression: string; initial: GoIDEDebugVariable }) {
   const [chain, setChain] = useState<GoIDEDebugVariable[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

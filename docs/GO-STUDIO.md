@@ -1,5 +1,13 @@
 # Go Studio
 
+## Source and runtime Context (2026-10-10)
+
+The Context side pane connects a source line to goroutines created or waiting there. It shows their actual channel/mutex waits, links to debugger threads and labels source-only findings as STATIC. Error lines show the matching paused frame's error values and reuse the on-demand Unwrap inspector. Runtime values are optional and appear only for the matching paused frame.
+
+Trace Studio's **Runtime context in gO** action routes a span through the entity router, opens its source in the owning project and reveals Context with service, duration, status, trace ID and attributes. Clear the selection when finished. No process or debugging session starts from this action.
+
+Implemented and checked with TypeScript and focused concurrency/error/line-context tests. Native desktop acceptance remains in `mds/todo-ide.md`.
+
 Go Studio is the Go IDE built into adOmnia. It opens real Go projects, understands them through gopls, and runs, tests and debugs them with the project's own Go SDK. It connects to the rest of adOmnia: Git Studio, Docker Lab, Database Studio, Broker Studio, the API Client, plugins and the AI provider.
 
 Everything stays on your machine. Nothing in a project runs until you trust it.

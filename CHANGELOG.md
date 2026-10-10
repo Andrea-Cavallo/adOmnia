@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+- Go Studio P2: source-line Context now shows observed channel/mutex waits, static concurrency findings, paused error values with on-demand Unwrap inspection, and optional values from the matching paused frame. Trace Studio opens a span's source and runtime Context through the entity router.
+
 ### Fixed
 - Log Inspector: a live service source opened while the saved investigation was loading no longer disappears.
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.

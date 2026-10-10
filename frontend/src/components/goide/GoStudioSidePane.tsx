@@ -1,5 +1,6 @@
 import { GitHubMark } from './GoStudioCopilotStatus'
-import { Suspense, lazy, useState, type ComponentType } from 'react'
+import { Suspense, lazy, useEffect, useState, type ComponentType } from 'react'
+import { useGoStudioRuntimeContext } from '@/stores/goStudioRuntimeContext'
 import { Braces, Crosshair, FolderTree, Minus } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -34,6 +35,8 @@ const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: ComponentType<
 
 export function GoStudioSidePane({ session, document }: GoStudioSidePaneProps) {
   const [tab, setTab] = useState<SidePaneTab>('structure')
+  const selectedRuntime = useGoStudioRuntimeContext(state => state.selected)
+  useEffect(() => { if (selectedRuntime?.sessionId === session.id) setTab('context') }, [selectedRuntime, session.id])
   const pane = useGoStudioAssistantStore((state) => state.pane)
   const detached = useStudioTools((state) => isChatPane(pane) && state.detached.includes(toolKey(session.id, pane)))
   const activeAssistant: SidePaneTab | null = isChatPane(pane) ? pane : null

@@ -88,6 +88,7 @@ async function openContract(ref: EntityRef): Promise<void> {
 /** Registers the v1 openers once; returns a disposer (used by HMR and tests). */
 export function registerDefaultOpeners(): () => void {
   const offs = [
+    registerOpener('service', { intent: 'runtime', title: 'Inspect runtime in gO', available: ref => !!ref.attrs.runtimeSpan, run: ref => handoffToPanel('goide', ref, 'runtime') }),
     registerOpener('*', {
       intent: 'source', title: 'Open source in gO',
       available: (ref) => ref.kind !== 'symbol' && !!ref.source,
