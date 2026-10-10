@@ -188,7 +188,8 @@ func ValidateToolPaths(root, workingDirectory string, kind Kind, target string, 
 	if err := validateRunTarget(root, workingDirectory, target); err != nil {
 		return err
 	}
-	if kind == RunKindMake {
+	// Make e Compose non hanno opzioni Docker: la configurazione salvata le azzera.
+	if kind == RunKindMake || kind == RunKindDockerCompose {
 		return nil
 	}
 	if err := validateRunTarget(root, workingDirectory, docker.Context); err != nil {
