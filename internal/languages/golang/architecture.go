@@ -96,12 +96,25 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.Imports = append(r.Imports, other.Imports...)
 	r.PackageCalls = append(r.PackageCalls, other.PackageCalls...)
 	r.Calls = append(r.Calls, other.Calls...)
+	for _, function := range other.Functions {
+		seen[function.ID] = true
+	}
+	pending := append(r.ExternalCalls, other.ExternalCalls...)
+	r.ExternalCalls = nil
+	for _, call := range pending {
+		if seen[call.To] {
+			r.Calls = append(r.Calls, call)
+		} else {
+			r.ExternalCalls = append(r.ExternalCalls, call)
+		}
+	}
 	r.Modules = append(r.Modules, other.Modules...)
 	r.Interfaces = append(r.Interfaces, other.Interfaces...)
 	r.Entries = append(r.Entries, other.Entries...)
 	r.Schemas = append(r.Schemas, other.Schemas...)
 	r.Queries = append(r.Queries, other.Queries...)
 	r.ContextCalls = append(r.ContextCalls, other.ContextCalls...)
+	r.Reads = append(r.Reads, other.Reads...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -152,6 +165,9 @@ type ArchitectureReport struct {
 	Schemas      []ArchSchema      `json:"schemas"`
 	Queries      []ArchQuery       `json:"queries"`
 	ContextCalls []ArchContextCall `json:"contextCalls"`
+	// ExternalCalls: chiamate a funzioni fuori dal modulo analizzato, risolte da Merge
+	// quando la funzione appartiene a un altro modulo del workspace.
+	ExternalCalls []ArchEdge `json:"-"`
 	// Reads: variabili d'ambiente e chiavi di configurazione lette da ogni funzione.
 	Reads     []ArchRead `json:"reads,omitempty"`
 	Truncated bool       `json:"truncated,omitempty"`
@@ -339,7 +355,14 @@ func (a *architecture) collectCalls(file typedFile) {
 				return true
 			}
 			callee, _ := typeutil.Callee(info, call).(*types.Func)
-			if callee == nil || callee.Pkg() == nil || !a.project[callee.Pkg().Path()] {
+			if callee == nil || callee.Pkg() == nil {
+				return true
+			}
+			if !a.project[callee.Pkg().Path()] {
+				// Un altro modulo del workspace (go.work) è analizzato a parte: Merge collega la chiamata.
+				if !isStdPath(callee.Pkg().Path()) && len(a.report.ExternalCalls) < maxArchCalls {
+					a.report.ExternalCalls = append(a.report.ExternalCalls, ArchEdge{From: from.ID, To: callee.FullName(), Count: 1})
+				}
 				return true
 			}
 			to := a.function(callee)
