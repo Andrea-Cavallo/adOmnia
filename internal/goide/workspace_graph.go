@@ -55,6 +55,10 @@ func (s *Service) ConfigureGraphStore(dir string) {
 	graphs.mu.Unlock()
 }
 
+// graphBuilderVersion entra nell'impronta: un grafo salvato da un builder più vecchio
+// (meno nodi o archi) si ricostruisce anche se i sorgenti non sono cambiati.
+const graphBuilderVersion = "5"
+
 func isGoSource(rel string) bool {
 	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work" || graph.IsComposeFile(rel)
 }
@@ -82,6 +86,7 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 	if err != nil {
 		return nil, false, err
 	}
+	fingerprint = graphBuilderVersion + ":" + fingerprint
 	if !force {
 		graphs.mu.Lock()
 		current := graphs.cached[sessionID]
