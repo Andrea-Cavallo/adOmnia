@@ -162,15 +162,7 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 ## §36 · Semantic Workspace Graph
 
-> Una rappresentazione persistente delle relazioni del progetto.
-
-_Semantic Workspace Graph (`internal/ide/graph`, chiuso il 2026-10-10): file, package, moduli, funzioni, metodi, test, interfacce con implementazioni e dispatch, route HTTP, servizi gRPC, topic Kafka (producer/consumer), tabelle SQL, entry point; salvato in `goide/graphs` e riusato finché i sorgenti Go non cambiano. Restano:_
-
-
-### Utilizzi
-
-_Impact analysis, AI context retrieval, test selection e change impact analysis chiusi con il grafo (Impact tool window e contesto delle chat)._
-
+_Chiusa il 2026-10-10: DTO, metodi gRPC, topic NATS/AMQP, env var e chiavi di config, servizi compose, dipendenze esterne, ricerca in Search Everywhere, mappa dell'impatto, esposizione dei finding di sicurezza e numeri runtime sono nel `CHANGELOG.md`._
 
 ## §37 · Change Impact Analysis
 

@@ -4,6 +4,7 @@ import { Crosshair, Loader2, MessageSquare, Play, RefreshCw } from 'lucide-react
 import type { GoIDESession } from '@/lib/goide-api'
 import { caretFor } from '@/lib/goide/goStudioCaretMemory'
 import { graphImpactAt, graphImpactOf, impactContext, workspaceGraphSummary, type GraphImpact, type GraphRef, type WorkspaceGraphSummary } from '@/lib/goide/workspaceGraph'
+import type { DevEntity } from '@/lib/devcontext-api'
 import { activeGoIDEDocument, useGoIDEStore } from '@/stores/goide'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { runGoStudioNamedTests } from './goStudioQuickActions'
@@ -33,6 +34,39 @@ async function loadImpactRuntime(impact: GraphImpact, root: string): Promise<voi
   useImpactRuntime.setState({ byNode: runtimeByNode(stats ?? [], root, nodes.map((node) => ({ id: node.id, kind: node.kind, label: node.label, file: node.file, line: node.line }))) })
 }
 
+/** "POST /orders" (or "/orders") → the route entity the API Workspace actions understand. */
+function routeEntity(ref: GraphRef): DevEntity {
+  const [first, second] = ref.node.label.split(' ')
+  const method = second ? first : 'ANY'
+  const path = second ?? first
+  return { id: ref.node.id, kind: 'route', label: ref.node.label, attrs: { method, path, declFile: ref.node.file ?? '', declLine: String(ref.node.line ?? 0) }, sources: [], confidence: 'certain' }
+}
+
+async function sendImpactRoute(sessionId: string, ref: GraphRef, action: 'open' | 'send'): Promise<void> {
+  const { runHandlerAction } = await import('@/lib/devsession/codeToApi')
+  await runHandlerAction(sessionId, routeEntity(ref), action)
+}
+
+/** Suggested integration calls: every impacted route as a linked request, in one collection. */
+async function openImpactRoutes(sessionId: string, refs: readonly GraphRef[]): Promise<void> {
+  const [{ serviceApiCollection }, { serviceNameFor }, { routeToModule }] = await Promise.all([import('@/lib/devsession/workspaceFlow'), import('@/lib/devsession-api'), import('@/lib/moduleRouting')])
+  const service = await serviceNameFor(sessionId).catch(() => 'service')
+  const collection = serviceApiCollection(service || 'service', refs.map(routeEntity))
+  routeToModule('collections', { kind: 'import-collections', collections: [{ ...collection, name: `Impact: ${collection.name}` }] }, { reveal: true })
+}
+
+/** Suggested services to run: the main package of an entry point, or a compose service. */
+function runImpactEntry(ref: GraphRef): void {
+  const file = ref.node.file ?? ''
+  const directory = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '.'
+  void useGoIDEStore.getState().startRun('run', { target: directory === '.' ? '.' : `./${directory}` })
+}
+
+function runImpactService(ref: GraphRef): void {
+  if (!ref.node.file) return
+  void useGoIDEStore.getState().startRun('docker-compose', { target: ref.node.file, programArguments: ['up', ref.node.label] })
+}
+
 const RISK_STYLE: Record<string, string> = {
   low: 'border-success/40 text-success',
   medium: 'border-warning/40 text-warning',
@@ -41,12 +75,16 @@ const RISK_STYLE: Record<string, string> = {
 
 const errorText = (problem: unknown) => (problem instanceof Error ? problem.message : String(problem))
 
-function RefList({ title, refs, onFocus, empty }: { title: string; refs: readonly GraphRef[] | null | undefined; onFocus?: (ref: GraphRef) => void; empty?: string }) {
+interface RefAction { label: string; title: string; run: (ref: GraphRef) => void }
+
+function RefList({ title, refs, onFocus, empty, action, headerAction }: { title: string; refs: readonly GraphRef[] | null | undefined; onFocus?: (ref: GraphRef) => void; empty?: string; action?: RefAction; headerAction?: { label: string; title: string; run: () => void } }) {
   const runtime = useImpactRuntime((state) => state.byNode)
   if (!refs?.length && !empty) return null
   return (
     <section className="min-w-0">
-      <h3 className="mb-1 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">{title}<span className="font-normal normal-case text-text-4">{refs?.length ?? 0}</span></h3>
+      <h3 className="mb-1 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">{title}<span className="font-normal normal-case text-text-4">{refs?.length ?? 0}</span>
+        {headerAction && !!refs?.length && <button type="button" onClick={headerAction.run} title={headerAction.title} className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-accent hover:bg-accent/10">{headerAction.label}</button>}
+      </h3>
       {!refs?.length ? <p className="text-[11.5px] text-text-4">{empty}</p> : (
         <ul className="flex flex-col">
           {refs.slice(0, 60).map((ref) => (
@@ -56,6 +94,7 @@ function RefList({ title, refs, onFocus, empty }: { title: string; refs: readonl
               </button>
               {runtime.has(ref.node.id) && <RuntimeChip runtime={runtime.get(ref.node.id)!} />}
               {ref.depth > 1 && <span className="shrink-0 text-[10px] text-text-4">{ref.depth} hops</span>}
+              {action && <button type="button" onClick={() => action.run(ref)} title={action.title} className="shrink-0 rounded px-1 text-[10px] font-medium text-accent hover:bg-accent/10">{action.label}</button>}
               {onFocus && <button type="button" onClick={() => onFocus(ref)} className="shrink-0 text-[10px] text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100 focus:opacity-100">impact</button>}
             </li>
           ))}
@@ -156,13 +195,13 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-4 overflow-auto p-3">
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
-          <RefList title="HTTP routes" refs={impact.endpoints} />
+          <RefList title="HTTP routes" refs={impact.endpoints} action={{ label: 'Send', title: 'Open the request for this route in the API Workspace (linked to the running service) and send it', run: (ref) => void sendImpactRoute(session.id, ref, 'send') }} headerAction={{ label: 'Open all in API', title: 'Open a request for every impacted route in the API Workspace', run: () => void openImpactRoutes(session.id, impact.endpoints ?? []) }} />
           {!!impact.containers?.length && <RefList title="Contained in" refs={impact.containers} onFocus={focus} />}
           <RefList title="gRPC services" refs={impact.rpcs} />
           <RefList title="Consumed topics" refs={impact.consumers} />
           <RefList title="Interface contracts" refs={impact.interfaces} onFocus={focus} />
-          <RefList title="Entry points" refs={impact.entries} />
-          <RefList title="Compose services" refs={impact.services} />
+          <RefList title="Entry points" refs={impact.entries} action={{ label: 'Run', title: 'Run this main package', run: runImpactEntry }} />
+          <RefList title="Compose services" refs={impact.services} action={{ label: 'Up', title: 'docker compose up this service', run: runImpactService }} />
           <RefList title="Calls" refs={impact.callees} onFocus={focus} />
           <RefList title="Produces to" refs={impact.produces} />
           <RefList title="Queries" refs={impact.queries} />
