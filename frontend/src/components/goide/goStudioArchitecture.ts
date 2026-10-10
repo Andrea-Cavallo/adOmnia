@@ -153,6 +153,8 @@ export const ENTRY_KINDS: Array<{ kind: string; title: string }> = [
   { kind: 'grpc', title: 'gRPC services' },
   { kind: 'kafka-producer', title: 'Kafka producers' },
   { kind: 'kafka-consumer', title: 'Kafka consumers' },
+  { kind: 'websocket-server', title: 'WebSocket servers' },
+  { kind: 'websocket-client', title: 'WebSocket clients' },
   { kind: 'repository', title: 'DB repositories' },
   { kind: 'job', title: 'Scheduled jobs' },
   { kind: 'cli', title: 'CLI commands' },
@@ -213,6 +215,8 @@ export function entityRefsForEntry(entry: GoIDEArchEntry, sessionId: string): En
     case 'kafka-producer':
     case 'kafka-consumer':
       return (entry.topics ?? []).map((topic) => ({ ...base, kind: 'topic', id: `topic:${topic}`, label: topic, attrs: { broker: 'kafka' } }))
+    case 'websocket-client':
+      return /^wss?:\/\//.test(entry.name) ? [{ ...base, kind: 'websocket', id: `websocket:${entry.name}`, label: entry.name, attrs: { role: 'client', url: entry.name } }] : []
   }
   return []
 }

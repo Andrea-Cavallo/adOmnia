@@ -21,6 +21,7 @@ const (
 	KindEndpoint  = "endpoint" // route HTTP
 	KindRPC       = "rpc"      // servizio gRPC
 	KindTopic     = "topic"
+	KindSocket    = "websocket" // URL a cui il codice si collega in WebSocket
 	KindTable     = "table"
 	KindEnvVar    = "envvar"
 	KindEntry     = "entry" // main, init, job, cli

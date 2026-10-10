@@ -232,8 +232,8 @@ function ServicesView({ report, query, sessionId }: { report: GoIDEArchitecture;
                 {entry.serializer && <span className="shrink-0 rounded bg-surface-3 px-1 text-[10px] text-text-2" title="Message format, from the encoding calls next to the produce/consume call">{entry.serializer}</span>}
                 <span className="ml-auto flex shrink-0 gap-1">
                   {refs.map((ref) => (
-                    <button key={ref.id} type="button" onClick={() => void openEntity(ref)} title={ref.kind === 'route' ? 'Send in API Client' : ref.kind === 'grpc' ? 'Call in gRPC client' : 'Open in Broker Studio'} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">
-                      {ref.kind === 'topic' ? ref.label : ref.kind === 'route' ? 'API Client' : 'gRPC client'}{ref.kind === 'topic' && entry.topicRoles?.[ref.label] && <TopicRole role={entry.topicRoles[ref.label]} />} <ArrowUpRight size={10} aria-hidden="true" />
+                    <button key={ref.id} type="button" onClick={() => void openEntity(ref)} title={ref.kind === 'route' ? 'Send in API Client' : ref.kind === 'grpc' ? 'Call in gRPC client' : ref.kind === 'websocket' ? 'Open in WebSocket client' : 'Open in Broker Studio'} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">
+                      {ref.kind === 'topic' ? ref.label : ref.kind === 'route' ? 'API Client' : ref.kind === 'websocket' ? 'WebSocket client' : 'gRPC client'}{ref.kind === 'topic' && entry.topicRoles?.[ref.label] && <TopicRole role={entry.topicRoles[ref.label]} />} <ArrowUpRight size={10} aria-hidden="true" />
                     </button>
                   ))}
                   {entry.kind === 'repository' && <button type="button" onClick={() => showModule('database')} className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10">Database Studio <ArrowUpRight size={10} aria-hidden="true" /></button>}

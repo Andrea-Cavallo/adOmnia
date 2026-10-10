@@ -280,6 +280,10 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 			case callee.FullName() == "flag.Parse" && file.pkg.Name == "main":
 				base.Kind, base.Name, base.Detail = "cli", file.pkg.PkgPath, "flag"
 				a.addEntry(base)
+			default:
+				if entry, ok := websocketEntry(info, base, packagePath, name, node); ok {
+					a.addEntry(entry)
+				}
 			}
 			for _, library := range kafkaLibraries {
 				if !strings.HasPrefix(packagePath, library.path) {
@@ -458,4 +462,39 @@ func pluralize(count int, word string) string {
 		return "1 " + word
 	}
 	return fmt.Sprintf("%d %ss", count, word)
+}
+
+// Librerie WebSocket: server (upgrade/accept dentro un handler) e client (dial verso un URL).
+var websocketLibraries = []struct{ path, label string }{
+	{"github.com/gorilla/websocket", "gorilla"}, {"nhooyr.io/websocket", "nhooyr"},
+	{"github.com/coder/websocket", "coder"}, {"golang.org/x/net/websocket", "x/net"},
+}
+
+// websocketEntry riconosce Upgrader.Upgrade / websocket.Accept (server) e Dial / DialContext
+// (client): il server è la funzione che fa l'upgrade, il client l'URL se è una costante.
+func websocketEntry(info *types.Info, base ArchEntry, packagePath, name string, call *ast.CallExpr) (ArchEntry, bool) {
+	library := ""
+	for _, candidate := range websocketLibraries {
+		if strings.HasPrefix(packagePath, candidate.path) {
+			library = candidate.label
+		}
+	}
+	if library == "" {
+		return ArchEntry{}, false
+	}
+	switch name {
+	case "Upgrade", "Accept":
+		base.Kind, base.Name, base.Detail = "websocket-server", base.Function, library
+		return base, true
+	case "Dial", "DialContext", "DialConfig":
+		base.Kind, base.Name, base.Detail = "websocket-client", base.Function, library
+		for _, argument := range call.Args {
+			if url, ok := constantString(info, argument); ok && (strings.HasPrefix(url, "ws://") || strings.HasPrefix(url, "wss://")) {
+				base.Name = url
+				break
+			}
+		}
+		return base, true
+	}
+	return ArchEntry{}, false
 }

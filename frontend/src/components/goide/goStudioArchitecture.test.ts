@@ -56,6 +56,10 @@ describe('architecture helpers', () => {
     expect(entityRefsForEntry(entries[0], 's1')[0]).toMatchObject({ kind: 'route', attrs: { method: 'GET', path: '/orders/{id}' }, source: { file: 'main.go', line: 9 } })
     expect(entityRefsForEntry(entries[1], 's1').map((ref) => ref.label)).toEqual(['orders', 'payments'])
     expect(entityRefsForEntry(entries[2], 's1')[0]).toMatchObject({ kind: 'grpc', label: 'Greeter' })
+    const client = { kind: 'websocket-client', name: 'ws://localhost:9000/feed', package: 'p', site: site('w.go') } as any
+    expect(groupEntries([client]).map((group) => group.title)).toEqual(['WebSocket clients'])
+    expect(entityRefsForEntry(client, 's1')[0]).toMatchObject({ kind: 'websocket', attrs: { url: 'ws://localhost:9000/feed' } })
+    expect(entityRefsForEntry({ ...client, name: 'Follow' }, 's1')).toEqual([])
   })
 })
 

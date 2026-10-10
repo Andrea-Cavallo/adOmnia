@@ -146,6 +146,15 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 				b.Node(graph.Node{ID: topicID, Kind: graph.KindTopic, Label: topic, Attrs: attrs("broker", "kafka")})
 				b.Edge(function, topicID, edgeKind, entry.TopicRoles[topic])
 			}
+		case "websocket-server":
+			// L'upgrade è servito via HTTP: compare fra le route che il codice serve.
+			socket := "ws:" + entry.Package + "." + entry.Function
+			b.Node(graph.Node{ID: socket, Kind: graph.KindEndpoint, Label: "WebSocket " + entry.Function, Package: entry.Package, File: entry.Site.Path, Line: entry.Site.Line, Attrs: attrs("library", entry.Detail)})
+			b.Edge(lookup(entry.Package, entry.Function), socket, graph.EdgeHandles, "")
+		case "websocket-client":
+			socket := "ws:" + entry.Name
+			b.Node(graph.Node{ID: socket, Kind: graph.KindSocket, Label: entry.Name, Attrs: attrs("library", entry.Detail)})
+			b.Edge(lookup(entry.Package, entry.Function), socket, graph.EdgeCalls, "")
 		case "main", "init", "job", "cli":
 			entryID := "entry:" + entry.Kind + ":" + entry.Package + ":" + entry.Name
 			b.Node(graph.Node{ID: entryID, Kind: graph.KindEntry, Label: entry.Kind + " " + entry.Name, Package: entry.Package, File: entry.Site.Path, Line: entry.Site.Line, Attrs: attrs("entry", entry.Kind)})
