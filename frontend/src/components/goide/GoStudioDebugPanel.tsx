@@ -1,5 +1,8 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Square, Workflow } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Sparkles, Square, Workflow } from 'lucide-react'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { DEBUG_AI_ACTIONS, debugAIDraft, debugSituation, type DebugAIAction } from '@/lib/goide/debugAI'
+import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoIDEDebugStepAction } from '@/lib/goide-debug-api'
 import { activeDebugView, useGoIDEDebugStore, type GoIDEDebugView } from '@/stores/goideDebug'
@@ -86,6 +89,7 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: 
           {sessionDebuggers.map((item) => <option key={item.info.id} value={item.info.id}>{item.info.title} · {STATE_LABEL[item.info.state]?.label ?? item.info.state}</option>)}
         </select>
       )}
+      <DebugWithAI view={view} sessionId={sessionId} />
       <span className="ml-auto flex min-w-0 items-center gap-3">
         <span className="truncate text-[12px] text-text-3" title={view.info.title}>{view.info.title}</span>
         <span role="status" aria-label="Debugger state" className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold ${state.tone}`}>
@@ -94,6 +98,40 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: 
         </span>
       </span>
     </div>
+  )
+}
+
+/** Debug with AI: stack, locals, goroutines, request, logs, Git and graph context in a reviewable chat draft. */
+function DebugWithAI({ view, sessionId }: { view: GoIDEDebugView; sessionId: string }) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const paused = view.info.state === 'stopped' && view.frames.length > 0
+  const prepare = async (action: DebugAIAction) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const { collectDebugEvidence } = await import('@/lib/goide/debugAIEvidence')
+      const evidence = await collectDebugEvidence(sessionId, view.info.id)
+      const assistant = useGoStudioAssistantStore.getState()
+      assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'claude', debugAIDraft(evidence, action))
+      setError(`${debugSituation(evidence).title}: draft ready in the chat, review it and press Enter.`)
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : String(problem))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      <button type="button" disabled={!paused || busy} onClick={(event) => { const box = event.currentTarget.getBoundingClientRect(); setMenu({ x: box.left, y: box.bottom + 4 }) }}
+        title={paused ? 'Ask the AI about this stop: likely cause, fix, regression test, reproduction or the commit that broke it' : 'Pause the program first'}
+        className="ml-2 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-text-2 hover:bg-surface-2 disabled:opacity-40">
+        <Sparkles size={13} className="text-accent" />{busy ? 'Collecting…' : 'Debug with AI'}
+      </button>
+      {error && <span role="status" className="max-w-72 truncate text-[11px] text-text-3" title={error}>{error}</span>}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={DEBUG_AI_ACTIONS.map((action) => ({ id: action.id, label: action.label }))} onSelect={(id) => { setMenu(null); void prepare(id as DebugAIAction) }} onClose={() => setMenu(null)} />}
+    </>
   )
 }
 
