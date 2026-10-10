@@ -90,14 +90,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Context panel intelligente
 
 
-## §31 · Service Map
-
-> *Base esistente:* Observability → Traces → **Service map** dalle trace OTLP: servizi, archi HTTP/gRPC/SQL/messaging/esterni con rate, p50/p95, errori; dall'arco si aprono una trace, una trace fallita, il codice chiamante, il topic o Database Studio. Redis compare come datastore (`db.system=redis`).
-
-### Runtime
-
-- [ ] Active connections.
-
 ## §32 · Distributed Request Debugger — Killer Feature
 
 > Debuggare una richiesta attraverso più componenti, non solo una funzione.

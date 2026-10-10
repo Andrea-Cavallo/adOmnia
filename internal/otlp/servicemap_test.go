@@ -1,6 +1,12 @@
 package otlp
 
-import "testing"
+import (
+	"context"
+	"net"
+	"os"
+	"strconv"
+	"testing"
+)
 
 func TestServiceMapFromTraces(t *testing.T) {
 	store := NewStore(1000)
@@ -103,5 +109,53 @@ func TestAnnotateConnections(t *testing.T) {
 	}
 	if got["svc:gateway>svc:orders"] != 2 || got["svc:orders>db:postgresql"] != 3 || got["topic:orders>svc:billing"] != 1 || !m.ConnectionsMeasured {
 		t.Fatalf("edges: %v", got)
+	}
+}
+
+// Real sockets: this test process is the "orders" service (port fallback, no process.pid).
+func TestAnnotateConnectionsWithRealSockets(t *testing.T) {
+	server, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	db, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	go func() {
+		for {
+			if _, err := db.Accept(); err != nil {
+				return
+			}
+		}
+	}()
+	for i := 0; i < 2; i++ {
+		c, err := net.Dial("tcp", db.Addr().String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer c.Close()
+	}
+	serverPort, dbPort := strconv.Itoa(server.Addr().(*net.TCPAddr).Port), strconv.Itoa(db.Addr().(*net.TCPAddr).Port)
+	store := NewStore(10)
+	store.Add([]Span{
+		{TraceID: "t", SpanID: "s", Service: "orders", Kind: "server", Category: "http", Attributes: map[string]string{"server.port": serverPort}},
+		{TraceID: "t", SpanID: "q", ParentSpanID: "s", Service: "orders", Kind: "client", Category: "db", Attributes: map[string]string{"db.system": "postgresql", "server.port": dbPort}},
+	})
+	m := store.ServiceMap()
+	conns, listeners, ok := liveSockets(context.Background())
+	if !ok {
+		t.Skip("no socket listing tool")
+	}
+	AnnotateConnections(&m, conns, listeners)
+	for _, node := range m.Nodes {
+		if node.ID == "svc:orders" && node.PID != os.Getpid() {
+			t.Fatalf("orders PID = %d, want %d", node.PID, os.Getpid())
+		}
+	}
+	if m.Edges[0].ActiveConnections != 2 {
+		t.Fatalf("edge connections = %d, want 2: %+v", m.Edges[0].ActiveConnections, m.Edges[0])
 	}
 }
