@@ -31,7 +31,8 @@ export function fitForChat(markdown: string, limit = CHAT_LIMIT_BYTES): string {
  * Esporta il report di un grafico in Markdown per un assistente AI: copia, salva su file o apri Copilot
  * con il report nel campo di testo (l'utente lo rivede e lo invia, niente parte da solo).
  */
-export function GoStudioPerfExport({ build, fileName, prompt = CHAT_PROMPT }: { build: () => string; fileName: string; prompt?: string }) {
+export function GoStudioPerfExport({ build, fileName, prompt: requested }: { build: () => string; fileName: string; prompt?: string }) {
+  const prompt = requested ?? CHAT_PROMPT
   const [feedback, setFeedback] = useState<Feedback>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {

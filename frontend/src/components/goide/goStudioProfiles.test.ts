@@ -89,3 +89,13 @@ describe('codeOrigin', () => {
     expect(codeOrigin({ package: '' })).toBe('runtime')
   })
 })
+
+describe('profileAIPrompt', () => {
+  it('asks about leaks for in-use growth and regressions for allocations, only when comparing', async () => {
+    const { profileAIPrompt } = await import('./goStudioProfiles')
+    expect(profileAIPrompt('inuse_space', false)).toBeUndefined()
+    expect(profileAIPrompt('inuse_space', true)).toContain('memory leak suspicion')
+    expect(profileAIPrompt('alloc_objects', true)).toContain('allocation regression')
+    expect(profileAIPrompt('cpu', true)).toContain('Compare these two Go profiles')
+  })
+})

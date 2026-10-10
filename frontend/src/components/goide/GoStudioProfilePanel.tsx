@@ -4,7 +4,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { listGoIDEProfileFiles, loadGoIDEProfile, type GoIDEProfileFile, type GoIDEProfileReport } from '@/lib/goide-api'
 import type { GoIDESession } from '@/lib/goide-api'
 import {
-  defaultSampleIndex, diffProfiles, matchingSampleIndex, filterNodes, formatProfilePercent, formatProfileValue, groupByPackage,
+  defaultSampleIndex, diffProfiles, profileAIPrompt, matchingSampleIndex, filterNodes, formatProfilePercent, formatProfileValue, groupByPackage,
   sampleValue, shortFunctionName, sortTop, codeOriginColor, CODE_ORIGINS, type ProfileFunction, type ProfileNode,
 } from './goStudioProfiles'
 import { GoStudioFlameGraph } from './GoStudioFlameGraph'
@@ -232,6 +232,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
             <GoStudioPerfExport
               fileName={markdownFileName(report.name, report.sampleTypes[sampleIndex]?.name ?? 'profile')}
               build={() => profileToMarkdown(report, { sampleIndex, compareWith: diffReport && matchingSampleIndex(report, diffReport, sampleIndex) >= 0 ? diffReport : null })}
+              prompt={profileAIPrompt(report.sampleTypes[sampleIndex]?.name, !!diffReport && matchingSampleIndex(report, diffReport, sampleIndex) >= 0)}
             />
           </span>
         )}

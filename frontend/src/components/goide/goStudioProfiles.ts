@@ -170,3 +170,14 @@ export function codeOriginColor(fn: Pick<ProfileFunction, 'relative' | 'runtime'
   const origin = codeOrigin(fn)
   return CODE_ORIGINS.find((item) => item.id === origin)?.color ?? 'var(--gs-viz-runtime)'
 }
+
+/**
+ * The AI question for a profile report: with a second heap profile to compare, in-use growth is
+ * a leak suspicion and allocated growth an allocation regression; otherwise the generic bottleneck one.
+ */
+export function profileAIPrompt(sampleType: string | undefined, comparing: boolean): string | undefined {
+  if (!comparing) return undefined
+  if (/^inuse_/.test(sampleType ?? '')) return 'These are two heap profiles of the same Go program (base, then target). Treat in-use growth as a memory leak suspicion: name the allocation sites whose retained memory grew, what keeps them alive (caches, maps, slices, goroutines, timers) and how to confirm and fix it, with file:line references.\n\n'
+  if (/^alloc_/.test(sampleType ?? '')) return 'These are two allocation profiles of the same Go program (base, then target). Treat growth as an allocation regression: name the functions and lines that allocate more, the likely code change behind it, and how to reduce allocations (preallocation, reuse, avoiding conversions and escapes), with file:line references.\n\n'
+  return 'Compare these two Go profiles (base, then target): name what got more expensive, the likely cause and concrete fixes with file:line references.\n\n'
+}
