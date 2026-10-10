@@ -9,10 +9,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Go Studio P2: source-line Context now shows observed channel/mutex waits, static concurrency findings, paused error values with on-demand Unwrap inspection, and optional values from the matching paused frame. Trace Studio opens a span's source and runtime Context through the entity router.
 
 ### Fixed
+- gO Studio: Code and Edit menu commands stayed disabled ("Open a Go file first") right after opening a file from Go to File.
 - Log Inspector: a live service source opened while the saved investigation was loading no longer disappears.
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Change impact of a request/response type:** the workspace graph now holds the JSON DTOs of the HTTP routes and the types they contain; Analyze Change Impact on a struct lists the containing types, the routes, their handlers and callers, and the tests to run.
 - **Active connections on the Service Map:** each service shows its established TCP connections and each edge the caller's open connections to the callee (database, broker or service port). The process is the span resource's `process.pid` or, without it, the owner of the port its server spans listen on; sockets are read with netstat/ss/lsof at most every 5 s.
 - **WebSocket edges in the Architecture Explorer:** WebSocket servers (the function that upgrades) and clients (the `ws://` URL dialed) for gorilla, nhooyr, coder and x/net; client URLs open in the WebSocket client, and the Semantic Workspace Graph links functions to them.
 - **Running workspace bar (gO Studio):** while the project's services run, a bar under the toolbar lists them with their detected port, plus **Open API** (the detected HTTP routes as a `<service> API` collection whose requests use `{{service:NAME}}`, so they reach the running service) and **Open logs** (every service streams into the Log Inspector). Also in the Run menu.

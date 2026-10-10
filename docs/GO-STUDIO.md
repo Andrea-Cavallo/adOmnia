@@ -554,6 +554,8 @@ gO Studio keeps a **Semantic Workspace Graph** of a trusted project: modules, pa
 
 **Code → Analyze Change Impact** opens the *Impact* tool window for the function under the cursor: direct and indirect callers (calls through an interface reach every implementation), the interface contracts it implements, the tests that reach it (**Run N tests** starts exactly those), routes, gRPC services, consumed topics and entry points that depend on it, what it calls, produces and queries, the modules involved, and a low/medium/high risk with its reasons. *impact* on a row moves the analysis there; **Ask AI** opens the chat with the analysis as a draft.
 
+With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.
+
 Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it.
 
 ## Claude Code
