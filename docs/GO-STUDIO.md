@@ -556,6 +556,8 @@ gO Studio keeps a **Semantic Workspace Graph** of a trusted project: modules, pa
 
 The analysis also lists the environment variables (`os.Getenv`, `os.LookupEnv`) and configuration keys (viper, koanf getters) the function reads; *impact* on one of them shows every function that reads it, their callers and the tests that reach them.
 
+On a `require` line of go.mod the analysis is about the dependency: the packages that import it, their functions and tests, and the modules that require it.
+
 With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.
 
 Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it.
