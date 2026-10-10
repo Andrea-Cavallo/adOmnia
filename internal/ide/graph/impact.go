@@ -109,6 +109,9 @@ func (x *Index) Impact(id string) (Impact, bool) {
 	if target.Kind == KindType {
 		return x.typeImpact(target), true
 	}
+	if target.Kind == KindDependency {
+		return x.dependencyImpact(target), true
+	}
 	result := Impact{Target: target}
 	// Risalita: chi chiama il target, anche attraverso il metodo d'interfaccia che lo smista.
 	upstream := x.walk(id, func(node string) []string {
@@ -422,4 +425,38 @@ func (x *Index) TypeAt(file string, line int) (Node, bool) {
 		}
 	}
 	return best, found && best.Kind == KindType
+}
+
+// dependencyImpact: i package che importano un modulo esterno, i moduli che lo richiedono
+// e le funzioni di quei package con i loro test: ciò che un aggiornamento può rompere.
+func (x *Index) dependencyImpact(target Node) Impact {
+	result := Impact{Target: target}
+	packages, modules := map[string]bool{}, map[string]bool{}
+	for _, edge := range x.in[target.ID] {
+		from := x.byID[edge.From]
+		switch from.Kind {
+		case KindModule:
+			modules[from.Label] = true
+		case KindPackage:
+			packages[from.Label] = true
+			for _, contained := range x.out[from.ID] {
+				file := x.byID[contained.To]
+				if file.Kind != KindFile {
+					continue
+				}
+				for _, inner := range x.out[file.ID] {
+					node := x.byID[inner.To]
+					if node.Kind == KindTest {
+						result.Tests = append(result.Tests, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
+					} else if isCode(node.Kind) {
+						result.Callers = append(result.Callers, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
+					}
+				}
+			}
+		}
+	}
+	result.Packages, result.Modules = sortedKeys(packages), sortedKeys(modules)
+	result.Callers, result.Tests = dedupeRefs(result.Callers), dedupeRefs(result.Tests)
+	result.Risk, result.RiskReasons = risk(result)
+	return result
 }

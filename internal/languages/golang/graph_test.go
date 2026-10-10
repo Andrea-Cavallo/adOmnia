@@ -121,6 +121,21 @@ func TestGRPCMethodsAreSeparateNodes(t *testing.T) {
 	}
 }
 
+func TestExternalDependencyImpact(t *testing.T) {
+	index := buildFixtureGraph(t)
+	dep, ok := index.Node("dep:github.com/IBM/sarama")
+	if !ok || dep.Attrs["version"] != "v0.0.0" {
+		t.Fatalf("sarama node: %+v %v", dep, ok)
+	}
+	impact, _ := index.Impact(dep.ID)
+	if strings.Join(impact.Packages, ",") != "example.com/shop/service" || strings.Join(impact.Modules, ",") != "example.com/shop" {
+		t.Fatalf("packages %v modules %v", impact.Packages, impact.Modules)
+	}
+	if !strings.Contains(refLabels(impact.Callers), "service.Publish") || !strings.Contains(refLabels(impact.Tests), "service.TestLookup") {
+		t.Fatalf("callers %s tests %s", refLabels(impact.Callers), refLabels(impact.Tests))
+	}
+}
+
 func buildFixtureGraph(t *testing.T) *graph.Index {
 	t.Helper()
 	report, root := loadFixture(t, graphFixture())

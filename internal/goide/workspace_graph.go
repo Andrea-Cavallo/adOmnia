@@ -2,6 +2,10 @@ package goide
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -142,6 +146,15 @@ func (s *Service) GraphImpact(sessionID, relPath string, line int) (graph.Impact
 		return graph.Impact{}, err
 	}
 	file := strings.ReplaceAll(relPath, "\\", "/")
+	if path.Base(file) == "go.mod" {
+		if dependency, ok := s.requiredModuleAt(sessionID, file, line); ok {
+			if impact, ok := entry.index.Impact("dep:" + dependency); ok {
+				return impact, nil
+			}
+			return graph.Impact{}, fmt.Errorf("%s is not imported by the analysed packages", dependency)
+		}
+		return graph.Impact{}, errors.New("place the cursor on a require line of go.mod")
+	}
 	if typ, ok := entry.index.TypeAt(file, line); ok {
 		impact, _ := entry.index.Impact(typ.ID)
 		return impact, nil
@@ -181,4 +194,25 @@ func (s *Service) GraphSearch(sessionID, query string, kinds []string, limit int
 		nodes = []graph.Node{}
 	}
 	return nodes, nil
+}
+
+// requiredModuleAt legge il modulo citato alla riga line di go.mod ("require x v1" o "x v1" nel blocco).
+func (s *Service) requiredModuleAt(sessionID, relPath string, line int) (string, bool) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return "", false
+	}
+	data, err := os.ReadFile(filepath.Join(session.Project.RealPath, filepath.FromSlash(relPath)))
+	if err != nil {
+		return "", false
+	}
+	lines := strings.Split(string(data), "\n")
+	if line < 1 || line > len(lines) {
+		return "", false
+	}
+	fields := strings.Fields(strings.TrimPrefix(strings.TrimSpace(lines[line-1]), "require"))
+	if len(fields) < 2 || fields[0] == "(" || strings.HasPrefix(fields[0], "//") {
+		return "", false
+	}
+	return fields[0], true
 }

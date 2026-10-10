@@ -63,8 +63,8 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
 
   const analyzeAtCursor = () => {
     const document = activeGoIDEDocument(useGoIDEStore.getState())
-    if (!document || document.document.sessionId !== session.id || !document.document.relativePath.endsWith('.go')) {
-      setError('Open a Go file and place the cursor inside a function.')
+    if (!document || document.document.sessionId !== session.id || !/(\.go|(^|\/)go\.mod)$/.test(document.document.relativePath)) {
+      setError('Open a Go file and place the cursor inside a function, or go.mod on a require line.')
       return
     }
     const path = document.document.relativePath

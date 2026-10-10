@@ -26,10 +26,36 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 			b.Edge("mod:"+module.Path, "mod:"+required, graph.EdgeRequires, "")
 		}
 	}
+	// Dipendenze esterne: un nodo per modulo richiesto, raggiunto dai package che lo importano.
+	var dependencies []string
+	for _, module := range report.Modules {
+		for _, external := range module.External {
+			path, version, _ := strings.Cut(external, "@")
+			b.Node(graph.Node{ID: "dep:" + path, Kind: graph.KindDependency, Label: path, File: module.Site.Path, Attrs: attrs("version", version)})
+			b.Edge("mod:"+module.Path, "dep:"+path, graph.EdgeRequires, version)
+			dependencies = append(dependencies, path)
+		}
+	}
+	dependencyOf := func(importPath string) string {
+		best := ""
+		for _, path := range dependencies {
+			if (importPath == path || strings.HasPrefix(importPath, path+"/")) && len(path) > len(best) {
+				best = path
+			}
+		}
+		return best
+	}
 	for _, pkg := range report.Packages {
 		moduleOf[pkg.Path] = pkg.Module
 		b.Node(graph.Node{ID: "pkg:" + pkg.Path, Kind: graph.KindPackage, Label: pkg.Path, Package: pkg.Path, File: pkg.Site.Path, Line: pkg.Site.Line, Attrs: attrs("module", pkg.Module)})
 		b.Edge("mod:"+pkg.Module, "pkg:"+pkg.Path, graph.EdgeContains, "")
+	}
+	for _, pkg := range report.Packages {
+		for _, imported := range pkg.External {
+			if dependency := dependencyOf(imported); dependency != "" {
+				b.Edge("pkg:"+pkg.Path, "dep:"+dependency, graph.EdgeImports, imported)
+			}
+		}
 	}
 	for _, edge := range report.Imports {
 		b.Edge("pkg:"+edge.From, "pkg:"+edge.To, graph.EdgeImports, "")

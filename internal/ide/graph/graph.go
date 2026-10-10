@@ -10,22 +10,23 @@ import (
 
 // Tipi di nodo. Un adapter può usarne altri: il core li tratta come opachi.
 const (
-	KindModule    = "module"
-	KindPackage   = "package"
-	KindFile      = "file"
-	KindFunction  = "function"
-	KindMethod    = "method"
-	KindInterface = "interface"
-	KindType      = "type"
-	KindTest      = "test"
-	KindEndpoint  = "endpoint" // route HTTP
-	KindRPC       = "rpc"      // servizio gRPC
-	KindTopic     = "topic"
-	KindSocket    = "websocket" // URL a cui il codice si collega in WebSocket
-	KindTable     = "table"
-	KindEnvVar    = "envvar"
-	KindConfig    = "config" // chiave di configurazione (viper, koanf)
-	KindEntry     = "entry" // main, init, job, cli
+	KindModule     = "module"
+	KindPackage    = "package"
+	KindFile       = "file"
+	KindFunction   = "function"
+	KindMethod     = "method"
+	KindInterface  = "interface"
+	KindType       = "type"
+	KindTest       = "test"
+	KindEndpoint   = "endpoint" // route HTTP
+	KindRPC        = "rpc"      // servizio gRPC
+	KindTopic      = "topic"
+	KindSocket     = "websocket" // URL a cui il codice si collega in WebSocket
+	KindTable      = "table"
+	KindEnvVar     = "envvar"
+	KindConfig     = "config"     // chiave di configurazione (viper, koanf)
+	KindDependency = "dependency" // modulo esterno richiesto da go.mod
+	KindEntry      = "entry"      // main, init, job, cli
 )
 
 // Tipi di arco: From → To si legge "From <kind> To".
