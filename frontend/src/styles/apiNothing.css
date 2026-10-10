@@ -1,0 +1,24 @@
+/* Nothing-inspired request chrome. Every color follows the active palette. */
+@import '@fontsource/doto/latin-800.css';
+.api-nothing-tab { background: var(--color-surface-0); }
+.api-nothing-tab[data-active=true] {
+  background: var(--color-surface-2);
+  border-color: color-mix(in srgb, var(--color-accent) 48%, var(--color-border-2));
+}
+.api-nothing-tab[data-active=true]::after {
+  content: ''; position: absolute; bottom: -1px; left: 12px; right: 12px;
+  height: 2px; background: var(--color-accent); border-radius: 2px;
+}
+.api-nothing-method {
+  padding: 3px 5px; line-height: 1; letter-spacing: .35px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 3px; background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.api-nothing-headline {
+  max-width: 380px; font-family: var(--skin-font-ui, Doto, var(--font-ui));
+  font-size: clamp(20px, 2.2vw, 27px); font-weight: 800; line-height: 1.4;
+  letter-spacing: -.3px; text-wrap: balance;
+}
+.api-nothing-glyph-core { fill: var(--color-accent); }
+.api-nothing-glyph-ring { fill: var(--color-text-4); }
+.api-nothing-shortcut { border-style: dotted; letter-spacing: .3px; }

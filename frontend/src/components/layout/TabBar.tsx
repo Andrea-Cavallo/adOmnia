@@ -10,6 +10,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu'
 import { REQUEST_DRAG_TYPE } from '@/lib/collectionMoves'
 import { openDroppedRequests } from '@/components/collections/useTreeInteraction'
 import { useTabsStore } from '@/stores/tabs'
+import '@/styles/apiNothing.css'
 
 interface TabBarProps {
   tabs: Tab[]
@@ -52,8 +53,8 @@ const MENU_H = 360
 // A tab stays usable down to this width: method badge, an ellipsised title,
 // the dirty dot and the close button still fit. Below it we stop shrinking and
 // move the surplus tabs into the overflow menu instead.
-const TAB_MIN_WIDTH = 92
-const PINNED_TAB_WIDTH = 52
+const TAB_MIN_WIDTH = 140
+const PINNED_TAB_WIDTH = 56
 const TAB_GAP = 4
 const OVERFLOW_BUTTON_WIDTH = 32
 
@@ -206,21 +207,25 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
 
   return (
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
-    <div data-request-tabs className="flex h-10 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
+    <div data-request-tabs className="api-nothing-tabs flex h-12 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
       <Tabs.List asChild aria-label={tr('Request tabs')}>
       <div ref={scrollRef}
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null) }}
         onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)); clearDrag() } }}
         data-request-tab-list
-        className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-hidden rounded-[14px] border border-border-1 bg-surface-1 p-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--color-text-1)_4%,transparent)]">
+        className="flex h-10 min-w-0 flex-1 items-center gap-1 overflow-hidden p-1">
       {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
+        const name = tab.request.name || tab.request.url || tr('Untitled')
+        const methodPrefix = `${tab.request.method} `
+        const title = !tab.tool && name.toUpperCase().startsWith(methodPrefix.toUpperCase()) ? name.slice(methodPrefix.length).trim() || name : name
         return (
           <div
             key={tab.id}
             data-tab-id={tab.id}
+            data-active={isActive ? 'true' : 'false'}
             draggable
             onDoubleClick={() => useTabsStore.getState().keepTab(tab.id)}
             onContextMenu={(e) => {
@@ -270,21 +275,16 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               if (draggedId && outsideWindow) void onDetach(draggedId)
             }}
             className={cn(
-              'relative flex h-6 min-w-0 items-center gap-1.5 rounded-[10px] border px-2 text-[11px] cursor-pointer group transition-[background-color,border-color,box-shadow,transform] duration-150 focus-within:ring-2 focus-within:ring-accent',
+              'api-nothing-tab relative flex h-8 min-w-0 items-center gap-2 rounded-md border px-2.5 text-xs cursor-pointer group transition-colors duration-150 focus-within:ring-2 focus-within:ring-accent',
               isPinned
-                ? 'shrink-0 basis-[52px] min-w-[48px] max-w-[64px]'
-                : 'flex-1 basis-[176px] min-w-[88px] max-w-[180px]',
+                ? 'shrink-0 basis-[56px] min-w-[52px] max-w-[64px]'
+                : 'flex-1 basis-[200px] min-w-[136px] max-w-[224px]',
               isActive
-                ? 'z-10 -translate-y-px text-text-1'
+                ? 'z-10 text-text-1'
                 : 'border-transparent text-text-3 hover:border-border-2 hover:bg-surface-2 hover:text-text-2',
               draggingTabId === tab.id && 'opacity-45',
               savedFlashTabs.has(tab.id) && 'tab-clean-flash',
             )}
-            style={isActive ? {
-              backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, var(--color-surface-2))',
-              borderColor: 'color-mix(in srgb, var(--color-accent) 52%, var(--color-border-2))',
-              boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--color-accent) 52%, transparent), 0 6px 14px -10px var(--color-accent)',
-            } : undefined}
           >
             {dropTarget?.tabId === tab.id && dropTarget.position === 'before' && (
               <span className="absolute -left-[2px] inset-y-1 w-[2px] rounded bg-accent" />
@@ -311,7 +311,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 {tab.tool === 'jsonviewer' ? <Braces size={11} /> : <BookOpen size={11} />}
               </span>
             ) : (
-              <span className={cn('pointer-events-none relative z-10 text-[9px] font-mono font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
+              <span className={cn('api-nothing-method pointer-events-none relative z-10 text-[9px] font-mono font-medium shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
                 {tab.request.method}
               </span>
             )}
@@ -330,7 +330,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               />
             ) : !isPinned ? (
               <span className={cn('pointer-events-none relative z-10 truncate flex-1', tab.preview && 'italic')}>
-                {tab.request.name || tab.request.url || tr('Untitled')}
+                {title}
               </span>
             ) : (
               <span className="pointer-events-none relative z-10 sr-only">{tab.request.name || tab.request.url || tr('Pinned tab')}</span>
@@ -338,8 +338,8 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
             {tab.dirty && (
               <span
                 className={cn(
-                  'pointer-events-none z-10 rounded-full bg-warning shrink-0 shadow-[0_0_10px_color-mix(in_srgb,var(--color-warning)_42%,transparent)]',
-                  isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-2 w-2 animate-pulse',
+                  'pointer-events-none z-10 rounded-full bg-warning shrink-0',
+                  isPinned ? 'absolute right-1.5 top-1.5 h-1.5 w-1.5' : 'h-1.5 w-1.5',
                 )}
                 title={tr('Unsaved changes')}
               />
@@ -354,7 +354,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 )}
                 title={tr('Close tab')}
               >
-                <X size={10} />
+                <X size={12} />
               </button>
             )}
             {dropTarget?.tabId === tab.id && dropTarget.position === 'after' && (

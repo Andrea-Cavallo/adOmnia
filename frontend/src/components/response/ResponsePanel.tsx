@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown, ArrowDownToLine } from 'lucide-react'
+import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, ShieldAlert, ShieldOff, AlertTriangle, Check, XCircle, FileText, FileCode, FileJson, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { prettyJson } from '@/lib/prettyJson'
@@ -16,6 +16,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu'
 import { bodyContextItems } from '@/components/ui/bodyContextActions'
 import { uid } from '@/lib/types'
 import { useUiTranslation } from '@/lib/uiI18n'
+import '@/styles/apiNothing.css'
 
 interface ResponsePanelProps {
   tabId: string
@@ -41,6 +42,7 @@ function ResponseHeaderBar({ state, headerActions, children }: {
   const tr = useUiTranslation()
   return (
     <div data-response-header className="flex h-9 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border-1 bg-surface-1 px-3">
+      <span className="api-dot-label">{tr('Response')}</span>
       {state && (
         <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-text-3">
           <span className={cn('h-1.5 w-1.5 rounded-full', state === 'sending' ? 'bg-accent motion-safe:animate-pulse' : 'bg-text-4')} />
@@ -80,12 +82,19 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
   return (
     <div data-api-response className="flex min-h-0 flex-1 flex-col">
       <ResponseHeaderBar state="idle" headerActions={headerActions} />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center">
-        <div aria-hidden="true" className="mb-5 grid h-12 w-12 place-items-center rounded-xl border border-border-1 bg-surface-1 text-accent"><ArrowDownToLine size={22} strokeWidth={1.5} /></div>
-        <p className="text-[15px] font-medium tracking-tight text-text-1">{tr('Every request starts a conversation.')}</p>
-        <p className="mt-2 max-w-xs text-xs leading-relaxed text-text-3">{tr('Send your request. The response appears here.')}</p>
+      <div className="api-nothing-idle flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+        <svg aria-hidden="true" viewBox="0 0 104 104" className="api-nothing-glyph mb-6 h-24 w-24">
+          {Array.from({length:169},(_,index)=>{
+            const x=index%13,y=Math.floor(index/13),radius=Math.hypot(x-6,y-6)
+            const ring=Math.abs(radius-5)<0.45
+            const arrow=(y===6 && x>=3 && x<=9) || (x>=7 && x<=9 && Math.abs(y-6)===9-x)
+            return ring || arrow ? <circle key={index} cx={4+x*8} cy={4+y*8} r={arrow?2.1:1.6} className={arrow?'api-nothing-glyph-core':'api-nothing-glyph-ring'} /> : null
+          })}
+        </svg>
+        <p className="api-nothing-headline text-text-1">{tr('Every request starts a conversation.')}</p>
+        <p className="mt-4 max-w-xs text-xs leading-relaxed text-text-3">{tr('Send your request. The response appears here.')}</p>
         <div className="mt-6 inline-flex items-center gap-2 text-[11px] text-text-3">
-          <kbd className="rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10px]">Ctrl / Cmd + Enter</kbd><span>{tr('to send')}</span>
+          <kbd className="api-nothing-shortcut rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10px]">Ctrl / Cmd + Enter</kbd><span>{tr('to send')}</span>
         </div>
       </div>
     </div>
