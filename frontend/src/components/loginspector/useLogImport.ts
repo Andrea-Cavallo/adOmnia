@@ -367,7 +367,10 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
 
   const restoreSources = useCallback(async (restored: LogSessionSource[]) => {
     const operation = gateRef.current.start()
-    const usable = restored.filter((item) => item.text.trim())
+    const kept = restored.filter((item) => item.text.trim())
+    // Live sources that started streaming while the saved investigation loaded stay.
+    const live = sourcesRef.current.filter((item) => item.kind === 'live' && !kept.some((other) => other.id === item.id))
+    const usable = [...kept, ...live]
     commitSources(usable)
     await parseSources(usable, operation, false)
   }, [commitSources, parseSources])
