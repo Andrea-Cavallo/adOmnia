@@ -1390,6 +1390,11 @@ func (g *GoIDE) GraphSearch(sessionID, query string, kinds []string, limit int) 
 	return g.service.GraphSearch(sessionID, query, kinds, limit)
 }
 
+// GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
+func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
+	return g.service.GraphSearchReady(sessionID, query, kinds, limit)
+}
+
 // Documentation legge la documentazione dei package Go e dei file .proto del progetto (solo parsing).
 func (g *GoIDE) Documentation(sessionID string) (goide.DocumentationReport, error) {
 	return g.service.Documentation(sessionID)

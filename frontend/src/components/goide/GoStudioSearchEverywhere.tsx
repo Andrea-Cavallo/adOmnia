@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
-import { ArrowRight, FlaskConical, History, Loader2, Play, Search, Settings, Terminal } from 'lucide-react'
+import { ArrowRight, FlaskConical, History, Loader2, Network, Play, Search, Settings, Terminal } from 'lucide-react'
+import { graphSearchReady, type GraphNode } from '@/lib/goide/workspaceGraph'
+import { requestImpactOf } from './GoStudioImpactPanel'
 import { quickOpenGoIDEFiles, type GoIDEQuickOpenResult } from '@/lib/goide-api'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
 import { COMMAND_PALETTE_PANEL_FEATURES, isFeatureVisible, type FeatureDef } from '@/lib/featureRegistry'
@@ -29,6 +31,11 @@ const PANEL_LIMIT = 5
 const RUN_CONFIG_LIMIT = 6
 const SETTING_LIMIT = 5
 
+const GRAPH_KIND_LABEL: Record<string, string> = {
+  endpoint: 'HTTP route', rpc: 'gRPC', topic: 'Topic', table: 'Table', envvar: 'Env var', config: 'Config key',
+  service: 'Compose service', dependency: 'Dependency', type: 'Type', websocket: 'WebSocket',
+}
+
 interface GoStudioSearchEverywhereProps {
   open: boolean
   sessionId: string
@@ -39,7 +46,7 @@ interface GoStudioSearchEverywhereProps {
 
 interface ResultRow {
   key: string
-  section: 'Recent actions' | 'Files' | 'Tests' | 'Symbols' | 'Run configurations' | 'Actions' | 'Settings' | 'adOmnia panels'
+  section: 'Recent actions' | 'Files' | 'Tests' | 'Symbols' | 'Project graph' | 'Run configurations' | 'Actions' | 'Settings' | 'adOmnia panels'
   icon: ReactNode
   title: string
   detail: string
@@ -92,6 +99,7 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
   const extensions = useIDEExtensionsStore(state => state.items)
   const [files, setFiles] = useState<GoIDEQuickOpenResult[]>([])
   const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -117,10 +125,12 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
     const timer = window.setTimeout(() => {
       setLoading(true)
       const fileRequest = quickOpenGoIDEFiles(sessionId, query, FILE_LIMIT).catch(() => [])
-      void Promise.all([fileRequest, symbolRequest?.catch(() => []) ?? Promise.resolve([])]).then(([nextFiles, nextSymbols]) => {
+      const graphRequest = query.trim().length >= 2 ? graphSearchReady(sessionId, query.trim()).catch(() => []) : Promise.resolve([])
+      void Promise.all([fileRequest, symbolRequest?.catch(() => []) ?? Promise.resolve([]), graphRequest]).then(([nextFiles, nextSymbols, nextGraph]) => {
         if (cancelled) return
         setFiles(nextFiles)
         setSymbols(nextSymbols.slice(0, SYMBOL_LIMIT))
+        setGraphNodes(nextGraph)
         setLoading(false)
       })
     }, SEARCH_DEBOUNCE_MS)
@@ -161,6 +171,16 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
       })),
       // Mentre la nuova ricerca gopls è in corso restano visibili solo i simboli coerenti con il testo attuale.
       ...matchingSymbols.map((symbol) => ({ ...symbolRow(symbol), run: close(symbolRow(symbol).run) })),
+      ...graphNodes.map((node) => ({
+        key: `graph:${node.id}`, section: 'Project graph' as const, title: node.label,
+        detail: `${GRAPH_KIND_LABEL[node.kind] ?? node.kind}${node.file ? ` · ${node.file}${node.line ? `:${node.line}` : ''}` : ''} · Enter: change impact`,
+        icon: <Network size={12} className="text-text-3" aria-hidden="true" />,
+        run: close(() => {
+          if (node.file && node.line) void useGoIDEStore.getState().openLocation(node.file, node.line)
+          useGoIDELspStore.getState().showToolWindow('impact')
+          requestImpactOf(node.id)
+        }),
+      })),
       ...configs.map((config) => ({
         key: `config:${config.id}`, section: 'Run configurations' as const, title: config.name, detail: `Run · ${config.kind}`,
         icon: <Play size={12} className="text-success" aria-hidden="true" />,
@@ -175,7 +195,7 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
       })),
       ...panels.map((feature) => panelRow(feature, (target) => close(() => showModule(target.id))())),
     ]
-  }, [availability, featureFlags, files, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols,extensions])
+  }, [availability, featureFlags, files, graphNodes, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols,extensions])
 
   useEffect(() => { setSelected((value) => Math.min(value, Math.max(0, rows.length - 1))) }, [rows.length])
 

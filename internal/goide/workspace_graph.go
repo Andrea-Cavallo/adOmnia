@@ -218,3 +218,32 @@ func (s *Service) requiredModuleAt(sessionID, relPath string, line int) (string,
 	}
 	return fields[0], true
 }
+
+// GraphSearchReady cerca solo in un grafo già costruito (in memoria o salvato), senza
+// ricostruirlo: Search Everywhere non deve attendere l'analisi del progetto.
+func (s *Service) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	graphs := s.graphs()
+	graphs.mu.Lock()
+	entry := graphs.cached[sessionID]
+	store := graphs.store
+	graphs.mu.Unlock()
+	if entry == nil {
+		saved, ok := store.Load(session.Project.RealPath, "go")
+		if !ok {
+			return []graph.Node{}, nil
+		}
+		entry = s.remember(sessionID, saved)
+	}
+	if limit <= 0 || limit > 50 {
+		limit = 8
+	}
+	nodes := entry.index.Search(query, kinds, limit)
+	if nodes == nil {
+		nodes = []graph.Node{}
+	}
+	return nodes, nil
+}

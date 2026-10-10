@@ -9,8 +9,10 @@ import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistan
 import { runGoStudioNamedTests } from './goStudioQuickActions'
 
 /** Bumped by the "Analyze Change Impact" command: the panel re-analyzes the code under the cursor. */
-const useImpactRequest = create<{ nonce: number }>(() => ({ nonce: 0 }))
-export const requestImpactAtCursor = () => useImpactRequest.setState((state) => ({ nonce: state.nonce + 1 }))
+const useImpactRequest = create<{ nonce: number; nodeId: string | null }>(() => ({ nonce: 0, nodeId: null }))
+export const requestImpactAtCursor = () => useImpactRequest.setState((state) => ({ nonce: state.nonce + 1, nodeId: null }))
+/** From Search Everywhere: the impact of a graph node (route, topic, env var, dependency…). */
+export const requestImpactOf = (nodeId: string) => useImpactRequest.setState((state) => ({ nonce: state.nonce + 1, nodeId }))
 
 const RISK_STYLE: Record<string, string> = {
   low: 'border-success/40 text-success',
@@ -80,7 +82,12 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
     } catch (problem) { setError(errorText(problem)) } finally { setRunning(false) }
   }
 
-  useEffect(() => { if (authorized) analyzeAtCursor() }, [nonce, session.id, authorized])
+  useEffect(() => {
+    if (!authorized) return
+    const nodeId = useImpactRequest.getState().nodeId
+    if (nodeId) void run(() => graphImpactOf(session.id, nodeId))
+    else analyzeAtCursor()
+  }, [nonce, session.id, authorized])
 
   const focus = (ref: GraphRef) => void run(() => graphImpactOf(session.id, ref.node.id))
 

@@ -1,14 +1,18 @@
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { Impact, Ref } from '../../../bindings/adomnia/internal/ide/graph/models'
+import type { Impact, Node as GraphNode, Ref } from '../../../bindings/adomnia/internal/ide/graph/models'
 import type { GraphSummary } from '../../../bindings/adomnia/internal/goide/models'
 
 export type GraphImpact = Impact
 export type GraphRef = Ref
+export type { GraphNode }
 export type WorkspaceGraphSummary = GraphSummary
 
 /** Semantic Workspace Graph: built from the Architecture Explorer model, cached on disk until Go sources change. */
 export const workspaceGraphSummary = (sessionId: string, rebuild = false): Promise<WorkspaceGraphSummary> => GoIDE.WorkspaceGraphSummary(sessionId, rebuild)
 export const graphImpactAt = (sessionId: string, relativePath: string, line: number): Promise<GraphImpact> => GoIDE.GraphImpact(sessionId, relativePath, line)
+/** Graph nodes that are not code symbols: routes, RPCs, topics, tables, env vars, config keys, services, dependencies, DTOs. */
+export const GRAPH_SEARCH_KINDS = ['endpoint', 'rpc', 'topic', 'table', 'envvar', 'config', 'service', 'dependency', 'type', 'websocket']
+export const graphSearchReady = (sessionId: string, query: string, limit = 6): Promise<GraphNode[]> => GoIDE.GraphSearchReady(sessionId, query, GRAPH_SEARCH_KINDS, limit).then((nodes) => nodes ?? [])
 export const graphImpactOf = (sessionId: string, nodeId: string): Promise<GraphImpact> => GoIDE.GraphImpactOf(sessionId, nodeId)
 
 const MAX_LISTED = 8

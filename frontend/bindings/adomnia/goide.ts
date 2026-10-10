@@ -768,6 +768,15 @@ export function GraphSearch(sessionID: string, query: string, kinds: string[], l
 }
 
 /**
+ * GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
+ */
+export function GraphSearchReady(sessionID: string, query: string, kinds: string[], limit: number): $CancellablePromise<graph$0.Node[]> {
+    return $Call.ByID(2064729225, sessionID, query, kinds, limit).then(($result: any) => {
+        return $$createType60($result);
+    });
+}
+
+/**
  * HasActiveRuns indica se la sessione possiede processi attivi.
  */
 export function HasActiveRuns(sessionID: string): $CancellablePromise<boolean> {
