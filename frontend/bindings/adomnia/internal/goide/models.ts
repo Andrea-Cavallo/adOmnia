@@ -466,6 +466,9 @@ export class CompletionResult {
     }
 }
 
+export const ContainerInfo = remote$0.ContainerInfo;
+export type ContainerInfo = remote$0.ContainerInfo;
+
 /**
  * CoverageBlock è un blocco del profilo con colonne Monaco (1-based, UTF-16).
  */

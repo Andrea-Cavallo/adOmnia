@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -69,6 +70,12 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	if request.Mode == debugModeRemote {
 		if err := validateRemoteAddress(request.Address); err != nil {
 			return DebugSessionInfo{}, err
+		}
+		if request.RemoteSourceRoot != "" {
+			if strings.ContainsAny(request.RemoteSourceRoot, "\x00\r\n") || !(path.IsAbs(request.RemoteSourceRoot) || filepath.IsAbs(request.RemoteSourceRoot)) {
+				return DebugSessionInfo{}, fmt.Errorf("indica la radice sorgenti remota come percorso assoluto")
+			}
+			request.LocalSourceRoot = session.Project.RealPath
 		}
 		s.seedBreakpoints(session)
 		return s.debug.Start(debugLaunch{session: session, request: request})

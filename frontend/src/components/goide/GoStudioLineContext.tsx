@@ -20,6 +20,8 @@ import { runtimeLensStats } from './goStudioRuntimeLens'
 import { SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioLineDebugContext } from './GoStudioLineDebugContext'
 import { useGoStudioRuntimeContext } from '@/stores/goStudioRuntimeContext'
+import { useGoStudioRuntimeProfile } from '@/stores/goStudioRuntimeProfile'
+import { formatProfileValue } from './goStudioProfiles'
 
 const METHOD = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i
 
@@ -48,6 +50,7 @@ const ago = (iso: string) => {
  */
 export function GoStudioLineContext({ session, document }: { session: GoIDESession; document: GoIDEEditorDocument | null }) {
   const selectedRuntime = useGoStudioRuntimeContext(state => state.selected)
+  const sampledCosts = useGoStudioRuntimeProfile(state => state.costs[session.id])
   const caret = useGoIDENavigationStore((state) => { const history = state.history[session.id]; return history?.entries[history.index] })
   const relativePath = document?.document.relativePath ?? ''
   const line = caret && caret.relativePath === relativePath ? caret.line : 0
@@ -215,6 +218,10 @@ export function GoStudioLineContext({ session, document }: { session: GoIDESessi
           <p className="text-text-2">{lensTitle(lensHere, fileCounts(fileLens), Date.now()).replace(/^runtime: /, '')}</p>
         </Section>
       )}
+      {(sampledCosts ?? []).some(cost=>cost.file===relativePath && cost.line===line) && <Section icon={<GitFork size={11}/>} title="Sampled CPU / allocation cost">
+        {(sampledCosts ?? []).filter(cost=>cost.file===relativePath && cost.line===line).map((cost,index)=><p key={index} title={`${cost.profile} · ${cost.at}`} className="text-text-3">{cost.function?'Function total · ':''}{cost.metric}: {formatProfileValue(cost.value,cost.unit)} · {cost.profile}</p>)}
+        <p className="text-text-4">Profile estimates, not exact cost per request.</p>
+      </Section>}
 
       {nothing && <p className="p-3 text-[11px] text-text-4">{archError || 'Nothing runtime-related on this line. Try a handler, a query, a topic, a test, an interface, a go statement or a go.mod dependency.'}</p>}
     </div>

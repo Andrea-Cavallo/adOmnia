@@ -9,6 +9,15 @@ import (
 
 // RemoteTarget è un ambiente in cui eseguire run, test e comandi: distro WSL, host SSH o container.
 type RemoteTarget = remote.Target
+type ContainerInfo = remote.ContainerInfo
+
+func (s *Service) InspectContainer(sessionID, name string) (ContainerInfo, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return ContainerInfo{}, err
+	}
+	return remote.InspectContainer(context.Background(), name, session.Project.RealPath)
+}
 
 // ListRemoteTargets elenca gli ambienti raggiungibili da questa macchina (WSL, ~/.ssh/config, docker ps).
 func (s *Service) ListRemoteTargets() []RemoteTarget {

@@ -126,6 +126,9 @@ func TestMakeTargetRunsEndToEnd(t *testing.T) {
 	if finished.Status != "exited" {
 		t.Fatalf("make terminato con stato %q", finished.Status)
 	}
+	if finished.ExitCode == nil || *finished.ExitCode != 0 {
+		t.Fatalf("docker build failed: %#v", finished)
+	}
 }
 
 func TestDockerBuildEndToEnd(t *testing.T) {

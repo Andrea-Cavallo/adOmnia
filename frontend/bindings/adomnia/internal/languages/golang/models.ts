@@ -962,6 +962,12 @@ export class DebugRequest {
     "address"?: string;
 
     /**
+     * Source roots for a container/remote checkout; DAP maps local -> remote.
+     */
+    "remoteSourceRoot"?: string;
+    "localSourceRoot"?: string;
+
+    /**
      * WorkingDirectory è la cartella del modulo relativa al progetto.
      */
     "workingDirectory": string;
@@ -1003,22 +1009,22 @@ export class DebugRequest {
      * Creates a new DebugRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): DebugRequest {
-        const $$createField7_0 = $$createType1;
-        const $$createField8_0 = $$createType1;
-        const $$createField9_0 = $$createType2;
-        const $$createField11_0 = $$createType1;
+        const $$createField9_0 = $$createType1;
+        const $$createField10_0 = $$createType1;
+        const $$createField11_0 = $$createType2;
+        const $$createField13_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField7_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField9_0($$parsedSource["programArguments"]);
         }
         if ("buildTags" in $$parsedSource) {
-            $$parsedSource["buildTags"] = $$createField8_0($$parsedSource["buildTags"]);
+            $$parsedSource["buildTags"] = $$createField10_0($$parsedSource["buildTags"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField9_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField11_0($$parsedSource["environment"]);
         }
         if ("buildFlags" in $$parsedSource) {
-            $$parsedSource["buildFlags"] = $$createField11_0($$parsedSource["buildFlags"]);
+            $$parsedSource["buildFlags"] = $$createField13_0($$parsedSource["buildFlags"]);
         }
         return new DebugRequest($$parsedSource as Partial<DebugRequest>);
     }

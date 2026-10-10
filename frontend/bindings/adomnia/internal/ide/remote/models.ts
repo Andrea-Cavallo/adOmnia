@@ -5,6 +5,73 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class ContainerInfo {
+    "name": string;
+    "image": string;
+    "running": boolean;
+    "projectDirectory"?: string;
+    "ports": PublishedPort[];
+
+    /** Creates a new ContainerInfo instance. */
+    constructor($$source: Partial<ContainerInfo> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("image" in $$source)) {
+            this["image"] = "";
+        }
+        if (!("running" in $$source)) {
+            this["running"] = false;
+        }
+        if (!("ports" in $$source)) {
+            this["ports"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ContainerInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ContainerInfo {
+        const $$createField4_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("ports" in $$parsedSource) {
+            $$parsedSource["ports"] = $$createField4_0($$parsedSource["ports"]);
+        }
+        return new ContainerInfo($$parsedSource as Partial<ContainerInfo>);
+    }
+}
+
+export class PublishedPort {
+    "container": string;
+    "host": string;
+    "port": string;
+
+    /** Creates a new PublishedPort instance. */
+    constructor($$source: Partial<PublishedPort> = {}) {
+        if (!("container" in $$source)) {
+            this["container"] = "";
+        }
+        if (!("host" in $$source)) {
+            this["host"] = "";
+        }
+        if (!("port" in $$source)) {
+            this["port"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PublishedPort instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PublishedPort {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PublishedPort($$parsedSource as Partial<PublishedPort>);
+    }
+}
+
 /**
  * Target descrive dove eseguire: Kind, Name (distro, host di ~/.ssh/config o user@host, nome del container)
  * e Directory, la radice del progetto vista dall'ambiente remoto (vuota per WSL = calcolata).
@@ -34,3 +101,7 @@ export class Target {
         return new Target($$parsedSource as Partial<Target>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = PublishedPort.createFrom;
+const $$createType1 = $Create.Array($$createType0);

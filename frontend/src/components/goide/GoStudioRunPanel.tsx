@@ -30,6 +30,7 @@ import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow
 import { StudioToolControls } from './StudioToolControls'
 import { toolKey, useStudioTools, useToolView } from './studioToolState'
 import { selectToolRun } from './studioToolBridge'
+import { buildKitProgress } from '@/lib/goide/buildKitProgress'
 
 interface GoStudioRunPanelProps {
   session: GoIDESession
@@ -219,6 +220,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
   }, [activeRunId, executions, showToolWindow, standalone, fixedView])
   const chunks = active ? consoleByRun[active.id] ?? [] : []
   const lines = useMemo(() => parseLines(chunks), [chunks])
+  const buildSteps = useMemo(() => active?.kind === 'docker-build' ? buildKitProgress(chunks.map(chunk=>chunk.text).join('')) : [], [active?.kind, chunks])
   const buildProblems = useMemo<GoStudioBuildProblem[]>(() => lines
     .filter((line) => line.path && line.line)
     .map((line) => ({ path: resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line: line.line!, column: line.column ?? 1, text: line.text })), [active?.workingDirectory, lines])
@@ -278,6 +280,10 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
+        {buildSteps.length > 0 && <details className="max-h-40 shrink-0 overflow-auto border-b border-border-1 px-3 py-2 text-[11px]">
+          <summary className="cursor-pointer text-accent">BuildKit · {buildSteps.filter(step=>step.state==='done'||step.state==='cached').length}/{buildSteps.length} steps · {buildSteps.filter(step=>step.state==='cached').length} cached</summary>
+          {buildSteps.map(step=><p key={step.id} className={step.state==='error'?'text-danger':'text-text-3'}>#{step.id} · {step.state} · {step.title} {step.duration ?? ''}</p>)}
+        </details>}
         <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}

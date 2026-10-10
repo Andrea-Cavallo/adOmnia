@@ -15,6 +15,7 @@ export {
     CodeGenResult,
     CompletionEntry,
     CompletionResult,
+    ContainerInfo,
     CoverageBlock,
     CoverageBranch,
     CoverageFile,

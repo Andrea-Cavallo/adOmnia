@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { GoIDERunConfigurationKind, listGoIDERemoteTargets, type GoIDERemoteTarget, type GoIDERunConfiguration } from '@/lib/goide-api'
+import { InspectContainer } from '../../../bindings/adomnia/goide'
+import type { ContainerInfo } from '../../../bindings/adomnia/internal/ide/remote/models'
 
 /** Tipi che il backend sa eseguire altrove: quelli che lanciano un singolo comando. */
 const REMOTE_KINDS = new Set<string>([
@@ -29,6 +31,8 @@ interface GoStudioRunTargetProps {
 export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
   const [targets, setTargets] = useState<GoIDERemoteTarget[]>([])
   const [loading, setLoading] = useState(false)
+  const [container,setContainer] = useState<ContainerInfo | null>(null)
+  const [containerError,setContainerError] = useState('')
   const remote = (draft.remote ?? undefined) as GoIDERemoteTarget | undefined
 
   const refresh = () => {
@@ -41,6 +45,16 @@ export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
   const options = remote && !targets.some((item) => keyOf(item) === keyOf(remote)) ? [remote, ...targets] : targets
   const setRemote = (next: GoIDERemoteTarget | undefined) => patch({ remote: next ?? null })
   const needsDirectory = remote && remote.kind !== 'wsl'
+  useEffect(()=>{
+    let active=true
+    setContainer(null);setContainerError('')
+    if(remote?.kind==='container')void InspectContainer(draft.sessionId,remote.name).then(info=>{
+      if(!active)return
+      setContainer(info)
+      if(!remote.directory && info.projectDirectory)patch({remote:{...remote,directory:info.projectDirectory}})
+    },error=>{if(active)setContainerError(String(error))})
+    return ()=>{active=false}
+  },[draft.sessionId,remote?.kind,remote?.name])
 
   return (
     <>
@@ -81,6 +95,11 @@ export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
           />
         </label>
       )}
+      {container && <div className="col-span-2 space-y-1 text-[11px] text-text-3">
+        <p>{container.image} · {container.running?'running':'stopped'} · {container.projectDirectory || 'No bind mount contains this project'}</p>
+        {container.ports.map((port,index)=><p key={index} className="gs-mono">{port.container} → {port.host || '0.0.0.0'}:{port.port}</p>)}
+      </div>}
+      {containerError && <p className="col-span-2 text-[11px] text-warning">{containerError}</p>}
       {remote && (
         <p className="gs-hint col-span-2 -mt-2">
           {remote.kind === 'wsl' && 'Runs with the Go toolchain installed in the distro. Paths are translated automatically.'}

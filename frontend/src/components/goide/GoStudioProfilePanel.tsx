@@ -16,6 +16,7 @@ import { GoStudioCaptureLiveProfile } from './GoStudioCaptureLiveProfile'
 import { useFocusedArtifact } from '@/lib/goide/goStudioRemote'
 import { markdownFileName, profileToMarkdown } from './goStudioPerfMarkdown'
 import { profileHeatFrom, useGoStudioProfileHeat } from './goStudioProfileHeat'
+import { useGoStudioRuntimeProfile } from '@/stores/goStudioRuntimeProfile'
 
 interface GoStudioProfilePanelProps {
   session: GoIDESession
@@ -183,6 +184,7 @@ export function GoStudioProfilePanel({ session }: GoStudioProfilePanelProps) {
   useEffect(() => {
     useGoStudioProfileHeat.getState().publish(sessionId, report ? profileHeatFrom(report, sampleIndex) : null)
   }, [report, sampleIndex, sessionId])
+  useEffect(()=>{if(report)useGoStudioRuntimeProfile.getState().publish(sessionId,report)},[report,sessionId])
   const topEdges = useMemo(() => (report?.edges ?? []).slice(0, 200), [report])
   const deltas = useMemo(() => (report && diffReport ? diffProfiles(report, diffReport, sampleIndex, mode) : []), [report, diffReport, sampleIndex, mode])
   const changedCount = useMemo(() => deltas.filter((delta) => delta.delta !== 0).length, [deltas])

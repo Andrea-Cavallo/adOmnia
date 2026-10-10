@@ -5,6 +5,8 @@ import { getOtlpLens, type OtlpLensStat } from '@/lib/otlp-api'
 import { relativeToRoots } from '@/lib/sourcePaths'
 import { fileCounts, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
 import { documentForModel } from './goStudioLanguageFeatures'
+import { useGoStudioRuntimeProfile } from '@/stores/goStudioRuntimeProfile'
+import { formatProfileValue } from './goStudioProfiles'
 
 // Runtime Lens: above the code that started OpenTelemetry spans, how it behaved at runtime.
 // Data comes only from the local OTLP receiver; polling stops while the lens is off.
@@ -72,19 +74,21 @@ export function registerGoStudioRuntimeLens(): void {
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
       const stats = document ? byFile.get(`${document.document.sessionId}\u0000${document.document.relativePath}`) : undefined
-      if (!stats?.length) return { lenses: [], dispose: () => undefined }
-      const counts = fileCounts(stats)
+      const costs = document && runtimeLensEnabled() ? (useGoStudioRuntimeProfile.getState().costs[document.document.sessionId] ?? []).filter(cost=>cost.file===document.document.relativePath) : []
+      if (!stats?.length && !costs.length) return { lenses: [], dispose: () => undefined }
+      const counts = fileCounts(stats ?? [])
       const now = Date.now()
       return {
-        lenses: stats.map((stat) => ({
+        lenses: [...(stats ?? []).map((stat) => ({
           range: { startLineNumber: stat.line, startColumn: 1, endLineNumber: stat.line, endColumn: 1 },
           command: { id: COMMAND, title: lensTitle(stat, counts, now), tooltip: lensTooltip(stat) },
-        })),
+        })),...costs.map(cost=>({range:{startLineNumber:cost.line,startColumn:1,endLineNumber:cost.line,endColumn:1},command:{id:COMMAND,title:`sampled ${cost.function?'function ':''}${cost.metric==='cpu'?'CPU':cost.metric==='alloc_space'?'allocations':'allocated objects'}: ${formatProfileValue(cost.value,cost.unit)}`,tooltip:`${cost.function ?? cost.file}:${cost.line} · ${cost.profile} · ${cost.at}. Sampled profile estimate; not exact per-call cost.`}}))],
         dispose: () => undefined,
       }
     },
   }
   providerRef = provider
+  useGoStudioRuntimeProfile.subscribe(()=>changed.fire(provider))
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
   schedule(provider)
 }

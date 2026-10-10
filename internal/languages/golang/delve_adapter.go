@@ -23,6 +23,9 @@ type DebugRequest struct {
 	ProcessID int `json:"processId,omitempty"`
 	// Address è host:porta del server Delve in modalità remote.
 	Address string `json:"address,omitempty"`
+	// Source roots for a container/remote checkout; DAP maps local -> remote.
+	RemoteSourceRoot string `json:"remoteSourceRoot,omitempty"`
+	LocalSourceRoot  string `json:"localSourceRoot,omitempty"`
 	// WorkingDirectory è la cartella del modulo relativa al progetto.
 	WorkingDirectory string `json:"workingDirectory"`
 	// Target è il package relativo al modulo, es. "." o "./cmd/api".
@@ -41,7 +44,11 @@ func delveLaunchArguments(buildDir string, request DebugRequest, program, module
 	case debugModeAttach:
 		return "attach", map[string]any{"request": "attach", "mode": "local", "processId": request.ProcessID}
 	case debugModeRemote:
-		return "attach", map[string]any{"request": "attach", "mode": "remote"}
+		args := map[string]any{"request": "attach", "mode": "remote"}
+		if request.RemoteSourceRoot != "" && request.LocalSourceRoot != "" {
+			args["substitutePath"] = []map[string]string{{"from": request.LocalSourceRoot, "to": request.RemoteSourceRoot}}
+		}
+		return "attach", args
 	}
 	arguments := map[string]any{
 		"request": "launch", "mode": request.Mode, "program": program, "cwd": moduleDir, "stopOnEntry": false,

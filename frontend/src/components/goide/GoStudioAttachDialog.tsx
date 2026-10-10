@@ -41,6 +41,7 @@ export function GoStudioAttachDialog({ sessionId, mode, onClose }: GoStudioAttac
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const [address, setAddress] = useState(DEFAULT_REMOTE_ADDRESS)
+  const [remoteRoot, setRemoteRoot] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const visible = useMemo(() => filterProcesses(processes, query), [processes, query])
 
@@ -75,7 +76,7 @@ export function GoStudioAttachDialog({ sessionId, mode, onClose }: GoStudioAttac
     if (!address.trim()) return
     rememberRemoteAddress(address.trim())
     onClose()
-    void useGoIDEDebugStore.getState().start({ sessionId, mode: 'remote', address: address.trim(), workingDirectory: '', target: '' })
+    void useGoIDEDebugStore.getState().start({ sessionId, mode: 'remote', address: address.trim(), remoteSourceRoot: remoteRoot.trim(), workingDirectory: '', target: '' })
   }
   const onKeyDown = (event: ReactKeyboardEvent) => {
     if (event.key === 'ArrowDown') { event.preventDefault(); setSelected((value) => Math.min(value + 1, visible.length - 1)) }
@@ -122,11 +123,14 @@ export function GoStudioAttachDialog({ sessionId, mode, onClose }: GoStudioAttac
           <GoStudioField label="Delve server address (host:port)">
             <input ref={inputRef} value={address} onChange={(event) => setAddress(event.target.value)} spellCheck={false} className="gs-input gs-mono" />
           </GoStudioField>
+          <GoStudioField label="Source root in container / remote machine" hint="Optional when source paths already match. Maps this project's root to the path used to compile the service.">
+            <input value={remoteRoot} onChange={event=>setRemoteRoot(event.target.value)} placeholder="/workspace/service" spellCheck={false} className="gs-input gs-mono"/>
+          </GoStudioField>
           <div className="gs-surface px-3 py-2.5">
             <span className="gs-section-title">Start Delve with</span>
             <code className="gs-mono mt-1 block break-all text-text-2">dlv debug --headless --listen=:2345 --accept-multiclient --api-version=2</code>
           </div>
-          <p className="gs-hint">Breakpoints map to this project when the sources have the same paths on both machines.</p>
+          <p className="gs-hint">Publish the container's Delve port on localhost, then connect here. Source mapping keeps breakpoints and stack frames linked to this project.</p>
         </form>
       )}
     </GoStudioModal>
