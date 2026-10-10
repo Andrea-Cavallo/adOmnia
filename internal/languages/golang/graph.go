@@ -162,6 +162,36 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 		}
 	}
 
+	// DTO: gli struct che le route leggono e scrivono, e quelli che contengono.
+	dto := map[string]string{} // nome dello schema → nodo
+	for _, schema := range report.Schemas {
+		id := "type:" + schema.Package + "." + schema.Name
+		dto[schema.Name] = id
+		b.Node(graph.Node{ID: id, Kind: graph.KindType, Label: shortPackage(schema.Package) + "." + schema.Name, Package: schema.Package, File: schema.Site.Path, Line: schema.Site.Line, Attrs: attrs("module", moduleOf[schema.Package], "dto", "true")})
+	}
+	for _, schema := range report.Schemas {
+		for _, field := range schema.Fields {
+			for _, ref := range []string{field.Ref, field.Items} {
+				if to, ok := dto[ref]; ok {
+					b.Edge(dto[schema.Name], to, graph.EdgeUses, "field "+field.GoName)
+				}
+			}
+		}
+	}
+	for _, entry := range report.Entries {
+		if entry.Kind != "http" {
+			continue
+		}
+		for detail, body := range map[string]*ArchBody{"request": entry.Request, "response": entry.Response} {
+			if body == nil {
+				continue
+			}
+			if to, ok := dto[body.Ref]; ok {
+				b.Edge("http:"+entry.Name, to, graph.EdgeUses, detail)
+			}
+		}
+	}
+
 	for _, query := range report.Queries {
 		function := lookup(query.Package, query.Function)
 		for _, table := range query.Tables {

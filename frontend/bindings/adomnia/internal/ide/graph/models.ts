@@ -38,6 +38,11 @@ export class Impact {
     "consumers": Ref[];
 
     /**
+     * Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
+     */
+    "containers"?: Ref[];
+
+    /**
      * main/job/cli che arrivano al target
      */
     "entries": Ref[];
@@ -125,13 +130,14 @@ export class Impact {
         const $$createField5_0 = $$createType2;
         const $$createField6_0 = $$createType2;
         const $$createField7_0 = $$createType2;
-        const $$createField8_0 = $$createType3;
+        const $$createField8_0 = $$createType2;
         const $$createField9_0 = $$createType3;
-        const $$createField10_0 = $$createType2;
+        const $$createField10_0 = $$createType3;
         const $$createField11_0 = $$createType2;
         const $$createField12_0 = $$createType2;
         const $$createField13_0 = $$createType2;
-        const $$createField15_0 = $$createType3;
+        const $$createField14_0 = $$createType2;
+        const $$createField16_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("target" in $$parsedSource) {
             $$parsedSource["target"] = $$createField0_0($$parsedSource["target"]);
@@ -154,29 +160,32 @@ export class Impact {
         if ("consumers" in $$parsedSource) {
             $$parsedSource["consumers"] = $$createField6_0($$parsedSource["consumers"]);
         }
+        if ("containers" in $$parsedSource) {
+            $$parsedSource["containers"] = $$createField7_0($$parsedSource["containers"]);
+        }
         if ("entries" in $$parsedSource) {
-            $$parsedSource["entries"] = $$createField7_0($$parsedSource["entries"]);
+            $$parsedSource["entries"] = $$createField8_0($$parsedSource["entries"]);
         }
         if ("packages" in $$parsedSource) {
-            $$parsedSource["packages"] = $$createField8_0($$parsedSource["packages"]);
+            $$parsedSource["packages"] = $$createField9_0($$parsedSource["packages"]);
         }
         if ("modules" in $$parsedSource) {
-            $$parsedSource["modules"] = $$createField9_0($$parsedSource["modules"]);
+            $$parsedSource["modules"] = $$createField10_0($$parsedSource["modules"]);
         }
         if ("produces" in $$parsedSource) {
-            $$parsedSource["produces"] = $$createField10_0($$parsedSource["produces"]);
+            $$parsedSource["produces"] = $$createField11_0($$parsedSource["produces"]);
         }
         if ("queries" in $$parsedSource) {
-            $$parsedSource["queries"] = $$createField11_0($$parsedSource["queries"]);
+            $$parsedSource["queries"] = $$createField12_0($$parsedSource["queries"]);
         }
         if ("reads" in $$parsedSource) {
-            $$parsedSource["reads"] = $$createField12_0($$parsedSource["reads"]);
+            $$parsedSource["reads"] = $$createField13_0($$parsedSource["reads"]);
         }
         if ("callees" in $$parsedSource) {
-            $$parsedSource["callees"] = $$createField13_0($$parsedSource["callees"]);
+            $$parsedSource["callees"] = $$createField14_0($$parsedSource["callees"]);
         }
         if ("riskReasons" in $$parsedSource) {
-            $$parsedSource["riskReasons"] = $$createField15_0($$parsedSource["riskReasons"]);
+            $$parsedSource["riskReasons"] = $$createField16_0($$parsedSource["riskReasons"]);
         }
         return new Impact($$parsedSource as Partial<Impact>);
     }

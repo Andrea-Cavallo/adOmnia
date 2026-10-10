@@ -41,6 +41,7 @@ const (
 	EdgeQueries    = "queries"    // funzione → tabella
 	EdgeReads      = "reads"      // funzione → variabile d'ambiente
 	EdgeStarts     = "starts"     // entry → funzione
+	EdgeUses       = "uses"       // endpoint/tipo → tipo (DTO di richiesta/risposta, campo)
 )
 
 // Node è un elemento del progetto, con la posizione da cui viene.

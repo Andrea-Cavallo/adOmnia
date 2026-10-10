@@ -81,6 +81,8 @@ type Impact struct {
 	Endpoints  []Ref    `json:"endpoints"`  // route HTTP servite da codice che raggiunge il target
 	RPCs       []Ref    `json:"rpcs"`
 	Consumers  []Ref    `json:"consumers"` // topic consumati da codice che raggiunge il target
+	// Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
+	Containers []Ref `json:"containers,omitempty"`
 	Entries    []Ref    `json:"entries"`   // main/job/cli che arrivano al target
 	Packages   []string `json:"packages"`
 	Modules    []string `json:"modules"`
@@ -103,6 +105,9 @@ func (x *Index) Impact(id string) (Impact, bool) {
 	target, ok := x.byID[id]
 	if !ok {
 		return Impact{}, false
+	}
+	if target.Kind == KindType {
+		return x.typeImpact(target), true
 	}
 	result := Impact{Target: target}
 	// Risalita: chi chiama il target, anche attraverso il metodo d'interfaccia che lo smista.
@@ -333,4 +338,87 @@ func (x *Index) Search(query string, kinds []string, limit int) []Node {
 		out = out[:limit]
 	}
 	return out
+}
+
+// typeImpact: un tipo (DTO) cambia il contratto delle route che lo usano, anche tramite
+// i tipi che lo contengono; chi chiama gli handler di quelle route e i test che li
+// raggiungono sono l'impatto sul codice.
+func (x *Index) typeImpact(target Node) Impact {
+	result := Impact{Target: target}
+	users := x.walk(target.ID, func(node string) []string {
+		var next []string
+		for _, edge := range x.in[node] {
+			if edge.Kind == EdgeUses {
+				next = append(next, edge.From)
+			}
+		}
+		return next
+	}, &result.Truncated)
+	packages, modules := map[string]bool{}, map[string]bool{}
+	note := func(node Node) {
+		if node.Package != "" {
+			packages[node.Package] = true
+		}
+		if module := node.Attrs["module"]; module != "" {
+			modules[module] = true
+		}
+	}
+	note(target)
+	for _, ref := range users {
+		switch ref.Node.Kind {
+		case KindEndpoint, KindRPC:
+			result.Endpoints = append(result.Endpoints, ref)
+			for _, edge := range x.in[ref.Node.ID] {
+				if edge.Kind != EdgeHandles {
+					continue
+				}
+				handler, ok := x.byID[edge.From]
+				if !ok {
+					continue
+				}
+				result.Callers = append(result.Callers, Ref{Node: handler, Depth: ref.Depth + 1, Via: append(append([]string(nil), ref.Via...), ref.Node.Label)})
+				note(handler)
+				if code, ok := x.Impact(handler.ID); ok {
+					for _, caller := range code.Callers {
+						caller.Depth += ref.Depth + 1
+						result.Callers = append(result.Callers, caller)
+						note(caller.Node)
+					}
+					for _, test := range code.Tests {
+						test.Depth += ref.Depth + 1
+						result.Tests = append(result.Tests, test)
+					}
+					result.Entries = append(result.Entries, code.Entries...)
+				}
+			}
+		default:
+			result.Containers = append(result.Containers, ref)
+			note(ref.Node)
+		}
+	}
+	result.Packages, result.Modules = sortedKeys(packages), sortedKeys(modules)
+	for _, list := range []*[]Ref{&result.Callers, &result.Tests, &result.Endpoints, &result.Containers, &result.Entries} {
+		*list = dedupeRefs(*list)
+	}
+	result.Risk, result.RiskReasons = risk(result)
+	return result
+}
+
+// TypeAt trova il tipo dichiarato a file:line o, sopra la riga, più vicino di ogni funzione
+// (il cursore dentro i campi di uno struct).
+func (x *Index) TypeAt(file string, line int) (Node, bool) {
+	var best Node
+	found := false
+	for _, node := range x.graph.Nodes {
+		if node.File != file || node.Line > line || node.Line <= 0 {
+			continue
+		}
+		if node.Kind != KindType && !isCode(node.Kind) {
+			continue
+		}
+		if !found || node.Line > best.Line {
+			best, found = node, true
+		}
+	}
+	return best, found && best.Kind == KindType
 }

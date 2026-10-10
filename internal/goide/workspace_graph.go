@@ -141,9 +141,14 @@ func (s *Service) GraphImpact(sessionID, relPath string, line int) (graph.Impact
 	if err != nil {
 		return graph.Impact{}, err
 	}
-	function, ok := entry.index.FunctionAt(strings.ReplaceAll(relPath, "\\", "/"), line)
+	file := strings.ReplaceAll(relPath, "\\", "/")
+	if typ, ok := entry.index.TypeAt(file, line); ok {
+		impact, _ := entry.index.Impact(typ.ID)
+		return impact, nil
+	}
+	function, ok := entry.index.FunctionAt(file, line)
 	if !ok {
-		return graph.Impact{}, errors.New("no function at this position: place the cursor inside a function or method")
+		return graph.Impact{}, errors.New("no function at this position: place the cursor inside a function, a method or a request/response type")
 	}
 	impact, _ := entry.index.Impact(function.ID)
 	return impact, nil

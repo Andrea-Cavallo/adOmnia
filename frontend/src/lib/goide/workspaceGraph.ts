@@ -33,6 +33,7 @@ export function impactContext(impact: GraphImpact): string {
     list('Callers (direct and indirect, through interfaces too)', impact.callers, (ref) => ref.node.label + hops(ref) + where(ref)),
     list('Interface contracts it implements', impact.interfaces),
     list('Tests that reach it', impact.tests, (ref) => ref.node.label + where(ref)),
+    list('Types that contain it', impact.containers ?? []),
     list('HTTP routes served through it', impact.endpoints),
     list('gRPC services served through it', impact.rpcs),
     list('Topics consumed through it', impact.consumers),

@@ -37,7 +37,66 @@ func TestLookupCalls(t *testing.T) {
 	s.Lookup("a")
 }
 `
+	files["api/api.go"] = `package api
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type Item struct {
+	SKU string ` + "`json:\"sku\"`" + `
+}
+
+type Order struct {
+	ID    string ` + "`json:\"id\"`" + `
+	Items []Item ` + "`json:\"items\"`" + `
+}
+
+func Routes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /orders", CreateOrder)
+}
+
+func CreateOrder(w http.ResponseWriter, r *http.Request) {
+	var order Order
+	_ = json.NewDecoder(r.Body).Decode(&order)
+	_ = json.NewEncoder(w).Encode(order)
+}
+`
+	files["api/api_test.go"] = `package api
+
+import (
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestCreateOrder(t *testing.T) {
+	CreateOrder(httptest.NewRecorder(), httptest.NewRequest("POST", "/orders", strings.NewReader("{}")))
+}
+`
 	return files
+}
+
+func TestTypeImpactReachesRoutesHandlersAndTests(t *testing.T) {
+	index := buildFixtureGraph(t)
+	impact, ok := index.Impact("type:example.com/shop/api.Item")
+	if !ok {
+		t.Fatal("api.Item missing from the graph")
+	}
+	if got := refLabels(impact.Containers); got != "api.Order" {
+		t.Fatalf("containers: %s", got)
+	}
+	if got := refLabels(impact.Endpoints); got != "POST /orders" {
+		t.Fatalf("endpoints: %s", got)
+	}
+	if !strings.Contains(refLabels(impact.Callers), "api.CreateOrder") || refLabels(impact.Tests) != "api.TestCreateOrder" {
+		t.Fatalf("callers %s tests %s", refLabels(impact.Callers), refLabels(impact.Tests))
+	}
+	item, _ := index.Node("type:example.com/shop/api.Item")
+	if at, ok := index.TypeAt(item.File, item.Line+1); !ok || at.ID != item.ID {
+		t.Fatalf("TypeAt inside the struct = %+v %v", at, ok)
+	}
 }
 
 func buildFixtureGraph(t *testing.T) *graph.Index {

@@ -119,6 +119,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
           <RefList title="HTTP routes" refs={impact.endpoints} />
+          {!!impact.containers?.length && <RefList title="Contained in" refs={impact.containers} />}
           <RefList title="gRPC services" refs={impact.rpcs} />
           <RefList title="Consumed topics" refs={impact.consumers} />
           <RefList title="Interface contracts" refs={impact.interfaces} onFocus={focus} />
