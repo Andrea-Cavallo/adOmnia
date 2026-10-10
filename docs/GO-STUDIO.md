@@ -265,7 +265,7 @@ pause and explains it.
 - **Flame graph.** Real frame widths from the sample stacks; *Flame (root on bottom)* and *Icicle (root on top)*, each frame hoverable with its value and percentage.
 - **Sample type.** A CPU profile exposes `samples` and `cpu`; a memory profile exposes `alloc_objects`, `alloc_space`, `inuse_objects` and `inuse_space`. The selector switches every view, so allocations and in-use memory are separate reads of the same file.
 - **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
-- **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor.
+- **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor. With a diff open, *Ask Copilot* asks the right question: for two heap profiles, in-use growth is analysed as a memory leak suspicion and allocation growth as an allocation regression.
 - **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
 ## Documentation
 

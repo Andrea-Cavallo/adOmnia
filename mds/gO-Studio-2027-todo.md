@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 77 | 4 |
+| **P4** | AI e intelligenza del workspace | 75 | 3 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -180,10 +180,7 @@ _Chiusa il 2026-10-07: le 18 azioni AI dell'editor sono nel `CHANGELOG.md` (0.9.
 
 ## §35 · AI Debugging
 
-_Chiusa il 2026-10-10 (Debug with AI): contesto completo alla pausa, situazione riconosciuta (panic, race, deadlock, deadline, DB, Kafka, gRPC, richiesta lenta) e le 7 azioni; race card con Analyze with AI. Restano:_
-
-- [ ] Memory leak suspicion analysis. — *Parziale: Debug with AI ha un focus "memoria" se le evidenze lo citano; manca il confronto fra due heap profile.*
-- [ ] Allocation regression analysis. — *Manca il confronto alloc_space fra due profili/commit da dare all'AI.*
+_Chiusa il 2026-10-10 (Debug with AI): contesto completo alla pausa, situazione riconosciuta (panic, race, deadlock, deadline, DB, Kafka, gRPC, richiesta lenta) e le 7 azioni; race card con Analyze with AI; diff di heap profile con domanda su leak o regressione di allocazioni._
 
 ## §38 · Architectural Drift Detection
 
