@@ -8,6 +8,9 @@
 
 ## Stato verificato — 2026-10-10
 
+- [x] **Updater — implementazione e test automatici:** canali Beta/Stabile, cache/ETag, download con firma e checksum, installazione alla chiusura e rollback Windows isolato. Suite Go updater con race detector, build e test frontend dedicati riusciti. Dettagli in `docs/UPDATER.md`.
+- [ ] **Updater — accettazione reale:** aggiornamento Wails confezionato, workspace preservato e prove native Linux/macOS; installer e firme di piattaforma restano separati.
+
 Ciclo di stabilizzazione: `v0.10.0-beta.1`. I requisiti bloccanti della prima versione stabile sono in `docs/V1-CHECKLIST.md`; P1/P2 restano roadmap. La collaborazione LAN mantiene lo stato beta finché mancano le prove desktop e tra due computer.
 
 Questo file contiene **solo il lavoro ancora aperto** (riverificato nel codice il 2026-10-10). Le voci completate sono state rimosse: la loro storia è in git, nel `CHANGELOG.md` e in `docs/releases/v0.9.78.md`. Una fase resta aperta finché manca la sua accettazione desktop: una build o un test unitario non sostituiscono la prova tra due computer.

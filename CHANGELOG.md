@@ -6,6 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- Signed application updater: stable/beta channels, cached conditional checks, automatic verified download, progress/cancellation and installation after normal guarded shutdown. A native helper retains the previous version and rolls back failed startup. System-managed Linux installs remain under their package manager. Native packaged acceptance is tracked in `docs/UPDATER.md`.
+
 ## [0.10.0-beta.1] — 2026-10-10
 
 ### Changed

@@ -37,6 +37,7 @@ const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioC
 const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
 const DevLogOverlay = React.lazy(() => import('@/components/ui/DevLogOverlay').then((module) => ({ default: module.DevLogOverlay })))
+const UpdateNotice = React.lazy(() => import('@/components/settings/UpdateNotice'))
 function App() {
   const { commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
@@ -54,6 +55,14 @@ function App() {
   useKeyboardShortcuts({ setCommandPaletteOpen })
 
   const appRootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!firstStableFrame) return
+    let disposed = false
+    let stop: (() => void) | undefined
+    void import('@/stores/updater').then(({startUpdater}) => { if (!disposed) stop = startUpdater() })
+    return () => { disposed = true; stop?.() }
+  }, [firstStableFrame])
 
   useEffect(() => {
     // Dynamic import keeps the gO store out of the startup bundle (check:startup budget).
@@ -144,6 +153,7 @@ function App() {
         <ConfirmDialogHost />
         {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><UpdateNotice /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
       </ThemeProvider>
     </ErrorBoundary>

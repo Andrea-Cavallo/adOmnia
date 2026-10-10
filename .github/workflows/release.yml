@@ -63,10 +63,15 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item bin\adomnia.exe "dist\adomnia-$ver-windows-amd64.exe"
 
+      - name: Package Windows updater
+        shell: pwsh
+        run: |
+          Compress-Archive -LiteralPath bin/adomnia.exe -DestinationPath "dist/adomnia-${{ steps.ver.outputs.version }}-windows-amd64-update.zip"
+
       - uses: actions/upload-artifact@v7
         with:
           name: windows-amd64
-          path: dist/adomnia-*-windows-amd64.exe
+          path: dist/adomnia-*-windows-amd64*
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LINUX · amd64
@@ -122,12 +127,16 @@ jobs:
             bash build/linux/package-native-tarballs.sh "$VER"
           ls -lh dist
 
+      - name: Package Linux updater
+        run: zip -j "dist/adomnia-${{ steps.ver.outputs.version }}-linux-amd64-update.zip" bin/adomnia
+
       - uses: actions/upload-artifact@v7
         with:
           name: linux-amd64
           path: |
             dist/adomnia-*-linux-amd64-gtk3-webkitgtk-*.tar.gz
             dist/adomnia-*-linux-amd64-gtk3-webkitgtk-*.tar.gz.sha256
+            dist/adomnia-*-linux-amd64-update.zip
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MACOS · universal (arm64 + amd64 via lipo)
@@ -171,10 +180,13 @@ jobs:
       - name: Build universal app and DMG
         run: VERSION="${{ steps.ver.outputs.version }}" GIT_COMMIT="${{ github.sha }}" bash scripts/build-macos.sh
 
+      - name: Package macOS updater
+        run: cd dist && zip -r "adomnia-${{ steps.ver.outputs.version }}-macos-universal-update.zip" adomnia.app
+
       - uses: actions/upload-artifact@v7
         with:
           name: macos-universal
-          path: dist/adomnia-*-macos-universal.dmg
+          path: dist/adomnia-*-macos-universal*
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLISH · GitHub Release
@@ -204,6 +216,16 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Sign updater manifest
+        env:
+          ADOMNIA_UPDATE_SIGNING_KEY: ${{ secrets.ADOMNIA_UPDATE_SIGNING_KEY }}
+        run: go run ./cmd/update-manifest -dir dist -version "${{ steps.ver.outputs.tag }}"
 
       - name: Generate checksums
         run: |

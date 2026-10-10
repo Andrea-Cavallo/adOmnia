@@ -31,6 +31,9 @@ export interface AIModelCatalog {
 export interface AppSettings {
   version: number
   general: {
+    autoCheckUpdates?: boolean
+    autoDownloadUpdates?: boolean
+    updateChannel?: 'auto' | 'stable' | 'beta'
     confirmBeforeClosingDirtyTabs: boolean
     restoreTabsOnStartup: boolean
     showWelcomeOnEmptyWorkspace: boolean
@@ -192,6 +195,9 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 const defaultSettings: AppSettings = {
   version: 14,
   general: {
+    autoCheckUpdates: true,
+    autoDownloadUpdates: true,
+    updateChannel: 'auto',
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
     showWelcomeOnEmptyWorkspace: true,

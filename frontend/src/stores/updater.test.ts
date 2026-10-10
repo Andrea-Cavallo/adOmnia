@@ -1,0 +1,18 @@
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+const api = vi.hoisted(()=>({check:vi.fn(),status:vi.fn(),download:vi.fn(),cancel:vi.fn(),schedule:vi.fn(),confirm:vi.fn(),general:{autoCheckUpdates:true,autoDownloadUpdates:true,updateChannel:'auto'}}))
+vi.mock('../../bindings/adomnia/app',()=>({CheckUpdateChannel:api.check,GetUpdateState:api.status,DownloadUpdate:api.download,CancelUpdateDownload:api.cancel,ScheduleUpdateOnExit:api.schedule,ConfirmUpdateStartup:api.confirm}))
+vi.mock('./settings',()=>({useSettingsStore:{getState:()=>({loaded:true,settings:{general:api.general}})}}))
+vi.mock('@/lib/buildInfo',()=>({APP_VERSION:'0.10.0-beta.2'}))
+import { startUpdater, useUpdaterStore } from './updater'
+const state = (phase:string,trusted=true)=>({phase,trusted,version:'v0.10.0-beta.3',channel:'beta',releaseUrl:'',notes:'',received:0,total:0,error:'',scheduled:false})
+beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal("window",{setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,addEventListener:vi.fn(),removeEventListener:vi.fn()});vi.stubGlobal("document",{visibilityState:"visible"});vi.clearAllMocks();Object.assign(api.general,{autoCheckUpdates:true,autoDownloadUpdates:true,updateChannel:'auto'});api.confirm.mockResolvedValue(undefined);api.check.mockResolvedValue(state('current'));api.status.mockResolvedValue(state('current'));api.download.mockResolvedValue(state('downloading'));api.schedule.mockResolvedValue({...state('ready'),scheduled:true});useUpdaterStore.setState({status:state('idle'),error:''})})
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals()})
+describe('automatic updater',()=>{
+ it('follows beta version and never downloads an untrusted release',async()=>{api.check.mockResolvedValue(state('available',false));await useUpdaterStore.getState().check();expect(api.check).toHaveBeenCalledWith('beta',true);expect(api.download).not.toHaveBeenCalled()})
+ it('coalesces checks and automatically downloads trusted updates',async()=>{api.check.mockResolvedValue(state('available'));await Promise.all([useUpdaterStore.getState().check(),useUpdaterStore.getState().check()]);expect(api.check).toHaveBeenCalledTimes(1);expect(api.download).toHaveBeenCalledTimes(1)})
+ it('waits after startup and does not repeat checks during the six-hour window',async()=>{const stop=startUpdater();await vi.advanceTimersByTimeAsync(14999);expect(api.check).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(1);expect(api.check).toHaveBeenCalledTimes(1);await vi.advanceTimersByTimeAsync(120000);expect(api.check).toHaveBeenCalledTimes(1);stop()})
+ it('respects disabled automatic checks while confirming successful startup',async()=>{api.general.autoCheckUpdates=false;const stop=startUpdater();await vi.advanceTimersByTimeAsync(60000);expect(api.check).not.toHaveBeenCalled();expect(api.confirm).toHaveBeenCalledTimes(1);stop()})
+ it('schedules only a verified completed download without closing the app',async()=>{api.status.mockResolvedValue(state('ready'));useUpdaterStore.setState({status:state('downloading')});const stop=startUpdater();await vi.advanceTimersByTimeAsync(15000);expect(api.schedule).toHaveBeenCalledWith(true);stop()})
+ it('does not automatically retry a release that failed startup',async()=>{api.check.mockResolvedValue({...state('available'),error:'Previous update failed'});await useUpdaterStore.getState().check(false);expect(api.download).not.toHaveBeenCalled()})
+ it('stops the checking state after an offline error',async()=>{api.check.mockRejectedValue(new Error('Offline mode'));await useUpdaterStore.getState().check();expect(useUpdaterStore.getState().status.phase).toBe('error');expect(useUpdaterStore.getState().error).toContain('Offline')})
+})

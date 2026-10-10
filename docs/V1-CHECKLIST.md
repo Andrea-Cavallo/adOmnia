@@ -18,6 +18,9 @@ The v1 baseline is the existing local-first API workbench and Go Studio, with th
 
 ## Desktop acceptance — blockers
 
+- [x] Signed updater implemented: automatic channel checks, verified downloads, install-on-exit and Windows fixture rollback; details/evidence in `UPDATER.md` (2026-10-10).
+- [ ] Packaged updater acceptance on supported platforms and preservation of real workspaces; complete the native gates in `UPDATER.md` before v1.
+
 - [ ] Clean install and first launch of packaged Windows build; no missing fonts/assets or startup errors.
 - [ ] HTTP request/response: methods, URL/parameters, headers, auth, body, errors, timeout and cancellation.
 - [ ] Collections: create/edit/save, restart persistence, import/export round trip and migration of an existing workspace.

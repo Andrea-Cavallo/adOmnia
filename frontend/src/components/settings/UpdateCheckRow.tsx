@@ -1,56 +1,36 @@
-import { useState } from 'react'
-import { RefreshCw, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react'
-import { runManualUpdateCheck, type ManualUpdateResult } from '@/lib/manualUpdateCheck'
+import { RefreshCw, Download, X } from 'lucide-react'
+import { useUpdaterStore } from '@/stores/updater'
+import { useSettingsStore } from '@/stores/settings'
 import { BrowserOpenURL } from '@/wailsjs/runtime/runtime'
 
-type State =
-  | { kind: 'idle' }
-  | { kind: 'checking' }
-  | ManualUpdateResult
-
-/**
- * Manual "Check for updates" row for the About settings section. GitHub is
- * contacted only after the user presses the button. Notify-only: an available
- * release opens in the browser and is never downloaded automatically.
- */
 export function UpdateCheckRow() {
-  const [state, setState] = useState<State>({ kind: 'idle' })
-
-  const check = async () => {
-    setState({ kind: 'checking' })
-    setState(await runManualUpdateCheck())
-  }
-
-  return (
-    <div className="py-2 px-1 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 min-w-0">
-        {state.kind === 'current' && <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />}
-        {state.kind === 'available' && <Sparkles size={13} className="shrink-0 text-accent" />}
-        {state.kind === 'error' && <AlertCircle size={13} className="shrink-0 text-amber-500" />}
-        <span role="status" aria-live="polite" className="text-xs text-text-2 truncate">
-          {state.kind === 'idle' && 'Contacts GitHub only when you choose to check'}
-          {state.kind === 'checking' && 'Checking…'}
-          {state.kind === 'current' && "You're on the latest version"}
-          {state.kind === 'dev' && 'Development build — update check skipped'}
-          {state.kind === 'error' && 'Could not reach GitHub'}
-          {state.kind === 'available' && (
-            <button
-              onClick={() => BrowserOpenURL(state.url)}
-              className="text-accent hover:underline"
-            >
-              {state.version} available — view release
-            </button>
-          )}
-        </span>
-      </div>
-      <button
-        onClick={check}
-        disabled={state.kind === 'checking'}
-        className="shrink-0 flex items-center gap-1.5 rounded-md border border-border-2 bg-surface-2 px-2 py-1 text-[11px] text-text-1 hover:bg-surface-3 disabled:opacity-50 transition-colors"
-      >
-        <RefreshCw size={12} className={state.kind === 'checking' ? 'animate-spin' : ''} />
-        Check for updates
-      </button>
-    </div>
-  )
+ const {status,error,check,download,cancel,schedule} = useUpdaterStore()
+ const general = useSettingsStore(s=>s.settings.general)
+ const updateGeneral = useSettingsStore(s=>s.updateGeneral)
+ const busy = ['checking','downloading','verifying'].includes(status.phase)
+ const progress = status.total > 0 ? Math.min(100,Math.floor(status.received/status.total*100)) : 0
+ return <div className="space-y-3 py-3 px-1">
+  <div className="flex items-center justify-between gap-3">
+   <span className="text-xs text-text-1">Automatic updates</span>
+   <label className="flex gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoCheckUpdates !== false} onChange={e=>updateGeneral({autoCheckUpdates:e.target.checked})}/>Check automatically</label>
+  </div>
+  <div className="flex items-center justify-between gap-3">
+   <label className="text-xs text-text-2" htmlFor="update-channel">Release channel</label>
+   <select id="update-channel" className="rounded border border-border-2 bg-surface-2 px-2 py-1 text-xs text-text-1" value={general.updateChannel ?? 'auto'} disabled={busy || status.scheduled} onChange={e=>{updateGeneral({updateChannel:e.target.value as 'auto'|'stable'|'beta'});void check(true)}}>
+    <option value="auto">Follow installed version</option><option value="stable">Stable</option><option value="beta">Beta + stable</option>
+   </select>
+  </div>
+  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoDownloadUpdates !== false} onChange={e=>{updateGeneral({autoDownloadUpdates:e.target.checked});if(!e.target.checked&&status.scheduled)void schedule(false)}}/>Download verified updates and install after closing adOmnia</label>
+  <div role="status" aria-live="polite" className="text-xs text-text-3">
+   {error || status.error || (status.scheduled ? `${status.version} ready — will update and restart after you close adOmnia` : ({idle:'Checks at startup and every six hours while open',dev:'Development build — updates skipped',checking:'Checking…',current:'No newer signed release for this channel',available:`${status.version} available`,downloading:`Downloading ${status.version}: ${progress}%`,verifying:'Verifying update package…',ready:`${status.version} ready to install`} as Record<string,string>)[status.phase])}
+  </div>
+  {status.phase === 'downloading' && <progress aria-label="Update download" className="w-full accent-accent" max={100} value={progress}/>}
+  <div className="flex flex-wrap gap-2">
+   <button className="flex items-center gap-1.5 rounded border border-border-2 px-2 py-1 text-xs text-text-1 disabled:opacity-50" disabled={busy || status.scheduled} onClick={()=>void check(true)}><RefreshCw size={12}/>Check now</button>
+   {status.phase==='available' && status.trusted && <button className="flex items-center gap-1.5 text-xs text-accent" onClick={()=>void download()}><Download size={12}/>Download update</button>}
+   {status.phase==='downloading' && <button className="flex items-center gap-1.5 text-xs text-text-2" onClick={()=>void cancel()}><X size={12}/>Cancel download</button>}
+   {status.phase==='ready' && <button className="text-xs text-accent" onClick={()=>void schedule(!status.scheduled)}>{status.scheduled?'Postpone update':'Install on exit'}</button>}
+   {status.releaseUrl && <button className="text-xs text-accent" onClick={()=>BrowserOpenURL(status.releaseUrl)}>Release notes</button>}
+  </div>
+ </div>
 }

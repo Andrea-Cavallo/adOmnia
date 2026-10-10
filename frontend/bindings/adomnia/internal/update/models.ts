@@ -5,6 +5,63 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class State {
+    "phase": string;
+    "version": string;
+    "channel": string;
+    "releaseUrl": string;
+    "notes": string;
+    "received": number;
+    "total": number;
+    "error": string;
+    "trusted": boolean;
+    "scheduled": boolean;
+
+    /** Creates a new State instance. */
+    constructor($$source: Partial<State> = {}) {
+        if (!("phase" in $$source)) {
+            this["phase"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("channel" in $$source)) {
+            this["channel"] = "";
+        }
+        if (!("releaseUrl" in $$source)) {
+            this["releaseUrl"] = "";
+        }
+        if (!("notes" in $$source)) {
+            this["notes"] = "";
+        }
+        if (!("received" in $$source)) {
+            this["received"] = 0;
+        }
+        if (!("total" in $$source)) {
+            this["total"] = 0;
+        }
+        if (!("error" in $$source)) {
+            this["error"] = "";
+        }
+        if (!("trusted" in $$source)) {
+            this["trusted"] = false;
+        }
+        if (!("scheduled" in $$source)) {
+            this["scheduled"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new State instance from a string or object.
+     */
+    static createFrom($$source: any = {}): State {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new State($$parsedSource as Partial<State>);
+    }
+}
+
 /**
  * UpdateInfo is the trimmed shape the UI needs.
  */

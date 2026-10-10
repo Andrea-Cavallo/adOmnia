@@ -370,6 +370,12 @@ func (a *App) OnShutdown(ctx context.Context) {
 	sse.SseShutdown()
 	sidecar.Stop()
 	storage.Close()
+	if updaterInstance != nil {
+		updaterInstance.Cancel()
+		if err := updaterInstance.StartScheduled(); err != nil {
+			log.Printf("[update] %v", err)
+		}
+	}
 	log.Println("[app] shutdown complete")
 }
 

@@ -12,9 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -82,30 +82,12 @@ func Check(current string) (UpdateInfo, error) {
 	return info, nil
 }
 
-// CompareSemver compares two "vMAJOR.MINOR.PATCH" strings (the "v" and any
-// pre-release suffix are ignored). Returns 1 if a>b, -1 if a<b, 0 if equal.
+// CompareSemver includes prerelease ordering (beta.2 < beta.10 < stable).
 func CompareSemver(a, b string) int {
-	pa, pb := parseSemver(a), parseSemver(b)
-	for i := 0; i < 3; i++ {
-		if pa[i] > pb[i] {
-			return 1
-		}
-		if pa[i] < pb[i] {
-			return -1
-		}
+	a, b = normalizeVersion(a), normalizeVersion(b)
+	if !semver.IsValid(a) || !semver.IsValid(b) {
+		return 0
 	}
-	return 0
+	return semver.Compare(a, b)
 }
-
-func parseSemver(v string) [3]int {
-	v = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(v), "v"))
-	// drop pre-release / build metadata: 1.2.3-rc1+build -> 1.2.3
-	if i := strings.IndexAny(v, "-+"); i >= 0 {
-		v = v[:i]
-	}
-	var out [3]int
-	for i, part := range strings.SplitN(v, ".", 3) {
-		out[i], _ = strconv.Atoi(strings.TrimSpace(part))
-	}
-	return out
-}
+func normalizeVersion(v string) string { return "v" + strings.TrimPrefix(strings.TrimSpace(v), "v") }

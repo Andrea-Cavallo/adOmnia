@@ -2,6 +2,7 @@ package main
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/update"
 
 	"adomnia/internal/adomniacli"
 	"adomnia/internal/browser"
@@ -46,6 +47,13 @@ var singleInstanceKey = [32]byte{
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--adomnia-update-helper" {
+		if err := update.RunHelper(os.Args[2], Version); err != nil {
+			log.Print("[update] ", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint" || os.Args[1] == "stress") {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}

@@ -52,12 +52,22 @@ export function CancelHTTP(id: string): $CancellablePromise<void> {
     return $Call.ByID(716153779, id);
 }
 
+export function CancelUpdateDownload(): $CancellablePromise<void> {
+    return $Call.ByID(786380562);
+}
+
 /**
  * CheckForUpdate queries the latest GitHub release after an explicit user action.
  */
 export function CheckForUpdate(): $CancellablePromise<update$0.UpdateInfo> {
     return $Call.ByID(2347956003).then(($result: any) => {
         return $$createType0($result);
+    });
+}
+
+export function CheckUpdateChannel(channel: string, force: boolean): $CancellablePromise<update$0.State> {
+    return $Call.ByID(3433799417, channel, force).then(($result: any) => {
+        return $$createType1($result);
     });
 }
 
@@ -94,9 +104,13 @@ export function ConfirmPanelWindowClose(panel: string): $CancellablePromise<void
     return $Call.ByID(1023639653, panel);
 }
 
+export function ConfirmUpdateStartup(): $CancellablePromise<void> {
+    return $Call.ByID(164742475);
+}
+
 export function CreateMarkdownFile(root: string, relPath: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3160060858, root, relPath, content).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -119,6 +133,12 @@ export function DetachRequest(tabID: string, snapshotJSON: string, title: string
  */
 export function DetachRequestAndResponse(tabID: string, snapshotJSON: string, title: string): $CancellablePromise<void> {
     return $Call.ByID(2949879727, tabID, snapshotJSON, title);
+}
+
+export function DownloadUpdate(): $CancellablePromise<update$0.State> {
+    return $Call.ByID(115027584).then(($result: any) => {
+        return $$createType1($result);
+    });
 }
 
 /**
@@ -162,7 +182,7 @@ export function GetDevLogs(): $CancellablePromise<string> {
  */
 export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
     return $Call.ByID(2699211190).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -171,7 +191,7 @@ export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
  */
 export function GetNetworkSettings(): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1026796858).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -187,6 +207,12 @@ export function GetStartupWindowChrome(): $CancellablePromise<string> {
     return $Call.ByID(2761809102);
 }
 
+export function GetUpdateState(): $CancellablePromise<update$0.State> {
+    return $Call.ByID(2688708227).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
 /**
  * GetVaultTimeout returns the vault auto-lock timeout in minutes.
  */
@@ -196,7 +222,7 @@ export function GetVaultTimeout(): $CancellablePromise<number> {
 
 export function ImportMarkdownFolderToWorkspace(sourceRoot: string): $CancellablePromise<markdown$0.WorkspaceInfo> {
     return $Call.ByID(421526873, sourceRoot).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -220,13 +246,13 @@ export function IsDevMode(): $CancellablePromise<boolean> {
  */
 export function ListLogFiles(): $CancellablePromise<devlog$0.FileInfo[]> {
     return $Call.ByID(2963318464).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
 export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.FileEntry[]> {
     return $Call.ByID(2340622615, root).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -235,7 +261,7 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
  */
 export function ListPanelWindows(): $CancellablePromise<string[]> {
     return $Call.ByID(998307998).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
@@ -245,13 +271,13 @@ export function ListPanelWindows(): $CancellablePromise<string[]> {
  */
 export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
     return $Call.ByID(705221870).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
 export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
     return $Call.ByID(1584322926).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
@@ -346,7 +372,7 @@ export function RecordStartupPerformance(frontendJSON: string): $CancellableProm
 
 export function RenameMarkdownFile(root: string, oldRelPath: string, newRelPath: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3235207952, root, oldRelPath, newRelPath).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -364,7 +390,7 @@ export function SaveCollectionWorkspaces(indexJSON: string, workspaceJSON: strin
 
 export function SaveMarkdownFileAs(defaultName: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(305697395, defaultName, content).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -373,12 +399,18 @@ export function SaveMarkdownFileAs(defaultName: string, content: string): $Cance
  */
 export function SaveNetworkSettings(settings: netpolicy$0.Settings): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1280426947, settings).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
 export function SaveSettings(settingsJSON: string): $CancellablePromise<void> {
     return $Call.ByID(1949631069, settingsJSON);
+}
+
+export function ScheduleUpdateOnExit(enable: boolean): $CancellablePromise<update$0.State> {
+    return $Call.ByID(163994384, enable).then(($result: any) => {
+        return $$createType1($result);
+    });
 }
 
 export function SelectFolder(title: string): $CancellablePromise<string> {
@@ -431,13 +463,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
@@ -463,16 +495,17 @@ export function WriteMarkdownFile(path: string, content: string): $CancellablePr
 
 // Private type creation functions
 const $$createType0 = update$0.UpdateInfo.createFrom;
-const $$createType1 = markdown$0.FileEntry.createFrom;
-const $$createType2 = netpolicy$0.Event.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = netpolicy$0.Settings.createFrom;
-const $$createType5 = markdown$0.WorkspaceInfo.createFrom;
-const $$createType6 = devlog$0.FileInfo.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $Create.Array($$createType1);
-const $$createType9 = $Create.Array($Create.Any);
-const $$createType10 = bootstrap$0.State.createFrom;
-const $$createType11 = bootstrap$0.StateV2.createFrom;
-const $$createType12 = $models.StorageEntry.createFrom;
-const $$createType13 = $Create.Array($$createType12);
+const $$createType1 = update$0.State.createFrom;
+const $$createType2 = markdown$0.FileEntry.createFrom;
+const $$createType3 = netpolicy$0.Event.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = netpolicy$0.Settings.createFrom;
+const $$createType6 = markdown$0.WorkspaceInfo.createFrom;
+const $$createType7 = devlog$0.FileInfo.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = $Create.Array($$createType2);
+const $$createType10 = $Create.Array($Create.Any);
+const $$createType11 = bootstrap$0.State.createFrom;
+const $$createType12 = bootstrap$0.StateV2.createFrom;
+const $$createType13 = $models.StorageEntry.createFrom;
+const $$createType14 = $Create.Array($$createType13);
