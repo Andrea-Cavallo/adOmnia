@@ -11,7 +11,7 @@ import type { GoIDESession } from '@/lib/goide-api'
 import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { useGoIDELspStore } from '@/stores/goideLsp'
-import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { toolKey, useStudioTools, useToolView, type ToolPlacement } from './studioToolState'
 
 interface GoStudioWorkspaceProps {
@@ -49,12 +49,12 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
   const error = useStudioTools((state) => state.error)
   const [logsOpen] = useToolView(session.id, 'logs', 'open', false)
   const bottomKey = toolKey(session.id, view === 'terminal' ? 'terminal' : 'run')
-  const sideKey = toolKey(session.id, assistant === 'milk' ? 'milk' : 'copilot')
+  const sideKey = toolKey(session.id, isChatPane(assistant) ? assistant : 'copilot')
   const logsKey = toolKey(session.id, 'logs')
   const panes = [
     { id: 'project', key: 'project', position: 'left' as ToolPlacement, open: projectOpen, width: projectWidth },
     { id: 'run', key: bottomKey, position: placements[bottomKey] ?? 'bottom', open: bottomOpen, detached: (view === 'run' || view === 'terminal') && detached.includes(bottomKey), width: Math.max(320, structureWidth) },
-    { id: 'side', key: sideKey, position: assistant ? placements[sideKey] ?? 'right' : 'right', open: structureOpen, detached: (assistant === 'milk' || assistant === 'copilot') && detached.includes(sideKey), width: structureWidth },
+    { id: 'side', key: sideKey, position: assistant ? placements[sideKey] ?? 'right' : 'right', open: structureOpen, detached: isChatPane(assistant) && detached.includes(sideKey), width: structureWidth },
     { id: 'logs', key: logsKey, position: placements[logsKey] ?? 'bottom', open: logsOpen, detached: detached.includes(logsKey), width: Math.max(320, structureWidth) },
   ]
   const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(panes, zen ? null : maximized, bottomHeight)

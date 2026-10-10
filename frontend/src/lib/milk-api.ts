@@ -70,18 +70,23 @@ export const resetMilkSession = (root: string): Promise<void> => MilkBindings.Re
 export const cancelMilkSession = (sessionId: string): Promise<void> => MilkBindings.CancelSession(sessionId)
 export const respondMilkPermission = (requestId: string, allow: boolean): Promise<void> => MilkBindings.RespondPermission(requestId, allow)
 
-export function subscribeMilkEvents(handlers: {
+export interface AgentEventHandlers {
   status: (status: MilkStatus) => void
   chat: (event: MilkChatEvent) => void
   permission: (event: MilkPermissionEvent) => void
   /** The backend answered, timed out or dropped the request. */
   permissionResolved: (requestId: string) => void
-}): () => void {
+}
+
+/** Events of an ACP agent hosted by internal/milk: `<prefix>.status`, `<prefix>.chat`, … */
+export function subscribeAgentEvents(prefix: string, handlers: AgentEventHandlers): () => void {
   const offs = [
-    Events.On('milk.status', (event) => handlers.status(event.data as MilkStatus)),
-    Events.On('milk.chat', (event) => handlers.chat(event.data as MilkChatEvent)),
-    Events.On('milk.permission', (event) => handlers.permission(event.data as MilkPermissionEvent)),
-    Events.On('milk.permissionResolved', (event) => handlers.permissionResolved((event.data as { requestId: string }).requestId)),
+    Events.On(`${prefix}.status`, (event) => handlers.status(event.data as MilkStatus)),
+    Events.On(`${prefix}.chat`, (event) => handlers.chat(event.data as MilkChatEvent)),
+    Events.On(`${prefix}.permission`, (event) => handlers.permission(event.data as MilkPermissionEvent)),
+    Events.On(`${prefix}.permissionResolved`, (event) => handlers.permissionResolved((event.data as { requestId: string }).requestId)),
   ]
   return () => offs.forEach((off) => off())
 }
+
+export const subscribeMilkEvents = (handlers: AgentEventHandlers): (() => void) => subscribeAgentEvents('milk', handlers)

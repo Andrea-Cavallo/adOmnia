@@ -6,8 +6,9 @@ import { createAIRedactor } from '@/lib/aiRedaction'
 import { useCopilotStore } from '@/stores/copilot'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDETestsStore } from '@/stores/goideTests'
-import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { isChatPane, type GoStudioChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useMilkStore } from '@/stores/milk'
+import { useClaudeCodeStore } from '@/stores/claudeCode'
 import { documentForModel } from './goStudioLanguageFeatures'
 import type { GoIDEArchitecture } from '@/lib/goide-api'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
@@ -26,11 +27,12 @@ function notify(message: string | null): void {
   useGoIDELspStore.setState({ message })
 }
 
-/** La chat già aperta vince; altrimenti quella pronta, milk prima di Copilot. */
-function targetAssistant(): 'milk' | 'copilot' {
+/** La chat già aperta vince; altrimenti quella pronta: milk, Claude Code, Copilot. */
+function targetAssistant(): GoStudioChatPane {
   const pane = useGoStudioAssistantStore.getState().pane
-  if (pane === 'milk' || pane === 'copilot') return pane
+  if (isChatPane(pane)) return pane
   if (useMilkStore.getState().status?.state === 'ready') return 'milk'
+  if (useClaudeCodeStore.getState().status?.state === 'ready') return 'claude'
   if (useCopilotStore.getState().status?.state === 'ready') return 'copilot'
   return useCopilotStore.getState().settings?.enabled && !useMilkStore.getState().settings?.enabled ? 'copilot' : 'milk'
 }

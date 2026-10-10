@@ -165,6 +165,12 @@ export class Settings {
      */
     "skipPermissions": boolean;
 
+    /**
+     * IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
+     * dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
+     */
+    "ignoreApiKey"?: boolean;
+
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
         if (!("enabled" in $$source)) {

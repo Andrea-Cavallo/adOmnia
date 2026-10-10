@@ -34,3 +34,12 @@ describe('applyMilkChatEvent', () => {
     expect(threads['/p'].busyToken).toBeNull()
   })
 })
+
+describe('ACP v1 partial tool updates', () => {
+  it('keep name, status and output an update leaves empty', () => {
+    let threads = applyMilkChatEvent(thread(), { token: 't1', root: '/p', kind: 'tool', tool: { toolCallId: 'a', name: 'Find', status: 'pending' } })
+    threads = applyMilkChatEvent(threads, { token: 't1', root: '/p', kind: 'tool', tool: { toolCallId: 'a', name: '', status: '', rawOutput: 'a.txt' } })
+    threads = applyMilkChatEvent(threads, { token: 't1', root: '/p', kind: 'tool', tool: { toolCallId: 'a', name: '', status: 'completed' } })
+    expect(threads['/p'].messages[1].tools).toEqual([{ toolCallId: 'a', name: 'Find', status: 'completed', rawOutput: 'a.txt' }])
+  })
+})

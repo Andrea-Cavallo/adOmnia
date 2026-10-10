@@ -55,9 +55,9 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 		}
 		switch update.State {
 		case "running":
-			h.manager.publish("milk.chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "begin"})
+			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "begin"})
 		case "idle":
-			h.manager.publish("milk.chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "end", StopReason: update.StopReason})
+			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "end", StopReason: update.StopReason})
 		}
 	case "agent_message_chunk", "agent_thought_chunk":
 		kind := "text"
@@ -74,20 +74,26 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 			return
 		}
 		if update.Content.Text != "" {
-			h.manager.publish("milk.chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: kind, Reply: update.Content.Text})
+			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: kind, Reply: update.Content.Text})
 		}
-	case "tool_call_update":
+	case "tool_call", "tool_call_update":
+		// milk manda name; ACP v1 manda title ("Read `main.go`"), più leggibile.
 		var update struct {
 			ToolCallID string          `json:"toolCallId"`
 			Name       string          `json:"name"`
+			Title      string          `json:"title"`
 			Status     string          `json:"status"`
 			RawOutput  json.RawMessage `json:"rawOutput"`
 		}
 		if json.Unmarshal(notification.Update, &update) != nil {
 			return
 		}
-		tool := &ToolUpdate{ToolCallID: update.ToolCallID, Name: update.Name, Status: update.Status, RawOutput: summarizeRaw(update.RawOutput)}
-		h.manager.publish("milk.chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "tool", Tool: tool})
+		name := update.Title
+		if name == "" {
+			name = update.Name
+		}
+		tool := &ToolUpdate{ToolCallID: update.ToolCallID, Name: name, Status: update.Status, RawOutput: summarizeRaw(update.RawOutput)}
+		h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "tool", Tool: tool})
 	case "tool_call_content_chunk":
 		var update struct {
 			ToolCallID string `json:"toolCallId"`
@@ -107,7 +113,7 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 			output = update.Content.Content.Text
 		}
 		tool := &ToolUpdate{ToolCallID: update.ToolCallID, Status: "in_progress", RawOutput: output}
-		h.manager.publish("milk.chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "tool", Tool: tool})
+		h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "tool", Tool: tool})
 	}
 }
 
@@ -124,7 +130,7 @@ func (h *handler) handleRoute(params json.RawMessage) {
 	if token == "" {
 		return
 	}
-	h.manager.publish("milk.chat", ChatEvent{Token: token, Kind: "route", Route: &RouteInfo{Agent: route.Agent, Target: route.Target, Reason: route.Reason}})
+	h.manager.publish("chat", ChatEvent{Token: token, Kind: "route", Route: &RouteInfo{Agent: route.Agent, Target: route.Target, Reason: route.Reason}})
 }
 
 func (h *handler) handleWarning(params json.RawMessage) {
@@ -138,7 +144,7 @@ func (h *handler) handleWarning(params json.RawMessage) {
 	if token == "" {
 		return
 	}
-	h.manager.publish("milk.chat", ChatEvent{Token: token, Kind: "warning", Reply: warning.Message})
+	h.manager.publish("chat", ChatEvent{Token: token, Kind: "warning", Reply: warning.Message})
 }
 
 // HandleRequest risponde a session/request_permission; gli altri metodi sono non supportati.
@@ -163,6 +169,7 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params json.
 		// v1 porta il tool call in un campo dedicato, non in subject.
 		ToolCall *struct {
 			ToolCallID string `json:"toolCallId"`
+			Title      string `json:"title"`
 		} `json:"toolCall"`
 	}
 	if json.Unmarshal(params, &request) != nil {
@@ -179,6 +186,9 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params json.
 		toolCallID = request.Subject.ToolCall.ToolCallID
 	} else if request.ToolCall != nil {
 		toolCallID = request.ToolCall.ToolCallID
+		if request.Title == "" {
+			request.Title = request.ToolCall.Title
+		}
 	}
 	options := make([]PermissionOption, 0, len(request.Options))
 	for _, option := range request.Options {
@@ -193,9 +203,9 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params json.
 		h.manager.mu.Lock()
 		delete(h.manager.pending, requestID)
 		h.manager.mu.Unlock()
-		h.manager.publish("milk.permissionResolved", map[string]string{"requestId": requestID})
+		h.manager.publish("permissionResolved", map[string]string{"requestId": requestID})
 	}()
-	h.manager.publish("milk.permission", PermissionEvent{
+	h.manager.publish("permission", PermissionEvent{
 		RequestID: requestID, SessionID: request.SessionID, ToolCallID: toolCallID,
 		Title: request.Title, Description: request.Description, Options: options,
 	})

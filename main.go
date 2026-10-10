@@ -84,6 +84,7 @@ func main() {
 	devSession := NewDevSession(goIDE)
 	copilotService := NewCopilot(goIDE)
 	milkService := NewMilk()
+	claudeService := NewClaudeCode()
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
@@ -111,6 +112,7 @@ func main() {
 			application.NewService(devSession),
 			application.NewService(copilotService),
 			application.NewService(milkService),
+			application.NewService(claudeService),
 			application.NewService(collabService),
 		},
 		// Only one process may hold the bbolt lock. Additional launches focus
@@ -141,6 +143,7 @@ func main() {
 	devSession.attachDesktop(desktopApp)
 	copilotService.attachDesktop(desktopApp)
 	milkService.attachDesktop(desktopApp)
+	claudeService.attachDesktop(desktopApp)
 	collabService.attachDesktop(desktopApp)
 
 	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{

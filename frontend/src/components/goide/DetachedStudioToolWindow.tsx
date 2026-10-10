@@ -12,6 +12,7 @@ import { toolContext, toolTitle, useStudioTools } from './studioToolState'
 import { GoStudioRunPanel } from './GoStudioRunPanel'
 import { GoStudioCopilotChat } from './GoStudioCopilotChat'
 import { GoStudioMilkChat } from './GoStudioMilkChat'
+import { GoStudioClaudeChat } from './GoStudioClaudeCode'
 import { StudioToolControls } from './StudioToolControls'
 import '@fontsource/inter/400.css'
 import '@fontsource/jetbrains-mono/400.css'
@@ -41,7 +42,7 @@ export function DetachedStudioToolWindow() {
       </div>
       {error && <p role="alert" className="p-2 text-xs text-danger">{error}</p>}
       {!ready || !session ? <p className="p-4 text-sm text-text-3">Connecting to the project window…</p> : <div className="flex min-h-0 flex-1 flex-col">
-        {context.tool === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : context.tool === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : <GoStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
+        {context.tool === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : context.tool === 'claude' ? <GoStudioClaudeChat session={session} document={document} /> : context.tool === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : <GoStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
       </div>}
     </div>
   </ThemeProvider></ErrorBoundary>

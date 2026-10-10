@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { useCallback, type SetStateAction } from 'react'
 
-export const STUDIO_TOOLS = ['run', 'logs', 'terminal', 'copilot', 'milk'] as const
+export const STUDIO_TOOLS = ['run', 'logs', 'terminal', 'copilot', 'milk', 'claude'] as const
 export type StudioTool = typeof STUDIO_TOOLS[number]
 export type ToolPlacement = 'bottom' | 'left' | 'right'
-export const toolTitle: Record<StudioTool, string> = { run: 'Run output', logs: 'Service logs', terminal: 'Terminal', copilot: 'Copilot Chat', milk: 'milk' }
+export const toolTitle: Record<StudioTool, string> = { run: 'Run output', logs: 'Service logs', terminal: 'Terminal', copilot: 'Copilot Chat', milk: 'milk', claude: 'Claude Code' }
 export const toolKey = (session: string, tool: StudioTool) => `tool-${session}-${tool}`
 export function toolContext(search = typeof window === 'undefined' ? '' : window.location.search) {
   const params = new URLSearchParams(search)
@@ -27,7 +27,7 @@ function readPlacements(): Record<string, ToolPlacement> {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? '{}')
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-    return Object.fromEntries(Object.entries(value).filter(([key, position]) => /^tool-[A-Za-z0-9_-]+-(run|logs|terminal|copilot|milk)$/.test(key) && ['bottom', 'left', 'right'].includes(position)))
+    return Object.fromEntries(Object.entries(value).filter(([key, position]) => /^tool-[A-Za-z0-9_-]+-(run|logs|terminal|copilot|milk|claude)$/.test(key) && ['bottom', 'left', 'right'].includes(position)))
   } catch { return {} }
 }
 export const useStudioTools = create<ToolState>(() => ({ detached: [], error: null, maximized: null, placements: readPlacements(), views: {} }))
