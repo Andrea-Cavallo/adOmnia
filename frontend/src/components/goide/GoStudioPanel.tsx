@@ -114,6 +114,8 @@ import {
 } from './goStudioWorkspaceStart'
 import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
 import { ListLocalPorts } from '../../../bindings/adomnia/devsession'
+import { GoStudioWorkspaceBar } from './GoStudioWorkspaceBar'
+import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -751,6 +753,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'run.startWorkspace': return startWorkspace()
       case 'run.stopWorkspace': return void Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
       case 'run.cleanWorkspace': return void cleanWorkspace()
+      case 'run.openWorkspaceApi': return void (activeSession && openWorkspaceApi(activeSession.id).catch((error) => useGoIDELspStore.setState({ message: `Open API failed: ${error instanceof Error ? error.message : String(error)}` })))
+      case 'run.openWorkspaceLogs': return void ((activeSession && openWorkspaceLogs(activeSession.id)) || useGoIDELspStore.setState({ message: 'No service of this project is running: Start Workspace or Run first.' }))
       case 'run.stop': return void store.stopRun()
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)
@@ -833,6 +837,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
+      {!zen && <GoStudioWorkspaceBar goSessionId={activeSession.id} />}
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
       <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
