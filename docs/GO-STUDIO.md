@@ -559,6 +559,8 @@ The analysis also lists the environment variables (`os.Getenv`, `os.LookupEnv`) 
 
 Compose services are part of the graph too: the analysis names the services whose build compiles an entry point that reaches the code (the build context or Dockerfile folder contains that `main`).
 
+When adOmnia has received OpenTelemetry spans (Observability → Traces, live or a loaded trace), the target, its callers and the routes show how they behaved at runtime: calls, p95 and errors.
+
 *Map* draws the same analysis as a picture: what reaches the changed code above it, following the real call paths, and what it touches below. Click a box to open the code, Alt+click to analyze that element.
 
 Once the graph is built, **Search Everywhere** (Shift Shift) lists its routes, gRPC methods, topics, tables, env vars, config keys, compose services, dependencies and DTOs under *Project graph*; Enter opens the place and the Impact of that element.
