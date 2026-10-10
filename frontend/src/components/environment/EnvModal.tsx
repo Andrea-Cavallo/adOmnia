@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Plus, Trash2, Upload, FileJson, Check, Eye, EyeOff, ShieldCheck, LockKeyhole } from 'lucide-react'
+import { X, Plus, Trash2, Upload, FileJson, Check, Eye, EyeOff, ShieldCheck, LockKeyhole, Download, Grid3x3, Layers } from 'lucide-react'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { uid, blankEnvVar } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,12 @@ import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { isVaultRef } from '@/lib/vaultRefs'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useEnvironmentsStore } from '@/stores/environments'
+import { STANDARD_STAGES, exportEnvironments, mergeEnvironments, parseEnvironmentsImport } from '@/lib/envMatrix'
+import { downloadText } from '@/lib/fileUtils'
+import { EnvMatrix } from './EnvMatrix'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { Copy, Pencil } from 'lucide-react'
 
 interface EnvModalProps {
   environments: Environment[]
@@ -40,6 +46,38 @@ export function EnvModal({
   const [newEnvName, setNewEnvName] = useState('')
   const newEnvInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
+  const [view, setView] = useState<'list' | 'matrix'>('list')
+  const [notice, setNotice] = useState('')
+  const [envMenu, setEnvMenu] = useState<{ x: number; y: number; id: string | null } | null>(null)
+  const startRename = (env: Environment) => { setEditingName(env.id); setEditValue(env.name) }
+  const duplicateEnv = (env: Environment) => {
+    const copy: Environment = { ...env, id: uid(), name: `${env.name} (copy)`, variables: env.variables.map((v) => ({ ...v, id: uid() })) }
+    setEnvironments([...environments, copy])
+    setSelectedEnvId(copy.id)
+  }
+  const handleEnvMenu = (action: string) => {
+    const env = environments.find((e) => e.id === envMenu?.id)
+    setEnvMenu(null)
+    if (action === 'new') { setView('list'); setAddingNew(true); setNewEnvName('') }
+    if (!env) return
+    if (action === 'rename') startRename(env)
+    if (action === 'duplicate') duplicateEnv(env)
+    if (action === 'delete') setConfirmDelete({ id: env.id, name: env.name })
+  }
+  const setEnvironments = useEnvironmentsStore((s) => s.setEnvironments)
+  const missingStages = STANDARD_STAGES.map((stage) => tr(stage)).filter((stage) => !environments.some((e) => e.name.toLowerCase() === stage.toLowerCase()))
+
+  const importFile = async (file: File) => {
+    try {
+      const imported = parseEnvironmentsImport(await file.text(), file.name.replace(/\.[^.]+$/, ''))
+      if (imported.length === 0) { setNotice(tr('No variables found in JSON')); return }
+      setEnvironments(mergeEnvironments(useEnvironmentsStore.getState().environments, imported))
+      setNotice(`${tr('Imported')}: ${imported.map((e) => e.name).join(', ')}`)
+    } catch {
+      setNotice(tr('Not a valid JSON file'))
+    }
+  }
 
   useModalFocusTrap(true, onClose, modalRef)
 
@@ -140,12 +178,39 @@ export function EnvModal({
           aria-modal="true"
           aria-label={tr('Environments')}
           tabIndex={-1}
-          className="w-[720px] h-[480px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
+          className="w-[min(1100px,92vw)] h-[min(640px,86vh)] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-            <span className="text-sm font-semibold text-text-1 flex-1">{tr('Environments')}</span>
+            <span className="text-sm font-semibold text-text-1">{tr('Environments')}</span>
+            <div role="group" aria-label={tr('View')} className="ml-2 flex rounded border border-border-2 p-0.5">
+              {([['list', tr('Per environment')], ['matrix', tr('Matrix')]] as const).map(([id, label]) => (
+                <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)}
+                  className={cn('flex items-center gap-1 rounded px-2 py-0.5 text-[11px]', view === id ? 'bg-surface-3 text-text-1' : 'text-text-3 hover:text-text-1')}>
+                  {id === 'matrix' && <Grid3x3 size={11} />}{label}
+                </button>
+              ))}
+            </div>
+            <span className="min-w-0 flex-1 truncate text-[11px] text-text-3" role="status">{notice}</span>
+            {missingStages.length > 0 && (
+              <button type="button" onClick={() => setEnvironments([...environments, ...missingStages.map((name) => ({ id: uid(), name, variables: [] }))])}
+                title={missingStages.join(', ')} className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1">
+                <Layers size={12} />{tr('Add stages')}
+              </button>
+            )}
+            <input ref={importFileRef} type="file" accept=".json,application/json" className="hidden"
+              onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = '' }} />
+            <button type="button" onClick={() => importFileRef.current?.click()} title={tr('Import environments (adOmnia or Postman JSON)')}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1">
+              <Upload size={12} />{tr('Import')}
+            </button>
+            <button type="button" disabled={environments.length === 0}
+              onClick={() => { downloadText('adomnia-environments.json', exportEnvironments(environments), 'application/json'); setNotice(tr('Exported, private environments and plain secrets excluded')) }}
+              title={tr('Export all environments')}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
+              <Download size={12} />{tr('Export')}
+            </button>
             {addingNew ? (
               <div className="flex items-center gap-1">
                 <input
@@ -180,14 +245,18 @@ export function EnvModal({
             </button>
           </div>
 
+          {view === 'matrix' && <EnvMatrix />}
           {/* Body */}
-          <div className="flex-1 flex min-h-0">
+          <div className={cn('flex-1 min-h-0', view === 'matrix' ? 'hidden' : 'flex')}>
             {/* Left: Environment List */}
             <div className="w-48 border-r border-border-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+              <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1" data-a11y-click-exempt
+                onContextMenu={(event) => { event.preventDefault(); setEnvMenu({ x: event.clientX, y: event.clientY, id: null }) }}>
                 {environments.map((env) => (
                   <div
                     key={env.id}
+                    data-a11y-click-exempt
+                    onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); setSelectedEnvId(env.id); setEnvMenu({ x: event.clientX, y: event.clientY, id: env.id }) }}
                     className={cn(
                       'group flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
                       selectedEnvId === env.id
@@ -250,6 +319,10 @@ export function EnvModal({
                   <p className="text-xs text-text-4 text-center py-4">{tr('No environments yet.')}</p>
                 )}
               </div>
+              <button type="button" onClick={() => { setAddingNew(true); setNewEnvName('') }}
+                className="m-2 flex items-center justify-center gap-1.5 rounded border border-dashed border-border-2 py-1.5 text-xs text-text-2 transition-colors hover:border-accent hover:text-text-1">
+                <Plus size={12} />{tr('New Environment')}
+              </button>
             </div>
 
             {/* Right: Variable Table & Import */}
@@ -378,6 +451,17 @@ export function EnvModal({
         </div>
       </div>
 
+      {envMenu && (
+        <ContextMenu x={envMenu.x} y={envMenu.y} onClose={() => setEnvMenu(null)} onSelect={handleEnvMenu}
+          items={[
+            { id: 'new', label: tr('New Environment'), icon: Plus },
+            ...(envMenu.id ? [
+              { id: 'rename', label: tr('Rename'), icon: Pencil, shortcut: 'F2', separatorBefore: true },
+              { id: 'duplicate', label: tr('Duplicate'), icon: Copy },
+              { id: 'delete', label: tr('Delete'), icon: Trash2, danger: true, separatorBefore: true },
+            ] : []),
+          ]} />
+      )}
       {confirmDelete && (
         <ConfirmDialog
           open

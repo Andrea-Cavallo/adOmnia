@@ -91,6 +91,11 @@ export default defineConfig(async () => {
           import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/editor/editor.api.js'
         ),
+        // y-monaco uses the same legacy entry with an explicit .js extension.
+        'monaco-editor/esm/vs/editor/editor.api.js': path.resolve(
+          import.meta.dirname,
+          './node_modules/monaco-editor/esm/vs/editor/editor.api.js'
+        ),
         'monaco-editor/esm/vs/editor/common/commands/shiftCommand': path.resolve(
           import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/editor/common/commands/shiftCommand.js'

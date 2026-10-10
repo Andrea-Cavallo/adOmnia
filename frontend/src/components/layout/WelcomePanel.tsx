@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, Plus, CircleDot, X, SlidersHorizontal, ArrowLeftRight, RotateCcw, Check } from 'lucide-react'
 import { FEATURE_REGISTRY, getFeatureLabel } from '@/lib/featureRegistry'
 import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout } from './hubLayout'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
-import { FoldMark } from './FoldMark'
+import { HubLogo } from './HubLogo'
+import { openEnvironmentManager } from '@/components/environment/EnvironmentManagerHost'
 import type { GameId } from './arcade/types'
 import { GAME_IDS } from './arcade/gameCatalog'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
@@ -33,35 +34,6 @@ function cardCopy(id: RailItem) {
   return CARD_COPY[id] ?? { title: getFeatureLabel(id), description: feature?.description ?? feature?.group ?? '' }
 }
 
-// 5x7 dot-matrix glyphs for the Nothing-style clock face; '1' is a lit dot.
-const GLYPHS: Record<string, string[]> = {
-  '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
-  '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
-  '2': ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
-  '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
-  '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
-  '5': ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
-  '6': ['00110', '01000', '10000', '11110', '10001', '10001', '01110'],
-  '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
-  '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
-  '9': ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
-  ':': ['0', '0', '1', '0', '1', '0', '0'],
-}
-
-function DotClock({ text }: { text: string }) {
-  const step = 10
-  let x = 0
-  const dots: ReactElement[] = []
-  ;[...text].forEach((ch, i) => {
-    const glyph = GLYPHS[ch] ?? GLYPHS['0']
-    glyph.forEach((row, r) => [...row].forEach((on, c) => {
-      if (on === '1') dots.push(<circle key={`${i}-${r}-${c}`} cx={x + c * step + 4} cy={r * step + 4} r={3.7}/>)
-    }))
-    x += glyph[0].length * step + step
-  })
-  return <svg className="hub-clock" viewBox={`0 0 ${x - step - 2} ${7 * step - 2}`} role="img" aria-label={text}><g fill="currentColor">{dots}</g></svg>
-}
-
 function useNow() {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -82,7 +54,6 @@ function TodayPanel() {
   const tr = useUiTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
   const open = useAppStore(s => s.setActiveRail)
-  const tabs = useTabsStore(s => s.tabs)
   const newTab = useTabsStore(s => s.newTab)
   const now = useNow()
   const [game, setGame] = useState<GameId | null>(null)
@@ -94,6 +65,7 @@ function TodayPanel() {
     { title: 'Open project', detail: 'Open a project from your machine', run: () => open('goide') },
     { title: 'New request', detail: 'Create and send an API request', run: () => { newTab(); open('collections') } },
     { title: 'Add connection', detail: 'Open Database Studio', run: () => open('database') },
+    { title: 'Manage environments', detail: 'Variables for every module, per stage', run: openEnvironmentManager },
   ]
   return <aside className="hub-today">
     <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
@@ -101,7 +73,7 @@ function TodayPanel() {
       ? game
         ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
         : <Suspense fallback={null}><ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/></Suspense>
-      : <><FoldMark busy={tabs.some(tab => tab.loading)} fallback={<DotClock text={clock}/>} onWordClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
+      : <><HubLogo onClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>

@@ -12,6 +12,9 @@ export interface CollabInboxItem {
   redacted: string[]
   hasScripts: boolean
   receivedAt: number
+  revision?: string
+  sourceId?: string
+  senderId?: string
   content?: ReceivedContent
   error?: string
 }
@@ -21,6 +24,7 @@ interface CollabState {
   invites: CollabInvite[]
   inbox: CollabInboxItem[]
   notice: string | null
+  syncingCollectionId: string | null
   init: () => void
   refresh: () => Promise<void>
   host: (ip: string, port: number, name: string) => Promise<void>
@@ -61,6 +65,7 @@ export const useCollabStore = create<CollabState>((set, get) => ({
   invites: [],
   inbox: [],
   notice: null,
+  syncingCollectionId: null,
 
   init: () => {
     if (unsubscribe) return
@@ -123,7 +128,16 @@ export const useCollabStore = create<CollabState>((set, get) => ({
 type SetState = (partial: Partial<CollabState> | ((s: CollabState) => Partial<CollabState>)) => void
 
 function handleEvent(event: CollabEvent, set: SetState, get: () => CollabState) {
-  if (event.type === 'participants') {
+  if (event.type === 'resumed') {
+    set({ status: event.payload as CollabStatus, notice: 'Sessione ripresa. Snapshot e documenti in risincronizzazione.' })
+    return
+  }
+  if (event.type === 'disconnected') {
+    set({ notice: 'Connessione persa. Il testo locale resta aperto: usa Riprendi connessione.' })
+    void get().refresh()
+    return
+  }
+  if (event.type === 'participants' || event.type === 'project' || (event.type === 'document' && ['open', 'close'].includes((event.payload as {action?:string})?.action ?? ''))) {
     void get().refresh()
     return
   }
@@ -141,11 +155,14 @@ function handleEvent(event: CollabEvent, set: SetState, get: () => CollabState) 
     const share = event.payload as CollabShare
     const from = participantName(get().status, event.from)
     const item: CollabInboxItem = { id: share.id, title: share.title || share.kind, from, redacted: share.redacted ?? [], hasScripts: containsScripts(share.data), receivedAt: Date.now() }
+    item.revision = (share as CollabShare & { revision?: string }).revision
+    item.sourceId=share.sourceId
+    item.senderId=event.from
     try {
       item.content = parseReceived(share.kind, share.title, share.data, from)
     } catch (error) {
       item.error = errorText(error)
     }
-    set((s) => ({ inbox: [item, ...s.inbox].slice(0, MAX_INBOX), notice: `${from} ha condiviso ${item.title}` }))
+    set((s) => ({ inbox: [item, ...s.inbox.filter(entry=>entry.id!==item.id && !(item.sourceId && entry.sourceId===item.sourceId && entry.senderId===item.senderId))].slice(0, MAX_INBOX), notice: `${from} ha condiviso ${item.title}` }))
   }
 }

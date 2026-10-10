@@ -21,6 +21,10 @@ export function CreateInvite(role: string, ttlMinutes: number): $CancellableProm
     });
 }
 
+export function Document(message: collab$0.DocumentMessage): $CancellablePromise<void> {
+    return $Call.ByID(1252864310, message);
+}
+
 export function Host(ip: string, port: number, name: string): $CancellablePromise<collab$0.Status> {
     return $Call.ByID(3595113677, ip, port, name).then(($result: any) => {
         return $$createType1($result);
@@ -39,12 +43,40 @@ export function LocalAddresses(): $CancellablePromise<string[]> {
     });
 }
 
+export function OpenDocument(id: string, initial: string): $CancellablePromise<void> {
+    return $Call.ByID(3785198074, id, initial);
+}
+
 /**
  * PreviewShare restituisce esattamente ciò che lascerebbe la macchina (segreti già rimossi).
  */
 export function PreviewShare(kind: string, title: string, dataJSON: string): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(1625525704, kind, title, dataJSON).then(($result: any) => {
         return $$createType3($result);
+    });
+}
+
+export function PreviewShareWithSecrets(kind: string, title: string, dataJSON: string, variables: string[]): $CancellablePromise<collab$0.Share> {
+    return $Call.ByID(3998041709, kind, title, dataJSON, variables).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+export function ProjectTree(): $CancellablePromise<collab$0.ProjectEntry[]> {
+    return $Call.ByID(3258501320).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+export function ReadProjectFile(path: string): $CancellablePromise<collab$0.ProjectFile> {
+    return $Call.ByID(271843090, path).then(($result: any) => {
+        return $$createType6($result);
+    });
+}
+
+export function Resume(): $CancellablePromise<collab$0.Status> {
+    return $Call.ByID(1009749784).then(($result: any) => {
+        return $$createType1($result);
     });
 }
 
@@ -62,6 +94,18 @@ export function Share(kind: string, title: string, dataJSON: string): $Cancellab
     });
 }
 
+export function ShareProject(sessionID: string): $CancellablePromise<collab$0.ProjectInfo> {
+    return $Call.ByID(2765204267, sessionID).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+export function ShareWithSecrets(kind: string, title: string, dataJSON: string, variables: string[]): $CancellablePromise<collab$0.Share> {
+    return $Call.ByID(3313587255, kind, title, dataJSON, variables).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 export function Status(): $CancellablePromise<collab$0.Status> {
     return $Call.ByID(3338828213).then(($result: any) => {
         return $$createType1($result);
@@ -72,8 +116,22 @@ export function Stop(): $CancellablePromise<void> {
     return $Call.ByID(140458795);
 }
 
+export function SyncCollection(sourceID: string, title: string, dataJSON: string): $CancellablePromise<collab$0.Share> {
+    return $Call.ByID(448596984, sourceID, title, dataJSON).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+export function ValidateProjectDocument(path: string, content: string): $CancellablePromise<void> {
+    return $Call.ByID(1412823803, path, content);
+}
+
 // Private type creation functions
 const $$createType0 = collab$0.Invite.createFrom;
 const $$createType1 = collab$0.Status.createFrom;
 const $$createType2 = $Create.Array($Create.Any);
 const $$createType3 = collab$0.Share.createFrom;
+const $$createType4 = collab$0.ProjectEntry.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = collab$0.ProjectFile.createFrom;
+const $$createType7 = collab$0.ProjectInfo.createFrom;

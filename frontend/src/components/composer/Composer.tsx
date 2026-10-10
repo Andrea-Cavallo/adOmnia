@@ -834,9 +834,10 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
           </>
         )}
 
-        {/* Section tabs — one flat, underlined row, as compact as the labels allow */}
-        <div role="tablist" aria-label={tr('Request sections')} className="flex h-9 flex-nowrap items-stretch gap-0.5 overflow-x-auto border-b border-border-1 bg-surface-1 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {tabs.map((t) => {
+        {/* Keep everyday sections visible; advanced sections retain their saved state. */}
+        <div className="api-section-strip flex items-stretch border-b border-border-1">
+        <div role="tablist" aria-label={tr('Request sections')} className="flex min-w-0 flex-1 flex-nowrap items-stretch gap-0.5 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {tabs.filter((t) => ['params', 'headers', 'body', 'auth'].includes(t.id)).map((t) => {
             const active = activeTab === t.id
             return (
               <button
@@ -871,6 +872,21 @@ export function Composer({ tabId, request, onChange, onSend, onSave, onLoadTest,
               </button>
             )
           })}
+        </div>
+        <select
+          aria-label={tr('More request sections')}
+          className="api-section-more"
+          value={['params', 'headers', 'body', 'auth'].includes(activeTab) ? '' : activeTab}
+          onChange={(event) => {
+            if (!event.target.value) return
+            const section = event.target.value as ComposerSection
+            setActiveTab(section)
+            updateViewState(tabId, { composerSection: section })
+          }}
+        >
+          <option value="" disabled>{tr('More')}</option>
+          {tabs.filter((t) => !['params', 'headers', 'body', 'auth'].includes(t.id)).map((t) => <option key={t.id} value={t.id}>{t.label}{t.count ? ` · ${t.count}` : ''}</option>)}
+        </select>
         </div>
 
         {/* Tab content — body gets extra height so large JSON doesn't need excessive scrolling */}

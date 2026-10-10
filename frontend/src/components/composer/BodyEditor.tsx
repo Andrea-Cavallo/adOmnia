@@ -711,7 +711,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantCon
           ? 'fixed inset-3 z-50 overflow-hidden rounded-xl border border-border-2 shadow-2xl'
           : 'flex-1',
       )} ref={editorRootRef}>
-      <section className="flex min-h-10 flex-nowrap items-center gap-2 border-b border-border-2 bg-surface-1 px-3 py-1.5">
+      <section className="api-body-toolbar flex min-h-10 flex-nowrap items-center gap-2 border-b border-border-2 bg-surface-1 px-3 py-1.5">
         {variantControls}
         <label className="relative flex shrink-0 items-center">
           <span className="sr-only">{tr('Body format')}</span>
@@ -786,8 +786,9 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantCon
         </div>
       </section>
 
+      {/* No body yet: open straight into an empty JSON editor; typing turns it into a JSON body. */}
       {body.type === 'none' && (
-        <p className="px-3 py-4 text-xs text-text-4 italic">{tr('This request has no body.')}</p>
+        <JsonRawEditor body={{ ...body, type: 'raw', lang: 'json' }} onChange={onChange} search={search} />
       )}
 
       {body.type === 'raw' && body.lang === 'json' && (

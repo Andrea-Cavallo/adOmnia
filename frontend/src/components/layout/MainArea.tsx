@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Circle, Columns2, PanelsTopLeft, Plus, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Check, Circle, Columns2, MoreHorizontal, PanelsTopLeft, Plus, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -339,8 +339,27 @@ function ActiveRequestBar({
   const tr = useUiTranslation()
   const [savedFlash, setSavedFlash] = useState(false)
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const actionsRef = useRef<HTMLDetailsElement>(null)
   const liveUrl = resolvedRequestUrl(request)
   const panelActive = usePanelActiveRef()
+
+  useEffect(() => {
+    const closeActions = (event: PointerEvent | KeyboardEvent) => {
+      const menu = actionsRef.current
+      if (!menu?.open) return
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== 'Escape') return
+        menu.open = false
+        menu.querySelector('summary')?.focus()
+      } else if (!menu.contains(event.target as Node)) menu.open = false
+    }
+    document.addEventListener('pointerdown', closeActions)
+    document.addEventListener('keydown', closeActions)
+    return () => {
+      document.removeEventListener('pointerdown', closeActions)
+      document.removeEventListener('keydown', closeActions)
+    }
+  }, [])
 
   useEffect(() => {
     const focusUrl = () => { if (panelActive.current) urlInputRef.current?.focus() }
@@ -355,13 +374,14 @@ function ActiveRequestBar({
   }
 
   return (
-    <div className="border-b border-border-1 bg-surface-1/95 px-2.5 py-1.5">
+    <div className="api-request-bar border-b border-border-1">
+      <div className="api-request-caption"><span className="api-dot-label">{tr('Request')}</span><span className="truncate">{request.name}</span></div>
       <div className="flex min-w-0 items-center gap-2">
         <select
           value={request.method}
           onChange={(e) => onChange({ ...request, method: e.target.value as HttpMethod })}
           className={cn(
-            'h-[var(--ui-control-h)] w-[82px] rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] font-mono font-bold outline-none transition-colors focus:border-accent',
+            'api-method h-[var(--ui-control-h)] w-[90px] rounded-md border border-border-2 bg-surface-2 px-2 text-[12px] font-mono font-bold outline-none transition-colors focus:border-accent',
             METHOD_COLORS[request.method] ?? 'text-text-1',
           )}
           title={tr('HTTP method')}
@@ -371,7 +391,7 @@ function ActiveRequestBar({
           ))}
         </select>
 
-        <div className="h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
+        <div className="api-url h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput
             value={liveUrl}
             onChange={(url) => onChange(requestWithUrlInput(request, url))}
@@ -390,6 +410,12 @@ function ActiveRequestBar({
           />
         </div>
 
+        <details ref={actionsRef} className="api-actions">
+          <summary aria-label={tr('Request actions')} title={tr('Request actions')}><MoreHorizontal size={18} /></summary>
+          <div className="api-actions-menu" data-a11y-click-exempt onClick={() => {
+            if (actionsRef.current) actionsRef.current.open = false
+            actionsRef.current?.querySelector('summary')?.focus()
+          }}>
         <button
           onClick={onToggleApiTools}
           title={apiToolsOpen ? tr('Hide API tools') : tr('Show API tools (redirects, timeout, cURL, encode…)')}
@@ -402,6 +428,7 @@ function ActiveRequestBar({
           )}
         >
           <Wrench size={14} aria-hidden="true" />
+          <span>{tr('API Tools')}</span>
         </button>
 
         <button
@@ -417,6 +444,7 @@ function ActiveRequestBar({
           )}
         >
           {savedFlash ? <Check size={15} /> : <Save size={15} />}
+          <span>{tr('Save to collection (Ctrl+S)')}</span>
         </button>
 
         <button
@@ -425,6 +453,7 @@ function ActiveRequestBar({
           className="grid h-[var(--ui-control-h)] w-[var(--ui-control-h)] place-items-center rounded-md text-text-3 transition-colors hover:bg-error/10 hover:text-error"
         >
           <Trash2 size={14} />
+          <span>{tr('Delete request')}</span>
         </button>
         <button
           type="button"
@@ -443,7 +472,12 @@ function ActiveRequestBar({
           <span>{recording ? `Stop · ${recordingCount}` : 'Record'}</span>
         </button>
 
-        {recording && <span className="hidden items-center gap-1 text-[10px] font-semibold text-error lg:flex"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error" />{tr('Recording')}</span>}
+          <DebugRequestButton url={request.url} onDebug={onDebug} />
+          </div>
+        </details>
+
+        {isDirty && <button onClick={handleSave} title={tr('Save to collection (Ctrl+S)')} aria-label={tr('Save to collection (Ctrl+S)')} className="api-quick-save"><Save size={15} /><span className="api-dirty-dot" /></button>}
+        {recording && <button onClick={onToggleRecording} className="api-recording-status text-error" title={tr('Stop recording API calls')}><span className="h-1.5 w-1.5 rounded-full bg-error" />{recordingCount}<Square size={10} /></button>}
 
         {loading ? (
           <button
@@ -456,15 +490,16 @@ function ActiveRequestBar({
           </button>
         ) : (
           <>
-          <DebugRequestButton url={request.url} onDebug={onDebug} />
           <button
             type="button"
             onClick={onSend}
             disabled={!request.url}
-            className="api-send-action flex h-[var(--ui-control-h)] min-w-[96px] items-center justify-center gap-2 px-3.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            className="api-send-action api-send-nothing flex h-[var(--ui-control-h)] min-w-[132px] items-center justify-center gap-3 px-5 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Send className="api-send-action__icon" size={15} strokeWidth={2.35} aria-hidden="true" />
-            {tr('Send')}
+            <span className="api-send-ring" aria-hidden="true" />
+            <Send className="api-send-action__icon" size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span className="api-send-divider" aria-hidden="true" />
+            <span className="api-send-label">{tr('Send')}</span>
           </button>
           </>
         )}
@@ -1062,7 +1097,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
               'shrink-0 min-h-0 overflow-hidden flex flex-col',
               requestResponseLayout === 'horizontal' ? 'border-r border-border-1' : 'min-w-0 border-b border-border-1',
             )}
-            style={requestResponseLayout === 'horizontal' ? { width: composerWidth } : { height: composerHeight }}
+            style={requestResponseLayout === 'horizontal' ? { width: composerWidth, maxWidth: '65%' } : { height: composerHeight }}
           >
             <Composer
               key={activeTab.id}

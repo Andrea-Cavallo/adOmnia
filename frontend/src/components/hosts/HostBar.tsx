@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { HostsProfile, HostEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -159,7 +160,8 @@ export function HostBar({
         {!compact && <button onClick={() => setShowModal(true)} className="ml-auto text-[11px] text-accent hover:text-accent-light" title={tr('Manage hosts profiles')}>{tr('Hosts')}</button>}
       </div>
 
-      {showModal && (
+      {/* Portal: the bar can live in the window titlebar (drag region, clipped layout). */}
+      {showModal && createPortal(
         <Suspense fallback={null}>
           <HostModal
             profiles={profiles}
@@ -170,7 +172,8 @@ export function HostBar({
             onRename={onRename}
             onUpdateEntries={onUpdateEntries}
           />
-        </Suspense>
+        </Suspense>,
+        document.body,
       )}
     </>
   )

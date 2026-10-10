@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import type { EntityRef } from '@/lib/entities/types'
 
 // ── types ──────────────────────────────────────────────────────────────────
-export type DbDriver = 'sqlite' | 'postgres' | 'mysql' | 'db2' | 'mongodb'
+export type DbDriver = 'sqlite' | 'postgres' | 'mysql' | 'db2' | 'mongodb' | 'redis'
 export type SelectableDbDriver = Exclude<DbDriver, 'db2'>
 
 export interface DbConnection {
@@ -88,6 +88,7 @@ export const DRIVER_META: Record<DbDriver, { label: string; short: string; port:
   mysql:    { label: 'MySQL',      short: 'MySQL',      port: 3306,  accent: '#E3B341', icon: 'mysql' },
   db2:      { label: 'IBM Db2',    short: 'Db2',        port: 50000, accent: '#8B3DFF' },
   mongodb:  { label: 'MongoDB',    short: 'MongoDB',    port: 27017, accent: '#3FB950', icon: 'mongodb' },
+  redis:    { label: 'Redis',      short: 'Redis',      port: 6379,  accent: '#FF4438', icon: 'redis' },
 }
 
 /** Logo of a database driver, or a generic database glyph when it has no brand icon. */
@@ -96,7 +97,8 @@ export function DbDriverIcon({ driver, size = 15, mono = false }: { driver: DbDr
   if (meta.icon) return <BrandIcon slug={meta.icon} size={size} mono={mono} />
   return <Database size={size} style={mono ? undefined : { color: meta.accent }} />
 }
-export const SELECTABLE_DRIVERS: SelectableDbDriver[] = ['sqlite', 'postgres', 'mysql', 'mongodb']
+export const SELECTABLE_DRIVERS: SelectableDbDriver[] = ['sqlite', 'postgres', 'mysql', 'mongodb', 'redis']
+export const REDIS_DEFAULT_QUERY = JSON.stringify({ command: 'PING', args: [] }, null, 2)
 
 export const MONGO_DEFAULT_QUERY = `{
   "operation": "find",
@@ -158,6 +160,7 @@ export function validateConnection(connection: DbConnection): string | null {
   if (!connection.host.trim()) return 'Host is required.'
   if (!(connection.driver === 'mongodb' && connection.srv) && (!Number.isInteger(connection.port) || connection.port <= 0 || connection.port > 65535)) return 'Port must be between 1 and 65535.'
   if ((connection.driver === 'postgres' || connection.driver === 'mysql') && !connection.database.trim()) return 'Database name is required.'
+  if (connection.driver === 'redis' && connection.database.trim() && !/^\d+$/.test(connection.database.trim())) return 'Redis database index must be a non-negative integer.'
   return null
 }
 
@@ -192,6 +195,10 @@ export function isValidDbObjectName(name: string): boolean {
 
 export function createObjectQuery(driver: DbDriver, rawName: string): string {
   const name = rawName.trim()
+  if (driver === 'redis') {
+    if (!name) throw new Error('Enter a Redis key name.')
+    return JSON.stringify({ command: 'SET', args: [name, ''] }, null, 2)
+  }
   if (!isValidDbObjectName(name)) throw new Error('Use letters, numbers and underscores; the name cannot start with a number.')
   if (driver === 'mongodb') return JSON.stringify({ operation: 'createCollection', collection: name }, null, 2)
   if (driver === 'mysql') return `CREATE TABLE \`${name}\` (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY\n)`
@@ -219,6 +226,14 @@ export function isDangerousMongo(query: string) {
   }
 }
 
+export function isDangerousRedis(query: string): boolean {
+  try {
+    const parsed = JSON.parse(query) as { command?: string; operation?: string }
+    if (parsed.operation === 'scan' || parsed.operation === 'inspect') return false
+    return !new Set('PING GET MGET EXISTS TYPE TTL PTTL STRLEN GETRANGE HGET HMGET HGETALL HLEN HEXISTS HKEYS HVALS HSCAN LRANGE LLEN LINDEX SMEMBERS SCARD SISMEMBER SSCAN ZRANGE ZREVRANGE ZCARD ZSCORE ZCOUNT ZSCAN XRANGE XREVRANGE XLEN DBSIZE INFO SCAN'.split(' ')).has((parsed.command ?? '').trim().toUpperCase())
+  } catch { return false }
+}
+
 export function jsonValidity(query: string): { ok: boolean; message: string } {
   try {
     JSON.parse(query)
@@ -237,6 +252,7 @@ export function caretPosition(value: string, caret: number): { line: number; col
 // ── introspection ──────────────────────────────────────────────────────────
 export function introspectionQuery(driver: DbDriver): string {
   switch (driver) {
+    case 'redis':    return JSON.stringify({ operation: 'scan', pattern: '*' })
     case 'mongodb':  return JSON.stringify({ operation: 'listCollections' })
     case 'sqlite':   return "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     case 'postgres': return "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
@@ -267,12 +283,14 @@ export function extractColumns(result: DbResult): Record<string, SchemaColumn[]>
 }
 
 export function countQuery(driver: DbDriver, name: string): string {
+  if (driver === 'redis') return JSON.stringify({ command: 'EXISTS', args: [name] })
   if (driver === 'mongodb') return JSON.stringify({ operation: 'count', collection: name, filter: {} })
   const ident = driver === 'mysql' ? `\`${name.replace(/`/g, '')}\`` : `"${name.replace(/"/g, '')}"`
   return `SELECT COUNT(*) AS n FROM ${ident}`
 }
 
 export function browseQuery(driver: DbDriver, name: string): string {
+  if (driver === 'redis') return JSON.stringify({ operation: 'inspect', key: name }, null, 2)
   if (driver === 'mongodb') {
     return JSON.stringify({ operation: 'find', collection: name, filter: {}, sort: { _id: -1 }, limit: 100 }, null, 2)
   }

@@ -1,4 +1,5 @@
 import { StorageDelete, StorageGet, StoragePut } from '@/wailsjs/go/main/App'
+import { withActiveEnv } from '@/lib/activeEnv'
 import {
   clearManagedSecretsWithPrefix,
   hasPlaintextSecret,
@@ -131,7 +132,9 @@ export async function protectBrokerConnectionConfig<T extends object>(config: T,
 }
 
 export async function resolveBrokerPayload<T>(payload: T): Promise<T> {
-  return mapConfigAsync(payload, [], async (value) => isVaultRef(value) ? resolveSecret(value) : value) as Promise<T>
+  // {{VAR}} first (from the active adOmnia environment), then any vault: secrets.
+  const withEnv = await withActiveEnv(payload)
+  return mapConfigAsync(withEnv, [], async (value) => isVaultRef(value) ? resolveSecret(value) : value) as Promise<T>
 }
 
 function sanitizeState(state: PersistedBrokerConnections): PersistedBrokerConnections {

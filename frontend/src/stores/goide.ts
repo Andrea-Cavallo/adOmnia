@@ -3,6 +3,7 @@ import { fuzzTargetOfCommand, parseFuzzSession, recordFuzzSession } from '@/lib/
 import { recordRunHistory } from '@/lib/goide/goStudioRunHistory'
 import { caretsFor, restoreCarets } from '@/lib/goide/goStudioCaretMemory'
 import { create } from 'zustand'
+import { startSharedEnvironmentSync } from '@/lib/goide/sharedEnvironment'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import {
   checkGoIDEDocument,
@@ -405,6 +406,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   initialize: async () => {
     if (get().initialized || get().loading) return
     set({ loading: true, error: null })
+    startSharedEnvironmentSync()
     try {
       // Le cartelle sparite vanno rimosse prima di mostrare le sessioni, senza
       // perdere le altre e senza toccare i progetti recenti.

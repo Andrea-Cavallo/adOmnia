@@ -6,6 +6,115 @@
 
 ---
 
+## Stato verificato — 2026-10-10
+
+Le spunte indicano lavoro implementato e verificato con le evidenze specificate. Una fase resta aperta quando manca la sua accettazione desktop; una build o un test unitario non sostituiscono la prova tra due computer.
+
+| Area | Implementato | Verificato | Ancora da fare / testare |
+|---|---|---|---|
+| 6.1–6.3 Sessione, pairing, inbox | Host/guest, TLS con pinning, inviti monouso, ruoli, revoca, payload filtrati | Test Go del trasporto e dei permessi | Accettazione LAN su due computer |
+| 6.4 Collection ed environment | Import nuovo, replace confermato, merge per campo, protezione preview obsoleta, hash canonico, opt-in per variabile | Test merge e filtro Go, TypeScript/build | Provare import/replace/merge nella UI desktop e conflitti con modifiche locali |
+| 6.5 Editor live e presence | Yjs, relay opaco, Monaco host/guest, cursori e selezioni, buffer host collegato al normale salvataggio | Test convergenza/idempotenza, late sync, viewer/downgrade, race detector | Due editor reali, split/tab, SaveDocument e modifica esterna mentre il CRDT è attivo |
+| 6.6 Progetto remoto | Selezione di una sessione Go Studio, albero/file read-only, root confinato, esclusioni, guest senza gopls | Trasferimento TLS, traversal rifiutato, filtro file/contenuti | Symlink/junction reali su Windows: il test symlink è **SKIP** su questo host per privilegio non disponibile; prova desktop del guest |
+| 6.7 Sync e recovery | Snapshot collection su opt-in, merge manuale, resume temporaneo da seq, replay limitato, risync Yjs | Test batching/stop offline, resume/revoca/scadenza, recupero testo renderer | Interruzione rete reale, replay oltre limite, crash del processo/app e recupero persistente; il resume attuale vive solo in memoria |
+| P1 / P2 | Nessuna consegna completata | — | Follow/review, terminal/debug/Git autorizzati, test collaborativi, versioning, correlazione API/debug, proxy LSP, mDNS, cross-modulo, relay opzionale e diagnostica |
+
+Verifiche automatiche più recenti: **15 test frontend Collaboration superati**, `go build ./...` e test `internal/collab` / `internal/collectionfs` con `-race` superati. Build frontend e budget startup superati: **590698 byte** iniziali. La suite Go completa non è attestata da questi controlli mirati.
+
+### Aggiornamento UI richiesto insieme alla roadmap
+
+- [x] Stato vuoto della risposta nello stile Nothing: titolo Doto, glyph SVG a puntini, testo e scorciatoia coerenti; colori da palette.
+- [x] Tab API più leggibili: maggiore larghezza minima, badge metodo, indicatore attivo, stato dirty discreto, overflow con tab attivo visibile; eliminata la ripetizione del metodo nel titolo.
+- [x] Verifica nel frontend locale: apertura di 8 tab, overflow, rinomina, tema scuro, tema chiaro e accento viola. Screenshot: `.artifacts/api-nothing-dark.png`, `.artifacts/api-nothing-light.png`, `.artifacts/api-nothing-accent.png`.
+- [ ] Smoke test dello stesso restyling nel nuovo eseguibile Wails; drag/reorder/detach e navigazione da tastiera da verificare nel runtime desktop.
+
+---
+
+## Checklist residua — cosa manca per chiudere
+
+Riepilogo ordinato per priorità degli item ancora aperti. Ogni voce richiama la sezione di origine.
+
+### A. Accettazione P0 (bloccante — due computer reali)
+
+- [ ] **A1 — Accettazione LAN** (6.1–6.3): due istanze su computer diversi condividono una collection senza account cloud, con permessi verificati dal backend.
+- [ ] **A2 — Import/replace/merge in UI** (6.4): provare `Import as new` / `Replace` / `Compare & Merge` nella UI desktop, incluse modifiche locali concorrenti durante la preview.
+- [ ] **A3 — Editor live su due macchine** (6.5): due editor reali, split/tab, `SaveDocument` dell'host e modifica esterna (watcher) mentre il CRDT è attivo (nessuna sovrascrittura silenziosa).
+- [ ] **A4 — Guest remoto** (6.6): apertura file, cursori, downgrade ruolo e salvataggio host su due computer; symlink/junction reali su Windows (test attualmente SKIP per privilegi mancanti).
+- [ ] **A5 — Recovery reale** (6.7): interruzione rete reale, replay oltre limite, crash del processo/app e **recupero persistente** (il resume vive oggi solo in memoria).
+- [ ] **A6 — Accettazione P0 formale** (riga 282): condividere, importare/sincronizzare modifiche e collaborare sullo stesso file tra due computer.
+
+### B. Sicurezza trasversale (§5)
+
+- [ ] **B1** (232): esclusione di default di `.env`, token, password, chiavi private, certificati, credenziali DB (riuso `vault` + `redactSecrets`).
+- [ ] **B2** (233): validazione path e symlink per impedire accessi fuori dal workspace autorizzato.
+- [ ] **B3** (235): crash/reconnect senza perdita silenziosa; conflitti non risolvibili sempre segnalati.
+- [ ] **B4** (236): audit delle esecuzioni insieme al gateway terminal/debug/Git (6.9).
+
+### C. UI — smoke test desktop
+
+- [ ] **C1** (riga 29): smoke test del restyling API nell'eseguibile Wails (drag/reorder/detach + navigazione da tastiera).
+
+### D. Fase P1 — collaborazione avanzata
+
+- [ ] **D1** (6.8): Follow mode (05) + Live Code Review (08, ancore `Y.RelativePosition`).
+- [ ] **D2** (6.9): terminale (06), debugger (07) e Git (09) condivisi con controllo autorizzato (sopra `devsession` + `supervisor`).
+- [ ] **D3** (6.10): API testing collaborativo (15), shared test runner (19), collection versioning (17, via git su `collectionfs`).
+- [ ] **D4** (6.11): correlazione request API ↔ sessione di debug (16).
+- [ ] **D5** (6.12): LSP proxy host → guest.
+- [ ] **D6** (6.13): discovery mDNS LAN (`grandcat/zeroconf`) con fallback `ip:port`.
+- [ ] **D7** (riga 293): accettazione P1 (breakpoint osservato da un secondo developer; nessuna esecuzione/mutazione Git senza autorizzazione).
+
+### E. Fase P2 — esperienza integrata
+
+- [ ] **E1** (6.14): Workspace collaboration cross-modulo (20).
+- [ ] **E2** (6.15): relay self-hosted opzionale per reti differenti.
+- [ ] **E3** (6.16): diagnostica, metriche, UX multiutente e gestione sessioni.
+- [ ] **E4** (riga 301): accettazione P2 (vista coerente tra reti diverse, relay configurabile, nessun cloud obbligatorio).
+
+### F. Funzionalità API Studio non ancora spuntate (sezione 2)
+
+- [ ] **F1** (12): Live Collection Sync.
+- [ ] **F2** (15): Collaborative API Testing.
+- [ ] **F3** (16): Shared API Debugging.
+- [ ] **F4** (17): API Collection Versioning.
+- [ ] **F5** (18): Collection Import & Merge (agganciato ad A2).
+- [ ] **F6** (19): Shared Test Runner.
+- [ ] **F7** (20): Workspace Collaboration.
+
+---
+
+## Runbook accettazione LAN (A1) — due computer
+
+Procedura minima per chiudere A1. Prerequisiti: due computer sulla stessa LAN, entrambi con `wails3 task dev` avviato; firewall Windows dell'host che consente la porta scelta (prima richiesta → consenti).
+
+1. **Host** (macchina A): apri la panel **Live Collaboration**, imposta "Il tuo nome", seleziona l'IP LAN (non `127.0.0.1`) in **Ospita una sessione** → **Ospita**.
+   - Atteso: badge "Host", indirizzo `IP:porta`, impronta TLS visibile.
+2. **Invito** (A): in **Invita** scegli ruolo `Editor`, TTL 15 min → **Nuovo invito** → copia il codice `adomnia-collab://IP:porta?t=…&fp=…`.
+3. **Guest** (macchina B): incolla il codice in **Partecipa** → **Partecipa**.
+   - Atteso: badge "Connesso"; entrambi vedono 2 partecipanti (Host + guest).
+4. **Condivisione** (A): in **Condividi** scegli una collection, **Anteprima** (verifica che i segreti siano "rimossi"), poi **Invia ai partecipanti**.
+5. **Ricezione** (B): in **Ricevuti** appare la collection da A → **Importa** → la collection compare in API Studio.
+6. **Inverso** (B→A): B condivide una request; A la riceve e la apre in una nuova tab.
+7. **Permessi/revoca** (A): cambia il ruolo del guest a `Viewer` (B non può più condividere) e poi **Rimuovi** → B riceve "l'host ti ha rimosso".
+
+Criterio di accettazione: nessun segreto appare in chiaro nel payload ricevuto; l'invito non è riutilizzabile; il revoke chiude la connessione. Fallimento tipico: porta bloccata dal firewall (l'host deve accettare la richiesta, o usare una porta già consentita).
+
+## Runbook import/replace/merge (A2) — due finestre
+
+Per chiudere A2 senza un secondo computer è sufficiente **una sola macchina** con due istanze (due processi `wails3 task dev`, o host+guest sullo stesso processo via IP `127.0.0.1`). A2 non richiede la LAN reale: verifica solo la UI di import.
+
+1. **Host e guest** si connettono (vedi runbook A1, usando IP `127.0.0.1` se è la stessa macchina).
+2. **Host** condivide una collection; **guest** riceve in **Ricevuti** → clicca **Importa**.
+3. Nel riquadro "Importa…" prova i tre modi:
+   - **Importa come nuova**: crea una collection con nome `… (da <host>)` e ID nuovi; la collection esistente resta intatta.
+   - **Sostituisci**: scegli una destinazione → **Conferma sostituzione**; nome e ID locali restano, i contenuti diventano quelli ricevuti.
+   - **Confronta e unisci**: scegli una destinazione → appaiono le differenze (Locale vs Ricevuto), con i conflitti marcati; seleziona i valori da applicare → **Applica**. I campi non selezionati restano locali; nessuna cancellazione implicita.
+4. **Conflitto con modifiche locali**: mentre il riquadro è aperto, modifica la collection di destinazione in un'altra view → su **Applica** deve comparire "La collection locale è cambiata…" e non deve essere applicato nulla.
+
+Criterio di accettazione: nessuna cancellazione implicita di elementi locali; gli ID locali vengono conservati (in merge); i nomi ambigui appaiono come conflitto, non vengono risolti a caso.
+
+---
+
 ## 0. Grounding nel codice (cosa esiste già e dove agganciarsi)
 
 Questa sezione risponde alle domande aperte della vecchia sezione 7 e **è da rileggere prima di ogni decisione**. È il risultato dello studio del repository: la feature va costruita **sopra** questi mattoni, non in parallelo.
@@ -127,7 +236,7 @@ Tutti i path citati in §0 esistono (`internal/collab` no: è il nuovo package).
 - [x] **11. Quick Collection Share (P0).** Trasferimento rapido di collection REST/SOAP/GraphQL/gRPC via LAN + invito/codice temporaneo; Internet via relay opzionale. **Veicolo iniziale: file `collectionfs` / `.adomnia`**, non diff live.
 - [ ] **12. Live Collection Sync (P0).** Sincronizzazione di cartelle/endpoint/URL/headers/body/metadata tra partecipanti; gestione modifiche concorrenti (merge esplicito su `collectionfs`).
 - [x] **13. Share Single Request (P0).** Inviare una singola request senza esportare la collection, con **preview dei dati inclusi** e redazione (`redactSecrets`) prima della condivisione.
-- [ ] **14. Shared Environments (P0).** Condivisione di nomi/valori non sensibili DEV/TEST/STAGING; segreti/token/password/chiavi esclusi di default (vault + regex `SECRET_KEY`).
+- [x] **14. Shared Environments (P0).** Condivisione di nomi/valori non sensibili DEV/TEST/STAGING; segreti/token/password/chiavi esclusi di default (vault + regex `SECRET_KEY`).
 - [ ] **15. Collaborative API Testing (P1).** Stream di status/response/header/durata/risultati dei test di un developer autorizzato (riusa gli eventi `devsession`/runner).
 - [ ] **16. Shared API Debugging (P1).** Collegare una request API Studio alla sessione di debug di Go Studio per osservare request → breakpoint → variabili → response (correlazione via `X-AdOmnia-Request-ID`, già in `devsession`).
 - [ ] **17. API Collection Versioning (P1).** Revisioni, diff, cronologia, rollback; identificatori stabili (gli `id`/`SyncHash` di `collectionfs`).
@@ -209,7 +318,7 @@ internal già esistenti (non riscrivere)
 - [ ] Validazione di path e symlink per impedire lettura/scrittura fuori dal workspace autorizzato (come già fatto in `collectionfs`).
 - [x] Limiti su dimensione/frequenza messaggi, file trasferibili e numero partecipanti (riusa lo stile di `sidecar` con `MaxBytesReader`).
 - [ ] Crash/reconnect senza perdita silenziosa; conflitti non risolvibili automaticamente sempre segnalati.
-- [ ] Audit locale per join/inviti/revoche/esecuzione comandi/condivisione dati (devlog o bbolt). *(non ancora fatto)*
+- [x] Audit locale in devlog per le operazioni disponibili: host/join, inviti, ruoli, revoche, uscita e condivisione. Nessun token, invito, valore condiviso o titolo nei log. L’audit delle esecuzioni sarà aggiunto insieme al gateway terminal/debug/Git (6.9).
 
 ---
 
@@ -235,19 +344,25 @@ internal già esistenti (non riscrivere)
   - [x] Ricezione in una inbox con consenso esplicito: collection → `importCollection` (ID nuovi), request → nuova tab, environment → nuovi environment; avviso se contiene script.
 - [ ] **6.4 Collection Import & Merge + Shared Environments (18, 14).**
   - [ ] `Import as new` / `Replace` / `Compare & Merge` con preview conflitti (`InspectDrift`/`SyncHash`).
+    - [x] Inbox: scelta destinazione, import come nuova, sostituzione confermata e confronto per campo con selezione esplicita; protezione da cambiamenti locali durante la preview.
+    - [x] Test automatici: conservazione ID locali, aggiunte annidate, nessuna cancellazione implicita, nomi ambigui trattati come conflitti; build frontend superata (2026-10-09).
+    - [x] Revisioni SHA-256 canoniche condivise con `collectionfs.HashJSON`, ricalcolate dall’host prima del relay; test indipendente dall’ordine delle chiavi superato.
+    - [ ] Verificare il flusso in due finestre desktop.
   - [x] Environment condivisi senza segreti per default (privati esclusi, valori secret svuotati).
-  - [ ] Opt-in esplicito per singola variabile segreta.
+  - [x] Opt-in esplicito per singola variabile segreta: checkbox per variabile e anteprima esatta; filtro autorevole Go esclude environment privati e riferimenti vault anche se selezionati. Test Go di default, opt-in e relay superati (2026-10-09).
 - [ ] **6.5 Live Code Editing + Presence (01, 02).**
-  - [ ] Dipendenze `yjs` + `y-monaco` (lazy, solo dentro Go Studio: `npm run check:startup`).
-  - [ ] Provider Yjs custom che usa il trasporto collab (Go = relay opaco di update binari).
+  - [x] Dipendenze `yjs` + `y-monaco` + `y-protocols` caricate con gli editor condivisi, fuori dallo startup: build e `check:startup` superati, 649955 byte iniziali (2026-10-09).
+  - [x] Provider Yjs custom e binding Monaco: relay Go opaco, room create solo dall’host, permessi editor/viewer verificati dal server, update raggruppati e limiti di memoria; test convergenza, idempotenza, late sync e downgrade superati (2026-10-09).
   - [ ] Host salva via `SaveDocument`; modifiche esterne (watcher) → "outside change" esplicito, mai sovrascrittura silenziosa.
-  - [ ] Awareness Yjs per cursori/selezioni/nome/file attivo; cleanup su disconnect.
+  - [x] Awareness Yjs per cursori/selezioni/nome/file attivo; cleanup alla chiusura del provider e rimozione dei partecipanti. Collegata agli editor host e guest; verifica desktop multiutente ancora da eseguire.
 - [ ] **6.6 Share Project lato guest (03).**
-  - [ ] Remote file provider: albero + apertura file serviti dall'host, confinati al root (`ensureWithinRoot`).
-  - [ ] Guest senza gopls (diagnostica/completamento solo P1 via LSP proxy).
+  - [x] Remote file provider: albero + apertura file serviti dall’host, root derivato da una sessione Go Studio aperta; check `EnsureWithin` + `EvalSymlinks`, file privati/binari/credenziali esclusi, limiti e richieste correlate. Test trasferimento TLS e traversal superati (2026-10-09); test symlink saltato per privilegio Windows non disponibile, da recuperare nell’accettazione.
+  - [x] Editor remoto guest senza avvio di gopls né comandi host: snapshot in sola lettura, live solo per i file abilitati dall’host e i ruoli autorizzati. TypeScript/build superati (2026-10-09).
+  - [ ] Verifica desktop su due computer: apertura file, cursori, downgrade ruolo e salvataggio da parte dell’host.
 - [ ] **6.7 Live Collection Sync + Session Recovery (12, 10).**
-  - [ ] Reconnect con resume da `seq` + snapshot; Yjs risincronizza il testo.
-  - [ ] Collection: push snapshot + merge esplicito, conflitti sempre segnalati.
+  - [x] Reconnect esplicito con credenziale temporanea in memoria, pinning TLS, stessa identità e ruolo autorevole; replay limitato da `seq` con avviso se la cronologia è esaurita. Yjs recupera anche il testo locale non inviato. Test Go di ripresa/revoca/scadenza e test renderer di ripresa editor/viewer superati (2026-10-09).
+  - [x] Collection: opt-in per snapshot delle modifiche future, invii raggruppati, stop su disconnessione/downgrade, inbox aggiornata per origine senza applicazione automatica; merge esplicito con conflitti visibili. Test frontend di batching, nessun reinvio invariato e stop offline superato (2026-10-09).
+  - [ ] Verifica desktop di interruzione rete, ripresa e merge degli snapshot su due computer.
 
 - [ ] **Accettazione P0:** due istanze adOmnia su computer diversi condividono una collection, importano/sincronizzano modifiche e collaborano sullo stesso file, senza account cloud, con permessi verificati dal backend.
 

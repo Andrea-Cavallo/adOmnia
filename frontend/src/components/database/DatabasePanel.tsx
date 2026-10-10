@@ -4,7 +4,7 @@ import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
-import { useEnvironmentsStore } from '@/stores/environments'
+import { useResolvedVars } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { ConnectionsSidebar } from './ConnectionsSidebar'
@@ -17,7 +17,7 @@ import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useResizableSize } from '@/hooks/useResizableSize'
 import {
   CONNECTIONS_KEY, DRIVER_META, FAVORITES_KEY, HISTORY_KEY, MONGO_DEFAULT_QUERY,
-  SQL_DEFAULT_QUERY, STORAGE_BUCKET, WORKSPACE_KEY,
+  SQL_DEFAULT_QUERY, REDIS_DEFAULT_QUERY, isDangerousRedis, STORAGE_BUCKET, WORKSPACE_KEY,
   blankConnection, blankTab, browseQuery, columnsQuery, countQuery, csvEscape, download,
   createObjectQuery, defaultConnectionName, extractColumns, extractCount, extractNames, introspectionQuery,
   isDangerous, isDangerousMongo, nextQueryName, normalizeConnection, parseQueryWorkspace, substituteVars, validateConnection,
@@ -39,8 +39,7 @@ export function DatabasePanel() {
   const rightPane = useResizableSize({ storageKey: 'adomnia.database.sideWidth', defaultSize: 280, min: 220, maxRatio: 0.4, direction: -1 })
   const editorPane = useResizableSize({ storageKey: 'adomnia.database.editorHeight', defaultSize: 320, min: 140, maxRatio: 0.7, axis: 'y' })
   const port = useServerPort()
-  const getResolvedVars = useEnvironmentsStore((s) => s.getResolvedVars)
-  const vars = getResolvedVars()
+  const vars = useResolvedVars()
 
   const [connections, setConnections] = useState<DbConnection[]>([])
   const [activeId, setActiveId] = useState('')
@@ -74,15 +73,16 @@ export function DatabasePanel() {
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]
   const query = activeTab?.query ?? ''
   const isMongo = active.driver === 'mongodb'
+  const isRedis = active.driver === 'redis'
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
-  const dangerous = isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
+  const dangerous = isRedis ? isDangerousRedis(renderedQuery) : isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
   const completionSchema = useMemo(
     () => Object.fromEntries(schemaItems.map((t) => [t.name, (schemaColumns[t.name] ?? []).map((c) => c.name)])),
     [schemaItems, schemaColumns],
   )
   const queryTables = useMemo(
-    () => (isMongo ? [] : [...new Set(sqlAliases(renderedQuery, completionSchema).values())]),
-    [isMongo, renderedQuery, completionSchema],
+    () => (isMongo || isRedis ? [] : [...new Set(sqlAliases(renderedQuery, completionSchema).values())]),
+    [isMongo, isRedis, renderedQuery, completionSchema],
   )
 
   // ── auto-dismiss success toast ────────────────────────────────────────────
@@ -159,6 +159,7 @@ export function DatabasePanel() {
         }
       }
       if (!restored && first?.driver === 'mongodb') setTabs([blankTab('Mongo JSON Runner', MONGO_DEFAULT_QUERY)])
+      if (!restored && first?.driver === 'redis') setTabs([blankTab('Redis Commands', REDIS_DEFAULT_QUERY)])
       setHydrated(true)
     }
     void load()
@@ -190,14 +191,15 @@ export function DatabasePanel() {
   }
 
   const setDriver = (driver: DbDriver) => {
-    const automaticName = active.name === 'Local SQLite' || /^(SQLite|PostgreSQL|MySQL|MongoDB) Connection$/i.test(active.name)
-    updateActive({ driver, port: DRIVER_META[driver].port, ...(automaticName ? { name: defaultConnectionName(driver) } : {}) })
+    const automaticName = active.name === 'Local SQLite' || /^(SQLite|PostgreSQL|MySQL|MongoDB|Redis) Connection$/i.test(active.name)
+    updateActive({ driver, port: DRIVER_META[driver].port, ...(driver === 'redis' ? { database: '0' } : {}), ...(automaticName ? { name: defaultConnectionName(driver) } : {}) })
     setResult(null)
     setError('')
     setSchemaError('')
     setSchemaItems([])
     setSchemaColumns({})
-    if (driver === 'mongodb' && !query.trim().startsWith('{')) setQuery(MONGO_DEFAULT_QUERY)
+    if (driver === 'redis') setQuery(REDIS_DEFAULT_QUERY)
+    else if (driver === 'mongodb' && (!query.trim().startsWith('{') || isRedis)) setQuery(MONGO_DEFAULT_QUERY)
     else if (driver !== 'mongodb' && query.trim().startsWith('{')) setQuery(SQL_DEFAULT_QUERY)
   }
 
@@ -318,13 +320,13 @@ export function DatabasePanel() {
     const connectionError = validateConnection(active)
     if (connectionError) { setError(connectionError); return }
     if (!renderedQuery.trim()) { setError('Write a query before running it.'); return }
-    if (isMongo) {
-      try { JSON.parse(renderedQuery) } catch { setError('MongoDB queries must be valid JSON.'); return }
+    if (isMongo || isRedis) {
+      try { JSON.parse(renderedQuery) } catch { setError(`${isRedis ? 'Redis' : 'MongoDB'} queries must be valid JSON.`); return }
     }
     if (dangerous && !confirmed) {
       const ok = await confirm({
-        title: isMongo ? 'Confirm write operation' : 'Confirm dangerous query',
-        message: isMongo
+        title: isMongo || isRedis ? 'Confirm write operation' : 'Confirm dangerous query',
+        message: isRedis ? 'This Redis command changes data on the selected connection. Continue?' : isMongo
           ? 'MongoDB write operation detected. updateMany/deleteMany change local or remote data. Continue?'
           : 'Dangerous query detected. DROP/TRUNCATE or DELETE/UPDATE without WHERE changes data. Continue?',
         confirmLabel: 'Run query',
@@ -391,6 +393,7 @@ export function DatabasePanel() {
           .catch(() => setSchemaColumns({}))
       }
       setSchemaDb(target.database || (target.driver === 'sqlite' ? target.sqlitePath.split(/[\\/]/).pop() || 'SQLite' : DRIVER_META[target.driver].short))
+      if (target.driver === 'redis') return
       const capped = names.slice(0, 30)
       const counts = await Promise.allSettled(
         capped.map((n) => api('/database/query', { connection: runtimeConnection, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
@@ -455,12 +458,16 @@ export function DatabasePanel() {
     }
     const connectionError = validateConnection(active)
     if (connectionError) { setCreateObjectError(connectionError); return }
+    if (isRedis) {
+      const ok = await confirm({ title: 'Create Redis key', message: `SET will create or overwrite ${createObjectName} with an empty value. Continue?`, confirmLabel: 'Create key', variant: 'danger' })
+      if (!ok) return
+    }
     setRunning(true)
     try {
-      await api('/database/query', { connection: await resolveDatabaseConnection(active), query: statement, limit: 1, timeoutMs, explain: false, confirm: false })
+      await api('/database/query', { connection: await resolveDatabaseConnection(active), query: statement, limit: 1, timeoutMs, explain: false, confirm: isRedis })
       setCreateObjectOpen(false)
       setCreateObjectName('')
-      setMessage(`${active.driver === 'mongodb' ? 'Collection' : 'Table'} created`)
+      setMessage(`${isRedis ? 'Key' : active.driver === 'mongodb' ? 'Collection' : 'Table'} created`)
       await refreshSchema(active)
     } catch (e) {
       setCreateObjectError(e instanceof Error ? e.message : String(e))
@@ -470,7 +477,7 @@ export function DatabasePanel() {
   }
 
   const formatQuery = () => {
-    if (isMongo) {
+    if (isMongo || isRedis) {
       try { setQuery(JSON.stringify(JSON.parse(query), null, 2)) } catch { /* leave invalid JSON untouched */ }
     } else {
       setQuery(query.split('\n').map((l) => l.replace(/\s+$/, '')).join('\n').trim())
@@ -574,6 +581,7 @@ export function DatabasePanel() {
           activeTabId={activeTabId}
           query={query}
           isMongo={isMongo}
+          isRedis={isRedis}
           dangerous={dangerous}
           varsCount={Object.keys(vars).length}
           limit={limit}
@@ -609,6 +617,7 @@ export function DatabasePanel() {
       <RightRail
         width={rightPane.size}
         isMongo={isMongo}
+        isRedis={isRedis}
         favorites={favorites}
         history={history}
         schemaItems={schemaItems}
@@ -634,7 +643,7 @@ export function DatabasePanel() {
           <div role="dialog" aria-modal="true" aria-labelledby="database-create-title" className="w-full max-w-sm rounded-md border border-border-2 bg-surface-2 shadow-2xl">
             <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
               <Database size={14} className="text-accent" />
-              <h3 id="database-create-title" className="text-[13px] font-semibold text-text-1">Create {isMongo ? 'collection' : 'table'}</h3>
+              <h3 id="database-create-title" className="text-[13px] font-semibold text-text-1">Create {isRedis ? 'key' : isMongo ? 'collection' : 'table'}</h3>
               <button onClick={() => setCreateObjectOpen(false)} className="ml-auto grid h-7 w-7 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1" aria-label="Close create database object dialog"><X size={14} /></button>
             </div>
             <div className="space-y-3 p-3.5">
@@ -649,7 +658,7 @@ export function DatabasePanel() {
                   className="mt-1.5 h-8 w-full rounded-md border border-border-2 bg-surface-0 px-2.5 font-mono text-[12px] text-text-1 outline-none focus:border-accent"
                 />
               </label>
-              <p className="text-[10.5px] leading-4 text-text-4">A minimal {isMongo ? 'collection' : 'table with a primary key'} will be created on the active connection.</p>
+              <p className="text-[10.5px] leading-4 text-text-4">A minimal {isRedis ? 'string key with an empty value' : isMongo ? 'collection' : 'table with a primary key'} will be created on the active connection.</p>
               {createObjectError && <div className="rounded border border-error/30 bg-error/10 px-2.5 py-2 text-[11px] text-error">{createObjectError}</div>}
             </div>
             <div className="flex justify-end gap-2 border-t border-border-1 px-3.5 py-3">

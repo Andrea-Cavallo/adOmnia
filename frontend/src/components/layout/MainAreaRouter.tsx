@@ -4,6 +4,7 @@ import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DRAG, TitlebarWindowControls, WindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
+import { WorkspaceContextPickers } from '@/components/layout/WorkspaceContextPickers'
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { useUiTranslation } from '@/lib/uiI18n'
@@ -102,7 +103,9 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
       <button onClick={goBack} disabled={!hasHistory} title={tr('Back (Alt + ←)')} className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
         <ArrowLeft size={13} />
       </button>
-      <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">{label}</span>
+      {activeRail === 'collections'
+        ? <><WorkspaceContextPickers /><span className="flex-1" /></>
+        : <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">{label}</span>}
       {canDetachPanel(activeRail) && !detached && (
         <button
           onClick={() => detachPanel(activeRail, label)}

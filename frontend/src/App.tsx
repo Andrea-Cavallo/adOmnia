@@ -4,6 +4,7 @@ import { MainAreaRouter } from '@/components/layout/MainAreaRouter'
 import { StatusBar } from '@/components/layout/StatusBar'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
+import { EnvironmentManagerHost } from '@/components/environment/EnvironmentManagerHost'
 import { StorageQuotaBanner } from '@/components/layout/StorageQuotaBanner'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { DropOverlay } from '@/components/layout/DropOverlay'
@@ -137,6 +138,7 @@ function App() {
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />
         </div>
+        <EnvironmentManagerHost />
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
         <EntityNotice />
         <ConfirmDialogHost />

@@ -85,7 +85,7 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
             {result.columns?.length ? (isMongo ? 'documents' : 'rows') : 'affected'}
             <span className="mx-1.5 text-text-4">·</span>
             <span className="text-success">{(result.durationMs / 1000).toFixed(3)}s</span>
-            {result.limited && <span className="ml-1.5 text-warning">· auto-limited</span>}
+            {result.limited && <span className="ml-1.5 text-warning" title={result.warning}>· auto-limited</span>}
           </span>
         ) : (
           <span className="text-[11.5px] text-text-4">No results</span>

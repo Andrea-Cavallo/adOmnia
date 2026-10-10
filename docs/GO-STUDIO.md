@@ -69,6 +69,17 @@ Several projects can stay open at the same time, isolated from each other, group
 - **Code → Vulnerability Diagnostics** (off by default): after you confirm, gopls downloads the Go vulnerability database from vuln.go.dev and marks the `go.mod` requirements whose imported code has known vulnerabilities. Your source code is not sent.
 - **Replace in Files:** *Replace All… (preview)* in Find in Files opens every change in the change preview, applied all or nothing and undoable. With regular expressions, `$1`, `$2`… insert the captured groups.
 
+## adOmnia environments in runs
+
+Every Run, Build, Test and configured run receives the variables of the active
+adOmnia environment (the one chosen in the API Workspace header or in the
+environment manager) as process environment. A run configuration's own
+Environment entries take precedence and may reference them as `{{NAME}}`, e.g.
+`DSN={{DB_URL}}?sslmode=disable`. Names that are not valid environment names
+(spaces, dashes) are skipped. `vault:` values are decrypted only while the Vault
+is unlocked; otherwise they are not passed. Switching environment applies to the
+next run, not to processes already running.
+
 ## Security and project authorization
 
 - **Opening is not trusting.** An opened project reads and saves files only. Every action that starts a process requires *Trust*: gopls, linters, build, run, tests, debugging, the terminal, Go Tools, dependency changes and tool installation. Revoking trust stops the project's processes and gopls.

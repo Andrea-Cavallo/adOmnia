@@ -1200,6 +1200,11 @@ func (g *GoIDE) DeleteRunConfiguration(sessionID, configID string) error {
 	return g.service.DeleteRunConfiguration(sessionID, configID)
 }
 
+// SetSharedEnvironment applica a ogni run le variabili dell'environment attivo di adOmnia.
+func (g *GoIDE) SetSharedEnvironment(vars map[string]string) {
+	g.service.SetSharedEnvironment(vars)
+}
+
 // StartConfiguredRun avvia una configurazione salvata con i soli segreti forniti a runtime.
 func (g *GoIDE) StartConfiguredRun(sessionID, configID string, secrets map[string]string) (goide.Execution, error) {
 	return g.service.StartConfiguredRun(sessionID, configID, secrets)

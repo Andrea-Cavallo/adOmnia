@@ -53,9 +53,9 @@ const MENU_H = 360
 // A tab stays usable down to this width: method badge, an ellipsised title,
 // the dirty dot and the close button still fit. Below it we stop shrinking and
 // move the surplus tabs into the overflow menu instead.
-const TAB_MIN_WIDTH = 140
+const TAB_MIN_WIDTH = 160
 const PINNED_TAB_WIDTH = 56
-const TAB_GAP = 4
+const TAB_GAP = 2
 const OVERFLOW_BUTTON_WIDTH = 32
 
 function clampToViewport(x: number, y: number): { left: number; top: number } {
@@ -207,14 +207,14 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
 
   return (
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
-    <div data-request-tabs className="api-nothing-tabs flex h-12 items-center gap-1 border-b border-border-1 bg-surface-0 px-2">
+    <div data-request-tabs className="api-nothing-tabs flex h-[52px] items-end gap-1 border-b border-border-1 px-2">
       <Tabs.List asChild aria-label={tr('Request tabs')}>
       <div ref={scrollRef}
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null) }}
         onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)); clearDrag() } }}
         data-request-tab-list
-        className="flex h-10 min-w-0 flex-1 items-center gap-1 overflow-hidden p-1">
+        className="flex h-12 min-w-0 flex-1 items-end gap-0.5 overflow-hidden px-1.5">
       {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
@@ -275,13 +275,13 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               if (draggedId && outsideWindow) void onDetach(draggedId)
             }}
             className={cn(
-              'api-nothing-tab relative flex h-8 min-w-0 items-center gap-2 rounded-md border px-2.5 text-xs cursor-pointer group transition-colors duration-150 focus-within:ring-2 focus-within:ring-accent',
+              'api-nothing-tab relative -mb-px flex h-[42px] min-w-0 items-center gap-2.5 px-4 text-[14px] cursor-pointer group transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-accent',
               isPinned
                 ? 'shrink-0 basis-[56px] min-w-[52px] max-w-[64px]'
-                : 'flex-1 basis-[200px] min-w-[136px] max-w-[224px]',
+                : 'flex-1 basis-[230px] min-w-[156px] max-w-[250px]',
               isActive
                 ? 'z-10 text-text-1'
-                : 'border-transparent text-text-3 hover:border-border-2 hover:bg-surface-2 hover:text-text-2',
+                : 'text-text-3 hover:text-text-2',
               draggingTabId === tab.id && 'opacity-45',
               savedFlashTabs.has(tab.id) && 'tab-clean-flash',
             )}
@@ -311,7 +311,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 {tab.tool === 'jsonviewer' ? <Braces size={11} /> : <BookOpen size={11} />}
               </span>
             ) : (
-              <span className={cn('api-nothing-method pointer-events-none relative z-10 text-[9px] font-mono font-medium shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
+              <span className={cn('api-nothing-method pointer-events-none relative z-10 text-[11px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
                 {tab.request.method}
               </span>
             )}
@@ -349,12 +349,12 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
                 aria-label={tr('Close tab')}
                 onClick={(e) => { e.stopPropagation(); onClose(tab.id) }}
                 className={cn(
-                  'relative z-20 shrink-0 rounded p-0.5 text-text-4 transition-colors hover:text-error',
-                  isActive ? 'opacity-70' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                  'relative z-20 shrink-0 rounded p-0.5 text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1',
+                  isActive ? 'opacity-90' : 'opacity-60 group-hover:opacity-100',
                 )}
                 title={tr('Close tab')}
               >
-                <X size={12} />
+                <X size={15} />
               </button>
             )}
             {dropTarget?.tabId === tab.id && dropTarget.position === 'after' && (
@@ -374,7 +374,7 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
           title={tr('More tabs')}
           aria-label={tr('More tabs')}
           aria-haspopup="menu"
-          className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-border-1 bg-surface-1 px-1.5 text-text-3 transition-colors hover:border-accent/45 hover:bg-surface-2 hover:text-text-1"
+          className="mb-1.5 flex h-7 shrink-0 items-center gap-1 rounded-lg border border-border-1 bg-surface-1 px-1.5 text-text-3 transition-colors hover:border-accent/45 hover:bg-surface-2 hover:text-text-1"
         >
           <MoreVertical size={13} />
           <span className="text-[10px] font-semibold tabular-nums">{overflowTabs.length}</span>
@@ -383,9 +383,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
       <button
         onClick={() => onNewTab()}
         title={tr('New tab (Ctrl+N)')}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border-1 bg-surface-1 text-text-3 transition-colors hover:border-accent/45 hover:bg-surface-2 hover:text-text-1"
+        className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-1 bg-surface-2 text-text-2 transition-colors hover:border-accent/45 hover:bg-surface-3 hover:text-text-1"
       >
-        <Plus size={12} />
+        <Plus size={15} />
       </button>
 
       {overflowMenu && (

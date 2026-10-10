@@ -13,7 +13,7 @@ import { registerOpener } from './router'
 import { httpMethodForRoute, mockPathForRoute, requestUrlForRoute, withBaseUrl } from './routeRequest'
 import type { EntityRef } from './types'
 
-const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb'])
+const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb', 'redis'])
 const DEFAULT_GO_HTTP = 'http://localhost:8080'
 
 /** `:50051` → `localhost:50051`: l'indirizzo di ascolto del server diventa quello da chiamare. */

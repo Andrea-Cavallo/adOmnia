@@ -8,7 +8,7 @@ on:
         required: true
 
 env:
-  WAILS_VERSION: v3.0.0-beta.26
+  WAILS_VERSION: v3.0.0-beta.28
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WINDOWS · amd64

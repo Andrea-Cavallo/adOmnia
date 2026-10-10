@@ -142,7 +142,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         {/* database type */}
         <div className="mb-1.5 text-[11px] font-medium text-text-2">Database Type</div>
-        <div className="mb-4 grid grid-cols-4 gap-1">
+        <div className="mb-4 grid grid-cols-3 gap-1">
           {SELECTABLE_DRIVERS.map((driver: SelectableDbDriver) => {
             const isActive = active.driver === driver
             return (
@@ -191,9 +191,15 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
               <Field label="Port">
                 <input type="number" value={active.port} onChange={(e) => onUpdate({ port: Number(e.target.value) })} className={inputCls} />
               </Field>
-              <Field label="Database">
-                <input value={active.database} onChange={(e) => onUpdate({ database: e.target.value })} className={inputCls} placeholder="adomnia" />
+              <Field label={active.driver === 'redis' ? 'DB index' : 'Database'}>
+                <input value={active.database} onChange={(e) => onUpdate({ database: e.target.value })} className={inputCls} placeholder={active.driver === 'redis' ? '0' : 'adomnia'} />
               </Field>
+              {active.driver === 'redis' && (
+                <label className="ml-[90px] flex items-center gap-2 text-[11px] text-text-2">
+                  <input type="checkbox" checked={active.sslMode !== 'disable' && !!active.sslMode} onChange={(e) => onUpdate({ sslMode: e.target.checked ? 'require' : 'disable' })} className="accent-accent" />
+                  TLS (verify server certificate)
+                </label>
+              )}
               {active.driver === 'mongodb' && (
                 <>
                   <Field label="Collection">
@@ -235,7 +241,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
               value={active.dsn}
               onChange={(e) => onUpdate({ dsn: e.target.value })}
               className={cn(inputCls, 'font-mono text-[11px] text-text-3')}
-              placeholder="optional connection string"
+              placeholder={active.driver === 'redis' ? 'redis://127.0.0.1:6379/0' : 'optional connection string'}
             />
           </Field>
         </div>
@@ -272,6 +278,11 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
         )}
 
         {/* runner note */}
+        {active.driver === 'redis' && (
+          <div className="mt-3 rounded-lg border border-border-2 bg-surface-2 px-3 py-2.5 text-[11px] leading-relaxed text-text-3">
+            Run JSON commands: {`{"command":"GET","args":["key"]}`}. Browse keys in the explorer; writes require confirmation. Use rediss:// for TLS.
+          </div>
+        )}
         {active.driver === 'mongodb' && (
           <div className="mt-3 flex gap-2 rounded-lg border border-success/25 bg-success/8 px-3 py-2.5">
             <CheckCircle2 size={14} className="mt-px flex-none text-success" />

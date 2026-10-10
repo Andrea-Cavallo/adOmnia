@@ -2,7 +2,7 @@ import { attachEditorMode } from './goStudioEditorModes'
 import { caretFor, rememberCaret } from '@/lib/goide/goStudioCaretMemory'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { GO_STUDIO_THEMES, applyGoStudioMonacoThemes, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -36,6 +36,7 @@ import { installBreakpointGutter, registerGoStudioDebugHover, useGoStudioDebugDe
 import './goStudioEditor.css'
 import { startGoStudioExtensions, installIDEExtensionActions } from './goStudioExtensions'
 import { extensionLanguageForPath, useIDEExtensionsStore } from '@/stores/ideExtensions'
+const GoStudioCollabBar = lazy(() => import('./GoStudioCollabBar'))
 
 configureMonacoLoader()
 registerGoStudioLanguageFeatures()
@@ -260,6 +261,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+    <Suspense fallback={null}><GoStudioCollabBar document={document} editor={editorRef.current} /></Suspense>
     <div className="min-h-0 flex-1">
     <Editor
       path={editorModelUri(document.document)}

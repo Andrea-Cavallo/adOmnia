@@ -6,6 +6,7 @@ import { relativeTime, type HistoryItem, type SchemaColumn, type SchemaItem } fr
 interface RightRailProps {
   width: number
   isMongo: boolean
+  isRedis?: boolean
   favorites: string[]
   history: HistoryItem[]
   schemaItems: SchemaItem[]
@@ -131,7 +132,7 @@ export function RightRail(props: RightRailProps) {
       {/* ── Schema Explorer ───────────────────────────────────────────── */}
       <SectionHeader
         icon={<Database size={14} />}
-        title="Schema Explorer"
+        title={props.isRedis ? "Key Explorer" : "Schema Explorer"}
         action={
           <button onClick={onRefreshSchema} className="grid h-6 w-6 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title="Refresh">
             <RefreshCw size={12} className={schemaLoading ? 'animate-spin' : ''} />
@@ -148,7 +149,7 @@ export function RightRail(props: RightRailProps) {
           <input
             value={schemaSearch}
             onChange={(e) => onSchemaSearch(e.target.value)}
-            placeholder={isMongo ? 'Search collections' : 'Search tables'}
+            placeholder={props.isRedis ? 'Search keys' : isMongo ? 'Search collections' : 'Search tables'}
             className="h-7 w-full rounded-md border border-border-2 bg-surface-2 pl-7 pr-2 text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent/50"
           />
         </div>
@@ -202,7 +203,7 @@ export function RightRail(props: RightRailProps) {
         </div>
 
         <button onClick={onCreateObject} className="mt-2 flex items-center gap-1.5 text-[11.5px] font-medium text-accent hover:text-accent-light">
-          <Plus size={13} /> {isMongo ? 'New Collection' : 'New Table'}
+          <Plus size={13} /> {props.isRedis ? 'New Key' : isMongo ? 'New Collection' : 'New Table'}
         </button>
       </div>
     </aside>

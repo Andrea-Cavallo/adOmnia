@@ -4,10 +4,6 @@ import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
-import { useEnvironmentsStore } from '@/stores/environments'
-import { useHostsStore } from '@/stores/hosts'
-import { EnvBar } from '@/components/environment/EnvBar'
-import { HostBar } from '@/components/hosts/HostBar'
 import { CollectionTree } from '@/components/collections/CollectionTree'
 import { blankRequest, uid } from '@/lib/types'
 import type { HttpMethod, RequestItem } from '@/lib/types'
@@ -52,23 +48,6 @@ export function Sidebar() {
   const activateWorkspace = useTabsStore((s) => s.activateWorkspace)
   const deleteWorkspaceTabs = useTabsStore((s) => s.deleteWorkspaceTabs)
   const moveCollectionTabs = useTabsStore((s) => s.moveCollectionTabs)
-
-  const environments = useEnvironmentsStore((s) => s.environments)
-  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  const setActiveEnv = useEnvironmentsStore((s) => s.setActiveEnv)
-  const addEnvironment = useEnvironmentsStore((s) => s.addEnvironment)
-  const deleteEnvironment = useEnvironmentsStore((s) => s.deleteEnvironment)
-  const renameEnvironment = useEnvironmentsStore((s) => s.renameEnvironment)
-  const setEnvironmentPrivate = useEnvironmentsStore((s) => s.setEnvironmentPrivate)
-  const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
-
-  const hostsProfiles = useHostsStore((s) => s.profiles)
-  const activeHostProfileId = useHostsStore((s) => s.activeProfileId)
-  const setActiveHostProfile = useHostsStore((s) => s.setActiveProfile)
-  const addHostProfile = useHostsStore((s) => s.addProfile)
-  const deleteHostProfile = useHostsStore((s) => s.deleteProfile)
-  const renameHostProfile = useHostsStore((s) => s.renameProfile)
-  const updateHostEntries = useHostsStore((s) => s.updateEntries)
 
   const [showAddCollection, setShowAddCollection] = useState(false)
   const [showAddWorkspace, setShowAddWorkspace] = useState(false)
@@ -139,27 +118,6 @@ export function Sidebar() {
           onAdd={() => setShowAddWorkspace(true)}
           onRename={() => setShowRenameWorkspace(true)}
           onDelete={() => setShowDeleteWorkspace(true)}
-        />
-        <EnvBar
-          compact
-          environments={environments}
-          activeEnvId={activeEnvId}
-          onSetActive={setActiveEnv}
-          onAdd={(name) => addEnvironment(name)}
-          onDelete={deleteEnvironment}
-          onRename={renameEnvironment}
-          onUpdateVars={updateVariables}
-          onSetPrivate={setEnvironmentPrivate}
-        />
-        <HostBar
-          compact
-          profiles={hostsProfiles}
-          activeProfileId={activeHostProfileId}
-          onSetActive={setActiveHostProfile}
-          onAdd={(name) => addHostProfile(name)}
-          onDelete={deleteHostProfile}
-          onRename={renameHostProfile}
-          onUpdateEntries={updateHostEntries}
         />
       </div>
 
@@ -277,7 +235,7 @@ function WorkspaceContextButton({
   }, [open])
 
   return (
-    <div ref={ref} className="relative min-w-0 flex-[1.15]">
+    <div ref={ref} className="relative min-w-0 flex-1">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

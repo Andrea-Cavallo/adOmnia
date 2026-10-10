@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { withActiveEnv } from '@/lib/activeEnv'
 import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X, ShieldCheck, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ExecuteHTTP } from '@/wailsjs/go/main/App'
@@ -180,10 +181,12 @@ export function SoapPanel() {
       await testCurrentEndpoint()
     }
 
-    let securedEnvelope = envelope
+    // {{VAR}} resolved before WS-Security so the signature covers the real values.
+    const resolvedEnvelope = await withActiveEnv(envelope)
+    let securedEnvelope = resolvedEnvelope
     if (wssConfig.mode !== 'none') {
       try {
-        securedEnvelope = await applyWssSecurity(envelope, wssConfig)
+        securedEnvelope = await applyWssSecurity(resolvedEnvelope, wssConfig)
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         setWssError(msg)
@@ -197,12 +200,13 @@ export function SoapPanel() {
       if (h.key.trim()) activeHeaders[h.key.trim()] = h.value
     }
 
+    const env = await withActiveEnv({ url: currentPort.location, headers: activeHeaders })
     const res = await sendSoapRequest({
-      url: currentPort.location,
+      url: env.url,
       soapAction: currentOp.soapAction,
       envelope: securedEnvelope,
       soapVersion,
-      customHeaders: Object.keys(activeHeaders).length > 0 ? activeHeaders : undefined,
+      customHeaders: Object.keys(env.headers).length > 0 ? env.headers : undefined,
     })
     setResponse(res.body)
     setResponseInfo({ status: res.status, ms: res.ms, size: res.size })

@@ -602,14 +602,22 @@ func uniqueName(used map[string]int, base string) string {
 
 func collectionHash(collection Collection) string {
 	data, _ := json.Marshal(collection)
+	hash, _ := HashJSON(data)
+	return hash
+}
+
+// HashJSON shares canonical snapshot revisions between folder drift and LAN transfers.
+func HashJSON(data json.RawMessage) (string, error) {
 	var canonical any
-	if err := json.Unmarshal(data, &canonical); err == nil {
-		if canonicalData, err := json.Marshal(canonical); err == nil {
-			data = canonicalData
-		}
+	if err := json.Unmarshal(data, &canonical); err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(canonical)
+	if err != nil {
+		return "", err
 	}
 	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }
 
 func Snapshot(root string) (map[string][]byte, error) {

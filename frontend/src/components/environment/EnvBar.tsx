@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Check, X, ChevronDown } from 'lucide-react'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -40,14 +41,6 @@ export function EnvBar({
   useEffect(() => {
     if (adding) inputRef.current?.focus()
   }, [adding])
-
-  // The collections context menu opens the environment editor from far away
-  // in the tree, so it asks for it through the document rather than by prop.
-  useEffect(() => {
-    const open = () => setShowModal(true)
-    document.addEventListener('adomnia:open-environments', open)
-    return () => document.removeEventListener('adomnia:open-environments', open)
-  }, [])
 
   useEffect(() => {
     if (!dropOpen) return
@@ -91,7 +84,7 @@ export function EnvBar({
             )}
             title={compact ? tr('Switch environment') : tr('Open environment editor')}
           >
-            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Env')}</span>}
+            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Environments')}</span>}
             <span className={cn('truncate', compact ? 'min-w-0 flex-1 text-left' : 'max-w-[160px]')}>{activeLabel}</span>
             {activeEnv && (
               <span className="shrink-0 rounded-sm border border-border-2 bg-surface-1 px-1 text-[9px] text-text-4">
@@ -188,7 +181,8 @@ export function EnvBar({
         {!compact && <button onClick={() => setShowModal(true)} className="ml-auto text-[11px] text-accent hover:text-accent-light" title={tr('Manage environments')}>{tr('Environments')}</button>}
       </div>
 
-      {showModal && (
+      {/* Portal: the bar can live in the window titlebar (drag region, clipped layout). */}
+      {showModal && createPortal(
         <Suspense fallback={null}>
           <EnvModal
             environments={environments}
@@ -200,7 +194,8 @@ export function EnvBar({
             onUpdateVars={onUpdateVars}
             onSetPrivate={onSetPrivate}
           />
-        </Suspense>
+        </Suspense>,
+        document.body,
       )}
     </>
   )

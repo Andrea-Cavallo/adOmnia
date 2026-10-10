@@ -10,6 +10,45 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as json$0 from "../../../encoding/json/models.js";
 
 /**
+ * DocumentMessage carries opaque Yjs bytes. Only the host creates rooms.
+ * The relay never interprets code, writes files, or runs language tooling.
+ */
+export class DocumentMessage {
+    "id": string;
+
+    /**
+     * open, sync, update, awareness, close
+     */
+    "action": string;
+    "data"?: string;
+    "updates"?: string[];
+
+    /** Creates a new DocumentMessage instance. */
+    constructor($$source: Partial<DocumentMessage> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DocumentMessage instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DocumentMessage {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("updates" in $$parsedSource) {
+            $$parsedSource["updates"] = $$createField3_0($$parsedSource["updates"]);
+        }
+        return new DocumentMessage($$parsedSource as Partial<DocumentMessage>);
+    }
+}
+
+/**
  * Invite è ciò che l'host copia e manda al guest.
  */
 export class Invite {
@@ -79,6 +118,82 @@ export class Participant {
     }
 }
 
+export class ProjectEntry {
+    "path": string;
+    "directory": boolean;
+
+    /** Creates a new ProjectEntry instance. */
+    constructor($$source: Partial<ProjectEntry> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("directory" in $$source)) {
+            this["directory"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProjectEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProjectEntry {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProjectEntry($$parsedSource as Partial<ProjectEntry>);
+    }
+}
+
+export class ProjectFile {
+    "path": string;
+    "content": string;
+
+    /** Creates a new ProjectFile instance. */
+    constructor($$source: Partial<ProjectFile> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("content" in $$source)) {
+            this["content"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProjectFile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProjectFile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProjectFile($$parsedSource as Partial<ProjectFile>);
+    }
+}
+
+export class ProjectInfo {
+    "id": string;
+    "name": string;
+    "sourceSessionId"?: string;
+
+    /** Creates a new ProjectInfo instance. */
+    constructor($$source: Partial<ProjectInfo> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProjectInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProjectInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProjectInfo($$parsedSource as Partial<ProjectInfo>);
+    }
+}
+
 /**
  * Role di un partecipante. L'host è sempre Controller.
  */
@@ -102,6 +217,9 @@ export class Share {
     "title": string;
     "data": json$0.RawMessage;
     "redacted"?: string[];
+    "revision"?: string;
+    "secretVariables"?: string[];
+    "sourceId"?: string;
 
     /** Creates a new Share instance. */
     constructor($$source: Partial<Share> = {}) {
@@ -126,9 +244,13 @@ export class Share {
      */
     static createFrom($$source: any = {}): Share {
         const $$createField4_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("redacted" in $$parsedSource) {
             $$parsedSource["redacted"] = $$createField4_0($$parsedSource["redacted"]);
+        }
+        if ("secretVariables" in $$parsedSource) {
+            $$parsedSource["secretVariables"] = $$createField6_0($$parsedSource["secretVariables"]);
         }
         return new Share($$parsedSource as Partial<Share>);
     }
@@ -162,6 +284,9 @@ export class Status {
     "fingerprint"?: string;
     "participants": Participant[];
     "pendingInvites": number;
+    "project"?: ProjectInfo | null;
+    "documents"?: string[];
+    "disconnected"?: boolean;
 
     /** Creates a new Status instance. */
     constructor($$source: Partial<Status> = {}) {
@@ -183,9 +308,17 @@ export class Status {
      */
     static createFrom($$source: any = {}): Status {
         const $$createField5_0 = $$createType2;
+        const $$createField7_0 = $$createType4;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("participants" in $$parsedSource) {
             $$parsedSource["participants"] = $$createField5_0($$parsedSource["participants"]);
+        }
+        if ("project" in $$parsedSource) {
+            $$parsedSource["project"] = $$createField7_0($$parsedSource["project"]);
+        }
+        if ("documents" in $$parsedSource) {
+            $$parsedSource["documents"] = $$createField8_0($$parsedSource["documents"]);
         }
         return new Status($$parsedSource as Partial<Status>);
     }
@@ -195,3 +328,5 @@ export class Status {
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = Participant.createFrom;
 const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = ProjectInfo.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);

@@ -56,6 +56,7 @@ type Service struct {
 	trusted          []string // protetto da recentMu
 	runMu            sync.RWMutex
 	runRequests      map[RunID]RunRequest
+	sharedEnv        sharedEnvironment
 	eventMu          sync.RWMutex
 	eventSink        func(EventEnvelope)
 	sequence         atomic.Uint64
@@ -757,6 +758,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if session.Project.Authorization != AuthorizationPermitted {
 		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
 	}
+	request.Environment = s.withSharedEnvironment(request.Environment)
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
 	if !isToolRunKind(kind) && kind != string(RunKindCommand) && kind != "binary" {
 		if _, err := s.runAdapter(request.Language, kind); err != nil {

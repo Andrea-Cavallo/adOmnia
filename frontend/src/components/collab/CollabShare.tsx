@@ -3,11 +3,13 @@ import { Download, Eye, Inbox, Send, ShieldAlert, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { collabApi, type CollabShare, type CollabShareKind } from '@/lib/collab-api'
-import { shareableEnvironments } from '@/lib/collab/receive'
 import { QUICK_REQUESTS_COLLECTION_ID, useCollectionsStore } from '@/stores/collections'
 import { useCollabStore } from '@/stores/collab'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
+import { CollabCollectionImport } from './CollabCollectionImport'
+import { startCollectionSync, stopCollectionSync } from '@/lib/collab/collectionSync'
+import type { Collection } from '@/lib/types'
 
 interface ShareOption {
   key: string
@@ -31,7 +33,7 @@ function useShareOptions(): ShareOption[] {
       if (tab.tool) continue
       options.push({ key: `r:${tab.id}`, kind: 'request', title: `${tab.request.method} ${tab.request.name || tab.request.url}`, data: () => tab.request })
     }
-    const envs = shareableEnvironments(environments)
+    const envs = environments.filter(env => !env.private)
     if (envs.length) options.push({ key: 'envs', kind: 'environments', title: `${envs.length} environment non privati`, data: () => envs })
     return options
   }, [collections, tabs, environments])
@@ -39,17 +41,20 @@ function useShareOptions(): ShareOption[] {
 
 export function CollabShareColumn() {
   const status = useCollabStore((s) => s.status)
-  const share = useCollabStore((s) => s.share)
+  const syncingId = useCollabStore(s=>s.syncingCollectionId)
+  const environments = useEnvironmentsStore(s => s.environments)
   const options = useShareOptions()
   const [selected, setSelected] = useState('')
   const [preview, setPreview] = useState<CollabShare | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState('')
+  const [secretVariables, setSecretVariables] = useState<string[]>([])
+  const [followChanges, setFollowChanges] = useState(false)
 
   const option = options.find((o) => o.key === selected)
   const self = status?.participants.find((p) => p.id === status.self)
-  const canShare = status?.mode === 'host' || (status?.mode === 'guest' && self?.role !== 'viewer')
+  const canShare = !status?.disconnected && (status?.mode === 'host' || (status?.mode === 'guest' && self?.role !== 'viewer'))
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true)
@@ -66,6 +71,8 @@ export function CollabShareColumn() {
     setSelected(key)
     setPreview(null)
     setSent('')
+    setSecretVariables([])
+    setFollowChanges(false)
   }
 
   return (
@@ -87,10 +94,19 @@ export function CollabShareColumn() {
               ) : null
             })}
           </select>
-          <Button size="sm" variant="secondary" disabled={!option || busy || !canShare} onClick={() => option && run(async () => setPreview(await collabApi.preview(option.kind, option.title, option.data())))}>
+          <Button size="sm" variant="secondary" disabled={!option || busy || !canShare} onClick={() => option && run(async () => setPreview(await collabApi.preview(option.kind, option.title, option.data(), secretVariables)))}>
             <Eye className="h-3.5 w-3.5" />Anteprima
           </Button>
         </div>
+
+        {option?.kind === 'environments' && <details className="mt-2 text-xs text-text-3">
+          <summary className="cursor-pointer">Condividi singole variabili segrete (facoltativo)</summary>
+          <p className="my-2 text-warning">I valori selezionati saranno visibili a tutti i partecipanti. I riferimenti al vault restano esclusi.</p>
+          {environments.filter(env => !env.private).flatMap(env => env.variables.filter(v => v.type === 'secret').map(v => <label key={`${env.id}:${v.id}`} className="flex items-center gap-2 py-1">
+            <input type="checkbox" disabled={!canShare || busy || !v.value || v.value.startsWith('vault:')} checked={secretVariables.includes(v.id)} onChange={e => { setSecretVariables(ids => e.target.checked ? [...ids, v.id] : ids.filter(id => id !== v.id)); setPreview(null) }}/>
+            {env.name} / {v.key}{v.value.startsWith('vault:') && ' · vault escluso'}
+          </label>))}
+        </details>}
 
         {preview && option && (
           <div className="mt-3 rounded-lg border border-border-1 bg-surface-1 p-3">
@@ -100,10 +116,17 @@ export function CollabShareColumn() {
               <span className="text-text-4">{(JSON.stringify(preview.data).length / 1024).toFixed(1)} KB</span>
             </div>
             <RedactionSummary redacted={preview.redacted ?? []} />
+            {!!secretVariables.length && <p className="mt-1 text-xs text-warning">Opt-in: {secretVariables.length} variabili segrete selezionate. Rivedi i valori nell'anteprima prima di inviare.</p>}
             <pre className="mt-2 max-h-48 overflow-auto rounded border border-border-1 bg-surface-0 p-2 font-mono text-[11px] leading-relaxed text-text-2">{JSON.stringify(preview.data, null, 2)}</pre>
+            {option.kind==='collection' && <label className="mt-2 flex items-start gap-2 text-xs text-text-3"><input type="checkbox" checked={followChanges} onChange={e=>setFollowChanges(e.target.checked)} />Invia anche le modifiche future di questa collection durante la sessione. Chi riceve deve confermare ogni merge.</label>}
             <div className="mt-3 flex justify-end">
               <Button size="sm" disabled={busy} onClick={() => run(async () => {
-                await share(option.kind, option.title, option.data())
+                // Send the exact reviewed snapshot, never re-read changed local secrets.
+                if (option.kind==='collection' && followChanges) {
+                  const id=option.key.slice(2)
+                  await collabApi.syncCollection(id,preview.title,preview.data)
+                  startCollectionSync(id,preview.data as Collection)
+                } else await collabApi.share(option.kind, preview.title, preview.data, secretVariables)
                 setPreview(null)
                 setSent(option.title)
               })}>
@@ -113,6 +136,7 @@ export function CollabShareColumn() {
           </div>
         )}
         {sent && <p className="mt-2 text-xs text-status-ok">Inviato: {sent}</p>}
+        {syncingId && <div className="mt-2 flex items-center gap-2 text-xs"><span className="text-accent">Sync snapshot attivo · {options.find(o=>o.key===`c:${syncingId}`)?.title ?? 'Collection'}</span><button type="button" onClick={stopCollectionSync} className="rounded border border-border-2 px-2 py-1">Interrompi sync</button></div>}
         {error && <p className="mt-2 text-xs text-status-err">{error}</p>}
       </div>
       <InboxList />
@@ -136,6 +160,7 @@ function RedactionSummary({ redacted }: { redacted: string[] }) {
 
 function InboxList() {
   const { inbox, accept, dismiss } = useCollabStore()
+  const [comparing, setComparing] = useState<string | null>(null)
   return (
     <div>
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Inbox className="h-3.5 w-3.5 text-accent" />Ricevuti · {inbox.length}</h3>
@@ -144,7 +169,7 @@ function InboxList() {
       ) : (
         <ul className="space-y-1.5">
           {inbox.map((item) => (
-            <li key={item.id} className={cn('flex items-center gap-2 rounded-lg border bg-surface-1 px-3 py-2 text-sm', item.error ? 'border-status-err' : 'border-border-1')}>
+            <li key={item.id} className={cn('flex flex-wrap items-center gap-2 rounded-lg border bg-surface-1 px-3 py-2 text-sm', item.error ? 'border-status-err' : 'border-border-1')}>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{item.title}</div>
                 <div className="truncate text-xs text-text-3">
@@ -155,13 +180,14 @@ function InboxList() {
                 </div>
               </div>
               {item.content && (
-                <Button size="sm" variant="secondary" onClick={() => accept(item.id)}>
+                <Button size="sm" variant="secondary" onClick={() => item.content?.kind === 'collection' ? setComparing(item.id) : accept(item.id)}>
                   <Download className="h-3.5 w-3.5" />{item.content.kind === 'request' ? 'Apri' : 'Importa'}
                 </Button>
               )}
               <button type="button" onClick={() => dismiss(item.id)} className="rounded p-1 text-text-3 hover:bg-surface-2 hover:text-text-1" aria-label="Scarta">
                 <X className="h-3.5 w-3.5" />
               </button>
+              {comparing === item.id && <div className="w-full"><CollabCollectionImport item={item} onClose={() => setComparing(null)}/></div>}
             </li>
           ))}
         </ul>

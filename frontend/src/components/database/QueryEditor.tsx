@@ -12,6 +12,7 @@ interface QueryEditorProps {
   activeTabId: string
   query: string
   isMongo: boolean
+  isRedis?: boolean
   dangerous: boolean
   varsCount: number
   limit: number
@@ -71,6 +72,7 @@ export function QueryEditor(props: QueryEditorProps) {
     tabs, activeTabId, query, isMongo, dangerous, varsCount, limit, timeoutMs, running, focusToken, schema,
     onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave, canAnalyze,
   } = props
+  const isJson = isMongo || !!props.isRedis
 
   const taRef = useRef<HTMLTextAreaElement>(null)
   const [caret, setCaret] = useState({ line: 1, col: 1 })
@@ -78,7 +80,7 @@ export function QueryEditor(props: QueryEditorProps) {
   const [completion, setCompletion] = useState<(SqlCompletion & { caret: number }) | null>(null)
   const [selected, setSelected] = useState(0)
   const lineCount = Math.max(query.split('\n').length, 1)
-  const validity = isMongo ? jsonValidity(query) : null
+  const validity = isJson ? jsonValidity(query) : null
 
   useEffect(() => {
     taRef.current?.focus()
@@ -90,7 +92,7 @@ export function QueryEditor(props: QueryEditorProps) {
   }
 
   const suggest = (value: string, caretAt: number, explicit = false) => {
-    const next = isMongo ? null : sqlCompletions(value, caretAt, schema, explicit)
+    const next = isJson ? null : sqlCompletions(value, caretAt, schema, explicit)
     setCompletion(next && { ...next, caret: caretAt })
     setSelected(0)
   }
@@ -180,7 +182,7 @@ export function QueryEditor(props: QueryEditorProps) {
                   <button onClick={() => { onRun(false); setRunMenu(false) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1">
                     <Play size={12} /> Run query
                   </button>
-                  <button onClick={() => { onRun(true); setRunMenu(false) }} disabled={isMongo} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1 disabled:opacity-40">
+                  <button onClick={() => { onRun(true); setRunMenu(false) }} disabled={isJson} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1 disabled:opacity-40">
                     <Zap size={12} /> Explain plan
                   </button>
                   <button onClick={() => { onRun(true, true); setRunMenu(false) }} disabled={!canAnalyze} title={canAnalyze ? 'Runs the query and measures every plan step' : 'Available for PostgreSQL and MySQL'} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1 disabled:opacity-40">
@@ -196,7 +198,7 @@ export function QueryEditor(props: QueryEditorProps) {
       {/* ── secondary toolbar ─────────────────────────────────────────── */}
       <div className="flex h-9 flex-none items-center gap-1 border-b border-border-1 px-2">
         <ToolButton icon={<Play size={12} fill="currentColor" />} label="Run" onClick={() => onRun(false)} disabled={running} active />
-        <ToolButton icon={<Zap size={12} />} label="Explain" onClick={() => onRun(true)} disabled={running || isMongo} />
+        <ToolButton icon={<Zap size={12} />} label="Explain" onClick={() => onRun(true)} disabled={running || isJson} />
         {canAnalyze && <ToolButton icon={<Gauge size={12} />} label="Analyze" onClick={() => onRun(true, true)} disabled={running} />}
         <ToolButton icon={<AlignLeft size={12} />} label="Format" onClick={onFormat} />
         <div className="ml-1 flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-text-3">
@@ -243,7 +245,7 @@ export function QueryEditor(props: QueryEditorProps) {
             className="pointer-events-none absolute inset-0 overflow-visible whitespace-pre px-3 py-3 font-mono text-[12.5px]"
             style={{ tabSize: 2, lineHeight: '21px' }}
           >
-            {isMongo ? highlightedJson(query) : highlightedSql(query)}
+            {isJson ? highlightedJson(query) : highlightedSql(query)}
             {'\n'}
           </pre>
           <textarea
@@ -256,7 +258,7 @@ export function QueryEditor(props: QueryEditorProps) {
             onScroll={() => setCompletion((c) => c && { ...c })}
             spellCheck={false}
             aria-label="Database query editor"
-            placeholder={isMongo ? 'Enter a MongoDB JSON operation...' : 'Enter a SQL query...'}
+            placeholder={props.isRedis ? 'Enter a Redis JSON command...' : isMongo ? 'Enter a MongoDB JSON operation...' : 'Enter a SQL query...'}
             className="absolute inset-0 h-full w-full resize-none bg-transparent px-3 py-3 font-mono text-[12.5px] text-transparent caret-accent outline-none placeholder:text-text-4"
             style={{ tabSize: 2, lineHeight: '21px' }}
             aria-autocomplete="list"
@@ -341,7 +343,7 @@ export function QueryEditor(props: QueryEditorProps) {
           <span className="flex items-center gap-1.5 text-text-4"><CheckCircle2 size={12} /> Ready</span>
         )}
         <span className="ml-auto text-text-4">Ln {caret.line}, Col {caret.col}</span>
-        <span className="rounded border border-border-2 bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-3">{isMongo ? 'JSON' : 'SQL'}</span>
+        <span className="rounded border border-border-2 bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-3">{isJson ? 'JSON' : 'SQL'}</span>
       </div>
     </div>
   )

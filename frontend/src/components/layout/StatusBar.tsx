@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { FolderKanban, Moon, Sun } from 'lucide-react'
-import { useCollectionsStore } from '@/stores/collections'
+import { Moon, Palette, Sun } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
 import { useThemesStore } from '@/stores/themes'
@@ -18,9 +17,6 @@ export function StatusBar() {
   const tr = useUiTranslation()
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
-  const responseHistory = useTabsStore((s) => s.responseHistory)
-  const workspaces = useCollectionsStore((s) => s.workspaces)
-  const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
@@ -39,7 +35,6 @@ export function StatusBar() {
     return () => window.removeEventListener('adomnia:save-error', handler)
   }, [])
 
-  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const response = activeTab?.response
   const activeTheme = themes.find((t) => t.id === activeThemeId)
@@ -80,6 +75,7 @@ export function StatusBar() {
   const setPaletteOpen = (open: boolean) => { if (!open) setPaletteMode(null) }
   const modeBases = useSettingsStore((s) => s.settings.appearance.modeBases)
   const activeBase = useSettingsStore((s) => s.settings.appearance.baseColor)
+  const accentColor = useSettingsStore((s) => s.settings.appearance.accentColor)
   const appearanceRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!paletteOpen) return
@@ -102,34 +98,10 @@ export function StatusBar() {
             <span>{response.size < 1024 ? `${response.size} B` : `${(response.size / 1024).toFixed(1)} KB`}</span>
           </>
         )}
-        {response?.error && <span className="text-error">{response.error.code}</span>}
         {!response && !saveError && <span>{tr('Ready')}</span>}
         {saveError && <span className="text-error">{tr('Save error:')} {saveError}</span>}
-        {responseHistory.length > 0 && (
-          <button
-            onClick={() => setActiveRail('history')}
-            title={tr('Open Request History')}
-            className="flex items-center gap-1 text-text-4 hover:text-text-2 transition-colors"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
-            {tr('history')} {responseHistory.length} {tr('reqs')}
-          </button>
-        )}
       </div>
       <div className="flex items-center gap-2">
-        {activeWorkspace && (
-          <>
-            <button
-              onClick={() => setActiveRail('collections')}
-              title={tr('Open active workspace')}
-              className="flex max-w-44 items-center gap-1 text-text-4 transition-colors hover:text-text-2"
-            >
-              <FolderKanban size={10} className="shrink-0 text-accent" />
-              <span className="truncate">{activeWorkspace.name}</span>
-            </button>
-            <span className="h-3 w-px bg-border-2" />
-          </>
-        )}
         {/* Mock running indicator — click to navigate */}
         {mockRunning && (
           <button
@@ -174,9 +146,8 @@ export function StatusBar() {
           ]).map(({ mode, Icon, label, text }) => (
             <button
               key={mode}
-              onClick={() => applyQuickMode(mode)}
-              onContextMenu={(event) => { event.preventDefault(); setPaletteMode((open) => (open === mode ? null : mode)) }}
-              title={`${label} · ${tr('Right-click: accent and base color')}`}
+              onClick={() => { applyQuickMode(mode, null); updateAppearance({ accentColor: undefined }) }}
+              title={`${label} · ${tr('Default colors')}`}
               aria-label={label}
               aria-pressed={currentQuickMode === mode}
               className={cn(
@@ -189,6 +160,18 @@ export function StatusBar() {
               <Icon size={11} /><span>{text}</span>
             </button>
           ))}
+          <button
+            onClick={() => setPaletteMode((open) => (open ? null : currentMode))}
+            title={tr('Accent and base color')}
+            aria-label={tr('Custom colors')}
+            aria-expanded={paletteOpen}
+            className={cn(
+              'h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors',
+              paletteOpen || accentColor || activeBase ? 'bg-surface-3 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2',
+            )}
+          >
+            <Palette size={11} /><span>{tr('Custom')}</span>
+          </button>
         </div>
       </div>
     </footer>

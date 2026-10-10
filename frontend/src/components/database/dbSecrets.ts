@@ -5,7 +5,9 @@ import {
   hydrateManagedSecret,
   persistManagedSecret,
 } from '@/lib/managedSecrets'
-import { encryptToVaultRef, isVaultRef, resolveSecret } from '@/lib/vaultRefs'
+import { encryptToVaultRef, isVaultRef, resolveSecret, resolveVaultReferences } from '@/lib/vaultRefs'
+import { substVars } from '@/lib/substVars'
+import { useEnvironmentsStore } from '@/stores/environments'
 import type { DbConnection } from './dbShared'
 
 type DbSecretField = 'password' | 'dsn'
@@ -82,9 +84,20 @@ export async function protectDatabaseConnection(connection: DbConnection, passph
   return next
 }
 
+const VAR_FIELDS = ['dsn', 'host', 'database', 'collection', 'user', 'password', 'sqlitePath', 'options'] as const
+
 export async function resolveDatabaseConnection(connection: DbConnection): Promise<DbConnection> {
   const next = { ...connection }
   for (const field of fields(connection)) next[field] = await resolveSecret(connection[field])
+  // {{VAR}} from the active adOmnia environment work in every connection field.
+  const vars = useEnvironmentsStore.getState().getResolvedVars()
+  // Vault locked: leave {{VAR}} of encrypted values unresolved rather than sending the reference.
+  const resolvedVars = await resolveVaultReferences(vars)
+    .catch(() => Object.fromEntries(Object.entries(vars).filter(([, value]) => !isVaultRef(value))))
+  for (const field of VAR_FIELDS) {
+    const value = next[field]
+    if (typeof value === 'string' && value.includes('{{')) next[field] = substVars(value, resolvedVars)
+  }
   delete next.savedInVault
   return next
 }

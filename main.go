@@ -76,7 +76,7 @@ func main() {
 	devSession := NewDevSession(goIDE)
 	copilotService := NewCopilot(goIDE)
 	milkService := NewMilk()
-	collabService := NewCollab()
+	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
 	appOptions := application.Options{

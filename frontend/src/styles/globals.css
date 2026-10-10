@@ -659,6 +659,7 @@
 .app-titlebar a,
 .app-titlebar [role="group"],
 .app-titlebar [role="menu"],
+.app-titlebar .api-header-context,
 .app-titlebar [data-window-controls] { --wails-draggable: no-drag; }
 
 /* Filled actions share one accessible foreground across the default palettes. */

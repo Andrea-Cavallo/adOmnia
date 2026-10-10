@@ -1,0 +1,2 @@
+.yRemoteSelection { background: color-mix(in srgb, var(--color-accent) 20%, transparent); }
+.yRemoteSelectionHead { position: absolute; border-left: 2px solid var(--color-accent); height: 100%; }

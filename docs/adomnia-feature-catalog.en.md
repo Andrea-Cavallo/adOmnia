@@ -1105,3 +1105,5 @@ The arcade pauses on window blur, hidden documents and when scrolled out of view
 ### API workspace typography
 
 API collections, request tabs, controls, and response guidance use locally bundled Geist Sans. URLs, HTTP methods, payloads, and technical details use Geist Mono. Palette colors remain theme-driven, and custom skins retain their explicit typography overrides.
+
+Collaboration inbox supports import-as-new, explicit replacement, and field-by-field merge with local-revision guards. Environment secrets require per-variable opt-in and an exact payload preview; private environments and vault references remain excluded by the Go backend. Canonical transfer revisions reuse collectionfs SHA-256 hashing. Operational audit is local in devlog and excludes shared values and invitation credentials.

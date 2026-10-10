@@ -62,7 +62,7 @@ type dbQueryResponse struct {
 	StatementType string                   `json:"statementType"`
 	// Explain is "plan" or "analyze" when the rows are an execution plan.
 	Explain string `json:"explain,omitempty"`
-	Warning       string                   `json:"warning,omitempty"`
+	Warning string `json:"warning,omitempty"`
 	// Documents holds ordered canonical Extended JSON when a Mongo command sets
 	// canonical: true, so the document view keeps field order and BSON types.
 	Documents []json.RawMessage `json:"documents,omitempty"`
@@ -102,6 +102,23 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "mongodb", "durationMs": time.Since(start).Milliseconds()})
 		return
 	}
+	if strings.EqualFold(req.Driver, "redis") {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		start := time.Now()
+		client, err := openRedisDatabase(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer client.Close()
+		if err := client.Ping(ctx).Err(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "redis", "durationMs": time.Since(start).Milliseconds()})
+		return
+	}
 	db, driver, err := openDatabase(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -138,6 +155,19 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Limit > 5000 {
 		req.Limit = 5000
+	}
+	if strings.EqualFold(req.Connection.Driver, "redis") {
+		resp, err := runRedisQuery(r.Context(), req)
+		if err != nil {
+			status := http.StatusBadRequest
+			if strings.Contains(err.Error(), "requires confirmation") {
+				status = http.StatusConflict
+			}
+			http.Error(w, err.Error(), status)
+			return
+		}
+		dbWriteJSON(w, resp)
+		return
 	}
 	if isMongoDriver(req.Connection.Driver) {
 		resp, err := runMongoQuery(r.Context(), req)

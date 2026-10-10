@@ -6,7 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.9.78] - 2026-10-10
+
 ### Added
+- **Redis in Database Studio:** Redis connections (ACL user, TLS, `redis://`/`rediss://` URI), SCAN-based Key Explorer and a JSON command runner with confirmed writes. Guide: `docs/DATABASE-REDIS.md`.
+- **Environments for all of adOmnia:** the active environment's `{{VAR}}` now also resolve in Database Studio connections, gRPC, Broker Studio/Kafka and SOAP (before WS-Security signing); Go Studio runs receive it as process environment (run-configuration values may use `{{NAME}}`).
+- **Environment stages and Matrix view:** *Add stages* creates Development, Testing, Certification and Production; *Matrix* edits every variable across stages side by side. Each stage stays a normal environment (no migration).
+- **Import / Export all environments** (adOmnia file or Postman environment; merge by name; private environments and plain secrets left out of exports).
+- **Manage environments everywhere:** from the Hub (*+ Manage environments*), the API Workspace header and the collections menu; right-click an environment to create, rename, duplicate or delete it.
+- **Live Collaboration progress:** shared environments with per-variable secret opt-in, collection inbox merge, live Go Studio editing with Yjs, read-only remote project, reconnect with bounded replay, local audit log.
 - **SQL completion in Database Studio:** the query editor suggests tables after `FROM`/`JOIN`, columns of the tables in the query (also through aliases like `u.`), and keywords. It opens while typing or with Ctrl+Space; arrows, Enter/Tab and Esc work as in Go Studio. Columns load with the schema for SQLite, PostgreSQL and MySQL.
 - **Execution plans in Database Studio:** Explain opens a Plan tab with the plan as a tree (SQLite, PostgreSQL JSON plans, MySQL), full scans and bad row estimates flagged, and the most expensive step highlighted by its own cost. **Explain analyze** (PostgreSQL, MySQL) measures every step; it only accepts SELECT/WITH because it really runs the query.
 - **Query → schema:** Schema Explorer puts the tables used by the current query first, marked *in query* and expanded with their columns and types; every table can be expanded. SQL opened from Go Studio's Data access view lands on its schema the same way.
@@ -45,9 +53,17 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Save reproduction:** after a request to a live service (API Workspace response bar, or the Request tab while debugging) adOmnia writes `repro/<when>-<request>/` into the service's project: README with outcome, numbered steps and the values that will differ on replay, `request.http`, a Go regression test that fails while the bug is there, `queries.sql`, Kafka fixtures, `.env.example`, logs and breakpoint stacks. It also keeps the service configuration (`config.md`: variables the code reads and their .env values) and the request's OpenTelemetry trace (`trace.json`) and the lines other services logged with its id. Secret headers, body fields, log tokens and span attributes are stripped.
 
 ### Changed
+- **Browser-style request tabs**, a **Nothing-style Send** button in the skin's own colors, and a cleaner composer whose section tabs and body toolbar appear on hover; an empty body opens straight into a JSON editor.
+- **Environments and Hosts** switchers moved to the API Workspace header; the sidebar keeps the Workspace switcher.
+- **Static Hub wordmark** in the palette colors replaces the animated WebGL mark (`three` removed).
+- **Status bar:** Dark / White reset to default colors, *Custom* opens the accent and base color menu; error code, history counter and workspace name removed.
+- **Dependencies:** Wails `v3.0.0-beta.28` (Go module, `@wailsio/runtime`, CI), mongo-driver 2.9.2, go-redis 9.23.0, protoreflect 1.19.0, gjson 1.20.0, x/tools 0.51.0, mermaid 12.1.0, react-tabs 1.1.22, plugin-react 6.1.2, postcss 8.5.29.
 - **Faster startup:** icons are bundled with the panels that use them instead of one shared chunk, so the initial JavaScript drops by about 62 kB.
 
 ### Fixed
+- Collections: a new subfolder now expands its parent, so it no longer looks like nothing happened.
+- The environment and hosts managers open above the window titlebar instead of inside it (desktop clicks were lost in the drag region).
+- Database Studio re-renders when the active environment changes.
 - A search handed to the Log Inspector by another panel (Browser Debug, debugger, Trace Studio) is no longer replaced by the saved investigation that loads a moment later.
 - Live response views (tabs, Kafka messages, SQL statements) stay readable in a narrow response pane.
 - Opening code from another panel (a request's Kafka producer, a trace span, a breakpoint frame) now centers the line in Go Studio instead of moving the caret off-screen or leaving the editor scrolled sideways.

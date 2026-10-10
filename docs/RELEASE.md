@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.9.78 release notes: Redis, browser-style tabs and a still logo
+
+See [the full v0.9.78 notes](releases/v0.9.78.md): Redis in Database Studio,
+browser-style request tabs, a static palette-aware Hub wordmark, a simpler
+status bar with Dark/White/Custom, and Live Collaboration progress.
+
 ## v0.9.77 release notes: Glyph icons and API typography
 
 See [the full v0.9.77 notes](releases/v0.9.77.md): customizable Hub modules, palette-aware Glyph icons, Geist API typography, and themed editor surfaces.

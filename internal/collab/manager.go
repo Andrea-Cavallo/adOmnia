@@ -1,6 +1,7 @@
 package collab
 
 import (
+	"adomnia/internal/collectionfs"
 	"context"
 	"crypto/subtle"
 	"crypto/tls"
@@ -60,8 +61,22 @@ type Manager struct {
 	upgrader websocket.Upgrader
 
 	// guest
-	host         *peer
-	participants []Participant
+	host            *peer
+	participants    []Participant
+	documents       map[string]*documentRoom
+	project         *sharedProject
+	projectInfo     *ProjectInfo
+	pendingProjects map[string]chan projectResponse
+	guestDocuments  []string
+	resumes         map[string]resumeTicket
+	resumeToken     string
+	guestInvite     parsedInvite
+	lastSeq         uint64
+	connecting      bool
+	generation      uint64
+	replay          []Event
+	replayBytes     int
+	replayFloor     uint64
 }
 
 func NewManager(emit func(Event)) *Manager {
@@ -100,6 +115,7 @@ func (m *Manager) Host(ip string, port int, name string) (Status, error) {
 	m.mode, m.sessionID, m.fp, m.address = ModeHost, randomToken(8), fp, ln.Addr().String()
 	m.self = Participant{ID: randomToken(8), Name: cleanName(name), Role: RoleController, Host: true, JoinedAt: time.Now()}
 	m.invites, m.peers, m.seq = map[string]pendingInvite{}, map[string]*peer{}, 0
+	m.resumes = map[string]resumeTicket{}
 	m.upgrader = websocket.Upgrader{
 		HandshakeTimeout: handshakeTimeout,
 		// I guest sono client Go, non browser: un Origin presente vuol dire una pagina web sulla LAN.
@@ -109,6 +125,7 @@ func (m *Manager) Host(ip string, port int, name string) (Status, error) {
 	mux.HandleFunc(wsPath, m.handleJoin)
 	m.server = &http.Server{Handler: mux, ReadHeaderTimeout: handshakeTimeout}
 	go func(srv *http.Server) { _ = srv.Serve(ln) }(m.server)
+	audit("session.hosted", m.sessionID, m.self.ID, m.self.Role, "")
 	return m.statusLocked(), nil
 }
 
@@ -129,6 +146,7 @@ func (m *Manager) CreateInvite(role Role, ttl time.Duration) (Invite, error) {
 	token := randomToken(32)
 	expires := time.Now().Add(ttl)
 	m.invites[token] = pendingInvite{role: role, expires: expires}
+	audit("invite.created", m.sessionID, m.self.ID, role, "")
 	return Invite{Code: formatInvite(m.address, token, m.fp), Role: role, ExpiresAt: expires}, nil
 }
 
@@ -171,6 +189,9 @@ func (m *Manager) admit(h hello, ip string, p *peer) (Participant, string) {
 		m.mu.Unlock()
 		return Participant{}, "sessione chiusa"
 	}
+	if h.Resume != "" {
+		return m.admitResumeLocked(h, ip, p)
+	}
 	var match string
 	for token := range m.invites {
 		if subtle.ConstantTimeCompare([]byte(token), []byte(h.Token)) == 1 {
@@ -192,9 +213,17 @@ func (m *Manager) admit(h hello, ip string, p *peer) (Participant, string) {
 		return Participant{}, "sessione piena"
 	}
 	participant := Participant{ID: randomToken(8), Name: cleanName(h.Name), Role: inv.role, Address: ip, JoinedAt: time.Now()}
+	resume := randomToken(32)
+	m.pruneResumesLocked()
+	if len(m.resumes) >= maxParticipants-1 {
+		m.mu.Unlock()
+		return Participant{}, "troppi partecipanti registrati: revoca quelli inattivi"
+	}
+	m.resumes[resume] = resumeTicket{participant: participant, expires: time.Now().Add(maxInviteTTL)}
 	p.participant = participant
 	m.peers[participant.ID] = p
-	welcomeEvent := Event{Type: EventWelcome, Payload: mustJSON(welcome{SessionID: m.sessionID, ParticipantID: participant.ID, Participants: m.participantsLocked()})}
+	audit("participant.joined", m.sessionID, participant.ID, participant.Role, "")
+	welcomeEvent := Event{Type: EventWelcome, Payload: mustJSON(welcome{SessionID: m.sessionID, ParticipantID: participant.ID, Participants: m.participantsLocked(), Project: m.projectInfo, Documents: m.documentIDsLocked(), Resume: resume})}
 	p.enqueue(welcomeEvent)
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
@@ -203,11 +232,21 @@ func (m *Manager) admit(h hello, ip string, p *peer) (Participant, string) {
 }
 
 func (m *Manager) hostReadLoop(p *peer, participant Participant) {
-	defer m.dropPeer(participant.ID)
+	defer m.dropPeer(participant.ID, p)
 	for {
 		e, err := p.read()
 		if err != nil {
 			return
+		}
+		if e.Type == EventDocument {
+			if msg := m.relayDocument(participant.ID, e.Payload); msg != "" {
+				p.enqueue(Event{Type: EventError, Payload: mustJSON(msg)})
+			}
+			continue
+		}
+		if e.Type == eventProjectRequest {
+			m.serveProject(participant.ID, e.Payload)
+			continue
 		}
 		if e.Type != EventShare {
 			p.enqueue(Event{Type: EventError, Payload: mustJSON("messaggio non supportato")})
@@ -241,6 +280,14 @@ func (m *Manager) relayShare(from string, payload json.RawMessage) string {
 		return err.Error()
 	}
 	m.mu.Lock()
+	// Revocation or role downgrade can occur while payload redaction runs.
+	// Re-check under the same lock that protects publication.
+	p = m.peers[from]
+	if m.mode != ModeHost || p == nil || !p.participant.Role.Can(PermShare) {
+		m.mu.Unlock()
+		return "permesso di condivisione revocato"
+	}
+	audit("content.shared", m.sessionID, from, p.participant.Role, clean.Kind)
 	event := m.nextLocked(Event{Type: EventShare, From: from, Payload: mustJSON(clean)})
 	for id, other := range m.peers {
 		if id != from {
@@ -257,12 +304,30 @@ func PreviewShare(kind ShareKind, title string, data json.RawMessage) (Share, er
 	return sanitizeShare(Share{Kind: kind, Title: title, Data: data})
 }
 
+func PreviewShareWithSecrets(kind ShareKind, title string, data json.RawMessage, variables []string) (Share, error) {
+	return sanitizeShare(Share{Kind: kind, Title: title, Data: data, SecretVariables: variables})
+}
+
 func sanitizeShare(s Share) (Share, error) {
+	if s.SourceID != "" && (s.Kind != ShareCollection || len(s.SourceID) > 128 || strings.ContainsAny(s.SourceID, "\x00\r\n")) {
+		return Share{}, errors.New("identità collection non valida")
+	}
 	if !s.Kind.Valid() {
 		return Share{}, errors.New("tipo di contenuto non condivisibile")
 	}
 	if len(s.Data) == 0 || len(s.Data) > maxMessageBytes {
 		return Share{}, errors.New("contenuto vuoto o troppo grande")
+	}
+	var selected map[string]string
+	if len(s.SecretVariables) > 0 && s.Kind != ShareEnvironments {
+		return Share{}, errors.New("opt-in consentito solo per variabili environment")
+	}
+	if s.Kind == ShareEnvironments {
+		filtered, values, err := environmentPayload(s.Data, s.SecretVariables)
+		if err != nil {
+			return Share{}, err
+		}
+		s.Data, selected = filtered, values
 	}
 	data, redacted, err := Redact(s.Data)
 	if err != nil {
@@ -272,16 +337,41 @@ func sanitizeShare(s Share) (Share, error) {
 		s.ID = randomToken(8)
 	}
 	s.Title = cleanName(s.Title)
+	data, redacted = restoreSelectedVariables(data, selected, redacted)
 	s.Data, s.Redacted = data, redacted
+	// Recomputed on the host, never trust a guest-supplied revision.
+	s.Revision, err = collectionfs.HashJSON(data)
+	if err != nil {
+		return Share{}, err
+	}
 	return s, nil
 }
 
 // Share invia contenuto filtrato: l'host lo manda a tutti, il guest all'host (che decide).
 func (m *Manager) Share(kind ShareKind, title string, data json.RawMessage) (Share, error) {
-	clean, err := PreviewShare(kind, title, data)
+	return m.ShareWithSecrets(kind, title, data, nil)
+}
+
+func (m *Manager) ShareWithSecrets(kind ShareKind, title string, data json.RawMessage, variables []string) (Share, error) {
+	clean, err := PreviewShareWithSecrets(kind, title, data, variables)
 	if err != nil {
 		return Share{}, err
 	}
+	return m.publishShare(clean)
+}
+
+func (m *Manager) SyncCollection(sourceID, title string, data json.RawMessage) (Share, error) {
+	if sourceID == "" {
+		return Share{}, errors.New("identità collection mancante")
+	}
+	clean, err := sanitizeShare(Share{Kind: ShareCollection, Title: title, Data: data, SourceID: sourceID})
+	if err != nil {
+		return Share{}, err
+	}
+	return m.publishShare(clean)
+}
+
+func (m *Manager) publishShare(clean Share) (Share, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	switch m.mode {
@@ -300,6 +390,7 @@ func (m *Manager) Share(kind ShareKind, title string, data json.RawMessage) (Sha
 	default:
 		return Share{}, errors.New("nessuna sessione di collaborazione attiva")
 	}
+	audit("content.shared", m.sessionID, m.self.ID, m.self.Role, clean.Kind)
 	return clean, nil
 }
 
@@ -319,6 +410,13 @@ func (m *Manager) SetRole(participantID string, role Role) error {
 		return errors.New("partecipante non trovato")
 	}
 	p.participant.Role = role
+	for token, ticket := range m.resumes {
+		if ticket.participant.ID == participantID {
+			ticket.participant.Role = role
+			m.resumes[token] = ticket
+		}
+	}
+	audit("participant.role_changed", m.sessionID, participantID, role, "")
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
 	m.emitAll(events)
@@ -333,8 +431,21 @@ func (m *Manager) Revoke(participantID string) error {
 		return errNotHost
 	}
 	p := m.peers[participantID]
+	found := p != nil
+	for token, ticket := range m.resumes {
+		if ticket.participant.ID == participantID {
+			delete(m.resumes, token)
+			found = true
+		}
+	}
+	if found {
+		audit("participant.revoked", m.sessionID, participantID, "", "")
+	}
 	m.mu.Unlock()
 	if p == nil {
+		if found {
+			return nil
+		}
 		return errors.New("partecipante non trovato")
 	}
 	p.enqueue(Event{Type: EventClosed, Payload: mustJSON("l'host ti ha rimosso dalla sessione")})
@@ -343,14 +454,19 @@ func (m *Manager) Revoke(participantID string) error {
 	return nil
 }
 
-func (m *Manager) dropPeer(id string) {
+func (m *Manager) dropPeer(id string, expected ...*peer) {
 	m.mu.Lock()
 	p := m.peers[id]
+	if len(expected) > 0 && p != expected[0] {
+		m.mu.Unlock()
+		return
+	}
 	if p == nil || m.mode != ModeHost {
 		m.mu.Unlock()
 		return
 	}
 	delete(m.peers, id)
+	audit("participant.left", m.sessionID, id, p.participant.Role, "")
 	p.close()
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
@@ -369,18 +485,23 @@ func (m *Manager) Join(code, name string) (Status, error) {
 		return Status{}, errBusy
 	}
 	m.mode = ModeGuest // prenota: blocca Host/Join concorrenti durante il dial
+	m.generation++
+	generation := m.generation
+	m.connecting = true
 	m.mu.Unlock()
 
-	status, err := m.dialHost(inv, name)
+	status, err := m.dialHost(inv, name, "", 0, generation)
 	if err != nil {
 		m.mu.Lock()
-		m.mode = ModeIdle
+		if m.generation == generation {
+			m.resetLocked()
+		}
 		m.mu.Unlock()
 	}
 	return status, err
 }
 
-func (m *Manager) dialHost(inv parsedInvite, name string) (Status, error) {
+func (m *Manager) dialHost(inv parsedInvite, name, resume string, lastSeq, generation uint64) (Status, error) {
 	dialer := websocket.Dialer{TLSClientConfig: pinnedTLS(inv.Fingerprint), HandshakeTimeout: handshakeTimeout}
 	ctx, cancel := context.WithTimeout(context.Background(), handshakeTimeout)
 	defer cancel()
@@ -393,7 +514,7 @@ func (m *Manager) dialHost(inv parsedInvite, name string) (Status, error) {
 	}
 	p := newPeer(conn)
 	_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-	if err := conn.WriteJSON(Event{Type: EventHello, Payload: mustJSON(hello{Token: inv.Token, Name: cleanName(name)})}); err != nil {
+	if err := conn.WriteJSON(Event{Type: EventHello, Payload: mustJSON(hello{Token: inv.Token, Name: cleanName(name), Resume: resume, LastSeq: lastSeq})}); err != nil {
 		_ = conn.Close()
 		return Status{}, fmt.Errorf("handshake fallito: %w", err)
 	}
@@ -415,18 +536,23 @@ func (m *Manager) dialHost(inv parsedInvite, name string) (Status, error) {
 		return Status{}, errors.New("risposta dell'host non valida")
 	}
 	m.mu.Lock()
-	if m.mode != ModeGuest || m.host != nil { // Stop durante il dial
+	if m.mode != ModeGuest || m.host != nil || m.generation != generation { // Stop durante il dial
 		m.mu.Unlock()
 		_ = conn.Close()
 		return Status{}, errors.New("connessione annullata")
 	}
 	m.sessionID, m.host, m.participants, m.address, m.fp = w.SessionID, p, w.Participants, inv.Address, inv.Fingerprint
+	m.projectInfo = w.Project
+	m.guestDocuments = w.Documents
+	m.resumeToken, m.guestInvite = w.Resume, inv
+	m.connecting = false
 	for _, part := range w.Participants {
 		if part.ID == w.ParticipantID {
 			m.self = part
 		}
 	}
 	status := m.statusLocked()
+	audit("session.joined", m.sessionID, m.self.ID, m.self.Role, "")
 	m.mu.Unlock()
 	go p.writeLoop()
 	p.keepAlive()
@@ -436,12 +562,39 @@ func (m *Manager) dialHost(inv parsedInvite, name string) (Status, error) {
 
 func (m *Manager) guestReadLoop(p *peer) {
 	reason := "connessione con l'host persa"
+	closed := false
 	for {
 		e, err := p.read()
 		if err != nil {
 			break
 		}
+		m.mu.Lock()
+		current := m.mode == ModeGuest && m.host == p
+		m.mu.Unlock()
+		if !current {
+			return
+		}
 		switch e.Type {
+		case EventProject:
+			var info ProjectInfo
+			if json.Unmarshal(e.Payload, &info) == nil {
+				m.mu.Lock()
+				m.projectInfo = &info
+				m.mu.Unlock()
+				m.emit(e)
+			}
+		case eventProjectResponse:
+			var response projectResponse
+			if json.Unmarshal(e.Payload, &response) == nil {
+				m.mu.Lock()
+				if done := m.pendingProjects[response.ID]; done != nil {
+					select {
+					case done <- response:
+					default:
+					}
+				}
+				m.mu.Unlock()
+			}
 		case EventParticipants:
 			var list []Participant
 			if json.Unmarshal(e.Payload, &list) == nil {
@@ -455,11 +608,35 @@ func (m *Manager) guestReadLoop(p *peer) {
 				m.mu.Unlock()
 			}
 			m.emit(e)
+		case EventDocument:
+			var message DocumentMessage
+			if json.Unmarshal(e.Payload, &message) == nil {
+				m.mu.Lock()
+				if message.Action == "open" {
+					m.guestDocuments = append(m.guestDocuments, message.ID)
+				}
+				if message.Action == "close" {
+					for i, id := range m.guestDocuments {
+						if id == message.ID {
+							m.guestDocuments = append(m.guestDocuments[:i], m.guestDocuments[i+1:]...)
+							break
+						}
+					}
+				}
+				m.mu.Unlock()
+			}
+			m.emit(e)
 		case EventShare, EventError:
 			m.emit(e)
 		case EventClosed:
+			closed = true
 			_ = json.Unmarshal(e.Payload, &reason)
 		}
+		m.mu.Lock()
+		if m.host == p && e.Seq > m.lastSeq {
+			m.lastSeq = e.Seq
+		}
+		m.mu.Unlock()
 		if e.Type == EventClosed {
 			break
 		}
@@ -468,17 +645,28 @@ func (m *Manager) guestReadLoop(p *peer) {
 	m.mu.Lock()
 	lost := m.host == p // false se l'utente è uscito con Stop: niente evento
 	if lost {
-		m.resetLocked()
+		if closed {
+			m.resetLocked()
+		} else {
+			m.host = nil
+		}
 	}
 	m.mu.Unlock()
 	if lost {
-		m.emit(Event{Type: EventClosed, Payload: mustJSON(reason)})
+		eventType := EventDisconnected
+		if closed {
+			eventType = EventClosed
+		}
+		m.emit(Event{Type: eventType, Payload: mustJSON(reason)})
 	}
 }
 
 // Stop chiude la sessione (host: espelle tutti e chiude la porta; guest: esce).
 func (m *Manager) Stop() {
 	m.mu.Lock()
+	if m.mode != ModeIdle {
+		audit("session.stopped", m.sessionID, m.self.ID, m.self.Role, "")
+	}
 	var server *http.Server
 	switch m.mode {
 	case ModeHost:
@@ -509,13 +697,23 @@ func (m *Manager) Status() Status {
 }
 
 func (m *Manager) resetLocked() {
+	m.generation++
+	m.connecting = false
 	m.mode, m.sessionID, m.address, m.fp = ModeIdle, "", "", ""
 	m.self, m.server, m.host = Participant{}, nil, nil
 	m.invites, m.peers, m.participants = nil, nil, nil
+	m.documents = nil
+	m.project, m.projectInfo, m.pendingProjects = nil, nil, nil
+	m.guestDocuments = nil
+	m.resumes, m.resumeToken, m.guestInvite, m.lastSeq = nil, "", parsedInvite{}, 0
+	m.replay, m.replayBytes, m.replayFloor = nil, 0, 0
 }
 
 func (m *Manager) statusLocked() Status {
 	s := Status{Mode: m.mode, SessionID: m.sessionID, Self: m.self.ID, Address: m.address, Fingerprint: m.fp, Participants: []Participant{}}
+	s.Project = m.projectInfo
+	s.Documents = m.documentIDsLocked()
+	s.Disconnected = m.mode == ModeGuest && m.host == nil && m.resumeToken != ""
 	switch m.mode {
 	case ModeHost:
 		s.Participants = m.participantsLocked()
@@ -553,6 +751,16 @@ func (m *Manager) broadcastParticipantsLocked() []Event {
 func (m *Manager) nextLocked(e Event) Event {
 	m.seq++
 	e.Seq = m.seq
+	if e.Type == EventShare {
+		m.replay = append(m.replay, e)
+		m.replayBytes += len(e.Payload)
+		for len(m.replay) > 32 || m.replayBytes > maxReplayBytes {
+			old := m.replay[0]
+			m.replayFloor = old.Seq
+			m.replayBytes -= len(old.Payload)
+			m.replay = m.replay[1:]
+		}
+	}
 	return e
 }
 

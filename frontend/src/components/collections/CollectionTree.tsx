@@ -1169,7 +1169,12 @@ export function CollectionTree({
         placeholder={tr('Folder name...')}
         confirmLabel={tr('Create')}
         onConfirm={(name) => {
-          if (folderPrompt) onAddFolder(folderPrompt.collectionId, folderPrompt.parentId, name)
+          if (folderPrompt) {
+            onAddFolder(folderPrompt.collectionId, folderPrompt.parentId, name)
+            // Expand where the folder lands, otherwise a new subfolder looks like nothing happened.
+            const { collectionId, parentId } = folderPrompt
+            setOpenIds((current) => new Set(current).add(collectionId).add(parentId ?? collectionId))
+          }
           setFolderPrompt(null)
         }}
         onCancel={() => setFolderPrompt(null)}

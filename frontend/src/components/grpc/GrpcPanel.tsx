@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { withActiveEnv } from '@/lib/activeEnv'
 import {
   AlertTriangle,
   Radio,
@@ -1894,7 +1895,7 @@ export function GrpcPanel() {
       if (interactive) liveSentRef.current = []
       const request = interactive ? { payload: {}, messages: [] as unknown[] } : buildRequest()
       const started = Date.now()
-      const invokeBody = {
+      const invokeBody = await withActiveEnv({
         address,
         tls: useTls,
         ca_cert_path: caCertPath,
@@ -1907,7 +1908,7 @@ export function GrpcPanel() {
         metadata: metadataObject(),
         timeout_ms: interactive ? undefined : requestTimeoutMs,
         interactive: interactive || undefined,
-      }
+      })
       let result: InvokeResponse
       if (currentMethod.server_streaming || interactive) {
         const controller = new AbortController()

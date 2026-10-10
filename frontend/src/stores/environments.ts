@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { Environment, EnvVariable } from '@/lib/types'
 import { uid, blankEnvVar } from '@/lib/types'
@@ -21,6 +22,8 @@ interface EnvironmentsState {
   renameEnvironment: (id: string, name: string) => void
   setEnvironmentPrivate: (id: string, value: boolean) => void
   updateVariables: (envId: string, variables: EnvVariable[]) => void
+  /** Replaces the whole list (matrix edits, imports); the active id is kept when it still exists. */
+  setEnvironments: (environments: Environment[]) => void
   getResolvedVars: () => Record<string, string>
 }
 
@@ -101,6 +104,11 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
     get().save()
   },
 
+  setEnvironments: (environments) => {
+    set((s) => ({ environments, activeEnvId: environments.some((e) => e.id === s.activeEnvId) ? s.activeEnvId : null }))
+    get().save()
+  },
+
   getResolvedVars: () => {
     const { environments, activeEnvId } = get()
     const env = environments.find((e) => e.id === activeEnvId)
@@ -112,3 +120,10 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
     return vars
   },
 }))
+
+/** Active environment variables that re-render the caller when the environment or its values change. */
+export function useResolvedVars(): Record<string, string> {
+  const environments = useEnvironmentsStore((s) => s.environments)
+  const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
+  return useMemo(() => useEnvironmentsStore.getState().getResolvedVars(), [environments, activeEnvId])
+}

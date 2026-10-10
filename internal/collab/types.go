@@ -20,12 +20,15 @@ const (
 // ponytail: solo i permessi con un consumer reale; terminal/debug/git arrivano con le loro feature.
 type Permission string
 
-const PermShare Permission = "share"
+const (
+	PermShare        Permission = "share"
+	PermEditDocument Permission = "document.edit"
+)
 
 var rolePermissions = map[Role]map[Permission]bool{
 	RoleViewer:     {},
-	RoleEditor:     {PermShare: true},
-	RoleController: {PermShare: true},
+	RoleEditor:     {PermShare: true, PermEditDocument: true},
+	RoleController: {PermShare: true, PermEditDocument: true},
 }
 
 func (r Role) Valid() bool { _, ok := rolePermissions[r]; return ok }
@@ -57,6 +60,7 @@ const (
 	EventShare        = "share"
 	EventClosed       = "closed"
 	EventError        = "error"
+	EventDocument     = "document"
 )
 
 // ShareKind è il tipo di contenuto condiviso (feature 11, 13, 14).
@@ -74,22 +78,30 @@ func (k ShareKind) Valid() bool {
 
 // Share è il payload di EventShare: contenuto già filtrato dai segreti all'origine.
 type Share struct {
-	ID       string          `json:"id"`
-	Kind     ShareKind       `json:"kind"`
-	Title    string          `json:"title"`
-	Data     json.RawMessage `json:"data"`
-	Redacted []string        `json:"redacted,omitempty"`
+	ID              string          `json:"id"`
+	Kind            ShareKind       `json:"kind"`
+	Title           string          `json:"title"`
+	Data            json.RawMessage `json:"data"`
+	Redacted        []string        `json:"redacted,omitempty"`
+	Revision        string          `json:"revision,omitempty"`
+	SecretVariables []string        `json:"secretVariables,omitempty"`
+	SourceID        string          `json:"sourceId,omitempty"`
 }
 
 type hello struct {
-	Token string `json:"token"`
-	Name  string `json:"name"`
+	Token   string `json:"token"`
+	Name    string `json:"name"`
+	Resume  string `json:"resume,omitempty"`
+	LastSeq uint64 `json:"lastSeq,omitempty"`
 }
 
 type welcome struct {
 	SessionID     string        `json:"sessionId"`
 	ParticipantID string        `json:"participantId"`
 	Participants  []Participant `json:"participants"`
+	Project       *ProjectInfo  `json:"project,omitempty"`
+	Documents     []string      `json:"documents,omitempty"`
+	Resume        string        `json:"resume,omitempty"`
 }
 
 // Status è lo snapshot che il frontend legge all'avvio o dopo ogni evento.
@@ -101,6 +113,9 @@ type Status struct {
 	Fingerprint   string        `json:"fingerprint,omitempty"`
 	Participants  []Participant `json:"participants"`
 	PendingInvite int           `json:"pendingInvites"`
+	Project       *ProjectInfo  `json:"project,omitempty"`
+	Documents     []string      `json:"documents,omitempty"`
+	Disconnected  bool          `json:"disconnected,omitempty"`
 }
 
 // Invite è ciò che l'host copia e manda al guest.

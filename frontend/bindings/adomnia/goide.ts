@@ -1598,6 +1598,13 @@ export function SetFunctionBreakpoints(sessionID: string, settings: goide$0.Func
 }
 
 /**
+ * SetSharedEnvironment applica a ogni run le variabili dell'environment attivo di adOmnia.
+ */
+export function SetSharedEnvironment(vars: { [_ in string]?: string }): $CancellablePromise<void> {
+    return $Call.ByID(147006656, vars);
+}
+
+/**
  * SetSonarToken memorizza il token SonarQube in memoria per la sessione (mai persistito).
  */
 export function SetSonarToken(sessionID: string, token: string): $CancellablePromise<void> {

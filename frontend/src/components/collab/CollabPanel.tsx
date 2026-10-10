@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Check, Copy, Crown, LogIn, Plus, Radio, ShieldCheck, Unplug, UserX, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { collabApi, type CollabParticipant, type CollabRole } from '@/lib/collab-api'
 import { useCollabStore } from '@/stores/collab'
 import { CollabShareColumn } from './CollabShare'
+const CollabProject = lazy(() => import('./CollabProject'))
 
 const NAME_KEY = 'adomnia.collab.name'
 const ROLES: { id: CollabRole; label: string; hint: string }[] = [
@@ -34,6 +35,7 @@ function saveName(name: string) {
 export function CollabPanel() {
   const { status, init, notice, clearNotice } = useCollabStore()
   const [name, setName] = useState(readName)
+  const [showProject, setShowProject] = useState(false)
   useEffect(() => init(), [init])
   useEffect(() => saveName(name), [name])
 
@@ -63,6 +65,8 @@ export function CollabPanel() {
         </section>
         <section className="min-h-0 overflow-auto bg-surface-0 p-4">
           <CollabShareColumn />
+          {active && <button type="button" onClick={()=>setShowProject(value=>!value)} className="mt-4 rounded border border-border-2 px-3 py-1.5 text-xs text-accent">{showProject ? 'Nascondi progetto' : 'Apri progetto condiviso'}</button>}
+          {active && showProject && <Suspense fallback={<p className="mt-2 text-xs text-text-3">Apertura progetto…</p>}><CollabProject /></Suspense>}
         </section>
       </div>
     </div>
@@ -175,6 +179,7 @@ function ActiveSession() {
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
           <span className="break-all">TLS 1.3 · impronta {status.fingerprint?.slice(0, 16)}…</span>
         </p>
+        {status.disconnected && <div className="mt-2 space-y-2"><p className="text-xs text-status-err">Connessione interrotta. I buffer locali sono conservati.</p><Button size="sm" onClick={()=>guard(async()=>{useCollabStore.setState({status:await collabApi.resume()})})}>Riprendi connessione</Button></div>}
       </div>
 
       {isHost && (
