@@ -382,17 +382,22 @@ func (x *Index) typeImpact(target Node) Impact {
 				if !ok {
 					continue
 				}
-				result.Callers = append(result.Callers, Ref{Node: handler, Depth: ref.Depth + 1, Via: append(append([]string(nil), ref.Via...), ref.Node.Label)})
+				toRoute := append(append([]string(nil), ref.Via...), ref.Node.Label)
+				result.Callers = append(result.Callers, Ref{Node: handler, Depth: ref.Depth + 1, Via: toRoute})
 				note(handler)
+				// Chi arriva all'handler passa da handler e route: il percorso parte dal tipo.
+				through := func(found Ref) Ref {
+					found.Depth += ref.Depth + 1
+					found.Via = append(append(append([]string(nil), toRoute...), handler.Label), found.Via...)
+					return found
+				}
 				if code, ok := x.Impact(handler.ID); ok {
 					for _, caller := range code.Callers {
-						caller.Depth += ref.Depth + 1
-						result.Callers = append(result.Callers, caller)
+						result.Callers = append(result.Callers, through(caller))
 						note(caller.Node)
 					}
 					for _, test := range code.Tests {
-						test.Depth += ref.Depth + 1
-						result.Tests = append(result.Tests, test)
+						result.Tests = append(result.Tests, through(test))
 					}
 					result.Entries = append(result.Entries, code.Entries...)
 				}
