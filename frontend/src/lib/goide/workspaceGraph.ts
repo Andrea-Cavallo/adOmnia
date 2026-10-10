@@ -41,6 +41,7 @@ export function impactContext(impact: GraphImpact): string {
     list('It produces to topics', impact.produces),
     list('It queries tables', impact.queries, (ref) => ref.node.label + (ref.via?.[0] ? ` (${ref.via[0]})` : '')),
     list('Entry points reaching it', impact.entries),
+    list('Compose services that run it', impact.services ?? []),
     list('It reads env vars / config keys', impact.reads ?? []),
   ]
   return parts.filter(Boolean).join('\n')

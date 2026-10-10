@@ -56,7 +56,7 @@ func (s *Service) ConfigureGraphStore(dir string) {
 }
 
 func isGoSource(rel string) bool {
-	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work"
+	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work" || graph.IsComposeFile(rel)
 }
 
 // workspaceGraph restituisce il grafo aggiornato della sessione: memoria, poi disco, poi ricostruzione.
@@ -97,7 +97,9 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 	if err != nil {
 		return nil, false, err
 	}
-	built := golang.GraphFromArchitecture(result.Report).Graph()
+	builder := golang.GraphFromArchitecture(result.Report)
+	graph.AddComposeServices(builder, root, graph.FindComposeFiles(root))
+	built := builder.Graph()
 	built.Root, built.Language, built.Fingerprint, built.BuiltAt = root, "go", fingerprint, time.Now()
 	built.Truncated, built.Problems = result.Report.Truncated, result.Problems
 	_ = store.Save(built) // ponytail: un grafo non salvato si ricostruisce al prossimo avvio

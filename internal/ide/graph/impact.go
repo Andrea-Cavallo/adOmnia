@@ -84,6 +84,7 @@ type Impact struct {
 	// Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
 	Containers []Ref `json:"containers,omitempty"`
 	Entries    []Ref    `json:"entries"`   // main/job/cli che arrivano al target
+	Services   []Ref    `json:"services,omitempty"` // servizi compose che avviano quegli entry point
 	Packages   []string `json:"packages"`
 	Modules    []string `json:"modules"`
 	// Ciò che il target stesso tocca: cambiarlo cambia questi accessi.
@@ -190,6 +191,7 @@ func (x *Index) Impact(id string) (Impact, bool) {
 	}
 	result.Packages = sortedKeys(packages)
 	result.Modules = sortedKeys(modules)
+	result.Services = x.servicesRunning(result.Entries)
 	for _, list := range []*[]Ref{&result.Callers, &result.Interfaces, &result.Tests, &result.Endpoints, &result.RPCs, &result.Consumers, &result.Entries, &result.Produces, &result.Queries, &result.Reads, &result.Callees} {
 		*list = dedupeRefs(*list)
 	}
@@ -401,6 +403,7 @@ func (x *Index) typeImpact(target Node) Impact {
 		}
 	}
 	result.Packages, result.Modules = sortedKeys(packages), sortedKeys(modules)
+	result.Services = x.servicesRunning(result.Entries)
 	for _, list := range []*[]Ref{&result.Callers, &result.Tests, &result.Endpoints, &result.Containers, &result.Entries} {
 		*list = dedupeRefs(*list)
 	}
@@ -459,4 +462,17 @@ func (x *Index) dependencyImpact(target Node) Impact {
 	result.Callers, result.Tests = dedupeRefs(result.Callers), dedupeRefs(result.Tests)
 	result.Risk, result.RiskReasons = risk(result)
 	return result
+}
+
+// servicesRunning: i servizi compose che avviano gli entry point raggiunti.
+func (x *Index) servicesRunning(entries []Ref) []Ref {
+	var out []Ref
+	for _, entry := range entries {
+		for _, edge := range x.in[entry.Node.ID] {
+			if edge.Kind == EdgeRuns {
+				out = append(out, Ref{Node: x.byID[edge.From], Depth: entry.Depth + 1, Via: []string{entry.Node.Label}})
+			}
+		}
+	}
+	return dedupeRefs(out)
 }

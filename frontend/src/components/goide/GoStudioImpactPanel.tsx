@@ -124,6 +124,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           <RefList title="Consumed topics" refs={impact.consumers} />
           <RefList title="Interface contracts" refs={impact.interfaces} onFocus={focus} />
           <RefList title="Entry points" refs={impact.entries} />
+          <RefList title="Compose services" refs={impact.services} />
           <RefList title="Calls" refs={impact.callees} onFocus={focus} />
           <RefList title="Produces to" refs={impact.produces} />
           <RefList title="Queries" refs={impact.queries} />
