@@ -14,6 +14,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Compose services in the workspace graph:** services of the project's compose files are linked to the `main` their build compiles (build context or Dockerfile folder) and to the services they `depends_on`; Change Impact lists the compose services that run the changed code.
 - **External dependencies in the workspace graph:** every module required by go.mod is a node linked to the packages that import it; Analyze Change Impact on a `require` line of go.mod lists those packages, their functions and tests — what an upgrade can break.
 - **Env vars and config keys in the workspace graph:** `os.Getenv`/`os.LookupEnv` and viper/koanf getters link functions to the variables and keys they read; Change Impact lists them and the impact of a key shows its readers, their callers and tests.
 - **NATS and AMQP in the Architecture Explorer and workspace graph:** publishers and subscribers (nats.go subjects; amqp091-go/streadway exchanges, routing keys and queues) are entry points with their topics, open in Broker Studio and appear in Change Impact like Kafka topics.
