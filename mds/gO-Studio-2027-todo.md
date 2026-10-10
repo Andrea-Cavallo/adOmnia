@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 36 | 15 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 35 | 14 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 121 | 16 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
@@ -68,7 +68,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §39 · Smart Local Development Environment
 
-- [ ] Detect ports. — *Parziale: devcontext/compose.go legge le porte dei servizi compose e le run config hanno il campo port; nessun rilevamento globale.*
 
 ### One-click environment
 

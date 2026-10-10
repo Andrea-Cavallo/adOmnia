@@ -80,6 +80,8 @@ Several projects can stay open at the same time, isolated from each other, group
 
 A failed task keeps the services stopped. Every stage writes a line in the console of the run you are looking at. Any compound can use the same order: its *Tasks after the containers are ready* list is in the run configuration editor. Without Compose members or tasks, a compound still starts everything at once.
 
+Before anything starts, adOmnia compares the ports the workspace binds (Compose `ports:`, a run configuration's *Port*, `docker run -p`) with the sockets already listening on the machine. A port held by another process is listed with its process and PID: *Start anyway* or *Cancel* and free it. Ports that Docker already publishes for the project's own Compose stack are not reported.
+
 *Run → Clean Workspace…* undoes it: it stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file. A second dialog asks whether to delete the volumes too (local database and broker data); *Keep data* leaves them.
 
 ## adOmnia environments in runs

@@ -379,12 +379,14 @@ export function GoStudioPanel() {
       const known = entities ?? (await DevContextBindings.GetContext(workspace.sessionId)).entities
       const conflicts = workspacePortConflicts(declaredWorkspacePorts(known, members), (await ListLocalPorts()) ?? [])
       if (conflicts.length === 0) return true
-      return await confirm({
+      const start = await confirm({
         title: conflicts.length === 1 ? `Port ${conflicts[0].port} is already in use` : `${conflicts.length} ports are already in use`,
         message: 'Another process holds ports this workspace binds: the services that need them will fail to start.',
         details: conflicts.map((conflict) => ({ label: `:${conflict.port}`, value: `${conflict.declaredBy} ← ${conflict.process || 'unknown process'}${conflict.pid ? ` (PID ${conflict.pid})` : ''}` })),
         confirmLabel: 'Start anyway',
       })
+      if (!start) useGoIDELspStore.setState({ message: `Start workspace cancelled: free port ${conflicts.map((conflict) => conflict.port).join(', ')} first.` })
+      return start
     } catch {
       return true // ponytail: port listing unavailable (netstat/ss missing) must not block the start
     }
