@@ -36,6 +36,7 @@ export function impactContext(impact: GraphImpact): string {
     `Workspace graph for ${impact.target.label}${where({ node: impact.target, depth: 0 } as GraphRef)} — change risk ${impact.risk}: ${(impact.riskReasons ?? []).join('; ')}.`,
     list('Callers (direct and indirect, through interfaces too)', impact.callers, (ref) => ref.node.label + hops(ref) + where(ref)),
     list('Interface contracts it implements', impact.interfaces),
+    list('Other modules using it (public contract)', impact.contracts ?? []),
     list('Tests that reach it', impact.tests, (ref) => ref.node.label + where(ref)),
     list('Types that contain it', impact.containers ?? []),
     list('HTTP routes served through it', impact.endpoints),

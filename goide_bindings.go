@@ -1395,6 +1395,11 @@ func (g *GoIDE) SecurityExposures(sessionID string, locations []goide.FindingLoc
 	return g.service.SecurityExposures(sessionID, locations)
 }
 
+// GraphRiskMap è il rischio di modifica di ogni package del progetto.
+func (g *GoIDE) GraphRiskMap(sessionID string) (goide.GraphRiskMap, error) {
+	return g.service.RiskMap(sessionID)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

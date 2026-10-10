@@ -9,6 +9,7 @@ import { activeGoIDEDocument, useGoIDEStore } from '@/stores/goide'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { runGoStudioNamedTests } from './goStudioQuickActions'
 import { GoStudioImpactMap } from './GoStudioImpactMap'
+import { GoStudioRiskMap } from './GoStudioRiskMap'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens } from '@/lib/otlp-api'
 import { runtimeByNode, runtimeText, type NodeRuntime } from '@/lib/goide/runtimeLens'
@@ -108,7 +109,7 @@ function RefList({ title, refs, onFocus, empty, action, headerAction }: { title:
 /** Change Impact Analysis: what a change to the function under the cursor can break, from the Semantic Workspace Graph. */
 export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
   const nonce = useImpactRequest((state) => state.nonce)
-  const [view, setView] = useState<'list' | 'map'>('list')
+  const [view, setView] = useState<'list' | 'map' | 'risk'>('list')
   const [impact, setImpact] = useState<GraphImpact | null>(null)
   const targetRuntime = useImpactRuntime((state) => (impact ? state.byNode.get(impact.target.id) : undefined))
   useEffect(() => { if (impact) void loadImpactRuntime(impact, session.project.rootPath) }, [impact, session.project.rootPath])
@@ -180,7 +181,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
         ) : <span className="flex-1 text-[11.5px] text-text-3">{running ? 'Building the workspace graph…' : 'Place the cursor in a function and analyze.'}</span>}
         {running && <Loader2 size={13} className="animate-spin text-text-3" />}
         <div role="tablist" aria-label="Impact view" className="flex rounded-md border border-border-1 p-0.5">
-          {(['list', 'map'] as const).map((value) => (
+          {(['list', 'map', 'risk'] as const).map((value) => (
             <button key={value} type="button" role="tab" aria-selected={view === value} onClick={() => setView(value)} className={`h-6 rounded px-2 text-[11px] capitalize ${view === value ? 'bg-surface-3 font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>{value}</button>
           ))}
         </div>
@@ -190,11 +191,13 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
         <button type="button" onClick={() => void rebuild()} disabled={running} className="go-studio-icon-button h-7 w-7" title="Rebuild the workspace graph" aria-label="Rebuild the workspace graph"><RefreshCw size={13} /></button>
       </header>
       {error && <div role="alert" className="border-b border-border-1 px-3 py-1.5 text-[11.5px] text-danger">{error}</div>}
+      {view === 'risk' && <GoStudioRiskMap sessionId={session.id} onFocus={(ref) => { setView('list'); focus(ref) }} />}
       {impact && view === 'map' && <GoStudioImpactMap impact={impact} onFocus={focus} />}
       {impact && view === 'list' && (
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-4 overflow-auto p-3">
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
+          <RefList title="Used by other modules" refs={impact.contracts} onFocus={focus} />
           <RefList title="HTTP routes" refs={impact.endpoints} action={{ label: 'Send', title: 'Open the request for this route in the API Workspace (linked to the running service) and send it', run: (ref) => void sendImpactRoute(session.id, ref, 'send') }} headerAction={{ label: 'Open all in API', title: 'Open a request for every impacted route in the API Workspace', run: () => void openImpactRoutes(session.id, impact.endpoints ?? []) }} />
           {!!impact.containers?.length && <RefList title="Contained in" refs={impact.containers} onFocus={focus} />}
           <RefList title="gRPC services" refs={impact.rpcs} />

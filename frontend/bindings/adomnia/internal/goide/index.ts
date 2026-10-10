@@ -91,6 +91,7 @@ export {
     GoplsInfo,
     GoroutineCreation,
     GoroutineOverview,
+    GraphRiskMap,
     GraphSummary,
     HierarchyItem,
     HighlightEntry,

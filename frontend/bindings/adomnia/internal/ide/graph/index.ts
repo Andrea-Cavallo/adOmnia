@@ -4,5 +4,6 @@
 export {
     Impact,
     Node,
+    PackageRisk,
     Ref
 } from "./models.js";

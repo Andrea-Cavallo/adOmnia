@@ -285,3 +285,19 @@ func (s *Service) SecurityExposures(sessionID string, locations []FindingLocatio
 	}
 	return out, nil
 }
+
+// GraphRiskMap è il rischio di modifica per package (Risk map dell'Impact).
+type GraphRiskMap struct {
+	Packages  []graph.PackageRisk `json:"packages"`
+	Truncated bool                `json:"truncated,omitempty"`
+}
+
+// RiskMap calcola il rischio di ogni funzione del progetto, raggruppato per package.
+func (s *Service) RiskMap(sessionID string) (GraphRiskMap, error) {
+	entry, _, err := s.workspaceGraph(sessionID, false)
+	if err != nil {
+		return GraphRiskMap{}, err
+	}
+	packages, truncated := entry.index.RiskMap()
+	return GraphRiskMap{Packages: packages, Truncated: truncated}, nil
+}

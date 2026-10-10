@@ -38,6 +38,11 @@ export class Impact {
     "consumers": Ref[];
 
     /**
+     * Contracts: codice di altri moduli che usa il target (direttamente o no): è API pubblica.
+     */
+    "contracts"?: Ref[];
+
+    /**
      * Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
      */
     "containers"?: Ref[];
@@ -137,13 +142,14 @@ export class Impact {
         const $$createField7_0 = $$createType2;
         const $$createField8_0 = $$createType2;
         const $$createField9_0 = $$createType2;
-        const $$createField10_0 = $$createType3;
+        const $$createField10_0 = $$createType2;
         const $$createField11_0 = $$createType3;
-        const $$createField12_0 = $$createType2;
+        const $$createField12_0 = $$createType3;
         const $$createField13_0 = $$createType2;
         const $$createField14_0 = $$createType2;
         const $$createField15_0 = $$createType2;
-        const $$createField17_0 = $$createType3;
+        const $$createField16_0 = $$createType2;
+        const $$createField18_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("target" in $$parsedSource) {
             $$parsedSource["target"] = $$createField0_0($$parsedSource["target"]);
@@ -166,35 +172,38 @@ export class Impact {
         if ("consumers" in $$parsedSource) {
             $$parsedSource["consumers"] = $$createField6_0($$parsedSource["consumers"]);
         }
+        if ("contracts" in $$parsedSource) {
+            $$parsedSource["contracts"] = $$createField7_0($$parsedSource["contracts"]);
+        }
         if ("containers" in $$parsedSource) {
-            $$parsedSource["containers"] = $$createField7_0($$parsedSource["containers"]);
+            $$parsedSource["containers"] = $$createField8_0($$parsedSource["containers"]);
         }
         if ("entries" in $$parsedSource) {
-            $$parsedSource["entries"] = $$createField8_0($$parsedSource["entries"]);
+            $$parsedSource["entries"] = $$createField9_0($$parsedSource["entries"]);
         }
         if ("services" in $$parsedSource) {
-            $$parsedSource["services"] = $$createField9_0($$parsedSource["services"]);
+            $$parsedSource["services"] = $$createField10_0($$parsedSource["services"]);
         }
         if ("packages" in $$parsedSource) {
-            $$parsedSource["packages"] = $$createField10_0($$parsedSource["packages"]);
+            $$parsedSource["packages"] = $$createField11_0($$parsedSource["packages"]);
         }
         if ("modules" in $$parsedSource) {
-            $$parsedSource["modules"] = $$createField11_0($$parsedSource["modules"]);
+            $$parsedSource["modules"] = $$createField12_0($$parsedSource["modules"]);
         }
         if ("produces" in $$parsedSource) {
-            $$parsedSource["produces"] = $$createField12_0($$parsedSource["produces"]);
+            $$parsedSource["produces"] = $$createField13_0($$parsedSource["produces"]);
         }
         if ("queries" in $$parsedSource) {
-            $$parsedSource["queries"] = $$createField13_0($$parsedSource["queries"]);
+            $$parsedSource["queries"] = $$createField14_0($$parsedSource["queries"]);
         }
         if ("reads" in $$parsedSource) {
-            $$parsedSource["reads"] = $$createField14_0($$parsedSource["reads"]);
+            $$parsedSource["reads"] = $$createField15_0($$parsedSource["reads"]);
         }
         if ("callees" in $$parsedSource) {
-            $$parsedSource["callees"] = $$createField15_0($$parsedSource["callees"]);
+            $$parsedSource["callees"] = $$createField16_0($$parsedSource["callees"]);
         }
         if ("riskReasons" in $$parsedSource) {
-            $$parsedSource["riskReasons"] = $$createField17_0($$parsedSource["riskReasons"]);
+            $$parsedSource["riskReasons"] = $$createField18_0($$parsedSource["riskReasons"]);
         }
         return new Impact($$parsedSource as Partial<Impact>);
     }
@@ -245,6 +254,55 @@ export class Node {
 }
 
 /**
+ * PackageRisk riassume il rischio di modifica delle funzioni di un package.
+ */
+export class PackageRisk {
+    "package": string;
+    "module"?: string;
+    "high": number;
+    "medium": number;
+    "low": number;
+
+    /**
+     * Riskiest: le funzioni ad alto rischio più esposte (al massimo 5).
+     */
+    "riskiest": Node[];
+
+    /** Creates a new PackageRisk instance. */
+    constructor($$source: Partial<PackageRisk> = {}) {
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("high" in $$source)) {
+            this["high"] = 0;
+        }
+        if (!("medium" in $$source)) {
+            this["medium"] = 0;
+        }
+        if (!("low" in $$source)) {
+            this["low"] = 0;
+        }
+        if (!("riskiest" in $$source)) {
+            this["riskiest"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PackageRisk instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PackageRisk {
+        const $$createField5_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("riskiest" in $$parsedSource) {
+            $$parsedSource["riskiest"] = $$createField5_0($$parsedSource["riskiest"]);
+        }
+        return new PackageRisk($$parsedSource as Partial<PackageRisk>);
+    }
+}
+
+/**
  * Ref è un nodo raggiunto da un'analisi, con la distanza (1 = diretto) e il percorso più corto.
  */
 export class Ref {
@@ -291,3 +349,4 @@ const $$createType1 = Ref.createFrom;
 const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = $Create.Array($Create.Any);
 const $$createType4 = $Create.Map($Create.Any, $Create.Any);
+const $$createType5 = $Create.Array($$createType0);

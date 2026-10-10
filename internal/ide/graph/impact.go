@@ -81,6 +81,8 @@ type Impact struct {
 	Endpoints  []Ref    `json:"endpoints"`  // route HTTP servite da codice che raggiunge il target
 	RPCs       []Ref    `json:"rpcs"`
 	Consumers  []Ref    `json:"consumers"` // topic consumati da codice che raggiunge il target
+	// Contracts: codice di altri moduli che usa il target (direttamente o no): è API pubblica.
+	Contracts []Ref `json:"contracts,omitempty"`
 	// Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
 	Containers []Ref `json:"containers,omitempty"`
 	Entries    []Ref    `json:"entries"`   // main/job/cli che arrivano al target
@@ -192,6 +194,13 @@ func (x *Index) Impact(id string) (Impact, bool) {
 	result.Packages = sortedKeys(packages)
 	result.Modules = sortedKeys(modules)
 	result.Services = x.servicesRunning(result.Entries)
+	if home := target.Attrs["module"]; home != "" {
+		for _, caller := range result.Callers {
+			if module := caller.Node.Attrs["module"]; module != "" && module != home {
+				result.Contracts = append(result.Contracts, caller)
+			}
+		}
+	}
 	for _, list := range []*[]Ref{&result.Callers, &result.Interfaces, &result.Tests, &result.Endpoints, &result.RPCs, &result.Consumers, &result.Entries, &result.Produces, &result.Queries, &result.Reads, &result.Callees} {
 		*list = dedupeRefs(*list)
 	}
@@ -294,7 +303,9 @@ func risk(impact Impact) (string, []string) {
 	if len(impact.Produces)+len(impact.Queries) > 0 {
 		add(1, "writes to shared resources (topics or tables)")
 	}
-	if len(impact.Modules) > 1 {
+	if n := len(impact.Contracts); n > 0 {
+		add(2, plural(n, "function of another module uses", "functions of other modules use")+" it (public contract)")
+	} else if len(impact.Modules) > 1 {
 		add(1, "crosses module boundaries")
 	}
 	switch {
@@ -480,4 +491,70 @@ func (x *Index) servicesRunning(entries []Ref) []Ref {
 		}
 	}
 	return dedupeRefs(out)
+}
+
+// PackageRisk riassume il rischio di modifica delle funzioni di un package.
+type PackageRisk struct {
+	Package string `json:"package"`
+	Module  string `json:"module,omitempty"`
+	High    int    `json:"high"`
+	Medium  int    `json:"medium"`
+	Low     int    `json:"low"`
+	// Riskiest: le funzioni ad alto rischio più esposte (al massimo 5).
+	Riskiest []Node `json:"riskiest"`
+}
+
+const maxRiskFunctions = 3000
+
+// RiskMap calcola il rischio di ogni funzione (non test) e lo raggruppa per package,
+// dal package con più funzioni ad alto rischio.
+func (x *Index) RiskMap() ([]PackageRisk, bool) {
+	byPackage := map[string]*PackageRisk{}
+	exposure := map[string]int{}
+	truncated := false
+	analysed := 0
+	for _, node := range x.graph.Nodes {
+		if node.Kind != KindFunction && node.Kind != KindMethod || node.Attrs["abstract"] == "true" || node.Package == "" {
+			continue
+		}
+		if analysed >= maxRiskFunctions {
+			truncated = true
+			break
+		}
+		analysed++
+		impact, _ := x.Impact(node.ID)
+		risk := byPackage[node.Package]
+		if risk == nil {
+			risk = &PackageRisk{Package: node.Package, Module: node.Attrs["module"], Riskiest: []Node{}}
+			byPackage[node.Package] = risk
+		}
+		switch impact.Risk {
+		case "high":
+			risk.High++
+			risk.Riskiest = append(risk.Riskiest, node)
+			exposure[node.ID] = len(impact.Endpoints) + len(impact.RPCs) + len(impact.Consumers) + len(impact.Callers)
+		case "medium":
+			risk.Medium++
+		default:
+			risk.Low++
+		}
+	}
+	out := make([]PackageRisk, 0, len(byPackage))
+	for _, risk := range byPackage {
+		sort.Slice(risk.Riskiest, func(i, j int) bool { return exposure[risk.Riskiest[i].ID] > exposure[risk.Riskiest[j].ID] })
+		if len(risk.Riskiest) > 5 {
+			risk.Riskiest = risk.Riskiest[:5]
+		}
+		out = append(out, *risk)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].High != out[j].High {
+			return out[i].High > out[j].High
+		}
+		if out[i].Medium != out[j].Medium {
+			return out[i].Medium > out[j].Medium
+		}
+		return out[i].Package < out[j].Package
+	})
+	return out, truncated
 }
