@@ -438,6 +438,41 @@ export function GoStudioPanel() {
     }
   }, [activeSession, runConfigurations, store.startConfiguredRun])
 
+  // Clean workspace: ferma i run del workspace e smonta i container Compose; i volumi solo se confermato.
+  const cleanWorkspace = useCallback(async () => {
+    if (!activeSession) return
+    const sessionId = activeSession.id
+    let files: string[]
+    try {
+      files = detectedComposeFiles((await DevContextBindings.GetContext(sessionId)).entities)
+    } catch (error) {
+      useGoIDELspStore.setState({ message: `Compose detection failed: ${error instanceof Error ? error.message : String(error)}` })
+      return
+    }
+    const ok = await confirm({
+      title: 'Clean workspace',
+      message: files.length > 0
+        ? 'Stop every run of this project and remove its Compose containers and networks?'
+        : 'Stop every run of this project? No Compose file was detected.',
+      details: files.map((file) => ({ label: 'Compose', value: `docker compose -f ${file} down --remove-orphans`, mono: true })),
+      confirmLabel: 'Clean',
+      variant: 'danger',
+    })
+    if (!ok) return
+    const volumes = files.length > 0 && await confirm({
+      title: 'Delete volumes too?',
+      message: 'Removing the Compose volumes deletes local database and broker data. Migrations and seeds recreate it at the next Start Workspace.',
+      confirmLabel: 'Delete volumes',
+      cancelLabel: 'Keep data',
+      variant: 'danger',
+    })
+    await Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
+    for (const file of files) {
+      await store.startRun('docker-compose', { target: file, programArguments: ['down', '--remove-orphans', ...(volumes ? ['--volumes'] : [])] })
+    }
+    useGoIDELspStore.setState({ message: files.length > 0 ? `Cleaning ${files.length} Compose ${files.length === 1 ? 'stack' : 'stacks'}${volumes ? ' and volumes' : ''}: output in the Run console.` : 'Workspace runs stopped.' })
+  }, [activeSession, workspaceRunIds, store.stopRun, store.startRun])
+
   const saveDocumentWithActions = async (documentId?: string) => {
     const sessionId = store.activeSessionId
     const id = documentId ?? (sessionId ? useGoIDEStore.getState().activeDocumentBySession[sessionId] : null)
@@ -689,6 +724,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'run.build': return startConfigured('build')
       case 'run.startWorkspace': return startWorkspace()
       case 'run.stopWorkspace': return void Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
+      case 'run.cleanWorkspace': return void cleanWorkspace()
       case 'run.stop': return void store.stopRun()
       case 'run.restart': return void store.restartRun()
       case 'run.configure': return setConfigureOpen(true)

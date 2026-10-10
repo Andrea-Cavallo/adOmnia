@@ -89,8 +89,14 @@ func NormalizeComposeArguments(values []string) ([]string, error) {
 	if arguments[0] != "up" && arguments[0] != "down" {
 		return nil, fmt.Errorf("comando compose non supportato: %q (up o down)", arguments[0])
 	}
-	if arguments[0] == "down" && len(arguments) > 1 {
-		return nil, errors.New("compose down vale per l'intero file, senza servizi")
+	if arguments[0] == "down" {
+		// Clean workspace: solo questi due flag, mai servizi o altre opzioni.
+		for _, flag := range arguments[1:] {
+			if flag != "--volumes" && flag != "--remove-orphans" {
+				return nil, errors.New("compose down vale per l'intero file, senza servizi (solo --volumes e --remove-orphans)")
+			}
+		}
+		return arguments, nil
 	}
 	for _, service := range arguments[1:] {
 		if !composeServicePattern.MatchString(service) {

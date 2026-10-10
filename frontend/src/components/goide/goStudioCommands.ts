@@ -20,7 +20,7 @@ export type GoStudioCommandId =
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.moveSymbol' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
   | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
-  | 'run.run' | 'run.build' | 'run.startWorkspace' | 'run.stopWorkspace' | 'run.stop' | 'run.restart' | 'run.configure'
+  | 'run.run' | 'run.build' | 'run.startWorkspace' | 'run.stopWorkspace' | 'run.cleanWorkspace' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'run.rerunFailedTests' | 'run.testChanged' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
@@ -202,6 +202,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'run.startWorkspace', menu: 'run', label: 'Start Workspace', separatorBefore: true },
   { id: 'run.stopWorkspace', menu: 'run', label: 'Stop Workspace' },
+  { id: 'run.cleanWorkspace', menu: 'run', label: 'Clean Workspace…' },
   { id: 'debug.debug', menu: 'run', label: 'Debug', binding: { key: 'F9', shift: true } },
   { id: 'debug.attach', menu: 'run', label: 'Attach to Process…' },
   { id: 'debug.remote', menu: 'run', label: 'Connect to Remote Delve…' },
@@ -452,6 +453,9 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'go.toolchains':
     case 'go.detect': return context.authorized ? true : NOT_TRUSTED
     case 'go.tidy': return context.running ? 'Wait for the active process to finish' : runAvailability(context)
+    case 'run.cleanWorkspace':
+      if (!context.hasSession) return NO_PROJECT
+      return context.authorized ? true : NOT_TRUSTED
     case 'run.startWorkspace':
       if (!context.hasSession) return NO_PROJECT
       if (!context.authorized) return NOT_TRUSTED

@@ -80,6 +80,8 @@ Several projects can stay open at the same time, isolated from each other, group
 
 A failed task keeps the services stopped. Every stage writes a line in the console of the run you are looking at. Any compound can use the same order: its *Tasks after the containers are ready* list is in the run configuration editor. Without Compose members or tasks, a compound still starts everything at once.
 
+*Run → Clean Workspace…* undoes it: it stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file. A second dialog asks whether to delete the volumes too (local database and broker data); *Keep data* leaves them.
+
 ## adOmnia environments in runs
 
 Every Run, Build, Test and configured run receives the variables of the active

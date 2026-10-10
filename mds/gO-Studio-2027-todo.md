@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 37 | 15 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 36 | 15 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 121 | 16 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
@@ -74,7 +74,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 - [ ] Open API. — *Parziale: CodeLens Open in API Client sugli handler e opener route in palette; non fa parte di un flusso Start workspace.*
 - [ ] Open logs. — *Parziale: ServiceLogsDrawer apre i log della sessione nel Log Inspector; non c'è un flusso unico.*
-- [ ] Clean workspace.
 
 ## §44 · UX Layout proposta
 
