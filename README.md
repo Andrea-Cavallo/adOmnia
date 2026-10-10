@@ -99,7 +99,7 @@ Static analysis built on Go's type information, without running the code:
 
 ### AI in the editor
 
-GitHub Copilot, [milk](https://github.com/scoutme/milk) (cheap/deep agent routing over ACP) and the a0 assistant sit beside the editor and receive the open file, unsaved changes included. Right-click actions explain code and errors, generate tests, benchmarks, fuzz targets and docs, and look for race risks and goroutine leaks. *Analyze failure* turns a failed test into a reviewable prompt with its output and reproduction command. Database and Kafka actions read the project's real schema and topics. `.adomnia/aiignore` and the project AI policy decide what never leaves the machine.
+GitHub Copilot, Claude Code, [milk](https://github.com/scoutme/milk) (cheap/deep agent routing over ACP) and the a0 assistant sit beside the editor and receive the open file, unsaved changes included. Right-click actions explain code and errors, generate tests, benchmarks, fuzz targets and docs, and look for race risks and goroutine leaks. *Analyze failure* turns a failed test into a reviewable prompt with its output and reproduction command. Database and Kafka actions read the project's real schema and topics. `.adomnia/aiignore` and the project AI policy decide what never leaves the machine.
 
 ### From code to runtime
 
@@ -123,7 +123,7 @@ Start a service with Run or Debug and it becomes a [Live Development Session](do
 | **Debugging** | Browser debugging through the Chrome DevTools Protocol, an application log inspector, HAR viewer, network diagnostics and redacted evidence export. |
 | **Data and documents** | SQLite, PostgreSQL, MySQL and MongoDB explorers; Markdown, Mermaid and LaTeX; PDF annotation, forms and digital signatures. |
 | **Git** | Clone, staging, commits, history graph, branches, merge, push/pull, conflict resolution and collections exported to a reviewable folder layout. |
-| **AI and MCP** | Optional cloud or local models, the a0 assistant, GitHub Copilot and milk in gO Studio, a local agent gateway, an MCP client and an MCP server generator. |
+| **AI and MCP** | Optional cloud or local models, the a0 assistant, GitHub Copilot, Claude Code and milk in gO Studio, a local agent gateway, an MCP client and an MCP server generator. |
 | **Security and customization** | Encrypted vault, private environments, certificate tools, JavaScript and sandboxed WASI plugins (optionally signed), templates, themes and a personal accent colour. |
 
 The [feature catalog](docs/adomnia-feature-catalog.en.md) describes every module.
