@@ -1,6 +1,6 @@
 # TODO — Go Studio integrato in adOmnia
 
-Questo file contiene **solo il lavoro ancora aperto**. Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](../docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
+Questo file contiene **solo il lavoro ancora aperto** (riverificato il 2026-10-10). Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](../docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
 
 ## Stato
 
@@ -101,24 +101,15 @@ Ogni gate si spunta quando tutte le prove indicate sono passate e registrate nel
 
 Architettura: Copilot Language Server ufficiale (completamento, login, enterprise) + in seguito il modo ACP/SDK per chat e agent. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`; tutto passa da `GitHubProfile`.
 
-**Fatto (MVP parte 1)** — `internal/copilot`, `copilot_bindings.go`, `frontend/src/components/goide/*Copilot*`
-- [x] `GitHubProfile` + resolver host: github.com, `*.ghe.com`, GHES; profili multipli; profilo per progetto
-- [x] Impostazioni `copilot.json` senza token; proxy, strict SSL, CA aziendale (`NODE_EXTRA_CA_CERTS`)
-- [x] Installazione del Language Server nativo dal registry npm con verifica SHA-512, solo su azione dell'utente
-- [x] Ciclo di vita: initialize/initialized, configurazione enterprise, workspace folders, crash recovery 1s/2s/5s/10s, stop senza orfani
-- [x] Login device flow sull'host del profilo, sign out, stato con utente e host
-- [x] Sincronizzazione documenti dallo stesso punto di gopls (open/change/save/close/focus)
-- [x] Ghost text Monaco: debounce, cancellazione, scarto dei risultati obsoleti, Tab/Esc, accettazione parziale, telemetria show/accept
-- [x] Filtro segreti + `.adomnia/aiignore`: i file esclusi non arrivano mai al server
-- [x] Status bar, menu rapido, dialog impostazioni, comandi nel menu Tools
+**Fatto** (dettagli in git e `docs/GO-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, ciclo di vita con crash recovery, login device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu; chat laterale Ask con contesto e streaming (`internal/copilot/chat.go`).
 
 **Prove manuali**
 - [ ] **C1** — Install, enable, sign in su github.com, ghost text in un file Go, Tab/Esc
 - [ ] **C2** — Profilo `company.ghe.com`, sign in enterprise, progetto legato al profilo Work
 - [ ] **C3** — Proxy aziendale + CA bundle; kill del processo `copilot-language-server` e riavvio automatico
+- [ ] **C4** — Chat laterale (Ask) nella finestra Wails: contesto file/selezione/workspace, streaming, Stop
 
 **Prossime fasi**
-- [ ] Chat laterale (Ask) con contesto file/selezione/workspace, streaming e Stop — implementazione, test automatici e round-trip reale sul Language Server 1.551.2 completati; resta la prova visuale nella finestra Wails
 - [ ] Edit mode con diff (accept/reject hunk, file, tutto)
 - [ ] Agent mode con Tool Registry adOmnia (workspace, go build/test/vet/fmt, git, terminal con CommandPolicy) e Permission Manager
 - [ ] Tool debugger (Delve), API Workspace, database (read-only di default), Kafka, SOAP/gRPC, log

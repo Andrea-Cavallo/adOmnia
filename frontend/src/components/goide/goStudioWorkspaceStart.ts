@@ -61,13 +61,59 @@ function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
   } as GoIDERunConfiguration
 }
 
-export function workspaceStartDraft(sessionId: string, compound: string[] = []): GoIDERunConfiguration {
+export function workspaceStartDraft(sessionId: string, compound: string[] = [], preRun: string[] = []): GoIDERunConfiguration {
   return {
     ...emptyConfiguration(sessionId),
     name: 'Start workspace',
     kind: GoIDERunConfigurationKind.RunKindCompound,
     compound,
+    preRun,
   }
+}
+
+/** A migration or seed task detected in the project (devcontext `task` entity). */
+export interface DetectedWorkspaceTask {
+  role: 'migration' | 'seed'
+  runner: string
+  name: string
+  /** go: package directory; make: Makefile path; SQL tools: migrations folder. */
+  path: string
+  /** make: the target to run. */
+  target: string
+}
+
+/** Detected tasks, migrations before seeds. */
+export function detectedWorkspaceTasks(entities: readonly WorkspaceContextEntity[]): DetectedWorkspaceTask[] {
+  const tasks: DetectedWorkspaceTask[] = []
+  for (const entity of entities) {
+    const role = entity.attrs?.role
+    if (entity.kind !== 'task' || (role !== 'migration' && role !== 'seed')) continue
+    const runner = entity.attrs?.runner ?? ''
+    tasks.push({ role, runner, name: entity.label?.trim() || runner, path: (entity.attrs?.file ?? entity.attrs?.dir ?? '').replace(/\\/g, '/'), target: entity.attrs?.target ?? '' })
+  }
+  return tasks.sort((left, right) => (left.role === right.role ? left.name.localeCompare(right.name) : left.role === 'migration' ? -1 : 1))
+}
+
+/** go and make tasks run as-is; SQL migration folders need their tool and DSN configured by hand. */
+export function isRunnableTask(task: DetectedWorkspaceTask): boolean {
+  return task.runner === 'go' || task.runner === 'make'
+}
+
+export function taskConfiguration(sessionId: string, task: DetectedWorkspaceTask): GoIDERunConfiguration {
+  const label = task.role === 'migration' ? 'Migrate' : 'Seed'
+  if (task.runner === 'make') {
+    return { ...emptyConfiguration(sessionId), name: `${label}: make ${task.target}`, kind: GoIDERunConfigurationKind.RunKindMake, target: task.path, programArguments: [task.target], pinned: false }
+  }
+  return { ...emptyConfiguration(sessionId), name: `${label}: ${task.path}`, kind: GoIDERunConfigurationKind.RunKindPackage, target: `./${task.path.replace(/^\.\//, '')}`, pinned: false }
+}
+
+export function taskConfigurationForDetected(configs: readonly GoIDERunConfiguration[], task: DetectedWorkspaceTask): GoIDERunConfiguration | null {
+  if (task.runner === 'make') {
+    return configs.find((config) => config.kind === GoIDERunConfigurationKind.RunKindMake
+      && config.target.replace(/\\/g, '/') === task.path && (config.programArguments ?? [])[0] === task.target) ?? null
+  }
+  const target = `./${task.path.replace(/^\.\//, '')}`
+  return configs.find((config) => config.kind === GoIDERunConfigurationKind.RunKindPackage && config.target === target) ?? null
 }
 
 export function detectedComposeFiles(entities: readonly WorkspaceContextEntity[]): string[] {

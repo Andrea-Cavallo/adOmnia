@@ -18,38 +18,9 @@ const label = 'gs-field-label'
 export function GoStudioRunParameters({ draft, configs, patch }: Props) {
   const goKind = GO_KINDS.has(draft.kind)
   const isTest = draft.kind === GoIDERunConfigurationKind.RunKindTest
-  const others = configs.filter((config) => config.id && config.id !== draft.id)
-
-  const tasks = (field: 'preRun' | 'postRun', title: string, hint: string) => {
-    const ids = draft[field] ?? []
-    const available = others.filter((config) => !ids.includes(config.id))
-    return (
-      <div>
-        <div className="gs-label">{title}</div>
-        <div className="gs-surface mt-1.5 min-h-[36px] p-1">
-          {ids.length === 0 && <p className="gs-hint px-1.5 py-1.5">{hint}</p>}
-          {ids.map((id, index) => {
-            const name = configs.find((config) => config.id === id)?.name ?? 'Deleted configuration'
-            return (
-              <div key={id} className="flex h-8 items-center gap-2 rounded-md px-1.5 text-[12.5px] text-text-2 hover:bg-surface-2/60">
-                <span className="w-4 text-[11px] text-text-4">{index + 1}</span>{name}
-                <button type="button" title="Remove" onClick={() => patch({ [field]: ids.filter((item) => item !== id) })} className="ml-auto grid h-5 w-5 place-items-center rounded text-text-4 hover:text-danger"><X size={10} /></button>
-              </div>
-            )
-          })}
-          {available.length > 0 && (
-            <label className="flex h-8 items-center gap-1.5 px-1.5 text-[12px] text-accent">
-              <Plus size={10} />
-              <select value="" onChange={(event) => event.target.value && patch({ [field]: [...ids, event.target.value] })} className="h-7 flex-1 cursor-pointer bg-transparent text-[12px] text-accent outline-none">
-                <option value="">Add configuration…</option>
-                {available.map((config) => <option key={config.id} value={config.id}>{config.name}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const tasks = (field: 'preRun' | 'postRun', title: string, hint: string) => (
+    <RunTaskList draft={draft} configs={configs} patch={patch} field={field} title={title} hint={hint} />
+  )
 
   return (
     <section className="mt-5 border-t border-border-1 pt-4">
@@ -84,5 +55,46 @@ export function GoStudioRunParameters({ draft, configs, patch }: Props) {
         {tasks('postRun', 'After it finishes', 'Run cleanup or reports after this configuration ends.')}
       </div>
     </section>
+  )
+}
+
+interface TaskListProps extends Props {
+  field: 'preRun' | 'postRun'
+  title: string
+  hint: string
+  /** Configurations that cannot be tasks here (e.g. a compound's own members). */
+  exclude?: readonly string[]
+}
+
+/** Ordered list of other configurations run before or after this one. */
+export function RunTaskList({ draft, configs, patch, field, title, hint, exclude = [] }: TaskListProps) {
+  const ids = draft[field] ?? []
+  const available = configs.filter((config) => config.id && config.id !== draft.id && !ids.includes(config.id)
+    && !exclude.includes(config.id) && config.kind !== GoIDERunConfigurationKind.RunKindCompound)
+  return (
+    <div>
+      <div className="gs-label">{title}</div>
+      <div className="gs-surface mt-1.5 min-h-[36px] p-1">
+        {ids.length === 0 && <p className="gs-hint px-1.5 py-1.5">{hint}</p>}
+        {ids.map((id, index) => {
+          const name = configs.find((config) => config.id === id)?.name ?? 'Deleted configuration'
+          return (
+            <div key={id} className="flex h-8 items-center gap-2 rounded-md px-1.5 text-[12.5px] text-text-2 hover:bg-surface-2/60">
+              <span className="w-4 text-[11px] text-text-4">{index + 1}</span>{name}
+              <button type="button" title="Remove" onClick={() => patch({ [field]: ids.filter((item) => item !== id) })} className="ml-auto grid h-5 w-5 place-items-center rounded text-text-4 hover:text-danger"><X size={10} /></button>
+            </div>
+          )
+        })}
+        {available.length > 0 && (
+          <label className="flex h-8 items-center gap-1.5 px-1.5 text-[12px] text-accent">
+            <Plus size={10} />
+            <select value="" onChange={(event) => event.target.value && patch({ [field]: [...ids, event.target.value] })} className="h-7 flex-1 cursor-pointer bg-transparent text-[12px] text-accent outline-none">
+              <option value="">Add configuration…</option>
+              {available.map((config) => <option key={config.id} value={config.id}>{config.name}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+    </div>
   )
 }

@@ -34,12 +34,16 @@ func detectMain(rel string, fset *token.FileSet, file *ast.File) []Entity {
 			continue
 		}
 		dir := path.Dir(rel)
+		src := Source{"gomain", rel, fset.Position(fn.Pos()).Line}
+		if task, ok := goTask(dir, src); ok {
+			return []Entity{task} // cmd/migrate, cmd/seed: run once before the services, never as one
+		}
 		name := path.Base(dir)
 		if dir == "." {
 			name = "main"
 		}
 		return []Entity{entity("service", "go:"+dir, name, ConfidenceInferred,
-			map[string]string{"origin": "go", "dir": dir}, Source{"gomain", rel, fset.Position(fn.Pos()).Line})}
+			map[string]string{"origin": "go", "dir": dir}, src)}
 	}
 	return nil
 }

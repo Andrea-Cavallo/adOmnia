@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+## v0.10.0-beta.1 — stabilization toward v1
+
+See [beta notes](releases/v0.10.0-beta.1.md) and [v1 acceptance checklist](V1-CHECKLIST.md).
+Create tags only for reviewed release batches. Use `v0.10.0-beta.N`, then `v1.0.0-rc.N`, then `v1.0.0`.
+Published tag names are never reused. Earlier notes below remain historical records; their remote tags and releases were retired on 2026-10-10.
+
 ## v0.9.78 release notes: Redis, browser-style tabs and a still logo
 
 See [the full v0.9.78 notes](releases/v0.9.78.md): Redis in Database Studio,

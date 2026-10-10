@@ -6,7 +6,7 @@
 >
 > **Principio chiave:** **From code to runtime, everything is connected.**
 
-Questo file contiene **solo le voci ancora aperte**, in ordine di priorità per un IDE Go di prima fascia. Il 2026-10-01 ogni voce è stata
+Questo file contiene **solo le voci ancora aperte**, in ordine di priorità per un IDE Go di prima fascia. Il 2026-10-01, e di nuovo il 2026-10-10, ogni voce è stata
 verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in git, nel `CHANGELOG.md` e in
 `docs/releases/`). Le prove manuali nell'app avviata sono in [`todo-ide.md`](todo-ide.md).
 
@@ -24,10 +24,10 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 42 | 25 |
-| **P3** | Remote ed estensibilità | 9 | 1 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 37 | 15 |
+| **P3** | Remote ed estensibilità | 3 | 3 |
 | **P4** | AI e intelligenza del workspace | 150 | 18 |
-| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 151 | 56 |
+| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
 
@@ -51,16 +51,11 @@ _Il flusso North Star: dal codice alla chiamata, al debug, a DB, broker, log e t
 
 Lo scenario ideale da raggiungere:
 
-- [x] Parte l'ambiente locale. — *Run → **Start Workspace** avvia una configurazione compound condivisa/pinnata "Start workspace"; se manca, apre la bozza corretta nelle Run configurations. Restano espliciti Trust e segreti runtime, nessun processo parte senza azione utente.*
 - [ ] Il distributed debugger collega i due servizi. — *Parziale: dalla trace (Trace Studio) "Break here" mette il breakpoint sulla riga della span nel servizio giusto e la request successiva si ferma lì; log, messaggi e span dei due servizi sono legati per trace ID. Manca una sessione di debug unica che segua la request da un servizio all'altro.*
 
 Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad adOmnia”.
 
 È il punto in cui **adOmnia diventa un ambiente di sviluppo completo per sistemi Go**.
-
-## §28 · WebSocket Integration
-
-- [x] Binary payload viewer. — *L'Inspector WebSocket mostra byte in Hex/ASCII, dimensione decodificata e anteprima limitata a 4 KiB; il Base64 originale resta copiabile.*
 
 ## §29 · Docker e Containers
 
@@ -74,25 +69,12 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ## §39 · Smart Local Development Environment
 
 - [ ] Detect ports. — *Parziale: devcontext/compose.go legge le porte dei servizi compose e le run config hanno il campo port; nessun rilevamento globale.*
-- [ ] Detect migrations.
-- [ ] Detect seed data.
 
 ### One-click environment
 
-- [x] `Start workspace`. — *Comando dedicato nel menu Run/Search Everywhere: usa la compound "Start workspace" e raccoglie i segreti anche dalle configurazioni figlie.*
-- [x] Start required containers. — *`Start Workspace` interroga il contesto locale del progetto, rileva tutti i file Compose dai servizi indicizzati, riusa o crea configurazioni Compose Up condivise e le inserisce nella compound prima dell'avvio. Se non trova Compose apre la configurazione manuale; nulla parte senza il comando utente.*
-- [ ] Run migrations.
-- [ ] Seed DB.
-- [x] Start services. — *Lo stesso bootstrap rileva i package Go `main` dal contesto locale, riusa o crea configurazioni Package condivise con restart-on-save e le avvia nella compound insieme ai container. I segreti delle configurazioni riusate vengono richiesti prima dell'avvio.*
-- [ ] Wait health checks.
 - [ ] Open API. — *Parziale: CodeLens Open in API Client sugli handler e opener route in palette; non fa parte di un flusso Start workspace.*
 - [ ] Open logs. — *Parziale: ServiceLogsDrawer apre i log della sessione nel Log Inspector; non c'è un flusso unico.*
-- [x] Stop workspace. — *Run → Stop Workspace arresta tutte le esecuzioni attive della sessione, non soltanto quella selezionata; per Compose il backend esegue lo stop controllato dei servizi.*
 - [ ] Clean workspace.
-
-## §41 · Trace Studio
-
-- [x] Trace tree. — *La vista Observability ordina le span per parent/child con indentazione, mantenendo le barre temporali; parent assenti e cicli restano visibili come radici.*
 
 ## §44 · UX Layout proposta
 
@@ -133,9 +115,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 - [ ] Active connections.
 
-### Navigazione
-
-
 ## §32 · Distributed Request Debugger — Killer Feature
 
 > Debuggare una richiesta attraverso più componenti, non solo una funzione.
@@ -152,9 +131,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ### Source navigation
 
 - [ ] Click retry → policy.
-
-### Debug workflow
-
 
 ## §14 · Runtime Lens
 
@@ -202,40 +178,13 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 
-## §30 · Kubernetes / Remote Development
-
-- [x] Kubernetes contexts. — *Kubernetes Studio (rail Remote): `kubectl config get-contexts` letto e mostrato con il contesto corrente (internal/kube).*
-- [x] Namespace selector. — *Dropdown namespace alimentato da `kubectl get namespaces` per il contesto scelto.*
-- [x] Pod viewer. — *Tabella pod (ready, status, restart, età, node) da `kubectl get pods -o json`, parsing in-app.*
-- [x] Logs. — *Dal pod viewer si seleziona container e si fa stream con `kubectl logs -f` (logstream riusato) nel pannello, con stop e buffer limitato.*
-- [x] Exec. — *Tab Exec del pod: comando one-shot via `kubectl exec -- sh -c`, timeout 60 s, output limitato all'ultimo MB, storico delle ultime 20 run.*
-- [x] Port forward. — *Da pod o service, solo su 127.0.0.1; tab Port forwards con stato live e stop; chiusi con il sidecar (internal/kube/portforward.go).*
-- [x] Copy file. — *Tab Files del pod: download (salvataggio nativo) e upload fino a 16 MB via `cat`; il path arriva alla shell come `$1`, mai interpolato.*
-- [x] Deployment overview. — *Tab Deployments: ready/desired, up-to-date, available, età, immagini.*
-- [x] Service overview. — *Tab Services: tipo, cluster/external IP, porte, selector, port forward dall'inspector.*
-- [x] ConfigMap. — *Tab ConfigMaps con inspector chiave → valore.*
-- [x] Secret metadata senza mostrare valori di default. — *Tab Secrets: solo nomi delle chiavi e dimensioni; i valori sono scartati nel parser Go (test `TestParseSecretsDropsValues`).*
-- [x] Attach remote debugger. — *Tab Go del pod: port forward di Delve su una porta libera di 127.0.0.1 (internal/kube, localPort 0) e attach remoto nel progetto aperto in Go Studio (useGoStudioRemoteHandoff.ts).*
-- [x] Remote profile. — *Tab Go del pod: forward di pprof e CaptureLiveProfile (CPU, heap, goroutine, allocs, block, mutex); il profilo si apre selezionato nel pannello Profile.*
-- [x] Remote trace. — *Nuovo CaptureLiveTrace (/debug/pprof/trace, default 5 s, validato con x/exp/trace, test con net/http/pprof reale); dal pod o da qualunque servizio su localhost, si apre nel Trace viewer.*
-- [ ] Remote logs correlated to source. — *Da fare: nei log del pod rendere cliccabili i `file.go:riga` verso il progetto aperto (routeToModule open-location).*
-- [x] SSH development. — *Run configuration → "Run on" host di ~/.ssh/config: run/test/build/comandi via `ssh -T -o BatchMode=yes` nella cartella remota indicata (internal/ide/remote); host SSH anche come profili terminale. Il codice non viene sincronizzato: serve lo stesso checkout sul server.*
-- [x] WSL development. — *"Run on" distro WSL: percorsi tradotti (/mnt/c, \wsl.localhost), toolchain della distro, variabili via WSLENV (mai in riga di comando); Stop termina il process group remoto. Provato su Ubuntu reale.*
-- [x] Container development. — *"Run on" container in esecuzione: `docker exec -i` con -e KEY (valori dall'ambiente del client) nella cartella montata; container anche come profili terminale. Limite: l'input interattivo non arriva al processo remoto (stdin fa da guardia per lo Stop).*
-
 ## §47 · Plugin / Extension Architecture
 
-- [ ] Public extension API. — *Parziale: contratto `contributes` (commands, codeActions, analyzers, templates, languages, adapters) con validazione in internal/plugins e GetContributions; manca il consumo lato IDE (palette, editor, New Project) e l'API per estensioni dell'IDE.*
-- [ ] Language extension points.
-- [ ] Framework adapters.
-- [ ] Broker adapters.
-- [ ] DB adapters.
-- [ ] Analyzer extensions.
-- [ ] Custom code actions.
-- [ ] Custom templates.
-- [x] WASM plugins. — *Runtime WASI (wazero) in internal/plugins: modulo wasip1 senza filesystem/rete/env, stdin JSON → stdout JSON, stderr come log, sotto i limiti memoria/tempo del sandbox; il test esegue un vero modulo Go wasip1 (GOOS=wasip1 GOARCH=wasm).*
-- [x] Signed plugin support. — *signature.json ed25519 su ogni file (escluso signature.json); install verifica, una chiave trusted marca il plugin trusted, e qualunque modifica dopo la firma lo disabilita (internal/plugins/signature.go).*
-- [x] Plugin developer mode. — *LinkDevPlugin lega il plugin alla cartella sorgente e lo reinstalla a ogni modifica (fsnotify, debounce 300 ms) con log dedicati info/error/reload in GetPluginLogs (internal/plugins/devmode.go); PluginDevTools.tsx resta per host functions, eventi, stato sandbox ed esecuzione manuale.*
+> *Base esistente:* `contributes` dei plugin consumati da Go Studio: comandi (azioni dell'editor e Search Everywhere), code action (lampadina), analyzer (marcatori al salvataggio), language server di estensione e template in New Project (`goStudioExtensions.ts`, `internal/goide/extensions.go`).
+
+- [ ] Framework adapters. — *Parziale: dichiarati nel manifest e mostrati con le dipendenze dirette in IDE extensions; nessun comportamento nel codice.*
+- [ ] Broker adapters. — *Parziale: come sopra.*
+- [ ] DB adapters. — *Parziale: come sopra.*
 
 ---
 
@@ -488,22 +437,13 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 
 > Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
 
-- [ ] Concurrency view. — *Parziale: `GoStudioConcurrencyView.tsx` e `GoStudioGoroutineTree.tsx`, sezione 8 a 36/37. Manca la worker pool saturation.*
-- [ ] Profiler integrato. — *Parziale: profiling dei test (cpu/mem/block/mutex/trace) in `runconfig_params.go` e viewer pprof in-app (`internal/goide/pprof.go`, `GoStudioProfilePanel.tsx`). Mancano cattura per goroutine/threadcreate, call graph visuale, heatmap per riga e trace viewer.*
-- [ ] Benchmark explorer. — *Parziale: Esecuzione dal gutter, confronto e storico in `goStudioBenchmarks*.ts` e nel pannello Tests. Sezione 12 a 15/20.*
-- [ ] Fuzzing UX. — *Parziale: Solo run con `-fuzztime` dal gutter e generazione del fuzz test. Mancano corpus, crash e minimizzazione.*
-- [ ] Dependency intelligence. — *Parziale: Dialog `GoStudioDependencies.tsx` con go get/tidy, mod why/graph. Mancano grafo tra moduli e analisi di aggiornamenti e licenze.*
-- [ ] Security. — *Parziale: Solo diagnostica `Vulncheck` di gopls. Non c'è uno Security Studio dedicato.*
-- [ ] Interface explorer. — *Parziale: Implementation markers, Implement Interface dialog e gerarchie. Manca un explorer dedicato.*
-- [x] Context propagation inspector. — *Implementata l'analisi statica (`goStudioContextAnalysis.ts`) con pannello dedicato, marcatori nel gutter e soglia timeout configurabile; il runtime inspector (`goStudioContextInspector.ts`) resta per le variabili in debug. Manca la verifica manuale nell'app.*
-- [ ] Runtime Lens.
-- [ ] Architecture Explorer.
+- [ ] Benchmark explorer. — *Parziale: gutter, benchmem, confronto, storico ed export CSV; mancano profiling del benchmark e confronto tra commit.*
+- [ ] Dependency intelligence. — *Parziale: Dependency Graph con versioni duplicate, licenze, peso, unused/indirect e govulncheck; manca l'analisi d'impatto sul binario.*
 
 ### P2 — Differenziazione adOmnia
 
-- [ ] Distributed Request Debugger. — *Parziale: Il caso a servizio singolo è coperto da `internal/devsession` e dalla Debug Request. Manca il multi-servizio.*
-- [ ] Service Map runtime-aware. — *§31: va progettato prima.*
-- [ ] Reproduction Studio. — *§33: va progettato prima.*
+- [ ] Distributed Request Debugger. — *Parziale: servizio singolo completo; multi-servizio solo via trace e log correlati.*
+- [ ] Reproduction Studio. — *Parziale (§33): Save reproduction completo e senza segreti; mancano stato DB, feature flag e replay di sessione.*
 - [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
 - [ ] Unified local environment. — *Parziale: Project Services, Docker Lab (`GoStudioProjectServicesDialog.tsx`) e Run → Start Workspace rilevano e avviano Compose + servizi Go in una compound condivisa. Manca ancora la vista unica con health, migrations, seed e log.*
 
@@ -523,10 +463,8 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 
 Se si dovessero scegliere **solo 8 funzioni distintive**, sceglierei:
 
-- [ ] **Runtime Lens**.
 - [ ] **Distributed Request Debugger**.
-- [ ] **Architecture Explorer**. — *Parziale: GoStudioProjectOverview.tsx e GoStudioProjectServicesDialog.tsx mostrano servizi e datasource; manca una vista architetturale esplorabile.*
-- [ ] **Reproduction Studio**.
+- [ ] **Reproduction Studio**. — *Parziale: salvataggio completo e senza segreti; manca il replay di una sessione salvata con i messaggi broker.*
 - [ ] **Semantic Workspace Graph**. — *Parziale: internal/devcontext produce entità e snapshot (route, tabelle, topic) usati dalla palette; manca un grafo di relazioni.*
 - [ ] **Runtime-aware AI**.
 
@@ -569,42 +507,99 @@ Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 
 ### Killer #2 — Runtime Lens
 
-- [ ] Performance inline.
-- [ ] Runtime counts.
-- [ ] Errors inline.
 - [ ] DB timings.
 - [ ] Broker timings.
-- [ ] Hot paths.
 
 **Messaggio:** _Your code editor knows what happened at runtime._
 
 ### Killer #3 — Code → Everything
 
-- [ ] Trace → source.
 - [ ] Log → source. — *Parziale: Log Inspector risolve gli stack frame verso il sorgente; manca il link per ogni riga di log.*
 
 **Messaggio:** _Every integration is one click away from the code that implements it._
 
 ### Killer #4 — Distributed Request Debugger
 
-- [ ] HTTP. — *Parziale: Request run con log, SQL e Kafka legati da id (devsession/requests.go), solo servizio singolo.*
+- [ ] HTTP. — *Parziale: request run con log, SQL e Kafka legati da id; tra servizi tramite `traceparent` (log e span), ma senza breakpoint coordinati su più servizi.*
 - [ ] gRPC.
 - [ ] Kafka. — *Parziale: Kafka watch dei messaggi per request (devsession/kafkawatch.go), solo plaintext e singolo servizio.*
 - [ ] DB. — *Parziale: Query SQL da log o proxy associate alla request, solo servizio singolo, senza durate.*
 - [ ] Logs. — *Parziale: Log del servizio legati alla request per id o tempo, solo servizio singolo.*
-- [ ] Trace.
 
 **Messaggio:** _Debug the request, not just the process._
 
 ### Killer #5 — Reproduction Studio
 
-- [ ] Capture. — *Parziale: RequestRun in memoria con hit, log, query e messaggi; niente cattura persistente.*
-- [ ] Replay. — *Parziale: Replay copia la tab e rinvia la request; niente replay di sessioni salvate o messaggi broker.*
-- [ ] Generate regression test. — *Parziale: Solo "Copy regression test starter" per i race; niente generazione da request fallite.*
-- [ ] Remove secrets. — *Parziale: Header sensibili mascherati nella UI; niente rimozione in uno scenario esportabile.*
-- [ ] Share reproducible scenario.
+- [ ] Replay. — *Parziale: si rinvia la request e Trace Studio carica il `trace.json` salvato; niente replay completo di una sessione con i messaggi broker.*
 
 **Messaggio:** _Turn a production-like failure into a reproducible test._
+
+## §60 · Effetti wow (idee 2026-10-10)
+
+Idee che costruiscono sopra pezzi già esistenti: l'effetto nasce dal collegarli, non da funzioni nuove isolate. Ordine consigliato: **#4** (impatto rapido, usa la matrice degli environment) → **#5** (vetrina per README e video) → **#1 / #2** (unicità).
+
+### Wow #1 — Rewind della richiesta
+
+Dopo Send, una timeline da trascinare mostra in ordine richiesta HTTP, riga del handler Go, query SQL, messaggi Kafka e log; si torna indietro e avanti come in un video.
+
+- [ ] Timeline unica per request run con eventi ordinati (HTTP, hit del handler, SQL, Kafka, log, span).
+- [ ] Scrubber: ogni posizione apre la riga di codice e lo stato (query, messaggio, log) di quel momento.
+- [ ] Rewind da una reproduction salvata (`repro/…`), non solo dall'ultima richiesta.
+- [ ] Eventi multi-servizio legati dal `traceparent`.
+- [ ] Export della timeline nella reproduction condivisibile.
+
+**Base esistente:** traceparent sulle live request, Trace Studio, Runtime Lens, Save reproduction, breakpoint Delve.
+**Messaggio:** _Rewind any request through your whole system._
+
+### Wow #2 — Ispeziona elemento → codice Go
+
+Nel browser integrato, un clic su un elemento della pagina mostra la chiamata partita, apre il handler Go con il breakpoint e la query eseguita.
+
+- [ ] Modalità "inspect" nel Browser Debug: clic su un elemento → richieste XHR/fetch che scatena.
+- [ ] Richiesta → route → handler Go nel progetto aperto (riuso del collegamento route → handler).
+- [ ] "Break on this click": breakpoint sul handler e sessione Delve pronta prima del clic successivo.
+- [ ] Pannello unico: elemento DOM, richiesta, handler, SQL e log della stessa azione.
+
+**Base esistente:** debug via CDP, Live Development Session, route → handler, Code → API.
+**Messaggio:** _Click the UI, land on the Go line that answers it._
+
+### Wow #3 — Stacca il backend in un clic
+
+Dal traffico registrato dall'Interceptor, adOmnia genera mock server, OpenAPI, collection e test; passando l'environment a "Mock" il frontend continua a funzionare senza backend.
+
+- [ ] Sessione di cattura nel Proxy con selezione degli endpoint da tenere.
+- [ ] Generazione in un passo: mock (path parametrici), OpenAPI, collection, test di regressione.
+- [ ] Environment/fase "Mock" creato in automatico con `base_url` sul mock (matrice degli environment).
+- [ ] Rimozione dei segreti e dei dati personali dai payload generati.
+- [ ] Demo verificata: backend spento, frontend funzionante.
+
+**Base esistente:** Interceptor, Mock Control Room, import/export OpenAPI, fasi e matrice environment.
+**Messaggio:** _Unplug the backend. Nothing breaks._
+
+### Wow #4 — Collaudo contro Produzione dal vivo
+
+La stessa richiesta parte in parallelo verso due fasi; si vedono diff semantico del JSON, header e tempi, e a richiesta il diff degli schemi DB delle due fasi.
+
+- [ ] Azione "Compare stages" sulla richiesta: scelta di due environment della matrice, invio in parallelo.
+- [ ] Diff semantico del JSON (campi mancanti, tipi diversi, valori) e diff di status, header e tempi.
+- [ ] Diff dello schema DB tra due connessioni risolte con environment diversi.
+- [ ] Ignora campi volatili (id, timestamp) configurabili e salvati con la collection.
+- [ ] Salva il confronto come asserzione o test di regressione.
+
+**Base esistente:** matrice e fasi degli environment, `{{VAR}}` in tutti i moduli, Database Studio, diff JSON.
+**Messaggio:** _"Works in test, fails in prod?" — answered in three seconds._
+
+### Wow #5 — Mappa dei servizi che si accende
+
+Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, topic e database con i tempi sulle frecce; il nodo che fallisce diventa rosso e apre il codice.
+
+- [ ] Animazione degli span in arrivo sulla Service Map, in ordine e con durata.
+- [ ] Tempi e errori sulle frecce; nodo in errore evidenziato.
+- [ ] Clic su nodo o freccia → codice del servizio (Architecture Explorer / handler).
+- [ ] Modalità "demo": replay animato di una trace salvata, esportabile come GIF o video per il README.
+
+**Base esistente:** Service Map, ricevitore OTLP locale, Trace Studio, Architecture Explorer.
+**Messaggio:** _Watch your request travel through your system._
 
 ## §53 · Roadmap consigliata
 
@@ -616,53 +611,34 @@ Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 
 ### Phase 2 — “Best Go Workflow”
 
-- [ ] Concurrency View. — *Parziale: Vista implementata; manca la saturazione dei worker pool.*
 - [ ] Benchmark Studio. — *Parziale: Gutter ▶, benchmem, confronto, storico ed export CSV; manca profiling.*
-- [ ] Fuzz Studio. — *Parziale: Target con ▶ e run limitato a 30s; mancano corpus e crash viewer.*
-- [ ] Performance Studio.
-- [ ] Go trace.
-- [ ] Interface Explorer. — *Parziale: Implement Interface, implementation markers e type hierarchy; manca una vista dedicata.*
-- [ ] Context Inspector. — *Parziale: inspector runtime, analisi per file e per progetto (tipata, fra package) con grafo; manca la verifica manuale.*
-- [ ] Error intelligence. — *Parziale: Error chain viewer e panic inspector; manca l'analisi statica.*
-- [ ] Security. — *Parziale: Vulnerability Diagnostics opt-in via gopls; nessuna Security Studio o govulncheck dedicato.*
-- [ ] Dependency Studio. — *Parziale: GoStudioDependencies.tsx con azioni go.mod; mancano grafo, impatto e dimensione binario.*
+- [ ] Dependency Studio. — *Parziale: Dependency Graph (albero diretto → transitivo, versioni duplicate, licenze, peso su disco, unused/indirect, update e govulncheck); manca l'impatto sulla dimensione del binario.*
 
 #### Exit criteria
 
 - [ ] Un bug concorrente è più facile da capire in gO che dal terminale. — *Parziale: Concurrency View con diagnosi e race card; nessuna misura di usabilità.*
 - [ ] Un profiling session porta dal dato alla riga di codice in pochi click.
 - [ ] Benchmark prima/dopo sono leggibili senza tool esterni. — *Parziale: Confronto con variazione percentuale e storico; manca il confronto fra commit.*
-- [ ] Una vulnerabilità mostra il percorso reale verso il codice. — *Parziale: Solo diagnostiche vulncheck di gopls; nessun call path visualizzato.*
 
 ### Phase 3 — “adOmnia Connected”
 
-- [ ] gRPC integration. — *Parziale: CodeLens "Call in gRPC client" con reflection; niente debug o tracing delle chiamate.*
-- [ ] Kafka integration. — *Parziale: CodeLens verso Broker Studio e Kafka watch; mancano schema e contratti.*
+- [ ] Kafka integration. — *Parziale: CodeLens, topic nell'Architecture Explorer con formato dei messaggi, Debug consumer, replay e fixture; mancano schema registry e contratti.*
 - [ ] DB integration. — *Parziale: CodeLens query, SQL capture proxy e Database Studio; mancano durate e schema.*
-- [ ] WebSocket integration. — *Parziale: CodeLens "Open in WebSocket client"; nessun tracing runtime.*
-- [ ] Logs integration. — *Parziale: Service logs come sorgente live nel Log Inspector; manca la correlazione cross-servizio.*
-- [ ] Service Map.
-- [ ] Architecture Explorer.
 
 #### Exit criteria
 
-- [ ] Posso partire da un trace e arrivare al codice.
 
 ### Phase 4 — “Runtime-Aware IDE”
 
-- [ ] Runtime Lens.
-- [ ] Distributed Request Debugger. — *Parziale: Copre il servizio singolo; manca il multi-servizio.*
+- [ ] Distributed Request Debugger. — *Parziale: servizio singolo completo; multi-servizio solo via trace e log correlati.*
 - [ ] Runtime architecture.
-- [ ] Multi-service logs. — *Parziale: Log per sessione con filtro e Log Inspector; nessuna vista unificata multi-servizio per request.*
-- [ ] Trace Studio.
-- [ ] Reproduction Studio. — *Parziale: Solo Replay della request; niente cattura, salvataggio o confronto sessioni.*
+- [ ] Reproduction Studio. — *Parziale: Save reproduction scrive cartella con request, test di regressione, SQL e fixture Kafka senza segreti; manca il confronto tra sessioni.*
 - [ ] Change Impact Analysis.
 
 #### Exit criteria
 
 - [ ] Una richiesta può essere seguita dall'ingresso API al DB/broker. — *Parziale: Vale per un servizio (Timeline con SQL, Kafka, log, breakpoint); manca il multi-servizio.*
 - [ ] Ogni passaggio rilevante è navigabile verso il codice. — *Parziale: Frame, handler e breakpoint apribili in Go Studio; SQL, Kafka e log solo verso i rispettivi tool.*
-- [ ] Un errore può essere salvato e riprodotto.
 - [ ] Un cambiamento mostra quali parti del sistema può impattare.
 
 ### Phase 5 — “2027 Intelligence”

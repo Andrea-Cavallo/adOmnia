@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [0.10.0-beta.1] — 2026-10-10
+
+### Changed
+- Start the stabilization cycle toward v1.0.0. Tags identify reviewed releases rather than individual commits.
+- Nothing-style API error states and palette-aware Request, Response and Send labels.
+- The v1 acceptance gates are tracked in `docs/V1-CHECKLIST.md`.
+
+### Added
+- **Start workspace in order:** containers first, then a wait until they are ready (healthy, running or finished with 0), then migrations and seed data one after the other, then the Go services. Migrations and seeds are detected from `cmd/migrate`/`cmd/seed`-style packages (no longer started as services) and Makefile targets; golang-migrate and goose folders are reported. A failed task keeps the services stopped, and every stage is reported in the Run console. Any compound can have *Tasks after the containers are ready*.
+
 ## [0.9.78] - 2026-10-10
 
 ### Added

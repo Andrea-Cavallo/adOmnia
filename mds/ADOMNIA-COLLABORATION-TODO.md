@@ -8,7 +8,9 @@
 
 ## Stato verificato — 2026-10-10
 
-Le spunte indicano lavoro implementato e verificato con le evidenze specificate. Una fase resta aperta quando manca la sua accettazione desktop; una build o un test unitario non sostituiscono la prova tra due computer.
+Ciclo di stabilizzazione: `v0.10.0-beta.1`. I requisiti bloccanti della prima versione stabile sono in `docs/V1-CHECKLIST.md`; P1/P2 restano roadmap. La collaborazione LAN mantiene lo stato beta finché mancano le prove desktop e tra due computer.
+
+Questo file contiene **solo il lavoro ancora aperto** (riverificato nel codice il 2026-10-10). Le voci completate sono state rimosse: la loro storia è in git, nel `CHANGELOG.md` e in `docs/releases/v0.9.78.md`. Una fase resta aperta finché manca la sua accettazione desktop: una build o un test unitario non sostituiscono la prova tra due computer.
 
 | Area | Implementato | Verificato | Ancora da fare / testare |
 |---|---|---|---|
@@ -19,67 +21,66 @@ Le spunte indicano lavoro implementato e verificato con le evidenze specificate.
 | 6.7 Sync e recovery | Snapshot collection su opt-in, merge manuale, resume temporaneo da seq, replay limitato, risync Yjs | Test batching/stop offline, resume/revoca/scadenza, recupero testo renderer | Interruzione rete reale, replay oltre limite, crash del processo/app e recupero persistente; il resume attuale vive solo in memoria |
 | P1 / P2 | Nessuna consegna completata | — | Follow/review, terminal/debug/Git autorizzati, test collaborativi, versioning, correlazione API/debug, proxy LSP, mDNS, cross-modulo, relay opzionale e diagnostica |
 
-Verifiche automatiche più recenti: **15 test frontend Collaboration superati**, `go build ./...` e test `internal/collab` / `internal/collectionfs` con `-race` superati. Build frontend e budget startup superati: **590698 byte** iniziali. La suite Go completa non è attestata da questi controlli mirati.
+Verifiche automatiche più recenti (v0.9.78, 2026-10-10): suite frontend completa (1310 test, Collaboration inclusa), test `internal/collab` e `internal/collectionfs`, build e budget di avvio (592 827 byte iniziali).
 
-### Aggiornamento UI richiesto insieme alla roadmap
+## Lavoro aperto per priorità
 
-- [x] Stato vuoto della risposta nello stile Nothing: titolo Doto, glyph SVG a puntini, testo e scorciatoia coerenti; colori da palette.
-- [x] Tab API più leggibili: maggiore larghezza minima, badge metodo, indicatore attivo, stato dirty discreto, overflow con tab attivo visibile; eliminata la ripetizione del metodo nel titolo.
-- [x] Verifica nel frontend locale: apertura di 8 tab, overflow, rinomina, tema scuro, tema chiaro e accento viola. Screenshot: `.artifacts/api-nothing-dark.png`, `.artifacts/api-nothing-light.png`, `.artifacts/api-nothing-accent.png`.
-- [ ] Smoke test dello stesso restyling nel nuovo eseguibile Wails; drag/reorder/detach e navigazione da tastiera da verificare nel runtime desktop.
+- [x] **UI API — errori nello stile Nothing:** titolo dot-matrix, simbolo a punti, dettagli tecnici in un riquadro con bordo d'accento e badge di errore dot-matrix. Colori da token della palette; build TypeScript/Vite riuscita il 2026-10-10.
+- [ ] **Verifica visiva errori API:** riprodurre Connection refused nell'eseguibile Wails e controllare palette Dark/White e accenti personalizzati (A7).
 
----
+- [x] **UI API — REQUEST, RESPONSE e SEND seguono la palette:** verificati nel browser locale con accento `#FACC15` (tutte e tre le etichette: `rgb(250, 204, 21)`); screenshot `.artifacts/api-nothing-yellow-labels.png`. Build frontend TypeScript/Vite riuscita il 2026-10-10. Il test nell'eseguibile desktop resta in A7.
 
-## Checklist residua — cosa manca per chiudere
+### P0 — Accettazione desktop (bloccante)
 
-Riepilogo ordinato per priorità degli item ancora aperti. Ogni voce richiama la sezione di origine.
+- [ ] **A1 — Accettazione LAN** (6.1–6.3): due istanze su computer diversi condividono una collection senza account cloud, con permessi verificati dal backend. → *Runbook A1.*
+- [ ] **A2 — Import / Replace / Compare & Merge nella UI** (6.4, funzione 18): i tre modi nella UI desktop, incluse modifiche locali concorrenti durante la preview. Basta una macchina. → *Runbook A2.*
+- [ ] **A3 — Editor live su due macchine** (6.5, funzioni 01–02): due editor reali, split/tab, cursori; `SaveDocument` dell'host e modifica esterna (watcher) mentre il CRDT è attivo devono dare un "outside change" esplicito, mai una sovrascrittura silenziosa.
+- [ ] **A4 — Guest remoto** (6.6, funzione 03): apertura file, cursori, downgrade ruolo e salvataggio dell'host su due computer; symlink/junction reali su Windows (il test automatico è SKIP per privilegi mancanti).
+- [ ] **A5 — Recovery reale** (6.7, funzioni 10 e 12): interruzione di rete reale, replay oltre il limite, crash del processo/app. **Da implementare:** il resume oggi vive solo in memoria, serve un recupero persistente; i conflitti non risolvibili devono restare sempre segnalati.
+- [ ] **A6 — Accettazione P0 formale:** due istanze su computer diversi condividono una collection, importano/sincronizzano modifiche e collaborano sullo stesso file, senza account cloud, con permessi verificati dal backend.
+- [ ] **A7 — Smoke test UI API nell'eseguibile Wails:** tab in stile browser, Send, composer a scomparsa, selettori Environments/Hosts nell'header (click nella zona titlebar), drag/reorder/detach dei tab e navigazione da tastiera.
 
-### A. Accettazione P0 (bloccante — due computer reali)
+### P1 — Collaborazione avanzata
 
-- [ ] **A1 — Accettazione LAN** (6.1–6.3): due istanze su computer diversi condividono una collection senza account cloud, con permessi verificati dal backend.
-- [ ] **A2 — Import/replace/merge in UI** (6.4): provare `Import as new` / `Replace` / `Compare & Merge` nella UI desktop, incluse modifiche locali concorrenti durante la preview.
-- [ ] **A3 — Editor live su due macchine** (6.5): due editor reali, split/tab, `SaveDocument` dell'host e modifica esterna (watcher) mentre il CRDT è attivo (nessuna sovrascrittura silenziosa).
-- [ ] **A4 — Guest remoto** (6.6): apertura file, cursori, downgrade ruolo e salvataggio host su due computer; symlink/junction reali su Windows (test attualmente SKIP per privilegi mancanti).
-- [ ] **A5 — Recovery reale** (6.7): interruzione rete reale, replay oltre limite, crash del processo/app e **recupero persistente** (il resume vive oggi solo in memoria).
-- [ ] **A6 — Accettazione P0 formale** (riga 282): condividere, importare/sincronizzare modifiche e collaborare sullo stesso file tra due computer.
+- [ ] **6.8** Follow mode (05) e Live Code Review (08, ancore `Y.RelativePosition`).
+- [ ] **6.9** Terminale (06), debugger (07) e Git (09) condivisi con controllo autorizzato (sopra `devsession` + `supervisor`), con **audit locale delle esecuzioni** insieme al gateway.
+- [ ] **6.10** API testing collaborativo (15), shared test runner (19), collection versioning (17, via git su `collectionfs`).
+- [ ] **6.11** Correlazione request API ↔ sessione di debug (16, `X-AdOmnia-Request-ID` già in `devsession`).
+- [ ] **6.12** LSP proxy host → guest (diagnostica/hover/completamento per il guest).
+- [ ] **6.13** Discovery mDNS LAN (`grandcat/zeroconf` o equivalente) con fallback `ip:port`.
+- [ ] **Accettazione P1:** un developer invia una request da API Studio mentre l'altro osserva un breakpoint nel servizio host; nessun guest esegue comandi o mutazioni Git senza autorizzazione.
 
-### B. Sicurezza trasversale (§5)
+### P2 — Esperienza integrata
 
-- [ ] **B1** (232): esclusione di default di `.env`, token, password, chiavi private, certificati, credenziali DB (riuso `vault` + `redactSecrets`).
-- [ ] **B2** (233): validazione path e symlink per impedire accessi fuori dal workspace autorizzato.
-- [ ] **B3** (235): crash/reconnect senza perdita silenziosa; conflitti non risolvibili sempre segnalati.
-- [ ] **B4** (236): audit delle esecuzioni insieme al gateway terminal/debug/Git (6.9).
+- [ ] **6.14** Workspace collaboration cross-modulo (20): IDE, API, documentazione, connessioni selezionate.
+- [ ] **6.15** Relay self-hosted opzionale per reti differenti.
+- [ ] **6.16** Diagnostica, metriche, UX multiutente e gestione sessioni.
+- [ ] **Accettazione P2:** vista coerente di codice e strumenti anche tra reti diverse, relay configurabile, nessun cloud obbligatorio.
 
-### C. UI — smoke test desktop
+### Stato delle 20 funzionalità
 
-- [ ] **C1** (riga 29): smoke test del restyling API nell'eseguibile Wails (drag/reorder/detach + navigazione da tastiera).
-
-### D. Fase P1 — collaborazione avanzata
-
-- [ ] **D1** (6.8): Follow mode (05) + Live Code Review (08, ancore `Y.RelativePosition`).
-- [ ] **D2** (6.9): terminale (06), debugger (07) e Git (09) condivisi con controllo autorizzato (sopra `devsession` + `supervisor`).
-- [ ] **D3** (6.10): API testing collaborativo (15), shared test runner (19), collection versioning (17, via git su `collectionfs`).
-- [ ] **D4** (6.11): correlazione request API ↔ sessione di debug (16).
-- [ ] **D5** (6.12): LSP proxy host → guest.
-- [ ] **D6** (6.13): discovery mDNS LAN (`grandcat/zeroconf`) con fallback `ip:port`.
-- [ ] **D7** (riga 293): accettazione P1 (breakpoint osservato da un secondo developer; nessuna esecuzione/mutazione Git senza autorizzazione).
-
-### E. Fase P2 — esperienza integrata
-
-- [ ] **E1** (6.14): Workspace collaboration cross-modulo (20).
-- [ ] **E2** (6.15): relay self-hosted opzionale per reti differenti.
-- [ ] **E3** (6.16): diagnostica, metriche, UX multiutente e gestione sessioni.
-- [ ] **E4** (riga 301): accettazione P2 (vista coerente tra reti diverse, relay configurabile, nessun cloud obbligatorio).
-
-### F. Funzionalità API Studio non ancora spuntate (sezione 2)
-
-- [ ] **F1** (12): Live Collection Sync.
-- [ ] **F2** (15): Collaborative API Testing.
-- [ ] **F3** (16): Shared API Debugging.
-- [ ] **F4** (17): API Collection Versioning.
-- [ ] **F5** (18): Collection Import & Merge (agganciato ad A2).
-- [ ] **F6** (19): Shared Test Runner.
-- [ ] **F7** (20): Workspace Collaboration.
+| # | Funzionalità | Priorità | Stato |
+|---|---|---|---|
+| 01 | Live Code Editing | P0 | Implementato (Yjs + relay Go); manca A3 |
+| 02 | Live Cursor & Presence | P0 | Implementato (awareness); manca A3 |
+| 03 | Share Project (guest senza clone) | P0 | Implementato, guest senza gopls; manca A4 |
+| 04 | Smart Permissions | P0 | Implementato server-side (Viewer/Editor/Controller) |
+| 05 | Follow Developer | P1 | Da fare (6.8) |
+| 06 | Shared Terminal | P1 | Da fare (6.9) |
+| 07 | Collaborative Debugging | P1 | Da fare (6.9) |
+| 08 | Live Code Review | P1 | Da fare (6.8) |
+| 09 | Shared Git Operations | P1 | Da fare (6.9) |
+| 10 | Session Recovery | P0 | Resume in memoria; manca persistenza e A5 |
+| 11 | Quick Collection Share | P0 | Fatto |
+| 12 | Live Collection Sync | P0 | Snapshot opt-in + merge esplicito; manca A5 |
+| 13 | Share Single Request | P0 | Fatto |
+| 14 | Shared Environments | P0 | Fatto (opt-in per variabile segreta) |
+| 15 | Collaborative API Testing | P1 | Da fare (6.10) |
+| 16 | Shared API Debugging | P1 | Da fare (6.11) |
+| 17 | API Collection Versioning | P1 | Da fare (6.10) |
+| 18 | Collection Import & Merge | P0 | Implementato; manca A2 |
+| 19 | Shared Test Runner | P1 | Da fare (6.10) |
+| 20 | Workspace Collaboration | P2 | Da fare (6.14) |
 
 ---
 
@@ -117,7 +118,7 @@ Criterio di accettazione: nessuna cancellazione implicita di elementi locali; gl
 
 ## 0. Grounding nel codice (cosa esiste già e dove agganciarsi)
 
-Questa sezione risponde alle domande aperte della vecchia sezione 7 e **è da rileggere prima di ogni decisione**. È il risultato dello studio del repository: la feature va costruita **sopra** questi mattoni, non in parallelo.
+Questa sezione descrive dove si aggancia il motore e **è da rileggere prima di ogni decisione**. È il risultato dello studio del repository: la feature va costruita **sopra** questi mattoni, non in parallelo.
 
 ### Editor e documenti
 
@@ -137,7 +138,7 @@ Questa sezione risponde alle domande aperte della vecchia sezione 7 e **è da ri
 
 - Il backend espone un **sidecar HTTP locale** su `127.0.0.1:0` con **token per-istanza** (`X-Sidecar-Token`, origin allowlist, body 10 MB): `internal/sidecar/server.go` + `auth.go`. Ogni dominio registra i propri handler sul mux (`RegisterHandlers`). **Questo è il pattern da estendere**: il Collaboration Engine aggiungerà un listener/servizio di rete suo, riusando lo stesso approccio di token + limiti.
 - `internal/ws/client.go` è un **client** WebSocket (per il tool WebSocket), **non** un server: non è riutilizzabile come trasporto server-side. Serve un nuovo `internal/collab/transport` (gorilla/websocket è già in `go.mod`).
-- **Non esistono** mDNS/zeroconf, WebRTC, libp2p, Yjs, CRDT, relay nel codice: vanno introdotti (v. §Rischi).
+- **Non esistono** mDNS/zeroconf, WebRTC, libp2p, relay nel codice: Yjs è stato introdotto nel renderer (v. §4 Decisioni); mDNS e relay restano da fare (P1/P2).
 - L'event bus "reale" più vicino è **`internal/devsession`** (la "Live Development Session", feature D11 del catalogo): un `Manager` con `emit(func(Event))`, `Snapshot()`, eventi tipizzati (`service.started`, `debug.paused`, `request.completed`, …) e un modello `Session`/`RequestRun`. È la **fonte di verità single-machine** che lega run/debug gO alle request API. **La collaborazione cross-machine va modellata come "replica degli eventi di `devsession` + nuovi canali (editor, presence, collection)"**, non come un secondo sistema di stato.
 - `frontend/src/lib/entities/` (`router.ts` → `registerOpener`, `dispatch.ts` → `handoffToPanel`, usati da `openers.ts`) è il **router cross-panel**: "apri la collection/request ricevuta" si fa con `handoffToPanel`, non con nuovi `CustomEvent`.
 
@@ -153,8 +154,8 @@ Questa sezione risponde alle domande aperte della vecchia sezione 7 e **è da ri
 
 ### Segreti e sicurezza
 
-- `internal/vault/vault.go` è il vault di crittografia già usato da broker/database/AI (riferimenti `vault:`). Il **filtraggio segreti e l'audit** (feature 14, §5) devono risolverlo/riusarlo; nessun segreto va serializzato in chiaro in un payload condiviso.
-- Il pattern di **pairing sicuro** esiste concettualmente nel sidecar (token random + origin allowlist) e nell'OAuth PKCE (`internal/oauth`); un codice breve di invito va sempre abbinato a un canale autenticato (v. §5).
+- `internal/vault/vault.go` è il vault di crittografia già usato da broker/database/AI (riferimenti `vault:`). Il **filtraggio segreti e l'audit** (funzione 14, §3) devono risolverlo/riusarlo; nessun segreto va serializzato in chiaro in un payload condiviso.
+- Il pattern di **pairing sicuro** esiste concettualmente nel sidecar (token random + origin allowlist) e nell'OAuth PKCE (`internal/oauth`); un codice breve di invito va sempre abbinato a un canale autenticato (v. §3).
 
 ### Sintesi operativa
 
@@ -164,8 +165,8 @@ Questa sezione risponde alle domande aperte della vecchia sezione 7 e **è da ri
 | Dove persistono collection/env/request? | bbolt `collections` (`internal/collectionsstore`); proiezione file `internal/collectionfs` con `SyncHash`. |
 | Event bus / WS / servizi Go riusabili? | Sidecar HTTP tokenizzato (`internal/sidecar`); `devsession.Manager` (eventi tipizzati); `internal/ws` è solo client. |
 | LSP/DAP/terminale/processi? | In Go: `internal/ide/lsp`, `internal/ide/dap`, `internal/goide/terminal.go`, `supervisor.go`, con gate `AuthorizationPermitted`. |
-| Conflitto host/guest sullo stesso file? | Da definire (v. §Rischi): CRDT per l'editor, merge esplicito (già `collectionfs` + git) per collection/metadati. |
-| Cosa resta locale vs materializzato sul guest? | Vedere "Host-authoritative" e la matrice "locale vs remoto" in §Architettura. |
+| Conflitto host/guest sullo stesso file? | Deciso (§4): CRDT per l'editor, merge esplicito (già `collectionfs` + git) per collection/metadati. |
+| Cosa resta locale vs materializzato sul guest? | Vedere "Host-authoritative" e la matrice "locale vs remoto" in §2 Architettura. |
 
 ---
 
@@ -218,35 +219,7 @@ Tutti i path citati in §0 esistono (`internal/collab` no: è il nuovo package).
 
 ---
 
-## 1. Go Studio (cO Studio) — collaborazione IDE (10 funzionalità)
-
-- [ ] **01. Live Code Editing (P0).** Due o più sviluppatori modificano lo stesso file. CRDT Yjs legato a Monaco (`y-monaco`); il sync vive in Go e media con `internal/goide/documents.go` e `watcher.go` (salvataggi atomici e modifiche esterne).
-- [ ] **02. Live Cursor & Presence (P0).** Cursori, selezioni, nome e file attivo per partecipante; aggancio in `goStudioCursor.ts`. Cleanup garantito su disconnect (ephemeral, mai persistito).
-- [ ] **03. Share Project (P0).** Pulsante `Share Workspace` (session create + invito). Il guest può partecipare senza clonare: riceve lo stato condiviso, non un checkout completo.
-- [ ] **04. Smart Permissions (P0).** Ruoli `Viewer`/`Editor`/`Controller` con permessi indipendenti su scrittura, terminale, debug, Git. Validazione **server-side**, stratificata su `AuthorizationPermitted`.
-- [ ] **05. Follow Developer (P1).** Seguimento opzionale di navigazione/file/cursore/selezione, interrompibile (stato solo-UI, nessuna persistenza).
-- [ ] **06. Shared Terminal (P1).** Stream dell'output (`goStudioTerminalBus.ts` ↔ `service_terminal.go`); l'esecuzione comandi richiede permesso esplicito dell'host (gate sull'Execution Gateway).
-- [ ] **07. Collaborative Debugging (P1).** Replica dello stato `devsession` (breakpoint, stack, variabili, log); un solo controller alla volta per step/resume (lock del ruolo `Controller`).
-- [ ] **08. Live Code Review (P1).** Commenti sulle righe e suggerimenti applicabili, ancorati a revisioni stabili del documento.
-- [ ] **09. Shared Git Operations (P1).** Diff/branch/stato condivisi (`internal/goide/vcs*.go`); commit/merge/rebase/push subordinati a conferma e permessi.
-- [ ] **10. Session Recovery (P0).** Riconnessione, ripresa e recupero modifiche; rilevamento/risoluzione conflitti con modifiche esterne.
-
-## 2. API Studio — condivisione e collaborazione API (10 funzionalità)
-
-- [x] **11. Quick Collection Share (P0).** Trasferimento rapido di collection REST/SOAP/GraphQL/gRPC via LAN + invito/codice temporaneo; Internet via relay opzionale. **Veicolo iniziale: file `collectionfs` / `.adomnia`**, non diff live.
-- [ ] **12. Live Collection Sync (P0).** Sincronizzazione di cartelle/endpoint/URL/headers/body/metadata tra partecipanti; gestione modifiche concorrenti (merge esplicito su `collectionfs`).
-- [x] **13. Share Single Request (P0).** Inviare una singola request senza esportare la collection, con **preview dei dati inclusi** e redazione (`redactSecrets`) prima della condivisione.
-- [x] **14. Shared Environments (P0).** Condivisione di nomi/valori non sensibili DEV/TEST/STAGING; segreti/token/password/chiavi esclusi di default (vault + regex `SECRET_KEY`).
-- [ ] **15. Collaborative API Testing (P1).** Stream di status/response/header/durata/risultati dei test di un developer autorizzato (riusa gli eventi `devsession`/runner).
-- [ ] **16. Shared API Debugging (P1).** Collegare una request API Studio alla sessione di debug di Go Studio per osservare request → breakpoint → variabili → response (correlazione via `X-AdOmnia-Request-ID`, già in `devsession`).
-- [ ] **17. API Collection Versioning (P1).** Revisioni, diff, cronologia, rollback; identificatori stabili (gli `id`/`SyncHash` di `collectionfs`).
-- [ ] **18. Collection Import & Merge (P0).** `Import as new`, `Replace`, `Compare & Merge` con preview dei conflitti (riusa `collectionTransfer.ts` + `collectionfs.DriftReport`).
-- [ ] **19. Shared Test Runner (P1).** Esecuzione condivisa di suite/workflow/stress con streaming risultati e permessi sulle risorse coinvolte.
-- [ ] **20. Workspace Collaboration (P2).** Sessione unificata: progetto IDE, collection, OpenAPI/WSDL, connessioni e documentazione, condivisi selettivamente.
-
----
-
-## 3. Esperienza utente prevista
+## 1. Esperienza utente prevista
 
 1. Il developer A apre `payment-service` in Go Studio.
 2. Seleziona `Share > Live collaboration` e genera un invito limitato nel tempo (codice + canale autenticato).
@@ -259,7 +232,7 @@ Tutti i path citati in §0 esistono (`internal/collab` no: è il nuovo package).
 
 ---
 
-## 4. Architettura proposta (allineata al codice)
+## 2. Architettura proposta (allineata al codice)
 
 ```text
 adOmnia Desktop (Wails 3 + React 19)   [ogni istanza ha il suo backend Go]
@@ -309,98 +282,28 @@ internal già esistenti (non riscrivere)
 
 ---
 
-## 5. Sicurezza e affidabilità, criteri trasversali
+## 3. Sicurezza e affidabilità (garanzie implementate)
 
-- [x] Pairing sicuro: codice breve + canale autenticato; protezione anti-brute-force (limite tentativi, backoff). Un codice da solo non è una credenziale.
-- [x] Cifratura in transito e verifica dell'identità della controparte; nessuna porta esposta pubblicamente di default (listener su interfacce LAN solo su scelta esplicita).
-- [x] Inviti a scadenza, revocabili, legati alla sessione, privilegi minimi.
-- [ ] Esclusione di default di `.env`, token, password, chiavi private, certificati, credenziali DB: riuso di `vault` + `redactSecrets` (`lib/interopHub.ts`, `lib/secretScanner.ts`).
-- [ ] Validazione di path e symlink per impedire lettura/scrittura fuori dal workspace autorizzato (come già fatto in `collectionfs`).
-- [x] Limiti su dimensione/frequenza messaggi, file trasferibili e numero partecipanti (riusa lo stile di `sidecar` con `MaxBytesReader`).
-- [ ] Crash/reconnect senza perdita silenziosa; conflitti non risolvibili automaticamente sempre segnalati.
-- [x] Audit locale in devlog per le operazioni disponibili: host/join, inviti, ruoli, revoche, uscita e condivisione. Nessun token, invito, valore condiviso o titolo nei log. L’audit delle esecuzioni sarà aggiunto insieme al gateway terminal/debug/Git (6.9).
+- Pairing: invito monouso a scadenza + canale TLS con pinning del certificato; anti-brute-force con limite tentativi e backoff. Un codice da solo non è una credenziale.
+- Nessuna porta aperta di default: il listener parte solo su scelta esplicita e su un'interfaccia scelta dall'utente.
+- Ruoli verificati server-side, revoca immediata, limiti su dimensione/frequenza messaggi, file e partecipanti.
+- Segreti filtrati all'origine in Go (`collab.Redact`, environment privati e `vault:` esclusi); progetto remoto senza `.env`, chiavi, certificati, credenziali e database; path confinati con `EnsureWithin` + `EvalSymlinks`.
+- Audit locale in devlog di host/join, inviti, ruoli, revoche, uscita e condivisione, senza token né valori. L'audit delle esecuzioni arriva con il gateway (6.9).
+- Aperti: recovery persistente e conflitti sempre segnalati → **A5**.
 
 ---
 
-## 6. Piano di implementazione
+## 4. Decisioni prese
 
-### Fase P0 — MVP (ordine di dipendenza, non di preferenza)
-
-- [x] **6.1 `internal/collab`: contratti + Session Manager + autorizzazione.**
-  - [x] Tipi `Session`, `Participant`, `Role` (`Viewer`/`Editor`/`Controller`), `Permission`, `Event` (envelope tipizzato con `seq`), `Snapshot`.
-  - [x] Session Manager: create / join / revoke / expiry / lista partecipanti (stile `devsession.Manager`: `emit`, `Snapshot()`).
-  - [x] Check permessi **server-side** in un solo punto (gateway), sopra `AuthorizationPermitted`.
-  - [x] Test Go: join con token scaduto/errato rifiutato, revoca chiude la connessione, permesso negato per ruolo.
-- [x] **6.2 Transport + pairing.**
-  - [x] Listener WS separato dal sidecar (gorilla/websocket), TLS con cert self-signed per sessione.
-  - [x] Invito = `ip:port` + token monouso + fingerprint cert; pinning lato guest.
-  - [x] Anti-brute-force (limite tentativi + backoff), heartbeat, limiti dimensione/frequenza messaggi.
-  - [x] Listener solo su scelta esplicita dell'utente (default: nessuna porta aperta).
-  - [x] Binding Wails `collab_bindings.go` + wrapper `frontend/src/lib/collab-api.ts`; bindings rigenerati.
-  - [x] UI minima: "Share" (crea invito, copia codice), "Join" (incolla invito), lista partecipanti, revoca.
-- [x] **6.3 Quick Collection Share + Share Single Request (11, 13).**
-  - [x] Payload JSON della collection/request (filtro segreti in Go all'origine: `collab.Redact`, re-applicato dall'host su ciò che inviano i guest).
-  - [x] Preview dei dati inclusi + `redactSecrets` prima dell'invio.
-  - [x] Ricezione in una inbox con consenso esplicito: collection → `importCollection` (ID nuovi), request → nuova tab, environment → nuovi environment; avviso se contiene script.
-- [ ] **6.4 Collection Import & Merge + Shared Environments (18, 14).**
-  - [ ] `Import as new` / `Replace` / `Compare & Merge` con preview conflitti (`InspectDrift`/`SyncHash`).
-    - [x] Inbox: scelta destinazione, import come nuova, sostituzione confermata e confronto per campo con selezione esplicita; protezione da cambiamenti locali durante la preview.
-    - [x] Test automatici: conservazione ID locali, aggiunte annidate, nessuna cancellazione implicita, nomi ambigui trattati come conflitti; build frontend superata (2026-10-09).
-    - [x] Revisioni SHA-256 canoniche condivise con `collectionfs.HashJSON`, ricalcolate dall’host prima del relay; test indipendente dall’ordine delle chiavi superato.
-    - [ ] Verificare il flusso in due finestre desktop.
-  - [x] Environment condivisi senza segreti per default (privati esclusi, valori secret svuotati).
-  - [x] Opt-in esplicito per singola variabile segreta: checkbox per variabile e anteprima esatta; filtro autorevole Go esclude environment privati e riferimenti vault anche se selezionati. Test Go di default, opt-in e relay superati (2026-10-09).
-- [ ] **6.5 Live Code Editing + Presence (01, 02).**
-  - [x] Dipendenze `yjs` + `y-monaco` + `y-protocols` caricate con gli editor condivisi, fuori dallo startup: build e `check:startup` superati, 649955 byte iniziali (2026-10-09).
-  - [x] Provider Yjs custom e binding Monaco: relay Go opaco, room create solo dall’host, permessi editor/viewer verificati dal server, update raggruppati e limiti di memoria; test convergenza, idempotenza, late sync e downgrade superati (2026-10-09).
-  - [ ] Host salva via `SaveDocument`; modifiche esterne (watcher) → "outside change" esplicito, mai sovrascrittura silenziosa.
-  - [x] Awareness Yjs per cursori/selezioni/nome/file attivo; cleanup alla chiusura del provider e rimozione dei partecipanti. Collegata agli editor host e guest; verifica desktop multiutente ancora da eseguire.
-- [ ] **6.6 Share Project lato guest (03).**
-  - [x] Remote file provider: albero + apertura file serviti dall’host, root derivato da una sessione Go Studio aperta; check `EnsureWithin` + `EvalSymlinks`, file privati/binari/credenziali esclusi, limiti e richieste correlate. Test trasferimento TLS e traversal superati (2026-10-09); test symlink saltato per privilegio Windows non disponibile, da recuperare nell’accettazione.
-  - [x] Editor remoto guest senza avvio di gopls né comandi host: snapshot in sola lettura, live solo per i file abilitati dall’host e i ruoli autorizzati. TypeScript/build superati (2026-10-09).
-  - [ ] Verifica desktop su due computer: apertura file, cursori, downgrade ruolo e salvataggio da parte dell’host.
-- [ ] **6.7 Live Collection Sync + Session Recovery (12, 10).**
-  - [x] Reconnect esplicito con credenziale temporanea in memoria, pinning TLS, stessa identità e ruolo autorevole; replay limitato da `seq` con avviso se la cronologia è esaurita. Yjs recupera anche il testo locale non inviato. Test Go di ripresa/revoca/scadenza e test renderer di ripresa editor/viewer superati (2026-10-09).
-  - [x] Collection: opt-in per snapshot delle modifiche future, invii raggruppati, stop su disconnessione/downgrade, inbox aggiornata per origine senza applicazione automatica; merge esplicito con conflitti visibili. Test frontend di batching, nessun reinvio invariato e stop offline superato (2026-10-09).
-  - [ ] Verifica desktop di interruzione rete, ripresa e merge degli snapshot su due computer.
-
-- [ ] **Accettazione P0:** due istanze adOmnia su computer diversi condividono una collection, importano/sincronizzano modifiche e collaborano sullo stesso file, senza account cloud, con permessi verificati dal backend.
-
-### Fase P1 — collaborazione avanzata
-
-- [ ] 6.8 Follow mode (05) e live code review (08, ancore `Y.RelativePosition`).
-- [ ] 6.9 Terminale (06), debugger (07) e Git (09) condivisi con controllo autorizzato (sopra `devsession` + `supervisor`).
-- [ ] 6.10 API testing collaborativo (15), shared test runner (19), collection versioning (17, via git su `collectionfs`).
-- [ ] 6.11 Correlazione request API ↔ sessione di debug (16).
-- [ ] 6.12 LSP proxy host → guest (diagnostica/hover/completamento per il guest).
-- [ ] 6.13 Discovery mDNS LAN (`grandcat/zeroconf` o equivalente), con fallback `ip:port`.
-
-- [ ] **Accettazione P1:** un developer invia una request da API Studio mentre l'altro osserva un breakpoint nel servizio host; nessun guest può eseguire comandi o mutazioni Git senza autorizzazione.
-
-### Fase P2 — esperienza integrata
-
-- [ ] 6.14 Workspace collaboration cross-modulo (20) (IDE, API, documentazione, connessioni selezionate).
-- [ ] 6.15 Relay self-hosted opzionale per reti differenti.
-- [ ] 6.16 Diagnostica, metriche, UX multiutente e gestione sessioni.
-
-- [ ] **Accettazione P2:** una sessione mantiene una vista coerente di codice e strumenti anche tra reti diverse, con relay configurabile e nessun cloud obbligatorio.
+- **Naming:** nel codice resta "Go Studio" ("cO Studio" era solo nel documento).
+- **Trasporto:** listener separato in `internal/collab` (il sidecar è solo loopback), che riusa il pattern token + limiti.
+- **Discovery:** `ip:port` esplicito nell'MVP; mDNS in P1.
+- **CRDT:** Yjs nel renderer con `y-monaco`; Go fa da relay opaco e l'host salva via `SaveDocument`.
+- **Conflitti sullo stesso file:** CRDT per il live; watcher/git → "outside change" riconciliato esplicitamente.
+- **`devsession` vs `collab`:** `collab` replica gli eventi di `devsession.Manager`, nessuno stato duplicato.
+- **Segreti:** filtro all'origine in Go prima della serializzazione; mai `vault:` risolti nel payload.
+- **Guest senza LSP in P0:** accettato; LSP proxy in P1.
 
 ---
 
-## 7. Rischi e decisioni da prendere prima di iniziare
-
-Proposta di default tra parentesi (da confermare spuntando).
-
-- [x] **7.1 Naming.** "cO Studio" vs "Go Studio" nel codice. *(Proposta: resta "Go Studio"; correggere il doc.)*
-- [x] **7.2 Trasporto vs sidecar.** Sidecar loopback-only, non va esteso: listener separato in `internal/collab` che riusa il **pattern** (token + limiti). *(Deciso dal codice: `sidecar/server.go` ascolta su `127.0.0.1:0`.)*
-- [x] **7.3 Discovery.** *(Proposta: MVP `ip:port` esplicito; mDNS in P1.)*
-- [x] **7.4 CRDT: Yjs vs Automerge, dove gira.** *(Proposta: Yjs nel renderer + `y-monaco`, Go relay opaco. Motivo: buffer non salvato è nel renderer, nessun Yjs Go maturo.)*
-- [x] **7.5 Conflitto host/guest sullo stesso file.** *(Proposta: CRDT per merge live; watcher/git → "outside change" riconciliato esplicitamente.)*
-- [x] **7.6 `devsession` vs `collab`.** *(Proposta: `collab` sottoscrive gli eventi di `devsession.Manager` e li replica; nessuno stato duplicato. ADR breve.)*
-- [x] **7.7 Segreti.** Filtro all'origine in Go prima della serializzazione; mai `vault:` risolti nel payload. *(Proposta: riusare `exportableVariables` + check `secretScanner` in preview.)*
-- [x] **7.8 Ordine consegne.** *(Proposta: 6.1 → 6.2 → 6.3 come primo slice spedibile.)*
-- [x] **7.9 Guest senza LSP in P0.** *(Proposta: accettato; LSP proxy in P1.)*
-
----
-
-**Indicazione finale:** la prima consegna utile è `internal/collab` con Session Manager + transport autenticato + Quick Collection Share file-based; Live Code Editing (CRDT) è il traguardo più duro e va affrontato solo a trasporto e modello di autorizzazione già chiusi.
+**Prossimo passo:** chiudere le accettazioni A1–A7 su due computer reali prima di aprire la Fase P1.

@@ -58,7 +58,15 @@ func NormalizeCommandConfiguration(config Configuration) (Configuration, error) 
 			return config, fmt.Errorf("massimo 10 configurazioni in una compound")
 		}
 		config.Compound = ids
-		config.PreRun, config.PostRun = nil, nil
+		// A compound may run tasks before its members (migrations, seed data), never after;
+		// a member cannot also be one of its tasks.
+		pre := []string{}
+		for _, id := range config.PreRun {
+			if !slices.Contains(ids, strings.TrimSpace(id)) {
+				pre = append(pre, id)
+			}
+		}
+		config.PreRun, config.PostRun = pre, nil
 	} else {
 		config.Compound = nil
 	}

@@ -104,6 +104,10 @@ import {
   serviceConfigurationForDirectory,
   workspaceStartConfiguration,
   workspaceStartDraft,
+  detectedWorkspaceTasks,
+  isRunnableTask,
+  taskConfiguration,
+  taskConfigurationForDetected,
 } from './goStudioWorkspaceStart'
 import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
@@ -382,6 +386,9 @@ export function GoStudioPanel() {
       const snapshot = await DevContextBindings.GetContext(activeSession.id)
       const files = detectedComposeFiles(snapshot.entities)
       const services = detectedGoServices(snapshot.entities)
+      const detectedTasks = detectedWorkspaceTasks(snapshot.entities)
+      const runnableTasks = detectedTasks.filter(isRunnableTask)
+      const manualTasks = detectedTasks.filter((task) => !isRunnableTask(task))
       if (files.length === 0 && services.length === 0) {
         openConfigurations(workspaceStartDraft(activeSession.id))
         useGoIDELspStore.setState({ message: 'No Compose stack or Go service detected. Add containers, services or migrations to the Start workspace compound, then run it again.' })
@@ -401,9 +408,20 @@ export function GoStudioPanel() {
         if (!config) throw new Error(`Could not save the service configuration for ${service.name}`)
         members.push(config)
       }
-      const savedWorkspace = await useGoIDEStore.getState().saveRunConfiguration(workspaceStartDraft(activeSession.id, members.map((config) => config.id)))
+      // Migrations and seed data run after the containers are ready and before the services.
+      const tasks: GoIDERunConfiguration[] = []
+      for (const task of runnableTasks) {
+        const existing = taskConfigurationForDetected(runConfigurations, task)
+        const config = existing ?? await useGoIDEStore.getState().saveRunConfiguration(taskConfiguration(activeSession.id, task))
+        if (!config) throw new Error(`Could not save the ${task.role} task ${task.name}`)
+        tasks.push(config)
+      }
+      const savedWorkspace = await useGoIDEStore.getState().saveRunConfiguration(workspaceStartDraft(activeSession.id, members.map((config) => config.id), tasks.map((config) => config.id)))
       if (!savedWorkspace) throw new Error('Could not save the Start workspace configuration')
-      const secretKeys = requiredSecretKeysForRun(savedWorkspace, [...runConfigurations, ...members, savedWorkspace])
+      if (manualTasks.length > 0) {
+        useGoIDELspStore.setState({ message: `SQL migrations found in ${manualTasks.map((task) => `${task.path} (${task.runner})`).join(', ')}: add a Command task with your tool and DSN to Start workspace.` })
+      }
+      const secretKeys = requiredSecretKeysForRun(savedWorkspace, [...runConfigurations, ...members, ...tasks, savedWorkspace])
       if (secretKeys.length > 0) {
         setPendingSecrets({ config: savedWorkspace, keys: secretKeys })
         useGoIDELspStore.setState({ message: `Detected ${files.length} Compose ${files.length === 1 ? 'stack' : 'stacks'} and ${services.length} Go ${services.length === 1 ? 'service' : 'services'}. Provide runtime secrets to start.` })

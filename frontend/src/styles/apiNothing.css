@@ -34,3 +34,17 @@
 .api-nothing-glyph-core { fill: var(--color-accent); }
 .api-nothing-glyph-ring { fill: var(--color-text-4); }
 .api-nothing-shortcut { border-style: dotted; letter-spacing: .3px; }
+.api-nothing-error .api-nothing-headline { color: var(--color-accent); }
+.api-nothing-error-detail {
+  padding: 14px 16px; border: 1px solid var(--color-border-1);
+  border-left: 2px solid var(--color-accent); border-radius: 4px;
+  background: var(--color-surface-1); color: var(--color-text-3);
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  text-align: left; overflow-wrap: anywhere;
+}
+.api-nothing-error-badge {
+  padding: 3px 7px; border: 1px dotted var(--color-error);
+  border-radius: 3px; color: var(--color-error);
+  font-family: var(--skin-font-ui, Doto, var(--font-ui));
+  font-size: 11px; font-weight: 800; letter-spacing: .3px;
+}

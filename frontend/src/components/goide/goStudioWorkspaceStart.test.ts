@@ -11,6 +11,10 @@ import {
   serviceConfigurationForDirectory,
   workspaceStartConfiguration,
   workspaceStartDraft,
+  detectedWorkspaceTasks,
+  isRunnableTask,
+  taskConfiguration,
+  taskConfigurationForDetected,
 } from './goStudioWorkspaceStart'
 
 const config = (partial: Partial<GoIDERunConfiguration>): GoIDERunConfiguration => ({
@@ -111,5 +115,25 @@ describe('Go Studio workspace start helpers', () => {
       { id: 'done', sessionId: 's1', status: 'exited' },
       { id: 'other', sessionId: 's2', status: 'running' },
     ], 's1')).toEqual(['compose', 'api'])
+  })
+
+  it('wires detected migrations and seeds as ordered Start workspace tasks', () => {
+    const tasks = detectedWorkspaceTasks([
+      { kind: 'task', label: 'make db-seed', attrs: { role: 'seed', runner: 'make', file: 'Makefile', target: 'db-seed' } },
+      { kind: 'task', label: 'migrate', attrs: { role: 'migration', runner: 'go', dir: 'cmd/migrate' } },
+      { kind: 'task', label: 'db/migrations', attrs: { role: 'migration', runner: 'golang-migrate', dir: 'db/migrations' } },
+      { kind: 'service', label: 'api', attrs: { origin: 'go', dir: 'cmd/api' } },
+    ])
+    expect(tasks.map((task) => `${task.role}:${task.name}`)).toEqual(['migration:db/migrations', 'migration:migrate', 'seed:make db-seed'])
+    expect(tasks.filter(isRunnableTask).map((task) => task.runner)).toEqual(['go', 'make'])
+
+    const migrate = taskConfiguration('s1', tasks[1])
+    expect(migrate).toMatchObject({ name: 'Migrate: cmd/migrate', kind: GoIDERunConfigurationKind.RunKindPackage, target: './cmd/migrate', shared: true })
+    const seed = taskConfiguration('s1', tasks[2])
+    expect(seed).toMatchObject({ name: 'Seed: make db-seed', kind: GoIDERunConfigurationKind.RunKindMake, target: 'Makefile', programArguments: ['db-seed'] })
+    expect(taskConfigurationForDetected([config({ ...migrate, id: 'm' })], tasks[1])?.id).toBe('m')
+    expect(taskConfigurationForDetected([config({ ...seed, id: 's', programArguments: ['other'] })], tasks[2])).toBeNull()
+
+    expect(workspaceStartDraft('s1', ['a', 'b'], ['m'])).toMatchObject({ compound: ['a', 'b'], preRun: ['m'] })
   })
 })

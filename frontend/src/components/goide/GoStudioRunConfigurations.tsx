@@ -6,7 +6,7 @@ import { useGoIDEStore, type GoIDEState } from '@/stores/goide'
 import { GoIDERunConfigurationKind } from '@/lib/goide-api'
 import type { GoIDERunConfiguration } from '@/lib/goide-api'
 import { GoStudioEntryList } from './GoStudioEntryList'
-import { GoStudioRunParameters } from './GoStudioRunParameters'
+import { GoStudioRunParameters, RunTaskList } from './GoStudioRunParameters'
 import { GoStudioRunTarget, supportsRemoteTarget } from './GoStudioRunTarget'
 import { readRunHistory } from '@/lib/goide/goStudioRunHistory'
 
@@ -33,7 +33,7 @@ const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: 
   { value: GoIDERunConfigurationKind.RunKindDockerRun, label: 'Docker build & run', hint: 'docker build, then docker run --rm of the image; Stop really stops the container', available: true },
   { value: GoIDERunConfigurationKind.RunKindCommand, label: 'Command', hint: 'any program on the PATH or a script inside the project, run without a shell', available: true },
   { value: GoIDERunConfigurationKind.RunKindGoTool, label: 'Go tool', hint: 'go <command> with the project toolchain: generate, vet, tool pprof, list…', available: true },
-  { value: GoIDERunConfigurationKind.RunKindCompound, label: 'Compound', hint: 'starts the selected configurations together, in parallel', available: true },
+  { value: GoIDERunConfigurationKind.RunKindCompound, label: 'Compound', hint: 'starts Compose stacks first, waits until their containers are ready, runs the tasks in order, then starts the other configurations', available: true },
 ]
 
 const COMMAND_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool])
@@ -227,6 +227,11 @@ export function GoStudioRunConfigurations({ open, sessionId, initialDraft, onClo
                       </label>
                     ))}
                     {compoundCandidates.length < 2 && <p className="gs-hint px-2 py-1.5">Create at least two other configurations first.</p>}
+                  </div>
+                  <div className="mt-3 font-normal">
+                    <RunTaskList draft={draft} configs={configs} patch={patch} field="preRun" exclude={draft.compound ?? []}
+                      title="Tasks after the containers are ready"
+                      hint="Migrations, seed data… run one after the other once Compose containers are healthy; a failure keeps the services stopped." />
                   </div>
                 </fieldset>
               ) : draft.kind === GoIDERunConfigurationKind.RunKindCommand ? (

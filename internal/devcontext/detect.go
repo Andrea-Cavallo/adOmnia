@@ -24,13 +24,13 @@ func interesting(rel string) bool {
 	}
 	base := path.Base(rel)
 	switch {
-	case base == "go.mod", isDotenv(base), isCompose(base):
+	case base == "go.mod", isDotenv(base), isCompose(base), isMakefile(base):
 		return true
 	case strings.HasSuffix(base, "_test.go"):
 		return false
 	}
 	switch path.Ext(base) {
-	case ".go", ".proto", ".wsdl", ".yaml", ".yml", ".json":
+	case ".go", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
 		return true
 	}
 	return false
@@ -64,6 +64,10 @@ func detectFile(rel string, data []byte, env map[string]string) ([]Entity, []str
 		add(detectDotenv(rel, data))
 	case isCompose(base):
 		add(detectCompose(rel, data, env))
+	case isMakefile(base):
+		add(detectMakefile(rel, data))
+	case strings.HasSuffix(base, ".sql"):
+		add(detectSQLMigration(rel, data))
 	case strings.HasSuffix(base, ".proto"), strings.HasSuffix(base, ".wsdl"):
 		add(detectContractFile(rel, data))
 	default:

@@ -14,6 +14,14 @@ Il modulo deve funzionare con Kubernetes standard e aggiungere funzionalità spe
 
 ---
 
+## Stato attuale (verificato nel codice il 2026-10-10)
+
+Esiste già la **Kubernetes Studio** (`internal/kube`, `frontend/src/components/kube`), basata su `kubectl` con output JSON letto in Go: context dal kubeconfig/`KUBECONFIG` senza modificarlo, namespace, pod (stato, ready, restart, nodo, container, label), log in streaming per container, exec, lettura/scrittura file nel container, port-forward di pod e service su `127.0.0.1` con porta libera automatica, elenco di deployment, service, configmap e secret (solo metadati: i valori non lasciano il backend), strumenti Go sui pod. Le voci già coperte sono state rimosse da questo file.
+
+**Scelta aperta prima di P0:** l'architettura sotto (`internal/platform/cluster` con API native) è il traguardo; oggi si estende `internal/kube`. Passare a client-go conviene quando servono watch, discovery delle API OpenShift e metriche: fino ad allora `kubectl` resta l'adapter.
+
+---
+
 # Principi architetturali
 
 - Kubernetes-first.
@@ -99,31 +107,22 @@ Il frontend deve abilitare le funzionalità in base alle capability rilevate sul
 
 ## Cluster Connection
 
-- [ ] Leggere automaticamente `~/.kube/config`.
-- [ ] Supportare più kubeconfig.
-- [ ] Leggere `KUBECONFIG`.
-- [ ] Elencare tutti i context disponibili.
-- [ ] Selezionare il context attivo.
 - [ ] Mostrare cluster corrente.
 - [ ] Mostrare user corrente.
-- [ ] Mostrare namespace corrente.
+- [ ] Mostrare namespace corrente. — *Parziale: namespace scelto nel pannello, non letto dal context.*
 - [ ] Verificare la connettività.
 - [ ] Mostrare versione Kubernetes.
 - [ ] Rilevare se il cluster è OpenShift.
 - [ ] Rilevare la versione OpenShift.
 - [ ] Rilevare API disponibili tramite discovery.
-- [ ] Implementare timeout configurabile.
+- [ ] Implementare timeout configurabile. — *Parziale: timeout fisso per chiamata `kubectl`.*
 - [ ] Implementare reconnect automatico.
 - [ ] Gestire certificati custom.
 - [ ] Gestire proxy HTTP/HTTPS aziendali.
 - [ ] Rispettare `NO_PROXY`.
-- [ ] Non modificare kubeconfig senza consenso esplicito.
 
 ### Acceptance Criteria
 
-- [ ] adOmnia rileva automaticamente almeno un context valido.
-- [ ] Il cambio context non richiede riavvio.
-- [ ] Un cluster non raggiungibile non blocca l'applicazione.
 - [ ] Gli errori TLS, proxy, auth e timeout sono distinguibili.
 - [ ] Le credenziali non vengono loggate.
 
@@ -161,7 +160,6 @@ DEV | ocp-dev | eurodigitale-dev | mau-transaction | 2/2 Pods ●
 
 ## Namespace Explorer
 
-- [ ] Lista namespaces.
 - [ ] Ricerca namespace.
 - [ ] Namespace preferiti.
 - [ ] Namespace recenti.
@@ -174,30 +172,21 @@ DEV | ocp-dev | eurodigitale-dev | mau-transaction | 2/2 Pods ●
 
 Supportare:
 
-- [ ] Deployment.
 - [ ] StatefulSet.
 - [ ] DaemonSet.
 - [ ] Job.
 - [ ] CronJob.
 - [ ] DeploymentConfig OpenShift.
 - [ ] ReplicaSet.
-- [ ] Pod.
 
 Mostrare:
 
-- [ ] Name.
 - [ ] Namespace.
 - [ ] Status.
-- [ ] Desired replicas.
-- [ ] Ready replicas.
-- [ ] Available replicas.
-- [ ] Image.
 - [ ] Image tag.
 - [ ] Creation time.
 - [ ] Restart count aggregato.
-- [ ] Age.
 - [ ] Labels.
-- [ ] Selector.
 
 ### Acceptance Criteria
 
@@ -209,15 +198,10 @@ Mostrare:
 
 ## Pods
 
-- [ ] Lista pods del workload.
-- [ ] Pod status.
-- [ ] Containers.
+- [ ] Lista pods del workload. — *Parziale: i pod sono elencati per namespace, non filtrati per workload.*
 - [ ] Init containers.
-- [ ] Restart count.
-- [ ] Node.
 - [ ] Pod IP.
 - [ ] Start time.
-- [ ] Ready status.
 - [ ] Container image.
 - [ ] Container state.
 - [ ] Last termination reason.
@@ -232,19 +216,15 @@ Mostrare:
 
 ## Live Logs
 
-- [ ] Streaming logs.
-- [ ] Selezione pod.
-- [ ] Selezione container.
 - [ ] Aggregazione logs da più pod.
-- [ ] Follow logs.
-- [ ] Pause.
+- [ ] Pause. — *Parziale: c'è Stop dello stream, non una pausa che conserva il buffer.*
 - [ ] Resume.
 - [ ] Clear.
 - [ ] Download log.
 - [ ] Copy.
 - [ ] Timestamp.
 - [ ] Tail configurabile.
-- [ ] Since configurabile.
+- [ ] Since configurabile. — *Parziale: fisso a 300 s.*
 - [ ] Ricerca testuale.
 - [ ] Regex.
 - [ ] Filtro `ERROR`.
@@ -283,15 +263,7 @@ Mostrare:
 
 ## Port Forward
 
-- [ ] Port forward Pod.
-- [ ] Port forward Service.
-- [ ] Porta locale configurabile.
-- [ ] Auto-selection porta locale libera.
-- [ ] Start.
-- [ ] Stop.
 - [ ] Restart automatico opzionale.
-- [ ] Lista port forwarding attivi.
-- [ ] Stato connessione.
 - [ ] Copia URL locale.
 - [ ] "Open in API Client".
 - [ ] "Open in Browser".
@@ -307,7 +279,6 @@ Status: Active
 
 ### Acceptance Criteria
 
-- [ ] Nessun processo orfano dopo Stop.
 - [ ] Porta già occupata produce errore chiaro.
 - [ ] Un port-forward può essere riutilizzato dal REST client di adOmnia.
 
@@ -345,14 +316,9 @@ openshift:
 
 ## Services
 
-- [ ] Lista Services.
-- [ ] ClusterIP.
-- [ ] Ports.
-- [ ] TargetPorts.
-- [ ] Selectors.
 - [ ] EndpointSlices.
 - [ ] Pod collegati.
-- [ ] Avviare port-forward direttamente dal Service.
+- [ ] Avviare port-forward direttamente dal Service. — *Parziale: il backend accetta `svc/`; manca l'azione nella lista Services.*
 
 ---
 
@@ -379,7 +345,6 @@ openshift:
 
 ## Pod Terminal
 
-- [ ] Exec command.
 - [ ] Terminal interattivo.
 - [ ] Selezione container.
 - [ ] Shell detection.
@@ -417,7 +382,6 @@ openshift:
 
 ## ConfigMap
 
-- [ ] Lista ConfigMap.
 - [ ] Ricerca.
 - [ ] Preview YAML.
 - [ ] Preview JSON.
@@ -431,14 +395,9 @@ openshift:
 
 ## Secrets
 
-- [ ] Lista Secret.
-- [ ] Tipo Secret.
-- [ ] Metadata.
 - [ ] Workload che lo utilizza.
-- [ ] Valori sempre mascherati.
 - [ ] Reveal solo con azione esplicita.
 - [ ] Copy disabilitabile tramite policy.
-- [ ] Mai scrivere Secret nei log.
 - [ ] Mai includere Secret nei crash report.
 - [ ] Mai includere Secret negli export workspace.
 
@@ -997,6 +956,8 @@ P0 è completato quando lo sviluppatore può:
 11. Perdere temporaneamente la connessione senza bloccare l'app.
 12. Recuperare automaticamente la connessione.
 13. Lavorare senza esporre token o Secret.
+
+**Oggi (Kubernetes Studio):** coperti 3, 5, 6, 8, 10 e 13, e in parte 4 (deployment e pod non ancora collegati tra loro). Mancano 1–2 (binding del workspace al cluster), 7 (Events), 9 (port-forward → REST Client) e 11–12 (reconnect automatico). Prossimo passo consigliato: **Events** e **Open in API Client** dal port-forward, poi il binding del workspace.
 
 ---
 

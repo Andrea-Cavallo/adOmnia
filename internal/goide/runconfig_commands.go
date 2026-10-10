@@ -103,19 +103,6 @@ func (s *Service) validateCompound(session Session, config RunConfiguration) err
 	return nil
 }
 
-// startCompound avvia in parallelo le configurazioni della compound; restituisce la prima esecuzione partita.
-func (s *Service) startCompound(session Session, config RunConfiguration, secrets map[string]string) (Execution, error) {
-	if err := s.validateCompound(session, config); err != nil {
-		return Execution{}, err
-	}
-	steps := make([]run.Step, 0, len(config.Compound))
-	for _, id := range config.Compound {
-		member, _ := s.runConfigs.Get(session.ID, id)
-		steps = append(steps, run.Step{Name: member.Name, Start: func() (Execution, error) { return s.StartConfiguredRun(string(session.ID), id, secrets) }})
-	}
-	return run.Compound(s.processes, config.Name, steps)
-}
-
 type sharedRunConfigurations struct {
 	Format         string             `json:"format"`
 	Version        int                `json:"version"`

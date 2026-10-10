@@ -20,14 +20,14 @@
   background: var(--color-surface-0);
 }
 .api-request-caption { display: flex; align-items: center; gap: 16px; min-width: 0; margin-bottom: 12px; font-size: 12px; color: var(--color-text-3); }
-.api-dot-label { flex-shrink: 0; font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-2); }
+.api-dot-label { flex-shrink: 0; font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-accent); }
 .api-request-bar .api-method,
 .api-request-bar .api-url { background: var(--color-surface-1); border-color: var(--color-border-1); border-radius: 4px; }
 .api-request-bar .api-url:focus-within { border-color: var(--color-accent); }
-/* Nothing-style Send: same ink as the skin (black skin -> black slab, white label;
-   white skin -> white slab, black label). Segmented inner frame, dot-matrix label. */
+/* Nothing-style Send: palette accent on the theme surface.
+   Segmented inner frame and dot-matrix label share the same dynamic ink. */
 .api-request-bar .api-send-nothing {
-  --send-bg: var(--color-surface-0); --send-ink: var(--color-text-1);
+  --send-bg: var(--color-surface-0); --send-ink: var(--color-accent);
   position: relative; isolation: isolate; border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--send-ink) 35%, transparent);
   color: var(--send-ink); background: var(--send-bg); box-shadow: none;

@@ -69,6 +69,17 @@ Several projects can stay open at the same time, isolated from each other, group
 - **Code → Vulnerability Diagnostics** (off by default): after you confirm, gopls downloads the Go vulnerability database from vuln.go.dev and marks the `go.mod` requirements whose imported code has known vulnerabilities. Your source code is not sent.
 - **Replace in Files:** *Replace All… (preview)* in Find in Files opens every change in the change preview, applied all or nothing and undoable. With regular expressions, `$1`, `$2`… insert the captured groups.
 
+## Start workspace
+
+*Run → Start Workspace* brings the local environment up in order. The first time, it detects what the project needs and saves a shared **Start workspace** compound:
+
+1. **Containers**: every Compose file of the project starts attached (`docker compose up`, logs in the Run console).
+2. **Ready check**: adOmnia polls `docker compose ps` until every container runs (and is *healthy* when it has a healthcheck) or finished with exit code 0. An unhealthy or crashed container, or 3 minutes without being ready, stops here with the container's name.
+3. **Tasks**, one after the other: database migrations, then seed data. Detected from `package main` folders named like `cmd/migrate` or `cmd/seed` (run with `go run`; they are no longer started as services) and from Makefile targets such as `migrate`, `db-migrate` or `seed`. Folders of golang-migrate (`*.up.sql`) or goose (`-- +goose Up`) migrations are reported but not wired, because they need your tool and DSN: add them as a Command task.
+4. **Services**: the Go `main` packages, with restart on save.
+
+A failed task keeps the services stopped. Every stage writes a line in the console of the run you are looking at. Any compound can use the same order: its *Tasks after the containers are ready* list is in the run configuration editor. Without Compose members or tasks, a compound still starts everything at once.
+
 ## adOmnia environments in runs
 
 Every Run, Build, Test and configured run receives the variables of the active

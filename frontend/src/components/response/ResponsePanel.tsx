@@ -737,17 +737,24 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     return (
       <div data-api-response className="flex-1 flex flex-col">
         <ResponseHeaderBar headerActions={headerActions}>
-          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error">
+          <span className="api-nothing-error-badge">
             {humanCode[effectiveCode] ?? effectiveCode}
           </span>
         </ResponseHeaderBar>
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center max-w-sm w-full">
-            <div className="text-3xl mb-3 text-error/40">⚠</div>
-            <p className="text-sm font-medium text-text-1 mb-2">{humanCode[effectiveCode] ?? tr('Request failed')}</p>
-            <p className="text-xs text-text-3 font-mono break-all mb-3 px-3 py-2 bg-surface-2 rounded border border-border-1 text-left">{message}</p>
+          <div className="api-nothing-error text-center max-w-sm w-full">
+            <svg aria-hidden="true" viewBox="0 0 104 104" className="mx-auto mb-5 h-20 w-20">
+              {Array.from({ length: 169 }, (_, index) => {
+                const x = index % 13 - 6, y = Math.floor(index / 13) - 6
+                const ring = Math.abs(Math.hypot(x, y) - 5.5) < .55
+                const mark = x === 0 && ((y >= -3 && y <= 0) || y === 3)
+                return ring || mark ? <circle key={index} cx={52+x*8} cy={52+y*8} r={mark ? 2.4 : 1.6} className={mark ? 'api-nothing-glyph-core' : 'api-nothing-glyph-ring'} /> : null
+              })}
+            </svg>
+            <p className="api-nothing-headline mb-5">{humanCode[effectiveCode] ?? tr('Request failed')}</p>
+            <p className="api-nothing-error-detail">{message}</p>
             {hint[effectiveCode] && (
-              <p className="text-xs text-text-4 leading-relaxed border-t border-border-1 pt-3">{hint[effectiveCode]}</p>
+              <p className="text-xs text-text-3 leading-relaxed mt-4">{hint[effectiveCode]}</p>
             )}
           </div>
         </div>
