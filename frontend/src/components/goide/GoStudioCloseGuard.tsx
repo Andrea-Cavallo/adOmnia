@@ -5,6 +5,7 @@ import {
   MAIN_GO_STUDIO_WINDOW, confirmGoIDESessionWindowClose, setGoIDEWindowDirtyDocumentCount, subscribeGoIDEWindowCloseRequests,
 } from '@/lib/goide-window-api'
 import { useGoIDEStore } from '@/stores/goide'
+import { useUpdaterStore } from '@/stores/updater'
 import { GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioUnsavedFileList } from './GoStudioUnsavedFileList'
 
@@ -20,6 +21,7 @@ interface GoStudioCloseGuardProps {
 
 export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudioCloseGuardProps) {
   const detached = windowId !== MAIN_GO_STUDIO_WINDOW
+  const updating = useUpdaterStore(state => state.status.scheduled)
   const documents = useGoIDEStore((state) => state.documents)
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
   const dirtyDocuments = documents.filter((document) => document.dirty)
@@ -76,7 +78,7 @@ export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudi
       subtitle={subtitle}
       footer={<>
         <GoStudioButton variant="ghost" onClick={() => setRequest(null)}>Cancel</GoStudioButton>
-        <GoStudioButton variant={dirty > 0 ? 'danger-ghost' : 'danger'} onClick={() => void close()}>{dirty > 0 ? 'Discard & close' : 'Stop & close'}</GoStudioButton>
+        {!(updating && dirty > 0) && <GoStudioButton variant={dirty > 0 ? 'danger-ghost' : 'danger'} onClick={() => void close()}>{dirty > 0 ? 'Discard & close' : 'Stop & close'}</GoStudioButton>}
         {dirty > 0 && <GoStudioButton variant="primary" data-autofocus loading={saving} onClick={() => void saveAndClose()}>Save & close</GoStudioButton>}
       </>}
     >

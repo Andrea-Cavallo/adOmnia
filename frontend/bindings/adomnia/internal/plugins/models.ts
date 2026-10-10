@@ -6,7 +6,10 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
- * ContributedAdapter recognizes a framework, broker or database from the project's direct Go dependencies.
+ * ContributedAdapter recognizes a framework, broker or database from the project's direct Go dependencies
+ * and teaches service detection what that dependency means: which handler parameter types and route
+ * registration methods mark a framework, which topic-bearing methods mark a broker, which query methods
+ * mark a database.
  */
 export class ContributedAdapter {
     /**
@@ -16,6 +19,23 @@ export class ContributedAdapter {
     "id": string;
     "name": string;
     "modules": string[];
+
+    /**
+     * Framework hints (kind=framework): parameter types that mark a handler and route registration methods.
+     */
+    "handlerTypes"?: string[];
+    "routeMethods"?: string[];
+
+    /**
+     * Broker hints (kind=broker): the protocol name and the topic-bearing methods.
+     */
+    "broker"?: string;
+    "topicMethods"?: string[];
+
+    /**
+     * Database hints (kind=database): query methods whose string argument is SQL.
+     */
+    "sqlMethods"?: string[];
 
     /** Creates a new ContributedAdapter instance. */
     constructor($$source: Partial<ContributedAdapter> = {}) {
@@ -40,9 +60,25 @@ export class ContributedAdapter {
      */
     static createFrom($$source: any = {}): ContributedAdapter {
         const $$createField3_0 = $$createType0;
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
+        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField3_0($$parsedSource["modules"]);
+        }
+        if ("handlerTypes" in $$parsedSource) {
+            $$parsedSource["handlerTypes"] = $$createField4_0($$parsedSource["handlerTypes"]);
+        }
+        if ("routeMethods" in $$parsedSource) {
+            $$parsedSource["routeMethods"] = $$createField5_0($$parsedSource["routeMethods"]);
+        }
+        if ("topicMethods" in $$parsedSource) {
+            $$parsedSource["topicMethods"] = $$createField7_0($$parsedSource["topicMethods"]);
+        }
+        if ("sqlMethods" in $$parsedSource) {
+            $$parsedSource["sqlMethods"] = $$createField8_0($$parsedSource["sqlMethods"]);
         }
         return new ContributedAdapter($$parsedSource as Partial<ContributedAdapter>);
     }
@@ -281,6 +317,11 @@ export class Contribution {
     "server"?: ContributedLanguageServer | null;
     "adapterKind"?: string;
     "modules"?: string[];
+    "handlerTypes"?: string[];
+    "routeMethods"?: string[];
+    "broker"?: string;
+    "topicMethods"?: string[];
+    "sqlMethods"?: string[];
 
     /** Creates a new Contribution instance. */
     constructor($$source: Partial<Contribution> = {}) {
@@ -311,6 +352,10 @@ export class Contribution {
         const $$createField9_0 = $$createType0;
         const $$createField11_0 = $$createType2;
         const $$createField13_0 = $$createType0;
+        const $$createField14_0 = $$createType0;
+        const $$createField15_0 = $$createType0;
+        const $$createField17_0 = $$createType0;
+        const $$createField18_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
             $$parsedSource["languages"] = $$createField6_0($$parsedSource["languages"]);
@@ -323,6 +368,18 @@ export class Contribution {
         }
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField13_0($$parsedSource["modules"]);
+        }
+        if ("handlerTypes" in $$parsedSource) {
+            $$parsedSource["handlerTypes"] = $$createField14_0($$parsedSource["handlerTypes"]);
+        }
+        if ("routeMethods" in $$parsedSource) {
+            $$parsedSource["routeMethods"] = $$createField15_0($$parsedSource["routeMethods"]);
+        }
+        if ("topicMethods" in $$parsedSource) {
+            $$parsedSource["topicMethods"] = $$createField17_0($$parsedSource["topicMethods"]);
+        }
+        if ("sqlMethods" in $$parsedSource) {
+            $$parsedSource["sqlMethods"] = $$createField18_0($$parsedSource["sqlMethods"]);
         }
         return new Contribution($$parsedSource as Partial<Contribution>);
     }

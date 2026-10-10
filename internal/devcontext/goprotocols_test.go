@@ -13,7 +13,7 @@ func protocolsOf(t *testing.T, rel, src string) []Entity {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return append(detectRoutes(rel, fset, file), detectProtocols(rel, fset, file)...)
+	return append(detectRoutes(rel, fset, file, AdapterHints{}), detectProtocols(rel, fset, file)...)
 }
 
 func TestDetectGRPCRegistrationWithAddress(t *testing.T) {

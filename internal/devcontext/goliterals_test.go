@@ -13,7 +13,7 @@ func literalsOf(t *testing.T, src string) map[string]Entity {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return byID(detectLiterals("internal/store.go", fset, file))
+	return byID(detectLiterals("internal/store.go", fset, file, AdapterHints{}))
 }
 
 func TestDetectEnvAndSQL(t *testing.T) {
@@ -105,7 +105,7 @@ func run() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := byID(merge(detectLiterals("events.go", fset, file)))
+	got := byID(merge(detectLiterals("events.go", fset, file, AdapterHints{})))
 	for topic, roles := range map[string][2]string{
 		"shared": {"true", "true"}, "written": {"true", ""},
 		"consumed": {"", "true"}, "ambiguous-record": {"", ""},
@@ -122,18 +122,18 @@ func run() {
 }
 
 func TestDetectGoFileMainAndBrokenSource(t *testing.T) {
-	got, err := detectGoFile("cmd/api/main.go", []byte("package main\nfunc main() {}\n"))
+	got, err := detectGoFile("cmd/api/main.go", []byte("package main\nfunc main() {}\n"), AdapterHints{})
 	if err != nil || byID(got)["service:go:cmd/api"].Label != "api" {
 		t.Fatalf("main package must become a service: %v %+v", err, got)
 	}
-	got, err = detectGoFile("api/routes.go", []byte("package api\nfunc r(m *http.ServeMux) {\n\tm.HandleFunc(\"GET /ok\", ok)\n\tm.HandleFunc(\"GET /half\", \n"))
+	got, err = detectGoFile("api/routes.go", []byte("package api\nfunc r(m *http.ServeMux) {\n\tm.HandleFunc(\"GET /ok\", ok)\n\tm.HandleFunc(\"GET /half\", \n"), AdapterHints{})
 	if err != nil {
 		t.Fatalf("syntax errors must not produce a warning: %v", err)
 	}
 	if _, ok := byID(got)["route:GET /ok"]; !ok {
 		t.Fatalf("the parsed part of a broken file must still be used: %+v", got)
 	}
-	if _, err := detectGoFile("x.go", []byte("not go at all {{{")); err != nil {
+	if _, err := detectGoFile("x.go", []byte("not go at all {{{"), AdapterHints{}); err != nil {
 		t.Fatalf("garbage must be ignored silently, got %v", err)
 	}
 }

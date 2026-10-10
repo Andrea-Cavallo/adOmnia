@@ -28,8 +28,8 @@ func Health(w http.ResponseWriter, r *http.Request) {}
 
 func helper(x int) {}
 `)
-	a, _ := detectGoFile("internal/api/routes.go", router)
-	b, _ := detectGoFile("internal/api/user_handler.go", handlers)
+	a, _ := detectGoFile("internal/api/routes.go", router, AdapterHints{})
+	b, _ := detectGoFile("internal/api/user_handler.go", handlers, AdapterHints{})
 	entities := linkHandlers(merge(a, b))
 	found := map[string]Entity{}
 	for _, e := range entities {

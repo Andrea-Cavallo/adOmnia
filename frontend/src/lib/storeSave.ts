@@ -1,6 +1,7 @@
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 const pending = new Map<string, () => Promise<void>>()
 const writes = new Map<string, Promise<void>>()
+const failures = new Map<string, unknown>()
 /** Keys whose data another window currently owns: saving them here would overwrite newer edits. */
 const suspended = new Set<string>()
 
@@ -30,13 +31,17 @@ export function immediateSave(key: string, fn: () => Promise<void>): void {
   clearTimeout(timers.get(key))
   timers.delete(key)
   pending.delete(key)
+  const save = async () => {
+    try { await fn(); failures.delete(key) }
+    catch (error) { failures.set(key, error); reportSaveError(error) }
+  }
   const previous = writes.get(key)
   let write: Promise<void>
   if (previous) {
-    write = previous.then(fn).catch(reportSaveError)
+    write = previous.then(save)
   } else {
     try {
-      write = fn().catch(reportSaveError)
+      write = save()
     } catch (e) {
       reportSaveError(e)
       return
@@ -68,16 +73,14 @@ async function runSave(key: string): Promise<void> {
   timers.delete(key)
   pending.delete(key)
   if (!fn) return
-  try {
-    await fn()
-  } catch (e) {
-    reportSaveError(e)
-  }
+  immediateSave(key, fn)
+  await writes.get(key)
 }
 
 /** Runs every queued save now: another window is about to read the same data from disk. */
-export async function flushPendingSaves(): Promise<void> {
+export async function flushPendingSaves(strict = false): Promise<void> {
   const keys = [...timers.keys()]
   keys.forEach((key) => clearTimeout(timers.get(key)))
   await Promise.all([...keys.map(runSave), ...writes.values()])
+  if (strict && failures.size) throw new Error('Save failed. Resolve the save error before restarting to update.')
 }

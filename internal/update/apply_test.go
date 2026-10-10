@@ -71,6 +71,10 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 				entry += ".exe"
 			}
 			target := filepath.Join(root, entry)
+			userFiles := []string{"workspace.adomnia", "settings.json", "unsaved-request.json"}
+			for _, name := range userFiles {
+				if e := os.WriteFile(filepath.Join(root, name), []byte("user modifications: "+name), 0600); e != nil { t.Fatal(e) }
+			}
 			helper := filepath.Join(stage, "helper.exe")
 			if e = copyRegular(self, target, 0700); e != nil {
 				t.Fatal(e)
@@ -130,6 +134,10 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 				t.Fatal("backup was not finalized/restored")
 			}
 			time.Sleep(1200 * time.Millisecond) // allow the isolated restarted fixture to exit
+			for _, name := range userFiles {
+				data, err := os.ReadFile(filepath.Join(root, name))
+				if err != nil || string(data) != "user modifications: "+name { t.Fatalf("user data changed: %s: %v", name, err) }
+			}
 		})
 	}
 }

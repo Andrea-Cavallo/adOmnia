@@ -13,7 +13,7 @@ func routesOf(t *testing.T, src string) map[string]Entity {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return byID(detectRoutes("api/routes.go", fset, file))
+	return byID(detectRoutes("api/routes.go", fset, file, AdapterHints{}))
 }
 
 func TestDetectRoutesStdlibAndGorilla(t *testing.T) {

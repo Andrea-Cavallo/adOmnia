@@ -73,12 +73,23 @@ type ContributedLanguageServer struct {
 	Arguments []string `json:"args,omitempty"`
 }
 
-// ContributedAdapter recognizes a framework, broker or database from the project's direct Go dependencies.
+// ContributedAdapter recognizes a framework, broker or database from the project's direct Go dependencies
+// and teaches service detection what that dependency means: which handler parameter types and route
+// registration methods mark a framework, which topic-bearing methods mark a broker, which query methods
+// mark a database.
 type ContributedAdapter struct {
 	Kind    string   `json:"kind"` // framework, broker, database
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Modules []string `json:"modules"`
+	// Framework hints (kind=framework): parameter types that mark a handler and route registration methods.
+	HandlerTypes []string `json:"handlerTypes,omitempty"`
+	RouteMethods []string `json:"routeMethods,omitempty"`
+	// Broker hints (kind=broker): the protocol name and the topic-bearing methods.
+	Broker       string   `json:"broker,omitempty"`
+	TopicMethods []string `json:"topicMethods,omitempty"`
+	// Database hints (kind=database): query methods whose string argument is SQL.
+	SQLMethods []string `json:"sqlMethods,omitempty"`
 }
 
 var (
@@ -87,6 +98,8 @@ var (
 	commandNamePattern    = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.+-]{0,127}$`)
 	modulePathPattern     = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._~/-]{1,255}$`)
 	languageIDPattern     = regexp.MustCompile(`^[a-z][a-z0-9+#._-]{0,31}$`)
+	handlerTypePattern    = regexp.MustCompile(`^\*?[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$`)
+	brokerNamePattern     = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
 // Reserved language IDs belong to built-in adapters: a plugin cannot replace Go.
@@ -189,6 +202,32 @@ func validateContributes(manifest *PluginManifest) error {
 				return fmt.Errorf("contributes.adapters %s: invalid module path %q", adapter.ID, module)
 			}
 		}
+		for _, method := range adapter.RouteMethods {
+			if adapter.Kind != "framework" || !commandNamePattern.MatchString(method) {
+				return fmt.Errorf("contributes.adapters %s: invalid route method %q", adapter.ID, method)
+			}
+		}
+		for _, handlerType := range adapter.HandlerTypes {
+			if adapter.Kind != "framework" || !handlerTypePattern.MatchString(handlerType) {
+				return fmt.Errorf("contributes.adapters %s: invalid handler type %q", adapter.ID, handlerType)
+			}
+		}
+		for _, method := range adapter.TopicMethods {
+			if adapter.Kind != "broker" || !commandNamePattern.MatchString(method) {
+				return fmt.Errorf("contributes.adapters %s: invalid topic method %q", adapter.ID, method)
+			}
+		}
+		if adapter.Broker != "" && (adapter.Kind != "broker" || !brokerNamePattern.MatchString(adapter.Broker)) {
+			return fmt.Errorf("contributes.adapters %s: invalid broker %q", adapter.ID, adapter.Broker)
+		}
+		for _, method := range adapter.SQLMethods {
+			if adapter.Kind != "database" || !commandNamePattern.MatchString(method) {
+				return fmt.Errorf("contributes.adapters %s: invalid sql method %q", adapter.ID, method)
+			}
+		}
+		if adapter.Kind == "broker" && len(adapter.TopicMethods) > 0 && adapter.Broker == "" {
+			return fmt.Errorf("contributes.adapters %s: a broker with topic methods needs a broker protocol name", adapter.ID)
+		}
 	}
 	return nil
 }
@@ -198,18 +237,23 @@ type Contribution struct {
 	PluginID   string `json:"pluginId"`
 	PluginName string `json:"pluginName"`
 	// Kind is command, codeAction, analyzer, template, language or adapter.
-	Kind        string                     `json:"kind"`
-	ID          string                     `json:"id"`
-	Title       string                     `json:"title"`
-	Action      string                     `json:"action,omitempty"`
-	Languages   []string                   `json:"languages,omitempty"`
-	Description string                     `json:"description,omitempty"`
-	Directory   string                     `json:"directory,omitempty"`
-	Extensions  []string                   `json:"extensions,omitempty"`
-	Monaco      string                     `json:"monaco,omitempty"`
-	Server      *ContributedLanguageServer `json:"server,omitempty"`
-	AdapterKind string                     `json:"adapterKind,omitempty"`
-	Modules     []string                   `json:"modules,omitempty"`
+	Kind         string                     `json:"kind"`
+	ID           string                     `json:"id"`
+	Title        string                     `json:"title"`
+	Action       string                     `json:"action,omitempty"`
+	Languages    []string                   `json:"languages,omitempty"`
+	Description  string                     `json:"description,omitempty"`
+	Directory    string                     `json:"directory,omitempty"`
+	Extensions   []string                   `json:"extensions,omitempty"`
+	Monaco       string                     `json:"monaco,omitempty"`
+	Server       *ContributedLanguageServer `json:"server,omitempty"`
+	AdapterKind  string                     `json:"adapterKind,omitempty"`
+	Modules      []string                   `json:"modules,omitempty"`
+	HandlerTypes []string                   `json:"handlerTypes,omitempty"`
+	RouteMethods []string                   `json:"routeMethods,omitempty"`
+	Broker       string                     `json:"broker,omitempty"`
+	TopicMethods []string                   `json:"topicMethods,omitempty"`
+	SQLMethods   []string                   `json:"sqlMethods,omitempty"`
 }
 
 // GetContributions lists what the enabled, healthy plugins add to the IDE, in a stable order.
@@ -254,6 +298,8 @@ func (pm *PluginManager) GetContributions() []Contribution {
 		for _, c := range m.Contributes.Adapters {
 			item := base
 			item.Kind, item.ID, item.Title, item.AdapterKind, item.Modules = "adapter", c.ID, c.Name, c.Kind, c.Modules
+			item.HandlerTypes, item.RouteMethods = c.HandlerTypes, c.RouteMethods
+			item.Broker, item.TopicMethods, item.SQLMethods = c.Broker, c.TopicMethods, c.SQLMethods
 			add(item)
 		}
 	}

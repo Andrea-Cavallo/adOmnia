@@ -20,11 +20,11 @@ var handlerParamTypes = map[string]bool{
 }
 
 // detectHandlerDecls records functions and methods with a handler signature.
-func detectHandlerDecls(rel string, fset *token.FileSet, file *ast.File) []Entity {
+func detectHandlerDecls(rel string, fset *token.FileSet, file *ast.File, hints AdapterHints) []Entity {
 	var out []Entity
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Type.Params == nil || !isHandlerSignature(fn.Type.Params) {
+		if !ok || fn.Type.Params == nil || !isHandlerSignature(fn.Type.Params, hints) {
 			continue
 		}
 		recv := ""
@@ -42,10 +42,18 @@ func detectHandlerDecls(rel string, fset *token.FileSet, file *ast.File) []Entit
 	return out
 }
 
-func isHandlerSignature(params *ast.FieldList) bool {
+func isHandlerSignature(params *ast.FieldList, hints AdapterHints) bool {
 	for _, field := range params.List {
-		if handlerParamTypes[exprString(field.Type)] {
+		t := exprString(field.Type)
+		if handlerParamTypes[t] {
 			return true
+		}
+		for _, fh := range hints.Frameworks {
+			for _, ht := range fh.HandlerTypes {
+				if t == ht {
+					return true
+				}
+			}
 		}
 	}
 	return false

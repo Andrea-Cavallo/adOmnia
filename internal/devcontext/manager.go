@@ -1,6 +1,7 @@
 package devcontext
 
 import (
+	"adomnia/internal/plugins"
 	"context"
 	"errors"
 	"fmt"
@@ -48,11 +49,37 @@ type Manager struct {
 	onChange    ChangeFunc
 	timeout     time.Duration
 	mu          sync.Mutex
+	hints       AdapterHints
 	sessions    map[string]*sessionState
 }
 
 func NewManager(resolveRoot RootResolver, onChange ChangeFunc) *Manager {
 	return &Manager{resolveRoot: resolveRoot, onChange: onChange, timeout: scanTimeout, sessions: map[string]*sessionState{}}
+}
+
+// SetAdapters updates the plugin detection hints used by the scan. When the
+// hints change, cached snapshots are dropped so the next read rescans with the
+// new knowledge; when they are unchanged this is a cheap no-op.
+func (m *Manager) SetAdapters(contributions []plugins.Contribution) {
+	hints := HintsFromContributions(contributions)
+	m.mu.Lock()
+	if m.hints.Equal(hints) {
+		m.mu.Unlock()
+		return
+	}
+	m.hints = hints
+	for _, st := range m.sessions {
+		st.mu.Lock()
+		st.files = nil
+		st.mu.Unlock()
+	}
+	m.mu.Unlock()
+}
+
+func (m *Manager) currentHints() AdapterHints {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.hints
 }
 
 func (m *Manager) state(sessionID string) *sessionState {
@@ -108,9 +135,10 @@ func (m *Manager) rescanLocked(sessionID string, st *sessionState) (Snapshot, er
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	defer cancel()
 	env := rootEnv(root)
+	hints := m.currentHints()
 	files := map[string]fileResult{}
 	walkErr := walkInteresting(ctx, root, func(rel string, _ time.Time) {
-		files[rel] = scanFile(root, rel, env)
+		files[rel] = scanFile(root, rel, env, hints)
 	})
 	st.mu.Lock()
 	st.root, st.files, st.warnings = root, files, walkWarnings(walkErr)
@@ -245,6 +273,7 @@ func (m *Manager) isContract(sessionID, rel string) bool {
 
 func (m *Manager) refresh(sessionID string, st *sessionState, root string, rels []string) {
 	env := rootEnv(root)
+	hints := m.currentHints()
 	updates := map[string]*fileResult{}
 	for _, rel := range rels {
 		if !interesting(rel) {
@@ -254,7 +283,7 @@ func (m *Manager) refresh(sessionID string, st *sessionState, root string, rels 
 			updates[rel] = nil
 			continue
 		}
-		r := scanFile(root, rel, env)
+		r := scanFile(root, rel, env, hints)
 		updates[rel] = &r
 	}
 	if len(updates) == 0 {
@@ -360,7 +389,7 @@ func walkWarnings(err error) []string {
 	return nil
 }
 
-func scanFile(root, rel string, env map[string]string) fileResult {
+func scanFile(root, rel string, env map[string]string, hints AdapterHints) fileResult {
 	full := filepath.Join(root, filepath.FromSlash(rel))
 	info, err := os.Stat(full)
 	if err != nil {
@@ -373,7 +402,7 @@ func scanFile(root, rel string, env map[string]string) fileResult {
 	if err != nil {
 		return fileResult{ModTime: info.ModTime(), Warnings: []string{rel + ": " + err.Error()}}
 	}
-	entities, warnings := detectFile(rel, data, env)
+	entities, warnings := detectFile(rel, data, env, hints)
 	return fileResult{Entities: entities, Warnings: warnings, ModTime: info.ModTime()}
 }
 

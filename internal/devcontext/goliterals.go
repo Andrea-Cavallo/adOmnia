@@ -35,18 +35,25 @@ var (
 )
 
 type literalWalker struct {
-	rel     string
-	fset    *token.FileSet
-	imports map[string]string // local package name -> broker
-	hasOS   bool
-	consts  map[string]string
-	out     []Entity
+	rel           string
+	fset          *token.FileSet
+	imports       map[string]string          // local package name -> broker
+	brokerMethods map[string]map[string]bool // plugin broker -> topic-bearing methods
+	sqlMethods    map[string]bool            // built-in plus plugin query methods
+	hasOS         bool
+	consts        map[string]string
+	out           []Entity
 }
 
 // detectLiterals finds env var names, SQL tables and broker topics written
 // as string literals. Dynamic strings are ignored on purpose.
-func detectLiterals(rel string, fset *token.FileSet, file *ast.File) []Entity {
+func detectLiterals(rel string, fset *token.FileSet, file *ast.File, hints AdapterHints) []Entity {
 	w := &literalWalker{rel: rel, fset: fset, imports: map[string]string{}, consts: map[string]string{}}
+	w.sqlMethods = make(map[string]bool, len(sqlMethods)+8)
+	for method := range sqlMethods {
+		w.sqlMethods[method] = true
+	}
+	w.brokerMethods = map[string]map[string]bool{}
 	for _, imp := range file.Imports {
 		p, _ := strconv.Unquote(imp.Path.Value)
 		name := knownImportNames[p]
@@ -61,6 +68,20 @@ func detectLiterals(rel string, fset *token.FileSet, file *ast.File) []Entity {
 		}
 		if broker, ok := topicLibs[p]; ok {
 			w.imports[name] = broker
+		}
+		if bh, ok := hints.Brokers[p]; ok {
+			w.imports[name] = bh.Broker
+			if w.brokerMethods[bh.Broker] == nil {
+				w.brokerMethods[bh.Broker] = map[string]bool{}
+			}
+			for _, method := range bh.TopicMethods {
+				w.brokerMethods[bh.Broker][method] = true
+			}
+		}
+		if dh, ok := hints.Databases[p]; ok {
+			for _, method := range dh.SQLMethods {
+				w.sqlMethods[method] = true
+			}
 		}
 	}
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -122,7 +143,7 @@ func (w *literalWalker) call(call *ast.CallExpr) {
 		if s, ok := stringLit(args[0]); ok && s != "" {
 			w.add("envvar", s, nil, call.Pos())
 		}
-	case sqlMethods[name]:
+	case w.sqlMethods[name]:
 		w.sql(args)
 	}
 	if pkg != nil && w.imports[pkg.Name] == "kafka" && name == "ConsumeTopics" {
@@ -130,6 +151,14 @@ func (w *literalWalker) call(call *ast.CallExpr) {
 			if s, ok := stringLit(arg); ok {
 				w.add("topic", s, map[string]string{"broker": "kafka", "consumer": "true"}, arg.Pos())
 			}
+		}
+	}
+	for broker, methods := range w.brokerMethods {
+		if !methods[name] || !w.importsBroker(broker) || len(args) == 0 {
+			continue
+		}
+		if s, ok := stringLit(args[0]); ok && s != "" {
+			w.add("topic", s, map[string]string{"broker": broker}, call.Pos())
 		}
 	}
 	if w.importsBroker("amqp") {

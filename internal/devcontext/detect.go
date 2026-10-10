@@ -45,7 +45,7 @@ func readable(rel string) bool {
 	return false
 }
 
-func detectFile(rel string, data []byte, env map[string]string) ([]Entity, []string) {
+func detectFile(rel string, data []byte, env map[string]string, hints AdapterHints) ([]Entity, []string) {
 	var out []Entity
 	var warnings []string
 	add := func(entities []Entity, err error) {
@@ -59,7 +59,7 @@ func detectFile(rel string, data []byte, env map[string]string) ([]Entity, []str
 	case base == "go.mod":
 		add(detectGoMod(rel, data))
 	case strings.HasSuffix(base, ".go"):
-		add(detectGoFile(rel, data))
+		add(detectGoFile(rel, data, hints))
 	case isDotenv(base):
 		add(detectDotenv(rel, data))
 	case isCompose(base):

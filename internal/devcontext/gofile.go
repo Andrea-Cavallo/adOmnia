@@ -9,7 +9,7 @@ import (
 
 // detectGoFile parses without type checking. Syntax errors are gopls's job:
 // the partial AST is used and no warning is raised, so editing never spams.
-func detectGoFile(rel string, data []byte) ([]Entity, error) {
+func detectGoFile(rel string, data []byte, hints AdapterHints) ([]Entity, error) {
 	fset := token.NewFileSet()
 	file, _ := parser.ParseFile(fset, rel, data, parser.SkipObjectResolution)
 	if file == nil || file.Name == nil {
@@ -17,10 +17,10 @@ func detectGoFile(rel string, data []byte) ([]Entity, error) {
 	}
 	var out []Entity
 	out = append(out, detectMain(rel, fset, file)...)
-	out = append(out, detectRoutes(rel, fset, file)...)
-	out = append(out, detectLiterals(rel, fset, file)...)
+	out = append(out, detectRoutes(rel, fset, file, hints)...)
+	out = append(out, detectLiterals(rel, fset, file, hints)...)
 	out = append(out, detectProtocols(rel, fset, file)...)
-	out = append(out, detectHandlerDecls(rel, fset, file)...)
+	out = append(out, detectHandlerDecls(rel, fset, file, hints)...)
 	return out, nil
 }
 
