@@ -247,3 +247,41 @@ func (s *Service) GraphSearchReady(sessionID, query string, kinds []string, limi
 	}
 	return nodes, nil
 }
+
+// FindingLocation è dove sta un finding di sicurezza (o qualunque segnalazione su file:riga).
+type FindingLocation struct {
+	Fingerprint string `json:"fingerprint"`
+	File        string `json:"file"`
+	Line        int    `json:"line"`
+}
+
+// SecurityExposure dice da quali ingressi pubblici (route HTTP, metodi gRPC, topic consumati,
+// entry point) si arriva alla funzione che contiene il finding: un finding raggiungibile da
+// una route è più urgente di uno in codice morto o solo interno.
+type SecurityExposure struct {
+	Fingerprint string      `json:"fingerprint"`
+	Function    string      `json:"function,omitempty"`
+	Public      []graph.Ref `json:"public"`
+	Entries     []graph.Ref `json:"entries"`
+}
+
+// SecurityExposures incrocia i finding con il workspace graph.
+func (s *Service) SecurityExposures(sessionID string, locations []FindingLocation) ([]SecurityExposure, error) {
+	entry, _, err := s.workspaceGraph(sessionID, false)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SecurityExposure, 0, len(locations))
+	for _, location := range locations {
+		exposure := SecurityExposure{Fingerprint: location.Fingerprint, Public: []graph.Ref{}, Entries: []graph.Ref{}}
+		if function, ok := entry.index.FunctionAt(strings.ReplaceAll(location.File, "\\", "/"), location.Line); ok {
+			exposure.Function = function.Label
+			if impact, ok := entry.index.Impact(function.ID); ok {
+				exposure.Public = append(append(append(exposure.Public, impact.Endpoints...), impact.RPCs...), impact.Consumers...)
+				exposure.Entries = append(exposure.Entries, impact.Entries...)
+			}
+		}
+		out = append(out, exposure)
+	}
+	return out, nil
+}

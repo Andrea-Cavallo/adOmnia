@@ -247,6 +247,13 @@ export type GoIDESecurityReport = Awaited<ReturnType<typeof GoIDEBindings.Securi
 export type GoIDESecurityFinding = GoIDESecurityReport['findings'][number]
 export type GoIDESecurityRule = GoIDESecurityReport['rules'][number]
 
+export type GoIDESecurityExposure = Awaited<ReturnType<typeof GoIDEBindings.SecurityExposures>>[number]
+
+/** Da quali route, metodi gRPC e topic (workspace graph) si raggiunge la funzione di ogni finding. */
+export async function securityExposures(sessionId: string, findings: readonly GoIDESecurityFinding[]): Promise<GoIDESecurityExposure[]> {
+  return GoIDEBindings.SecurityExposures(sessionId, findings.filter((finding) => finding.file.endsWith('.go')).map((finding) => ({ fingerprint: finding.fingerprint, file: finding.file, line: finding.line })))
+}
+
 /** Scansione offline dei file del progetto: segreti e regole statiche (TLS, crypto, injection, permessi). */
 export async function scanGoIDESecurity(sessionId: string): Promise<GoIDESecurityReport> {
   return GoIDEBindings.SecurityScan(sessionId)

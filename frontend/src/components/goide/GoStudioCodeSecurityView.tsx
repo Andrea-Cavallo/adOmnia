@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, BookmarkCheck, Copy, FileCode2, Info, Loader2, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Undo2 } from 'lucide-react'
 import {
-  clearGoIDESecurityBaseline, saveGoIDESecurityBaseline, scanGoIDESecurity, suppressGoIDESecurityFinding, unsuppressGoIDESecurityFinding,
+  clearGoIDESecurityBaseline, saveGoIDESecurityBaseline, scanGoIDESecurity, securityExposures, type GoIDESecurityExposure, suppressGoIDESecurityFinding, unsuppressGoIDESecurityFinding,
   type GoIDESecurityFinding, type GoIDESecurityReport, type GoIDESession,
 } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
@@ -39,7 +39,13 @@ export function GoStudioCodeSecurityView({ session, lead }: { session: GoIDESess
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const visible = useMemo(() => (report ? filterFindings(report.findings, filter) : []), [report, filter])
+  const [exposure, setExposure] = useState<Record<string, GoIDESecurityExposure>>({})
+  // Security path analysis: findings reachable from a route, an RPC or a consumed topic come first.
+  const visible = useMemo(() => {
+    const findings = report ? filterFindings(report.findings, filter) : []
+    const exposed = (finding: GoIDESecurityFinding) => (exposure[finding.fingerprint]?.public?.length ? 0 : 1)
+    return [...findings].sort((left, right) => exposed(left) - exposed(right))
+  }, [report, filter, exposure])
   const summary = useMemo(() => summarize(report?.findings ?? []), [report])
   const current = visible.find((finding) => finding.fingerprint === selected) ?? visible[0] ?? null
 
@@ -50,6 +56,12 @@ export function GoStudioCodeSecurityView({ session, lead }: { session: GoIDESess
       setReport(result)
       if (!keepSelection) setSelected(null)
       setError(null)
+      // The workspace graph needs a trusted project (go/packages); without it the list stays as is.
+      if (session.project.authorization === 'tooling-permitted' && result.findings.length > 0) {
+        void securityExposures(session.id, result.findings)
+          .then((items) => setExposure(Object.fromEntries((items ?? []).map((item) => [item.fingerprint, item]))))
+          .catch(() => setExposure({}))
+      }
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : 'Security scan failed')
     } finally {
@@ -134,13 +146,13 @@ export function GoStudioCodeSecurityView({ session, lead }: { session: GoIDESess
                     {group.findings.map((finding) => (
                       <button key={finding.fingerprint + finding.line} type="button" role="option" aria-selected={current?.fingerprint === finding.fingerprint} onClick={() => setSelected(finding.fingerprint)} className={`mb-1 block w-full rounded-lg px-2.5 py-1.5 text-left ${current?.fingerprint === finding.fingerprint ? 'bg-accent/10 shadow-[inset_0_0_0_1px_var(--color-border-2)]' : 'hover:bg-surface-2/60'} ${finding.suppressed || finding.baselined ? 'opacity-60' : ''}`}>
                         <span className="flex items-center gap-2"><span className="min-w-0 truncate text-[12px] font-medium text-text-1">{finding.title}</span><span className="ml-auto"><SeverityBadge severity={finding.severity} /></span></span>
-                        <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[10.5px] text-text-4"><span className="truncate">{finding.file}:{finding.line}</span>{finding.suppressed && <span className="shrink-0 rounded bg-surface-3 px-1 text-[9.5px]">suppressed</span>}{finding.baselined && !finding.suppressed && <span className="shrink-0 rounded bg-surface-3 px-1 text-[9.5px]">baseline</span>}</span>
+                        <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[10.5px] text-text-4"><span className="truncate">{finding.file}:{finding.line}</span>{!!exposure[finding.fingerprint]?.public?.length && <span title={`Reachable from ${exposure[finding.fingerprint].public.map((ref) => ref.node.label).join(', ')}`} className="shrink-0 rounded bg-danger/12 px-1 text-[9.5px] text-danger">exposed</span>}{finding.suppressed && <span className="shrink-0 rounded bg-surface-3 px-1 text-[9.5px]">suppressed</span>}{finding.baselined && !finding.suppressed && <span className="shrink-0 rounded bg-surface-3 px-1 text-[9.5px]">baseline</span>}</span>
                       </button>
                     ))}
                   </section>
                 ))}
               </div>
-              {current && <FindingDetail key={current.fingerprint} report={report} finding={current}
+              {current && <FindingDetail key={current.fingerprint} report={report} finding={current} exposure={exposure[current.fingerprint]}
                 onSuppress={(reason) => void act(async () => suppressGoIDESecurityFinding(session.id, current, reason), 'Finding suppressed: the reason is saved in .adomnia/security.json.')}
                 onUnsuppress={() => void act(async () => unsuppressGoIDESecurityFinding(session.id, current.fingerprint), 'Suppression removed.')} />}
             </div>
@@ -151,7 +163,7 @@ export function GoStudioCodeSecurityView({ session, lead }: { session: GoIDESess
   )
 }
 
-function FindingDetail({ report, finding, onSuppress, onUnsuppress }: { report: GoIDESecurityReport; finding: GoIDESecurityFinding; onSuppress: (reason: string) => void; onUnsuppress: () => void }) {
+function FindingDetail({ report, finding, exposure, onSuppress, onUnsuppress }: { report: GoIDESecurityReport; finding: GoIDESecurityFinding; exposure?: GoIDESecurityExposure; onSuppress: (reason: string) => void; onUnsuppress: () => void }) {
   const [reason, setReason] = useState('')
   const rule = ruleOf(report, finding.rule)
   return (
@@ -167,6 +179,22 @@ function FindingDetail({ report, finding, onSuppress, onUnsuppress }: { report: 
         <span className="shrink-0 font-mono text-[11px] text-text-3">{finding.file}:{finding.line}</span>
         {finding.snippet && <code className="min-w-0 truncate font-mono text-[11.5px] text-text-1">{finding.snippet}</code>}
       </button>
+      {exposure && (
+        <Section title="Reachable from">
+          {exposure.public?.length ? (
+            <ul className="space-y-1">
+              {exposure.public.slice(0, 8).map((ref) => (
+                <li key={ref.node.id} className="flex items-center gap-2 rounded-md bg-[var(--gs-ground)] px-2 py-1">
+                  <span className="font-mono text-[11.5px] text-danger">{ref.node.label}</span>
+                  <span className="min-w-0 truncate text-[10.5px] text-text-4">{[...(ref.via ?? [])].reverse().concat(exposure.function ?? '').filter(Boolean).join(' → ')}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11.5px] text-text-3">{exposure.entries?.length ? `Not reached from a route, RPC or consumed topic; only from ${exposure.entries.map((ref) => ref.node.label).join(', ')}.` : exposure.function ? 'No entry point of the project reaches this code.' : 'Outside the functions of the workspace graph.'}</p>
+          )}
+        </Section>
+      )}
       {rule && (
         <>
           <Section title="Why it matters"><p className="text-[12px] leading-5 text-text-2">{rule.description}</p></Section>

@@ -1390,6 +1390,11 @@ func (g *GoIDE) GraphSearch(sessionID, query string, kinds []string, limit int) 
 	return g.service.GraphSearch(sessionID, query, kinds, limit)
 }
 
+// SecurityExposures dice da quali route, RPC e topic si raggiunge ogni finding di sicurezza.
+func (g *GoIDE) SecurityExposures(sessionID string, locations []goide.FindingLocation) ([]goide.SecurityExposure, error) {
+	return g.service.SecurityExposures(sessionID, locations)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)
