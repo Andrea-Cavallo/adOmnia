@@ -71,7 +71,7 @@ function ConsumerLag({ topic, group, brokers }: { topic: string; group: string; 
   )
 }
 
-function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Map<string, OtlpMapNode>; onOpenTrace: (traceId: string) => void }) {
+function EdgeDetail({ edge, nodes, measured, onOpenTrace }: { edge: OtlpMapEdge; nodes: Map<string, OtlpMapNode>; measured: boolean; onOpenTrace: (traceId: string) => void }) {
   const from = nodes.get(edge.from)
   const to = nodes.get(edge.to)
   const topic = [from, to].find((node) => node?.kind === 'topic')
@@ -85,6 +85,7 @@ function EdgeDetail({ edge, nodes, onOpenTrace }: { edge: OtlpMapEdge; nodes: Ma
         <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2">p50 {ms(edge.p50Ms)} · p95 {ms(edge.p95Ms)}</span>
         <span className={cn('rounded px-1.5 py-0.5', edge.errors ? 'bg-error/10 text-error' : 'bg-surface-3 text-text-3')}>{edge.errors} errors ({Math.round((edge.errors / edge.calls) * 100)}%)</span>
         {!!edge.retries && <span title="Calls that repeat an earlier attempt of the same operation" className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">{edge.retries} retries</span>}
+        {measured && (from?.pid || to?.pid) && <span title={`Established TCP connections from ${from?.label}${from?.pid ? ` (PID ${from.pid})` : ''} to ${edge.peerPorts?.length || to?.listenPorts?.length ? `port ${[...(edge.peerPorts ?? []), ...(to?.listenPorts ?? [])].join(', ')}` : to?.label}, now`} className="rounded bg-surface-3 px-1.5 py-0.5 text-text-2">{edge.activeConnections ?? 0} open connection{edge.activeConnections === 1 ? '' : 's'}</span>}
       </div>
       {topic && edge.group && <ConsumerLag topic={topic.label} group={edge.group} brokers={edge.brokers} />}
       <div className="flex flex-wrap gap-1.5">
@@ -164,7 +165,7 @@ export function ServiceMapView({ map, onOpenTrace }: { map: OtlpServiceMap | nul
                 <path d={path} fill="none" stroke={stroke} strokeWidth={1 + (edge.calls / maxCalls) * 3} markerEnd="url(#map-arrow)" opacity={key === selected ? 1 : 0.75} />
                 {/* Labels sit near the target end, so siblings leaving the same node do not overlap. */}
                 <text x={x1 * 0.3 + x2 * 0.7 + 6} y={back ? (a.y + y2 + BOX.height) / 2 : y1 * 0.3 + y2 * 0.7 - 4} className="fill-[var(--color-text-3)] font-mono text-[9.5px]">
-                  {EDGE_LABEL[edge.kind]} {edge.ratePerMin.toFixed(1)}/min · p95 {ms(edge.p95Ms)}{failing ? ` · ${edge.errors} err` : ''}{edge.retries ? ` · ${edge.retries} retry` : ''}
+                  {EDGE_LABEL[edge.kind]} {edge.ratePerMin.toFixed(1)}/min · p95 {ms(edge.p95Ms)}{failing ? ` · ${edge.errors} err` : ''}{edge.retries ? ` · ${edge.retries} retry` : ''}{map.connectionsMeasured && edge.activeConnections ? ` · ${edge.activeConnections} conn` : ''}
                 </text>
               </g>
             )
@@ -177,6 +178,7 @@ export function ServiceMapView({ map, onOpenTrace }: { map: OtlpServiceMap | nul
                 <div className="flex h-full items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-2 text-[11px] shadow-sm" style={{ borderLeft: `3px solid ${nodeColor(node)}` }} title={node.system ? `${node.label} (${node.system})` : node.label}>
                   <Icon size={13} className="flex-none text-text-3" />
                   <span className="truncate font-medium text-text-1">{node.label}</span>
+                  {map.connectionsMeasured && !!node.pid && <span title={`PID ${node.pid}: ${node.connections ?? 0} established TCP connections now`} className="ml-auto flex-none font-mono text-[9.5px] text-text-3">{node.connections ?? 0} conn</span>}
                 </div>
               </foreignObject>
             )
@@ -184,7 +186,7 @@ export function ServiceMapView({ map, onOpenTrace }: { map: OtlpServiceMap | nul
         </svg>
       </div>
       <div className="min-h-0 w-[300px] min-w-[220px] overflow-y-auto border-l border-border-1 p-3">
-        {selectedEdge ? <EdgeDetail edge={selectedEdge} nodes={nodes} onOpenTrace={onOpenTrace} /> : (
+        {selectedEdge ? <EdgeDetail edge={selectedEdge} nodes={nodes} measured={!!map.connectionsMeasured} onOpenTrace={onOpenTrace} /> : (
           <div className="space-y-1 text-[11px] text-text-3">
             <p className="font-semibold text-text-1">{map.nodes.filter((node) => node.kind === 'service').length} services · {map.edges.length} connections</p>
             <p>Click a connection for its rate, latency and failures, the calling code and the topic or database behind it.</p>

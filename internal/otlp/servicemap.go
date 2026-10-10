@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 )
@@ -13,6 +14,11 @@ type MapNode struct {
 	Label string `json:"label"`
 	// System is the db/messaging system (postgresql, redis, kafka…) when known.
 	System string `json:"system,omitempty"`
+	// Services only: the process (process.pid, or the owner of a port its server spans
+	// listen on), those ports, and its established TCP connections now.
+	PID         int   `json:"pid,omitempty"`
+	ListenPorts []int `json:"listenPorts,omitempty"`
+	Connections int   `json:"connections,omitempty"`
 }
 
 // MapEdge aggregates the calls observed from one node to another.
@@ -38,6 +44,10 @@ type MapEdge struct {
 	// Consumer side of a topic: the group and the brokers it reads from, to ask for its lag.
 	Group   string `json:"group,omitempty"`
 	Brokers string `json:"brokers,omitempty"`
+	// PeerPorts are the remote ports the calls go to; ActiveConnections the caller's
+	// established TCP connections to them (or to the callee's ports) right now.
+	PeerPorts         []int `json:"peerPorts,omitempty"`
+	ActiveConnections int   `json:"activeConnections,omitempty"`
 }
 
 type ServiceMap struct {
@@ -45,6 +55,8 @@ type ServiceMap struct {
 	Edges []MapEdge `json:"edges"`
 	// WindowMs is the time span the rates refer to.
 	WindowMs float64 `json:"windowMs"`
+	// ConnectionsMeasured is true when the connection counts come from the machine.
+	ConnectionsMeasured bool `json:"connectionsMeasured,omitempty"`
 }
 
 func firstAttr(attrs map[string]string, keys ...string) string {
@@ -82,7 +94,13 @@ func (s *Store) ServiceMap() ServiceMap {
 	nodes := map[string]MapNode{}
 	edges := map[string]*edgeData{}
 	minStart, maxEnd := 0.0, 0.0
-	addNode := func(node MapNode) { nodes[node.ID] = node }
+	addNode := func(node MapNode) {
+		if existing, ok := nodes[node.ID]; ok {
+			node.PID, node.ListenPorts = existing.PID, existing.ListenPorts
+		}
+		nodes[node.ID] = node
+	}
+	peerPorts := map[*MapEdge]map[int]bool{}
 	retry := map[string]bool{}
 	addCall := func(from, to, kind string, span Span) *MapEdge {
 		key := from + "\x00" + to + "\x00" + kind
@@ -92,6 +110,12 @@ func (s *Store) ServiceMap() ServiceMap {
 			edges[key] = data
 		}
 		data.edge.Calls++
+		if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.peer.port")); port > 0 {
+			if peerPorts[&data.edge] == nil {
+				peerPorts[&data.edge] = map[int]bool{}
+			}
+			peerPorts[&data.edge][port] = true
+		}
 		if retry[span.SpanID] {
 			data.edge.Retries++
 		}
@@ -130,6 +154,16 @@ func (s *Store) ServiceMap() ServiceMap {
 		for _, span := range spans {
 			service := "svc:" + span.Service
 			addNode(MapNode{ID: service, Kind: "service", Label: span.Service})
+			node := nodes[service]
+			if span.PID > 0 {
+				node.PID = span.PID
+			}
+			if span.Kind == "server" {
+				if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.host.port")); port > 0 && !slices.Contains(node.ListenPorts, port) {
+					node.ListenPorts = append(node.ListenPorts, port)
+				}
+			}
+			nodes[service] = node
 			switch {
 			case span.Category == "db":
 				system := firstAttr(span.Attributes, "db.system.name", "db.system")
@@ -199,6 +233,10 @@ func (s *Store) ServiceMap() ServiceMap {
 		sort.Float64s(data.durations)
 		data.edge.P50Ms, data.edge.P95Ms = percentile(data.durations, 50), percentile(data.durations, 95)
 		data.edge.RatePerMin = float64(data.edge.Calls) / minutes
+		for port := range peerPorts[&data.edge] {
+			data.edge.PeerPorts = append(data.edge.PeerPorts, port)
+		}
+		sort.Ints(data.edge.PeerPorts)
 		out.Edges = append(out.Edges, data.edge)
 	}
 	sort.Slice(out.Nodes, func(i, j int) bool { return out.Nodes[i].ID < out.Nodes[j].ID })
@@ -239,4 +277,61 @@ func retryIDs(spans []Span) map[string]bool {
 		first[k] = span
 	}
 	return out
+}
+
+// Listener is a listening TCP port and its owning process.
+type Listener struct{ Port, PID int }
+
+// Conn is an established TCP connection: the owning process and the remote port.
+type Conn struct{ PID, RemotePort int }
+
+// AnnotateConnections adds the live TCP picture to the map: each service's PID (process.pid
+// or the owner of a port its server spans listen on), its established connections, and per
+// edge the caller's connections to the callee's ports.
+func AnnotateConnections(m *ServiceMap, conns []Conn, listeners []Listener) {
+	byID := map[string]*MapNode{}
+	for i := range m.Nodes {
+		node := &m.Nodes[i]
+		byID[node.ID] = node
+		if node.Kind != "service" {
+			continue
+		}
+		for _, port := range node.ListenPorts {
+			for _, listener := range listeners {
+				if node.PID == 0 && listener.Port == port && listener.PID > 0 {
+					node.PID = listener.PID
+				}
+			}
+		}
+		for _, conn := range conns {
+			if node.PID > 0 && conn.PID == node.PID {
+				node.Connections++
+			}
+		}
+	}
+	for i := range m.Edges {
+		edge := &m.Edges[i]
+		caller, callee := byID[edge.From], byID[edge.To]
+		if edge.Kind == "messaging" && caller != nil && caller.Kind == "topic" {
+			caller, callee = callee, caller // consumer: the service connects to the brokers
+		}
+		if caller == nil || caller.PID == 0 {
+			continue
+		}
+		ports := map[int]bool{}
+		for _, port := range edge.PeerPorts {
+			ports[port] = true
+		}
+		if callee != nil {
+			for _, port := range callee.ListenPorts {
+				ports[port] = true
+			}
+		}
+		for _, conn := range conns {
+			if conn.PID == caller.PID && ports[conn.RemotePort] {
+				edge.ActiveConnections++
+			}
+		}
+	}
+	m.ConnectionsMeasured = true
 }

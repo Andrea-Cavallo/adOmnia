@@ -77,3 +77,31 @@ func TestRetryIDs(t *testing.T) {
 		t.Fatalf("retries: %v", got)
 	}
 }
+
+func TestAnnotateConnections(t *testing.T) {
+	store := NewStore(100)
+	store.Add([]Span{
+		{TraceID: "t", SpanID: "g1", Service: "gateway", Kind: "server", Category: "http", PID: 10, Attributes: map[string]string{"server.port": "8080"}},
+		{TraceID: "t", SpanID: "g2", ParentSpanID: "g1", Service: "gateway", Kind: "client", Category: "http"},
+		{TraceID: "t", SpanID: "o1", ParentSpanID: "g2", Service: "orders", Kind: "server", Category: "http", Attributes: map[string]string{"server.port": "9090"}},
+		{TraceID: "t", SpanID: "o2", ParentSpanID: "o1", Service: "orders", Kind: "client", Category: "db", Attributes: map[string]string{"db.system": "postgresql", "server.port": "5432"}},
+		{TraceID: "t", SpanID: "b1", ParentSpanID: "o1", Service: "billing", Kind: "consumer", Category: "messaging", PID: 30, Attributes: map[string]string{"messaging.system": "kafka", "messaging.destination.name": "orders", "server.port": "59092"}},
+	})
+	m := store.ServiceMap()
+	// orders has no process.pid: found through the owner of its port 9090.
+	AnnotateConnections(&m, []Conn{{10, 9090}, {10, 9090}, {10, 443}, {20, 5432}, {20, 5432}, {20, 5432}, {30, 59092}}, []Listener{{9090, 20}, {8080, 10}})
+	nodes := map[string]MapNode{}
+	for _, node := range m.Nodes {
+		nodes[node.ID] = node
+	}
+	if nodes["svc:orders"].PID != 20 || nodes["svc:orders"].Connections != 3 || nodes["svc:gateway"].Connections != 3 {
+		t.Fatalf("nodes: %+v", nodes)
+	}
+	got := map[string]int{}
+	for _, edge := range m.Edges {
+		got[edge.From+">"+edge.To] = edge.ActiveConnections
+	}
+	if got["svc:gateway>svc:orders"] != 2 || got["svc:orders>db:postgresql"] != 3 || got["topic:orders>svc:billing"] != 1 || !m.ConnectionsMeasured {
+		t.Fatalf("edges: %v", got)
+	}
+}

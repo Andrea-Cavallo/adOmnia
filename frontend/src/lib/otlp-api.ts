@@ -87,6 +87,10 @@ export interface OtlpMapNode {
   kind: 'service' | 'database' | 'topic' | 'external'
   label: string
   system?: string
+  /** Services: the process, its listening ports and established TCP connections now. */
+  pid?: number
+  listenPorts?: number[]
+  connections?: number
 }
 
 export interface OtlpMapEdge {
@@ -107,12 +111,16 @@ export interface OtlpMapEdge {
   handlerLine?: number
   group?: string
   brokers?: string
+  peerPorts?: number[]
+  /** The caller's established TCP connections to the callee right now. */
+  activeConnections?: number
 }
 
 export interface OtlpServiceMap {
   nodes: OtlpMapNode[]
   edges: OtlpMapEdge[]
   windowMs: number
+  connectionsMeasured?: boolean
 }
 
 export const getOtlpMap = (port: number | null) => call<OtlpServiceMap>(port, '/otlp/map')

@@ -30,6 +30,7 @@ func Convert(request *coltracepb.ExportTraceServiceRequest) []Span {
 		if service == "" {
 			service = "unknown_service"
 		}
+		pid, _ := strconv.Atoi(resourceAttrs["process.pid"])
 		for _, scope := range resource.GetScopeSpans() {
 			for _, span := range scope.GetSpans() {
 				attrs := attributes(span.GetAttributes())
@@ -51,6 +52,7 @@ func Convert(request *coltracepb.ExportTraceServiceRequest) []Span {
 					StatusMessage: span.GetStatus().GetMessage(),
 					Category:      category(attrs),
 					Attributes:    attrs,
+					PID:           pid,
 				}
 				for _, event := range span.GetEvents() {
 					converted.Events = append(converted.Events, SpanEvent{Name: event.GetName(), TimeMs: float64(event.GetTimeUnixNano()) / 1e6, Attributes: attributes(event.GetAttributes())})

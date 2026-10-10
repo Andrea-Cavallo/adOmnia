@@ -84,7 +84,15 @@ func RegisterHandlers(mux *http.ServeMux) {
 		}
 		writeJSON(w, receiver.Store().Summaries(limit))
 	})
-	mux.HandleFunc("/otlp/map", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, receiver.Store().ServiceMap()) })
+	mux.HandleFunc("/otlp/map", func(w http.ResponseWriter, r *http.Request) {
+		m := receiver.Store().ServiceMap()
+		if len(m.Nodes) > 0 {
+			if conns, listeners, ok := liveSockets(r.Context()); ok {
+				AnnotateConnections(&m, conns, listeners)
+			}
+		}
+		writeJSON(w, m)
+	})
 	mux.HandleFunc("/otlp/lens", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, receiver.Store().Lens()) })
 	mux.HandleFunc("/otlp/trace", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, receiver.Store().Trace(r.URL.Query().Get("id")))
