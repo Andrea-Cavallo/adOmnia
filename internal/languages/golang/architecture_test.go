@@ -106,8 +106,15 @@ func main() {
 
 func loadArchitectureFixture(t *testing.T) ArchitectureReport {
 	t.Helper()
+	report, _ := loadFixture(t, architectureFixture)
+	return report
+}
+
+// loadFixture scrive files in una cartella temporanea e ne analizza l'architettura.
+func loadFixture(t *testing.T, files map[string]string) (ArchitectureReport, string) {
+	t.Helper()
 	root := t.TempDir()
-	for name, content := range architectureFixture {
+	for name, content := range files {
 		path := filepath.Join(root, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
@@ -134,7 +141,7 @@ func loadArchitectureFixture(t *testing.T) ArchitectureReport {
 		}
 		return os.ReadFile(path)
 	}
-	return AnalyzeArchitecture(fset, loaded, read)
+	return AnalyzeArchitecture(fset, loaded, read), root
 }
 
 func TestAnalyzeArchitectureGraphs(t *testing.T) {

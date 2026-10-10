@@ -233,3 +233,20 @@ export function debugRequestForTarget(session: Pick<GoIDESession, 'id' | 'projec
   if (target.kind === 'benchmark') return { ...base, mode: 'test', testName: '^$', programArguments: benchmarkDebugArguments(pattern) }
   return { ...base, mode: 'test', testName: pattern }
 }
+
+/** Esegue test scelti per nome (es. quelli suggeriti dall'analisi d'impatto), raggruppati per modulo e package. */
+export async function runGoStudioNamedTests(sessionId: string, tests: readonly { file: string; packagePath: string; name: string }[]): Promise<void> {
+  const session = trustedSession(sessionId)
+  if (!session || tests.length === 0) return
+  const groups = new Map<string, { workingDirectory: string; packagePath: string; names: Set<string> }>()
+  for (const test of tests) {
+    const workingDirectory = moduleScopeFor(session, test.file).moduleDirectory
+    const key = `${workingDirectory}\u0000${test.packagePath}`
+    const group = groups.get(key) ?? { workingDirectory, packagePath: test.packagePath, names: new Set<string>() }
+    group.names.add(test.name)
+    groups.set(key, group)
+  }
+  for (const group of groups.values()) {
+    await useGoIDETestsStore.getState().start({ sessionId, workingDirectory: group.workingDirectory, packages: [group.packagePath], run: `^(${[...group.names].sort().join('|')})$`, bench: '', coverage: false })
+  }
+}

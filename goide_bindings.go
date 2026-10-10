@@ -5,6 +5,7 @@ import (
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
+	"adomnia/internal/ide/graph"
 	"adomnia/internal/plugins"
 	"context"
 	"fmt"
@@ -45,6 +46,7 @@ func NewGoIDE() *GoIDE {
 		}
 	})
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
+	service.ConfigureGraphStore(filepath.Join(dataDir(), "goide", "graphs"))
 	_ = service.ConfigureRecoveryStore(goide.RecoveryBoltStore)
 	_ = service.ConfigureHistoryStore(goide.HistoryBoltStore)
 	_ = service.ConfigureSupervisorStore(goide.SupervisorBoltStore)
@@ -1366,6 +1368,26 @@ func (g *GoIDE) AnalyzeErrorHandling(sessionID string) (goide.ErrorHandlingRepor
 // AnalyzeArchitecture costruisce package graph, call graph, moduli, interfacce ed entry point (progetto autorizzato).
 func (g *GoIDE) AnalyzeArchitecture(sessionID string) (goide.ArchitectureResult, error) {
 	return g.service.AnalyzeArchitecture(sessionID)
+}
+
+// WorkspaceGraphSummary costruisce (o riprende dal disco) il Semantic Workspace Graph e ne dà il riassunto.
+func (g *GoIDE) WorkspaceGraphSummary(sessionID string, rebuild bool) (goide.GraphSummary, error) {
+	return g.service.WorkspaceGraphSummary(sessionID, rebuild)
+}
+
+// GraphImpact: cosa può rompere una modifica alla funzione che contiene relPath:line.
+func (g *GoIDE) GraphImpact(sessionID, relPath string, line int) (graph.Impact, error) {
+	return g.service.GraphImpact(sessionID, relPath, line)
+}
+
+// GraphImpactOf: impatto di un nodo del grafo già noto.
+func (g *GoIDE) GraphImpactOf(sessionID, nodeID string) (graph.Impact, error) {
+	return g.service.GraphImpactOf(sessionID, nodeID)
+}
+
+// GraphSearch cerca nel grafo per nome, filtrando per tipo di nodo.
+func (g *GoIDE) GraphSearch(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
+	return g.service.GraphSearch(sessionID, query, kinds, limit)
 }
 
 // Documentation legge la documentazione dei package Go e dei file .proto del progetto (solo parsing).

@@ -19,6 +19,7 @@ import { GoStudioTracePanel } from './GoStudioTracePanel'
 import { GoStudioFuzzPanel } from './GoStudioFuzzPanel'
 import { GoStudioErrorsPanel } from './GoStudioErrorsPanel'
 import { GoStudioArchitecturePanel } from './GoStudioArchitecturePanel'
+import { GoStudioImpactPanel } from './GoStudioImpactPanel'
 import { GoStudioConfigPanel } from './GoStudioConfigPanel'
 import { GoStudioDocsPanel } from './GoStudioDocsPanel'
 import { GoStudioSonarPanel } from './GoStudioSonarPanel'
@@ -163,6 +164,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   fuzz: 'Fuzzing',
   errors: 'Error Handling',
   architecture: 'Architecture',
+  impact: 'Impact',
   interfaces: 'Interfaces',
   docs: 'Documentation',
   config: 'Config & Environment',
@@ -311,6 +313,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
       {view === 'sonar' && <div className="min-h-0 flex-1"><GoStudioSonarPanel session={session} /></div>}
       {view === 'docs' && <div className="min-h-0 flex-1"><GoStudioDocsPanel session={session} /></div>}
       {view === 'architecture' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} /></div>}
+      {view === 'impact' && <div className="min-h-0 flex-1"><GoStudioImpactPanel session={session} /></div>}
       {view === 'config' && <div className="flex min-h-0 flex-1 flex-col"><GoStudioConfigPanel session={session} /></div>}
       {view === 'interfaces' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} initialTab="interfaces" /></div>}
       {view === 'errors' && <div className="min-h-0 flex-1"><GoStudioErrorsPanel session={session} /></div>}
