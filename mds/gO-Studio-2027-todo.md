@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 109 | 9 |
+| **P4** | AI e intelligenza del workspace | 107 | 9 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -175,8 +175,6 @@ _Chiusa il 2026-10-10 (Code → Analyze Change Impact): chiamanti indiretti anch
 ### UX
 
 - [ ] Risk map. — *Parziale: livello di rischio con motivi per funzione; nessuna mappa del progetto.*
-- [ ] Suggested integration calls. — *Le route impattate sono note: manca il collegamento a una richiesta pronta in API Workspace.*
-- [ ] Suggested services to run.
 
 ## §34 · Runtime-Aware AI
 

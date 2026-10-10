@@ -14,6 +14,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Change Impact suggests what to call and run:** *Send* on an impacted route opens (or reuses) its request in the API Workspace and sends it; *Open all in API* creates an `Impact: …` collection with every impacted route; *Run* starts an impacted `main`, *Up* a compose service that runs it.
 - **Runtime numbers in Change Impact:** the changed function, its callers and the routes that reach it show calls, p95 and errors from the OpenTelemetry spans adOmnia received (live or loaded from a saved trace).
 - **Security path analysis:** code security findings reachable from an HTTP route, a gRPC method or a consumed topic (through the workspace graph) are marked *exposed*, listed first, and show which entry points reach them.
 - **Impact map:** the Impact tool window has a *Map* view that draws the workspace graph around the changed code — compose services, entry points, routes, tests and callers above it along their real paths, called functions, topics, tables and config below. Click opens the code, Alt+click moves the analysis there.
