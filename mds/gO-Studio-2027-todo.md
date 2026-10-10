@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 102 | 7 |
+| **P4** | AI e intelligenza del workspace | 77 | 4 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -180,40 +180,10 @@ _Chiusa il 2026-10-07: le 18 azioni AI dell'editor sono nel `CHANGELOG.md` (0.9.
 
 ## §35 · AI Debugging
 
-- [ ] Panic analysis. — *Parziale: Panic inspector nel debugger rileva il panic e il frame di origine; nessuna analisi AI.*
-_Analisi dei test falliti implementata il 2026-10-08: Tests → Analyze failure prepara una bozza milk/Copilot con output registrato, posizione e comando di riproduzione. Policy AI, esclusioni, redazione e limite dell'output sono coperti da test; lo smoke desktop/provider resta in `todo-ide.md`._
-- [ ] Race analysis. — *Parziale: Race detector con card dei due accessi e confronto fra run; analisi euristica, non AI.*
-- [ ] Deadlock analysis. — *Parziale: La Concurrency View segnala possibile deadlock e canali bloccati in modo euristico; nessuna spiegazione AI.*
-- [ ] Slow request analysis.
-- [ ] Memory leak suspicion analysis.
-- [ ] Allocation regression analysis.
-- [ ] DB error analysis.
-- [ ] Kafka failure analysis.
-- [ ] gRPC error analysis.
-- [ ] Context deadline analysis. — *Parziale: Il debugger mostra deadline/err/cause di context.Context; non è un'analisi.*
+_Chiusa il 2026-10-10 (Debug with AI): contesto completo alla pausa, situazione riconosciuta (panic, race, deadlock, deadline, DB, Kafka, gRPC, richiesta lenta) e le 7 azioni; race card con Analyze with AI. Restano:_
 
-### AI debugging context
-
-- [ ] Stack trace.
-- [ ] Locals.
-- [ ] Goroutines.
-- [ ] Last logs.
-- [ ] Recent request.
-- [ ] Trace.
-- [ ] Git diff.
-- [ ] Relevant tests.
-- [ ] Related functions.
-- [ ] Runtime metrics.
-
-### Actions
-
-- [ ] “Show likely cause”.
-- [ ] “Open relevant code”.
-- [ ] “Generate fix”.
-- [ ] “Generate regression test”.
-- [ ] “Reproduce”.
-- [ ] “Explain why”.
-- [ ] “Compare with previous working commit”.
+- [ ] Memory leak suspicion analysis. — *Parziale: Debug with AI ha un focus "memoria" se le evidenze lo citano; manca il confronto fra due heap profile.*
+- [ ] Allocation regression analysis. — *Manca il confronto alloc_space fra due profili/commit da dare all'AI.*
 
 ## §38 · Architectural Drift Detection
 

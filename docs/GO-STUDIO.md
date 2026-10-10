@@ -186,6 +186,8 @@ In the gutter a plain breakpoint is a red dot, one with a condition or hit count
 - **Function breakpoints:** stop on entry to a function, e.g. `main.handler` or `(*Server).Serve`, with optional condition and hit count. Delve reports whether it found the function.
 - **Stop on every panic:** also stops on panics that are recovered later, by breaking in `runtime.gopanic`; the stack shows where the panic started. Unrecovered panics always stop the debugger.
 
+**Debug with AI** (debugger toolbar, while paused) prepares a chat draft from everything adOmnia knows at the stop: stack, locals of the selected frame, goroutines (blocked ones listed), the request being served and its trace, debug console and service logs, runtime metrics, uncommitted changed functions, the tests and callers/callees from the workspace graph, and for *Compare with previous working commit* the recent commits of the file with the function in HEAD and now. It recognizes the situation — panic, data race, deadlock, context deadline, database, Kafka or gRPC error, slow request — and asks the matching questions. Actions: *Open relevant code*, *Show likely cause*, *Explain why*, *Generate fix*, *Generate regression test*, *Reproduce*, *Compare with previous working commit*. The draft is redacted and bounded, files excluded from AI stop it, and nothing is sent until you press Enter.
+
 **Run to Cursor (Alt+F9)** resumes a paused program until the line with the caret, through a temporary breakpoint removed at the next stop, whatever the reason. On a line without code it says so and the program stays paused. *Set next statement* is not available: Delve does not support jumping over code through DAP.
 
 ## Concurrency-first debugger
@@ -230,7 +232,8 @@ pause and explains it.
   (race detector). A timeline shows goroutines per state at each pause, and
   *Copy snapshot* exports goroutines, diagnostics and races as JSON.
 - **Run with Race Detector** runs the active configuration with `-race`.
-  Races are compared across runs: new, recurring or gone.
+  Races are compared across runs: new, recurring or gone. *Analyze with AI*
+  on a race card puts both accesses and the goroutine origins in a chat draft.
 - Goroutine states are inferred from the stack because DAP does not expose
   Go's wait reason. The analysis covers the first 1000 goroutines of a
   pause.

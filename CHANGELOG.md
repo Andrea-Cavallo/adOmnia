@@ -9,12 +9,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Go Studio P2: source-line Context now shows observed channel/mutex waits, static concurrency findings, paused error values with on-demand Unwrap inspection, and optional values from the matching paused frame. Trace Studio opens a span's source and runtime Context through the entity router.
 
 ### Fixed
+- Markdown (AI chats, previews): inline code containing `&`, `<` or `>` showed `&amp;`-style entities.
 - gO Studio: calls between modules of a go.work workspace were missing from the Architecture Explorer and the workspace graph; a graph saved by an older adOmnia is now rebuilt instead of reused.
 - gO Studio: Code and Edit menu commands stayed disabled ("Open a Go file first") right after opening a file from Go to File.
 - Log Inspector: a live service source opened while the saved investigation was loading no longer disappears.
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Debug with AI:** while paused, the debugger toolbar prepares a chat draft with stack, locals, goroutines, the request and its trace, logs, runtime metrics, uncommitted changes, reaching tests and related functions; it recognizes panics, races, deadlocks, context deadlines, DB/Kafka/gRPC errors and slow requests, and offers *Open relevant code*, *Show likely cause*, *Explain why*, *Generate fix*, *Generate regression test*, *Reproduce* and *Compare with previous working commit*. Race cards have *Analyze with AI*.
 - **Runtime-aware AI chats:** with workspace context on, Claude Code, milk and Copilot also receive what the running program did in the active file — OpenTelemetry spans (calls, p50/p95, errors), the last profile's CPU and allocation hot lines, and the live service's recent logs with errors first. Bounded and redacted like the rest of the context.
 - **Public contracts and risk map in Change Impact:** functions of other modules that use the changed code are listed as *Used by other modules* and raise the risk (public contract); the *Risk* view scores every function and ranks packages by high-risk functions, with the riskiest ones one click away.
 - **Change Impact suggests what to call and run:** *Send* on an impacted route opens (or reuses) its request in the API Workspace and sends it; *Open all in API* creates an `Impact: …` collection with every impacted route; *Run* starts an impacted `main`, *Up* a compose service that runs it.
