@@ -173,6 +173,15 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 		}
 	}
 
+	for _, read := range report.Reads {
+		id, kind := "env:"+read.Key, graph.KindEnvVar
+		if read.Kind == "config" {
+			id, kind = "config:"+read.Key, graph.KindConfig
+		}
+		b.Node(graph.Node{ID: id, Kind: kind, Label: read.Key, File: read.Site.Path, Line: read.Site.Line, Attrs: attrs("library", read.Library)})
+		b.Edge(lookup(read.Package, read.Function), id, graph.EdgeReads, read.Library)
+	}
+
 	// DTO: gli struct che le route leggono e scrivono, e quelli che contengono.
 	dto := map[string]string{} // nome dello schema → nodo
 	for _, schema := range report.Schemas {

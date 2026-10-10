@@ -286,6 +286,11 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 					a.addEntry(entry)
 				}
 			}
+			if kind, library, ok := configRead(callee, packagePath, name); ok && len(node.Args) > 0 {
+				if key, ok := constantString(info, node.Args[0]); ok && key != "" {
+					a.report.Reads = append(a.report.Reads, ArchRead{Kind: kind, Key: key, Library: library, Package: file.pkg.PkgPath, Function: function, Site: site})
+				}
+			}
 			if kind, label, topic, ok := messagingCall(info, packagePath, name, node.Args); ok {
 				use := messaging[kind]
 				if use == nil {
@@ -570,4 +575,18 @@ func sortedSet(set map[string]bool) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// configRead: os.Getenv/LookupEnv leggono una variabile d'ambiente; i getter di viper e koanf
+// una chiave di configurazione (primo argomento).
+func configRead(callee *types.Func, packagePath, name string) (kind, library string, ok bool) {
+	switch {
+	case callee.FullName() == "os.Getenv" || callee.FullName() == "os.LookupEnv":
+		return "env", "os", true
+	case strings.HasPrefix(packagePath, "github.com/spf13/viper") && (strings.HasPrefix(name, "Get") || name == "IsSet"):
+		return "config", "viper", true
+	case strings.HasPrefix(packagePath, "github.com/knadh/koanf") && slices.Contains([]string{"String", "Int", "Int64", "Float64", "Bool", "Duration", "Strings", "StringMap", "Get", "Exists", "MustString", "MustInt", "MustBool", "MustDuration"}, name):
+		return "config", "koanf", true
+	}
+	return "", "", false
 }

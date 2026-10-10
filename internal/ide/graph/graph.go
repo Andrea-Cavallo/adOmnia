@@ -24,6 +24,7 @@ const (
 	KindSocket    = "websocket" // URL a cui il codice si collega in WebSocket
 	KindTable     = "table"
 	KindEnvVar    = "envvar"
+	KindConfig    = "config" // chiave di configurazione (viper, koanf)
 	KindEntry     = "entry" // main, init, job, cli
 )
 

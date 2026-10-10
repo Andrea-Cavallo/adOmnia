@@ -119,7 +119,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
           <RefList title="HTTP routes" refs={impact.endpoints} />
-          {!!impact.containers?.length && <RefList title="Contained in" refs={impact.containers} />}
+          {!!impact.containers?.length && <RefList title="Contained in" refs={impact.containers} onFocus={focus} />}
           <RefList title="gRPC services" refs={impact.rpcs} />
           <RefList title="Consumed topics" refs={impact.consumers} />
           <RefList title="Interface contracts" refs={impact.interfaces} onFocus={focus} />
@@ -127,6 +127,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           <RefList title="Calls" refs={impact.callees} onFocus={focus} />
           <RefList title="Produces to" refs={impact.produces} />
           <RefList title="Queries" refs={impact.queries} />
+          <RefList title="Reads env / config" refs={impact.reads} onFocus={focus} />
           {!!impact.modules?.length && <section><h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Modules · packages</h3><p className="font-mono text-[11px] text-text-3">{impact.modules.join(', ')}</p><p className="mt-1 font-mono text-[11px] text-text-4">{(impact.packages ?? []).length} packages</p></section>}
         </div>
       )}

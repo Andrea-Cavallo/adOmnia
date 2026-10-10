@@ -114,7 +114,8 @@ func (x *Index) Impact(id string) (Impact, bool) {
 	upstream := x.walk(id, func(node string) []string {
 		var next []string
 		for _, edge := range x.in[node] {
-			if edge.Kind == EdgeCalls || edge.Kind == EdgeDispatches {
+			// Una variabile d'ambiente o una chiave di config: chi la legge è il primo "chiamante".
+			if edge.Kind == EdgeCalls || edge.Kind == EdgeDispatches || (node == id && edge.Kind == EdgeReads) {
 				next = append(next, edge.From)
 			}
 		}

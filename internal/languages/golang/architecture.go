@@ -63,6 +63,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	for index := range r.ContextCalls {
 		fix(&r.ContextCalls[index].Site)
 	}
+	for index := range r.Reads {
+		fix(&r.Reads[index].Site)
+	}
 	for index := range r.Interfaces {
 		item := &r.Interfaces[index]
 		fix(&item.Site)
@@ -149,7 +152,19 @@ type ArchitectureReport struct {
 	Schemas      []ArchSchema      `json:"schemas"`
 	Queries      []ArchQuery       `json:"queries"`
 	ContextCalls []ArchContextCall `json:"contextCalls"`
-	Truncated    bool              `json:"truncated,omitempty"`
+	// Reads: variabili d'ambiente e chiavi di configurazione lette da ogni funzione.
+	Reads     []ArchRead `json:"reads,omitempty"`
+	Truncated bool       `json:"truncated,omitempty"`
+}
+
+// ArchRead è la lettura di una variabile d'ambiente (os.Getenv) o di una chiave di config (viper, koanf).
+type ArchRead struct {
+	Kind     string   `json:"kind"` // env | config
+	Key      string   `json:"key"`
+	Library  string   `json:"library,omitempty"`
+	Package  string   `json:"package"`
+	Function string   `json:"function"`
+	Site     ArchSite `json:"site"`
 }
 
 // funcDecl è la dichiarazione di una funzione del progetto con il suo file.
