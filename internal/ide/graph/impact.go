@@ -267,10 +267,10 @@ func risk(impact Impact) (string, []string) {
 		add(3, "no test reaches this code")
 	}
 	if n := len(impact.Endpoints) + len(impact.RPCs); n > 0 {
-		add(2, plural(n, "public API", "public APIs")+" depend on it")
+		add(2, plural(n, "public API depends", "public APIs depend")+" on it")
 	}
 	if n := len(impact.Consumers); n > 0 {
-		add(2, plural(n, "message consumer", "message consumers")+" depend on it")
+		add(2, plural(n, "message consumer depends", "message consumers depend")+" on it")
 	}
 	if n := len(impact.Callers); n >= 20 {
 		add(2, plural(n, "caller", "callers")+" up the call graph")

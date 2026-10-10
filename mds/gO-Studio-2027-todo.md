@@ -25,8 +25,8 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 37 | 15 |
-| **P3** | Remote ed estensibilità | 3 | 3 |
-| **P4** | AI e intelligenza del workspace | 150 | 18 |
+| **P3** | Remote ed estensibilità | 0 | 0 |
+| **P4** | AI e intelligenza del workspace | 121 | 16 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -178,13 +178,7 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 _Sviluppo su WSL/SSH/container/Kubernetes e API per estendere l'IDE._
 
-## §47 · Plugin / Extension Architecture
-
-> *Base esistente:* `contributes` dei plugin consumati da Go Studio: comandi (azioni dell'editor e Search Everywhere), code action (lampadina), analyzer (marcatori al salvataggio), language server di estensione e template in New Project (`goStudioExtensions.ts`, `internal/goide/extensions.go`).
-
-- [ ] Framework adapters. — *Parziale: dichiarati nel manifest e mostrati con le dipendenze dirette in IDE extensions; nessun comportamento nel codice.*
-- [ ] Broker adapters. — *Parziale: come sopra.*
-- [ ] DB adapters. — *Parziale: come sopra.*
+_Chiusa il 2026-10-10: gli adapter dei plugin ora insegnano davvero il rilevamento, non si limitano a segnalare una dipendenza diretta. Un adapter **framework** dichiara `handlerTypes` e `routeMethods` (sotto `contributes.adapters`) e le route vengono rilevate e collegate ai rispettivi handler; un adapter **broker** dichiara `broker` e `topicMethods` e i topic vengono rilevati per import; un adapter **database** dichiara `sqlMethods` e le tabelle vengono rilevate solo dove il modulo è importato. Gli hint fluiscono dal manifest ai detector (`HintsFromContributions` → `detectRoutes`/`detectLiterals`/`detectHandlerDecls`) e il contesto progettuale in cache viene riscansionato all'attivazione/disattivazione di un plugin (`Manager.SetAdapters`). Coperto da `adapters_test.go` (framework, broker, database, rescan) e dalla validazione del manifest in `extensions_test.go`._
 
 ---
 
@@ -196,67 +190,45 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 > Una rappresentazione persistente delle relazioni del progetto.
 
-- [ ] Files.
-- [ ] Packages.
-- [ ] Symbols. — *Parziale: WorkspaceSymbols via gopls ed entità devcontext; manca un grafo persistente con relazioni.*
-- [ ] Functions.
-- [ ] Types.
-- [ ] Interfaces.
-- [ ] Implementations.
-- [ ] Tests.
-- [ ] Endpoints. — *Parziale: devcontext rileva entità route con file:riga, apribili dalla palette; nessun grafo con relazioni.*
-- [ ] gRPC methods. — *Parziale: devcontext rileva entità grpc con apertura nel client gRPC; nessun grafo con relazioni.*
-- [ ] Topics. — *Parziale: devcontext rileva entità topic Kafka/AMQP/NATS con apertura in Broker Studio; nessuna relazione.*
-- [ ] Consumers.
-- [ ] Producers.
-- [ ] DB tables. — *Parziale: devcontext rileva entità table da SQL letterale con apertura in Database; nessuna relazione.*
-- [ ] Queries.
+_Semantic Workspace Graph (`internal/ide/graph`, chiuso il 2026-10-10): file, package, moduli, funzioni, metodi, test, interfacce con implementazioni e dispatch, route HTTP, servizi gRPC, topic Kafka (producer/consumer), tabelle SQL, entry point; salvato in `goide/graphs` e riusato finché i sorgenti Go non cambiano. Restano:_
+
+- [ ] Types. — *Parziale: nel grafo solo i tipi che implementano un'interfaccia; mancano struct/DTO e i loro usi.*
+- [ ] gRPC methods. — *Parziale: nodo per servizio gRPC servito da tutti i metodi del tipo registrato; manca il metodo RPC singolo.*
+- [ ] Topics NATS/AMQP. — *Parziale: nel grafo solo Kafka; devcontext rileva anche NATS/AMQP ma senza relazioni.*
 - [ ] Config keys.
-- [ ] Env vars. — *Parziale: devcontext rileva entità envvar da os.Getenv, tag e .env; nessuna relazione.*
-- [ ] Services. — *Parziale: ProjectServices da go.mod ed entità service da compose; non è un grafo.*
-- [ ] External dependencies. — *Parziale: Entità module (devcontext/gomod.go) e dialog Go dependencies; nessun grafo di relazioni.*
+- [ ] Env vars. — *Parziale: devcontext rileva entità envvar da os.Getenv, tag e .env; non ancora agganciate alla funzione nel grafo (`graph.Fact` da reintrodurre col primo consumatore).*
+- [ ] Services. — *Parziale: entry point main/job/cli nel grafo; manca il legame con i servizi compose.*
+- [ ] External dependencies. — *Parziale: nodi modulo con requires interni; i moduli esterni non sono nodi.*
 
 ### Utilizzi
 
-- [ ] Faster navigation.
-- [ ] Impact analysis.
-- [ ] AI context retrieval.
+_Impact analysis, AI context retrieval, test selection e change impact analysis chiusi con il grafo (Impact tool window e contesto delle chat)._
+
+- [ ] Faster navigation. — *Parziale: `GraphSearch` nel backend; nessuna UI di ricerca nel grafo.*
 - [ ] Architecture visualization.
-- [ ] Test selection.
 - [ ] Security path analysis.
-- [ ] Change impact analysis.
 - [ ] Runtime correlation.
 
 ## §37 · Change Impact Analysis
 
 > Prima di modificare una funzione, capire cosa può rompere.
 
-- [ ] Indirect callers. — *Parziale: La gerarchia si espande a livelli; nessuna analisi automatica degli indiretti né tab Impact.*
-- [ ] Interfaces affected. — *Parziale: Type hierarchy e marker di implementazione; nessuna analisi di impatto aggregata.*
-- [ ] Tests affected.
-- [ ] APIs affected.
-- [ ] gRPC methods affected.
-- [ ] Kafka flows affected.
-- [ ] DB queries affected.
-- [ ] Modules affected.
-- [ ] Services affected.
-- [ ] Public contracts affected.
+_Chiusa il 2026-10-10 (Code → Analyze Change Impact): chiamanti indiretti anche via interfaccia, interfacce, test (eseguibili con un clic), route HTTP, servizi gRPC, consumer e producer Kafka, query SQL, moduli, entry point, rischio spiegato. Restano:_
+
+- [ ] Public contracts affected. — *Parziale: interfacce e route nell'impatto; mancano i tipi esportati usati da altri moduli.*
 - [ ] Config affected.
 
 ### UX
 
-- [ ] `Impact` tab.
-- [ ] Risk map.
-- [ ] Suggested tests.
-- [ ] Suggested integration calls.
+- [ ] Risk map. — *Parziale: livello di rischio con motivi per funzione; nessuna mappa del progetto.*
+- [ ] Suggested integration calls. — *Le route impattate sono note: manca il collegamento a una richiesta pronta in API Workspace.*
 - [ ] Suggested services to run.
 
 ## §34 · Runtime-Aware AI
 
 ### Principio
 
-- [ ] L'AI non deve conoscere solo il file aperto. — *Parziale: le azioni AI dell'editor (`goStudioAIActions.ts`) allegano funzione o selezione, riferimenti gopls, diff Git, test falliti e coverage; manca il semantic graph del workspace.*
-- [ ] Deve poter usare il semantic graph del workspace.
+_Chiuso il 2026-10-10: ogni chat (Claude Code, milk, Copilot) riceve il vicinato nel grafo della funzione sotto il cursore (chiamanti, test, route, topic, tabelle, rischio)._
 - [ ] Deve conoscere profiler.
 - [ ] Deve conoscere runtime traces.
 - [ ] Deve conoscere logs.

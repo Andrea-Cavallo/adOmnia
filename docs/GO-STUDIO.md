@@ -532,6 +532,14 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 **Separate windows** (*File → Open Project in New Window*) are covered by automated tests only. They will be declared supported in the release notes once the manual check in a real window (M31) passes.
 
+## Workspace graph and change impact
+
+gO Studio keeps a **Semantic Workspace Graph** of a trusted project: modules, packages, files, functions, methods, tests, interfaces with their implementations, HTTP routes, gRPC services, Kafka topics (producers and consumers), SQL tables and entry points. It is built from the Architecture Explorer model (go/packages with types, no code is run), saved under the adOmnia data folder (`goide/graphs`, never in the project) and reused until a `.go`, `go.mod` or `go.work` file changes.
+
+**Code → Analyze Change Impact** opens the *Impact* tool window for the function under the cursor: direct and indirect callers (calls through an interface reach every implementation), the interface contracts it implements, the tests that reach it (**Run N tests** starts exactly those), routes, gRPC services, consumed topics and entry points that depend on it, what it calls, produces and queries, the modules involved, and a low/medium/high risk with its reasons. *impact* on a row moves the analysis there; **Ask AI** opens the chat with the analysis as a draft.
+
+Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it.
+
 ## Claude Code
 
 Claude Code is the third chat next to Copilot and milk (right tool stripe, **Tools → Open Claude Code**). It reuses milk's ACP client (`internal/milk`); `internal/claudecode` only says how to start it: `claude-agent-acp` from PATH, or `npx --yes @agentclientprotocol/claude-agent-acp@<pinned>` (Node.js 22+; the first start downloads it, later starts use npm's cache). It is off until enabled in its settings (`claude-code.json` in the adOmnia data folder). It uses the account of the `claude` CLI; **Use my Claude login, ignore ANTHROPIC_API_KEY** removes that variable from the adapter's environment so a Pro/Max plan is used instead of a key. Claude Code runs its own tools in the project folder and asks before writes and commands (Allow/Deny in the chat, denied after 90 s); **Approve every tool call** skips the question. Same context switches, detachment and AI policy as milk.
