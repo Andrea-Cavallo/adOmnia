@@ -8,12 +8,30 @@ import { activeGoIDEDocument, useGoIDEStore } from '@/stores/goide'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { runGoStudioNamedTests } from './goStudioQuickActions'
 import { GoStudioImpactMap } from './GoStudioImpactMap'
+import { getServerPort } from '@/lib/useServerPort'
+import { getOtlpLens } from '@/lib/otlp-api'
+import { runtimeByNode, runtimeText, type NodeRuntime } from '@/lib/goide/runtimeLens'
 
 /** Bumped by the "Analyze Change Impact" command: the panel re-analyzes the code under the cursor. */
 const useImpactRequest = create<{ nonce: number; nodeId: string | null }>(() => ({ nonce: 0, nodeId: null }))
 export const requestImpactAtCursor = () => useImpactRequest.setState((state) => ({ nonce: state.nonce + 1, nodeId: null }))
 /** From Search Everywhere: the impact of a graph node (route, topic, env var, dependency…). */
 export const requestImpactOf = (nodeId: string) => useImpactRequest.setState((state) => ({ nonce: state.nonce + 1, nodeId }))
+
+/** Runtime correlation: what the received OpenTelemetry spans say about the nodes of the impact. */
+const useImpactRuntime = create<{ byNode: Map<string, NodeRuntime> }>(() => ({ byNode: new Map() }))
+
+function RuntimeChip({ runtime }: { runtime: NodeRuntime }) {
+  return <span title="Observed at runtime (OpenTelemetry spans received by adOmnia)" className={`shrink-0 rounded px-1 font-mono text-[9.5px] ${runtime.errors ? 'bg-danger/12 text-danger' : 'bg-accent/10 text-accent'}`}>{runtimeText(runtime)}</span>
+}
+
+async function loadImpactRuntime(impact: GraphImpact, root: string): Promise<void> {
+  const port = await getServerPort()
+  const stats = port ? await getOtlpLens(port).catch(() => []) : []
+  const lists = [impact.callers, impact.tests, impact.endpoints, impact.rpcs, impact.consumers, impact.entries, impact.callees, impact.produces, impact.queries, impact.containers, impact.interfaces]
+  const nodes = [impact.target, ...lists.flatMap((list) => (list ?? []).map((ref) => ref.node))]
+  useImpactRuntime.setState({ byNode: runtimeByNode(stats ?? [], root, nodes.map((node) => ({ id: node.id, kind: node.kind, label: node.label, file: node.file, line: node.line }))) })
+}
 
 const RISK_STYLE: Record<string, string> = {
   low: 'border-success/40 text-success',
@@ -24,6 +42,7 @@ const RISK_STYLE: Record<string, string> = {
 const errorText = (problem: unknown) => (problem instanceof Error ? problem.message : String(problem))
 
 function RefList({ title, refs, onFocus, empty }: { title: string; refs: readonly GraphRef[] | null | undefined; onFocus?: (ref: GraphRef) => void; empty?: string }) {
+  const runtime = useImpactRuntime((state) => state.byNode)
   if (!refs?.length && !empty) return null
   return (
     <section className="min-w-0">
@@ -35,6 +54,7 @@ function RefList({ title, refs, onFocus, empty }: { title: string; refs: readonl
               <button type="button" disabled={!ref.node.file} onClick={() => ref.node.file && void useGoIDEStore.getState().openLocation(ref.node.file, ref.node.line || 1)} title={ref.via?.length ? `via ${ref.via.join(' → ')}` : ref.node.file || undefined} className="min-w-0 flex-1 truncate text-left font-mono text-[11.5px] text-text-2 hover:text-text-1 disabled:cursor-default">
                 {ref.node.label}
               </button>
+              {runtime.has(ref.node.id) && <RuntimeChip runtime={runtime.get(ref.node.id)!} />}
               {ref.depth > 1 && <span className="shrink-0 text-[10px] text-text-4">{ref.depth} hops</span>}
               {onFocus && <button type="button" onClick={() => onFocus(ref)} className="shrink-0 text-[10px] text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100 focus:opacity-100">impact</button>}
             </li>
@@ -51,6 +71,8 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
   const nonce = useImpactRequest((state) => state.nonce)
   const [view, setView] = useState<'list' | 'map'>('list')
   const [impact, setImpact] = useState<GraphImpact | null>(null)
+  const targetRuntime = useImpactRuntime((state) => (impact ? state.byNode.get(impact.target.id) : undefined))
+  useEffect(() => { if (impact) void loadImpactRuntime(impact, session.project.rootPath) }, [impact, session.project.rootPath])
   const [summary, setSummary] = useState<WorkspaceGraphSummary | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -113,6 +135,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           <>
             <button type="button" onClick={() => impact.target.file && void useGoIDEStore.getState().openLocation(impact.target.file, impact.target.line || 1)} className="truncate font-mono text-[12px] font-semibold text-text-1 hover:underline">{impact.target.label}</button>
             <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${RISK_STYLE[impact.risk] ?? ''}`} title={(impact.riskReasons ?? []).join('\n')}>{impact.risk} risk</span>
+            {targetRuntime && <RuntimeChip runtime={targetRuntime} />}
             <span className="min-w-0 flex-1 truncate text-[11px] text-text-3">{(impact.riskReasons ?? []).join(' · ')}</span>
           </>
         ) : <span className="flex-1 text-[11.5px] text-text-3">{running ? 'Building the workspace graph…' : 'Place the cursor in a function and analyze.'}</span>}

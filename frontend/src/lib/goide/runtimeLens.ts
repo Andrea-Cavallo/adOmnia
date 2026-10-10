@@ -62,3 +62,43 @@ export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): 
 export function lensTooltip(stat: OtlpLensStat): string {
   return `${stat.name}${stat.function ? ` (${stat.function})` : ''}: avg ${ms(stat.avgMs)}, p99 ${ms(stat.p99Ms)}, max ${ms(stat.maxMs)}. From the OpenTelemetry spans received locally.`
 }
+
+export interface NodeRuntime { count: number; errors: number; p95Ms: number }
+
+interface RuntimeNode { id: string; kind: string; label: string; file?: string; line?: number }
+
+/**
+ * Runtime correlation for workspace-graph nodes: a route gets the server spans named like it,
+ * a function the spans whose source line falls inside it (the nearest function start above).
+ * Span files may be absolute (under the project root) or already relative.
+ */
+export function runtimeByNode(stats: readonly OtlpLensStat[], root: string, nodes: readonly RuntimeNode[]): Map<string, NodeRuntime> {
+  const out = new Map<string, NodeRuntime>()
+  const add = (id: string, stat: OtlpLensStat) => {
+    const current = out.get(id) ?? { count: 0, errors: 0, p95Ms: 0 }
+    out.set(id, { count: current.count + stat.count, errors: current.errors + stat.errors, p95Ms: Math.max(current.p95Ms, stat.p95Ms) })
+  }
+  const normalize = (path: string) => path.split(String.fromCharCode(92)).join('/')
+  const base = normalize(root).replace(/\/+$/, '').toLowerCase()
+  const relative = (file: string) => {
+    const path = normalize(file)
+    return path.toLowerCase().startsWith(`${base}/`) ? path.slice(base.length + 1) : path
+  }
+  const code = nodes.filter((node) => node.file && node.line && node.kind !== 'endpoint' && node.kind !== 'rpc')
+  for (const stat of stats) {
+    const route = nodes.find((node) => (node.kind === 'endpoint' || node.kind === 'rpc') && node.label === stat.name)
+    if (route) add(route.id, stat)
+    const file = relative(stat.file)
+    let owner: RuntimeNode | null = null
+    for (const node of code) {
+      const same = node.file === file || (!file.includes('/') && node.file!.endsWith(`/${file}`))
+      if (same && node.line! <= stat.line && (!owner || node.line! > owner.line!)) owner = node
+    }
+    if (owner) add(owner.id, stat)
+  }
+  return out
+}
+
+export function runtimeText(runtime: NodeRuntime): string {
+  return `${runtime.count} call${runtime.count === 1 ? '' : 's'} · p95 ${ms(runtime.p95Ms)}${runtime.errors ? ` · ${runtime.errors} err` : ''}`
+}
