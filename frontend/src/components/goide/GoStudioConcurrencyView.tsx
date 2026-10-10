@@ -234,6 +234,16 @@ function raceHistory(report: RaceReport, latest: string | null): string {
   return `recurring in ${report.sources.length} runs`
 }
 
+async function analyzeRaceWithAI(report: RaceReport): Promise<void> {
+  const [{ raceAIDraft }, { useGoIDEStore }, { getGoIDEAIPolicy }, { isChatPane, useGoStudioAssistantStore }] = await Promise.all([
+    import('@/lib/goide/debugAI'), import('@/stores/goide'), import('@/lib/goide-api'), import('@/stores/goStudioAssistant'),
+  ])
+  const sessionId = useGoIDEStore.getState().activeSessionId
+  if (!sessionId || (await getGoIDEAIPolicy(sessionId)) !== 'allowed') return
+  const assistant = useGoStudioAssistantStore.getState()
+  assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'claude', raceAIDraft(report))
+}
+
 function RaceCard({ report, latest }: { report: RaceReport; latest: string | null }) {
   return (
     <div className="rounded-lg border border-danger/40 bg-danger/5 p-2.5">
@@ -243,6 +253,7 @@ function RaceCard({ report, latest }: { report: RaceReport; latest: string | nul
         <span title={report.sources.join('\n')} className="ml-auto truncate font-mono text-[10.5px] font-normal text-text-4">{report.sources.join(' · ')}</span>
       </div>
       <div className="mt-1 flex justify-end">
+        <button type="button" onClick={() => void analyzeRaceWithAI(report)} className="rounded px-1.5 py-0.5 text-[10.5px] text-accent hover:bg-accent/10" title="Prepare a chat draft that explains this race and proposes a fix; review it before sending">Analyze with AI</button>
         <button type="button" onClick={() => void WailsClipboard.SetText(raceRegressionTestStarter(report))} className="rounded px-1.5 py-0.5 text-[10.5px] text-text-3 hover:bg-surface-2 hover:text-text-1" title="Copy an editable Go regression-test starter with both race locations">Copy regression test starter</button>
       </div>
       <div className="mt-2 grid gap-2 md:grid-cols-2">

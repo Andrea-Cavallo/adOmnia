@@ -41,3 +41,17 @@ describe('relevantFrame', () => {
     expect(relevantFrame([{ name: 'runtime.gopanic', relativePath: '', line: 1 }, { name: 'runtime.mapassign', relativePath: 'x.go', line: 2 }, { name: 'main.(*cache).put', relativePath: 'main.go', line: 8 }])?.line).toBe(8)
   })
 })
+
+describe('raceAIDraft', () => {
+  it('lists both accesses and the goroutine origins', async () => {
+    const { raceAIDraft } = await import('./debugAI')
+    const draft = raceAIDraft({
+      occurrences: 2,
+      accesses: [{ kind: 'Write', goroutine: 7, frames: [{ func: 'main.inc', path: 'main.go', line: 9 }] }, { kind: 'Previous read', goroutine: 6, frames: [{ func: 'main.get', path: 'main.go', line: 13 }] }],
+      goroutines: [{ id: 7, state: 'running', createdAt: [{ func: 'main.main', path: 'main.go', line: 20 }] }],
+    })
+    expect(draft).toContain('data race (2 times)')
+    expect(draft).toContain('Write by goroutine 7:\n  main.inc at main.go:9')
+    expect(draft).toContain('Goroutine 7 (running) created at:\n  main.main at main.go:20')
+  })
+})
