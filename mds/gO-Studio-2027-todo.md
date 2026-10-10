@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 33 | 12 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 32 | 11 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 121 | 16 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
@@ -96,10 +96,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ## §31 · Service Map
 
 > *Base esistente:* Observability → Traces → **Service map** dalle trace OTLP: servizi, archi HTTP/gRPC/SQL/messaging/esterni con rate, p50/p95, errori; dall'arco si aprono una trace, una trace fallita, il codice chiamante, il topic o Database Studio. Redis compare come datastore (`db.system=redis`).
-
-### Static
-
-- [ ] WebSocket edges. — *Parziale: devcontext rileva server e client WebSocket (goprotocols.go); non sono mostrati come archi.*
 
 ### Runtime
 

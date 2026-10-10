@@ -11,6 +11,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **WebSocket edges in the Architecture Explorer:** WebSocket servers (the function that upgrades) and clients (the `ws://` URL dialed) for gorilla, nhooyr, coder and x/net; client URLs open in the WebSocket client, and the Semantic Workspace Graph links functions to them.
 - **Running workspace bar (gO Studio):** while the project's services run, a bar under the toolbar lists them with their detected port, plus **Open API** (the detected HTTP routes as a `<service> API` collection whose requests use `{{service:NAME}}`, so they reach the running service) and **Open logs** (every service streams into the Log Inspector). Also in the Run menu.
 - **Port check before Start Workspace:** the ports the workspace binds (Compose services, a run configuration's PORT, `docker run -p`) are compared with the machine's listening sockets; a port held by another process is named with its process and PID before anything starts. Ports published by Docker for the project's own stack are not reported.
 - **Clean Workspace (gO Studio, Run menu):** stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file; a second confirmation optionally deletes the volumes (local database and broker data).
