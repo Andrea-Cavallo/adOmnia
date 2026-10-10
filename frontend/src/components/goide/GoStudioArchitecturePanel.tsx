@@ -6,11 +6,12 @@ import { showModule } from '@/lib/moduleRouting'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import { callNeighbourhood, entityRefsForEntry, groupEntries, kafkaTopics, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
+import { GoStudioArchitectureRules } from './GoStudioArchitectureRules'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioDataAccessView } from './GoStudioDataAccessView'
 import { layoutLayered, type LayeredNode } from './goStudioLayeredGraph'
 
-export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules'
+export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules'
 
 const NODE_COLOR: Record<ArchNode['kind'], string> = {
   package: 'var(--color-accent)',
@@ -67,6 +68,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['services', `Entry points & services${report ? ` (${report.entries.length})` : ''}`],
     ['data', `Data access${report ? ` (${report.queries.length})` : ''}`],
     ['modules', `Modules${report ? ` (${report.modules.length})` : ''}`],
+    ['rules', 'Rules & drift'],
   ]
   return (
     <div className="flex h-full min-h-0 flex-col text-[11px]">
@@ -86,7 +88,8 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
       </div>
       {error && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-danger">{error}</div>}
       <div className="flex min-h-0 flex-1 flex-col">
-        {!report ? <p className="p-3 text-text-4">{running ? 'Loading packages and types…' : 'Analyze builds the package, import, call and module graphs, lists interfaces with their implementations and users, and finds entry points, HTTP routes, gRPC services, Kafka producers and consumers, DB repositories, scheduled jobs and CLI commands. Nothing runs.'}</p>
+        {tab === 'rules' ? (authorized ? <GoStudioArchitectureRules sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to check its architecture rules.</p>)
+          : !report ? <p className="p-3 text-text-4">{running ? 'Loading packages and types…' : 'Analyze builds the package, import, call and module graphs, lists interfaces with their implementations and users, and finds entry points, HTTP routes, gRPC services, Kafka producers and consumers, DB repositories, scheduled jobs and CLI commands. Nothing runs.'}</p>
           : tab === 'packages' ? <PackagesView report={report} query={query} />
             : tab === 'calls' ? <CallsView report={report} query={query} />
               : tab === 'interfaces' ? <GoStudioInterfaceExplorer report={report} query={query} />

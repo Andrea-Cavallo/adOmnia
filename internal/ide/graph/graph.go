@@ -26,6 +26,7 @@ const (
 	KindEnvVar     = "envvar"
 	KindConfig     = "config"     // chiave di configurazione (viper, koanf)
 	KindDependency = "dependency" // modulo esterno richiesto da go.mod
+	KindStdlib     = "stdlib"     // package della libreria standard importato dal progetto
 	KindEntry      = "entry"      // main, init, job, cli
 )
 

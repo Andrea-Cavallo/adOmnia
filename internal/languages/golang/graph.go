@@ -65,6 +65,13 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 			}
 		}
 	}
+	// Libreria standard: serve alle regole d'architettura ("niente net/http nel dominio").
+	for _, pkg := range report.Packages {
+		for _, imported := range pkg.StdImports {
+			b.Node(graph.Node{ID: "std:" + imported, Kind: graph.KindStdlib, Label: imported})
+			b.Edge("pkg:"+pkg.Path, "std:"+imported, graph.EdgeImports, "")
+		}
+	}
 	for _, edge := range report.Imports {
 		b.Edge("pkg:"+edge.From, "pkg:"+edge.To, graph.EdgeImports, "")
 	}

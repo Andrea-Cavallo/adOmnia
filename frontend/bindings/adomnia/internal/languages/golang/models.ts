@@ -567,6 +567,11 @@ export class ArchPackage {
     "external": string[];
     "std": number;
 
+    /**
+     * StdImports: i package della libreria standard importati (regole d'architettura: net/http, database/sql…).
+     */
+    "stdImports"?: string[];
+
     /** Creates a new ArchPackage instance. */
     constructor($$source: Partial<ArchPackage> = {}) {
         if (!("path" in $$source)) {
@@ -597,12 +602,16 @@ export class ArchPackage {
     static createFrom($$source: any = {}): ArchPackage {
         const $$createField4_0 = $$createType0;
         const $$createField5_0 = $$createType1;
+        const $$createField7_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField4_0($$parsedSource["site"]);
         }
         if ("external" in $$parsedSource) {
             $$parsedSource["external"] = $$createField5_0($$parsedSource["external"]);
+        }
+        if ("stdImports" in $$parsedSource) {
+            $$parsedSource["stdImports"] = $$createField7_0($$parsedSource["stdImports"]);
         }
         return new ArchPackage($$parsedSource as Partial<ArchPackage>);
     }

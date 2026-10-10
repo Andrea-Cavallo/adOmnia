@@ -57,7 +57,7 @@ func (s *Service) ConfigureGraphStore(dir string) {
 
 // graphBuilderVersion entra nell'impronta: un grafo salvato da un builder più vecchio
 // (meno nodi o archi) si ricostruisce anche se i sorgenti non sono cambiati.
-const graphBuilderVersion = "6"
+const graphBuilderVersion = "7"
 
 func isGoSource(rel string) bool {
 	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work" || graph.IsComposeFile(rel)
@@ -305,4 +305,40 @@ func (s *Service) RiskMap(sessionID string) (GraphRiskMap, error) {
 	}
 	packages, truncated := entry.index.RiskMap()
 	return GraphRiskMap{Packages: packages, Truncated: truncated}, nil
+}
+
+// ArchitectureDrift confronta il workspace graph con .adomnia/architecture.json (se c'è).
+func (s *Service) ArchitectureDrift(sessionID string) (graph.DriftReport, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return graph.DriftReport{}, err
+	}
+	rules, found, err := graph.LoadRules(session.Project.RealPath)
+	if err != nil {
+		return graph.DriftReport{}, err
+	}
+	entry, _, err := s.workspaceGraph(sessionID, false)
+	if err != nil {
+		return graph.DriftReport{}, err
+	}
+	return entry.index.CheckDrift(rules, found), nil
+}
+
+// CreateArchitectureRules scrive il modello di regole se il progetto non ne ha; restituisce il percorso.
+func (s *Service) CreateArchitectureRules(sessionID string) (string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(session.Project.RealPath, filepath.FromSlash(graph.RulesFile))
+	if _, err := os.Stat(path); err == nil {
+		return graph.RulesFile, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, []byte(graph.RulesTemplate), 0o644); err != nil {
+		return "", err
+	}
+	return graph.RulesFile, nil
 }

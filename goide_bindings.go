@@ -1400,6 +1400,16 @@ func (g *GoIDE) GraphRiskMap(sessionID string) (goide.GraphRiskMap, error) {
 	return g.service.RiskMap(sessionID)
 }
 
+// ArchitectureDrift verifica le regole di .adomnia/architecture.json sul workspace graph.
+func (g *GoIDE) ArchitectureDrift(sessionID string) (graph.DriftReport, error) {
+	return g.service.ArchitectureDrift(sessionID)
+}
+
+// CreateArchitectureRules crea .adomnia/architecture.json da un modello, se manca.
+func (g *GoIDE) CreateArchitectureRules(sessionID string) (string, error) {
+	return g.service.CreateArchitectureRules(sessionID)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

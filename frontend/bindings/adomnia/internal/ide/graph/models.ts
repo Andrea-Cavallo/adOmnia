@@ -6,6 +6,55 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * DriftReport è il confronto fra l'architettura desiderata e il codice.
+ */
+export class DriftReport {
+    "rulesFound": boolean;
+    "violations": Violation[];
+    "packages": number;
+    "layers": { [_ in string]?: number };
+    "unassigned"?: string[];
+
+    /** Creates a new DriftReport instance. */
+    constructor($$source: Partial<DriftReport> = {}) {
+        if (!("rulesFound" in $$source)) {
+            this["rulesFound"] = false;
+        }
+        if (!("violations" in $$source)) {
+            this["violations"] = [];
+        }
+        if (!("packages" in $$source)) {
+            this["packages"] = 0;
+        }
+        if (!("layers" in $$source)) {
+            this["layers"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DriftReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DriftReport {
+        const $$createField1_0 = $$createType1;
+        const $$createField3_0 = $$createType2;
+        const $$createField4_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("violations" in $$parsedSource) {
+            $$parsedSource["violations"] = $$createField1_0($$parsedSource["violations"]);
+        }
+        if ("layers" in $$parsedSource) {
+            $$parsedSource["layers"] = $$createField3_0($$parsedSource["layers"]);
+        }
+        if ("unassigned" in $$parsedSource) {
+            $$parsedSource["unassigned"] = $$createField4_0($$parsedSource["unassigned"]);
+        }
+        return new DriftReport($$parsedSource as Partial<DriftReport>);
+    }
+}
+
+/**
  * Impact è ciò che una modifica al target può rompere.
  */
 export class Impact {
@@ -132,23 +181,23 @@ export class Impact {
      * Creates a new Impact instance from a string or object.
      */
     static createFrom($$source: any = {}): Impact {
-        const $$createField0_0 = $$createType0;
-        const $$createField1_0 = $$createType2;
-        const $$createField2_0 = $$createType2;
-        const $$createField3_0 = $$createType2;
-        const $$createField4_0 = $$createType2;
-        const $$createField5_0 = $$createType2;
-        const $$createField6_0 = $$createType2;
-        const $$createField7_0 = $$createType2;
-        const $$createField8_0 = $$createType2;
-        const $$createField9_0 = $$createType2;
-        const $$createField10_0 = $$createType2;
+        const $$createField0_0 = $$createType4;
+        const $$createField1_0 = $$createType6;
+        const $$createField2_0 = $$createType6;
+        const $$createField3_0 = $$createType6;
+        const $$createField4_0 = $$createType6;
+        const $$createField5_0 = $$createType6;
+        const $$createField6_0 = $$createType6;
+        const $$createField7_0 = $$createType6;
+        const $$createField8_0 = $$createType6;
+        const $$createField9_0 = $$createType6;
+        const $$createField10_0 = $$createType6;
         const $$createField11_0 = $$createType3;
         const $$createField12_0 = $$createType3;
-        const $$createField13_0 = $$createType2;
-        const $$createField14_0 = $$createType2;
-        const $$createField15_0 = $$createType2;
-        const $$createField16_0 = $$createType2;
+        const $$createField13_0 = $$createType6;
+        const $$createField14_0 = $$createType6;
+        const $$createField15_0 = $$createType6;
+        const $$createField16_0 = $$createType6;
         const $$createField18_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("target" in $$parsedSource) {
@@ -244,7 +293,7 @@ export class Node {
      * Creates a new Node instance from a string or object.
      */
     static createFrom($$source: any = {}): Node {
-        const $$createField6_0 = $$createType4;
+        const $$createField6_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("attrs" in $$parsedSource) {
             $$parsedSource["attrs"] = $$createField6_0($$parsedSource["attrs"]);
@@ -293,7 +342,7 @@ export class PackageRisk {
      * Creates a new PackageRisk instance from a string or object.
      */
     static createFrom($$source: any = {}): PackageRisk {
-        const $$createField5_0 = $$createType5;
+        const $$createField5_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("riskiest" in $$parsedSource) {
             $$parsedSource["riskiest"] = $$createField5_0($$parsedSource["riskiest"]);
@@ -330,7 +379,7 @@ export class Ref {
      * Creates a new Ref instance from a string or object.
      */
     static createFrom($$source: any = {}): Ref {
-        const $$createField0_0 = $$createType0;
+        const $$createField0_0 = $$createType4;
         const $$createField2_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("node" in $$parsedSource) {
@@ -343,10 +392,51 @@ export class Ref {
     }
 }
 
+/**
+ * Violation è una regola non rispettata, con il punto del codice da cui partire.
+ */
+export class Violation {
+    /**
+     * layer | forbidden-import | domain | database | broker | cycle
+     */
+    "rule": string;
+    "message": string;
+    "from": string;
+    "to"?: string;
+    "file"?: string;
+    "line"?: number;
+
+    /** Creates a new Violation instance. */
+    constructor($$source: Partial<Violation> = {}) {
+        if (!("rule" in $$source)) {
+            this["rule"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+        if (!("from" in $$source)) {
+            this["from"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Violation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Violation {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Violation($$parsedSource as Partial<Violation>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = Node.createFrom;
-const $$createType1 = Ref.createFrom;
-const $$createType2 = $Create.Array($$createType1);
+const $$createType0 = Violation.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $Create.Map($Create.Any, $Create.Any);
 const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = $Create.Map($Create.Any, $Create.Any);
-const $$createType5 = $Create.Array($$createType0);
+const $$createType4 = Node.createFrom;
+const $$createType5 = Ref.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Map($Create.Any, $Create.Any);
+const $$createType8 = $Create.Array($$createType4);

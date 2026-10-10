@@ -127,6 +127,8 @@ type ArchPackage struct {
 	Site     ArchSite `json:"site"`
 	External []string `json:"external"`
 	Std      int      `json:"std"`
+	// StdImports: i package della libreria standard importati (regole d'architettura: net/http, database/sql…).
+	StdImports []string `json:"stdImports,omitempty"`
 }
 
 // ArchEdge collega due nodi (package o funzioni) con un peso.
@@ -264,11 +266,13 @@ func (a *architecture) collectPackages(loaded []*packages.Package, read func(str
 				imports[[2]string{pkg.PkgPath, path}] = true
 			case isStdPath(path):
 				entry.Std++
+				entry.StdImports = append(entry.StdImports, path)
 			case len(entry.External) < maxArchExternal:
 				entry.External = append(entry.External, path)
 			}
 		}
 		sort.Strings(entry.External)
+		sort.Strings(entry.StdImports)
 		a.report.Packages = append(a.report.Packages, entry)
 	}
 	for edge := range imports {
