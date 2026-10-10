@@ -14,6 +14,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Env vars and config keys in the workspace graph:** `os.Getenv`/`os.LookupEnv` and viper/koanf getters link functions to the variables and keys they read; Change Impact lists them and the impact of a key shows its readers, their callers and tests.
 - **NATS and AMQP in the Architecture Explorer and workspace graph:** publishers and subscribers (nats.go subjects; amqp091-go/streadway exchanges, routing keys and queues) are entry points with their topics, open in Broker Studio and appear in Change Impact like Kafka topics.
 - **gRPC methods in the workspace graph:** each exported method of a registered server is its own `Service/Method` node, so Change Impact names the exact RPCs a function reaches.
 - **Change impact of a request/response type:** the workspace graph now holds the JSON DTOs of the HTTP routes and the types they contain; Analyze Change Impact on a struct lists the containing types, the routes, their handlers and callers, and the tests to run.

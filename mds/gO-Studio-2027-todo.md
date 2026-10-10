@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 118 | 13 |
+| **P4** | AI e intelligenza del workspace | 115 | 12 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -166,8 +166,6 @@ _Da progettare prima di implementare: grafi semantici, analisi di impatto, AI ch
 
 _Semantic Workspace Graph (`internal/ide/graph`, chiuso il 2026-10-10): file, package, moduli, funzioni, metodi, test, interfacce con implementazioni e dispatch, route HTTP, servizi gRPC, topic Kafka (producer/consumer), tabelle SQL, entry point; salvato in `goide/graphs` e riusato finché i sorgenti Go non cambiano. Restano:_
 
-- [ ] Config keys.
-- [ ] Env vars. — *Parziale: devcontext rileva entità envvar da os.Getenv, tag e .env; non ancora agganciate alla funzione nel grafo (`graph.Fact` da reintrodurre col primo consumatore).*
 - [ ] Services. — *Parziale: entry point main/job/cli nel grafo; manca il legame con i servizi compose.*
 - [ ] External dependencies. — *Parziale: nodi modulo con requires interni; i moduli esterni non sono nodi.*
 
@@ -187,7 +185,6 @@ _Impact analysis, AI context retrieval, test selection e change impact analysis 
 _Chiusa il 2026-10-10 (Code → Analyze Change Impact): chiamanti indiretti anche via interfaccia, interfacce, test (eseguibili con un clic), route HTTP, servizi gRPC, consumer e producer Kafka, query SQL, moduli, entry point, rischio spiegato. Restano:_
 
 - [ ] Public contracts affected. — *Parziale: interfacce e route nell'impatto; mancano i tipi esportati usati da altri moduli.*
-- [ ] Config affected.
 
 ### UX
 
