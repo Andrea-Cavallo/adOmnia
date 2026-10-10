@@ -2,7 +2,7 @@ import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './goStudioRunOnSave'
 import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './GoStudioDialogs'
@@ -48,7 +48,7 @@ import { useCopilotStore } from '@/stores/copilot'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandsForKey, isStaleEditorKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
-import { activeGoStudioEditor, hasGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
+import { activeGoStudioEditor, hasGoStudioEditor, subscribeGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
 import { GoStudioChangePreviewDialog, GoStudioRenameDialog } from './GoStudioRefactorDialogs'
@@ -233,6 +233,7 @@ export function GoStudioPanel() {
   const sessionExecutions = store.executions.filter((execution) => execution.sessionId === store.activeSessionId)
   const activeRunId = store.activeSessionId ? store.activeRunBySession[store.activeSessionId] : null
   const activeExecution = sessionExecutions.find((execution) => execution.id === activeRunId) ?? sessionExecutions[sessionExecutions.length - 1] ?? null
+  const editorMounted = useSyncExternalStore(subscribeGoStudioEditor, hasGoStudioEditor)
   const workspaceRunIds = activeSession ? activeWorkspaceRunIds(sessionExecutions, activeSession.id) : []
   const toolchain = store.activeSessionId ? store.toolchains[store.activeSessionId] ?? null : null
   const runConfigurations = pinnedFirst(store.activeSessionId ? store.runConfigsBySession[store.activeSessionId] ?? [] : [])
@@ -630,7 +631,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     toolchainReady: !!toolchain?.available,
     running: workspaceRunIds.length > 0,
     restartable: !!activeExecution && activeExecution.kind !== 'dependency',
-    hasEditor: !!summary.activeId && hasGoStudioEditor(),
+    hasEditor: !!summary.activeId && editorMounted,
     activeDocumentDirty: summary.activeDirty,
     sessionDirty: !!activeSession && summary.sessionDirty,
     detached: !!pinnedSessionId,

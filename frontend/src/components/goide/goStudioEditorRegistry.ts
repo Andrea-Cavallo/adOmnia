@@ -52,9 +52,23 @@ export type GoStudioEditorCommand = keyof typeof MONACO_ACTIONS
 let activeEditor: monaco.editor.IStandaloneCodeEditor | null = null
 
 /** Registra l'editor Monaco montato; restituisce la funzione di deregistrazione. */
-export function registerGoStudioEditor(editor: monaco.editor.IStandaloneCodeEditor): () => void {
+const editorListeners = new Set<() => void>()
+
+/** For useSyncExternalStore: menus re-check "an editor is open" when one mounts or goes away. */
+export function subscribeGoStudioEditor(listener: () => void): () => void {
+  editorListeners.add(listener)
+  return () => { editorListeners.delete(listener) }
+}
+
+function setActiveEditor(editor: monaco.editor.IStandaloneCodeEditor | null): void {
+  if (activeEditor === editor) return
   activeEditor = editor
-  return () => { if (activeEditor === editor) activeEditor = null }
+  editorListeners.forEach((listener) => listener())
+}
+
+export function registerGoStudioEditor(editor: monaco.editor.IStandaloneCodeEditor): () => void {
+  setActiveEditor(editor)
+  return () => { if (activeEditor === editor) setActiveEditor(null) }
 }
 
 export function activeGoStudioEditor(): monaco.editor.IStandaloneCodeEditor | null {
