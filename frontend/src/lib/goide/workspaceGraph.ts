@@ -57,3 +57,43 @@ export async function impactContextWithin(sessionId: string, relativePath: strin
   const impact = graphImpactAt(sessionId, relativePath, line).then(impactContext, () => null)
   return Promise.race([impact, timeout])
 }
+
+export interface ImpactMapNode {
+  node: GraphRef['node']
+  role: 'target' | 'upstream' | 'downstream'
+  group: string
+}
+
+const UPSTREAM: Array<[keyof GraphImpact, string]> = [['services', 'service'], ['entries', 'entry'], ['endpoints', 'route'], ['rpcs', 'rpc'], ['consumers', 'topic'], ['tests', 'test'], ['callers', 'caller'], ['containers', 'type'], ['interfaces', 'interface']]
+const DOWNSTREAM: Array<[keyof GraphImpact, string]> = [['callees', 'callee'], ['produces', 'topic'], ['queries', 'table'], ['reads', 'config']]
+const MAP_PER_GROUP = 8
+
+/**
+ * The impact as a layered picture: what reaches the target above it, what it touches below.
+ * Each ref hangs from the node it was reached through (the last label of `via`), or from the target.
+ */
+export function impactMapGraph(impact: GraphImpact): { items: Array<{ id: string; weight: number; data: ImpactMapNode }>; links: Array<{ from: string; to: string; value: number }> } {
+  const items = new Map<string, { id: string; weight: number; data: ImpactMapNode }>()
+  const links: Array<{ from: string; to: string; value: number }> = []
+  const target = impact.target
+  items.set(target.id, { id: target.id, weight: 1000, data: { node: target, role: 'target', group: 'target' } })
+  const byLabel = new Map<string, string>([[target.label, target.id]])
+  const add = (groups: Array<[keyof GraphImpact, string]>, role: 'upstream' | 'downstream') => {
+    const refs = groups.flatMap(([key, group]) => ((impact[key] as GraphRef[] | null | undefined) ?? []).slice(0, MAP_PER_GROUP).map((ref) => ({ ref, group })))
+    refs.sort((left, right) => left.ref.depth - right.ref.depth)
+    for (const { ref, group } of refs) {
+      if (items.has(ref.node.id)) continue
+      items.set(ref.node.id, { id: ref.node.id, weight: 100 - ref.depth, data: { node: ref.node, role, group } })
+      byLabel.set(ref.node.label, ref.node.id)
+    }
+    for (const { ref } of refs) {
+      const via = ref.via ?? []
+      const anchor = (via.length && byLabel.get(via[via.length - 1])) || target.id
+      if (anchor === ref.node.id) continue
+      links.push(role === 'upstream' ? { from: ref.node.id, to: anchor, value: 1 } : { from: anchor, to: ref.node.id, value: 1 })
+    }
+  }
+  add(UPSTREAM, 'upstream')
+  add(DOWNSTREAM, 'downstream')
+  return { items: [...items.values()], links }
+}

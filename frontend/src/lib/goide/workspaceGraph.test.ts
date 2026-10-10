@@ -18,3 +18,19 @@ describe('impactContext', () => {
     expect(text).not.toContain('Tests that reach it')
   })
 })
+
+describe('impactMapGraph', () => {
+  it('hangs callers above the target through their path and touched resources below', async () => {
+    const { impactMapGraph } = await import('./workspaceGraph')
+    const node = (id: string, label = id) => ({ id, kind: 'function', label }) as never
+    const impact = {
+      target: node('t', 'pkg.Target'), risk: 'low', riskReasons: [],
+      callers: [{ node: node('a', 'pkg.A'), depth: 1 }, { node: node('b', 'pkg.B'), depth: 2, via: ['pkg.A'] }],
+      tests: [{ node: node('test', 'pkg.TestB'), depth: 3, via: ['pkg.A', 'pkg.B'] }],
+      queries: [{ node: node('tbl', 'orders'), depth: 1 }],
+    } as never
+    const { items, links } = impactMapGraph(impact)
+    expect(items.map((item) => `${item.id}:${item.data.role}`).sort()).toEqual(['a:upstream', 'b:upstream', 't:target', 'tbl:downstream', 'test:upstream'])
+    expect(links).toEqual(expect.arrayContaining([{ from: 'a', to: 't', value: 1 }, { from: 'b', to: 'a', value: 1 }, { from: 'test', to: 'b', value: 1 }, { from: 't', to: 'tbl', value: 1 }]))
+  })
+})

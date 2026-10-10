@@ -7,6 +7,7 @@ import { graphImpactAt, graphImpactOf, impactContext, workspaceGraphSummary, typ
 import { activeGoIDEDocument, useGoIDEStore } from '@/stores/goide'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { runGoStudioNamedTests } from './goStudioQuickActions'
+import { GoStudioImpactMap } from './GoStudioImpactMap'
 
 /** Bumped by the "Analyze Change Impact" command: the panel re-analyzes the code under the cursor. */
 const useImpactRequest = create<{ nonce: number; nodeId: string | null }>(() => ({ nonce: 0, nodeId: null }))
@@ -48,6 +49,7 @@ function RefList({ title, refs, onFocus, empty }: { title: string; refs: readonl
 /** Change Impact Analysis: what a change to the function under the cursor can break, from the Semantic Workspace Graph. */
 export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
   const nonce = useImpactRequest((state) => state.nonce)
+  const [view, setView] = useState<'list' | 'map'>('list')
   const [impact, setImpact] = useState<GraphImpact | null>(null)
   const [summary, setSummary] = useState<WorkspaceGraphSummary | null>(null)
   const [running, setRunning] = useState(false)
@@ -115,13 +117,19 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
           </>
         ) : <span className="flex-1 text-[11.5px] text-text-3">{running ? 'Building the workspace graph…' : 'Place the cursor in a function and analyze.'}</span>}
         {running && <Loader2 size={13} className="animate-spin text-text-3" />}
+        <div role="tablist" aria-label="Impact view" className="flex rounded-md border border-border-1 p-0.5">
+          {(['list', 'map'] as const).map((value) => (
+            <button key={value} type="button" role="tab" aria-selected={view === value} onClick={() => setView(value)} className={`h-6 rounded px-2 text-[11px] capitalize ${view === value ? 'bg-surface-3 font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>{value}</button>
+          ))}
+        </div>
         <button type="button" onClick={analyzeAtCursor} disabled={running} className="gs-btn gs-btn-secondary gs-btn-sm"><Crosshair size={12} />At cursor</button>
         <button type="button" onClick={runTests} disabled={running || tests.length === 0} className="gs-btn gs-btn-secondary gs-btn-sm" title={tests.length ? 'Run the tests that reach this code' : 'No test reaches this code'}><Play size={12} />Run {tests.length} test{tests.length === 1 ? '' : 's'}</button>
         <button type="button" onClick={askAI} disabled={!impact} className="gs-btn gs-btn-secondary gs-btn-sm" title="Open the chat with this impact as context"><MessageSquare size={12} />Ask AI</button>
         <button type="button" onClick={() => void rebuild()} disabled={running} className="go-studio-icon-button h-7 w-7" title="Rebuild the workspace graph" aria-label="Rebuild the workspace graph"><RefreshCw size={13} /></button>
       </header>
       {error && <div role="alert" className="border-b border-border-1 px-3 py-1.5 text-[11.5px] text-danger">{error}</div>}
-      {impact && (
+      {impact && view === 'map' && <GoStudioImpactMap impact={impact} onFocus={focus} />}
+      {impact && view === 'list' && (
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-4 overflow-auto p-3">
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
