@@ -9,6 +9,7 @@ export {
     LogEntry,
     Message,
     Pause,
+    Port,
     Query,
     RequestRun,
     RuntimeComponent,

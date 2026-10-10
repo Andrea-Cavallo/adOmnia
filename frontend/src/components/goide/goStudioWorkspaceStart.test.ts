@@ -137,3 +137,27 @@ describe('Go Studio workspace start helpers', () => {
     expect(workspaceStartDraft('s1', ['a', 'b'], ['m'])).toMatchObject({ compound: ['a', 'b'], preRun: ['m'] })
   })
 })
+
+describe('workspace port conflicts', () => {
+  it('reports declared ports taken by a foreign process, not by Docker for compose ports', async () => {
+    const { declaredWorkspacePorts, workspacePortConflicts } = await import('./goStudioWorkspaceStart')
+    const declared = declaredWorkspacePorts(
+      [
+        { kind: 'service', label: 'db', attrs: { origin: 'compose', ports: '5432:5432,127.0.0.1:6380:6379' } },
+        { kind: 'service', label: 'api', attrs: { origin: 'go', dir: 'cmd/api' } },
+      ],
+      [config({ name: 'Service: api', port: 8080 }), config({ name: 'Image', docker: { ports: ['9000:80', '9100'] } as GoIDERunConfiguration['docker'] })],
+    )
+    expect(declared.map((item) => item.port)).toEqual([5432, 6380, 8080, 9000, 9100])
+    const conflicts = workspacePortConflicts(declared, [
+      { port: 5432, pid: 10, process: 'postgres.exe' },
+      { port: 6380, pid: 11, process: 'com.docker.backend.exe' },
+      { port: 8080, pid: 12, process: 'java.exe' },
+      { port: 3000, pid: 13, process: 'node.exe' },
+    ])
+    expect(conflicts).toEqual([
+      { port: 5432, declaredBy: 'Compose service db', pid: 10, process: 'postgres.exe' },
+      { port: 8080, declaredBy: 'Service: api', pid: 12, process: 'java.exe' },
+    ])
+  })
+})

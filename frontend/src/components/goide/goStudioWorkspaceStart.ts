@@ -190,3 +190,57 @@ export function requiredSecretKeysForRun(config: GoIDERunConfiguration | null, c
   }
   return [...keys]
 }
+
+/** A listening socket of the machine (DevSession.ListLocalPorts). */
+export interface ListeningPort {
+  port: number
+  pid: number
+  process: string
+}
+
+/** A port the workspace will bind, already taken by another process. */
+export interface WorkspacePortConflict {
+  port: number
+  declaredBy: string
+  pid: number
+  process: string
+}
+
+// Docker Desktop/Engine processes publish compose ports: a stack left up is not a conflict for its own ports.
+const DOCKER_PORT_OWNERS = /^(com\.docker\.backend|docker-proxy|dockerd|vpnkit|wslrelay|com\.docker\.vpnkit|rootlesskit)(\.exe)?$/i
+
+function hostPorts(mapping: string): number[] {
+  return mapping.split(',').map((entry) => {
+    const parts = entry.trim().split(':')
+    // "8080:80" → 8080, "127.0.0.1:8080:80" → 8080, "8080" → 8080
+    return Number(parts.length >= 2 ? parts[parts.length - 2] : parts[0])
+  }).filter((port) => Number.isInteger(port) && port > 0 && port <= 65535)
+}
+
+/** Ports declared by the workspace: Compose services, the members' PORT and docker -p. */
+export function declaredWorkspacePorts(entities: readonly WorkspaceContextEntity[], members: readonly GoIDERunConfiguration[]): Array<{ port: number; declaredBy: string; docker: boolean }> {
+  const declared: Array<{ port: number; declaredBy: string; docker: boolean }> = []
+  for (const entity of entities) {
+    if (entity.kind !== 'service' || entity.attrs?.origin !== 'compose') continue
+    for (const port of hostPorts(entity.attrs.ports ?? '')) declared.push({ port, declaredBy: `Compose service ${entity.label ?? ''}`.trim(), docker: true })
+  }
+  for (const config of members) {
+    if (config.port && config.port > 0) declared.push({ port: config.port, declaredBy: config.name, docker: false })
+    for (const port of hostPorts((config.docker?.ports ?? []).join(','))) declared.push({ port, declaredBy: config.name, docker: true })
+  }
+  return declared
+}
+
+/** Declared ports already listening before Start Workspace, one entry per port. */
+export function workspacePortConflicts(
+  declared: ReadonlyArray<{ port: number; declaredBy: string; docker: boolean }>,
+  listening: readonly ListeningPort[],
+): WorkspacePortConflict[] {
+  const conflicts = new Map<number, WorkspacePortConflict>()
+  for (const item of declared) {
+    if (conflicts.has(item.port)) continue
+    const owner = listening.find((socket) => socket.port === item.port && !(item.docker && DOCKER_PORT_OWNERS.test(socket.process.trim())))
+    if (owner) conflicts.set(item.port, { port: item.port, declaredBy: item.declaredBy, pid: owner.pid, process: owner.process })
+  }
+  return [...conflicts.values()].sort((left, right) => left.port - right.port)
+}

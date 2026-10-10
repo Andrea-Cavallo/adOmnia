@@ -118,6 +118,9 @@ func (d *DevSession) project(goSessionID string) (string, string) {
 	return name, root
 }
 
+// ListLocalPorts returns the machine's listening sockets with their owning process.
+func (d *DevSession) ListLocalPorts() ([]devsession.Port, error) { return devsession.ListLocalPorts() }
+
 // GetSnapshot returns the live sessions and recent request runs.
 func (d *DevSession) GetSnapshot() devsession.Snapshot { return d.manager.Snapshot() }
 

@@ -44,11 +44,20 @@ export function GetSnapshot(): $CancellablePromise<devsession$0.Snapshot> {
 }
 
 /**
+ * ListLocalPorts returns the machine's listening sockets with their owning process.
+ */
+export function ListLocalPorts(): $CancellablePromise<devsession$0.Port[]> {
+    return $Call.ByID(3525285190).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * Logs returns a session's log lines, optionally only a request's.
  */
 export function Logs(sessionID: string, runID: string, limit: number): $CancellablePromise<devsession$0.LogEntry[]> {
     return $Call.ByID(23244212, sessionID, runID, limit).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
     });
 }
 
@@ -64,7 +73,7 @@ export function MatchURL(url: string): $CancellablePromise<string> {
  */
 export function Messages(runID: string): $CancellablePromise<devsession$0.Message[]> {
     return $Call.ByID(4092847351, runID).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType7($result);
     });
 }
 
@@ -80,7 +89,7 @@ export function ProjectServiceName(goSessionID: string): $CancellablePromise<str
  */
 export function Queries(runID: string): $CancellablePromise<devsession$0.Query[]> {
     return $Call.ByID(147533849, runID).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     });
 }
 
@@ -92,7 +101,7 @@ export function Queries(runID: string): $CancellablePromise<devsession$0.Query[]
  */
 export function RuntimeEnrichment(goSessionID: string, moduleDirectory: string): $CancellablePromise<devsession$0.RuntimeEnrichment> {
     return $Call.ByID(2819190200, goSessionID, moduleDirectory).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType10($result);
     });
 }
 
@@ -116,7 +125,7 @@ export function SetServiceName(goSessionID: string, name: string): $CancellableP
  */
 export function StartSQLCapture(sessionID: string, kind: string, target: string, port: number): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(398041767, sessionID, kind, target, port).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
 }
 
@@ -139,7 +148,7 @@ export function Stop(sessionID: string): $CancellablePromise<void> {
  */
 export function StopSQLCapture(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(1386855709, sessionID).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
 }
 
@@ -148,7 +157,7 @@ export function StopSQLCapture(sessionID: string): $CancellablePromise<devsessio
  */
 export function Tools(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(1256491582, sessionID).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
 }
 
@@ -157,7 +166,7 @@ export function Tools(sessionID: string): $CancellablePromise<devsession$0.Sessi
  */
 export function UnwatchKafka(sessionID: string): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(2754274663, sessionID).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
 }
 
@@ -174,18 +183,20 @@ export function WaitReady(sessionID: string, healthPath: string, timeoutMs: numb
  */
 export function WatchKafka(sessionID: string, brokers: string[], topics: string[]): $CancellablePromise<devsession$0.SessionTools> {
     return $Call.ByID(2204050460, sessionID, brokers, topics).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType11($result);
     });
 }
 
 // Private type creation functions
 const $$createType0 = devsession$0.RequestRun.createFrom;
 const $$createType1 = devsession$0.Snapshot.createFrom;
-const $$createType2 = devsession$0.LogEntry.createFrom;
+const $$createType2 = devsession$0.Port.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = devsession$0.Message.createFrom;
+const $$createType4 = devsession$0.LogEntry.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = devsession$0.Query.createFrom;
+const $$createType6 = devsession$0.Message.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = devsession$0.RuntimeEnrichment.createFrom;
-const $$createType9 = devsession$0.SessionTools.createFrom;
+const $$createType8 = devsession$0.Query.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = devsession$0.RuntimeEnrichment.createFrom;
+const $$createType11 = devsession$0.SessionTools.createFrom;

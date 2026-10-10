@@ -105,12 +105,15 @@ import {
   serviceConfigurationForDirectory,
   workspaceStartConfiguration,
   workspaceStartDraft,
+  declaredWorkspacePorts,
+  workspacePortConflicts,
   detectedWorkspaceTasks,
   isRunnableTask,
   taskConfiguration,
   taskConfigurationForDetected,
 } from './goStudioWorkspaceStart'
 import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
+import { ListLocalPorts } from '../../../bindings/adomnia/devsession'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -368,10 +371,30 @@ export function GoStudioPanel() {
     void store.startRun(kind, configuredRequest())
   }, [activeConfig, configuredRequest, runConfigurations, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
 
+  // Detect ports: before starting, a port the workspace binds that another process already holds.
+  const portsAreFree = useCallback(async (workspace: GoIDERunConfiguration, configs: readonly GoIDERunConfiguration[], entities?: Parameters<typeof declaredWorkspacePorts>[0]) => {
+    try {
+      const ids = new Set(workspace.compound ?? [])
+      const members = configs.filter((config) => ids.has(config.id))
+      const known = entities ?? (await DevContextBindings.GetContext(workspace.sessionId)).entities
+      const conflicts = workspacePortConflicts(declaredWorkspacePorts(known, members), (await ListLocalPorts()) ?? [])
+      if (conflicts.length === 0) return true
+      return await confirm({
+        title: conflicts.length === 1 ? `Port ${conflicts[0].port} is already in use` : `${conflicts.length} ports are already in use`,
+        message: 'Another process holds ports this workspace binds: the services that need them will fail to start.',
+        details: conflicts.map((conflict) => ({ label: `:${conflict.port}`, value: `${conflict.declaredBy} ← ${conflict.process || 'unknown process'}${conflict.pid ? ` (PID ${conflict.pid})` : ''}` })),
+        confirmLabel: 'Start anyway',
+      })
+    } catch {
+      return true // ponytail: port listing unavailable (netstat/ss missing) must not block the start
+    }
+  }, [])
+
   const startWorkspace = useCallback(async () => {
     if (!activeSession || workspaceStartPending.current) return
     const workspaceConfig = workspaceStartConfiguration(runConfigurations)
     if (workspaceConfig) {
+      if (!await portsAreFree(workspaceConfig, runConfigurations)) return
       const secretKeys = requiredSecretKeysForRun(workspaceConfig, runConfigurations)
       if (secretKeys.length > 0) {
         setPendingSecrets({ config: workspaceConfig, keys: secretKeys })
@@ -422,6 +445,7 @@ export function GoStudioPanel() {
       if (manualTasks.length > 0) {
         useGoIDELspStore.setState({ message: `SQL migrations found in ${manualTasks.map((task) => `${task.path} (${task.runner})`).join(', ')}: add a Command task with your tool and DSN to Start workspace.` })
       }
+      if (!await portsAreFree(savedWorkspace, members, snapshot.entities)) return
       const secretKeys = requiredSecretKeysForRun(savedWorkspace, [...runConfigurations, ...members, ...tasks, savedWorkspace])
       if (secretKeys.length > 0) {
         setPendingSecrets({ config: savedWorkspace, keys: secretKeys })
@@ -436,7 +460,7 @@ export function GoStudioPanel() {
     } finally {
       workspaceStartPending.current = false
     }
-  }, [activeSession, runConfigurations, store.startConfiguredRun])
+  }, [activeSession, runConfigurations, store.startConfiguredRun, portsAreFree])
 
   // Clean workspace: ferma i run del workspace e smonta i container Compose; i volumi solo se confermato.
   const cleanWorkspace = useCallback(async () => {

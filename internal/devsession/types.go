@@ -176,7 +176,7 @@ type Event struct {
 
 // Port is one listening socket.
 type Port struct {
-	Port    int
-	PID     int
-	Process string
+	Port    int    `json:"port"`
+	PID     int    `json:"pid"`
+	Process string `json:"process"`
 }

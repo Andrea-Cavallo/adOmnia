@@ -308,6 +308,38 @@ export class Pause {
 }
 
 /**
+ * Port is one listening socket.
+ */
+export class Port {
+    "port": number;
+    "pid": number;
+    "process": string;
+
+    /** Creates a new Port instance. */
+    constructor($$source: Partial<Port> = {}) {
+        if (!("port" in $$source)) {
+            this["port"] = 0;
+        }
+        if (!("pid" in $$source)) {
+            this["pid"] = 0;
+        }
+        if (!("process" in $$source)) {
+            this["process"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Port instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Port {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Port($$parsedSource as Partial<Port>);
+    }
+}
+
+/**
  * Query is a SQL statement the service ran, seen in its logs or through the
  * capture proxy.
  */
