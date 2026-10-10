@@ -65,6 +65,11 @@ export async function prepareStudioChat(root: string, message: string, options: 
       labels.push('workspace graph')
       parts.push(graph)
     }
+    const runtime = await runtimeContextFor(session.id, session.project.rootPath, document.document.relativePath)
+    if (runtime) {
+      labels.push('runtime')
+      parts.push(runtime)
+    }
   }
   if (options.includeWorkspace) {
     labels.push(session.project.name)
@@ -77,4 +82,20 @@ export async function prepareStudioChat(root: string, message: string, options: 
   const remaining = 64 * 1024 - new TextEncoder().encode(question + prefix + suffix).length
   if (remaining < 512) throw new Error('The message is too long to attach editor context. Shorten it and try again.')
   return { message: question + prefix + boundedContext(redactor.redact(parts.join('\n\n')), remaining) + suffix, labels }
+}
+
+/** Runtime-aware AI: spans, profile and live logs of the active file's service (bounded, best effort). */
+async function runtimeContextFor(sessionId: string, root: string, file: string): Promise<string> {
+  try {
+    const [{ getServerPort }, { getOtlpLens }, { useGoStudioRuntimeProfile }, { useDevSessionStore }, { runtimeChatContext }] = await Promise.all([
+      import('@/lib/useServerPort'), import('@/lib/otlp-api'), import('@/stores/goStudioRuntimeProfile'), import('@/stores/devSession'), import('./runtimeChatContext'),
+    ])
+    const port = await getServerPort()
+    const lens = port ? await Promise.race([getOtlpLens(port).catch(() => []), new Promise<[]>((resolve) => setTimeout(() => resolve([]), 1500))]) : []
+    const live = useDevSessionStore.getState()
+    const logs = Object.values(live.sessions).filter((item) => item.goSessionId === sessionId).flatMap((item) => live.logs[item.id] ?? [])
+    return runtimeChatContext({ root, file, lens: lens ?? [], costs: useGoStudioRuntimeProfile.getState().costs[sessionId] ?? [], logs })
+  } catch {
+    return ''
+  }
 }
