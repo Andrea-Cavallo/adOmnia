@@ -238,3 +238,13 @@ describe('renderMarkdown mermaid blocks', () => {
     expect(renderMarkdown('```go\nfunc main() {}\n```')).not.toContain('data-mermaid')
   })
 })
+
+describe('inline code escaping', () => {
+  it('escapes inline code once', async () => {
+    const { renderMarkdown } = await import('./markdownDoc')
+    const html = renderMarkdown('Use `c := &cache{}` and <b>')
+    expect(html).toContain('>c := &amp;cache{}</code>')
+    expect(html).not.toContain('&amp;amp;')
+    expect(html).toContain('&lt;b&gt;')
+  })
+})

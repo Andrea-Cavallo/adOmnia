@@ -237,7 +237,8 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
     let s = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const inlineCodes: string[] = []
     s = s.replace(/`([^`\n]+)`/g, (_m, c) => {
-      const html = `<code class="bg-surface-2 border border-border-2 px-1 py-px rounded font-mono text-accent-light" style="font-size:11px">${esc(c)}</code>`
+      // c è già escapato da inlineEsc: un secondo esc mostrerebbe "&amp;" al posto di "&".
+      const html = `<code class="bg-surface-2 border border-border-2 px-1 py-px rounded font-mono text-accent-light" style="font-size:11px">${c}</code>`
       const i = inlineCodes.length
       inlineCodes.push(html)
       return `\x00IC${i}\x00`
