@@ -82,6 +82,8 @@ A failed task keeps the services stopped. Every stage writes a line in the conso
 
 Before anything starts, adOmnia compares the ports the workspace binds (Compose `ports:`, a run configuration's *Port*, `docker run -p`) with the sockets already listening on the machine. A port held by another process is listed with its process and PID: *Start anyway* or *Cancel* and free it. Ports that Docker already publishes for the project's own Compose stack are not reported.
 
+While the services run, a **Workspace** bar under the toolbar lists them with the port each one opened. *Open API* adds a `<service> API` collection to the API Workspace with one request per detected route; the requests use `{{service:NAME}}`, so they always reach the running service. *Open logs* streams every running service into the Log Inspector. Both are also in the Run menu.
+
 *Run → Clean Workspace…* undoes it: it stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file. A second dialog asks whether to delete the volumes too (local database and broker data); *Keep data* leaves them.
 
 ## adOmnia environments in runs
