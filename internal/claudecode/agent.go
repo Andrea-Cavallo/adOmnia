@@ -20,17 +20,26 @@ const apiKeyVar = "ANTHROPIC_API_KEY"
 
 // Agent descrive Claude Code per milk.Manager.
 func Agent() milk.Agent {
-	return milk.Agent{Name: "Claude Code", Event: "claude", Protocol: 1, Resolve: resolve}
+	return milk.Agent{Name: "Claude Code", Event: "claude", Protocol: 1, Resolve: resolve, ProjectScoped: true}
 }
 
-func resolve(settings milk.Settings) (milk.Launch, error) {
+func resolve(settings milk.Settings, root string) (milk.Launch, error) {
 	launch, err := command(settings, exec.LookPath)
 	if err != nil {
 		return launch, err
 	}
+	env := os.Environ()
 	if settings.IgnoreAPIKey {
-		launch.Env = withoutVar(os.Environ(), apiKeyVar)
+		env = withoutVar(env, apiKeyVar)
 	}
+	lifted := liftedEnv(root, os.Getenv)
+	for _, name := range adapterEnvVars {
+		if value, ok := lifted[name]; ok {
+			env = append(withoutVar(env, name), name+"="+value)
+			launch.Key += name + "=" + value + ";"
+		}
+	}
+	launch.Env = env
 	return launch, nil
 }
 

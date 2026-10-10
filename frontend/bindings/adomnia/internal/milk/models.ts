@@ -233,6 +233,16 @@ export class Status {
     "restarts": number;
     "activeAgent"?: string;
 
+    /**
+     * Backend è chi serve i turni secondo l'agente (Claude Code: "AWS Bedrock", "Claude Pro"…).
+     */
+    "backend"?: string;
+
+    /**
+     * Model è il modello dell'ultima sessione aperta.
+     */
+    "model"?: string;
+
     /** Creates a new Status instance. */
     constructor($$source: Partial<Status> = {}) {
         if (!("state" in $$source)) {

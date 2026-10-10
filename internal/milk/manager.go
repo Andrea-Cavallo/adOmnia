@@ -68,6 +68,7 @@ type Manager struct {
 	sessions      map[string]string // root -> sessionId
 	rootBySession map[string]string
 	turns         map[string]string // sessionId -> token
+	launchKey     string            // Launch.Key del processo in esecuzione
 	pending       map[string]*permission
 	log           []string
 	emit          Emitter
@@ -157,7 +158,25 @@ func (m *Manager) SetActiveWorkspace(root string) {
 	// Le sessioni del vecchio root restano valide; il nuovo ne apre una al primo prompt.
 	if enabled && root != "" && !running {
 		go func() { _ = m.Start() }()
+		return
 	}
+	if enabled && running && m.needsRelaunch(root) {
+		go func() { _ = m.Restart() }()
+	}
+}
+
+// needsRelaunch dice se il progetto root richiede un processo avviato diversamente
+// (es. Claude Code con un altro ANTHROPIC_MODEL nei settings del progetto).
+func (m *Manager) needsRelaunch(root string) bool {
+	m.mu.Lock()
+	settings, key := m.settings, m.launchKey
+	m.mu.Unlock()
+	if !m.agent.ProjectScoped {
+		return false
+	}
+	// ponytail: il riavvio interrompe un turno in corso in un altro progetto; capita solo se i progetti chiedono modelli diversi.
+	command, err := m.agent.Resolve(settings, root)
+	return err == nil && command.Key != key
 }
 
 // Start avvia il processo se milk è attivo e non già in esecuzione.
@@ -179,7 +198,7 @@ func (m *Manager) Start() error {
 	m.mu.Unlock()
 	defer func() { m.mu.Lock(); m.launching = false; m.mu.Unlock() }()
 
-	command, err := m.agent.Resolve(settings)
+	command, err := m.agent.Resolve(settings, root)
 	if err != nil {
 		state := StateError
 		switch {
@@ -199,6 +218,7 @@ func (m *Manager) Start() error {
 	m.setStatus(func(status *Status) {
 		status.State = StateStarting
 		status.Message = ""
+		status.Backend, status.Model = "", "" // li riannuncia il nuovo processo
 		status.Binary = command.Binary
 		status.Version = command.Version
 	})
@@ -254,6 +274,9 @@ func isExecutableFile(path string) bool {
 }
 
 func (m *Manager) launch(command Launch, root string) error {
+	m.mu.Lock()
+	m.launchKey = command.Key
+	m.mu.Unlock()
 	cmd := exec.Command(command.Binary, command.Args...)
 	cmd.Env = command.Env
 	if cmd.Env == nil {
@@ -467,6 +490,9 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	defer cancel()
 	var result struct {
 		SessionID string `json:"sessionId"`
+		Models    struct {
+			CurrentModelID string `json:"currentModelId"`
+		} `json:"models"`
 	}
 	params := map[string]any{"cwd": root}
 	if m.agent.Protocol == 1 {
@@ -479,6 +505,9 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	m.sessions[root] = result.SessionID
 	m.rootBySession[result.SessionID] = root
 	m.mu.Unlock()
+	if model := result.Models.CurrentModelID; model != "" {
+		m.setStatus(func(status *Status) { status.Model = model })
+	}
 	return result.SessionID, nil
 }
 

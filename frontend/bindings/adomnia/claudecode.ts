@@ -13,6 +13,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as claudecode$0 from "./internal/claudecode/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as milk$0 from "./internal/milk/models.js";
 
 /**
@@ -23,11 +26,21 @@ export function CancelPrompt(token: string): $CancellablePromise<void> {
 }
 
 /**
+ * Inspect mostra quale backend (account, API key, Bedrock, Vertex, Foundry, gateway) e quale
+ * modello Claude Code userà nel progetto root, letti dai suoi settings. Mai i valori dei segreti.
+ */
+export function Inspect(root: string): $CancellablePromise<claudecode$0.Config> {
+    return $Call.ByID(3843892467, root).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
  * Log restituisce le ultime righe di log dell'adapter.
  */
 export function Log(): $CancellablePromise<string[]> {
     return $Call.ByID(854980589).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
@@ -36,7 +49,7 @@ export function Log(): $CancellablePromise<string[]> {
  */
 export function Prompt(request: milk$0.PromptRequest): $CancellablePromise<milk$0.PromptResponse> {
     return $Call.ByID(1685123647, request).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -66,7 +79,7 @@ export function Restart(): $CancellablePromise<void> {
  */
 export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(4104298729, settings).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -82,7 +95,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
  */
 export function Settings(): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(830420924).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -91,12 +104,13 @@ export function Settings(): $CancellablePromise<milk$0.Settings> {
  */
 export function Status(): $CancellablePromise<milk$0.Status> {
     return $Call.ByID(301640787).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = milk$0.PromptResponse.createFrom;
-const $$createType2 = milk$0.Settings.createFrom;
-const $$createType3 = milk$0.Status.createFrom;
+const $$createType0 = claudecode$0.Config.createFrom;
+const $$createType1 = $Create.Array($Create.Any);
+const $$createType2 = milk$0.PromptResponse.createFrom;
+const $$createType3 = milk$0.Settings.createFrom;
+const $$createType4 = milk$0.Status.createFrom;

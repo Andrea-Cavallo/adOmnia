@@ -166,6 +166,8 @@ export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentCha
         <Logo size={16} />
         <span className="milk-bar-title">{name}</span>
         {status?.version && <span className="milk-bar-version">{status.version}</span>}
+        {/* Who serves the turns (Claude Code: plan, API key, AWS Bedrock, Vertex AI, gateway) and with which model. */}
+        {(status?.backend || status?.model) && <span className="milk-bar-version min-w-0 truncate" title={[status.backend, status.model].filter(Boolean).join(' · ')}>{[status.backend, status.model].filter(Boolean).join(' · ')}</span>}
         <span className="flex-1" />
         <button type="button" onClick={openSettings} className="go-studio-icon-button h-7 w-7" title={`${name} settings`} aria-label={`${name} settings`}><Settings2 size={14} /></button>
         <button type="button" onClick={() => void store.getState().newChat(root)} className="go-studio-icon-button h-7 w-7" title="New chat" aria-label="New chat"><Plus size={15} /></button>

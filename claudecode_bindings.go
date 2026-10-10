@@ -71,3 +71,9 @@ func (c *ClaudeCode) CancelPrompt(token string) { c.manager.CancelPrompt(token) 
 func (c *ClaudeCode) RespondPermission(requestID string, allow bool) {
 	c.manager.RespondPermission(requestID, allow)
 }
+
+// Inspect mostra quale backend (account, API key, Bedrock, Vertex, Foundry, gateway) e quale
+// modello Claude Code userà nel progetto root, letti dai suoi settings. Mai i valori dei segreti.
+func (c *ClaudeCode) Inspect(root string) claudecode.Config {
+	return claudecode.Inspect(root, c.manager.Settings().IgnoreAPIKey)
+}

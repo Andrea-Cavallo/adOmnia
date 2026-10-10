@@ -22,7 +22,41 @@ func (h *handler) HandleNotification(method string, params json.RawMessage) {
 		h.handleRoute(params)
 	case "_milk/warning":
 		h.handleWarning(params)
+	case "_auth/status_update":
+		h.handleAuthStatus(params)
 	}
+}
+
+// handleUsage registra il modello che ha servito davvero il turno (Claude Code lo mette in _meta).
+func (h *handler) handleUsage(update json.RawMessage) {
+	var usage struct {
+		Meta struct {
+			Model string `json:"_claude/model"`
+		} `json:"_meta"`
+	}
+	if json.Unmarshal(update, &usage) != nil || usage.Meta.Model == "" || usage.Meta.Model == h.manager.Status().Model {
+		return
+	}
+	h.manager.setStatus(func(status *Status) { status.Model = usage.Meta.Model })
+}
+
+// handleAuthStatus registra il backend annunciato dall'agente (Claude Code: piano, API key,
+// Bedrock/Vertex/Foundry, gateway). Solo etichette: mai email né credenziali.
+func (h *handler) handleAuthStatus(params json.RawMessage) {
+	var update struct {
+		AuthStatus struct {
+			Label  string `json:"label"`
+			Detail string `json:"detail"`
+		} `json:"authStatus"`
+	}
+	if json.Unmarshal(params, &update) != nil || update.AuthStatus.Label == "" {
+		return
+	}
+	backend := update.AuthStatus.Label
+	if update.AuthStatus.Detail != "" {
+		backend += " · " + update.AuthStatus.Detail
+	}
+	h.manager.setStatus(func(status *Status) { status.Backend = backend })
 }
 
 func (h *handler) handleSessionUpdate(params json.RawMessage) {
@@ -37,6 +71,10 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 		SessionUpdate string `json:"sessionUpdate"`
 	}
 	if json.Unmarshal(notification.Update, &discriminator) != nil {
+		return
+	}
+	if discriminator.SessionUpdate == "usage_update" {
+		h.handleUsage(notification.Update)
 		return
 	}
 	token := h.manager.tokenForSession(notification.SessionID)

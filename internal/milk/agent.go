@@ -14,9 +14,12 @@ type Agent struct {
 	Event string
 	// Protocol è la protocolVersion ACP: 2 = dialetto milk, 1 = ACP standard.
 	Protocol int
-	// Resolve trova il comando da avviare. Errori: ErrNotInstalled o ErrOutdated
-	// (anche avvolti) diventano gli stati omonimi; Launch resta valorizzato quanto possibile.
-	Resolve func(Settings) (Launch, error)
+	// Resolve trova il comando da avviare per il progetto root ("" se nessuno è attivo).
+	// Errori: ErrNotInstalled o ErrOutdated (anche avvolti) diventano gli stati omonimi;
+	// Launch resta valorizzato quanto possibile.
+	Resolve func(settings Settings, root string) (Launch, error)
+	// ProjectScoped: il comando dipende dal progetto (Launch.Key) e va riverificato a ogni cambio.
+	ProjectScoped bool
 }
 
 // Launch è il comando che avvia l'agente in modalità ACP su stdio.
@@ -26,6 +29,8 @@ type Launch struct {
 	Version string
 	// Env sostituisce l'ambiente del processo; nil eredita quello di adOmnia.
 	Env []string
+	// Key riassume ciò che dipende dal progetto: se cambia con il progetto attivo, l'agente riparte.
+	Key string
 }
 
 // ErrOutdated indica un agente installato ma troppo vecchio per gO Studio.
@@ -51,7 +56,7 @@ func MilkAgent() Agent {
 	return Agent{Name: "milk", Event: "milk", Protocol: 2, Resolve: resolveMilk}
 }
 
-func resolveMilk(settings Settings) (Launch, error) {
+func resolveMilk(settings Settings, _ string) (Launch, error) {
 	binary, err := resolveBinary(settings)
 	if err != nil {
 		return Launch{}, err
