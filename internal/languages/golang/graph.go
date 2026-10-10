@@ -28,9 +28,17 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 	}
 	// Dipendenze esterne: un nodo per modulo richiesto, raggiunto dai package che lo importano.
 	var dependencies []string
+	local := map[string]bool{}
+	for _, module := range report.Modules {
+		local[module.Path] = true
+	}
 	for _, module := range report.Modules {
 		for _, external := range module.External {
 			path, version, _ := strings.Cut(external, "@")
+			if local[path] { // un altro modulo del workspace (go.work, replace locale)
+				b.Edge("mod:"+module.Path, "mod:"+path, graph.EdgeRequires, "")
+				continue
+			}
 			b.Node(graph.Node{ID: "dep:" + path, Kind: graph.KindDependency, Label: path, File: module.Site.Path, Attrs: attrs("version", version)})
 			b.Edge("mod:"+module.Path, "dep:"+path, graph.EdgeRequires, version)
 			dependencies = append(dependencies, path)

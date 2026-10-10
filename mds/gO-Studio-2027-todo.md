@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 107 | 9 |
+| **P4** | AI e intelligenza del workspace | 105 | 7 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -166,15 +166,7 @@ _Chiusa il 2026-10-10: DTO, metodi gRPC, topic NATS/AMQP, env var e chiavi di co
 
 ## §37 · Change Impact Analysis
 
-> Prima di modificare una funzione, capire cosa può rompere.
-
-_Chiusa il 2026-10-10 (Code → Analyze Change Impact): chiamanti indiretti anche via interfaccia, interfacce, test (eseguibili con un clic), route HTTP, servizi gRPC, consumer e producer Kafka, query SQL, moduli, entry point, rischio spiegato. Restano:_
-
-- [ ] Public contracts affected. — *Parziale: interfacce e route nell'impatto; mancano i tipi esportati usati da altri moduli.*
-
-### UX
-
-- [ ] Risk map. — *Parziale: livello di rischio con motivi per funzione; nessuna mappa del progetto.*
+_Chiusa il 2026-10-10: contratti pubblici usati da altri moduli, risk map del progetto, chiamate e servizi suggeriti sono nel `CHANGELOG.md`._
 
 ## §34 · Runtime-Aware AI
 

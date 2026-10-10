@@ -563,6 +563,8 @@ When adOmnia has received OpenTelemetry spans (Observability → Traces, live or
 
 From the list you can verify the change at once: *Send* on a route opens its request in the API Workspace (reusing a saved one when it exists) and sends it, *Open all in API* puts every impacted route in an `Impact: …` collection, *Run* starts an impacted `main` and *Up* starts the compose service that runs it.
 
+*Used by other modules* lists callers from other modules of the workspace: the code is a public contract and the risk goes up. The *Risk* view scores every function of the project and ranks packages by their high-risk functions; click one to analyze it.
+
 *Map* draws the same analysis as a picture: what reaches the changed code above it, following the real call paths, and what it touches below. Click a box to open the code, Alt+click to analyze that element.
 
 Once the graph is built, **Search Everywhere** (Shift Shift) lists its routes, gRPC methods, topics, tables, env vars, config keys, compose services, dependencies and DTOs under *Project graph*; Enter opens the place and the Impact of that element.
