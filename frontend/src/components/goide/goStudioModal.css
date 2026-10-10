@@ -121,7 +121,7 @@
   .gs-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 7px; }
   .gs-btn-icon { width: 32px; padding: 0; }
   .gs-btn-sm.gs-btn-icon { width: 28px; }
-  .gs-btn-primary { background: var(--color-accent); color: #fff; }
+  .gs-btn-primary { background: var(--color-accent); color: var(--color-on-accent, #fff); }
   .gs-btn-primary:disabled, .gs-btn-danger:disabled { opacity: 1; background: var(--color-surface-3); color: var(--color-text-4); }
   .gs-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover, var(--color-accent)); }
   .gs-btn-secondary { background: var(--color-surface-2); border-color: var(--color-border-2); color: var(--color-text-1); }

@@ -12,7 +12,7 @@ export type GoStudioCommandId =
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
-  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.documentation' | 'view.config' | 'view.runtimeLens'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'code.changeImpact'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -172,6 +172,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.extractVariable', menu: 'code', label: 'Extract Variable', binding: { key: 'v', mod: true, alt: true }, editorOwned: true },
   { id: 'code.extractConstant', menu: 'code', label: 'Extract Constant', binding: { key: 'c', mod: true, alt: true }, editorOwned: true },
   { id: 'code.extractFunction', menu: 'code', label: 'Extract Function/Method', binding: { key: 'm', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.changeImpact', menu: 'code', label: 'Analyze Change Impact', separatorBefore: true },
   { id: 'code.inline', menu: 'code', label: 'Inline', binding: { key: 'n', mod: true, alt: true }, editorOwned: true },
   { id: 'code.moveToNewFile', menu: 'code', label: 'Move to New File', binding: { key: 'F6' }, editorOwned: true },
   { id: 'code.moveSymbol', menu: 'code', label: 'Move Symbol to Package…', editorOwned: true },
@@ -240,6 +241,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
+  { id: 'tools.claudeChat', menu: 'tools', label: 'Open Claude Code' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'tools.dependencyGraph', menu: 'tools', label: 'Dependency Graph…' },
   { id: 'tools.adrLinks', menu: 'tools', label: 'Architecture Decisions…' },

@@ -7,6 +7,7 @@ import { setGoIDEAIPolicy, type GoIDEAIPolicy } from '@/lib/goide-api'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { activeGoStudioEditor } from './goStudioEditorRegistry'
 import { runtimeLensEnabled, setRuntimeLensEnabled } from './goStudioRuntimeLens'
+import { requestImpactAtCursor } from './GoStudioImpactPanel'
 
 /** Testo selezionato nell'editor attivo, usato per precompilare Find in Files. */
 function selectedText(): string {
@@ -57,6 +58,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.fuzz': lsp.showToolWindow('fuzz'); return true
     case 'view.errorHandling': lsp.showToolWindow('errors'); return true
     case 'view.architecture': lsp.showToolWindow('architecture'); return true
+    case 'code.changeImpact': lsp.showToolWindow('impact'); requestImpactAtCursor(); return true
     case 'view.config': lsp.showToolWindow('config'); return true
     case 'view.runtimeLens': setRuntimeLensEnabled(!runtimeLensEnabled()); return true
     case 'view.interfaces': lsp.showToolWindow('interfaces'); return true

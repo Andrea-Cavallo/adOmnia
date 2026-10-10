@@ -24,6 +24,10 @@ type Status struct {
 	Running     bool   `json:"running"`
 	Restarts    int    `json:"restarts"`
 	ActiveAgent string `json:"activeAgent,omitempty"`
+	// Backend è chi serve i turni secondo l'agente (Claude Code: "AWS Bedrock", "Claude Pro"…).
+	Backend string `json:"backend,omitempty"`
+	// Model è il modello dell'ultima sessione aperta.
+	Model string `json:"model,omitempty"`
 }
 
 // PromptRequest descrive un turno di chat milk. Token è generato dal frontend e

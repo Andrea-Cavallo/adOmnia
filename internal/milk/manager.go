@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	editorName          = "adOmnia"
-	initializeTimeout   = 30 * time.Second
+	editorName = "adOmnia"
+	// ponytail: 2 minuti perché il primo `npx` di Claude Code scarica l'adapter.
+	initializeTimeout   = 2 * time.Minute
 	sessionTimeout      = 15 * time.Second
 	promptTimeout       = 10 * time.Minute
 	permissionTimeout   = 90 * time.Second
@@ -51,9 +52,10 @@ type permission struct {
 	ch chan bool
 }
 
-// Manager possiede il processo milk (`milk serve --acp`): avvio, handshake,
+// Manager possiede il processo di un agente ACP (milk, Claude Code): avvio, handshake,
 // sessioni per progetto, turni di chat, autorizzazioni e riavvio con backoff.
 type Manager struct {
+	agent         Agent
 	mu            sync.Mutex
 	store         *SettingsStore
 	settings      Settings
@@ -66,15 +68,22 @@ type Manager struct {
 	sessions      map[string]string // root -> sessionId
 	rootBySession map[string]string
 	turns         map[string]string // sessionId -> token
+	launchKey     string            // Launch.Key del processo in esecuzione
 	pending       map[string]*permission
 	log           []string
 	emit          Emitter
 }
 
-// NewManager legge le impostazioni; il processo parte solo con Start.
+// NewManager crea il manager di milk; il processo parte solo con Start.
 func NewManager(store *SettingsStore) *Manager {
+	return NewAgentManager(store, MilkAgent())
+}
+
+// NewAgentManager crea il manager di un agente ACP qualsiasi.
+func NewAgentManager(store *SettingsStore, agent Agent) *Manager {
 	settings := store.Load()
 	return &Manager{
+		agent:         agent,
 		store:         store,
 		settings:      settings,
 		status:        Status{State: StateDisabled},
@@ -149,7 +158,25 @@ func (m *Manager) SetActiveWorkspace(root string) {
 	// Le sessioni del vecchio root restano valide; il nuovo ne apre una al primo prompt.
 	if enabled && root != "" && !running {
 		go func() { _ = m.Start() }()
+		return
 	}
+	if enabled && running && m.needsRelaunch(root) {
+		go func() { _ = m.Restart() }()
+	}
+}
+
+// needsRelaunch dice se il progetto root richiede un processo avviato diversamente
+// (es. Claude Code con un altro ANTHROPIC_MODEL nei settings del progetto).
+func (m *Manager) needsRelaunch(root string) bool {
+	m.mu.Lock()
+	settings, key := m.settings, m.launchKey
+	m.mu.Unlock()
+	if !m.agent.ProjectScoped {
+		return false
+	}
+	// ponytail: il riavvio interrompe un turno in corso in un altro progetto; capita solo se i progetti chiedono modelli diversi.
+	command, err := m.agent.Resolve(settings, root)
+	return err == nil && command.Key != key
 }
 
 // Start avvia il processo se milk è attivo e non già in esecuzione.
@@ -171,33 +198,31 @@ func (m *Manager) Start() error {
 	m.mu.Unlock()
 	defer func() { m.mu.Lock(); m.launching = false; m.mu.Unlock() }()
 
-	binary, err := resolveBinary(settings)
+	command, err := m.agent.Resolve(settings, root)
 	if err != nil {
 		state := StateError
-		if errors.Is(err, ErrNotInstalled) {
+		switch {
+		case errors.Is(err, ErrNotInstalled):
 			state = StateNotInstalled
+		case errors.Is(err, ErrOutdated):
+			state = StateOutdated
 		}
-		m.setStatus(func(status *Status) { status.State = state; status.Message = err.Error() })
-		return err
-	}
-	version, err := installedVersion(binary)
-	if err == nil && !versionAtLeast(version, MinVersion) {
-		err = fmt.Errorf("milk %s is too old: gO Studio needs v%s or later (milk serve --acp). Update it from milk settings", version, MinVersion)
 		m.setStatus(func(status *Status) {
-			status.State = StateOutdated
+			status.State = state
 			status.Message = err.Error()
-			status.Binary = binary
-			status.Version = version
+			status.Binary = command.Binary
+			status.Version = command.Version
 		})
 		return err
 	}
 	m.setStatus(func(status *Status) {
 		status.State = StateStarting
 		status.Message = ""
-		status.Binary = binary
-		status.Version = version
+		status.Backend, status.Model = "", "" // li riannuncia il nuovo processo
+		status.Binary = command.Binary
+		status.Version = command.Version
 	})
-	if err := m.launch(binary, root); err != nil {
+	if err := m.launch(command, root); err != nil {
 		m.appendLog("start failed: " + err.Error())
 		m.setStatus(func(status *Status) { status.State = StateError; status.Message = err.Error() })
 		return err
@@ -248,9 +273,15 @@ func isExecutableFile(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
-func (m *Manager) launch(binary, root string) error {
-	cmd := exec.Command(binary, "serve", "--acp")
-	cmd.Env = os.Environ()
+func (m *Manager) launch(command Launch, root string) error {
+	m.mu.Lock()
+	m.launchKey = command.Key
+	m.mu.Unlock()
+	cmd := exec.Command(command.Binary, command.Args...)
+	cmd.Env = command.Env
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
 	if strings.TrimSpace(root) != "" {
 		cmd.Dir = root
 	}
@@ -268,7 +299,7 @@ func (m *Manager) launch(binary, root string) error {
 		return err
 	}
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("cannot start milk: %w", err)
+		return fmt.Errorf("cannot start %s: %w", m.agent.Name, err)
 	}
 	running := &process{cmd: cmd, stdin: stdin, exited: make(chan struct{})}
 	running.conn = NewConn(stdout, stdin, &handler{manager: m})
@@ -286,14 +317,16 @@ func (m *Manager) launch(binary, root string) error {
 		Info            struct {
 			Version string `json:"version"`
 		} `json:"info"`
+		AgentInfo struct {
+			Version string `json:"version"`
+		} `json:"agentInfo"`
 	}
-	if err := running.conn.Call(ctx, "initialize", map[string]any{
-		"protocolVersion": 2,
-		"info":            map[string]string{"name": editorName},
-		"capabilities":    map[string]any{},
-	}, &result); err != nil {
+	if err := running.conn.Call(ctx, "initialize", m.initializeParams(), &result); err != nil {
 		m.abandon(running)
-		return fmt.Errorf("milk did not initialize: %w", err)
+		return fmt.Errorf("%s did not initialize: %w", m.agent.Name, err)
+	}
+	if result.Info.Version == "" {
+		result.Info.Version = result.AgentInfo.Version
 	}
 	m.mu.Lock()
 	m.crashes = 0 // un avvio riuscito azzera il backoff: contano solo i crash consecutivi
@@ -333,7 +366,7 @@ func (m *Manager) watch(running *process) {
 	if stopping {
 		return
 	}
-	reason := "milk process exited"
+	reason := m.agent.Name + " process exited"
 	if err != nil {
 		reason = fmt.Sprintf("%s: %v", reason, err)
 	}
@@ -350,7 +383,7 @@ func (m *Manager) handleCrash(reason string) {
 	if attempt >= len(restartBackoff) {
 		m.setStatus(func(status *Status) {
 			status.State = StateError
-			status.Message = "milk temporarily disabled after repeated crashes. Restart it."
+			status.Message = m.agent.Name + " temporarily disabled after repeated crashes. Restart it."
 		})
 		return
 	}
@@ -457,14 +490,24 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	defer cancel()
 	var result struct {
 		SessionID string `json:"sessionId"`
+		Models    struct {
+			CurrentModelID string `json:"currentModelId"`
+		} `json:"models"`
 	}
-	if err := conn.Call(ctx, "session/new", map[string]any{"cwd": root}, &result); err != nil {
-		return "", fmt.Errorf("cannot open milk session for %s: %w", root, err)
+	params := map[string]any{"cwd": root}
+	if m.agent.Protocol == 1 {
+		params["mcpServers"] = []any{}
+	}
+	if err := conn.Call(ctx, "session/new", params, &result); err != nil {
+		return "", fmt.Errorf("cannot open %s session for %s: %w", m.agent.Name, root, err)
 	}
 	m.mu.Lock()
 	m.sessions[root] = result.SessionID
 	m.rootBySession[result.SessionID] = root
 	m.mu.Unlock()
+	if model := result.Models.CurrentModelID; model != "" {
+		m.setStatus(func(status *Status) { status.Model = model })
+	}
 	return result.SessionID, nil
 }
 
@@ -485,7 +528,7 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 		m.mu.Unlock()
 	}
 	if m.Status().State != StateReady {
-		return PromptResponse{}, errors.New("milk is not ready; enable it and install the milk binary")
+		return PromptResponse{}, fmt.Errorf("%s is not ready; enable it in its settings", m.agent.Name)
 	}
 	sessionID, err := m.sessionFor(root)
 	if err != nil {
@@ -495,7 +538,7 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	m.mu.Lock()
 	if existing, ok := m.turns[sessionID]; ok && existing != "" {
 		m.mu.Unlock()
-		return PromptResponse{}, errors.New("a milk turn is already running for this project")
+		return PromptResponse{}, fmt.Errorf("a %s turn is already running for this project", m.agent.Name)
 	}
 	m.turns[sessionID] = request.Token
 	m.mu.Unlock()
@@ -512,7 +555,13 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	ctx, cancel := context.WithTimeout(parent, promptTimeout)
 	defer cancel()
 	var result struct {
-		MessageID string `json:"messageId"`
+		MessageID  string `json:"messageId"`
+		StopReason string `json:"stopReason"`
+	}
+	standard := m.agent.Protocol == 1
+	if standard {
+		// ACP v1 non ha state_update: inizio e fine del turno sono la richiesta e la sua risposta.
+		m.publishChat(ChatEvent{Token: request.Token, Root: root, SessionID: sessionID, Kind: "begin"})
 	}
 	if err := conn.Call(ctx, "session/prompt", map[string]any{
 		"sessionId": sessionID,
@@ -523,6 +572,9 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 			_ = conn.Notify("session/cancel", map[string]any{"sessionId": sessionID})
 		}
 		return PromptResponse{}, err
+	}
+	if standard {
+		m.publishChat(ChatEvent{Token: request.Token, Root: root, SessionID: sessionID, Kind: "end", StopReason: result.StopReason})
 	}
 	return PromptResponse{Token: request.Token, MessageID: result.MessageID}, nil
 }
@@ -630,15 +682,37 @@ func (m *Manager) setStatus(update func(*Status)) {
 }
 
 func (m *Manager) publishStatus() {
-	m.publish("milk.status", m.Status())
+	m.publish("status", m.Status())
 }
 
+func (m *Manager) publishChat(event ChatEvent) {
+	m.publish("chat", event)
+}
+
+// publish emette <agent.Event>.<event> (milk.chat, claude.chat, …).
 func (m *Manager) publish(event string, payload any) {
 	m.mu.Lock()
 	emit := m.emit
 	m.mu.Unlock()
 	if emit != nil {
-		emit(event, payload)
+		emit(m.agent.Event+"."+event, payload)
+	}
+}
+
+// initializeParams è l'handshake nel dialetto dell'agente.
+func (m *Manager) initializeParams() map[string]any {
+	if m.agent.Protocol == 1 {
+		// Niente fs/terminal lato client: l'agente usa i suoi tool e chiede i permessi.
+		return map[string]any{
+			"protocolVersion":    1,
+			"clientInfo":         map[string]string{"name": editorName},
+			"clientCapabilities": map[string]any{"fs": map[string]bool{"readTextFile": false, "writeTextFile": false}, "terminal": false},
+		}
+	}
+	return map[string]any{
+		"protocolVersion": 2,
+		"info":            map[string]string{"name": editorName},
+		"capabilities":    map[string]any{},
 	}
 }
 

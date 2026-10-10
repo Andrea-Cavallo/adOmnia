@@ -72,6 +72,9 @@ type Service struct {
 	windows *windowRegistry
 	// documentObserver riceve apertura, modifiche, salvataggi e chiusure (es. GitHub Copilot).
 	documentObserver observerSlot
+	// graphState è il Semantic Workspace Graph per sessione (workspace_graph.go).
+	graphOnce  sync.Once
+	graphState *workspaceGraphs
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {

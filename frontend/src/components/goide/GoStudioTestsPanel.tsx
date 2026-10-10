@@ -18,7 +18,7 @@ import { benchmarkHistoryCsv, clearBenchmarkHistory, loadBenchmarkCompareSetting
 import { GoStudioBenchmarkDetail } from './GoStudioBenchmarkDetail'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { testFailureDraft } from '@/lib/goide/testFailureAI'
-import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 
 interface GoStudioTestsPanelProps {
   session: GoIDESession
@@ -268,7 +268,7 @@ function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun; resul
       const state = useGoIDETestsStore.getState()
       if (useGoIDEStore.getState().activeSessionId !== run.sessionId || state.selectedNode[run.sessionId] !== result.id || selectedTestRun(state, run.sessionId)?.runId !== run.runId) return
       const assistant = useGoStudioAssistantStore.getState()
-      assistant.openWithDraft(assistant.pane === 'copilot' ? 'copilot' : 'milk', draft)
+      assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'milk', draft)
     } catch (reason) {
       setAIError(reason instanceof Error ? reason.message : String(reason))
     } finally { setAIBusy(false) }

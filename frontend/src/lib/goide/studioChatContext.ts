@@ -56,6 +56,16 @@ export async function prepareStudioChat(root: string, message: string, options: 
     parts.push(document ? 'The active file is excluded by project AI rules. Its contents are not attached.' : 'No active editor file is available. Ask the user which file they mean.')
     labels.push(document ? 'File excluded from AI' : 'No active file')
   }
+  if (options.includeWorkspace && document && !excluded.has(document.document.relativePath) && document.document.relativePath.endsWith('.go')) {
+    const { caretFor } = await import('@/lib/goide/goStudioCaretMemory')
+    const line = options.selection ? options.selection.startLine + 1 : caretFor(session.id, document.document.relativePath)?.line
+    const { impactContextWithin } = await import('@/lib/goide/workspaceGraph')
+    const graph = line ? await impactContextWithin(session.id, document.document.relativePath, line, 4000) : null
+    if (graph) {
+      labels.push('workspace graph')
+      parts.push(graph)
+    }
+  }
   if (options.includeWorkspace) {
     labels.push(session.project.name)
     parts.push(`Project: ${session.project.name}\nKnown project paths (bounded index):\n${paths.filter((path) => !excluded.has(path)).join('\n').slice(0, 6000)}`)

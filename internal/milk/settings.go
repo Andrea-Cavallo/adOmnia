@@ -20,6 +20,9 @@ type Settings struct {
 	// SkipPermissions approva automaticamente ogni tool call senza chiedere
 	// (milk: dangerously_skip_permissions). Off per default per sicurezza.
 	SkipPermissions bool `json:"skipPermissions"`
+	// IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
+	// dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
+	IgnoreAPIKey bool `json:"ignoreApiKey,omitempty"`
 }
 
 // DefaultSettings: milk spento finché l'utente non lo attiva.
@@ -44,7 +47,12 @@ type SettingsStore struct {
 
 // NewSettingsStore usa directory/milk.json.
 func NewSettingsStore(directory string) *SettingsStore {
-	return &SettingsStore{path: filepath.Join(directory, settingsFileName)}
+	return NewSettingsStoreFile(directory, settingsFileName)
+}
+
+// NewSettingsStoreFile usa directory/name: ogni agente ACP ha il suo file.
+func NewSettingsStoreFile(directory, name string) *SettingsStore {
+	return &SettingsStore{path: filepath.Join(directory, name)}
 }
 
 // Load restituisce le impostazioni salvate o i default se il file manca o è illeggibile.

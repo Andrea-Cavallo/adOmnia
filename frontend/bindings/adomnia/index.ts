@@ -4,6 +4,7 @@
 import * as AIEngine from "./aiengine.js";
 import * as App from "./app.js";
 import * as BrowserDebug from "./browserdebug.js";
+import * as ClaudeCode from "./claudecode.js";
 import * as Collab from "./collab.js";
 import * as CollectionFS from "./collectionfs.js";
 import * as Copilot from "./copilot.js";
@@ -24,6 +25,7 @@ export {
     AIEngine,
     App,
     BrowserDebug,
+    ClaudeCode,
     Collab,
     CollectionFS,
     Copilot,

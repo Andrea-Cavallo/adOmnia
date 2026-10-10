@@ -11,6 +11,24 @@ afterEach(() => {
 })
 
 describe('storeSave', () => {
+  it('blocks update restart on save failure until that data is saved successfully', async () => {
+    debouncedSave('update-save', async () => { throw new Error('disk full') })
+    await expect(flushPendingSaves(true)).rejects.toThrow('Save failed')
+    immediateSave('update-save', async () => undefined)
+    await expect(flushPendingSaves(true)).resolves.toBeUndefined()
+  })
+  it('waits for a debounced write already in flight', async () => {
+    vi.useFakeTimers()
+    let finish!: () => void
+    debouncedSave('flight', () => new Promise<void>(resolve => { finish = resolve }), 250)
+    await vi.advanceTimersByTimeAsync(250)
+    let flushed = false
+    const pending = flushPendingSaves(true).then(() => { flushed = true })
+    await Promise.resolve()
+    expect(flushed).toBe(false)
+    finish(); await pending
+    expect(flushed).toBe(true)
+  })
   it('flushes queued saves immediately, once', async () => {
     vi.useFakeTimers()
     const save = vi.fn(async () => undefined)

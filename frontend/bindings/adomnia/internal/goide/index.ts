@@ -89,6 +89,7 @@ export {
     GoplsInfo,
     GoroutineCreation,
     GoroutineOverview,
+    GraphSummary,
     HierarchyItem,
     HighlightEntry,
     HighlightsResult,

@@ -76,7 +76,7 @@ func ToolWindowKey(sessionID, tool string) (string, error) {
 		return "", errors.New("invalid tool session")
 	}
 	switch tool {
-	case "run", "logs", "terminal", "copilot", "milk":
+	case "run", "logs", "terminal", "copilot", "milk", "claude":
 		return "tool-" + sessionID + "-" + tool, nil
 	default:
 		return "", errors.New("invalid tool")

@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 
-export type GoStudioAssistantPane = 'copilot' | 'milk' | 'a0' | null
+export type GoStudioAssistantPane = 'copilot' | 'milk' | 'claude' | 'a0' | null
+/** Chat panes: they live in the side pane and can be detached into their own window. */
+export type GoStudioChatPane = 'copilot' | 'milk' | 'claude'
+export const isChatPane = (pane: string | null): pane is GoStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude'
 
 interface GoStudioAssistantState {
   pane: GoStudioAssistantPane

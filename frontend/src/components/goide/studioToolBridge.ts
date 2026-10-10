@@ -3,6 +3,8 @@ import * as AppBindings from '../../../bindings/adomnia/app'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEWindowsStore } from '@/stores/goideWindows'
 import { useMilkStore } from '@/stores/milk'
+import { useClaudeCodeStore } from '@/stores/claudeCode'
+import type { AgentChatStore } from '@/stores/agentChat'
 import { useCopilotStore } from '@/stores/copilot'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { useGoIDELspStore } from '@/stores/goideLsp'
@@ -18,6 +20,8 @@ const RESPONSE = 'studio-tool:response'
 const SNAPSHOT = 'studio-tool:snapshot'
 interface Request { session: string; tool: StudioTool; id: string; action: string; args: unknown[] }
 type Snapshot = ReturnType<typeof snapshot>
+/** ACP agent chats (internal/milk on the backend): same store shape, same forwarding. */
+const agentStore = (tool: StudioTool): AgentChatStore | null => tool === 'milk' ? useMilkStore : tool === 'claude' ? useClaudeCodeStore : null
 let ownerStarted = false
 let clientStarted = false
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
@@ -29,17 +33,17 @@ function snapshot(sessionId: string, tool: StudioTool) {
   const session = ide.sessions.find((item) => item.id === sessionId)
   if (!session) return null
   const root = session.project.realPath
-  const milk = useMilkStore.getState()
+  const agent = agentStore(tool)?.getState()
   const copilot = useCopilotStore.getState()
   const assistant = useGoStudioAssistantStore.getState()
   const executions = ide.executions.filter((item) => item.sessionId === sessionId)
   const document = ide.documents.find((item) => item.document.id === ide.activeDocumentBySession[sessionId])
   return {
     key: toolKey(sessionId, tool), session,
-    document: tool === 'copilot' || tool === 'milk' ? document ?? null : null,
+    document: tool === 'copilot' || agent ? document ?? null : null,
     executions, activeRun: ide.activeRunBySession[sessionId],
     consoleByRun: tool === 'run' || tool === 'logs' ? Object.fromEntries(executions.map((run) => [run.id, ide.consoleByRun[run.id] ?? []])) : {},
-    milk: tool === 'milk' ? { status: milk.status, settings: milk.settings, chatThreads: { [root]: milk.chatThreads[root] }, permissions: milk.permissions } : null,
+    agent: agent ? { status: agent.status, settings: agent.settings, chatThreads: { [root]: agent.chatThreads[root] }, permissions: agent.permissions } : null,
     copilot: tool === 'copilot' ? { status: copilot.status, settings: copilot.settings, chatThreads: { [root]: copilot.chatThreads[root] }, chatModels: copilot.chatModels, chatModelsLoaded: copilot.chatModelsLoaded, chatModelsError: copilot.chatModelsError } : null,
     draft: assistant.pane === tool ? assistant.draft : null,
     terminalRequest: tool === 'terminal' ? useGoIDELspStore.getState().terminalRequest : null,
@@ -83,11 +87,12 @@ export function startStudioToolOwner() {
   useGoIDEStore.subscribe((state, previous) => {
     if (state.sessions !== previous.sessions) schedule(STUDIO_TOOLS)
     if (state.executions !== previous.executions || state.consoleByRun !== previous.consoleByRun || state.activeRunBySession !== previous.activeRunBySession) schedule(['run', 'logs'])
-    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk'])
+    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk', 'claude'])
   })
   useMilkStore.subscribe(() => schedule(['milk']))
+  useClaudeCodeStore.subscribe(() => schedule(['claude']))
   useCopilotStore.subscribe(() => schedule(['copilot']))
-  useGoStudioAssistantStore.subscribe(() => schedule(['milk', 'copilot']))
+  useGoStudioAssistantStore.subscribe(() => schedule(['milk', 'claude', 'copilot']))
   useGoIDELspStore.subscribe((state, previous) => { if (state.terminalRequest !== previous.terminalRequest) schedule(['terminal']) })
   useStudioTools.subscribe((state, previous) => {
     if (state.detached !== previous.detached) schedule(STUDIO_TOOLS)
@@ -165,16 +170,16 @@ async function runOwnerAction(message: Request, state: NonNullable<Snapshot>): P
     case 'showToolWindow': await focusProject(session); useGoIDELspStore.getState().showToolWindow(args[0] as Parameters<ReturnType<typeof useGoIDELspStore.getState>['showToolWindow']>[0]); return null
     case 'startTests': void useGoIDETestsStore.getState().start({ ...(args[0] as Parameters<ReturnType<typeof useGoIDETestsStore.getState>['start']>[0]), sessionId: session }); return null
   }
-  if (tool === 'milk') {
-    const milk = useMilkStore.getState()
+  const agent = agentStore(tool)?.getState()
+  if (agent) {
     switch (action) {
-      case 'ensure': return milk.ensure()
-      case 'setWorkspace': return milk.setWorkspace(root)
-      case 'sendChat': void milk.sendChat(root, String(args[1] ?? ''), args[2] as Parameters<typeof milk.sendChat>[2]); return null
-      case 'stopChat': return milk.stopChat(root)
-      case 'newChat': return milk.newChat(root)
-      case 'respondPermission': return milk.respondPermission(String(args[0]), args[1] === true)
-      case 'setDialogOpen': await focusProject(session); return milk.setDialogOpen(args[0] === true)
+      case 'ensure': return agent.ensure()
+      case 'setWorkspace': return agent.setWorkspace(root)
+      case 'sendChat': void agent.sendChat(root, String(args[1] ?? ''), args[2] as Parameters<typeof agent.sendChat>[2]); return null
+      case 'stopChat': return agent.stopChat(root)
+      case 'newChat': return agent.newChat(root)
+      case 'respondPermission': return agent.respondPermission(String(args[0]), args[1] === true)
+      case 'setDialogOpen': await focusProject(session); return agent.setDialogOpen(args[0] === true)
     }
   }
   if (tool === 'copilot') {
@@ -240,7 +245,7 @@ export function startStudioToolClient(onReady: () => void) {
     if (!state || state.key !== context.key) return
     receivedSnapshot = true
     useGoIDEStore.setState({ sessions: [state.session], activeSessionId: context.session, documents: state.document ? [state.document] : [], activeDocumentBySession: state.document ? { [context.session]: state.document.document.id } : {}, executions: state.executions, activeRunBySession: { [context.session]: state.activeRun }, consoleByRun: state.consoleByRun })
-    if (state.milk) useMilkStore.setState(state.milk)
+    if (state.agent) agentStore(context.tool)?.setState(state.agent)
     if (state.copilot) useCopilotStore.setState(state.copilot)
     useGoStudioAssistantStore.setState({ draft: state.draft })
     if (context.tool === 'terminal') useGoIDELspStore.setState({ terminalRequest: state.terminalRequest })
@@ -258,7 +263,7 @@ export function startStudioToolClient(onReady: () => void) {
     openLocation: forward('openLocation') as ReturnType<typeof useGoIDEStore.getState>['openLocation'],
     openExternalLocation: forward('openExternalLocation') as ReturnType<typeof useGoIDEStore.getState>['openExternalLocation'],
   })
-  useMilkStore.setState(Object.fromEntries(['ensure', 'setWorkspace', 'sendChat', 'stopChat', 'newChat', 'respondPermission', 'setDialogOpen'].map((action) => [action, forward(action)])))
+  agentStore(context.tool)?.setState(Object.fromEntries(['ensure', 'setWorkspace', 'sendChat', 'stopChat', 'newChat', 'respondPermission', 'setDialogOpen'].map((action) => [action, forward(action)])))
   useCopilotStore.setState(Object.fromEntries(['loadChatModels', 'sendChat', 'stopChat', 'newChat', 'selectChatModel', 'setDialogOpen'].map((action) => [action, forward(action)])))
   useGoIDELspStore.setState({ showToolWindow: (view) => { void forward('showToolWindow')(view) } })
   useGoIDETestsStore.setState({ start: forward('startTests') as ReturnType<typeof useGoIDETestsStore.getState>['start'] })

@@ -80,6 +80,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'nav.gotoTest': icon(FlaskConical),
   'code.generate': icon(Sparkles),
   'nav.callHierarchy': icon(Network),
+  'code.changeImpact': icon(Network),
   'nav.typeHierarchy': icon(Boxes),
   'nav.nextProblem': icon(ArrowDownToLine),
   'nav.previousProblem': icon(ArrowUpToLine),
@@ -235,6 +236,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'tools.copilot': icon(Sparkles),
   'tools.copilotChat': icon(Sparkles),
   'tools.milkChat': icon(Bot),
+  'tools.claudeChat': icon(Bot),
   'tools.copilotCompletions': icon(Sparkles),
 
   'vcs.commit': icon(GitCommitHorizontal),

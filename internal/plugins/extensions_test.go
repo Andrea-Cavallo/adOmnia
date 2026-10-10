@@ -104,11 +104,16 @@ func main() {
 
 func TestContributesValidation(t *testing.T) {
 	cases := map[string]string{
-		"undeclared action": `{"id":"p","runtime":"js","actions":[],"contributes":{"commands":[{"id":"c","action":"missing"}]}}`,
-		"go is reserved":    `{"id":"p","runtime":"none","contributes":{"languages":[{"id":"go","name":"Go","extensions":[".go"]}]}}`,
-		"server is a path":  `{"id":"p","runtime":"none","contributes":{"languages":[{"id":"zig","name":"Zig","extensions":[".zig"],"server":{"command":"C:\\evil.exe"}}]}}`,
-		"template escapes":  `{"id":"p","runtime":"none","contributes":{"templates":[{"id":"t","name":"T","directory":"../x"}]}}`,
-		"adapter kind":      `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"cache","id":"a","name":"A","modules":["x.io/y"]}]}}`,
+		"undeclared action":      `{"id":"p","runtime":"js","actions":[],"contributes":{"commands":[{"id":"c","action":"missing"}]}}`,
+		"go is reserved":         `{"id":"p","runtime":"none","contributes":{"languages":[{"id":"go","name":"Go","extensions":[".go"]}]}}`,
+		"server is a path":       `{"id":"p","runtime":"none","contributes":{"languages":[{"id":"zig","name":"Zig","extensions":[".zig"],"server":{"command":"C:\\evil.exe"}}]}}`,
+		"template escapes":       `{"id":"p","runtime":"none","contributes":{"templates":[{"id":"t","name":"T","directory":"../x"}]}}`,
+		"adapter kind":           `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"cache","id":"a","name":"A","modules":["x.io/y"]}]}}`,
+		"adapter hint on db":     `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"database","id":"a","name":"A","modules":["x.io/y"],"handlerTypes":["*x.Ctx"]}]}}`,
+		"broker needs protocol":  `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"broker","id":"a","name":"A","modules":["x.io/y"],"topicMethods":["Produce"]}]}}`,
+		"bad handler type":       `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"framework","id":"a","name":"A","modules":["x.io/y"],"handlerTypes":["ctx"]}]}}`,
+		"bad sql method":         `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"database","id":"a","name":"A","modules":["x.io/y"],"sqlMethods":["-bad"]}]}}`,
+		"route method on broker": `{"id":"p","runtime":"none","contributes":{"adapters":[{"kind":"broker","id":"a","name":"A","modules":["x.io/y"],"routeMethods":["Get"]}]}}`,
 	}
 	manager, _ := newTestPluginManager(t)
 	for name, manifest := range cases {
@@ -135,6 +140,38 @@ func TestContributesValidation(t *testing.T) {
 	}
 	if !kinds["language"] || !kinds["template"] || !kinds["adapter"] {
 		t.Fatalf("missing contributions: %v", kinds)
+	}
+}
+
+func TestAdapterContributionHints(t *testing.T) {
+	manager, _ := newTestPluginManager(t)
+	manifest := `{"id":"hints","name":"Hints","runtime":"none","contributes":{"adapters":[
+		{"kind":"framework","id":"iris","name":"Iris","modules":["github.com/kataras/iris/v12"],"handlerTypes":["*iris.Context"],"routeMethods":["Fetch"]},
+		{"kind":"broker","id":"pulsar","name":"Pulsar","modules":["github.com/apache/pulsar-client-go/pulsar"],"broker":"pulsar","topicMethods":["Produce"]},
+		{"kind":"database","id":"orm","name":"ORM","modules":["example.com/orm"],"sqlMethods":["QueryRaw"]}
+	]}}`
+	if _, err := manager.InstallPlugin(manifest); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.EnablePlugin("hints"); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]Contribution{}
+	for _, c := range manager.GetContributions() {
+		if c.Kind == "adapter" {
+			byID[c.ID] = c
+		}
+	}
+	iris := byID["iris"]
+	if iris.AdapterKind != "framework" || len(iris.HandlerTypes) != 1 || iris.HandlerTypes[0] != "*iris.Context" || len(iris.RouteMethods) != 1 || iris.RouteMethods[0] != "Fetch" {
+		t.Fatalf("framework adapter hints lost: %+v", iris)
+	}
+	pulsar := byID["pulsar"]
+	if pulsar.Broker != "pulsar" || len(pulsar.TopicMethods) != 1 || pulsar.TopicMethods[0] != "Produce" {
+		t.Fatalf("broker adapter hints lost: %+v", pulsar)
+	}
+	if orm := byID["orm"]; len(orm.SQLMethods) != 1 || orm.SQLMethods[0] != "QueryRaw" {
+		t.Fatalf("database adapter hints lost: %+v", orm)
 	}
 }
 

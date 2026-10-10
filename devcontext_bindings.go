@@ -44,6 +44,9 @@ func (d *DevContext) handleGoIDEEvent(event goide.EventEnvelope) {
 
 // GetContext returns the context of a gO session, scanning it on first use.
 func (d *DevContext) GetContext(sessionID string) (devcontext.Snapshot, error) {
+	if globalPluginManager != nil {
+		d.manager.SetAdapters(globalPluginManager.GetContributions())
+	}
 	snapshot, err := d.manager.Get(sessionID)
 	if err == nil && globalPluginManager != nil {
 		snapshot = devcontext.WithPluginAdapters(snapshot, globalPluginManager.GetContributions())
@@ -53,6 +56,9 @@ func (d *DevContext) GetContext(sessionID string) (devcontext.Snapshot, error) {
 
 // RescanContext forces a full rescan of the session folder.
 func (d *DevContext) RescanContext(sessionID string) (devcontext.Snapshot, error) {
+	if globalPluginManager != nil {
+		d.manager.SetAdapters(globalPluginManager.GetContributions())
+	}
 	snapshot, err := d.manager.Rescan(sessionID)
 	if err == nil && globalPluginManager != nil {
 		snapshot = devcontext.WithPluginAdapters(snapshot, globalPluginManager.GetContributions())
@@ -62,6 +68,9 @@ func (d *DevContext) RescanContext(sessionID string) (devcontext.Snapshot, error
 
 // CheckStale rescans files changed outside gO; true when something changed.
 func (d *DevContext) CheckStale(sessionID string) (bool, error) {
+	if globalPluginManager != nil {
+		d.manager.SetAdapters(globalPluginManager.GetContributions())
+	}
 	return d.manager.CheckStale(sessionID)
 }
 

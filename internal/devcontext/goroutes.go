@@ -19,23 +19,43 @@ var (
 // detectRoutes recognises net/http 1.22, gin, echo, chi and gorilla
 // registrations by call shape only (no type checking). Prefixes are tracked
 // per function and only when they are string literals.
-func detectRoutes(rel string, fset *token.FileSet, file *ast.File) []Entity {
+func detectRoutes(rel string, fset *token.FileSet, file *ast.File, hints AdapterHints) []Entity {
 	var out []Entity
+	methods := routeMethodVerbs(hints)
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			continue
 		}
-		w := &routeWalker{rel: rel, fset: fset, prefixes: map[string]string{}, consumed: map[ast.Node]bool{}}
+		w := &routeWalker{rel: rel, fset: fset, methods: methods, prefixes: map[string]string{}, consumed: map[ast.Node]bool{}}
 		w.walk(fn.Body)
 		out = append(out, w.out...)
 	}
 	return out
 }
 
+// routeMethodVerbs merges the built-in route registration method names with
+// the ones contributed by framework adapters, mapping each to its HTTP verb.
+func routeMethodVerbs(hints AdapterHints) map[string]string {
+	methods := make(map[string]string, len(upperMethods)+len(chiMethods))
+	for name := range upperMethods {
+		methods[name] = name
+	}
+	for name, verb := range chiMethods {
+		methods[name] = verb
+	}
+	for _, fh := range hints.Frameworks {
+		for _, name := range fh.RouteMethods {
+			methods[name] = strings.ToUpper(name)
+		}
+	}
+	return methods
+}
+
 type routeWalker struct {
 	rel      string
 	fset     *token.FileSet
+	methods  map[string]string
 	prefixes map[string]string
 	consumed map[ast.Node]bool
 	out      []Entity
@@ -157,13 +177,9 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 			method, p = m, strings.TrimSpace(rest)
 		}
 		w.emit(method, w.prefixOf(sel.X), p, args[1], call)
-	case upperMethods[name] && len(args) >= 2:
+	case w.methods[name] != "" && len(args) >= 2:
 		if p, ok := stringLit(args[0]); ok {
-			w.emit(name, w.prefixOf(sel.X), p, args[1], call)
-		}
-	case chiMethods[name] != "" && len(args) >= 2:
-		if p, ok := stringLit(args[0]); ok {
-			w.emit(chiMethods[name], w.prefixOf(sel.X), p, args[1], call)
+			w.emit(w.methods[name], w.prefixOf(sel.X), p, args[1], call)
 		}
 	case (name == "Method" || name == "MethodFunc") && len(args) >= 3:
 		method, ok1 := stringLit(args[0])
