@@ -1,7 +1,8 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Sparkles, Square, Workflow } from 'lucide-react'
 import { ContextMenu } from '@/components/ui/ContextMenu'
-import { DEBUG_AI_ACTIONS, debugAIDraft, debugSituation, type DebugAIAction } from '@/lib/goide/debugAI'
+import { DEBUG_AI_ACTIONS, debugAIDraft, debugSituation, relevantFrame, type DebugAIAction } from '@/lib/goide/debugAI'
+import { useGoIDEStore } from '@/stores/goide'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoIDEDebugStepAction } from '@/lib/goide-debug-api'
@@ -130,7 +131,12 @@ function DebugWithAI({ view, sessionId }: { view: GoIDEDebugView; sessionId: str
         <Sparkles size={13} className="text-accent" />{busy ? 'Collecting…' : 'Debug with AI'}
       </button>
       {error && <span role="status" className="max-w-72 truncate text-[11px] text-text-3" title={error}>{error}</span>}
-      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={DEBUG_AI_ACTIONS.map((action) => ({ id: action.id, label: action.label }))} onSelect={(id) => { setMenu(null); void prepare(id as DebugAIAction) }} onClose={() => setMenu(null)} />}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={[{ id: 'open', label: 'Open relevant code' }, ...DEBUG_AI_ACTIONS.map((action) => ({ id: action.id, label: action.label }))]} onSelect={(id) => {
+        setMenu(null)
+        if (id !== 'open') return void prepare(id as DebugAIAction)
+        const frame = relevantFrame(view.frames)
+        if (frame?.relativePath) void useGoIDEStore.getState().openLocation(frame.relativePath, frame.line)
+      }} onClose={() => setMenu(null)} />}
     </>
   )
 }

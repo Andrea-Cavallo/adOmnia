@@ -26,6 +26,11 @@ export interface DebugSituation { kind: DebugSituationKind; title: string; focus
 
 export type DebugAIAction = 'cause' | 'explain' | 'fix' | 'test' | 'reproduce' | 'compare'
 
+/** "Open relevant code": the top frame of the project (not the runtime or the standard library). */
+export function relevantFrame<T extends { relativePath?: string; line: number; name: string }>(frames: readonly T[]): T | null {
+  return frames.find((frame) => frame.relativePath && !/^runtime\./.test(frame.name)) ?? null
+}
+
 export const DEBUG_AI_ACTIONS: Array<{ id: DebugAIAction; label: string }> = [
   { id: 'cause', label: 'Show likely cause' },
   { id: 'explain', label: 'Explain why' },

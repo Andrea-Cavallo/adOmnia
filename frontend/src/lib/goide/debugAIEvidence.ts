@@ -1,7 +1,8 @@
 import { getGoIDEAIPolicy, listGoIDEAIExcludedPaths } from '@/lib/goide-api'
 import { getGoIDEDebugScopes, getGoIDEDebugVariables } from '@/lib/goide-debug-api'
 import { getGoIDEChangedSymbols, getGoIDEFileAtRevision, getGoIDEFileHistory } from '@/lib/goide-vcs-api'
-import { getOtlpLens } from '@/lib/otlp-api'
+import { getOtlpLens, getOtlpTrace } from '@/lib/otlp-api'
+import { traceIdFor } from '@/lib/devsession/traceparent'
 import { getServerPort } from '@/lib/useServerPort'
 import { useDevSessionStore } from '@/stores/devSession'
 import { useGoIDEStore } from '@/stores/goide'
@@ -69,12 +70,15 @@ export async function collectDebugEvidence(sessionId: string, debugId: string): 
   const run = runs[runs.length - 1] ?? null
   const logs = (live.logs[liveId] ?? []).slice(-20).map((entry) => entry.text.slice(0, 300))
 
+  const port = await getServerPort()
+  const traceSpans = run && port ? await within(getOtlpTrace(port, traceIdFor(run.correlationId)), 2000, []) : []
+  const spans = (traceSpans ?? []).slice(0, 20).map((span) => `${span.service} ${span.kind} ${span.name} ${span.durationMs.toFixed(1)} ms${span.statusCode === 'ERROR' ? ` ERROR ${span.statusMessage ?? ''}` : ''}`)
   const [graph, changed, history, previous, lens] = await Promise.all([
     file ? within(graphImpactAt(sessionId, file, top.line), 4000, null) : Promise.resolve(null),
     within(getGoIDEChangedSymbols(sessionId), 3000, []),
     file ? within(getGoIDEFileHistory(sessionId, file), 3000, []) : Promise.resolve([]),
     file ? within(getGoIDEFileAtRevision(sessionId, file, 'HEAD'), 3000, '') : Promise.resolve(''),
-    getServerPort().then((port) => (port ? within(getOtlpLens(port), 1500, []) : [])),
+    port ? within(getOtlpLens(port), 1500, []) : Promise.resolve([]),
   ])
   const session = useGoIDEStore.getState().sessions.find((item) => item.id === sessionId)
   const document = useGoIDEStore.getState().documents.find((item) => item.document.sessionId === sessionId && item.document.relativePath === file)
@@ -91,7 +95,7 @@ export async function collectDebugEvidence(sessionId: string, debugId: string): 
     console: view.console.slice(-20).map((line) => line.text.trimEnd()).filter(Boolean),
     logs,
     request: run ? { method: run.method, url: run.url, status: run.status, durationMs: run.durationMs, error: run.error } : null,
-    spans: [],
+    spans,
     changedSymbols: (changed ?? []).slice(0, 20).map((symbol) => `${symbol.change} ${symbol.kind} ${symbol.name} (${symbol.relativePath}:${symbol.line})`),
     tests: (graph?.tests ?? []).slice(0, 12).map((ref) => ref.node.label),
     related: graph ? [...(graph.callers ?? []).slice(0, 8).map((ref) => `caller ${ref.node.label}`), ...(graph.callees ?? []).slice(0, 7).map((ref) => `calls ${ref.node.label}`)] : [],

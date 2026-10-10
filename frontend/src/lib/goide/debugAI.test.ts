@@ -34,3 +34,10 @@ describe('debug AI', () => {
     expect(compare).toContain('Function now:\n19  func find(id string) {}')
   })
 })
+
+describe('relevantFrame', () => {
+  it('skips runtime frames and frames without project source', async () => {
+    const { relevantFrame } = await import('./debugAI')
+    expect(relevantFrame([{ name: 'runtime.gopanic', relativePath: '', line: 1 }, { name: 'runtime.mapassign', relativePath: 'x.go', line: 2 }, { name: 'main.(*cache).put', relativePath: 'main.go', line: 8 }])?.line).toBe(8)
+  })
+})
