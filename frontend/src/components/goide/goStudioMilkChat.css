@@ -11,6 +11,8 @@
   --milk-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
   display: flex;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   flex: 1;
   flex-direction: column;
   font-family: var(--milk-font);
@@ -21,6 +23,7 @@
 
 /* Header */
 .milk-bar {
+  min-width: 0;
   display: flex;
   height: 40px;
   flex-shrink: 0;
@@ -107,9 +110,9 @@
 .milk-prose div:has(> pre) { margin: 0.4em 0 0.8em !important; border-radius: 8px !important; border-color: var(--color-border-1) !important; }
 .milk-prose div:has(> pre) > div:first-child { padding: 4px 10px !important; background: var(--color-surface-2) !important; }
 .milk-prose div:has(> pre) > div:first-child span { font-size: 11px !important; text-transform: none !important; letter-spacing: 0; }
-.milk-prose pre { margin: 0 !important; padding: 10px 12px !important; background: var(--color-surface-1) !important; }
+.milk-prose pre { overflow-x: auto; max-width: 100%; margin: 0 !important; padding: 10px 12px !important; background: var(--color-surface-1) !important; }
 .milk-prose pre code { padding: 0 !important; border: 0 !important; background: none !important; font-size: 12px !important; line-height: 1.55; }
-.milk-prose table { width: 100%; margin: 0 0 0.8em; border-collapse: collapse; font-size: 12.5px; }
+.milk-prose table { display: block; overflow-x: auto; max-width: 100%; width: 100%; margin: 0 0 0.8em; border-collapse: collapse; font-size: 12.5px; }
 .milk-prose th, .milk-prose td { padding: 4px 8px; border: 1px solid var(--color-border-1); text-align: left; }
 .milk-prose hr { margin: 1em 0; border: 0; border-top: 1px solid var(--color-border-1); }
 
@@ -191,7 +194,7 @@
 }
 .milk-permission-title { margin: 0; font-size: 13px; font-weight: 600; }
 .milk-permission-detail { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--color-text-2); overflow-wrap: anywhere; }
-.milk-permission-actions { display: flex; gap: 8px; margin-top: 10px; }
+.milk-permission-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 /* Empty and setup states */
 .milk-empty { display: flex; flex-direction: column; align-items: center; margin-top: 28px; padding: 0 8px; text-align: center; }

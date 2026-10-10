@@ -18,6 +18,8 @@ Phase 8 was published in [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/c
 
 ## Flexible tool views
 
+Project and chat columns resize to the available workspace width instead of fixed 420/360 px caps. The bottom panel also follows the available height. Existing saved pane dimensions use the same storage fields and remain readable; no migration is required.
+
 Run output, Terminal, Service logs, Copilot Chat and milk have common controls: choose **Bottom / Left / Right**, **Maximize tool**, or **Open tool in separate window**. Open Service logs with its left tool-stripe button; it shows the selected run's stdout/stderr without the command/exit headers, with an independent text filter. Run and logs can be visible together.
 
 Native tool windows share the existing project's processes and AI conversations. **Bring back to project**, or closing the tool window, returns its view without stopping the process or cancelling the conversation. Settings and source links open in the owning project window. Closing or moving the project closes its detached tool views.

@@ -153,9 +153,9 @@ function loadLayout(): GoIDELayout {
     if (!raw) return DEFAULT_LAYOUT
     const parsed = JSON.parse(raw) as Partial<GoIDELayout>
     return {
-      projectWidth: Math.min(420, Math.max(180, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth)),
-      structureWidth: Math.min(360, Math.max(180, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth)),
-      bottomHeight: Math.min(480, Math.max(112, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight)),
+      projectWidth: Math.max(180, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth),
+      structureWidth: Math.max(180, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth),
+      bottomHeight: Math.max(112, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight),
       projectOpen: parsed.projectOpen ?? true,
       structureOpen: parsed.structureOpen ?? true,
       bottomOpen: parsed.bottomOpen ?? true,

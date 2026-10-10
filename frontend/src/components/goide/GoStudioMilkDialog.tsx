@@ -12,17 +12,14 @@ export const MILK_REPO_URL = 'https://github.com/scoutme/milk'
 const BUTTON = 'gs-btn gs-btn-secondary gs-btn-sm'
 
 /**
- * milk's bottle on a light chip: its navy outline would vanish on dark themes.
+ * The source bottle includes a white outline for contrast on light and dark themes.
  * Shaped like a lucide icon (`size`) so it drops into tabs, stripes and modals.
  */
 export function MilkLogo({ size = 16, className = '' }: { size?: number; className?: string }) {
   return (
-    <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-[#f6f1e7] ring-1 ring-black/10 ${className}`}
-      style={{ width: size + 4, height: size + 4 }}
-    >
-      <img src={milkAvatar} alt="" width={size} height={size} draggable={false} />
-    </span>
+    <img src={milkAvatar} alt="" width={size} height={size} draggable={false}
+      className={`shrink-0 object-contain ${className}`}
+      style={{ width: size, height: size }} />
   )
 }
 

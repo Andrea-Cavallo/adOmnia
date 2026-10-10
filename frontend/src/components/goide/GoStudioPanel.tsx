@@ -564,17 +564,19 @@ export function GoStudioPanel() {
     event.preventDefault()
     const horizontal = key === 'bottomHeight'
     const start = horizontal ? event.clientY : event.clientX
+    const workspace = event.currentTarget.closest('.grid')?.getBoundingClientRect()
+    const otherColumn = key === 'structureWidth' && store.layout.projectOpen ? store.layout.projectWidth : key === 'projectWidth' && store.layout.structureOpen ? store.layout.structureWidth : 0
     const onMove = (moveEvent: MouseEvent) => {
       const coordinate = horizontal ? moveEvent.clientY : moveEvent.clientX
       const value = initial + (coordinate - start) * direction
       const min = horizontal ? 112 : 180
-      const max = key === 'bottomHeight' ? 480 : key === 'projectWidth' ? 420 : 360
+      const max = horizontal ? Math.max(min, (workspace?.height ?? window.innerHeight) - 180) : Math.max(min, (workspace?.width ?? window.innerWidth) - otherColumn - 160)
       store.updateLayout({ [key]: Math.min(max, Math.max(min, value)) })
     }
     const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [store.updateLayout])
+  }, [store.updateLayout, store.layout.projectOpen, store.layout.projectWidth, store.layout.structureOpen, store.layout.structureWidth])
 
   const authorize = async (allowed: boolean) => {
     await store.setToolAuthorization(allowed)

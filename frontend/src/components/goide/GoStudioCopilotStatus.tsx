@@ -51,8 +51,8 @@ export function copilotMenuItems(status: CopilotStatus | null, settings: Copilot
 }
 
 /** Logo GitHub nel colore dello stato (currentColor), non in quello del marchio. */
-function GitHubMark({ size }: { size: number }) {
-  return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true" className="shrink-0"><path d={BRAND_ICONS.github.path} /></svg>
+export function GitHubMark({ size = 16, className = '' }: { size?: number; className?: string }) {
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true" className={`shrink-0 ${className}`}><path d={BRAND_ICONS.github.path} /></svg>
 }
 
 /** Voce della status bar di Go Studio: stato, account e host, menu rapido al clic. */
