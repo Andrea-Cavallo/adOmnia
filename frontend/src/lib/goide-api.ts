@@ -351,8 +351,11 @@ export async function listGoIDERunConfigurations(sessionId: string): Promise<GoI
   return GoIDEBindings.ListRunConfigurations(sessionId)
 }
 
+// A new draft has no timestamps yet: Go's time.Time rejects "", the zero time is what the backend replaces.
+const ZERO_TIME = '0001-01-01T00:00:00Z'
+
 export async function saveGoIDERunConfiguration(sessionId: string, config: GoIDERunConfiguration): Promise<GoIDERunConfiguration> {
-  return GoIDEBindings.SaveRunConfiguration(sessionId, config)
+  return GoIDEBindings.SaveRunConfiguration(sessionId, { ...config, createdAt: config.createdAt || ZERO_TIME, updatedAt: config.updatedAt || ZERO_TIME })
 }
 
 export async function duplicateGoIDERunConfiguration(sessionId: string, configId: string): Promise<GoIDERunConfiguration> {
