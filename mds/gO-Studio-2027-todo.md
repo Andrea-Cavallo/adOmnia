@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 113 | 10 |
+| **P4** | AI e intelligenza del workspace | 112 | 9 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -171,7 +171,6 @@ _Semantic Workspace Graph (`internal/ide/graph`, chiuso il 2026-10-10): file, pa
 
 _Impact analysis, AI context retrieval, test selection e change impact analysis chiusi con il grafo (Impact tool window e contesto delle chat)._
 
-- [ ] Faster navigation. — *Parziale: `GraphSearch` nel backend; nessuna UI di ricerca nel grafo.*
 - [ ] Architecture visualization.
 - [ ] Security path analysis.
 - [ ] Runtime correlation.

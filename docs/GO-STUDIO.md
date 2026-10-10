@@ -558,6 +558,8 @@ The analysis also lists the environment variables (`os.Getenv`, `os.LookupEnv`) 
 
 Compose services are part of the graph too: the analysis names the services whose build compiles an entry point that reaches the code (the build context or Dockerfile folder contains that `main`).
 
+Once the graph is built, **Search Everywhere** (Shift Shift) lists its routes, gRPC methods, topics, tables, env vars, config keys, compose services, dependencies and DTOs under *Project graph*; Enter opens the place and the Impact of that element.
+
 On a `require` line of go.mod the analysis is about the dependency: the packages that import it, their functions and tests, and the modules that require it.
 
 With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.

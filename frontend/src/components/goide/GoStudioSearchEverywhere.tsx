@@ -169,8 +169,6 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
           void useGoIDETestsStore.getState().start(testRequestForTarget(session!, target))
         }),
       })),
-      // Mentre la nuova ricerca gopls è in corso restano visibili solo i simboli coerenti con il testo attuale.
-      ...matchingSymbols.map((symbol) => ({ ...symbolRow(symbol), run: close(symbolRow(symbol).run) })),
       ...graphNodes.map((node) => ({
         key: `graph:${node.id}`, section: 'Project graph' as const, title: node.label,
         detail: `${GRAPH_KIND_LABEL[node.kind] ?? node.kind}${node.file ? ` · ${node.file}${node.line ? `:${node.line}` : ''}` : ''} · Enter: change impact`,
@@ -181,6 +179,8 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
           requestImpactOf(node.id)
         }),
       })),
+      // Mentre la nuova ricerca gopls è in corso restano visibili solo i simboli coerenti con il testo attuale.
+      ...matchingSymbols.map((symbol) => ({ ...symbolRow(symbol), run: close(symbolRow(symbol).run) })),
       ...configs.map((config) => ({
         key: `config:${config.id}`, section: 'Run configurations' as const, title: config.name, detail: `Run · ${config.kind}`,
         icon: <Play size={12} className="text-success" aria-hidden="true" />,
