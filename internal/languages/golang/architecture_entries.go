@@ -225,6 +225,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 	var kafkaSite, consumeSite token.Pos
 	topics := map[string]bool{}
 	group, serializer := "", ""
+	messaging := map[string]*messagingUse{} // nats/amqp producer o consumer → soggetti/code
 	setGroup := func(expression ast.Expr) {
 		if value, ok := constantString(info, expression); ok && value != "" {
 			group = value
@@ -285,6 +286,16 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 					a.addEntry(entry)
 				}
 			}
+			if kind, label, topic, ok := messagingCall(info, packagePath, name, node.Args); ok {
+				use := messaging[kind]
+				if use == nil {
+					use = &messagingUse{label: label, site: node.Pos(), topics: map[string]bool{}}
+					messaging[kind] = use
+				}
+				if topic != "" {
+					use.topics[topic] = true
+				}
+			}
 			for _, library := range kafkaLibraries {
 				if !strings.HasPrefix(packagePath, library.path) {
 					continue
@@ -307,6 +318,9 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 		}
 		return true
 	})
+	for kind, use := range messaging {
+		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: use.label, Package: file.pkg.PkgPath, Function: function, Topics: sortedSet(use.topics), Site: a.site(use.site)})
+	}
 	if len(kafka) == 0 {
 		return
 	}
@@ -497,4 +511,63 @@ func websocketEntry(info *types.Info, base ArchEntry, packagePath, name string, 
 		return base, true
 	}
 	return ArchEntry{}, false
+}
+
+type messagingUse struct {
+	label  string
+	site   token.Pos
+	topics map[string]bool
+}
+
+// Broker NATS e AMQP: metodo → ruolo e posizione dell'argomento con soggetto, exchange o coda.
+var messagingLibraries = []struct {
+	path, broker, label string
+	produce, consume    map[string]int
+}{
+	{"github.com/nats-io/nats.go", "nats", "nats.go",
+		map[string]int{"Publish": 0, "PublishMsg": -1, "Request": 0, "RequestWithContext": 1},
+		map[string]int{"Subscribe": 0, "QueueSubscribe": 0, "ChanSubscribe": 0, "SubscribeSync": 0, "QueueSubscribeSync": 0, "ChanQueueSubscribe": 0}},
+	{"github.com/rabbitmq/amqp091-go", "amqp", "amqp091-go",
+		map[string]int{"Publish": 0, "PublishWithContext": 1, "PublishWithDeferredConfirmWithContext": 1},
+		map[string]int{"Consume": 0, "ConsumeWithContext": 1}},
+	{"github.com/streadway/amqp", "amqp", "streadway/amqp",
+		map[string]int{"Publish": 0},
+		map[string]int{"Consume": 0}},
+}
+
+// messagingCall riconosce publish/subscribe NATS e AMQP; il topic è il soggetto NATS, l'exchange
+// (o la routing key con l'exchange di default) AMQP in uscita, la coda AMQP in entrata.
+func messagingCall(info *types.Info, packagePath, name string, args []ast.Expr) (kind, label, topic string, ok bool) {
+	for _, library := range messagingLibraries {
+		if !strings.HasPrefix(packagePath, library.path) {
+			continue
+		}
+		role, index := "producer", -2
+		if i, found := library.produce[name]; found {
+			index = i
+		} else if i, found := library.consume[name]; found {
+			role, index = "consumer", i
+		}
+		if index == -2 {
+			return "", "", "", false
+		}
+		if index >= 0 && index < len(args) {
+			topic, _ = constantString(info, args[index])
+			// AMQP Publish(exchange, key, …): con l'exchange di default conta la routing key.
+			if library.broker == "amqp" && role == "producer" && topic == "" && index+1 < len(args) {
+				topic, _ = constantString(info, args[index+1])
+			}
+		}
+		return library.broker + "-" + role, library.label, topic, true
+	}
+	return "", "", "", false
+}
+
+func sortedSet(set map[string]bool) []string {
+	out := make([]string, 0, len(set))
+	for key := range set {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }

@@ -153,6 +153,10 @@ export const ENTRY_KINDS: Array<{ kind: string; title: string }> = [
   { kind: 'grpc', title: 'gRPC services' },
   { kind: 'kafka-producer', title: 'Kafka producers' },
   { kind: 'kafka-consumer', title: 'Kafka consumers' },
+  { kind: 'nats-producer', title: 'NATS publishers' },
+  { kind: 'nats-consumer', title: 'NATS subscribers' },
+  { kind: 'amqp-producer', title: 'AMQP publishers' },
+  { kind: 'amqp-consumer', title: 'AMQP consumers' },
   { kind: 'websocket-server', title: 'WebSocket servers' },
   { kind: 'websocket-client', title: 'WebSocket clients' },
   { kind: 'repository', title: 'DB repositories' },
@@ -215,6 +219,13 @@ export function entityRefsForEntry(entry: GoIDEArchEntry, sessionId: string): En
     case 'kafka-producer':
     case 'kafka-consumer':
       return (entry.topics ?? []).map((topic) => ({ ...base, kind: 'topic', id: `topic:${topic}`, label: topic, attrs: { broker: 'kafka' } }))
+    case 'nats-producer':
+    case 'nats-consumer':
+    case 'amqp-producer':
+    case 'amqp-consumer': {
+      const broker = entry.kind.split('-')[0]
+      return (entry.topics ?? []).map((topic) => ({ ...base, kind: 'topic', id: `topic:${broker}:${topic}`, label: topic, attrs: { broker } }))
+    }
     case 'websocket-client':
       return /^wss?:\/\//.test(entry.name) ? [{ ...base, kind: 'websocket', id: `websocket:${entry.name}`, label: entry.name, attrs: { role: 'client', url: entry.name } }] : []
   }

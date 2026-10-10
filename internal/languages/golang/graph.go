@@ -142,15 +142,19 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 				b.Edge(rpc, methodID, graph.EdgeContains, "")
 				b.Edge(fnNode(function.ID), methodID, graph.EdgeHandles, "")
 			}
-		case "kafka-producer", "kafka-consumer":
+		case "kafka-producer", "kafka-consumer", "nats-producer", "nats-consumer", "amqp-producer", "amqp-consumer":
 			function := lookup(entry.Package, entry.Function)
+			broker, role, _ := strings.Cut(entry.Kind, "-")
 			edgeKind := graph.EdgeProduces
-			if entry.Kind == "kafka-consumer" {
+			if role == "consumer" {
 				edgeKind = graph.EdgeConsumes
 			}
 			for _, topic := range entry.Topics {
 				topicID := "topic:" + topic
-				b.Node(graph.Node{ID: topicID, Kind: graph.KindTopic, Label: topic, Attrs: attrs("broker", "kafka")})
+				if broker != "kafka" {
+					topicID = "topic:" + broker + ":" + topic
+				}
+				b.Node(graph.Node{ID: topicID, Kind: graph.KindTopic, Label: topic, Attrs: attrs("broker", broker)})
 				b.Edge(function, topicID, edgeKind, entry.TopicRoles[topic])
 			}
 		case "websocket-server":

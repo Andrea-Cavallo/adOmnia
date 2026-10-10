@@ -60,6 +60,9 @@ describe('architecture helpers', () => {
     expect(groupEntries([client]).map((group) => group.title)).toEqual(['WebSocket clients'])
     expect(entityRefsForEntry(client, 's1')[0]).toMatchObject({ kind: 'websocket', attrs: { url: 'ws://localhost:9000/feed' } })
     expect(entityRefsForEntry({ ...client, name: 'Follow' }, 's1')).toEqual([])
+    const nats = { kind: 'nats-consumer', name: 'Listen', package: 'p', topics: ['orders.created'], site: site('n.go') } as any
+    expect(groupEntries([nats]).map((group) => group.title)).toEqual(['NATS subscribers'])
+    expect(entityRefsForEntry(nats, 's1')[0]).toMatchObject({ kind: 'topic', id: 'topic:nats:orders.created', attrs: { broker: 'nats' } })
   })
 })
 
