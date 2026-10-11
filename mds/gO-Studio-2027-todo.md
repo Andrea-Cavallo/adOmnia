@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 53 | 2 |
+| **P4** | AI e intelligenza del workspace | 47 | 2 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -192,14 +192,7 @@ _A. Live Dependency Heatmap chiusa il 2026-10-11 (Architecture Explorer → Heat
 
 _B. API Contract Drift chiusa il 2026-10-11 (Architecture Explorer → API contract)._
 
-### C. Event Contract Drift
-
-- [ ] Schema Kafka ↔ Go struct.
-- [ ] Producer ↔ consumer compatibility.
-- [ ] Breaking event changes.
-- [ ] Missing fields.
-- [ ] Type mismatch.
-- [ ] Version evolution.
+_C. Event Contract Drift chiusa il 2026-10-11 (Architecture Explorer → Contracts, sezione Events)._
 
 ### D. Runtime Snapshot
 

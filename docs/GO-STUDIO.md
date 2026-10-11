@@ -558,7 +558,11 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 ## API contract drift
 
-*Architecture Explorer → API contract* finds the project's OpenAPI file (`openapi.yaml`, `swagger.json`, `api.yml`… up to three folders deep) and compares it with the routes and the JSON request/response types the code really uses: routes served but not documented, operations documented but not implemented, fields present only in the code or only in the contract, different types, and request fields whose *required* differs. *API changes since* a branch, tag or commit analyzes that revision in a temporary Git worktree and lists new and removed operations and field changes; breaking ones are marked: removed operations, removed response fields, changed field types, request fields that are new and required or became required.
+*Architecture Explorer → Contracts* finds the project's OpenAPI file (`openapi.yaml`, `swagger.json`, `api.yml`… up to three folders deep) and compares it with the routes and the JSON request/response types the code really uses: routes served but not documented, operations documented but not implemented, fields present only in the code or only in the contract, different types, and request fields whose *required* differs. *API changes since* a branch, tag or commit analyzes that revision in a temporary Git worktree and lists new and removed operations and field changes; breaking ones are marked: removed operations, removed response fields, changed field types, request fields that are new and required or became required.
+
+### Event contracts
+
+The same tab compares messages. For every Kafka, NATS or AMQP producer and consumer, adOmnia reads the Go type passed to `json.Marshal`/`proto.Marshal` or decoded with `json.Unmarshal`/`proto.Unmarshal` in that function, and per topic lists the fields a consumer reads that no producer sends and the fields whose type differs (decoding fails). Avro schemas (`.avsc`) and JSON Schemas (`*.schema.json`) whose name matches the struct or the topic are checked too: Go fields not in the schema, different types, required schema fields the struct lacks. *Diff* adds how the produced messages changed since the chosen revision; removed fields and type changes are marked breaking for consumers not yet updated.
 
 ## Architecture rules and drift
 
