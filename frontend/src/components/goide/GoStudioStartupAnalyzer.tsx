@@ -44,9 +44,10 @@ export function GoStudioStartupAnalyzer({ sessionId }: { sessionId: string }) {
     try { setShutdown(null); setReport(await GoIDE.StartupAnalysis(sessionId, target, health, 30)) } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setBusy(false) }
   }
   const analyzeShutdown = async () => {
+    setShutdown(null)
     setBusy(true)
     setError(null)
-    try { setReport(null); setShutdown(await GoIDE.ShutdownAnalysis(sessionId, target, health, Number(grace) || 10)) } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setBusy(false) }
+    try { setReport(null); setShutdown(null); setShutdown(await GoIDE.ShutdownAnalysis(sessionId, target, health, Number(grace) || 10)) } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setBusy(false) }
   }
   const events = report?.events ?? []
   return (
