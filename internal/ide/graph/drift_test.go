@@ -39,13 +39,14 @@ func TestCheckDrift(t *testing.T) {
 		Domains:        map[string][]string{"billing": {"internal/billing/..."}, "orders": {"internal/orders/..."}},
 		Shared:         []string{"internal/shared/..."},
 		DatabaseLayers: []string{"repository"},
+		Services:       map[string][]string{"billing": {"example.com/shop/internal/billing/..."}, "orders": {"example.com/shop/internal/orders/..."}},
 	}
 	report := driftFixture().CheckDrift(rules, true)
 	got := map[string]int{}
 	for _, violation := range report.Violations {
 		got[violation.Rule]++
 	}
-	want := map[string]int{"layer": 1, "forbidden-import": 1, "domain": 2, "database": 1, "cycle": 1}
+	want := map[string]int{"layer": 1, "forbidden-import": 1, "domain": 2, "service": 2, "database": 1, "cycle": 1}
 	for rule, count := range want {
 		if got[rule] != count {
 			t.Fatalf("%s violations = %d, want %d; all %+v", rule, got[rule], count, report.Violations)

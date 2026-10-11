@@ -25,6 +25,9 @@ type ArchitectureRules struct {
 	// Domains: bounded context che non si importano a vicenda (salvo Shared).
 	Domains map[string][]string `json:"domains,omitempty"`
 	Shared  []string            `json:"shared,omitempty"`
+	// Services: servizi (di solito moduli) indicati con pattern sul percorso completo del package,
+	// es. "example.com/billing/...": un servizio non importa i package di un altro.
+	Services map[string][]string `json:"services,omitempty"`
 	// DatabaseLayers: solo questi layer interrogano tabelle (query SQL/ORM). Vuoto = nessun vincolo.
 	DatabaseLayers []string `json:"databaseLayers,omitempty"`
 	// BrokerLayers: solo questi layer producono o consumano messaggi. Vuoto = nessun vincolo.
@@ -218,6 +221,9 @@ func (x *Index) CheckDrift(rules ArchitectureRules, found bool) DriftReport {
 			for _, pattern := range rules.Shared {
 				shared = shared || matchPattern(pattern, toPath)
 			}
+			if fromService, toService := groupOf(rules.Services, pkg.Label), groupOf(rules.Services, target.Label); fromService != "" && toService != "" && fromService != toService {
+				add(Violation{Rule: "service", Message: fmt.Sprintf("service %s imports code of service %s (%s imports %s): call its API instead", fromService, toService, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
+			}
 			if fromDomain != "" && toDomain != "" && fromDomain != toDomain && !shared {
 				add(Violation{Rule: "domain", Message: fmt.Sprintf("domain %s reaches into domain %s (%s imports %s)", fromDomain, toDomain, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
 			}
@@ -335,6 +341,7 @@ const RulesTemplate = `{
   ],
   "domains": {},
   "shared": [],
+  "services": {},
   "databaseLayers": ["repository"],
   "brokerLayers": [],
   "noCycles": true

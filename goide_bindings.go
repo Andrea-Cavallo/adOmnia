@@ -1410,6 +1410,11 @@ func (g *GoIDE) CreateArchitectureRules(sessionID string) (string, error) {
 	return g.service.CreateArchitectureRules(sessionID)
 }
 
+// CompareArchitecture confronta l'architettura di oggi con un branch, tag o commit.
+func (g *GoIDE) CompareArchitecture(sessionID, ref string) (goide.ArchitectureDiff, error) {
+	return g.service.CompareArchitecture(sessionID, ref)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

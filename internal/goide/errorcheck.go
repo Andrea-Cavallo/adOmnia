@@ -124,6 +124,12 @@ type loadedGoModule struct {
 // forEachGoModule carica ogni modulo del progetto con go/packages (avvia `go list`: serve un
 // progetto autorizzato) e lo passa a visit. Gli errori di caricamento sono restituiti come problemi.
 func (s *Service) forEachGoModule(sessionID string, visit func(root string, module loadedGoModule)) ([]string, error) {
+	return s.forEachGoModuleAt(sessionID, "", visit)
+}
+
+// forEachGoModuleAt carica i moduli del progetto da un'altra copia dei sorgenti (base, es. un
+// worktree di un altro commit) con la stessa struttura di moduli; base "" = il progetto.
+func (s *Service) forEachGoModuleAt(sessionID, base string, visit func(root string, module loadedGoModule)) ([]string, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return nil, err
@@ -141,10 +147,25 @@ func (s *Service) forEachGoModule(sessionID string, visit func(root string, modu
 	}
 	environment = withGoFirstInPath(environment, binary)
 	root := session.Project.RealPath
+	if base != "" {
+		root = base
+	}
 	problems := []string{}
 	ctx, cancel := context.WithTimeout(context.Background(), errorAnalysisTimeout)
 	defer cancel()
 	for _, module := range goLayoutOf(session.Project).Modules {
+		dir := module.Path
+		if base != "" {
+			rel, err := filepath.Rel(session.Project.RealPath, module.Path)
+			if err != nil {
+				continue
+			}
+			if dir = filepath.Join(base, rel); !isDirectory(dir) {
+				problems = append(problems, fmt.Sprintf("%s does not exist in that revision", filepath.ToSlash(rel)))
+				continue
+			}
+		}
+		module.Path = dir
 		fset := token.NewFileSet()
 		config := &packages.Config{
 			Context: ctx, Dir: module.Path, Env: environment, Tests: true, Fset: fset,
@@ -236,4 +257,9 @@ func (t *errorTexts) merge(report *ErrorHandlingReport, analysis golang.ErrorRep
 		}
 		report.Paths = append(report.Paths, converted)
 	}
+}
+
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }

@@ -142,6 +142,17 @@ func AddWorktree(repoPath, path, branch string, createBranch bool) error {
 	return err
 }
 
+// AddDetachedWorktree checks ref out in a detached worktree at path (read-only analyses of
+// another commit or branch, even one already checked out elsewhere).
+func AddDetachedWorktree(repoPath, path, ref string) error {
+	ref = strings.TrimSpace(ref)
+	if ref == "" || strings.HasPrefix(ref, "-") || strings.ContainsAny(ref, " \t\n") {
+		return fmt.Errorf("invalid revision %q", ref)
+	}
+	_, err := runGit(repoPath, "worktree", "add", "--detach", path, ref)
+	return err
+}
+
 func RemoveWorktree(repoPath, path string, force bool) error {
 	path = strings.TrimSpace(path)
 	if path == "" {
