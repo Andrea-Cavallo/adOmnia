@@ -41,6 +41,9 @@ func TestBinaryInspection(t *testing.T) {
 	for _, item := range report.Packages {
 		packages[item.Name] = item.Size
 	}
+	if report.SymbolBytes > report.Size {
+		t.Fatalf("symbols %d bytes exceed the file %d: overlaps counted twice", report.SymbolBytes, report.Size)
+	}
 	if packages["runtime"] == 0 || packages["fmt"] == 0 || packages["main"] == 0 || len(report.Symbols) == 0 {
 		t.Fatalf("packages: %v", packages)
 	}

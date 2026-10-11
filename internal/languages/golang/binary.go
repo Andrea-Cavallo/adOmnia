@@ -73,27 +73,84 @@ func symbolPackage(name string) string {
 	return name
 }
 
-// ParseNM legge l'output di `go tool nm -size -sort size` e somma le dimensioni per package.
+type nmSymbol struct {
+	address uint64
+	size    int64
+	name    string
+}
+
+// sectionMarker: simboli che delimitano intere sezioni e coprono gli altri (si contano solo i byte scoperti).
+func sectionMarker(name string) bool {
+	switch name {
+	case "runtime.rodata", "runtime.types", "runtime.text", "runtime.data", "runtime.noptrdata", "runtime.bss", "runtime.noptrbss", "type:*", "go:func.*":
+		return true
+	}
+	return false
+}
+
+// ParseNM legge l'output di `go tool nm -size` e somma le dimensioni per package. I simboli si
+// sovrappongono (marcatori di sezione, alias): ogni byte si conta una volta, troncando un simbolo
+// all'inizio del successivo.
 func ParseNM(output string, report *BinaryReport) {
-	packages := map[string]int64{}
+	var symbols []nmSymbol
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	scanner.Buffer(make([]byte, 0, 1024*1024), 4*1024*1024)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
-		if len(fields) < 4 {
+		if len(fields) < 4 || fields[2] == "U" {
 			continue
 		}
-		size, err := strconv.ParseInt(fields[1], 10, 64)
-		if err != nil || size <= 0 || fields[2] == "U" {
+		address, err := strconv.ParseUint(fields[0], 16, 64)
+		size, sizeErr := strconv.ParseInt(fields[1], 10, 64)
+		if err != nil || sizeErr != nil || size <= 0 {
 			continue
 		}
-		name := strings.Join(fields[3:], " ")
-		report.SymbolBytes += size
-		packages[symbolPackage(name)] += size
-		if len(report.Symbols) < 50 {
-			report.Symbols = append(report.Symbols, BinarySize{Name: name, Size: size})
-		}
+		symbols = append(symbols, nmSymbol{address: address, size: size, name: strings.Join(fields[3:], " ")})
 	}
+	// Allo stesso indirizzo vince il simbolo vero, non il marcatore; poi il più grande.
+	sort.SliceStable(symbols, func(i, j int) bool {
+		if symbols[i].address != symbols[j].address {
+			return symbols[i].address < symbols[j].address
+		}
+		if sectionMarker(symbols[i].name) != sectionMarker(symbols[j].name) {
+			return !sectionMarker(symbols[i].name)
+		}
+		return symbols[i].size > symbols[j].size
+	})
+	packages := map[string]int64{}
+	var counted []BinarySize
+	end := uint64(0)
+	for index, symbol := range symbols {
+		if index > 0 && symbol.address == symbols[index-1].address {
+			continue
+		}
+		start := symbol.address
+		if start < end {
+			start = end // già coperto da un simbolo precedente
+		}
+		stop := symbol.address + uint64(symbol.size)
+		for next := index + 1; next < len(symbols); next++ {
+			if symbols[next].address > symbol.address {
+				if symbols[next].address < stop {
+					stop = symbols[next].address
+				}
+				break
+			}
+		}
+		if stop <= start {
+			continue
+		}
+		size := int64(stop - start)
+		end = stop
+		report.SymbolBytes += size
+		packages[symbolPackage(symbol.name)] += size
+		counted = append(counted, BinarySize{Name: symbol.name, Size: size})
+	}
+	sort.Slice(counted, func(i, j int) bool { return counted[i].Size > counted[j].Size })
+	if len(counted) > 50 {
+		counted = counted[:50]
+	}
+	report.Symbols = counted
 	for name, size := range packages {
 		report.Packages = append(report.Packages, BinarySize{Name: name, Size: size})
 	}
