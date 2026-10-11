@@ -556,6 +556,10 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 *Architecture Explorer → Heatmap* shows, for every package of the project, its coupling (importers × imports), fan-in and fan-out, blast radius (packages that depend on it, directly or not) and number of functions. With a CPU or memory profile loaded in Performance Studio, each package also gets its inclusive share of the profile (time spent in the standard library counts for the project code that called it), packages are ranked by it, and the imports between project packages that no profiled call crossed are listed: candidates for dead or optional dependencies.
 
+## API contract drift
+
+*Architecture Explorer → API contract* finds the project's OpenAPI file (`openapi.yaml`, `swagger.json`, `api.yml`… up to three folders deep) and compares it with the routes and the JSON request/response types the code really uses: routes served but not documented, operations documented but not implemented, fields present only in the code or only in the contract, different types, and request fields whose *required* differs. *API changes since* a branch, tag or commit analyzes that revision in a temporary Git worktree and lists new and removed operations and field changes; breaking ones are marked: removed operations, removed response fields, changed field types, request fields that are new and required or became required.
+
 ## Architecture rules and drift
 
 *Architecture Explorer → Rules & drift* checks the code against `.adomnia/architecture.json` (*Create architecture rules* writes a template; commit it to share the rules). Package patterns are relative to the module (`internal/domain/...` is the folder and everything below, `*` one segment):
