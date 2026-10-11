@@ -62,6 +62,9 @@ func GraphFromArchitecture(report ArchitectureReport) *graph.Builder {
 		for _, imported := range pkg.External {
 			if dependency := dependencyOf(imported); dependency != "" {
 				b.Edge("pkg:"+pkg.Path, "dep:"+dependency, graph.EdgeImports, imported)
+			} else {
+				// Package di un altro modulo del workspace (go.work, replace locale): arco fra package.
+				b.Edge("pkg:"+pkg.Path, "pkg:"+imported, graph.EdgeImports, "")
 			}
 		}
 	}

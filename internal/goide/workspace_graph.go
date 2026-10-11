@@ -57,7 +57,7 @@ func (s *Service) ConfigureGraphStore(dir string) {
 
 // graphBuilderVersion entra nell'impronta: un grafo salvato da un builder più vecchio
 // (meno nodi o archi) si ricostruisce anche se i sorgenti non sono cambiati.
-const graphBuilderVersion = "8"
+const graphBuilderVersion = "9"
 
 func isGoSource(rel string) bool {
 	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work" || graph.IsComposeFile(rel)
