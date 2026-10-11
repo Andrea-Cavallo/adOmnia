@@ -24,7 +24,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 25 | 8 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 15 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 0 | 0 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 125 | 36 |
@@ -59,12 +59,9 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §29 · Docker e Containers
 
-- [ ] Attach debugger.
-- [ ] Run tests in container.
-- [ ] Run profiler in container.
-- [ ] Container → local service mapping.
+> *Base esistente:* attach al processo locale e a Delve remoto/container con mapping del sorgente, run di test e profiler dentro il container (`docker exec`), mapping container → directory locale e porte pubblicate, avanzamento dei passi BuildKit nella Run console.
+
 - [ ] Dev container support.
-- [ ] BuildKit awareness.
 
 ## §44 · UX Layout proposta
 
@@ -111,17 +108,11 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 > Mostrare informazioni runtime direttamente sopra o accanto al codice.
 >
-> *Base esistente:* Runtime Lens (View → Toggle Runtime Lens) dalle span OpenTelemetry ricevute in locale: chiamate, p50/p95 (p99/avg/max nel tooltip), errori, ultima esecuzione, hot/slow path, per ogni `code.filepath:code.lineno`.
-
-- [ ] Allocation estimate.
-- [ ] CPU cost.
-- [ ] Sampling per ridurre overhead.
+> *Base esistente:* Runtime Lens (View → Toggle Runtime Lens) dalle span OpenTelemetry ricevute in locale: chiamate, p50/p95 (p99/avg/max nel tooltip), errori, ultima esecuzione, hot/slow path, per ogni `code.filepath:code.lineno`; in più i costi campionati di CPU e allocazioni dell'ultimo profilo (per riga e per funzione), da `runtimeProfileCost`. Il polling si ferma con la finestra nascosta e dirada quando non arrivano span, per ridurre l'overhead.
 
 ### Esempi
 
 - [ ] Cache access → hit/miss.
-- [ ] Function → allocations.
-- [ ] Goroutine → lifetime.
 
 ## §33 · Reproduction Studio
 
@@ -136,7 +127,7 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 ## §48 · Enterprise — protocolli legacy in gO Studio
 
 - [ ] mTLS. — *Parziale: mTLS esiste nel client HTTP/gRPC di adOmnia (internal/httpexec, internal/grpc); non integrato in Go Studio.*
-- [ ] JKS/PKCS12 helper integration dove utile. — *Parziale: Strumenti PEM/JKS in nettools e pdfsign; nessun legame con Go Studio.*
+- [ ] JKS/PKCS12 helper integration dove utile. — *Parziale: da Go Studio i file PEM aprono il tool PEM/JKS di Power Tools (ispezione e cifratura chiave); i keystore .jks/.p12/.pfx non sono ancora instradati.*
 - [ ] Legacy SOAP services. — *Parziale: Pannello SOAP con envelope e WS-Security in adOmnia; non collegato a Go Studio.*
 - [ ] WSDL. — *Parziale: Import WSDL da file, URL e testo nel pannello SOAP; non integrato in Go Studio.*
 - [ ] XML. — *Parziale: Go Studio apre .xml/.xsd/.wsdl con syntax highlighting; nessun tooling XML.*

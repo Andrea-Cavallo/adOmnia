@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { OtlpLensStat } from '@/lib/otlp-api'
-import { fileCounts, lensFlags, lensTitle } from './runtimeLens'
+import { fileCounts, lensFlags, lensPollDelayMs, lensPollingActive, lensTitle } from './runtimeLens'
 
 const solo = { max: 12, atMax: 1 }
 
@@ -22,6 +22,16 @@ describe('runtime lens', () => {
     expect(lensFlags(stat({}), fileCounts([stat({}), stat({ line: 20 })])).hot).toBe(false) // a tie is not a hot path
     expect(lensFlags(stat({ p50Ms: 2, p95Ms: 20 }), solo).slow).toBe(true) // tail 10× the median
     expect(lensFlags(stat({ count: 2, p50Ms: 2, p95Ms: 20 }), solo).slow).toBe(false) // too few calls for a tail
+  })
+
+  it('backs off while idle and stops polling when hidden', () => {
+    expect(lensPollDelayMs(0)).toBe(3000)
+    expect(lensPollDelayMs(2)).toBe(3000)
+    expect(lensPollDelayMs(3)).toBe(15000)
+    expect(lensPollDelayMs(10)).toBe(15000)
+    expect(lensPollingActive(true, true)).toBe(true)
+    expect(lensPollingActive(true, false)).toBe(false)
+    expect(lensPollingActive(false, true)).toBe(false)
   })
 })
 

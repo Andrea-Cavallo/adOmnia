@@ -3,7 +3,7 @@ import { useGoIDEStore } from '@/stores/goide'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens, type OtlpLensStat } from '@/lib/otlp-api'
 import { relativeToRoots } from '@/lib/sourcePaths'
-import { fileCounts, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
+import { fileCounts, lensPollDelayMs, lensPollingActive, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
 import { documentForModel } from './goStudioLanguageFeatures'
 import { useGoStudioRuntimeProfile } from '@/stores/goStudioRuntimeProfile'
 import { formatProfileValue } from './goStudioProfiles'
@@ -13,11 +13,12 @@ import { formatProfileValue } from './goStudioProfiles'
 const LANGUAGE = 'go'
 const COMMAND = 'goStudio.runtimeLensInfo'
 const STORAGE_KEY = 'adomnia.goStudio.runtimeLens'
-const POLL_MS = 3000
 
 let registered = false
 let timer: number | null = null
 let snapshot = ''
+let emptyPolls = 0
+let visibilityBound = false
 let byFile = new Map<string, OtlpLensStat[]>() // sessionId \u0000 relativePath → stats
 const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
 
@@ -25,36 +26,50 @@ export function runtimeLensEnabled(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) !== 'off' } catch { return true }
 }
 
-async function poll(provider: monaco.languages.CodeLensProvider): Promise<void> {
+async function poll(provider: monaco.languages.CodeLensProvider): Promise<boolean> {
   const port = await getServerPort()
-  if (!port) return
+  if (!port) return false
   const stats = await getOtlpLens(port).catch(() => [] as OtlpLensStat[])
   const key = JSON.stringify(stats)
-  if (key === snapshot) return
-  snapshot = key
-  const roots = useGoIDEStore.getState().sessions.map((session) => ({ id: session.id, root: session.project.rootPath }))
-  const next = new Map<string, OtlpLensStat[]>()
-  for (const stat of stats) {
-    const match = relativeToRoots(stat.file, roots)
-    if (!match) continue
-    const fileKey = `${match.sessionId}\u0000${match.relativePath}`
-    next.set(fileKey, [...(next.get(fileKey) ?? []), stat])
+  if (key !== snapshot) {
+    snapshot = key
+    const roots = useGoIDEStore.getState().sessions.map((session) => ({ id: session.id, root: session.project.rootPath }))
+    const next = new Map<string, OtlpLensStat[]>()
+    for (const stat of stats) {
+      const match = relativeToRoots(stat.file, roots)
+      if (!match) continue
+      const fileKey = `${match.sessionId}\u0000${match.relativePath}`
+      next.set(fileKey, [...(next.get(fileKey) ?? []), stat])
+    }
+    byFile = next
+    changed.fire(provider)
   }
-  byFile = next
-  changed.fire(provider)
+  return stats.length > 0
 }
 
 function schedule(provider: monaco.languages.CodeLensProvider): void {
-  if (timer !== null) window.clearInterval(timer)
+  if (timer !== null) window.clearTimeout(timer)
   timer = null
   if (!runtimeLensEnabled()) {
     byFile = new Map()
     snapshot = ''
+    emptyPolls = 0
     changed.fire(provider)
     return
   }
-  void poll(provider)
-  timer = window.setInterval(() => void poll(provider), POLL_MS)
+  if (!visibilityBound) {
+    visibilityBound = true
+    // A hidden window stops polling; coming back to the foreground resumes immediately.
+    document.addEventListener('visibilitychange', () => schedule(provider))
+  }
+  const run = async (): Promise<void> => {
+    if (!lensPollingActive(runtimeLensEnabled(), !document.hidden)) return
+    const hadSpans = await poll(provider)
+    emptyPolls = hadSpans ? 0 : emptyPolls + 1
+    if (timer !== null) window.clearTimeout(timer)
+    if (lensPollingActive(runtimeLensEnabled(), !document.hidden)) timer = window.setTimeout(() => void run(), lensPollDelayMs(emptyPolls))
+  }
+  void run()
 }
 
 let providerRef: monaco.languages.CodeLensProvider | null = null

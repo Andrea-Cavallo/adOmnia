@@ -4,6 +4,23 @@ import type { OtlpLensStat } from '@/lib/otlp-api'
 /** p95 at or above this is a slow path whatever the median. */
 export const SLOW_P95_MS = 250
 
+// Runtime Lens polling: a normal cadence, a slower idle cadence after repeated empty polls, and no
+// polling while the window is hidden. The lens reads only the local OTLP receiver, but a background
+// editor must not keep asking for data nobody is looking at.
+export const LENS_POLL_MS = 3000
+export const LENS_IDLE_POLL_MS = 15000
+export const LENS_IDLE_AFTER = 3
+
+/** Delay before the next poll: it slows down once several polls in a row returned no spans. */
+export function lensPollDelayMs(emptyPolls: number): number {
+  return emptyPolls >= LENS_IDLE_AFTER ? LENS_IDLE_POLL_MS : LENS_POLL_MS
+}
+
+/** The poll loop runs only while the lens is on and the window is visible, to keep overhead down. */
+export function lensPollingActive(enabled: boolean, visible: boolean): boolean {
+  return enabled && visible
+}
+
 function ms(value: number): string {
   if (value >= 1000) return `${(value / 1000).toFixed(1)} s`
   if (value >= 10) return `${Math.round(value)} ms`
