@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 9 | 1 |
+| **P4** | AI e intelligenza del workspace | 5 | 1 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -214,12 +214,7 @@ _H. Startup Analyzer chiusa il 2026-10-11 (Run → Analyze Startup…). Connessi
 
 _I. Shutdown Analyzer chiusa il 2026-10-11 (Run → Analyze Startup… → Analyze shutdown)._
 
-### J. Go Memory Model Helper
-
-- [ ] Spiegare happens-before relevante.
-- [ ] Channel synchronization edges.
-- [ ] Mutex synchronization edges.
-- [ ] Atomic operations.
+_J. Go Memory Model Helper chiusa il 2026-10-11 (Architecture Explorer → Memory model)._
 
 ---
 
