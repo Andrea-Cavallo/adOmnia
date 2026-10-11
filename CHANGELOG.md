@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Go Studio P2: source-line Context now shows observed channel/mutex waits, static concurrency findings, paused error values with on-demand Unwrap inspection, and optional values from the matching paused frame. Trace Studio opens a span's source and runtime Context through the entity router.
 
 ### Fixed
+- Go Studio debugger: after a manual Pause the goroutine list loads even when the current frame has no source, and frame variables show even when Delve cannot list globals.
 - Workspace graph: imports between modules of a go.work workspace (or local `replace` directories) are now package edges, so impact and heatmap see them.
 - Markdown (AI chats, previews): inline code containing `&`, `<` or `>` showed `&amp;`-style entities.
 - gO Studio: calls between modules of a go.work workspace were missing from the Architecture Explorer and the workspace graph; a graph saved by an older adOmnia is now rebuilt instead of reused.
@@ -17,6 +18,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Why is this goroutine running?** In the debugger, the goroutine inspector shows the request route or message topic it serves, how long it has been alive (lower bound, from the first pause that saw it), the context it holds walked through its parents with deadlines, and how that context can be cancelled.
 - **Go memory model helper:** *Architecture Explorer → Memory model* lists, for the function under the cursor, the channels, mutexes, WaitGroups, Once, atomics and go statements it uses, every other place of the package that touches them, the happens-before edges the Go memory model guarantees between those goroutines and common mistakes (locks without unlock, channels only sent to, multiple closes); *Explain with AI* sends it to the chat.
 - **Shutdown analyzer:** *Analyze shutdown* (in the startup analyzer) starts the service, sends it an interrupt once ready (SIGINT; on Windows a CTRL_BREAK through a small helper built once with your Go) and checks the graceful shutdown: context cancellation logged, listener closed, database and broker connections closed, exit within the grace period; a process that does not exit is reported with the connections it leaks and, when it serves `/debug/pprof`, the goroutines keeping it alive.
 - **Startup analyzer:** *Run → Analyze Startup…* builds a main package, starts it with the run environment and `GODEBUG=inittrace=1`, and shows how long it takes to be ready (port open or a health path answering): a timeline of output lines with the gaps between them, the first connection to each database or broker, the listen and ready moments, and the slowest package `init` functions. The process is stopped as soon as it is ready.

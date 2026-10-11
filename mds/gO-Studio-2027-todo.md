@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 5 | 1 |
+| **P4** | AI e intelligenza del workspace | 0 | 0 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -196,15 +196,7 @@ _C. Event Contract Drift chiusa il 2026-10-11 (Architecture Explorer → Contrac
 
 _D. Runtime Snapshot chiusa il 2026-10-11 (Run → Runtime Snapshots…, pulsante Snapshot nella barra Workspace)._
 
-### E. “Why is this running?”
-
-Su una goroutine/process/task:
-
-- [ ] Da quale request è nata.
-- [ ] Da quale message è nata.
-- [ ] Da quanto tempo vive.
-- [ ] Quale context possiede. — *Parziale: Relazione goroutine → ctx.Done() e Inspector Runtime; nessuna ownership completa.*
-- [ ] Quale cancellation path ha.
+_E. “Why is this running?” chiusa il 2026-10-11 (Debug → Inspector della goroutine, sezione *Why is this running?*). Collaudo desktop con Delve: handler `GET /orders` in pausa manuale → route e handler, durata, catena `*context.timerCtx → *context.cancelCtx → *context.valueCtx` con deadline e percorso di cancellazione. Limiti dichiarati in UI: la durata è un limite inferiore (prima pausa osservata); request/message indicano route/topic serviti, non la singola richiesta; il context è letto dai locali dei frame del progetto. Fix collegati: le goroutine si caricano anche dopo una Pause manuale senza sorgente; gli scope dei frame funzionano anche quando Delve non riesce a listare i globals._
 
 _F. “Why is this dependency here?” chiusa il 2026-10-11 (Analyze Change Impact su una riga `require` di go.mod)._
 

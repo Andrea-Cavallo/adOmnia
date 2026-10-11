@@ -574,6 +574,10 @@ The same tab compares messages. For every Kafka, NATS or AMQP producer and consu
 
 *Architecture Explorer → Binary* builds a `main` package (the folders of the entry points are suggested) into a temporary file — nothing is written to the project — and shows what the executable is made of: total size, size by package and the largest symbols (from `go tool nm`, each byte counted once and only for sections stored in the file), the files included with `//go:embed`, and the metadata Go records in every binary: Go version, main module, module versions with replacements, and build settings such as GOOS/GOARCH, CGO, `-ldflags`, `-tags` and the VCS revision. *Compare size with* builds the same package at a branch, tag or commit in a temporary Git worktree and lists how much each package grew or shrank.
 
+## Why is this goroutine running?
+
+When the program is paused, select a goroutine: its inspector shows *Why is this running?* — the HTTP route (from the handler on its stack) or the message topic (from a consumer) it serves, how long it has been alive (a lower bound: from the first pause that saw it), and, on *Inspect its context*, the `context.Context` held by its project frames walked through its parents (`timerCtx → cancelCtx → valueCtx`, with deadlines) and how it can be cancelled.
+
 ## Memory model helper
 
 *Architecture Explorer → Memory model → At cursor* takes the function under the cursor and lists the synchronization it shares with the rest of its package, grouped by object: channels (send, receive, range, close), mutexes and RW mutexes, WaitGroups, `sync.Once`, atomics and the goroutines it starts. For each one it states the happens-before edges the Go memory model guarantees (a send happens before the matching receive completes, an Unlock before the next Lock, Done before Wait returns…) and flags common mistakes: a lock without an unlock in the same function, a channel only sent to or only received from, a channel closed in several places, and what an atomic does not synchronize. Every operation opens its line; *Explain with AI* puts the whole picture in the chat.

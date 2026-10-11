@@ -164,7 +164,17 @@ func (s *Service) DebugGoroutines(debugID string) (GoroutineOverview, error) {
 
 // DebugScopes restituisce gli scope di un frame.
 func (s *Service) DebugScopes(debugID string, frameID int) ([]DebugScope, error) {
-	return s.debug.Scopes(DebugSessionID(debugID), frameID)
+	id := DebugSessionID(debugID)
+	scopes, err := s.debug.Scopes(id, frameID)
+	// After a manual Pause the current goroutine often sits in the runtime without a location and Delve
+	// fails the whole request while listing globals: retry without them so locals still show.
+	if err != nil && strings.Contains(err.Error(), "Unable to list globals") {
+		if _, configErr := s.debug.Evaluate(id, "dlv config showGlobalVariables false", frameID, "repl"); configErr == nil {
+			scopes, err = s.debug.Scopes(id, frameID)
+			_, _ = s.debug.Evaluate(id, "dlv config showGlobalVariables true", frameID, "repl")
+		}
+	}
+	return scopes, err
 }
 
 // DebugReadMemory legge length byte a partire da un indirizzo esadecimale o dall'indirizzo di
