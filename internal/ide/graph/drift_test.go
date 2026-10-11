@@ -86,3 +86,21 @@ func TestLoadRulesAndTemplate(t *testing.T) {
 		t.Fatal("pattern matched too much")
 	}
 }
+
+func TestPackageMetrics(t *testing.T) {
+	metrics, imports := driftFixture().PackageMetrics()
+	byPackage := map[string]PackageMetric{}
+	for _, metric := range metrics {
+		byPackage[strings.TrimPrefix(metric.Package, "example.com/shop/")] = metric
+	}
+	// http → domain → store: store is reached by both.
+	if m := byPackage["internal/store"]; m.FanIn != 1 || m.BlastRadius != 2 {
+		t.Fatalf("store: %+v", m)
+	}
+	if m := byPackage["internal/http"]; m.FanOut != 1 || m.Functions != 1 || m.BlastRadius != 0 {
+		t.Fatalf("http: %+v", m)
+	}
+	if len(imports) != 5 {
+		t.Fatalf("imports: %v", imports)
+	}
+}

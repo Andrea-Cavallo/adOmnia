@@ -1415,6 +1415,11 @@ func (g *GoIDE) CompareArchitecture(sessionID, ref string) (goide.ArchitectureDi
 	return g.service.CompareArchitecture(sessionID, ref)
 }
 
+// PackageHeatmap dà fan-in, fan-out e blast radius dei package e gli import del progetto.
+func (g *GoIDE) PackageHeatmap(sessionID string) (goide.PackageHeatmap, error) {
+	return g.service.PackageHeatmap(sessionID)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

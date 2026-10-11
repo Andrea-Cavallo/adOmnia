@@ -342,3 +342,21 @@ func (s *Service) CreateArchitectureRules(sessionID string) (string, error) {
 	}
 	return graph.RulesFile, nil
 }
+
+// PackageHeatmap: metriche statiche dei package e import del progetto, per la heatmap delle dipendenze.
+type PackageHeatmap struct {
+	Packages []graph.PackageMetric `json:"packages"`
+	Imports  [][2]string           `json:"imports"`
+}
+
+func (s *Service) PackageHeatmap(sessionID string) (PackageHeatmap, error) {
+	entry, _, err := s.workspaceGraph(sessionID, false)
+	if err != nil {
+		return PackageHeatmap{}, err
+	}
+	packages, imports := entry.index.PackageMetrics()
+	if imports == nil {
+		imports = [][2]string{}
+	}
+	return PackageHeatmap{Packages: packages, Imports: imports}, nil
+}

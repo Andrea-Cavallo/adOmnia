@@ -303,6 +303,59 @@ export class Node {
 }
 
 /**
+ * PackageMetric misura l'accoppiamento di un package del progetto nel grafo statico.
+ */
+export class PackageMetric {
+    "package": string;
+    "module"?: string;
+
+    /**
+     * package del progetto che lo importano
+     */
+    "fanIn": number;
+
+    /**
+     * package del progetto che importa
+     */
+    "fanOut": number;
+
+    /**
+     * package che ne dipendono, anche indirettamente
+     */
+    "blastRadius": number;
+    "functions": number;
+
+    /** Creates a new PackageMetric instance. */
+    constructor($$source: Partial<PackageMetric> = {}) {
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("fanIn" in $$source)) {
+            this["fanIn"] = 0;
+        }
+        if (!("fanOut" in $$source)) {
+            this["fanOut"] = 0;
+        }
+        if (!("blastRadius" in $$source)) {
+            this["blastRadius"] = 0;
+        }
+        if (!("functions" in $$source)) {
+            this["functions"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PackageMetric instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PackageMetric {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PackageMetric($$parsedSource as Partial<PackageMetric>);
+    }
+}
+
+/**
  * PackageRisk riassume il rischio di modifica delle funzioni di un package.
  */
 export class PackageRisk {

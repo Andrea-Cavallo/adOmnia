@@ -118,6 +118,7 @@ export {
     NavigationEntry,
     NewFile,
     OpenDocument,
+    PackageHeatmap,
     PendingDefer,
     PrivateRepoCredential,
     ProcessDescriptor,

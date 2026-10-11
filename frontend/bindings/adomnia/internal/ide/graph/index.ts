@@ -5,6 +5,7 @@ export {
     DriftReport,
     Impact,
     Node,
+    PackageMetric,
     PackageRisk,
     Ref,
     Violation
