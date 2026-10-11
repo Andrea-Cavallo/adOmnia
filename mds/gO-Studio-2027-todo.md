@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 33 | 2 |
+| **P4** | AI e intelligenza del workspace | 25 | 1 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -194,16 +194,7 @@ _B. API Contract Drift chiusa il 2026-10-11 (Architecture Explorer → API contr
 
 _C. Event Contract Drift chiusa il 2026-10-11 (Architecture Explorer → Contracts, sezione Events)._
 
-### D. Runtime Snapshot
-
-- [ ] Salva goroutines. — *Parziale: Copia JSON di goroutine, diagnosi e race negli appunti; non persistito.*
-- [ ] Salva heap summary.
-- [ ] Salva active requests.
-- [ ] Salva broker activity.
-- [ ] Salva recent logs.
-- [ ] Salva DB activity.
-- [ ] Salva trace.
-- [ ] Compare snapshot before/after.
+_D. Runtime Snapshot chiusa il 2026-10-11 (Run → Runtime Snapshots…, pulsante Snapshot nella barra Workspace)._
 
 ### E. “Why is this running?”
 

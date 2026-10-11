@@ -94,6 +94,8 @@ Before anything starts, adOmnia compares the ports the workspace binds (Compose 
 
 While the services run, a **Workspace** bar under the toolbar lists them with the port each one opened. *Open API* adds a `<service> API` collection to the API Workspace with one request per detected route; the requests use `{{service:NAME}}`, so they always reach the running service. *Open logs* streams every running service into the Log Inspector. Both are also in the Run menu.
 
+*Snapshot* (also *Run → Runtime Snapshots…*) saves what a running service looks like now: goroutines and heap in use by function, read from its `/debug/pprof` (the service must `import _ "net/http/pprof"`; otherwise those two parts are skipped with a note), plus what adOmnia observed — recent requests with status and duration, broker messages, SQL with duration, logs, error lines and traces. Snapshots are JSON files in `.adomnia/snapshots` (commit them to share). *Compare* two of them — for example before and after a load test — to see the totals that moved, the functions holding more goroutines or heap, and the error lines that are new.
+
 *Run → Clean Workspace…* undoes it: it stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file. A second dialog asks whether to delete the volumes too (local database and broker data); *Keep data* leaves them.
 
 ## adOmnia environments in runs
