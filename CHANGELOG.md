@@ -18,6 +18,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Reproduction Studio:** a saved reproduction now also captures the database state relevant to the bug (`db/tables.md`: the tables the observed SQL touches and their schema, read from the matching Database Studio connection), the feature flags the service reads with their captured values (`flags.md`), and the project's declared databases and brokers as a `docker-compose.yml`, so the failure can be replayed without rebuilding the environment by hand. The README steps mention them.
 - **Why is this goroutine running?** In the debugger, the goroutine inspector shows the request route or message topic it serves, how long it has been alive (lower bound, from the first pause that saw it), the context it holds walked through its parents with deadlines, and how that context can be cancelled.
 - **v1 release surface:** Arcade is removed from the Hub; LaTeX, standalone PDF, Kubernetes and Plugins are omitted from navigation/search and saved Hub tile discovery without deleting code or workspace data. Live Collaboration is an opt-in beta. PDF file imports remain fully supported, and PDFs opened from the Go project tree use the full PDF editor, including in detached Go Studio windows. Git drag rebase/cherry-pick actions are parked; AI and advanced analysis remain available. Scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md`.
 
@@ -1650,3 +1651,7 @@ Initial public packaging target.
 - Wails 2 desktop shell with Go backend and React/TypeScript frontend.
 - API workspace, environments, scripts, assertions, response viewer, and import tooling.
 - SOAP, gRPC, WebSocket/SSE, brokers, mock server, proxy, browser debugging, database tools, vault, and utilities.
+
+## Go Studio reference audit — 2026-10-11
+
+Removed obsolete duplicate graph/impact/runtime AI/drift/AI debugging roadmap entries after code/test verification. Added repeatable offline backend open/search benchmarks for 10/100/1000 files; recovery kill/snapshot tests rerun. Native acceptance and real-world performance gates remain open; see docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md.

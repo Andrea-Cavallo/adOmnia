@@ -24,10 +24,10 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 25 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 0 | 0 |
-| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
+| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 125 | 36 |
 
 ---
 
@@ -127,15 +127,11 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 > Trasformare un bug osservato in uno scenario ripetibile.
 >
-> *Base esistente:* **Save reproduction** sulla risposta live (API Workspace) e nel tab Request del debug: scrive `repro/<data>-<request>/` nel progetto con README, `request.http`, test Go di regressione, `queries.sql`, fixture Kafka, `.env.example`, `logs.txt`, `stack.txt`; segreti rimossi, valori non deterministici elencati.
-
-- [ ] Capture relevant DB state.
-- [ ] Capture feature flags.
+> *Base esistente:* **Save reproduction** sulla risposta live (API Workspace) e nel tab Request del debug: scrive `repro/<data>-<request>/` nel progetto con README, `request.http`, test Go di regressione, `queries.sql`, fixture Kafka, `.env.example`, `logs.txt`, `stack.txt`, `config.md` (variabili lette e valori .env, segreti mascherati), `trace.json` (span OpenTelemetry della richiesta), `db/tables.md` (tabelle toccate dall'SQL e schema letto dalla connessione di Database Studio), `flags.md` (feature flag e valori) e `docker-compose.yml` (database e broker dichiarati dal progetto). Segreti rimossi, valori non deterministici elencati.
 
 ### Output
 
 - [ ] Generate unit test.
-- [ ] Generate Docker/Compose reproduction where useful.
 
 ## §48 · Enterprise — protocolli legacy in gO Studio
 
@@ -217,9 +213,9 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 ## §0 · Obiettivi di prodotto
 
 - [ ] gO Studio deve poter sostituire un IDE Go tradizionale per il lavoro quotidiano. — *Parziale: Le funzioni P0 ci sono, con test automatici. Manca la verifica manuale M1-M31 e ci sono lacune su refactor e profiler.*
-- [ ] Deve funzionare bene su repository piccoli, monorepo e workspace multi-module. — *Parziale: Supporto a `go.work`, multi-modulo e folder mode (`gowork.go`). Prestazioni su monorepo grandi mai misurate.*
-- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *Parziale: Ci sono test, vet, race, generate, fix, mod why/graph e profilo test. Mancano viewer pprof/trace e govulncheck vero.*
-- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *Parziale: Visuali: test tree, coverage, goroutine, race, benchmark. Mancano profiler e altre viste.*
+- [ ] Deve funzionare bene su repository piccoli, monorepo e workspace multi-module. — *Parziale: Supporto a `go.work`, multi-modulo e folder mode (`gowork.go`). Baseline backend su fixture sintetiche da 10/100/1000 file misurata il 2026-10-11; monorepo reale e latenza UI/gopls ancora da misurare.*
+- [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *Parziale: Ci sono test, vet, race, generate, fix, mod why/graph e profilo test. Viewer pprof/trace e invocazione govulncheck verificati nel codice e nei test il 2026-10-11; resta il collaudo desktop end-to-end.*
+- [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *Parziale: Visuali: test tree, coverage, goroutine, race, benchmark. Performance Studio pprof e viewer trace presenti e testati; resta validare usabilità e le altre viste.*
 - [ ] Deve collegare automaticamente codice ↔ API ↔ DB ↔ broker ↔ runtime. — *Parziale: Developer Context e Live Session collegano codice, API, DB e broker. Verifica manuale aperta.*
 - [ ] Deve avere una UX coerente con il resto di adOmnia. — *Parziale: Token condivisi, menu e dialog moderni. Resta la verifica visiva manuale.*
 
@@ -241,13 +237,10 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 
 ### P3 — Funzioni “2027”
 
-- [ ] Runtime-aware AI.
 - [ ] Automatic bug reproduction.
 - [ ] Performance regression detection.
-- [ ] Architectural drift detection.
 - [ ] Smart refactoring multi-service.
 - [ ] Continuous background code intelligence locale.
-- [ ] Semantic workspace graph.
 - [ ] Replay di richieste/eventi.
 - [ ] Time-travel debugging dove tecnicamente possibile.
 
@@ -257,8 +250,6 @@ Se si dovessero scegliere **solo 8 funzioni distintive**, sceglierei:
 
 - [ ] **Distributed Request Debugger**.
 - [ ] **Reproduction Studio**. — *Parziale: salvataggio completo e senza segreti; manca il replay di una sessione salvata con i messaggi broker.*
-- [ ] **Semantic Workspace Graph**. — *Parziale: internal/devcontext produce entità e snapshot (route, tabelle, topic) usati dalla palette; manca un grafo di relazioni.*
-- [ ] **Runtime-aware AI**.
 
 Queste sono le funzioni che possono far dire:
 
@@ -425,7 +416,6 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 - [ ] Distributed Request Debugger. — *Parziale: servizio singolo completo; multi-servizio solo via trace e log correlati.*
 - [ ] Runtime architecture.
 - [ ] Reproduction Studio. — *Parziale: Save reproduction scrive cartella con request, test di regressione, SQL e fixture Kafka senza segreti; manca il confronto tra sessioni.*
-- [ ] Change Impact Analysis.
 
 #### Exit criteria
 
@@ -435,10 +425,6 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 
 ### Phase 5 — “2027 Intelligence”
 
-- [ ] Semantic Workspace Graph.
-- [ ] Runtime-aware AI.
-- [ ] AI debugging.
-- [ ] Architectural drift.
 - [ ] Smart regression tests. — *Parziale: Solo lo starter di test per i race; nessuna generazione intelligente.*
 - [ ] Performance regression intelligence.
 - [ ] Automatic reproducer.
@@ -446,8 +432,8 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 
 #### Exit criteria
 
-- [ ] L'AI usa informazioni reali del workspace e del runtime. — *Parziale: Usa file, diagnostiche e package locali; nessun dato runtime.*
-- [ ] L'AI non è una semplice chat. — *Parziale: Fix with AI e Copilot inline oltre alla chat; nessun uso del contesto runtime.*
+- [ ] L'AI usa informazioni reali del workspace e del runtime. — *Parziale: Contesto runtime e grafo presenti in debugAIEvidence/debugAI, testati; resta la verifica nei provider reali.*
+- [ ] L'AI non è una semplice chat. — *Parziale: Fix with AI e Copilot inline oltre alla chat; contesto runtime presente nei flussi Debug with AI; resta verifica nei provider reali.*
 - [ ] Le modifiche sono sempre previewabili. — *Parziale: Diff nei refactor e nel Fix with AI; non è universale.*
 - [ ] Il sistema può spiegare perché suggerisce una correzione.
 

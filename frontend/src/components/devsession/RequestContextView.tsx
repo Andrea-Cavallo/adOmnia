@@ -6,7 +6,8 @@ import type { ConfigReport } from '@/lib/goide/configReport'
 import { useState, type ReactNode } from 'react'
 import { ExternalLink, FileArchive } from 'lucide-react'
 import { useDevSessionStore } from '@/stores/devSession'
-import { buildReproduction } from '@/lib/devsession/reproduction'
+import { buildReproduction, tablesIn, type ReproDatasource } from '@/lib/devsession/reproduction'
+import { liveDatabaseSchema } from '@/components/goide/goStudioAILiveContext'
 import type { RequestRun } from '@/lib/devsession-api'
 import { substVars } from '@/lib/substVars'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -56,13 +57,17 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
 /** Writes repro/<when>-<request>/ into the service's Go project and opens its README. */
 /** `compact`: icon only, for the narrow live response bar; the outcome goes in the tooltip and color. */
 /** Variables the project's code reads and their .env values, from the project scan (masked secrets). */
-async function serviceConfig(goSessionId: string): Promise<ConfigReport | undefined> {
+async function serviceContext(goSessionId: string): Promise<{ config?: ConfigReport; datasources: ReproDatasource[] }> {
   try {
     const [{ useDevContextStore }, { configReport }] = await Promise.all([import('@/stores/devcontext'), import('@/lib/goide/configReport')])
     await useDevContextStore.getState().ensure(goSessionId)
-    return configReport(useDevContextStore.getState().snapshots[goSessionId]?.entities ?? [])
+    const entities = useDevContextStore.getState().snapshots[goSessionId]?.entities ?? []
+    const datasources = entities.filter((entity) => entity.kind === 'datasource').map((entity) => ({
+      type: entity.attrs.type, database: entity.attrs.database, host: entity.attrs.host, port: entity.attrs.port,
+    }))
+    return { config: configReport(entities), datasources }
   } catch {
-    return undefined
+    return { datasources: [] }
   }
 }
 
@@ -89,14 +94,18 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
       const request = tab
         ? { method: tab.request.method, url: tab.request.url, headers: tab.request.headers, body: tab.request.bodies[tab.request.activeBodyIdx] }
         : { method: run.method, url: run.url, headers: [] }
+      const queries = store.queries.filter((query) => query.requestRunId === run.id)
+      const { config, datasources } = await serviceContext(session.goSessionId)
+      const sql = queries.map((query) => query.sql)
+      const dbSchema = sql.length ? await liveDatabaseSchema(session.goSessionId, tablesIn(sql)) : undefined
       const result = buildReproduction({
         run, request, service: session.service, createdAt: new Date().toISOString(),
         // Every service's lines: a consumer elsewhere logs the request's id too.
         logs: Object.values(store.logs).flat().filter((entry) => entry.requestRunId === run.id).sort((a, b) => a.seq - b.seq),
-        queries: store.queries.filter((query) => query.requestRunId === run.id),
+        queries,
         messages: store.messages.filter((message) => message.requestRunId === run.id),
         spans: await requestSpans(run.correlationId),
-        config: await serviceConfig(session.goSessionId),
+        config, datasources, dbSchema,
       })
       const [{ createGoIDEFiles }, { useGoIDEStore }] = await Promise.all([import('@/lib/goide-api'), import('@/stores/goide')])
       await createGoIDEFiles(session.goSessionId, result.files)
@@ -111,7 +120,7 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
   return (
     <span className="flex min-w-0 items-center gap-2">
       <button type="button" onClick={() => void save()} disabled={state.busy} aria-label="Save reproduction"
-        title={compact && state.text ? state.text : "Save reproduction: the request, logs, SQL, messages and stacks as replayable files (README, .http, Go test, fixtures) in the service's project"}
+        title={compact && state.text ? state.text : "Save reproduction: the request, logs, SQL, messages, stacks, database state, feature flags and Compose dependencies as replayable files in the service's project"}
         className={cn('flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:border-accent hover:text-accent disabled:opacity-50', compact && state.text ? (state.error ? 'border-error/50 text-error' : 'border-success/50 text-success') : 'border-border-2 text-text-2')}>
         <FileArchive size={11} />{compact ? null : state.busy ? 'Saving…' : 'Save reproduction'}
       </button>

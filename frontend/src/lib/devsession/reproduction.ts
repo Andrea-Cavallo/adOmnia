@@ -3,7 +3,7 @@
 // template, logs and stacks. Secrets are stripped; non-deterministic values are listed.
 import type { LiveLogEntry, LiveMessage, LiveQuery, RequestRun } from '@/lib/devsession-api'
 import type { OtlpSpan } from '@/lib/otlp-api'
-import type { ConfigReport } from '@/lib/goide/configReport'
+import type { ConfigReport, ConfigKey } from '@/lib/goide/configReport'
 import type { KVRow, RequestBody } from '@/lib/types'
 import { FIXTURE_FORMAT } from '@/lib/kafkaFixture'
 
@@ -26,8 +26,21 @@ export interface ReproInput {
   spans?: OtlpSpan[]
   /** Variables the service reads and the .env profiles that set them (secrets already masked). */
   config?: ConfigReport
+  /** Database and broker dependencies the project declares (devcontext datasources), for the Compose file. */
+  datasources?: ReproDatasource[]
+  /** Schema of the tables the captured statements touch, read live from Database Studio when a connection matches. */
+  dbSchema?: string
   /** ISO timestamp used for the folder name. */
   createdAt: string
+}
+
+/** A dependency the project declares, enough to write a Compose service for it. */
+export interface ReproDatasource {
+  /** devcontext datasource type: postgres, mysql, mariadb, mongodb, redis, kafka… */
+  type: string
+  database?: string
+  host?: string
+  port?: string
 }
 
 export interface ReproFile {
@@ -99,6 +112,116 @@ export function nonDeterministic(texts: string[], sql: string[]): string[] {
   }
   for (const statement of sql) for (const match of statement.matchAll(SQL_CLOCK)) found.add(`SQL ${match[1].toUpperCase()}`)
   return [...found]
+}
+
+const IGNORED_TABLES = new Set(['select', 'values', 'set', 'where', 'dual'])
+
+/** Tables the captured statements read or write, lower-cased, unique and sorted. */
+export function tablesIn(statements: readonly string[]): string[] {
+  const found = new Set<string>()
+  const patterns = [
+    /\bfrom\s+([a-z_][\w$]*(?:\.[a-z_][\w$]*)?)/gi,
+    /\bjoin\s+([a-z_][\w$]*(?:\.[a-z_][\w$]*)?)/gi,
+    /\binto\s+([a-z_][\w$]*(?:\.[a-z_][\w$]*)?)/gi,
+    /\bupdate\s+([a-z_][\w$]*(?:\.[a-z_][\w$]*)?)/gi,
+  ]
+  for (const statement of statements) {
+    // Blank string literals so a word after FROM/JOIN inside data cannot look like a table.
+    const sql = statement.replace(/'(?:[^']|'')*'/g, "''")
+    for (const pattern of patterns) {
+      for (const match of sql.matchAll(pattern)) {
+        const name = match[1].toLowerCase()
+        if (!IGNORED_TABLES.has(name)) found.add(name)
+      }
+    }
+  }
+  return [...found].sort()
+}
+
+const FLAG_NAME = /(^|_)(feature|flag|toggle|experiment|ff)(_|$)|_enabled$|_disabled$/i
+
+/** Configuration keys whose names look like feature flags (FEATURE_*, *_ENABLED, FF_*, …). */
+export function featureFlags(config: ConfigReport | undefined): ConfigKey[] {
+  return (config?.keys ?? []).filter((key) => FLAG_NAME.test(key.name))
+}
+
+interface ComposeSpec {
+  image: string
+  port: number
+  env?: string[]
+}
+
+const COMPOSE_IMAGES: Record<string, ComposeSpec> = {
+  postgres: { image: 'postgres:16-alpine', port: 5432, env: ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'] },
+  postgresql: { image: 'postgres:16-alpine', port: 5432, env: ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'] },
+  mysql: { image: 'mysql:8', port: 3306, env: ['MYSQL_ROOT_PASSWORD', 'MYSQL_DATABASE'] },
+  mariadb: { image: 'mariadb:11', port: 3306, env: ['MARIADB_ROOT_PASSWORD', 'MARIADB_DATABASE'] },
+  mongodb: { image: 'mongo:7', port: 27017 },
+  mongo: { image: 'mongo:7', port: 27017 },
+  redis: { image: 'redis:7-alpine', port: 6379 },
+  kafka: { image: 'apache/kafka:3.7.1', port: 9092 },
+}
+
+/**
+ * A Compose file with the project's declared dependencies (databases and brokers), so the
+ * reproduction can be replayed without a colleague rebuilding their local environment by hand.
+ * Credentials are left as environment variables to fill, never written here.
+ */
+export function composeYaml(datasources: readonly ReproDatasource[]): string | undefined {
+  const seen = new Set<string>()
+  const services: string[] = []
+  const dollar = (expression: string) => '${' + expression + '}'
+  for (const source of datasources) {
+    const key = source.type.toLowerCase()
+    const spec = COMPOSE_IMAGES[key]
+    if (!spec || seen.has(key)) continue
+    seen.add(key)
+    const lines = [`  ${key}:`, `    image: ${spec.image}`]
+    const env = spec.env ?? []
+    if (env.length) lines.push('    environment:', ...env.map((name) => `      ${name}: ${dollar(name)}`))
+    lines.push('    ports:', `      - "${dollar(`${key.toUpperCase()}_PORT:-${spec.port}`)}:${spec.port}"`)
+    services.push(lines.join('\n'))
+  }
+  if (!services.length) return undefined
+  return `# Dependencies the reproduction needs: fill the values or export them before "docker compose up -d".
+services:
+${services.join('\n')}
+`
+}
+
+function dbMarkdown(tables: string[], queries: LiveQuery[], schema: string | undefined): string {
+  const counts = new Map<string, number>()
+  for (const query of queries) for (const table of tablesIn([query.sql])) counts.set(table, (counts.get(table) ?? 0) + 1)
+  const rows = tables.map((table) => `| \`${table}\` | ${counts.get(table) ?? 0} |`)
+  const schemaSection = schema
+    ? schema
+    : "No Database Studio connection matched the project's datasource: the schema was not captured. Open the connection and save the reproduction again."
+  return `# Database state at the captured request
+
+Tables the captured statements touch. Bring them to the state \`queries.sql\` expects before replaying.
+
+| Table | Statements |
+| --- | --- |
+${rows.length ? rows.join('\n') : '| _(none detected)_ | 0 |'}
+
+## Schema
+
+${schemaSection}
+`
+}
+
+function flagsMarkdown(flags: ConfigKey[], profiles: string[]): string {
+  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/\|/g, '\\|')}\``)
+  const rows = flags.map((flag) => `| \`${flag.name}\` | ${flag.status} | ${profiles.map((profile) => cell(flag.values[profile])).join(' | ')} |`)
+  return `# Feature flags
+
+Flags the service reads, with the value captured when the bug was seen (secret-looking values masked).
+Set them to these values before replaying the request.
+
+| Flag | Status | ${profiles.join(' | ')} |
+| --- | --- | ${profiles.map(() => '---').join(' | ')} |
+${rows.join('\n')}
+`
 }
 
 function bodyText(body: RequestBody | undefined): string {
@@ -189,6 +312,9 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
   const env = variablesIn(request.url, ...headers.map((header) => header.value), body)
   const sql = input.queries.map((query) => query.sql)
   const flaky = nonDeterministic([request.url, rawBody, ...headers.map((header) => header.value)], sql)
+  const tables = tablesIn(sql)
+  const flags = featureFlags(input.config)
+  const compose = composeYaml(input.datasources ?? [])
   const files: ReproFile[] = []
   const add = (file: string, content: string) => files.push({ relativePath: `${dir}/${file}`, content })
 
@@ -218,11 +344,16 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
   if (run.hits.length) {
     add('stack.txt', `${run.hits.map((hit) => [`${hit.at} ${hit.function} ${hit.relativePath ?? hit.file ?? ''}:${hit.line}`, ...(hit.stack ?? []).map((frame) => `    ${frame.function} ${frame.relativePath ?? frame.file ?? ''}:${frame.line}`)].join('\n')).join('\n\n')}\n`)
   }
+  if (tables.length || input.dbSchema) add('db/tables.md', dbMarkdown(tables, input.queries, input.dbSchema))
+  if (flags.length) add('flags.md', flagsMarkdown(flags, input.config?.profiles ?? []))
+  if (compose) add('docker-compose.yml', compose)
 
   const steps = [
     `Start ${input.service} with the configuration of \`.env.example\` (fill the values).`,
-    ...(input.queries.length ? ['Bring the database to the state the statements in `queries.sql` expect.'] : []),
+    ...(compose ? ['Bring the dependencies up with `docker compose up -d` (see `docker-compose.yml`).'] : []),
+    ...(input.queries.length ? [`Bring the database to the state the statements in \`queries.sql\` expect${tables.length ? ' (`db/tables.md` lists the tables and their schema)' : ''}.`] : []),
     ...(input.messages.length ? ['If the flow starts from a message, load the `kafka/*.kafka.json` fixtures in Broker Studio (Producer → Load fixture).'] : []),
+    ...(flags.length ? ['Set the feature flags listed in `flags.md` to the captured values.'] : []),
     `Send \`request.http\` (adOmnia, VS Code REST Client or IntelliJ), or run \`BASE_URL=http://localhost:PORT go test ./${dir}/\`.`,
   ]
   const index = files.map((file) => `- \`${file.relativePath.slice(dir.length + 1)}\``).join('\n')
