@@ -4,26 +4,37 @@ import type { GoIDEProfileReport } from '@/lib/goide-api'
 export interface PackageRuntime {
   profile: string
   metric: string
+  total: number
+  /** Project folder → inclusive cost. */
   byPackage: Record<string, number>
-  calls: string[] // "a → b"
+  calls: string[] // "dir → dir"
 }
 
 const PREFERRED = ['cpu', 'alloc_space', 'inuse_space']
 
+const dirOf = (file?: string) => (file ? (file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '.') : '')
+
+/**
+ * Inclusive cost per project folder (a Go package): the most expensive function of the folder by
+ * cumulative value, so time spent in the standard library counts for the code that called it.
+ * Folders come from the profile's project-relative file paths (pprof names `package main` just "main").
+ */
 export function packageRuntime(report: GoIDEProfileReport): PackageRuntime {
   const names = report.sampleTypes.map((type) => type.name)
   const preferred = PREFERRED.map((name) => names.indexOf(name)).find((index) => index >= 0)
   const index = preferred ?? Math.max(0, names.length - 1)
   const byPackage: Record<string, number> = {}
-  for (const node of report.topFlat ?? []) {
-    const pkg = node.function.package
-    if (pkg) byPackage[pkg] = (byPackage[pkg] ?? 0) + (node.flat[index] ?? 0)
+  for (const node of report.topCum ?? []) {
+    const dir = dirOf(node.function.relative)
+    if (dir) byPackage[dir] = Math.max(byPackage[dir] ?? 0, node.cum[index] ?? 0)
   }
   const calls = new Set<string>()
   for (const edge of report.edges ?? []) {
-    if (edge.caller.package && edge.callee.package && edge.caller.package !== edge.callee.package) calls.add(`${edge.caller.package} → ${edge.callee.package}`)
+    const from = dirOf(edge.caller.relative)
+    const to = dirOf(edge.callee.relative)
+    if (from && to && from !== to) calls.add(`${from} → ${to}`)
   }
-  return { profile: report.name, metric: names[index] ?? '', byPackage, calls: [...calls] }
+  return { profile: report.name, metric: names[index] ?? '', total: report.totals?.[index] ?? 0, byPackage, calls: [...calls] }
 }
 
 export interface HeatmapRow {
@@ -39,20 +50,23 @@ export interface HeatmapRow {
 }
 
 interface HeatmapInput {
-  packages: Array<{ package: string; fanIn: number; fanOut: number; blastRadius: number; functions: number }>
+  packages: Array<{ package: string; fanIn: number; fanOut: number; blastRadius: number; functions: number; dir?: string }>
   imports: Array<[string, string]>
 }
 
 /** Rows sorted by runtime share (with a profile) or coupling, and the static imports no profiled call crossed. */
 export function dependencyHeatmap(input: HeatmapInput, runtime: PackageRuntime | null): { rows: HeatmapRow[]; untraversed: string[] } {
-  const total = runtime ? Object.values(runtime.byPackage).reduce((sum, value) => sum + value, 0) : 0
-  const rows = input.packages.map((item) => ({
+  const total = runtime?.total || Math.max(0, ...Object.values(runtime?.byPackage ?? {}))
+  const dirOfPackage = new Map(input.packages.map((item) => [item.package, item.dir ?? '']))
+  const rows = input.packages.map(({ dir, ...item }) => ({
     ...item,
     coupling: item.fanIn * item.fanOut,
-    runtimeShare: runtime && total > 0 ? (runtime.byPackage[item.package] ?? 0) / total : null,
+    runtimeShare: runtime && total > 0 ? Math.min(1, (runtime.byPackage[dir ?? ''] ?? 0) / total) : null,
   }))
   rows.sort((left, right) => (right.runtimeShare ?? 0) - (left.runtimeShare ?? 0) || right.coupling - left.coupling || right.blastRadius - left.blastRadius || left.package.localeCompare(right.package))
   const traversed = new Set(runtime?.calls ?? [])
-  const untraversed = runtime ? input.imports.map(([from, to]) => `${from} → ${to}`).filter((edge) => !traversed.has(edge)).sort() : []
+  const untraversed = runtime
+    ? input.imports.filter(([from, to]) => !traversed.has(`${dirOfPackage.get(from)} → ${dirOfPackage.get(to)}`)).map(([from, to]) => `${from} → ${to}`).sort()
+    : []
   return { rows, untraversed }
 }

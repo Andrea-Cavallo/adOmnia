@@ -1,6 +1,9 @@
 package graph
 
-import "sort"
+import (
+	"path"
+	"sort"
+)
 
 // PackageMetric misura l'accoppiamento di un package del progetto nel grafo statico.
 type PackageMetric struct {
@@ -10,6 +13,8 @@ type PackageMetric struct {
 	FanOut      int    `json:"fanOut"`      // package del progetto che importa
 	BlastRadius int    `json:"blastRadius"` // package che ne dipendono, anche indirettamente
 	Functions   int    `json:"functions"`
+	// Dir: cartella del package relativa al progetto (per legarlo ai file dei profili).
+	Dir string `json:"dir,omitempty"`
 }
 
 // PackageMetrics restituisce le metriche di ogni package e gli import fra package del progetto.
@@ -26,7 +31,7 @@ func (x *Index) PackageMetrics() ([]PackageMetric, [][2]string) {
 	metrics := map[string]*PackageMetric{}
 	for _, id := range packages {
 		node := x.byID[id]
-		metrics[id] = &PackageMetric{Package: node.Label, Module: node.Attrs["module"]}
+		metrics[id] = &PackageMetric{Package: node.Label, Module: node.Attrs["module"], Dir: path.Dir(node.File)}
 	}
 	for _, id := range packages {
 		for _, edge := range x.out[id] {

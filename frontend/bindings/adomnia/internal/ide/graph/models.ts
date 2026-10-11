@@ -325,6 +325,11 @@ export class PackageMetric {
     "blastRadius": number;
     "functions": number;
 
+    /**
+     * Dir: cartella del package relativa al progetto (per legarlo ai file dei profili).
+     */
+    "dir"?: string;
+
     /** Creates a new PackageMetric instance. */
     constructor($$source: Partial<PackageMetric> = {}) {
         if (!("package" in $$source)) {
