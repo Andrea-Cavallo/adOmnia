@@ -552,6 +552,18 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 **Separate windows** (*File → Open Project in New Window*) are covered by automated tests only. They will be declared supported in the release notes once the manual check in a real window (M31) passes.
 
+## Architecture rules and drift
+
+*Architecture Explorer → Rules & drift* checks the code against `.adomnia/architecture.json` (*Create architecture rules* writes a template; commit it to share the rules). Package patterns are relative to the module (`internal/domain/...` is the folder and everything below, `*` one segment):
+
+- `layers` and `allow`: which layer may import which (a layer missing from `allow` is unconstrained);
+- `forbidden`: imports a package or a whole layer (`"from": "layer:domain"`) must not use, standard library and external modules included, with a reason;
+- `domains` (with `shared`) and `services` (patterns on full package paths, e.g. modules): boundaries that must not be crossed;
+- `databaseLayers` and `brokerLayers`: the only layers allowed to query tables or produce/consume messages;
+- `noCycles`: import cycles between project packages (on by default).
+
+Every violation opens the package or function that causes it. *Compare with* a branch, tag or commit checks that revision out in a temporary Git worktree, analyzes it with today's rules and lists the violations it introduced or fixed and the package imports added or removed since then. The worktree is removed afterwards.
+
 ## Workspace graph and change impact
 
 gO Studio keeps a **Semantic Workspace Graph** of a trusted project: modules, packages, files, functions, methods, tests, interfaces with their implementations, HTTP routes, gRPC services, Kafka topics (producers and consumers), SQL tables and entry points. It is built from the Architecture Explorer model (go/packages with types, no code is run), saved under the adOmnia data folder (`goide/graphs`, never in the project) and reused until a `.go`, `go.mod` or `go.work` file changes.

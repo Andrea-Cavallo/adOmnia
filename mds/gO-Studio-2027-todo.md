@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 75 | 3 |
+| **P4** | AI e intelligenza del workspace | 62 | 3 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -184,21 +184,7 @@ _Chiusa il 2026-10-10 (Debug with AI): contesto completo alla pausa, situazione 
 
 ## §38 · Architectural Drift Detection
 
-> Confrontare l'architettura desiderata con ciò che il codice sta diventando.
-
-- [ ] Definire architecture rules.
-- [ ] Package boundaries.
-- [ ] Forbidden imports.
-- [ ] Allowed dependencies.
-- [ ] Layer rules.
-- [ ] Domain boundaries.
-- [ ] Service boundaries.
-- [ ] No direct DB access outside repository.
-- [ ] No broker calls from forbidden layers.
-- [ ] No HTTP client from domain layer.
-- [ ] Circular dependencies.
-- [ ] Drift report.
-- [ ] Diff architecture per commit/branch.
+_Chiusa il 2026-10-11: regole in `.adomnia/architecture.json` (layer, dipendenze consentite, import vietati, domini, servizi, DB e broker solo nei layer ammessi, cicli), report nella tab *Rules & drift* dell'Architecture Explorer e confronto con un branch/commit._
 
 ## §56 · Nuove idee da valutare
 
