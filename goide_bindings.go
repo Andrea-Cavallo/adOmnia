@@ -5,6 +5,7 @@ import (
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
+	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
 	"adomnia/internal/plugins"
 	"context"
@@ -1418,6 +1419,16 @@ func (g *GoIDE) CompareArchitecture(sessionID, ref string) (goide.ArchitectureDi
 // PackageHeatmap dà fan-in, fan-out e blast radius dei package e gli import del progetto.
 func (g *GoIDE) PackageHeatmap(sessionID string) (goide.PackageHeatmap, error) {
 	return g.service.PackageHeatmap(sessionID)
+}
+
+// APIContractDrift confronta route e DTO del codice con il contratto OpenAPI del progetto.
+func (g *GoIDE) APIContractDrift(sessionID string) (goide.APIContractReport, error) {
+	return g.service.APIContractDrift(sessionID)
+}
+
+// CompareAPI elenca le modifiche all'API (e quelle che rompono i client) rispetto a un ref Git.
+func (g *GoIDE) CompareAPI(sessionID, ref string) ([]apicontract.Issue, error) {
+	return g.service.CompareAPI(sessionID, ref)
 }
 
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).

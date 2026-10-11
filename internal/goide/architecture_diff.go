@@ -68,12 +68,9 @@ func violationKey(v graph.Violation) string { return v.Rule + "\x00" + v.Message
 
 // CompareArchitecture analizza ref in un worktree temporaneo (rimosso alla fine) e lo confronta con oggi.
 func (s *Service) CompareArchitecture(sessionID, ref string) (ArchitectureDiff, error) {
-	session, paths, err := s.vcsPaths(sessionID)
+	session, err := s.session(sessionID)
 	if err != nil {
 		return ArchitectureDiff{}, err
-	}
-	if strings.TrimSpace(ref) == "" {
-		return ArchitectureDiff{}, errors.New("choose a branch, tag or commit to compare with")
 	}
 	rules, _, err := graph.LoadRules(session.Project.RealPath)
 	if err != nil {
@@ -83,26 +80,11 @@ func (s *Service) CompareArchitecture(sessionID, ref string) (ArchitectureDiff, 
 	if err != nil {
 		return ArchitectureDiff{}, err
 	}
-	temp, err := os.MkdirTemp("", "adomnia-arch-")
-	if err != nil {
-		return ArchitectureDiff{}, err
-	}
-	worktree := filepath.Join(temp, "tree")
-	defer func() {
-		_ = git.RemoveWorktree(paths.repoRoot, worktree, true)
-		_ = os.RemoveAll(temp)
-	}()
-	if err := git.AddDetachedWorktree(paths.repoRoot, worktree, ref); err != nil {
-		return ArchitectureDiff{}, err
-	}
-	// Il progetto può essere una sottocartella del repository.
-	sub, _ := filepath.Rel(paths.repoRoot, session.Project.RealPath)
-	base, err := s.analyzeArchitectureAt(sessionID, filepath.Join(worktree, sub))
+	base, err := s.analyzeRevision(sessionID, ref)
 	if err != nil {
 		return ArchitectureDiff{}, err
 	}
 	builder := golang.GraphFromArchitecture(base.Report)
-	graph.AddComposeServices(builder, filepath.Join(worktree, sub), graph.FindComposeFiles(filepath.Join(worktree, sub)))
 	baseGraph := builder.Graph()
 	baseReport := graph.NewIndex(&baseGraph).CheckDrift(rules, true)
 	nowReport := current.index.CheckDrift(rules, true)
@@ -138,4 +120,42 @@ func (s *Service) CompareArchitecture(sessionID, ref string) (ArchitectureDiff, 
 	sort.Strings(diff.AddedImports)
 	sort.Strings(diff.RemovedImports)
 	return diff, nil
+}
+
+// revisionAnalysis è l'analisi di un'altra revisione; root è la sua copia (già rimossa al ritorno:
+// i file non vanno più letti, i percorsi del report sono relativi).
+type revisionAnalysis struct {
+	ArchitectureResult
+	root string
+}
+
+// analyzeRevision analizza ref in un worktree temporaneo e lo rimuove prima di tornare.
+func (s *Service) analyzeRevision(sessionID, ref string) (revisionAnalysis, error) {
+	session, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return revisionAnalysis{}, err
+	}
+	if strings.TrimSpace(ref) == "" {
+		return revisionAnalysis{}, errors.New("choose a branch, tag or commit to compare with")
+	}
+	temp, err := os.MkdirTemp("", "adomnia-rev-")
+	if err != nil {
+		return revisionAnalysis{}, err
+	}
+	worktree := filepath.Join(temp, "tree")
+	defer func() {
+		_ = git.RemoveWorktree(paths.repoRoot, worktree, true)
+		_ = os.RemoveAll(temp)
+	}()
+	if err := git.AddDetachedWorktree(paths.repoRoot, worktree, ref); err != nil {
+		return revisionAnalysis{}, err
+	}
+	// Il progetto può essere una sottocartella del repository.
+	sub, _ := filepath.Rel(paths.repoRoot, session.Project.RealPath)
+	root := filepath.Join(worktree, sub)
+	result, err := s.analyzeArchitectureAt(sessionID, root)
+	if err != nil {
+		return revisionAnalysis{}, err
+	}
+	return revisionAnalysis{ArchitectureResult: result, root: root}, nil
 }
