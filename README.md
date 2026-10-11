@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>From API request to Go breakpoint. One connected workspace.</strong><br>
-  Write the service. Send the request. Follow the code, data and events — all inside adOmnia.
+  <strong>API development, Go debugging and service inspection in one desktop application.</strong><br>
+  An API workbench and Go IDE with database, messaging, logs and profiling tools.
 </p>
 
 <p align="center">
@@ -14,17 +14,17 @@
   <a href="docs/QUICKSTART.it.md">Guida in italiano</a>
 </p>
 
-## See the connected workflow
+## Demo
 
 [![Watch the demo: API request, Go handler and successful response](docs/screenshots/api-connected.png)](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)
 
 **[▶ Watch the demo on YouTube — starting at 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)**
 
-*A real desktop session: request and response beside the Go handler serving the endpoint. The preview opens the video; GitHub does not embed a YouTube player.*
+*API Workspace showing a request, its response and the associated Go handler. Select the image to watch the demonstration.*
 
-## The strength of adOmnia: everything connects
+## API development and service debugging
 
-**Send a request. Find its handler. Stop at a breakpoint. Inspect the variables. Follow the logs, queries and messages.** adOmnia brings the API workbench and Go IDE into one desktop workflow, with supporting studios you can open beside the code.
+adOmnia combines API testing and Go development. Requests can be linked to detected handlers, executed against a running service and inspected in the debugger. Database, messaging, log and trace tools are available in the same application.
 
 A Go service started in **Go Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker capture add evidence around the same request, so you can move from a response to the code and data behind it.
 
@@ -35,26 +35,26 @@ Go Studio    →    Live service    →    API Workspace    →    Handler / bre
                                                    Variables · logs · SQL · messages
 ```
 
-### Six reasons to make it your workspace
+### Core capabilities
 
-| Strength | What it gives you |
+| Capability | Description |
 | --- | --- |
-| **An API workbench connected to your code** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation. |
+| **API testing and source navigation** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation. |
 | **Request-driven debugging** | Debug Request starts or reuses a compatible Delve session. Inspect frames, variables and goroutines, step through the handler and return to the response. |
 | **Data and events beside the request** | Database, Broker, Log and Trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request. |
-| **Go tools with visual depth** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
+| **Go development and profiling** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
 | **Enterprise protocols in the same workflow** | HTTP, SOAP/WSDL, WS-Security, gRPC, WebSocket/SSE, mTLS and certificate tools support both modern APIs and existing systems. |
-| **A workspace you control** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across your monitors. |
+| **Local storage and multiple windows** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across your monitors. |
 
-### Local-first, with deliberate connections
+### Storage and external services
 
 **No account required to use the application.** Collections, settings and project state stay local. You choose the APIs, databases, brokers and optional AI providers to connect to. External providers receive the context you configure and permit; project policies help control what is shared.
 
-### One application, several views of the same work
+### Projects and windows
 
 Keep a service in Go Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance. Each project retains its own editor and tooling session; the studios remain part of the connected application.
 
-**The payoff is continuity:** write, run, call, debug and inspect without rebuilding the context at every step.
+The workflow preserves links between the project, service session, API request and available diagnostic evidence.
 
 ## Start with your API
 
@@ -89,14 +89,14 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 
 ![Go Studio in the light appearance, paused at a breakpoint with goroutines and variables](docs/screenshots/go-debug-light.png)
 
-*Source, breakpoint, goroutines, variables and console together. Screenshots show real sessions; individual controls can differ between releases.*
+*Go Studio paused at a breakpoint, with source code, goroutines, variables and console output. Controls may differ between releases.*
 
 - **Edit and navigate:** gopls completion, diagnostics, references, rename, refactoring, project search and Git.
 - **Run, test and debug:** Go configurations, test explorer, coverage and Delve with conditional breakpoints and goroutine inspection.
 - **Understand the project:** routes, dependencies, interfaces, architecture and change-impact views.
 - **Measure behavior:** pprof profiles, execution traces, benchmarks and concurrency tools.
 - **Keep work together:** terminal, local history, recovery snapshots and multiple projects/windows within one adOmnia instance.
-- **Use AI deliberately:** contextual assistance with configured providers and project policies; review changes before applying them.
+- **AI assistance:** contextual assistance with configured providers and project policies; review changes before applying them.
 
 Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for API Workspace, Database or Broker beside the code.
 
