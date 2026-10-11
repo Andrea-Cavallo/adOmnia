@@ -36,3 +36,27 @@ func APIOperations(report ArchitectureReport) []apicontract.Operation {
 	}
 	return operations
 }
+
+// EventShapes: per ogni producer/consumer di messaggi con un tipo serializzato riconosciuto,
+// i campi JSON del messaggio su ciascun topic.
+func EventShapes(report ArchitectureReport) []apicontract.EventShape {
+	schemas := map[string]ArchSchema{}
+	for _, schema := range report.Schemas {
+		schemas[schema.Name] = schema
+	}
+	var shapes []apicontract.EventShape
+	for _, entry := range report.Entries {
+		broker, role, ok := strings.Cut(entry.Kind, "-")
+		if !ok || (role != "producer" && role != "consumer") || entry.Event == nil {
+			continue
+		}
+		var fields []apicontract.Field
+		for _, field := range schemas[entry.Event.Ref].Fields {
+			fields = append(fields, apicontract.Field{Name: field.Name, Type: field.Type, Ref: field.Ref, Required: field.Required})
+		}
+		for _, topic := range entry.Topics {
+			shapes = append(shapes, apicontract.EventShape{Topic: topic, Broker: broker, Role: role, Function: entry.Function, Schema: entry.Event.Ref, Fields: fields, File: entry.Site.Path, Line: entry.Site.Line})
+		}
+	}
+	return shapes
+}

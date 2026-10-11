@@ -71,7 +71,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['data', `Data access${report ? ` (${report.queries.length})` : ''}`],
     ['modules', `Modules${report ? ` (${report.modules.length})` : ''}`],
     ['heatmap', 'Heatmap'],
-    ['contract', 'API contract'],
+    ['contract', 'Contracts'],
     ['rules', 'Rules & drift'],
   ]
   return (

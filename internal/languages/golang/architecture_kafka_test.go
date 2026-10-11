@@ -74,6 +74,12 @@ func TestKafkaGroupsSerializersAndTopicRoles(t *testing.T) {
 	if consumer.Group != "billing-worker" || consumer.Serializer != "JSON" || len(consumer.Topics) != 1 || consumer.Topics[0] != "invoices" {
 		t.Fatalf("consumer: %+v", consumer)
 	}
+	if consumer.Event == nil || consumer.Event.Ref != "Invoice" {
+		t.Fatalf("consumer event type: %+v", consumer.Event)
+	}
+	if shapes := EventShapes(report); len(shapes) != 1 || shapes[0].Topic != "invoices" || shapes[0].Role != "consumer" {
+		t.Fatalf("event shapes: %+v", shapes)
+	}
 	if consumer.BreakSite == nil || consumer.BreakSite.Offset <= consumer.Site.Offset {
 		t.Fatalf("consumer break site should follow the read: %+v", consumer)
 	}

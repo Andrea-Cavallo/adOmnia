@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { APIContractReport } from '../../../bindings/adomnia/internal/goide/models'
+import type { APIContractReport, EventContractReport } from '../../../bindings/adomnia/internal/goide/models'
 import type { Issue } from '../../../bindings/adomnia/internal/ide/apicontract/models'
 import { useGoIDEStore } from '@/stores/goide'
 
@@ -10,6 +10,8 @@ const KIND_LABEL: Record<string, string> = {
   'field-missing-in-contract': 'Field missing in the contract', 'field-missing-in-code': 'Field missing in the code', 'required-mismatch': 'Required differs',
   'removed-operation': 'Removed operations', 'added-operation': 'New operations', 'removed-field': 'Removed fields', 'added-field': 'New fields',
   'type-changed': 'Field types changed', 'became-required': 'Fields that became required',
+  'event-missing-field': 'Consumers read fields nobody sends', 'event-type-mismatch': 'Producer and consumer types differ',
+  'schema-missing-field': 'Message fields missing in the schema', 'schema-type-mismatch': 'Message types differ from the schema', 'schema-missing-in-code': 'Schema fields missing in the message',
 }
 
 function IssueGroups({ issues }: { issues: Issue[] }) {
@@ -44,15 +46,25 @@ export function GoStudioApiContract({ sessionId }: { sessionId: string }) {
   const [base, setBase] = useState('main')
   const [diff, setDiff] = useState<Issue[] | null>(null)
   const [comparing, setComparing] = useState(false)
+  const [events, setEvents] = useState<EventContractReport | null>(null)
+  const [eventDiff, setEventDiff] = useState<Issue[] | null>(null)
   const check = async () => {
     setRunning(true)
     setError(null)
-    try { setReport(await GoIDE.APIContractDrift(sessionId)) } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setRunning(false) }
+    try {
+      const [api, messages] = await Promise.all([GoIDE.APIContractDrift(sessionId), GoIDE.EventContractDrift(sessionId)])
+      setReport(api)
+      setEvents(messages)
+    } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setRunning(false) }
   }
   const compare = async () => {
     setComparing(true)
     setError(null)
-    try { setDiff((await GoIDE.CompareAPI(sessionId, base.trim())) ?? []) } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setComparing(false) }
+    try {
+      const [api, messages] = await Promise.all([GoIDE.CompareAPI(sessionId, base.trim()), GoIDE.CompareEvents(sessionId, base.trim())])
+      setDiff(api ?? [])
+      setEventDiff(messages ?? [])
+    } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setComparing(false) }
   }
   useEffect(() => { void check() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
   const breaking = (diff ?? []).filter((issue) => issue.breaking).length
@@ -76,6 +88,18 @@ export function GoStudioApiContract({ sessionId }: { sessionId: string }) {
           <section aria-label="API diff" className="mb-3 rounded-md border border-border-1 p-2">
             <h4 className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Since {base} · {diff.length} changes · {breaking} breaking</h4>
             {diff.length === 0 ? <p className="text-text-4">The API did not change.</p> : <IssueGroups issues={diff} />}
+          </section>
+        )}
+        {eventDiff && (
+          <section aria-label="Event diff" className="mb-3 rounded-md border border-border-1 p-2">
+            <h4 className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Messages since {base} · {eventDiff.length} changes · {eventDiff.filter((issue) => issue.breaking).length} breaking</h4>
+            {eventDiff.length === 0 ? <p className="text-text-4">The produced messages did not change.</p> : <IssueGroups issues={eventDiff} />}
+          </section>
+        )}
+        {events && events.events > 0 && (
+          <section aria-label="Event contracts" className="mb-3">
+            <h4 className="px-1 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Events · {events.topics.length} topics{events.schemas.length ? ` · schemas: ${events.schemas.join(', ')}` : ''}</h4>
+            {events.issues.length === 0 ? <p className="px-1 text-text-3">Producers, consumers{events.schemas.length ? ' and schemas' : ''} agree on every message.</p> : <IssueGroups issues={events.issues} />}
           </section>
         )}
         {report?.contract && (report.issues.length === 0 ? <p className="p-1 text-text-3">Routes and DTOs match {report.contract}.</p> : <IssueGroups issues={report.issues} />)}

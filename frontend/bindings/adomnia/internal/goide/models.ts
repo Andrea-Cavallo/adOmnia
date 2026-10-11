@@ -2253,6 +2253,54 @@ export class ErrorTypeEntry {
 export const EvaluateResult = dap$0.EvaluateResult;
 export type EvaluateResult = dap$0.EvaluateResult;
 
+/**
+ * EventContractReport confronta i messaggi prodotti e consumati fra loro e con gli schemi del progetto.
+ */
+export class EventContractReport {
+    "events": number;
+    "topics": string[];
+    "schemas": string[];
+    "issues": apicontract$0.Issue[];
+
+    /** Creates a new EventContractReport instance. */
+    constructor($$source: Partial<EventContractReport> = {}) {
+        if (!("events" in $$source)) {
+            this["events"] = 0;
+        }
+        if (!("topics" in $$source)) {
+            this["topics"] = [];
+        }
+        if (!("schemas" in $$source)) {
+            this["schemas"] = [];
+        }
+        if (!("issues" in $$source)) {
+            this["issues"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EventContractReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EventContractReport {
+        const $$createField1_0 = $$createType4;
+        const $$createField2_0 = $$createType4;
+        const $$createField3_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("topics" in $$parsedSource) {
+            $$parsedSource["topics"] = $$createField1_0($$parsedSource["topics"]);
+        }
+        if ("schemas" in $$parsedSource) {
+            $$parsedSource["schemas"] = $$createField2_0($$parsedSource["schemas"]);
+        }
+        if ("issues" in $$parsedSource) {
+            $$parsedSource["issues"] = $$createField3_0($$parsedSource["issues"]);
+        }
+        return new EventContractReport($$parsedSource as Partial<EventContractReport>);
+    }
+}
+
 export const Execution = run$0.Execution;
 export type Execution = run$0.Execution;
 

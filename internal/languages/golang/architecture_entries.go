@@ -36,6 +36,8 @@ type ArchEntry struct {
 	Middleware  []string  `json:"middleware,omitempty"`
 	Request     *ArchBody `json:"request,omitempty"`
 	Response    *ArchBody `json:"response,omitempty"`
+	// Solo producer/consumer di messaggi: il tipo Go serializzato o deserializzato (json, proto).
+	Event *ArchBody `json:"event,omitempty"`
 }
 
 // Librerie Kafka: package → metodi che producono o consumano.
@@ -226,6 +228,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 	topics := map[string]bool{}
 	group, serializer := "", ""
 	messaging := map[string]*messagingUse{} // nats/amqp producer o consumer → soggetti/code
+	var produced, consumed *ArchBody // tipo dell'evento serializzato / deserializzato nella funzione
 	setGroup := func(expression ast.Expr) {
 		if value, ok := constantString(info, expression); ok && value != "" {
 			group = value
@@ -286,6 +289,12 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 					a.addEntry(entry)
 				}
 			}
+			switch full := callee.FullName(); {
+			case produced == nil && len(node.Args) >= 1 && (full == "encoding/json.Marshal" || full == "google.golang.org/protobuf/proto.Marshal" || full == "github.com/golang/protobuf/proto.Marshal"):
+				produced = a.body(info.Types[node.Args[0]].Type, function+"Event")
+			case consumed == nil && len(node.Args) == 2 && (full == "encoding/json.Unmarshal" || full == "google.golang.org/protobuf/proto.Unmarshal" || full == "github.com/golang/protobuf/proto.Unmarshal"):
+				consumed = a.body(info.Types[node.Args[1]].Type, function+"Event")
+			}
 			if kind, library, ok := configRead(callee, packagePath, name); ok && len(node.Args) > 0 {
 				if key, ok := constantString(info, node.Args[0]); ok && key != "" {
 					a.report.Reads = append(a.report.Reads, ArchRead{Kind: kind, Key: key, Library: library, Package: file.pkg.PkgPath, Function: function, Site: site})
@@ -323,8 +332,14 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 		}
 		return true
 	})
+	eventFor := func(kind string) *ArchBody {
+		if strings.HasSuffix(kind, "-producer") {
+			return produced
+		}
+		return consumed
+	}
 	for kind, use := range messaging {
-		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: use.label, Package: file.pkg.PkgPath, Function: function, Topics: sortedSet(use.topics), Site: a.site(use.site)})
+		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: use.label, Package: file.pkg.PkgPath, Function: function, Topics: sortedSet(use.topics), Event: eventFor(kind), Site: a.site(use.site)})
 	}
 	if len(kafka) == 0 {
 		return
@@ -344,7 +359,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 		}
 	}
 	for kind, library := range kafka {
-		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Serializer: serializer, TopicRoles: roles, Site: a.site(kafkaSite)}
+		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Serializer: serializer, TopicRoles: roles, Event: eventFor(kind), Site: a.site(kafkaSite)}
 		if kind == "kafka-consumer" {
 			entry.Group = group
 			if next := statementAfter(fn.Body, consumeSite); next.IsValid() {

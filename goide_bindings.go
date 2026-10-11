@@ -1431,6 +1431,16 @@ func (g *GoIDE) CompareAPI(sessionID, ref string) ([]apicontract.Issue, error) {
 	return g.service.CompareAPI(sessionID, ref)
 }
 
+// EventContractDrift confronta producer, consumer e schemi dei messaggi.
+func (g *GoIDE) EventContractDrift(sessionID string) (goide.EventContractReport, error) {
+	return g.service.EventContractDrift(sessionID)
+}
+
+// CompareEvents elenca le modifiche ai messaggi prodotti rispetto a un ref Git.
+func (g *GoIDE) CompareEvents(sessionID, ref string) ([]apicontract.Issue, error) {
+	return g.service.CompareEvents(sessionID, ref)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

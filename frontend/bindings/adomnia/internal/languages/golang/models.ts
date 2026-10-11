@@ -145,6 +145,11 @@ export class ArchEntry {
     "request"?: ArchBody | null;
     "response"?: ArchBody | null;
 
+    /**
+     * Solo producer/consumer di messaggi: il tipo Go serializzato o deserializzato (json, proto).
+     */
+    "event"?: ArchBody | null;
+
     /** Creates a new ArchEntry instance. */
     constructor($$source: Partial<ArchEntry> = {}) {
         if (!("kind" in $$source)) {
@@ -175,6 +180,7 @@ export class ArchEntry {
         const $$createField13_0 = $$createType1;
         const $$createField14_0 = $$createType5;
         const $$createField15_0 = $$createType5;
+        const $$createField16_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("topics" in $$parsedSource) {
             $$parsedSource["topics"] = $$createField5_0($$parsedSource["topics"]);
@@ -199,6 +205,9 @@ export class ArchEntry {
         }
         if ("response" in $$parsedSource) {
             $$parsedSource["response"] = $$createField15_0($$parsedSource["response"]);
+        }
+        if ("event" in $$parsedSource) {
+            $$parsedSource["event"] = $$createField16_0($$parsedSource["event"]);
         }
         return new ArchEntry($$parsedSource as Partial<ArchEntry>);
     }

@@ -69,6 +69,7 @@ export {
     ErrorSentinel,
     ErrorTypeEntry,
     EvaluateResult,
+    EventContractReport,
     Execution,
     FileBreakpoints,
     FileChange,
