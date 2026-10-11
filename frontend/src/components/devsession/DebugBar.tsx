@@ -1,3 +1,4 @@
+import { useDistributedDebugStore } from '@/stores/distributedDebug'
 import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, Bug, Columns2, Pause, Play, Redo2, ScrollText, Square } from 'lucide-react'
 import type { DebugAction, LiveSession } from '@/lib/devsession-api'
@@ -35,10 +36,11 @@ function debugKey(event: KeyboardEvent): DebugAction | 'stop' | null {
  * to the Go Studio page.
  */
 export function DebugBar() {
+  const distributed = useDistributedDebugStore()
   const activeRail = useAppStore((s) => s.activeRail)
   useLiveCore()
   const state = useDevSessionStore.getState()
-  const session = primarySession(state, state.focusedSessionId)
+  const session = primarySession(state, distributed.sessionIds.find(id => state.sessions[id]?.state === 'paused') ?? state.focusedSessionId)
   const live = liveSessions(state)
   const hidden = !session || activeRail === 'goide'
 
@@ -66,6 +68,7 @@ export function DebugBar() {
     <div role="toolbar" aria-label="Live development session" className="flex h-7 shrink-0 items-center gap-2 border-t border-border-1 bg-surface-1 px-2.5 text-[11px] text-text-3">
       <SessionPicker session={session} sessions={live} onPick={(id) => state.focus(id)} />
       <PortEditor session={session} />
+      {distributed.sessionIds.length > 1 && <button type="button" onClick={distributed.clear} title="Disarm distributed debug for subsequent requests" className="text-accent">Distributed debug · {distributed.sessionIds.length} services ×</button>}
       <span className={cn('font-semibold uppercase tracking-[0.08em]', paused ? 'text-warning' : session.state === 'error' ? 'text-error' : 'text-text-4')}>
         {stateLabel(session)}
       </span>

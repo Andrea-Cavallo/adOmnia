@@ -88,6 +88,15 @@ async function openContract(ref: EntityRef): Promise<void> {
 /** Registers the v1 openers once; returns a disposer (used by HMR and tests). */
 export function registerDefaultOpeners(): () => void {
   const offs = [
+    registerOpener('artifact', { intent: 'inspect', title: 'Inspect certificate or keystore', isDefault: true, run: async ref => {
+      if (!ref.sessionId) throw new Error('The source project is no longer open')
+      const { openProjectArtifact } = await import('@/lib/goide/projectArtifacts')
+      await openProjectArtifact(ref, 'inspect')
+    } }),
+    ...(['soap', 'security', 'xml', 'mtls'] as const).map(intent => registerOpener('artifact', {
+      intent, title: { soap: 'Open in SOAP Studio', security: 'Configure WS-Security', xml: 'Open in XML Tools', mtls: 'Configure mTLS' }[intent],
+      run: async ref => { const { openProjectArtifact } = await import('@/lib/goide/projectArtifacts'); await openProjectArtifact(ref, intent) },
+    })),
     registerOpener('service', { intent: 'runtime', title: 'Inspect runtime in gO', available: ref => !!ref.attrs.runtimeSpan, run: ref => handoffToPanel('goide', ref, 'runtime') }),
     registerOpener('*', {
       intent: 'source', title: 'Open source in gO',

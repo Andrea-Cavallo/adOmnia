@@ -104,7 +104,10 @@ function handoffItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
   if (!entry || entry.directory) return []
   return [
     ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
-    ...(isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Open in Power Tools: Inspect / Encrypt Key', icon: KeyRound, separatorBefore: true }] : []),
+    ...(/\.(wsdl|xml)$/i.test(entry.relativePath) ? [{ id: 'soapTools', label: 'Open in SOAP Studio', icon: Send, separatorBefore: true }, { id: 'soapSecurity', label: 'Configure WS-Security', icon: KeyRound }] : []),
+    ...(/\.(xml|xsd|wsdl)$/i.test(entry.relativePath) ? [{ id: 'xmlTools', label: 'Open in XML Tools', icon: FileCode2 }] : []),
+    ...(/\.(pem|crt|cer)$/i.test(entry.relativePath) ? [{ id: 'mtlsTools', label: 'Configure HTTP mTLS', icon: KeyRound }] : []),
+    ...(isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Inspect certificate / keystore', icon: KeyRound, separatorBefore: true }] : []),
   ]
 }
 

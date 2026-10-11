@@ -4,7 +4,7 @@ Windows amd64, Intel Core i7-14700KF. Base commit 05fc7e9 plus this local audit;
 
 ## Reference checklist audit
 
-Removed 10 obsolete duplicate capability entries from Reference: semantic graph, impact analysis, runtime-aware AI, drift detection and AI debugging. Implementations remain documented in P4. Broad usability/product objectives remain open. Reference now contains 125 open entries, 36 annotated partial.
+Removed 10 obsolete duplicate capability entries from Reference: semantic graph, impact analysis, runtime-aware AI, drift detection and AI debugging. Implementations remain documented in P4. Broad usability/product objectives remain open. Reference now contains 125 open entries, 38 annotated partial.
 
 Evidence: internal/ide/graph (fingerprint, store, risk, drift); internal/languages/golang/graph_test.go (type/dependency/interface impact and resources); frontend workspaceGraph/debugAI tests (10 focused tests including session memory and terminal restore passed). Updated obsolete claims about pprof/trace/govulncheck with actual code and passing backend tests. No provider or native UX acceptance inferred from unit tests.
 
@@ -35,3 +35,8 @@ Evidence: .artifacts/release-performance.log. Search allocation grows with file 
 - [ ] Real small/medium/large repositories: first editor, diagnostics/completion, search/definition, idle RSS/CPU and debug startup.
 
 Native computer interaction is unavailable in this session. Starting Wails dev only proves startup/build and does not complete these manual checks. Existing manual M1–M32 gates remain open.
+
+
+## P2 partial integrations
+
+The eight previously partial entries are implemented; six independent P2 entries remain open. Details and limits: [P2 closure record](GO-STUDIO-P2-PARTIALS-2026-10-11.md). Desktop workflow acceptance remains in mds/todo-ide.md; native build/startup is distinct from manually exercising the flows.

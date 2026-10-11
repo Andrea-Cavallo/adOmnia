@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -33,8 +34,23 @@ func (m *Manager) Begin(request BeginRequest) (RequestRun, error) {
 		m.mu.Unlock()
 		return RequestRun{}, nil
 	}
+	members := []string{sessionID}
+	if len(request.SessionIDs) > 16 {
+		m.mu.Unlock()
+		return RequestRun{}, fmt.Errorf("distributed debug is limited to 16 services")
+	}
+	for _, id := range request.SessionIDs {
+		member := m.sessions[id]
+		if member == nil || member.EndedAt != nil || member.Kind != "debug" || member.State == StateError || member.State == StateStopped {
+			m.mu.Unlock()
+			return RequestRun{}, fmt.Errorf("distributed debug service is no longer available: %s", id)
+		}
+		if !slices.Contains(members, id) {
+			members = append(members, id)
+		}
+	}
 	run := &RequestRun{
-		ID: newID("run-"), SessionID: sessionID, TabID: request.TabID, Name: request.Name,
+		ID: newID("run-"), SessionID: sessionID, SessionIDs: members, TabID: request.TabID, Name: request.Name,
 		Method: strings.ToUpper(request.Method), URL: request.URL, CorrelationID: newID("adm-"),
 		State: RunSent, StartedAt: m.now(), Hits: []Hit{},
 	}

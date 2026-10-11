@@ -313,6 +313,7 @@ function useRunSpans(run: RequestRun): OtlpSpan[] {
 /** Local lifecycle of one request: what the debugger, the logs, the database and the broker saw, in order. */
 export function RequestTimeline({ run, session, logs, queries, messages }: { run: RequestRun; session: LiveSession | null; logs: LiveLogEntry[]; queries: LiveQuery[]; messages: LiveMessage[] }) {
   const spans = useRunSpans(run)
+  const sessions = useDevSessionStore(state => state.sessions)
   const steps: TimelineStep[] = [{ at: run.startedAt, kind: 'sent', label: `${run.method} ${pathOf(run.url)}`, detail: 'sent' }]
   for (const span of [...spans].sort((a, b) => a.startMs - b.startMs || b.durationMs - a.durationMs)) {
     const source = spanSource(span)
@@ -323,11 +324,12 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
     })
   }
   for (const hit of run.hits) {
+    const owner = sessions[hit.sessionId ?? run.sessionId] ?? session
     const frames = [...(hit.stack ?? [])].reverse().filter((frame) => frame.relativePath && !frame.relativePath.startsWith('..'))
     for (const frame of frames.slice(0, -1)) {
-      steps.push({ at: hit.at, kind: 'frame', label: `${frame.function.split('/').pop()}()`, detail: `${basename(frame.relativePath ?? '')}:${frame.line}`, onOpen: session ? () => void openFrameInGoStudio(session, frame) : undefined })
+      steps.push({ at: hit.at, kind: 'frame', label: `${frame.function.split('/').pop()}()`, detail: `${basename(frame.relativePath ?? '')}:${frame.line}`, onOpen: owner ? () => void openFrameInGoStudio(owner, frame) : undefined })
     }
-    steps.push({ at: hit.at, kind: 'hit', label: `${hit.function.split('/').pop()}()`, detail: `breakpoint · ${basename(hit.relativePath || hit.file || '')}:${hit.line}${hit.confidence === 'probable' ? ' · probable' : ''}`, onOpen: session ? () => void openFrameInGoStudio(session, hit) : undefined })
+    steps.push({ at: hit.at, kind: 'hit', label: `${hit.function.split('/').pop()}()`, detail: `${owner?.service ?? hit.sessionId ?? ""} · goroutine ${hit.threadId ?? "?"} · breakpoint · ${basename(hit.relativePath || hit.file || '')}:${hit.line}${hit.confidence === 'probable' ? ' · probable' : ''}`, onOpen: owner ? () => void openFrameInGoStudio(owner, hit) : undefined })
   }
   for (const query of queries) steps.push({ at: query.at, kind: 'sql', label: query.sql.split(/\s+/).slice(0, 4).join(' '), detail: 'SQL' })
   for (const message of messages) steps.push({ at: message.at, kind: 'message', label: message.topic, detail: `produced · p${message.partition} · offset ${message.offset}` })

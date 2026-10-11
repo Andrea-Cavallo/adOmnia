@@ -73,6 +73,8 @@ type Session struct {
 
 // Hit is a breakpoint reached while a request was in flight.
 type Hit struct {
+	SessionID string `json:"sessionId,omitempty"`
+	ThreadID  int    `json:"threadId,omitempty"`
 	Frame
 	Stack []Frame   `json:"stack,omitempty"`
 	At    time.Time `json:"at"`
@@ -82,6 +84,7 @@ type Hit struct {
 
 // RequestRun is one API request sent to a live session.
 type RequestRun struct {
+	SessionIDs    []string   `json:"sessionIds,omitempty"`
 	ID            string     `json:"id"`
 	SessionID     string     `json:"sessionId"`
 	TabID         string     `json:"tabId,omitempty"`
@@ -104,11 +107,12 @@ type RequestRun struct {
 // BeginRequest describes a request about to be sent. An empty SessionID lets
 // the manager match the URL against the live sessions' ports.
 type BeginRequest struct {
-	SessionID string `json:"sessionId"`
-	TabID     string `json:"tabId"`
-	Name      string `json:"name"`
-	Method    string `json:"method"`
-	URL       string `json:"url"`
+	SessionIDs []string `json:"sessionIds,omitempty"`
+	SessionID  string   `json:"sessionId"`
+	TabID      string   `json:"tabId"`
+	Name       string   `json:"name"`
+	Method     string   `json:"method"`
+	URL        string   `json:"url"`
 }
 
 // LogEntry is one output line of a live session.

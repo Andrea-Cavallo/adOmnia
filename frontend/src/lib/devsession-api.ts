@@ -35,12 +35,15 @@ export interface LiveSession {
 }
 
 export interface LiveHit extends LiveFrame {
+  sessionId?: string
+  threadId?: number
   stack?: LiveFrame[]
   at: string
   confidence: 'likely' | 'probable'
 }
 
 export interface RequestRun {
+  sessionIds?: string[]
   id: string
   sessionId: string
   tabId?: string
@@ -114,7 +117,7 @@ export interface SessionTools {
 }
 
 export const getLiveSnapshot = () => DevSessionBindings.GetSnapshot() as Promise<LiveSnapshot>
-export const beginLiveRequest = (request: { sessionId: string; tabId: string; name: string; method: string; url: string }) =>
+export const beginLiveRequest = (request: { sessionIds?: string[]; sessionId: string; tabId: string; name: string; method: string; url: string }) =>
   DevSessionBindings.BeginRequest(request) as Promise<RequestRun>
 export const endLiveRequest = (runId: string, status: number, durationMs: number, error: string) =>
   DevSessionBindings.EndRequest(runId, status, durationMs, error) as Promise<RequestRun>

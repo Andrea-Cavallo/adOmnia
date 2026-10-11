@@ -1,4 +1,4 @@
-export type EntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic' | 'grpc' | 'websocket' | 'symbol'
+export type EntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic' | 'grpc' | 'websocket' | 'symbol' | 'artifact'
 
 /** A thing any panel can open: a route, a table, a topic, a Go symbol… */
 export interface EntityRef {

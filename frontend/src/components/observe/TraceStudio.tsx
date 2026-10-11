@@ -1,3 +1,5 @@
+import { armDistributedDebug } from './distributedDebug'
+import { confirm } from '@/lib/confirmDialog'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bug, Code2, Copy, Download, GitCompare, Play, Radio, ScrollText, Search, Square, Trash2, Upload } from 'lucide-react'
 import { readFileSmart, saveBase64File } from '@/lib/fileUtils'
@@ -67,7 +69,20 @@ function BreakHere({ file, line }: { file: string; line: number }) {
   )
 }
 
-function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }) {
+function DistributedDebugButton({ spans }: { spans: OtlpSpan[] }) {
+ const [busy, setBusy] = useState(false); const [note, setNote] = useState('')
+ if (new Set(spans.map(span => span.service)).size < 2) return null
+ const arm = async () => {
+  if (!await confirm({title: 'Debug across services?', message: 'Set breakpoints at the observed span sources and start or reuse each service under Delve. Existing plain runs may need restarting. Send a new request after startup.', confirmLabel: 'Arm distributed debug'})) return
+  setBusy(true); setNote('')
+  try { setNote(await armDistributedDebug(spans)) } catch (error) { setNote(String(error)) } finally {setBusy(false)}
+ }
+ return <div className="flex items-center gap-2 p-2 text-xs"><button type="button" disabled={busy} onClick={() => void arm()} className="rounded border border-border-2 px-2 py-1 text-accent">{busy ? 'Preparing distributed debug…' : 'Debug across services'}</button>{note && <span role="status" className="text-text-3">{note}</span>}</div>
+}
+
+function SpanDetail({ span, insight, spans, select }: { span: OtlpSpan; insight?: SpanInsight; spans: OtlpSpan[]; select: (id: string) => void }) {
+  const parent = spans.find(item => item.spanId === span.parentSpanId)
+  const children = spans.filter(item => item.parentSpanId === span.spanId && item.service !== span.service)
   const source = spanSource(span)
   const attrs = Object.entries(span.attributes ?? {}).filter(([key]) => !key.startsWith('code.'))
   return (
@@ -84,6 +99,9 @@ function SpanDetail({ span, insight }: { span: OtlpSpan; insight?: SpanInsight }
         <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2">{ms(span.durationMs)}</span>
         <InsightBadges insight={insight} />
       </div>
+      {parent && parent.service !== span.service && <button type="button" onClick={() => select(parent.spanId)} className="block text-accent hover:underline">Service boundary: {parent.service} → {span.service}</button>}
+      {span.parentSpanId && !parent && <p className="text-warning">Parent span not captured; service boundary unknown.</p>}
+      {children.map(child => <button key={child.spanId} type="button" onClick={() => select(child.spanId)} className="block text-accent hover:underline">Service boundary: {span.service} → {child.service}</button>)}
       {source && (
         <button type="button" onClick={() => void openEntity({ kind: 'service', id: `span:${span.traceId}:${span.spanId}`, label: span.name, attrs: { runtimeSpan: JSON.stringify(span) } }, 'runtime')} className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-accent hover:bg-accent/10"><Code2 size={12}/> Runtime context in gO</button>
       )}
@@ -285,7 +303,8 @@ export function TraceStudio() {
           ) : !spans.length ? (
             <p className="p-4 text-[11px] text-text-4">{compare.length === 1 ? 'Pick a second trace to compare.' : 'Select a trace to see its spans.'}</p>
           ) : (
-            <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <DistributedDebugButton spans={spans} /><div className="flex min-h-0 flex-1">
               <div role="listbox" aria-label="Spans" className="min-h-0 min-w-0 flex-[3] overflow-y-auto">
                 {rows.map(({ span, depth }) => {
                   const left = ((span.startMs - start) / total) * 100
@@ -308,9 +327,9 @@ export function TraceStudio() {
                 })}
               </div>
               <div className="min-h-0 w-[320px] min-w-[240px] overflow-y-auto border-l border-border-1 p-3">
-                {current && <SpanDetail span={current} insight={insights.get(current.spanId)} />}
+                {current && <SpanDetail span={current} insight={insights.get(current.spanId)} spans={spans} select={setSpanId} />}
               </div>
-            </div>
+            </div></div>
           )}
         </section>
       </div>

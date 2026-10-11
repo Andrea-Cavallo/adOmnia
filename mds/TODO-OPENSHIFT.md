@@ -1,5 +1,9 @@
 # adOmnia - OpenShift Studio TODO
 
+## Collegamento al rilascio
+
+Kubernetes/OpenShift Studio resta nascosto dalla navigazione nel [perimetro v1](V1-RELEASE-SCOPE-TODO.md); i target remoti IDE sono conservati. Il completamento di questo piano non è un prerequisito della v1. La riattivazione richiede il collaudo cluster previsto nel documento di rilascio. Vedi [indice dei piani](README.md). Allineamento documentale: 2026-10-11, senza nuove prove.
+
 ## Obiettivo
 
 Integrare in adOmnia un modulo **OpenShift Studio** orientato al workflow dello sviluppatore.

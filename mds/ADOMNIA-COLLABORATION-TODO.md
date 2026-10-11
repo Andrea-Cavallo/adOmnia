@@ -1,5 +1,9 @@
 # adOmnia Collaboration Engine
 
+## Collegamento al rilascio
+
+La collaborazione resta **beta opt-in** secondo il [perimetro v1](V1-RELEASE-SCOPE-TODO.md). Le prove su due computer e il recovery persistente restano aperti; i test automatici non le sostituiscono. Vedi [indice dei piani](README.md). Allineamento documentale: 2026-10-11, senza nuove prove.
+
 > Roadmap tecnica per collaborazione in tempo reale tra Go Studio (l'IDE, qui indicato anche come "cO Studio") e API Studio.
 >
 > **Obiettivo:** permettere a due o più sviluppatori di condividere progetti, collection API, debug e test, mantenendo adOmnia **local-first** e senza account cloud obbligatorio.

@@ -34,7 +34,7 @@ const PROGRESS_STEPS: Array<{ step: DebugRequestProgress['step']; label: string 
  */
 export function LiveResponseFrame({ tabId, loading, children }: { tabId: string; loading: boolean; children: ReactNode }) {
   const run = useDevSessionStore((state) => runForTab(state, tabId))
-  const session = useDevSessionStore((state) => (run ? state.sessions[run.sessionId] ?? null : null))
+  const session = useDevSessionStore((state) => (run ? state.sessions[run.state === 'paused' ? ((run.sessionIds ?? [run.sessionId]).find(id => state.sessions[id]?.state === 'paused') ?? run.hits[run.hits.length - 1]?.sessionId ?? run.sessionId) : run.sessionId] ?? null : null))
   const progress = useDevSessionStore((state) => state.progress[tabId])
   const [tab, setTab] = useState<LiveTab>('response')
   useEffect(() => { setTab('response') }, [run?.id])
@@ -148,6 +148,7 @@ function mergeBy<T>(first: T[], second: T[], key: (item: T) => string): T[] {
 }
 
 function HitList({ run, session }: { run: RequestRun; session: LiveSession | null }) {
+  const sessions = useDevSessionStore(state => state.sessions)
   if (run.hits.length === 0) {
     return <p className="px-6 py-8 text-center text-[12px] text-text-3">No breakpoint was hit. Set one in Go Studio and use Debug Request to stop inside the handler.</p>
   }
@@ -157,10 +158,10 @@ function HitList({ run, session }: { run: RequestRun; session: LiveSession | nul
         <li key={index} className="flex items-center gap-3 px-3 py-2 text-[12px]">
           <span className="h-2 w-2 shrink-0 rounded-full bg-warning" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-mono text-text-1">{basename(hit.relativePath || hit.file || '')}:{hit.line} <span className="text-text-3">{hit.function}()</span></span>
-            {hit.confidence === 'probable' && <span className="text-[10.5px] text-text-4">Several requests were in flight: probably this one.</span>}
+            <span className="block truncate font-mono text-text-1">{basename(hit.relativePath || hit.file || '')}:{hit.line} <span className="text-text-3">{hit.function}() · goroutine {hit.threadId ?? "?"} · {sessions[hit.sessionId ?? run.sessionId]?.service}</span></span>
+            {hit.confidence === 'probable' && <span className="text-[10.5px] text-text-4">Time correlation: probably this request.</span>}
           </span>
-          {session && <button type="button" onClick={() => void openFrameInGoStudio(session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Go Studio</button>}
+          {session && <button type="button" onClick={() => void openFrameInGoStudio(sessions[hit.sessionId ?? run.sessionId] ?? session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Go Studio</button>}
         </li>
       ))}
     </ul>

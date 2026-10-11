@@ -76,8 +76,15 @@ export function SoapPanel() {
     }
   }, [])
 
-  useEntityHandoff('soap', (_ref, _intent, payload) => {
-    acceptWsdlText(String(payload.text ?? ''))
+  const [standaloneEndpoint, setStandaloneEndpoint] = useState('')
+  const [standaloneAction, setStandaloneAction] = useState('')
+  useEntityHandoff('soap', (_ref, intent, payload) => {
+    const text = String(payload.text ?? '')
+    if (intent === 'soap' || intent === 'security') {
+      if (/\.wsdl$/i.test(String(payload.name ?? '')) || /<(?:[\w-]+:)?definitions(?:\s|>)/.test(text)) acceptWsdlText(text)
+      else { setWsdl({ targetNamespace: '', services: [], bindings: [], portTypes: [], schemaElements: {} }); setSelectedService(''); setSelectedPort(''); setSelectedOp(''); setEnvelope(text); setXmlValid(null) }
+      setShowSecurity(intent === 'security')
+    } else acceptWsdlText(text)
     return true
   })
 
@@ -87,11 +94,13 @@ export function SoapPanel() {
   }, [acceptWsdlText, pendingFileImport])
 
   // Current endpoint URL
-  const currentPort = wsdl?.services
+  const declaredPort = wsdl?.services
     .find((s) => s.name === selectedService)
     ?.ports.find((p) => p.name === selectedPort)
 
-  const currentOp = wsdl?.portTypes.flatMap((p) => p.operations).find((o) => o.name === selectedOp)
+  const currentPort = declaredPort ?? (wsdl?.services.length === 0 && standaloneEndpoint ? { location: standaloneEndpoint } : undefined)
+
+  const currentOp = wsdl?.portTypes.flatMap((p) => p.operations).find((o) => o.name === selectedOp) ?? (wsdl?.services.length === 0 ? { name: 'SOAP Request', soapAction: standaloneAction } : undefined)
 
   const testCurrentEndpoint = useCallback(async () => {
     if (!currentPort?.location) return
@@ -313,6 +322,7 @@ export function SoapPanel() {
     <div className="flex-1 flex overflow-hidden">
       {/* Sidebar: Services / Ports / Operations */}
       <div className="w-60 flex-shrink-0 border-r border-border-1 flex flex-col overflow-auto">
+        {wsdl.services.length === 0 && <div className="space-y-2 p-3 text-xs text-text-2"><label className="block">SOAP endpoint<input className="mt-1 w-full rounded border border-border-2 bg-surface-2 p-1" value={standaloneEndpoint} onChange={event => setStandaloneEndpoint(event.target.value)} placeholder="https://localhost/service" /></label><label className="block">SOAPAction<input className="mt-1 w-full rounded border border-border-2 bg-surface-2 p-1" value={standaloneAction} onChange={event => setStandaloneAction(event.target.value)} /></label></div>}
         <div className="px-3 py-2 border-b border-border-1 flex items-center gap-1">
           <button onClick={() => setWsdl(null)} className="text-[10px] text-accent hover:text-accent-light">New WSDL</button>
           <span className="text-text-4 text-[10px]">|</span>

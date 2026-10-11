@@ -10,6 +10,7 @@ import { Create as $Create } from "@wailsio/runtime";
  * the manager match the URL against the live sessions' ports.
  */
 export class BeginRequest {
+    "sessionIds"?: string[];
     "sessionId": string;
     "tabId": string;
     "name": string;
@@ -41,7 +42,11 @@ export class BeginRequest {
      * Creates a new BeginRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): BeginRequest {
+        const $$createField0_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("sessionIds" in $$parsedSource) {
+            $$parsedSource["sessionIds"] = $$createField0_0($$parsedSource["sessionIds"]);
+        }
         return new BeginRequest($$parsedSource as Partial<BeginRequest>);
     }
 }
@@ -80,6 +85,8 @@ export class Frame {
  * Hit is a breakpoint reached while a request was in flight.
  */
 export class Hit {
+    "sessionId"?: string;
+    "threadId"?: number;
     "function": string;
     "file"?: string;
     "relativePath"?: string;
@@ -114,10 +121,10 @@ export class Hit {
      * Creates a new Hit instance from a string or object.
      */
     static createFrom($$source: any = {}): Hit {
-        const $$createField4_0 = $$createType1;
+        const $$createField6_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
-            $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
+            $$parsedSource["stack"] = $$createField6_0($$parsedSource["stack"]);
         }
         return new Hit($$parsedSource as Partial<Hit>);
     }
@@ -150,8 +157,8 @@ export class KafkaWatch {
      * Creates a new KafkaWatch instance from a string or object.
      */
     static createFrom($$source: any = {}): KafkaWatch {
-        const $$createField0_0 = $$createType2;
-        const $$createField1_0 = $$createType2;
+        const $$createField0_0 = $$createType0;
+        const $$createField1_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("brokers" in $$parsedSource) {
             $$parsedSource["brokers"] = $$createField0_0($$parsedSource["brokers"]);
@@ -298,7 +305,7 @@ export class Pause {
      * Creates a new Pause instance from a string or object.
      */
     static createFrom($$source: any = {}): Pause {
-        const $$createField6_0 = $$createType1;
+        const $$createField6_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField6_0($$parsedSource["stack"]);
@@ -402,6 +409,7 @@ export class Query {
  * RequestRun is one API request sent to a live session.
  */
 export class RequestRun {
+    "sessionIds"?: string[];
     "id": string;
     "sessionId": string;
     "tabId"?: string;
@@ -463,10 +471,14 @@ export class RequestRun {
      * Creates a new RequestRun instance from a string or object.
      */
     static createFrom($$source: any = {}): RequestRun {
-        const $$createField13_0 = $$createType5;
+        const $$createField0_0 = $$createType0;
+        const $$createField14_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("sessionIds" in $$parsedSource) {
+            $$parsedSource["sessionIds"] = $$createField0_0($$parsedSource["sessionIds"]);
+        }
         if ("hits" in $$parsedSource) {
-            $$parsedSource["hits"] = $$createField13_0($$parsedSource["hits"]);
+            $$parsedSource["hits"] = $$createField14_0($$parsedSource["hits"]);
         }
         return new RequestRun($$parsedSource as Partial<RequestRun>);
     }
@@ -611,8 +623,8 @@ export class RuntimeEnrichment {
     static createFrom($$source: any = {}): RuntimeEnrichment {
         const $$createField2_0 = $$createType7;
         const $$createField3_0 = $$createType9;
-        const $$createField4_0 = $$createType2;
-        const $$createField5_0 = $$createType2;
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("components" in $$parsedSource) {
             $$parsedSource["components"] = $$createField2_0($$parsedSource["components"]);
@@ -814,9 +826,9 @@ export class Snapshot {
 }
 
 // Private type creation functions
-const $$createType0 = Frame.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = Frame.createFrom;
+const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = $Create.Map($Create.Any, $Create.Any);
 const $$createType4 = Hit.createFrom;
 const $$createType5 = $Create.Array($$createType4);

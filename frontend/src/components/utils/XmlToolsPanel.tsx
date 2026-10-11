@@ -1,3 +1,4 @@
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { useState, useEffect } from 'react'
 import { GitCompare, Code, Search, Copy, AlignLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -242,6 +243,10 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
   const [fmtInput, setFmtInput]   = useState(SAMPLE_XML)
   const [fmtOutput, setFmtOutput] = useState('')
   const [fmtError,  setFmtError ] = useState('')
+  useEntityHandoff('xmltools', (_ref, intent, payload) => {
+    if (intent !== 'xml') return false
+    setTab('format'); setFmtInput(String(payload.text ?? '')); setFmtError(''); return true
+  })
 
   useEffect(() => {
     if (!fmtInput.trim()) { setFmtOutput(''); setFmtError(''); return }

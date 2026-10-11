@@ -1,10 +1,18 @@
 # TODO — Go Studio integrato in adOmnia
 
-Questo file contiene **solo il lavoro ancora aperto** (riverificato il 2026-10-10). Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](../docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
+Questo file raccoglie il collaudo ancora aperto e conserva le evidenze automatiche già registrate. Allineamento documentale: 2026-10-11; nessuna nuova prova desktop eseguita in questo aggiornamento. Le 347 voci completate delle Fasi 0–5 sono state rimosse il 2026-09-29: la loro storia è in git, nel `CHANGELOG.md`, nelle note di rilascio `docs/releases/v0.9.35.md`–`v0.9.38.md` e nella guida [`docs/GO-STUDIO.md`](../docs/GO-STUDIO.md), che documenta il prodotto com'è oggi.
+
+## Documenti collegati
+
+- [Piano 2027](gO-Studio-2027-todo.md): funzionalità residue e obiettivi; P0/P1 chiusi non chiudono i gate manuali qui sotto.
+- [Audit di accettazione](../docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md): risultati automatici e limiti della baseline sintetica.
+- [Perimetro v1](V1-RELEASE-SCOPE-TODO.md): gate di pubblicazione e piattaforme realmente collaudate.
+
+Le prove numerate correnti sono M1–M34; i blocchi successivi coprono anche risorse, runtime, ripristino e multiwindow. Una prova specifica già registrata non chiude automaticamente un intero gate.
 
 ## Stato
 
-- **Implementato e coperto da test automatici**: Fasi 0–5, comprese le finestre separate (5.8), Fix with AI e le icone dei file. Le suite Go (`-race`, gopls e Delve reali) e frontend passano su Windows; su Linux passano in CI.
+- **Implementato e coperto da test automatici**: Fasi 0–5, comprese le finestre separate (5.8), Fix with AI e le icone dei file. Le evidenze storiche includono suite Go (`-race`, gopls e Delve reali) e frontend su Windows, e CI Linux; non attestano automaticamente il working tree corrente.
 - **Documentazione**: completata il 2026-09-29 (README, catalogo funzioni, ISSUES, ARCHITECTURE, CLAUDE.md e `docs/GO-STUDIO.md` con persistenza, dipendenze, versioni, scorciatoie e modello di sicurezza).
 - **Manca**: le prove manuali nell'app avviata (sotto) e, dopo di queste, la chiusura dei gate e la dichiarazione delle finestre separate nelle note di rilascio. Per il criterio di uscita della **Fase 1 “Real IDE”** vedi il blocco dedicato più sotto.
 
@@ -47,7 +55,7 @@ Quando una prova passa: spuntala qui, registra l'esito nelle **Evidenze** in fon
 
 **Setup**: Windows, `wails3 task dev` (CLI `wails3` alla versione di `go.mod`), un progetto Go reale (più package, test, `go.mod` con dipendenze, repository Git con modifiche non committate), Task Manager aperto.
 
-**Già verificato in automatico su Windows** (2026-09-29, Go 1.26.5, gopls v0.23.0, Delve 1.27.2), quindi non va rifatto a mano: stop dell'albero di processi, terminale ConPTY, debugger (breakpoint, step, variabili, evaluate, singolo test, attach, remoto, nessun `dlv`/`__debug_bin` orfano), navigazione gopls verso altri package, isolamento fra sessioni. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
+**Già verificato in automatico su Windows** (2026-09-29, Go 1.26.5, gopls v0.23.0, Delve 1.27.2), come copertura backend, senza sostituire le prove UI M2, M3 e M7: stop dell'albero di processi, terminale ConPTY, debugger (breakpoint, step, variabili, evaluate, singolo test, attach, remoto, nessun `dlv`/`__debug_bin` orfano), navigazione gopls verso altri package, isolamento fra sessioni. Restano manuali solo le parti che richiedono la finestra reale o il Task Manager.
 
 ### Rendering font (Linux/WebKitGTK)
 
@@ -126,7 +134,7 @@ Ogni gate si spunta quando tutte le prove indicate sono passate e registrate nel
 
 # ▶ GITHUB COPILOT — ROADMAP
 
-Architettura: Copilot Language Server ufficiale (completamento, login, enterprise) + in seguito il modo ACP/SDK per chat e agent. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`; tutto passa da `GitHubProfile`.
+Architettura: Copilot Language Server ufficiale per completamento, login ed enterprise; chat Ask già presente. Edit/Agent e relativa integrazione ACP/SDK restano nella roadmap sotto. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`; tutto passa da `GitHubProfile`.
 
 **Fatto** (dettagli in git e `docs/GO-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, ciclo di vita con crash recovery, login device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu; chat laterale Ask con contesto e streaming (`internal/copilot/chat.go`).
 
@@ -214,3 +222,22 @@ Da compilare man mano che passano le prove (una riga per sessione di collaudo).
 - [x] Test recupero dati/crash/kill durante snapshot e viste profiler/trace superati.
 - [x] Benchmark offline apertura/ricerca su fixture 10/100/1000 file con risultati e limiti in docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md.
 - [ ] Collaudo interattivo desktop e benchmark repository reali/UI/gopls: non equivalgono ai test backend, restano aperti.
+
+## Integrità dei riferimenti — 2026-10-11
+
+Il secondo mock approvato punta al file locale `C:/Users/Andrea/Desktop/1d4ee52a-bc26-428f-aad5-299a7c917d5b.png`, oggi assente. Il collegamento storico è conservato; M8 resta aperto e il riferimento va recuperato prima di dichiarare concluso il confronto con entrambi i mock. Il primo riferimento in Downloads è presente.
+
+
+## P2 — chiusura delle otto integrazioni parziali (2026-10-11)
+
+Implementati debug distribuito su 2–16 servizi con origine del breakpoint/goroutine, confini parent/child acquisiti via OTLP e sei handoff enterprise dal Project tree (mTLS, JKS/PKCS12, SOAP, WSDL, XML, WS-Security). Il gruppo è transitorio, condiviso tra pannelli, e non modifica il formato workspace.
+
+Evidenze: TypeScript, build frontend, suite frontend completa (312 file / 1363 test), check startup (~599 kB, limite 650 kB), test distribuiti backend e lettura keystore confinata al progetto. Build nativa Wails beta.28 e avvio riusciti (WebView2 e sidecar), senza attestare interazioni manuali.
+
+- [ ] Su due servizi Go strumentati: arma da una trace, invia request A → B, pausa/continua B e A, apri stack e timeline nel progetto corretto; prova richieste concorrenti e arresto di un membro.
+- [ ] Ripeti tra Trace Studio e API Workspace staccati; disarma il gruppo e verifica una normale request.
+- [ ] Apri WSDL, envelope SOAP non salvato, WS-Security e XML Tools dal Project tree; prova errori XML e endpoint esplicito.
+- [ ] Apri .jks/.p12/.pfx; controlla metadata e split JKS con password errata/corretta e tool assenti; nessuna promessa di estrazione PKCS12.
+- [ ] Proponi e applica PEM combinato cert+key per mTLS, invia al server di prova; verifica passphrase e percorso non valido.
+
+Verifica finale: `go build ./...` e `go test ./... -timeout 10m` passati; frontend 312 file / 1363 test, TypeScript e build passati; startup 599359 byte.

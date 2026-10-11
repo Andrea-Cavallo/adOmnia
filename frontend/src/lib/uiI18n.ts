@@ -9,6 +9,18 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Debug across services': 'Debug tra servizi',
+  'Preparing distributed debug…': 'Preparazione debug distribuito…',
+  'Arm distributed debug': 'Attiva debug distribuito',
+  'Open in SOAP Studio': 'Apri in SOAP Studio',
+  'Configure WS-Security': 'Configura WS-Security',
+  'Open in XML Tools': 'Apri negli strumenti XML',
+  'Configure HTTP mTLS': 'Configura HTTP mTLS',
+  'Inspect certificate / keystore': 'Ispeziona certificato / keystore',
+  'Use project certificate for HTTP mTLS': 'Usa il certificato del progetto per HTTP mTLS',
+  'SOAP endpoint': 'Endpoint SOAP',
+  'Project artifact': 'File del progetto',
+
   'Beta': 'Beta',
   'Open Project in New Window': 'Apri progetto in una nuova finestra',
   'Application resources': 'Consumi applicazione',

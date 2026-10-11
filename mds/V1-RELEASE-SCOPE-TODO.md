@@ -2,6 +2,10 @@
 
 Aggiornato: 2026-10-11. Stato: preparazione, non pubblicazione della v1.
 
+## Collegamento con il piano IDE
+
+Il [piano 2027](gO-Studio-2027-todo.md) distingue implementazione e obiettivi futuri; il [collaudo IDE](todo-ide.md) conserva M1–M34 e le prove aggiuntive. Le priorità implementate non attestano accettazione desktop. Per il rilascio valgono i gate di questo documento e le evidenze del candidato effettivo; tutte le idee 2027 non sono prerequisiti v1. La [proposta JS/TS](../docs/architecture/ide-web-languages-action-plan.md) resta separata e rimandata rispetto al perimetro v1 approvato.
+
 ## Decisioni approvate
 
 | Area | Esposizione v1 | Stato e motivo |

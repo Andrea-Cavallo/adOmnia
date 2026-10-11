@@ -1457,6 +1457,10 @@ export function ReadFuzzInput(sessionID: string, packageDir: string, target: str
     });
 }
 
+export function ReadProjectKeystore(sessionID: string, path: string): $CancellablePromise<string> {
+    return $Call.ByID(1404034579, sessionID, path);
+}
+
 export function ReadProjectPDF(sessionID: string, path: string): $CancellablePromise<string> {
     return $Call.ByID(450405403, sessionID, path);
 }

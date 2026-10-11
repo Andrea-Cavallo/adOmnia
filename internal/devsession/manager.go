@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -110,7 +111,11 @@ func cloneSession(session *Session) Session {
 func cloneRun(run *RequestRun) RequestRun {
 	out := *run
 	// Never nil: the UI reads hits.length, and a nil slice would reach it as JSON null.
+	out.SessionIDs = append([]string(nil), run.SessionIDs...)
 	out.Hits = append([]Hit{}, run.Hits...)
+	for i := range out.Hits {
+		out.Hits[i].Stack = append([]Frame(nil), out.Hits[i].Stack...)
+	}
 	return out
 }
 
@@ -307,8 +312,14 @@ func (m *Manager) resume(id string) {
 	session.State, session.Pause = StateRunning, nil
 	var events []Event
 	for _, runID := range m.runOrder {
-		if run := m.runs[runID]; run.SessionID == id && run.State == RunPaused {
+		if run := m.runs[runID]; runIncludes(run, id) && run.State == RunPaused {
 			run.State = RunSent
+			for _, memberID := range run.SessionIDs {
+				if other := m.sessions[memberID]; other != nil && other.State == StatePaused {
+					run.State = RunPaused
+				}
+			}
+			events = append(events, Event{Type: "request.updated", SessionID: run.SessionID, Payload: cloneRun(run)})
 		}
 	}
 	if wasPaused {
@@ -344,12 +355,12 @@ func (m *Manager) pause(id, debugID string, threadID int, reason string, gen int
 	inFlight := m.inFlightLocked(id)
 	if len(inFlight) > 0 {
 		confidence := "likely"
-		if len(inFlight) > 1 {
+		if len(inFlight) > 1 || len(inFlight[len(inFlight)-1].SessionIDs) > 1 {
 			confidence = "probable"
 		}
 		// With several requests in flight the newest one is the best guess.
 		run := inFlight[len(inFlight)-1]
-		hit := Hit{Frame: pause.Frame, Stack: stack, At: pause.At, Confidence: confidence}
+		hit := Hit{SessionID: id, ThreadID: threadID, Frame: pause.Frame, Stack: stack, At: pause.At, Confidence: confidence}
 		run.Hits = append(run.Hits, hit)
 		run.State = RunPaused
 		events = append(events, Event{Type: "breakpoint.hit", SessionID: id, Payload: map[string]any{"run": cloneRun(run), "hit": hit}})
@@ -376,7 +387,7 @@ func (m *Manager) inFlightLocked(sessionID string) []*RequestRun {
 	var runs []*RequestRun
 	for _, runID := range m.runOrder {
 		run := m.runs[runID]
-		if run.SessionID == sessionID && (run.State == RunSent || run.State == RunPaused) {
+		if runIncludes(run, sessionID) && (run.State == RunSent || run.State == RunPaused) {
 			runs = append(runs, run)
 		}
 	}
@@ -488,4 +499,8 @@ func packageName(command string) string {
 		}
 	}
 	return ""
+}
+
+func runIncludes(run *RequestRun, sessionID string) bool {
+	return run.SessionID == sessionID || slices.Contains(run.SessionIDs, sessionID)
 }

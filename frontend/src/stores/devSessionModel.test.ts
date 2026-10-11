@@ -96,3 +96,14 @@ describe('null hits', () => {
     expect(Object.values(model.runs)[0].hits).toEqual([])
   })
 })
+
+
+it('keeps a distributed request paused until every stopped member resumes', () => {
+ let model = applyLiveEvent(emptyModel(), {type:'debug.started',payload:session({id:'debug:a',state:'paused'})})
+ model = applyLiveEvent(model,{type:'debug.started',payload:session({id:'debug:b',state:'paused'})})
+ model = applyLiveEvent(model,{type:'request.started',payload:run({sessionId:'debug:a',sessionIds:['debug:a','debug:b'],state:'paused'})})
+ model = applyLiveEvent(model,{type:'debug.resumed',payload:session({id:'debug:b',state:'running'})})
+ expect(runForTab(model,'tab-1')?.state).toBe('paused')
+ model = applyLiveEvent(model,{type:'debug.resumed',payload:session({id:'debug:a',state:'running'})})
+ expect(runForTab(model,'tab-1')?.state).toBe('sent')
+})

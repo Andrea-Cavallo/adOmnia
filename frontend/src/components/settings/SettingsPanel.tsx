@@ -1,3 +1,4 @@
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { PersonalAppearance } from './PersonalAppearance'
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { exportGoStudioSettings, importGoStudioSettings } from '@/stores/goideLsp'
@@ -126,6 +127,11 @@ const shortcutsList = [
 
 export function SettingsPanel({ initialSection = 'general' }: { initialSection?: SettingsSectionId }) {
   const [section, setSection] = useState<SettingsSectionId>(initialSection)
+  const [certificateDraft, setCertificateDraft] = useState('')
+  useEntityHandoff('settings', (_ref, intent, payload) => {
+    if (intent !== 'mtls') return false
+    setSearch(''); setSection('requests'); setCertificateDraft(String(payload.certificate ?? '')); return true
+  })
   const settings = useSettingsStore((s) => s.settings)
   const updateGeneral = useSettingsStore((s) => s.updateGeneral)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
@@ -566,6 +572,11 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {section === 'requests' && (
           <>
             <SectionHeader title={s.requests.title} subtitle={s.requests.subtitle} />
+            <SettingsCard>
+              <TextInput label={s.requests.clientCertPem} desc={s.requests.clientCertPemDesc} value={certificateDraft || settings.requests.clientCertPem} onChange={value => { setCertificateDraft(''); updateRequests({ clientCertPem: value }) }} />
+              {certificateDraft && <button type="button" onClick={() => { updateRequests({ clientCertPem: certificateDraft }); setCertificateDraft('') }} className="rounded border border-border-2 px-3 py-1 text-xs text-accent">{tu('Use project certificate for HTTP mTLS')}</button>}
+              <PasswordInput label={s.requests.clientCertPassphrase} desc={s.requests.clientCertPassphraseDesc} value={settings.requests.clientCertPassphrase} onChange={value => updateRequests({ clientCertPassphrase: value })} />
+            </SettingsCard>
             <SettingsCard>
               <Select
                 label={s.requests.defaultHttpMethod}

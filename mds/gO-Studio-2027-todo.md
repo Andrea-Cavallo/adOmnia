@@ -18,16 +18,28 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 - *Parziale:* dice cosa esiste già e cosa manca: si riparte da lì, non da zero.
 - Niente funzioni simulate, dati sempre locali, nessun processo avviato senza un'azione dell'utente.
 
+## Allineamento documentale — 2026-10-11
+
+Questo aggiornamento corregge descrizioni e conteggi; non certifica nuove implementazioni o nuovi collaudi. P0/P1/P3/P4 senza voci operative aperte significano implementazione chiusa secondo le evidenze registrate, non accettazione desktop completa.
+
+- **Lavoro funzionale:** questo piano (P2: 6 voci aperte, nessuna parziale).
+- **Accettazione IDE:** [todo-ide.md](todo-ide.md), M1–M34 e prove aggiuntive; i risultati sintetici backend non sostituiscono l'uso dell'app.
+- **Evidenze e limiti:** [audit 2026-10-11](../docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md).
+- **Rilascio:** [V1-RELEASE-SCOPE-TODO.md](V1-RELEASE-SCOPE-TODO.md); lingue aggiuntive rimandate nel perimetro v1.
+- **Estensione JS/TS:** [proposta separata](../docs/architecture/ide-web-languages-action-plan.md), successiva alla baseline Go collaudata; non è lavoro già approvato o implementato.
+
+Ordine operativo: collaudo essenziale e prestazioni reali → sei voci P2 residue → evoluzione separata di correlazione distribuita esatta e replay. Le idee Wow e gli obiettivi di riferimento non bloccano automaticamente il rilascio v1 o il futuro adapter JS/TS.
+
 ## Riepilogo
 
 | Priorità | Tema | Voci aperte | Di cui parziali |
 | --- | --- | --- | --- |
 | **P0** | Fondamenta: un IDE di cui fidarsi tutto il giorno | 0 | 0 |
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
-| **P2** | Codice ↔ runtime: la differenza adOmnia | 15 | 8 |
+| **P2** | Codice ↔ runtime: la differenza adOmnia | 6 | 0 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
 | **P4** | AI e intelligenza del workspace | 0 | 0 |
-| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 125 | 36 |
+| **Riferimento** | Obiettivi, qualità, roadmap e KPI | 125 | 38 |
 
 ---
 
@@ -47,11 +59,14 @@ _Chiusa il 2026-10-05: profiler, trace, sicurezza, Context Propagation Inspector
 
 _Il flusso North Star: dal codice alla chiamata, al debug, a DB, broker, log e trace — senza uscire dal workspace._
 
-## §61 · North Star Experience
+Le otto voci precedentemente parziali sono implementate il 2026-10-11. Le checkbox attestano il codice e i controlli automatici; il collaudo completo dei flussi desktop resta separato in [todo-ide.md](todo-ide.md), inclusi due servizi reali e i pannelli staccati. Le altre sei voci P2 non erano parziali e restano aperte.
+
+## §61 · North Star Experience — collegamento distribuito implementato
+
+_Dettaglio dei breakpoint multi-servizio e dei confini OTLP nel [registro P2](../docs/GO-STUDIO-P2-PARTIALS-2026-10-11.md)._
 
 Lo scenario ideale da raggiungere:
 
-- [ ] Il distributed debugger collega i due servizi. — *Parziale: dalla trace (Trace Studio) "Break here" mette il breakpoint sulla riga della span nel servizio giusto e la request successiva si ferma lì; log, messaggi e span dei due servizi sono legati per trace ID. Manca una sessione di debug unica che segua la request da un servizio all'altro.*
 
 Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad adOmnia”.
 
@@ -86,6 +101,8 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ### Context panel intelligente
 
+Il layout è un riferimento visivo; non aggiunge una voce operativa. Verifica di densità, focus, temi e finestre in `todo-ide.md` (M8, M24–M27, M31).
+
 
 ## §32 · Distributed Request Debugger — Killer Feature
 
@@ -95,10 +112,6 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 - [ ] Collegare gRPC.
 - [ ] Collegare goroutines.
-
-### Timeline
-
-- [ ] Service boundaries. — *Parziale: la vista distribuita mostra il servizio di ogni span e l'elenco dei servizi della trace; mancano confini basati su acquisizione runtime completa.*
 
 ### Source navigation
 
@@ -126,12 +139,8 @@ Quando questo flusso funziona bene, gO Studio non è più “un IDE aggiunto ad 
 
 ## §48 · Enterprise — protocolli legacy in gO Studio
 
-- [ ] mTLS. — *Parziale: mTLS esiste nel client HTTP/gRPC di adOmnia (internal/httpexec, internal/grpc); non integrato in Go Studio.*
-- [ ] JKS/PKCS12 helper integration dove utile. — *Parziale: da Go Studio i file PEM aprono il tool PEM/JKS di Power Tools (ispezione e cifratura chiave); i keystore .jks/.p12/.pfx non sono ancora instradati.*
-- [ ] Legacy SOAP services. — *Parziale: Pannello SOAP con envelope e WS-Security in adOmnia; non collegato a Go Studio.*
-- [ ] WSDL. — *Parziale: Import WSDL da file, URL e testo nel pannello SOAP; non integrato in Go Studio.*
-- [ ] XML. — *Parziale: Go Studio apre .xml/.xsd/.wsdl con syntax highlighting; nessun tooling XML.*
-- [ ] WS-Security tooling. — *Parziale: WS-Security UsernameToken nel pannello SOAP; non esposto in Go Studio.*
+_Le sei integrazioni sono chiuse nel codice; dettaglio e limiti nel [registro P2](../docs/GO-STUDIO-P2-PARTIALS-2026-10-11.md)._
+
 
 ---
 
@@ -199,11 +208,11 @@ _J. Go Memory Model Helper chiusa il 2026-10-11 (Architecture Explorer → Memor
 
 # Riferimento — Obiettivi, qualità, roadmap e KPI
 
-_Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
+_Obiettivi, criteri di qualità e idee: non sono 125 feature da implementare. Le ripetizioni rimandano alle sezioni operative; i criteri di uso si chiudono solo con collaudo. Nuove idee richiedono prima un perimetro e criteri verificabili._
 
 ## §0 · Obiettivi di prodotto
 
-- [ ] gO Studio deve poter sostituire un IDE Go tradizionale per il lavoro quotidiano. — *Parziale: Le funzioni P0 ci sono, con test automatici. Manca la verifica manuale M1-M31 e ci sono lacune su refactor e profiler.*
+- [ ] gO Studio deve poter sostituire un IDE Go tradizionale per il lavoro quotidiano. — *Parziale: Le funzioni P0 ci sono, con test automatici. Manca il collaudo manuale M1–M34; refactor e profiler esistono, ma il workflow desktop completo resta da validare.*
 - [ ] Deve funzionare bene su repository piccoli, monorepo e workspace multi-module. — *Parziale: Supporto a `go.work`, multi-modulo e folder mode (`gowork.go`). Baseline backend su fixture sintetiche da 10/100/1000 file misurata il 2026-10-11; monorepo reale e latenza UI/gopls ancora da misurare.*
 - [ ] Deve usare i tool ufficiali Go quando possibile: `go test`, `go vet`, `go list`, `go tool`, `pprof`, `trace`, `govulncheck`, race detector. — *Parziale: Ci sono test, vet, race, generate, fix, mod why/graph e profilo test. Viewer pprof/trace e invocazione govulncheck verificati nel codice e nei test il 2026-10-11; resta il collaudo desktop end-to-end.*
 - [ ] Deve rendere visuali dati che oggi finiscono quasi sempre nel terminale. — *Parziale: Visuali: test tree, coverage, goroutine, race, benchmark. Performance Studio pprof e viewer trace presenti e testati; resta validare usabilità e le altre viste.*
@@ -214,22 +223,22 @@ _Non è lavoro diretto: si chiude quando le funzioni sopra arrivano._
 
 ### P1 — IDE Go superiore alla media
 
-> Ogni voce ha la sua sezione operativa più sotto (§8–§21): si spunta lì, poi qui.
+> Le sezioni operative P1 sono chiuse e la loro storia è in git e nel CHANGELOG. Qui restano obiettivi e collaudi: non duplicare nuove implementazioni per chiudere questi riferimenti.
 
-- [ ] Benchmark explorer. — *Parziale: gutter, benchmem, confronto, storico ed export CSV; mancano profiling del benchmark e confronto tra commit.*
-- [ ] Dependency intelligence. — *Parziale: Dependency Graph con versioni duplicate, licenze, peso, unused/indirect e govulncheck; manca l'analisi d'impatto sul binario.*
+- [ ] Benchmark explorer. — *Parziale: gutter, benchmem, confronto, storico ed export CSV; manca il workflow di profiling del singolo benchmark. Confronto di misure archiviate per commit, baseline fissata e significatività statistica già presenti; non equivale a eseguire automaticamente benchmark su checkout storici.*
+- [ ] Dependency intelligence. — *Parziale: Dependency Graph con versioni duplicate, licenze, peso, unused/indirect e govulncheck; Binary Inspector attribuisce i byte per package/simbolo e confronta due revisioni; Why is this dependency here mostra i byte della dipendenza nell'ultimo binario. Resta verificare il percorso desktop dal Dependency Graph a questi dati.*
 
 ### P2 — Differenziazione adOmnia
 
 - [ ] Distributed Request Debugger. — *Parziale: servizio singolo completo; multi-servizio solo via trace e log correlati.*
-- [ ] Reproduction Studio. — *Parziale (§33): Save reproduction completo e senza segreti; mancano stato DB, feature flag e replay di sessione.*
+- [ ] Reproduction Studio. — *Parziale (§33): Save reproduction completo e senza segreti; schema delle tabelle e valori dei feature flag già esportati; mancano snapshot dei dati DB, ripristino e replay coordinato della sessione. Lo schema non è una copia dei dati.*
 - [ ] Cross-service debugging. — *dipende dal Distributed Request Debugger (§32).*
 - [ ] Unified local environment. — *Parziale: Project Services, Docker Lab (`GoStudioProjectServicesDialog.tsx`) e Run → Start Workspace rilevano e avviano Compose + servizi Go in una compound condivisa. Manca ancora la vista unica con health, migrations, seed e log.*
 
 ### P3 — Funzioni “2027”
 
 - [ ] Automatic bug reproduction.
-- [ ] Performance regression detection.
+- [ ] Performance regression detection oltre i benchmark. — *Parziale: confronto statistico e soglia di regressione dei benchmark presenti; da definire baseline e criteri per profili, trace e runtime.*
 - [ ] Smart refactoring multi-service.
 - [ ] Continuous background code intelligence locale.
 - [ ] Replay di richieste/eventi.
@@ -259,7 +268,7 @@ Queste sono le funzioni che possono far dire:
 
 Ogni nuova feature di gO dovrebbe essere considerata finita solo se:
 
-- [ ] Funziona su Windows. — *Parziale: Suite automatiche passano con gopls e Delve reali; check manuali M1-M31 ancora aperti.*
+- [ ] Funziona su Windows. — *Parziale: Suite automatiche passano con gopls e Delve reali; check manuali M1–M34 ancora aperti.*
 - [ ] Funziona su macOS.
 - [ ] Funziona su Linux. — *Parziale: Suite automatiche in CI; verifica manuale su desktop ancora aperta.*
 - [ ] Non blocca UI.
@@ -381,23 +390,23 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 
 #### Exit criteria
 
-- [ ] Posso lavorare una giornata senza aprire un secondo IDE per funzioni base. — *Parziale: Funzioni base presenti; resta la verifica manuale M1-M31 in todo-ide.md.*
+- [ ] Posso lavorare una giornata senza aprire un secondo IDE per funzioni base. — *Parziale: Funzioni base presenti; resta la verifica manuale M1–M34 in todo-ide.md.*
 
 ### Phase 2 — “Best Go Workflow”
 
 - [ ] Benchmark Studio. — *Parziale: Gutter ▶, benchmem, confronto, storico ed export CSV; manca profiling.*
-- [ ] Dependency Studio. — *Parziale: Dependency Graph (albero diretto → transitivo, versioni duplicate, licenze, peso su disco, unused/indirect, update e govulncheck); manca l'impatto sulla dimensione del binario.*
+- [ ] Dependency Studio. — *Parziale: Dependency Graph (albero diretto → transitivo, versioni duplicate, licenze, peso su disco, unused/indirect, update e govulncheck); Binary Inspector e analisi della dipendenza già presenti; resta il collaudo del percorso da Dependency Studio al dato del binario.*
 
 #### Exit criteria
 
 - [ ] Un bug concorrente è più facile da capire in gO che dal terminale. — *Parziale: Concurrency View con diagnosi e race card; nessuna misura di usabilità.*
 - [ ] Un profiling session porta dal dato alla riga di codice in pochi click.
-- [ ] Benchmark prima/dopo sono leggibili senza tool esterni. — *Parziale: Confronto con variazione percentuale e storico; manca il confronto fra commit.*
+- [ ] Benchmark prima/dopo sono leggibili senza tool esterni. — *Parziale: Confronto con variazione percentuale e storico; baseline e confronto delle misure salvate per commit già presenti; resta il collaudo desktop. Esecuzione automatica su revisioni storiche fuori dal workflow attuale.*
 
 ### Phase 3 — “adOmnia Connected”
 
-- [ ] Kafka integration. — *Parziale: CodeLens, topic nell'Architecture Explorer con formato dei messaggi, Debug consumer, replay e fixture; mancano schema registry e contratti.*
-- [ ] DB integration. — *Parziale: CodeLens query, SQL capture proxy e Database Studio; mancano durate e schema.*
+- [ ] Kafka integration. — *Parziale: CodeLens, topic nell'Architecture Explorer con formato dei messaggi, Debug consumer, replay e fixture; Event Contract Drift confronta tipi producer/consumer e schemi Avro/JSON locali; manca Schema Registry. Resta il collaudo dei collegamenti tra topic, contratti e runtime.*
+- [ ] DB integration. — *Parziale: CodeLens query, SQL capture proxy e Database Studio; mancano durate correlate alla request e navigazione integrata allo schema; lo schema delle tabelle è già esportabile nella reproduction.*
 
 #### Exit criteria
 
@@ -417,7 +426,7 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 ### Phase 5 — “2027 Intelligence”
 
 - [ ] Smart regression tests. — *Parziale: Solo lo starter di test per i race; nessuna generazione intelligente.*
-- [ ] Performance regression intelligence.
+- [ ] Performance regression intelligence. — *Parziale: regressioni nei benchmark già evidenziate; correlazione con profili, trace e modifiche del codice da progettare.*
 - [ ] Automatic reproducer.
 - [ ] Multi-service refactoring assistance.
 
@@ -446,6 +455,8 @@ Premendo Send, sulla Service Map si vede la richiesta viaggiare tra servizi, top
 - [ ] Delve failure rate.
 
 ## §59 · KPI di prodotto
+
+Proposte di valutazione, non telemetria da implementare. Misurare con sessioni locali di collaudo o studi volontari con consenso; nessuna raccolta automatica o invio di dati. Le percentuali di utenti richiedono un campione e un protocollo dichiarati e non bloccano il rilascio.
 
 - [ ] % utenti che usano gO senza aprire altro IDE.
 - [ ] % sessioni con Run.

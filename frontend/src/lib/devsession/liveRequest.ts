@@ -1,3 +1,4 @@
+import { useDistributedDebugStore } from '@/stores/distributedDebug'
 import { CORRELATION_HEADER, beginLiveRequest, endLiveRequest, type LiveSession } from '@/lib/devsession-api'
 import { substVars } from '@/lib/substVars'
 import { uid, type RequestItem, type ResponseData } from '@/lib/types'
@@ -38,14 +39,17 @@ export async function prepareLiveSend(tabId: string, request: RequestItem, vars:
   const session = sessionId ? state.sessions[sessionId] ?? null : sessionForRequest(state, request.url, resolvedUrl)
   const plain: LiveSend = { request, vars: allVars, runId: null, session: null }
   if (!session || session.endedAt) return plain
+  const members = useDistributedDebugStore.getState().sessionIds
+  const sessionIds = members.includes(session.id) ? members : []
   let runId = ''
   let correlationId = ''
   try {
-    const run = await beginLiveRequest({ sessionId: session.id, tabId, name: request.name, method: request.method, url: resolvedUrl })
+    const run = await beginLiveRequest({ sessionIds, sessionId: session.id, tabId, name: request.name, method: request.method, url: resolvedUrl })
     runId = run.id
     correlationId = run.correlationId
     if (run.id) useDevSessionStore.getState().apply({ type: 'request.started', sessionId: session.id, payload: run })
-  } catch {
+  } catch (error) {
+    if (sessionIds.length) throw error
     return plain
   }
   if (!runId) return plain

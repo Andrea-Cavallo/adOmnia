@@ -11,7 +11,7 @@ import { ContextMenu } from '@/components/ui/ContextMenu'
 import { buildTreeMarks, type GoStudioTreeMark } from './goStudioTreeMarks'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { useGoIDETestsStore } from '@/stores/goideTests'
-import { openPemInPowerTools, sendFileToApiWorkspace } from './goStudioFileHandoffs'
+import { openPemInPowerTools, openEnterpriseFile, sendFileToApiWorkspace } from './goStudioFileHandoffs'
 import { deletePathWithConfirm, parentOf, revealPath } from './goStudioFileActions'
 import { buildTreeMenu, treeKeyAction } from './goStudioTreeMenu'
 import { copyReference, findInFolder, openInSplit, openTerminalIn, pasteInto, runPackageCommand, useGoStudioTreeClipboard } from './goStudioTreeActions'
@@ -204,6 +204,10 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'gitHistory': openThen('vcs.history'); break
       case 'gitAnnotate': openThen('vcs.annotate'); break
       case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
+      case 'soapTools': void openEnterpriseFile(session.id, path, 'soap'); break
+      case 'soapSecurity': void openEnterpriseFile(session.id, path, 'security'); break
+      case 'xmlTools': void openEnterpriseFile(session.id, path, 'xml'); break
+      case 'mtlsTools': void openEnterpriseFile(session.id, path, 'mtls'); break
       case 'pemTools': void openPemInPowerTools(session.id, path); break
     }
   }

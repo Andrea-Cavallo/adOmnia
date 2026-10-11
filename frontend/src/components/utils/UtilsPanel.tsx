@@ -1,3 +1,4 @@
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { useState, useMemo } from 'react'
 import { useEffect } from 'react'
 import {
@@ -1513,6 +1514,23 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     setClassInput(hex)
     setClassOutput(classInspect(hex, classViewMode))
   }
+
+  useEntityHandoff('powertools', (_ref, intent, payload) => {
+    if (intent !== 'inspect' && intent !== 'keystore') return false
+    setActiveTool('pem'); setPemFileName(String(payload.name ?? '')); setJksSplit(null)
+    if (intent === 'keystore') {
+      try {
+        const encoded = String(payload.base64 ?? '')
+        if (encoded.length > 12 * 1024 * 1024) throw new Error('Keystore exceeds 8 MiB')
+        const bytes = Uint8Array.from(atob(encoded), ch => ch.charCodeAt(0))
+        void handlePemFile(new File([bytes], String(payload.name ?? 'keystore.p12')))
+      } catch (error) { setPemOutput(String(error)) }
+    } else {
+      const text = String(payload.text ?? '')
+      setPemInput(text); setPemOutput('Inspecting…'); void inspectPem(text).then(setPemOutput)
+    }
+    return true
+  })
 
   // PEM aperti da Go Studio (tasto destro → Open in Power Tools): tool PEM già caricato e ispezionato.
   useEffect(() => {

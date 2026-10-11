@@ -86,10 +86,13 @@ export function applyLiveEvent(model: LiveModel, event: LiveEvent): LiveModel {
 /** The backend puts paused requests back in flight on resume without an event per request. */
 function resumeRuns(model: LiveModel, session: LiveSession): LiveModel {
   if (session.state === 'paused') return model
-  const paused = model.runOrder.filter((id) => model.runs[id]?.sessionId === session.id && model.runs[id].state === 'paused')
+  const paused = model.runOrder.filter((id) => (model.runs[id]?.sessionId === session.id || model.runs[id]?.sessionIds?.includes(session.id)) && model.runs[id].state === 'paused')
   if (paused.length === 0) return model
   const runs = { ...model.runs }
-  for (const id of paused) runs[id] = { ...runs[id], state: session.endedAt ? 'error' : 'sent' }
+  for (const id of paused) {
+    const members = runs[id].sessionIds ?? [runs[id].sessionId]
+    runs[id] = { ...runs[id], state: session.endedAt ? 'error' : members.some(member => model.sessions[member]?.state === 'paused') ? 'paused' : 'sent' }
+  }
   return { ...model, runs }
 }
 

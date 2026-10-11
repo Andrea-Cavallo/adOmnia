@@ -39,7 +39,7 @@ export async function sendFileToApiWorkspace(sessionId: string, relativePath: st
   }
 }
 
-const PEM_FILE = /\.(pem|key|crt|cer)$/i
+const PEM_FILE = /\.(pem|key|crt|cer|jks|p12|pfx)$/i
 
 /** Chiavi e certificati PEM: si aprono nel tool PEM / JKS di Power Tools. */
 export function isPemCandidate(relativePath: string): boolean {
@@ -48,12 +48,11 @@ export function isPemCandidate(relativePath: string): boolean {
 
 /** Porta il PEM (anche non salvato) nel tool PEM / JKS di Power Tools: ispezione e cifratura della chiave. */
 export async function openPemInPowerTools(sessionId: string, relativePath: string): Promise<void> {
-  const name = relativePath.slice(relativePath.lastIndexOf('/') + 1)
-  try {
-    const text = await fileText(sessionId, relativePath)
-    if (!text.includes('-----BEGIN ')) throw new Error('no PEM block found')
-    showModule('powertools', { kind: 'tool-file', file: { kind: 'pem', name, text } })
-  } catch (error) {
-    showEntityNotice(`${name} cannot be opened in Power Tools: ${error instanceof Error ? error.message : String(error)}`)
-  }
+  const { openEntity } = await import('@/lib/entities/router')
+  await openEntity({ kind: 'artifact', id: `${sessionId}:${relativePath}`, sessionId, label: relativePath.split('/').pop() ?? relativePath, attrs: { path: relativePath } }, 'inspect')
+}
+
+export async function openEnterpriseFile(sessionId: string, path: string, intent: 'soap' | 'security' | 'xml' | 'mtls'): Promise<void> {
+ const { openEntity } = await import('@/lib/entities/router')
+ await openEntity({ kind: 'artifact', id: `${sessionId}:${path}`, sessionId, label: path.split('/').pop() ?? path, attrs: { path } }, intent)
 }
