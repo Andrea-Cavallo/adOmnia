@@ -10,11 +10,12 @@ import { GoStudioArchitectureRules } from './GoStudioArchitectureRules'
 import { GoStudioDependencyHeatmap } from './GoStudioDependencyHeatmap'
 import { GoStudioApiContract } from './GoStudioApiContract'
 import { GoStudioBinaryInspector } from './GoStudioBinaryInspector'
+import { GoStudioMemoryModel } from './GoStudioMemoryModel'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioDataAccessView } from './GoStudioDataAccessView'
 import { layoutLayered, type LayeredNode } from './goStudioLayeredGraph'
 
-export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract' | 'binary'
+export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract' | 'binary' | 'memory'
 
 const NODE_COLOR: Record<ArchNode['kind'], string> = {
   package: 'var(--color-accent)',
@@ -74,6 +75,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['heatmap', 'Heatmap'],
     ['contract', 'Contracts'],
     ['binary', 'Binary'],
+    ['memory', 'Memory model'],
     ['rules', 'Rules & drift'],
   ]
   return (
@@ -94,7 +96,8 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
       </div>
       {error && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-danger">{error}</div>}
       <div className="flex min-h-0 flex-1 flex-col">
-        {tab === 'binary' ? (authorized ? <GoStudioBinaryInspector sessionId={sessionId} targets={mainTargets(report)} /> : <p className="p-3 text-text-4">Trust the project to build it.</p>)
+        {tab === 'memory' ? (authorized ? <GoStudioMemoryModel sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to analyze it.</p>)
+          : tab === 'binary' ? (authorized ? <GoStudioBinaryInspector sessionId={sessionId} targets={mainTargets(report)} /> : <p className="p-3 text-text-4">Trust the project to build it.</p>)
           : tab === 'contract' ? (authorized ? <GoStudioApiContract sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to compare its API with the contract.</p>)
           : tab === 'heatmap' ? (authorized ? <GoStudioDependencyHeatmap sessionId={sessionId} query={query} /> : <p className="p-3 text-text-4">Trust the project to measure its packages.</p>)
           : tab === 'rules' ? (authorized ? <GoStudioArchitectureRules sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to check its architecture rules.</p>)

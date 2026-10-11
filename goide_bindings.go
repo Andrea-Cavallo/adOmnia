@@ -1482,6 +1482,11 @@ func (g *GoIDE) ShutdownAnalysis(sessionID, target, health string, graceSeconds 
 	return g.service.ShutdownAnalysis(sessionID, target, health, graceSeconds)
 }
 
+// MemoryModelAt spiega gli archi happens-before della funzione sotto il cursore.
+func (g *GoIDE) MemoryModelAt(sessionID, relPath string, line int) (goide.MemoryModelReport, error) {
+	return g.service.MemoryModelAt(sessionID, relPath, line)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

@@ -98,6 +98,7 @@ func (a *architecture) collectEntries() {
 				a.addEntry(ArchEntry{Kind: fn.Name.Name, Name: file.pkg.PkgPath, Package: file.pkg.PkgPath, Function: name, Site: a.site(fn.Name.Pos())})
 			}
 			a.collectFunctionEntries(file, fn, name)
+			a.collectSync(file, fn, name)
 			a.collectRoutes(file, fn, name)
 			a.collectQueries(file, fn, name)
 		}

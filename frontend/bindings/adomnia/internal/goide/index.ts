@@ -118,6 +118,7 @@ export {
     LinterInfo,
     LiveProfileRequest,
     MakeInfo,
+    MemoryModelReport,
     ModuleRegistryCheck,
     MoveSymbolRequest,
     NavigationEntry,

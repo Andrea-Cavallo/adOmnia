@@ -66,6 +66,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	for index := range r.Reads {
 		fix(&r.Reads[index].Site)
 	}
+	for index := range r.Syncs {
+		fix(&r.Syncs[index].Site)
+	}
 	for index := range r.Interfaces {
 		item := &r.Interfaces[index]
 		fix(&item.Site)
@@ -115,6 +118,7 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.Queries = append(r.Queries, other.Queries...)
 	r.ContextCalls = append(r.ContextCalls, other.ContextCalls...)
 	r.Reads = append(r.Reads, other.Reads...)
+	r.Syncs = append(r.Syncs, other.Syncs...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -172,6 +176,8 @@ type ArchitectureReport struct {
 	ExternalCalls []ArchEdge `json:"-"`
 	// Reads: variabili d'ambiente e chiavi di configurazione lette da ogni funzione.
 	Reads     []ArchRead `json:"reads,omitempty"`
+	// Syncs: operazioni di sincronizzazione (canali, mutex, atomic, WaitGroup, Once, go).
+	Syncs []ArchSync `json:"syncs,omitempty"`
 	Truncated bool       `json:"truncated,omitempty"`
 }
 
