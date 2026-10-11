@@ -20,7 +20,7 @@ export function UpdateCheckRow() {
     <option value="auto">Follow installed version</option><option value="stable">Stable</option><option value="beta">Beta + stable</option>
    </select>
   </div>
-  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoDownloadUpdates !== false} onChange={e=>{updateGeneral({autoDownloadUpdates:e.target.checked});if(!e.target.checked&&status.scheduled)void schedule(false)}}/>Download verified updates and install after closing adOmnia</label>
+  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoDownloadUpdates === true} onChange={e=>{updateGeneral({autoDownloadUpdates:e.target.checked});if(!e.target.checked&&status.scheduled)void schedule(false)}}/>Download verified updates automatically (installation always requires confirmation)</label>
   <div role="status" aria-live="polite" className="text-xs text-text-3">
    {error || status.error || (status.scheduled ? `${status.version} ready — will update and restart after you close adOmnia` : ({idle:'Checks at startup and every six hours while open',dev:'Development build — updates skipped',checking:'Checking…',current:'No newer signed release for this channel',available:`${status.version} available`,downloading:`Downloading ${status.version}: ${progress}%`,verifying:'Verifying update package…',ready:`${status.version} ready to install`} as Record<string,string>)[status.phase])}
   </div>

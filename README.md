@@ -52,7 +52,7 @@ Get the latest build from **[GitHub Releases](https://github.com/Andrea-Cavallo/
 | macOS (Intel and Apple Silicon) | `adomnia-<version>-macos-universal.dmg` | — |
 | Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | GTK 3, WebKitGTK 4.1 |
 
-Every release includes `SHA256SUMS.txt`. See the [installation guide](docs/INSTALL.md) for platform-specific steps. Package-manager templates for Scoop, Homebrew, Snap and Flatpak live in [`packaging/`](packaging/README.md); use GitHub Releases until those channels are published.
+Every release includes `SHA256SUMS.txt`. Install/update scripts (`scripts/install.sh` and `scripts/install.ps1`) ask for consent and verify checksums. In-app updates verify signatures and require explicit installation confirmation. See the [installation guide](docs/INSTALL.md) for steps and security differences. Package-manager templates for Scoop, Homebrew, Snap and Flatpak live in [`packaging/`](packaging/README.md); use GitHub Releases until those channels are published.
 
 ### Getting started
 

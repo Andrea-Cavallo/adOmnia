@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
 # uninstall.sh - remove adOmnia Linux native install
-# Usage: sudo ./uninstall.sh
-set -e
+# Usage: ./uninstall.sh (without sudo); application data is preserved.
+set -euo pipefail
 
-INSTALL_DIR="/opt/adomnia"
-DESKTOP_FILE="/usr/share/applications/adomnia.desktop"
-HICOLOR_BASE="/usr/share/icons/hicolor"
-
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Run with sudo: sudo ./uninstall.sh"
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Run ./uninstall.sh as your normal user, without sudo." >&2
     exit 1
 fi
 
+INSTALL_DIR="$HOME/.local/bin"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+[[ "$DATA_DIR" == /* ]] || { echo "XDG_DATA_HOME must be an absolute path." >&2; exit 1; }
+DESKTOP_FILE="$DATA_DIR/applications/adomnia.desktop"
+HICOLOR_BASE="$DATA_DIR/icons/hicolor"
+
 echo "==> Removing adOmnia binary and app files ..."
-rm -rf "$INSTALL_DIR"
+rm -f "$INSTALL_DIR/adomnia"
+rm -f "$DATA_DIR/adomnia/adomnia.png"
 
 echo "==> Removing desktop entry ..."
 rm -f "$DESKTOP_FILE"
-update-desktop-database "/usr/share/applications" 2>/dev/null || true
+update-desktop-database "$DATA_DIR/applications" 2>/dev/null || true
 
 echo "==> Removing hicolor icons ..."
 for sz in 16 24 32 48 64 128 256 512; do
@@ -28,4 +31,4 @@ rm -f "$HICOLOR_BASE/scalable/apps/adomnia-symbolic.svg"
 gtk-update-icon-cache -f -t "$HICOLOR_BASE" 2>/dev/null || true
 xdg-icon-resource forceupdate 2>/dev/null || true
 
-echo "adOmnia removed."
+echo "adOmnia removed. Workspaces, settings and any legacy /opt installation were preserved."

@@ -22,7 +22,7 @@ export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
   checking = true; set({ error: '', status: { ...get().status, phase: 'checking' } })
   try {
    const status = await CheckUpdateChannel(channel(), force); set({ status })
-   if (status.phase === 'available' && status.trusted && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates !== false) await get().download()
+   if (status.phase === 'available' && status.trusted && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates === true) await get().download()
   } catch(error) { set({ status: { ...get().status, phase: 'error' } }); failure(error) } finally { checking = false }
  },
  download: async () => { try { set({ status: await DownloadUpdate(), error: '' }) } catch(error) { failure(error) } },
@@ -48,8 +48,7 @@ export function startUpdater(): () => void {
     const status = await GetUpdateState()
     if (!disposed) {
      useUpdaterStore.setState({ status })
-     // An automatic download is applied only after normal guarded shutdown.
-     if (status.phase === 'ready' && !status.scheduled && general.autoDownloadUpdates !== false) await useUpdaterStore.getState().schedule(true)
+     // A completed download is never consent to replace the application.
     }
    } catch(error) { if (!disposed) failure(error) } finally { polling = false }
   }
