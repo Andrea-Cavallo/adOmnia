@@ -60,8 +60,9 @@ La versione installata rimane beta finché il rilascio non è verificato. Seguir
 
 ## Icona nativa Windows e palette
 
-- [x] Skin e palette aggiornano le icone native delle finestre Windows (WM_SETICON, 16/32 px), incluse le anteprime colore.
-- [x] Colori rapidi coalescenti e una sola coppia di handle custom: nessuna cache illimitata durante lo slider.
+- [x] Ripristinato il logo nativo originale Windows bianco/nero secondo la skin.
+- [ ] Colorazione nativa secondo palette disattivata dopo la regressione segnalata nella taskbar: verificare visivamente forma, trasparenza e colore prima di riattivarla.
+- [x] Cambi skin coalescenti: viene applicata la modalità più recente senza una coda di aggiornamenti.
 - [x] Test Windows con HWND reale: icone piccola/grande ricevute, cambio skin e creazione colore; build e budget startup passati.
 - [ ] Verifica visiva nella taskbar con l'app compilata: skin bianca/nera, palette custom, DPI e finestre separate.
 - [ ] Launcher Linux/Dock macOS: cambio colore palette ancora da implementare; cambio light/dark preesistente conservato.
@@ -74,3 +75,33 @@ L'icona aggiornata appartiene all'app in esecuzione. La risorsa dell'EXE e il co
 - [x] Workspace/Environments/Hosts con titoli Nothing e colori della palette, linea sottile e focus visibile.
 - [x] Tab richieste compatte: barra 40 px, tab 32 px, larghezze e calcolo overflow aggiornati insieme.
 - [ ] Verifica visiva nell'app desktop: skin chiara/scura, palette, menu, molte tab, tab pinnate e ridimensionamento.
+
+## Riparazione build 2026-10-11
+
+- [x] Corrette le stringhe Markdown multilinea non terminate nel tooltip dei valori debugger, conservando i valori completi.
+- [x] Build frontend (TypeScript + Vite) e budget startup passati: 598602 byte su 650000.
+
+## Audit candidato v1 — 2026-10-11
+
+- [x] Integrato origin/main 1bc2b77 con fast-forward, conservando modifiche locali. CI di questo commit remoto verde (run 38134553058); non certifica il working tree successivo.
+- [x] Presente secret GitHub ADOMNIA_UPDATE_SIGNING_KEY (verificato solo il nome, nessun contenuto esposto).
+- [x] Preparato build.yml: ZIP updater per tre piattaforme e firma manifest prima della release del tag. Verifica reale in CI ancora aperta.
+- [x] Preparata bozza docs/releases/v1.0.0.md con perimetro e limiti.
+- [x] Allineati config desktop, fallback Windows e manifest npm alla beta.2 già rilasciata.
+- [ ] Cambiare tutti a 1.0.0 solo alla promozione finale.
+- [ ] Test installer shell su Linux/macOS: tentativo su Windows fallito per percorsi/host bash incompatibili; non prova un difetto dell'installer.
+- [ ] Installer Windows grafico e firma Authenticode: gli script di installazione attuali non equivalgono a Setup/MSI.
+- [ ] macOS Developer ID/notarizzazione, installazione e updater su bundle firmato.
+- [ ] Verificare ZIP, manifest firmato e download updater dalla release candidata; aggiornamento reale con dati, rollback e finestre IDE.
+- [ ] Risolvere i gate desktop della checklist v1 e congelare il commit candidato prima del push/tag.
+- [ ] Decidere se i due asset export GIF/MP4 non tracciati appartengono alla release; esclusi dalla preparazione corrente.
+
+- [x] Suite frontend completa: 1357 test/311 file, TypeScript/Vite e startup 598669 byte.
+- [x] CI preparata per eseguire test installer sul runner Linux e controllare budget startup.
+
+- [x] Suite Go completa senza timeout (10 minuti per package), inclusi git, goide e updater, e go build ./... su Windows.
+
+## Pubblicazione autorizzata — 2026-10-11
+
+- [x] Versione 1.0.0 impostata nei manifest desktop/npm.
+- [ ] Gate nativi precedenti ancora aperti: il tag è richiesto esplicitamente dall’utente e non certifica installer/update/rollback o collaudi desktop.

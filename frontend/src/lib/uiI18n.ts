@@ -10,6 +10,7 @@ import type { Lang } from '@/lib/i18n'
  */
 export const ITALIAN_UI_MESSAGES = {
   'Beta': 'Beta',
+  'Open Project in New Window': 'Apri progetto in una nuova finestra',
   'Application resources': 'Consumi applicazione',
   'Resources unavailable': 'Consumi non disponibili',
   'Measuring resources…': 'Misurazione consumi…',

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useGoIDEWindowsStore } from '@/stores/goideWindows'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
 import { Bug, ChevronDown, Hammer, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { Container, Database, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
@@ -115,6 +116,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       ...recentItems(),
       { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', icon: FolderOpen, separatorBefore: true },
       { id: 'new', label: 'New Go Project…', icon: FolderPlus },
+      { id: 'project-window', label: 'Open Project in New Window', icon: Maximize2 },
       { id: 'clone', label: 'Clone Repository…', icon: GitBranch },
       { id: 'close', label: `Close “${activeSession.project.name}”`, icon: FolderX, separatorBefore: true },
     ]
@@ -150,6 +152,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
     switch (id) {
       case 'open': return props.onOpenProject()
       case 'new': return props.onCreateProject()
+      case 'project-window': return void useGoIDEWindowsStore.getState().moveToNewWindow(activeSession.id)
       case 'clone': return props.onClone()
       case 'close': return props.onClose()
       case 'configure': return props.onConfigure()

@@ -5,6 +5,7 @@ import { caretsFor, restoreCarets } from '@/lib/goide/goStudioCaretMemory'
 import { create } from 'zustand'
 import { startSharedEnvironmentSync } from '@/lib/goide/sharedEnvironment'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { rememberedStudioSession, studioSessionMemoryKey } from '@/lib/goide/studioSessionMemory'
 import {
   checkGoIDEDocument,
   chooseGoIDEProjectFolder,
@@ -421,7 +422,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
         ? sessions.some((session) => session.id === pinned) ? pinned : null
         : visible.some((session) => session.id === get().activeSessionId)
           ? get().activeSessionId
-          : visible[0]?.id ?? null
+          : rememberedStudioSession(visible, workspaces.activeId)
       set({ capabilities, sessions, recentProjects, activeSessionId, studioWorkspaces: workspaces.workspaces, activeWorkspaceId: workspaces.activeId, initialized: true, loading: false })
       if (activeSessionId) await get().selectSession(activeSessionId)
     } catch (error) {
@@ -469,6 +470,10 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
 
   selectSession: async (activeSessionId) => {
     set({ activeSessionId, error: null })
+    if (!goStudioWindowContext().pinnedSessionId) {
+      const session = get().sessions.find((item) => item.id === activeSessionId)
+      if (session) safeSetItem(studioSessionMemoryKey(session.workspaceId || DEFAULT_STUDIO_WORKSPACE_ID), activeSessionId)
+    }
     try {
       const [entries, executions] = await Promise.all([
         listGoIDEDirectory(activeSessionId), listGoIDERuns(activeSessionId),

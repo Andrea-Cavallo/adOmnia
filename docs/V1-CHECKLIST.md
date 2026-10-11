@@ -13,7 +13,7 @@ The v1 baseline is the existing local-first API workbench and Go Studio, with th
 - [x] Frontend suite: 1,311 tests in 296 files passed on 2026-10-10, before release metadata changes.
 - [x] Beta release tree passes TypeScript, frontend build and startup budget (592,827 initial JavaScript bytes), 2026-10-10. Commit/tag verification is recorded after publication.
 - [x] Go build and affected packages (`devcontext`, `goide`, `ide/run`, `collab`, `collectionfs`) pass on 2026-10-10; Go Studio suite takes 121.6 seconds on this host.
-- [ ] Full Go suite without timeouts: initial 60-second run timed out in `git` and `goide`; the isolated cherry-pick test and longer Go Studio run pass. Git suite recheck remains a release acceptance gate until recorded.
+- [x] Full Go suite passed on Windows, 2026-10-11: go test -count=1 -timeout=10m ./..., including git, goide and update. Evidence: .artifacts/v1-go-tests.log.
 - [ ] CI produces Windows, Linux and macOS artifacts for the exact release tag with checksums.
 
 ## Desktop acceptance — blockers
@@ -47,3 +47,11 @@ The v1 baseline is the existing local-first API workbench and Go Studio, with th
 ## Tag cleanup
 
 On 2026-10-10 the user requested retirement of all previous local/remote tags and GitHub releases. Historical changelogs stay in Git. An external backup contains Git history, local and remote tag references and release metadata; it does not archive installer assets.
+
+## Candidate audit — 2026-10-11 (Windows working tree)
+
+- [x] Full frontend suite: 311 files / 1,357 tests, TypeScript/Vite and startup budget 598,669 bytes passed. Local tree includes fixes beyond main 1bc2b77; not yet a tagged artifact.
+- [x] Tag workflow prepared with three updater ZIPs, signed manifest, startup budget and Linux installer tests; YAML/package contract checked locally.
+- [x] Full Go suite and go build ./... passed locally on 2026-10-11.
+- [ ] Exact candidate CI evidence after the reviewed push.
+- [ ] Native installer/update and desktop acceptance remain blocking; installation scripts do not replace Windows Setup/MSI or macOS notarization.

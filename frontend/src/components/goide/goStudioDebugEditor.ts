@@ -7,7 +7,7 @@ import { activeDebugView, executionPoint, hasBreakpointOptions, hasLiveDebugger,
 import { breakpointSummary, useGoStudioBreakpointUi } from './goStudioBreakpoints'
 import { documentForModel } from './goStudioLanguageFeatures'
 import { useTrackedLineMarkers } from './goStudioLineMarkers'
-import { frameVariables, inlineValueText } from './goStudioDebugInlineValues'
+import { frameVariables, inlineValueText, inlineValueVariables } from './goStudioDebugInlineValues'
 
 const HOVER_VALUE_MAX_CHARS = 2000
 const EMPTY_BREAKPOINTS: GoIDEBreakpointState[] = []
@@ -190,12 +190,16 @@ export function useGoStudioDebugDecorations(editorRef: MutableRefObject<monaco.e
   useEffect(() => {
     const model = editorRef.current?.getModel()
     if (!model || !pointLine) return void inlineValuesRef.current?.clear()
-    const values = inlineValueText(model.getLinesContent(), pointLine, frameVariables(inline.scopes, inline.children))
-    inlineValuesRef.current?.set([...values].map(([line, content]) => {
+    const lines = model.getLinesContent()
+    const variables = frameVariables(inline.scopes, inline.children)
+    const full = inlineValueVariables(lines, pointLine, variables)
+    inlineValuesRef.current?.set([...inlineValueText(lines, pointLine, variables)].map(([line, content]) => {
       const column = model.getLineMaxColumn(line)
+      // Hovering the shortened value shows every value in full, in a selectable (copyable) hover.
+      const hover = (full.get(line) ?? []).map((part) => ({ value: '```go\n' + `${part.name} = ${part.value}`.replace(/```/g, '`​``') + '\n```' }))
       return {
         range: { startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: column },
-        options: { after: { content: `${INLINE_VALUE_GAP}${content}`, inlineClassName: 'go-studio-inline-value' }, showIfCollapsed: true },
+        options: { after: { content: `${INLINE_VALUE_GAP}${content}`, inlineClassName: 'go-studio-inline-value' }, hoverMessage: hover, showIfCollapsed: true },
       }
     }))
   }, [editorRef, id, inline.children, inline.scopes, mountCount, pointLine])

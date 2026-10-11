@@ -6,7 +6,34 @@ Questo file contiene **solo il lavoro ancora aperto** (riverificato il 2026-10-1
 
 - **Implementato e coperto da test automatici**: Fasi 0–5, comprese le finestre separate (5.8), Fix with AI e le icone dei file. Le suite Go (`-race`, gopls e Delve reali) e frontend passano su Windows; su Linux passano in CI.
 - **Documentazione**: completata il 2026-09-29 (README, catalogo funzioni, ISSUES, ARCHITECTURE, CLAUDE.md e `docs/GO-STUDIO.md` con persistenza, dipendenze, versioni, scorciatoie e modello di sicurezza).
-- **Manca**: le prove manuali nell'app avviata (sotto) e, dopo di queste, la chiusura dei gate e la dichiarazione delle finestre separate nelle note di rilascio.
+- **Manca**: le prove manuali nell'app avviata (sotto) e, dopo di queste, la chiusura dei gate e la dichiarazione delle finestre separate nelle note di rilascio. Per il criterio di uscita della **Fase 1 “Real IDE”** vedi il blocco dedicato più sotto.
+
+---
+
+# ▶ FASE 1 — “REAL IDE” (exit criteria)
+
+> **Criterio di uscita:** *Posso lavorare una giornata senza aprire un secondo IDE per funzioni base.*
+
+Stato: **parziale**. Le funzioni base esistono e sono coperte da test automatici (Fasi 0–5); manca la verifica manuale nell'app avviata. La chiusura del criterio dipende dalle prove raccolte più sotto:
+
+| Blocco | Prove | Cosa sblocca |
+| --- | --- | --- |
+| Base end-to-end (minimo per dichiarare la fase) | M1, M2, M4, M6 | Gate Fase 1 |
+| Barra di qualità (una giornata intera senza secondo IDE) | M8, M24–M27 | Gate finale |
+| Flussi quotidiani su progetto reale | M15–M30 | Gate finale |
+| Intelligenza, test/debug, VCS, integrazioni | M5, M9–M14, M19–M21, M31, M32 | Gate Fasi 2–5 |
+| Piattaforme | Rendering font e scrolling su Linux/WebKitGTK; verifica su macOS | Dichiarazione piattaforme |
+| AI (P4) e Copilot | P4, C1–C4 | Roadmap Copilot |
+
+**Cosa manca, in ordine di priorità per chiudere la Fase 1:**
+
+1. **M1, M2, M4, M6** — base end-to-end su un progetto Go reale: flusso apri → autorizza → modifica → salva → Build → Run con stdin → Stop/Restart; nessun processo orfano; aspetto dark/light; installazione strumenti mancanti dal menu. È il minimo che sblocca il **Gate Fase 1**.
+2. **M8** — confronto con i due mock approvati e verifica fluido/veloce/moderno/stabile su un progetto di dimensioni reali. Senza questo, il criterio “una giornata intera” non è dimostrato.
+3. **M24–M27, M15–M30** — navigazione da tastiera, contrasto/zoom/temi/densità, coesione con rail e command palette, prestazioni su progetto grande: sono le prove che misurano l'uso reale per una giornata.
+4. **M5, M9–M14, M19–M21, M31, M32** — intelligenza del codice, refactor, test/debug, VCS e integrazioni adOmnia: necessarie per non dover aprire un secondo IDE sulle attività non banali.
+5. **Piattaforme** — rendering font e scrolling su Linux/WebKitGTK e verifica reale su macOS, se la fase va dichiarata su quelle piattaforme (su Windows le suite automatiche passano).
+
+Finché queste caselle non sono spuntate con un'evidenza registrata, la Fase 1 resta **parziale** e la dichiarazione nelle note di rilascio è rinviata. La sessione di collaudo va registrata nel **registro del criterio di uscita**, sotto `## Evidenze`.
 
 ---
 
@@ -131,6 +158,15 @@ Registrare nelle evidenze le differenze intenzionali rispetto ai mock.
 
 ## Evidenze
 
+### Fase 1 — “Real IDE”: registro del criterio di uscita
+
+Criterio: *posso lavorare una giornata senza aprire un secondo IDE per funzioni base.*
+Si spunta solo quando le prove minime (M1, M2, M4, M6) e la barra di qualità (M8, M24–M27) sono passate e registrate qui sotto con una sessione reale di collaudo.
+
+| Data | Piattaforma | Progetto usato | Prove passate | Esito | Note (differenze dai mock / blocchi) |
+| --- | --- | --- | --- | --- | --- |
+| | | | | ⬜ parziale | |
+
 ### Monitor consumi e gopls (2026-10-11)
 
 - [x] Misurazione locale RAM e delta CPU del processo reale; prima lettura CPU sconosciuta.
@@ -162,3 +198,13 @@ Da compilare man mano che passano le prove (una riga per sessione di collaudo).
 | Data | Commit / release | Piattaforma | Versioni Go / gopls / Delve | Progetto usato | Prove passate | Note e differenze dai mock |
 | --- | --- | --- | --- | --- | --- | --- |
 | | | | | | | |
+
+### Ripristino ultimo progetto attivo (2026-10-11)
+- [x] Memoria locale del progetto selezionato per workspace, senza modifiche al formato workspace. Finestre staccate non sovrascrivono la scelta principale.
+- [x] Test ripristino, isolamento workspace, progetto chiuso e storage indisponibile; build frontend e budget startup passati.
+- [ ] Smoke desktop: selezionare il secondo progetto, chiudere e riaprire adOmnia e verificare progetto/editor attivi.
+
+### Progetti multipli nella stessa istanza adOmnia
+- [x] Verificata architettura: finestre IDE create da app.Window nella stessa applicazione, con una finestra per sessione e backend condiviso.
+- [x] Azione Open Project in New Window esposta anche nel menu del progetto della toolbar; riusa il controllo dei buffer non salvati.
+- [ ] Smoke desktop con due progetti, API Workspace condiviso, navigazione handler e chiusura/rientro delle finestre.

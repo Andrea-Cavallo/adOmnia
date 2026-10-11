@@ -35,10 +35,10 @@ export function frameVariables(scopes: GoIDEDebugScope[], children: Record<numbe
 
 /**
  * Come GoLand: ogni variabile si mostra sull'ultima riga, fino a quella in pausa, in cui compare,
- * senza uscire dalla funzione corrente. Restituisce il testo per riga (1-based).
+ * senza uscire dalla funzione corrente. Restituisce le variabili per riga (1-based), valori interi.
  */
-export function inlineValueText(lines: string[], pausedLine: number, variables: InlineVariable[]): Map<number, string> {
-  const byLine = new Map<number, string[]>()
+export function inlineValueVariables(lines: string[], pausedLine: number, variables: InlineVariable[]): Map<number, InlineVariable[]> {
+  const byLine = new Map<number, InlineVariable[]>()
   const lowest = Math.max(1, pausedLine - MAX_LOOKBACK_LINES)
   for (const variable of variables) {
     const pattern = new RegExp(`(^|[^.\\w])${escapeRegExp(variable.name)}\\b`)
@@ -46,11 +46,18 @@ export function inlineValueText(lines: string[], pausedLine: number, variables: 
       const text = lines[line - 1] ?? ''
       const code = text.replace(/\/\/.*$/, '')
       if (pattern.test(code)) {
-        byLine.set(line, [...(byLine.get(line) ?? []), `${variable.name} = ${shorten(variable.value, MAX_VALUE_CHARS)}`])
+        byLine.set(line, [...(byLine.get(line) ?? []), variable])
         break
       }
       if (FUNC_DECLARATION.test(text)) break
     }
   }
-  return new Map([...byLine].map(([line, parts]) => [line, shorten(parts.join(', '), MAX_LINE_CHARS)]))
+  return byLine
+}
+
+/** Il testo accorciato da mostrare accanto al codice. */
+export function inlineValueText(lines: string[], pausedLine: number, variables: InlineVariable[]): Map<number, string> {
+  return new Map([...inlineValueVariables(lines, pausedLine, variables)].map(([line, parts]) => [
+    line, shorten(parts.map((part) => `${part.name} = ${shorten(part.value, MAX_VALUE_CHARS)}`).join(', '), MAX_LINE_CHARS),
+  ]))
 }

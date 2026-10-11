@@ -106,8 +106,7 @@ function syncDocumentMode(theme: Theme) {
   const html = document.documentElement
   html.setAttribute('data-theme', theme.id)
   const mode = effectiveMode(theme)
-  const accent = html.style.getPropertyValue('--color-accent').trim()
-  syncNativeIcon(mode, validAccent(accent) ? accent : '')
+  syncNativeIcon(mode)
   html.classList.toggle('light', mode === 'light')
   html.classList.toggle('dark', mode === 'dark')
 

@@ -1,6 +1,8 @@
 # Release Process
 
-adOmnia releases are driven by Git tags and GitHub Actions.
+adOmnia releases are driven by Git tags and GitHub Actions. The automatic tag path is `.github/workflows/build.yml`; `.github/workflows/release.yml` is an alternative manual dispatch and should not run concurrently for the same tag. Both must publish three updater ZIPs, a signed manifest and checksums.
+
+See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explicit request with native acceptance gates still open.
 
 The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
