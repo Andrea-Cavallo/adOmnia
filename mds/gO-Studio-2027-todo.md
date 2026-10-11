@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 62 | 3 |
+| **P4** | AI e intelligenza del workspace | 58 | 3 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -188,12 +188,7 @@ _Chiusa il 2026-10-11: regole in `.adomnia/architecture.json` (layer, dipendenze
 
 ## §56 · Nuove idee da valutare
 
-### A. Live Dependency Heatmap
-
-- [ ] Visualizzare quali package sono più usati runtime.
-- [ ] Evidenziare dipendenze statiche mai attraversate.
-- [ ] Evidenziare dipendenze centrali troppo accoppiate.
-- [ ] Visualizzare “blast radius” di una modifica.
+_A. Live Dependency Heatmap chiusa il 2026-10-11 (Architecture Explorer → Heatmap)._
 
 ### B. API Contract Drift
 

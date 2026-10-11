@@ -552,6 +552,10 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 **Separate windows** (*File → Open Project in New Window*) are covered by automated tests only. They will be declared supported in the release notes once the manual check in a real window (M31) passes.
 
+## Dependency heatmap
+
+*Architecture Explorer → Heatmap* shows, for every package of the project, its coupling (importers × imports), fan-in and fan-out, blast radius (packages that depend on it, directly or not) and number of functions. With a CPU or memory profile loaded in Performance Studio, each package also gets its inclusive share of the profile (time spent in the standard library counts for the project code that called it), packages are ranked by it, and the imports between project packages that no profiled call crossed are listed: candidates for dead or optional dependencies.
+
 ## Architecture rules and drift
 
 *Architecture Explorer → Rules & drift* checks the code against `.adomnia/architecture.json` (*Create architecture rules* writes a template; commit it to share the rules). Package patterns are relative to the module (`internal/domain/...` is the folder and everything below, `*` one segment):
