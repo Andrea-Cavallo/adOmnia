@@ -105,3 +105,9 @@ L'icona aggiornata appartiene all'app in esecuzione. La risorsa dell'EXE e il co
 
 - [x] Versione 1.0.0 impostata nei manifest desktop/npm.
 - [ ] Gate nativi precedenti ancora aperti: il tag è richiesto esplicitamente dall’utente e non certifica installer/update/rollback o collaudi desktop.
+
+## README e guida utente — 2026-10-11
+- [x] README riscritto sul flusso API, debugger, IDE e studi connessi; CLI/build spostati fuori dal percorso principale.
+- [x] Preview demo YouTube cliccabile da 0:38 e screenshot reali selezionati con provenienza documentata.
+- [x] Guide pratiche inglese/italiano e link locali verificati; corretti link release e nomi artefatti in INSTALL.md.
+- [ ] Rinnovare le catture nella build desktop corrente: screenshot selezionati reali ma precedenti agli ultimi ritocchi toolbar.

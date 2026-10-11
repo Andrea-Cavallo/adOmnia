@@ -6,15 +6,15 @@ adOmnia is distributed as pre-built desktop artifacts from GitHub Actions and Gi
 
 For normal users, download the latest stable build from:
 
-[GitHub Releases](../releases/latest)
+[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)
 
 Release files:
 
 | Platform | Artifact |
 |---|---|
-| Windows | `adOmnia-<version>-windows-amd64.exe` |
-| Linux | `adOmnia-<version>-linux-amd64.tar.gz` or `adOmnia-<version>-linux-amd64` |
-| macOS | `adOmnia-<version>-macos-universal.dmg` |
+| Windows | `adomnia-<version>-windows-amd64.exe` |
+| Linux | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
+| macOS | `adomnia-<version>-macos-universal.dmg` |
 
 ## Install or update with a script
 
@@ -27,13 +27,13 @@ From a repository checkout:
 # macOS: installs to ~/Applications/adomnia.app
 bash scripts/install.sh
 # Pin a release or update a custom, user-owned copy
-bash scripts/install.sh --version v0.10.0 --destination "$HOME/.local/bin/adomnia"
+bash scripts/install.sh --version v1.0.0 --destination "$HOME/.local/bin/adomnia"
 ```
 
 ```powershell
 # Windows x86_64: installs to %LOCALAPPDATA%\Programs\adOmnia\adomnia.exe
 .\scripts\install.ps1
-.\scripts\install.ps1 -Version v0.10.0 -Destination 'C:\Users\me\Apps\adomnia.exe'
+.\scripts\install.ps1 -Version v1.0.0 -Destination 'C:\Users\me\Apps\adomnia.exe'
 ```
 
 Both scripts select the latest stable release by default, ask for confirmation
