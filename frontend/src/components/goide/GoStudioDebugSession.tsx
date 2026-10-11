@@ -1,3 +1,4 @@
+import { cancellationPath, contextChainOf, goroutineOrigin, type ContextLink, type GoroutineOrigin } from '@/lib/goide/goroutineWhy'
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, GitFork, MapPin, OctagonAlert, Rocket } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
@@ -254,6 +255,58 @@ function PanicInspectorDetail({ debugId, panic }: { debugId: string; panic: NonN
   )
 }
 
+/** "Why is this running?": the request or message it was born from, how long it lives, its context. */
+function WhyRunning({ goroutine, debugId }: { goroutine: GoIDEGoroutine; debugId: string }) {
+  const view = useGoIDEDebugStore((state) => state.debuggers[debugId])
+  const seen = view?.firstSeen?.[goroutine.id]
+  const [origin, setOrigin] = useState<GoroutineOrigin | null>(null)
+  const [context, setContext] = useState<{ frame: string; variable: string; chain: ContextLink[] } | null | 'loading' | 'none'>(null)
+  useEffect(() => {
+    let cancelled = false
+    setContext(null)
+    void (async () => {
+      const sessionId = view?.info.sessionId ?? ''
+      const [{ getDevContext }, { cachedArchitecture }] = await Promise.all([import('@/lib/devcontext-api'), import('@/lib/goide/architectureCache')])
+      const snapshot = await getDevContext(sessionId).catch(() => null)
+      const routes = (snapshot?.entities ?? []).filter((entity) => entity.kind === 'route')
+      const entries = cachedArchitecture(sessionId)?.report.entries ?? []
+      if (!cancelled) setOrigin(goroutineOrigin(goroutine.frames ?? [], routes, entries))
+    })()
+    return () => { cancelled = true }
+  }, [goroutine.id, debugId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const inspectContext = async () => {
+    setContext('loading')
+    try { setContext((await contextChainOf(debugId, goroutine.id)) ?? 'none') } catch { setContext('none') }
+  }
+  const startedAt = view ? new Date(view.info.startedAt).getTime() : 0
+  return (
+    <section aria-label="Why is this running" className="mt-2 rounded-md bg-surface-0/60 p-2 text-[11.5px]">
+      <h4 className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Why is this running?</h4>
+      <dl className="grid grid-cols-[84px_1fr] gap-x-2 gap-y-0.5">
+        <dt className="text-text-4">Born from</dt>
+        <dd className="text-text-2">{origin?.request ? `request ${origin.request.route} (handler ${origin.request.handler})` : origin?.message ? `message on ${origin.message.topics.join(', ') || 'a topic'} (consumer ${origin.message.consumer})` : goroutine.origin ? `go statement in ${splitFunctionName(goroutine.origin.name).name}` : 'the main goroutine or the runtime'}</dd>
+        <dt className="text-text-4">Lifetime</dt>
+        <dd className="text-text-2">{seen ? `alive for at least ${Math.max(0, Math.round((Date.now() - seen.at) / 1000))} s (seen in ${seen.pauses} pause${seen.pauses === 1 ? '' : 's'}${startedAt ? `, at most ${Math.round((Date.now() - startedAt) / 1000)} s since the debug session started` : ''})` : 'refresh the goroutines to start tracking it'}</dd>
+        <dt className="text-text-4">Context</dt>
+        <dd className="text-text-2">
+          {context === null && <button type="button" onClick={() => void inspectContext()} className="text-accent hover:underline">Inspect its context</button>}
+          {context === 'loading' && 'reading the stack…'}
+          {context === 'none' && 'no context.Context in its project frames'}
+          {context && typeof context === 'object' && (
+            <span className="font-mono">{context.variable} in {splitFunctionName(context.frame).name}: {context.chain.map((link) => `${link.type}${link.deadline ? ` (deadline ${link.deadline})` : ''}`).join(' → ') || 'context.Context'}</span>
+          )}
+        </dd>
+        {context && typeof context === 'object' && (
+          <>
+            <dt className="text-text-4">Cancelled when</dt>
+            <dd className="text-text-2">{cancellationPath(context.chain).join('; or ')}</dd>
+          </>
+        )}
+      </dl>
+    </section>
+  )
+}
+
 function GoroutineDetail({ goroutine, threadId, debugId, onSelectGoroutine }: { goroutine: GoIDEGoroutine | null; threadId: number | null; debugId: string; onSelectGoroutine: (id: number) => void }) {
   if (!goroutine) return <div className="shrink-0 px-3 pt-2.5 text-[12.5px] font-semibold text-text-1">Goroutine #{threadId ?? '?'}</div>
   const origin = goroutine.origin ? splitFunctionName(goroutine.origin.name) : null
@@ -285,6 +338,7 @@ function GoroutineDetail({ goroutine, threadId, debugId, onSelectGoroutine }: { 
           </>
         )}
       </dl>
+      <WhyRunning goroutine={goroutine} debugId={debugId} />
       {goroutine.sourceLine && goroutine.location && (
         <button type="button" onClick={() => openFrame(goroutine.location)} title="Open in editor" className="mt-2 flex w-full items-center gap-2 overflow-hidden rounded-md bg-surface-0 px-2 py-1 text-left font-mono text-[11.5px] hover:ring-1 hover:ring-accent/40">
           <span className="shrink-0 text-text-4">{goroutine.location.line}</span>

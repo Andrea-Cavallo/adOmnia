@@ -52,6 +52,8 @@ export interface GoIDEDebugView {
   goroutinesLoading: boolean
   /** Conteggio per stato a ogni pausa della sessione: la timeline della vista Concurrency. */
   timeline: GoIDEGoroutineSample[]
+  /** Goroutine id → first pause (ms since epoch) where it was seen, and in how many pauses: its lifetime lower bound. */
+  firstSeen?: Record<number, { at: number; pauses: number }>
   /** Richiesta originale, per Rerun. */
   request: GoIDEDebugRequest | null
 }
@@ -256,7 +258,13 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
         const sample = goroutineSample(overview, token, Date.now())
         // Un Refresh nella stessa pausa aggiorna l'ultimo punto invece di aggiungerne uno.
         const timeline = last?.pause === token ? [...view.timeline.slice(0, -1), sample] : [...view.timeline, sample].slice(-MAX_TIMELINE_SAMPLES)
-        return { goroutines: overview, goroutinesLoading: false, timeline }
+        const firstSeen = { ...(view.firstSeen ?? {}) }
+        const newPause = last?.pause !== token
+        for (const goroutine of overview.goroutines ?? []) {
+          const seen = firstSeen[goroutine.id]
+          firstSeen[goroutine.id] = seen ? { at: seen.at, pauses: seen.pauses + (newPause ? 1 : 0) } : { at: Date.now(), pauses: 1 }
+        }
+        return { goroutines: overview, goroutinesLoading: false, timeline, firstSeen }
       })
     } catch (error) {
       if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ goroutinesLoading: false, console: appendLines(view.console, 'error', `Goroutines: ${errorMessage(error)}`) }))
