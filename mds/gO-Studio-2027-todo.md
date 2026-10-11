@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 39 | 2 |
+| **P4** | AI e intelligenza del workspace | 33 | 2 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -215,14 +215,7 @@ Su una goroutine/process/task:
 - [ ] Quale context possiede. — *Parziale: Relazione goroutine → ctx.Done() e Inspector Runtime; nessuna ownership completa.*
 - [ ] Quale cancellation path ha.
 
-### F. “Why is this dependency here?”
-
-- [ ] Module.
-- [ ] Package.
-- [ ] Import chain.
-- [ ] Runtime usage.
-- [ ] Security impact.
-- [ ] Binary size impact.
+_F. “Why is this dependency here?” chiusa il 2026-10-11 (Analyze Change Impact su una riga `require` di go.mod)._
 
 _G. Binary Inspector chiusa il 2026-10-11 (Architecture Explorer → Binary)._
 

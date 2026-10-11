@@ -600,7 +600,7 @@ From the list you can verify the change at once: *Send* on a route opens its req
 
 Once the graph is built, **Search Everywhere** (Shift Shift) lists its routes, gRPC methods, topics, tables, env vars, config keys, compose services, dependencies and DTOs under *Project graph*; Enter opens the place and the Impact of that element.
 
-On a `require` line of go.mod the analysis is about the dependency: the packages that import it, their functions and tests, and the modules that require it.
+On a `require` line of go.mod the analysis is about the dependency: the packages that import it, their functions and tests, and the modules that require it. A *Why is it here?* box adds the import chain from `go mod why -m`, the module's inclusive share of the profile loaded in Performance Studio, its bytes in the binary last inspected in *Architecture → Binary*, and its vulnerabilities from the last scan. Local modules (go.work or a `replace` to a project folder) work the same way.
 
 With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.
 

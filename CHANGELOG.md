@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Go Studio P2: source-line Context now shows observed channel/mutex waits, static concurrency findings, paused error values with on-demand Unwrap inspection, and optional values from the matching paused frame. Trace Studio opens a span's source and runtime Context through the entity router.
 
 ### Fixed
+- Workspace graph: imports between modules of a go.work workspace (or local `replace` directories) are now package edges, so impact and heatmap see them.
 - Markdown (AI chats, previews): inline code containing `&`, `<` or `>` showed `&amp;`-style entities.
 - gO Studio: calls between modules of a go.work workspace were missing from the Architecture Explorer and the workspace graph; a graph saved by an older adOmnia is now rebuilt instead of reused.
 - gO Studio: Code and Edit menu commands stayed disabled ("Open a Go file first") right after opening a file from Go to File.
@@ -16,6 +17,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - gO Studio: saving a new run configuration (and the automatic Start workspace setup) failed with `parsing time ""`; Compose run configurations were rejected with `contesto Docker: target non valido`.
 
 ### Added
+- **Why is this dependency here?** Change Impact on a `require` line of go.mod (external or local/workspace module) explains it: import chain from `go mod why -m`, the project packages that import it, its inclusive share of the loaded profile, its bytes in the last inspected binary and its vulnerabilities from the last scan.
 - **Binary Inspector:** *Architecture Explorer → Binary* builds a main package to a temporary file and shows its size by package and by symbol (each byte counted once, BSS excluded), the `//go:embed` files, the Go version, main module, module versions and build settings (GOOS/GOARCH, CGO, ldflags, VCS revision); *Compare* builds the same package at a branch or commit and lists the size change per package.
 - **Event contract drift:** the Go type each Kafka/NATS/AMQP producer serializes and each consumer decodes (JSON, protobuf) is compared per topic — fields a consumer reads that no producer sends, type mismatches that break decoding — and with the project's Avro (`.avsc`) and JSON Schema (`*.schema.json`) files; *Diff* also lists how produced messages changed since a branch or commit (removed fields and type changes are breaking).
 - **API contract drift:** *Architecture Explorer → API contract* compares the routes and JSON DTOs of the code with the project's OpenAPI 3 / Swagger 2 file — routes served but not documented, documented but not implemented, fields missing on either side, type and required mismatches — and *Diff* lists the API changes since a branch or commit, marking breaking ones (removed operations, removed response fields, changed types, new required request fields).
