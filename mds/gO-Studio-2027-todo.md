@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 17 | 1 |
+| **P4** | AI e intelligenza del workspace | 9 | 1 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -212,16 +212,7 @@ _G. Binary Inspector chiusa il 2026-10-11 (Architecture Explorer → Binary)._
 
 _H. Startup Analyzer chiusa il 2026-10-11 (Run → Analyze Startup…). Connessioni e porta sono campionate dai socket ogni 100 ms (netstat su Windows può aggiungere ~0,5 s); le righe di log hanno l'istante esatto._
 
-### I. Shutdown Analyzer
-
-- [ ] Context cancellation.
-- [ ] HTTP graceful shutdown.
-- [ ] Pending goroutines.
-- [ ] Pending Kafka messages.
-- [ ] DB cleanup.
-- [ ] Timeout exceeded.
-- [ ] Resource leaks.
-- [ ] “Why process does not exit?”
+_I. Shutdown Analyzer chiusa il 2026-10-11 (Run → Analyze Startup… → Analyze shutdown)._
 
 ### J. Go Memory Model Helper
 

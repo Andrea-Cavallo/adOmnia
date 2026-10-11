@@ -29,7 +29,9 @@ export function shutdownChecks(report: ShutdownReport): ShutdownCheck[] {
   const brokerOpen = stillOpen.filter((item) => BROKER.test(item))
   const brokerClosed = disconnects.filter((event) => BROKER.test(event.detail))
   checks.push(brokerOpen.length ? { label: 'Pending broker messages', status: 'bad', detail: `connection still open: ${brokerOpen.join(', ')} — messages may not be flushed` } : brokerClosed.length ? { label: 'Pending broker messages', status: 'ok', detail: brokerClosed.map((event) => `${event.detail} closed ${after(event.atMs)}`).join(', ') } : { label: 'Pending broker messages', status: 'unknown', detail: 'No broker connection was seen.' })
-  checks.push(shutdown.timedOut ? { label: 'Timeout', status: 'bad', detail: 'The process did not exit within the grace period and was killed.' } : { label: 'Timeout', status: 'ok', detail: `exited ${after(shutdown.exitAtMs)} after the signal (exit code ${shutdown.exitCode})` })
+  checks.push(shutdown.timedOut ? { label: 'Timeout', status: 'bad', detail: 'The process did not exit within the grace period and was killed.' } : shutdown.exitCode === 3221225786
+      ? { label: 'Timeout', status: 'warn', detail: `killed by the interrupt ${after(shutdown.exitAtMs)} after the signal: no handler (signal.NotifyContext) ran a graceful shutdown` }
+      : { label: 'Timeout', status: 'ok', detail: `exited ${after(shutdown.exitAtMs)} after the signal (exit code ${shutdown.exitCode})` })
   checks.push(stillOpen.length ? { label: 'Resource leaks', status: 'bad', detail: `connections still open at the timeout: ${stillOpen.join(', ')}` } : { label: 'Resource leaks', status: 'ok', detail: 'No connection left open.' })
   checks.push(shutdown.timedOut
     ? { label: 'Pending goroutines', status: dump ? 'bad' : 'warn', detail: dump ? `${goroutines} goroutines were still running: see the dump below` : 'Import net/http/pprof to see which goroutines keep the process alive.' }
