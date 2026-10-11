@@ -40,3 +40,114 @@ export class Event {
         return new Event($$parsedSource as Partial<Event>);
     }
 }
+
+/**
+ * Shutdown è ciò che succede dopo il segnale di arresto.
+ */
+export class Shutdown {
+    "timeline": Timeline;
+    "signalAtMs": number;
+    "exitAtMs": number;
+    "exited": boolean;
+    "exitCode": number;
+    "timedOut": boolean;
+
+    /**
+     * connessioni aperte al momento del timeout
+     */
+    "stillOpen": string[];
+
+    /**
+     * /debug/pprof/goroutine?debug=1 se il servizio lo espone
+     */
+    "goroutineDump": string;
+
+    /** Creates a new Shutdown instance. */
+    constructor($$source: Partial<Shutdown> = {}) {
+        if (!("timeline" in $$source)) {
+            this["timeline"] = (new Timeline());
+        }
+        if (!("signalAtMs" in $$source)) {
+            this["signalAtMs"] = 0;
+        }
+        if (!("exitAtMs" in $$source)) {
+            this["exitAtMs"] = 0;
+        }
+        if (!("exited" in $$source)) {
+            this["exited"] = false;
+        }
+        if (!("exitCode" in $$source)) {
+            this["exitCode"] = 0;
+        }
+        if (!("timedOut" in $$source)) {
+            this["timedOut"] = false;
+        }
+        if (!("stillOpen" in $$source)) {
+            this["stillOpen"] = [];
+        }
+        if (!("goroutineDump" in $$source)) {
+            this["goroutineDump"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Shutdown instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Shutdown {
+        const $$createField0_0 = $$createType0;
+        const $$createField6_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("timeline" in $$parsedSource) {
+            $$parsedSource["timeline"] = $$createField0_0($$parsedSource["timeline"]);
+        }
+        if ("stillOpen" in $$parsedSource) {
+            $$parsedSource["stillOpen"] = $$createField6_0($$parsedSource["stillOpen"]);
+        }
+        return new Shutdown($$parsedSource as Partial<Shutdown>);
+    }
+}
+
+/**
+ * Timeline è l'avvio osservato.
+ */
+export class Timeline {
+    "events": Event[];
+    "readyMs": number;
+    "ready": boolean;
+    "port"?: number;
+
+    /** Creates a new Timeline instance. */
+    constructor($$source: Partial<Timeline> = {}) {
+        if (!("events" in $$source)) {
+            this["events"] = [];
+        }
+        if (!("readyMs" in $$source)) {
+            this["readyMs"] = 0;
+        }
+        if (!("ready" in $$source)) {
+            this["ready"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Timeline instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Timeline {
+        const $$createField0_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("events" in $$parsedSource) {
+            $$parsedSource["events"] = $$createField0_0($$parsedSource["events"]);
+        }
+        return new Timeline($$parsedSource as Partial<Timeline>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = Timeline.createFrom;
+const $$createType1 = $Create.Array($Create.Any);
+const $$createType2 = Event.createFrom;
+const $$createType3 = $Create.Array($$createType2);

@@ -162,6 +162,7 @@ export {
     Session,
     SessionView,
     SessionWindow,
+    ShutdownReport,
     SignatureEntry,
     SignatureParameter,
     SignatureResult,

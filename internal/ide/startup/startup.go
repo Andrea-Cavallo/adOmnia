@@ -57,6 +57,68 @@ func Kind(port int) string {
 
 // Observe avvia command e lo osserva finché è pronto, termina o scade il tempo; poi lo ferma con stop.
 func Observe(ctx context.Context, command *exec.Cmd, options Options, stop func(*exec.Cmd)) (Timeline, error) {
+	running, err := Start(ctx, command, options)
+	if err != nil {
+		return Timeline{}, err
+	}
+	stop(command)
+	return running.Finish(5 * time.Second), nil
+}
+
+// Running è un processo avviato da Start, ancora osservato (output ed eventi continuano).
+type Running struct {
+	Command  *exec.Cmd
+	Started  time.Time
+	Exited   chan struct{}
+	mu       *sync.Mutex
+	timeline *Timeline
+	readDone chan struct{}
+}
+
+// Add registra un evento all'istante attuale.
+func (r *Running) Add(kind, detail string) {
+	r.mu.Lock()
+	r.timeline.Events = append(r.timeline.Events, Event{AtMs: float64(time.Since(r.Started).Microseconds()) / 1000, Kind: kind, Detail: detail})
+	r.mu.Unlock()
+}
+
+// Since: millisecondi dall'avvio.
+func (r *Running) Since() float64 { return float64(time.Since(r.Started).Microseconds()) / 1000 }
+
+// Port è la porta in ascolto vista all'avvio (0 se nessuna).
+func (r *Running) Port() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.timeline.Port
+}
+
+// Snapshot è la timeline fin qui, senza attendere nulla.
+func (r *Running) Snapshot() Timeline {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	copied := *r.timeline
+	copied.Events = append([]Event(nil), r.timeline.Events...)
+	return copied
+}
+
+// Finish attende l'uscita (al massimo wait) e la fine dell'output, e restituisce la timeline ordinata.
+func (r *Running) Finish(wait time.Duration) Timeline {
+	select {
+	case <-r.Exited:
+	case <-time.After(wait):
+	}
+	select {
+	case <-r.readDone:
+	case <-time.After(2 * time.Second):
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	sort.SliceStable(r.timeline.Events, func(i, j int) bool { return r.timeline.Events[i].AtMs < r.timeline.Events[j].AtMs })
+	return *r.timeline
+}
+
+// Start avvia command e attende che sia pronto (o termini, o scada il tempo); il processo resta vivo.
+func Start(ctx context.Context, command *exec.Cmd, options Options) (*Running, error) {
 	if options.Timeout <= 0 {
 		options.Timeout = 30 * time.Second
 	}
@@ -65,7 +127,7 @@ func Observe(ctx context.Context, command *exec.Cmd, options Options, stop func(
 	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return Timeline{}, err
+		return nil, err
 	}
 	command.Stderr = command.Stdout
 	var mu sync.Mutex
@@ -78,7 +140,7 @@ func Observe(ctx context.Context, command *exec.Cmd, options Options, stop func(
 		mu.Unlock()
 	}
 	if err := command.Start(); err != nil {
-		return Timeline{}, err
+		return nil, err
 	}
 	pid := command.Process.Pid
 	exited := make(chan struct{})
@@ -158,17 +220,5 @@ loop:
 			}
 		}
 	}
-	stop(command)
-	select {
-	case <-exited:
-	case <-time.After(5 * time.Second):
-	}
-	select {
-	case <-readDone:
-	case <-time.After(2 * time.Second):
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	sort.SliceStable(timeline.Events, func(i, j int) bool { return timeline.Events[i].AtMs < timeline.Events[j].AtMs })
-	return timeline, nil
+	return &Running{Command: command, Started: start, Exited: exited, mu: &mu, timeline: &timeline, readDone: readDone}, nil
 }

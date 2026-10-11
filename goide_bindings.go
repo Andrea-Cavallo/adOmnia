@@ -1477,6 +1477,11 @@ func (g *GoIDE) StartupAnalysis(sessionID, target, health string, timeoutSeconds
 	return g.service.StartupAnalysis(sessionID, target, health, timeoutSeconds)
 }
 
+// ShutdownAnalysis avvia un package main, gli manda l'interrupt e osserva l'arresto.
+func (g *GoIDE) ShutdownAnalysis(sessionID, target, health string, graceSeconds int) (goide.ShutdownReport, error) {
+	return g.service.ShutdownAnalysis(sessionID, target, health, graceSeconds)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)
