@@ -449,27 +449,64 @@ func (x *Index) TypeAt(file string, line int) (Node, bool) {
 // dependencyImpact: i package che importano un modulo esterno, i moduli che lo richiedono
 // e le funzioni di quei package con i loro test: ciò che un aggiornamento può rompere.
 func (x *Index) dependencyImpact(target Node) Impact {
-	result := Impact{Target: target}
-	packages, modules := map[string]bool{}, map[string]bool{}
+	var importers []string
+	modules := map[string]bool{}
 	for _, edge := range x.in[target.ID] {
 		from := x.byID[edge.From]
 		switch from.Kind {
 		case KindModule:
 			modules[from.Label] = true
 		case KindPackage:
-			packages[from.Label] = true
-			for _, contained := range x.out[from.ID] {
-				file := x.byID[contained.To]
-				if file.Kind != KindFile {
-					continue
-				}
-				for _, inner := range x.out[file.ID] {
-					node := x.byID[inner.To]
-					if node.Kind == KindTest {
-						result.Tests = append(result.Tests, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
-					} else if isCode(node.Kind) {
-						result.Callers = append(result.Callers, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
-					}
+			importers = append(importers, from.ID)
+		}
+	}
+	return x.importersImpact(target, importers, modules)
+}
+
+// ModuleImpact: come dependencyImpact per un modulo del workspace (go.work o replace locale):
+// i package di altri moduli che importano i suoi package.
+func (x *Index) ModuleImpact(moduleID string) (Impact, bool) {
+	target, ok := x.byID[moduleID]
+	if !ok || target.Kind != KindModule {
+		return Impact{}, false
+	}
+	var importers []string
+	modules := map[string]bool{}
+	for _, edge := range x.in[moduleID] {
+		if edge.Kind == EdgeRequires {
+			modules[x.byID[edge.From].Label] = true
+		}
+	}
+	for _, edge := range x.out[moduleID] {
+		if edge.Kind != EdgeContains {
+			continue
+		}
+		for _, in := range x.in[edge.To] {
+			if from := x.byID[in.From]; in.Kind == EdgeImports && from.Kind == KindPackage && from.Attrs["module"] != target.Label {
+				importers = append(importers, from.ID)
+			}
+		}
+	}
+	return x.importersImpact(target, importers, modules), true
+}
+
+func (x *Index) importersImpact(target Node, importers []string, modules map[string]bool) Impact {
+	result := Impact{Target: target}
+	packages := map[string]bool{}
+	for _, id := range importers {
+		from := x.byID[id]
+		packages[from.Label] = true
+		for _, contained := range x.out[from.ID] {
+			file := x.byID[contained.To]
+			if file.Kind != KindFile {
+				continue
+			}
+			for _, inner := range x.out[file.ID] {
+				node := x.byID[inner.To]
+				if node.Kind == KindTest {
+					result.Tests = append(result.Tests, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
+				} else if isCode(node.Kind) {
+					result.Callers = append(result.Callers, Ref{Node: node, Depth: 1, Via: []string{from.Label}})
 				}
 			}
 		}

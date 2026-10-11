@@ -158,6 +158,9 @@ func (s *Service) GraphImpact(sessionID, relPath string, line int) (graph.Impact
 			if impact, ok := entry.index.Impact("dep:" + dependency); ok {
 				return impact, nil
 			}
+			if impact, ok := entry.index.ModuleImpact("mod:" + dependency); ok { // replace locale / go.work
+				return impact, nil
+			}
 			return graph.Impact{}, fmt.Errorf("%s is not imported by the analysed packages", dependency)
 		}
 		return graph.Impact{}, errors.New("place the cursor on a require line of go.mod")
