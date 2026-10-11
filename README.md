@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>Your API, your code, your runtime. One connected desktop workspace.</strong><br>
-  Build a Go service. Call its API. Stop at the handler. Inspect the response, logs, database and messages.
+  <strong>From API request to Go breakpoint. One connected workspace.</strong><br>
+  Write the service. Send the request. Follow the code, data and events — all inside adOmnia.
 </p>
 
 <p align="center">
@@ -22,19 +22,39 @@
 
 *A real desktop session: request and response beside the Go handler serving the endpoint. The preview opens the video; GitHub does not embed a YouTube player.*
 
-## Why adOmnia
+## The strength of adOmnia: everything connects
 
-An API client tells you what a service returned. An IDE shows you the code. adOmnia connects both: a service started in **Go Studio** becomes a live session you can call, debug and inspect from **API Workspace**.
+**Send a request. Find its handler. Stop at a breakpoint. Inspect the variables. Follow the logs, queries and messages.** adOmnia brings the API workbench and Go IDE into one desktop workflow, with supporting studios you can open beside the code.
+
+A Go service started in **Go Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker capture add evidence around the same request, so you can move from a response to the code and data behind it.
 
 ```text
-Go source → Run / Debug → API request → breakpoint → inspect → response
-                                          ↕
-                              logs · SQL · broker messages
+WRITE              RUN                CALL                 UNDERSTAND
+Go Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
+                                                               ↕
+                                                   Variables · logs · SQL · messages
 ```
 
-Collections, environments, API tools and project windows belong to one application. Open multiple Go projects, place an IDE on another monitor and keep API Workspace beside it. Each project keeps its own editor and tooling session.
+### Six reasons to make it your workspace
 
-Workspaces and settings stay local. No account is required. External APIs and optional AI providers connect as configured; review the data you share with a provider.
+| Strength | What it gives you |
+| --- | --- |
+| **An API workbench connected to your code** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation. |
+| **Request-driven debugging** | Debug Request starts or reuses a compatible Delve session. Inspect frames, variables and goroutines, step through the handler and return to the response. |
+| **Data and events beside the request** | Database, Broker, Log and Trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request. |
+| **Go tools with visual depth** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
+| **Enterprise protocols in the same workflow** | HTTP, SOAP/WSDL, WS-Security, gRPC, WebSocket/SSE, mTLS and certificate tools support both modern APIs and existing systems. |
+| **A workspace you control** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across your monitors. |
+
+### Local-first, with deliberate connections
+
+**No account required to use the application.** Collections, settings and project state stay local. You choose the APIs, databases, brokers and optional AI providers to connect to. External providers receive the context you configure and permit; project policies help control what is shared.
+
+### One application, several views of the same work
+
+Keep a service in Go Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance. Each project retains its own editor and tooling session; the studios remain part of the connected application.
+
+**The payoff is continuity:** write, run, call, debug and inspect without rebuilding the context at every step.
 
 ## Start with your API
 
