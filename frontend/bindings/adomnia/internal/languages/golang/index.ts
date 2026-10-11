@@ -40,6 +40,7 @@ export {
     GoroutineCreation,
     GoroutineOverview,
     GoroutineSummary,
+    InitStep,
     InstallToolchainRequest,
     InstalledToolchain,
     PackageDoc,

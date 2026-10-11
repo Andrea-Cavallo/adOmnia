@@ -1782,6 +1782,46 @@ export class GoroutineSummary {
     }
 }
 
+/**
+ * InitStep è una funzione init di un package, misurata da GODEBUG=inittrace=1.
+ */
+export class InitStep {
+    "package": string;
+    "atMs": number;
+    "clockMs": number;
+    "bytes": number;
+    "allocs": number;
+
+    /** Creates a new InitStep instance. */
+    constructor($$source: Partial<InitStep> = {}) {
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("atMs" in $$source)) {
+            this["atMs"] = 0;
+        }
+        if (!("clockMs" in $$source)) {
+            this["clockMs"] = 0;
+        }
+        if (!("bytes" in $$source)) {
+            this["bytes"] = 0;
+        }
+        if (!("allocs" in $$source)) {
+            this["allocs"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new InitStep instance from a string or object.
+     */
+    static createFrom($$source: any = {}): InitStep {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new InitStep($$parsedSource as Partial<InitStep>);
+    }
+}
+
 export class InstallToolchainRequest {
     "sessionId": string;
     "version": string;

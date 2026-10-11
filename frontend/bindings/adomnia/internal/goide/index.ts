@@ -170,6 +170,7 @@ export {
     SonarScanResult,
     SonarScannerInfo,
     SplitView,
+    StartupReport,
     StudioWorkspace,
     StudioWorkspaces,
     SymbolNode,

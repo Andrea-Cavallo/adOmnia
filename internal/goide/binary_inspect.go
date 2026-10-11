@@ -30,55 +30,73 @@ type BinarySizeChange struct {
 	Head int64  `json:"head"`
 }
 
-// buildBinary compila target (un package main relativo a root) in una cartella temporanea e lo ispeziona.
-func (s *Service) buildBinary(sessionID, root, target string) (golang.BinaryReport, error) {
+// executable è un binario compilato in una cartella temporanea, con l'ambiente per eseguirlo.
+type executable struct {
+	path, goBinary string
+	environment    []string
+	cleanup        func()
+	run            func(ctx context.Context, args ...string) ([]byte, error)
+}
+
+// buildExecutable compila target (un package main relativo a root) in una cartella temporanea.
+func (s *Service) buildExecutable(ctx context.Context, sessionID, root, target string) (executable, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
-		return golang.BinaryReport{}, err
+		return executable{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return golang.BinaryReport{}, errors.New("trust the project to build it")
-	}
-	target = strings.TrimSpace(target)
-	if target == "" {
-		target = "."
+		return executable{}, errors.New("trust the project to build it")
 	}
 	if err := validateRunTarget(root, root, target); err != nil {
-		return golang.BinaryReport{}, err
+		return executable{}, err
 	}
-	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
+	environment, err := s.executionEnvironment(SessionID(sessionID), golang.ID, s.withSharedEnvironment(nil))
 	if err != nil {
-		return golang.BinaryReport{}, err
+		return executable{}, err
 	}
 	binary, err := s.toolchain.GoBinary(SessionID(sessionID))
 	if err != nil {
-		return golang.BinaryReport{}, errors.New("go is not available: detect or configure the toolchain")
+		return executable{}, errors.New("go is not available: detect or configure the toolchain")
 	}
 	environment = withGoFirstInPath(environment, binary)
 	temp, err := os.MkdirTemp("", "adomnia-bin-")
 	if err != nil {
-		return golang.BinaryReport{}, err
+		return executable{}, err
 	}
-	defer os.RemoveAll(temp)
-	output := filepath.Join(temp, "app.exe")
-	ctx, cancel := context.WithTimeout(context.Background(), binaryBuildTimeout)
-	defer cancel()
-	run := func(args ...string) ([]byte, error) {
+	built := executable{path: filepath.Join(temp, "app.exe"), goBinary: binary, environment: environment, cleanup: func() { _ = os.RemoveAll(temp) }}
+	built.run = func(ctx context.Context, args ...string) ([]byte, error) {
 		command := exec.CommandContext(ctx, binary, args...)
 		command.Dir, command.Env = root, environment
 		configureProcess(command, false)
 		return command.CombinedOutput()
 	}
-	if out, err := run("build", "-o", output, target); err != nil {
-		return golang.BinaryReport{}, fmt.Errorf("go build %s: %s", target, strings.TrimSpace(string(out)))
+	if out, err := built.run(ctx, "build", "-o", built.path, target); err != nil {
+		built.cleanup()
+		return executable{}, fmt.Errorf("go build %s: %s", target, strings.TrimSpace(string(out)))
 	}
-	report, err := golang.ReadBinaryInfo(output)
+	return built, nil
+}
+
+// buildBinary compila target e lo ispeziona.
+func (s *Service) buildBinary(sessionID, root, target string) (golang.BinaryReport, error) {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		target = "."
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), binaryBuildTimeout)
+	defer cancel()
+	built, err := s.buildExecutable(ctx, sessionID, root, target)
+	if err != nil {
+		return golang.BinaryReport{}, err
+	}
+	defer built.cleanup()
+	report, err := golang.ReadBinaryInfo(built.path)
 	if err != nil {
 		return golang.BinaryReport{}, err
 	}
 	report.Path = target
-	if out, err := run("tool", "nm", "-size", "-sort", "size", output); err == nil {
-		golang.ParseNMInFile(string(out), &report, golang.FileBackedRanges(output))
+	if out, err := built.run(ctx, "tool", "nm", "-size", "-sort", "size", built.path); err == nil {
+		golang.ParseNMInFile(string(out), &report, golang.FileBackedRanges(built.path))
 	}
 	report.Embedded = golang.EmbeddedFiles(filepath.Join(root, filepath.FromSlash(target)))
 	return report, nil

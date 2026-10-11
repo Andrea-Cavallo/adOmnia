@@ -1472,6 +1472,11 @@ func (g *GoIDE) LoadRuntimeSnapshot(sessionID, name string) (string, error) {
 	return g.service.LoadRuntimeSnapshot(sessionID, name)
 }
 
+// StartupAnalysis misura l'avvio di un package main (init, connessioni, porta, health).
+func (g *GoIDE) StartupAnalysis(sessionID, target, health string, timeoutSeconds int) (goide.StartupReport, error) {
+	return g.service.StartupAnalysis(sessionID, target, health, timeoutSeconds)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)
