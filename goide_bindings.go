@@ -1457,6 +1457,21 @@ func (g *GoIDE) DependencyWhy(sessionID, module string) (goide.DependencyWhy, er
 	return g.service.DependencyWhy(sessionID, module)
 }
 
+// SaveRuntimeSnapshot salva un'istantanea runtime in .adomnia/snapshots.
+func (g *GoIDE) SaveRuntimeSnapshot(sessionID, label, content string) (string, error) {
+	return g.service.SaveRuntimeSnapshot(sessionID, label, content)
+}
+
+// ListRuntimeSnapshots elenca le istantanee runtime del progetto.
+func (g *GoIDE) ListRuntimeSnapshots(sessionID string) ([]goide.RuntimeSnapshotFile, error) {
+	return g.service.ListRuntimeSnapshots(sessionID)
+}
+
+// LoadRuntimeSnapshot legge un'istantanea runtime.
+func (g *GoIDE) LoadRuntimeSnapshot(sessionID, name string) (string, error) {
+	return g.service.LoadRuntimeSnapshot(sessionID, name)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

@@ -5235,6 +5235,38 @@ export class RunRequest {
     }
 }
 
+/**
+ * RuntimeSnapshotFile è una voce dell'elenco.
+ */
+export class RuntimeSnapshotFile {
+    "name": string;
+    "size": number;
+    "modified": string;
+
+    /** Creates a new RuntimeSnapshotFile instance. */
+    constructor($$source: Partial<RuntimeSnapshotFile> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+        if (!("modified" in $$source)) {
+            this["modified"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeSnapshotFile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeSnapshotFile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RuntimeSnapshotFile($$parsedSource as Partial<RuntimeSnapshotFile>);
+    }
+}
+
 export class SearchMatch {
     "relativePath": string;
     "line": number;

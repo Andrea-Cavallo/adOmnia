@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Globe, ScrollText } from 'lucide-react'
+import { Camera, Globe, ScrollText } from 'lucide-react'
+import { useSnapshotsDrawer } from './GoStudioSnapshots'
 import { openWorkspaceApi, openWorkspaceLogs, workspaceServices } from '@/lib/devsession/workspaceFlow'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { useDevSessionStore } from '@/stores/devSession'
@@ -27,6 +28,9 @@ export function GoStudioWorkspaceBar({ goSessionId }: { goSessionId: string }) {
       </button>
       <button type="button" onClick={() => openWorkspaceLogs(goSessionId)} className="go-studio-widget h-6 gap-1 px-2" title="Every running service of this project in the Log Inspector">
         <ScrollText size={12} /> Open logs
+      </button>
+      <button type="button" onClick={() => useSnapshotsDrawer.getState().setOpen(true)} className="go-studio-widget h-6 gap-1 px-2" title="Save goroutines, heap, requests, messages, SQL, logs and traces now, to compare before and after">
+        <Camera size={12} /> Snapshot
       </button>
     </div>
   )

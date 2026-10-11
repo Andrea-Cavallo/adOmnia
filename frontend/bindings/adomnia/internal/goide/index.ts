@@ -151,6 +151,7 @@ export {
     RunConfiguration,
     RunConfigurationKind,
     RunRequest,
+    RuntimeSnapshotFile,
     SearchMatch,
     SearchQuery,
     SearchResult,

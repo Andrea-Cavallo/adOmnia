@@ -200,6 +200,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'run.cleanWorkspace': icon(Eraser),
   'run.openWorkspaceApi': icon(Send),
   'run.openWorkspaceLogs': icon(FileText),
+  'run.runtimeSnapshots': icon(History),
   'debug.debug': icon(Bug, DEBUG),
   'debug.attach': icon(Network),
   'debug.remote': icon(Server),
