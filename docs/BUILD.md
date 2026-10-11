@@ -107,3 +107,19 @@ The package is named `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`.
 The release workflows build Windows, Linux GTK3/WebKitGTK 4.1 and universal
 macOS artifacts on their native runners. Cross-compiling macOS desktop builds
 from Windows or Linux is not supported because Wails needs Xcode and CGO.
+
+`.github/workflows/release.yml` packages updater ZIPs and signs
+`update-manifest.json` using the `ADOMNIA_UPDATE_SIGNING_KEY` secret via
+`cmd/update-manifest`. The matching Ed25519 public key must be pinned in the
+installed application (`internal/update/trust.go` or the build-time
+`internal/update.PublicKey` override). Keep the private key out of source control.
+Unsigned/missing manifests are not installable by the in-app updater.
+
+The workflow includes `scripts/install.sh` and `scripts/install.ps1` in release
+assets before generating `SHA256SUMS.txt`. These bootstrap scripts check release
+checksums, not manifest signatures; see [INSTALL.md](INSTALL.md) for consent,
+backup and package-manager limitations. Offline Linux installer checks:
+
+```bash
+python3 -B -m unittest discover -s scripts -p test_install.py
+```

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # install.sh — installa adOmnia su Linux con icone hicolor complete
-# Uso: sudo ./install.sh
-set -e
+# Uso: ./install.sh (senza sudo)
+set -euo pipefail
 
-INSTALL_DIR="/opt/adomnia"
-DESKTOP_DIR="/usr/share/applications"
-HICOLOR_BASE="/usr/share/icons/hicolor"
-
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Riesegui con sudo: sudo ./install.sh"
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Esegui ./install.sh come utente normale, senza sudo." >&2
     exit 1
 fi
+
+INSTALL_DIR="$HOME/.local/bin"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+[[ "$DATA_DIR" == /* ]] || { echo "XDG_DATA_HOME deve essere un percorso assoluto." >&2; exit 1; }
+DESKTOP_DIR="$DATA_DIR/applications"
+HICOLOR_BASE="$DATA_DIR/icons/hicolor"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -40,7 +42,8 @@ fi
 
 # Fallback single-icon copy (for environments that look in app dir)
 if [ -f "$SCRIPT_DIR/adomnia.png" ]; then
-    cp "$SCRIPT_DIR/adomnia.png" "$INSTALL_DIR/adomnia.png"
+    mkdir -p "$DATA_DIR/adomnia"
+    cp "$SCRIPT_DIR/adomnia.png" "$DATA_DIR/adomnia/adomnia.png"
 fi
 
 echo "==> Aggiornamento icon cache ..."
@@ -48,10 +51,30 @@ gtk-update-icon-cache -f -t "$HICOLOR_BASE" 2>/dev/null || true
 xdg-icon-resource forceupdate 2>/dev/null || true
 
 echo "==> Installazione .desktop ..."
-cp "$SCRIPT_DIR/adomnia.desktop" "$DESKTOP_DIR/adomnia.desktop"
+mkdir -p "$DESKTOP_DIR"
+# Desktop Exec requires quoting independently of shell quoting. Escape command
+# characters first, then desktop-entry backslashes; %% is a literal percent.
+EXEC_PATH="$INSTALL_DIR/adomnia"
+EXEC_PATH="${EXEC_PATH//\\/\\\\}"
+EXEC_PATH="${EXEC_PATH//\"/\\\"}"
+EXEC_PATH="${EXEC_PATH//\`/\\\`}"
+EXEC_PATH="${EXEC_PATH//\$/\\\$}"
+EXEC_PATH="${EXEC_PATH//\\/\\\\}"
+EXEC_PATH="${EXEC_PATH//%/%%}"
+while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+        Exec=*) printf 'Exec="%s"\n' "$EXEC_PATH" ;;
+        *) printf '%s\n' "$line" ;;
+    esac
+done < "$SCRIPT_DIR/adomnia.desktop" > "$DESKTOP_DIR/adomnia.desktop"
 chmod 644 "$DESKTOP_DIR/adomnia.desktop"
 update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 
 echo ""
 echo "Installazione completata. Avvia adOmnia dal launcher o con:"
-echo "  /opt/adomnia/adomnia"
+echo "  $INSTALL_DIR/adomnia"
+echo "Dati e impostazioni esistenti non sono stati modificati."
+if [ -e /opt/adomnia/adomnia ]; then
+    echo "La vecchia installazione in /opt/adomnia è rimasta intatta."
+    echo "Dopo aver verificato questa copia, rimuovila con il vecchio uninstall.sh (sudo)."
+fi

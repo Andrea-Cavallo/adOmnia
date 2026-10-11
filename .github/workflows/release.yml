@@ -227,6 +227,9 @@ jobs:
           ADOMNIA_UPDATE_SIGNING_KEY: ${{ secrets.ADOMNIA_UPDATE_SIGNING_KEY }}
         run: go run ./cmd/update-manifest -dir dist -version "${{ steps.ver.outputs.tag }}"
 
+      - name: Include installation scripts
+        run: cp scripts/install.sh scripts/install.ps1 dist/
+
       - name: Generate checksums
         run: |
           cd dist

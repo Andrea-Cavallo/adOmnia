@@ -196,7 +196,7 @@ const defaultSettings: AppSettings = {
   version: 14,
   general: {
     autoCheckUpdates: true,
-    autoDownloadUpdates: true,
+    autoDownloadUpdates: false,
     updateChannel: 'auto',
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,

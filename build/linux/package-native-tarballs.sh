@@ -53,27 +53,9 @@ package_tarball() {
         chmod +x "$stage/install.sh"
     fi
 
-    if [ -f build/linux/uninstall.sh ]; then
-        cp build/linux/uninstall.sh "$stage/"
-    else
-        {
-            printf '%s\n' '#!/usr/bin/env bash'
-            printf '%s\n' 'set -e'
-            printf '%s\n' 'if [ "$(id -u)" -ne 0 ]; then'
-            printf '%s\n' '    echo "Run with sudo: sudo ./uninstall.sh"'
-            printf '%s\n' '    exit 1'
-            printf '%s\n' 'fi'
-            printf '%s\n' 'rm -rf /opt/adomnia'
-            printf '%s\n' 'rm -f /usr/share/applications/adomnia.desktop'
-            printf '%s\n' 'for sz in 16 24 32 48 64 128 256 512; do'
-            printf '%s\n' '    rm -f "/usr/share/icons/hicolor/${sz}x${sz}/apps/adomnia.png"'
-            printf '%s\n' 'done'
-            printf '%s\n' 'gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true'
-            printf '%s\n' 'xdg-icon-resource forceupdate 2>/dev/null || true'
-            printf '%s\n' 'update-desktop-database /usr/share/applications 2>/dev/null || true'
-            printf '%s\n' 'echo "adOmnia removed."'
-        } > "$stage/uninstall.sh"
-    fi
+    # Require the canonical user-scoped uninstaller; never generate a fallback
+    # that could remove a legacy system installation.
+    cp build/linux/uninstall.sh "$stage/"
     chmod +x "$stage/uninstall.sh"
 
     {
@@ -85,6 +67,12 @@ package_tarball() {
         printf '%s\n' 'This tarball contains a native Linux amd64 executable. The GTK and'
         printf '%s\n' 'WebKitGTK runtime matching the variant above must be available on the'
         printf '%s\n' 'target system.'
+        printf '\n'
+        printf '%s\n' 'Run ./install.sh as your normal user, WITHOUT sudo.'
+        printf '%s\n' 'Installs the application to ~/.local/bin/adomnia and launcher/icons under'
+        printf '%s\n' '${XDG_DATA_HOME:-~/.local/share}. This supports consent-based in-app updates.'
+        printf '%s\n' 'Run ./uninstall.sh without sudo to remove application files, not user data.'
+        printf '%s\n' 'An existing /opt/adomnia installation is left untouched.'
     } > "$stage/README-linux.txt"
 
     tar -czf "dist/${basename}.tar.gz" -C "$stage" .
