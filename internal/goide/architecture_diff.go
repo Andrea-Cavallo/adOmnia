@@ -129,18 +129,19 @@ type revisionAnalysis struct {
 	root string
 }
 
-// analyzeRevision analizza ref in un worktree temporaneo e lo rimuove prima di tornare.
-func (s *Service) analyzeRevision(sessionID, ref string) (revisionAnalysis, error) {
+// withRevision mette ref in un worktree temporaneo, chiama visit con la cartella del progetto
+// dentro quella revisione e rimuove il worktree prima di tornare.
+func (s *Service) withRevision(sessionID, ref string, visit func(root string) error) error {
 	session, paths, err := s.vcsPaths(sessionID)
 	if err != nil {
-		return revisionAnalysis{}, err
+		return err
 	}
 	if strings.TrimSpace(ref) == "" {
-		return revisionAnalysis{}, errors.New("choose a branch, tag or commit to compare with")
+		return errors.New("choose a branch, tag or commit to compare with")
 	}
 	temp, err := os.MkdirTemp("", "adomnia-rev-")
 	if err != nil {
-		return revisionAnalysis{}, err
+		return err
 	}
 	worktree := filepath.Join(temp, "tree")
 	defer func() {
@@ -148,14 +149,20 @@ func (s *Service) analyzeRevision(sessionID, ref string) (revisionAnalysis, erro
 		_ = os.RemoveAll(temp)
 	}()
 	if err := git.AddDetachedWorktree(paths.repoRoot, worktree, ref); err != nil {
-		return revisionAnalysis{}, err
+		return err
 	}
 	// Il progetto può essere una sottocartella del repository.
 	sub, _ := filepath.Rel(paths.repoRoot, session.Project.RealPath)
-	root := filepath.Join(worktree, sub)
-	result, err := s.analyzeArchitectureAt(sessionID, root)
-	if err != nil {
-		return revisionAnalysis{}, err
-	}
-	return revisionAnalysis{ArchitectureResult: result, root: root}, nil
+	return visit(filepath.Join(worktree, sub))
+}
+
+// analyzeRevision analizza ref in un worktree temporaneo e lo rimuove prima di tornare.
+func (s *Service) analyzeRevision(sessionID, ref string) (revisionAnalysis, error) {
+	var analysis revisionAnalysis
+	err := s.withRevision(sessionID, ref, func(root string) error {
+		result, err := s.analyzeArchitectureAt(sessionID, root)
+		analysis = revisionAnalysis{ArchitectureResult: result, root: root}
+		return err
+	})
+	return analysis, err
 }

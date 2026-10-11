@@ -9,11 +9,12 @@ import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioArchitectureRules } from './GoStudioArchitectureRules'
 import { GoStudioDependencyHeatmap } from './GoStudioDependencyHeatmap'
 import { GoStudioApiContract } from './GoStudioApiContract'
+import { GoStudioBinaryInspector } from './GoStudioBinaryInspector'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioDataAccessView } from './GoStudioDataAccessView'
 import { layoutLayered, type LayeredNode } from './goStudioLayeredGraph'
 
-export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract'
+export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract' | 'binary'
 
 const NODE_COLOR: Record<ArchNode['kind'], string> = {
   package: 'var(--color-accent)',
@@ -72,6 +73,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['modules', `Modules${report ? ` (${report.modules.length})` : ''}`],
     ['heatmap', 'Heatmap'],
     ['contract', 'Contracts'],
+    ['binary', 'Binary'],
     ['rules', 'Rules & drift'],
   ]
   return (
@@ -92,7 +94,8 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
       </div>
       {error && <div className="shrink-0 border-b border-danger/30 bg-danger/10 px-2 py-1 text-danger">{error}</div>}
       <div className="flex min-h-0 flex-1 flex-col">
-        {tab === 'contract' ? (authorized ? <GoStudioApiContract sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to compare its API with the contract.</p>)
+        {tab === 'binary' ? (authorized ? <GoStudioBinaryInspector sessionId={sessionId} targets={mainTargets(report)} /> : <p className="p-3 text-text-4">Trust the project to build it.</p>)
+          : tab === 'contract' ? (authorized ? <GoStudioApiContract sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to compare its API with the contract.</p>)
           : tab === 'heatmap' ? (authorized ? <GoStudioDependencyHeatmap sessionId={sessionId} query={query} /> : <p className="p-3 text-text-4">Trust the project to measure its packages.</p>)
           : tab === 'rules' ? (authorized ? <GoStudioArchitectureRules sessionId={sessionId} /> : <p className="p-3 text-text-4">Trust the project to check its architecture rules.</p>)
           : !report ? <p className="p-3 text-text-4">{running ? 'Loading packages and types…' : 'Analyze builds the package, import, call and module graphs, lists interfaces with their implementations and users, and finds entry points, HTTP routes, gRPC services, Kafka producers and consumers, DB repositories, scheduled jobs and CLI commands. Nothing runs.'}</p>
@@ -105,6 +108,16 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
       </div>
     </div>
   )
+}
+
+/** Folders of the main packages, from the entry points of the last analysis ("." first). */
+function mainTargets(report: GoIDEArchitecture | null): string[] {
+  const folders = (report?.entries ?? []).filter((entry) => entry.kind === 'main' && entry.site.relativePath).map((entry) => {
+    const path = entry.site.relativePath
+    const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.'
+    return dir === '.' ? '.' : `./${dir}`
+  })
+  return [...new Set(folders.length ? folders : ['.'])].sort()
 }
 
 function PackagesView({ report, query }: { report: GoIDEArchitecture; query: string }) {

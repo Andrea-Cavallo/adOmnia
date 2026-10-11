@@ -7,6 +7,7 @@ import (
 	"adomnia/internal/goidewindow"
 	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
+	"adomnia/internal/languages/golang"
 	"adomnia/internal/plugins"
 	"context"
 	"fmt"
@@ -1439,6 +1440,16 @@ func (g *GoIDE) EventContractDrift(sessionID string) (goide.EventContractReport,
 // CompareEvents elenca le modifiche ai messaggi prodotti rispetto a un ref Git.
 func (g *GoIDE) CompareEvents(sessionID, ref string) ([]apicontract.Issue, error) {
 	return g.service.CompareEvents(sessionID, ref)
+}
+
+// InspectBinary compila un package main e ne mostra dimensioni, moduli, metadati e asset.
+func (g *GoIDE) InspectBinary(sessionID, target string) (golang.BinaryReport, error) {
+	return g.service.InspectBinary(sessionID, target)
+}
+
+// CompareBinary confronta la dimensione del binario per package con un branch o commit.
+func (g *GoIDE) CompareBinary(sessionID, target, ref string) (goide.BinaryComparison, error) {
+	return g.service.CompareBinary(sessionID, target, ref)
 }
 
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).

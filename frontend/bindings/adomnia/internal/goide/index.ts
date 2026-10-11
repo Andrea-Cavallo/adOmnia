@@ -8,6 +8,8 @@ export {
     ArchitectureResult,
     AuthorizationState,
     BaseCoverage,
+    BinaryComparison,
+    BinarySizeChange,
     Bookmark,
     Breakpoint,
     BreakpointState,

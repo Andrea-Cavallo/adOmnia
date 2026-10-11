@@ -978,6 +978,141 @@ export class ArchitectureReport {
     }
 }
 
+export class BinaryModule {
+    "path": string;
+    "version": string;
+    "replace"?: string;
+
+    /** Creates a new BinaryModule instance. */
+    constructor($$source: Partial<BinaryModule> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BinaryModule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BinaryModule {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BinaryModule($$parsedSource as Partial<BinaryModule>);
+    }
+}
+
+/**
+ * BinaryReport descrive un eseguibile Go: dimensione, metadati di build, moduli e cosa occupa spazio.
+ */
+export class BinaryReport {
+    "path": string;
+    "size": number;
+    "goVersion": string;
+    "main": string;
+    "modules": BinaryModule[];
+    "settings": { [_ in string]?: string };
+    "packages": BinarySize[];
+    "symbols": BinarySize[];
+
+    /**
+     * SymbolBytes è la somma delle dimensioni dei simboli (il resto sono header, sezioni, allineamento).
+     */
+    "symbolBytes": number;
+    "embedded": BinarySize[];
+
+    /** Creates a new BinaryReport instance. */
+    constructor($$source: Partial<BinaryReport> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+        if (!("goVersion" in $$source)) {
+            this["goVersion"] = "";
+        }
+        if (!("main" in $$source)) {
+            this["main"] = "";
+        }
+        if (!("modules" in $$source)) {
+            this["modules"] = [];
+        }
+        if (!("settings" in $$source)) {
+            this["settings"] = {};
+        }
+        if (!("packages" in $$source)) {
+            this["packages"] = [];
+        }
+        if (!("symbols" in $$source)) {
+            this["symbols"] = [];
+        }
+        if (!("symbolBytes" in $$source)) {
+            this["symbolBytes"] = 0;
+        }
+        if (!("embedded" in $$source)) {
+            this["embedded"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BinaryReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BinaryReport {
+        const $$createField4_0 = $$createType39;
+        const $$createField5_0 = $$createType2;
+        const $$createField6_0 = $$createType41;
+        const $$createField7_0 = $$createType41;
+        const $$createField9_0 = $$createType41;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("modules" in $$parsedSource) {
+            $$parsedSource["modules"] = $$createField4_0($$parsedSource["modules"]);
+        }
+        if ("settings" in $$parsedSource) {
+            $$parsedSource["settings"] = $$createField5_0($$parsedSource["settings"]);
+        }
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField6_0($$parsedSource["packages"]);
+        }
+        if ("symbols" in $$parsedSource) {
+            $$parsedSource["symbols"] = $$createField7_0($$parsedSource["symbols"]);
+        }
+        if ("embedded" in $$parsedSource) {
+            $$parsedSource["embedded"] = $$createField9_0($$parsedSource["embedded"]);
+        }
+        return new BinaryReport($$parsedSource as Partial<BinaryReport>);
+    }
+}
+
+export class BinarySize {
+    "name": string;
+    "size": number;
+
+    /** Creates a new BinarySize instance. */
+    constructor($$source: Partial<BinarySize> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BinarySize instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BinarySize {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BinarySize($$parsedSource as Partial<BinarySize>);
+    }
+}
+
 export const DebugFrame = dap$0.DebugFrame;
 export type DebugFrame = dap$0.DebugFrame;
 
@@ -1009,7 +1144,7 @@ export class DebugMemory {
      * Creates a new DebugMemory instance from a string or object.
      */
     static createFrom($$source: any = {}): DebugMemory {
-        const $$createField1_0 = $$createType38;
+        const $$createField1_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("bytes" in $$parsedSource) {
             $$parsedSource["bytes"] = $$createField1_0($$parsedSource["bytes"]);
@@ -1204,7 +1339,7 @@ export class DocProblem {
      */
     static createFrom($$source: any = {}): DocProblem {
         const $$createField3_0 = $$createType0;
-        const $$createField4_0 = $$createType40;
+        const $$createField4_0 = $$createType44;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
@@ -1261,10 +1396,10 @@ export class DocType {
      */
     static createFrom($$source: any = {}): DocType {
         const $$createField3_0 = $$createType0;
-        const $$createField4_0 = $$createType42;
-        const $$createField5_0 = $$createType42;
-        const $$createField6_0 = $$createType44;
-        const $$createField7_0 = $$createType44;
+        const $$createField4_0 = $$createType46;
+        const $$createField5_0 = $$createType46;
+        const $$createField6_0 = $$createType48;
+        const $$createField7_0 = $$createType48;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("site" in $$parsedSource) {
             $$parsedSource["site"] = $$createField3_0($$parsedSource["site"]);
@@ -1385,7 +1520,7 @@ export class ErrorFix {
      * Creates a new ErrorFix instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorFix {
-        const $$createField1_0 = $$createType46;
+        const $$createField1_0 = $$createType50;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("edits" in $$parsedSource) {
             $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
@@ -1533,7 +1668,7 @@ export class GoroutineCreation {
      * Creates a new GoroutineCreation instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineCreation {
-        const $$createField0_0 = $$createType48;
+        const $$createField0_0 = $$createType52;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
@@ -1566,7 +1701,7 @@ export class GoroutineOverview {
      * Creates a new GoroutineOverview instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineOverview {
-        const $$createField0_0 = $$createType50;
+        const $$createField0_0 = $$createType54;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField0_0($$parsedSource["goroutines"]);
@@ -1630,9 +1765,9 @@ export class GoroutineSummary {
      * Creates a new GoroutineSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): GoroutineSummary {
-        const $$createField5_0 = $$createType48;
-        const $$createField7_0 = $$createType48;
-        const $$createField8_0 = $$createType51;
+        const $$createField5_0 = $$createType52;
+        const $$createField7_0 = $$createType52;
+        const $$createField8_0 = $$createType55;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField5_0($$parsedSource["location"]);
@@ -1765,12 +1900,12 @@ export class PackageDoc {
      * Creates a new PackageDoc instance from a string or object.
      */
     static createFrom($$source: any = {}): PackageDoc {
-        const $$createField5_0 = $$createType42;
-        const $$createField6_0 = $$createType42;
-        const $$createField7_0 = $$createType44;
-        const $$createField8_0 = $$createType53;
-        const $$createField9_0 = $$createType54;
-        const $$createField10_0 = $$createType56;
+        const $$createField5_0 = $$createType46;
+        const $$createField6_0 = $$createType46;
+        const $$createField7_0 = $$createType48;
+        const $$createField8_0 = $$createType57;
+        const $$createField9_0 = $$createType58;
+        const $$createField10_0 = $$createType60;
         const $$createField11_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("consts" in $$parsedSource) {
@@ -1831,7 +1966,7 @@ export class PendingDefer {
      * Creates a new PendingDefer instance from a string or object.
      */
     static createFrom($$source: any = {}): PendingDefer {
-        const $$createField1_0 = $$createType48;
+        const $$createField1_0 = $$createType52;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
@@ -1910,7 +2045,7 @@ export class TestOptions {
         const $$createField4_0 = $$createType1;
         const $$createField9_0 = $$createType1;
         const $$createField10_0 = $$createType2;
-        const $$createField13_0 = $$createType38;
+        const $$createField13_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
@@ -2019,7 +2154,7 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType58;
+        const $$createField23_0 = $$createType62;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("timings" in $$parsedSource) {
             $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
@@ -2144,8 +2279,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType60;
-        const $$createField1_0 = $$createType59;
+        const $$createField0_0 = $$createType64;
+        const $$createField1_0 = $$createType63;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -2225,26 +2360,30 @@ const $$createType34 = ArchContextCall.createFrom;
 const $$createType35 = $Create.Array($$createType34);
 const $$createType36 = ArchRead.createFrom;
 const $$createType37 = $Create.Array($$createType36);
-const $$createType38 = $Create.Array($Create.Any);
-const $$createType39 = ErrorFix.createFrom;
-const $$createType40 = $Create.Nullable($$createType39);
-const $$createType41 = DocValue.createFrom;
-const $$createType42 = $Create.Array($$createType41);
-const $$createType43 = DocFunc.createFrom;
-const $$createType44 = $Create.Array($$createType43);
-const $$createType45 = ErrorEdit.createFrom;
+const $$createType38 = BinaryModule.createFrom;
+const $$createType39 = $Create.Array($$createType38);
+const $$createType40 = BinarySize.createFrom;
+const $$createType41 = $Create.Array($$createType40);
+const $$createType42 = $Create.Array($Create.Any);
+const $$createType43 = ErrorFix.createFrom;
+const $$createType44 = $Create.Nullable($$createType43);
+const $$createType45 = DocValue.createFrom;
 const $$createType46 = $Create.Array($$createType45);
-const $$createType47 = dap$0.DebugFrame.createFrom;
-const $$createType48 = $Create.Nullable($$createType47);
-const $$createType49 = GoroutineSummary.createFrom;
+const $$createType47 = DocFunc.createFrom;
+const $$createType48 = $Create.Array($$createType47);
+const $$createType49 = ErrorEdit.createFrom;
 const $$createType50 = $Create.Array($$createType49);
-const $$createType51 = $Create.Array($$createType47);
-const $$createType52 = DocType.createFrom;
-const $$createType53 = $Create.Array($$createType52);
-const $$createType54 = $Create.Map($Create.Any, $$createType1);
-const $$createType55 = DocProblem.createFrom;
-const $$createType56 = $Create.Array($$createType55);
-const $$createType57 = ToolchainTiming.createFrom;
-const $$createType58 = $Create.Array($$createType57);
-const $$createType59 = ToolchainConfiguration.createFrom;
-const $$createType60 = $Create.Nullable($$createType59);
+const $$createType51 = dap$0.DebugFrame.createFrom;
+const $$createType52 = $Create.Nullable($$createType51);
+const $$createType53 = GoroutineSummary.createFrom;
+const $$createType54 = $Create.Array($$createType53);
+const $$createType55 = $Create.Array($$createType51);
+const $$createType56 = DocType.createFrom;
+const $$createType57 = $Create.Array($$createType56);
+const $$createType58 = $Create.Map($Create.Any, $$createType1);
+const $$createType59 = DocProblem.createFrom;
+const $$createType60 = $Create.Array($$createType59);
+const $$createType61 = ToolchainTiming.createFrom;
+const $$createType62 = $Create.Array($$createType61);
+const $$createType63 = ToolchainConfiguration.createFrom;
+const $$createType64 = $Create.Nullable($$createType63);
