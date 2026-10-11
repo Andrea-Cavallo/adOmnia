@@ -280,8 +280,13 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       if (!isCurrentPause(debugId, token)) return
       updateView(debugId, () => ({ threads, threadId, frames }))
       const frame = preferredFrame(frames)
-      if (frame) await loadFrame(debugId, frame, token, true)
-      else updateView(debugId, () => ({ loading: false }))
+      // A manual Pause often lands in the runtime without source: the frame can fail, the goroutines must still load.
+      try {
+        if (frame) await loadFrame(debugId, frame, token, true)
+        else updateView(debugId, () => ({ loading: false }))
+      } catch (error) {
+        if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ loading: false, console: appendLines(view.console, 'error', errorMessage(error)) }))
+      }
       await loadGoroutines(debugId, token)
     } catch (error) {
       if (isCurrentPause(debugId, token)) updateView(debugId, (view) => ({ loading: false, console: appendLines(view.console, 'error', errorMessage(error)) }))
