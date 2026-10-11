@@ -3,6 +3,9 @@ package golang
 import (
 	"bufio"
 	"debug/buildinfo"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -91,13 +94,79 @@ func sectionMarker(name string) bool {
 // ParseNM legge l'output di `go tool nm -size` e somma le dimensioni per package. I simboli si
 // sovrappongono (marcatori di sezione, alias): ogni byte si conta una volta, troncando un simbolo
 // all'inizio del successivo.
-func ParseNM(output string, report *BinaryReport) {
+func ParseNM(output string, report *BinaryReport) { parseNM(output, report, nil) }
+
+// FileRange è un intervallo di indirizzi virtuali con dati effettivi nel file.
+type FileRange struct{ Start, End uint64 }
+
+// FileBackedRanges: le sezioni dell'eseguibile che occupano byte nel file (non BSS né zerofill).
+func FileBackedRanges(path string) []FileRange {
+	var ranges []FileRange
+	if file, err := pe.Open(path); err == nil {
+		defer file.Close()
+		base := uint64(0)
+		switch header := file.OptionalHeader.(type) {
+		case *pe.OptionalHeader64:
+			base = header.ImageBase
+		case *pe.OptionalHeader32:
+			base = uint64(header.ImageBase)
+		}
+		for _, section := range file.Sections {
+			size := min(section.VirtualSize, section.Size)
+			if size > 0 {
+				start := base + uint64(section.VirtualAddress)
+				ranges = append(ranges, FileRange{start, start + uint64(size)})
+			}
+		}
+		return ranges
+	}
+	if file, err := elf.Open(path); err == nil {
+		defer file.Close()
+		for _, section := range file.Sections {
+			if section.Type != elf.SHT_NOBITS && section.Addr != 0 && section.Size > 0 {
+				ranges = append(ranges, FileRange{section.Addr, section.Addr + section.Size})
+			}
+		}
+		return ranges
+	}
+	if file, err := macho.Open(path); err == nil {
+		defer file.Close()
+		for _, section := range file.Sections {
+			if section.Flags&0xff != 0x1 && section.Size > 0 { // S_ZEROFILL
+				ranges = append(ranges, FileRange{section.Addr, section.Addr + section.Size})
+			}
+		}
+	}
+	return ranges
+}
+
+// ParseNMInFile è ParseNM contando solo i byte che stanno in sezioni presenti nel file.
+func ParseNMInFile(output string, report *BinaryReport, ranges []FileRange) {
+	parseNM(output, report, ranges)
+}
+
+func clip(start, stop uint64, ranges []FileRange) uint64 {
+	if ranges == nil {
+		return stop - start
+	}
+	total := uint64(0)
+	for _, r := range ranges {
+		low, high := max(start, r.Start), min(stop, r.End)
+		if high > low {
+			total += high - low
+		}
+	}
+	return total
+}
+
+func parseNM(output string, report *BinaryReport, ranges []FileRange) {
 	var symbols []nmSymbol
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	scanner.Buffer(make([]byte, 0, 1024*1024), 4*1024*1024)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
-		if len(fields) < 4 || fields[2] == "U" {
+		// U: non definito; B/b: BSS, memoria azzerata all'avvio che non occupa spazio nel file.
+		if len(fields) < 4 || fields[2] == "U" || fields[2] == "B" || fields[2] == "b" {
 			continue
 		}
 		address, err := strconv.ParseUint(fields[0], 16, 64)
@@ -140,8 +209,11 @@ func ParseNM(output string, report *BinaryReport) {
 		if stop <= start {
 			continue
 		}
-		size := int64(stop - start)
+		size := int64(clip(start, stop, ranges))
 		end = stop
+		if size <= 0 {
+			continue
+		}
 		report.SymbolBytes += size
 		packages[symbolPackage(symbol.name)] += size
 		counted = append(counted, BinarySize{Name: symbol.name, Size: size})

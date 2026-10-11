@@ -36,7 +36,7 @@ func TestBinaryInspection(t *testing.T) {
 	if err != nil {
 		t.Skipf("go tool nm: %v", err)
 	}
-	ParseNM(string(output), &report)
+	ParseNMInFile(string(output), &report, FileBackedRanges(exe))
 	packages := map[string]int64{}
 	for _, item := range report.Packages {
 		packages[item.Name] = item.Size

@@ -564,6 +564,10 @@ Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, A
 
 The same tab compares messages. For every Kafka, NATS or AMQP producer and consumer, adOmnia reads the Go type passed to `json.Marshal`/`proto.Marshal` or decoded with `json.Unmarshal`/`proto.Unmarshal` in that function, and per topic lists the fields a consumer reads that no producer sends and the fields whose type differs (decoding fails). Avro schemas (`.avsc`) and JSON Schemas (`*.schema.json`) whose name matches the struct or the topic are checked too: Go fields not in the schema, different types, required schema fields the struct lacks. *Diff* adds how the produced messages changed since the chosen revision; removed fields and type changes are marked breaking for consumers not yet updated.
 
+## Binary inspector
+
+*Architecture Explorer → Binary* builds a `main` package (the folders of the entry points are suggested) into a temporary file — nothing is written to the project — and shows what the executable is made of: total size, size by package and the largest symbols (from `go tool nm`, each byte counted once and only for sections stored in the file), the files included with `//go:embed`, and the metadata Go records in every binary: Go version, main module, module versions with replacements, and build settings such as GOOS/GOARCH, CGO, `-ldflags`, `-tags` and the VCS revision. *Compare size with* builds the same package at a branch, tag or commit in a temporary Git worktree and lists how much each package grew or shrank.
+
 ## Architecture rules and drift
 
 *Architecture Explorer → Rules & drift* checks the code against `.adomnia/architecture.json` (*Create architecture rules* writes a template; commit it to share the rules). Package patterns are relative to the module (`internal/domain/...` is the folder and everything below, `*` one segment):

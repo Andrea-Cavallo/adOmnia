@@ -26,7 +26,7 @@ verificata nel codice: quelle chiuse sono state rimosse (la loro storia è in gi
 | **P1** | Workflow Go migliore di GoLand | 0 | 0 |
 | **P2** | Codice ↔ runtime: la differenza adOmnia | 28 | 8 |
 | **P3** | Remote ed estensibilità | 0 | 0 |
-| **P4** | AI e intelligenza del workspace | 47 | 2 |
+| **P4** | AI e intelligenza del workspace | 39 | 2 |
 | **Riferimento** | Obiettivi, qualità, roadmap e KPI | 135 | 38 |
 
 ---
@@ -224,16 +224,7 @@ Su una goroutine/process/task:
 - [ ] Security impact.
 - [ ] Binary size impact.
 
-### G. Binary Inspector
-
-- [ ] Binary size.
-- [ ] Package contribution.
-- [ ] Symbol contribution.
-- [ ] Embedded assets.
-- [ ] Build metadata.
-- [ ] Go version.
-- [ ] Module versions.
-- [ ] Compare binary size between commits.
+_G. Binary Inspector chiusa il 2026-10-11 (Architecture Explorer → Binary)._
 
 ### H. Startup Analyzer
 

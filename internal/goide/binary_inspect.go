@@ -78,7 +78,7 @@ func (s *Service) buildBinary(sessionID, root, target string) (golang.BinaryRepo
 	}
 	report.Path = target
 	if out, err := run("tool", "nm", "-size", "-sort", "size", output); err == nil {
-		golang.ParseNM(string(out), &report)
+		golang.ParseNMInFile(string(out), &report, golang.FileBackedRanges(output))
 	}
 	report.Embedded = golang.EmbeddedFiles(filepath.Join(root, filepath.FromSlash(target)))
 	return report, nil
