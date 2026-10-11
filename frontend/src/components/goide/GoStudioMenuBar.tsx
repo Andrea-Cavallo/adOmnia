@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState } from 'react'
+
 import { showModule } from '@/lib/moduleRouting'
 import { History, Menu } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
-import { useAppIcon } from '@/lib/brandAssets'
+import { AppLogo } from '@/components/ui/AppLogo'
 import type { GoIDERecentProject } from '@/lib/goide-api'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, commandShortcut, type GoStudioCommandId, type GoStudioMenuId } from './goStudioCommands'
 import { GO_STUDIO_COMMAND_ICONS, GO_STUDIO_MENU_ICONS } from './goStudioCommandIcons'
@@ -76,7 +77,6 @@ function mainMenuItems(state: GoStudioCommandState, recentProjects: GoIDERecentP
 
 export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCommand, onOpenRecent }: GoStudioMenuBarProps) {
   const [open, setOpen] = useState<{ x: number; y: number } | null>(null)
-  const appIcon = useAppIcon()
 
   const select = (id: string) => {
     setOpen(null)
@@ -89,7 +89,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
     <>
       {/* Logo adOmnia: torna all'hub principale (la rail e il menu di adOmnia ricompaiono). */}
       <button type="button" onClick={() => showModule('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button go-studio-brand-button h-9 w-9">
-        <img src={appIcon} alt="" data-brand-mark className="h-7 w-7 object-contain" />
+        <AppLogo decorative className="h-7 w-7 object-contain" />
       </button>
       <button
         type="button"

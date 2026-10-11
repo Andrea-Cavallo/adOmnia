@@ -2,14 +2,14 @@ import '@fontsource/geist/latin-800.css'
 
 // Static adOmnia wordmark: the hexagonal mark (assets/images/adomnia-mark.svg) is the "o".
 // Ink and glow come from the hub tokens, so it follows every palette; no WebGL, no animation.
-export function HubLogo({ onClick }: { onClick?: () => void }) {
-  return <button type="button" className="hub-logo" onClick={onClick} aria-label="adOmnia">
+export function HubLogo() {
+  return <div className="hub-logo" aria-label="adOmnia">
     <span aria-hidden="true">ad</span>
     <svg viewBox="80 64 352 382" aria-hidden="true">
       <defs>
         <linearGradient id="hub-logo-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset=".35" style={{ stopColor: 'var(--hub-ink)' }}/>
-          <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--hub-accent) 55%, var(--hub-ink))' }}/>
+          <stop offset="1" style={{ stopColor: 'var(--hub-accent)' }}/>
         </linearGradient>
       </defs>
       <g fill="url(#hub-logo-fill)">
@@ -18,5 +18,5 @@ export function HubLogo({ onClick }: { onClick?: () => void }) {
       </g>
     </svg>
     <span aria-hidden="true">mnia</span>
-  </button>
+  </div>
 }

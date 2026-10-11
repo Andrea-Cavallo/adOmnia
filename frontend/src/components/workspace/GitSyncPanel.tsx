@@ -778,6 +778,7 @@ export function GitSyncPanel() {
   }
 
   const executeDrop = (operation: 'merge' | 'rebase' | 'cherry-pick') => {
+    if (operation !== 'merge') return // V1: advanced history rewrites remain parked.
     if (!dropTarget) return
     const { payload, branch } = dropTarget
     setDropTarget(null)
@@ -1076,7 +1077,7 @@ export function GitSyncPanel() {
               <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-text-4"><GitFork size={11} /> Branches</div>
               {localBranches.length === 0 && <div className="px-2 py-1 text-text-4">No local branches loaded</div>}
               {sortedLocalBranches.map((branch) => (
-                <div key={branch.name} onDragOver={(event) => { if (dragPayload) event.preventDefault() }} onDrop={(event) => { event.preventDefault(); if (dragPayload && !(dragPayload.type === 'branch' && dragPayload.name === branch.name)) setDropTarget({ payload: dragPayload, branch: branch.name }) }} className="group flex items-center gap-1">
+                <div key={branch.name} onDragOver={(event) => { if (dragPayload?.type === 'branch') event.preventDefault() }} onDrop={(event) => { event.preventDefault(); if (dragPayload?.type === 'branch' && dragPayload.name !== branch.name) setDropTarget({ payload: dragPayload, branch: branch.name }) }} className="group flex items-center gap-1">
                   <button onClick={() => setPinnedBranches(toggleBranchPin(repoPath, branch.name))} title={pinnedBranches.includes(branch.name) ? 'Unpin branch' : 'Pin branch'} className={cn('shrink-0 rounded p-0.5 hover:text-accent', pinnedBranches.includes(branch.name) ? 'text-accent' : 'text-text-4 opacity-0 group-hover:opacity-100')}>
                     <Pin size={10} fill={pinnedBranches.includes(branch.name) ? 'currentColor' : 'none'} />
                   </button>
@@ -1391,7 +1392,7 @@ export function GitSyncPanel() {
             </div>
             <div className="flex justify-end gap-2 border-t border-border-1 px-4 py-3">
               <button onClick={() => setDropTarget(null)} className="h-7 rounded px-3 text-xs text-text-2 hover:bg-surface-3">Cancel</button>
-              {dropTarget.payload.type === 'branch' ? <><button onClick={() => executeDrop('rebase')} className="h-7 rounded border border-border-2 px-3 text-xs text-text-2 hover:bg-surface-2">Rebase target</button><button onClick={() => executeDrop('merge')} className="h-7 rounded bg-accent px-3 text-xs font-medium text-white">Merge into target</button></> : <button onClick={() => executeDrop('cherry-pick')} className="h-7 rounded bg-accent px-3 text-xs font-medium text-white">Cherry-pick</button>}
+              {dropTarget.payload.type === 'branch' ? <><button onClick={() => executeDrop('merge')} className="h-7 rounded bg-accent px-3 text-xs font-medium text-white">Merge into target</button></> : <span className="text-xs text-text-4">Commit drag actions are outside the v1 scope.</span>}
             </div>
           </div>
         </div>

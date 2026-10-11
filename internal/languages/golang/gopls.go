@@ -28,6 +28,10 @@ type GoplsInfo struct {
 
 // GoplsSettings sono le preferenze dell'utente tradotte nella configurazione di gopls.
 type GoplsSettings struct {
+	DirectoryFilters        []string `json:"directoryFilters,omitempty"`
+	ExpandWorkspaceToModule *bool    `json:"expandWorkspaceToModule,omitempty"`
+	DiagnosticsOnSave       bool     `json:"diagnosticsOnSave,omitempty"`
+
 	Gofumpt       bool `json:"gofumpt"`
 	Staticcheck   bool `json:"staticcheck"`
 	Placeholders  bool `json:"placeholders"`
@@ -116,7 +120,7 @@ func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSetting
 
 // goplsConfiguration traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
 func goplsConfiguration(settings GoplsSettings) map[string]any {
-	return map[string]any{
+	config := map[string]any{
 		"gofumpt":            settings.Gofumpt,
 		"staticcheck":        settings.Staticcheck,
 		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
@@ -137,6 +141,19 @@ func goplsConfiguration(settings GoplsSettings) map[string]any {
 			"constantValues":         true,
 		},
 	}
+	if len(settings.DirectoryFilters) > 0 {
+		config["directoryFilters"] = settings.DirectoryFilters
+	}
+	if settings.ExpandWorkspaceToModule != nil {
+		config["expandWorkspaceToModule"] = *settings.ExpandWorkspaceToModule
+	}
+	// Deep analysis waits for a pause in typing; syntax diagnostics remain immediate.
+	config["diagnosticsDelay"] = "1s"
+	if settings.DiagnosticsOnSave {
+		config["diagnosticsTrigger"] = "Save"
+	}
+	return config
+
 }
 
 // goplsWatchesFile: i file cambiati su disco che gopls deve rileggere anche se non aperti.

@@ -19,9 +19,18 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 		return
 	}
 	state := m.ensure(session, owner.ID())
+	state.lifecycle.Lock()
 	state.mu.Lock()
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+	}
+	state.idleEpoch++
+	resume := state.suspended
+	options := state.options
+
 	if _, exists := state.documents[document.ID]; exists {
 		state.mu.Unlock()
+		state.lifecycle.Unlock()
 		return
 	}
 	tracked := &trackedDocument{id: document.ID, uri: document.URI, path: document.Path, languageID: languageID, version: 1, text: text, readOnly: readOnly}
@@ -29,6 +38,11 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	state.byURI[document.URI] = document.ID
 	process := state.synced
 	state.mu.Unlock()
+	state.lifecycle.Unlock()
+	if resume {
+		_, _ = m.Start(session, options)
+		return
+	}
 	if process != nil {
 		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
 			URI: tracked.uri, LanguageID: languageID, Version: 1, Text: text,
@@ -102,6 +116,7 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 	}
 	process := state.synced
 	state.mu.Unlock()
+	m.armIdle(state)
 	if ok && process != nil {
 		_ = process.conn.Notify("textDocument/didClose", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: tracked.uri}})
 	}

@@ -9,6 +9,7 @@ import { useRouteForRequest } from '@/lib/devsession/useRouteForRequest'
 import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { linkedService, liveSessions, sessionForRequest, type ServiceTarget } from '@/stores/devSessionModel'
 import { basename, LiveDot, LinkedDot } from './liveUi'
+import { useUiTranslation } from '@/lib/uiI18n'
 
 /** Replaces the origin of a URL with `{{service:name}}`, keeping path and query. */
 export function linkUrlToService(url: string, service: string): string {
@@ -21,6 +22,7 @@ export function linkUrlToService(url: string, service: string): string {
  * DEV…) and which Go handler serves it. Hidden when neither is known.
  */
 export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { tabId: string; request: RequestItem; vars: Record<string, string>; onChange: (request: RequestItem) => void }) {
+  const tr = useUiTranslation()
   useLiveCore()
   const state = useDevSessionStore.getState()
   const allVars = liveVars(vars)
@@ -72,12 +74,14 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
       ) : null}
       {route && (
         <span className="ml-auto flex min-w-0 items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-4">Handler</span>
+          <span className="api-dot-label">HANDLER</span>
           <span className="truncate font-mono text-text-2">{route.name}</span>
           <span className="shrink-0 font-mono text-text-4">{basename(route.file)}:{route.line}</span>
           <button type="button" onClick={() => void openLocationInGoStudio(route.goSessionId, { function: route.name, relativePath: route.file, line: route.line })}
-            className="flex shrink-0 items-center gap-1 rounded border border-border-2 px-1.5 py-px text-text-2 hover:border-accent hover:text-accent">
-            <Code2 size={11} />Open handler
+            title={tr('Open in Go IDE')}
+            aria-label={tr('Open in Go IDE')}
+            className="api-handler-open flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">
+            <Code2 size={12} aria-hidden="true" />OPEN IN GO IDE
           </button>
           {drift && (
             <span title={`${route.route.label} is served by the code but missing from ${drift}`} className="flex shrink-0 items-center gap-1 text-warning">

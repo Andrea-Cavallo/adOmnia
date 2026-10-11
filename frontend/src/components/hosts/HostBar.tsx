@@ -76,11 +76,11 @@ export function HostBar({
               'flex h-6 items-center gap-1.5 rounded px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
-              compact && 'h-7 w-full min-w-0',
+              compact && 'api-context-trigger h-7 w-full min-w-0',
               dropOpen && 'border-accent'
             )}
           >
-            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Hosts')}</span>}
+            {compact && <span className="api-context-label shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Hosts')}</span>}
             <span className={cn('truncate', compact ? 'min-w-0 flex-1 text-left' : 'max-w-[160px]')}>{activeLabel}</span>
             <ChevronDown
               size={11}

@@ -283,6 +283,10 @@ func (m *DocumentManager) CloseSession(sessionID SessionID) {
 
 // ResolveProjectPath convalida un percorso esistente rispetto alla radice reale del progetto.
 func (m *DocumentManager) ResolveProjectPath(project Project, candidate string) (string, error) {
+	return m.resolveProjectPathLimit(project, candidate, MaxDocumentBytes)
+}
+
+func (m *DocumentManager) resolveProjectPathLimit(project Project, candidate string, limit int64) (string, error) {
 	root := project.RealPath
 	if root == "" {
 		return "", fmt.Errorf("radice reale del progetto non disponibile")
@@ -309,8 +313,8 @@ func (m *DocumentManager) ResolveProjectPath(project Project, candidate string) 
 	if info.IsDir() {
 		return "", fmt.Errorf("il percorso richiesto è una cartella")
 	}
-	if info.Size() > MaxDocumentBytes {
-		return "", fmt.Errorf("documento troppo grande: limite %d byte", MaxDocumentBytes)
+	if info.Size() > limit {
+		return "", fmt.Errorf("documento troppo grande: limite %d byte", limit)
 	}
 	return realPath, nil
 }

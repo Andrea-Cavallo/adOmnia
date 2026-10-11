@@ -675,3 +675,12 @@ Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases,
 
 
 Detached tool views reserve no space in the IDE: the code and remaining tools expand automatically; bringing a tool back restores its docked area.
+
+
+### Resource monitor and gopls lifecycle (2026-10-11)
+
+The bottom-left application status bar shows live RAM (resident memory) and CPU instead of the last API response while Go Studio is selected. Click it to inspect the application and its descendant processes, language-server PIDs and associated project paths. Samples refresh every two seconds while the window is visible; CPU is a delta normalized to logical CPU count, and the first sample is unknown. Resident memory sums may include shared pages; this is process memory, not only the Go heap. No measurements are persisted or transmitted. Closed projects disappear after their servers exit and the next sample arrives.
+
+The manager serializes concurrent starts and keeps one server per language/project session, including the same project's detached editor. Separate workspace sessions retain independent servers and buffers; this change does not merge potentially conflicting unsaved overlays across workspaces. A server with no tracked editor stops after five minutes; reopening a document resumes an automatically suspended server, but never overrides a manual stop or revoked tooling authorization. Editors that remain open, including hidden or dirty editors, prevent suspension. Path-based semantic requests renew the idle grace period.
+
+Language server settings expose opt-in directory filters and module expansion, retaining gopls' default scope for existing installations. Deep diagnostics wait one second after typing; optional diagnostics on save retains completion, hover and navigation. Filters apply on blur and changing these settings restarts the active project's server. Settings are backward-compatible optional fields in the existing local settings record; no workspace-format migration is needed. Narrowing scope requires verifying workspace search, diagnostics and cross-package refactoring in the actual repository.

@@ -1657,6 +1657,9 @@ export class GoplsInfo {
  * GoplsSettings sono le preferenze dell'utente tradotte nella configurazione di gopls.
  */
 export class GoplsSettings {
+    "directoryFilters"?: string[];
+    "expandWorkspaceToModule"?: boolean | null;
+    "diagnosticsOnSave"?: boolean;
     "gofumpt": boolean;
     "staticcheck": boolean;
     "placeholders": boolean;
@@ -1693,7 +1696,11 @@ export class GoplsSettings {
      * Creates a new GoplsSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): GoplsSettings {
+        const $$createField0_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("directoryFilters" in $$parsedSource) {
+            $$parsedSource["directoryFilters"] = $$createField0_0($$parsedSource["directoryFilters"]);
+        }
         return new GoplsSettings($$parsedSource as Partial<GoplsSettings>);
     }
 }

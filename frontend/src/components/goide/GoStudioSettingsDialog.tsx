@@ -49,6 +49,7 @@ const SETTINGS: Setting[] = [
   { section: 'Save actions', label: 'Run linter on save', hint: 'golangci-lint, staticcheck or a custom analyzer, when configured.', kind: 'toggle', pref: 'lintOnSave' },
   { section: 'Save actions', label: 'Trim trailing whitespace', hint: 'For non-Go files; Go files are already formatted.', kind: 'toggle', pref: 'trimTrailingWhitespace' },
   { section: 'Save actions', label: 'Auto save', hint: 'Save modified files when the editor loses focus.', kind: 'toggle', pref: 'autoSave' },
+  { section: 'Language server', label: 'Deep diagnostics on save', hint: 'Run deep diagnostics after saving; completion, hover and navigation remain available.', kind: 'toggle', server: 'diagnosticsOnSave' },
   { section: 'Language server', label: 'gofumpt style', hint: 'Stricter formatting rules (restarts gopls).', kind: 'toggle', server: 'gofumpt' },
   { section: 'Language server', label: 'staticcheck analyzers', hint: 'Extra analyzers inside gopls (restarts gopls).', kind: 'toggle', server: 'staticcheck' },
   { section: 'Language server', label: 'Vulnerability diagnostics', hint: 'gopls vulncheck on go.mod; needs network access to vuln.go.dev (restarts gopls).', kind: 'toggle', server: 'vulncheck' },
@@ -147,6 +148,20 @@ export function GoStudioSettingsDialog({ open, sessionId, onCommand, onClose }: 
               </div>
             ))}
           </div>
+          {!needle && section === 'Language server' && <div className="mt-3 space-y-3">
+            <label className="block text-[12px] text-text-2">Directory filters (one per line)
+              <textarea key={sessionId} defaultValue={(settings.directoryFilters ?? []).join('\n')} rows={3} className="gs-input gs-mono mt-1" onBlur={(event) => {
+                const filters = event.target.value.split('\n').map(s => s.trim()).filter(Boolean)
+                const valid = filters.every(s => /^[+-].+/.test(s))
+                event.target.setCustomValidity(valid ? '' : 'Each filter must start with + or - followed by a directory pattern.')
+                if (!valid) event.target.reportValidity()
+                if (valid && JSON.stringify(filters) !== JSON.stringify(settings.directoryFilters ?? [])) void lsp.updateSettings(sessionId, { directoryFilters: filters })
+              }} />
+              <span className="gs-hint">Prefix with + to include or - to exclude. Excluded packages may disappear from diagnostics, search and refactoring; leave empty for default scope.</span>
+            </label>
+            <label className="flex items-center gap-2 text-[12px] text-text-2"><input type="checkbox" checked={settings.expandWorkspaceToModule !== false} onChange={(event) => void lsp.updateSettings(sessionId, { expandWorkspaceToModule: event.target.checked })} />Analyze the whole module</label>
+            <p className="gs-hint">Keep enabled unless intentionally working in a nested folder. Verify cross-package search and refactoring after narrowing the scope.</p>
+          </div>}
           {!needle && section === 'Language server' && <p className="gs-hint mt-3">Language server settings apply to every project and restart gopls for the active one.</p>}
         </div>
       </div>

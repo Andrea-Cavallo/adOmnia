@@ -15,7 +15,7 @@ import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindow
 import './Rail.css'
 import {
   Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
-  Wrench, FileText, FileCode, Database, Braces, ChevronRight, FolderOpen,
+  Wrench, FileText, FileCode, FileBox, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
   BookOpen, Search, CodeXml, Boxes, AppWindow, Users,
@@ -40,10 +40,6 @@ interface CategoryDef {
   groups: SubGroup[]
 }
 
-function Soap95Icon({ size = 12 }: { size?: number }) {
-  return <img src="/icon95.png" alt="" style={{ width: size, height: size }} className="object-contain" />
-}
-
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
@@ -64,7 +60,7 @@ export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   sse: Radio,
   broker: Server,
   grpc: Send,
-  soap: Soap95Icon,
+  soap: FileBox,
   mcp: Network,
   mock: Server,
   proxy: Shield,
@@ -189,7 +185,7 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
                 )}
               >
                 <ItemIcon size={12} />
-                <span className="flex-1">{nav(label)}</span>
+                <span className="flex-1">{nav(label)}</span>{item.id === 'collab' && <span className="text-[9px] uppercase tracking-wider text-warning">{tr('Beta')}</span>}
                 {detached.includes(item.id) && <AppWindow size={11} className="text-accent" aria-label={tr('Open in its own window')} />}
                 {active && <ChevronRight size={10} className="text-accent" />}
               </button>

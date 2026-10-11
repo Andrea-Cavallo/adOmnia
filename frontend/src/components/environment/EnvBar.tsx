@@ -79,12 +79,12 @@ export function EnvBar({
               'flex h-6 min-w-0 items-center gap-1.5 px-2 text-[11px] transition-colors outline-none',
               'bg-surface-2 border border-border-2 text-text-1',
               'hover:border-border-3 hover:bg-surface-3',
-              compact ? 'h-7 w-full rounded' : 'rounded-l',
+              compact ? 'api-context-trigger h-7 w-full rounded' : 'rounded-l',
               dropOpen && 'border-accent'
             )}
             title={compact ? tr('Switch environment') : tr('Open environment editor')}
           >
-            {compact && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Environments')}</span>}
+            {compact && <span className="api-context-label shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Environments')}</span>}
             <span className={cn('truncate', compact ? 'min-w-0 flex-1 text-left' : 'max-w-[160px]')}>{activeLabel}</span>
             {activeEnv && (
               <span className="shrink-0 rounded-sm border border-border-2 bg-surface-1 px-1 text-[9px] text-text-4">

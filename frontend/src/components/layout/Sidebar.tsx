@@ -243,13 +243,13 @@ function WorkspaceContextButton({
         aria-expanded={open}
         title={`${tr('Workspace')}: ${activeWorkspace?.name ?? tr('Unknown')}`}
         className={cn(
-          'flex h-7 w-full min-w-0 items-center gap-1 rounded border border-border-2 bg-surface-2 px-1.5 text-[11px] text-text-1 outline-none transition-colors',
+          'api-context-trigger flex h-7 w-full min-w-0 items-center gap-1 rounded border border-border-2 bg-surface-2 px-1.5 text-[11px] text-text-1 outline-none transition-colors',
           'hover:border-border-3 hover:bg-surface-3',
           open && 'border-accent'
         )}
       >
         <FolderKanban size={11} className="shrink-0 text-accent" />
-        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Workspace')}</span>
+        <span className="api-context-label shrink-0 text-[9px] font-semibold uppercase tracking-wide text-text-4">{tr('Workspace')}</span>
         <span className="min-w-0 flex-1 truncate text-left font-medium">{activeWorkspace?.name ?? tr('Unknown')}</span>
         <ChevronDown size={11} className={cn('shrink-0 text-text-4 transition-transform', open && 'rotate-180')} />
       </button>

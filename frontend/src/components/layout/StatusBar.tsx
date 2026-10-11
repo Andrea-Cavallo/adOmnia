@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { AccentColorSetting } from '@/components/settings/AccentColorSetting'
 import { useSettingsStore } from '@/stores/settings'
+import { ResourceStatus } from './ResourceStatus'
 import { luminance, validAccent } from '@/lib/accentPalette'
 
 const BASE_PRESETS = { dark: ['#000000', '#0B1020', '#111827', '#1C1917'], light: ['#FFFFFF', '#F8FAFC', '#FAF7F0', '#EEF2F7'] } as const
@@ -19,6 +20,7 @@ export function StatusBar() {
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
+  const inIDE = useAppStore((s) => s.activeRail === 'goide')
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const themes = useThemesStore((s) => s.themes)
   const activeThemeId = useThemesStore((s) => s.activeThemeId)
@@ -89,7 +91,8 @@ export function StatusBar() {
   return (
     <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
       <div className="flex items-center gap-3">
-        {response && !response.error && (
+        {inIDE && <ResourceStatus />}
+        {!inIDE && response && !response.error && (
           <>
             <span className={response.status >= 400 ? 'text-error' : response.status >= 200 ? 'text-success' : 'text-text-3'}>
               {response.status} {response.statusText}
@@ -98,7 +101,7 @@ export function StatusBar() {
             <span>{response.size < 1024 ? `${response.size} B` : `${(response.size / 1024).toFixed(1)} KB`}</span>
           </>
         )}
-        {!response && !saveError && <span>{tr('Ready')}</span>}
+        {!inIDE && !response && !saveError && <span>{tr('Ready')}</span>}
         {saveError && <span className="text-error">{tr('Save error:')} {saveError}</span>}
       </div>
       <div className="flex items-center gap-2">

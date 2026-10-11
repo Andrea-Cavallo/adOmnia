@@ -2,6 +2,12 @@
 
 adOmnia releases are driven by Git tags and GitHub Actions.
 
+The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
+
+## v0.10.0-beta.2 — stabilization toward v1
+
+See [beta notes](releases/v0.10.0-beta.2.md) and [v1 acceptance checklist](V1-CHECKLIST.md).
+
 ## v0.10.0-beta.1 — stabilization toward v1
 
 See [beta notes](releases/v0.10.0-beta.1.md) and [v1 acceptance checklist](V1-CHECKLIST.md).

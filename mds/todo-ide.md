@@ -131,6 +131,25 @@ Registrare nelle evidenze le differenze intenzionali rispetto ai mock.
 
 ## Evidenze
 
+### Monitor consumi e gopls (2026-10-11)
+
+- [x] Misurazione locale RAM e delta CPU del processo reale; prima lettura CPU sconosciuta.
+- [x] Test lifecycle: stesso PID con avvii ripetuti, nessuna sospensione con editor aperto, timer obsoleto ignorato, riavvio dopo sospensione.
+- [ ] Nell'app desktop confrontare RAM/CPU con il monitor di sistema, inclusi WebView e gopls; chiudere un progetto e verificare l'uscita del suo PID.
+- [ ] Attendere cinque minuti senza editor e riaprire un file: completamento, hover, diagnostica e refactoring devono tornare operativi.
+- [ ] Verificare documenti dirty, finestre separate, stop manuale e autorizzazione revocata.
+- [ ] Con filtri o ambito ristretto, collaudare monorepo/go.work: ricerca, diagnostiche e rename tra package. Default conservati.
+- [ ] Verifica nativa del monitor su Linux e macOS.
+
+
+### P4 — Why is this running? (2026-10-11)
+
+- [x] Verifica automatica della prima implementazione: 2 test `goroutineWhy`, TypeScript e build frontend passati.
+- [ ] In Delve, confrontare route/consumer riconosciuti con request e messaggio reali; provare una goroutine figlia senza handler nello stack.
+- [ ] Verificare il tempo dalla prima osservazione, anche con attach; evitare di presentarlo come tempo dalla creazione.
+- [ ] Ispezionare Context, WithCancel, WithTimeout e WithoutCancel; un contesto illeggibile o una catena troncata devono restare esplicitamente sconosciuti.
+- [ ] Cambiare goroutine e riprendere durante la lettura: non mostrare risultati di una pausa precedente.
+
 ### P2 Context — verifica desktop ancora aperta (2026-10-10)
 
 - [ ] Su una riga `go worker()`, verificare i canali/lock reali delle goroutine create e la navigazione al thread.

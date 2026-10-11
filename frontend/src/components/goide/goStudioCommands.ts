@@ -256,7 +256,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'vcs.lineHistory', menu: 'git', label: 'Show History for Selection…' },
   { id: 'vcs.annotate', menu: 'git', label: 'Annotate with Git Blame' },
   { id: 'vcs.resolveConflicts', menu: 'git', label: 'Resolve Conflicts…' },
-  { id: 'vcs.gitStudio', menu: 'git', label: 'Push, Pull, Conflicts and Rebase in Git Studio', separatorBefore: true },
+  { id: 'vcs.gitStudio', menu: 'git', label: 'Push, Pull and Conflicts in Git Studio', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
 ]
 

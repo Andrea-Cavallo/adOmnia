@@ -76,6 +76,13 @@ type Conn struct {
 	err     error
 }
 
+// PendingRequests lets lifecycle owners defer idle shutdown while a service is using LSP.
+func (c *Conn) PendingRequests() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.pending)
+}
+
 // NewConn crea la connessione; Run deve essere avviato per leggere i messaggi.
 func NewConn(stream io.Reader, writer io.Writer, handler Handler) *Conn {
 	return &Conn{

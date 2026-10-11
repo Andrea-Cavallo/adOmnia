@@ -8,7 +8,7 @@ export function WorkspaceContextPickers() {
   const env = useEnvironmentsStore()
   const hosts = useHostsStore()
   return <div className="api-header-context flex min-w-0 items-center gap-2">
-    <div className="w-[270px] min-w-0">
+    <div className="w-[240px] min-w-0">
       <EnvBar
         compact
         environments={env.environments}
@@ -21,7 +21,7 @@ export function WorkspaceContextPickers() {
         onSetPrivate={env.setEnvironmentPrivate}
       />
     </div>
-    <div className="w-[200px] min-w-0">
+    <div className="w-[170px] min-w-0">
       <HostBar
         compact
         profiles={hosts.profiles}

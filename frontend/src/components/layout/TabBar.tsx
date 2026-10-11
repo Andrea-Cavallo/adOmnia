@@ -53,8 +53,8 @@ const MENU_H = 360
 // A tab stays usable down to this width: method badge, an ellipsised title,
 // the dirty dot and the close button still fit. Below it we stop shrinking and
 // move the surplus tabs into the overflow menu instead.
-const TAB_MIN_WIDTH = 160
-const PINNED_TAB_WIDTH = 56
+const TAB_MIN_WIDTH = 140
+const PINNED_TAB_WIDTH = 48
 const TAB_GAP = 2
 const OVERFLOW_BUTTON_WIDTH = 32
 
@@ -207,14 +207,14 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
 
   return (
     <Tabs.Root value={activeTabId ?? undefined} onValueChange={onSelect} activationMode="automatic">
-    <div data-request-tabs className="api-nothing-tabs flex h-[52px] items-end gap-1 border-b border-border-1 px-2">
+    <div data-request-tabs className="api-nothing-tabs flex h-[40px] items-end gap-1 border-b border-border-1 px-2">
       <Tabs.List asChild aria-label={tr('Request tabs')}>
       <div ref={scrollRef}
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null) }}
         onDrop={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); openDroppedRequests(event.dataTransfer.getData(REQUEST_DRAG_TYPE)); clearDrag() } }}
         data-request-tab-list
-        className="flex h-12 min-w-0 flex-1 items-end gap-0.5 overflow-hidden px-1.5">
+        className="flex h-[38px] min-w-0 flex-1 items-end gap-0.5 overflow-hidden px-1.5">
       {visibleTabs.map((tab) => {
         const isActive = activeTabId === tab.id
         const isPinned = tab.pinned === true
@@ -275,10 +275,10 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               if (draggedId && outsideWindow) void onDetach(draggedId)
             }}
             className={cn(
-              'api-nothing-tab relative -mb-px flex h-[42px] min-w-0 items-center gap-2.5 px-4 text-[14px] cursor-pointer group transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-accent',
+              'api-nothing-tab relative -mb-px flex h-[32px] min-w-0 items-center gap-1.5 px-2.5 text-[12px] cursor-pointer group transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-accent',
               isPinned
-                ? 'shrink-0 basis-[56px] min-w-[52px] max-w-[64px]'
-                : 'flex-1 basis-[230px] min-w-[156px] max-w-[250px]',
+                ? 'shrink-0 basis-[48px] min-w-[48px] max-w-[48px]'
+                : 'flex-1 basis-[180px] min-w-[140px] max-w-[210px]',
               isActive
                 ? 'z-10 text-text-1'
                 : 'text-text-3 hover:text-text-2',

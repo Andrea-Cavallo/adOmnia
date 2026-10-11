@@ -9,7 +9,7 @@ import { useT } from '@/lib/i18n'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { UI_FONTS, type UIFontId } from '@/lib/uiFonts'
 import { cn } from '@/lib/utils'
-import { useAppIcon } from '@/lib/brandAssets'
+import { AppLogo } from '@/components/ui/AppLogo'
 import { APP_VERSION, BUILD_DATE, COMMIT_HASH, formatBuildDate } from '@/lib/buildInfo'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode, loadAvailableThemes } from '@/lib/themeCatalog'
@@ -32,7 +32,7 @@ import {
   FolderOpen,
   Palette,
   LayoutTemplate,
-  Puzzle,
+
 } from 'lucide-react'
 import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } from './SettingsFields'
 import { AISettings } from './AISettings'
@@ -44,7 +44,6 @@ import { redactSensitiveData } from '@/lib/secretRedaction'
 import * as AppBindings from '../../../bindings/adomnia/app'
 const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((module) => ({ default: module.ThemePanel })))
 const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
-const PluginManager = lazy(() => import('@/components/plugins/PluginManager').then((module) => ({ default: module.PluginManager })))
 
 function SettingsExtensionFallback() {
   return <div className="flex min-h-48 items-center justify-center text-xs text-text-4">Loading settings section…</div>
@@ -140,7 +139,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   const { applyTheme } = useThemeContext()
   const t = useT()
   const tu = useUiTranslation()
-  const appIcon = useAppIcon()
 
   const s = t.settings
   const selectedThemeId = settings.appearance.themeId
@@ -222,7 +220,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     { id: 'appearance', label: s.sections.appearance, icon: <Monitor size={14} />, terms: searchable(s.appearance) },
     { id: 'themes', label: 'Themes', icon: <Palette size={14} />, terms: 'themes skin appearance colour palette import export tokens' },
     { id: 'templates', label: 'Templates', icon: <LayoutTemplate size={14} />, terms: 'templates reusable workspace snippets marketplace import export' },
-    { id: 'plugins', label: 'Plugins', icon: <Puzzle size={14} />, terms: 'plugins extensions javascript runtime install permissions' },
     { id: 'requests', label: s.sections.requests, icon: <Globe size={14} />, terms: searchable(s.requests) },
     { id: 'proxy', label: s.sections.proxy, icon: <Shield size={14} />, terms: searchable(s.proxy) },
     { id: 'mock', label: s.sections.mock, icon: <Server size={14} />, terms: searchable(s.mock) },
@@ -239,13 +236,14 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
 
   const normalizedSearch = search.trim().toLowerCase()
   const sectionDefs = allSectionDefs.filter((sec) => {
+    if (sec.id === 'plugins') return false
     if (sec.id === 'developer' && devLoaded && !isDev) return false
     if (!normalizedSearch) return true
     return `${sec.label} ${sec.terms}`.toLowerCase().includes(normalizedSearch)
   })
 
   useEffect(() => {
-    setSection(initialSection)
+    setSection(initialSection === 'plugins' ? 'general' : initialSection)
   }, [initialSection])
 
   useEffect(() => {
@@ -562,7 +560,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
 
         {section === 'themes' && <Suspense fallback={<SettingsExtensionFallback />}><ThemePanel /></Suspense>}
         {section === 'templates' && <Suspense fallback={<SettingsExtensionFallback />}><TemplatesWorkspace /></Suspense>}
-        {section === 'plugins' && <Suspense fallback={<SettingsExtensionFallback />}><PluginManager /></Suspense>}
+
 
         {/* Requests */}
         {section === 'requests' && (
@@ -862,19 +860,13 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 onChange={(v) => updateFeatures({ showAdvancedFeatures: v })}
               />
               <Toggle
-                label="Show lab features"
+                label="Show experimental features"
                 desc="Expose experimental or parked surfaces. Keep this off for a tighter production toolbox."
                 checked={settings.features.showLabFeatures}
                 onChange={(v) => updateFeatures({ showLabFeatures: v })}
               />
             </SettingsCard>
             <SettingsCard>
-              <Toggle
-                label="Plugins"
-                desc="Show the plugin manager and plugin-related workspace controls."
-                checked={settings.features.pluginsEnabled}
-                onChange={(v) => updateFeatures({ pluginsEnabled: v })}
-              />
               <Toggle
                 label="Daily Scenarios"
                 desc="Show the daily scenarios workbench inside API Core."
@@ -1046,15 +1038,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
             <SectionHeader title={s.about.title} subtitle={s.about.subtitle} />
             {/* Logo + Name */}
             <div className="flex items-center gap-4 mb-4 p-4 bg-surface-1 border border-border-2 rounded-md">
-              <img
-                src={appIcon}
-                alt="adOmnia"
-                data-brand-mark
-                className="w-12 h-12 rounded-lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none'
-                }}
-              />
+              <AppLogo className="w-12 h-12 rounded-lg" />
               <div>
                 <div className="text-sm font-bold text-text-1">adOmnia</div>
                 <div className="text-[10px] text-text-4">A local-first API development toolbox</div>

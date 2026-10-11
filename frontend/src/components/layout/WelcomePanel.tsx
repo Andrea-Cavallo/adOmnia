@@ -1,22 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, Plus, CircleDot, X, SlidersHorizontal, ArrowLeftRight, RotateCcw, Check } from 'lucide-react'
-import { FEATURE_REGISTRY, getFeatureLabel } from '@/lib/featureRegistry'
+import { FEATURE_REGISTRY, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
 import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout } from './hubLayout'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { HubLogo } from './HubLogo'
 import { openEnvironmentManager } from '@/components/environment/EnvironmentManagerHost'
-import type { GameId } from './arcade/types'
-import { GAME_IDS } from './arcade/gameCatalog'
+import { useSettingsStore } from '@/stores/settings'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import '@fontsource/doto/latin-800.css'
 import './WelcomePanel.css'
 
-const ArcadeMenu = lazy(() => import('./arcade/ArcadeMenu').then(module => ({ default: module.ArcadeMenu })))
 
 const TileIcon = lazy(() => import('./HubStudioIcon').then(module => ({ default: module.TileIcon })))
 
-const DotArcade = lazy(() => import('./arcade/DotArcade').then(module => ({ default: module.DotArcade })))
 
 // Curated copy for the default studios; any other rail falls back to the feature registry.
 const CARD_COPY: Partial<Record<RailItem, { title: string; description: string }>> = {
@@ -56,9 +53,6 @@ function TodayPanel() {
   const open = useAppStore(s => s.setActiveRail)
   const newTab = useTabsStore(s => s.newTab)
   const now = useNow()
-  const [game, setGame] = useState<GameId | null>(null)
-  const [arcadeOpen, setArcadeOpen] = useState(false)
-  const openGame = () => setArcadeOpen(true)
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = now.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '').toUpperCase()
   const actions: { title: string; detail: string; run: () => void }[] = [
@@ -69,11 +63,7 @@ function TodayPanel() {
   ]
   return <aside className="hub-today">
     <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
-    <div className="hub-clock-wrap">{arcadeOpen
-      ? game
-        ? <Suspense fallback={<p className="hub-eyebrow">{t('Loading…')}</p>}><DotArcade key={game} id={game} onSelect={setGame} onExit={() => setGame(null)}/></Suspense>
-        : <Suspense fallback={null}><ArcadeMenu onSelect={setGame} onClose={() => setArcadeOpen(false)}/></Suspense>
-      : <><HubLogo onClick={openGame}/><button className="hub-arcade-open" type="button" onClick={openGame}>{t('Arcade')} <span>{String(GAME_IDS.length).padStart(2, '0')} ↗</span></button></>}</div>
+    <div className="hub-clock-wrap"><HubLogo /></div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>
@@ -94,7 +84,8 @@ export function WelcomePanel() {
   const [dropAt, setDropAt] = useState<number | null>(null)
   const update = (next: HubLayout) => { setLayout(next); saveHubLayout(next) }
   const setTiles = (tiles: RailItem[]) => update({ ...layout, tiles })
-  const addable = HUB_CANDIDATES.filter(f => !layout.tiles.includes(f.id))
+  const flags = useSettingsStore(s => s.settings.features)
+  const addable = HUB_CANDIDATES.filter(f => isFeatureVisible(f.id, flags) && !layout.tiles.includes(f.id))
   const recent = history.filter(h => filter === 'all' || (filter === 'errors' ? !!h.response.error || h.response.status >= 400 : !h.response.error && h.response.status < 400)).slice(0, 4)
   useEffect(() => {
     // Hub has no visible search bar: Ctrl/Cmd+F opens the command palette.
@@ -122,6 +113,7 @@ export function WelcomePanel() {
           <h1>{t('Make your next move.')}</h1>
           <p className="hub-lede">{t('Code. Connect. Build.')}</p>
           <div className="hub-grid" data-editing={editing || undefined}>{layout.tiles.map((target, index) => {
+            if (!isFeatureVisible(target, flags)) return null
             const { title, description } = cardCopy(target)
             return <button key={target} className="hub-studio" data-drop={dropAt === index || undefined}
               draggable={editing}

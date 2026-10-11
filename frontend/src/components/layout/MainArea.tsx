@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Circle, Columns2, MoreHorizontal, PanelsTopLeft, Plus, Rows2, Save, Send, Square, Trash2, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Check, Circle, Columns2, MoreHorizontal, PanelsTopLeft, Plus, Rows2, Save, Square, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -479,30 +479,18 @@ function ActiveRequestBar({
         {isDirty && <button onClick={handleSave} title={tr('Save to collection (Ctrl+S)')} aria-label={tr('Save to collection (Ctrl+S)')} className="api-quick-save"><Save size={15} /><span className="api-dirty-dot" /></button>}
         {recording && <button onClick={onToggleRecording} className="api-recording-status text-error" title={tr('Stop recording API calls')}><span className="h-1.5 w-1.5 rounded-full bg-error" />{recordingCount}<Square size={10} /></button>}
 
-        {loading ? (
-          <button
-            onClick={onCancel}
-            title={tr('Cancel request')}
-            className="flex h-[var(--ui-control-h)] min-w-[88px] items-center justify-center gap-1.5 rounded-md bg-error px-3 text-[11px] font-bold text-white transition-colors hover:bg-error/85"
-          >
-            <X size={14} />
-            {tr('Cancel')}
-          </button>
-        ) : (
-          <>
-          <button
-            type="button"
-            onClick={onSend}
-            disabled={!request.url}
-            className="api-send-action api-send-nothing flex h-[var(--ui-control-h)] min-w-[132px] items-center justify-center gap-3 px-5 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <span className="api-send-ring" aria-hidden="true" />
-            <Send className="api-send-action__icon" size={16} strokeWidth={1.8} aria-hidden="true" />
-            <span className="api-send-divider" aria-hidden="true" />
-            <span className="api-send-label">{tr('Send')}</span>
-          </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={loading ? onCancel : onSend}
+          disabled={!loading && !request.url}
+          title={loading ? tr('Cancel request') : tr('Send')}
+          aria-label={loading ? tr('Cancel request') : tr('Send')}
+          aria-busy={loading}
+          className="api-send-action api-send-nothing flex h-[var(--ui-control-h)] min-w-[132px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span className="api-send-label">{tr('Send')}</span>
+          <span className="api-send-status" data-running={loading} aria-hidden="true" />
+        </button>
 
       </div>
     </div>

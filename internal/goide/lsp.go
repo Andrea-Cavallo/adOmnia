@@ -53,6 +53,11 @@ type trackedDocument struct {
 }
 
 type lspSession struct {
+	idleEpoch uint64
+	lifecycle sync.Mutex
+	idleTimer *time.Timer
+	suspended bool
+
 	mu       sync.Mutex
 	id       SessionID
 	language string
@@ -173,7 +178,11 @@ func (m *LSPManager) forPath(sessionID SessionID, path string) (*lspSession, boo
 	if !ok {
 		return nil, false
 	}
-	return m.server(sessionID, owner.ID())
+	state, found := m.server(sessionID, owner.ID())
+	if found {
+		m.armIdle(state)
+	}
+	return state, found
 }
 
 // Status restituisce lo stato corrente del language server del linguaggio per la sessione.
@@ -205,10 +214,18 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 		return LanguageServerStatus{}, fmt.Errorf("linguaggio del language server non indicato")
 	}
 	state := m.ensure(session, options.Language)
+	state.lifecycle.Lock()
+	defer state.lifecycle.Unlock()
 	state.mu.Lock()
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+	}
+	state.idleEpoch++
+	state.suspended = false
 	if state.process != nil || state.launching {
 		status := state.status
 		state.mu.Unlock()
+		m.armIdle(state)
 		return status, nil
 	}
 	state.launching = true
@@ -221,6 +238,7 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 		m.setState(state, LanguageServerCrashed, err.Error())
 		return m.Status(session.ID, options.Language), err
 	}
+	m.armIdle(state)
 	return m.Status(session.ID, options.Language), nil
 }
 
@@ -387,8 +405,20 @@ func (m *LSPManager) Stop(sessionID SessionID, languageID string) {
 }
 
 func (m *LSPManager) stop(state *lspSession) {
+	state.lifecycle.Lock()
+	defer state.lifecycle.Unlock()
+	state.mu.Lock()
+	state.suspended = false
+	state.idleEpoch++
+	state.mu.Unlock()
+	m.stopLocked(state)
+}
+func (m *LSPManager) stopLocked(state *lspSession) {
 	state.mu.Lock()
 	state.stopping = true
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+	}
 	process := state.process
 	state.mu.Unlock()
 	if process == nil {

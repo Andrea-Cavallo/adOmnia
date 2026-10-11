@@ -443,6 +443,13 @@ export function SetNativeIconMode(mode: string): $CancellablePromise<void> {
 }
 
 /**
+ * SetNativeIconPalette updates the Windows running-window/taskbar icon.
+ */
+export function SetNativeIconPalette(mode: string, accent: string): $CancellablePromise<void> {
+    return $Call.ByID(3660644340, mode, accent);
+}
+
+/**
  * SetVaultTimeout sets the vault auto-lock timeout in minutes.
  */
 export function SetVaultTimeout(minutes: number): $CancellablePromise<void> {

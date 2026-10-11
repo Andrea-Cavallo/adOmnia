@@ -21,35 +21,24 @@
 }
 .api-request-caption { display: flex; align-items: center; gap: 16px; min-width: 0; margin-bottom: 12px; font-size: 12px; color: var(--color-text-3); }
 .api-dot-label { flex-shrink: 0; font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-accent); }
+.api-handler-open { font-family: Doto, var(--font-mono); font-size: 12px; font-weight: 800; letter-spacing: 1px; }
 .api-request-bar .api-method,
 .api-request-bar .api-url { background: var(--color-surface-1); border-color: var(--color-border-1); border-radius: 4px; }
 .api-request-bar .api-url:focus-within { border-color: var(--color-accent); }
-/* Nothing-style Send: palette accent on the theme surface.
-   Segmented inner frame and dot-matrix label share the same dynamic ink. */
+/* Quiet dot-matrix action, with palette-owned ink and a running indicator. */
 .api-request-bar .api-send-nothing {
-  --send-bg: var(--color-surface-0); --send-ink: var(--color-accent);
-  position: relative; isolation: isolate; border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--send-ink) 35%, transparent);
-  color: var(--send-ink); background: var(--send-bg); box-shadow: none;
+  --send-ink: var(--color-accent);
+  position: relative; border: 0; border-radius: 4px;
+  color: var(--send-ink); background: transparent; box-shadow: none;
 }
-.api-send-nothing::before {
-  content: ''; position: absolute; inset: 4px; z-index: -1; border-radius: 9px;
-  border: 1.5px solid color-mix(in srgb, var(--send-ink) 70%, transparent);
-  -webkit-mask: linear-gradient(90deg, #000 0 34%, transparent 34% 36%, #000 36% 66%, transparent 66% 68%, #000 68%);
-  mask: linear-gradient(90deg, #000 0 34%, transparent 34% 36%, #000 36% 66%, transparent 66% 68%, #000 68%);
-  transition: border-color .15s;
-}
-.api-send-nothing::after {
-  content: ''; position: absolute; top: 9px; left: 11px; width: 16px; height: 3px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--send-ink) 60%, transparent) 1.2px, transparent 1.6px) 0 0 / 6px 3px repeat-x;
-}
-.api-send-ring { position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--send-ink); }
-.api-send-divider { width: 1px; align-self: stretch; margin: 10px 0; background: color-mix(in srgb, var(--send-ink) 45%, transparent); }
-.api-send-label { font-family: Doto, var(--font-mono); font-weight: 800; font-size: 17px; letter-spacing: 2px; text-transform: uppercase; line-height: 1; }
-.api-request-bar .api-send-nothing:hover:not(:disabled) { background: color-mix(in srgb, var(--send-ink) 6%, var(--send-bg)); }
-.api-request-bar .api-send-nothing:hover:not(:disabled)::before { border-color: var(--send-ink); }
-.api-request-bar .api-send-nothing:hover:not(:disabled) .api-send-ring { background: var(--send-ink); }
+.api-send-label { font-family: Doto, var(--font-mono); font-weight: 800; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; line-height: 1; }
+.api-send-status { width: 5px; height: 5px; border-radius: 50%; background: var(--send-ink); visibility: hidden; }
+.api-send-status[data-running="true"] { visibility: visible; box-shadow: 0 0 6px var(--send-ink); animation: api-send-pulse 1.2s ease-in-out infinite; }
+.api-request-bar .api-send-nothing:hover:not(:disabled) { background: transparent; }
+.api-request-bar .api-send-nothing:hover:not(:disabled) .api-send-label { text-decoration: underline; text-underline-offset: 5px; }
 .api-request-bar .api-send-nothing:active:not(:disabled) { transform: translateY(1px); }
+@keyframes api-send-pulse { 50% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .api-send-status[data-running="true"] { animation: none; } }
 .api-actions { position: relative; flex-shrink: 0; }
 .api-actions > summary { display: grid; place-items: center; width: 34px; height: 42px; cursor: pointer; list-style: none; color: var(--color-text-3); border-radius: 4px; }
 .api-actions > summary::-webkit-details-marker { display: none; }
@@ -62,7 +51,7 @@
 .api-quick-save { position: relative; display: grid; place-items: center; width: 30px; height: 42px; color: var(--color-text-2); }
 .api-dirty-dot { position: absolute; top: 8px; right: 2px; width: 4px; height: 4px; border-radius: 50%; background: var(--color-warning); }
 .api-recording-status { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-.api-section-strip { min-height: 44px; background: var(--color-surface-0); }
+.api-section-strip { min-height: 36px; flex-shrink: 0; background: var(--color-surface-0); }
 .api-section-strip [role=tab] { padding: 0 14px; font-size: 12px; }
 .api-section-strip [role=tab] > span + span { background: transparent; color: var(--color-text-3); padding: 0; }
 .api-section-more { max-width: 135px; margin: 6px 12px 6px 4px; padding: 0 8px; background: var(--color-surface-0); color: var(--color-text-3); font: inherit; font-size: 12px; border: 0; border-radius: 4px; }
@@ -78,12 +67,17 @@
   .api-actions > summary, .api-quick-save { height: 36px; }
 }
 
-/* Clean at rest: section tabs and the body toolbar appear on hover or focus. */
-[data-request-composer] .api-section-strip,
-[data-request-composer] .api-body-toolbar { transition: opacity .15s; }
-[data-request-composer]:not(:hover):not(:focus-within) .api-section-strip,
-[data-request-composer]:not(:hover):not(:focus-within) .api-body-toolbar { display: none; }
-
-/* Environment / hosts switchers in the API Workspace header. */
-.api-header-context button[aria-haspopup] { height: 30px; padding: 0 10px; font-size: 12.5px; gap: 8px; border-radius: 6px; }
-.api-header-context button[aria-haspopup] > span:first-child { font-size: 10.5px; letter-spacing: .12em; color: var(--color-text-3); }
+/* Context selectors share quiet palette-aware Nothing typography. */
+.api-context-trigger {
+  height: 32px; padding: 0 8px; gap: 8px; border: 0;
+  border-bottom: 1px solid var(--color-border-2); border-radius: 0;
+  background: transparent; color: var(--color-text-1); font-size: 12px;
+}
+.api-context-trigger:hover, .api-context-trigger[aria-expanded="true"] {
+  background: var(--color-surface-2); border-color: var(--color-accent);
+}
+.api-context-trigger:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.api-context-trigger .api-context-label {
+  font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-weight: 800;
+  font-size: 10px; letter-spacing: .1em; color: var(--color-accent);
+}

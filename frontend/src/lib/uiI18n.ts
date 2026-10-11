@@ -9,6 +9,13 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Beta': 'Beta',
+  'Application resources': 'Consumi applicazione',
+  'Resources unavailable': 'Consumi non disponibili',
+  'Measuring resources…': 'Misurazione consumi…',
+  'Application and child processes. CPU is measured across all logical cores. Refreshed every 2 seconds.': 'Applicazione e processi figli. CPU misurata su tutti i core logici. Aggiornamento ogni 2 secondi.',
+
+  'Open in Go IDE': 'Apri nell’IDE Go',
   'Request actions': 'Azioni richiesta',
   'Stop recording API calls': 'Ferma registrazione chiamate API',
   'More request sections': 'Altre sezioni della richiesta',

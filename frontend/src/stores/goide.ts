@@ -768,6 +768,17 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   openDocument: async (path, options = {}) => {
     const sessionId = get().activeSessionId
     if (!sessionId) return null
+    if (/\.pdf$/i.test(path)) {
+      try {
+        const [{ ReadProjectPDF }, { base64ToBytes }, { useAppStore }] = await Promise.all([
+          import('../../bindings/adomnia/goide'), import('@/lib/pdf/pdfProjects'), import('@/stores/app'),
+        ])
+        const bytes = base64ToBytes(await ReadProjectPDF(sessionId, path))
+        useAppStore.getState().queueFileImport({ kind: 'pdf', name: path.split(/[\\/]/).pop() ?? path, bytes })
+        useAppStore.getState().setActiveRail('pdfeditor')
+      } catch (error) { set({ error: errorMessage(error) }) }
+      return null
+    }
     const previousPreview = get().previewDocumentBySession[sessionId] ?? null
     const setPreview = (documentId: string | null) => set((state) => ({ previewDocumentBySession: { ...state.previewDocumentBySession, [sessionId]: documentId } }))
     const activate = (documentId: string, created: boolean) => {

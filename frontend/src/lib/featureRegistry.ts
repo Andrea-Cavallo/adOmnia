@@ -140,10 +140,15 @@ export const COMMAND_PALETTE_PANEL_FEATURES = FEATURE_REGISTRY.filter(
   (feature) => feature.maturity !== 'deprecated',
 )
 
+// Discovery gate only: file imports and existing workspace data keep their openers.
+export const V1_HIDDEN_FEATURES: ReadonlySet<RailItem> = new Set(['pdfeditor', 'latex', 'kube', 'plugins'])
+
 export function isFeatureVisible(
   id: RailItem,
   flags: { showAdvancedFeatures: boolean; showLabFeatures: boolean },
 ): boolean {
+  if (V1_HIDDEN_FEATURES.has(id)) return false
+  if (id === 'collab') return flags.showLabFeatures
   const maturity = FEATURE_BY_ID[id]?.maturity ?? 'core'
   if (maturity === 'deprecated') return false
   if (maturity === 'lab') return flags.showLabFeatures
