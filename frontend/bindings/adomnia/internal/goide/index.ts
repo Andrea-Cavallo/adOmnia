@@ -47,6 +47,7 @@ export {
     DependencyUpdate,
     DependencyVersionUse,
     DependencyVulnerability,
+    DependencyWhy,
     DiagnosticFix,
     DiagnosticsReport,
     DockerOptions,

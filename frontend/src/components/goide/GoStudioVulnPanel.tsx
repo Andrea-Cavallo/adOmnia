@@ -1,3 +1,4 @@
+import { useGoStudioInsights } from '@/stores/goStudioInsights'
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, Copy, ExternalLink, Info, Loader2, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { scanGoIDEVulnerabilities, startGoIDEDependencyAction, type GoIDESession, type GoIDEVulnFinding, type GoIDEVulnFrame, type GoIDEVulnReport } from '@/lib/goide-api'
@@ -51,6 +52,7 @@ export function GoStudioVulnPanel({ session, lead }: { session: GoIDESession; le
     try {
       const result = await scanGoIDEVulnerabilities(session.id, moduleDirectory)
       setReport(result)
+      useGoStudioInsights.getState().publishVulns(session.id, result)
       setSelectedId(result.findings[0]?.id ?? null)
       setError(null)
     } catch (problem) {

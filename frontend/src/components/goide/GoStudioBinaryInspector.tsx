@@ -1,3 +1,4 @@
+import { useGoStudioInsights } from '@/stores/goStudioInsights'
 import { Fragment, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
@@ -41,7 +42,11 @@ export function GoStudioBinaryInspector({ sessionId, targets }: { sessionId: str
     setBusy(kind)
     setError(null)
     try {
-      if (kind === 'build') setReport(await GoIDE.InspectBinary(sessionId, target))
+      if (kind === 'build') {
+        const result = await GoIDE.InspectBinary(sessionId, target)
+        setReport(result)
+        useGoStudioInsights.getState().publishBinary(sessionId, result)
+      }
       else setComparison(await GoIDE.CompareBinary(sessionId, target, base.trim()))
     } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setBusy(null) }
   }

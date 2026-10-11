@@ -7,6 +7,8 @@ export interface PackageRuntime {
   total: number
   /** Project folder → inclusive cost. */
   byPackage: Record<string, number>
+  /** Import path (dependencies and standard library too) → inclusive cost. */
+  byImport: Record<string, number>
   calls: string[] // "dir → dir"
 }
 
@@ -24,7 +26,10 @@ export function packageRuntime(report: GoIDEProfileReport): PackageRuntime {
   const preferred = PREFERRED.map((name) => names.indexOf(name)).find((index) => index >= 0)
   const index = preferred ?? Math.max(0, names.length - 1)
   const byPackage: Record<string, number> = {}
+  const byImport: Record<string, number> = {}
   for (const node of report.topCum ?? []) {
+    const pkg = node.function.package
+    if (pkg) byImport[pkg] = Math.max(byImport[pkg] ?? 0, node.cum[index] ?? 0)
     const dir = dirOf(node.function.relative)
     if (dir) byPackage[dir] = Math.max(byPackage[dir] ?? 0, node.cum[index] ?? 0)
   }
@@ -34,7 +39,7 @@ export function packageRuntime(report: GoIDEProfileReport): PackageRuntime {
     const to = dirOf(edge.callee.relative)
     if (from && to && from !== to) calls.add(`${from} → ${to}`)
   }
-  return { profile: report.name, metric: names[index] ?? '', total: report.totals?.[index] ?? 0, byPackage, calls: [...calls] }
+  return { profile: report.name, metric: names[index] ?? '', total: report.totals?.[index] ?? 0, byPackage, byImport, calls: [...calls] }
 }
 
 export interface HeatmapRow {
@@ -69,4 +74,14 @@ export function dependencyHeatmap(input: HeatmapInput, runtime: PackageRuntime |
     ? input.imports.filter(([from, to]) => !traversed.has(`${dirOfPackage.get(from)} → ${dirOfPackage.get(to)}`)).map(([from, to]) => `${from} → ${to}`).sort()
     : []
   return { rows, untraversed }
+}
+
+/** Why a module is here, by the numbers: its share of the profile and of the binary. */
+export function moduleFootprint(module: string, runtime: PackageRuntime | null, binaryPackages: ReadonlyArray<{ name: string; size: number }> | null): { runtimeShare: number | null; binaryBytes: number | null } {
+  const within = (path: string) => path === module || path.startsWith(`${module}/`)
+  const runtimeValue = runtime ? Math.max(0, ...Object.entries(runtime.byImport ?? {}).filter(([path]) => within(path)).map(([, value]) => value)) : null
+  return {
+    runtimeShare: runtime && runtime.total > 0 && runtimeValue !== null ? runtimeValue / runtime.total : null,
+    binaryBytes: binaryPackages ? binaryPackages.filter((item) => within(item.name)).reduce((sum, item) => sum + item.size, 0) : null,
+  }
 }

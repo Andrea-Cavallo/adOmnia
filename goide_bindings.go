@@ -1452,6 +1452,11 @@ func (g *GoIDE) CompareBinary(sessionID, target, ref string) (goide.BinaryCompar
 	return g.service.CompareBinary(sessionID, target, ref)
 }
 
+// DependencyWhy spiega con `go mod why -m` perché il progetto dipende da un modulo.
+func (g *GoIDE) DependencyWhy(sessionID, module string) (goide.DependencyWhy, error) {
+	return g.service.DependencyWhy(sessionID, module)
+}
+
 // GraphSearchReady cerca nel grafo già pronto, senza ricostruirlo (Search Everywhere).
 func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit int) ([]graph.Node, error) {
 	return g.service.GraphSearchReady(sessionID, query, kinds, limit)

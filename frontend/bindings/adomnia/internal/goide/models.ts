@@ -1455,6 +1455,44 @@ export class DependencyVulnerability {
 }
 
 /**
+ * DependencyWhy è la catena di import più corta dal modulo principale al modulo dipendente
+ * (`go mod why -m`), o il motivo per cui non serve.
+ */
+export class DependencyWhy {
+    "module": string;
+    "chain": string[];
+    "needed": boolean;
+    "message"?: string;
+
+    /** Creates a new DependencyWhy instance. */
+    constructor($$source: Partial<DependencyWhy> = {}) {
+        if (!("module" in $$source)) {
+            this["module"] = "";
+        }
+        if (!("chain" in $$source)) {
+            this["chain"] = [];
+        }
+        if (!("needed" in $$source)) {
+            this["needed"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DependencyWhy instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DependencyWhy {
+        const $$createField1_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("chain" in $$parsedSource) {
+            $$parsedSource["chain"] = $$createField1_0($$parsedSource["chain"]);
+        }
+        return new DependencyWhy($$parsedSource as Partial<DependencyWhy>);
+    }
+}
+
+/**
  * DiagnosticFix è una correzione applicabile al file così come è stato analizzato.
  */
 export class DiagnosticFix {

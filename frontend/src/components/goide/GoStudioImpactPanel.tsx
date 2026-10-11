@@ -10,6 +10,7 @@ import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistan
 import { runGoStudioNamedTests } from './goStudioQuickActions'
 import { GoStudioImpactMap } from './GoStudioImpactMap'
 import { GoStudioRiskMap } from './GoStudioRiskMap'
+import { GoStudioDependencyWhy } from './GoStudioDependencyWhy'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens } from '@/lib/otlp-api'
 import { runtimeByNode, runtimeText, type NodeRuntime } from '@/lib/goide/runtimeLens'
@@ -195,6 +196,7 @@ export function GoStudioImpactPanel({ session }: { session: GoIDESession }) {
       {impact && view === 'map' && <GoStudioImpactMap impact={impact} onFocus={focus} />}
       {impact && view === 'list' && (
         <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-6 gap-y-4 overflow-auto p-3">
+          {impact.target.kind === 'dependency' && <GoStudioDependencyWhy sessionId={session.id} module={impact.target.label} version={impact.target.attrs?.version} packages={impact.packages ?? []} />}
           <RefList title="Callers" refs={impact.callers} onFocus={focus} empty="Nothing in the project calls it." />
           <RefList title="Tests" refs={impact.tests} empty="No test reaches this code." />
           <RefList title="Used by other modules" refs={impact.contracts} onFocus={focus} />

@@ -36,3 +36,12 @@ describe('dependency heatmap', () => {
     expect(dependencyHeatmap(input, null).untraversed).toEqual([])
   })
 })
+
+describe('moduleFootprint', () => {
+  it('sums the binary bytes and takes the inclusive runtime share of a module', async () => {
+    const { moduleFootprint } = await import('./dependencyHeatmap')
+    const runtime = { profile: 'cpu.pprof', metric: 'cpu', total: 200, byPackage: {}, byImport: { 'github.com/x/y': 50, 'github.com/x/y/sub': 80, 'github.com/x/yz': 100 }, calls: [] }
+    expect(moduleFootprint('github.com/x/y', runtime, [{ name: 'github.com/x/y', size: 10 }, { name: 'github.com/x/y/sub', size: 5 }, { name: 'github.com/x/yz', size: 99 }])).toEqual({ runtimeShare: 0.4, binaryBytes: 15 })
+    expect(moduleFootprint('github.com/x/y', null, null)).toEqual({ runtimeShare: null, binaryBytes: null })
+  })
+})
