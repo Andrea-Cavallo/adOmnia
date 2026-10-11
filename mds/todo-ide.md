@@ -208,3 +208,9 @@ Da compilare man mano che passano le prove (una riga per sessione di collaudo).
 - [x] Verificata architettura: finestre IDE create da app.Window nella stessa applicazione, con una finestra per sessione e backend condiviso.
 - [x] Azione Open Project in New Window esposta anche nel menu del progetto della toolbar; riusa il controllo dei buffer non salvati.
 - [ ] Smoke desktop con due progetti, API Workspace condiviso, navigazione handler e chiusura/rientro delle finestre.
+
+### Audit, recovery e baseline prestazioni 2026-10-11
+- [x] Audit Riferimento: rimossi duplicati obsoleti verificati, conteggi ricalcolati e affermazioni profiler/trace/govulncheck aggiornate.
+- [x] Test recupero dati/crash/kill durante snapshot e viste profiler/trace superati.
+- [x] Benchmark offline apertura/ricerca su fixture 10/100/1000 file con risultati e limiti in docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md.
+- [ ] Collaudo interattivo desktop e benchmark repository reali/UI/gopls: non equivalgono ai test backend, restano aperti.
