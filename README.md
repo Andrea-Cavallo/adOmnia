@@ -17,14 +17,14 @@
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/hub-light.png" alt="adOmnia Hub" width="30%">
-  <img src="docs/screenshots/ide-dark.png" alt="adOmnia IDE" width="30%">
-  <img src="docs/screenshots/api-connected.png" alt="adOmnia API Workspace" width="30%">
+  <img src="assets/images/ado-hub.png" alt="adOmnia Hub" width="30%">
+  <img src="assets/images/ado-ide.png" alt="adOmnia IDE" width="30%">
+  <img src="assets/images/ado-api.png" alt="adOmnia API Workspace" width="30%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/hub-dark.png" alt="adOmnia Hub dark mode" width="30%">
-  <img src="docs/screenshots/api-light.png" alt="adOmnia API light mode" width="30%">
+  <img src="assets/images/ado-db.png" alt="adOmnia Database" width="30%">
+  <img src="assets/images/ado-git.png" alt="adOmnia Git" width="30%">
 </p>
 
 ## Demo
