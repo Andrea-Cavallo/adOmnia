@@ -14,9 +14,20 @@
   <a href="docs/QUICKSTART.it.md">Guida in italiano</a>
 </p>
 
-## Demo
+## Screenshots
 
-[![Watch the demo: API request, Go handler and successful response](docs/screenshots/api-connected.png)](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)
+<p align="center">
+  <img src="assets/images/ado-hub.png" alt="adOmnia Hub" width="30%">
+  <img src="assets/images/ado-ide.png" alt="adOmnia IDE" width="30%">
+  <img src="assets/images/ado-api.png" alt="adOmnia API Workspace" width="30%">
+</p>
+
+<p align="center">
+  <img src="assets/images/ado-db.png" alt="adOmnia Database" width="30%">
+  <img src="assets/images/ado-git.png" alt="adOmnia Git" width="30%">
+</p>
+
+## Demo
 
 **[▶ Watch the demo on YouTube — starting at 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)**
 
