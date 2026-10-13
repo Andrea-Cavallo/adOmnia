@@ -16,6 +16,10 @@ export class State {
     "error": string;
     "trusted": boolean;
     "scheduled": boolean;
+    "failedVersion": string;
+    "restoredVersion": string;
+    "failureReason": string;
+    "applyLogAvailable": boolean;
 
     /** Creates a new State instance. */
     constructor($$source: Partial<State> = {}) {
@@ -48,6 +52,18 @@ export class State {
         }
         if (!("scheduled" in $$source)) {
             this["scheduled"] = false;
+        }
+        if (!("failedVersion" in $$source)) {
+            this["failedVersion"] = "";
+        }
+        if (!("restoredVersion" in $$source)) {
+            this["restoredVersion"] = "";
+        }
+        if (!("failureReason" in $$source)) {
+            this["failureReason"] = "";
+        }
+        if (!("applyLogAvailable" in $$source)) {
+            this["applyLogAvailable"] = false;
         }
 
         Object.assign(this, $$source);

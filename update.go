@@ -23,6 +23,9 @@ func (a *App) ScheduleUpdateOnExit(enable bool) (update.State, error) {
 	return appUpdater().Schedule(enable)
 }
 func (a *App) ConfirmUpdateStartup() error { return update.ConfirmStartup(Version) }
+func (a *App) OpenUpdateApplyLog() error {
+	return update.OpenApplyLog(filepath.Join(dataDir(), "adomnia", "updates"))
+}
 
 // Version is declared in main.go and injected at build time via
 // -ldflags "-X main.Version=v0.4.2". It defaults to "dev", where update

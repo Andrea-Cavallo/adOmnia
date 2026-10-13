@@ -909,6 +909,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | G2.11 | **Confirm Dialog** | Reusable component for destructive actions with customizable message. |
 | G2.12 | **Command Palette** | Instant fuzzy search across panels, recent requests, collections, environments, and quick actions such as starting Mock/Proxy. |
 | G2.13 | **Fast Session Resume** | Restores the last panel before the first render, batches critical state in one local transaction, hydrates only the active collection workspace shard, and loads other workspace data on first access while preserving a complete downgrade-compatible snapshot. |
+| G2.14 | **Recoverable Desktop Updates** | Prepares the update helper before shutdown, keeps staging and rollback data in the private updater cache, waits for WebView data locks, relaunches the desktop GUI visibly, restores the previous version after a failed startup, and exposes the apply log from the rollback notice. |
 
 ---
 

@@ -12,6 +12,11 @@ func Configure(command *exec.Cmd, _ bool) {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
+// ConfigureDetachedGUI gives a relaunched desktop app its own process group.
+func ConfigureDetachedGUI(command *exec.Cmd) {
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+}
+
 func TerminateTree(command *exec.Cmd) error {
 	if command == nil || command.Process == nil {
 		return nil

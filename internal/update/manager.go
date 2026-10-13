@@ -59,16 +59,20 @@ type release struct {
 	Assets     []releaseAsset `json:"assets"`
 }
 type State struct {
-	Phase      string `json:"phase"`
-	Version    string `json:"version"`
-	Channel    string `json:"channel"`
-	ReleaseURL string `json:"releaseUrl"`
-	Notes      string `json:"notes"`
-	Received   int64  `json:"received"`
-	Total      int64  `json:"total"`
-	Error      string `json:"error"`
-	Trusted    bool   `json:"trusted"`
-	Scheduled  bool   `json:"scheduled"`
+	Phase             string `json:"phase"`
+	Version           string `json:"version"`
+	Channel           string `json:"channel"`
+	ReleaseURL        string `json:"releaseUrl"`
+	Notes             string `json:"notes"`
+	Received          int64  `json:"received"`
+	Total             int64  `json:"total"`
+	Error             string `json:"error"`
+	Trusted           bool   `json:"trusted"`
+	Scheduled         bool   `json:"scheduled"`
+	FailedVersion     string `json:"failedVersion"`
+	RestoredVersion   string `json:"restoredVersion"`
+	FailureReason     string `json:"failureReason"`
+	ApplyLogAvailable bool   `json:"applyLogAvailable"`
 }
 type cachedReleases struct {
 	ETag      string    `json:"etag"`
@@ -87,6 +91,8 @@ type Manager struct {
 	prepared      string
 	asset         Asset
 	failedVersion string
+	scheduledPlan string
+	scheduledHelp string
 }
 
 func NewManager(dir, current string) *Manager {
@@ -99,9 +105,18 @@ func NewManager(dir, current string) *Manager {
 	if raw, err := os.ReadFile(filepath.Join(dir, "failed-update.json")); err == nil {
 		var failed struct {
 			Version string `json:"version"`
+			Error   string `json:"error"`
 		}
 		if json.Unmarshal(raw, &failed) == nil {
 			m.failedVersion = failed.Version
+			m.state.Phase = "rollback"
+			m.state.FailedVersion = failed.Version
+			m.state.RestoredVersion = current
+			m.state.FailureReason = failed.Error
+			m.state.Error = fmt.Sprintf("Update failed; restored %s", current)
+			if _, logErr := os.Stat(filepath.Join(dir, "apply.log")); logErr == nil {
+				m.state.ApplyLogAvailable = true
+			}
 		}
 	}
 	return m
@@ -522,19 +537,25 @@ func updateClient(timeout time.Duration) *http.Client {
 	return c
 }
 
-// Only expired updater-owned cache entries are removed. Helpers wait at most a
-// day, so seven-day-old private staging paths cannot belong to an active apply.
+// Only updater-owned cache entries are removed. The helper waits at most two
+// minutes, so entries older than one day cannot belong to an active apply.
 func cleanupCache(dir string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
 	for _, entry := range entries {
-		if !strings.HasPrefix(entry.Name(), "verified-") && !strings.HasPrefix(entry.Name(), "download-") {
+		name := entry.Name()
+		owned := strings.HasPrefix(name, "verified-") || strings.HasPrefix(name, "download-") ||
+			strings.HasPrefix(name, "apply-") || strings.HasSuffix(name, ".helper") ||
+			strings.HasSuffix(name, ".helper.exe") || strings.HasSuffix(name, ".plan.json") ||
+			strings.HasSuffix(name, ".plan.json.tmp") || strings.HasSuffix(name, ".zip.started") ||
+			name == "previous-install"
+		if !owned {
 			continue
 		}
 		info, err := entry.Info()
-		if err != nil || time.Since(info.ModTime()) < 7*24*time.Hour {
+		if err != nil || time.Since(info.ModTime()) < 24*time.Hour {
 			continue
 		}
 		_ = os.RemoveAll(filepath.Join(dir, entry.Name()))

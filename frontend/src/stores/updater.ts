@@ -1,14 +1,15 @@
 import { create } from 'zustand'
-import { CheckUpdateChannel, GetUpdateState, DownloadUpdate, CancelUpdateDownload, ScheduleUpdateOnExit, ConfirmUpdateStartup } from '../../bindings/adomnia/app'
+import { CheckUpdateChannel, GetUpdateState, DownloadUpdate, CancelUpdateDownload, ScheduleUpdateOnExit, ConfirmUpdateStartup, OpenUpdateApplyLog } from '../../bindings/adomnia/app'
 import { useSettingsStore } from './settings'
 import { APP_VERSION } from '@/lib/buildInfo'
 
 export interface UpdateState {
  phase: string; version: string; channel: string; releaseUrl: string; notes: string
  received: number; total: number; error: string; trusted: boolean; scheduled: boolean
+ failedVersion: string; restoredVersion: string; failureReason: string; applyLogAvailable: boolean
 }
-const idle: UpdateState = { phase: 'idle', version: '', channel: 'stable', releaseUrl: '', notes: '', received: 0, total: 0, error: '', trusted: false, scheduled: false }
-interface UpdaterStore { status: UpdateState; error: string; check: (force?: boolean) => Promise<void>; download: () => Promise<void>; cancel: () => Promise<void>; schedule: (enable: boolean) => Promise<void> }
+const idle: UpdateState = { phase: 'idle', version: '', channel: 'stable', releaseUrl: '', notes: '', received: 0, total: 0, error: '', trusted: false, scheduled: false, failedVersion: '', restoredVersion: '', failureReason: '', applyLogAvailable: false }
+interface UpdaterStore { status: UpdateState; error: string; check: (force?: boolean) => Promise<void>; download: () => Promise<void>; cancel: () => Promise<void>; schedule: (enable: boolean) => Promise<void>; openApplyLog: () => Promise<void> }
 let checking = false
 function channel(): string {
  const selected = useSettingsStore.getState().settings.general.updateChannel
@@ -28,6 +29,7 @@ export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
  download: async () => { try { set({ status: await DownloadUpdate(), error: '' }) } catch(error) { failure(error) } },
  cancel: async () => { try { await CancelUpdateDownload() } catch(error) { failure(error) } },
  schedule: async (enable) => { try { set({ status: await ScheduleUpdateOnExit(enable), error: '' }) } catch(error) { failure(error) } },
+ openApplyLog: async () => { try { await OpenUpdateApplyLog() } catch(error) { failure(error) } },
 }))
 
 /** One owner, deferred by the App until its first stable frame. No timer wakes
@@ -35,6 +37,7 @@ export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
 export function startUpdater(): () => void {
  let disposed = false, polling = false, lastCheck = 0
  let timer: number | undefined
+ void GetUpdateState().then((status) => { if (!disposed) useUpdaterStore.setState({ status }) }).catch(failure)
  void ConfirmUpdateStartup().catch(failure)
  const tick = async () => {
   if (disposed || polling) return

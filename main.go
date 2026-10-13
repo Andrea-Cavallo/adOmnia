@@ -6,6 +6,7 @@ import (
 
 	"adomnia/internal/adomniacli"
 	"adomnia/internal/browser"
+	"adomnia/internal/devlog"
 	"adomnia/internal/docker"
 	"adomnia/internal/plugins"
 	"adomnia/internal/templates"
@@ -164,6 +165,8 @@ func main() {
 	goIDE.attachMainWindow(mainWindow)
 	app.attachPanelWindowsToMain(mainWindow)
 	if err := desktopApp.Run(); err != nil {
+		devlog.Init(dataDir())
+		devlog.Err("DesktopRun", "webview creation or application run failed", err, map[string]any{"window": "main"})
 		log.Fatal("[app] ", err)
 	}
 }

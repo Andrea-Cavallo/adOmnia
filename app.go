@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"adomnia/internal/bootstrap"
@@ -42,6 +43,7 @@ type App struct {
 	swaggerWindow  *swaggerwindow.Manager
 	panelWindows   *panelwindow.Manager
 	startupStages  map[string]any
+	shutdownOnce   sync.Once
 }
 
 func NewApp() *App {
@@ -350,6 +352,10 @@ func (a *App) OnDomReady(ctx context.Context) {
 }
 
 func (a *App) OnShutdown(ctx context.Context) {
+	a.shutdownOnce.Do(func() { a.shutdown(ctx) })
+}
+
+func (a *App) shutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
 	if globalAIEngine != nil {
 		if err := globalAIEngine.StopGateway(); err != nil {
@@ -369,13 +375,13 @@ func (a *App) OnShutdown(ctx context.Context) {
 	ws.WsShutdown()
 	sse.SseShutdown()
 	sidecar.Stop()
-	storage.Close()
 	if updaterInstance != nil {
 		updaterInstance.Cancel()
 		if err := updaterInstance.StartScheduled(); err != nil {
 			log.Printf("[update] %v", err)
 		}
 	}
+	storage.Close()
 	log.Println("[app] shutdown complete")
 }
 

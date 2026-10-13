@@ -13,6 +13,7 @@ import (
 const (
 	createNewProcessGroup = 0x00000200
 	createNoWindow        = 0x08000000
+	detachedProcess       = 0x00000008
 )
 
 func Configure(command *exec.Cmd, interactive bool) {
@@ -21,6 +22,14 @@ func Configure(command *exec.Cmd, interactive bool) {
 		flags |= createNoWindow
 	}
 	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags, HideWindow: !interactive}
+}
+
+// ConfigureDetachedGUI starts a desktop application independently from the
+// current process without suppressing its window. It is intentionally separate
+// from Configure: CREATE_NO_WINDOW/HideWindow would also hide a windowsgui app
+// relaunched by the updater.
+func ConfigureDetachedGUI(command *exec.Cmd) {
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: detachedProcess | createNewProcessGroup}
 }
 
 func TerminateTree(command *exec.Cmd) error {

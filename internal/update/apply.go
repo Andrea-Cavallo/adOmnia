@@ -23,7 +23,15 @@ type applyPlan struct {
 	Parent     int    `json:"parent"`
 	Version    string `json:"version"`
 	Executable string `json:"executable"`
+	UserData   string `json:"userData"`
+	Backup     string `json:"backup"`
 }
+
+const (
+	parentExitTimeout    = 2 * time.Minute
+	userDataReleaseDelay = 2 * time.Second
+	fileReleaseTimeout   = 10 * time.Second
+)
 
 func installTarget(exe string) (string, string, error) {
 	exe, err := filepath.EvalSymlinks(exe)
@@ -54,6 +62,8 @@ func (m *Manager) Schedule(enable bool) (State, error) {
 	defer m.mu.Unlock()
 	if !enable {
 		m.state.Scheduled = false
+		m.scheduledPlan = ""
+		m.scheduledHelp = ""
 		return m.state, nil
 	}
 	if m.prepared == "" || m.busy {
@@ -67,9 +77,6 @@ func (m *Manager) Schedule(enable bool) (State, error) {
 	if err != nil {
 		return m.state, err
 	}
-	if _, err := os.Stat(target + ".adomnia-previous"); err == nil {
-		return m.state, errors.New("A previous update backup remains; review the previous update before installing another")
-	}
 	if _, err := os.Stat(filepath.Join(m.prepared, entry)); err != nil {
 		return m.state, errors.New("The verified package does not contain this platform's application")
 	}
@@ -79,9 +86,49 @@ func (m *Manager) Schedule(enable bool) (State, error) {
 	}
 	probe.Close()
 	os.Remove(probe.Name())
+	if err := m.prepareScheduledLocked(exe, target); err != nil {
+		return m.state, err
+	}
 	m.state.Scheduled = true
 	return m.state, nil
 }
+
+// prepareScheduledLocked performs every filesystem operation that can fail
+// while the UI is still open. Shutdown only has to start the verified helper.
+func (m *Manager) prepareScheduledLocked(exe, target string) error {
+	planPath := m.prepared + ".plan.json"
+	helper := m.prepared + ".helper"
+	if runtime.GOOS == "windows" {
+		helper += ".exe"
+	}
+	if err := removeWithRetry(helper, fileReleaseTimeout); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("cannot replace the previous update helper: %w", err)
+	}
+	if err := copyRegular(exe, helper, 0700); err != nil {
+		return fmt.Errorf("cannot prepare the update helper: %w", err)
+	}
+	plan := applyPlan{
+		Target: target, Archive: m.prepared + ".zip", Manifest: m.prepared + ".json",
+		Parent: os.Getpid(), Version: m.state.Version, Executable: exe,
+		UserData: filepath.Dir(filepath.Dir(m.dir)), Backup: filepath.Join(m.dir, "previous-install"),
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		return err
+	}
+	tmp := planPath + ".tmp"
+	if err = os.WriteFile(tmp, raw, 0600); err != nil {
+		return err
+	}
+	if err = os.Rename(tmp, planPath); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	m.scheduledPlan = planPath
+	m.scheduledHelp = helper
+	return nil
+}
+
 func (m *Manager) StartScheduled() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -89,28 +136,10 @@ func (m *Manager) StartScheduled() error {
 		return nil
 	}
 	m.state.Scheduled = false
-	exe, err := os.Executable()
-	if err != nil {
-		return err
+	if m.scheduledPlan == "" || m.scheduledHelp == "" {
+		return errors.New("The update helper was not prepared; schedule the update again")
 	}
-	target, _, err := installTarget(exe)
-	if err != nil {
-		return err
-	}
-	plan := applyPlan{Target: target, Archive: m.prepared + ".zip", Manifest: m.prepared + ".json", Parent: os.Getpid(), Version: m.state.Version, Executable: exe}
-	raw, _ := json.Marshal(plan)
-	planPath := m.prepared + ".plan.json"
-	if err = os.WriteFile(planPath, raw, 0600); err != nil {
-		return err
-	}
-	helper := m.prepared + ".helper"
-	if runtime.GOOS == "windows" {
-		helper += ".exe"
-	}
-	if err = copyRegular(exe, helper, 0700); err != nil {
-		return err
-	}
-	cmd := exec.Command(helper, "--adomnia-update-helper", planPath)
+	cmd := exec.Command(m.scheduledHelp, "--adomnia-update-helper", m.scheduledPlan)
 	process.Configure(cmd, false)
 	logFile, err := os.OpenFile(filepath.Join(m.dir, "apply.log"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
@@ -124,6 +153,21 @@ func (m *Manager) StartScheduled() error {
 	}
 	_ = cmd.Process.Release()
 	return nil
+}
+
+func removeWithRetry(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var last error
+	for {
+		last = os.RemoveAll(path)
+		if last == nil || os.IsNotExist(last) {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return last
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 func copyRegular(src, dst string, mode os.FileMode) error {
 	in, e := os.Open(src)
@@ -162,9 +206,14 @@ func RunHelper(planPath, current string) (result error) {
 	}
 	self, _ = filepath.EvalSymlinks(self)
 	root := filepath.Dir(self)
-	if filepath.Dir(planPath) != root || filepath.Dir(p.Archive) != root || filepath.Dir(p.Manifest) != root || p.Parent <= 0 {
+	if p.Backup == "" {
+		p.Backup = filepath.Join(root, "previous-install")
+	}
+	if filepath.Dir(planPath) != root || filepath.Dir(p.Archive) != root || filepath.Dir(p.Manifest) != root || filepath.Dir(p.Backup) != root || p.Parent <= 0 {
 		return errors.New("invalid update plan")
 	}
+	restartAllowed := false
+	relaunched := false
 	defer func() {
 		failurePath := filepath.Join(root, "failed-update.json")
 		if result != nil {
@@ -172,6 +221,18 @@ func RunHelper(planPath, current string) (result error) {
 			_ = os.WriteFile(failurePath, raw, 0600)
 		} else {
 			_ = os.Remove(failurePath)
+		}
+		if result != nil && restartAllowed && !relaunched {
+			if waitForParent(p.Parent, 30*time.Second) == nil {
+				if _, statErr := os.Stat(p.Target); os.IsNotExist(statErr) {
+					_ = movePath(p.Backup, p.Target)
+				}
+				if restartErr := startDesktop(p.Executable, nil); restartErr != nil {
+					result = fmt.Errorf("%v; previous version could not be restarted: %w", result, restartErr)
+				} else {
+					relaunched = true
+				}
+			}
 		}
 	}()
 	expectedTarget, entry, err := installTarget(p.Executable)
@@ -181,6 +242,7 @@ func RunHelper(planPath, current string) (result error) {
 	if expectedTarget != p.Target {
 		return errors.New("invalid update destination")
 	}
+	restartAllowed = true
 	raw, err = os.ReadFile(p.Manifest)
 	if err != nil {
 		return err
@@ -195,12 +257,9 @@ func RunHelper(planPath, current string) (result error) {
 	if CompareSemver(p.Version, current) <= 0 {
 		return errors.New("update downgrade rejected")
 	}
-	var asset Asset
-	for _, a := range manifest.Assets {
-		if a.OS == runtime.GOOS && (a.Arch == runtime.GOARCH || runtime.GOOS == "darwin" && a.Arch == "universal") {
-			asset = a
-			break
-		}
+	asset, err := platformAsset(manifest)
+	if err != nil {
+		return err
 	}
 	archive, err := os.Open(p.Archive)
 	if err != nil {
@@ -212,7 +271,7 @@ func RunHelper(planPath, current string) (result error) {
 	if err != nil || n != asset.Size || hex.EncodeToString(h.Sum(nil)) != strings.ToLower(asset.SHA256) {
 		return errors.New("staged update checksum rejected")
 	}
-	stage, err := os.MkdirTemp(filepath.Dir(p.Target), ".adomnia-update-*")
+	stage, err := os.MkdirTemp(root, "apply-*")
 	if err != nil {
 		return err
 	}
@@ -229,34 +288,39 @@ func RunHelper(planPath, current string) (result error) {
 			return errors.New("macOS bundle signature rejected")
 		}
 	}
-	if err = waitForParent(p.Parent, 24*time.Hour); err != nil {
+	if err = waitForParent(p.Parent, parentExitTimeout); err != nil {
 		return err
 	}
-	backup := p.Target + ".adomnia-previous"
-	if _, err = os.Stat(backup); err == nil {
-		return errors.New("Previous update backup exists; refusing to overwrite it")
+	if err = waitForUserDataRelease(p.UserData); err != nil {
+		return err
 	}
-	if err = os.Rename(p.Target, backup); err != nil {
+	backup := p.Backup
+	if _, statErr := os.Stat(backup); statErr == nil {
+		if _, targetErr := os.Stat(p.Target); os.IsNotExist(targetErr) {
+			if err = movePath(backup, p.Target); err != nil {
+				return fmt.Errorf("cannot restore the previous installation backup: %w", err)
+			}
+		} else if err = removeWithRetry(backup, fileReleaseTimeout); err != nil {
+			return fmt.Errorf("cannot clear a stale update backup: %w", err)
+		}
+	}
+	if err = movePath(p.Target, backup); err != nil {
 		return err
 	}
 	rollback := func() error {
-		if err := os.RemoveAll(p.Target); err != nil {
+		if err := removeWithRetry(p.Target, fileReleaseTimeout); err != nil {
 			return fmt.Errorf("cannot remove failed update; previous app retained at %s: %w", backup, err)
 		}
-		if err := os.Rename(backup, p.Target); err != nil {
+		if err := movePath(backup, p.Target); err != nil {
 			return fmt.Errorf("cannot restore previous app at %s: %w", backup, err)
 		}
-		cmd := exec.Command(p.Executable)
-		process.Configure(cmd, false)
-		if err := cmd.Start(); err != nil {
+		if err := startDesktop(p.Executable, nil); err != nil {
 			return fmt.Errorf("previous version restored but could not restart: %w", err)
 		}
-		if cmd.Process != nil {
-			_ = cmd.Process.Release()
-		}
+		relaunched = true
 		return nil
 	}
-	if err = os.Rename(source, p.Target); err != nil {
+	if err = movePath(source, p.Target); err != nil {
 		if restoreErr := rollback(); restoreErr != nil {
 			return restoreErr
 		}
@@ -264,9 +328,8 @@ func RunHelper(planPath, current string) (result error) {
 	}
 	marker := p.Archive + ".started"
 	_ = os.Remove(marker)
-	cmd := exec.Command(p.Executable)
+	cmd := newDesktopCommand(p.Executable)
 	cmd.Env = append(os.Environ(), "ADOMNIA_UPDATE_CONFIRM="+marker, "ADOMNIA_UPDATE_VERSION="+p.Version)
-	process.Configure(cmd, false)
 	if err = cmd.Start(); err != nil {
 		if restoreErr := rollback(); restoreErr != nil {
 			return restoreErr
@@ -302,6 +365,104 @@ func RunHelper(planPath, current string) (result error) {
 	}
 	return errors.New("Updated app did not confirm startup; restored previous version")
 }
+
+func platformAsset(manifest Manifest) (Asset, error) {
+	for _, asset := range manifest.Assets {
+		matches := asset.OS == runtime.GOOS && (asset.Arch == runtime.GOARCH || runtime.GOOS == "darwin" && asset.Arch == "universal")
+		if !matches {
+			continue
+		}
+		if asset.Size <= 0 || len(asset.SHA256) != sha256.Size*2 || asset.OS == "" || asset.Arch == "" {
+			return Asset{}, errors.New("update manifest has an invalid asset for this platform")
+		}
+		return asset, nil
+	}
+	return Asset{}, errors.New("update manifest has no asset for this platform")
+}
+
+func startDesktop(executable string, env []string) error {
+	cmd := newDesktopCommand(executable)
+	if env != nil {
+		cmd.Env = env
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if cmd.Process != nil {
+		_ = cmd.Process.Release()
+	}
+	return nil
+}
+
+func newDesktopCommand(executable string) *exec.Cmd {
+	cmd := exec.Command(executable)
+	process.ConfigureDetachedGUI(cmd)
+	return cmd
+}
+
+func waitForUserDataRelease(dir string) error {
+	// WebView2 may outlive the Wails process briefly while releasing its user
+	// data locks. Always allow that grace period, then require the directory to
+	// accept a create/remove probe before replacing the application.
+	time.Sleep(userDataReleaseDelay)
+	if dir == "" {
+		return nil
+	}
+	deadline := time.Now().Add(fileReleaseTimeout)
+	for {
+		probe, err := os.CreateTemp(dir, ".adomnia-update-probe-*")
+		if err == nil {
+			name := probe.Name()
+			_ = probe.Close()
+			_ = os.Remove(name)
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("webview user data is still locked: %w", err)
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+}
+
+func movePath(src, dst string) error {
+	deadline := time.Now().Add(fileReleaseTimeout)
+	var renameErr error
+	for {
+		renameErr = os.Rename(src, dst)
+		if renameErr == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	info, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("cannot move update files: %w", renameErr)
+	}
+	if info.IsDir() {
+		if err = filepath.Walk(src, func(path string, entry os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			rel, relErr := filepath.Rel(src, path)
+			if relErr != nil {
+				return relErr
+			}
+			target := filepath.Join(dst, rel)
+			if entry.IsDir() {
+				return os.MkdirAll(target, entry.Mode().Perm())
+			}
+			return copyRegular(path, target, entry.Mode().Perm())
+		}); err != nil {
+			return err
+		}
+	} else if err = copyRegular(src, dst, info.Mode().Perm()); err != nil {
+		return err
+	}
+	return os.RemoveAll(src)
+}
 func ConfirmStartup(current string) error {
 	marker := os.Getenv("ADOMNIA_UPDATE_CONFIRM")
 	version := os.Getenv("ADOMNIA_UPDATE_VERSION")
@@ -319,5 +480,30 @@ func ConfirmStartup(current string) error {
 	}
 	_ = os.Unsetenv("ADOMNIA_UPDATE_CONFIRM")
 	_ = os.Unsetenv("ADOMNIA_UPDATE_VERSION")
+	return nil
+}
+
+// OpenApplyLog opens the updater-owned log with the platform text viewer.
+func OpenApplyLog(dir string) error {
+	path := filepath.Join(dir, "apply.log")
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("update log is not available: %w", err)
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "linux":
+		cmd = exec.Command("xdg-open", path)
+	default:
+		cmd = exec.Command("notepad.exe", path)
+	}
+	process.ConfigureDetachedGUI(cmd)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if cmd.Process != nil {
+		_ = cmd.Process.Release()
+	}
 	return nil
 }

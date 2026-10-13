@@ -338,6 +338,10 @@ export function OpenSwaggerEditorWindow(): $CancellablePromise<void> {
     return $Call.ByID(976830226);
 }
 
+export function OpenUpdateApplyLog(): $CancellablePromise<void> {
+    return $Call.ByID(1683811382);
+}
+
 export function ReadDroppedFiles(paths: string[]): $CancellablePromise<string> {
     return $Call.ByID(1904195336, paths);
 }

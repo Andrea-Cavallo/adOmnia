@@ -112,26 +112,26 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 - Concorrenti: lock della user-data di WebView2 (`main.go:132`, `WebviewUserDataPath: dataDir()`; l'helper rilancia appena il PID genitore termina, `wait_windows.go`); errori invisibili (solo `apply.log` e `failed-update.json`, `apply.go:115,168-176`; `manager.go:157`).
 
 **Fix**
-- [ ] IDE-1.0 Riprodotto il bug (exe 1.0.0 sul Desktop, release 1.0.1, "Salva e riavvia") e confermata la causa.
-- [ ] IDE-1.1 `process.ConfigureDetachedGUI(cmd)`: solo `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, senza `HideWindow` né `CREATE_NO_WINDOW`; usato a `apply.go:250` e `:269`. L'helper (`:114`) resta nascosto.
-- [ ] IDE-1.2 Dopo `waitForParent`, attendere il rilascio della cartella user-data (retry su file di lock o enumerazione figli; minimo sleep 1,5-2 s).
-- [ ] IDE-1.3 Dopo un rollback: notifica "Aggiornamento fallito, ripristinata la vX" (da `failedVersion`) con pulsante che apre `apply.log`.
-- [ ] IDE-1.4 Log di avvio degli errori di creazione della webview.
+- [ ] IDE-1.0 Riprodotto il bug (exe 1.0.0 sul Desktop, release 1.0.1, "Salva e riavvia") e confermata la causa. — **NON VERIFICATO:** manca una coppia di release firmate 1.0.0 → 1.0.1; la causa dei flag Windows è coperta dal test nativo.
+- [ ] IDE-1.1 `process.ConfigureDetachedGUI(cmd)`: solo `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, senza `HideWindow` né `CREATE_NO_WINDOW`; usato a `apply.go:250` e `:269`. L'helper (`:114`) resta nascosto. — **IMPLEMENTATO; NON VERIFICATO manualmente** con installer firmato.
+- [ ] IDE-1.2 Dopo `waitForParent`, attendere il rilascio della cartella user-data (retry su file di lock o enumerazione figli; minimo sleep 1,5-2 s). — **IMPLEMENTATO; NON VERIFICATO manualmente** con WebView2 reale.
+- [ ] IDE-1.3 Dopo un rollback: notifica "Aggiornamento fallito, ripristinata la vX" (da `failedVersion`) con pulsante che apre `apply.log`. — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app.
+- [ ] IDE-1.4 Log di avvio degli errori di creazione della webview. — **IMPLEMENTATO; NON VERIFICATO manualmente** forzando un errore WebView2.
 
 **Altri difetti nel flusso di update**
-- [ ] IDE-1.5 `OnShutdown` gira due volte (`app.go:133` e `:128`): `storage.Close()` e shutdown plugin doppi.
-- [ ] IDE-1.6 `StartScheduled` parte in `OnShutdown` dopo `storage.Close()`; se `copyRegular` fallisce (`apply.go:110`, es. `.helper.exe` residuo con `O_EXCL`) l'utente chiude senza installare né errore.
-- [ ] IDE-1.7 `waitForParent` accetta 24 h; helper e staged restano in `%APPDATA%\adomnia\updates` fino a 7 giorni (`cleanupCache`): ridurre/ripulire.
-- [ ] IDE-1.8 `.adomnia-update-*` e `.adomnia-previous` creati accanto all'exe (es. Desktop): serve permesso di scrittura, residui dopo crash; un backup residuo blocca gli update successivi (`apply.go:70`, `:236`) con messaggio vago.
-- [ ] IDE-1.9 Se l'helper fallisce prima dello swap (checksum, `waitForParent`, backup esistente) l'app vecchia non viene rilanciata: rilanciarla sempre.
-- [ ] IDE-1.10 Asset scelto non verificato (`apply.go:199-204`): un asset vuoto cade in un errore di checksum; validarlo.
+- [ ] IDE-1.5 `OnShutdown` gira due volte (`app.go:133` e `:128`): `storage.Close()` e shutdown plugin doppi. — **IMPLEMENTATO; NON VERIFICATO manualmente:** shutdown protetto da `sync.Once`.
+- [ ] IDE-1.6 `StartScheduled` parte in `OnShutdown` dopo `storage.Close()`; se `copyRegular` fallisce (`apply.go:110`, es. `.helper.exe` residuo con `O_EXCL`) l'utente chiude senza installare né errore. — **IMPLEMENTATO; NON VERIFICATO manualmente:** helper e piano sono preparati quando l'utente pianifica l'update.
+- [x] IDE-1.7 `waitForParent` accetta 24 h; helper e staged restano in `%APPDATA%\adomnia\updates` fino a 7 giorni (`cleanupCache`): ridurre/ripulire. — timeout 2 minuti; cache updater ripulita dopo 24 ore.
+- [ ] IDE-1.8 `.adomnia-update-*` e `.adomnia-previous` creati accanto all'exe (es. Desktop): serve permesso di scrittura, residui dopo crash; un backup residuo blocca gli update successivi (`apply.go:70`, `:236`) con messaggio vago. — **IMPLEMENTATO; NON VERIFICATO manualmente:** stage e backup sono nella cache privata, con recupero del backup residuo.
+- [ ] IDE-1.9 Se l'helper fallisce prima dello swap (checksum, `waitForParent`, backup esistente) l'app vecchia non viene rilanciata: rilanciarla sempre. — **IMPLEMENTATO; NON VERIFICATO manualmente** con pacchetto firmato corrotto.
+- [x] IDE-1.10 Asset scelto non verificato (`apply.go:199-204`): un asset vuoto cade in un errore di checksum; validarlo. — test per asset mancante e non valido.
 
 **Test e verifica**
-- [ ] IDE-1.T1 `apply_test.go` con finto figlio GUI: `STARTF_USESHOWWINDOW` assente.
+- [x] IDE-1.T1 `apply_test.go` con finto figlio GUI: `STARTF_USESHOWWINDOW` assente.
 - [ ] IDE-1.M1 Manuale Windows: finestra appare, esiste `<updates>/…zip.started`, exe = 1.0.1 (proprietà file).
 - [ ] IDE-1.M2 Manuale: forzare il fallimento (exe 1.0.1 che termina subito) → notifica di rollback visibile e app 1.0.0 con finestra.
 
-**Gate IDE-1:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate IDE-1:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** richiede release firmate 1.0.0 → 1.0.1 e rollback reale.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -702,6 +702,6 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 
 | ID voce / Gate | Data | Chi | Evidenza (comando + esito / screenshot / commit) | Verificato da |
 |----------------|------|-----|--------------------------------------------------|---------------|
-|                |      |     |                                                  |               |
+| IDE-1 Impl/Test/Doc | 2026-10-13 | Codex | `go test -timeout 10m ./...` verde; `npx vitest run` completo: 1373 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build`; binding rigenerati con Wails beta.28. Manuale update/rollback reale ancora NON VERIFICATO. |               |
 |                |      |     |                                                  |               |
 |                |      |     |                                                  |               |

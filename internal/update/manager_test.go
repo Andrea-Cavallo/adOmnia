@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -118,5 +119,29 @@ func TestDevBuildDoesNotCheckNetwork(t *testing.T) {
 	}
 	if _, e = m.Check("nightly", true); e == nil {
 		t.Fatal("invalid channel accepted")
+	}
+}
+
+func TestManagerReportsFailedUpdateAndApplyLog(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "failed-update.json"), []byte(`{"version":"v1.0.1","error":"startup confirmation timed out"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "apply.log"), []byte("rollback complete"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	state := NewManager(dir, "v1.0.0").Status()
+	if state.Phase != "rollback" || state.FailedVersion != "v1.0.1" || state.RestoredVersion != "v1.0.0" || state.FailureReason == "" || !state.ApplyLogAvailable {
+		t.Fatalf("rollback state not exposed: %+v", state)
+	}
+}
+
+func TestPlatformAssetRejectsMissingAndInvalidEntries(t *testing.T) {
+	if _, err := platformAsset(Manifest{}); err == nil {
+		t.Fatal("missing platform asset accepted")
+	}
+	invalid := Asset{OS: runtime.GOOS, Arch: runtime.GOARCH, Size: 0, SHA256: "bad"}
+	if _, err := platformAsset(Manifest{Assets: []Asset{invalid}}); err == nil {
+		t.Fatal("invalid platform asset accepted")
 	}
 }
