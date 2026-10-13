@@ -140,7 +140,7 @@ export function gitChangesUnder(changes: GoIDEVCSFileChange[], relativePath: str
 }
 
 /** Operazioni Git del menu Project. Resta tutto nel repository locale salvo Pull/Push espliciti. */
-export async function runTreeGitAction(sessionId: string, id: 'stage' | 'unstage' | 'revert' | 'pull' | 'push', relativePath: string, directory: boolean): Promise<void> {
+export async function runTreeGitAction(sessionId: string, id: 'stage' | 'unstage' | 'revert' | 'reset' | 'pull' | 'push', relativePath: string, directory: boolean): Promise<void> {
   const vcs = useGoIDEVCSStore.getState()
   const status = vcs.status[sessionId]
   if (!status?.available) return report('This project is not in a Git repository.')
@@ -160,17 +160,21 @@ export async function runTreeGitAction(sessionId: string, id: 'stage' | 'unstage
     const selected = gitChangesUnder(status.changes, relativePath, directory)
     if (selected.length === 0) return report('No Git changes in this selection.')
     const paths = selected.map((change) => change.relativePath)
-    if (id === 'revert') {
+    if (id === 'revert' || id === 'reset') {
+      const scope = relativePath || 'the project'
       const accepted = await confirm({
-        title: `Revert ${paths.length === 1 ? paths[0] : `${paths.length} files`}?`,
-        message: 'Local changes will be replaced with HEAD. New files will be removed from disk and kept in Local History.',
+        title: id === 'reset' ? `Reset ${scope} to HEAD?` : `Revert ${paths.length === 1 ? paths[0] : `${paths.length} files`}?`,
+        message: 'Tracked changes will be replaced with HEAD. New files will be removed from disk and kept in Local History.',
         details: paths.slice(0, 8).map((path) => ({ label: 'File', value: path, mono: true })),
-        confirmLabel: 'Revert', variant: 'danger',
+        confirmLabel: id === 'reset' ? 'Reset to HEAD' : 'Revert', variant: 'danger',
       })
       if (!accepted) return
       await revertGoIDEFiles(sessionId, paths)
+      const changed = new Set(paths)
+      const open = useGoIDEStore.getState().documents.filter((item) => item.document.sessionId === sessionId && changed.has(item.document.relativePath))
+      for (const item of open) await useGoIDEStore.getState().closeDocument(item.document.id)
       await Promise.all([vcs.refreshStatus(sessionId), useGoIDEStore.getState().refreshProject(relativePath && !directory ? parentOf(relativePath) : relativePath)])
-      return report(`Reverted ${paths.length} file(s).`)
+      return report(id === 'reset' ? `Reset ${paths.length} file(s) to HEAD.` : `Reverted ${paths.length} file(s).`)
     }
     await stageGoIDEFiles(sessionId, paths, id === 'stage')
     await vcs.refreshStatus(sessionId)

@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ### Fixed
 
 - Go Studio project tree: dragging a `.go` file into another package now performs a checked semantic move, preserving the file name and header while rewriting package declarations, imports and references across the module. The move is refused without touching disk when it would break compilation, create an import cycle or leave an unexported reference behind.
+- Go Studio project tree: the right-click menu now exposes direct **Git Pull** and contextual **Reset to HEAD** actions on the project root, packages and individual files. Reset appears only where changes exist, requires confirmation, restores tracked files and keeps removed untracked files in Local History.
 
 ## [1.0.1] — 2026-10-12
 

@@ -13,6 +13,8 @@ export interface TreeMenuContext {
   vcsAvailable: boolean
   /** Il progetto ha almeno un go.mod: l'import path ha senso. */
   hasGoModule: boolean
+  /** Percorsi modificati rispetto a HEAD, relativi alla radice del progetto. */
+  changedPaths: string[]
 }
 
 const NEW_ITEMS: ContextMenuItem[] = [
@@ -132,6 +134,17 @@ function historyItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): C
   }]
 }
 
+function quickGitItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
+  if (!context.vcsAvailable) return []
+  const selectedPath = entry?.relativePath ?? ''
+  const prefix = selectedPath ? `${selectedPath}/` : ''
+  const hasChanges = context.changedPaths.some((path) => !selectedPath || path === selectedPath || (!!entry?.directory && path.startsWith(prefix)))
+  return [
+    { id: 'gitPullQuick', label: 'Git Pull', icon: GitPullRequestArrow, separatorBefore: true },
+    ...(hasChanges ? [{ id: 'gitResetHead', label: 'Reset to HEAD…', icon: Undo2, danger: true }] : []),
+  ]
+}
+
 function handoffItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
   if (!entry || entry.directory) return []
   return [
@@ -182,6 +195,7 @@ export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuCon
       { id: 'reveal', label: 'File Explorer', icon: FolderSearch },
       { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
     ] },
+    ...quickGitItems(entry, context),
     ...historyItems(entry, context),
     ...(entry ? [{ id: 'compareWith', label: 'Compare With…', icon: GitCompare, shortcut: 'Ctrl+D', separatorBefore: true }] : []),
     ...(entry?.directory ? [{ id: 'markDirectory', label: 'Mark Directory As', icon: FolderCog, submenu: [

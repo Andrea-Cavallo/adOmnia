@@ -184,7 +184,8 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
   const canPaste = useGoStudioTreeClipboard((state) => state.clipboard?.sessionId === session.id)
-  const vcsAvailable = useGoIDEVCSStore((state) => !!state.status[session.id]?.available)
+  const vcsStatus = useGoIDEVCSStore((state) => state.status[session.id])
+  const vcsAvailable = !!vcsStatus?.available
   const onMove = useCallback<TreeMoveHandler>((source, targetFolder) => { void moveTreePath(session.id, source, targetFolder) }, [session.id])
   useEffect(() => setDirectoryMarks(loadDirectoryMarks(session.project.realPath)), [session.project.realPath])
 
@@ -244,10 +245,12 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'gitDiff': openThen('vcs.gitStudio'); break
       case 'gitCommit': onCommand('vcs.commit'); break
       case 'gitPull': void runTreeGitAction(session.id, 'pull', path, directory); break
+      case 'gitPullQuick': void runTreeGitAction(session.id, 'pull', path, directory); break
       case 'gitPush': void runTreeGitAction(session.id, 'push', path, directory); break
       case 'gitStage': void runTreeGitAction(session.id, 'stage', path, directory); break
       case 'gitUnstage': void runTreeGitAction(session.id, 'unstage', path, directory); break
       case 'gitRevert': void runTreeGitAction(session.id, 'revert', path, directory); break
+      case 'gitResetHead': void runTreeGitAction(session.id, 'reset', path, directory); break
       case 'gitStudio': onCommand('vcs.gitStudio'); break
       case 'compareWith': if (entry) setCompareRequest({ path, directory }); break
       case 'markSources': case 'markTests': case 'markResources': case 'markExcluded': if (entry?.directory) {
@@ -275,7 +278,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
     setMenu(null)
     runTreeAction(id, entry)
   }
-  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0 }
+  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
 
   return (
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">
