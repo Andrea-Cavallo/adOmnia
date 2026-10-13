@@ -254,6 +254,9 @@ func (s *Service) MovePath(sessionID, from, to string) error {
 	if err != nil {
 		return err
 	}
+	if strings.EqualFold(filepath.Ext(from), ".go") && filepath.Clean(filepath.Dir(filepath.FromSlash(from))) != filepath.Clean(filepath.Dir(filepath.FromSlash(to))) {
+		return s.moveGoFile(sessionID, from, to)
+	}
 	return s.documents.MovePath(session.Project, from, to)
 }
 

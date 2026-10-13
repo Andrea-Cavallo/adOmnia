@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+
+- Go Studio project tree: dragging a `.go` file into another package now performs a checked semantic move, preserving the file name and header while rewriting package declarations, imports and references across the module. The move is refused without touching disk when it would break compilation, create an import cycle or leave an unexported reference behind.
+
 ## [1.0.1] — 2026-10-12
 
 ### IDE bug fix release

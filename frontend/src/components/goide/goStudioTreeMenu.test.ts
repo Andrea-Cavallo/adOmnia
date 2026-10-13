@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { GoIDEFileEntry } from '@/lib/goide-api'
+import { moveGoIDEPath } from '@/lib/goide-api'
+import { useGoIDEStore } from '@/stores/goide'
 
 vi.mock('@/lib/goide-api', () => ({ duplicateGoIDEPath: vi.fn(), moveGoIDEPath: vi.fn() }))
 vi.mock('./goStudioFileHandoffs', () => ({ isApiCollectionCandidate: () => false, isPemCandidate: () => false }))
@@ -9,7 +11,7 @@ vi.mock('./goStudioQuickActions', async () => {
 })
 
 const { buildTreeMenu, treeKeyAction } = await import('./goStudioTreeMenu')
-const { freeName, goImportPath, requiresSemanticGoMove, treeDropDestination } = await import('./goStudioTreeActions')
+const { freeName, goImportPath, moveTreePath, treeDropDestination } = await import('./goStudioTreeActions')
 
 const file = (relativePath: string): GoIDEFileEntry => ({ name: relativePath.split('/').pop()!, relativePath, directory: false } as GoIDEFileEntry)
 const folder = (relativePath: string): GoIDEFileEntry => ({ name: relativePath.split('/').pop()!, relativePath, directory: true } as GoIDEFileEntry)
@@ -135,14 +137,25 @@ describe('treeDropDestination', () => {
     expect(treeDropDestination('README.md', '')).toBeNull()
   })
 
-  it('routes cross-package Go files through semantic Move Symbol', () => {
-    expect(requiresSemanticGoMove('internal/api/server.go', 'cmd/server')).toBe(true)
-    expect(requiresSemanticGoMove('internal/api/server.go', 'internal/api')).toBe(false)
-    expect(requiresSemanticGoMove('web/index.html', 'public')).toBe(false)
-  })
-
   it('rejects self drops and descendants', () => {
     expect(treeDropDestination('internal/api', 'internal/api')).toBeNull()
     expect(treeDropDestination('internal/api', 'internal/api/testdata')).toBeNull()
+  })
+
+  it('sends a cross-package Go file drop to the semantic backend move', async () => {
+    const loadDirectory = vi.fn().mockResolvedValue(undefined)
+    const refreshProject = vi.fn().mockResolvedValue(undefined)
+    useGoIDEStore.setState({
+      documents: [],
+      directoryEntries: { session: { pricing: [] } },
+      loadDirectory,
+      refreshProject,
+    })
+    vi.mocked(moveGoIDEPath).mockResolvedValue(undefined)
+
+    await expect(moveTreePath('session', 'money/money.go', 'pricing')).resolves.toBe(true)
+
+    expect(moveGoIDEPath).toHaveBeenCalledWith('session', 'money/money.go', 'pricing/money.go')
+    expect(refreshProject).toHaveBeenCalled()
   })
 })

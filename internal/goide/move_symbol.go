@@ -351,6 +351,7 @@ type moveBuilder struct {
 	movedEdits          map[ast.Decl][]byteEdit      // edit relativi al testo della dichiarazione spostata
 	addImports          map[string]map[string]string // file → import path → nome locale ("" = nome del package)
 	movedImports        map[string]string            // import necessari al file di destinazione
+	destinationPrefix   string                       // build constraints, license and package docs for whole-file moves
 	targetImportsSource bool
 	referencingPkgs     []string
 }
@@ -494,7 +495,7 @@ func (b *moveBuilder) rewriteReferences(moved []movedDecl) error {
 					return true
 				}
 				pkgName, ok := info.Uses[ident].(*types.PkgName)
-				if !ok || pkgName.Imported().Path() != b.sourcePkg.Path() || !b.isMoved(info.Uses[value.Sel]) || info.Uses[value.Sel].Name() != b.primary.Name() {
+				if !ok || pkgName.Imported().Path() != b.sourcePkg.Path() || !b.isMoved(info.Uses[value.Sel]) {
 					return true
 				}
 				if inTarget {
@@ -510,11 +511,11 @@ func (b *moveBuilder) rewriteReferences(moved []movedDecl) error {
 					return true
 				}
 				obj := info.Uses[value]
-				if obj == nil || !b.isMoved(obj) || obj.Name() != b.primary.Name() {
+				if obj == nil || !b.isMoved(obj) {
 					return true
 				}
-				if !b.primary.Exported() {
-					problem = fmt.Errorf("%s non è esportato ed è usato ancora in %s (%s): esportalo prima di spostarlo", b.primary.Name(), b.sourcePkg.Name(), b.module.fset.Position(value.Pos()))
+				if !obj.Exported() {
+					problem = fmt.Errorf("%s non è esportato ed è usato ancora in %s (%s): esportalo prima di spostarlo", obj.Name(), b.sourcePkg.Name(), b.module.fset.Position(value.Pos()))
 					return false
 				}
 				b.edits[filePath] = append(b.edits[filePath], byteEdit{start: b.offset(value.Pos()), end: b.offset(value.Pos()), text: b.targetName + "."})
@@ -588,6 +589,10 @@ func (b *moveBuilder) importsOf(importPath string) []string {
 
 // render applica gli edit e costruisce il contenuto finale di ogni file toccato.
 func (b *moveBuilder) render(moved []movedDecl, targetDirectory string) ([]movedFile, error) {
+	return b.renderTo(moved, targetDirectory, snakeCase(b.primary.Name())+".go")
+}
+
+func (b *moveBuilder) renderTo(moved []movedDecl, targetDirectory, destinationName string) ([]movedFile, error) {
 	movedText := []string{}
 	for _, item := range moved {
 		start, end := b.offset(declStart(item.decl)), b.offset(item.decl.End())
@@ -615,8 +620,8 @@ func (b *moveBuilder) render(moved []movedDecl, targetDirectory string) ([]moved
 		files = append(files, movedFile{path: filePath, original: original, content: formatted})
 	}
 
-	// Destinazione: un file nuovo con il nome del simbolo, o quello esistente se c'è già.
-	destination := filepath.Join(targetDirectory, snakeCase(b.primary.Name())+".go")
+	// Destinazione: un file nuovo con il nome scelto, o quello esistente per Move Symbol.
+	destination := filepath.Join(targetDirectory, destinationName)
 	body := strings.Join(movedText, "\n\n") + "\n"
 	if existing := b.module.files[filepath.Clean(destination)]; existing != nil {
 		original := string(existing.text)
@@ -631,7 +636,7 @@ func (b *moveBuilder) render(moved []movedDecl, targetDirectory string) ([]moved
 		}
 		files = append(files, movedFile{path: destination, original: original, content: formatted})
 	} else {
-		formatted, err := fixImports("package "+b.targetName+"\n\n"+body, b.movedImports)
+		formatted, err := fixImports(b.destinationPrefix+"package "+b.targetName+"\n\n"+body, b.movedImports)
 		if err != nil {
 			return nil, err
 		}

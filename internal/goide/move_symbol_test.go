@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -160,5 +161,59 @@ func TestMoveQualifiesSourcePackageIdentifiers(t *testing.T) {
 	created := changedFiles(change)["labels/label.go"].NewContent
 	if !strings.Contains(created, `"price in " + money.Currency`) || !strings.Contains(created, `"example.com/shop/money"`) {
 		t.Fatalf("Currency va qualificata con money e importata:%s", created)
+	}
+}
+
+func TestMoveGoFileBetweenPackagesRewritesReferences(t *testing.T) {
+	service, id, root := moveFixture(t)
+	if err := service.MovePath(id, "money/money.go", "pricing/money.go"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "money", "money.go")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the original file still exists: %v", err)
+	}
+	read := func(relative string) string {
+		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(content)
+	}
+	moved := read("pricing/money.go")
+	for _, expected := range []string{"package pricing", "func Format", "const Currency", "type Price struct", "func (p Price) String"} {
+		if !strings.Contains(moved, expected) {
+			t.Fatalf("moved file does not contain %q:\n%s", expected, moved)
+		}
+	}
+	orders := read("orders/orders.go")
+	if !strings.Contains(orders, `"example.com/shop/pricing"`) || !strings.Contains(orders, "pricing.Format(250)") || !strings.Contains(orders, "pricing.Price") {
+		t.Fatalf("external references were not rewritten:\n%s", orders)
+	}
+	testFile := read("money/money_test.go")
+	if !strings.Contains(testFile, `"example.com/shop/pricing"`) || !strings.Contains(testFile, "pricing.Format(250)") {
+		t.Fatalf("source-package references were not rewritten:\n%s", testFile)
+	}
+	command := exec.Command("go", "test", "./...")
+	command.Dir = root
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("moved project does not compile: %v\n%s", err, output)
+	}
+}
+
+func TestMoveGoFileRefusesUnexportedReferencesWithoutTouchingDisk(t *testing.T) {
+	service, id, root := moveFixture(t)
+	dependent := filepath.Join(root, "money", "local.go")
+	if err := os.WriteFile(dependent, []byte("package money\n\nfunc localUse() int { return round(2) }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := service.MovePath(id, "money/money.go", "pricing/money.go")
+	if err == nil || !strings.Contains(err.Error(), "round") {
+		t.Fatalf("expected an unexported-reference refusal, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "money", "money.go")); err != nil {
+		t.Fatalf("the rejected move touched the source file: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "pricing", "money.go")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the rejected move created its destination: %v", err)
 	}
 }

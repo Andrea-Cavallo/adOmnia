@@ -100,11 +100,6 @@ export function treeDropDestination(source: string, targetFolder: string): strin
   return destination === normalizedSource ? null : destination
 }
 
-/** Un file Go cambia package quando cambia cartella: richiede il refactoring semantico, mai un rename cieco. */
-export function requiresSemanticGoMove(source: string, targetFolder: string): boolean {
-  return /\.go$/i.test(source) && parentOf(source) !== targetFolder
-}
-
 /** Drag & drop: sposta un elemento nella cartella scelta senza rinominare o sovrascrivere. */
 export async function moveTreePath(sessionId: string, source: string, targetFolder: string): Promise<boolean> {
   const destination = treeDropDestination(source, targetFolder)
@@ -112,12 +107,9 @@ export async function moveTreePath(sessionId: string, source: string, targetFold
     report(parentOf(source) === targetFolder ? 'The item is already in this folder.' : 'A folder cannot be moved inside itself.')
     return false
   }
-  if (requiresSemanticGoMove(source, targetFolder)) {
-    report('Move Go declarations with Refactor → Move Symbol to Package so imports and references are updated safely.')
-    return false
-  }
   const store = useGoIDEStore.getState()
-  const dirty = store.documents.filter((item) => item.document.sessionId === sessionId && item.dirty && isInside(item.document.relativePath, source))
+  const semanticGoMove = /\.go$/i.test(source) && parentOf(source) !== targetFolder
+  const dirty = store.documents.filter((item) => item.document.sessionId === sessionId && item.dirty && (semanticGoMove ? /\.go$/i.test(item.document.relativePath) : isInside(item.document.relativePath, source)))
   if (dirty.length > 0) {
     report(`Save or discard the changes in ${dirty.map((item) => item.document.relativePath).join(', ')} before moving it.`)
     return false
@@ -132,8 +124,8 @@ export async function moveTreePath(sessionId: string, source: string, targetFold
     const open = store.documents.filter((item) => item.document.sessionId === sessionId && isInside(item.document.relativePath, source))
     for (const item of open) await store.closeDocument(item.document.id)
     await moveGoIDEPath(sessionId, source, destination)
-    await Promise.all([store.loadDirectory(parentOf(source)), store.loadDirectory(targetFolder)])
-    report(`Moved ${source} to ${destination}`)
+    await store.refreshProject()
+    report(semanticGoMove ? `Moved ${source} to ${destination} and updated Go references.` : `Moved ${source} to ${destination}`)
     return true
   } catch (error) {
     reportError(error)
