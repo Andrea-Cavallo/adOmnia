@@ -35,35 +35,35 @@
 
 ## API development and service debugging
 
-adOmnia combines API testing and Go development. Requests can be linked to detected handlers, executed against a running service and inspected in the debugger. Database, messaging, log and trace tools are available in the same application.
+adOmnia combines API testing and Go development. Requests can be linked to detected handlers, executed against a running service and inspected in the debugger. Database, messaging, log and trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request.
 
-A Go service started in **Go Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker capture add evidence around the same request, so you can move from a response to the code and data behind it.
+A Go service started in **Go Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker captures are part of the same workflow.
 
 ```text
 WRITE              RUN                CALL                 UNDERSTAND
 Go Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
-                                                               ↕
-                                                   Variables · logs · SQL · messages
+                                                                ↕
+                                                    Variables · logs · SQL · messages
 ```
 
 ### Core capabilities
 
 | Capability | Description |
 | --- | --- |
-| **API testing and source navigation** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation. |
+| **API testing and source navigation** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation into the running code. |
 | **Request-driven debugging** | Debug Request starts or reuses a compatible Delve session. Inspect frames, variables and goroutines, step through the handler and return to the response. |
 | **Data and events beside the request** | Database, Broker, Log and Trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request. |
 | **Go development and profiling** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
 | **Enterprise protocols in the same workflow** | HTTP, SOAP/WSDL, WS-Security, gRPC, WebSocket/SSE, mTLS and certificate tools support both modern APIs and existing systems. |
-| **Local storage and multiple windows** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across your monitors. |
+| **Local storage and multiple windows** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across windows. |
 
 ### Storage and external services
 
-**No account required to use the application.** Collections, settings and project state stay local. You choose the APIs, databases, brokers and optional AI providers to connect to. External providers receive the context you configure and permit; project policies help control what is shared.
+**No account required to use the application.** Collections, settings and project state stay local. You choose the APIs, databases, brokers and optional AI providers to connect to. External providers and local services are chosen explicitly.
 
 ### Projects and windows
 
-Keep a service in Go Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance. Each project retains its own editor and tooling session; the studios remain part of the connected application.
+Keep a service in Go Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance.
 
 The workflow preserves links between the project, service session, API request and available diagnostic evidence.
 
@@ -94,7 +94,7 @@ You can use the API tools without opening a Go project.
 4. Send the matching request. For a recognized route, the **HANDLER** strip links to its source with **OPEN IN GO IDE**.
 5. Inspect the paused frame, variables, stack and goroutines. Step or continue, then return to the response.
 
-SQL, broker messages and logs enrich this workflow when capture/instrumentation is configured. They are not automatically available for every service. See [the walkthrough](docs/GETTING-STARTED.md) and [Live Development Sessions](docs/LIVE-SESSION.md).
+SQL, broker messages and logs enrich this workflow when capture/instrumentation is configured. They are not automatically available for every service. See [the walkthrough](docs/GETTING-STARTED.md) for a first setup.
 
 ## Go Studio: the IDE inside the workflow
 
@@ -109,7 +109,7 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 - **Keep work together:** terminal, local history, recovery snapshots and multiple projects/windows within one adOmnia instance.
 - **AI assistance:** contextual assistance with configured providers and project policies; review changes before applying them.
 
-Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for API Workspace, Database or Broker beside the code.
+Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for surrounding tools and workspaces.
 
 [Read the Go Studio guide →](docs/GO-STUDIO.md)
 
@@ -129,7 +129,7 @@ Check for updates in **Settings**. Update packages verify the publisher signatur
 
 ## What is experimental
 
-LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift, plugin marketplace and Hub games are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, including PDFs opened from Go Studio. See [the v1 scope](mds/V1-RELEASE-SCOPE-TODO.md).
+LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift, plugin marketplace and Hub games are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, but platform support is limited by the underlying OS and toolchain.
 
 ## Documentation
 
@@ -145,7 +145,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 
 ## Feedback and contributions
 
-[Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. For security reports, follow [the security policy](.github/SECURITY.md).
+[Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. Follow repository contribution guidelines before opening a pull request.
 
 Thanks to [albertize](https://github.com/albertize) and [plunix](https://github.com/plunix) for their contributions.
 
