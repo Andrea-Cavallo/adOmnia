@@ -16,15 +16,44 @@
 
 ## Screenshots
 
-<p align="center">
-  <img src="assets/images/ado-hub.png" alt="adOmnia Hub" width="30%">
-  <img src="assets/images/ado-ide.png" alt="adOmnia IDE" width="30%">
-  <img src="assets/images/ado-api.png" alt="adOmnia API Workspace" width="30%">
-</p>
+### Workspace Hub
+
+Start from the main workspace, review recent activity and open the area you need: Go Studio, API and protocols, data and messaging, documentation, version control or power tools.
 
 <p align="center">
-  <img src="assets/images/ado-db.png" alt="adOmnia Database" width="30%">
-  <img src="assets/images/ado-git.png" alt="adOmnia Git" width="30%">
+  <img src="assets/images/ado-hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
+</p>
+
+### Go Studio
+
+Edit and run a Go service with its project tree, source editor, terminal and contextual AI assistance visible in the same workspace.
+
+<p align="center">
+  <img src="assets/images/ado-ide.png" alt="Go Studio with a Go project, source editor, running service and Claude Code panel" width="100%">
+</p>
+
+### API Workspace
+
+Organize requests in collections, send them to the running service and inspect the response. Recognized routes link directly to their Go handler.
+
+<p align="center">
+  <img src="assets/images/ado-api.png" alt="API Workspace with a health request, response and link to its Go handler" width="100%">
+</p>
+
+### Database Studio
+
+Connect to SQLite, PostgreSQL, MySQL, MongoDB or Redis, write queries and inspect results, keys and history without leaving the application.
+
+<p align="center">
+  <img src="assets/images/ado-db.png" alt="Database Studio connected to Redis with a JSON command editor and key explorer" width="100%">
+</p>
+
+### Git Sync
+
+Inspect branches and commit history, review changed files, stage selected work and run fetch, pull, push or stash operations from the repository view.
+
+<p align="center">
+  <img src="assets/images/ado-git.png" alt="Git Sync with repository branches, commit graph and working changes" width="100%">
 </p>
 
 ## Demo
