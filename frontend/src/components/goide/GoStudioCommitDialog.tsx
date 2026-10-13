@@ -201,7 +201,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
             <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-1">{change.relativePath}</span>
             {change.conflicted && onResolveConflicts
               ? <button type="button" onClick={(event) => { event.preventDefault(); onResolveConflicts() }} className="gs-badge h-[18px] text-[10.5px] text-danger underline-offset-2 hover:underline">conflict · resolve…</button>
-              : <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Git Studio' : describe(change.status)}</span>}
+              : <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Project Git' : describe(change.status)}</span>}
           </div>
         ))}
       </div>

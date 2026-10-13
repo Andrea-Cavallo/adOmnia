@@ -24,6 +24,8 @@ import { GoStudioConfigPanel } from './GoStudioConfigPanel'
 import { GoStudioDocsPanel } from './GoStudioDocsPanel'
 import { GoStudioSonarPanel } from './GoStudioSonarPanel'
 import { GoStudioSecurityPanel } from './GoStudioSecurityPanel'
+import { GoStudioGitPanel } from './GoStudioGitPanel'
+import { GoStudioGoPanel } from './GoStudioGoPanel'
 import { GoStudioReferences } from './GoStudioReferences'
 import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
@@ -169,6 +171,8 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   interfaces: 'Interfaces',
   docs: 'Documentation',
   config: 'Config & Environment',
+  git: 'Git',
+  go: 'Go',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -325,6 +329,8 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
       {view === 'errors' && <div className="min-h-0 flex-1"><GoStudioErrorsPanel session={session} /></div>}
       {view === 'fuzz' && <div className="min-h-0 flex-1"><GoStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}
+      {view === 'git' && <div className="min-h-0 flex-1"><GoStudioGitPanel session={session} /></div>}
+      {view === 'go' && <div className="min-h-0 flex-1"><GoStudioGoPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       {!terminalDetached && !logsOnly && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
     </section>

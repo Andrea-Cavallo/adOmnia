@@ -61,7 +61,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
 
   return (
     <div className="flex min-h-0 flex-1">
-      {!zen && <GoStudioLeftStripe sessionId={session.id} onCommit={onCommit} onBookmarks={onBookmarks} />}
+      {!zen && <GoStudioLeftStripe session={session} onCommit={onCommit} onBookmarks={onBookmarks} />}
       {/* Stile Islands: ogni pannello è un'isola; i separatori ridimensionabili sono lo spazio tra le isole. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {error && <div role="alert" className="flex items-center gap-2 p-2 text-xs text-danger"><span className="flex-1">{error}</span><button type="button" onClick={() => useStudioTools.setState({ error: null })}>Dismiss</button></div>}

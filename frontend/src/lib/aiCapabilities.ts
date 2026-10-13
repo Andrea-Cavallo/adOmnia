@@ -48,7 +48,7 @@ export const ADOMNIA_CAPABILITIES: AdomniaCapability[] = [
   { id: 'templates', label: 'Templates', panel: 'templates', aliases: ['template', 'preset'], summary: 'Install and share request, flow, mock and environment templates.' },
   { id: 'plugins', label: 'Plugins', panel: 'plugins', aliases: ['plugin', 'extension', 'javascript'], summary: 'Install and run local JavaScript extensions.' },
   { id: 'themes', label: 'Themes & Skins', panel: 'themes', aliases: ['theme', 'skin', 'appearance'], summary: 'Customize, import and export the interface theme.' },
-  { id: 'git', label: 'Git Sync', panel: 'gitsync', aliases: ['git', 'commit', 'branch', 'sync'], summary: 'Version and synchronize portable workspace files.' },
+  { id: 'git', label: 'Project Git', panel: 'goide', aliases: ['git', 'commit', 'branch', 'sync'], summary: 'Version the repository of the active IDE project.' },
   { id: 'goide', label: 'Go Studio', panel: 'goide', aliases: ['go ide', 'golang', 'go project', 'go studio'], summary: 'Open and register local Go projects behind an explicit tool-execution trust boundary.' },
   { id: 'settings', label: 'Settings', panel: 'settings', aliases: ['setting', 'configuration', 'impostazioni'], summary: 'Configure adOmnia, privacy, defaults and the AI Engine.' },
 ]

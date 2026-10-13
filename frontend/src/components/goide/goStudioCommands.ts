@@ -122,7 +122,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.terminal', menu: 'view', label: 'Terminal', binding: { key: 'F12', alt: true } },
   { id: 'view.tests', menu: 'view', label: 'Tests', binding: { key: '8', alt: true } },
   { id: 'view.todo', menu: 'view', label: 'TODO' },
-  { id: 'view.profile', menu: 'view', label: 'Performance Studio', binding: { key: '0', alt: true } },
+  { id: 'view.profile', menu: 'view', label: 'Go Optimization', binding: { key: '0', alt: true } },
   { id: 'view.trace', menu: 'view', label: 'Go Trace' },
   { id: 'view.sonar', menu: 'view', label: 'SonarQube' },
   { id: 'view.fuzz', menu: 'view', label: 'Fuzzing Studio' },
@@ -256,7 +256,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'vcs.lineHistory', menu: 'git', label: 'Show History for Selection…' },
   { id: 'vcs.annotate', menu: 'git', label: 'Annotate with Git Blame' },
   { id: 'vcs.resolveConflicts', menu: 'git', label: 'Resolve Conflicts…' },
-  { id: 'vcs.gitStudio', menu: 'git', label: 'Push, Pull and Conflicts in Git Studio', separatorBefore: true },
+  { id: 'vcs.gitStudio', menu: 'git', label: 'Open Project Git Tool Window', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
 ]
 
@@ -391,7 +391,7 @@ function runAvailability(context: GoStudioCommandContext): true | string {
 }
 
 /** Calcola se un comando è eseguibile nello stato corrente e, se no, perché. */
-const MAIN_WINDOW_ONLY = new Set<GoStudioCommandId>(['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'vcs.gitStudio'])
+const MAIN_WINDOW_ONLY = new Set<GoStudioCommandId>(['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins'])
 
 function windowAvailability(id: GoStudioCommandId, context: GoStudioCommandContext): true | string | null {
   if (context.detached && MAIN_WINDOW_ONLY.has(id)) return 'Available in the main adOmnia window'

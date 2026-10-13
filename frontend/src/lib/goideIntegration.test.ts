@@ -13,8 +13,9 @@ describe('Go Studio navigation integration', () => {
     expect(ADOMNIA_CAPABILITIES.some((capability) => capability.panel === 'goide')).toBe(true)
   })
 
-  it('does not move existing Git Sync ownership out of Workspace', () => {
+  it('keeps project Git inside Go Studio and leaves collaboration in Workspace', () => {
     const workspace = RAIL_CATEGORIES.find((category) => category.key === 'workspace')
-    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['gitsync', 'collab'])
+    expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['collab'])
+    expect(COMMAND_PALETTE_PANELS.some((feature) => feature.id === 'gitsync')).toBe(false)
   })
 })

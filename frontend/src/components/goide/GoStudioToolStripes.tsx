@@ -1,6 +1,6 @@
 import { GitHubMark } from './GoStudioCopilotStatus'
 import type { ComponentType } from 'react'
-import { Bookmark, Braces, Bug, FlaskConical, Folder, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Bookmark, Braces, Bug, FlaskConical, Folder, GitBranch, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { MilkLogo } from './GoStudioMilkDialog'
 import { ClaudeLogo } from './GoStudioClaudeCode'
 import { useGoIDEStore } from '@/stores/goide'
@@ -10,6 +10,9 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { selectDebugState } from './goStudioDebugCommands'
 import { useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
 import { useToolView } from './studioToolState'
+import type { GoIDESession } from '@/lib/goide-api'
+import { goModules } from '@/lib/goide/goProject'
+import { GoGopherIcon } from './GoGopherIcon'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -71,13 +74,14 @@ function useToolWindowBadges(sessionId: string): Partial<Record<GoIDEToolWindow,
 }
 
 interface GoStudioLeftStripeProps {
-  sessionId: string
+  session: GoIDESession
   onCommit: () => void
   onBookmarks: () => void
 }
 
 /** Barra sinistra: Project, Commit e Bookmarks in alto, le tool window del pannello inferiore in basso. */
-export function GoStudioLeftStripe({ sessionId, onCommit, onBookmarks }: GoStudioLeftStripeProps) {
+export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioLeftStripeProps) {
+  const sessionId = session.id
   const [logsOpen, setLogsOpen] = useToolView(sessionId, 'logs', 'open', false)
   const projectOpen = useGoIDEStore((state) => state.layout.projectOpen)
   const bottomOpen = useGoIDEStore((state) => state.layout.bottomOpen)
@@ -96,6 +100,8 @@ export function GoStudioLeftStripe({ sessionId, onCommit, onBookmarks }: GoStudi
       <StripeButton label="Project" icon={Folder} pressed={projectOpen} onClick={() => updateLayout({ projectOpen: !projectOpen })} />
       <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={onCommit} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={onBookmarks} />
+      <StripeButton label="Git" icon={GitBranch} pressed={bottomOpen && toolWindow === 'git'} onClick={() => toggleToolWindow('git')} />
+      {goModules(session.project).length > 0 && <StripeButton label="Go optimization" icon={GoGopherIcon} pressed={bottomOpen && toolWindow === 'go'} onClick={() => toggleToolWindow('go')} />}
       <div className="flex-1" />
       <StripeButton label="Service logs" icon={ListTree} pressed={logsOpen} onClick={() => setLogsOpen(!logsOpen)} />
       {TOOL_WINDOWS.map((entry) => (

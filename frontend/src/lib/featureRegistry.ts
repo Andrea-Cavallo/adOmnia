@@ -130,14 +130,13 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'workspace', label: 'Workspace', code: 'WORK',
     groups: [
-      { title: 'Versioning', items: ['gitsync'].map((id) => ({ id: id as RailItem })) },
       { title: 'Collaboration', items: ['collab'].map((id) => ({ id: id as RailItem })) },
     ],
   },
 ]
 
 export const COMMAND_PALETTE_PANEL_FEATURES = FEATURE_REGISTRY.filter(
-  (feature) => feature.maturity !== 'deprecated',
+  (feature) => feature.maturity !== 'deprecated' && feature.id !== 'gitsync',
 )
 
 // Discovery gate only: file imports and existing workspace data keep their openers.

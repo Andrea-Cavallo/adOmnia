@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
-import { showModule } from '@/lib/moduleRouting'
+import { useEffect, useState } from 'react'
 import { ChevronDown, GitBranch, GitCommitHorizontal, GitPullRequestArrow } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { dirtyGoIDEDocuments, useGoIDEStore } from '@/stores/goide'
-import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
+import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { useGoIDELspStore } from '@/stores/goideLsp'
 
 const GIT_STUDIO_ITEM = 'open-git-studio'
 const COMMIT_ITEM = 'commit'
@@ -14,15 +14,12 @@ interface GoStudioBranchWidgetProps {
   onCommit: () => void
 }
 
-/**
- * Branch corrente nella toolbar, come nel mock: cambio branch confermato, Commit e rimando a Git Studio
- * per ciò che Go Studio non gestisce (push/pull, conflitti, rebase, stash). Nessuna operazione di rete.
- */
+/** Branch corrente nella toolbar: cambio branch, Commit e apertura del Git workbench del progetto. */
 export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidgetProps) {
   const status = useGoIDEVCSStore((state) => state.status[sessionId] ?? null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   useEffect(() => {
-    void useGoIDEVCSStore.getState().refreshStatus(sessionId).then(() => syncGitStudioToSession(sessionId))
+    void useGoIDEVCSStore.getState().refreshStatus(sessionId)
   }, [sessionId])
   if (!status?.available) return null
 
@@ -30,7 +27,7 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
   const items: ContextMenuItem[] = [
     { id: COMMIT_ITEM, label: changes ? `Commit… (${changes} changed)` : 'Commit…', shortcut: 'Ctrl+K', disabled: changes === 0, disabledReason: 'No local changes', icon: GitCommitHorizontal },
     ...status.branches.map((branch, index) => ({ id: `branch:${branch}`, label: branch, icon: GitBranch, checked: branch === status.branch || undefined, disabled: branch === status.branch, separatorBefore: index === 0 })),
-    { id: GIT_STUDIO_ITEM, label: 'Push, pull, conflicts, rebase, stash → Git Studio', icon: GitPullRequestArrow, separatorBefore: true },
+    { id: GIT_STUDIO_ITEM, label: 'Open Project Git', icon: GitPullRequestArrow, separatorBefore: true },
   ]
 
   const checkout = async (branch: string) => {
@@ -48,7 +45,10 @@ export function GoStudioBranchWidget({ sessionId, onCommit }: GoStudioBranchWidg
   const select = (id: string) => {
     setMenu(null)
     if (id === COMMIT_ITEM) return onCommit()
-    if (id === GIT_STUDIO_ITEM) return showModule('gitsync')
+    if (id === GIT_STUDIO_ITEM) {
+      useGoIDELspStore.getState().showToolWindow('git')
+      return useGoIDEStore.getState().updateLayout({ bottomOpen: true })
+    }
     if (id.startsWith('branch:')) void checkout(id.slice('branch:'.length))
   }
 

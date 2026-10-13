@@ -1,4 +1,4 @@
-import { goProjectLayout } from '@/lib/goide/goProject'
+import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
@@ -134,9 +134,11 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
       </button>
-      <button type="button" onClick={() => showToolWindow('profile')} title="Performance Studio (pprof) · Alt+0" className={`${ITEM} gap-1`}>
-        <Flame size={12} />Profile
-      </button>
+      {goModules(session.project).length > 0 && (
+        <button type="button" onClick={() => showToolWindow('go')} title="Go optimization · profiling, escape analysis, struct layout and tools · Alt+0" className={`${ITEM} gap-1`}>
+          <Flame size={12} />Go
+        </button>
+      )}
       <button type="button" onClick={() => showToolWindow('trace')} title="Go trace (trace.out)" className={`${ITEM} gap-1`}>
         <Activity size={12} />Trace
       </button>

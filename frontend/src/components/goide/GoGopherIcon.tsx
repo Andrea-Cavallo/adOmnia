@@ -1,6 +1,7 @@
 interface GoGopherIconProps {
   size?: number
   className?: string
+  strokeWidth?: number
 }
 
 const BODY = '#7FD3E8'

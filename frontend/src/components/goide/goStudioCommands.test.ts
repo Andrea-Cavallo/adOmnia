@@ -106,9 +106,10 @@ describe('Go Studio command availability', () => {
     const detached = { ...ready, detached: true }
     expect(commandAvailability('window.moveBack', detached)).toBe(true)
     expect(commandAvailability('window.openInNewWindow', detached)).toMatch(/single project/)
-    for (const id of ['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'vcs.gitStudio'] as const) {
+    for (const id of ['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins'] as const) {
       expect(commandAvailability(id, detached)).toMatch(/main adOmnia window/)
     }
+    expect(commandAvailability('vcs.gitStudio', detached)).toBe(true)
     expect(commandAvailability('file.closeProject', detached)).toMatch(/Move the project back/)
     expect(commandAvailability('file.closeProject', ready)).toBe(true)
     expect(commandAvailability('file.closeProject', { ...ready, ownedElsewhere: true })).toMatch(/separate window/)

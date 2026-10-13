@@ -52,7 +52,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.terminal': lsp.showToolWindow('terminal'); return true
     case 'view.tests': lsp.showToolWindow('tests'); return true
     case 'view.todo': lsp.showToolWindow('todo'); return true
-    case 'view.profile': lsp.showToolWindow('profile'); return true
+    case 'view.profile': lsp.showToolWindow('go'); return true
     case 'view.trace': lsp.showToolWindow('trace'); return true
     case 'view.sonar': lsp.showToolWindow('sonar'); return true
     case 'view.fuzz': lsp.showToolWindow('fuzz'); return true

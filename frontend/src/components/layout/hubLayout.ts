@@ -8,11 +8,11 @@ export interface HubLayout {
 
 const KEY = 'adomnia.hubLayout'
 export const DEFAULT_HUB_LAYOUT: HubLayout = {
-  tiles: ['goide', 'collections', 'database', 'jsonviewer', 'gitsync', 'powertools'],
+  tiles: ['goide', 'collections', 'database', 'jsonviewer', 'powertools'],
   todaySide: 'right',
 }
 /** Rails that make no sense as a Hub tile. */
-export const HUB_EXCLUDED = new Set<RailItem>(['welcome', 'settings'])
+export const HUB_EXCLUDED = new Set<RailItem>(['welcome', 'settings', 'gitsync'])
 
 export function parseHubLayout(raw: string | null): HubLayout {
   try {

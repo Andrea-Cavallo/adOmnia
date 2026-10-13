@@ -1,7 +1,7 @@
-import { showModule } from '@/lib/moduleRouting'
 import type { GoIDEEditorDocument } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
-import { syncGitStudioToSession, useGoIDEVCSStore } from '@/stores/goideVcs'
+import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { useGoIDEStore } from '@/stores/goide'
 import type { GoStudioCommandId } from './goStudioCommands'
 
 export type GoStudioVcsDialog = 'commit' | 'history' | 'lineHistory' | 'conflicts' | null
@@ -14,9 +14,10 @@ export function runVcsCommand(id: GoStudioCommandId, sessionId: string | null, d
     case 'vcs.lineHistory': openDialog('lineHistory'); return true
     case 'vcs.resolveConflicts': openDialog('conflicts'); return true
     case 'vcs.gitStudio':
-      // Git Studio si apre sul repository del progetto, anche se prima era stato scelto a mano un altro.
-      if (sessionId) syncGitStudioToSession(sessionId, true)
-      showModule('gitsync')
+      if (sessionId) {
+        useGoIDELspStore.getState().showToolWindow('git')
+        useGoIDEStore.getState().updateLayout({ bottomOpen: true })
+      }
       return true
     case 'vcs.annotate':
       if (sessionId && document) {

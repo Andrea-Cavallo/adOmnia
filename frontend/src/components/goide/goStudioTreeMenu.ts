@@ -129,7 +129,7 @@ function historyItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): C
         { id: 'gitHistory', label: 'Show File History…', icon: History },
         { id: 'gitAnnotate', label: 'Annotate with Git Blame' },
       ]),
-      { id: 'gitStudio', label: 'Open Git Studio', icon: GitBranch, separatorBefore: true },
+      { id: 'gitStudio', label: 'Open Project Git', icon: GitBranch, separatorBefore: true },
     ],
   }]
 }
