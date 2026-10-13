@@ -194,6 +194,17 @@ func FileAtCommit(repoPath, ref, path string) (string, error) {
 	return readFileAtRef(repoPath, ref, path)
 }
 
+// FileExistsAtCommit distingue un file vuoto da un percorso assente nella revisione.
+func FileExistsAtCommit(repoPath, ref, path string) bool {
+	ref = strings.TrimSpace(ref)
+	path = strings.TrimSpace(path)
+	if ref == "" || path == "" || strings.HasPrefix(ref, "-") {
+		return false
+	}
+	_, err := runGit(repoPath, "cat-file", "-e", ref+":"+path)
+	return err == nil
+}
+
 // FileHistory returns the commits that touched a path (rename-following).
 func FileHistory(repoPath, path string, n int) ([]CommitInfo, error) {
 	path = strings.TrimSpace(path)

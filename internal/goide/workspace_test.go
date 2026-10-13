@@ -29,6 +29,33 @@ func TestOpenProjectDoesNotAuthorizeTooling(t *testing.T) {
 	}
 }
 
+func TestOpenProjectFromCmdUsesNearestGoModuleRoot(t *testing.T) {
+	root := t.TempDir()
+	cmd := filepath.Join(root, "cmd", "server")
+	if err := os.MkdirAll(cmd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/cmdapp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmd, "main.go"), []byte("package main\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewWorkspaceManager(newLanguageRegistry())
+	session, err := manager.OpenProject(cmd, DefaultStudioWorkspaceID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.Project.RootPath != root || session.Project.RealPath != root {
+		t.Fatalf("root = %q / %q, want %q", session.Project.RootPath, session.Project.RealPath, root)
+	}
+	layout := goLayoutOf(session.Project)
+	if layout.GoModPath != filepath.Join(root, "go.mod") || len(layout.Modules) != 1 || layout.Modules[0].ModulePath != "example.test/cmdapp" {
+		t.Fatalf("layout = %+v", layout)
+	}
+}
+
 // I campi Go legacy di Project devono restare identici a quelli derivati dalle unità dell'adapter.
 func TestInspectProjectDerivesLegacyGoFieldsFromUnits(t *testing.T) {
 	root := t.TempDir()

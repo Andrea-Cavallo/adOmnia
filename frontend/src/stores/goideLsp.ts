@@ -142,9 +142,9 @@ interface GoIDELspState {
   /** Change Signature aperto sulla firma letta dal cursore. */
   changeSignatureRequest: { sessionId: string; documentId: string; signature: GoStudioSignature } | null
   renameRequest: { sessionId: string; documentId: string; line: number; column: number } | null
-  findRequest: { token: number; query: string; include?: string } | null
-  /** Apre Find in Files; include limita la ricerca, es. "internal/api/**" per Find in Folder. */
-  requestFind: (query: string, include?: string) => void
+  findRequest: { token: number; query: string; include?: string; focus?: 'find' | 'replace' } | null
+  /** Apre Find in Files; include limita la ricerca, es. "internal/api/**" per Find in Folder. focus porta il cursore sul campo Replace. */
+  requestFind: (query: string, include?: string, focus?: 'find' | 'replace') => void
   /** Nuovo terminale nella cartella indicata (relativa al progetto), da Open In → Terminal dell'albero. */
   terminalRequest: { token: number; workingDirectory: string } | null
   requestTerminal: (workingDirectory: string) => void
@@ -248,8 +248,8 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   findRequest: null,
   terminalRequest: null,
 
-  requestFind: (query, include) => {
-    set((state) => ({ findRequest: { token: (state.findRequest?.token ?? 0) + 1, query, include } }))
+  requestFind: (query, include, focus) => {
+    set((state) => ({ findRequest: { token: (state.findRequest?.token ?? 0) + 1, query, include, focus } }))
     get().showToolWindow('find')
   },
 

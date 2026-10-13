@@ -1,3 +1,8 @@
+import { Events } from '@wailsio/runtime'
+import { confirm } from '@/lib/confirmDialog'
+import { StartDevContainer, StopRun } from '../../../bindings/adomnia/goide'
+import { GoStudioButton } from './GoStudioModal'
+import { useGoIDEStore } from '@/stores/goide'
 import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { GoIDERunConfigurationKind, listGoIDERemoteTargets, type GoIDERemoteTarget, type GoIDERunConfiguration } from '@/lib/goide-api'
@@ -31,6 +36,26 @@ interface GoStudioRunTargetProps {
 export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
   const [targets, setTargets] = useState<GoIDERemoteTarget[]>([])
   const [loading, setLoading] = useState(false)
+  const [devBusy,setDevBusy]=useState(false)
+  const [devRun,setDevRun]=useState<string|null>(null)
+  const [devResult,setDevResult]=useState<{runId:string;target:GoIDERemoteTarget;error?:string}|null>(null)
+  useEffect(()=>Events.On('goide:event',event=>{
+    const detail=event.data as {type:string;sessionId:string;payload:{runId:string;target:GoIDERemoteTarget;error?:string}}
+    if(detail.type==='devcontainer.ready' && detail.sessionId===draft.sessionId) setDevResult(detail.payload)
+  }),[draft.sessionId])
+  useEffect(()=>{
+    if(!devRun || devResult?.runId!==devRun) return
+    setDevBusy(false);setDevRun(null);setDevResult(null)
+    if(devResult.error) setContainerError(devResult.error)
+    else patch({remote:devResult.target})
+  },[devRun,devResult])
+  const startDev=async()=> {
+    if(!await confirm({title:'Start dev container?',message:'The project configuration can build images, download features, mount files and execute lifecycle scripts. Docker and a locally installed Dev Container CLI are required.',confirmLabel:'Start dev container'})) return
+    setDevBusy(true);setDevRun(null);setDevResult(null);setContainerError('')
+    try { const run=await StartDevContainer(draft.sessionId);setDevRun(run.id);useGoIDEStore.getState().updateLayout({bottomOpen:true}) }
+    catch(error){setContainerError(String(error));setDevBusy(false)}
+  }
+
   const [container,setContainer] = useState<ContainerInfo | null>(null)
   const [containerError,setContainerError] = useState('')
   const remote = (draft.remote ?? undefined) as GoIDERemoteTarget | undefined
@@ -58,6 +83,11 @@ export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
 
   return (
     <>
+      <div className="col-span-2 flex items-center gap-2">
+        <GoStudioButton disabled={devBusy} onClick={()=>void startDev()}>Start dev container</GoStudioButton>
+        {devBusy && <span className="gs-hint">Starting dev container…</span>}
+        {devBusy && devRun && <GoStudioButton onClick={()=>void StopRun(devRun).catch(error=>setContainerError(String(error)))}>Cancel startup</GoStudioButton>}
+      </div>
       <label className="gs-field-label">
         Run on
         <span className="flex items-center gap-1.5">
@@ -65,7 +95,7 @@ export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
             value={remote ? keyOf(remote) : ''}
             onChange={(event) => {
               const picked = options.find((item) => keyOf(item) === event.target.value)
-              setRemote(picked ? { kind: picked.kind, name: picked.name, directory: remote?.kind === picked.kind ? remote.directory : '' } : undefined)
+              setRemote(picked ? { ...picked, ...(remote && keyOf(remote)===keyOf(picked) ? remote : {}), directory: remote && keyOf(remote)===keyOf(picked) ? remote.directory : picked.directory } : undefined)
             }}
             className="gs-input min-w-0 flex-1"
           >
@@ -100,6 +130,7 @@ export function GoStudioRunTarget({ draft, patch }: GoStudioRunTargetProps) {
         {container.ports.map((port,index)=><p key={index} className="gs-mono">{port.container} → {port.host || '0.0.0.0'}:{port.port}</p>)}
       </div>}
       {containerError && <p className="col-span-2 text-[11px] text-warning">{containerError}</p>}
+      {remote?.devContainerConfig && <p className="gs-hint col-span-2">Dev Container CLI exec applies remoteUser, remoteEnv and userEnvProbe from the project configuration. Custom run environment overrides are passed to the CLI; values are omitted from the displayed command.</p>}
       {remote && (
         <p className="gs-hint col-span-2 -mt-2">
           {remote.kind === 'wsl' && 'Runs with the Go toolchain installed in the distro. Paths are translated automatically.'}

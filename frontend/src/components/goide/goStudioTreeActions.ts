@@ -7,6 +7,9 @@ import { useGoIDELspStore } from '@/stores/goideLsp'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { absolutePath, baseName, duplicateName, joinRelative, parentOf } from './goStudioFileActions'
 import { moduleScopeFor, quickRunFor } from './goStudioQuickActions'
+import { pullGoIDERepository, pushGoIDERepository, revertGoIDEFiles, stageGoIDEFiles, type GoIDEVCSFileChange } from '@/lib/goide-vcs-api'
+import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import { confirm } from '@/lib/confirmDialog'
 
 /** Placeholder di file usato per chiedere il package di una cartella a moduleScopeFor, che ragiona per file. */
 const DIRECTORY_PROBE = '.'
@@ -88,6 +91,103 @@ function isInside(path: string, ancestor: string): boolean {
   return path === ancestor || path.startsWith(`${ancestor}/`)
 }
 
+/** Destinazione di un drop nel Project tree. Null significa drop non valido o nessuno spostamento. */
+export function treeDropDestination(source: string, targetFolder: string): string | null {
+  const normalizedSource = source.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  const normalizedTarget = targetFolder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  if (!normalizedSource || isInside(normalizedTarget, normalizedSource)) return null
+  const destination = joinRelative(normalizedTarget, baseName(normalizedSource))
+  return destination === normalizedSource ? null : destination
+}
+
+/** Un file Go cambia package quando cambia cartella: richiede il refactoring semantico, mai un rename cieco. */
+export function requiresSemanticGoMove(source: string, targetFolder: string): boolean {
+  return /\.go$/i.test(source) && parentOf(source) !== targetFolder
+}
+
+/** Drag & drop: sposta un elemento nella cartella scelta senza rinominare o sovrascrivere. */
+export async function moveTreePath(sessionId: string, source: string, targetFolder: string): Promise<boolean> {
+  const destination = treeDropDestination(source, targetFolder)
+  if (!destination) {
+    report(parentOf(source) === targetFolder ? 'The item is already in this folder.' : 'A folder cannot be moved inside itself.')
+    return false
+  }
+  if (requiresSemanticGoMove(source, targetFolder)) {
+    report('Move Go declarations with Refactor → Move Symbol to Package so imports and references are updated safely.')
+    return false
+  }
+  const store = useGoIDEStore.getState()
+  const dirty = store.documents.filter((item) => item.document.sessionId === sessionId && item.dirty && isInside(item.document.relativePath, source))
+  if (dirty.length > 0) {
+    report(`Save or discard the changes in ${dirty.map((item) => item.document.relativePath).join(', ')} before moving it.`)
+    return false
+  }
+  await store.loadDirectory(targetFolder)
+  const siblings = useGoIDEStore.getState().directoryEntries[sessionId]?.[targetFolder] ?? []
+  if (siblings.some((entry) => entry.name === baseName(source))) {
+    report(`${destination} already exists. Rename one of the items before moving it.`)
+    return false
+  }
+  try {
+    const open = store.documents.filter((item) => item.document.sessionId === sessionId && isInside(item.document.relativePath, source))
+    for (const item of open) await store.closeDocument(item.document.id)
+    await moveGoIDEPath(sessionId, source, destination)
+    await Promise.all([store.loadDirectory(parentOf(source)), store.loadDirectory(targetFolder)])
+    report(`Moved ${source} to ${destination}`)
+    return true
+  } catch (error) {
+    reportError(error)
+    return false
+  }
+}
+
+export function gitChangesUnder(changes: GoIDEVCSFileChange[], relativePath: string, directory: boolean): GoIDEVCSFileChange[] {
+  if (!relativePath) return changes
+  const prefix = `${relativePath}/`
+  return changes.filter((change) => change.relativePath === relativePath || (directory && change.relativePath.startsWith(prefix)))
+}
+
+/** Operazioni Git del menu Project. Resta tutto nel repository locale salvo Pull/Push espliciti. */
+export async function runTreeGitAction(sessionId: string, id: 'stage' | 'unstage' | 'revert' | 'pull' | 'push', relativePath: string, directory: boolean): Promise<void> {
+  const vcs = useGoIDEVCSStore.getState()
+  const status = vcs.status[sessionId]
+  if (!status?.available) return report('This project is not in a Git repository.')
+  try {
+    if (id === 'pull') {
+      await pullGoIDERepository(sessionId)
+      await Promise.all([vcs.refreshStatus(sessionId), useGoIDEStore.getState().refreshProject()])
+      return report('Pull completed.')
+    }
+    if (id === 'push') {
+      const accepted = await confirm({ title: 'Push current branch?', message: `Publish ${status.branch || 'the current branch'} to origin.`, confirmLabel: 'Push' })
+      if (!accepted) return
+      await pushGoIDERepository(sessionId)
+      await vcs.refreshStatus(sessionId)
+      return report('Push completed.')
+    }
+    const selected = gitChangesUnder(status.changes, relativePath, directory)
+    if (selected.length === 0) return report('No Git changes in this selection.')
+    const paths = selected.map((change) => change.relativePath)
+    if (id === 'revert') {
+      const accepted = await confirm({
+        title: `Revert ${paths.length === 1 ? paths[0] : `${paths.length} files`}?`,
+        message: 'Local changes will be replaced with HEAD. New files will be removed from disk and kept in Local History.',
+        details: paths.slice(0, 8).map((path) => ({ label: 'File', value: path, mono: true })),
+        confirmLabel: 'Revert', variant: 'danger',
+      })
+      if (!accepted) return
+      await revertGoIDEFiles(sessionId, paths)
+      await Promise.all([vcs.refreshStatus(sessionId), useGoIDEStore.getState().refreshProject(relativePath && !directory ? parentOf(relativePath) : relativePath)])
+      return report(`Reverted ${paths.length} file(s).`)
+    }
+    await stageGoIDEFiles(sessionId, paths, id === 'stage')
+    await vcs.refreshStatus(sessionId)
+    report(`${id === 'stage' ? 'Staged' : 'Unstaged'} ${paths.length} file(s).`)
+  } catch (error) {
+    reportError(error)
+  }
+}
+
 /** Incolla nella cartella: Copy duplica, Cut sposta. Non sovrascrive mai: in caso di nome occupato ne sceglie uno libero. */
 export async function pasteInto(sessionId: string, folder: string): Promise<void> {
   const { clipboard, setClipboard } = useGoStudioTreeClipboard.getState()
@@ -151,6 +251,28 @@ export async function runPackageCommand(session: GoIDESession, relativePath: str
 /** Find in Files limitato alla cartella, come "Find in Folder…" di IntelliJ. */
 export function findInFolder(relativePath: string): void {
   useGoIDELspStore.getState().requestFind('', relativePath ? `${relativePath}/**` : '')
+}
+
+/** "Repair IDE on File": riavvia gopls (ricostruisce l'indice) e rilegge il progetto, come Invalidate Caches di JetBrains. */
+export async function repairIde(sessionId: string, relativePath: string, directory: boolean): Promise<void> {
+  await useGoIDELspStore.getState().restart(sessionId)
+  await useGoIDEStore.getState().refreshProject(directory ? relativePath : '')
+}
+
+/** Find in Files globale, come "Find in Files…" di IntelliJ. */
+export function findInFiles(): void {
+  useGoIDELspStore.getState().requestFind('')
+}
+
+/** Replace in Files globale: apre Find in Files con il campo sostituzione pronto. */
+export function replaceInFiles(): void {
+  useGoIDELspStore.getState().requestFind('', undefined, 'replace')
+}
+
+/** Apre un file HTML nella preview integrata (browser), come "Open In → Browser". */
+export async function previewHtml(relativePath: string): Promise<void> {
+  await useGoIDEStore.getState().openDocument(relativePath)
+  useGoIDEStore.getState().requestHtmlPreview('preview')
 }
 
 /** Nuovo terminale già posizionato nella cartella. */

@@ -312,3 +312,77 @@ func (s *Service) VCSCheckout(sessionID, branch string) error {
 	}
 	return fmt.Errorf("branch locale %q non trovato", branch)
 }
+
+// VCSStage aggiunge o rimuove dall'index i percorsi selezionati, senza committare.
+func (s *Service) VCSStage(sessionID string, relativePaths []string, staged bool) error {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return err
+	}
+	if len(relativePaths) == 0 {
+		return fmt.Errorf("nessun file selezionato")
+	}
+	for _, relativePath := range relativePaths {
+		repoPath, err := paths.toRepo(relativePath)
+		if err != nil {
+			return err
+		}
+		if staged {
+			err = git.StageFile(paths.repoRoot, repoPath)
+		} else {
+			err = git.UnstageFile(paths.repoRoot, repoPath)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VCSRevert ripristina i file tracciati da HEAD e rimuove i nuovi file dopo averli salvati
+// nella Local History. La UI chiede conferma prima di chiamare questa operazione distruttiva.
+func (s *Service) VCSRevert(sessionID string, relativePaths []string) error {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return err
+	}
+	if len(relativePaths) == 0 {
+		return fmt.Errorf("nessun file selezionato")
+	}
+	for _, relativePath := range relativePaths {
+		repoPath, err := paths.toRepo(relativePath)
+		if err != nil {
+			return err
+		}
+		existedAtHead := git.FileExistsAtCommit(paths.repoRoot, "HEAD", repoPath)
+		_ = git.UnstageFile(paths.repoRoot, repoPath)
+		if !existedAtHead {
+			if err := s.DeletePath(sessionID, relativePath); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := git.RestoreFile(paths.repoRoot, repoPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VCSPull aggiorna il branch corrente con rebase+autostash. È chiamato solo da un gesto esplicito.
+func (s *Service) VCSPull(sessionID string) error {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return err
+	}
+	return git.Pull(paths.repoRoot, "")
+}
+
+// VCSPush pubblica il branch corrente su origin. È chiamato solo da un gesto esplicito.
+func (s *Service) VCSPush(sessionID string) error {
+	_, paths, err := s.vcsPaths(sessionID)
+	if err != nil {
+		return err
+	}
+	return git.Push(paths.repoRoot, "")
+}

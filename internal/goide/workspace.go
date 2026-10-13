@@ -193,6 +193,18 @@ func resolveProjectRoot(path string) (string, string, error) {
 	if !info.IsDir() {
 		return "", "", fmt.Errorf("il percorso selezionato non è una cartella")
 	}
+	// Se l'utente apre cmd/server o un altro package, usa il modulo/workspace Go più vicino
+	// come radice del progetto. La posizione di main.go non partecipa alla detection.
+	for current := abs; ; current = filepath.Dir(current) {
+		if fileExists(filepath.Join(current, "go.mod")) || fileExists(filepath.Join(current, "go.work")) {
+			abs = current
+			break
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+	}
 	directory, err := os.Open(abs)
 	if err != nil {
 		return "", "", fmt.Errorf("la cartella del progetto non è accessibile: %w", err)
@@ -210,6 +222,11 @@ func resolveProjectRoot(path string) (string, string, error) {
 		return "", "", fmt.Errorf("impossibile risolvere la cartella del progetto: %w", err)
 	}
 	return abs, realRoot, nil
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // inspectProject chiede ai language adapter le unità del progetto, senza eseguire comandi.

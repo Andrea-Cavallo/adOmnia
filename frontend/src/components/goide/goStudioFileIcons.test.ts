@@ -45,6 +45,8 @@ describe('Go Studio file icons', () => {
     expect(brand('.env.local')).toEqual({ kind: 'brand', slug: 'dotenv' })
     expect(brand('openapi.yaml')).toEqual({ kind: 'brand', slug: 'openapiinitiative' })
     expect(brand('Makefile')).toEqual({ kind: 'brand', slug: 'make' })
+    expect(brand('CLAUDE.md')).toEqual({ kind: 'brand', slug: 'claude' })
+    expect(brand('claude.md')).toEqual({ kind: 'brand', slug: 'claude' })
   })
 
   it('uses brands for known formats and generic icons for everything without an identity', () => {

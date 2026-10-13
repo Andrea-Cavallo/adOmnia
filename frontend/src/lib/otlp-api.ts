@@ -54,6 +54,8 @@ async function call<T>(port: number | null, path: string, body?: unknown): Promi
 }
 
 export interface OtlpLensStat {
+  cacheHits?: number
+  cacheMisses?: number
   file: string
   line: number
   function?: string

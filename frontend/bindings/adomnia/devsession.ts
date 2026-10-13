@@ -25,6 +25,18 @@ export function BeginRequest(request: devsession$0.BeginRequest): $CancellablePr
     });
 }
 
+export function CaptureGoroutines(runID: string, sessionID: string): $CancellablePromise<devsession$0.RequestRun> {
+    return $Call.ByID(1511938536, runID, sessionID).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function EndRPC(runID: string, status: string, durationMs: number, errText: string): $CancellablePromise<devsession$0.RequestRun> {
+    return $Call.ByID(3287696391, runID, status, durationMs, errText).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 /**
  * EndRequest records the HTTP outcome of a request run.
  */

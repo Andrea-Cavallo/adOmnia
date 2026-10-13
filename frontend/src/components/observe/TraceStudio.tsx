@@ -1,3 +1,4 @@
+import { RetryPolicyLink } from './RetryPolicyLink'
 import { armDistributedDebug } from './distributedDebug'
 import { confirm } from '@/lib/confirmDialog'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -110,6 +111,7 @@ function SpanDetail({ span, insight, spans, select }: { span: OtlpSpan; insight?
           <Code2 size={12} aria-hidden="true" /> <span className="truncate">Open {source.function ?? 'source'} · {source.file.split(/[\\/]/).pop()}:{source.line}</span>
         </button>
       )}
+      {!!insight?.retry && <RetryPolicyLink span={span} spans={spans} />}
       {source && <BreakHere file={source.file} line={source.line} />}
       <button type="button" onClick={() => openTraceLogs(span.traceId)} title="Log Inspector filtered on traceId: the service logs must carry it (trace_id / traceId field)" className="flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent">
         <ScrollText size={12} aria-hidden="true" /> Logs of this trace

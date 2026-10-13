@@ -77,6 +77,8 @@ export class PublishedPort {
  * e Directory, la radice del progetto vista dall'ambiente remoto (vuota per WSL = calcolata).
  */
 export class Target {
+    "user"?: string;
+    "devContainerConfig"?: string;
     "kind": string;
     "name": string;
     "directory"?: string;

@@ -820,6 +820,32 @@ func (g *GoIDE) VCSCheckout(sessionID, branch string) error {
 	return g.service.VCSCheckout(sessionID, branch)
 }
 
+// VCSStage aggiunge o rimuove file dall'index Git.
+func (g *GoIDE) VCSStage(sessionID string, relativePaths []string, staged bool) error {
+	return g.service.VCSStage(sessionID, relativePaths, staged)
+}
+
+// VCSRevert scarta le modifiche dei file selezionati dopo conferma nella UI.
+func (g *GoIDE) VCSRevert(sessionID string, relativePaths []string) error {
+	return g.service.VCSRevert(sessionID, relativePaths)
+}
+
+// VCSPull aggiorna il branch corrente da origin.
+func (g *GoIDE) VCSPull(sessionID string) error { return g.service.VCSPull(sessionID) }
+
+// VCSPush pubblica il branch corrente su origin.
+func (g *GoIDE) VCSPush(sessionID string) error { return g.service.VCSPush(sessionID) }
+
+// ComparePaths confronta due file di testo o due cartelle del progetto.
+func (g *GoIDE) ComparePaths(sessionID, leftRelativePath, rightRelativePath string) (goide.PathComparison, error) {
+	return g.service.ComparePaths(sessionID, leftRelativePath, rightRelativePath)
+}
+
+// CreateGist pubblica un file tramite GitHub CLI dopo la conferma nel frontend.
+func (g *GoIDE) CreateGist(sessionID, relativePath, description string, public bool) (string, error) {
+	return g.service.CreateGist(sessionID, relativePath, description, public)
+}
+
 // StartRun avvia una build, run o tidy con argomenti strutturati.
 func (g *GoIDE) StartRun(request goide.RunRequest) (goide.Execution, error) {
 	return g.service.StartRun(request)

@@ -7,22 +7,24 @@ import (
 
 // LensStat is the runtime summary of the spans started at one source location.
 type LensStat struct {
-	File     string  `json:"file"`
-	Line     int     `json:"line"`
-	Function string  `json:"function,omitempty"`
-	Name     string  `json:"name"`
-	Count    int     `json:"count"`
-	Errors   int     `json:"errors"`
-	Retries  int     `json:"retries"`
-	AvgMs    float64 `json:"avgMs"`
-	P50Ms    float64 `json:"p50Ms"`
-	P95Ms    float64 `json:"p95Ms"`
-	P99Ms    float64 `json:"p99Ms"`
-	MaxMs    float64 `json:"maxMs"`
-	LastMs   float64 `json:"lastMs"`
-	FirstMs  float64 `json:"firstMs"`
-	Kind     string  `json:"kind"`
-	Category string  `json:"category"`
+	CacheHits   int     `json:"cacheHits"`
+	CacheMisses int     `json:"cacheMisses"`
+	File        string  `json:"file"`
+	Line        int     `json:"line"`
+	Function    string  `json:"function,omitempty"`
+	Name        string  `json:"name"`
+	Count       int     `json:"count"`
+	Errors      int     `json:"errors"`
+	Retries     int     `json:"retries"`
+	AvgMs       float64 `json:"avgMs"`
+	P50Ms       float64 `json:"p50Ms"`
+	P95Ms       float64 `json:"p95Ms"`
+	P99Ms       float64 `json:"p99Ms"`
+	MaxMs       float64 `json:"maxMs"`
+	LastMs      float64 `json:"lastMs"`
+	FirstMs     float64 `json:"firstMs"`
+	Kind        string  `json:"kind"`
+	Category    string  `json:"category"`
 }
 
 // percentile reads a sorted slice with the nearest-rank method.
@@ -76,6 +78,12 @@ func (s *Store) Lens() []LensStat {
 			}
 			b.durations = append(b.durations, span.DurationMs)
 			b.stat.Count++
+			switch cacheOutcome(span.Attributes) {
+			case "hit":
+				b.stat.CacheHits++
+			case "miss":
+				b.stat.CacheMisses++
+			}
 			if span.StatusCode == "ERROR" {
 				b.stat.Errors++
 			}
@@ -110,4 +118,24 @@ func (s *Store) Lens() []LensStat {
 		return out[i].Line < out[j].Line
 	})
 	return out
+}
+
+// Explicit application attributes only: a database span is not proof of a hit or miss.
+func cacheOutcome(attrs map[string]string) string {
+	for _, key := range []string{"adomnia.cache.hit", "cache.hit", "app.cache.hit"} {
+		if value, ok := attrs[key]; ok {
+			if hit, e := strconv.ParseBool(value); e == nil {
+				if hit {
+					return "hit"
+				}
+				return "miss"
+			}
+		}
+	}
+	for _, key := range []string{"adomnia.cache.result", "cache.result", "app.cache.result"} {
+		if value := attrs[key]; value == "hit" || value == "miss" {
+			return value
+		}
+	}
+	return ""
 }

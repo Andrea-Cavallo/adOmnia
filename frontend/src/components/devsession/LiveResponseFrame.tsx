@@ -1,3 +1,4 @@
+import { RequestGoroutines } from './RequestGoroutines'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
@@ -17,7 +18,7 @@ import { SaveReproductionButton } from './RequestContextView'
 import { profileRequest } from '@/lib/devsession/profileRequest'
 import { raceRequest } from '@/lib/devsession/raceRequest'
 
-type LiveTab = 'response' | 'logs' | 'debug' | 'timeline' | 'db' | 'kafka'
+type LiveTab = 'response' | 'logs' | 'debug' | 'timeline' | 'db' | 'kafka' | 'goroutines'
 
 const PROGRESS_STEPS: Array<{ step: DebugRequestProgress['step']; label: string }> = [
   { step: 'service', label: 'Service' },
@@ -53,7 +54,7 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div role="tablist" aria-label="Live request views" className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-border-1 bg-surface-1 px-2 text-[11px] [scrollbar-width:none]">
         {session && <span className="mr-2 flex items-center gap-1.5 text-text-3" title={`${session.service} · live session`}><LiveDot session={session} />{session.service}</span>}
-        {(['response', 'logs', 'debug', 'timeline', 'db', 'kafka'] as const).map((id) => (
+        {(['response', 'logs', 'debug', 'timeline', 'db', 'kafka', 'goroutines'] as const).map((id) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
             className={cn('relative h-8 shrink-0 px-2.5 transition-colors', tab === id ? 'text-text-1' : 'text-text-3 hover:text-text-2')}>
             {TAB_LABEL[id](run)}
@@ -61,7 +62,7 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
           </button>
         ))}
         {inFlight && <span className="ml-auto flex items-center gap-1 text-text-4"><Loader2 size={11} className="animate-spin" />in flight</span>}
-        {!inFlight && run.completedAt && <span className="ml-auto flex shrink-0 items-center gap-1">{session && !session.endedAt && <>
+        {!inFlight && run.completedAt && run.protocol !== 'grpc' && <span className="ml-auto flex shrink-0 items-center gap-1">{session && !session.endedAt && <>
           <LiveActionButton label="Profile this request" icon={<Flame size={11} />} action={(progress) => profileRequest(run, session, progress)}
             hint="Profile this request: a CPU profile from /debug/pprof while the same request is sent again for a few seconds (the service needs net/http/pprof)" />
           {session.kind === 'run' && <LiveActionButton label="Re-run with race detector" icon={<Zap size={11} />} action={() => raceRequest(run, session)}
@@ -99,6 +100,7 @@ const TAB_LABEL: Record<LiveTab, (run: RequestRun) => string> = {
   debug: (run) => `Debug${run.hits.length ? ` ${run.hits.length}` : ''}`,
   timeline: () => 'Timeline',
   db: (run) => `DB${run.queries ? ` ${run.queries}` : ''}`,
+  goroutines: () => 'Goroutines',
   kafka: (run) => `Kafka${run.messages ? ` ${run.messages}` : ''}`,
 }
 
@@ -121,6 +123,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
   const queries = useMemo(() => mergeBy(fetched?.queries ?? [], storeQueries.filter((q) => q.requestRunId === run.id), (q) => q.id), [fetched, storeQueries, run.id])
   const messages = useMemo(() => mergeBy(fetched?.messages ?? [], storeMessages.filter((m) => m.requestRunId === run.id), (m) => m.id), [fetched, storeMessages, run.id])
 
+  if (tab === 'goroutines') return <RequestGoroutines run={run} />
   if (tab === 'logs') {
     return (
       <LiveLogList entries={logs} goSessionId={session?.goSessionId} ownerSessionId={run.sessionId} empty={`No log line tied to this request yet. Lines that carry ${run.correlationId}, or are logged while it is in flight, appear here.`}
@@ -214,10 +217,11 @@ function PausedCard({ run, session }: { run: RequestRun; session: LiveSession })
         <ActionButton onClick={() => void step(session.id, 'continue')} title="F9"><Play size={12} fill="currentColor" />Continue</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'next')} title="F8"><Redo2 size={13} />Step Over</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'stepIn')} title="F7"><ArrowDownToLine size={13} />Step Into</ActionButton>
-        <ActionButton onClick={() => openSplit(run.tabId ?? null)}><Columns2 size={13} />Split view</ActionButton>
-        {run.tabId && <ActionButton title="Send the same request again from a copy of this tab (edit its body first if needed)" onClick={() => replay(run.tabId!)}><RotateCcw size={12} />Replay</ActionButton>}
+        {run.protocol !== 'grpc' && <ActionButton onClick={() => openSplit(run.tabId ?? null)}><Columns2 size={13} />Split view</ActionButton>}
+        {run.tabId && run.protocol !== 'grpc' && <ActionButton title="Send the same request again from a copy of this tab (edit its body first if needed)" onClick={() => replay(run.tabId!)}><RotateCcw size={12} />Replay</ActionButton>}
         <ActionButton tone="danger" onClick={() => void stop(session.id)}><Square size={10} fill="currentColor" />Stop</ActionButton>
       </div>
+      <div className="w-full max-w-2xl max-h-64 overflow-auto"><RequestGoroutines run={run} /></div>
       <p className="text-[12px] text-text-4">Waiting for debugger… the response arrives when execution resumes.</p>
       {hit?.confidence === 'probable' && <p className="max-w-md text-center text-[11px] text-text-4">Several requests were in flight when the debugger stopped: this is the most recent one.</p>}
     </div>

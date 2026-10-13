@@ -58,6 +58,15 @@ export type GoIDESessionView = SessionView
 export type GoIDERecoveredBuffer = RecoveredBuffer
 export type GoIDETerminalSession = TerminalSession
 export type GoIDETerminalRequest = TerminalRequest
+export interface GoIDEPathDifference { relativePath: string; status: string }
+export interface GoIDEPathComparison {
+  kind: 'file' | 'directory'
+  leftPath: string
+  rightPath: string
+  leftContent?: string
+  rightContent?: string
+  differences: GoIDEPathDifference[]
+}
 /** Payload dell'evento `terminal.output` (goide.TerminalOutput), non generato da Wails perché solo evento. */
 export interface GoIDETerminalOutput {
   terminalId: string
@@ -130,6 +139,14 @@ export async function listGoIDEDirectory(sessionId: string, relativePath = '', i
 
 export async function openGoIDEDocument(sessionId: string, relativePath: string): Promise<GoIDEOpenDocument> {
   return GoIDEBindings.OpenDocument(sessionId, relativePath)
+}
+
+export async function compareGoIDEPaths(sessionId: string, leftPath: string, rightPath: string): Promise<GoIDEPathComparison> {
+  return GoIDEBindings.ComparePaths(sessionId, leftPath, rightPath) as Promise<GoIDEPathComparison>
+}
+
+export async function createGoIDEGist(sessionId: string, relativePath: string, description: string, publicGist: boolean): Promise<string> {
+  return GoIDEBindings.CreateGist(sessionId, relativePath, description, publicGist)
 }
 
 /** Immagine del progetto come data URL, per l'anteprima nell'editor e i link relativi del Markdown. */
@@ -547,6 +564,7 @@ export interface GoIDERemoteTarget {
   kind: 'wsl' | 'ssh' | 'container'
   name: string
   directory?: string
+  devContainerConfig?: string
 }
 
 export async function listGoIDERemoteTargets(): Promise<GoIDERemoteTarget[]> {

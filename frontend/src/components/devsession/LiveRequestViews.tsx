@@ -335,7 +335,7 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
   for (const message of messages) steps.push({ at: message.at, kind: 'message', label: message.topic, detail: `produced · p${message.partition} · offset ${message.offset}` })
   const errors = logs.filter((entry) => entry.level === 'error')
   for (const entry of errors.slice(0, 5)) steps.push({ at: entry.at, kind: 'log', label: entry.text.slice(0, 80), detail: 'error log' })
-  if (run.completedAt) steps.push({ at: run.completedAt, kind: 'response', label: run.state === 'error' ? run.error || 'Failed' : `Response ${run.status}`, detail: `${run.durationMs ?? 0} ms` })
+  if (run.completedAt) steps.push({ at: run.completedAt, kind: 'response', label: run.state === 'error' ? run.error || 'Failed' : run.protocol === 'grpc' ? `gRPC ${run.protocolStatus ?? 'unknown'}` : `Response ${run.status}`, detail: `${run.durationMs ?? 0} ms` })
   steps.sort((a, b) => (a.kind === 'sent' ? -1 : b.kind === 'sent' ? 1 : a.kind === 'response' ? 1 : b.kind === 'response' ? -1 : timeOf(a.at) - timeOf(b.at)))
 
   return (
@@ -377,7 +377,7 @@ export function RequestSummary({ run, onTab }: { run: RequestRun; onTab: (tab: '
   const ok = run.state === 'completed' && (run.status ?? 0) < 400
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-1 bg-surface-1 px-3 py-1.5 text-[11px] text-text-3">
-      <span className={cn('font-semibold', ok ? 'text-success' : 'text-error')}>{run.state === 'error' ? 'Failed' : `${run.status}`}</span>
+      <span className={cn('font-semibold', ok ? 'text-success' : 'text-error')}>{run.protocol === 'grpc' ? `gRPC ${run.protocolStatus ?? 'unknown'}` : run.state === 'error' ? 'Failed' : `${run.status}`}</span>
       <span>{run.durationMs ?? 0} ms</span>
       {path.length > 0 && <button type="button" onClick={() => onTab('timeline')} className="max-w-[40ch] truncate font-mono hover:text-text-1" title={path.join(' → ')}>{path.map(basename).join(' → ')}</button>}
       <button type="button" onClick={() => onTab('db')} className="hover:text-text-1"><Database size={11} className="mr-1 inline" />{run.queries} {run.queries === 1 ? 'query' : 'queries'}</button>

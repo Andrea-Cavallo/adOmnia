@@ -1,5 +1,6 @@
-import { Maximize2, Minimize2, Save } from 'lucide-react'
+import { Maximize2, Minimize2, Redo2, Save, Undo2 } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { activeGoStudioEditor, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 
 interface GoStudioEditorTabActionsProps {
   document: GoIDEEditorDocument
@@ -11,9 +12,12 @@ export function GoStudioEditorTabActions({ document, onSave }: GoStudioEditorTab
   const toggleEditorMaximized = useGoIDEStore((state) => state.toggleEditorMaximized)
   const editorMaximized = useGoIDEStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)
   const canSave = document.dirty && !document.saving && !document.document.readOnly
+  const model = activeGoStudioEditor()?.getModel()
 
   return (
     <div className="flex shrink-0 items-center gap-0.5 pl-1 pr-2">
+      <button type="button" disabled={!model?.canUndo()} onClick={() => runGoStudioEditorCommand('edit.undo')} title="Undo · Ctrl/Cmd+Z" aria-label="Undo" className="go-studio-icon-button h-7 w-7"><Undo2 size={14} /></button>
+      <button type="button" disabled={!model?.canRedo()} onClick={() => runGoStudioEditorCommand('edit.redo')} title="Redo · Ctrl/Cmd+Shift+Z" aria-label="Redo" className="go-studio-icon-button h-7 w-7"><Redo2 size={14} /></button>
       <button
         type="button"
         disabled={!canSave}

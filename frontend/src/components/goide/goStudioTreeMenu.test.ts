@@ -9,7 +9,7 @@ vi.mock('./goStudioQuickActions', async () => {
 })
 
 const { buildTreeMenu, treeKeyAction } = await import('./goStudioTreeMenu')
-const { freeName, goImportPath } = await import('./goStudioTreeActions')
+const { freeName, goImportPath, requiresSemanticGoMove, treeDropDestination } = await import('./goStudioTreeActions')
 
 const file = (relativePath: string): GoIDEFileEntry => ({ name: relativePath.split('/').pop()!, relativePath, directory: false } as GoIDEFileEntry)
 const folder = (relativePath: string): GoIDEFileEntry => ({ name: relativePath.split('/').pop()!, relativePath, directory: true } as GoIDEFileEntry)
@@ -24,6 +24,7 @@ describe('treeKeyAction', () => {
     expect(key('x', { ctrlKey: true })).toBe('cut')
     expect(key('c', { metaKey: true })).toBe('copy')
     expect(key('v', { ctrlKey: true })).toBe('paste')
+    expect(key('d', { ctrlKey: true })).toBe('compareWith')
     expect(key('C', { ctrlKey: true, shiftKey: true })).toBe('copyAbsolutePath')
     expect(key('C', { ctrlKey: true, shiftKey: true, altKey: true })).toBe('copyRelativePath')
     expect(key('F6', { shiftKey: true })).toBe('rename')
@@ -39,10 +40,33 @@ describe('treeKeyAction', () => {
 describe('buildTreeMenu', () => {
   it('offers the full IDE menu on a Go file', () => {
     const menu = ids(buildTreeMenu(file('internal/api/server.go'), context))
-    for (const id of ['open', 'splitRight', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'findUsages', 'inspectCode', 'rename', 'refactorThis', 'moveToNewFile', 'toggleBookmark', 'showBookmarks', 'reformat', 'optimizeImports', 'delete', 'reloadFromDisk', 'testPackage', 'runCurrent', 'debugCurrent', 'terminal', 'reveal', 'localHistory', 'gitHistory']) {
+    for (const id of ['open', 'splitRight', 'newGitignoreGo', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'findUsages', 'inspectCode', 'rename', 'semanticRename', 'refactorThis', 'moveToNewFile', 'moveSymbol', 'copyClasses', 'safeDelete', 'migratePackages', 'toggleBookmark', 'showBookmarks', 'reformat', 'optimizeImports', 'delete', 'reloadFromDisk', 'testPackage', 'runCurrent', 'debugCurrent', 'terminal', 'reveal', 'localHistory', 'gitCommit', 'gitPull', 'gitPush', 'gitStage', 'gitUnstage', 'gitRevert', 'gitDiff', 'gitHistory', 'gitAnnotate', 'gitStudio', 'compareWith', 'createGist', 'diagramDependencies', 'diagramCalls', 'diagramInterfaces']) {
       expect(menu).toContain(id)
     }
     expect(menu).not.toContain('findInFolder')
+  })
+
+  it('offers Repair IDE on File (rebuild index) on files and folders', () => {
+    const onFile = ids(buildTreeMenu(file('main.go'), context))
+    const onFolder = ids(buildTreeMenu(folder('internal'), context))
+    expect(onFile).toContain('repairIde')
+    expect(onFolder).toContain('repairIde')
+  })
+
+  it('offers Find in Files and Replace in Files on files and folders', () => {
+    const onFile = ids(buildTreeMenu(file('README.md'), context))
+    const onFolder = ids(buildTreeMenu(folder('internal'), context))
+    for (const id of ['findInFiles', 'replaceInFiles']) {
+      expect(onFile).toContain(id)
+      expect(onFolder).toContain(id)
+    }
+  })
+
+  it('offers Open in Browser only for HTML files', () => {
+    const html = ids(buildTreeMenu(file('index.html'), context))
+    const go = ids(buildTreeMenu(file('main.go'), context))
+    expect(html).toContain('openInBrowser')
+    expect(go).not.toContain('openInBrowser')
   })
 
   it('shows folder actions and hides file-only ones on a folder', () => {
@@ -53,6 +77,13 @@ describe('buildTreeMenu', () => {
     expect(menu).toContain('runCurrent')
     expect(menu).toContain('debugCurrent')
     expect(menu).toContain('refreshProject')
+    expect(menu).toContain('markSources')
+    expect(menu).toContain('markTests')
+    expect(menu).toContain('markResources')
+    expect(menu).toContain('markExcluded')
+    expect(menu).toContain('unmarkDirectory')
+    expect(menu).toContain('compareWith')
+    expect(menu).not.toContain('createGist')
   })
 
   it('hides Go and Git entries where they do not apply', () => {
@@ -94,5 +125,24 @@ describe('goImportPath', () => {
 
   it('uses the innermost module', () => {
     expect(goImportPath(session, 'tools/gen', true)).toBe('example.com/app/tools/gen')
+  })
+})
+
+describe('treeDropDestination', () => {
+  it('moves files and packages into the selected folder', () => {
+    expect(treeDropDestination('internal/api/server.go', 'cmd/server')).toBe('cmd/server/server.go')
+    expect(treeDropDestination('internal/api', 'pkg')).toBe('pkg/api')
+    expect(treeDropDestination('README.md', '')).toBeNull()
+  })
+
+  it('routes cross-package Go files through semantic Move Symbol', () => {
+    expect(requiresSemanticGoMove('internal/api/server.go', 'cmd/server')).toBe(true)
+    expect(requiresSemanticGoMove('internal/api/server.go', 'internal/api')).toBe(false)
+    expect(requiresSemanticGoMove('web/index.html', 'public')).toBe(false)
+  })
+
+  it('rejects self drops and descendants', () => {
+    expect(treeDropDestination('internal/api', 'internal/api')).toBeNull()
+    expect(treeDropDestination('internal/api', 'internal/api/testdata')).toBeNull()
   })
 })

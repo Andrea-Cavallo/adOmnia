@@ -23,6 +23,7 @@ const (
 // Hooks are the operations the manager needs from gO and the OS. They are
 // plain functions so the package stays testable without a debugger.
 type Hooks struct {
+	Threads func(debugID string) ([]Thread, error)
 	// Stack returns the frames of the paused goroutine, top first.
 	Stack func(debugID string, threadID int) ([]Frame, error)
 	// Step runs continue / next / stepIn / stepOut / pause on a debug session.
@@ -110,6 +111,7 @@ func cloneSession(session *Session) Session {
 
 func cloneRun(run *RequestRun) RequestRun {
 	out := *run
+	out.GoroutineCaptures = cloneGoroutineCaptures(run.GoroutineCaptures)
 	// Never nil: the UI reads hits.length, and a nil slice would reach it as JSON null.
 	out.SessionIDs = append([]string(nil), run.SessionIDs...)
 	out.Hits = append([]Hit{}, run.Hits...)
@@ -367,6 +369,9 @@ func (m *Manager) pause(id, debugID string, threadID int, reason string, gen int
 	}
 	m.mu.Unlock()
 	m.publish(events)
+	if m.hooks.Threads != nil && len(inFlight) > 0 {
+		_, _ = m.CaptureGoroutines(inFlight[len(inFlight)-1].ID, id)
+	}
 }
 
 // topFrame is the first frame with a source file: runtime frames without one are skipped.

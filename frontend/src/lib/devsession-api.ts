@@ -43,6 +43,9 @@ export interface LiveHit extends LiveFrame {
 }
 
 export interface RequestRun {
+  protocol?: 'grpc'
+  protocolStatus?: string
+  goroutineCaptures?: GoroutineCapture[]
   sessionIds?: string[]
   id: string
   sessionId: string
@@ -117,7 +120,7 @@ export interface SessionTools {
 }
 
 export const getLiveSnapshot = () => DevSessionBindings.GetSnapshot() as Promise<LiveSnapshot>
-export const beginLiveRequest = (request: { sessionIds?: string[]; sessionId: string; tabId: string; name: string; method: string; url: string }) =>
+export const beginLiveRequest = (request: { protocol?: string; sessionIds?: string[]; sessionId: string; tabId: string; name: string; method: string; url: string }) =>
   DevSessionBindings.BeginRequest(request) as Promise<RequestRun>
 export const endLiveRequest = (runId: string, status: number, durationMs: number, error: string) =>
   DevSessionBindings.EndRequest(runId, status, durationMs, error) as Promise<RequestRun>
@@ -170,3 +173,8 @@ export interface RuntimeEnrichment {
 /** Overlays the live session telemetry of a gO project on its static picture. */
 export const getRuntimeEnrichment = (goSessionId: string, moduleDirectory: string) =>
   DevSessionBindings.RuntimeEnrichment(goSessionId, moduleDirectory) as Promise<RuntimeEnrichment>
+
+export interface CapturedGoroutine { id: number; name: string; stack: LiveFrame[]; error?: string }
+export interface GoroutineCapture { sessionId: string; at: string; stoppedThreadId: number; goroutines: CapturedGoroutine[]; total: number; truncated: boolean; error?: string }
+export const captureRequestGoroutines = (runId: string, sessionId: string) => DevSessionBindings.CaptureGoroutines(runId,sessionId) as Promise<RequestRun>
+export const endLiveRPC = (runId: string, status: string, durationMs: number, error: string) => DevSessionBindings.EndRPC(runId,status,durationMs,error) as Promise<RequestRun>

@@ -1,3 +1,6 @@
+import { beginGrpcCapture, endGrpcCapture } from '@/lib/devsession/grpcCapture'
+import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
+import type { RequestRun } from '@/lib/devsession-api'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { withActiveEnv } from '@/lib/activeEnv'
 import {
@@ -1890,6 +1893,8 @@ export function GrpcPanel() {
     }
     setLoading(true)
     setError('')
+    let capture: RequestRun | null = null
+    const captureStarted = Date.now()
     setLastResult(null)
     try {
       if (interactive) liveSentRef.current = []
@@ -1909,6 +1914,9 @@ export function GrpcPanel() {
         timeout_ms: interactive ? undefined : requestTimeoutMs,
         interactive: interactive || undefined,
       })
+      const live = await beginGrpcCapture(invokeBody.address,invokeBody.service,invokeBody.method,invokeBody.tls,invokeBody.metadata)
+      capture=live.run; invokeBody.metadata=live.metadata
+      if (live.debug && !interactive) invokeBody.timeout_ms=Math.max(invokeBody.timeout_ms ?? 0,30*60*1000)
       let result: InvokeResponse
       if (currentMethod.server_streaming || interactive) {
         const controller = new AbortController()
@@ -1923,6 +1931,7 @@ export function GrpcPanel() {
         result = await postJson<InvokeResponse>(port, '/grpc/invoke', invokeBody)
       }
       const duration = result.time_ms ?? Date.now() - started
+      await endGrpcCapture(capture,result.status,duration,result.error); capture=null
       setLastResult(result)
       setBottomTab('response')
       setMainTab('response')
@@ -1955,6 +1964,7 @@ export function GrpcPanel() {
       if (result.error) setError(result.error)
     } catch (event) {
       const message = event instanceof DOMException && event.name === 'AbortError' ? 'Stream cancelled' : event instanceof Error ? event.message : String(event)
+      await endGrpcCapture(capture,'Canceled',Date.now()-captureStarted,message).catch(() => undefined)
       setError(message)
       setJsonError(message)
       log(`invoke error: ${message}`)
@@ -1969,11 +1979,13 @@ export function GrpcPanel() {
   const handleRerunHistory = async (row: HistoryRow) => {
     setLoading(true)
     setError('')
+    let capture: RequestRun | null = null
+    const captureStarted = Date.now()
     try {
       const parsed = JSON.parse(row.requestJson) as unknown
       const isStream = Array.isArray(parsed)
       const started = Date.now()
-      const result = await postJson<InvokeResponse>(port, '/grpc/invoke', {
+      const invokeBody = await withActiveEnv({
         address: row.address,
         tls: row.useTls ?? false,
         ca_cert_path: row.caCertPath ?? '',
@@ -1986,6 +1998,10 @@ export function GrpcPanel() {
         metadata: row.metadata ?? {},
         timeout_ms: row.timeoutMs ?? 30000,
       })
+      const live=await beginGrpcCapture(invokeBody.address,invokeBody.service,invokeBody.method,invokeBody.tls,invokeBody.metadata)
+      capture=live.run; invokeBody.metadata=live.metadata
+      if (live.debug) invokeBody.timeout_ms=Math.max(invokeBody.timeout_ms ?? 0,30*60*1000)
+      const result = await postJson<InvokeResponse>(port,'/grpc/invoke',invokeBody)
       const duration = result.time_ms ?? Date.now() - started
       setAddress(row.address)
       setUseTls(row.useTls ?? false)
@@ -1997,6 +2013,7 @@ export function GrpcPanel() {
       setSelectedService(row.service)
       setSelectedMethod(row.method)
       setRawJson(row.requestJson)
+      await endGrpcCapture(capture,result.status,duration,result.error); capture=null
       setLastResult(result)
       setMainTab('response')
       setBottomTab('response')
@@ -2016,6 +2033,7 @@ export function GrpcPanel() {
       if (result.error) setError(result.error)
     } catch (event) {
       const message = event instanceof Error ? event.message : String(event)
+      await endGrpcCapture(capture,'Canceled',Date.now()-captureStarted,message).catch(() => undefined)
       setError(message)
       log(`history rerun error: ${message}`)
     } finally {
@@ -2191,7 +2209,7 @@ export function GrpcPanel() {
                 }}
                 onCopyRaw={() => navigator.clipboard.writeText(rawJson).catch(() => {})}
               />
-              <GrpcResponsePanel
+              <LiveResponseFrame tabId="grpc:live" loading={loading}><GrpcResponsePanel
                 tab={bottomTab}
                 result={lastResult}
                 history={historyRows}
@@ -2201,7 +2219,7 @@ export function GrpcPanel() {
                 onRerun={(row) => void handleRerunHistory(row)}
                 onRestore={restoreHistory}
                 onClearHistory={() => setHistoryRows([])}
-              />
+              /></LiveResponseFrame>
             </>
           )}
         </div>

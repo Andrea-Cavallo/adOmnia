@@ -64,6 +64,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
   const [replacing, setReplacing] = useState(false)
   const [replaceNote, setReplaceNote] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const replaceRef = useRef<HTMLInputElement>(null)
   const running = useRef<CancellablePromise<GoIDESearchResult> | null>(null)
   const groups = useMemo(() => groupMatches(result?.matches ?? []), [result])
   const [showAll, setShowAll] = useState(false)
@@ -75,7 +76,11 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
     if (!findRequest) return
     if (findRequest.query) setQuery(findRequest.query)
     if (findRequest.include !== undefined) setInclude(findRequest.include)
-    window.setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 0)
+    if (findRequest.focus === 'replace') {
+      window.setTimeout(() => replaceRef.current?.focus(), 0)
+    } else {
+      window.setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 0)
+    }
   }, [findRequest])
 
   useEffect(() => () => { void running.current?.cancel() }, [])
@@ -128,7 +133,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
       <div className="flex shrink-0 items-center gap-1 border-b border-border-1 px-2 py-1">
         <label className="flex h-6 min-w-48 flex-1 items-center gap-1 rounded border border-border-1 bg-surface-0 px-1.5 focus-within:border-accent">
           <Replace size={11} className="text-text-4" />
-          <input value={replacement} onChange={(event) => setReplacement(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void replaceAll() }} placeholder={options.regex ? 'Replace with ($1, $2… for groups)' : 'Replace with'} aria-label="Replace text" className="min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none" />
+          <input ref={replaceRef} value={replacement} onChange={(event) => setReplacement(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void replaceAll() }} placeholder={options.regex ? 'Replace with ($1, $2… for groups)' : 'Replace with'} aria-label="Replace text" className="min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none" />
         </label>
         <button type="button" onClick={() => void replaceAll()} disabled={replacing || !result || groups.length === 0} title={result?.truncated ? 'Results are truncated: only the files listed are changed' : 'Preview every change, then apply all or nothing'} className="flex h-6 items-center gap-1 rounded bg-accent/15 px-2 text-[10px] font-medium text-accent disabled:opacity-40">
           {replacing && <Loader2 size={11} className="animate-spin" />} Replace All… (preview)

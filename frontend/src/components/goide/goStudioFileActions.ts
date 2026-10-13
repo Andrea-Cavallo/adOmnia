@@ -4,6 +4,18 @@ import { useGoIDEStore } from '@/stores/goide'
 
 export type GoStudioPathAction = 'newGoFile' | 'newFile' | 'newFolder' | 'rename' | 'duplicate'
 
+export type GitignoreTemplate = 'common' | 'go' | 'node' | 'python' | 'java'
+
+const GITIGNORE_COMMON = `# OS and IDE\n.DS_Store\nThumbs.db\n.idea/\n.vscode/\n*.swp\n\n# Local configuration and logs\n.env\n.env.local\n*.log\n*.tmp\n`
+
+export const GITIGNORE_TEMPLATES: Record<GitignoreTemplate, string> = {
+  common: GITIGNORE_COMMON,
+  go: `${GITIGNORE_COMMON}\n# Go binaries, tests, coverage and profiles\n/bin/\n/dist/\n*.exe\n*.test\n*.out\n*.pprof\ncoverage/\nvendor/\n`,
+  node: `${GITIGNORE_COMMON}\n# Node.js\nnode_modules/\ndist/\nbuild/\ncoverage/\n.npm/\n.pnpm-store/\n*.tsbuildinfo\n`,
+  python: `${GITIGNORE_COMMON}\n# Python\n__pycache__/\n*.py[cod]\n.venv/\nvenv/\n.pytest_cache/\n.mypy_cache/\n.coverage\nhtmlcov/\ndist/\nbuild/\n*.egg-info/\n`,
+  java: `${GITIGNORE_COMMON}\n# Java / Kotlin / Gradle / Maven\n*.class\n.gradle/\ntarget/\nout/\nbuild/\n*.jar\n*.war\n`,
+}
+
 export function parentOf(relativePath: string): string {
   const index = relativePath.lastIndexOf('/')
   return index < 0 ? '' : relativePath.slice(0, index)
@@ -110,6 +122,16 @@ export async function runPathAction(sessionId: string, action: GoStudioPathActio
       return ok
     }
   }
+}
+
+export async function createGitignore(sessionId: string, target: string, template: GitignoreTemplate): Promise<boolean> {
+  const relativePath = joinRelative(target, '.gitignore')
+  const ok = await guarded(() => createGoIDEFiles(sessionId, [{ relativePath, content: GITIGNORE_TEMPLATES[template] }]))
+  if (ok) {
+    await refresh(target)
+    await useGoIDEStore.getState().openDocument(relativePath)
+  }
+  return ok
 }
 
 export async function deletePathWithConfirm(sessionId: string, relativePath: string, directory: boolean): Promise<void> {

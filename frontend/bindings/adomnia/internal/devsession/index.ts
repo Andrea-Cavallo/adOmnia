@@ -3,7 +3,9 @@
 
 export {
     BeginRequest,
+    CapturedGoroutine,
     Frame,
+    GoroutineCapture,
     Hit,
     KafkaWatch,
     LogEntry,

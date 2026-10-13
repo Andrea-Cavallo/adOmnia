@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-10-12
+
+### IDE bug fix release
+
+- Completed the Go Studio project-tree workflow: safe drag and drop, semantic package/symbol moves, full file operations, project-wide find/replace, bookmarks, formatting, import optimization, Local History and direct Git stage, revert, pull, push, diff, history and blame actions.
+- Added integrated HTML editing and sandboxed preview, Claude file icons, `.gitignore` templates, global editor undo/redo controls and reliable project-root discovery when a Go entry point lives under `cmd/`.
+- Added real file and recursive folder comparison, persistent Sources/Tests/Resources/Excluded directory marks, GitHub Gist publishing through an explicitly confirmed `gh` action, and direct package, call and interface diagrams from the context menu.
+- Added dev-container startup, handler unit-test generation, request goroutine capture, gRPC capture and retry-policy links to the connected Go Studio workflow.
+- Improved Runtime Lens and trace attribution while keeping background polling bounded.
+
 - Go Studio P2: Trace Studio can arm a transient debug group across 2–16 explicitly matched Go projects. A request keeps each breakpoint's service and goroutine; pause/continue and source navigation follow that service. Temporal attribution is labelled probable. Received parent/child span IDs expose service boundaries and missing parents are reported.
 - Go Studio enterprise handoffs: project XML/WSDL files open SOAP Studio, WS-Security or XML Tools; standalone SOAP envelopes accept an explicit endpoint and SOAPAction. JKS/PKCS12 files open the existing certificate tools through bounded binary reads. Project PEM paths can be proposed and explicitly applied to HTTP mTLS settings. See docs/GO-STUDIO-P2-PARTIALS-2026-10-11.md for scope and acceptance limits.
 

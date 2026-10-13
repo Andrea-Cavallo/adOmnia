@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { AlertTriangle, GitCompare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -15,6 +15,7 @@ import { isGeneratedGoFile } from './goStudioExtraLanguages'
 import { coverageForDocument } from './goStudioCoverage'
 import { GoStudioMarkdownView, isMarkdownDocument, type GoStudioMarkdownMode } from './GoStudioMarkdownView'
 import { GoStudioImageView, isImageDocument } from './GoStudioImageView'
+import { GoStudioHtmlView, isHtmlDocument, type GoStudioHtmlMode } from './GoStudioHtmlView'
 
 interface GoStudioEditorProps {
   documents: GoIDEEditorDocument[]
@@ -28,6 +29,7 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
   const [compare, setCompare] = useState(false)
   // Vista Markdown per documento, come in JetBrains: default Editor + Preview.
   const [markdownModes, setMarkdownModes] = useState<Record<string, GoStudioMarkdownMode>>({})
+  const [htmlModes, setHtmlModes] = useState<Record<string, GoStudioHtmlMode>>({})
   const theme = useGoStudioEditorTheme()
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
   const resolveExternalChange = useGoIDEStore((state) => state.resolveExternalChange)
@@ -42,6 +44,17 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
   useGoStudioDocumentSymbols(active)
 
   useEffect(() => { setCompare(false) }, [active?.document.id])
+
+  // Open In → Browser: forza la modalità preview del documento HTML appena aperto.
+  const htmlPreviewRequest = useGoIDEStore((state) => state.htmlPreviewRequest)
+  const consumedHtmlPreviewToken = useRef(0)
+  useEffect(() => {
+    if (!htmlPreviewRequest || htmlPreviewRequest.token === consumedHtmlPreviewToken.current) return
+    consumedHtmlPreviewToken.current = htmlPreviewRequest.token
+    if (active && isHtmlDocument(active)) {
+      setHtmlModes((modes) => ({ ...modes, [active.document.id]: htmlPreviewRequest.mode }))
+    }
+  }, [htmlPreviewRequest, active])
 
 
   if (!active) {
@@ -99,6 +112,13 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
           />
         ) : isImageDocument(active) ? (
           <GoStudioImageView document={active} />
+        ) : isHtmlDocument(active) ? (
+          <GoStudioHtmlView
+            document={active}
+            mode={htmlModes[active.document.id] ?? 'split'}
+            onModeChange={(mode) => setHtmlModes((modes) => ({ ...modes, [active.document.id]: mode }))}
+            editor={<GoStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
+          />
         ) : isMarkdownDocument(active) ? (
           <GoStudioMarkdownView
             document={active}

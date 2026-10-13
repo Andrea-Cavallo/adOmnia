@@ -125,6 +125,8 @@ export {
     NewFile,
     OpenDocument,
     PackageHeatmap,
+    PathComparison,
+    PathDifference,
     PendingDefer,
     PrivateRepoCredential,
     ProcessDescriptor,

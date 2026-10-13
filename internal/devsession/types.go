@@ -84,29 +84,33 @@ type Hit struct {
 
 // RequestRun is one API request sent to a live session.
 type RequestRun struct {
-	SessionIDs    []string   `json:"sessionIds,omitempty"`
-	ID            string     `json:"id"`
-	SessionID     string     `json:"sessionId"`
-	TabID         string     `json:"tabId,omitempty"`
-	Name          string     `json:"name,omitempty"`
-	Method        string     `json:"method"`
-	URL           string     `json:"url"`
-	CorrelationID string     `json:"correlationId"`
-	State         string     `json:"state"`
-	StartedAt     time.Time  `json:"startedAt"`
-	CompletedAt   *time.Time `json:"completedAt,omitempty"`
-	Status        int        `json:"status,omitempty"`
-	DurationMs    int64      `json:"durationMs,omitempty"`
-	Error         string     `json:"error,omitempty"`
-	Hits          []Hit      `json:"hits"`
-	Logs          int        `json:"logs"`
-	Queries       int        `json:"queries"`
-	Messages      int        `json:"messages"`
+	Protocol          string             `json:"protocol,omitempty"`
+	ProtocolStatus    string             `json:"protocolStatus,omitempty"`
+	GoroutineCaptures []GoroutineCapture `json:"goroutineCaptures,omitempty"`
+	SessionIDs        []string           `json:"sessionIds,omitempty"`
+	ID                string             `json:"id"`
+	SessionID         string             `json:"sessionId"`
+	TabID             string             `json:"tabId,omitempty"`
+	Name              string             `json:"name,omitempty"`
+	Method            string             `json:"method"`
+	URL               string             `json:"url"`
+	CorrelationID     string             `json:"correlationId"`
+	State             string             `json:"state"`
+	StartedAt         time.Time          `json:"startedAt"`
+	CompletedAt       *time.Time         `json:"completedAt,omitempty"`
+	Status            int                `json:"status,omitempty"`
+	DurationMs        int64              `json:"durationMs,omitempty"`
+	Error             string             `json:"error,omitempty"`
+	Hits              []Hit              `json:"hits"`
+	Logs              int                `json:"logs"`
+	Queries           int                `json:"queries"`
+	Messages          int                `json:"messages"`
 }
 
 // BeginRequest describes a request about to be sent. An empty SessionID lets
 // the manager match the URL against the live sessions' ports.
 type BeginRequest struct {
+	Protocol   string   `json:"protocol,omitempty"`
 	SessionIDs []string `json:"sessionIds,omitempty"`
 	SessionID  string   `json:"sessionId"`
 	TabID      string   `json:"tabId"`
@@ -183,4 +187,24 @@ type Port struct {
 	Port    int    `json:"port"`
 	PID     int    `json:"pid"`
 	Process string `json:"process"`
+}
+
+// A capture describes all goroutines listed by Delve at one stop, not request ownership.
+type Thread struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+type CapturedGoroutine struct {
+	Thread
+	Stack []Frame `json:"stack"`
+	Error string  `json:"error,omitempty"`
+}
+type GoroutineCapture struct {
+	SessionID       string              `json:"sessionId"`
+	At              time.Time           `json:"at"`
+	StoppedThreadID int                 `json:"stoppedThreadId"`
+	Goroutines      []CapturedGoroutine `json:"goroutines"`
+	Total           int                 `json:"total"`
+	Truncated       bool                `json:"truncated"`
+	Error           string              `json:"error,omitempty"`
 }

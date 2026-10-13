@@ -199,6 +199,8 @@ export interface GoIDEState {
   consoleByRun: Record<string, GoIDEConsoleChunk[]>
   quickOpen: { open: boolean; query: string; loading: boolean; results: GoIDEQuickOpenResult[]; request: number }
   revealLocation: { documentId: string; line: number; column: number } | null
+  /** Richiesta di mostrare un file HTML in una modalità di preview precisa (Open In → Browser). */
+  htmlPreviewRequest: { token: number; mode: 'editor' | 'split' | 'preview' } | null
   recoveredBySession: Record<string, GoIDERecoveredBuffer[]>
   runConfigsBySession: Record<string, GoIDERunConfiguration[]>
   /** Esecuzione → configurazione che l'ha avviata: serve alla cronologia e al riavvio al salvataggio. */
@@ -267,6 +269,7 @@ export interface GoIDEState {
   discardRecoveredBuffer: (sessionId: string, relativePath: string) => Promise<void>
   handleEvent: (event: GoIDEEvent) => void
   clearRevealLocation: () => void
+  requestHtmlPreview: (mode: 'editor' | 'split' | 'preview') => void
   updateLayout: (patch: Partial<GoIDELayout>) => void
   /** Hide All Tool Windows: chiude Project, Structure e il pannello in basso; di nuovo li ripristina com'erano. */
   toggleEditorMaximized: () => void
@@ -397,6 +400,7 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   consoleByRun: {},
   quickOpen: { open: false, query: '', loading: false, results: [], request: 0 },
   revealLocation: null,
+  htmlPreviewRequest: null,
   recoveredBySession: {},
   runConfigsBySession: {},
   configByRun: {},
@@ -1244,6 +1248,8 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
   },
 
   clearRevealLocation: () => set({ revealLocation: null }),
+
+  requestHtmlPreview: (mode) => set((state) => ({ htmlPreviewRequest: { token: (state.htmlPreviewRequest?.token ?? 0) + 1, mode } })),
 
   updateLayout: (patch) => set((state) => {
     const layout = { ...state.layout, ...patch }

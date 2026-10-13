@@ -43,6 +43,22 @@ export function checkoutGoIDEBranch(sessionId: string, branch: string): Promise<
   return GoIDEBindings.VCSCheckout(sessionId, branch)
 }
 
+export function stageGoIDEFiles(sessionId: string, relativePaths: string[], staged: boolean): Promise<void> {
+  return GoIDEBindings.VCSStage(sessionId, relativePaths, staged)
+}
+
+export function revertGoIDEFiles(sessionId: string, relativePaths: string[]): Promise<void> {
+  return GoIDEBindings.VCSRevert(sessionId, relativePaths)
+}
+
+export function pullGoIDERepository(sessionId: string): Promise<void> {
+  return GoIDEBindings.VCSPull(sessionId)
+}
+
+export function pushGoIDERepository(sessionId: string): Promise<void> {
+  return GoIDEBindings.VCSPush(sessionId)
+}
+
 export interface GoIDELineRange {
   start: number
   end: number

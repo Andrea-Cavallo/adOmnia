@@ -3,12 +3,16 @@ package goide
 import (
 	"errors"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -68,10 +72,141 @@ func (m *DocumentManager) MovePath(project Project, from, to string) error {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return fmt.Errorf("impossibile creare la cartella di destinazione: %w", err)
 	}
+	rewrites, err := planMovedPackageImports(project, from, to, info.IsDir())
+	if err != nil {
+		return err
+	}
 	if err := os.Rename(source, target); err != nil {
 		return fmt.Errorf("impossibile rinominare: %w", err)
 	}
+	for index, rewrite := range rewrites {
+		path := rewrite.path
+		if sameOrChildPath(path, source) {
+			relative, _ := filepath.Rel(source, path)
+			path = filepath.Join(target, relative)
+		}
+		if err := os.WriteFile(path, rewrite.updated, rewrite.mode); err != nil {
+			for previous := 0; previous < index; previous++ {
+				restorePath := rewrites[previous].path
+				if sameOrChildPath(restorePath, source) {
+					relative, _ := filepath.Rel(source, restorePath)
+					restorePath = filepath.Join(target, relative)
+				}
+				_ = os.WriteFile(restorePath, rewrites[previous].original, rewrites[previous].mode)
+			}
+			_ = os.Rename(target, source)
+			return fmt.Errorf("spostamento annullato: impossibile aggiornare gli import in %s: %w", filepath.Base(path), err)
+		}
+	}
 	return nil
+}
+
+type importRewrite struct {
+	path              string
+	original, updated []byte
+	mode              fs.FileMode
+}
+
+type byteReplacement struct {
+	start, end int
+	text       string
+}
+
+func sameOrChildPath(candidate, parent string) bool {
+	relative, err := filepath.Rel(filepath.Clean(parent), filepath.Clean(candidate))
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
+}
+
+// moduleImportPath ricava l'import path della cartella dal modulo più interno che la contiene.
+func moduleImportPath(project Project, relativeDirectory string) (string, bool) {
+	directory := filepath.Join(project.RealPath, filepath.FromSlash(strings.Trim(relativeDirectory, "/")))
+	var owner *GoModule
+	modules := goLayoutOf(project).Modules
+	for index := range modules {
+		module := &modules[index]
+		if module.ModulePath == "" || !sameOrChildPath(directory, module.Path) {
+			continue
+		}
+		if owner == nil || len(filepath.Clean(module.Path)) > len(filepath.Clean(owner.Path)) {
+			copy := *module
+			owner = &copy
+		}
+	}
+	if owner == nil {
+		return "", false
+	}
+	relative, err := filepath.Rel(owner.Path, directory)
+	if err != nil {
+		return "", false
+	}
+	if relative == "." {
+		return owner.ModulePath, true
+	}
+	return strings.TrimSuffix(owner.ModulePath, "/") + "/" + filepath.ToSlash(relative), true
+}
+
+// planMovedPackageImports cambia esclusivamente i literal degli import Go che puntano al package
+// spostato (o a un suo sotto-package). Commenti e stringhe ordinarie restano intatti.
+func planMovedPackageImports(project Project, from, to string, directory bool) ([]importRewrite, error) {
+	if !directory {
+		return nil, nil
+	}
+	oldImport, oldOK := moduleImportPath(project, from)
+	newImport, newOK := moduleImportPath(project, to)
+	if !oldOK || !newOK || oldImport == newImport {
+		return nil, nil
+	}
+	var rewrites []importRewrite
+	err := filepath.WalkDir(project.RealPath, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if path != project.RealPath && (entry.Name() == ".git" || entry.Name() == "vendor" || entry.Name() == "node_modules") {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if entry.Type()&fs.ModeSymlink != 0 || !strings.HasSuffix(strings.ToLower(entry.Name()), ".go") {
+			return nil
+		}
+		original, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files := token.NewFileSet()
+		parsed, err := parser.ParseFile(files, path, original, parser.ImportsOnly)
+		if err != nil {
+			return nil // un file incompleto non deve impedire lo spostamento degli altri
+		}
+		var replacements []byteReplacement
+		for _, spec := range parsed.Imports {
+			value, err := strconv.Unquote(spec.Path.Value)
+			if err != nil || (value != oldImport && !strings.HasPrefix(value, oldImport+"/")) {
+				continue
+			}
+			suffix := strings.TrimPrefix(value, oldImport)
+			replacements = append(replacements, byteReplacement{start: files.Position(spec.Path.Pos()).Offset, end: files.Position(spec.Path.End()).Offset, text: strconv.Quote(newImport + suffix)})
+		}
+		if len(replacements) == 0 {
+			return nil
+		}
+		sort.Slice(replacements, func(i, j int) bool { return replacements[i].start > replacements[j].start })
+		updated := append([]byte(nil), original...)
+		for _, replacement := range replacements {
+			updated = append(updated[:replacement.start], append([]byte(replacement.text), updated[replacement.end:]...)...)
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		rewrites = append(rewrites, importRewrite{path: path, original: original, updated: updated, mode: info.Mode().Perm()})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("impossibile analizzare gli import del progetto: %w", err)
+	}
+	return rewrites, nil
 }
 
 // DuplicatePath copia un file o una cartella in un nuovo percorso del progetto (symlink esclusi).

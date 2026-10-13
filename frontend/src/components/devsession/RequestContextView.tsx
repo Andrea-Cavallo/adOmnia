@@ -1,3 +1,4 @@
+import { GenerateUnitTestButton } from './GenerateUnitTestButton'
 import { cn } from '@/lib/utils'
 import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
 import { getServerPort } from '@/lib/useServerPort'
@@ -124,6 +125,7 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
         className={cn('flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:border-accent hover:text-accent disabled:opacity-50', compact && state.text ? (state.error ? 'border-error/50 text-error' : 'border-success/50 text-success') : 'border-border-2 text-text-2')}>
         <FileArchive size={11} />{compact ? null : state.busy ? 'Saving…' : 'Save reproduction'}
       </button>
+      <GenerateUnitTestButton run={run} />
       {!compact && state.text && <span title={state.text} className={state.error ? 'min-w-0 truncate text-[11px] text-error' : 'min-w-0 truncate text-[11px] text-success'}>{state.text}</span>}
     </span>
   )

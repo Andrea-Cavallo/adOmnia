@@ -1848,6 +1848,108 @@ export class GoroutineSummary {
     }
 }
 
+export class HandlerTestInput {
+    "line": number;
+    "method": string;
+    "path": string;
+    "routePattern": string;
+    "body": string;
+    "headers": { [_ in string]?: string };
+    "pathParams": { [_ in string]?: string };
+    "expectedStatus": number;
+    "expectedBody": string | null;
+    "handlerExpression": string;
+    "setup": string;
+
+    /** Creates a new HandlerTestInput instance. */
+    constructor($$source: Partial<HandlerTestInput> = {}) {
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("method" in $$source)) {
+            this["method"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("routePattern" in $$source)) {
+            this["routePattern"] = "";
+        }
+        if (!("body" in $$source)) {
+            this["body"] = "";
+        }
+        if (!("headers" in $$source)) {
+            this["headers"] = {};
+        }
+        if (!("pathParams" in $$source)) {
+            this["pathParams"] = {};
+        }
+        if (!("expectedStatus" in $$source)) {
+            this["expectedStatus"] = 0;
+        }
+        if (!("expectedBody" in $$source)) {
+            this["expectedBody"] = null;
+        }
+        if (!("handlerExpression" in $$source)) {
+            this["handlerExpression"] = "";
+        }
+        if (!("setup" in $$source)) {
+            this["setup"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HandlerTestInput instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HandlerTestInput {
+        const $$createField5_0 = $$createType2;
+        const $$createField6_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField5_0($$parsedSource["headers"]);
+        }
+        if ("pathParams" in $$parsedSource) {
+            $$parsedSource["pathParams"] = $$createField6_0($$parsedSource["pathParams"]);
+        }
+        return new HandlerTestInput($$parsedSource as Partial<HandlerTestInput>);
+    }
+}
+
+export class HandlerTestPreview {
+    "relativePath": string;
+    "content": string;
+    "handler": string;
+    "framework": string;
+
+    /** Creates a new HandlerTestPreview instance. */
+    constructor($$source: Partial<HandlerTestPreview> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("content" in $$source)) {
+            this["content"] = "";
+        }
+        if (!("handler" in $$source)) {
+            this["handler"] = "";
+        }
+        if (!("framework" in $$source)) {
+            this["framework"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HandlerTestPreview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HandlerTestPreview {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new HandlerTestPreview($$parsedSource as Partial<HandlerTestPreview>);
+    }
+}
+
 /**
  * InitStep è una funzione init di un package, misurata da GODEBUG=inittrace=1.
  */
@@ -2078,6 +2180,31 @@ export class PendingDefer {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
         }
         return new PendingDefer($$parsedSource as Partial<PendingDefer>);
+    }
+}
+
+export class RetryPolicyCandidate {
+    "line": number;
+    "name": string;
+
+    /** Creates a new RetryPolicyCandidate instance. */
+    constructor($$source: Partial<RetryPolicyCandidate> = {}) {
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RetryPolicyCandidate instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RetryPolicyCandidate {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RetryPolicyCandidate($$parsedSource as Partial<RetryPolicyCandidate>);
     }
 }
 

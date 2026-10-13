@@ -28,7 +28,8 @@ type DevSession struct {
 func NewDevSession(goIDE *GoIDE) *DevSession {
 	d := &DevSession{goIDE: goIDE, names: devsession.LoadServiceNames()}
 	d.manager = devsession.NewManager(devsession.Hooks{
-		Stack: d.stack,
+		Stack:   d.stack,
+		Threads: d.threads,
 		Step: func(debugID, action string, threadID int) error {
 			return goIDE.service.DebugStep(debugID, action, threadID)
 		},
@@ -210,4 +211,19 @@ func (d *DevSession) SetServiceName(goSessionID, name string) error {
 func (d *DevSession) ProjectServiceName(goSessionID string) string {
 	service, _ := d.project(goSessionID)
 	return service
+}
+
+func (d *DevSession) threads(debugID string) ([]devsession.Thread, error) {
+	threads, err := d.goIDE.service.DebugThreads(debugID)
+	out := make([]devsession.Thread, 0, len(threads))
+	for _, thread := range threads {
+		out = append(out, devsession.Thread{ID: thread.ID, Name: thread.Name})
+	}
+	return out, err
+}
+func (d *DevSession) CaptureGoroutines(runID, sessionID string) (devsession.RequestRun, error) {
+	return d.manager.CaptureGoroutines(runID, sessionID)
+}
+func (d *DevSession) EndRPC(runID, status string, durationMs int64, errText string) (devsession.RequestRun, error) {
+	return d.manager.EndRPC(runID, status, durationMs, errText)
 }

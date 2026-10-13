@@ -11,6 +11,7 @@ export type GoStudioFileIconKind =
   | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }
 
 const EXACT_NAMES: Record<string, BrandIconSlug> = {
+  'claude.md': 'claude',
   dockerfile: 'docker', '.dockerignore': 'docker', 'compose.yaml': 'docker', 'compose.yml': 'docker',
   '.gitignore': 'git', '.gitattributes': 'git', '.gitmodules': 'git', '.gitkeep': 'git', '.mailmap': 'git',
   makefile: 'make', gnumakefile: 'make',

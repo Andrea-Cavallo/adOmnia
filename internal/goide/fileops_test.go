@@ -1,8 +1,10 @@
 package goide
 
 import (
+	"adomnia/internal/ide/project"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +21,10 @@ func TestFileOperations(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	exists := func(rel string) bool { _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel))); return err == nil }
+	exists := func(rel string) bool {
+		_, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
+		return err == nil
+	}
 	write("pkg/a.go", "package pkg\n")
 	write("pkg/b.go", "package pkg\n")
 
@@ -55,5 +60,43 @@ func TestFileOperations(t *testing.T) {
 	}
 	if !exists("pkg/b.go") {
 		t.Fatal("rejected operations must not touch files")
+	}
+}
+
+func TestMovePackageRewritesOnlyGoImports(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, content string) {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(rel string) string {
+		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(content)
+	}
+	write("go.mod", "module example.com/app\n")
+	write("internal/old/value.go", "package old\n")
+	write("internal/old/sub/value.go", "package sub\n")
+	write("cmd/app/main.go", "package main\n\nimport (\n oldalias \"example.com/app/internal/old\"\n \"example.com/app/internal/old/sub\"\n)\n\nconst untouched = \"example.com/app/internal/old\"\n")
+	projectModel := Project{RealPath: root, RootPath: root, Units: []project.Unit{{Language: "go", Kind: "module", Root: root, Name: "example.com/app", Manifest: filepath.Join(root, "go.mod")}}}
+	manager := &DocumentManager{}
+	if err := manager.MovePath(projectModel, "internal/old", "pkg/newplace"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "pkg/newplace/value.go")); err != nil {
+		t.Fatal(err)
+	}
+	content := read("cmd/app/main.go")
+	for _, expected := range []string{"oldalias \"example.com/app/pkg/newplace\"", "\"example.com/app/pkg/newplace/sub\"", "const untouched = \"example.com/app/internal/old\""} {
+		if !strings.Contains(content, expected) {
+			t.Fatalf("missing %q in:\n%s", expected, content)
+		}
 	}
 }

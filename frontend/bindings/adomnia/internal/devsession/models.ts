@@ -10,6 +10,7 @@ import { Create as $Create } from "@wailsio/runtime";
  * the manager match the URL against the live sessions' ports.
  */
 export class BeginRequest {
+    "protocol"?: string;
     "sessionIds"?: string[];
     "sessionId": string;
     "tabId": string;
@@ -42,12 +43,46 @@ export class BeginRequest {
      * Creates a new BeginRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): BeginRequest {
-        const $$createField0_0 = $$createType0;
+        const $$createField1_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sessionIds" in $$parsedSource) {
-            $$parsedSource["sessionIds"] = $$createField0_0($$parsedSource["sessionIds"]);
+            $$parsedSource["sessionIds"] = $$createField1_0($$parsedSource["sessionIds"]);
         }
         return new BeginRequest($$parsedSource as Partial<BeginRequest>);
+    }
+}
+
+export class CapturedGoroutine {
+    "id": number;
+    "name": string;
+    "stack": Frame[];
+    "error"?: string;
+
+    /** Creates a new CapturedGoroutine instance. */
+    constructor($$source: Partial<CapturedGoroutine> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("stack" in $$source)) {
+            this["stack"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CapturedGoroutine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CapturedGoroutine {
+        const $$createField2_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("stack" in $$parsedSource) {
+            $$parsedSource["stack"] = $$createField2_0($$parsedSource["stack"]);
+        }
+        return new CapturedGoroutine($$parsedSource as Partial<CapturedGoroutine>);
     }
 }
 
@@ -78,6 +113,52 @@ export class Frame {
     static createFrom($$source: any = {}): Frame {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Frame($$parsedSource as Partial<Frame>);
+    }
+}
+
+export class GoroutineCapture {
+    "sessionId": string;
+    "at": string;
+    "stoppedThreadId": number;
+    "goroutines": CapturedGoroutine[];
+    "total": number;
+    "truncated": boolean;
+    "error"?: string;
+
+    /** Creates a new GoroutineCapture instance. */
+    constructor($$source: Partial<GoroutineCapture> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("at" in $$source)) {
+            this["at"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("stoppedThreadId" in $$source)) {
+            this["stoppedThreadId"] = 0;
+        }
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = [];
+        }
+        if (!("total" in $$source)) {
+            this["total"] = 0;
+        }
+        if (!("truncated" in $$source)) {
+            this["truncated"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoroutineCapture instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoroutineCapture {
+        const $$createField3_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("goroutines" in $$parsedSource) {
+            $$parsedSource["goroutines"] = $$createField3_0($$parsedSource["goroutines"]);
+        }
+        return new GoroutineCapture($$parsedSource as Partial<GoroutineCapture>);
     }
 }
 
@@ -261,7 +342,7 @@ export class Message {
      * Creates a new Message instance from a string or object.
      */
     static createFrom($$source: any = {}): Message {
-        const $$createField10_0 = $$createType3;
+        const $$createField10_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("headers" in $$parsedSource) {
             $$parsedSource["headers"] = $$createField10_0($$parsedSource["headers"]);
@@ -409,6 +490,9 @@ export class Query {
  * RequestRun is one API request sent to a live session.
  */
 export class RequestRun {
+    "protocol"?: string;
+    "protocolStatus"?: string;
+    "goroutineCaptures"?: GoroutineCapture[];
     "sessionIds"?: string[];
     "id": string;
     "sessionId": string;
@@ -471,14 +555,18 @@ export class RequestRun {
      * Creates a new RequestRun instance from a string or object.
      */
     static createFrom($$source: any = {}): RequestRun {
-        const $$createField0_0 = $$createType0;
-        const $$createField14_0 = $$createType5;
+        const $$createField2_0 = $$createType7;
+        const $$createField3_0 = $$createType0;
+        const $$createField17_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("goroutineCaptures" in $$parsedSource) {
+            $$parsedSource["goroutineCaptures"] = $$createField2_0($$parsedSource["goroutineCaptures"]);
+        }
         if ("sessionIds" in $$parsedSource) {
-            $$parsedSource["sessionIds"] = $$createField0_0($$parsedSource["sessionIds"]);
+            $$parsedSource["sessionIds"] = $$createField3_0($$parsedSource["sessionIds"]);
         }
         if ("hits" in $$parsedSource) {
-            $$parsedSource["hits"] = $$createField14_0($$parsedSource["hits"]);
+            $$parsedSource["hits"] = $$createField17_0($$parsedSource["hits"]);
         }
         return new RequestRun($$parsedSource as Partial<RequestRun>);
     }
@@ -621,8 +709,8 @@ export class RuntimeEnrichment {
      * Creates a new RuntimeEnrichment instance from a string or object.
      */
     static createFrom($$source: any = {}): RuntimeEnrichment {
-        const $$createField2_0 = $$createType7;
-        const $$createField3_0 = $$createType9;
+        const $$createField2_0 = $$createType11;
+        const $$createField3_0 = $$createType13;
         const $$createField4_0 = $$createType0;
         const $$createField5_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
@@ -750,7 +838,7 @@ export class Session {
      * Creates a new Session instance from a string or object.
      */
     static createFrom($$source: any = {}): Session {
-        const $$createField11_0 = $$createType11;
+        const $$createField11_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("pause" in $$parsedSource) {
             $$parsedSource["pause"] = $$createField11_0($$parsedSource["pause"]);
@@ -776,8 +864,8 @@ export class SessionTools {
      * Creates a new SessionTools instance from a string or object.
      */
     static createFrom($$source: any = {}): SessionTools {
-        const $$createField0_0 = $$createType13;
-        const $$createField1_0 = $$createType15;
+        const $$createField0_0 = $$createType17;
+        const $$createField1_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("kafka" in $$parsedSource) {
             $$parsedSource["kafka"] = $$createField0_0($$parsedSource["kafka"]);
@@ -812,8 +900,8 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField0_0 = $$createType17;
-        const $$createField1_0 = $$createType19;
+        const $$createField0_0 = $$createType21;
+        const $$createField1_0 = $$createType23;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sessions" in $$parsedSource) {
             $$parsedSource["sessions"] = $$createField0_0($$parsedSource["sessions"]);
@@ -829,20 +917,24 @@ export class Snapshot {
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = Frame.createFrom;
 const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = $Create.Map($Create.Any, $Create.Any);
-const $$createType4 = Hit.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = RuntimeComponent.createFrom;
+const $$createType3 = CapturedGoroutine.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Map($Create.Any, $Create.Any);
+const $$createType6 = GoroutineCapture.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = RuntimeEdge.createFrom;
+const $$createType8 = Hit.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = Pause.createFrom;
-const $$createType11 = $Create.Nullable($$createType10);
-const $$createType12 = KafkaWatch.createFrom;
-const $$createType13 = $Create.Nullable($$createType12);
-const $$createType14 = SQLProxy.createFrom;
+const $$createType10 = RuntimeComponent.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = RuntimeEdge.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = Pause.createFrom;
 const $$createType15 = $Create.Nullable($$createType14);
-const $$createType16 = Session.createFrom;
-const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = RequestRun.createFrom;
-const $$createType19 = $Create.Array($$createType18);
+const $$createType16 = KafkaWatch.createFrom;
+const $$createType17 = $Create.Nullable($$createType16);
+const $$createType18 = SQLProxy.createFrom;
+const $$createType19 = $Create.Nullable($$createType18);
+const $$createType20 = Session.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = RequestRun.createFrom;
+const $$createType23 = $Create.Array($$createType22);

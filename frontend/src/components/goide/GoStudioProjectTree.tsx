@@ -12,16 +12,20 @@ import { buildTreeMarks, type GoStudioTreeMark } from './goStudioTreeMarks'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { openPemInPowerTools, openEnterpriseFile, sendFileToApiWorkspace } from './goStudioFileHandoffs'
-import { deletePathWithConfirm, parentOf, revealPath } from './goStudioFileActions'
+import { createGitignore, deletePathWithConfirm, parentOf, revealPath, type GitignoreTemplate } from './goStudioFileActions'
 import { buildTreeMenu, treeKeyAction } from './goStudioTreeMenu'
-import { copyReference, findInFolder, openInSplit, openTerminalIn, pasteInto, runPackageCommand, useGoStudioTreeClipboard } from './goStudioTreeActions'
+import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, openTerminalIn, pasteInto, previewHtml, repairIde, replaceInFiles, runPackageCommand, runTreeGitAction, useGoStudioTreeClipboard } from './goStudioTreeActions'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { GoStudioPathDialog, type GoStudioPathRequest } from './GoStudioPathDialog'
+import { GoStudioCompareDialog } from './GoStudioCompareDialog'
+import { GoStudioGistDialog } from './GoStudioGistDialog'
+import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type GoStudioDirectoryMark } from './goStudioDirectoryMarks'
 
 /** entry null = radice del progetto. */
 type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
 /** Scorciatoie sulla riga a fuoco: stesse azioni del menu contestuale, identificate dal loro id. */
 type TreeKeyHandler = (entry: GoIDEFileEntry, action: string) => void
+type TreeMoveHandler = (source: string, targetFolder: string) => void
 
 type TreeMarks = Map<string, GoStudioTreeMark>
 
@@ -88,8 +92,9 @@ function ShowMoreRow({ hidden, depth, onShow }: { hidden: number; depth: number;
   )
 }
 
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, onKey, marks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; marks: TreeMarks }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, onContext, onKey, onMove, dropTarget, setDropTarget, marks, directoryMarks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; onMove: TreeMoveHandler; dropTarget: string | null; setDropTarget: (path: string | null) => void; marks: TreeMarks; directoryMarks: Record<string, GoStudioDirectoryMark> }) {
   const mark = marks.get(entry.relativePath)
+  const directoryMark = entry.directory ? directoryMarks[entry.relativePath] : undefined
   const selected = !entry.directory && entry.relativePath === activePath
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(TREE_PAGE)
@@ -108,6 +113,22 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
     <>
       <button
         type="button"
+        draggable
+        onDragStart={(event) => {
+          event.stopPropagation()
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('application/x-adomnia-goide-path', entry.relativePath)
+          event.dataTransfer.setData('text/plain', entry.relativePath)
+        }}
+        onDragEnd={() => setDropTarget(null)}
+        onDragOver={entry.directory ? (event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget(entry.relativePath) } : undefined}
+        onDragLeave={entry.directory ? (event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) } : undefined}
+        onDrop={entry.directory ? (event) => {
+          event.preventDefault(); event.stopPropagation()
+          const source = event.dataTransfer.getData('application/x-adomnia-goide-path')
+          setDropTarget(null)
+          if (source) onMove(source, entry.relativePath)
+        } : undefined}
         onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath, { preview: useGoIDELspStore.getState().preferences.previewTab })}
         onDoubleClick={entry.directory ? undefined : () => void openDocument(entry.relativePath)}
         onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onContext(entry, event.clientX, event.clientY) }}
@@ -116,9 +137,9 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
         aria-current={selected ? 'true' : undefined}
-        className={`go-studio-tree-row flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${isCut ? 'opacity-50' : ''} ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`go-studio-tree-row flex h-[26px] w-full items-center gap-1.5 overflow-hidden rounded-[7px] pr-2 text-left text-[12.5px] ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/15 outline outline-1 outline-accent' : ''} ${selected ? 'go-studio-tree-row-selected' : `hover:bg-surface-3 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
-        title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${markTitle(mark)}`}
+        title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${directoryMark ? ` · ${directoryMarkLabel(directoryMark)}` : ''}${markTitle(mark)}`}
       >
         {entry.directory
           ? loading ? <Loader2 size={12} className="shrink-0 animate-spin text-text-4" /> : open ? <ChevronDown size={12} className="shrink-0 text-text-3" /> : <ChevronRight size={12} className="shrink-0 text-text-4" />
@@ -126,11 +147,12 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         {entry.directory
           ? <FolderIcon name={entry.name} open={open} />
           : <GoStudioFileIcon name={entry.name} relativePath={entry.relativePath} />}
-        <span className={`truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
+        <span className={`min-w-0 flex-1 truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
+        {directoryMark && <span className={`shrink-0 rounded px-1 text-[9px] uppercase tracking-wide ${directoryMark === 'excluded' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent'}`}>{directoryMarkLabel(directoryMark)}</span>}
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && entries?.slice(0, limit).map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} />
       ))}
       {entry.directory && open && entries && entries.length > limit && <ShowMoreRow hidden={entries.length - limit} depth={depth + 1} onShow={() => setLimit((value) => value + TREE_PAGE)} />}
     </>
@@ -156,9 +178,15 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
   const marks = useTreeMarks(session.id)
   const [menu, setMenu] = useState<{ entry: GoIDEFileEntry | null; x: number; y: number } | null>(null)
   const [pathRequest, setPathRequest] = useState<GoStudioPathRequest | null>(null)
+  const [compareRequest, setCompareRequest] = useState<{ path: string; directory: boolean } | null>(null)
+  const [gistRequest, setGistRequest] = useState<string | null>(null)
+  const [directoryMarks, setDirectoryMarks] = useState<Record<string, GoStudioDirectoryMark>>(() => loadDirectoryMarks(session.project.realPath))
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => setMenu({ entry, x, y }), [])
   const canPaste = useGoStudioTreeClipboard((state) => state.clipboard?.sessionId === session.id)
   const vcsAvailable = useGoIDEVCSStore((state) => !!state.status[session.id]?.available)
+  const onMove = useCallback<TreeMoveHandler>((source, targetFolder) => { void moveTreePath(session.id, source, targetFolder) }, [session.id])
+  useEffect(() => setDirectoryMarks(loadDirectoryMarks(session.project.realPath)), [session.project.realPath])
 
   /** Esegue un'azione del menu o di una scorciatoia; entry null = radice del progetto. */
   const runTreeAction = (id: string, entry: GoIDEFileEntry | null) => {
@@ -172,6 +200,8 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'splitRight': void openInSplit(session.id, path, 'right'); break
       case 'splitDown': void openInSplit(session.id, path, 'down'); break
       case 'newGoFile': case 'newFile': case 'newFolder': setPathRequest({ action: id, target: folder }); break
+      case 'newGitignoreGo': case 'newGitignoreNode': case 'newGitignorePython': case 'newGitignoreJava': case 'newGitignoreCommon':
+        void createGitignore(session.id, folder, id.slice('newGitignore'.length).toLowerCase() as GitignoreTemplate); break
       case 'cut': case 'copy': if (entry) useGoStudioTreeClipboard.getState().setClipboard({ sessionId: session.id, relativePath: path, mode: id }); break
       case 'paste': void pasteInto(session.id, folder); break
       case 'copyAbsolutePath': void copyReference(session, path, directory, 'absolute'); break
@@ -181,8 +211,12 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'findUsages': openThen('nav.usages'); break
       case 'inspectCode': openThen('code.lint'); break
       case 'rename': case 'duplicate': if (entry) setPathRequest({ action: id, target: path }); break
+      case 'moveDirectory': if (entry) setPathRequest({ action: 'rename', target: path }); break
+      case 'copyClasses': if (entry) setPathRequest({ action: 'duplicate', target: path }); break
+      case 'semanticRename': openThen('code.rename'); break
       case 'refactorThis': openThen('code.refactorThis'); break
       case 'moveToNewFile': openThen('code.moveToNewFile'); break
+      case 'moveSymbol': openThen('code.moveSymbol'); break
       case 'toggleBookmark': openThen('nav.toggleBookmark'); break
       case 'showBookmarks': onCommand('nav.bookmarks'); break
       case 'reformat': openThen('code.reformat'); break
@@ -190,7 +224,10 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'delete': if (entry) void deletePathWithConfirm(session.id, path, entry.directory); break
       case 'reloadFromDisk': if (entry) void reloadDocumentFromDisk(path); break
       case 'refreshProject': void refreshProject(directory ? path : ''); break
+      case 'repairIde': void repairIde(session.id, path, directory); break
       case 'findInFolder': findInFolder(folder); break
+      case 'findInFiles': findInFiles(); break
+      case 'replaceInFiles': replaceInFiles(); break
       case 'testPackage': void runPackageCommand(session, path, directory, 'test'); break
       case 'testPackageCoverage': void runPackageCommand(session, path, directory, 'test', true); break
       case 'buildPackage': void runPackageCommand(session, path, directory, 'build'); break
@@ -200,9 +237,26 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'debugCurrent': onCommand('debug.debug'); break
       case 'reveal': revealPath(session.id, path); break
       case 'terminal': openTerminalIn(folder); break
+      case 'openInBrowser': if (entry) void previewHtml(path); break
       case 'localHistory': openThen('file.localHistory'); break
       case 'gitHistory': openThen('vcs.history'); break
       case 'gitAnnotate': openThen('vcs.annotate'); break
+      case 'gitDiff': openThen('vcs.gitStudio'); break
+      case 'gitCommit': onCommand('vcs.commit'); break
+      case 'gitPull': void runTreeGitAction(session.id, 'pull', path, directory); break
+      case 'gitPush': void runTreeGitAction(session.id, 'push', path, directory); break
+      case 'gitStage': void runTreeGitAction(session.id, 'stage', path, directory); break
+      case 'gitUnstage': void runTreeGitAction(session.id, 'unstage', path, directory); break
+      case 'gitRevert': void runTreeGitAction(session.id, 'revert', path, directory); break
+      case 'gitStudio': onCommand('vcs.gitStudio'); break
+      case 'compareWith': if (entry) setCompareRequest({ path, directory }); break
+      case 'markSources': case 'markTests': case 'markResources': case 'markExcluded': if (entry?.directory) {
+        setDirectoryMarks(saveDirectoryMark(session.project.realPath, path, id.slice('mark'.length).toLowerCase() as GoStudioDirectoryMark))
+      } break
+      case 'unmarkDirectory': if (entry?.directory) setDirectoryMarks(saveDirectoryMark(session.project.realPath, path, null)); break
+      case 'createGist': if (entry && !entry.directory) setGistRequest(path); break
+      case 'diagramDependencies': case 'diagramCalls': onCommand('view.architecture'); break
+      case 'diagramInterfaces': onCommand('view.interfaces'); break
       case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
       case 'soapTools': void openEnterpriseFile(session.id, path, 'soap'); break
       case 'soapSecurity': void openEnterpriseFile(session.id, path, 'security'); break
@@ -241,8 +295,17 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         </button>
         <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="go-studio-icon-button h-6 w-6"><Minus size={14} /></button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-2 pb-1">
-        <div role="button" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className="flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent" title={session.project.rootPath}
+      <div className="min-h-0 flex-1 overflow-auto px-2 pb-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        const source = event.dataTransfer.getData('application/x-adomnia-goide-path')
+        setDropTarget(null)
+        if (source) onMove(source, '')
+      }}>
+        <div role="button" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${dropTarget === '' ? 'bg-accent/15 outline outline-1 outline-accent' : ''}`} title={session.project.rootPath}
+          onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget('') }}
+          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) }}
+          onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-goide-path'); setDropTarget(null); if (source) onMove(source, '') }}
           onContextMenu={(event) => { event.preventDefault(); onContext(null, event.clientX, event.clientY) }}
           onKeyDown={(event) => {
             if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
@@ -255,7 +318,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           <span className="shrink-0 font-semibold text-text-1">{session.project.name}</span>
           <span className="truncate text-[11px] text-text-4">{session.project.rootPath}</span>
         </div>
-        {entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} onKey={onKey} marks={marks} />)}
+        {entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={entry.relativePath} sessionId={session.id} entry={entry} depth={2} activePath={activePath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} />)}
         {entries.length > rootLimit && <ShowMoreRow hidden={entries.length - rootLimit} depth={2} onShow={() => setRootLimit((value) => value + TREE_PAGE)} />}
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
@@ -264,6 +327,8 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       </div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <GoStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />
+      <GoStudioCompareDialog sessionId={session.id} sourcePath={compareRequest?.path ?? null} sourceDirectory={compareRequest?.directory ?? false} onClose={() => setCompareRequest(null)} />
+      <GoStudioGistDialog sessionId={session.id} relativePath={gistRequest} onClose={() => setGistRequest(null)} />
     </aside>
   )
 })

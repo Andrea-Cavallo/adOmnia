@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -66,6 +67,25 @@ func TestVCSStatusHistoryBlameCommitAndCheckoutGuard(t *testing.T) {
 	}
 	if _, err := service.VCSCommitFiles(sessionID, "update main", []string{"main.go"}); err != nil {
 		t.Fatal(err)
+	}
+	if err := service.VCSStage(sessionID, []string{"new.go"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if staged, _ := service.VCSStatus(sessionID); !slices.ContainsFunc(staged.Changes, func(change VCSFileChange) bool { return change.RelativePath == "new.go" && change.Staged }) {
+		t.Fatalf("new.go non staged: %+v", staged.Changes)
+	}
+	if err := service.VCSStage(sessionID, []string{"new.go"}, false); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, repo, "svc/main.go", "package main\n\nfunc main() { panic(\"discard\") }\n")
+	if err := service.VCSRevert(sessionID, []string{"main.go", "new.go"}); err != nil {
+		t.Fatal(err)
+	}
+	if content, _ := os.ReadFile(filepath.Join(repo, "svc/main.go")); strings.Contains(string(content), "discard") {
+		t.Fatalf("main.go non ripristinato: %s", content)
+	}
+	if _, err := os.Stat(filepath.Join(repo, "svc/new.go")); !os.IsNotExist(err) {
+		t.Fatalf("new.go non rimosso: %v", err)
 	}
 	history, err := service.VCSFileHistory(sessionID, "main.go")
 	if err != nil || len(history) != 2 || history[0].Message != "update main" {

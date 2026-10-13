@@ -28,6 +28,9 @@ func (m *Manager) Begin(request BeginRequest) (RequestRun, error) {
 	if sessionID == "" {
 		return RequestRun{}, nil
 	}
+	if request.Protocol != "" && request.Protocol != "grpc" {
+		return RequestRun{}, fmt.Errorf("unsupported request protocol")
+	}
 	m.mu.Lock()
 	session, err := m.sessionLocked(sessionID)
 	if err != nil || session.EndedAt != nil {
@@ -50,7 +53,7 @@ func (m *Manager) Begin(request BeginRequest) (RequestRun, error) {
 		}
 	}
 	run := &RequestRun{
-		ID: newID("run-"), SessionID: sessionID, SessionIDs: members, TabID: request.TabID, Name: request.Name,
+		Protocol: request.Protocol, ID: newID("run-"), SessionID: sessionID, SessionIDs: members, TabID: request.TabID, Name: request.Name,
 		Method: strings.ToUpper(request.Method), URL: request.URL, CorrelationID: newID("adm-"),
 		State: RunSent, StartedAt: m.now(), Hits: []Hit{},
 	}
@@ -68,12 +71,26 @@ func (m *Manager) Begin(request BeginRequest) (RequestRun, error) {
 
 // End completes a request run with its HTTP outcome.
 func (m *Manager) End(runID string, status int, durationMs int64, errText string) (RequestRun, error) {
+	return m.end(runID, status, "", durationMs, errText)
+}
+func (m *Manager) EndRPC(runID, status string, durationMs int64, errText string) (RequestRun, error) {
+	if status != "OK" && errText == "" {
+		errText = "gRPC " + status
+	}
+	return m.end(runID, 0, status, durationMs, errText)
+}
+func (m *Manager) end(runID string, status int, protocolStatus string, durationMs int64, errText string) (RequestRun, error) {
 	m.mu.Lock()
 	run, ok := m.runs[runID]
 	if !ok {
 		m.mu.Unlock()
 		return RequestRun{}, fmt.Errorf("request run %s not found", runID)
 	}
+	if protocolStatus != "" && run.Protocol != "grpc" {
+		m.mu.Unlock()
+		return RequestRun{}, fmt.Errorf("not a gRPC request")
+	}
+	run.ProtocolStatus = protocolStatus
 	completed := m.now()
 	run.CompletedAt, run.Status, run.DurationMs, run.Error = &completed, status, durationMs, errText
 	run.State = RunCompleted

@@ -69,6 +69,7 @@ export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): 
     `p95 ${ms(stat.p95Ms)}`,
     stat.errors ? `${stat.errors} error${stat.errors === 1 ? '' : 's'}` : '',
     stat.retries ? `${stat.retries} retr${stat.retries === 1 ? 'y' : 'ies'}` : '',
+    (stat.cacheHits ?? 0) + (stat.cacheMisses ?? 0) ? `cache ${stat.cacheHits ?? 0} hit / ${stat.cacheMisses ?? 0} miss` : '',
     ago(stat.lastMs, now),
     hot ? 'hot path' : '',
     slow ? 'slow path' : '',
@@ -77,7 +78,7 @@ export function lensTitle(stat: OtlpLensStat, counts: FileCounts, now: number): 
 }
 
 export function lensTooltip(stat: OtlpLensStat): string {
-  return `${stat.name}${stat.function ? ` (${stat.function})` : ''}: avg ${ms(stat.avgMs)}, p99 ${ms(stat.p99Ms)}, max ${ms(stat.maxMs)}. From the OpenTelemetry spans received locally.`
+  return `${stat.name}${stat.function ? ` (${stat.function})` : ''}: avg ${ms(stat.avgMs)}, p99 ${ms(stat.p99Ms)}, max ${ms(stat.maxMs)}. From the OpenTelemetry spans received locally.${(stat.cacheHits ?? 0) + (stat.cacheMisses ?? 0) ? ` Cache hit rate ${Math.round(100 * (stat.cacheHits ?? 0) / ((stat.cacheHits ?? 0) + (stat.cacheMisses ?? 0)))}% of explicitly reported outcomes.` : ''}`
 }
 
 export interface NodeRuntime { count: number; errors: number; p95Ms: number }

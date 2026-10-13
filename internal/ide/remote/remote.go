@@ -27,9 +27,11 @@ const (
 // Target descrive dove eseguire: Kind, Name (distro, host di ~/.ssh/config o user@host, nome del container)
 // e Directory, la radice del progetto vista dall'ambiente remoto (vuota per WSL = calcolata).
 type Target struct {
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	Directory string `json:"directory,omitempty"`
+	User               string `json:"user,omitempty"`
+	DevContainerConfig string `json:"devContainerConfig,omitempty"`
+	Kind               string `json:"kind"`
+	Name               string `json:"name"`
+	Directory          string `json:"directory,omitempty"`
 }
 
 // Command è un comando pronto da avviare in locale (wsl.exe, ssh o docker) che esegue quello richiesto
@@ -60,6 +62,12 @@ func (t Target) Validate() error {
 		}
 	default:
 		return fmt.Errorf("ambiente remoto non supportato: %q", t.Kind)
+	}
+	if t.User != "" && (t.Kind != KindContainer || !namePattern.MatchString(t.User)) {
+		return fmt.Errorf("invalid container user")
+	}
+	if t.DevContainerConfig != "" && t.Kind != KindContainer {
+		return fmt.Errorf("dev container requires a container target")
 	}
 	if !namePattern.MatchString(t.Name) {
 		return fmt.Errorf("nome dell'ambiente remoto non valido: %q", t.Name)
@@ -169,7 +177,22 @@ func (t Target) Wrap(localRoot, executable string, arguments []string, workingDi
 		// BatchMode: senza terminale una richiesta di password resterebbe appesa; servono chiavi o agent.
 		return Command{Executable: "ssh", Arguments: []string{"-T", "-o", "BatchMode=yes", t.Name, "--", "sh -c " + Quote(script)}, Display: display}, nil
 	default:
+		if t.DevContainerConfig != "" {
+			executable, prefix, err := DevContainerCLI()
+			if err != nil {
+				return Command{}, err
+			}
+			arguments := append(prefix, "exec", "--workspace-folder", localRoot, "--config", t.DevContainerConfig)
+			for _, key := range keys {
+				arguments = append(arguments, "--remote-env", key+"="+mapPath(environment[key]))
+			}
+			arguments = append(arguments, "sh", "-c", guardScript(directory, command))
+			return Command{Executable: executable, Arguments: arguments, Environment: local, Display: display}, nil
+		}
 		arguments := []string{"exec", "-i"}
+		if t.User != "" {
+			arguments = append(arguments, "--user", t.User)
+		}
 		for _, key := range keys {
 			arguments = append(arguments, "-e", key) // senza valore: docker lo legge dall'ambiente del client
 		}
