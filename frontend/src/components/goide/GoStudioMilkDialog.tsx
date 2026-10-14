@@ -57,6 +57,7 @@ function MilkAgentsSection() {
         The key is read from the variable each time milk starts and is never written to disk.
       </p>
       {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
+      {(info?.warnings ?? []).map((warning) => <GoStudioAlert key={warning} icon={AlertCircle}>{warning}</GoStudioAlert>)}
       {info && (
         <ul className="gs-surface flex flex-col divide-y divide-border-1">
           {info.providers.map((provider) => (

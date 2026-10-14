@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -20,7 +22,7 @@ import (
 
 const (
 	editorName = "adOmnia"
-	// ponytail: 2 minuti perché il primo `npx` di Claude Code scarica l'adapter.
+	// Due minuti coprono adapter locali lenti; l'avvio non scarica mai pacchetti.
 	initializeTimeout   = 2 * time.Minute
 	sessionTimeout      = 15 * time.Second
 	promptTimeout       = 10 * time.Minute
@@ -42,10 +44,13 @@ var restartBackoff = []time.Duration{time.Second, 2 * time.Second, 5 * time.Seco
 type Emitter func(event string, payload any)
 
 type process struct {
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	conn   *Conn
-	exited chan struct{}
+	cmd        *exec.Cmd
+	stdin      io.WriteCloser
+	conn       *Conn
+	exited     chan struct{}
+	stderrDone chan struct{}
+	stderrMu   sync.Mutex
+	stderr     []string
 }
 
 // permission è una richiesta di autorizzazione in attesa di risposta.
@@ -135,7 +140,7 @@ func (m *Manager) SaveSettings(next Settings) (Settings, error) {
 	previous := m.settings
 	m.settings = saved
 	m.mu.Unlock()
-	needsRestart := previous.Enabled != saved.Enabled || previous.BinaryPath != saved.BinaryPath
+	needsRestart := previous.Enabled != saved.Enabled || previous.BinaryPath != saved.BinaryPath || !equalSettingsEnvironment(previous, saved)
 	switch {
 	case !saved.Enabled:
 		m.Stop()
@@ -147,6 +152,23 @@ func (m *Manager) SaveSettings(next Settings) (Settings, error) {
 		m.publishStatus()
 	}
 	return saved, nil
+}
+
+func equalSettingsEnvironment(left, right Settings) bool {
+	if len(left.Env) != len(right.Env) || len(left.ExtraArgs) != len(right.ExtraArgs) {
+		return false
+	}
+	for key, value := range left.Env {
+		if right.Env[key] != value {
+			return false
+		}
+	}
+	for index := range left.ExtraArgs {
+		if left.ExtraArgs[index] != right.ExtraArgs[index] {
+			return false
+		}
+	}
+	return true
 }
 
 // SetActiveWorkspace indica il progetto attivo in Go Studio.
@@ -281,7 +303,7 @@ func (m *Manager) launch(command Launch, root string) error {
 	cmd := procutil.Command(command.Binary, command.Args...)
 	cmd.Env = command.Env
 	if cmd.Env == nil {
-		cmd.Env = os.Environ()
+		cmd.Env = netpolicy.Environ()
 	}
 	if strings.TrimSpace(root) != "" {
 		cmd.Dir = root
@@ -302,7 +324,7 @@ func (m *Manager) launch(command Launch, root string) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("cannot start %s: %w", m.agent.Name, err)
 	}
-	running := &process{cmd: cmd, stdin: stdin, exited: make(chan struct{})}
+	running := &process{cmd: cmd, stdin: stdin, exited: make(chan struct{}), stderrDone: make(chan struct{})}
 	running.conn = NewConn(stdout, stdin, &handler{manager: m})
 	go running.conn.Run()
 	go m.collectStderr(running, stderr)
@@ -324,7 +346,8 @@ func (m *Manager) launch(command Launch, root string) error {
 	}
 	if err := running.conn.Call(ctx, "initialize", m.initializeParams(), &result); err != nil {
 		m.abandon(running)
-		return fmt.Errorf("%s did not initialize: %w", m.agent.Name, err)
+		m.waitStartupDrain(running)
+		return errors.New(startupFailureMessage(m.agent.Name, err, running.stderrSnapshot(), running.exitCode()))
 	}
 	if result.Info.Version == "" {
 		result.Info.Version = result.AgentInfo.Version
@@ -343,13 +366,119 @@ func (m *Manager) launch(command Launch, root string) error {
 }
 
 func (m *Manager) collectStderr(running *process, stderr io.Reader) {
+	defer close(running.stderrDone)
 	scanner := bufio.NewScanner(stderr)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
+		line := redactAgentText(scanner.Text())
+		running.stderrMu.Lock()
+		running.stderr = append(running.stderr, line)
+		if len(running.stderr) > 50 {
+			running.stderr = append([]string(nil), running.stderr[len(running.stderr)-50:]...)
+		}
+		running.stderrMu.Unlock()
 		if m.isCurrent(running) {
-			m.appendLog("stderr: " + scanner.Text())
+			m.appendLog("stderr: " + line)
 		}
 	}
+}
+
+func (m *Manager) waitStartupDrain(running *process) {
+	select {
+	case <-running.exited:
+	case <-time.After(stopTimeout):
+		_ = terminateProcess(running.cmd)
+		select {
+		case <-running.exited:
+		case <-time.After(stopTimeout):
+		}
+	}
+	select {
+	case <-running.stderrDone:
+	case <-time.After(500 * time.Millisecond):
+	}
+}
+
+func (p *process) stderrSnapshot() []string {
+	p.stderrMu.Lock()
+	defer p.stderrMu.Unlock()
+	lines := p.stderr
+	if len(lines) > 20 {
+		lines = lines[len(lines)-20:]
+	}
+	return append([]string(nil), lines...)
+}
+
+func (p *process) exitCode() *int {
+	if p.cmd.ProcessState == nil {
+		return nil
+	}
+	code := p.cmd.ProcessState.ExitCode()
+	return &code
+}
+
+var (
+	secretAssignment = regexp.MustCompile(`(?i)\b(AWS_[A-Z0-9_]*|CLAUDE_CODE_USE_[A-Z0-9_]*|ANTHROPIC_[A-Z0-9_]*)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,}]+)`)
+	urlInMessage     = regexp.MustCompile(`https?://[^\s"']+`)
+)
+
+func redactAgentText(text string) string {
+	text = secretAssignment.ReplaceAllStringFunc(text, func(match string) string {
+		separator := strings.IndexAny(match, ":=")
+		if separator < 0 {
+			return "<redacted>"
+		}
+		return match[:separator+1] + "<redacted>"
+	})
+	return urlInMessage.ReplaceAllStringFunc(text, func(raw string) string {
+		trimmed := strings.TrimRight(raw, ".,;:)")
+		parsed, err := url.Parse(trimmed)
+		if err != nil || parsed.Hostname() == "" {
+			return "<redacted-url>"
+		}
+		return parsed.Scheme + "://" + parsed.Host + parsed.EscapedPath()
+	})
+}
+
+// RedactAgentText removes credential-like values before diagnostics cross the Wails boundary.
+func RedactAgentText(text string) string { return redactAgentText(text) }
+
+func startupFailureMessage(agent string, cause error, stderr []string, exitCode *int) string {
+	detail := strings.TrimSpace(strings.Join(stderr, "\n"))
+	combined := strings.ToUpper(detail + "\n" + cause.Error())
+	host := ""
+	if raw := urlInMessage.FindString(detail); raw != "" {
+		if parsed, err := url.Parse(strings.TrimRight(raw, ".,;:)")); err == nil {
+			host = parsed.Hostname()
+		}
+	}
+	switch {
+	case strings.Contains(combined, "EMAXREDIRECT"), strings.Contains(combined, "USERCHECK"):
+		where := ""
+		if host != "" {
+			where = " (host " + host + ")"
+		}
+		return "npm was redirected to a corporate proxy or captive portal" + where + ". Configure proxy and CA in Settings → Network, configure npm proxy/cafile, or install @agentclientprotocol/claude-agent-acp manually and choose its path"
+	case strings.Contains(combined, "ENOTFOUND"):
+		return "the agent could not resolve a network host. Check DNS and proxy settings in Settings → Network"
+	case strings.Contains(combined, "ECONNREFUSED"):
+		return "the agent connection was refused. Check the configured proxy and endpoint"
+	case strings.Contains(combined, "SELF_SIGNED"), strings.Contains(combined, "CERT_"):
+		return "the agent rejected the TLS certificate. Configure the corporate CA bundle in Settings → Network"
+	}
+	code := ""
+	if exitCode != nil {
+		code = fmt.Sprintf(" (exit code %d)", *exitCode)
+	}
+	if detail == "" {
+		detail = "agent process is not available"
+	}
+	return fmt.Sprintf("%s exited during startup%s: %s", agent, code, detail)
+}
+
+// StartupFailureMessage classifies a failed child-process bootstrap for explicit installers.
+func StartupFailureMessage(agent string, cause error, stderr []string, exitCode *int) string {
+	return startupFailureMessage(agent, cause, stderr, exitCode)
 }
 
 func (m *Manager) watch(running *process) {

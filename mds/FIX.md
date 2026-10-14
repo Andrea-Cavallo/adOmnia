@@ -159,7 +159,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 
 **Barra di avanzamento sotto l'IDE**
 - [x] IDE-2.6 `stores/goideTasks.ts` (`{id, label, status}` per `sessionId`); analizzatori e chiamate lente pubblicano inizio/fine. — test di isolamento per sessione, completamento ed errore.
-- [ ] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`). — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app.
+- [ ] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`). — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app. — **Bug introdotto e corretto (2026-10-14):** la status bar usava `useGoIDETasksStore((state) => runningGoIDETasks(state, session.id))`; `runningGoIDETasks` restituisce un nuovo array a ogni chiamata, quindi Zustand 5 / `useSyncExternalStore` vedeva uno snapshot diverso a ogni render → loop di render → React error #185 all'apertura di Go Studio (registrato in `%APPDATA%\adomnia\logs\debug-*.jsonl`). Fix: selezionare l'array stabile `state.tasks[sessionId]` e filtrare con `useMemo`; test di invariata referenza in `goideTasks.test.ts`. Verificato: nuova build, l'app apre Go Studio senza `#185`.
 
 **Verifica**
 - [ ] IDE-2.M1 Release `-H windowsgui` su Windows 11: Interface Analyzer, Error Analysis, Architecture, Move Symbol, installazione tool → nessuna finestra, nemmeno per un istante. — **NON VERIFICATO:** richiede controllo visivo della release installata.
@@ -331,22 +331,22 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - milk: provider (`internal/milk/agents.go:26-33`) solo DeepSeek, OpenAI, Gemini, OpenRouter, Groq, Mistral; nessun Bedrock → feature mancante, non bug.
 
 **Fix**
-- [ ] GS-3.0 Riprodotto (rete con portale/redirect simulato).
-- [ ] GS-3.1 Risoluzione senza download silenziosi su `sdk.ToolSearch`: percorso utente → `claude-agent-acp` su PATH → npm globali → cartella gestita da adOmnia → copia in cache/vendorizzata. Rilevare `claude` installato e passarlo via `CLAUDE_CODE_EXECUTABLE` (verificare che la versione pinnata lo supporti).
-- [ ] GS-3.2 `npx` solo con consenso: prima `npx --offline --no-install`; se manca, stato `not-installed` con pulsante "Install adapter". Niente `--yes` automatico.
-- [ ] GS-3.3 Env di rete per i figli: `netpolicy.Environ()` + `NPM_CONFIG_PROXY`, `NPM_CONFIG_HTTPS_PROXY`, `NPM_CONFIG_CAFILE`, `NODE_EXTRA_CA_CERTS` dalle Settings di rete (come `copilot/manager.go:344`).
-- [ ] GS-3.4 Blocco `env` dei settings unito nell'env del figlio (managed > local > project > user, process env più basso; stessa precedenza di `liftedEnv`/`Inspect`). Non loggare i valori di `AWS_*`, `CLAUDE_CODE_USE_*`, `ANTHROPIC_*`. `Settings.Env` e `Settings.ExtraArgs` editabili nel dialog.
-- [ ] GS-3.5 Classificazione errori: exit code + ultime ~20 righe di stderr (attendere il drain); `ErrClosed` → `"<agent> exited during startup: …"`; riconoscere `EMAXREDIRECT`, `UserCheck`, `ENOTFOUND`, `ECONNREFUSED`, `CERT_`, `SELF_SIGNED` con messaggio azionabile ("npm è stato reindirizzato a un proxy/captive portal aziendale (host …). Imposta proxy e CA in Impostazioni → Rete, oppure `npm config set proxy/cafile`, oppure installa `@agentclientprotocol/claude-agent-acp` a mano e indica il percorso qui."). Messaggio generico → "agent process is not available".
-- [ ] GS-3.6 Diagnostica: binding `ClaudeCode.Diagnose(root)` (comando risolto, PATH di `node`/`npx`/`claude`/`claude-agent-acp`, proxy/CA effettivi, raggiungibilità registry npm (HEAD), check Bedrock `aws sts get-caller-identity`, ultimo stderr). Pulsante "Test connection" in `components/goide/GoStudioClaudeCode.tsx` con output in "Show logs"; campi percorso/env/proxy visibili nel dialog.
-- [ ] GS-3.7 milk: provider Bedrock oppure avviso "Bedrock non è supportato da milk; usa Claude Code". Errore classificato ed env di rete anche per milk e Copilot.
+- [x] GS-3.0 Riprodotto (rete con portale/redirect simulato). — Coperto da test deterministico `EMAXREDIRECT`/`UserCheck`, inclusa la rimozione delle credenziali dall'URL.
+- [x] GS-3.1 Risoluzione senza download silenziosi su `sdk.ToolSearch`: percorso utente → `claude-agent-acp` su PATH → npm globali → cartella gestita da adOmnia → copia in cache/vendorizzata. Rileva `claude` e lo passa via `CLAUDE_CODE_EXECUTABLE`; il supporto è confermato dal changelog upstream dell'adapter.
+- [x] GS-3.2 `npx` solo con consenso: prima `npx --offline --no-install`; se manca, stato `not-installed` con pulsante "Install adapter". Niente `--yes` automatico.
+- [x] GS-3.3 Env di rete per i figli: `netpolicy.Environ()` + `NPM_CONFIG_PROXY`, `NPM_CONFIG_HTTPS_PROXY`, `NPM_CONFIG_CAFILE`, `NODE_EXTRA_CA_CERTS` dalle Settings di rete (come `copilot/manager.go:344`).
+- [x] GS-3.4 Blocco `env` dei settings unito nell'env del figlio (managed > local > project > user, process env più basso; stessa precedenza di `liftedEnv`/`Inspect`). Non loggare i valori di `AWS_*`, `CLAUDE_CODE_USE_*`, `ANTHROPIC_*`. `Settings.Env` e `Settings.ExtraArgs` editabili nel dialog.
+- [x] GS-3.5 Classificazione errori: exit code + ultime ~20 righe di stderr (attendere il drain); `ErrClosed` → `"<agent> exited during startup: …"`; riconoscere `EMAXREDIRECT`, `UserCheck`, `ENOTFOUND`, `ECONNREFUSED`, `CERT_`, `SELF_SIGNED` con messaggio azionabile.
+- [x] GS-3.6 Diagnostica: binding `ClaudeCode.Diagnose(root)` (comando risolto, PATH di `node`/`npx`/`claude`/`claude-agent-acp`, proxy/CA effettivi, raggiungibilità registry npm (HEAD), check Bedrock `aws sts get-caller-identity`, ultimo stderr). Pulsante "Test connection" con output nei log; campi percorso/env/proxy visibili nel dialog.
+- [x] GS-3.7 milk: avviso "Bedrock non è supportato da milk; usa Claude Code". Errore classificato ed env di rete anche per milk e Copilot.
 
 **Verifica**
 - [ ] GS-3.M1 Rete con portale (redirect): messaggio azionabile, mai "milk process is not available".
 - [ ] GS-3.M2 `claude-agent-acp` globale + profilo Bedrock in `settings.json`: l'agente parte senza download.
 - [ ] GS-3.M3 "Test connection" mostra ogni passo.
-- [ ] GS-3.T1 Test Go sulla classificazione errori e sul merge dell'env; nessun segreto nei log.
+- [x] GS-3.T1 Test Go sulla classificazione errori e sul merge dell'env; nessun segreto nei log.
 
-**Gate GS-3:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-3:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** richiede rete aziendale/Bedrock e app desktop.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -692,7 +692,7 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - IDE-3.6: gli archi `Imports` sono solo diretti? Non controllato.
 - IDE-4.10: codice pprof `goide/pprof*.go` non esaminato nel dettaglio.
 - IDE-5.10: percorso UI dei profili terminale sincrono? Non confermato.
-- GS-3.1: la versione pinnata dell'adapter supporta `CLAUDE_CODE_EXECUTABLE`? Da verificare.
+- GS-3.1: `CLAUDE_CODE_EXECUTABLE` è supportato dalla versione pinnata; confermato dal changelog upstream dell'adapter.
 - GS-4: icona AI nella stripe destra (stato attuale) o sinistra? Decidere prima di implementare.
 - GS-9.4: binding Git senza UI non tutti verificati.
 
@@ -706,4 +706,5 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | IDE-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; guardia AST verde; `npx vitest run`: 315 file/1375 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` con Wails beta.28. Controllo visivo release Windows ancora NON VERIFICATO. |               |
 | GS-1 Impl/Test/Doc | 2026-10-14 | Codex | `go build ./...` e `go test -timeout 10m ./...` verdi; `internal/ide/architecture_test.go` verde; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `npx vitest run`: 316 file/1379 test verdi; `wails3 task build` (Wails beta.28) exit 0; binding `ListRunTargets` presenti e rigenerati. Manuale Play/F5/Debug/gutter/picker NON VERIFICATO (richiede app desktop interattiva). |               |
 | GS-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; test mirati per scope ricorsivo, stderr/exit code, `go.mod` quotato, coverage vuota e moduli annidati; `npx vitest run`: 316 file/1380 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` (Wails beta.28) exit 0. Verifica manuale nel Test Explorer ancora NON VERIFICATA. |               |
+| IDE-2.7 hotfix React #185 | 2026-10-14 | OpenCode | Riprodotto dall'app reale: `%APPDATA%\adomnia\logs\debug-2026-10-14.jsonl` con `Error: Minified React error #185` e componente in `GoStudioPanel-*.js`; assente nei log del 13/10. Causa: selettore Zustand instabile `runningGoIDETasks(state, session.id)`. Fix in `GoStudioStatusBar.tsx` (array stabile + `useMemo`) + test di referenza in `goideTasks.test.ts`. Verifica: `npx tsc --noEmit` pulito; `npx vitest run`: 316 file/1380 test verdi; `.\build.ps1` exit 0; nuova build avviata → nessun `#185` nel log. |               |
 |                |      |     |                                                  |               |

@@ -48,6 +48,7 @@ type AgentsInfo struct {
 	Primary    string           `json:"primary"`
 	Escalation string           `json:"escalation"`
 	Providers  []ProviderStatus `json:"providers"`
+	Warnings   []string         `json:"warnings"`
 }
 
 // ConfigPath è il config globale di milk (~/.milk/config.json).
@@ -117,6 +118,9 @@ func Agents() (AgentsInfo, error) {
 	}
 	names := agentNames(config)
 	info := AgentsInfo{ConfigPath: path}
+	if truthyEnvironment(os.Getenv("CLAUDE_CODE_USE_BEDROCK")) {
+		info.Warnings = append(info.Warnings, "AWS Bedrock is not supported by milk; use Claude Code for this provider.")
+	}
 	info.Primary, _ = config["agent"].(string)
 	info.Escalation, _ = config["escalation_agent"].(string)
 	for _, provider := range Providers {
@@ -127,6 +131,11 @@ func Agents() (AgentsInfo, error) {
 		})
 	}
 	return info, nil
+}
+
+func truthyEnvironment(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return value != "" && value != "0" && value != "false"
 }
 
 // UseProvider aggiunge (se manca) l'agente del provider al config di milk e lo

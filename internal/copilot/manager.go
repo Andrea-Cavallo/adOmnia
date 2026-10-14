@@ -342,9 +342,13 @@ func (m *Manager) launch(binary ServerBinary, settings Settings, profile GitHubP
 
 // serverEnvironment eredita l'ambiente e aggiunge il CA aziendale ai certificati di sistema.
 func serverEnvironment(settings Settings) []string {
-	environment := os.Environ()
-	if settings.CABundlePath != "" {
-		environment = append(environment, "NODE_EXTRA_CA_CERTS="+settings.CABundlePath)
+	environment := netpolicy.Environ()
+	caBundle := settings.CABundlePath
+	if caBundle == "" {
+		caBundle = netpolicy.Current().CABundlePath
+	}
+	if caBundle != "" {
+		environment = append(environment, "NODE_EXTRA_CA_CERTS="+caBundle)
 	}
 	return environment
 }

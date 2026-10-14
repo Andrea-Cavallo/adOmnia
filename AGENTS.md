@@ -55,11 +55,24 @@ Every Go Studio modal uses `GoStudioModal`, every search palette `GoStudioPalett
 
 ## Verification
 
+Use proportionate verification while implementing individual features. Run the
+smallest focused tests that cover the changed behavior, plus the relevant type
+or build check. Do not run the complete frontend Vitest suite after every
+feature: it currently contains more than 1,300 tests and wastes time and token
+budget when repeated without a specific reason.
+
+Run the complete frontend and Go suites at release/final integration
+checkpoints, after broad cross-cutting changes, or when focused results expose a
+regression outside the edited module. Record manual desktop checks separately;
+an automated build does not prove native Wails behavior.
+
 ```bash
-cd frontend && npx tsc --noEmit    # TypeScript
-npm run build                      # Frontend build
-go build ./... && go test ./...    # Go backend
-wails3 task dev                    # Manual product check — do this for UI work
+cd frontend && npx vitest run <focused-test-files>  # Per feature
+npx tsc --noEmit                                # TypeScript changes
+npm run build                                   # UI integration checkpoint
+go test ./internal/<changed-domain>/...          # Per backend feature
+go build ./...                                   # Backend integration checkpoint
+wails3 task dev                                  # Manual UI/product check
 ```
 
 The last one matters most. This is a product, not a library: open the panel and use it as a real user would before calling a change done.

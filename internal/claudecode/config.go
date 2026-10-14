@@ -249,7 +249,20 @@ var adapterEnvVars = []string{"ANTHROPIC_MODEL", "ANTHROPIC_CUSTOM_MODEL_OPTION"
 // liftedEnv restituisce i valori di adapterEnvVars dai blocchi env dei settings del progetto,
 // con la precedenza di Claude Code (managed > local > project > user > ambiente).
 func liftedEnv(root string, getenv func(string) string) map[string]string {
+	settings := settingsEnvironment(root, getenv)
 	lifted := map[string]string{}
+	for _, name := range adapterEnvVars {
+		if value := settings[name]; value != "" {
+			lifted[name] = value
+		}
+	}
+	return lifted
+}
+
+// settingsEnvironment restituisce tutti i blocchi env, nello stesso ordine di
+// precedenza usato da Inspect: managed > local > project > user.
+func settingsEnvironment(root string, getenv func(string) string) map[string]string {
+	result := map[string]string{}
 	for _, file := range settingsFiles(root, getenv) {
 		data, err := os.ReadFile(file.Path)
 		if err != nil {
@@ -259,11 +272,11 @@ func liftedEnv(root string, getenv func(string) string) map[string]string {
 		if json.Unmarshal(data, &parsed) != nil {
 			continue
 		}
-		for _, name := range adapterEnvVars {
-			if value := strings.TrimSpace(stringValue(parsed.Env[name])); value != "" {
-				lifted[name] = value
+		for name, raw := range parsed.Env {
+			if value := strings.TrimSpace(stringValue(raw)); value != "" {
+				result[name] = value
 			}
 		}
 	}
-	return lifted
+	return result
 }

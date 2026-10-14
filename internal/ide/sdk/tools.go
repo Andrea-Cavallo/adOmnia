@@ -45,6 +45,9 @@ type ToolSearch struct {
 	ManagedDir string
 	// Dirs sono le cartelle proprie del linguaggio (es. GOPATH/bin), dopo quella gestita e prima del PATH.
 	Dirs []ToolDir
+	// LookPath è sostituibile nei test e nei resolver che devono usare un PATH esplicito.
+	// Se nil usa exec.LookPath.
+	LookPath func(string) (string, error)
 }
 
 // Candidates elenca i binari nell'ordine di ricerca: personalizzato, poi per ogni nome cartella
@@ -61,7 +64,11 @@ func (s ToolSearch) Candidates() []ToolCandidate {
 		for _, dir := range s.Dirs {
 			candidates = append(candidates, ToolCandidate{Name: name, Binary: filepath.Join(dir.Path, ExecutableName(name)), Source: dir.Source})
 		}
-		if found, err := exec.LookPath(name); err == nil {
+		lookPath := s.LookPath
+		if lookPath == nil {
+			lookPath = exec.LookPath
+		}
+		if found, err := lookPath(name); err == nil {
 			candidates = append(candidates, ToolCandidate{Name: name, Binary: found, Source: SourcePath})
 		}
 	}

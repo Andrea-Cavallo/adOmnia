@@ -3,11 +3,21 @@
 package claudecode
 
 import (
+	"context"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
+	"time"
 
+	"adomnia/internal/ide/sdk"
 	"adomnia/internal/milk"
+	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 )
 
 // AdapterPackage è l'adapter ACP ufficiale di Claude Code, avviato con npx quando
@@ -28,37 +38,118 @@ func resolve(settings milk.Settings, root string) (milk.Launch, error) {
 	if err != nil {
 		return launch, err
 	}
-	env := os.Environ()
+	env := agentEnvironment()
 	if settings.IgnoreAPIKey {
 		env = withoutVar(env, apiKeyVar)
 	}
-	lifted := liftedEnv(root, os.Getenv)
-	for _, name := range adapterEnvVars {
-		if value, ok := lifted[name]; ok {
-			env = append(withoutVar(env, name), name+"="+value)
-			launch.Key += name + "=" + value + ";"
-		}
+	for name, value := range settingsEnvironment(root, os.Getenv) {
+		env = setEnv(env, name, value)
 	}
+	for name, value := range settings.Env {
+		env = setEnv(env, name, value)
+	}
+	if claude, lookupErr := exec.LookPath("claude"); lookupErr == nil {
+		env = setEnv(env, "CLAUDE_CODE_EXECUTABLE", claude)
+	}
+	launch.Args = append(launch.Args, settings.ExtraArgs...)
 	launch.Env = env
+	launch.Key = launchKey(launch, env)
 	return launch, nil
 }
 
-// command sceglie, in ordine: percorso dalle impostazioni, adapter nel PATH, npx.
+var offlineAdapterProbe = probeOfflineAdapter
+
+// command sceglie, in ordine: percorso dalle impostazioni, adapter nel PATH,
+// installazioni npm globali, cartella gestita/cache e infine la cache offline di npx.
 func command(settings milk.Settings, lookPath func(string) (string, error)) (milk.Launch, error) {
-	if settings.BinaryPath != "" {
-		if info, err := os.Stat(settings.BinaryPath); err != nil || info.IsDir() {
-			return milk.Launch{}, milk.NotInstalled("Claude Code adapter not found at " + settings.BinaryPath)
+	candidates := sdk.ToolSearch{Names: []string{"claude-agent-acp"}, Custom: settings.BinaryPath, LookPath: lookPath}.Candidates()
+	for _, directory := range adapterDirectories() {
+		candidates = append(candidates, sdk.ToolCandidate{Name: "claude-agent-acp", Binary: filepath.Join(directory, sdk.ExecutableName("claude-agent-acp")), Source: directory})
+		if runtime.GOOS == "windows" {
+			candidates = append(candidates, sdk.ToolCandidate{Name: "claude-agent-acp", Binary: filepath.Join(directory, "claude-agent-acp.cmd"), Source: directory})
 		}
-		return milk.Launch{Binary: settings.BinaryPath}, nil
 	}
-	if path, err := lookPath("claude-agent-acp"); err == nil {
-		return milk.Launch{Binary: path}, nil
+	located, found := sdk.Locate(candidates, "Claude Code adapter not found at "+settings.BinaryPath, func(sdk.ToolCandidate) (string, error) { return "", nil })
+	if found {
+		if located.Error != "" {
+			return milk.Launch{Binary: located.Binary}, milk.NotInstalled(located.Error)
+		}
+		return milk.Launch{Binary: located.Binary}, nil
 	}
 	npx, err := lookPath("npx")
 	if err != nil {
-		return milk.Launch{}, milk.NotInstalled("Claude Code needs Node.js 22+ (npx was not found). Install Node.js, or set the path of claude-agent-acp in Claude Code settings")
+		return milk.Launch{}, milk.NotInstalled("Claude Code adapter is not installed and npx was not found. Install Node.js or choose a claude-agent-acp executable")
 	}
-	return milk.Launch{Binary: npx, Args: []string{"--yes", AdapterPackage}}, nil
+	if offlineAdapterProbe(npx) {
+		return milk.Launch{Binary: npx, Args: []string{"--offline", "--no-install", AdapterPackage}}, nil
+	}
+	return milk.Launch{Binary: npx}, milk.NotInstalled("Claude Code adapter is not installed. Use Install adapter, install @agentclientprotocol/claude-agent-acp manually, or choose its executable. No download was attempted")
+}
+
+func adapterDirectories() []string {
+	directories := []string{}
+	if appData := strings.TrimSpace(os.Getenv("APPDATA")); appData != "" {
+		directories = append(directories, filepath.Join(appData, "npm"))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		directories = append(directories, filepath.Join(home, ".npm-global", "bin"), filepath.Join(home, ".local", "bin"))
+	}
+	if cache, err := os.UserCacheDir(); err == nil {
+		directories = append(directories, filepath.Join(cache, "adomnia", "tools", "claude-agent-acp", "node_modules", ".bin"))
+	}
+	return directories
+}
+
+func probeOfflineAdapter(npx string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	cmd := procutil.CommandContext(ctx, npx, "--offline", "--no-install", AdapterPackage, "--version")
+	cmd.Env = agentEnvironment()
+	return cmd.Run() == nil
+}
+
+func agentEnvironment() []string {
+	env := netpolicy.Environ()
+	proxy := envValue(env, "HTTPS_PROXY")
+	if proxy == "" {
+		proxy = envValue(env, "HTTP_PROXY")
+	}
+	if proxy != "" {
+		env = setEnv(env, "NPM_CONFIG_PROXY", proxy)
+		env = setEnv(env, "NPM_CONFIG_HTTPS_PROXY", proxy)
+	}
+	ca := envValue(env, "SSL_CERT_FILE")
+	if ca != "" {
+		env = setEnv(env, "NPM_CONFIG_CAFILE", ca)
+		if envValue(env, "NODE_EXTRA_CA_CERTS") == "" {
+			env = setEnv(env, "NODE_EXTRA_CA_CERTS", ca)
+		}
+	}
+	return env
+}
+
+func envValue(env []string, name string) string {
+	for _, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if ok && strings.EqualFold(key, name) {
+			return value
+		}
+	}
+	return ""
+}
+
+func setEnv(env []string, name, value string) []string {
+	return append(withoutVar(env, name), name+"="+value)
+}
+
+func launchKey(launch milk.Launch, env []string) string {
+	interesting := []string{"ANTHROPIC_MODEL", "ANTHROPIC_CUSTOM_MODEL_OPTION", "CLAUDE_CODE_EXECUTABLE", "HTTPS_PROXY", "NODE_EXTRA_CA_CERTS"}
+	sort.Strings(interesting)
+	material := launch.Binary + "\x00" + strings.Join(launch.Args, "\x00")
+	for _, name := range interesting {
+		material += "\x00" + name + "=" + envValue(env, name)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(material)))
 }
 
 func withoutVar(env []string, name string) []string {

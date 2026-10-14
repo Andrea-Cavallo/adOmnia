@@ -23,6 +23,11 @@ type Settings struct {
 	// IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
 	// dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
 	IgnoreAPIKey bool `json:"ignoreApiKey,omitempty"`
+	// Env aggiunge variabili non segrete o riferimenti a credenziali già presenti
+	// all'ambiente dell'agente. I valori restano nel file locale delle impostazioni.
+	Env map[string]string `json:"env,omitempty"`
+	// ExtraArgs sono argomenti espliciti aggiunti al comando dell'agente ACP.
+	ExtraArgs []string `json:"extraArgs,omitempty"`
 }
 
 // DefaultSettings: milk spento finché l'utente non lo attiva.
@@ -35,6 +40,24 @@ func (s Settings) Validate() (Settings, error) {
 	s.BinaryPath = strings.TrimSpace(s.BinaryPath)
 	if s.BinaryPath != "" && !filepath.IsAbs(s.BinaryPath) {
 		return Settings{}, fmt.Errorf("%q must be an absolute path", s.BinaryPath)
+	}
+	if len(s.Env) > 64 || len(s.ExtraArgs) > 32 {
+		return Settings{}, fmt.Errorf("too many agent environment variables or arguments")
+	}
+	cleanEnv := make(map[string]string, len(s.Env))
+	for name, value := range s.Env {
+		name = strings.TrimSpace(name)
+		if name == "" || strings.ContainsAny(name, "=\x00\r\n") || strings.ContainsAny(value, "\x00\r\n") {
+			return Settings{}, fmt.Errorf("invalid agent environment variable %q", name)
+		}
+		cleanEnv[name] = value
+	}
+	s.Env = cleanEnv
+	for index := range s.ExtraArgs {
+		s.ExtraArgs[index] = strings.TrimSpace(s.ExtraArgs[index])
+		if s.ExtraArgs[index] == "" || strings.ContainsRune(s.ExtraArgs[index], '\x00') {
+			return Settings{}, fmt.Errorf("invalid empty agent argument")
+		}
 	}
 	return s, nil
 }

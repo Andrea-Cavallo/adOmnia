@@ -1,5 +1,5 @@
 import * as ClaudeCode from '../../bindings/adomnia/claudecode'
-import type { Config } from '../../bindings/adomnia/internal/claudecode/models'
+import type { Config, Diagnosis } from '../../bindings/adomnia/internal/claudecode/models'
 import { subscribeAgentEvents } from '@/lib/milk-api'
 import { createAgentChatStore } from './agentChat'
 
@@ -19,5 +19,8 @@ export const useClaudeCodeStore = createAgentChatStore({
 
 export const getClaudeCodeLog = (): Promise<string[]> => ClaudeCode.Log()
 export type ClaudeCodeConfig = Config
+export type ClaudeCodeDiagnosis = Diagnosis
 /** What Claude Code will use in a project (provider, model, settings files), never secret values. */
 export const inspectClaudeCode = (root: string): Promise<ClaudeCodeConfig> => ClaudeCode.Inspect(root)
+export const diagnoseClaudeCode = (root: string): Promise<ClaudeCodeDiagnosis> => ClaudeCode.Diagnose(root)
+export const installClaudeCodeAdapter = () => ClaudeCode.InstallAdapter()

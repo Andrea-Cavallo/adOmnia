@@ -144,9 +144,96 @@ export class ConfigVar {
     }
 }
 
+export class Diagnosis {
+    "command": string;
+    "arguments": string[];
+    "paths": { [_ in string]?: string };
+    "proxy"?: string;
+    "caFile"?: string;
+    "steps": DiagnosticStep[];
+    "lastStderr": string[];
+
+    /** Creates a new Diagnosis instance. */
+    constructor($$source: Partial<Diagnosis> = {}) {
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("arguments" in $$source)) {
+            this["arguments"] = [];
+        }
+        if (!("paths" in $$source)) {
+            this["paths"] = {};
+        }
+        if (!("steps" in $$source)) {
+            this["steps"] = [];
+        }
+        if (!("lastStderr" in $$source)) {
+            this["lastStderr"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Diagnosis instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Diagnosis {
+        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType5;
+        const $$createField5_0 = $$createType7;
+        const $$createField6_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("arguments" in $$parsedSource) {
+            $$parsedSource["arguments"] = $$createField1_0($$parsedSource["arguments"]);
+        }
+        if ("paths" in $$parsedSource) {
+            $$parsedSource["paths"] = $$createField2_0($$parsedSource["paths"]);
+        }
+        if ("steps" in $$parsedSource) {
+            $$parsedSource["steps"] = $$createField5_0($$parsedSource["steps"]);
+        }
+        if ("lastStderr" in $$parsedSource) {
+            $$parsedSource["lastStderr"] = $$createField6_0($$parsedSource["lastStderr"]);
+        }
+        return new Diagnosis($$parsedSource as Partial<Diagnosis>);
+    }
+}
+
+export class DiagnosticStep {
+    "name": string;
+    "status": string;
+    "detail": string;
+
+    /** Creates a new DiagnosticStep instance. */
+    constructor($$source: Partial<DiagnosticStep> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("detail" in $$source)) {
+            this["detail"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DiagnosticStep instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DiagnosticStep {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DiagnosticStep($$parsedSource as Partial<DiagnosticStep>);
+    }
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = ConfigFile.createFrom;
 const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = ConfigVar.createFrom;
 const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Map($Create.Any, $Create.Any);
+const $$createType6 = DiagnosticStep.createFrom;
+const $$createType7 = $Create.Array($$createType6);

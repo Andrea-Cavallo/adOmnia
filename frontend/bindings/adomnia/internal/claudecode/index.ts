@@ -4,5 +4,7 @@
 export {
     Config,
     ConfigFile,
-    ConfigVar
+    ConfigVar,
+    Diagnosis,
+    DiagnosticStep
 } from "./models.js";

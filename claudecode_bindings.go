@@ -77,3 +77,22 @@ func (c *ClaudeCode) RespondPermission(requestID string, allow bool) {
 func (c *ClaudeCode) Inspect(root string) claudecode.Config {
 	return claudecode.Inspect(root, c.manager.Settings().IgnoreAPIKey)
 }
+
+// Diagnose controlla adapter, tool locali, rete npm e identità Bedrock senza esporre segreti.
+func (c *ClaudeCode) Diagnose(ctx context.Context, root string) claudecode.Diagnosis {
+	return claudecode.Diagnose(ctx, root, c.manager.Settings(), c.manager.Log())
+}
+
+// InstallAdapter installa l'adapter solo dopo il click esplicito dell'utente.
+func (c *ClaudeCode) InstallAdapter(ctx context.Context) (milk.Status, error) {
+	path, err := claudecode.InstallAdapter(ctx)
+	if err != nil {
+		return c.manager.Status(), err
+	}
+	settings := c.manager.Settings()
+	settings.BinaryPath, settings.Enabled = path, true
+	if _, err := c.manager.SaveSettings(settings); err != nil {
+		return c.manager.Status(), err
+	}
+	return c.manager.Status(), nil
+}

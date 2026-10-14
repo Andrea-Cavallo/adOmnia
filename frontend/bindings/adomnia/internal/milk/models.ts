@@ -13,6 +13,7 @@ export class AgentsInfo {
     "primary": string;
     "escalation": string;
     "providers": ProviderStatus[];
+    "warnings": string[];
 
     /** Creates a new AgentsInfo instance. */
     constructor($$source: Partial<AgentsInfo> = {}) {
@@ -28,6 +29,9 @@ export class AgentsInfo {
         if (!("providers" in $$source)) {
             this["providers"] = [];
         }
+        if (!("warnings" in $$source)) {
+            this["warnings"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -37,9 +41,13 @@ export class AgentsInfo {
      */
     static createFrom($$source: any = {}): AgentsInfo {
         const $$createField3_0 = $$createType1;
+        const $$createField4_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("providers" in $$parsedSource) {
             $$parsedSource["providers"] = $$createField3_0($$parsedSource["providers"]);
+        }
+        if ("warnings" in $$parsedSource) {
+            $$parsedSource["warnings"] = $$createField4_0($$parsedSource["warnings"]);
         }
         return new AgentsInfo($$parsedSource as Partial<AgentsInfo>);
     }
@@ -171,6 +179,17 @@ export class Settings {
      */
     "ignoreApiKey"?: boolean;
 
+    /**
+     * Env aggiunge variabili non segrete o riferimenti a credenziali già presenti
+     * all'ambiente dell'agente. I valori restano nel file locale delle impostazioni.
+     */
+    "env"?: { [_ in string]?: string };
+
+    /**
+     * ExtraArgs sono argomenti espliciti aggiunti al comando dell'agente ACP.
+     */
+    "extraArgs"?: string[];
+
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
         if (!("enabled" in $$source)) {
@@ -190,7 +209,15 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("env" in $$parsedSource) {
+            $$parsedSource["env"] = $$createField4_0($$parsedSource["env"]);
+        }
+        if ("extraArgs" in $$parsedSource) {
+            $$parsedSource["extraArgs"] = $$createField5_0($$parsedSource["extraArgs"]);
+        }
         return new Settings($$parsedSource as Partial<Settings>);
     }
 }
@@ -270,3 +297,5 @@ export class Status {
 // Private type creation functions
 const $$createType0 = ProviderStatus.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = $Create.Map($Create.Any, $Create.Any);

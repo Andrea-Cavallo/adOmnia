@@ -1,17 +1,36 @@
 import { Fragment, useEffect, useState } from 'react'
-import { AlertCircle, ExternalLink } from 'lucide-react'
+import { AlertCircle, Download, ExternalLink } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { MilkSettings } from '@/lib/milk-api'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 import type { GoIDEEditorDocument } from '@/stores/goide'
-import { getClaudeCodeLog, inspectClaudeCode, useClaudeCodeStore, type ClaudeCodeConfig } from '@/stores/claudeCode'
+import { diagnoseClaudeCode, getClaudeCodeLog, installClaudeCodeAdapter, inspectClaudeCode, useClaudeCodeStore, type ClaudeCodeConfig, type ClaudeCodeDiagnosis } from '@/stores/claudeCode'
 import { useGoIDEStore } from '@/stores/goide'
 import { GoStudioAgentChat, type ChatAgent } from './GoStudioAgentChat'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
 
 const ADAPTER_URL = 'https://github.com/agentclientprotocol/claude-agent-acp'
 const BUTTON = 'gs-btn gs-btn-secondary gs-btn-sm'
+
+function formatEnvironment(env: Record<string, string | undefined> | undefined): string {
+  return Object.entries(env ?? {}).filter((entry): entry is [string, string] => entry[1] !== undefined).sort(([left], [right]) => left.localeCompare(right)).map(([name, value]) => `${name}=${value}`).join('\n')
+}
+
+function parseEnvironment(value: string): Record<string, string> {
+  return Object.fromEntries(value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const separator = line.indexOf('=')
+    return separator < 0 ? [line, ''] : [line.slice(0, separator).trim(), line.slice(separator + 1)]
+  }))
+}
+
+function diagnosisLog(diagnosis: ClaudeCodeDiagnosis): string[] {
+  const lines = diagnosis.steps.map((step) => `[${step.status.toUpperCase()}] ${step.name}: ${step.detail}`)
+  if (diagnosis.command) lines.push(`Command: ${diagnosis.command} ${(diagnosis.arguments ?? []).join(' ')}`.trim())
+  for (const [name, path] of Object.entries(diagnosis.paths ?? {})) lines.push(`${name}: ${path}`)
+  lines.push(`Proxy: ${diagnosis.proxy || 'system/default'}`, `CA: ${diagnosis.caFile || 'system trust store'}`)
+  return [...lines, ...(diagnosis.lastStderr ?? [])]
+}
 
 /** Claude's mark in its brand color (Simple Icons): readable on light and dark themes. */
 export function ClaudeLogo({ size = 16, className = '' }: { size?: number; className?: string }) {
@@ -91,12 +110,15 @@ export function GoStudioClaudeDialog() {
   const [draft, setDraft] = useState<MilkSettings | null>(null)
   const [log, setLog] = useState<string[] | null>(null)
   const [config, setConfig] = useState<ClaudeCodeConfig | null>(null)
+  const [diagnosis, setDiagnosis] = useState<ClaudeCodeDiagnosis | null>(null)
+  const [actionBusy, setActionBusy] = useState(false)
   const root = useGoIDEStore((state) => state.sessions.find((session) => session.id === state.activeSessionId)?.project.realPath ?? '')
   const close = () => useClaudeCodeStore.getState().setDialogOpen(false)
 
   useEffect(() => {
     if (open) {
       setLog(null)
+      setDiagnosis(null)
       void useClaudeCodeStore.getState().ensure()
       inspectClaudeCode(root).then(setConfig, () => setConfig(null))
     }
@@ -110,6 +132,27 @@ export function GoStudioClaudeDialog() {
 
   const save = async () => {
     if (await useClaudeCodeStore.getState().saveSettings(draft)) close()
+  }
+
+  const diagnose = async () => {
+    setActionBusy(true)
+    try {
+      const result = await diagnoseClaudeCode(root)
+      setDiagnosis(result)
+      setLog(diagnosisLog(result))
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const installAdapter = async () => {
+    setActionBusy(true)
+    try {
+      await installClaudeCodeAdapter()
+      await useClaudeCodeStore.getState().ensure()
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   return (
@@ -132,12 +175,14 @@ export function GoStudioClaudeDialog() {
       <section className="flex flex-col gap-2.5">
         <h3 className="gs-section-title">Agent</h3>
         <p className="text-[12.5px] text-text-2">
-          adOmnia talks to Claude Code through its official ACP adapter, started with <span className="gs-mono">npx</span> (Node.js 22+) the first time and then from npm&apos;s cache.
+          adOmnia talks to Claude Code through its official ACP adapter. It uses an installed adapter or the existing offline npm cache and never downloads during startup.
           It uses the account you logged in with <span className="gs-mono">claude</span>; run <span className="gs-mono">claude</span> once in a terminal if you never did.
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void Browser.OpenURL(ADAPTER_URL)} className={BUTTON}><ExternalLink size={12} /> claude-agent-acp</button>
+          <GoStudioButton small variant={status?.state === 'not-installed' ? 'primary' : 'secondary'} icon={Download} loading={actionBusy} disabled={busy || actionBusy} onClick={() => void installAdapter()}>Install adapter</GoStudioButton>
           <button type="button" disabled={busy || !settings?.enabled} onClick={() => void useClaudeCodeStore.getState().restart()} className={BUTTON}>Restart</button>
+          <button type="button" disabled={actionBusy} onClick={() => void diagnose()} className={BUTTON}>Test connection</button>
           <button type="button" onClick={() => void getClaudeCodeLog().then(setLog)} className={BUTTON}>Show logs</button>
         </div>
         {log && <pre className="gs-surface gs-mono max-h-44 overflow-auto p-3 text-[11px] leading-5 text-text-3">{log.length ? log.join('\n') : 'No log lines yet.'}</pre>}
@@ -159,11 +204,31 @@ export function GoStudioClaudeDialog() {
         <input
           value={draft.binaryPath}
           onChange={(event) => setDraft({ ...draft, binaryPath: event.target.value })}
-          placeholder="claude-agent-acp on PATH, otherwise npx"
+          placeholder="Found on PATH, npm global folders or adOmnia's managed tools"
           className="gs-input gs-mono text-[12px]"
           aria-label="Claude Code adapter path"
         />
         {status?.binary && <p className="text-[11.5px] text-text-4">In use: <span className="gs-mono">{status.binary}</span></p>}
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h3 className="gs-section-title">Environment and arguments</h3>
+        <textarea
+          value={formatEnvironment(draft.env)}
+          onChange={(event) => setDraft({ ...draft, env: parseEnvironment(event.target.value) })}
+          placeholder={'CLAUDE_CODE_USE_BEDROCK=1\nAWS_REGION=eu-west-1'}
+          className="gs-input gs-mono min-h-20 text-[12px]"
+          aria-label="Claude Code environment variables"
+        />
+        <textarea
+          value={(draft.extraArgs ?? []).join('\n')}
+          onChange={(event) => setDraft({ ...draft, extraArgs: event.target.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) })}
+          placeholder="One extra adapter argument per line"
+          className="gs-input gs-mono min-h-16 text-[12px]"
+          aria-label="Claude Code adapter arguments"
+        />
+        <p className="text-[11.5px] text-text-4">Project and managed Claude settings override the process environment; values remain in the local settings file and are redacted from diagnostics.</p>
+        {diagnosis && <p className="text-[11.5px] text-text-4">Effective network: proxy <span className="gs-mono">{diagnosis.proxy || 'system/default'}</span> · CA <span className="gs-mono">{diagnosis.caFile || 'system trust store'}</span></p>}
       </section>
 
       <section className="flex flex-col gap-2.5">

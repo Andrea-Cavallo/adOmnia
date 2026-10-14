@@ -441,8 +441,10 @@ Go Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase mi
 
 For changes:
 
-- Run `npm run build` to catch TypeScript errors
-- Run `go test ./...` for Go backend checks
+- For each feature, run focused Vitest and Go tests for the changed modules
+- Run `npx tsc --noEmit` for TypeScript changes; use `npm run build` at UI integration checkpoints
+- Do not repeat the complete frontend suite (currently 1,300+ tests) after every feature
+- Run the complete frontend and Go suites only for release/final integration, broad cross-cutting changes, or when focused tests reveal wider regressions
 - Test integration in dev mode with `wails3 task dev`
 - **Manually test the full user experience** — open the panel, use it as a real user would
 - Verify that the workflow is fluid from start to finish
