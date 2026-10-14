@@ -1,18 +1,20 @@
-# Piani e verifiche adOmnia
+# Piani di lavoro adOmnia
 
-Indice riallineato il 2026-10-11. L'aggiornamento documentale non equivale a un nuovo collaudo.
+Tutto il lavoro ancora da fare, in un solo posto e in ordine di esecuzione. **OpenShift e Collaborazione sono volutamente gli ultimi.**
 
-| Documento | Responsabilità |
-| --- | --- |
-| [gO Studio 2027](gO-Studio-2027-todo.md) | Funzionalità IDE residue, obiettivi e idee; distingue implementazione da accettazione |
-| [Collaudo IDE](todo-ide.md) | Prove desktop M1–M34, gate e registro delle evidenze |
-| [Perimetro v1](V1-RELEASE-SCOPE-TODO.md) | Esposizione delle funzionalità e gate del rilascio candidato |
-| [Collaborazione](ADOMNIA-COLLABORATION-TODO.md) | Lavoro e prove LAN/multi-computer; beta opt-in nel perimetro v1 |
-| [OpenShift](TODO-OPENSHIFT.md) | Evoluzione Kubernetes/OpenShift; navigazione rimandata nella v1, target IDE conservati |
-| [Privacy](PRIVACY.md) | Trattamento dei dati e operazioni di rete esplicite; niente telemetria |
+| # | File | Che cosa contiene | Quando |
+|---|------|-------------------|--------|
+| 01 | [RILASCIO-V1](01-RILASCIO-V1.md) | Perimetro approvato, funzioni nascoste, gate di pubblicazione (CI, installer, updater, firma), collaudi Git/PDF/Home | Subito |
+| 02 | [UI-DESKTOP-VERIFICHE-VISIVE](02-UI-DESKTOP-VERIFICHE-VISIVE.md) | Smoke test dell'app compilata: shell API, toolbar, icona nativa, screenshot README | Subito (una sessione) |
+| 03 | [GO-STUDIO-PIANO-UNIFICATO](03-GO-STUDIO-PIANO-UNIFICATO.md) | Collaudo M1–M34 e gate, lacune reali, effetti Wow, funzioni 2027, Copilot Edit/Agent, qualità continua | Dopo 01–02 |
+| 04 | [OPENSHIFT-KUBERNETES-STUDIO](04-OPENSHIFT-KUBERNETES-STUDIO.md) | Studio cluster per sviluppatori (nascosto in v1) | **Penultimo** |
+| 05 | [COLLABORAZIONE-REALTIME](05-COLLABORAZIONE-REALTIME.md) | Collaborazione LAN su due computer, runbook A1–A6, P1/P2 (beta opt-in in v1) | **Ultimo** |
 
-Il piano di estensione [JS/TS e framework web](../docs/architecture/ide-web-languages-action-plan.md) è una proposta separata: partire dalla baseline Go collaudata e rispettare il perimetro di rilascio. Non è necessario completare tutte le idee 2027 per iniziarlo.
+`archivio/` contiene l'originale di `todo-ide.md`, già fuso in 03: solo consultazione, non aggiornarlo.
 
-Aggiornare lo stato dal codice e da evidenze circoscritte. Una build o un test backend non chiudono prove desktop, multi-computer o piattaforme non eseguite. Il conteggio del piano 2027 riguarda checkbox aperte: gli obiettivi di riferimento non sono altrettante funzionalità mancanti. Le prove manuali risiedono nel documento responsabile e gli altri piani vi rimandano.
+## Regole
 
-P2: completate le otto integrazioni precedentemente parziali il 2026-10-11; restano sei attività funzionali e il collaudo desktop descritto in todo-ide.md.
+- Un'idea o un bug nuovo va nel file della sua area; non creare nuovi file `TODO-*.md` sparsi.
+- Una voce si spunta solo con la **prova** (sessione desktop registrata o test indicato), non perché "il codice c'è".
+- Quando cambia un comportamento, aggiornare anche i documenti elencati in CLAUDE.md (`docs/GO-STUDIO.md`, `docs/ISSUES.md`).
+- Gli stati documentati qui rispecchiano il codice alla data in testa a ciascun file; riverificare prima di agire.

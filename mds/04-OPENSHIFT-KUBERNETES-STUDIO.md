@@ -1,8 +1,8 @@
-# adOmnia - OpenShift Studio TODO
+# 04 · OpenShift / Kubernetes Studio
 
-## Collegamento al rilascio
+Aggiornato: 2026-10-13 (stato codice riverificato). Indice: [README.md](README.md).
 
-Kubernetes/OpenShift Studio resta nascosto dalla navigazione nel [perimetro v1](V1-RELEASE-SCOPE-TODO.md); i target remoti IDE sono conservati. Il completamento di questo piano non è un prerequisito della v1. La riattivazione richiede il collaudo cluster previsto nel documento di rilascio. Vedi [indice dei piani](README.md). Allineamento documentale: 2026-10-11, senza nuove prove.
+> **Ultimo gruppo di lavoro, insieme a [05 Collaborazione](05-COLLABORAZIONE-REALTIME.md).** Kubernetes/OpenShift Studio è nascosto dalla navigazione nel [perimetro v1](01-RILASCIO-V1.md); i target remoti dell'IDE sono conservati. Completare questo piano non è prerequisito della v1: la riattivazione richiede il collaudo cluster descritto in 01 §5.
 
 ## Obiettivo
 
@@ -21,6 +21,8 @@ Il modulo deve funzionare con Kubernetes standard e aggiungere funzionalità spe
 ## Stato attuale (verificato nel codice il 2026-10-10)
 
 Esiste già la **Kubernetes Studio** (`internal/kube`, `frontend/src/components/kube`), basata su `kubectl` con output JSON letto in Go: context dal kubeconfig/`KUBECONFIG` senza modificarlo, namespace, pod (stato, ready, restart, nodo, container, label), log in streaming per container, exec, lettura/scrittura file nel container, port-forward di pod e service su `127.0.0.1` con porta libera automatica, elenco di deployment, service, configmap e secret (solo metadati: i valori non lasciano il backend), strumenti Go sui pod. Le voci già coperte sono state rimosse da questo file.
+
+**Attenzione ai pilastri:** adOmnia è un singolo eseguibile "senza dipendenze a runtime"; oggi Kubernetes Studio richiede `kubectl` nel PATH (`kube.Available()`). Va deciso, prima di riattivarlo, se dichiararlo prerequisito opzionale (mostrando un messaggio guidato quando manca) o passare a client-go (nessun binario esterno, ma binario più grande e più codice da mantenere).
 
 **Scelta aperta prima di P0:** l'architettura sotto (`internal/platform/cluster` con API native) è il traguardo; oggi si estende `internal/kube`. Passare a client-go conviene quando servono watch, discovery delle API OpenShift e metriche: fino ad allora `kubectl` resta l'adapter.
 
@@ -711,7 +713,7 @@ PROD  -> Read-only
 - [ ] Redaction automatica token nei log.
 - [ ] Redaction automatica `Authorization`.
 - [ ] Redaction automatica Secret.
-- [ ] Nessuna credenziale nella telemetry.
+- [ ] Nessuna credenziale nella diagnostica locale né nei log.
 
 ---
 
@@ -917,9 +919,9 @@ Simulare:
 
 ---
 
-# Telemetry interna
+# Diagnostica interna (solo locale)
 
-Telemetry opzionale e locale-first.
+adOmnia è local-first e **non ha telemetria**: queste metriche restano sulla macchina, visibili in un pannello di diagnostica, e non vengono mai inviate.
 
 Misurare solamente metriche tecniche:
 

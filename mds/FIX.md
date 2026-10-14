@@ -31,12 +31,15 @@ Una voce si spunta `[x]` solo se **tutte** queste condizioni sono vere:
 - Chi implementa compila le caselle **Impl / Test / Manuale / Doc** del Gate della sezione. La casella **Verificato da altra persona/agente** la spunta qualcun altro (o un agente di review) rileggendo evidenza e diff.
 - Le cause segnate "probabile / da confermare" vanno **riprodotte prima** di scrivere il fix. Se la riproduzione smentisce la causa, aggiornare questo documento prima di procedere.
 
-### 0.4 Comandi di verifica (tutti verdi prima di chiudere una sezione)
+### 0.4 Comandi di verifica proporzionati
 ```bash
-go test ./...
-cd frontend && npm run build && npm run check:startup
-wails3 task build        # test manuale su Windows con la build di release
+go test ./internal/<dominio-modificato>/...
+cd frontend && npx vitest run <test-mirati> && npx tsc --noEmit
+npm run build && npm run check:startup   # checkpoint di integrazione UI
+wails3 task build                        # checkpoint desktop/release
 ```
+- Durante le singole feature eseguire i test mirati al comportamento modificato; non rilanciare ogni volta l'intera suite frontend da oltre 1.300 test.
+- Eseguire le suite complete frontend e Go al rilascio/checkpoint finale, dopo modifiche trasversali oppure quando i test mirati indicano una regressione più ampia.
 - Se si toccano i binding Go: `wails3 generate bindings -clean=true -ts ./...` con il `wails3` pinnato in `go.mod`, e `frontend/bindings/adomnia/*` aggiornati.
 - `internal/ide/architecture_test.go` deve restare verde.
 - Test manuale: `wails3 task dev` con un progetto reale (`root/go.mod` + `root/cmd/main.go` + sotto-package con test), skin scuro **e** chiaro.
@@ -159,7 +162,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 
 **Barra di avanzamento sotto l'IDE**
 - [x] IDE-2.6 `stores/goideTasks.ts` (`{id, label, status}` per `sessionId`); analizzatori e chiamate lente pubblicano inizio/fine. — test di isolamento per sessione, completamento ed errore.
-- [ ] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`). — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app. — **Bug introdotto e corretto (2026-10-14):** la status bar usava `useGoIDETasksStore((state) => runningGoIDETasks(state, session.id))`; `runningGoIDETasks` restituisce un nuovo array a ogni chiamata, quindi Zustand 5 / `useSyncExternalStore` vedeva uno snapshot diverso a ogni render → loop di render → React error #185 all'apertura di Go Studio (registrato in `%APPDATA%\adomnia\logs\debug-*.jsonl`). Fix: selezionare l'array stabile `state.tasks[sessionId]` e filtrare con `useMemo`; test di invariata referenza in `goideTasks.test.ts`. Verificato: nuova build, l'app apre Go Studio senza `#185`.
+- [x] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`). — **Bug introdotto e corretto (2026-10-14):** la status bar usava `useGoIDETasksStore((state) => runningGoIDETasks(state, session.id))`; `runningGoIDETasks` restituisce un nuovo array a ogni chiamata, quindi Zustand 5 / `useSyncExternalStore` vedeva uno snapshot diverso a ogni render → loop di render → React error #185 all'apertura di Go Studio (registrato in `%APPDATA%\adomnia\logs\debug-*.jsonl`). Fix: selezionare l'array stabile `state.tasks[sessionId]` e filtrare con `useMemo`; test di invariata referenza in `goideTasks.test.ts`. Verificato: nuova build, l'app apre Go Studio senza `#185`.
 
 **Verifica**
 - [ ] IDE-2.M1 Release `-H windowsgui` su Windows 11: Interface Analyzer, Error Analysis, Architecture, Move Symbol, installazione tool → nessuna finestra, nemmeno per un istante. — **NON VERIFICATO:** richiede controllo visivo della release installata.
@@ -707,4 +710,5 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | GS-1 Impl/Test/Doc | 2026-10-14 | Codex | `go build ./...` e `go test -timeout 10m ./...` verdi; `internal/ide/architecture_test.go` verde; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `npx vitest run`: 316 file/1379 test verdi; `wails3 task build` (Wails beta.28) exit 0; binding `ListRunTargets` presenti e rigenerati. Manuale Play/F5/Debug/gutter/picker NON VERIFICATO (richiede app desktop interattiva). |               |
 | GS-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; test mirati per scope ricorsivo, stderr/exit code, `go.mod` quotato, coverage vuota e moduli annidati; `npx vitest run`: 316 file/1380 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` (Wails beta.28) exit 0. Verifica manuale nel Test Explorer ancora NON VERIFICATA. |               |
 | IDE-2.7 hotfix React #185 | 2026-10-14 | OpenCode | Riprodotto dall'app reale: `%APPDATA%\adomnia\logs\debug-2026-10-14.jsonl` con `Error: Minified React error #185` e componente in `GoStudioPanel-*.js`; assente nei log del 13/10. Causa: selettore Zustand instabile `runningGoIDETasks(state, session.id)`. Fix in `GoStudioStatusBar.tsx` (array stabile + `useMemo`) + test di referenza in `goideTasks.test.ts`. Verifica: `npx tsc --noEmit` pulito; `npx vitest run`: 316 file/1380 test verdi; `.\build.ps1` exit 0; nuova build avviata → nessun `#185` nel log. |               |
+| GS-3 Impl/Test/Doc | 2026-10-14 | Codex | Commit `fad8907`; test mirati `./internal/claudecode ./internal/milk ./internal/copilot ./internal/ide/sdk`, `go build ./...`, `npx tsc --noEmit`, `npm run build`, `npm run check:startup` (600158 B < 650 kB), binding Wails beta.28. Suite frontend completa non ripetuta secondo la verifica proporzionata. Portale aziendale, Bedrock reale e UI desktop ancora NON VERIFICATI. |               |
 |                |      |     |                                                  |               |

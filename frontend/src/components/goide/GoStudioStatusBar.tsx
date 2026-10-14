@@ -1,6 +1,6 @@
 import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
 import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
@@ -15,7 +15,7 @@ import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goid
 import { useThemesStore } from '@/stores/themes'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
-import { runningGoIDETasks, useGoIDETasksStore } from '@/stores/goideTasks'
+import { useGoIDETasksStore } from '@/stores/goideTasks'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
@@ -84,7 +84,11 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   }, [resourceMode])
   const authorized = session.project.authorization === 'tooling-permitted'
   const running = execution?.status === 'running'
-  const tasks = useGoIDETasksStore((state) => runningGoIDETasks(state, session.id))
+  // Seleziona l'array stabile per sessione: un `.filter` dentro il selettore
+  // restituirebbe un nuovo array a ogni render (Zustand 5 / useSyncExternalStore
+  // lo vede come snapshot diverso) e causerebbe un loop infinito (React #185).
+  const sessionTasks = useGoIDETasksStore((state) => state.tasks[session.id])
+  const tasks = useMemo(() => (sessionTasks ?? []).filter((task) => task.status === 'running'), [sessionTasks])
   const themes = useThemesStore((state) => state.themes)
   const activeThemeId = useThemesStore((state) => state.activeThemeId)
   const { applyTheme } = useThemeContext()

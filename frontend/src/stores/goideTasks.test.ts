@@ -20,4 +20,16 @@ describe('Go IDE background tasks', () => {
     await expect(withGoIDETask('session-a', 'errors', 'Analyzing errors', async () => { throw failure })).rejects.toBe(failure)
     expect(useGoIDETasksStore.getState().tasks['session-a'][0].status).toBe('failed')
   })
+
+  // Il selettore della status bar legge `state.tasks[sessionId]` così com'è:
+  // il riferimento deve restare stabile finché quella sessione non cambia,
+  // altrimenti Zustand 5 / useSyncExternalStore ri-renderizza all'infinito (React #185).
+  it('keeps a session task array referentially stable across unrelated updates', () => {
+    useGoIDETasksStore.getState().begin('session-a', { id: 'architecture', label: 'Analyzing architecture' })
+    const first = useGoIDETasksStore.getState().tasks['session-a']
+    useGoIDETasksStore.getState().begin('session-b', { id: 'errors', label: 'Analyzing errors' })
+    expect(useGoIDETasksStore.getState().tasks['session-a']).toBe(first)
+    useGoIDETasksStore.getState().finish('session-b', 'errors', 'completed')
+    expect(useGoIDETasksStore.getState().tasks['session-a']).toBe(first)
+  })
 })
