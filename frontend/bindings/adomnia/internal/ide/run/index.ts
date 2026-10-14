@@ -4,7 +4,8 @@
 export {
     DockerOptions,
     EnvironmentEntry,
-    Execution
+    Execution,
+    RunTarget
 } from "./models.js";
 
 export type {

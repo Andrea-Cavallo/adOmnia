@@ -782,6 +782,12 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	if target == "" {
 		target = "."
 	}
+	if (kind == "run" || kind == "build") && len(request.ExtraTargets) == 0 {
+		workingDirectory, target, err = s.resolveLanguageRunTarget(session, request.Language, kind, workingDirectory, target)
+		if err != nil {
+			return Execution{}, err
+		}
+	}
 	if err := validateRunTarget(session.Project.RealPath, workingDirectory, target); err != nil {
 		return Execution{}, err
 	}

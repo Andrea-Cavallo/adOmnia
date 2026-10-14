@@ -1,4 +1,5 @@
-import { GoIDERunConfigurationKind, type GoIDERunConfiguration } from '@/lib/goide-api'
+import { GoIDERunConfigurationKind, type GoIDERunConfiguration, type GoIDESession } from '@/lib/goide-api'
+import { moduleScopeFor } from './goStudioQuickActions'
 
 interface WorkspaceExecution {
   id: string
@@ -155,21 +156,25 @@ export function detectedGoServices(entities: readonly WorkspaceContextEntity[]):
   return [...byDirectory.values()].sort((left, right) => left.directory.localeCompare(right.directory))
 }
 
-export function serviceConfigurationForDirectory(sessionId: string, service: DetectedWorkspaceService): GoIDERunConfiguration {
+export function serviceConfigurationForDirectory(sessionId: string, service: DetectedWorkspaceService, session?: Pick<GoIDESession, 'project'>): GoIDERunConfiguration {
+  const scope = session ? moduleScopeFor(session, `${service.directory.replace(/^\.\/?/, '')}/main.go`) : null
   return {
     ...emptyConfiguration(sessionId),
     name: `Service: ${service.name}`,
     kind: GoIDERunConfigurationKind.RunKindPackage,
-    target: service.directory === '.' ? '.' : `./${service.directory}`,
+    target: scope?.packageTarget ?? (service.directory === '.' ? '.' : `./${service.directory}`),
+    workingDirectory: scope?.moduleDirectory ?? '',
     shared: true,
     restartOnSave: true,
   }
 }
 
-export function serviceConfigurationForDetectedDirectory(configs: readonly GoIDERunConfiguration[], directory: string): GoIDERunConfiguration | null {
-  const target = directory === '.' ? '.' : `./${directory.replace(/\\/g, '/').replace(/^\.\//, '')}`
+export function serviceConfigurationForDetectedDirectory(configs: readonly GoIDERunConfiguration[], directory: string, session?: Pick<GoIDESession, 'project'>): GoIDERunConfiguration | null {
+  const scope = session ? moduleScopeFor(session, `${directory.replace(/\\/g, '/').replace(/^\.\/?/, '')}/main.go`) : null
+  const target = scope?.packageTarget ?? (directory === '.' ? '.' : `./${directory.replace(/\\/g, '/').replace(/^\.\//, '')}`)
+  const workingDirectory = scope?.moduleDirectory ?? ''
   return configs.find((config) => config.kind === GoIDERunConfigurationKind.RunKindPackage
-    && (config.workingDirectory || '') === ''
+    && (config.workingDirectory || '') === workingDirectory
     && (config.target || '.') === target) ?? null
 }
 

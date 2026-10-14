@@ -138,6 +138,44 @@ export class Execution {
 
 export type RunID = string;
 
+/**
+ * RunTarget is a runnable package discovered by a language adapter. Dir is the
+ * package directory, ModuleDir is the owning build unit and Package is relative
+ * to ModuleDir ("." or "./cmd/api").
+ */
+export class RunTarget {
+    "dir": string;
+    "moduleDir": string;
+    "package": string;
+    "label": string;
+
+    /** Creates a new RunTarget instance. */
+    constructor($$source: Partial<RunTarget> = {}) {
+        if (!("dir" in $$source)) {
+            this["dir"] = "";
+        }
+        if (!("moduleDir" in $$source)) {
+            this["moduleDir"] = "";
+        }
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RunTarget instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RunTarget {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RunTarget($$parsedSource as Partial<RunTarget>);
+    }
+}
+
 export type SessionID = string;
 
 // Private type creation functions

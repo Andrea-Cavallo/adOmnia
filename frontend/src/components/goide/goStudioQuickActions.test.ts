@@ -20,6 +20,17 @@ describe('moduleScopeFor', () => {
     expect(moduleScopeFor(repo, 'tools/gen/gen.go')).toEqual({ moduleDirectory: 'tools/gen', packageTarget: '.' })
   })
 
+  it('normalizes Windows case and units detected through the visible project path', () => {
+    const linked = {
+      project: {
+        rootPath: 'C:\\LinkedRepo',
+        realPath: 'c:\\real\\repo',
+        units: [{ language: 'go', kind: 'module', root: 'c:\\LINKEDREPO\\svc', name: 'example/svc', manifest: 'c:\\LINKEDREPO\\svc\\go.mod' }],
+      },
+    } as unknown as Parameters<typeof moduleScopeFor>[0]
+    expect(moduleScopeFor(linked, 'svc/cmd/main.go')).toEqual({ moduleDirectory: 'svc', packageTarget: './cmd' })
+  })
+
   it('falls back to the first module without an active file and handles Windows paths', () => {
     expect(moduleScopeFor(session(['/work/repo/svc']), null)).toEqual({ moduleDirectory: 'svc', packageTarget: '.' })
     const windows = { project: { realPath: 'C:\\work\\repo', units: [{ language: 'go', kind: 'module', root: 'C:\\work\\repo\\svc', name: '' }] } } as unknown as Parameters<typeof moduleScopeFor>[0]

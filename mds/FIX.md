@@ -264,21 +264,21 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 - Bug collegato: il gutter ▶ su `func main` usa `packagePath` relativo con `workingDirectory: ''` (`GoStudioPanel.tsx:684-685`, `goStudioRunTargets.ts:32-35,77-81`) senza lo scope di modulo di `targetScope` (`goStudioQuickActions.ts:200-202`): con `svc/go.mod` + `svc/cmd/main.go` fallisce con `./svc/cmd`. Idem `goStudioWorkspaceStart.ts:158-167`.
 
 **Fix**
-- [ ] GS-1.0 Riprodotto con `root/go.mod` + `root/cmd/main.go` (test rosso).
-- [ ] GS-1.1 Core generico (`internal/ide/language` + `internal/ide/run`): capability opzionale `RunTargetResolver` con `DiscoverRunTargets(ctx, unitRoot) []RunTarget{Dir, ModuleDir, Package, Label}` e `ResolveRunTarget(root, wd, target, kind)` chiamata prima di `CommandSpec`. Nessun `switch language`.
-- [ ] GS-1.2 Adapter Go: discovery per modulo (riuso `scanModules`; `go list -f '{{.Name}} {{.Dir}}' ./...`, fallback `go/parser` `PackageClauseOnly`). Target solo se `Name == "main"` e c'è `func main`; esclusi `_test.go` e `//go:build ignore`.
-- [ ] GS-1.3 Regola per target `.`: working dir con file main → `.`; un solo main nel modulo → `./rel`; più main → `cmd/<basename-modulo>`, poi package del file attivo, poi chiedere. Mai indovinare in silenzio. Target-file (`go run cmd/main.go`) → directory del file + modulo (`./cmd`).
-- [ ] GS-1.4 Stessa risoluzione per `StartRun`, `buildRunRequest`, `StartDebug` e test. Nessun main → errore `No main package found under <root>; candidates: ./cmd/api, ./cmd/worker`.
-- [ ] GS-1.5 Binding `ListRunTargets(sessionId)` in `goide_bindings.go` + rigenerazione.
-- [ ] GS-1.6 Frontend: in `startConfigured` senza configurazione salvata risolvere con `moduleScopeFor` sul file `.go` attivo o con la discovery; creare automaticamente "Run <pkg>" al primo Play (`.adomnia/run-configurations.json`, campi piatti Go invariati); picker se più main, scelta ricordata; `targetScope` usato da `runTarget` e `serviceConfigurationForDirectory` (wd = directory del modulo, package relativo al modulo).
-- [ ] GS-1.7 Edge case: più main in `cmd/*`; `go.work` (eseguire dalla directory del modulo proprietario); moduli annidati (package relativo al `go.mod` più interno); cartelle loose senza `go.mod`; Windows (normalizzare `\`→`/`, prefisso `./`; `moduleScopeFor` confronta con `realPath` e ritorna `null` con symlink/case diversi → normalizzare).
+- [ ] GS-1.0 Riprodotto con `root/go.mod` + `root/cmd/main.go` (test rosso). — **NON VERIFICATO pre-fix:** aggiunto test di regressione sul caso, ma non è stato conservato un run rosso precedente all'implementazione.
+- [x] GS-1.1 Core generico (`internal/ide/language` + `internal/ide/run`): capability opzionale `RunTargetResolver` con `DiscoverRunTargets(ctx, unitRoot) []RunTarget{Dir, ModuleDir, Package, Label}` e `ResolveRunTarget(root, wd, target, kind)` chiamata prima di `CommandSpec`. Nessun `switch language`.
+- [x] GS-1.2 Adapter Go: discovery per modulo (riuso `scanModules`; `go list -f '{{.Name}} {{.Dir}}' ./...`, fallback `go/parser` `PackageClauseOnly`). Target solo se `Name == "main"` e c'è `func main`; esclusi `_test.go` e `//go:build ignore`. — Implementato con `go list -e -json` e fallback AST equivalente.
+- [ ] GS-1.3 Regola per target `.`: working dir con file main → `.`; un solo main nel modulo → `./rel`; più main → `cmd/<basename-modulo>`, poi package del file attivo, poi chiedere. Mai indovinare in silenzio. Target-file (`go run cmd/main.go`) → directory del file + modulo (`./cmd`). — **IMPLEMENTATO; NON VERIFICATO manualmente** il picker nell'app.
+- [ ] GS-1.4 Stessa risoluzione per `StartRun`, `buildRunRequest`, `StartDebug` e test. Nessun main → errore `No main package found under <root>; candidates: ./cmd/api, ./cmd/worker`. — **IMPLEMENTATO** in `StartRun`/Run configurata e `StartDebug`; i test conservano lo scope esplicito del package. **NON VERIFICATO manualmente** Run/Debug/Test.
+- [x] GS-1.5 Binding `ListRunTargets(sessionId)` in `goide_bindings.go` + rigenerazione.
+- [ ] GS-1.6 Frontend: in `startConfigured` senza configurazione salvata risolvere con `moduleScopeFor` sul file `.go` attivo o con la discovery; creare automaticamente "Run <pkg>" al primo Play (`.adomnia/run-configurations.json`, campi piatti Go invariati); picker se più main, scelta ricordata; `targetScope` usato da `runTarget` e `serviceConfigurationForDirectory` (wd = directory del modulo, package relativo al modulo). — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app.
+- [ ] GS-1.7 Edge case: più main in `cmd/*`; `go.work` (eseguire dalla directory del modulo proprietario); moduli annidati (package relativo al `go.mod` più interno); cartelle loose senza `go.mod`; Windows (normalizzare `\`→`/`, prefisso `./`; `moduleScopeFor` confronta con `realPath` e ritorna `null` con symlink/case diversi → normalizzare). — **IMPLEMENTATO e coperto automaticamente; NON VERIFICATO manualmente** con junction/symlink Windows.
 
 **Test**
-- [ ] GS-1.T1 Test Go per il resolver in `internal/languages/golang`; `internal/ide/architecture_test.go` verde.
-- [ ] GS-1.M1 Manuale: Play, F5, Debug, gutter ▶, Run con configurazione salvata, Run test del package.
-- [ ] GS-1.M2 Manuale: due main in `cmd/a` e `cmd/b` (picker), modulo annidato, `go.work`, path Windows con symlink/junction.
+- [x] GS-1.T1 Test Go per il resolver in `internal/languages/golang`; `internal/ide/architecture_test.go` verde.
+- [ ] GS-1.M1 Manuale: Play, F5, Debug, gutter ▶, Run con configurazione salvata, Run test del package. — **NON VERIFICATO:** richiede uso interattivo dell'app desktop.
+- [ ] GS-1.M2 Manuale: due main in `cmd/a` e `cmd/b` (picker), modulo annidato, `go.work`, path Windows con symlink/junction. — **NON VERIFICATO:** richiede progetto reale e junction/symlink Windows.
 
-**Gate GS-1:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-1:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO** nell'app desktop.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -704,4 +704,5 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 |----------------|------|-----|--------------------------------------------------|---------------|
 | IDE-1 Impl/Test/Doc | 2026-10-13 | Codex | `go test -timeout 10m ./...` verde; `npx vitest run` completo: 1373 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build`; binding rigenerati con Wails beta.28. Manuale update/rollback reale ancora NON VERIFICATO. |               |
 | IDE-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; guardia AST verde; `npx vitest run`: 315 file/1375 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` con Wails beta.28. Controllo visivo release Windows ancora NON VERIFICATO. |               |
+| GS-1 Impl/Test/Doc | 2026-10-14 | Codex | `go build ./...` e `go test -timeout 10m ./...` verdi; `internal/ide/architecture_test.go` verde; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `npx vitest run`: 316 file/1379 test verdi; `wails3 task build` (Wails beta.28) exit 0; binding `ListRunTargets` presenti e rigenerati. Manuale Play/F5/Debug/gutter/picker NON VERIFICATO (richiede app desktop interattiva). |               |
 |                |      |     |                                                  |               |

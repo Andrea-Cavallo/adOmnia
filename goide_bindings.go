@@ -7,6 +7,7 @@ import (
 	"adomnia/internal/goidewindow"
 	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
+	"adomnia/internal/ide/run"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/plugins"
 	"context"
@@ -1203,6 +1204,11 @@ func settleCancelled[T any](ctx context.Context, value T, err error) (T, error) 
 // ListRunConfigurations elenca le configurazioni Run salvate della sessione.
 func (g *GoIDE) ListRunConfigurations(sessionID string) ([]goide.RunConfiguration, error) {
 	return g.service.ListRunConfigurations(sessionID)
+}
+
+// ListRunTargets discovers runnable main packages across the project's language units.
+func (g *GoIDE) ListRunTargets(sessionID string) ([]run.RunTarget, error) {
+	return g.service.ListRunTargets(sessionID)
 }
 
 // SaveRunConfiguration crea o aggiorna una configurazione Run validata.

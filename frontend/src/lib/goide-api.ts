@@ -33,6 +33,7 @@ import type {
   TerminalRequest,
   TerminalProfile,
 } from '../../bindings/adomnia/internal/goide/models'
+import type { RunTarget } from '../../bindings/adomnia/internal/ide/run/models'
 
 export type GoIDECapabilities = Capabilities
 export type GoIDESession = Session
@@ -52,6 +53,7 @@ export type GoIDEToolchainInstallation = ToolchainInstallation
 export type GoIDEToolchainRelease = ToolchainRelease
 export type GoIDEInstalledToolchain = InstalledToolchain
 export type GoIDERunConfiguration = RunConfiguration
+export type GoIDERunTarget = RunTarget
 export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/adomnia/internal/goide/models'
 export type GoIDEEnvironmentEntry = EnvironmentEntry
 export type GoIDESessionView = SessionView
@@ -93,6 +95,10 @@ export async function getGoIDECapabilities(): Promise<GoIDECapabilities> {
 
 export async function listGoIDESessions(): Promise<GoIDESession[]> {
   return GoIDEBindings.ListSessions()
+}
+
+export async function listGoIDERunTargets(sessionId: string): Promise<GoIDERunTarget[]> {
+  return GoIDEBindings.ListRunTargets(sessionId)
 }
 
 export async function listRecentGoIDEProjects(): Promise<GoIDERecentProject[]> {

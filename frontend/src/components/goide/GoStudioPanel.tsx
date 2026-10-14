@@ -59,7 +59,7 @@ import { runLanguageCommand } from './goStudioLanguageCommands'
 import { runSaveActions } from './goStudioSaveActions'
 import { contextRunTarget, runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudioToolTargets'
-import type { GoIDERunConfiguration } from '@/lib/goide-api'
+import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
@@ -67,7 +67,7 @@ import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
 import { GoStudioMoveSymbolDialog } from './GoStudioMoveSymbolDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
-import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction } from './goStudioQuickActions'
+import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction, targetScope } from './goStudioQuickActions'
 import { flushBufferRecovery } from '@/lib/goide/goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { debugRequestForTarget, fuzzRunRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
@@ -127,12 +127,14 @@ import { useGoStudioCursorStore } from './goStudioCursor'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { usePanelActiveRef } from '@/components/layout/PanelActivity'
 import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
+import { GoStudioRunTargetPicker } from './GoStudioRunTargetPicker'
+import { configurationForRunTarget, preferredRunTarget } from './goStudioDiscoveredRunTargets'
 
 
 const PANEL_STATE_KEYS = [
   'activeSessionId', 'capabilities', 'activeWorkspaceId', 'layout', 'sessions', 'error', 'recentProjects', 'loading', 'initialized', 'toolchains', 'splitBySession', 'showIgnoredBySession',
   'runConfigsBySession', 'executions', 'closedDocuments', 'activeRunBySession', 'activeConfigBySession',
-  'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'startConfiguredBuild', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
+  'updateLayout', 'toggleEditorMaximized', 'openProject', 'startRun', 'startConfiguredRun', 'startConfiguredBuild', 'saveRunConfiguration', 'setSplit', 'detectToolchain', 'stopRun', 'initialize', 'clearError',
   'toggleShowIgnored', 'togglePinned', 'setToolAuthorization', 'setQuickOpen', 'selectSession', 'selectRunConfiguration', 'restartRun',
   'reopenClosedDocument', 'removeRecentProject',
 ] as const satisfies ReadonlyArray<keyof GoIDEState>
@@ -244,6 +246,7 @@ export function GoStudioPanel() {
   const [pendingSecrets, setPendingSecrets] = useState<{ config: GoIDERunConfiguration; keys: string[] } | null>(null)
   const workspaceStartPending = useRef(false)
   const [runTargetMenu, setRunTargetMenu] = useState<{ target: GoStudioRunTarget; x: number; y: number } | null>(null)
+  const [runTargetChoice, setRunTargetChoice] = useState<{ targets: GoIDERunTarget[]; kind: 'build' | 'run' } | null>(null)
   const debugState = useGoIDEDebugStore(selectDebugState(store.activeSessionId))
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
@@ -359,7 +362,20 @@ export function GoStudioPanel() {
     }
   }, [activeConfig, runDraft])
 
-  const startConfigured = useCallback((kind: 'build' | 'run') => {
+  const startDiscoveredTarget = useCallback(async (target: GoIDERunTarget, kind: 'build' | 'run') => {
+    if (!activeSession) return
+    const config = configurationForRunTarget(activeSession, target)
+    if (!config) {
+      useGoIDEStore.setState({ error: 'The selected main package is outside the project.' })
+      return
+    }
+    const saved = await store.saveRunConfiguration(config)
+    if (!saved) return
+    if (kind === 'build') await store.startConfiguredBuild(saved.id)
+    else await store.startConfiguredRun(saved.id, {})
+  }, [activeSession, store.saveRunConfiguration, store.startConfiguredBuild, store.startConfiguredRun])
+
+  const startConfigured = useCallback(async (kind: 'build' | 'run') => {
     // Variabili d'ambiente e build arg segreti: stesso nome, stesso valore richiesto una sola volta.
     const secretKeys = requiredSecretKeysForRun(activeConfig, runConfigurations)
     if (kind === 'run' && activeConfig && secretKeys.length > 0) {
@@ -372,11 +388,27 @@ export function GoStudioPanel() {
     }
     // La build di una configurazione salvata passa dal backend: GOOS/GOARCH, env file, race e tag inclusi.
     if (kind === 'build' && activeConfig && (activeConfig.kind === 'package' || activeConfig.kind === 'build')) {
-      void store.startConfiguredBuild(activeConfig.id)
+      await store.startConfiguredBuild(activeConfig.id)
       return
     }
-    void store.startRun(kind, configuredRequest())
-  }, [activeConfig, configuredRequest, runConfigurations, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
+    if (!activeConfig && activeSession) {
+      try {
+        const targets = await listGoIDERunTargets(activeSession.id)
+        if (targets.length === 0) {
+          useGoIDEStore.setState({ error: `No main package found under ${activeSession.project.rootPath}` })
+          return
+        }
+        const active = activeGoIDEDocument(useGoIDEStore.getState())
+        const preferred = preferredRunTarget(activeSession, targets, active?.document.relativePath ?? null)
+        if (preferred) await startDiscoveredTarget(preferred, kind)
+        else setRunTargetChoice({ targets, kind })
+      } catch (error) {
+        useGoIDEStore.setState({ error: error instanceof Error ? error.message : String(error) })
+      }
+      return
+    }
+    await store.startRun(kind, configuredRequest())
+  }, [activeConfig, activeSession, configuredRequest, runConfigurations, startDiscoveredTarget, store.startConfiguredRun, store.startConfiguredBuild, store.startRun])
 
   // Detect ports: before starting, a port the workspace binds that another process already holds.
   const portsAreFree = useCallback(async (workspace: GoIDERunConfiguration, configs: readonly GoIDERunConfiguration[], entities?: Parameters<typeof declaredWorkspacePorts>[0]) => {
@@ -436,8 +468,8 @@ export function GoStudioPanel() {
         members.push(config)
       }
       for (const service of services) {
-        const existing = serviceConfigurationForDetectedDirectory(runConfigurations, service.directory)
-        const config = existing ?? await useGoIDEStore.getState().saveRunConfiguration(serviceConfigurationForDirectory(activeSession.id, service))
+        const existing = serviceConfigurationForDetectedDirectory(runConfigurations, service.directory, activeSession)
+        const config = existing ?? await useGoIDEStore.getState().saveRunConfiguration(serviceConfigurationForDirectory(activeSession.id, service, activeSession))
         if (!config) throw new Error(`Could not save the service configuration for ${service.name}`)
         members.push(config)
       }
@@ -682,7 +714,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       return
     }
     const command = runCommandFor(target)
-    void store.startRun(command.kind, { ...runRequest(runDraft), target: command.target })
+    const scope = targetScope(activeSession, goTarget)
+    void store.startRun(command.kind, { ...runRequest(runDraft), target: scope.packageTarget, workingDirectory: scope.moduleDirectory })
   }
 
   // Debug (Shift+F9) usa la configurazione Run attiva: stesso package, argomenti, tag e variabili.
@@ -853,6 +886,16 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
       <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
+      <GoStudioRunTargetPicker
+        open={!!runTargetChoice}
+        targets={runTargetChoice?.targets ?? []}
+        onClose={() => setRunTargetChoice(null)}
+        onChoose={(target) => {
+          const kind = runTargetChoice?.kind ?? 'run'
+          setRunTargetChoice(null)
+          void startDiscoveredTarget(target, kind)
+        }}
+      />
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />

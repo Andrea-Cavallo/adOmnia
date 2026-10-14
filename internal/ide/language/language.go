@@ -25,6 +25,8 @@ type Language interface {
 }
 
 type Runner = run.Runner
+type RunTargetResolver = run.TargetResolver
+type RunTarget = run.RunTarget
 type DebugAdapterProvider = dap.DebugAdapterProvider
 type TestRunner = idetesting.TestRunner
 

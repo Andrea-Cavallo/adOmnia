@@ -1047,8 +1047,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| J4.1 | **Build / Run / Stop** | Structured `go build`/`go run` with stdin, clickable output, restart, and stop of the whole process tree. |
-| J4.2 | **Run Configurations** | Saved per project; secret environment values are prompted and never persisted. |
+| J4.1 | **Build / Run / Stop** | Structured `go build`/`go run` with stdin, clickable output, restart, and stop of the whole process tree. Executable packages under `cmd/`, nested modules and `go.work` members run from their owning module. |
+| J4.2 | **Run Configurations** | Saved per project; the first Play creates the resolved main-package configuration, and multiple entry points use the active file, the conventional module command or an explicit picker. Secret environment values are prompted and never persisted. |
 | J4.3 | **Gutter Run Actions** | ▶ next to `func main`, tests, benchmarks, fuzz tests and examples with Run / Debug / Run with Coverage. |
 | J4.4 | **Test Runner** | Tree of results from `go test -json`, failure navigation, Rerun Failed. |
 | J4.5 | **Coverage** | Coverage in the editor, cleared when the source no longer matches. |

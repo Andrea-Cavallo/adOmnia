@@ -42,8 +42,10 @@ function directoryOf(relativePath: string): string {
 function relativeTo(root: string, path: string): string | null {
   const base = normalize(root)
   const target = normalize(path)
-  if (target === base) return ''
-  return target.startsWith(`${base}/`) ? target.slice(base.length + 1) : null
+  const baseKey = base.toLocaleLowerCase()
+  const targetKey = target.toLocaleLowerCase()
+  if (targetKey === baseKey) return ''
+  return targetKey.startsWith(`${baseKey}/`) ? target.slice(base.length + 1) : null
 }
 
 function isWithin(directory: string, parent: string): boolean {
@@ -53,7 +55,7 @@ function isWithin(directory: string, parent: string): boolean {
 /** Trova il modulo più interno che contiene il file, così i comandi go partono dalla cartella giusta. */
 export function moduleScopeFor(session: Pick<GoIDESession, 'project'>, relativePath: string | null): GoStudioModuleScope {
   const moduleDirectories = (goModules(session.project))
-    .map((module) => relativeTo(session.project.realPath, module.path))
+    .map((module) => relativeTo(session.project.realPath, module.path) ?? relativeTo(session.project.rootPath, module.path))
     .filter((directory): directory is string => directory !== null)
   const fileDirectory = relativePath ? directoryOf(normalize(relativePath)) : null
   const owning = fileDirectory === null
@@ -197,7 +199,7 @@ export async function runModuleDependencyAction(action: Extract<GoModDependencyA
 }
 
 /** Modulo e package di un target del gutter: i comandi go partono dal modulo che lo contiene. */
-function targetScope(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget): GoStudioModuleScope {
+export function targetScope(session: Pick<GoIDESession, 'project'>, target: GoStudioGoRunTarget): GoStudioModuleScope {
   return moduleScopeFor(session, `${target.packagePath.replace(/^\.\/?/, '')}/_.go`)
 }
 

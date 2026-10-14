@@ -106,6 +106,12 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	if target == "" {
 		target = "."
 	}
+	if request.Mode == "debug" {
+		moduleDir, target, err = s.resolveLanguageRunTarget(session, golang.ID, "debug", moduleDir, target)
+		if err != nil {
+			return DebugSessionInfo{}, err
+		}
+	}
 	if err := validateRunTarget(session.Project.RealPath, moduleDir, target); err != nil {
 		return DebugSessionInfo{}, err
 	}
