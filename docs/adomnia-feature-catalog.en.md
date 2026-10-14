@@ -901,7 +901,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | G2.3 | **HTTP Sidecar Go** | Local HTTP server on OS-random port for frontend↔backend communication. |
 | G2.4 | **Single Binary** | Self-contained desktop executable; no external runtime dependencies. |
 | G2.5 | **Configurable Titlebar** | App or system titlebar on restart (Linux defaults to system). Linux uses the native session backend, Wayland or X11, without forcing XWayland; legacy XWayland settings load as app chrome. App titlebar controls are frontend-rendered, not GTK-themed native controls. System titlebar permits native theme shadows and rounded corners where supported. Settings changes start saving immediately, independently of the workspace autosave interval, with ordered writes. |
-| G2.6 | **Nasconde Console Windows** | Sopprime la finestra console in produzione. |
+| G2.6 | **Hidden Windows Processes** | A shared process policy prevents background Git, Go, Docker, Kubernetes, MCP and analysis tools from flashing a console; an architecture test rejects direct background `os/exec` launchers. Visible desktop, browser, editor, terminal and file-manager launches remain explicit. |
 | G2.7 | **Internazionalizzazione** | Supporto Inglese e Italiano; dizionario traduzioni completo. |
 | G2.8 | **State Management Zustand** | Stores: app, collections, environments, tabs, settings, devLogs, themes, plugin, browser-debug. |
 | G2.9 | **Onboarding / Welcome Panel** | Home with feature catalog, quick-start, shortcuts, live metrics, and a Recent Workspaces section for one-click reopen of local workspaces. |
@@ -1055,6 +1055,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J4.6 | **Delve Debugger** | Breakpoints, stepping, stack, variables, watches and evaluate; launch, attach to a process or connect to a remote `dlv --headless`. Stop leaves no `dlv` or debuggee behind. |
 | J4.7 | **Terminal** | Real PTY (ConPTY on Windows) per project, closing its whole process tree. |
 | J4.8 | **Go Tools** | `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc` with an exact command preview. |
+| J4.9 | **Background Task Status** | Long architecture, error-handling and semantic-move analyses publish project-scoped tasks with a spinner and label in the IDE status bar. |
 
 ### J5. Toolchain & Dependencies
 

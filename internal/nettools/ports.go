@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os/exec"
 	"regexp"
 	"runtime"
 	"sort"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"adomnia/internal/httputil"
+	"adomnia/internal/procutil"
 )
 
 // PortEntry describes one listening TCP socket and the process that owns it.
@@ -57,8 +57,7 @@ func listeningPortsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func runCmd(ctx context.Context, name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	configureHiddenCommand(cmd)
+	cmd := procutil.CommandContext(ctx, name, args...)
 	out, err := cmd.Output()
 	return string(out), err
 }

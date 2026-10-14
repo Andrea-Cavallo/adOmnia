@@ -12,6 +12,7 @@ import (
 	"unicode/utf16"
 
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 )
 
 const discoverTimeout = 3 * time.Second
@@ -119,7 +120,7 @@ func Containers(ctx context.Context) []string {
 func run(ctx context.Context, executable string, arguments ...string) []byte {
 	ctx, cancel := context.WithTimeout(ctx, discoverTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, executable, arguments...)
+	command := procutil.CommandContext(ctx, executable, arguments...)
 	process.Configure(command, false)
 	output, err := command.Output()
 	if err != nil {

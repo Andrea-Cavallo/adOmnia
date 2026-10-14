@@ -3,6 +3,7 @@ package goide
 import (
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 
 	"context"
 	"encoding/json"
@@ -10,7 +11,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -194,7 +194,7 @@ func (s *Service) runModuleCommand(sessionID SessionID, workingDirectory string,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, arguments...)
+	command := procutil.CommandContext(ctx, binary, arguments...)
 	command.Dir = workingDirectory
 	command.Env = environment
 	configureProcess(command, false)

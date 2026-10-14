@@ -233,7 +233,6 @@ func Open(roots []string, path string, line int, editor string) error {
 	if err != nil {
 		cmd = osOpenCommand(path)
 	}
-	hideConsole(cmd)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("could not launch the editor: %w", err)
 	}

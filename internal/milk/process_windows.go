@@ -6,16 +6,18 @@ import (
 	"os/exec"
 	"strconv"
 	"syscall"
+
+	"adomnia/internal/procutil"
 )
 
 const (
 	createNewProcessGroup = 0x00000200
-	createNoWindow        = 0x08000000
 )
 
 // configureProcess nasconde la console di milk e lo isola in un process group.
 func configureProcess(command *exec.Cmd) {
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNewProcessGroup | createNoWindow, HideWindow: true}
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNewProcessGroup}
+	procutil.Hide(command)
 }
 
 // terminateProcess chiude milk e i suoi figli con taskkill /T.
@@ -23,8 +25,7 @@ func terminateProcess(command *exec.Cmd) error {
 	if command == nil || command.Process == nil {
 		return nil
 	}
-	kill := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(command.Process.Pid))
-	kill.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNoWindow, HideWindow: true}
+	kill := procutil.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(command.Process.Pid))
 	if err := kill.Run(); err != nil {
 		return command.Process.Kill()
 	}

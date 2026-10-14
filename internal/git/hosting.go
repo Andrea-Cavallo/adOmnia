@@ -2,6 +2,7 @@ package git
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 
 	"bytes"
 	"context"
@@ -12,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -394,8 +394,7 @@ func PushWithHostAccount(repoPath, branch string, account HostAccount, token str
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "git", "push", "origin", branch)
-	configureHiddenCommand(cmd)
+	cmd := procutil.CommandContext(ctx, "git", "push", "origin", branch)
 	cmd.Dir = repoPath
 	cmd.Env = append(netpolicy.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraHeader", "GIT_CONFIG_VALUE_0="+header, "GIT_TERMINAL_PROMPT=0")
 	var stdout, stderr bytes.Buffer

@@ -15,6 +15,7 @@ import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goid
 import { useThemesStore } from '@/stores/themes'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
+import { runningGoIDETasks, useGoIDETasksStore } from '@/stores/goideTasks'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
@@ -83,6 +84,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   }, [resourceMode])
   const authorized = session.project.authorization === 'tooling-permitted'
   const running = execution?.status === 'running'
+  const tasks = useGoIDETasksStore((state) => runningGoIDETasks(state, session.id))
   const themes = useThemesStore((state) => state.themes)
   const activeThemeId = useThemesStore((state) => state.activeThemeId)
   const { applyTheme } = useThemeContext()
@@ -106,6 +108,13 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
             {execution.kind} · {execution.status}
           </span>
         )}
+        {tasks.slice(0, 2).map((task) => (
+          <span key={task.id} role="status" className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-accent" title={task.label}>
+            <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+            <span className="max-w-40 truncate">{task.label}</span>
+          </span>
+        ))}
+        {tasks.length > 2 && <span className="shrink-0 text-text-4">+{tasks.length - 2}</span>}
         {watcher?.limited && (
           <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning">
             <EyeOff size={12} /> Partially watched

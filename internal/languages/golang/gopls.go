@@ -3,7 +3,6 @@ package golang
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/sdk"
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 )
 
 // GoplsModule è il modulo che `go install` usa per installare gopls nella cartella strumenti.
@@ -77,7 +77,7 @@ func LocateGopls(custom, toolsRoot, gopath string) GoplsInfo {
 func goplsVersion(binary string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), sdk.VersionTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "version")
+	command := procutil.CommandContext(ctx, binary, "version")
 	process.Configure(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {

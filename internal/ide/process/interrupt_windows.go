@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"adomnia/internal/procutil"
 )
 
 const createNewConsole = 0x00000010
@@ -53,8 +55,7 @@ func Interrupt(pid int, helper string) error {
 	if helper == "" {
 		return errors.New("the interrupt helper is not available")
 	}
-	command := exec.Command(helper, strconv.Itoa(pid))
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNoWindow, HideWindow: true}
+	command := procutil.Command(helper, strconv.Itoa(pid))
 	if output, err := command.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(output)))
 	}

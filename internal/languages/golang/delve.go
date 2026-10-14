@@ -3,11 +3,11 @@ package golang
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/procutil"
 )
 
 // DelveModule è il modulo che `go install` usa per installare Delve nella cartella strumenti.
@@ -35,7 +35,7 @@ func LocateDelve(custom, toolsRoot, gopath string) DelveInfo {
 func delveVersion(binary string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), sdk.VersionTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "version")
+	command := procutil.CommandContext(ctx, binary, "version")
 	process.Configure(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {

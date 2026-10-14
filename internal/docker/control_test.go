@@ -27,15 +27,24 @@ func TestLabRestartRejectsForeignProjects(t *testing.T) {
 	}
 }
 
-func TestShellLauncherPerOS(t *testing.T) {
-	name, args, err := shellLauncher("windows", "abc123")
-	if err != nil || name != "cmd" || args[len(args)-1] != "sh" || args[len(args)-2] != "abc123" {
-		t.Fatalf("windows: %s %v %v", name, args, err)
+func TestEmbeddedLabCommandValidation(t *testing.T) {
+	if _, err := validLabCommand("   "); err == nil {
+		t.Fatal("empty command accepted")
 	}
-	if name, _, err := shellLauncher("darwin", "abc123"); err != nil || name != "osascript" {
-		t.Fatalf("darwin: %s %v", name, err)
+	if _, err := validLabCommand(string(make([]byte, 4097))); err == nil {
+		t.Fatal("oversized command accepted")
 	}
-	if _, _, err := shellLauncher("plan9", "abc123"); err == nil {
-		t.Fatal("unsupported OS accepted")
+	if got, err := validLabCommand("  pwd  "); err != nil || got != "pwd" {
+		t.Fatalf("valid command rejected: %q %v", got, err)
+	}
+}
+
+func TestBoundedOutputStopsRetainingAfterLimit(t *testing.T) {
+	output := newBoundedOutput(4)
+	if n, err := output.Write([]byte("abcdef")); err != nil || n != 6 {
+		t.Fatalf("Write() = %d, %v; want 6, nil", n, err)
+	}
+	if got := output.String(); got != "abcd\n[output truncated]\n" {
+		t.Fatalf("String() = %q", got)
 	}
 }

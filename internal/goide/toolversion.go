@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"encoding/json"
 	"errors"
@@ -30,7 +31,7 @@ func (e *toolIncompatibleError) Error() string { return e.message }
 
 // goCommandRunner esegue il comando go indicato; è una variabile così i test evitano la rete.
 var goCommandRunner = func(ctx context.Context, goBinary, workDir string, env []string, args ...string) ([]byte, error) {
-	command := exec.CommandContext(ctx, goBinary, args...)
+	command := procutil.CommandContext(ctx, goBinary, args...)
 	command.Dir = workDir
 	command.Env = env
 	configureProcess(command, false)

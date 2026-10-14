@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 	"crypto/rand"
 	"encoding/hex"
 )
@@ -196,7 +197,7 @@ func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 	session := &debugger{spec: launch.Spec, exited: make(chan struct{}), root: launch.Root, buildDir: buildDir, detach: launch.Spec.Detach, info: DebugSessionInfo{
 		ID: DebugSessionID(newID("debug")), SessionID: launch.SessionID, State: DebugStarting, Title: launch.Spec.Title, StartedAt: time.Now().UTC(),
 	}}
-	command := exec.Command(launch.Spec.Executable, launch.Spec.Arguments...)
+	command := procutil.Command(launch.Spec.Executable, launch.Spec.Arguments...)
 	command.Dir = launch.Spec.WorkingDirectory
 	command.Env = launch.Spec.Environment
 	process.Configure(command, false)

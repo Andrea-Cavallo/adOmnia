@@ -9,6 +9,7 @@
 package kube
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -108,8 +109,7 @@ func runWith(ctx context.Context, contextName string, stdin io.Reader, timeout t
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(runCtx, "kubectl", args...)
-	hideConsole(cmd)
+	cmd := procutil.CommandContext(runCtx, "kubectl", args...)
 	cmd.Stdin = stdin
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
@@ -140,8 +140,7 @@ func ListContexts(ctx context.Context) (ContextsResult, error) {
 		} `json:"contexts"`
 		Current string `json:"current-context"`
 	}
-	cmd := exec.CommandContext(runCtx, "kubectl", "config", "get-contexts", "-o", "json")
-	hideConsole(cmd)
+	cmd := procutil.CommandContext(runCtx, "kubectl", "config", "get-contexts", "-o", "json")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

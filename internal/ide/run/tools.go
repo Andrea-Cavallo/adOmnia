@@ -2,6 +2,7 @@ package run
 
 import (
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 
 	"context"
 	"errors"
@@ -280,7 +281,7 @@ func ComposeCommandSpec(file, target string, values []string) (CommandSpec, erro
 func stopCompose(docker, file string, services []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, docker, append([]string{"compose", "-f", file, "stop", "-t", "3"}, services...)...)
+	command := procutil.CommandContext(ctx, docker, append([]string{"compose", "-f", file, "stop", "-t", "3"}, services...)...)
 	command.Dir = filepath.Dir(file)
 	process.Configure(command, false)
 	_ = command.Run()
@@ -361,7 +362,7 @@ func ImageTag(session Session, options DockerOptions) string {
 func stopContainer(docker, name string) {
 	ctx, cancel := context.WithTimeout(context.Background(), dockerStopTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, docker, "stop", "-t", "3", name)
+	command := procutil.CommandContext(ctx, docker, "stop", "-t", "3", name)
 	process.Configure(command, false)
 	_ = command.Run()
 }
@@ -374,7 +375,7 @@ func ResolveDocker() (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), dockerProbeTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "version", "--format", "{{.Server.Version}}")
+	command := procutil.CommandContext(ctx, binary, "version", "--format", "{{.Server.Version}}")
 	process.Configure(command, false)
 	if output, err := command.CombinedOutput(); err != nil {
 		detail := strings.TrimSpace(string(output))

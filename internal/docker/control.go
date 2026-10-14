@@ -3,10 +3,12 @@ package docker
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"regexp"
-	"runtime"
+	"strings"
+	"sync"
 	"time"
+
+	"adomnia/internal/procutil"
 )
 
 var (
@@ -42,8 +44,7 @@ func (d *DockerLab) LabRestart(projectName, containerID string) (string, error) 
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "docker", args...)
-	configureHiddenCommand(cmd)
+	cmd := procutil.CommandContext(ctx, "docker", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("docker restart failed: %w\n%s", err, string(out))
@@ -68,39 +69,78 @@ func (d *DockerLab) labContainer(projectName, containerID string) error {
 	return fmt.Errorf("container %s is not part of %s", containerID, projectName)
 }
 
-// shellLauncher returns the command that opens the OS terminal running docker exec.
-// ponytail: one terminal per OS, the common default; add a preference if users need another.
-func shellLauncher(goos, containerID string) (string, []string, error) {
-	execLine := "docker exec -it " + containerID + " sh"
-	switch goos {
-	case "windows":
-		return "cmd", []string{"/c", "start", "adOmnia shell", "docker", "exec", "-it", containerID, "sh"}, nil
-	case "darwin":
-		return "osascript", []string{"-e", `tell application "Terminal" to do script "` + execLine + `"`, "-e", `tell application "Terminal" to activate`}, nil
-	case "linux":
-		for _, terminal := range []string{"x-terminal-emulator", "gnome-terminal", "konsole", "xterm"} {
-			if _, err := exec.LookPath(terminal); err == nil {
-				return terminal, []string{"-e", "docker", "exec", "-it", containerID, "sh"}, nil
-			}
-		}
-		return "", nil, fmt.Errorf("no terminal emulator found: run %q yourself", execLine)
+// LabExec runs one explicit shell command inside a lab-owned container. Output
+// is returned to the embedded Docker Lab console; no OS terminal is opened.
+func (d *DockerLab) LabExec(projectName, containerID, command string) (string, error) {
+	command, err := validLabCommand(command)
+	if err != nil {
+		return "", err
 	}
-	return "", nil, fmt.Errorf("unsupported OS: run %q yourself", execLine)
+	if err := d.labContainer(projectName, containerID); err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := procutil.CommandContext(ctx, "docker", "exec", containerID, "sh", "-lc", command)
+	output := newBoundedOutput(2 << 20)
+	cmd.Stdout = output
+	cmd.Stderr = output
+	err = cmd.Run()
+	if ctx.Err() != nil {
+		return output.String(), fmt.Errorf("container command timed out")
+	}
+	if err != nil {
+		return output.String(), fmt.Errorf("container command failed: %w", err)
+	}
+	return output.String(), nil
 }
 
-// LabShell opens a terminal with an interactive shell inside a lab container.
-func (d *DockerLab) LabShell(projectName, containerID string) error {
-	if err := d.labContainer(projectName, containerID); err != nil {
-		return err
+func validLabCommand(command string) (string, error) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "", fmt.Errorf("shell command is empty")
 	}
-	name, args, err := shellLauncher(runtime.GOOS, containerID)
-	if err != nil {
-		return err
+	if len(command) > 4096 {
+		return "", fmt.Errorf("shell command is too long")
 	}
-	cmd := exec.Command(name, args...)
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("open terminal: %w", err)
+	return command, nil
+}
+
+type boundedOutput struct {
+	mu        sync.Mutex
+	data      []byte
+	limit     int
+	truncated bool
+}
+
+func newBoundedOutput(limit int) *boundedOutput {
+	return &boundedOutput{limit: limit}
+}
+
+func (b *boundedOutput) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	written := len(p)
+	remaining := b.limit - len(b.data)
+	if remaining > 0 {
+		if remaining > len(p) {
+			remaining = len(p)
+		}
+		b.data = append(b.data, p[:remaining]...)
 	}
-	go func() { _ = cmd.Wait() }()
-	return nil
+	if remaining < len(p) {
+		b.truncated = true
+	}
+	return written, nil
+}
+
+func (b *boundedOutput) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.truncated {
+		return string(b.data) + "\n[output truncated]\n"
+	}
+	return string(b.data)
 }

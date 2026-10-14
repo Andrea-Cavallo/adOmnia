@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { AlertTriangle, ChevronDown, ChevronRight, CircleAlert, Info, Loader2, Play, Search, Wand2 } from 'lucide-react'
 import { analyzeGoIDEErrorHandling, type GoIDEErrorFinding, type GoIDEErrorLocation, type GoIDEErrorReport, type GoIDESession } from '@/lib/goide-api'
+import { withGoIDETask } from '@/stores/goideTasks'
 import { useGoIDEStore } from '@/stores/goide'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
 import { errorFixChange, errorPathsForFile, groupErrorFindings, returnKindCounts } from './goStudioErrorHandling'
@@ -71,7 +72,7 @@ export function GoStudioErrorsPanel({ session }: { session: GoIDESession }) {
     setRunning(true)
     setMessage(null)
     try {
-      setReport(await analyzeGoIDEErrorHandling(sessionId))
+      setReport(await withGoIDETask(sessionId, 'error-analysis', 'Analyzing error handling', () => analyzeGoIDEErrorHandling(sessionId)))
       setAnalyzedAt(new Date())
       setApplied(new Set())
     } catch (problem) {

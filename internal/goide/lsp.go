@@ -14,6 +14,7 @@ import (
 
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/procutil"
 )
 
 const (
@@ -255,7 +256,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	state.mu.Unlock()
 	name := options.DisplayName()
 
-	command := exec.Command(options.Binary, options.Arguments...)
+	command := procutil.Command(options.Binary, options.Arguments...)
 	command.Dir = root
 	command.Env = options.Environment
 	configureProcess(command, false)

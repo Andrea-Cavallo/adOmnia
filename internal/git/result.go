@@ -1,8 +1,8 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -65,9 +65,8 @@ var defaultProtectedBranches = map[string]bool{
 // real reason an operation failed.
 func runFull(dir string, args ...string) (stdout, stderr, command string, err error) {
 	command = "git " + strings.Join(args, " ")
-	cmd := exec.Command("git", args...)
+	cmd := procutil.Command("git", args...)
 	cmd.Dir = dir
-	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

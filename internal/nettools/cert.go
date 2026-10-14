@@ -1,6 +1,7 @@
 package nettools
 
 import (
+	"adomnia/internal/procutil"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -214,22 +215,22 @@ func certInspectHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if block.Type != "CERTIFICATE" {
 			results = append(results, certInspectResult{
-				BlockType: block.Type,
-				SANs:      []string{},
-				KeyUsage:  []string{},
+				BlockType:   block.Type,
+				SANs:        []string{},
+				KeyUsage:    []string{},
 				ExtKeyUsage: []string{},
-				Error:     "Not a CERTIFICATE block — keys and CSRs cannot be inspected here",
+				Error:       "Not a CERTIFICATE block — keys and CSRs cannot be inspected here",
 			})
 			continue
 		}
 		cert, parseErr := x509.ParseCertificate(block.Bytes)
 		if parseErr != nil {
 			results = append(results, certInspectResult{
-				BlockType: "CERTIFICATE",
-				SANs:      []string{},
-				KeyUsage:  []string{},
+				BlockType:   "CERTIFICATE",
+				SANs:        []string{},
+				KeyUsage:    []string{},
 				ExtKeyUsage: []string{},
-				Error:     "Failed to parse: " + parseErr.Error(),
+				Error:       "Failed to parse: " + parseErr.Error(),
 			})
 			continue
 		}
@@ -334,16 +335,16 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 	if alias != "" {
 		args = append(args, "-srcalias", alias, "-destalias", alias)
 	}
-	if output, err := exec.Command(keytool, args...).CombinedOutput(); err != nil {
+	if output, err := procutil.Command(keytool, args...).CombinedOutput(); err != nil {
 		http.Error(w, fmt.Sprintf("keytool conversion failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}
 
-	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-clcerts", "-nokeys", "-out", certPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
+	if output, err := procutil.Command(openssl, "pkcs12", "-in", p12Path, "-clcerts", "-nokeys", "-out", certPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
 		http.Error(w, fmt.Sprintf("certificate export failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}
-	if output, err := exec.Command(openssl, "pkcs12", "-in", p12Path, "-nocerts", "-nodes", "-out", keyPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
+	if output, err := procutil.Command(openssl, "pkcs12", "-in", p12Path, "-nocerts", "-nodes", "-out", keyPath, "-passin", "file:"+srcPassFile).CombinedOutput(); err != nil {
 		http.Error(w, fmt.Sprintf("key export failed: %s", sanitizeOutput(strings.TrimSpace(string(output)), password)), http.StatusBadRequest)
 		return
 	}

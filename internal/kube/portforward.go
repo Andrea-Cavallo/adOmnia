@@ -1,11 +1,11 @@
 package kube
 
 import (
+	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"fmt"
 	"net"
-	"os/exec"
 	"sort"
 	"strings"
 	"sync"
@@ -78,8 +78,7 @@ func StartForward(contextName, namespace, target string, localPort, remotePort i
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, "kubectl", args...)
-	hideConsole(cmd)
+	cmd := procutil.CommandContext(ctx, "kubectl", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		cancel()

@@ -4,6 +4,7 @@ import type { monaco } from '@/lib/monacoSetup'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { withGoIDETask } from '@/stores/goideTasks'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
 import { documentForModel } from './goStudioLanguageFeatures'
 
@@ -55,7 +56,7 @@ export function GoStudioMoveSymbolDialog() {
   const submit = async () => {
     setBusy(true); setError(null)
     try {
-      const change = await GoIDEBindings.MoveSymbol(request.sessionId, { relativePath: request.relativePath, line: request.line, column: request.column, targetDirectory: target.trim().replace(/^\.?\/+/, '') })
+      const change = await withGoIDETask(request.sessionId, 'move-symbol', `Moving ${request.symbol}`, () => GoIDEBindings.MoveSymbol(request.sessionId, { relativePath: request.relativePath, line: request.line, column: request.column, targetDirectory: target.trim().replace(/^\.?\/+/, '') }))
       setRequest(null)
       useGoIDELspStore.setState({ pendingChange: change })
     } catch (reason) {

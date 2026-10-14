@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,6 +16,7 @@ import (
 
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 )
 
 // Livelli di raggiungibilità di govulncheck: il codice del progetto chiama il simbolo vulnerabile,
@@ -505,7 +505,7 @@ func runGovulncheckJSON(directory, binary string, environment []string) ([]byte,
 	netpolicy.Record(netpolicy.Event{Category: "vulncheck", Host: "vuln.go.dev", Outcome: netpolicy.OutcomeOK, Detail: "govulncheck"})
 	ctx, cancel := context.WithTimeout(context.Background(), dependencyVulnTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "-json", "./...")
+	command := procutil.CommandContext(ctx, binary, "-json", "./...")
 	command.Dir = directory
 	command.Env = environment
 	configureProcess(command, false)

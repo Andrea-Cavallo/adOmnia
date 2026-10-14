@@ -12,10 +12,10 @@ import {
   type LabRunResult,
   generateLab,
   labDown,
+  labExec,
   labList,
   labLogs,
   labRestart,
-  labShell,
   labStatus,
   labUp,
 } from '@/lib/dockerlab-api'
@@ -188,23 +188,36 @@ export function DockerLabPanel() {
     }
   }
 
-  // Restart / shell act on the lab's own containers only (the backend checks membership).
+  // Container actions operate only on the lab's own containers (also checked by the backend).
   const [busyContainer, setBusyContainer] = useState('')
   const [actionError, setActionError] = useState('')
-  const containerAction = async (containerId: string, action: 'restart' | 'shell') => {
+  const [shellTarget, setShellTarget] = useState<{ id: string; name: string } | null>(null)
+  const [shellCommand, setShellCommand] = useState('pwd')
+  const [shellOutput, setShellOutput] = useState('')
+  const [shellBusy, setShellBusy] = useState(false)
+  const containerAction = async (containerId: string) => {
     if (!runningLab) return
     setBusyContainer(containerId || '*')
     setActionError('')
     try {
-      if (action === 'shell') await labShell(runningLab.projectName, containerId)
-      else {
-        await labRestart(runningLab.projectName, containerId)
-        setContainers((await labStatus(runningLab.projectName)) ?? [])
-      }
+      await labRestart(runningLab.projectName, containerId)
+      setContainers((await labStatus(runningLab.projectName)) ?? [])
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : String(err))
     } finally {
       setBusyContainer('')
+    }
+  }
+  const runShellCommand = async () => {
+    if (!runningLab || !shellTarget || !shellCommand.trim()) return
+    setShellBusy(true)
+    setActionError('')
+    try {
+      setShellOutput(await labExec(runningLab.projectName, shellTarget.id, shellCommand))
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setShellBusy(false)
     }
   }
 
@@ -442,7 +455,7 @@ export function DockerLabPanel() {
               <div className="mb-2 flex items-center gap-2">
                 {actionError && <span className="flex items-center gap-1 text-[11px] text-error"><AlertCircle size={12} /> {actionError}</span>}
                 <button
-                  onClick={() => void containerAction('', 'restart')}
+                  onClick={() => void containerAction('')}
                   disabled={!!busyContainer}
                   className="ml-auto flex items-center gap-1 rounded border border-border-1 px-2 py-1 text-[10px] text-text-3 transition-colors hover:text-text-1 disabled:opacity-40"
                 >
@@ -484,15 +497,15 @@ export function DockerLabPanel() {
                       <td className="py-2">
                         <div className="flex justify-end gap-1">
                           <button
-                            onClick={() => void containerAction(c.id, 'shell')}
+                            onClick={() => { setShellTarget({ id: c.id, name: c.name }); setShellOutput('') }}
                             disabled={!c.running || !!busyContainer}
-                            title={`Open a terminal: docker exec -it ${c.name} sh`}
+                            title={`Open the embedded command console for ${c.name}`}
                             className="flex items-center gap-1 rounded border border-border-1 px-1.5 py-0.5 text-[10px] text-text-3 transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
                           >
                             <Terminal size={10} /> Shell
                           </button>
                           <button
-                            onClick={() => void containerAction(c.id, 'restart')}
+                            onClick={() => void containerAction(c.id)}
                             disabled={!!busyContainer}
                             title={`docker restart ${c.name}`}
                             className="flex items-center gap-1 rounded border border-border-1 px-1.5 py-0.5 text-[10px] text-text-3 transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
@@ -505,6 +518,16 @@ export function DockerLabPanel() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {shellTarget && (
+              <section className="mt-3 rounded border border-border-1 bg-surface-1 p-2" aria-label={`Container console for ${shellTarget.name}`}>
+                <div className="mb-2 flex items-center gap-2 text-[11px] text-text-2"><Terminal size={12} className="text-accent" /> Embedded console · <span className="font-mono">{shellTarget.name}</span><button type="button" onClick={() => setShellTarget(null)} className="ml-auto text-text-4 hover:text-text-1">Close</button></div>
+                <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void runShellCommand() }}>
+                  <input value={shellCommand} onChange={(event) => setShellCommand(event.target.value)} aria-label="Container shell command" className="min-w-0 flex-1 rounded border border-border-1 bg-surface-0 px-2 py-1 font-mono text-[11px] text-text-1 outline-none focus:border-accent" />
+                  <button type="submit" disabled={shellBusy || !shellCommand.trim()} className="flex items-center gap-1 rounded bg-accent px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-40">{shellBusy ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />} Run</button>
+                </form>
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-surface-0 p-2 font-mono text-[10px] text-text-2">{shellOutput || 'Run a command; output stays inside adOmnia.'}</pre>
+              </section>
             )}
           </div>
         )}

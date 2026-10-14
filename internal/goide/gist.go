@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"fmt"
 	"os"
@@ -52,7 +53,7 @@ func (s *Service) CreateGist(sessionID, relativePath, description string, public
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, gh, gistArguments(absolute, description, public)...)
+	command := procutil.CommandContext(ctx, gh, gistArguments(absolute, description, public)...)
 	command.Dir = session.Project.RealPath
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()

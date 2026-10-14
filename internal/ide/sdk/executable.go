@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 )
 
 // ResolveExecutable risolve candidate (nome nel PATH o percorso) in un file eseguibile assoluto.
@@ -44,7 +45,7 @@ const maxQueryOutput = 64 * 1024
 // Query esegue un comando informativo dell'SDK (es. "go version") e ne restituisce l'output, al più 64 KiB.
 // environment si aggiunge a quello del sistema; label nomina l'SDK nei messaggi d'errore.
 func Query(ctx context.Context, label, binary, workingDirectory string, environment map[string]string, arguments ...string) (string, error) {
-	command := exec.CommandContext(ctx, binary, arguments...)
+	command := procutil.CommandContext(ctx, binary, arguments...)
 	command.Dir = workingDirectory
 	command.Env = os.Environ()
 	for key, value := range environment {

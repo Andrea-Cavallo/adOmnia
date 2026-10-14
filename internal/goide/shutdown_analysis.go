@@ -3,7 +3,6 @@ package goide
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -11,6 +10,7 @@ import (
 
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/startup"
+	"adomnia/internal/procutil"
 )
 
 // ShutdownReport: dall'avvio al segnale di arresto, fino all'uscita (o al timeout).
@@ -47,7 +47,7 @@ func (s *Service) interruptHelper(ctx context.Context, built executable) (string
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
-	command := exec.CommandContext(ctx, built.goBinary, "build", "-o", path, source)
+	command := procutil.CommandContext(ctx, built.goBinary, "build", "-o", path, source)
 	command.Dir, command.Env = temp, append(append([]string(nil), built.environment...), "GO111MODULE=off")
 	configureProcess(command, false)
 	if output, err := command.CombinedOutput(); err != nil {
@@ -87,7 +87,7 @@ func (s *Service) ShutdownAnalysis(sessionID, target, health string, graceSecond
 	if err != nil {
 		return ShutdownReport{}, err
 	}
-	command := exec.Command(built.path)
+	command := procutil.Command(built.path)
 	command.Dir, command.Env = session.Project.RealPath, built.environment
 	process.ConfigureInterruptible(command)
 	running, err := startup.Start(ctx, command, startup.Options{Health: health, Timeout: 30 * time.Second})

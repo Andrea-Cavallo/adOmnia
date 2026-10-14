@@ -1,10 +1,10 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -48,8 +48,7 @@ func FileDiff(repoPath, path string, staged bool) (string, error) {
 		args = append(args, "--cached")
 	}
 	args = append(args, "--", path)
-	cmd := exec.Command("git", args...)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", args...)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

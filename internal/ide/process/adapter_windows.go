@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strconv"
 	"syscall"
+
+	"adomnia/internal/procutil"
 )
 
 const (
@@ -17,11 +19,10 @@ const (
 )
 
 func Configure(command *exec.Cmd, interactive bool) {
-	flags := uint32(createNewProcessGroup)
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNewProcessGroup}
 	if !interactive {
-		flags |= createNoWindow
+		procutil.Hide(command)
 	}
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags, HideWindow: !interactive}
 }
 
 // ConfigureDetachedGUI starts a desktop application independently from the
@@ -45,8 +46,7 @@ func TerminateTreeByPID(pid int) error {
 	if pid <= 0 {
 		return nil
 	}
-	kill := exec.Command("taskkill.exe", "/PID", strconv.Itoa(pid), "/T", "/F")
-	kill.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
+	kill := procutil.Command("taskkill.exe", "/PID", strconv.Itoa(pid), "/T", "/F")
 	if output, err := kill.CombinedOutput(); err != nil {
 		return fmt.Errorf("arresto albero processi fallito: %w (%s)", err, string(output))
 	}

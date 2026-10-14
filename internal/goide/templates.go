@@ -1,13 +1,13 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"embed"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -212,7 +212,7 @@ func renderProjectTemplate(sources []fs.FS, target string, replacer *strings.Rep
 func runGoCommand(binary, dir string, timeout time.Duration, args ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, args...)
+	command := procutil.CommandContext(ctx, binary, args...)
 	command.Dir = dir
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()

@@ -8,6 +8,7 @@ import (
 
 	"adomnia/internal/ide/startup"
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/procutil"
 )
 
 // StartupReport è l'avvio di un servizio misurato da Go Studio.
@@ -45,7 +46,7 @@ func (s *Service) StartupAnalysis(sessionID, target, health string, timeoutSecon
 		return StartupReport{}, err
 	}
 	defer built.cleanup()
-	command := exec.CommandContext(ctx, built.path)
+	command := procutil.CommandContext(ctx, built.path)
 	command.Dir = session.Project.RealPath
 	command.Env = append(append([]string(nil), built.environment...), "GODEBUG=inittrace=1")
 	configureProcess(command, false)

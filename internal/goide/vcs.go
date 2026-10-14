@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"adomnia/internal/git"
+	"adomnia/internal/procutil"
 )
 
 const (
@@ -67,7 +68,7 @@ func repositoryRoot(projectRoot string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), vcsQueryTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "rev-parse", "--show-toplevel")
+	command := procutil.CommandContext(ctx, binary, "rev-parse", "--show-toplevel")
 	command.Dir = projectRoot
 	configureProcess(command, false)
 	output, err := command.Output()

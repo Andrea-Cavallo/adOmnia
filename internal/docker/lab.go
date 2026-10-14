@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"encoding/json"
 	"errors"
@@ -404,8 +405,7 @@ func (d *DockerLab) LabDown(projectName string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "docker", "compose", "-p", projectName, "down", "--remove-orphans")
-	configureHiddenCommand(cmd)
+	cmd := procutil.CommandContext(ctx, "docker", "compose", "-p", projectName, "down", "--remove-orphans")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("docker compose down failed: %w\n%s", err, string(out))
@@ -417,11 +417,10 @@ func (d *DockerLab) LabStatus(projectName string) ([]ContainerStatus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "docker", "ps", "-a",
+	cmd := procutil.CommandContext(ctx, "docker", "ps", "-a",
 		"--filter", "label=com.docker.compose.project="+projectName,
 		"--format", "{{json .}}",
 	)
-	configureHiddenCommand(cmd)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("docker ps failed: %w", err)
@@ -465,10 +464,9 @@ func (d *DockerLab) LabLogs(projectName string, lines int) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "docker", "compose", "-p", projectName,
+	cmd := procutil.CommandContext(ctx, "docker", "compose", "-p", projectName,
 		"logs", "--no-color", "--tail", fmt.Sprintf("%d", lines),
 	)
-	configureHiddenCommand(cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return string(out), fmt.Errorf("docker compose logs failed: %w", err)
@@ -480,8 +478,7 @@ func (d *DockerLab) LabList() ([]LabInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "docker", "compose", "ls", "--all", "--format", "json")
-	configureHiddenCommand(cmd)
+	cmd := procutil.CommandContext(ctx, "docker", "compose", "ls", "--all", "--format", "json")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("docker compose ls failed: %w", err)
@@ -547,9 +544,8 @@ func yamlString(value string) string {
 }
 
 func runDockerCommand(ctx context.Context, dir string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd := procutil.CommandContext(ctx, "docker", args...)
 	cmd.Dir = dir
-	configureHiddenCommand(cmd)
 	return cmd.CombinedOutput()
 }
 

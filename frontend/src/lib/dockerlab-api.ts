@@ -119,7 +119,7 @@ export async function labRestart(projectName: string, containerId = ''): Promise
   return await DockerLabBindings.LabRestart(projectName, containerId)
 }
 
-/** Opens the OS terminal with an interactive shell (docker exec -it … sh) in a lab container. */
-export async function labShell(projectName: string, containerId: string): Promise<void> {
-  await DockerLabBindings.LabShell(projectName, containerId)
+/** Runs a command in the embedded Docker Lab console without opening an OS terminal. */
+export async function labExec(projectName: string, containerId: string, command: string): Promise<string> {
+  return await DockerLabBindings.LabExec(projectName, containerId, command)
 }

@@ -2,12 +2,12 @@ package run
 
 import (
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -91,7 +91,7 @@ func WaitComposeReady(ctx context.Context, file string, services []string, alive
 	last := ""
 	for {
 		probe, cancel := context.WithTimeout(ctx, dockerProbeTimeout)
-		command := exec.CommandContext(probe, docker, append([]string{"compose", "-f", file, "ps", "-a", "--format", "json"}, services...)...)
+		command := procutil.CommandContext(probe, docker, append([]string{"compose", "-f", file, "ps", "-a", "--format", "json"}, services...)...)
 		command.Dir = filepath.Dir(file)
 		process.Configure(command, false)
 		output, runErr := command.Output()

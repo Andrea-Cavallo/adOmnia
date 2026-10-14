@@ -25,6 +25,14 @@ export function LabDown(projectName: string): $CancellablePromise<string> {
     return $Call.ByID(1533974740, projectName);
 }
 
+/**
+ * LabExec runs one explicit shell command inside a lab-owned container. Output
+ * is returned to the embedded Docker Lab console; no OS terminal is opened.
+ */
+export function LabExec(projectName: string, containerID: string, command: string): $CancellablePromise<string> {
+    return $Call.ByID(2548535473, projectName, containerID, command);
+}
+
 export function LabList(): $CancellablePromise<docker$0.LabInfo[]> {
     return $Call.ByID(3047609296).then(($result: any) => {
         return $$createType5($result);
@@ -41,13 +49,6 @@ export function LabLogs(projectName: string, lines: number): $CancellablePromise
  */
 export function LabRestart(projectName: string, containerID: string): $CancellablePromise<string> {
     return $Call.ByID(4035052419, projectName, containerID);
-}
-
-/**
- * LabShell opens a terminal with an interactive shell inside a lab container.
- */
-export function LabShell(projectName: string, containerID: string): $CancellablePromise<void> {
-    return $Call.ByID(4091586458, projectName, containerID);
 }
 
 export function LabStatus(projectName: string): $CancellablePromise<docker$0.ContainerStatus[]> {

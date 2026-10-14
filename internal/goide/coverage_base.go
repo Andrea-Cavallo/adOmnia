@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/procutil"
 )
 
 const baseCoverageTimeout = 10 * time.Minute
@@ -134,7 +134,7 @@ func runBaseCoverage(ctx context.Context, binary string, environment []string, b
 			arguments = append(arguments, "./"+relative)
 		}
 	}
-	command := exec.CommandContext(ctx, binary, arguments...)
+	command := procutil.CommandContext(ctx, binary, arguments...)
 	command.Dir = moduleDir
 	command.Env = environment
 	configureProcess(command, false)
@@ -187,7 +187,7 @@ func hasGoFiles(directory string) bool {
 }
 
 func gitOutput(ctx context.Context, dir string, arguments ...string) (string, error) {
-	command := exec.CommandContext(ctx, "git", arguments...)
+	command := procutil.CommandContext(ctx, "git", arguments...)
 	command.Dir = dir
 	configureProcess(command, false)
 	var stdout, stderr bytes.Buffer

@@ -1,9 +1,9 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"errors"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -60,7 +60,7 @@ func (s *Service) DependencyWhy(sessionID, module string) (DependencyWhy, error)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "mod", "why", "-m", module)
+	command := procutil.CommandContext(ctx, binary, "mod", "why", "-m", module)
 	command.Dir, command.Env = directory, append(withGoFirstInPath(environment, binary), "GOPROXY=off")
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()

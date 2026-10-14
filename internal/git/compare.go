@@ -1,10 +1,10 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -94,8 +94,7 @@ func parseNameStatus(out string) []ChangedFile {
 // raw (no trimming) because git apply requires the trailing newline intact.
 func CreatePatch(repoPath, refA, refB string) (string, error) {
 	args := append([]string{"diff", "--binary"}, diffArgs(refA, refB)...)
-	cmd := exec.Command("git", append([]string{"-C", repoPath}, args...)...)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", append([]string{"-C", repoPath}, args...)...)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -126,8 +125,7 @@ func ChangesDiff(repoPath, scope, baseRef string) (string, error) {
 	default:
 		return "", fmt.Errorf("invalid diff scope: %s", scope)
 	}
-	cmd := exec.Command("git", append([]string{"-C", repoPath}, args...)...)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", append([]string{"-C", repoPath}, args...)...)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

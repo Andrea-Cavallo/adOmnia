@@ -2,6 +2,7 @@ package update
 
 import (
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -139,7 +140,7 @@ func (m *Manager) StartScheduled() error {
 	if m.scheduledPlan == "" || m.scheduledHelp == "" {
 		return errors.New("The update helper was not prepared; schedule the update again")
 	}
-	cmd := exec.Command(m.scheduledHelp, "--adomnia-update-helper", m.scheduledPlan)
+	cmd := procutil.Command(m.scheduledHelp, "--adomnia-update-helper", m.scheduledPlan)
 	process.Configure(cmd, false)
 	logFile, err := os.OpenFile(filepath.Join(m.dir, "apply.log"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
@@ -284,7 +285,7 @@ func RunHelper(planPath, current string) (result error) {
 		return errors.New("missing executable in update package")
 	}
 	if runtime.GOOS == "darwin" {
-		if err = exec.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", source).Run(); err != nil {
+		if err = procutil.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", source).Run(); err != nil {
 			return errors.New("macOS bundle signature rejected")
 		}
 	}

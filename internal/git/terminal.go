@@ -1,6 +1,7 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"context"
 	"fmt"
@@ -33,11 +34,10 @@ func RunTerminalCommand(repoPath, command string) (TerminalResult, error) {
 	defer cancel()
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command)
+		cmd = procutil.CommandContext(ctx, "powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command)
 	} else {
-		cmd = exec.CommandContext(ctx, "/bin/sh", "-lc", command)
+		cmd = procutil.CommandContext(ctx, "/bin/sh", "-lc", command)
 	}
-	configureHiddenCommand(cmd)
 	cmd.Dir = repoPath
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -2,6 +2,7 @@ package remote
 
 import (
 	"adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -43,7 +44,7 @@ func InspectContainer(ctx context.Context, name, localRoot string) (ContainerInf
 	}
 	ctx, cancel := context.WithTimeout(ctx, discoverTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, docker, "inspect", "--type=container", "--format", "{{json .}}", name)
+	cmd := procutil.CommandContext(ctx, docker, "inspect", "--type=container", "--format", "{{json .}}", name)
 	process.Configure(cmd, false)
 	out, err := cmd.Output()
 	if err != nil {

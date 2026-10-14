@@ -9,13 +9,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
+
 	"golang.org/x/mod/modfile"
 	modulepath "golang.org/x/mod/module"
 )
@@ -56,7 +57,7 @@ func validCredentialHost(host string) (string, error) {
 func runGitCredential(action, input string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), credentialTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, "git", "-c", "credential.interactive=false", "credential", action)
+	command := procutil.CommandContext(ctx, "git", "-c", "credential.interactive=false", "credential", action)
 	command.Dir = filepath.VolumeName(os.TempDir()) + string(filepath.Separator)
 	command.Env = append(netpolicy.Environ(), "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "GIT_ASKPASS=", "SSH_ASKPASS=")
 	command.Stdin = strings.NewReader(input)
@@ -73,7 +74,7 @@ func runGitCredential(action, input string) (string, error) {
 }
 
 func credentialHelperConfigured() bool {
-	output, err := exec.Command("git", "config", "--get-all", "credential.helper").Output()
+	output, err := procutil.Command("git", "config", "--get-all", "credential.helper").Output()
 	return err == nil && strings.TrimSpace(string(output)) != ""
 }
 

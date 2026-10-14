@@ -12,6 +12,7 @@
 package logstream
 
 import (
+	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -300,8 +301,7 @@ func (s *Session) tailCommand(ctx context.Context) {
 		s.fail(fmt.Errorf("%s is not installed or not on PATH", name))
 		return
 	}
-	cmd := exec.CommandContext(ctx, name, args...)
-	hideConsole(cmd)
+	cmd := procutil.CommandContext(ctx, name, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		s.fail(err)

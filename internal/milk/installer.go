@@ -1,6 +1,7 @@
 package milk
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -64,7 +64,7 @@ func versionAtLeast(text, minimum string) bool {
 func installedVersion(binary string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), versionTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "--version")
+	cmd := procutil.CommandContext(ctx, binary, "--version")
 	configureProcess(cmd)
 	out, err := cmd.Output()
 	if err != nil {

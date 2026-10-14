@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -19,6 +18,7 @@ import (
 
 	"adomnia/internal/ide/sdk"
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 )
 
 // SonarQube è un'integrazione opzionale: adOmnia non installa né avvia nulla da sé. Con un server
@@ -188,7 +188,7 @@ func (s *Service) DetectSonarScanner(sessionID string) (SonarScannerInfo, error)
 func sonarScannerVersion(binary string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), sdk.VersionTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "--version")
+	command := procutil.CommandContext(ctx, binary, "--version")
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
@@ -341,7 +341,7 @@ func (s *Service) RunSonarScan(ctx context.Context, sessionID, token string) (So
 	}
 	scanContext, cancel := context.WithTimeout(ctx, sonarTimeout)
 	defer cancel()
-	command := exec.CommandContext(scanContext, scanner.Binary, arguments...)
+	command := procutil.CommandContext(scanContext, scanner.Binary, arguments...)
 	command.Dir = session.Project.RealPath
 	command.Env = append(environment, "SONAR_TOKEN="+token)
 	configureProcess(command, false)

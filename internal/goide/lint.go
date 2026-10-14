@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	pathpkg "path"
 	"path/filepath"
 	"regexp"
@@ -22,6 +21,7 @@ import (
 
 	"adomnia/internal/ide/sdk"
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/procutil"
 )
 
 const (
@@ -170,7 +170,7 @@ func linterVersion(kind, binary string) (string, error) {
 	if kind == LinterStaticcheck {
 		flag = "-version"
 	}
-	command := exec.CommandContext(ctx, binary, flag)
+	command := procutil.CommandContext(ctx, binary, flag)
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
@@ -349,7 +349,7 @@ func lintArguments(info LinterInfo, packages []string) []string {
 func runLinter(ctx context.Context, info LinterInfo, root string, environment []string, packages []string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, lintTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, info.Binary, lintArguments(info, packages)...)
+	command := procutil.CommandContext(ctx, info.Binary, lintArguments(info, packages)...)
 	command.Dir = root
 	command.Env = environment
 	configureProcess(command, false)

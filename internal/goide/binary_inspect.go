@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/procutil"
 )
 
 const binaryBuildTimeout = 5 * time.Minute
@@ -65,7 +65,7 @@ func (s *Service) buildExecutable(ctx context.Context, sessionID, root, target s
 	}
 	built := executable{path: filepath.Join(temp, "app.exe"), goBinary: binary, environment: environment, cleanup: func() { _ = os.RemoveAll(temp) }}
 	built.run = func(ctx context.Context, args ...string) ([]byte, error) {
-		command := exec.CommandContext(ctx, binary, args...)
+		command := procutil.CommandContext(ctx, binary, args...)
 		command.Dir, command.Env = root, environment
 		configureProcess(command, false)
 		return command.CombinedOutput()

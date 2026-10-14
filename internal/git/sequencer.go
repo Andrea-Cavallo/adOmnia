@@ -1,6 +1,7 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"os"
 	"os/exec"
@@ -33,10 +34,9 @@ func quoteIfNeeded(p string) string {
 // runFullWithEnv is runFull with extra environment variables appended.
 func runFullWithEnv(dir string, extraEnv []string, args ...string) (stdout, stderr, command string, err error) {
 	command = "git " + strings.Join(args, " ")
-	cmd := exec.Command("git", args...)
+	cmd := procutil.Command("git", args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), extraEnv...)
-	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

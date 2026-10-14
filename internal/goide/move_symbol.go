@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,7 +13,6 @@ import (
 	"go/token"
 	"go/types"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -711,7 +711,7 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 			arguments = append(arguments, "./"+relative)
 		}
 	}
-	command := exec.CommandContext(ctx, binary, arguments...)
+	command := procutil.CommandContext(ctx, binary, arguments...)
 	command.Dir = moduleDir
 	command.Env = environment
 	configureProcess(command, false)

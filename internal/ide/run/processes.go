@@ -2,6 +2,7 @@ package run
 
 import (
 	processcore "adomnia/internal/ide/process"
+	"adomnia/internal/procutil"
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
@@ -122,7 +123,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
 	}
 	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop}
-	command := exec.Command(spec.Executable, spec.Arguments...)
+	command := procutil.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment
 	command.WaitDelay = processWaitDelay

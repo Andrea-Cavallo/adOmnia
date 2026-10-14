@@ -1,11 +1,11 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -188,7 +188,7 @@ func (s *Service) runGoCommands(session Session, commands [][]string) error {
 	}
 	for _, arguments := range commands {
 		ctx, cancel := context.WithTimeout(context.Background(), goWorkCommandTimeout)
-		command := exec.CommandContext(ctx, binary, arguments...)
+		command := procutil.CommandContext(ctx, binary, arguments...)
 		command.Dir = session.Project.RootPath
 		command.Env = environment
 		configureProcess(command, false)

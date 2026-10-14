@@ -142,31 +142,31 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 **Causa radice.** La release usa `-H windowsgui` (`build/windows/Taskfile.yml:20`): nessuna console. `hide_windows.go` chiama `GetConsoleWindow()` → 0 → codice morto. Gli analizzatori (`AnalyzeArchitecture`, `AnalyzeErrorHandling`, move-symbol) usano `packages.Load` (`internal/goide/errorcheck.go:174`, `move_symbol.go:134`, `architecture.go:26`, `architecture_diff.go:34`), che lancia `go list` senza `SysProcAttr`: ogni chiamata apre una console. Nascondere i singoli `exec.Cmd` non basta.
 
 **Fix**
-- [ ] IDE-2.0 Riprodotto (release `-H windowsgui`, Interface Analyzer → si vede la console).
-- [ ] IDE-2.1 `ensureHiddenConsole()` al posto di `hideConsoleWindow`: se `GetConsoleWindow()==0` → `AllocConsole()` + `ShowWindow(hwnd, SW_HIDE)`, eseguita il prima possibile (`init`/inizio `main`). Verificare: flash di pochi ms, Windows Terminal come predefinito (conhost/wt). Alternativa se lampeggia: wrapper `go` con `CREATE_NO_WINDOW` o `GOPACKAGESDRIVER`. Compatibile con IDE-1 (il rilancio GUI usa `DETACHED_PROCESS`, non eredita la console).
-- [ ] IDE-2.2 `internal/procutil` (build-tag): `Hide(cmd)` (`CREATE_NO_WINDOW` + `HideWindow` su Windows, no-op altrove), `Command`, `CommandContext`; `process.Configure` mantiene i process group e chiama `procutil.Hide`.
-- [ ] IDE-2.3 Eliminati i sei helper duplicati: `git`, `docker`, `nettools` (`configureHiddenCommand`), `kube`, `logstream`, `sourcemap` (`hideConsole`); `copilot` e `milk` (`process_windows.go` con `0x08000000`).
-- [ ] IDE-2.4 Chiamate non nascoste corrette:
-  - [ ] `go list` via `packages.Load` (risolto da 2.1)
-  - [ ] `internal/goide/private_modules.go:76` `git config --get-all`
-  - [ ] `internal/goide/fileops.go:313` `explorer /select,` (passare dall'helper)
-  - [ ] `internal/mcp/stdio.go:25` server MCP utente
-  - [ ] `internal/nettools/cert.go:337,342,346` keytool/openssl
-  - [ ] `internal/docker/control.go:100` `LabShell` (tab terminale nell'IDE o processo nascosto)
-  - [ ] `internal/ide/process/interrupt_windows.go:21` (`CREATE_NEW_CONSOLE` + `SW_HIDE`: verificare che non lampeggi)
+- [ ] IDE-2.0 Riprodotto (release `-H windowsgui`, Interface Analyzer → si vede la console). — **NON VERIFICATO:** manca osservazione manuale della release Windows prima del fix.
+- [ ] IDE-2.1 `ensureHiddenConsole()` al posto di `hideConsoleWindow`: se `GetConsoleWindow()==0` → `AllocConsole()` + `ShowWindow(hwnd, SW_HIDE)`, eseguita il prima possibile (`init`/inizio `main`). Verificare: flash di pochi ms, Windows Terminal come predefinito (conhost/wt). Alternativa se lampeggia: wrapper `go` con `CREATE_NO_WINDOW` o `GOPACKAGESDRIVER`. Compatibile con IDE-1 (il rilancio GUI usa `DETACHED_PROCESS`, non eredita la console). — **IMPLEMENTATO; NON VERIFICATO manualmente** con conhost/wt.
+- [ ] IDE-2.2 `internal/procutil` (build-tag): `Hide(cmd)` (`CREATE_NO_WINDOW` + `HideWindow` su Windows, no-op altrove), `Command`, `CommandContext`; `process.Configure` mantiene i process group e chiama `procutil.Hide`. — **IMPLEMENTATO; NON VERIFICATO manualmente** su Windows.
+- [ ] IDE-2.3 Eliminati i sei helper duplicati: `git`, `docker`, `nettools` (`configureHiddenCommand`), `kube`, `logstream`, `sourcemap` (`hideConsole`); `copilot` e `milk` (`process_windows.go` con `0x08000000`). — **IMPLEMENTATO; NON VERIFICATO manualmente** su Windows.
+- [ ] IDE-2.4 Chiamate non nascoste corrette: — **IMPLEMENTATO; NON VERIFICATO manualmente** su Windows.
+  - [ ] `go list` via `packages.Load` (risolto da 2.1) — **IMPLEMENTATO; NON VERIFICATO manualmente** su release Windows.
+  - [ ] `internal/goide/private_modules.go:76` `git config --get-all` — **IMPLEMENTATO; NON VERIFICATO manualmente** su release Windows.
+  - [ ] `internal/goide/fileops.go:313` `explorer /select,` (passare dall'helper) — **IMPLEMENTATO; NON VERIFICATO manualmente:** resta un lanciatore GUI esplicito nella allowlist.
+  - [ ] `internal/mcp/stdio.go:25` server MCP utente — **IMPLEMENTATO; NON VERIFICATO manualmente** con un server MCP reale.
+  - [ ] `internal/nettools/cert.go:337,342,346` keytool/openssl — **IMPLEMENTATO; NON VERIFICATO manualmente** su release Windows.
+  - [ ] `internal/docker/control.go:100` `LabShell` (tab terminale nell'IDE o processo nascosto) — **IMPLEMENTATO; NON VERIFICATO manualmente:** sostituito da `LabExec`, console incorporata con timeout e output limitato.
+  - [ ] `internal/ide/process/interrupt_windows.go:21` (`CREATE_NEW_CONSOLE` + `SW_HIDE`: verificare che non lampeggi) — **IMPLEMENTATO; NON VERIFICATO manualmente** su release Windows.
   - GUI già senza console (browser, `explorer` in `devlog`) innocue, ma nella allowlist dei lanciatori.
-- [ ] IDE-2.5 Test di guardia accanto a `internal/ide/architecture_test.go`: fallisce se un file non di test fuori da `procutil` chiama `exec.Command`/`exec.CommandContext`, con allowlist per i lanciatori GUI.
+- [x] IDE-2.5 Test di guardia accanto a `internal/ide/architecture_test.go`: fallisce se un file non di test fuori da `procutil` chiama `exec.Command`/`exec.CommandContext`, con allowlist per i lanciatori GUI.
 
 **Barra di avanzamento sotto l'IDE**
-- [ ] IDE-2.6 `stores/goideTasks.ts` (`{id, label, status}` per `sessionId`); analizzatori e chiamate lente pubblicano inizio/fine.
-- [ ] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`).
+- [x] IDE-2.6 `stores/goideTasks.ts` (`{id, label, status}` per `sessionId`); analizzatori e chiamate lente pubblicano inizio/fine. — test di isolamento per sessione, completamento ed errore.
+- [ ] IDE-2.7 `components/goide/GoStudioStatusBar.tsx` mostra i task con spinner (già importa `Loader2`/`Activity`). — **IMPLEMENTATO; NON VERIFICATO manualmente** nell'app.
 
 **Verifica**
-- [ ] IDE-2.M1 Release `-H windowsgui` su Windows 11: Interface Analyzer, Error Analysis, Architecture, Move Symbol, installazione tool → nessuna finestra, nemmeno per un istante.
-- [ ] IDE-2.M2 Ripetuto con Windows Terminal come terminale predefinito.
-- [ ] IDE-2.T1 Test di guardia verde.
+- [ ] IDE-2.M1 Release `-H windowsgui` su Windows 11: Interface Analyzer, Error Analysis, Architecture, Move Symbol, installazione tool → nessuna finestra, nemmeno per un istante. — **NON VERIFICATO:** richiede controllo visivo della release installata.
+- [ ] IDE-2.M2 Ripetuto con Windows Terminal come terminale predefinito. — **NON VERIFICATO:** richiede cambio del terminale predefinito e controllo visivo.
+- [x] IDE-2.T1 Test di guardia verde.
 
-**Gate IDE-2:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate IDE-2:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** servono release Windows 11 con conhost e Windows Terminal e controllo visivo della status bar.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -703,5 +703,5 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | ID voce / Gate | Data | Chi | Evidenza (comando + esito / screenshot / commit) | Verificato da |
 |----------------|------|-----|--------------------------------------------------|---------------|
 | IDE-1 Impl/Test/Doc | 2026-10-13 | Codex | `go test -timeout 10m ./...` verde; `npx vitest run` completo: 1373 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build`; binding rigenerati con Wails beta.28. Manuale update/rollback reale ancora NON VERIFICATO. |               |
-|                |      |     |                                                  |               |
+| IDE-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; guardia AST verde; `npx vitest run`: 315 file/1375 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` con Wails beta.28. Controllo visivo release Windows ancora NON VERIFICATO. |               |
 |                |      |     |                                                  |               |

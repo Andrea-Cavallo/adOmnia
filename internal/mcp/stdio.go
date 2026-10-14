@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+
+	"adomnia/internal/procutil"
 )
 
 type stdioTransport struct {
@@ -22,7 +24,7 @@ func newStdioTransport(cfg ConnectionConfig) (*stdioTransport, error) {
 	if cfg.Command == "" {
 		return nil, fmt.Errorf("stdio transport requires a command")
 	}
-	cmd := exec.Command(cfg.Command, cfg.Args...)
+	cmd := procutil.Command(cfg.Command, cfg.Args...)
 	if len(cfg.Env) > 0 {
 		cmd.Env = append(cmd.Environ(), cfg.Env...)
 	}

@@ -1,10 +1,10 @@
 package git
 
 import (
+	"adomnia/internal/procutil"
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -24,9 +24,8 @@ type ConflictFileVersions struct {
 }
 
 func conflictStage(repoPath, path, stage string) (string, bool) {
-	cmd := exec.Command("git", "show", ":"+stage+":"+filepath.ToSlash(path))
+	cmd := procutil.Command("git", "show", ":"+stage+":"+filepath.ToSlash(path))
 	cmd.Dir = repoPath
-	configureHiddenCommand(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()

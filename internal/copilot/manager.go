@@ -2,6 +2,7 @@ package copilot
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 
 	"bufio"
 	"context"
@@ -282,7 +283,7 @@ func (m *Manager) Start() error {
 }
 
 func (m *Manager) launch(binary ServerBinary, settings Settings, profile GitHubProfile) error {
-	cmd := exec.Command(binary.Path, "--stdio")
+	cmd := procutil.Command(binary.Path, "--stdio")
 	cmd.Env = serverEnvironment(settings)
 	configureProcess(cmd)
 	stdin, err := cmd.StdinPipe()

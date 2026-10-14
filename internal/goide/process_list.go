@@ -1,11 +1,11 @@
 package goide
 
 import (
+	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"encoding/csv"
 	"os"
-	"os/exec"
 	"runtime"
 	"sort"
 	"strconv"
@@ -54,7 +54,7 @@ func (s *Service) ListProcesses() ([]ProcessInfo, error) {
 }
 
 func listUnixProcesses(ctx context.Context) ([]ProcessInfo, error) {
-	command := exec.CommandContext(ctx, "ps", "-Ao", "pid=,comm=,args=")
+	command := procutil.CommandContext(ctx, "ps", "-Ao", "pid=,comm=,args=")
 	configureProcess(command, false)
 	output, err := command.Output()
 	if err != nil {
@@ -82,7 +82,7 @@ func listUnixProcesses(ctx context.Context) ([]ProcessInfo, error) {
 }
 
 func listWindowsProcesses(ctx context.Context) ([]ProcessInfo, error) {
-	command := exec.CommandContext(ctx, "tasklist", "/FO", "CSV", "/NH")
+	command := procutil.CommandContext(ctx, "tasklist", "/FO", "CSV", "/NH")
 	configureProcess(command, false)
 	output, err := command.Output()
 	if err != nil {

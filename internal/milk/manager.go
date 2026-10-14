@@ -2,6 +2,7 @@ package milk
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 
 	"bufio"
 	"context"
@@ -277,7 +278,7 @@ func (m *Manager) launch(command Launch, root string) error {
 	m.mu.Lock()
 	m.launchKey = command.Key
 	m.mu.Unlock()
-	cmd := exec.Command(command.Binary, command.Args...)
+	cmd := procutil.Command(command.Binary, command.Args...)
 	cmd.Env = command.Env
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()

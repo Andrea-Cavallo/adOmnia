@@ -2,6 +2,7 @@ package git
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/procutil"
 
 	"bytes"
 	"errors"
@@ -93,10 +94,9 @@ type WorkingTreeFileSnapshot struct {
 }
 
 func runGit(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	cmd := procutil.Command("git", args...)
 	cmd.Dir = dir
 	cmd.Env = netpolicy.Environ()
-	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -111,9 +111,8 @@ func runGit(dir string, args ...string) (string, error) {
 // (e.g. " M file" → "M file"), shifting the status columns and corrupting the
 // first changed file's name/status. Porcelain parsing must keep column 0.
 func statusPorcelain(repoPath string) (string, error) {
-	cmd := exec.Command("git", "status", "--porcelain")
+	cmd := procutil.Command("git", "status", "--porcelain")
 	cmd.Dir = repoPath
-	configureHiddenCommand(cmd)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -180,10 +179,9 @@ func Clone(remoteURL, destination string) error {
 		return fmt.Errorf("destination path is empty")
 	}
 	// "--" chiude le opzioni: URL e cartella restano sempre argomenti posizionali.
-	cmd := exec.Command("git", "clone", "--", remoteURL, destination)
+	cmd := procutil.Command("git", "clone", "--", remoteURL, destination)
 	// Senza terminale nessuno può rispondere a un prompt di credenziali: meglio un errore subito.
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
-	configureHiddenCommand(cmd)
 	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
@@ -692,8 +690,7 @@ func IsInstalled() bool {
 
 // CompareRefs returns files changed between refA and refB.
 func CompareRefs(repoPath, refA, refB string) ([]ChangedFile, error) {
-	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-status", refA, refB)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", "-C", repoPath, "diff", "--name-status", refA, refB)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff --name-status: %w", err)
@@ -724,8 +721,7 @@ func CompareRefs(repoPath, refA, refB string) ([]ChangedFile, error) {
 
 // GetFileDiff returns the unified diff for a single file between two refs.
 func GetFileDiff(repoPath, refA, refB, filePath string) (string, error) {
-	cmd := exec.Command("git", "-C", repoPath, "diff", refA, refB, "--", filePath)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", "-C", repoPath, "diff", refA, refB, "--", filePath)
 	out, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -739,8 +735,7 @@ func GetFileDiff(repoPath, refA, refB, filePath string) (string, error) {
 
 func readFileAtRef(repoPath, ref, filePath string) (string, error) {
 	gitPath := filepath.ToSlash(filePath)
-	cmd := exec.Command("git", "-C", repoPath, "show", fmt.Sprintf("%s:%s", ref, gitPath))
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", "-C", repoPath, "show", fmt.Sprintf("%s:%s", ref, gitPath))
 	out, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -793,8 +788,7 @@ func GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath string) (WorkingTree
 		return WorkingTreeFileSnapshot{}, err
 	}
 
-	cmd := exec.Command("git", "-C", repoPath, "diff", "HEAD", "--", filePath)
-	configureHiddenCommand(cmd)
+	cmd := procutil.Command("git", "-C", repoPath, "diff", "HEAD", "--", filePath)
 	out, err := cmd.Output()
 	if err != nil {
 		var exitErr *exec.ExitError
