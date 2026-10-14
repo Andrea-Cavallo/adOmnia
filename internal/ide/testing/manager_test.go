@@ -19,9 +19,47 @@ func (neutralParser) Parse(line []byte) (Event, bool) {
 	return Event{}, false
 }
 func TestNeutralProcess(t *testing.T) {
+	if os.Getenv("ADOMNIA_NEUTRAL_FAIL") == "1" {
+		fmt.Fprint(os.Stderr, "compile failed: missing symbol\n")
+		os.Exit(2)
+	}
 	if os.Getenv("ADOMNIA_NEUTRAL_TEST") == "1" {
 		fmt.Print("pass")
 		os.Exit(0)
+	}
+}
+
+func TestManagerPreservesFailureExitCodeAndDiagnostics(t *testing.T) {
+	processes := run.NewProcessManager()
+	t.Cleanup(processes.Shutdown)
+	manager := NewManager()
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, err := run.Environment(map[string]string{"ADOMNIA_NEUTRAL_FAIL": "1", "GORACE": "atexit_sleep_ms=0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan Snapshot, 1)
+	_, err = manager.Start(processes, run.CommandSpec{SessionID: "failure", Executable: binary, Arguments: []string{"-test.run=^TestNeutralProcess$"}, Environment: env}, neutralParser{}, nil, Hooks{Publish: func(snapshot Snapshot) {
+		if snapshot.Status != TestRunning {
+			done <- snapshot
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case snapshot := <-done:
+		if snapshot.Status != "failed" || snapshot.ExitCode == nil || *snapshot.ExitCode != 2 {
+			t.Fatalf("failure metadata lost: %+v", snapshot)
+		}
+		if snapshot.Diagnostics != "compile failed: missing symbol\n" {
+			t.Fatalf("stderr lost: %q", snapshot.Diagnostics)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("failure completion lost")
 	}
 }
 

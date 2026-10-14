@@ -19,6 +19,7 @@ import { GoStudioBenchmarkDetail } from './GoStudioBenchmarkDetail'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
 import { testFailureDraft } from '@/lib/goide/testFailureAI'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
+import { GoStudioAlert } from './GoStudioModal'
 
 interface GoStudioTestsPanelProps {
   session: GoIDESession
@@ -307,6 +308,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const selectedId = useGoIDETestsStore((state) => state.selectedNode[sessionId] ?? null)
   const showOnlyFailed = useGoIDETestsStore((state) => state.onlyFailed)
   const coverageVisible = useGoIDETestsStore((state) => state.coverageVisible)
+  const testError = useGoIDETestsStore((state) => state.error)
   const [search, setSearch] = useState('')
   const [showOnlySlow, setShowOnlySlow] = useState(false)
   const [showOnlyFlaky, setShowOnlyFlaky] = useState(false)
@@ -365,6 +367,9 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
   const flakyCount = run.results.filter((result) => isFlaky(result) || (!!result.name && records.has(`${result.package}\u0000${result.name}`))).length
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {testError && <div className="shrink-0 p-2"><GoStudioAlert>{testError}</GoStudioAlert></div>}
+      <div role="status" className="shrink-0 border-b border-border-1 px-2 py-1 font-mono text-[10px] text-text-3">{running ? 'Running' : 'Ran'} {run.command || `go test ${(run.request.packages ?? []).join(' ')}`}</div>
+      {run.diagnostics && <pre className="max-h-28 shrink-0 overflow-auto whitespace-pre-wrap border-b border-danger/30 bg-danger/5 px-2 py-1.5 font-mono text-[10px] text-danger">{run.diagnostics}</pre>}
       <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[10px]">
         <button type="button" disabled={running} onClick={() => void rerunAll(sessionId)} title="Rerun" className="grid h-6 w-6 place-items-center rounded text-success hover:bg-success/10 disabled:opacity-30"><Play size={11} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" disabled={running || summary.failed === 0} onClick={() => void rerunFailed(sessionId)} title="Rerun failed tests" className="flex h-6 items-center gap-1 rounded px-1.5 text-danger hover:bg-danger/10 disabled:opacity-30"><RotateCcw size={11} aria-hidden="true" /> Failed</button>
@@ -404,7 +409,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
       <div className="flex min-h-0 flex-1">
         <div role="tree" aria-label="Test results" className="min-h-0 w-[46%] shrink-0 overflow-auto border-r border-border-1 py-1">
           {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} records={records} entry={index === 0} />)}
-          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found.'}</p>}
+          {tree.length === 0 && <p className="p-3 text-[11px] text-text-4">{running ? 'Building and starting tests…' : run.diagnostics ? 'The test command failed before producing test results. See diagnostics above.' : showOnlyFlaky ? 'No flaky tests in this run.' : showOnlyFailed ? 'No failed tests.' : showOnlySlow ? 'No tests slower than one second.' : search ? 'No matching tests.' : 'No tests found in this scope.'}</p>}
           {run.overflow && <p className="p-2 text-[10px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
         {selected ? <TestDetail key={`${run.runId}:${selected.id}`} run={run} result={selected} runs={runs ?? []} benchmark={benchmarkContext} /> : run.coverage ? <div className="min-h-0 flex-1 overflow-auto"><CoverageSummary report={run.coverage} sessionId={sessionId} /></div> : <p className="p-3 text-[11px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}

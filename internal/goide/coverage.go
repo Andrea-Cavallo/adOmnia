@@ -161,8 +161,17 @@ func percent(covered, total int) float64 {
 	return float64(covered) * 100 / float64(total)
 }
 
+type coverageModule struct {
+	directory string
+	path      string
+}
+
 // buildCoverageReport risolve i percorsi di import sui file del modulo e converte le colonne per Monaco.
 func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte) (CoverageReport, error) {
+	return buildCoverageReportForModules(projectRoot, []coverageModule{{directory: moduleDir, path: modulePath}}, data)
+}
+
+func buildCoverageReportForModules(projectRoot string, modules []coverageModule, data []byte) (CoverageReport, error) {
 	mode, files, err := parseCoverageProfile(data)
 	if err != nil {
 		return CoverageReport{}, err
@@ -170,10 +179,17 @@ func buildCoverageReport(projectRoot, moduleDir, modulePath string, data []byte)
 	report := CoverageReport{Mode: mode, GeneratedAt: time.Now().UTC(), Packages: []CoveragePackage{}, Files: []CoverageFile{}}
 	packages := map[string]*CoveragePackage{}
 	for importPath, blocks := range files {
-		if modulePath == "" || !strings.HasPrefix(importPath, modulePath+"/") {
+		var module *coverageModule
+		for index := range modules {
+			candidate := &modules[index]
+			if candidate.path != "" && strings.HasPrefix(importPath, candidate.path+"/") && (module == nil || len(candidate.path) > len(module.path)) {
+				module = candidate
+			}
+		}
+		if module == nil {
 			continue
 		}
-		relative := path.Join(moduleDir, strings.TrimPrefix(importPath, modulePath+"/"))
+		relative := path.Join(module.directory, strings.TrimPrefix(importPath, module.path+"/"))
 		text, _, token, readErr := readTextFile(filepath.Join(projectRoot, filepath.FromSlash(relative)))
 		if readErr != nil {
 			continue
@@ -276,14 +292,21 @@ func typeName(expression ast.Expr) string {
 
 // loadCoverage legge il profilo scritto da go test e lo rimuove: il report resta solo in memoria.
 func loadCoverage(projectRoot, moduleDir, modulePath, profilePath string) (*CoverageReport, error) {
+	return loadCoverageForModules(projectRoot, []coverageModule{{directory: moduleDir, path: modulePath}}, profilePath)
+}
+
+func loadCoverageForModules(projectRoot string, modules []coverageModule, profilePath string) (*CoverageReport, error) {
 	data, err := os.ReadFile(profilePath)
 	_ = os.Remove(profilePath)
 	if err != nil {
 		return nil, fmt.Errorf("profilo di coverage non disponibile: %w", err)
 	}
-	report, err := buildCoverageReport(projectRoot, moduleDir, modulePath, data)
+	report, err := buildCoverageReportForModules(projectRoot, modules, data)
 	if err != nil {
 		return nil, err
+	}
+	if len(report.Files) == 0 {
+		return nil, fmt.Errorf("il profilo di coverage non contiene file del progetto")
 	}
 	return &report, nil
 }

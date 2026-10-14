@@ -6425,6 +6425,8 @@ export class TestRunSnapshot {
     "request": TestRunRequest;
     "command": string;
     "status": string;
+    "exitCode"?: number | null;
+    "diagnostics"?: string;
     "summary": TestSummary;
     "results": TestResult[];
     "overflow"?: boolean;
@@ -6477,25 +6479,25 @@ export class TestRunSnapshot {
      */
     static createFrom($$source: any = {}): TestRunSnapshot {
         const $$createField2_0 = $$createType155;
-        const $$createField5_0 = $$createType156;
-        const $$createField6_0 = $$createType158;
-        const $$createField10_0 = $$createType160;
-        const $$createField11_0 = $$createType4;
+        const $$createField7_0 = $$createType156;
+        const $$createField8_0 = $$createType158;
+        const $$createField12_0 = $$createType160;
+        const $$createField13_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField2_0($$parsedSource["request"]);
         }
         if ("summary" in $$parsedSource) {
-            $$parsedSource["summary"] = $$createField5_0($$parsedSource["summary"]);
+            $$parsedSource["summary"] = $$createField7_0($$parsedSource["summary"]);
         }
         if ("results" in $$parsedSource) {
-            $$parsedSource["results"] = $$createField6_0($$parsedSource["results"]);
+            $$parsedSource["results"] = $$createField8_0($$parsedSource["results"]);
         }
         if ("coverage" in $$parsedSource) {
-            $$parsedSource["coverage"] = $$createField10_0($$parsedSource["coverage"]);
+            $$parsedSource["coverage"] = $$createField12_0($$parsedSource["coverage"]);
         }
         if ("raceReports" in $$parsedSource) {
-            $$parsedSource["raceReports"] = $$createField11_0($$parsedSource["raceReports"]);
+            $$parsedSource["raceReports"] = $$createField13_0($$parsedSource["raceReports"]);
         }
         return new TestRunSnapshot($$parsedSource as Partial<TestRunSnapshot>);
     }

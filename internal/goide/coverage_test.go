@@ -43,6 +43,38 @@ func TestCoverageReportMergesProfilesAndConvertsColumns(t *testing.T) {
 	}
 }
 
+func TestCoverageReportResolvesNestedProjectModules(t *testing.T) {
+	root := t.TempDir()
+	for _, file := range []string{"api/root.go", "tools/gen/gen.go"} {
+		path := filepath.Join(root, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("package p\nfunc F() {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	profile := "mode: set\nexample.com/root/api/root.go:2.1,2.12 1 1\nexample.com/gen/gen.go:2.1,2.12 1 0\n"
+	report, err := buildCoverageReportForModules(root, []coverageModule{{path: "example.com/root"}, {directory: "tools/gen", path: "example.com/gen"}}, []byte(profile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Packages) != 2 || len(report.Files) != 2 || report.Files[1].RelativePath != "tools/gen/gen.go" || report.Percent != 50 {
+		t.Fatalf("nested module coverage not aggregated: %+v", report)
+	}
+}
+
+func TestLoadCoverageRejectsEmptyProjectReport(t *testing.T) {
+	profile := filepath.Join(t.TempDir(), "coverage.out")
+	if err := os.WriteFile(profile, []byte("mode: set\nother.example/dep/x.go:1.1,1.2 1 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	report, err := loadCoverageForModules(t.TempDir(), []coverageModule{{path: "example.com/project"}}, profile)
+	if err == nil || report != nil {
+		t.Fatalf("empty project coverage must be explicit: report=%+v err=%v", report, err)
+	}
+}
+
 func TestFunctionCoverageMatchesGoToolCoverFunc(t *testing.T) {
 	text := "package p\n\ntype T[K any] struct{}\n\nfunc Hit(x int) int {\n\tif x > 0 {\n\t\treturn 1\n\t}\n\treturn 0\n}\n\nfunc (t *T[K]) Miss() {\n\tprintln()\n}\n\nfunc (T[K]) Empty() {}\n"
 	blocks := []rawCoverageBlock{

@@ -232,7 +232,7 @@ export async function openInSplit(sessionId: string, relativePath: string, orien
 export async function runPackageCommand(session: GoIDESession, relativePath: string, directory: boolean, kind: GoIDEQuickRunKind, coverage = false): Promise<void> {
   if (session.project.authorization !== 'tooling-permitted') return reportError('Trust this project first (Go → Trust Project Tools) to run Go commands.')
   const packageDirectory = directory ? relativePath : parentOf(relativePath)
-  const request = quickRunFor(kind, 'package', moduleScopeFor(session, joinRelative(packageDirectory, DIRECTORY_PROBE)))
+  const request = quickRunFor(kind, 'package', moduleScopeFor(session, joinRelative(packageDirectory, DIRECTORY_PROBE)), { recursive: directory })
   try {
     if (kind === 'test') {
       await useGoIDETestsStore.getState().start({ sessionId: session.id, workingDirectory: request.workingDirectory, packages: [request.target], coverage, race: false })

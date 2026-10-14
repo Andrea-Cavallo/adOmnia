@@ -89,15 +89,41 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 
 	request.SessionID = session.ID
 	relativeModule := filepath.ToSlash(relativeWithin(session.Project.RealPath, moduleDir))
+	if relativeModule == "." {
+		relativeModule = ""
+	}
 	modulePath := ""
 	if id == golang.ID {
 		modulePath = golang.ReadModulePath(filepath.Join(moduleDir, "go.mod"))
 	}
 	var races golang.RaceCollector
 	var coverage *CoverageReport
+	coverageError := ""
+	coverageModules := []coverageModule{{directory: relativeModule, path: modulePath}}
+	seenCoverageModules := map[string]bool{relativeModule + "\x00" + modulePath: true}
+	for _, unit := range session.Project.Units {
+		if unit.Language != golang.ID || unit.Kind != golang.UnitModule || unit.Name == "" {
+			continue
+		}
+		directory := filepath.ToSlash(relativeWithin(session.Project.RealPath, unit.Root))
+		if directory == "" {
+			directory = filepath.ToSlash(relativeWithin(session.Project.RootPath, unit.Root))
+		}
+		if directory == "" {
+			continue
+		}
+		if directory == "." {
+			directory = ""
+		}
+		key := directory + "\x00" + unit.Name
+		if !seenCoverageModules[key] {
+			coverageModules = append(coverageModules, coverageModule{directory: directory, path: unit.Name})
+			seenCoverageModules[key] = true
+		}
+	}
 	hooks := idetesting.Hooks{
 		Metadata: func() json.RawMessage {
-			data, _ := json.Marshal(testMetadata{Coverage: coverage, RaceReports: races.Reports()})
+			data, _ := json.Marshal(testMetadata{Coverage: coverage, CoverageError: coverageError, RaceReports: races.Reports()})
 			return data
 		},
 		Publish: func(snapshot idetesting.Snapshot) {
@@ -109,7 +135,11 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		hooks.Results = func(results []TestResult) { golang.ResolveTestLocations(results, relativeModule, modulePath) }
 		hooks.Finish = func(_ Execution) {
 			if coverageFile != "" {
-				coverage, _ = loadCoverage(session.Project.RealPath, relativeModule, modulePath, coverageFile)
+				report, coverageErr := loadCoverageForModules(session.Project.RealPath, coverageModules, coverageFile)
+				coverage = report
+				if coverageErr != nil {
+					coverageError = coverageErr.Error()
+				}
 				_ = os.Remove(coverageFile)
 			}
 		}

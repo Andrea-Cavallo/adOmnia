@@ -73,7 +73,6 @@ export const useGoIDETestsStore = create<GoIDETestsState>((set, get) => ({
       useGoIDELspStore.getState().showToolWindow('tests')
     } catch (error) {
       set({ error: errorMessage(error) })
-      useGoIDEStore.setState({ error: errorMessage(error) })
     }
   },
 

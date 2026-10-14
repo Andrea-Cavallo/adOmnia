@@ -108,7 +108,7 @@ func TestArguments(request TestOptions, coverageFile string) ([]string, error) {
 		arguments = append(arguments, "-bench", request.Bench, "-benchmem")
 	}
 	if coverageFile != "" {
-		arguments = append(arguments, "-coverprofile", coverageFile)
+		arguments = append(arguments, "-coverpkg="+strings.Join(packages, ","), "-coverprofile", coverageFile)
 	}
 	return append(arguments, packages...), nil
 }

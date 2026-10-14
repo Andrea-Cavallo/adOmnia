@@ -100,8 +100,11 @@ export async function runGoStudioChangedTests(): Promise<void> {
 }
 
 /** Costruisce la richiesta di un comando rapido (build, test, vet, generate, install). */
-export function quickRunFor(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, moduleScope: GoStudioModuleScope): GoStudioQuickRun {
-  const target = scope === 'module' ? ALL_PACKAGES : moduleScope.packageTarget
+export function quickRunFor(kind: GoIDEQuickRunKind, scope: GoStudioQuickScope, moduleScope: GoStudioModuleScope, options: { recursive?: boolean } = {}): GoStudioQuickRun {
+  const packageTarget = options.recursive
+    ? moduleScope.packageTarget === '.' ? ALL_PACKAGES : `${moduleScope.packageTarget.replace(/\/$/, '')}/...`
+    : moduleScope.packageTarget
+  const target = scope === 'module' ? ALL_PACKAGES : packageTarget
   return { kind, workingDirectory: moduleScope.moduleDirectory, target, label: `go ${kind} ${target}` }
 }
 

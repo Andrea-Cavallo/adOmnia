@@ -11,17 +11,19 @@ import (
 )
 
 type Snapshot struct {
-	Metadata   json.RawMessage `json:"-"`
-	RunID      run.RunID       `json:"runId"`
-	SessionID  run.SessionID   `json:"sessionId"`
-	Request    json.RawMessage `json:"request"`
-	Command    string          `json:"command"`
-	Status     string          `json:"status"`
-	Summary    TestSummary     `json:"summary"`
-	Results    []TestResult    `json:"results"`
-	Overflow   bool            `json:"overflow,omitempty"`
-	StartedAt  time.Time       `json:"startedAt"`
-	FinishedAt *time.Time      `json:"finishedAt,omitempty"`
+	Metadata    json.RawMessage `json:"-"`
+	RunID       run.RunID       `json:"runId"`
+	SessionID   run.SessionID   `json:"sessionId"`
+	Request     json.RawMessage `json:"request"`
+	Command     string          `json:"command"`
+	Status      string          `json:"status"`
+	ExitCode    *int            `json:"exitCode,omitempty"`
+	Diagnostics string          `json:"diagnostics,omitempty"`
+	Summary     TestSummary     `json:"summary"`
+	Results     []TestResult    `json:"results"`
+	Overflow    bool            `json:"overflow,omitempty"`
+	StartedAt   time.Time       `json:"startedAt"`
+	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
 }
 
 // Hooks enrich neutral results inside the run lock. They must not call Manager.
@@ -40,6 +42,7 @@ type testRun struct {
 	parser          EventParser
 	hooks           Hooks
 	pending         []byte
+	diagnostics     []byte
 	dirty, finished bool
 }
 type Manager struct {
@@ -56,11 +59,19 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 	r := &testRun{tree: NewTree(), parser: parser, hooks: hooks, snapshot: Snapshot{SessionID: spec.SessionID, Request: append(json.RawMessage(nil), request...), Status: TestRunning, StartedAt: time.Now().UTC(), Results: []TestResult{}}}
 	ready, stop := make(chan struct{}), make(chan struct{})
 	spec.OutputTap = func(stream string, data []byte) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if stream == "stderr" {
+			remaining := maxTestOutputBytes - len(r.diagnostics)
+			if remaining > 0 {
+				r.diagnostics = append(r.diagnostics, data[:min(len(data), remaining)]...)
+			}
+			r.dirty = true
+			return
+		}
 		if stream != "stdout" {
 			return
 		}
-		r.mu.Lock()
-		defer r.mu.Unlock()
 		r.pending = append(r.pending, data...)
 		for {
 			i := bytes.IndexByte(r.pending, '\n')
@@ -85,9 +96,13 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 			r.pending = nil
 		}
 		r.finished = true
+		r.snapshot.ExitCode = cloneInt(e.ExitCode)
+		r.snapshot.Diagnostics = string(r.diagnostics)
 		r.snapshot.Status = e.Status
-		if e.Status == "exited" || e.Status == "failed" {
+		if e.Status == "exited" && e.ExitCode != nil && *e.ExitCode == 0 {
 			r.snapshot.Status = "finished"
+		} else if e.Status == "exited" || e.Status == "failed" {
+			r.snapshot.Status = "failed"
 		}
 		end := time.Now().UTC()
 		if e.FinishedAt != nil {
@@ -154,6 +169,10 @@ func (r *testRun) line(line []byte) {
 }
 func (r *testRun) snapshotLocked(output bool) Snapshot {
 	s := r.snapshot
+	s.ExitCode = cloneInt(s.ExitCode)
+	if len(r.diagnostics) > 0 {
+		s.Diagnostics = string(r.diagnostics)
+	}
 	if r.hooks.Metadata != nil {
 		s.Metadata = append(json.RawMessage(nil), r.hooks.Metadata()...)
 	}
@@ -173,6 +192,14 @@ func (r *testRun) snapshotLocked(output bool) Snapshot {
 	}
 	s.Overflow = r.tree.Overflowed()
 	return s
+}
+
+func cloneInt(value *int) *int {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }
 func (m *Manager) pruneLocked() {
 	for len(m.runs) > 20 {

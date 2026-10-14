@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"bufio"
 	"context"
 	"os"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	"adomnia/internal/ide/project"
+	"golang.org/x/mod/modfile"
 )
 
 const (
@@ -118,17 +118,9 @@ func insideAnyModule(directory string, modules []string) bool {
 
 // ReadModulePath legge la direttiva module di un go.mod; vuoto se assente o illeggibile.
 func ReadModulePath(path string) string {
-	file, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
-		}
-	}
-	return ""
+	return modfile.ModulePath(data)
 }

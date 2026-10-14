@@ -1050,8 +1050,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J4.1 | **Build / Run / Stop** | Structured `go build`/`go run` with stdin, clickable output, restart, and stop of the whole process tree. Executable packages under `cmd/`, nested modules and `go.work` members run from their owning module. |
 | J4.2 | **Run Configurations** | Saved per project; the first Play creates the resolved main-package configuration, and multiple entry points use the active file, the conventional module command or an explicit picker. Secret environment values are prompted and never persisted. |
 | J4.3 | **Gutter Run Actions** | ▶ next to `func main`, tests, benchmarks, fuzz tests and examples with Run / Debug / Run with Coverage. |
-| J4.4 | **Test Runner** | Tree of results from `go test -json`, failure navigation, Rerun Failed. |
-| J4.5 | **Coverage** | Coverage in the editor, cleared when the source no longer matches. |
+| J4.4 | **Test Runner** | Tree of results from `go test -json`, recursive folder scopes, failure navigation, compiler diagnostics with exit codes, and Rerun Failed. |
+| J4.5 | **Coverage** | Coverage in the editor across nested project modules, cleared when the source no longer matches; empty profiles are reported explicitly. |
 | J4.6 | **Delve Debugger** | Breakpoints, stepping, stack, variables, watches and evaluate; launch, attach to a process or connect to a remote `dlv --headless`. Stop leaves no `dlv` or debuggee behind. |
 | J4.7 | **Terminal** | Real PTY (ConPTY on Windows) per project, closing its whole process tree. |
 | J4.8 | **Go Tools** | `go vet`, `go generate`, `go fix`, `go mod why`, `go mod graph`, `go doc` with an exact command preview. |

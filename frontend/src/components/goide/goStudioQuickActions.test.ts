@@ -48,6 +48,8 @@ describe('quickRunFor', () => {
     const scope = { moduleDirectory: 'svc', packageTarget: './api' }
     expect(quickRunFor('vet', 'package', scope)).toEqual({ kind: 'vet', workingDirectory: 'svc', target: './api', label: 'go vet ./api' })
     expect(quickRunFor('build', 'module', scope)).toEqual({ kind: 'build', workingDirectory: 'svc', target: './...', label: 'go build ./...' })
+		expect(quickRunFor('test', 'package', scope, { recursive: true })).toEqual({ kind: 'test', workingDirectory: 'svc', target: './api/...', label: 'go test ./api/...' })
+		expect(quickRunFor('test', 'package', { moduleDirectory: '', packageTarget: '.' }, { recursive: true }).target).toBe('./...')
   })
 })
 

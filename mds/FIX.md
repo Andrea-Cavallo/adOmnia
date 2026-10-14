@@ -294,21 +294,21 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 5. Module dir errata su Windows: `relativeTo(session.project.realPath, module.path)` (`goStudioQuickActions.ts:55`) vs unit da `RootPath` (`workspace.go:243`, `detector.go:28`); con symlink/junction/OneDrive/case drive i moduli sono scartati e `moduleDirectory` diventa `''`.
 
 **Fix**
-- [ ] GS-2.0 Riprodotto (cartella con sotto-package e test; cartella senza test; errore di compilazione in un test).
-- [ ] GS-2.1 Frontend: opzione `recursive` per `quickRunFor`/`runPackageCommand` (cartella → `./<inner>/...`, root modulo → `./...`, file → `./inner`); stessa root (`rootPath`) del backend in `moduleScopeFor` e `goImportPath`, normalizzando case/separatori.
-- [ ] GS-2.2 Pannello Test mostra `useGoIDETestsStore.error` e i diagnostics, più avviso "Running go test ./x/...".
-- [ ] GS-2.3 Core (`internal/ide/testing`): `Snapshot` con `ExitCode *int` e `Diagnostics string`; `OutputTap` tiene stderr in buffer limitato (64 KB, `maxTestOutputBytes`); exit ≠ 0 senza eventi package → resta `failed` con stderr allegato (o risultato sintetico `BuildFailed`); il pannello mostra quel testo al posto di "No tests found.".
-- [ ] GS-2.4 Adapter Go (`test_runner.go`): con `coverageFile != ""` aggiungere `-coverpkg=<pattern>` per ogni pattern (`./x/...`, `./x`, `./...`) uniti da virgola; `ReadModulePath` robusto (virgolette, commenti) o `go list -m`/risalita al `go.mod` più vicino; decodificare `build-output`/`build-fail` e attaccare gli errori al nodo del package.
-- [ ] GS-2.5 Coverage (`internal/goide/coverage.go`, `service_tests.go`): import path risolto contro tutti i moduli di `Project.Units`; errore di `loadCoverage` mostrato; `nil` se il report non ha file (non 0%); aggregazione per package (`CoveragePackage`) coperta in `coverage_test.go` per cartelle annidate.
+- [ ] GS-2.0 Riprodotto (cartella con sotto-package e test; cartella senza test; errore di compilazione in un test). — **NON VERIFICATO pre-fix:** i tre casi sono coperti dai test di regressione, ma non è stato conservato un run rosso precedente all'implementazione.
+- [x] GS-2.1 Frontend: opzione `recursive` per `quickRunFor`/`runPackageCommand` (cartella → `./<inner>/...`, root modulo → `./...`, file → `./inner`); stessa root (`rootPath`) del backend in `moduleScopeFor` e `goImportPath`, normalizzando case/separatori.
+- [x] GS-2.2 Pannello Test mostra `useGoIDETestsStore.error` e i diagnostics, più avviso "Running go test ./x/...".
+- [x] GS-2.3 Core (`internal/ide/testing`): `Snapshot` con `ExitCode *int` e `Diagnostics string`; `OutputTap` tiene stderr in buffer limitato (64 KB, `maxTestOutputBytes`); exit ≠ 0 senza eventi package → resta `failed` con stderr allegato (o risultato sintetico `BuildFailed`); il pannello mostra quel testo al posto di "No tests found.".
+- [x] GS-2.4 Adapter Go (`test_runner.go`): con `coverageFile != ""` aggiungere `-coverpkg=<pattern>` per ogni pattern (`./x/...`, `./x`, `./...`) uniti da virgola; `ReadModulePath` robusto (virgolette, commenti) o `go list -m`/risalita al `go.mod` più vicino; decodificare `build-output`/`build-fail` e attaccare gli errori al nodo del package.
+- [x] GS-2.5 Coverage (`internal/goide/coverage.go`, `service_tests.go`): import path risolto contro tutti i moduli di `Project.Units`; errore di `loadCoverage` mostrato; `nil` se il report non ha file (non 0%); aggregazione per package (`CoveragePackage`) coperta in `coverage_test.go` per cartelle annidate.
 
 **Verifica**
-- [ ] GS-2.T1 `coverage_test.go` cartelle annidate; test per `ReadModulePath`; test per stderr/ExitCode.
-- [ ] GS-2.M1 Cartella con sotto-package e test → percentuali reali per package e totale.
-- [ ] GS-2.M2 Cartella senza test → messaggio esplicito, non 0.0%.
-- [ ] GS-2.M3 Errore di compilazione in un test → testo visibile nel pannello.
-- [ ] GS-2.M4 `go.mod` sopra la cartella aperta e path Windows con symlink.
+- [x] GS-2.T1 `coverage_test.go` cartelle annidate; test per `ReadModulePath`; test per stderr/ExitCode.
+- [ ] GS-2.M1 Cartella con sotto-package e test → percentuali reali per package e totale. — **NON VERIFICATO:** richiede uso interattivo dell'app desktop.
+- [ ] GS-2.M2 Cartella senza test → messaggio esplicito, non 0.0%. — **NON VERIFICATO:** richiede uso interattivo dell'app desktop.
+- [ ] GS-2.M3 Errore di compilazione in un test → testo visibile nel pannello. — **NON VERIFICATO:** richiede uso interattivo dell'app desktop.
+- [ ] GS-2.M4 `go.mod` sopra la cartella aperta e path Windows con symlink. — **NON VERIFICATO:** richiede progetto reale con junction/symlink Windows.
 
-**Gate GS-2:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-2:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO** nell'app desktop.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -705,4 +705,5 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | IDE-1 Impl/Test/Doc | 2026-10-13 | Codex | `go test -timeout 10m ./...` verde; `npx vitest run` completo: 1373 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build`; binding rigenerati con Wails beta.28. Manuale update/rollback reale ancora NON VERIFICATO. |               |
 | IDE-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; guardia AST verde; `npx vitest run`: 315 file/1375 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` con Wails beta.28. Controllo visivo release Windows ancora NON VERIFICATO. |               |
 | GS-1 Impl/Test/Doc | 2026-10-14 | Codex | `go build ./...` e `go test -timeout 10m ./...` verdi; `internal/ide/architecture_test.go` verde; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `npx vitest run`: 316 file/1379 test verdi; `wails3 task build` (Wails beta.28) exit 0; binding `ListRunTargets` presenti e rigenerati. Manuale Play/F5/Debug/gutter/picker NON VERIFICATO (richiede app desktop interattiva). |               |
+| GS-2 Impl/Test/Doc | 2026-10-14 | Codex | `go test -timeout 10m ./...` verde; test mirati per scope ricorsivo, stderr/exit code, `go.mod` quotato, coverage vuota e moduli annidati; `npx vitest run`: 316 file/1380 test verdi; `npx tsc --noEmit`; `npm run build`; `npm run check:startup` (600158 B < 650 kB); `wails3 task build` (Wails beta.28) exit 0. Verifica manuale nel Test Explorer ancora NON VERIFICATA. |               |
 |                |      |     |                                                  |               |
