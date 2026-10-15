@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioCodeEditor } from './GoStudioCodeEditor'
+import { GoStudioMarkdownDocument, isMarkdownDocument } from './GoStudioMarkdownView'
 import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 
 interface GoStudioSplitPaneProps {
@@ -58,7 +59,10 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
         <button type="button" onClick={() => setSplit(null)} title="Close split" aria-label="Close split" className="grid w-7 shrink-0 place-items-center text-text-3 hover:bg-surface-3 hover:text-text-1"><X size={11} /></button>
       </div>
       <div className="min-h-0 flex-1">
-        <GoStudioCodeEditor document={document} handlesReveal={false} onRunTarget={onRunTarget} onCursor={(line, column) => { setCursor({ line, column }); onCursor(line, column) }} />
+        {(() => {
+          const editor = <GoStudioCodeEditor document={document} handlesReveal={false} onRunTarget={onRunTarget} onCursor={(line, column) => { setCursor({ line, column }); onCursor(line, column) }} />
+          return isMarkdownDocument(document) ? <GoStudioMarkdownDocument document={document} editor={editor} /> : editor
+        })()}
       </div>
     </section>
   )

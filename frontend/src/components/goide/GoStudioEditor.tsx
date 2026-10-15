@@ -13,7 +13,7 @@ import { copiesInOtherSessions } from './goStudioSharedCopies'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { isGeneratedGoFile } from './goStudioExtraLanguages'
 import { coverageForDocument } from './goStudioCoverage'
-import { GoStudioMarkdownView, isMarkdownDocument, type GoStudioMarkdownMode } from './GoStudioMarkdownView'
+import { GoStudioMarkdownDocument, isMarkdownDocument } from './GoStudioMarkdownView'
 import { GoStudioImageView, isImageDocument } from './GoStudioImageView'
 import { GoStudioHtmlView, isHtmlDocument, type GoStudioHtmlMode } from './GoStudioHtmlView'
 
@@ -27,8 +27,6 @@ interface GoStudioEditorProps {
 
 export function GoStudioEditor({ documents, active, onCursor, onRequestClose, onRunTarget }: GoStudioEditorProps) {
   const [compare, setCompare] = useState(false)
-  // Vista Markdown per documento, come in JetBrains: default Editor + Preview.
-  const [markdownModes, setMarkdownModes] = useState<Record<string, GoStudioMarkdownMode>>({})
   const [htmlModes, setHtmlModes] = useState<Record<string, GoStudioHtmlMode>>({})
   const theme = useGoStudioEditorTheme()
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
@@ -120,10 +118,8 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
             editor={<GoStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
           />
         ) : isMarkdownDocument(active) ? (
-          <GoStudioMarkdownView
+          <GoStudioMarkdownDocument
             document={active}
-            mode={markdownModes[active.document.id] ?? 'split'}
-            onModeChange={(mode) => setMarkdownModes((modes) => ({ ...modes, [active.document.id]: mode }))}
             editor={<GoStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
           />
         ) : (

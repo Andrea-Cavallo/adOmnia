@@ -4,6 +4,7 @@ import { MarkdownPreview } from '@/components/markdown/MarkdownPreview'
 import { renderMarkdown } from '@/lib/markdownDoc'
 import { readGoIDEAssetDataUrl } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { isMermaidPath, mermaidAsMarkdown, useMarkdownMode, type GoStudioMarkdownMode } from './goStudioMarkdownMode'
 import { localMarkdownAssets, substituteMarkdownAssets } from './goStudioMarkdownAssets'
 
 // Cache per sessione: gli asset locali non vengono riletti a ogni battitura del Markdown.
@@ -39,7 +40,7 @@ function useMarkdownAssets(document: GoIDEEditorDocument): Map<string, string> {
   return assets
 }
 
-export type GoStudioMarkdownMode = 'editor' | 'split' | 'preview'
+export type { GoStudioMarkdownMode } from './goStudioMarkdownMode'
 
 const MODES: { id: GoStudioMarkdownMode; label: string; icon: typeof Eye }[] = [
   { id: 'editor', label: 'Editor only', icon: Code2 },
@@ -48,7 +49,7 @@ const MODES: { id: GoStudioMarkdownMode; label: string; icon: typeof Eye }[] = [
 ]
 
 export function isMarkdownDocument(document: GoIDEEditorDocument): boolean {
-  return document.document.language === 'markdown' || /\.(md|markdown)$/i.test(document.document.relativePath)
+  return document.document.language === 'markdown' || /\.(md|markdown)$/i.test(document.document.relativePath) || isMermaidPath(document.document.relativePath)
 }
 
 /** Risolve un link relativo del preview rispetto al file corrente: "../docs/A.md#x" → "docs/A.md". */
@@ -78,7 +79,7 @@ export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: G
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const path = document.document.relativePath
   const assets = useMarkdownAssets(document)
-  const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(substituteMarkdownAssets(document.buffer, assets), path)), [document.buffer, path, mode, assets])
+  const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(substituteMarkdownAssets(isMermaidPath(path) ? mermaidAsMarkdown(document.buffer) : document.buffer, assets), path)), [document.buffer, path, mode, assets])
   const openLink = (href: string) => {
     const target = resolveMarkdownLink(path, href)
     if (!target) return
@@ -102,4 +103,10 @@ export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: G
       </div>
     </div>
   )
+}
+
+/** Markdown con il modo ricordato per documento (anteprima al primo apertura): lo usano editor principale e pannello diviso. */
+export function GoStudioMarkdownDocument({ document, editor }: { document: GoIDEEditorDocument; editor: ReactNode }) {
+  const [mode, setMode] = useMarkdownMode(`${document.document.sessionId}:${document.document.relativePath}`)
+  return <GoStudioMarkdownView document={document} mode={mode} onModeChange={setMode} editor={editor} />
 }

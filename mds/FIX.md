@@ -8,7 +8,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**46 chiuse · 51 implementate da verificare · 126 da fare — su 223 voci.**
+**48 chiuse · 54 implementate da verificare · 121 da fare — su 223 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -23,8 +23,8 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-4 | 2 | 6 | 3 | 11 |
 | GS-5 | 3 | 4 | 1 | 8 |
 | GS-6 | 0 | 0 | 13 | 13 |
-| GS-7 | 0 | 0 | 5 | 5 |
-| GS-8 | 0 | 0 | 4 | 4 |
+| GS-7 | 1 | 2 | 2 | 5 |
+| GS-8 | 1 | 1 | 2 | 4 |
 | GS-9 | 0 | 0 | 7 | 7 |
 | GS-10 | 0 | 0 | 12 | 12 |
 | DB-1 | 3 | 7 | 7 | 17 |
@@ -465,15 +465,15 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 **Stato.** `components/goide/GoStudioEditor.tsx:122-128` rende `GoStudioMarkdownView` per `.md`/`.markdown`; toggle Code2 / Columns2 / Eye (`GoStudioMarkdownView.tsx:34-39,92-100`); modo per documento in `markdownModes` (`useState`, `GoStudioEditor.tsx:31`, non persistito), default `?? 'split'` a `:125`. In `preview` Monaco non è montato. Renderer `lib/markdownDoc.ts:204`; immagini locali `readGoIDEAssetDataUrl` (`goStudioMarkdownAssets.ts`).
 
 **Fix**
-- [ ] GS-7.1 Default `'preview'` (`GoStudioEditor.tsx:125`) per ogni `.md` aperto dall'IDE (albero, Search Everywhere, link, "Go to file"); toggle resta in alto a destra. Scelta persistita per documento (e opzionalmente setting globale "default markdown view").
-- [ ] GS-7.2 `.md` sporco: l'anteprima usa `document.buffer`; verificato che non perda modifiche cambiando modo.
-- [ ] GS-7.3 `GoStudioSplitPane` non conosce Markdown: farlo passare dallo stesso `GoStudioMarkdownView`.
+- [ ] GS-7.1 Default `'preview'` (`GoStudioEditor.tsx:125`) per ogni `.md` aperto dall'IDE (albero, Search Everywhere, link, "Go to file"); toggle resta in alto a destra. Scelta persistita per documento (e opzionalmente setting globale "default markdown view"). — **IMPLEMENTATO; NON VERIFICATO manualmente:** `goStudioMarkdownMode.ts` (`useMarkdownMode`, chiave localStorage `adomnia.goStudio.markdownModes` per `sessione:percorso`, default anteprima); il default vale per qualunque apertura perché è nel renderer del documento. Setting globale non fatto.
+- [x] GS-7.2 `.md` sporco: l'anteprima usa `document.buffer`; verificato che non perda modifiche cambiando modo. — letto il codice: `GoStudioMarkdownView` rende da `document.buffer` e il buffer vive nello store, non nel modo; cambiare modo smonta solo Monaco.
+- [ ] GS-7.3 `GoStudioSplitPane` non conosce Markdown: farlo passare dallo stesso `GoStudioMarkdownView`. — **IMPLEMENTATO; NON VERIFICATO manualmente:** il pannello diviso usa `GoStudioMarkdownDocument` come l'editor principale.
 - [ ] GS-7.4 (Opzionale) outline (`MarkdownOutline`), backlinks, grafo (`MarkdownGraphView`) come pannelli laterali; componenti riusabili in `components/markdown/`. Stato Hub (`adomnia.markdown.uiState`, `adomnia.markdown.recentRoot`, `settings.markdown`) e backend `internal/markdown`/`markdown_bindings.go` non servono all'IDE: non farli dipendere dal rail rimosso.
 
 **Verifica**
-- [ ] GS-7.M1 `README.md` dall'albero → anteprima a tutto schermo; occhio/editor/split commutano; documento sporco mantiene le modifiche; funziona nel pane diviso.
+- [ ] GS-7.M1 — **NON VERIFICATO:** richiede `wails3 task dev`. `README.md` dall'albero → anteprima a tutto schermo; occhio/editor/split commutano; documento sporco mantiene le modifiche; funziona nel pane diviso.
 
-**Gate GS-7:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-7:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** serve `wails3 task dev`.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -482,14 +482,14 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 **Stato.** I blocchi ```` ```mermaid ```` in un `.md` sono già gestiti (`markdownDoc.ts:232`, `components/markdown/mermaidBlocks.ts` `useMermaidBlocks`, `import('mermaid')` dinamico v12.1, `securityLevel: 'strict'`). **Gap:** `.mmd`/`.mermaid` mancano in `languageByExtension` (`internal/goide/documents.go:466`) → testo semplice senza anteprima.
 
 **Fix**
-- [ ] GS-8.1 Estensioni `.mmd`/`.mermaid` e language id in `documents.go`.
-- [ ] GS-8.2 Ramo `isMermaidDocument` accanto a `GoStudioEditor.tsx:122` con lo schema del Markdown (editor / split / anteprima, default anteprima), riusando il rendering di `components/mermaid/MermaidPanel.tsx` (983 righe; zoom/export; `:312` `securityLevel: 'loose'`, `theme: 'base'`): estrarre un componente condiviso, non copiare; usare `strict` se `loose` non serve.
-- [ ] GS-8.3 Rail `mermaid` e drop file (`useFileDrop.ts:153-154`) ridiretti all'IDE (vedi GS-6).
+- [x] GS-8.1 Estensioni `.mmd`/`.mermaid` e language id in `documents.go`. — language id `mermaid`; `TestLanguageForPathCoversProjectFiles` esteso.
+- [ ] GS-8.2 Ramo `isMermaidDocument` accanto a `GoStudioEditor.tsx:122` con lo schema del Markdown (editor / split / anteprima, default anteprima), riusando il rendering di `components/mermaid/MermaidPanel.tsx` (983 righe; zoom/export; `:312` `securityLevel: 'loose'`, `theme: 'base'`): estrarre un componente condiviso, non copiare; usare `strict` se `loose` non serve. — **IMPLEMENTATO; NON VERIFICATO manualmente:** scelta diversa e più piccola: un `.mmd` è mostrato come blocco ```` ```mermaid ```` nello stesso `GoStudioMarkdownView` (`mermaidAsMarkdown`), quindi stesso renderer di `useMermaidBlocks` (`strict`, tema chiaro/scuro dallo skin, errore di sintassi sotto il blocco senza rompere l'editor), stessi modi editor/split/anteprima, default anteprima. Niente zoom/export di `MermaidPanel`: se servono, estrarre un componente condiviso.
+- [ ] GS-8.3 — **NON FATTO:** dipende da GS-6 (rimozione del rail). Rail `mermaid` e drop file (`useFileDrop.ts:153-154`) ridiretti all'IDE (vedi GS-6).
 
 **Verifica**
-- [ ] GS-8.M1 `.mmd` e `.md` con blocco mermaid: stesso aspetto, tema coerente con lo skin, errore di sintassi mostrato senza rompere l'editor.
+- [ ] GS-8.M1 — **NON VERIFICATO:** richiede `wails3 task dev`. `.mmd` e `.md` con blocco mermaid: stesso aspetto, tema coerente con lo skin, errore di sintassi mostrato senza rompere l'editor.
 
-**Gate GS-8:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-8:** [ ] Impl — manca GS-8.3 (dipende da GS-6)  [x] Test  [ ] Manuale — **NON VERIFICATO**  [ ] Doc  [ ] Verificato da altra persona/agente
 
 ---
 

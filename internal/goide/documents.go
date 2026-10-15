@@ -466,7 +466,7 @@ func fileURI(path string) string {
 var languageByExtension = map[string]string{
 	".go": "go", ".s": "goasm",
 	".json": "json", ".jsonc": "json", ".yaml": "yaml", ".yml": "yaml",
-	".md": "markdown", ".markdown": "markdown",
+	".md": "markdown", ".markdown": "markdown", ".mmd": "mermaid", ".mermaid": "mermaid",
 	".html": "html", ".htm": "html", ".tmpl": "html", ".gohtml": "html",
 	".css": "css", ".scss": "scss", ".less": "less",
 	".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".jsx": "javascript",

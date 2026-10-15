@@ -131,7 +131,7 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		"web/static/index.html": "html", "static/css/styles.css": "css", "static/js/script.js": "javascript",
 		"Dockerfile": "dockerfile", "build/Dockerfile.dev": "dockerfile", "api.dockerfile": "dockerfile",
 		"Makefile": "makefile", "rules.mk": "makefile", "pipeline.yaml": "yaml",
-		".env": "ini", ".env.local": "ini", "query.sql": "sql", "README.md": "markdown", "LICENSE": "plaintext",
+		".env": "ini", ".env.local": "ini", "query.sql": "sql", "README.md": "markdown", "docs/flow.mmd": "mermaid", "d.MERMAID": "mermaid", "LICENSE": "plaintext",
 		"api/orders.proto": "proto", // Monaco id is "proto" ("protobuf" is only an alias: no colors)
 	}
 	for path, want := range cases {
