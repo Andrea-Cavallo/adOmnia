@@ -1,14 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useResizableSize } from '@/hooks/useResizableSize'
-import { Braces, ChevronLeft, ChevronRight, Code2, Download, FileJson, Gauge, List, Loader2, Plus, RefreshCw, Table2, Upload, X } from 'lucide-react'
+import { Braces, ChevronLeft, ChevronRight, Code2, Download, FileJson, Gauge, List, ListTree, Loader2, Maximize2, Minimize2, Plus, RefreshCw, Table2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { download, highlightedJson, type DbConnection } from '../dbShared'
 import { AggregationsTab } from './AggregationsTab'
 import { documentColumns, stringifyEditable, toEditable, type BsonDoc } from './bson'
 import type { CodeRequest } from './codegen'
 import { CodeExportDialog } from './CodeExportDialog'
-import { BsonInline, DocumentCard } from './DocumentCard'
+import { DocumentCard } from './DocumentCard'
 import { DocumentEditor } from './DocumentEditor'
 import { ExplainDialog } from './ExplainDialog'
 import { parseImportFile } from './importExport'
@@ -19,6 +19,10 @@ import { SchemaTab } from './SchemaTab'
 import { EmptyState, ErrorBox, errorText, firstDocument, formatBytes, numberValue } from './ui'
 import { findSpec, useMongoBrowser, type RunMongo } from './useMongoBrowser'
 import { ValidationTab } from './ValidationTab'
+import { ValueCell } from '../ValueCell'
+import { ValueInspector, type CellInspectorRequest } from '../ValueInspector'
+import { useResultsFullscreen } from '../useResultsFullscreen'
+import { flattenRow, normalizeCell } from '../dbValue'
 
 type ViewMode = 'list' | 'table' | 'json'
 type WorkspaceTab = 'documents' | 'aggregations' | 'schema' | 'indexes' | 'validation'
@@ -69,6 +73,9 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
   const [codeRequest, setCodeRequest] = useState<CodeRequest | null>(null)
   const [stats, setStats] = useState<CollectionStats | null>(null)
   const [transfer, setTransfer] = useState('')
+  const [inspector, setInspector] = useState<CellInspectorRequest | null>(null)
+  const [expandNested, setExpandNested] = useState(false)
+  const { expanded, toggle, containerRef, focusProps } = useResultsFullscreen<HTMLElement>()
 
   const selected = m.selected
   const limit = Math.min(1000, Math.max(1, Number(m.query.limit) || 20))
@@ -164,7 +171,15 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
       />
       <ResizeHandle label="Drag to resize databases" onMouseDown={navigator.startResize} />
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0">
+      <section
+        ref={containerRef}
+        onMouseDownCapture={focusProps.onMouseDownCapture}
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0',
+          // Schermo intero vero (DB-1.5), come i risultati SQL.
+          expanded && 'fixed inset-0 z-[240]',
+        )}
+      >
         {/* header: breadcrumb, stats, mode switch */}
         <div className="flex h-11 flex-none items-center gap-3 border-b border-border-1 bg-surface-1 px-3">
           {selected ? (
@@ -252,6 +267,12 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                     </button>
                   ))}
                 </div>
+                <button type="button" onClick={() => setExpandNested((value) => !value)} aria-pressed={expandNested} title={expandNested ? 'Show nested fields as one cell' : 'Expand nested values into dotted columns'} className={cn('grid h-7 w-7 place-items-center rounded-md hover:bg-surface-2', expandNested ? 'text-accent' : 'text-text-3 hover:text-text-1')}>
+                  <ListTree size={13} />
+                </button>
+                <button type="button" onClick={toggle} title={expanded ? 'Exit full screen (Esc)' : 'Full screen (Ctrl+Shift+F)'} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+                  {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </button>
               </div>
             </div>
 
@@ -275,7 +296,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
               ) : view === 'json' ? (
                 <pre className="whitespace-pre-wrap break-all p-3 font-mono text-[11.5px] leading-5">{highlightedJson(JSON.stringify(m.docs.map(toEditable), null, 2))}</pre>
               ) : (
-                <DocumentTable docs={m.docs} offset={m.page * limit} />
+                <DocumentTable docs={m.docs} offset={m.page * limit} expandNested={expandNested} onInspect={setInspector} />
               )}
             </div>
           </>
@@ -309,6 +330,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
 
       {explainCommand && selected && <ExplainDialog runMongo={runMongo} db={selected.db} command={explainCommand} onClose={() => setExplainCommand(null)} />}
       {codeRequest && <CodeExportDialog request={codeRequest} onClose={() => setCodeRequest(null)} />}
+      {inspector && <ValueInspector request={inspector} onClose={() => setInspector(null)} />}
 
       {notice && (
         <div role="status" className="absolute bottom-4 right-4 z-40 max-w-md rounded-lg border border-border-2 bg-surface-2 px-3.5 py-2 text-[11.5px] text-text-1 shadow-xl">{notice}</div>
@@ -330,8 +352,15 @@ function ToolbarButton({ icon, label, onClick, disabled, title }: { icon: ReactN
   )
 }
 
-function DocumentTable({ docs, offset }: { docs: BsonDoc[]; offset: number }) {
-  const columns = documentColumns(docs)
+function DocumentTable({ docs, offset, expandNested, onInspect }: { docs: BsonDoc[]; offset: number; expandNested: boolean; onInspect: (request: CellInspectorRequest) => void }) {
+  // Con "Expand nested" ogni riga è piatta (`address.city`, `tags[0]`) e già normalizzata.
+  const rows = useMemo(
+    () => (expandNested ? docs.map((doc) => flattenRow(normalizeCell(doc, 'mongodb') as Record<string, unknown>)) : docs),
+    [docs, expandNested],
+  )
+  const columns = expandNested
+    ? [...new Set(rows.flatMap((row) => Object.keys(row)))]
+    : documentColumns(docs)
   return (
     <table className="border-separate border-spacing-0 text-left">
       <thead className="sticky top-0 z-10">
@@ -343,12 +372,36 @@ function DocumentTable({ docs, offset }: { docs: BsonDoc[]; offset: number }) {
         </tr>
       </thead>
       <tbody>
-        {docs.map((doc, i) => (
-          <tr key={i} className="group">
-            <td className="sticky left-0 border-b border-r border-border-1 bg-surface-1 px-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2">{offset + i + 1}</td>
+        {rows.map((row, i) => (
+          <tr key={JSON.stringify(docs[i]?._id ?? i)} className="group">
+            <td className="sticky left-0 border-b border-r border-border-1 bg-surface-1 px-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2">
+              {/* Il numero di riga apre la vista documento (DB-1.4). */}
+              <button
+                type="button"
+                onClick={() => onInspect({
+                  title: `Document ${offset + i + 1}`,
+                  value: docs[i],
+                  kind: 'Document',
+                  driver: 'mongodb',
+                  document: docs[i],
+                  copyText: JSON.stringify(docs[i], null, 2),
+                })}
+                className="rounded px-1 hover:bg-surface-3 hover:text-text-1"
+                title="Open document view"
+              >
+                {offset + i + 1}
+              </button>
+            </td>
             {columns.map((col) => (
               <td key={col} className="h-8 max-w-[320px] truncate border-b border-r border-border-1 px-3 text-[11.5px] group-hover:bg-surface-1">
-                {col in doc ? <BsonInline value={doc[col]} /> : <span className="text-text-4">—</span>}
+                {col in row ? (
+                  <ValueCell
+                    variant={expandNested ? 'sql' : 'mongo'}
+                    column={col}
+                    value={row[col]}
+                    onInspect={(value, kind) => onInspect({ title: `${col} · document ${offset + i + 1}`, value, kind, driver: 'mongodb' })}
+                  />
+                ) : <span className="text-text-4">—</span>}
               </td>
             ))}
           </tr>

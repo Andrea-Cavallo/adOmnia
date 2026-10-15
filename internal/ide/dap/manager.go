@@ -229,6 +229,9 @@ func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 		return DebugSessionInfo{}, fmt.Errorf("avvio di debug adapter fallito: %w", err)
 	}
 	session.command = command
+	// Il debug adapter è un figlio gestito: dopo un crash lo sweep dell'avvio
+	// successivo lo ritrova e lo termina (internal/ide/process/managed.go).
+	process.RegisterManagedChild(command.Process.Pid, filepath.Base(launch.Spec.Executable))
 	m.mu.Lock()
 	m.sessions[session.info.ID] = session
 	m.mu.Unlock()
@@ -482,6 +485,7 @@ func (m *DebugManager) terminate(session *debugger, reason string) {
 		case <-time.After(debugDisconnectTimeout):
 		}
 		_ = process.TerminateTree(command)
+		process.ReleaseManagedChild(command.Process.Pid)
 	}
 	m.mu.Lock()
 	delete(m.sessions, info.ID)

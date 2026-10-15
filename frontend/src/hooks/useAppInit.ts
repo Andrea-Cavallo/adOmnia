@@ -1,3 +1,4 @@
+import { persistStartupBackup } from '@/lib/startupBackup'
 import { useEffect, useRef, useState } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
@@ -9,6 +10,7 @@ import { normalizeRailItem, type RailItem } from '@/lib/navigation'
 import { loadUiSessionMemento } from '@/lib/uiSessionMemento'
 import { useDevLogsStore } from '@/stores/devLogs'
 import { getBackendDevLogs, clearBackendDevLogs } from '@/lib/devlogs-api'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome, LoadBootstrapState, LoadBootstrapStateV2 } from '@/wailsjs/go/main/App'
 import { markStartup, recordStartupBootstrap } from '@/lib/startupPerformance'
@@ -78,7 +80,7 @@ export function useAppInit(): AppInitResult {
   }, [])
 
   // Capture the immutable Zustand snapshot as soon as the stores are coherent.
-  // Serialization and localStorage I/O are deferred until after the first
+  // Serialization and backend I/O are deferred until after the first
   // stable frame, but later store mutations replace these references and cannot
   // alter the captured startup snapshot.
   useEffect(() => {
@@ -106,13 +108,9 @@ export function useAppInit(): AppInitResult {
   useEffect(() => {
     if (!firstStableFrame || backupDoneRef.current || !pendingBackupRef.current) return
     const snapshot = pendingBackupRef.current
-    backupDoneRef.current = true
     return scheduleStartupIdle(() => {
-      try {
-        localStorage.setItem('adomnia.workspace.backup', JSON.stringify(snapshot))
-      } catch {
-        // A failed backup must never block startup.
-      }
+      backupDoneRef.current = true
+      void persistStartupBackup(snapshot)
     })
   }, [firstStableFrame])
 
@@ -267,10 +265,10 @@ export function useAppInit(): AppInitResult {
       }
     }
     void sync()
-    const id = window.setInterval(sync, 1500)
+    const stop = visibleInterval(() => { void sync() }, 1500)
     return () => {
       cancelled = true
-      window.clearInterval(id)
+      stop()
     }
   }, [firstStableFrame, mergeBackendLogs])
 

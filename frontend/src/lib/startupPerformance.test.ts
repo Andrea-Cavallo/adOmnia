@@ -78,3 +78,11 @@ describe('startup performance metrics', () => {
     expect(() => reportStartupPerformance()).not.toThrow()
   })
 })
+
+ it('distinguishes API controls readiness from the shell frame', () => {
+   expect(startupDurationsFromMarks([
+     { name: 'startup:renderer-entry', startTime: 10 },
+     { name: 'startup:first-stable-frame', startTime: 50 },
+     { name: 'startup:workspace-interactive', startTime: 90 },
+   ])).toMatchObject({ rendererToFirstStableFrame: 40, rendererToWorkspaceInteractive: 80 })
+ })

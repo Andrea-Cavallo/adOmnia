@@ -1,3 +1,4 @@
+import { patchToolView, toolKey, useStudioTools } from '@/components/goide/studioToolState'
 import type { GoStudioResourceMode } from '@/components/goide/goStudioResourceMode'
 import type { GoStudioEditorMode } from '@/components/goide/goStudioEditorModes'
 import type { GoStudioSignature } from '@/components/goide/goStudioChangeSignature'
@@ -35,7 +36,7 @@ import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
-export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace' | 'sonar' | 'vulns' | 'fuzz' | 'errors' | 'architecture' | 'interfaces' | 'docs' | 'config' | 'impact' | 'git' | 'go'
+export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace' | 'sonar' | 'vulns' | 'fuzz' | 'errors' | 'architecture' | 'interfaces' | 'goroutines' | 'docs' | 'config' | 'impact' | 'git' | 'go'
 
 export interface GoIDEHierarchyView {
   sessionId: string
@@ -402,6 +403,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   },
 
   showToolWindow: (toolWindow) => {
+    useStudioTools.setState({ maximized: null })
+    const sessionId = useGoIDEStore.getState().activeSessionId
+    if (sessionId) patchToolView(toolKey(sessionId, 'logs'), 'open', false)
     set({ toolWindow })
     if (!useGoIDEStore.getState().layout.bottomOpen) useGoIDEStore.getState().updateLayout({ bottomOpen: true })
   },

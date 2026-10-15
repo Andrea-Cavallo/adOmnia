@@ -30,10 +30,11 @@ type VCSFileChange struct {
 
 // VCSStatus descrive il repository Git che contiene il progetto, se esiste.
 type VCSStatus struct {
-	Available bool   `json:"available"`
-	Reason    string `json:"reason,omitempty"`
-	RepoRoot  string `json:"repoRoot,omitempty"`
-	Branch    string `json:"branch,omitempty"`
+	Repositories []string `json:"repositories"`
+	Available    bool     `json:"available"`
+	Reason       string   `json:"reason,omitempty"`
+	RepoRoot     string   `json:"repoRoot,omitempty"`
+	Branch       string   `json:"branch,omitempty"`
 	// Head è l'hash dell'ultimo commit: quando cambia, i contenuti HEAD in cache vanno riletti.
 	Head      string          `json:"head,omitempty"`
 	Ahead     int             `json:"ahead"`
@@ -93,6 +94,16 @@ func (p vcsPaths) toRepo(relativePath string) (string, error) {
 	if err := ensureWithinRoot(p.projectRoot, absolute); err != nil {
 		return "", err
 	}
+	if err := ensureWithinRoot(p.repoRoot, absolute); err != nil {
+		return "", fmt.Errorf("file belongs to another Git repository")
+	}
+	owner, err := repositoryRoot(filepath.Dir(absolute))
+	if err != nil {
+		return "", err
+	}
+	if owner != "" && !samePath(owner, p.repoRoot) {
+		return "", fmt.Errorf("file belongs to another Git repository")
+	}
 	relative, err := filepath.Rel(p.repoRoot, absolute)
 	if err != nil {
 		return "", err
@@ -115,10 +126,11 @@ func (s *Service) vcsPaths(sessionID string) (Session, vcsPaths, error) {
 	if err != nil {
 		return Session{}, vcsPaths{}, err
 	}
-	root, err := repositoryRoot(session.Project.RealPath)
+	roots, err := s.repositoryRoots(session)
 	if err != nil {
 		return Session{}, vcsPaths{}, err
 	}
+	root := s.selectedRepository(session, roots)
 	if root == "" {
 		return Session{}, vcsPaths{}, fmt.Errorf("il progetto non è in un repository Git")
 	}
@@ -131,10 +143,11 @@ func (s *Service) VCSStatus(sessionID string) (VCSStatus, error) {
 	if err != nil {
 		return VCSStatus{}, err
 	}
-	root, err := repositoryRoot(session.Project.RealPath)
+	roots, err := s.repositoryRoots(session)
 	if err != nil {
 		return VCSStatus{Reason: err.Error(), Branches: []string{}, Changes: []VCSFileChange{}}, nil
 	}
+	root := s.selectedRepository(session, roots)
 	if root == "" {
 		return VCSStatus{Reason: "Not a Git repository", Branches: []string{}, Changes: []VCSFileChange{}}, nil
 	}
@@ -144,7 +157,8 @@ func (s *Service) VCSStatus(sessionID string) (VCSStatus, error) {
 		return VCSStatus{}, err
 	}
 	status := VCSStatus{
-		Available: true, RepoRoot: root, Branch: overview.Status.Branch, Ahead: overview.Status.AheadCount, Behind: overview.Status.BehindCount,
+		Repositories: roots,
+		Available:    true, RepoRoot: root, Branch: overview.Status.Branch, Ahead: overview.Status.AheadCount, Behind: overview.Status.BehindCount,
 		Branches: []string{}, Changes: []VCSFileChange{}, Conflicts: len(overview.Conflicts),
 	}
 	if len(overview.Commits) > 0 {
@@ -170,7 +184,7 @@ func (s *Service) VCSStatus(sessionID string) (VCSStatus, error) {
 
 // VCSFileAtRevision restituisce il contenuto del file a una revisione (HEAD per il gutter diff); vuoto se non esisteva.
 func (s *Service) VCSFileAtRevision(sessionID, relativePath, revision string) (string, error) {
-	_, paths, err := s.vcsPaths(sessionID)
+	_, paths, err := s.vcsPathsForFile(sessionID, relativePath)
 	if err != nil {
 		return "", err
 	}
@@ -186,7 +200,7 @@ func (s *Service) VCSFileAtRevision(sessionID, relativePath, revision string) (s
 
 // VCSFileHistory elenca i commit che hanno toccato il file, seguendo i rename.
 func (s *Service) VCSFileHistory(sessionID, relativePath string) ([]VCSCommit, error) {
-	_, paths, err := s.vcsPaths(sessionID)
+	_, paths, err := s.vcsPathsForFile(sessionID, relativePath)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +217,7 @@ func (s *Service) VCSFileHistory(sessionID, relativePath string) ([]VCSCommit, e
 
 // VCSLineHistory elenca i commit che hanno modificato le righe start..end (1-based) del file salvato.
 func (s *Service) VCSLineHistory(sessionID, relativePath string, start, end int) ([]VCSCommit, error) {
-	_, paths, err := s.vcsPaths(sessionID)
+	_, paths, err := s.vcsPathsForFile(sessionID, relativePath)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +269,7 @@ func (s *Service) VCSPatchLines(sessionID, base string) (map[string][]git.LineRa
 
 // VCSBlame restituisce autore, commit e data di ogni riga del file salvato.
 func (s *Service) VCSBlame(sessionID, relativePath string) ([]VCSBlameLine, error) {
-	_, paths, err := s.vcsPaths(sessionID)
+	_, paths, err := s.vcsPathsForFile(sessionID, relativePath)
 	if err != nil {
 		return nil, err
 	}

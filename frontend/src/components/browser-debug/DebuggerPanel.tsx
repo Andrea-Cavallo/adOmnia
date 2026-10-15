@@ -1,5 +1,6 @@
 import { type JSX, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import {
   enableDebugger,
   disableDebugger,
@@ -240,7 +241,6 @@ export function DebuggerPanel() {
   const [bpCondition, setBpCondition] = useState('')
   const [error, setError] = useState('')
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const activeLineRef = useRef<HTMLDivElement | null>(null)
 
   const refreshBreakpoints = useCallback(async () => {
@@ -324,14 +324,7 @@ export function DebuggerPanel() {
       }
     }
     poll()
-    pollRef.current = setInterval(poll, 500)
-
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
+    return visibleInterval(poll, 500)
   }, [enabled])
 
   useEffect(() => {

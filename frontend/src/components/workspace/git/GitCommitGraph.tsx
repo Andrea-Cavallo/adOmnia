@@ -21,14 +21,15 @@ function graphLaneX(lane: number): number {
   return GIT_GRAPH_LANE_START + lane * GIT_GRAPH_LANE_GAP
 }
 
-export function GitCommitGraph({ layout, width }: { layout: GitGraphRowLayout; width: number }) {
-  const centerY = 29
-  const bottomY = 58
+export function GitCommitGraph({ layout, width, height = 58 }: { layout: GitGraphRowLayout; width: number; height?: number }) {
+  const centerY = height / 2
+  const bottomY = height
+  const bend = Math.min(12, height / 4)
   const x = graphLaneX(layout.lane)
   const nodeColor = graphColor(layout.nodeColor)
 
   return (
-    <svg width={width} height="58" viewBox={`0 0 ${width} 58`} className="shrink-0 overflow-visible" aria-hidden="true">
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0 overflow-visible" aria-hidden="true">
       {layout.continuations.map((line) => (
         <line
           key={`continuation-${line.lane}`}
@@ -53,7 +54,7 @@ export function GitCommitGraph({ layout, width }: { layout: GitGraphRowLayout; w
         ) : (
           <path
             key={`parent-${index}`}
-            d={`M ${x} ${centerY} C ${x} ${centerY + 12}, ${targetX} ${bottomY - 12}, ${targetX} ${bottomY}`}
+            d={`M ${x} ${centerY} C ${x} ${centerY + bend}, ${targetX} ${bottomY - bend}, ${targetX} ${bottomY}`}
             fill="none"
             stroke={color}
             strokeWidth="2.5"

@@ -29,6 +29,11 @@ describe('Go Studio commands', () => {
     expect(commandForKey(key({ key: 'F5', ctrlKey: true, shiftKey: true }))?.id).toBe('run.restart')
   })
 
+  it('opens the AI hub on Alt+2 and leaves the Context Inspector on Alt+9', () => {
+    expect(commandForKey(key({ key: '2', code: 'Digit2', altKey: true }))?.id).toBe('tools.aiHub')
+    expect(commandForKey(key({ key: '9', code: 'Digit9', altKey: true }))?.id).toBe('view.contextInspector')
+  })
+
   it('has no duplicate intercepted bindings', () => {
     const seen = new Set<string>()
     for (const command of GO_STUDIO_COMMANDS) {

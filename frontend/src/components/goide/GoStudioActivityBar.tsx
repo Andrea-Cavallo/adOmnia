@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Loader2, RefreshCw, ScrollText, X } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 
 const STATE_LABELS: Record<string, string> = {
@@ -29,9 +30,8 @@ export function GoStudioActivityBar({ session, onOpenLog }: { session: GoIDESess
   const startedAt = activity?.startedAt ?? 0
 
   useEffect(() => {
-    if (!visible) return
-    const timer = window.setInterval(() => setNow(Date.now()), 500)
-    return () => window.clearInterval(timer)
+    if (!visible) return undefined
+    return visibleInterval(() => setNow(Date.now()), 500)
   }, [visible])
 
   if (!visible) return null

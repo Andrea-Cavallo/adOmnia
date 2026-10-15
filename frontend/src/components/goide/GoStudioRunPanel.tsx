@@ -169,6 +169,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   architecture: 'Architecture',
   impact: 'Impact',
   interfaces: 'Interfaces',
+  goroutines: 'Goroutines',
   docs: 'Documentation',
   config: 'Config & Environment',
   git: 'Git',
@@ -326,6 +327,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
       {view === 'impact' && <div className="min-h-0 flex-1"><GoStudioImpactPanel session={session} /></div>}
       {view === 'config' && <div className="flex min-h-0 flex-1 flex-col"><GoStudioConfigPanel session={session} /></div>}
       {view === 'interfaces' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} initialTab="interfaces" /></div>}
+      {view === 'goroutines' && <div className="min-h-0 flex-1"><GoStudioArchitecturePanel session={session} initialTab="goroutines" /></div>}
       {view === 'errors' && <div className="min-h-0 flex-1"><GoStudioErrorsPanel session={session} /></div>}
       {view === 'fuzz' && <div className="min-h-0 flex-1"><GoStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}

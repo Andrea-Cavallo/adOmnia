@@ -133,7 +133,8 @@ function isHistoryEntry(value: RequestHistoryEntry | ResponseData): value is Req
 }
 
 function cloneForHistory<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
+  // Clone nested request metadata and script results without serializing large bodies.
+  return structuredClone(value)
 }
 
 function normalizeHistoryEntries(history: Array<RequestHistoryEntry | ResponseData> | undefined): RequestHistoryEntry[] {

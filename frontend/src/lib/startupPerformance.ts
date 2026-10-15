@@ -16,6 +16,7 @@ export type StartupMarkName =
   | 'startup:skeleton-shown'
   | 'startup:skeleton-hidden'
   | 'startup:first-stable-frame'
+  | 'startup:workspace-interactive'
 
 export interface StartupMarkEntry {
   name: string
@@ -28,6 +29,7 @@ export interface StartupDurations {
   rendererToSettingsLoaded?: number
   rendererToWorkspaceHydrated?: number
   rendererToFirstStableFrame?: number
+  rendererToWorkspaceInteractive?: number
   settingsToTabsLoaded?: number
   skeletonShown: number
   skeletonVisibleMs?: number
@@ -109,6 +111,7 @@ export function startupDurationsFromMarks(entries: StartupMarkEntry[]): StartupD
     rendererToSettingsLoaded: fromRenderer('startup:settings-loaded'),
     rendererToWorkspaceHydrated: fromRenderer('startup:workspace-hydrated'),
     rendererToFirstStableFrame: fromRenderer('startup:first-stable-frame'),
+    rendererToWorkspaceInteractive: fromRenderer('startup:workspace-interactive'),
     settingsToTabsLoaded: settings === undefined || tabs === undefined
       ? undefined
       : roundedDuration(tabs - settings),
@@ -172,6 +175,7 @@ function createStartupMeasures(): void {
     ['startup:renderer-to-tabs-loaded', 'startup:tabs-loaded'],
     ['startup:renderer-to-workspace-hydrated', 'startup:workspace-hydrated'],
     ['startup:renderer-to-first-stable-frame', 'startup:first-stable-frame'],
+    ['startup:renderer-to-workspace-interactive', 'startup:workspace-interactive'],
   ]
   for (const [name, end] of rendererMeasures) {
     measureStartup(name, 'startup:renderer-entry', end)
@@ -197,4 +201,15 @@ export function reportStartupPerformance(): StartupDurations {
   }
   if (import.meta.env.DEV) console.info('[startup performance]', durations)
   return durations
+}
+
+/** Called after the hydrated API workspace has committed and painted its controls. */
+export function reportWorkspaceInteractive(): void {
+  markStartup('startup:workspace-interactive')
+  createStartupMeasures()
+  try {
+    document.documentElement.setAttribute('data-startup-performance', JSON.stringify(getStartupDurations()))
+  } catch {
+    // Local diagnostics must not affect the workspace.
+  }
 }

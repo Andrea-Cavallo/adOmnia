@@ -1,3 +1,4 @@
+import { toolKey, useStudioTools } from '@/components/goide/studioToolState'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: vi.fn(() => () => undefined) }))
@@ -92,5 +93,25 @@ describe('Go Studio language server store', () => {
     handleEvent(event('a', 'lsp.status', { sessionId: 'a', state: 'crashed', restarts: 1 }))
     expect(useGoIDELspStore.getState().diagnostics.a).toEqual({})
     expect(useGoIDELspStore.getState().progress.a).toBeNull()
+  })
+})
+
+describe('exclusive IDE tool navigation', () => {
+  it('replaces service logs with Git without affecting another session', () => {
+    const previous = useGoIDEStore.getState()
+    const key = toolKey('active', 'logs')
+    const other = toolKey('other', 'logs')
+    useGoIDEStore.setState({ activeSessionId: 'active' })
+    useStudioTools.setState({ views: { [key]: { open: true }, [other]: { open: true } } })
+    try {
+      useGoIDELspStore.getState().showToolWindow('git')
+      expect(useStudioTools.getState().views[key].open).toBe(false)
+      expect(useStudioTools.getState().views[other].open).toBe(true)
+      expect(useGoIDELspStore.getState().toolWindow).toBe('git')
+      expect(useGoIDEStore.getState().layout.bottomOpen).toBe(true)
+    } finally {
+      useGoIDEStore.setState({ activeSessionId: previous.activeSessionId, layout: previous.layout })
+      useStudioTools.setState({ views: {} })
+    }
   })
 })

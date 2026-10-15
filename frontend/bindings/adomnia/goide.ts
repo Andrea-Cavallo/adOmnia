@@ -2165,6 +2165,12 @@ export function VCSRevert(sessionID: string, relativePaths: string[]): $Cancella
     return $Call.ByID(3383709900, sessionID, relativePaths);
 }
 
+export function VCSSelectRepository(sessionID: string, root: string): $CancellablePromise<goide$0.VCSStatus> {
+    return $Call.ByID(156071826, sessionID, root).then(($result: any) => {
+        return $$createType167($result);
+    });
+}
+
 /**
  * VCSStage aggiunge o rimuove file dall'index Git.
  */

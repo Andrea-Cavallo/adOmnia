@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, Columns3, Download, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Columns3, Download, ListTree, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CellValue, detectCellType, inferColumnKind, type DbResult } from './dbShared'
+import { detectCellType, inferColumnKind, type DbResult } from './dbShared'
+import { flattenRow, normalizeCell } from './dbValue'
 import { parsePlan } from './explainPlan'
 import { PlanView } from './PlanView'
+import { ValueCell } from './ValueCell'
+import { ValueInspector, type CellInspectorRequest } from './ValueInspector'
+import { useResultsFullscreen } from './useResultsFullscreen'
 
 type ResultTab = 'plan' | 'results' | 'json' | 'stats' | 'logs'
 
@@ -27,13 +31,24 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   const [exportMenu, setExportMenu] = useState(false)
   const [columnsMenu, setColumnsMenu] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
-  const [expanded, setExpanded] = useState(false)
+  const [inspector, setInspector] = useState<CellInspectorRequest | null>(null)
+  const [expandNested, setExpandNested] = useState(false)
+  const { expanded, toggle, containerRef, focusProps } = useResultsFullscreen<HTMLDivElement>()
 
   const plan = useMemo(() => (result ? parsePlan(result) : null), [result])
   useEffect(() => { setPage(1); setTab(plan ? 'plan' : 'results'); setHiddenColumns([]) }, [result, plan])
 
-  const rows = result?.rows ?? []
-  const columns = result?.columns ?? []
+  const rows = useMemo(() => {
+    if (!expandNested) return result?.rows ?? []
+    const driver = isMongo ? 'mongodb' : ''
+    return (result?.rows ?? []).map((row) => flattenRow(normalizeCell(row, driver) as Record<string, unknown>))
+  }, [result, expandNested, isMongo])
+  const columns = useMemo(() => {
+    if (!expandNested) return result?.columns ?? []
+    const seen = new Set<string>()
+    for (const row of rows) for (const key of Object.keys(row)) seen.add(key)
+    return [...seen]
+  }, [result, expandNested, rows])
   const visibleColumns = columns.filter((column) => !hiddenColumns.includes(column))
 
   const filtered = useMemo(() => {
@@ -56,10 +71,15 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   ]
 
   return (
-    <div className={cn(
-      'flex min-h-0 flex-1 flex-col bg-surface-0',
-      expanded && 'fixed inset-3 z-[240] rounded-md border border-border-2 shadow-2xl',
-    )}>
+    <div
+      ref={containerRef}
+      onMouseDownCapture={focusProps.onMouseDownCapture}
+      className={cn(
+        'flex min-h-0 flex-1 flex-col bg-surface-0',
+        // Schermo intero vero (DB-1.5): tutta la finestra, sotto i modali (z-[260]).
+        expanded && 'fixed inset-0 z-[240]',
+      )}
+    >
       {/* tab strip */}
       <div className="flex h-9 flex-none items-center gap-0.5 border-b border-border-1 bg-surface-1 px-2">
         {tabs.map((t) => (
@@ -103,6 +123,16 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
               />
             </div>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setExpandNested((value) => !value)}
+            aria-pressed={expandNested}
+            disabled={!columns.length}
+            title={expandNested ? 'Show nested columns as one cell' : 'Expand nested values into dotted columns'}
+            className={cn('grid h-7 w-7 place-items-center rounded-md hover:bg-surface-2 disabled:opacity-30', expandNested ? 'text-accent' : 'text-text-3 hover:text-text-1')}
+          >
+            <ListTree size={13} />
+          </button>
           <div className="relative">
             <button
               onClick={() => setColumnsMenu((value) => !value)}
@@ -147,7 +177,7 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
               </>
             )}
           </div>
-          <button onClick={() => setExpanded((value) => !value)} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title={expanded ? 'Exit expanded results' : 'Expand results'}>
+          <button onClick={toggle} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title={expanded ? 'Exit full screen (Esc)' : 'Full screen (Ctrl+Shift+F)'}>
             {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
         </div>
@@ -170,7 +200,7 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
             {logs.length === 0 ? <span className="text-text-4">No log output.</span> : logs.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         ) : result.columns?.length ? (
-          <DataTable columns={visibleColumns} rows={pageRows} allRows={rows} startIndex={(page - 1) * pageSize} />
+          <DataTable columns={visibleColumns} rows={pageRows} allRows={rows} startIndex={(page - 1) * pageSize} isMongo={isMongo && !expandNested} onInspect={setInspector} />
         ) : (
           <div className="flex h-full items-center justify-center text-[12px] text-text-4">
             Statement executed. Rows affected: {result.rowsAffected}
@@ -195,11 +225,13 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
           <button onClick={onRerun} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1" title="Re-run"><RefreshCw size={13} /></button>
         </div>
       ) : null}
+
+      {inspector && <ValueInspector request={inspector} onClose={() => setInspector(null)} />}
     </div>
   )
 }
 
-function DataTable({ columns, rows, allRows, startIndex }: { columns: string[]; rows: Record<string, unknown>[]; allRows: Record<string, unknown>[]; startIndex: number }) {
+function DataTable({ columns, rows, allRows, startIndex, isMongo, onInspect }: { columns: string[]; rows: Record<string, unknown>[]; allRows: Record<string, unknown>[]; startIndex: number; isMongo: boolean; onInspect: (request: CellInspectorRequest) => void }) {
   return (
     <table className="min-w-full border-separate border-spacing-0 text-left">
       <thead className="sticky top-0 z-10">
@@ -215,9 +247,23 @@ function DataTable({ columns, rows, allRows, startIndex }: { columns: string[]; 
       </thead>
       <tbody>
         {rows.map((row, idx) => (
-          <tr key={idx} className="group">
+          <tr key={JSON.stringify(row._id ?? startIndex + idx)} className="group">
             <td className="sticky left-0 w-10 border-b border-r border-border-1 bg-surface-1 pr-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2" style={{ height: 40 }}>
-              {startIndex + idx + 1}
+              {/* Il numero di riga apre la riga intera come albero (DB-1.4). */}
+              <button
+                type="button"
+                onClick={() => onInspect({
+                  title: `Row ${startIndex + idx + 1}`,
+                  value: row,
+                  kind: 'Row',
+                  driver: isMongo ? 'mongodb' : '',
+                  copyText: JSON.stringify(row, null, 2),
+                })}
+                className="rounded px-1 hover:bg-surface-3 hover:text-text-1"
+                title="Open row view"
+              >
+                {startIndex + idx + 1}
+              </button>
             </td>
             {columns.map((col) => {
               const isRight = detectCellType(row[col]) === 'num'
@@ -227,7 +273,18 @@ function DataTable({ columns, rows, allRows, startIndex }: { columns: string[]; 
                   className={cn('max-w-[360px] truncate border-b border-r border-border-1 px-3.5 font-mono text-[11.5px] group-hover:bg-surface-1', isRight && 'text-right')}
                   style={{ height: 40 }}
                 >
-                  <CellValue value={row[col]} />
+                  <ValueCell
+                    variant={isMongo ? 'mongo' : 'sql'}
+                    column={col}
+                    value={row[col]}
+                    onInspect={(value, kind) => onInspect({
+                      title: `${col} · row ${startIndex + idx + 1}`,
+                      value,
+                      kind,
+                      driver: isMongo ? 'mongodb' : '',
+                      copyText: JSON.stringify(value, null, 2),
+                    })}
+                  />
                 </td>
               )
             })}

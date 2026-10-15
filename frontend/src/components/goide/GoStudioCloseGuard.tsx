@@ -4,7 +4,7 @@ import { confirmGoIDEAppClose, setGoIDEDirtyDocumentCount, subscribeGoIDEAppClos
 import {
   MAIN_GO_STUDIO_WINDOW, confirmGoIDESessionWindowClose, setGoIDEWindowDirtyDocumentCount, subscribeGoIDEWindowCloseRequests,
 } from '@/lib/goide-window-api'
-import { useGoIDEStore } from '@/stores/goide'
+import { goIDEDirtyDocuments, goIDEDirtyKey, useGoIDEStore } from '@/stores/goide'
 import { useUpdaterStore } from '@/stores/updater'
 import { GoStudioButton, GoStudioModal } from './GoStudioModal'
 import { GoStudioUnsavedFileList } from './GoStudioUnsavedFileList'
@@ -22,16 +22,20 @@ interface GoStudioCloseGuardProps {
 export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudioCloseGuardProps) {
   const detached = windowId !== MAIN_GO_STUDIO_WINDOW
   const updating = useUpdaterStore(state => state.status.scheduled)
-  const documents = useGoIDEStore((state) => state.documents)
+  // La chiave dei dirty è una stringa primitiva: cambia solo quando un file
+  // diventa/sporca o viene salvato, non a ogni battuta. La lista si legge fresca
+  // dallo store quando serve davvero (render del dialogo, salvataggio).
+  const dirtyKey = useGoIDEStore(goIDEDirtyKey)
   const saveDocument = useGoIDEStore((state) => state.saveDocument)
-  const dirtyDocuments = documents.filter((document) => document.dirty)
+  const dirtyDocuments = goIDEDirtyDocuments(useGoIDEStore.getState())
   const [request, setRequest] = useState<CloseRequest | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const sync = detached ? setGoIDEWindowDirtyDocumentCount(windowId, dirtyDocuments.length) : setGoIDEDirtyDocumentCount(dirtyDocuments.length)
+    const count = goIDEDirtyDocuments(useGoIDEStore.getState()).length
+    const sync = detached ? setGoIDEWindowDirtyDocumentCount(windowId, count) : setGoIDEDirtyDocumentCount(count)
     void sync.catch(() => undefined)
-  }, [detached, dirtyDocuments.length, windowId])
+  }, [detached, dirtyKey, windowId])
 
   useEffect(() => {
     if (!detached) return subscribeGoIDEAppCloseRequests((next) => setRequest({ dirtyDocumentCount: next.dirtyDocumentCount, activeRuns: next.activeRuns }))
@@ -49,7 +53,7 @@ export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudi
   }
   const saveAndClose = async () => {
     setSaving(true)
-    for (const document of dirtyDocuments) {
+    for (const document of goIDEDirtyDocuments(useGoIDEStore.getState())) {
       if (!await saveDocument(document.document.id)) {
         setSaving(false)
         return

@@ -4,12 +4,23 @@ import type { EntityRef } from '@/lib/entities/types'
 import {
   blankConnection,
   createObjectQuery,
+  csvEscape,
   nextQueryName,
   normalizeConnection,
   parseQueryWorkspace,
   validateConnection,
   type QueryTab,
 } from './dbShared'
+
+describe('csvEscape', () => {
+  it('writes objects and arrays as JSON instead of [object Object]', () => {
+    expect(csvEscape({ street: 'Via Roma' })).toBe('"{""street"":""Via Roma""}"')
+    expect(csvEscape([1, 2])).toBe('"[1,2]"')
+    expect(csvEscape('plain')).toBe('plain')
+    expect(csvEscape(7)).toBe('7')
+    expect(csvEscape(null)).toBe('')
+  })
+})
 
 describe('Database Studio model helpers', () => {
   it('repairs the legacy Local SQLite label when the saved driver is different', () => {

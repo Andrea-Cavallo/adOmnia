@@ -12,7 +12,7 @@ export type GoStudioCommandId =
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
-  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'code.changeImpact'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.goroutines' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'code.changeImpact'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -131,6 +131,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.config', menu: 'view', label: 'Config & Environment' },
   { id: 'view.runtimeLens', menu: 'view', label: 'Toggle Runtime Lens (OpenTelemetry)' },
   { id: 'view.interfaces', menu: 'view', label: 'Interface Explorer' },
+  { id: 'view.goroutines', menu: 'view', label: 'Goroutines', requires: { language: 'go' } },
   { id: 'view.documentation', menu: 'view', label: 'Documentation' },
   { id: 'view.vulnerabilities', menu: 'view', label: 'Security (Code and Dependencies)' },
   { id: 'view.debug', menu: 'view', label: 'Debug', binding: { key: '5', alt: true } },
@@ -243,7 +244,8 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
   { id: 'tools.extensions', menu: 'tools', label: 'IDE Extensions…' },
-  { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…', separatorBefore: true },
+  { id: 'tools.aiHub', menu: 'tools', label: 'Open AI Assistant', binding: { key: '2', alt: true }, separatorBefore: true },
+  { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…' },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
   { id: 'tools.claudeChat', menu: 'tools', label: 'Open Claude Code' },

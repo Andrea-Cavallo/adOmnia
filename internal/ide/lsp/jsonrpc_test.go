@@ -150,3 +150,30 @@ func TestConnUnblocksPendingCallsOnClose(t *testing.T) {
 		t.Fatalf("chiamata dopo la chiusura accettata: %v", err)
 	}
 }
+
+func TestConnAppliesPendingRequestLimit(t *testing.T) {
+	conn, server, _ := connPair(t)
+	conn.SetPendingLimit(2)
+
+	first := make(chan error, 1)
+	second := make(chan error, 1)
+	go func() { first <- conn.Call(context.Background(), "slow-one", nil, nil) }()
+	go func() { second <- conn.Call(context.Background(), "slow-two", nil, nil) }()
+	// Le due richieste raggiungono il server e restano in sospeso.
+	server.read(t)
+	server.read(t)
+	if err := conn.Call(context.Background(), "third", nil, nil); !errors.Is(err, ErrTooManyPendingRequests) {
+		t.Fatalf("atteso ErrTooManyPendingRequests, ottenuto %v", err)
+	}
+	server.writer.(*io.PipeWriter).Close()
+	for _, done := range []chan error{first, second} {
+		select {
+		case err := <-done:
+			if !errors.Is(err, ErrClosed) {
+				t.Fatalf("chiamata pendente sbloccata con %v", err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("chiamata pendente non sbloccata")
+		}
+	}
+}

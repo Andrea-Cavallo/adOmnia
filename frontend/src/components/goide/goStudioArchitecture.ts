@@ -1,10 +1,10 @@
 import type { GoIDEArchEntry, GoIDEArchInterface, GoIDEArchitecture } from '@/lib/goide-api'
 import type { EntityRef } from '@/lib/entities/types'
-import type { LayeredInput, LayeredLink } from './goStudioLayeredGraph'
+import { reduceTransitive, type LayeredInput, type LayeredLink } from './goStudioLayeredGraph'
 
 /** Nodo dei grafi dell'Architecture Explorer: cosa disegnare e dove aprire il codice. */
 export interface ArchNode {
-  kind: 'package' | 'function' | 'interface' | 'implementation' | 'consumer' | 'module'
+  kind: 'package' | 'group' | 'std' | 'external' | 'function' | 'interface' | 'implementation' | 'consumer' | 'module'
   title: string
   subtitle: string
   tooltip: string
@@ -56,6 +56,174 @@ export function packageGraph(report: GoIDEArchitecture, mode: 'imports' | 'calls
     })),
     links: edges.filter((edge) => ids.has(edge.from) && ids.has(edge.to)).map((edge) => ({ from: edge.from, to: edge.to, value: edge.count })),
     hidden: sorted.length - visible.length,
+  }
+}
+
+export interface PackageViewOptions {
+  mode: 'imports' | 'calls'
+  focus: string | null
+  /** Distanza dal focus (in archi, in entrambe le direzioni). */
+  depth: number
+  /** Nasconde a→c quando esiste già a→b→c. */
+  reduce: boolean
+  std: boolean
+  external: boolean
+  /** Raccoglie i package della stessa cartella di primo livello; `expanded` ne apre alcune. */
+  group: boolean
+  expanded: ReadonlySet<string>
+  cyclesOnly: boolean
+}
+
+export const DEFAULT_PACKAGE_VIEW: PackageViewOptions = { mode: 'imports', focus: null, depth: 1, reduce: true, std: false, external: false, group: false, expanded: new Set(), cyclesOnly: false }
+
+export interface PackageView extends ArchGraph {
+  /** Package del progetto nel report e quanti ne restano dopo focus/filtri. */
+  total: number
+  shown: number
+  /** Archi nascosti dalla riduzione transitiva. */
+  reduced: number
+  /** Package che partecipano a un ciclo di import. */
+  cycles: number
+}
+
+const MAX_VIEW_NODES = 150
+
+/** Cartella di primo livello di un package ("internal/store" → "internal"); vuota se il package è già al primo livello. */
+export function packageGroup(path: string, module?: string): string {
+  const short = shortPackage(path, module)
+  return short.includes('/') ? short.split('/')[0] : ''
+}
+
+/** Componenti fortemente connesse con più di un nodo (Tarjan): i cicli di import. */
+export function cycleMembers(links: readonly LayeredLink[]): Set<string> {
+  const next = new Map<string, string[]>()
+  for (const link of links) if (link.from !== link.to) next.set(link.from, [...(next.get(link.from) ?? []), link.to])
+  const index = new Map<string, number>()
+  const low = new Map<string, number>()
+  const onStack = new Set<string>()
+  const stack: string[] = []
+  const members = new Set<string>()
+  let counter = 0
+  const visit = (id: string) => {
+    index.set(id, counter)
+    low.set(id, counter++)
+    stack.push(id)
+    onStack.add(id)
+    for (const other of next.get(id) ?? []) {
+      if (!index.has(other)) {
+        visit(other)
+        low.set(id, Math.min(low.get(id)!, low.get(other)!))
+      } else if (onStack.has(other)) low.set(id, Math.min(low.get(id)!, index.get(other)!))
+    }
+    if (low.get(id) !== index.get(id)) return
+    const component: string[] = []
+    for (let top = stack.pop()!; ; top = stack.pop()!) {
+      onStack.delete(top)
+      component.push(top)
+      if (top === id) break
+    }
+    if (component.length > 1) component.forEach((member) => members.add(member))
+  }
+  for (const id of [...next.keys()]) if (!index.has(id)) visit(id)
+  return members
+}
+
+/**
+ * Grafo dei package per l'Architecture Explorer: focus a profondità N invece di un taglio fisso, gruppi per
+ * cartella, riduzione transitiva, filtro cicli e nodi per libreria standard / dipendenze esterne.
+ */
+export function packageView(report: GoIDEArchitecture, options: PackageViewOptions): PackageView {
+  const edges = options.mode === 'imports' ? report.imports : report.packageCalls
+  const byPath = new Map(report.packages.map((pkg) => [pkg.path, pkg]))
+  let visible = new Set(report.packages.map((pkg) => pkg.path))
+  if (options.focus && byPath.has(options.focus)) {
+    visible = new Set([options.focus])
+    for (let level = 0; level < options.depth; level++) {
+      const reached = new Set(visible)
+      for (const edge of edges) {
+        if (!byPath.has(edge.from) || !byPath.has(edge.to)) continue
+        if (visible.has(edge.from)) reached.add(edge.to)
+        if (visible.has(edge.to)) reached.add(edge.from)
+      }
+      visible = reached
+    }
+  }
+  const degree = new Map<string, number>()
+  for (const edge of edges) {
+    degree.set(edge.from, (degree.get(edge.from) ?? 0) + edge.count)
+    degree.set(edge.to, (degree.get(edge.to) ?? 0) + edge.count)
+  }
+  const ranked = [...visible].sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0) || a.localeCompare(b))
+  const capped = new Set(ranked.slice(0, MAX_VIEW_NODES))
+  const members = new Map<string, string[]>()
+  for (const path of capped) {
+    const group = packageGroup(path, byPath.get(path)?.module)
+    if (group) members.set(group, [...(members.get(group) ?? []), path])
+  }
+  const nodeId = (path: string): string => {
+    if (!options.group) return path
+    const group = packageGroup(path, byPath.get(path)?.module)
+    const open = !group || (members.get(group)?.length ?? 0) < 2 || options.expanded.has(group) || path === options.focus
+    return open ? path : `group:${group}`
+  }
+  const merged = new Map<string, LayeredLink>()
+  for (const edge of edges) {
+    if (!capped.has(edge.from) || !capped.has(edge.to)) continue
+    const from = nodeId(edge.from)
+    const to = nodeId(edge.to)
+    if (from === to) continue
+    const key = `${from}\u0000${to}`
+    merged.set(key, { from, to, value: (merged.get(key)?.value ?? 0) + edge.count })
+  }
+  let links = [...merged.values()]
+  const cycles = cycleMembers(links)
+  if (options.cyclesOnly) links = links.filter((link) => cycles.has(link.from) && cycles.has(link.to))
+  const reduction = options.reduce ? reduceTransitive(links) : { links, removed: 0 }
+  links = reduction.links
+  const nodes: LayeredInput<ArchNode>[] = []
+  const placed = new Set<string>()
+  const addNode = (node: LayeredInput<ArchNode>) => {
+    if (placed.has(node.id)) return
+    placed.add(node.id)
+    nodes.push(node)
+  }
+  for (const path of capped) {
+    const id = nodeId(path)
+    if (options.cyclesOnly && !cycles.has(id)) continue
+    if (id !== path) {
+      const group = id.slice('group:'.length)
+      const inside = members.get(group) ?? []
+      addNode({ id, weight: inside.reduce((sum, member) => sum + (degree.get(member) ?? 0), 0), data: { kind: 'group', title: `${group}/`, subtitle: `${inside.length} packages · click to expand`, tooltip: inside.join('\n') } })
+      continue
+    }
+    const pkg = byPath.get(path)!
+    addNode({
+      id, weight: degree.get(path) ?? 0,
+      data: {
+        kind: 'package', title: shortPackage(pkg.path, pkg.module), site: pkg.site,
+        subtitle: `${pkg.files} file${pkg.files === 1 ? '' : 's'} · ${pkg.external.length} external`,
+        tooltip: `${pkg.path}\n${pkg.files} files, ${pkg.std} standard library imports${pkg.external.length ? `\nExternal: ${pkg.external.join(', ')}` : ''}`,
+      },
+    })
+  }
+  if (!options.cyclesOnly) {
+    const leaves = (kind: 'std' | 'external', pick: (pkg: GoIDEArchitecture['packages'][number]) => readonly string[]) => {
+      for (const path of capped) {
+        const from = nodeId(path)
+        for (const dep of pick(byPath.get(path)!)) {
+          const id = `${kind}:${dep}`
+          addNode({ id, weight: 0, data: { kind, title: dep.split('/').slice(-2).join('/'), subtitle: kind === 'std' ? 'standard library' : 'external module', tooltip: dep } })
+          if (!links.some((link) => link.from === from && link.to === id)) links.push({ from, to: id, value: 1 })
+        }
+      }
+    }
+    if (options.std) leaves('std', (pkg) => (pkg as { stdImports?: string[] }).stdImports ?? [])
+    if (options.external) leaves('external', (pkg) => pkg.external)
+  }
+  return {
+    nodes, links, hidden: ranked.length - capped.size,
+    total: report.packages.length, shown: nodes.filter((node) => node.data.kind === 'package' || node.data.kind === 'group').length,
+    reduced: reduction.removed, cycles: new Set([...cycles].filter((id) => !id.startsWith('group:'))).size,
   }
 }
 
@@ -267,4 +435,63 @@ const WRITE_ORM = new Set(['Create', 'Save', 'Delete', 'Update', 'Updates', 'Upd
 
 export function isWrite(query: ArchQuery): boolean {
   return query.operation === 'exec' || WRITE_SQL.test(query.sql ?? '') || (query.operation === 'orm' && WRITE_ORM.has(query.method))
+}
+
+export type ArchGoroutine = GoIDEArchitecture['goroutines'][number]
+
+export interface GoroutineFilter {
+  query: string
+  risksOnly: boolean
+  inLoopOnly: boolean
+  /** Vuoto = tutti i tipi (go, errgroup, waitgroup-go, afterfunc). */
+  kinds: ReadonlySet<string>
+}
+
+export const NO_GOROUTINE_FILTER: GoroutineFilter = { query: '', risksOnly: false, inLoopOnly: false, kinds: new Set() }
+
+export interface GoroutineFunctionGroup {
+  function: string
+  items: ArchGoroutine[]
+}
+
+export interface GoroutinePackageGroup {
+  package: string
+  functions: GoroutineFunctionGroup[]
+  count: number
+  risky: number
+}
+
+const SEVERITY_RANK: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 }
+
+export function filterGoroutines(items: readonly ArchGoroutine[], filter: GoroutineFilter): ArchGoroutine[] {
+  const needle = filter.query.trim().toLowerCase()
+  return items.filter((item) =>
+    (!filter.risksOnly || item.risks.length > 0) &&
+    (!filter.inLoopOnly || !!item.inLoop) &&
+    (filter.kinds.size === 0 || filter.kinds.has(item.kind)) &&
+    (!needle || `${item.package} ${item.function} ${item.launches ?? ''} ${item.kind} ${item.shape} ${item.risks.join(' ')} ${(item.entries ?? []).join(' ')}`.toLowerCase().includes(needle)))
+}
+
+/** Package → funzione che avvia → goroutine; i package con più rischio gravi in cima. */
+export function groupGoroutines(items: readonly ArchGoroutine[], filter: GoroutineFilter = NO_GOROUTINE_FILTER): GoroutinePackageGroup[] {
+  const byPackage = new Map<string, Map<string, ArchGoroutine[]>>()
+  for (const item of filterGoroutines(items, filter)) {
+    const functions = byPackage.get(item.package) ?? new Map<string, ArchGoroutine[]>()
+    functions.set(item.function, [...(functions.get(item.function) ?? []), item])
+    byPackage.set(item.package, functions)
+  }
+  return [...byPackage.entries()]
+    .map(([pkg, functions]) => {
+      const groups = [...functions.entries()].map(([name, list]) => ({ function: name, items: list })).sort((a, b) => a.function.localeCompare(b.function))
+      const all = groups.flatMap((group) => group.items)
+      return { package: pkg, functions: groups, count: all.length, risky: all.filter((item) => item.risks.length > 0).length, worst: Math.max(...all.map((item) => SEVERITY_RANK[item.severity] ?? 0)) }
+    })
+    .sort((a, b) => b.worst - a.worst || b.risky - a.risky || a.package.localeCompare(b.package))
+    .map(({ worst: _worst, ...group }) => group)
+}
+
+/** Avvio statico che corrisponde a una goroutine osservata a runtime (stesso file e riga della creazione). */
+export function matchGoroutineSite(items: readonly ArchGoroutine[], file: string, line: number): ArchGoroutine | undefined {
+  const normal = file.split('\\').join('/')
+  return items.find((item) => item.site.line === line && (normal === item.site.relativePath || normal.endsWith(`/${item.site.relativePath}`)))
 }

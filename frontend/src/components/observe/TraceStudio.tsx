@@ -7,6 +7,7 @@ import { readFileSmart, saveBase64File } from '@/lib/fileUtils'
 import { openTraceLogs } from '@/lib/otlp-logs'
 import { parseStackTrace } from '@/lib/loginspector/stackTrace'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useServerPort } from '@/lib/useServerPort'
 import { clearOtlp, getOtlpMap, getOtlpTrace, importOtlpTrace, listOtlpTraces, otlpStatus, startOtlp, stopOtlp, type OtlpServiceMap, type OtlpSpan, type OtlpStatus, type OtlpTraceSummary } from '@/lib/otlp-api'
 import { ServiceMapView } from './ServiceMapView'
@@ -169,9 +170,8 @@ export function TraceStudio() {
 
   useEffect(() => { void refresh() }, [refresh])
   useEffect(() => {
-    if (!status?.running) return
-    const timer = window.setInterval(() => void refresh(), 2000)
-    return () => window.clearInterval(timer)
+    if (!status?.running) return undefined
+    return visibleInterval(() => void refresh(), 2000)
   }, [status?.running, refresh])
 
   useEffect(() => {

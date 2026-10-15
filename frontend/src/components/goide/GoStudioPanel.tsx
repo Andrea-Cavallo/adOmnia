@@ -2,7 +2,7 @@ import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './goStudioRunOnSave'
 import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { GoStudioEmptyState } from './GoStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './GoStudioDialogs'
@@ -119,6 +119,8 @@ import { GoStudioWorkspaceBar } from './GoStudioWorkspaceBar'
 import { GoStudioSnapshots, useSnapshotsDrawer } from './GoStudioSnapshots'
 import { GoStudioStartupAnalyzer, useStartupDrawer } from './GoStudioStartupAnalyzer'
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
+import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/goStudioLayout'
+import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
 import type { GoIDEDebugRequest } from '@/lib/goide-debug-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -290,6 +292,13 @@ export function GoStudioPanel() {
       if (!panelActive.current) return
       // Il dialog Scorciatoie sta registrando un tasto: va a lui, non ai comandi.
       if ((event.target as HTMLElement | null)?.closest?.('[data-keymap-recorder]')) return
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && !event.altKey && !event.shiftKey
+        && !(event.target as HTMLElement | null)?.closest?.('[role="dialog"], .xterm')) {
+        event.preventDefault()
+        event.stopPropagation()
+        useGoIDELspStore.getState().requestFind('')
+        return
+      }
       // Più comandi possono condividere un tasto (es. F5 di VS Code): vince il primo disponibile.
       const candidates = commandsForKey(event)
       const command = candidates.find((item) => availabilityRef.current(item.id) === true) ?? candidates[0]
@@ -597,23 +606,40 @@ export function GoStudioPanel() {
     return () => window.removeEventListener('beforeunload', protectDirtyBuffers)
   }, [])
 
-  const beginResize = useCallback((key: 'projectWidth' | 'structureWidth' | 'bottomHeight', initial: number, direction = 1) => (event: ReactMouseEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    const horizontal = key === 'bottomHeight'
-    const start = horizontal ? event.clientY : event.clientX
-    const workspace = event.currentTarget.closest('.grid')?.getBoundingClientRect()
-    const otherColumn = key === 'structureWidth' && store.layout.projectOpen ? store.layout.projectWidth : key === 'projectWidth' && store.layout.structureOpen ? store.layout.structureWidth : 0
-    const onMove = (moveEvent: MouseEvent) => {
-      const coordinate = horizontal ? moveEvent.clientY : moveEvent.clientX
-      const value = initial + (coordinate - start) * direction
-      const min = horizontal ? 112 : 180
-      const max = horizontal ? Math.max(min, (workspace?.height ?? window.innerHeight) - 180) : Math.max(min, (workspace?.width ?? window.innerWidth) - otherColumn - 160)
-      store.updateLayout({ [key]: Math.min(max, Math.max(min, value)) })
+  // Un solo splitter per i tre pannelli: mouse, frecce da tastiera e doppio click
+  // (reset alla dimensione di default) condividono clamp e costanti di lib/goStudioLayout,
+  // le stesse usate dal caricamento del layout salvato.
+  const beginResize = useCallback((key: GoIDEPaneSizeKey, direction = 1): ResizeHandleInteraction => {
+    const boundsOf = (element: Element | null): PaneBounds => {
+      const rect = element?.closest('.grid')?.getBoundingClientRect()
+      return {
+        width: rect?.width ?? window.innerWidth,
+        height: rect?.height ?? window.innerHeight,
+        otherWidth: key === 'structureWidth' && store.layout.projectOpen ? store.layout.projectWidth : key === 'projectWidth' && store.layout.structureOpen ? store.layout.structureWidth : 0,
+      }
     }
-    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [store.updateLayout, store.layout.projectOpen, store.layout.projectWidth, store.layout.structureOpen, store.layout.structureWidth])
+    const onMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const horizontal = key === 'bottomHeight'
+      const start = horizontal ? event.clientY : event.clientX
+      const initial = store.layout[key]
+      const bounds = boundsOf(event.currentTarget)
+      const onMove = (moveEvent: MouseEvent) => {
+        const coordinate = horizontal ? moveEvent.clientY : moveEvent.clientX
+        store.updateLayout({ [key]: clampPaneSize(key, initial + (coordinate - start) * direction, bounds) })
+      }
+      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    }
+    const onArrow = (delta: number, event: ReactKeyboardEvent<HTMLDivElement>) => {
+      store.updateLayout({ [key]: clampPaneSize(key, store.layout[key] + delta * direction, boundsOf(event.currentTarget)) })
+    }
+    const onDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+      store.updateLayout({ [key]: clampPaneSize(key, DEFAULT_PANE_SIZES[key], boundsOf(event.currentTarget)) })
+    }
+    return { onMouseDown, onArrow, onDoubleClick }
+  }, [store.updateLayout, store.layout])
 
   const authorize = async (allowed: boolean) => {
     await store.setToolAuthorization(allowed)
@@ -832,14 +858,14 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
       case 'tools.extensions': return setExtensionsOpen(true)
       case 'tools.copilotChat':
-        useGoStudioAssistantStore.getState().open('copilot')
-        return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.claudeChat':
-        useGoStudioAssistantStore.getState().open('claude')
-        return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       case 'tools.milkChat':
-        useGoStudioAssistantStore.getState().open('milk')
+      case 'tools.aiHub': {
+        // L'hub AI riapre l'ultimo provider scelto; i tre comandi restano alias espliciti.
+        const pane = id === 'tools.copilotChat' ? 'copilot' : id === 'tools.claudeChat' ? 'claude' : id === 'tools.milkChat' ? 'milk' : useGoStudioAssistantStore.getState().lastProvider
+        useGoStudioAssistantStore.getState().open(pane)
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
+      }
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
       case 'tools.adrLinks': return setADRLinksOpen(true)
@@ -884,7 +910,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioStartupAnalyzer sessionId={activeSession.id} />
       <GoStudioRecoveryBanner sessionId={activeSession.id} />
       <GoStudioCrashRecoveryDialog sessionId={activeSession.id} />
-      <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth', store.layout.projectWidth)} onStructureResize={beginResize('structureWidth', store.layout.structureWidth, -1)} onBottomResize={beginResize('bottomHeight', store.layout.bottomHeight, -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
+      <GoStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth')} onStructureResize={beginResize('structureWidth', -1)} onBottomResize={beginResize('bottomHeight', -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <GoStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       <GoStudioRunTargetPicker
         open={!!runTargetChoice}

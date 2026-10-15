@@ -13,6 +13,10 @@ export function getGoIDEVCSStatus(sessionId: string): Promise<VCSStatus> {
   return GoIDEBindings.VCSStatus(sessionId)
 }
 
+export function selectGoIDERepository(sessionId: string, root: string): Promise<VCSStatus> {
+  return GoIDEBindings.VCSSelectRepository(sessionId, root)
+}
+
 export function getGoIDEFileAtRevision(sessionId: string, relativePath: string, revision: string): Promise<string> {
   return GoIDEBindings.VCSFileAtRevision(sessionId, relativePath, revision)
 }

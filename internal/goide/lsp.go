@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -277,6 +278,9 @@ func (m *LSPManager) launch(state *lspSession) error {
 	}
 	process := &serverProcess{command: command, stdin: stdin, exited: make(chan struct{})}
 	process.conn = lsp.NewConn(stdout, stdin, &lspHandler{manager: m, session: state, process: process})
+	// Backpressure: oltre MaxPendingLSPRequests le nuove richieste falliscono
+	// subito invece di accumularsi ed esaurire i timeout.
+	process.conn.SetPendingLimit(MaxPendingLSPRequests)
 	go process.conn.Run()
 	go m.collectStderr(state, process, stderr)
 	go m.watch(state, process)
@@ -285,6 +289,9 @@ func (m *LSPManager) launch(state *lspSession) error {
 	state.process = process
 	state.status.PID = command.Process.Pid
 	state.mu.Unlock()
+	// Il server language è un figlio gestito: dopo un crash lo sweep dell'avvio
+	// successivo lo ritrova e lo termina (managedchildren.go).
+	registerManagedChild(command.Process.Pid, filepath.Base(options.Binary))
 
 	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
 	defer cancel()
@@ -339,6 +346,8 @@ func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
 	err := process.command.Wait()
 	// exited si chiude solo dopo l'aggiornamento di stato: chi attende Stop vede già lo stato finale.
 	defer close(process.exited)
+	// Il processo è morto: esce dal registro dei figli gestiti.
+	releaseManagedChild(process.command.Process.Pid)
 	state.mu.Lock()
 	if state.process != process {
 		state.mu.Unlock()

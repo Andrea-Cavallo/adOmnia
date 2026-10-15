@@ -123,6 +123,18 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 		return DependencyGraphReport{}, fmt.Errorf("go.mod non valido: direttiva module assente")
 	}
 
+	goBinary, err := s.toolchain.GoBinary(session.ID)
+	if err != nil {
+		return DependencyGraphReport{}, errors.New("go non disponibile: rileva o configura la toolchain prima di analizzare le dipendenze")
+	}
+	// Cache per (sessione, directory, binario): senza modifiche ai file del
+	// modulo il grafo già calcolato viene riutilizzato.
+	key := dependencyGraphKey(session.ID, directory, goBinary)
+	stamp := dependencyModuleStamp(directory, goBinary)
+	if report, ok := s.depGraph.get(key, stamp); ok {
+		return report, nil
+	}
+
 	listOutput, err := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-m", "-json", "all")
 	if err != nil {
 		return DependencyGraphReport{}, err
@@ -135,7 +147,12 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 	// e a contare i pacchetti che ogni modulo porta nel build. Senza file .go non c'è nulla da contare.
 	depsOutput, _ := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-deps", "-f", "{{if not .Standard}}{{.Module.Path}}{{end}}", "./...")
 
-	return buildDependencyGraph(modulePath, directory, listOutput, graphOutput, depsOutput)
+	report, err := buildDependencyGraph(modulePath, directory, listOutput, graphOutput, depsOutput)
+	if err != nil {
+		return DependencyGraphReport{}, err
+	}
+	s.depGraph.set(key, stamp, report)
+	return report, nil
 }
 
 // DependencyUpdates legge le versioni più recenti disponibili per i moduli del grafo (richiede rete).

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Database, Loader2, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { safeSelectFolder } from '@/lib/fileUtils'
 import { useServerPort } from '@/lib/useServerPort'
 import {
@@ -77,14 +78,10 @@ export function LargeFilePanel({ onClose, onImportPage }: LargeFilePanelProps) {
   // Indexing runs in the background: the first pages are browsable while it
   // is still walking the file.
   useEffect(() => {
-    if (!status || status.done || !idRef.current) return
-    const timer = window.setInterval(() => {
-      void logIndexStatus(port, idRef.current).then((next) => {
-        setStatus(next)
-        if (next.done) window.clearInterval(timer)
-      })
+    if (!status || status.done || !idRef.current) return undefined
+    return visibleInterval(() => {
+      void logIndexStatus(port, idRef.current).then((next) => { setStatus(next) })
     }, 500)
-    return () => window.clearInterval(timer)
   }, [port, status])
 
   const runSearch = () => {

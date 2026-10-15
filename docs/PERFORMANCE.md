@@ -81,3 +81,33 @@ and actual Go bootstrap need a separate Wails measurement on the target machine.
 Use the built desktop with both an empty Hub and representative persisted API
 workspaces; compare cold and warm launches separately rather than extrapolating
 from browser preview reloads.
+
+## Hardening checkpoint: 2026-10-15
+
+The shared `layout/lazyPanels.ts` owns lazy component identities for both the
+router and API workspace. The startup guard also rejects Yjs, y-monaco, xterm
+(including addons) and d3-force. Snapshot graph checks passed at 601,577 bytes
+before and 601,964 after, with zero guarded modules (concurrent working-tree
+changes mean this delta is not an isolated size comparison).
+
+`rendererToWorkspaceInteractive` is published in `data-startup-performance`
+after the hydrated API workspace commits and passes two animation frames.
+It is separate from the shell first-frame metric and remains absent when the
+API workspace has not mounted. It indicates controls readiness; it does not
+prove an actual user action completed or a lazy body editor is fully loaded.
+For acceptance, record cold/warm native samples with a populated workspace,
+edit the restored URL, and switch away and back. Native samples remain pending;
+the current integration build is blocked by concurrent Database Studio and
+Go Studio architecture TypeScript changes.
+
+Startup backup keeps schema 1.0 and the existing setting, but writes the
+snapshot to backend storage bucket `workspace`, key `backup`. The previous
+`adomnia.workspace.backup` copy is preserved; that key is written only when
+backend persistence fails (including browser development). No `.adomnia`
+export migration is required.
+
+Run `node frontend/scripts/benchmark-history-clone.mjs` for the local clone
+comparison. The initial Node 22.14.0 sample on a 1 MB body was 1.3493 ms median
+for JSON round-trip versus 0.1963 ms for structuredClone (20 warmups, 100 samples).
+This is not a native launch benchmark. History tests verify nested snapshot
+isolation on capture and reopen.

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, Info, GitBranch, Timer, Network, Loader2, RefreshCw } from 'lucide-react'
-import { useGoIDEStore } from '@/stores/goide'
+import { sessionGoIDEDocument, useGoIDEStore } from '@/stores/goide'
 import type { GoIDEArchitectureResult } from '@/lib/goide-api'
 import { cachedArchitecture } from '@/lib/goide/architectureCache'
 import { architectureFor } from '@/lib/goide/architectureCache'
@@ -49,15 +49,32 @@ const KIND_LABELS: Record<string, string> = {
   'trace-id': 'Trace ID',
 }
 
+/** Come REFRESH_DEBOUNCE_MS di goStudioContextMarkers: stessa analisi, stesso respiro. */
+const ANALYSIS_DEBOUNCE_MS = 700
+
 export function GoStudioContextPanel({ sessionId }: GoStudioContextPanelProps) {
-  const documents = useGoIDEStore((state) => state.documents)
-  const activeId = useGoIDEStore((state) => state.activeDocumentBySession[sessionId] ?? null)
-  const document = documents.find((item) => item.document.id === activeId) ?? null
+  // Solo il documento attivo della sessione: le battute sugli altri documenti
+  // non devono ridisegnare il pannello.
+  const document = useGoIDEStore((state) => sessionGoIDEDocument(state, sessionId))
   const buffer = document?.buffer ?? ''
+  const documentId = document?.document.id ?? null
   const isGo = !!document && document.document.relativePath.endsWith('.go') && !document.document.external
   const [threshold, setThreshold] = useState(loadContextTimeoutThreshold)
+  // L'analisi del buffer è proporzionata alla dimensione del file e non va
+  // rifatta a ogni battuta (come in goStudioContextMarkers): parte dopo
+  // ANALYSIS_DEBOUNCE_MS di inattività da tastiera. Il cambio documento la
+  // aggiorna invece subito.
+  const [analysisBuffer, setAnalysisBuffer] = useState(buffer)
+  const analysisDocumentId = useRef(documentId)
+  useEffect(() => {
+    const switched = analysisDocumentId.current !== documentId
+    analysisDocumentId.current = documentId
+    if (switched) setAnalysisBuffer(buffer)
+    const timer = window.setTimeout(() => setAnalysisBuffer(buffer), ANALYSIS_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [buffer, documentId])
 
-  const analysis = useMemo(() => analyzeContextPropagation(buffer, { timeoutThresholdMs: threshold }), [buffer, threshold])
+  const analysis = useMemo(() => analyzeContextPropagation(analysisBuffer, { timeoutThresholdMs: threshold }), [analysisBuffer, threshold])
   const summary = useMemo(() => contextFindingSummary(analysis.findings), [analysis.findings])
 
   const open = (line: number) => {

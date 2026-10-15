@@ -23,6 +23,12 @@
     --color-border-2: #363636;
     --color-border-3: #4A4A4A;
 
+    /* Pane dividers (splitter, resizable columns). Derived from the active theme
+       instead of a fixed border color: --color-border-1 disappears between two
+       dark surfaces, and every skin keeps its own contrast without new keys. */
+    --color-divider: color-mix(in srgb, var(--color-text-1) 22%, var(--color-surface-0));
+    --color-divider-hover: color-mix(in srgb, var(--color-accent) 70%, transparent);
+
     /* Accent */
     --color-accent: #FFFFFF;
     --color-accent-light: #FFFFFF;

@@ -8,6 +8,7 @@ import { useThemesStore, type Theme } from '@/stores/themes'
 import { useThemeContext } from './ThemeProvider'
 import { ThemeEditor } from './ThemeEditor'
 import { loadAvailableThemes } from '@/lib/themeCatalog'
+import { visibleInterval } from '@/lib/visiblePolling'
 import {
   getBuiltinThemes,
   getExtendedBuiltinThemes,
@@ -48,7 +49,7 @@ export function ThemePanel() {
   const [dirLoading, setDirLoading] = useState(false)
   const [changedSkins, setChangedSkins] = useState<string[]>([])
   const [watching, setWatching] = useState(false)
-  const watchInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const watchInterval = useRef<(() => void) | null>(null)
 
   const [tokens, setTokens] = useState<Record<string, TokenDefinition[]>>({})
   const [tokensLoading, setTokensLoading] = useState(false)
@@ -76,7 +77,7 @@ export function ThemePanel() {
 
   useEffect(() => {
     return () => {
-      if (watchInterval.current) clearInterval(watchInterval.current)
+      watchInterval.current?.()
       stopWatching()
     }
   }, [])
@@ -158,7 +159,7 @@ export function ThemePanel() {
     if (watching) {
       await stopWatching()
       if (watchInterval.current) {
-        clearInterval(watchInterval.current)
+        watchInterval.current()
         watchInterval.current = null
       }
       setWatching(false)
@@ -166,7 +167,9 @@ export function ThemePanel() {
     } else {
       await startWatching()
       setWatching(true)
-      watchInterval.current = setInterval(async () => {
+      // Il watch resta avviato dall'utente, ma non interroga le skin cambiate con
+      // la finestra nascosta: il primo tick al ritorno visibile recupera lo stato.
+      watchInterval.current = visibleInterval(async () => {
         const changed = await getChangedSkins()
         if (changed.length > 0) {
           setChangedSkins(changed)

@@ -3,7 +3,7 @@ import { Boxes, Gauge, Play, Wrench } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
 import { confirm } from '@/lib/confirmDialog'
 import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool } from '@/lib/goide-api'
-import { useGoIDEStore } from '@/stores/goide'
+import { activeGoIDERelativePath, useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { goModules } from '@/lib/goide/goProject'
 import { GoStudioProfilePanel } from './GoStudioProfilePanel'
@@ -23,16 +23,16 @@ export function GoStudioGoPanel({ session }: { session: GoIDESession }) {
   const [scope, setScope] = useState<EscapeScope>('project')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const documents = useGoIDEStore((state) => state.documents)
-  const activeDocumentId = useGoIDEStore((state) => state.activeDocumentBySession[session.id])
-  const activeDocument = documents.find((item) => item.document.id === activeDocumentId && item.document.sessionId === session.id) ?? null
+  // Solo il path del documento attivo: una stringa primitiva non ridisegna il
+  // pannello a ogni battuta, come farebbe la sottoscrizione a state.documents.
+  const activeRelativePath = useGoIDEStore((state) => activeGoIDERelativePath(state, session.id))
   const toolchain = useGoIDEStore((state) => state.toolchains[session.id])
   const trusted = session.project.authorization === 'tooling-permitted'
   const module = modules[0]
 
   const runEscapeAnalysis = async () => {
     if (!module) return
-    const relative = activeDocument?.document.relativePath ?? ''
+    const relative = activeRelativePath
     const directory = relative.includes('/') ? relative.slice(0, relative.lastIndexOf('/')) : ''
     const target = scope === 'file' && relative.endsWith('.go') ? relative.split('/').pop()! : scope === 'package' && directory ? `./${directory}` : './...'
     setMessage(null)
@@ -73,8 +73,8 @@ export function GoStudioGoPanel({ session }: { session: GoIDESession }) {
         {view === 'escape' && <div className="mx-auto max-w-3xl p-6">
           <h3 className="text-[14px] font-semibold text-text-1">Compiler escape and inlining analysis</h3>
           <p className="mt-1 text-[12px] text-text-4">Runs the project compiler with <code className="gs-mono">-gcflags=all=-m=2</code>. The Run console reports heap escapes, moved values, parameters that leak and inlining decisions.</p>
-          <div className="mt-5 grid gap-2">{(['project', 'package', 'file'] as const).map((item) => <label key={item} className="flex items-center gap-2 text-[12px] text-text-2"><input type="radio" checked={scope === item} onChange={() => setScope(item)} />{item === 'project' ? 'Whole project' : item === 'package' ? 'Current package' : `Current file${activeDocument?.document.relativePath ? ` · ${activeDocument.document.relativePath}` : ''}`}</label>)}</div>
-          <GoStudioButton className="mt-5" variant="primary" icon={Play} disabled={!trusted || !module || (scope === 'file' && !activeDocument?.document.relativePath.endsWith('.go'))} title={trusted ? 'Run compiler analysis' : 'Trust project tools first'} onClick={() => void runEscapeAnalysis()}>Run escape analysis</GoStudioButton>
+          <div className="mt-5 grid gap-2">{(['project', 'package', 'file'] as const).map((item) => <label key={item} className="flex items-center gap-2 text-[12px] text-text-2"><input type="radio" checked={scope === item} onChange={() => setScope(item)} />{item === 'project' ? 'Whole project' : item === 'package' ? 'Current package' : `Current file${activeRelativePath ? ` · ${activeRelativePath}` : ''}`}</label>)}</div>
+          <GoStudioButton className="mt-5" variant="primary" icon={Play} disabled={!trusted || !module || (scope === 'file' && !activeRelativePath.endsWith('.go'))} title={trusted ? 'Run compiler analysis' : 'Trust project tools first'} onClick={() => void runEscapeAnalysis()}>Run escape analysis</GoStudioButton>
         </div>}
         {view === 'struct' && <div className="mx-auto grid max-w-4xl gap-4 p-6 md:grid-cols-2">
           <section className="rounded-xl border border-border-1 bg-surface-1 p-4"><h3 className="text-[13px] font-semibold text-text-1">Analyze layout</h3><p className="mt-1 text-[11.5px] text-text-4">Finds structs that waste memory because fields are ordered with avoidable padding. Analysis is read-only.</p><GoStudioButton className="mt-4" icon={Play} disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(false)}>Analyze project</GoStudioButton></section>

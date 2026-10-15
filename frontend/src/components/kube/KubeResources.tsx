@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { KeyRound, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useServerPort } from '@/lib/useServerPort'
 import {
   listForwards,
@@ -217,8 +218,7 @@ export function ForwardsView({ reloadKey }: { reloadKey: number }) {
   const refresh = useCallback(async () => setForwards(await listForwards(port)), [port])
   useEffect(() => {
     void refresh()
-    const timer = window.setInterval(() => { void refresh() }, FORWARD_POLL_MS)
-    return () => window.clearInterval(timer)
+    return visibleInterval(() => { void refresh() }, FORWARD_POLL_MS)
   }, [refresh, reloadKey])
 
   return (

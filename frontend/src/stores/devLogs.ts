@@ -59,6 +59,11 @@ export const useDevLogsStore = create<DevLogsState>((set) => ({
   },
 
   mergeBackendEntries: (backendEntries) => {
+    // Fast path: il polling backend è periodico anche a inattività, quindi la
+    // maggior parte dei batch è vuota. Nessun ingresso nuovo deve significare
+    // nessuna notifica (return s): altrimenti ogni tick rigenera l'array
+    // `entries` e fa re-render (e postMessage alla popup) inutilmente.
+    if (backendEntries.length === 0) return
     set((s) => {
       const known = new Set(s.entries.map((entry) => entry.id))
       const next = [...s.entries]
@@ -86,6 +91,9 @@ export const useDevLogsStore = create<DevLogsState>((set) => ({
           data: backendEntry.data,
         })
       }
+      // Nessun ingresso realmente nuovo: restituire lo stato identico attiva il
+      // bail-out di zustand (Object.is) e non notifica gli iscritti.
+      if (next.length === s.entries.length) return s
       next.sort((a, b) => a.timestamp - b.timestamp)
       return { entries: next.length > 2000 ? next.slice(-2000) : next }
     })

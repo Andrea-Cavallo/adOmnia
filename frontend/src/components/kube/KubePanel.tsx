@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Play, Pause, RefreshCw, Square, X, Boxes } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useServerPort } from '@/lib/useServerPort'
 import {
   kubeAvailable,
@@ -337,9 +338,9 @@ function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; n
       if (!poll.running) setRunning(false)
       if (poll.error) setError(poll.error)
     }
-    const timer = window.setInterval(() => { void tick() }, POLL_MS)
+    const stop = visibleInterval(() => { void tick() }, POLL_MS)
     void tick()
-    return () => { cancelled = true; window.clearInterval(timer) }
+    return () => { cancelled = true; stop() }
   }, [port, sourceId])
 
   useEffect(() => {

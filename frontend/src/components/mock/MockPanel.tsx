@@ -17,6 +17,7 @@ import type { MockCondition, RequestItem, TreeNode } from '@/lib/types'
 import { uid } from '@/lib/types'
 import { validateMockEndpoints } from '@/lib/mockContract'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { handleKeyboardActivation } from '@/lib/accessibility'
 
 interface MockResponse {
@@ -868,8 +869,7 @@ export function MockPanel() {
     if (!port) return
     refreshStatus()
     refreshHits()
-    const t = setInterval(() => { refreshStatus(); refreshHits() }, 2000)
-    return () => clearInterval(t)
+    return visibleInterval(() => { void refreshStatus(); void refreshHits() }, 2000)
   }, [port, refreshStatus, refreshHits])
 
   const handleStart = useCallback(async () => {

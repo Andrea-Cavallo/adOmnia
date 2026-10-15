@@ -21,7 +21,7 @@ type VCSWorkingDiff struct {
 
 // VCSWorkingDiff legge il file in HEAD e su disco (vuoti per file nuovi o cancellati); nessuna rete.
 func (s *Service) VCSWorkingDiff(sessionID, relativePath string) (VCSWorkingDiff, error) {
-	_, paths, err := s.vcsPaths(sessionID)
+	_, paths, err := s.vcsPathsForFile(sessionID, relativePath)
 	if err != nil {
 		return VCSWorkingDiff{}, err
 	}

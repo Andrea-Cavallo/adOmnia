@@ -27,8 +27,10 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
-	extensions extensionHost
-	workspace  *WorkspaceManager
+	vcsMu       sync.Mutex
+	vcsSelected map[SessionID]string
+	extensions  extensionHost
+	workspace   *WorkspaceManager
 	// studioWorkspaces raggruppa le sessioni in workspace Go Studio, separati da quelli di adOmnia.
 	studioWorkspaces *studioWorkspaceRegistry
 	documents        *DocumentManager
@@ -75,6 +77,8 @@ type Service struct {
 	// graphState è il Semantic Workspace Graph per sessione (workspace_graph.go).
 	graphOnce  sync.Once
 	graphState *workspaceGraphs
+	// depGraph è la cache del grafo dipendenze (dependencygraph_cache.go).
+	depGraph *dependencyGraphCache
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -100,6 +104,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		lint:             lintRegistry{custom: make(map[SessionID]string)},
 		sonar:            sonarRegistry{custom: make(map[SessionID]string), configs: make(map[SessionID]SonarConfig), tokens: make(map[SessionID]string)},
 		windows:          newWindowRegistry(),
+		depGraph:         newDependencyGraphCache(),
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.supervisor = NewProcessSupervisor()
@@ -340,6 +345,9 @@ func (s *Service) CloseSession(id string) error {
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
 	}
+	s.vcsMu.Lock()
+	delete(s.vcsSelected, sessionID)
+	s.vcsMu.Unlock()
 	s.terminal.CloseSession(sessionID)
 	s.debug.StopSession(sessionID)
 	s.watcher.Stop(sessionID)
@@ -1073,6 +1081,8 @@ func (s *Service) watchSession(session Session) {
 
 // filesChanged inoltra le modifiche su disco al frontend e a gopls, che così vede anche i file non aperti.
 func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
+	// I cambiamenti ai sorgenti alterano anche l'analisi -deps del grafo dipendenze.
+	s.depGraph.invalidateSession(sessionID)
 	if session, err := s.workspace.GetSession(sessionID); err == nil && changesFileList(batch) {
 		s.documents.InvalidateFileIndex(session.Project.RealPath)
 	}

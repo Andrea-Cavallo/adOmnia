@@ -1,18 +1,15 @@
-import { GitHubMark } from './GoStudioCopilotStatus'
 import type { ComponentType } from 'react'
-import { Bookmark, Braces, Bug, FlaskConical, Folder, GitBranch, GitCommitHorizontal, ListTodo, ListTree, PackageSearch, AlertCircle, Play, SearchCode, SquareTerminal, type LucideIcon } from 'lucide-react'
-import { MilkLogo } from './GoStudioMilkDialog'
-import { ClaudeLogo } from './GoStudioClaudeCode'
+import { Bookmark, Braces, Bug, FlaskConical, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, ScrollText, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { selectDebugState } from './goStudioDebugCommands'
-import { useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
-import { useToolView } from './studioToolState'
+import { isChatPane, useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
+import { useStudioTools, useToolView } from './studioToolState'
+import { aiProviderBadge, aiProviderTooltip, providerLabel } from './goStudioAiHub'
+import { useAiProviders } from './useAiProviders'
 import type { GoIDESession } from '@/lib/goide-api'
-import { goModules } from '@/lib/goide/goProject'
-import { GoGopherIcon } from './GoGopherIcon'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -29,12 +26,15 @@ interface StripeButtonProps {
   pressed: boolean
   badge?: BadgeTone | null
   onClick: () => void
+  /** Tooltip diverso dall'etichetta: per il bottone AI porta il messaggio classificato dello stato. */
+  tooltip?: string
 }
 
-function StripeButton({ label, icon: Icon, pressed, badge, onClick }: StripeButtonProps) {
+function StripeButton({ label, icon: Icon, pressed, badge, onClick, tooltip }: StripeButtonProps) {
   return (
-    <button type="button" aria-label={label} title={label} aria-pressed={pressed} onClick={onClick} className="go-studio-stripe-button">
-      <Icon size={16} strokeWidth={1.6} />
+    <button type="button" aria-label={label} title={tooltip ?? label} aria-pressed={pressed} onClick={onClick} className="go-studio-stripe-button">
+      <Icon size={19} strokeWidth={1.8} />
+      <span className="go-studio-stripe-tooltip" aria-hidden="true">{tooltip ?? label}</span>
       {badge && <span className={`go-studio-stripe-badge ${BADGE_CLASS[badge]}`} aria-hidden="true" />}
     </button>
   )
@@ -51,10 +51,10 @@ const TOOL_WINDOWS: ReadonlyArray<ToolWindowEntry> = [
   { id: 'debug', label: 'Debug · Alt+5', icon: Bug },
   { id: 'tests', label: 'Tests · Alt+8', icon: FlaskConical },
   { id: 'terminal', label: 'Terminal · Alt+F12', icon: SquareTerminal },
-  { id: 'problems', label: 'Problems · Alt+6', icon: AlertCircle },
-  { id: 'references', label: 'Usages', icon: ListTree },
-  { id: 'find', label: 'Find in Files', icon: SearchCode },
-  { id: 'todo', label: 'TODO', icon: ListTodo },
+  { id: 'problems', label: 'Problems · Alt+6', icon: TriangleAlert },
+  { id: 'references', label: 'Usages', icon: ScanSearch },
+  { id: 'git', label: 'Git · Branches and history', icon: GitBranch },
+  { id: 'todo', label: 'TODO', icon: ListChecks },
 ]
 
 /** Pallino di stato per ogni tool window: errori, test falliti, debug in pausa o attivo. */
@@ -90,20 +90,24 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const badges = useToolWindowBadges(sessionId)
 
+  const closePrevious = () => {
+    useStudioTools.setState({ maximized: null })
+    setLogsOpen(false)
+    updateLayout({ projectOpen: false, bottomOpen: false })
+  }
   const toggleToolWindow = (id: GoIDEToolWindow) => {
-    if (bottomOpen && toolWindow === id) return updateLayout({ bottomOpen: false })
-    showToolWindow(id)
+    const close = bottomOpen && toolWindow === id
+    closePrevious()
+    if (!close) showToolWindow(id)
   }
 
   return (
     <nav aria-label="Go Studio tool windows" className="go-studio-stripe">
-      <StripeButton label="Project" icon={Folder} pressed={projectOpen} onClick={() => updateLayout({ projectOpen: !projectOpen })} />
-      <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={onCommit} />
-      <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={onBookmarks} />
-      <StripeButton label="Git" icon={GitBranch} pressed={bottomOpen && toolWindow === 'git'} onClick={() => toggleToolWindow('git')} />
-      {goModules(session.project).length > 0 && <StripeButton label="Go optimization" icon={GoGopherIcon} pressed={bottomOpen && toolWindow === 'go'} onClick={() => toggleToolWindow('go')} />}
+      <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { closePrevious(); updateLayout({ projectOpen: !projectOpen }) }} />
+      <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { closePrevious(); onCommit() }} />
+      <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { closePrevious(); onBookmarks() }} />
       <div className="flex-1" />
-      <StripeButton label="Service logs" icon={ListTree} pressed={logsOpen} onClick={() => setLogsOpen(!logsOpen)} />
+      <StripeButton label="Service logs" icon={ScrollText} pressed={logsOpen} onClick={() => { closePrevious(); setLogsOpen(!logsOpen) }} />
       {TOOL_WINDOWS.map((entry) => (
         <StripeButton key={entry.id} label={entry.label} icon={entry.icon} pressed={bottomOpen && toolWindow === entry.id} badge={badges[entry.id]} onClick={() => toggleToolWindow(entry.id)} />
       ))}
@@ -115,12 +119,15 @@ interface GoStudioRightStripeProps {
   onDependencies: () => void
 }
 
-/** Barra destra: Structure e dipendenze del modulo. */
+/** Barra destra: Structure, l'hub AI con il provider attivo e le dipendenze del modulo. */
 export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps) {
   const structureOpen = useGoIDEStore((state) => state.layout.structureOpen)
   const structureWidth = useGoIDEStore((state) => state.layout.structureWidth)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
   const assistantPane = useGoStudioAssistantStore((state) => state.pane)
+  // Un solo bottone: riapre l'ultimo provider scelto nell'hub, con il suo stato.
+  const lastProvider = useGoStudioAssistantStore((state) => state.lastProvider)
+  const providers = useAiProviders()
   const toggleAssistant = (pane: Exclude<GoStudioAssistantPane, null>) => {
     if (structureOpen && assistantPane === pane) {
       useGoStudioAssistantStore.getState().close()
@@ -132,9 +139,14 @@ export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps
   return (
     <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
       <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen && !assistantPane} onClick={() => { useGoStudioAssistantStore.getState().close(); updateLayout({ structureOpen: !!assistantPane || !structureOpen }) }} />
-      <StripeButton label="Copilot Chat" icon={GitHubMark} pressed={structureOpen && assistantPane === 'copilot'} onClick={() => toggleAssistant('copilot')} />
-      <StripeButton label="milk" icon={MilkLogo} pressed={structureOpen && assistantPane === 'milk'} onClick={() => toggleAssistant('milk')} />
-      <StripeButton label="Claude Code" icon={ClaudeLogo} pressed={structureOpen && assistantPane === 'claude'} onClick={() => toggleAssistant('claude')} />
+      <StripeButton
+        label={`AI Assistant · ${providerLabel(lastProvider)} · Alt+2`}
+        icon={Sparkles}
+        pressed={structureOpen && isChatPane(assistantPane)}
+        badge={aiProviderBadge(providers[lastProvider].tone)}
+        tooltip={aiProviderTooltip(providers[lastProvider].tone, providers[lastProvider].message, providerLabel(lastProvider))}
+        onClick={() => toggleAssistant(lastProvider)}
+      />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
     </nav>
   )

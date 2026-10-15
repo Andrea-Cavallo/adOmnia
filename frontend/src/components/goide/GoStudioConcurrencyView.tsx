@@ -12,6 +12,9 @@ import {
 import { clearRaceHistory, loadRaceHistory, saveRaceHistory, type RaceHistorySource } from './goStudioRaceHistory'
 import { staticConcurrencyDiagnostics } from './goStudioLifecycleInspector'
 import { raceRegressionTestStarter } from './goStudioRaceRegression'
+import { cachedArchitecture } from '@/lib/goide/architectureCache'
+import { useGoIDELspStore } from '@/stores/goideLsp'
+import { matchGoroutineSite } from './goStudioArchitecture'
 import { GOROUTINE_STATES, PaneHeader, StateDot, shortLocation, stateMeta } from './GoStudioDebugUi'
 
 const MAX_RUNS_SCANNED = 5
@@ -141,7 +144,7 @@ export function GoStudioConcurrencyView({ view, sessionId }: GoStudioConcurrency
         <PaneHeader title="Goroutine flow" />
         <div className="min-h-0 flex-1 space-y-3 overflow-auto px-3 pb-3">
           {view && view.timeline.length > 1 && <GoroutineTimeline view={view} />}
-          {races.map((report) => <RaceCard key={report.id} report={report} latest={latest} />)}
+          {races.map((report) => <RaceCard key={report.id} report={report} latest={latest} sessionId={sessionId} />)}
           <GoroutineFlow goroutines={goroutines} selectedId={view?.threadId ?? null} onSelect={selectGoroutine} />
           {goroutines.length === 0 && races.length === 0 && <p className="py-2 text-[11.5px] text-text-4">The flow appears when the debugger is paused: which function started each goroutine and what it is waiting on.</p>}
         </div>
@@ -244,7 +247,7 @@ async function analyzeRaceWithAI(report: RaceReport): Promise<void> {
   assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'claude', raceAIDraft(report))
 }
 
-function RaceCard({ report, latest }: { report: RaceReport; latest: string | null }) {
+function RaceCard({ report, latest, sessionId }: { report: RaceReport; latest: string | null; sessionId: string }) {
   return (
     <div className="rounded-lg border border-danger/40 bg-danger/5 p-2.5">
       <div className="flex items-center gap-2 text-[12px] font-semibold text-danger">
@@ -267,7 +270,7 @@ function RaceCard({ report, latest }: { report: RaceReport; latest: string | nul
             {report.goroutines.filter((goroutine) => goroutine.id === access.goroutine).map((goroutine) => (
               <div key={goroutine.id} className="mt-1 border-t border-border-1 pt-1">
                 <div className="text-[10.5px] text-text-4">Goroutine {goroutine.id} ({goroutine.state}) created at</div>
-                <RaceFrames frames={goroutine.createdAt} />
+                <RaceFrames frames={goroutine.createdAt} sessionId={sessionId} />
               </div>
             ))}
           </div>
@@ -277,15 +280,27 @@ function RaceCard({ report, latest }: { report: RaceReport; latest: string | nul
   )
 }
 
-function RaceFrames({ frames }: { frames: RaceFrame[] }) {
+/** Frame di uno stack; con `sessionId` ogni frame che coincide con un avvio statico (stesso file e riga) offre "Static launch". */
+function RaceFrames({ frames, sessionId }: { frames: RaceFrame[]; sessionId?: string }) {
+  const launches = sessionId ? cachedArchitecture(sessionId)?.report?.goroutines ?? [] : []
   return (
     <div className="mt-1 space-y-0.5">
-      {frames.slice(0, 6).map((frame, index) => (
-        <button key={`${frame.path}:${frame.line}:${index}`} type="button" onClick={() => openPath(frame.path, frame.line)} title={`${frame.path}:${frame.line}`} className="flex w-full min-w-0 items-center gap-2 rounded px-1 text-left font-mono text-[11px] hover:bg-surface-2">
-          <span className={`min-w-0 flex-1 truncate ${index === 0 ? 'text-text-1' : 'text-text-3'}`}>{frame.func}</span>
-          <span className="shrink-0 text-text-4">{shortLocation(frame.path, frame.line)}</span>
-        </button>
-      ))}
+      {frames.slice(0, 6).map((frame, index) => {
+        const launch = matchGoroutineSite(launches, frame.path, frame.line)
+        return (
+          <div key={`${frame.path}:${frame.line}:${index}`} className="flex items-center gap-1">
+            <button type="button" onClick={() => openPath(frame.path, frame.line)} title={`${frame.path}:${frame.line}`} className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 text-left font-mono text-[11px] hover:bg-surface-2">
+              <span className={`min-w-0 flex-1 truncate ${index === 0 ? 'text-text-1' : 'text-text-3'}`}>{frame.func}</span>
+              <span className="shrink-0 text-text-4">{shortLocation(frame.path, frame.line)}</span>
+            </button>
+            {launch && (
+              <button type="button" onClick={() => useGoIDELspStore.getState().showToolWindow('goroutines')} title={`${launch.kind} launch found by static analysis${launch.risks.length ? `: ${launch.risks.join(', ')}` : ''}. Open the Goroutines view`} className="shrink-0 rounded px-1 text-[10px] text-accent hover:bg-accent/10">
+                Static launch{launch.risks.length > 0 ? ` · ${launch.risks.length} hint${launch.risks.length === 1 ? '' : 's'}` : ''}
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

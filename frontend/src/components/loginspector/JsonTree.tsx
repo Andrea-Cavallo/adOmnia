@@ -108,10 +108,34 @@ interface JsonTreeProps {
   className?: string
   /** Extra toolbar controls, rendered before the copy button. */
   actions?: React.ReactNode
+  /** How many levels below the root start expanded (0 = root only, the default). */
+  startExpanded?: number
+  /**
+   * Custom rendering of a node's value. Return nothing to keep the default
+   * (scalar preview, container meta). Used by the database inspector to show
+   * BSON wrappers as `ObjectId('…')` while Copy JSON keeps the real structure.
+   */
+  renderScalar?: (value: unknown) => React.ReactNode | undefined
 }
 
-export function JsonTree({ value, title, className, actions }: JsonTreeProps) {
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['$']))
+function initialExpanded(value: unknown, depth: number): Set<string> {
+  const out = new Set<string>(['$'])
+  if (!Number.isFinite(depth) || depth <= 0) return out
+  const walk = (node: unknown, path: string, nodeDepth: number) => {
+    const entries = childEntries(node)
+    if (!entries.length) return
+    if (nodeDepth < depth) out.add(path)
+    const isArray = Array.isArray(node)
+    for (const [childKey, childValue] of entries) {
+      walk(childValue, joinPath(path, childKey, isArray), nodeDepth + 1)
+    }
+  }
+  walk(value, '$', 0)
+  return out
+}
+
+export function JsonTree({ value, title, className, actions, startExpanded = 0, renderScalar }: JsonTreeProps) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => initialExpanded(value, startExpanded))
   const [search, setSearch] = useState('')
   const [wrap, setWrap] = useState(false)
   const [raw, setRaw] = useState(false)
@@ -222,6 +246,7 @@ export function JsonTree({ value, title, className, actions }: JsonTreeProps) {
                   `v:${row.path}`,
                 )}
                 onCopyPath={() => copy(row.path, `p:${row.path}`)}
+                renderScalar={renderScalar}
               />
             ))
           )}
@@ -268,10 +293,12 @@ interface JsonTreeRowProps {
   onToggle: () => void
   onCopyValue: () => void
   onCopyPath: () => void
+  renderScalar?: (value: unknown) => React.ReactNode | undefined
 }
 
-function JsonTreeRow({ row, expanded, wrap, searching, copiedToken, onToggle, onCopyValue, onCopyPath }: JsonTreeRowProps) {
+function JsonTreeRow({ row, expanded, wrap, searching, copiedToken, onToggle, onCopyValue, onCopyPath, renderScalar }: JsonTreeRowProps) {
   const meta = row.kind === 'array' ? `[${row.childCount}]` : row.kind === 'object' ? `{${row.childCount}}` : ''
+  const custom = renderScalar?.(row.value)
   return (
     <div
       className="group flex items-start gap-1.5 py-[2px] pr-2 font-mono text-[11px] hover:bg-surface-1"
@@ -291,12 +318,17 @@ function JsonTreeRow({ row, expanded, wrap, searching, copiedToken, onToggle, on
       </span>
       {meta && <span className="shrink-0 text-text-4">{meta}</span>}
 
-      {!row.expandable && (
+      {!row.expandable && custom === undefined && (
         <span
           className={cn('min-w-0 flex-1', wrap ? 'break-all whitespace-pre-wrap' : 'truncate')}
           style={{ color: KIND_COLOR[row.kind] }}
         >
           {preview(row.value, row.kind)}
+        </span>
+      )}
+      {custom !== undefined && (
+        <span className={cn('min-w-0 flex-1 truncate', wrap && 'break-all whitespace-pre-wrap')} style={{ color: KIND_COLOR[row.kind] }}>
+          {custom}
         </span>
       )}
 

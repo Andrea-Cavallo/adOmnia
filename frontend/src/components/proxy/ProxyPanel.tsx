@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { handleKeyboardActivation } from '@/lib/accessibility'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
@@ -156,9 +157,9 @@ function TrafficTab({
     if (!port) return
     refresh()
     refreshPending()
-    const t = setInterval(refresh, 1500)
-    const p = setInterval(refreshPending, 700)
-    return () => { clearInterval(t); clearInterval(p) }
+    const stop = visibleInterval(refresh, 1500)
+    const stopPending = visibleInterval(refreshPending, 700)
+    return () => { stop(); stopPending() }
   }, [port, refresh, refreshPending])
 
   const handleClear = async () => {
@@ -862,8 +863,7 @@ export function ProxyPanel() {
   useEffect(() => {
     if (!port) return
     refreshStatus()
-    const t = setInterval(refreshStatus, 3000)
-    return () => clearInterval(t)
+    return visibleInterval(refreshStatus, 3000)
   }, [port, refreshStatus])
 
   const handleStart = useCallback(async () => {

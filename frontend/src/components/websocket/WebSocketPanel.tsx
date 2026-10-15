@@ -39,6 +39,7 @@ import { getSidecarToken, useServerPort, serverUrl, sidecarFetch } from '@/lib/u
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { safeEval } from '@/lib/safeEval'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { binaryPayloadPreview } from './binaryPayload'
@@ -868,7 +869,6 @@ function MockServerPanel({ port, onConnectToMock, onSystem }: {
   const [mockPort, setMockPort] = useState<number | null>(null)
   const [rules, setRules] = useState<MockRule[]>(loadRules)
   const [hits, setHits] = useState<MockHit[]>([])
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const syncRules = useCallback(async (next: MockRule[]) => {
     setRules(next)
@@ -900,12 +900,8 @@ function MockServerPanel({ port, onConnectToMock, onSystem }: {
   }, [poll])
 
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current)
     if (!port || !running) return undefined
-    pollRef.current = setInterval(() => void poll(), 1200)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
+    return visibleInterval(() => void poll(), 1200)
   }, [poll, port, running])
 
   const startMock = async () => {

@@ -7135,6 +7135,7 @@ export class VCSFileChange {
  * VCSStatus descrive il repository Git che contiene il progetto, se esiste.
  */
 export class VCSStatus {
+    "repositories": string[];
     "available": boolean;
     "reason"?: string;
     "repoRoot"?: string;
@@ -7152,6 +7153,9 @@ export class VCSStatus {
 
     /** Creates a new VCSStatus instance. */
     constructor($$source: Partial<VCSStatus> = {}) {
+        if (!("repositories" in $$source)) {
+            this["repositories"] = [];
+        }
         if (!("available" in $$source)) {
             this["available"] = false;
         }
@@ -7178,14 +7182,18 @@ export class VCSStatus {
      * Creates a new VCSStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): VCSStatus {
-        const $$createField7_0 = $$createType4;
-        const $$createField8_0 = $$createType175;
+        const $$createField0_0 = $$createType4;
+        const $$createField8_0 = $$createType4;
+        const $$createField9_0 = $$createType175;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("repositories" in $$parsedSource) {
+            $$parsedSource["repositories"] = $$createField0_0($$parsedSource["repositories"]);
+        }
         if ("branches" in $$parsedSource) {
-            $$parsedSource["branches"] = $$createField7_0($$parsedSource["branches"]);
+            $$parsedSource["branches"] = $$createField8_0($$parsedSource["branches"]);
         }
         if ("changes" in $$parsedSource) {
-            $$parsedSource["changes"] = $$createField8_0($$parsedSource["changes"]);
+            $$parsedSource["changes"] = $$createField9_0($$parsedSource["changes"]);
         }
         return new VCSStatus($$parsedSource as Partial<VCSStatus>);
     }

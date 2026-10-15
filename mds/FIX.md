@@ -6,6 +6,39 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ---
 
+## Stato a colpo d'occhio
+
+**46 chiuse · 51 implementate da verificare · 126 da fare — su 223 voci.**
+
+| Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
+|---------|----------:|-------------------------------:|-----------:|-------:|
+| IDE-1 | 3 | 8 | 3 | 14 |
+| IDE-2 | 4 | 4 | 3 | 11 |
+| IDE-3 | 2 | 4 | 2 | 8 |
+| IDE-4 | 10 | 3 | 1 | 14 |
+| IDE-5 | 0 | 0 | 12 | 12 |
+| GS-1 | 4 | 4 | 3 | 11 |
+| GS-2 | 6 | 0 | 5 | 11 |
+| GS-3 | 9 | 0 | 3 | 12 |
+| GS-4 | 2 | 6 | 3 | 11 |
+| GS-5 | 3 | 4 | 1 | 8 |
+| GS-6 | 0 | 0 | 13 | 13 |
+| GS-7 | 0 | 0 | 5 | 5 |
+| GS-8 | 0 | 0 | 4 | 4 |
+| GS-9 | 0 | 0 | 7 | 7 |
+| GS-10 | 0 | 0 | 12 | 12 |
+| DB-1 | 3 | 7 | 7 | 17 |
+| DB-2 | 0 | 11 | 7 | 18 |
+| DB-3 | 0 | 0 | 35 | 35 |
+| **TOTALE** | **34** | **44** | **145** | **223** |
+
+- **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
+- **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release.
+- **⬜ da fare** = nessun codice scritto (oppure `NON VERIFICATO pre-fix`).
+- Il conteggio riguarda le voci `- [ ]` / `- [x]` delle sezioni IDE-1…DB-3: le righe dei **Gate** non sono contate. **Aggiornare questa tabella ogni volta che si spunta una casella.**
+
+---
+
 ## 0. REGOLE — leggere prima di spuntare QUALSIASI casella
 
 ### 0.1 Quando una cosa è "FATTA"
@@ -184,18 +217,18 @@ Tab `GoStudioArchitecturePanel.tsx` → `PackagesView` → `Graph`. Dati: `packa
 4. Nessuna navigazione: niente pan/zoom, filtro stdlib/esterni, raggruppamento, evidenza cicli, riduzione transitiva; alla selezione non si attenuano gli archi (`GoStudioGraphView.tsx:60`).
 
 **Fix** (in `layeredGraph.ts` e `GoStudioGraphView.tsx`; nessuna nuova dipendenza, tutto lazy in `components/goide`)
-- [ ] IDE-3.1 Marker `markerUnits="userSpaceOnUse"` ~7 px fisso; `vector-effect="non-scaling-stroke"`; spessore 1-3 px, il peso diventa opacità o etichetta numerica.
-- [ ] IDE-3.2 Sugiyama completo: nodi fittizi per archi multi-livello, 4-6 sweep barycenter su/giù, porte distribuite lungo il bordo.
-- [ ] IDE-3.3 Riduzione transitiva (default attiva); raggruppamento per cartella con espansione al click; archi di ciclo tratteggiati `--color-danger` + filtro "Cicli"; toggle stdlib/esterni/test (stdlib ed esterni nascosti di default).
-- [ ] IDE-3.4 Pan/zoom (`viewBox`, rotellina, trascinamento, "adatta"); hover/selezione evidenziano archi incidenti e portano il resto a ~10%; "focus + profondità N" al posto del taglio a 40, con contatore "X di Y".
-- [ ] IDE-3.5 Minimappa (opzionale).
-- [ ] IDE-3.6 Verificato se gli archi `Imports` di `internal/languages/golang/architecture.go` (campo `Imports`, riga 99) sono solo import diretti.
+- [ ] IDE-3.1 Marker `markerUnits="userSpaceOnUse"` ~7 px fisso; `vector-effect="non-scaling-stroke"`; spessore 1-3 px, il peso diventa opacità o etichetta numerica. — **IMPLEMENTATO; NON VERIFICATO manualmente:** `GoStudioGraphView.tsx`: freccia 7 unità (anche una rossa per i cicli), tratto 1-3 px senza scalare con lo zoom, il peso modula anche l'opacità.
+- [ ] IDE-3.2 Sugiyama completo: nodi fittizi per archi multi-livello, 4-6 sweep barycenter su/giù, porte distribuite lungo il bordo. — **IMPLEMENTATO; NON VERIFICATO manualmente:** `lib/layeredGraph.ts` (condiviso con Service Map e Impact Map, firma invariata): slot fittizi per gli archi lunghi, 6 sweep (1 oltre 400 archi), porte ordinate per posizione del vicino, ogni arco ha un `path` che attraversa i livelli intermedi in corsia libera. Test automatici verdi, resta il controllo visivo.
+- [ ] IDE-3.3 Riduzione transitiva (default attiva); raggruppamento per cartella con espansione al click; archi di ciclo tratteggiati `--color-danger` + filtro "Cicli"; toggle stdlib/esterni/test (stdlib ed esterni nascosti di default). — **IMPLEMENTATO; NON VERIFICATO manualmente:** `packageView()` in `goStudioArchitecture.ts` + barra di toggle in `PackagesView`: Reduce (on), Group (click sul gruppo lo apre), Cycles (Tarjan; archi di ciclo tratteggiati in rosso nel grafo), Std, External. **Toggle "test" non fatto:** il report non contiene mai i package di test (`isTestVariant`), non c'è nulla da mostrare.
+- [ ] IDE-3.4 Pan/zoom (`viewBox`, rotellina, trascinamento, "adatta"); hover/selezione evidenziano archi incidenti e portano il resto a ~10%; "focus + profondità N" al posto del taglio a 40, con contatore "X di Y". — **IMPLEMENTATO; NON VERIFICATO manualmente:** pan/zoom + pulsanti +/−/adatta (doppio clic sullo sfondo = adatta) in `GoStudioGraphView`; hover e selezione attenuano gli archi non incidenti al 10%; focus con profondità 1-4 e contatore "X of Y packages"; tetto di sicurezza 150 nodi senza focus.
+- [ ] IDE-3.5 Minimappa (opzionale). — **NON FATTO:** pan/zoom e "adatta" coprono il caso; riprendere se i grafi grandi restano difficili da orientare.
+- [x] IDE-3.6 Verificato se gli archi `Imports` di `internal/languages/golang/architecture.go` (campo `Imports`, riga 99) sono solo import diretti. — **Sì:** `collectPackages` itera `pkg.Imports` (import diretti di go/packages) e tiene solo project→project; la riduzione transitiva è quindi significativa e std/esterni non sono nodi (vengono aggiunti da `packageView` quando richiesti).
 
 **Test**
-- [ ] IDE-3.T1 `goStudioArchitecture.test.ts` + nuovo test su `layeredGraph`: nessun nodo sovrapposto a un percorso di arco; incroci non peggiori di prima.
+- [x] IDE-3.T1 `goStudioArchitecture.test.ts` + nuovo test su `layeredGraph`: nessun nodo sovrapposto a un percorso di arco; incroci non peggiori di prima. — `lib/layeredGraph.test.ts` (9 test: percorsi fuori dai nodi, corsie per archi lunghi, incroci a 0 su un caso costruito per incrociarsi, arco di ciclo, porte distinte, grafo vuoto, 120 nodi densi) e `packageView` in `goStudioArchitecture.test.ts`. Suite goide + observe + lib verde.
 - [ ] IDE-3.M1 Progetto con ≥80 pacchetti (anche adOmnia), tema scuro e chiaro; controllati anche call graph, Context, Interface Explorer.
 
-**Gate IDE-3:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate IDE-3:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** serve `wails3 task dev` con ≥80 package, tema scuro e chiaro, e controllo di call graph, Context e Interface Explorer (stesso `GoStudioGraphView`).  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -206,26 +239,26 @@ Tab `GoStudioArchitecturePanel.tsx` → `PackagesView` → `Graph`. Dati: `packa
 **Lacune:** solo `FuncDecl` di primo livello (sfuggono `go` in `var x = func(){…}` e method value); non catturati `errgroup.Group.Go`, `time.AfterFunc`, `context.AfterFunc`; nessun dato su loop/ctx/WaitGroup/canale/forma; limiti `maxArchSync`/`maxArchEntries` → `Truncated`.
 
 **Backend** (`internal/languages/golang`; il core `internal/ide` non cambia)
-- [ ] IDE-4.1 `architecture_goroutines.go` con `collectGoroutines` accanto a `collectSync`, visitando anche gli initializer `var` a livello di package (come `collectCLI`).
-- [ ] IDE-4.2 DTO `ArchGoroutine`: `Kind` (`go|errgroup|waitgroup-go|afterfunc`), `Shape` (`literal|named|method|dynamic`), `Launches`/`LaunchesID`, `Package`, `Function`, `Site`, `Spawner`, `InLoop`/`LoopKind`, `Bounded`, `Ctx`, `Cancellable`, `WaitGroup`, `ErrGroup`, `Channels`, `Recover`, `Risks []string`, `Severity`.
-- [ ] IDE-4.3 `Report.Goroutines []ArchGoroutine` (`json:"goroutines"`); estesi `Resolve`, `Merge`, `finish()` (ordinamento, slice vuota non nil); `maxArchGoroutines = 5000` con `Truncated`.
-- [ ] IDE-4.4 Regole di rischio (come indizi, non prove): `unbounded-loop-spawn`, `no-wait`, `no-ctx-cancel`, `loop-var-capture` (solo go < 1.22 in `go.mod`), `no-recover` (solo spawn da HTTP/job), `fire-and-forget-in-handler`.
-- [ ] IDE-4.5 Collegamento agli entry: join `Spawner` ↔ `Entry.Function`/`HandlerSite` + raggiungibilità sui `Calls` con limite di profondità.
-- [ ] IDE-4.6 Binding solo se serve una chiamata più leggera: `Service.AnalyzeGoroutines(sessionID)` in `internal/goide/goroutines.go` + `GoIDE.AnalyzeGoroutines`, poi rigenerare i binding.
+- [x] IDE-4.1 `architecture_goroutines.go` con `collectGoroutines` accanto a `collectSync`, visitando anche gli initializer `var` a livello di package (come `collectCLI`). — fatto; gli initializer compaiono come funzione "(package var)".
+- [x] IDE-4.2 DTO `ArchGoroutine`: `Kind` (`go|errgroup|waitgroup-go|afterfunc`), `Shape` (`literal|named|method|dynamic`), `Launches`/`LaunchesID`, `Package`, `Function`, `Site`, `Spawner`, `InLoop`/`LoopKind`, `Bounded`, `Ctx`, `Cancellable`, `WaitGroup`, `ErrGroup`, `Channels`, `Recover`, `Risks []string`, `Severity`. — fatto, più `Entries` (IDE-4.5). Bindings TS aggiornati a mano: il generatore non gira qui (`go.sum` senza `x/image` e `howett.net/plist`); rigenerare quando disponibile.
+- [x] IDE-4.3 `Report.Goroutines []ArchGoroutine` (`json:"goroutines"`); estesi `Resolve`, `Merge`, `finish()` (ordinamento, slice vuota non nil); `maxArchGoroutines = 5000` con `Truncated`. — fatto.
+- [x] IDE-4.4 Regole di rischio (come indizi, non prove): `unbounded-loop-spawn`, `no-wait`, `no-ctx-cancel`, `loop-var-capture` (solo go < 1.22 in `go.mod`), `no-recover` (solo spawn da HTTP/job), `fire-and-forget-in-handler`. — fatto. `Bounded` = condizione con costante, range su costante/array, `SetLimit` o invio su canale prima dell'avvio. `fire-and-forget-in-handler` sostituisce `no-wait` quando l'avvio è raggiungibile da un entry HTTP o la firma è un handler. Severità: high = `loop-var-capture`; medium = `unbounded-loop-spawn`, `fire-and-forget-in-handler`, `no-ctx-cancel`; low = il resto.
+- [x] IDE-4.5 Collegamento agli entry: join `Spawner` ↔ `Entry.Function`/`HandlerSite` + raggiungibilità sui `Calls` con limite di profondità. — fatto (`linkGoroutines`): join per package + ultimo segmento del nome (`Function`/`Handler`; `HandlerSite` non serve), risalita sui chiamanti fino a profondità 8, max 6 entry per avvio. È un indizio: due metodi omonimi nello stesso package si confondono.
+- [x] IDE-4.6 Binding solo se serve una chiamata più leggera: `Service.AnalyzeGoroutines(sessionID)` in `internal/goide/goroutines.go` + `GoIDE.AnalyzeGoroutines`, poi rigenerare i binding. — **NON NECESSARIO:** i dati viaggiano nel report di `AnalyzeArchitecture` già in cache; nessuna nuova chiamata.
 
 **Frontend**
-- [ ] IDE-4.7 Tab `'goroutines'` ("Goroutines (n)") in `ArchitectureTab` e `tabs` di `GoStudioArchitecturePanel.tsx`; nuovo `GoStudioGoroutinesView.tsx` raggruppato per package → funzione, badge tipo/forma, indicatori loop/ctx/wg, chip di rischio; filtri (solo rischi, in loop, per tipo, testo); click con `SiteLink`; link "lancia" verso il callee.
-- [ ] IDE-4.8 Helper puri di raggruppamento/filtro in `goStudioArchitecture.ts` (accanto a `groupEntries`).
-- [ ] IDE-4.9 Comando `view.goroutines` in `goStudioCommands.ts`, menu View, `requires: { language: 'go' }`, montato con `initialTab="goroutines"` come `GoStudioRunPanel.tsx:324`.
-- [ ] IDE-4.10 Runtime: in `GoStudioConcurrencyView` azione "Collega allo statico" (`GoroutineCreation` ↔ `ArchGoroutine` stesso file e riga), nessun nuovo codice Delve. Snapshot pprof: riuso codice `goroutine` in `goide/pprof*.go` (da esaminare).
+- [ ] IDE-4.7 Tab `'goroutines'` ("Goroutines (n)") in `ArchitectureTab` e `tabs` di `GoStudioArchitecturePanel.tsx`; nuovo `GoStudioGoroutinesView.tsx` raggruppato per package → funzione, badge tipo/forma, indicatori loop/ctx/wg, chip di rischio; filtri (solo rischi, in loop, per tipo, testo); click con `SiteLink`; link "lancia" verso il callee. — **IMPLEMENTATO; NON VERIFICATO manualmente:** tutto fatto tranne il link cliccabile al callee: la freccia "→ callee" mostra il nome (con l'ID nel tooltip) ma non apre il sorgente della funzione avviata (manca il suo sito nel DTO). Chip di rischio con tooltip che spiega la regola.
+- [x] IDE-4.8 Helper puri di raggruppamento/filtro in `goStudioArchitecture.ts` (accanto a `groupEntries`). — `groupGoroutines`, `filterGoroutines`, `matchGoroutineSite`.
+- [ ] IDE-4.9 Comando `view.goroutines` in `goStudioCommands.ts`, menu View, `requires: { language: 'go' }`, montato con `initialTab="goroutines"` come `GoStudioRunPanel.tsx:324`. — **IMPLEMENTATO; NON VERIFICATO manualmente:** nuova tool window `goroutines` (store `goideLsp`, titolo, `GoStudioRunPanel`), comando in `goStudioLanguageCommands.ts`. Nessuna scorciatoia assegnata.
+- [ ] IDE-4.10 Runtime: in `GoStudioConcurrencyView` azione "Collega allo statico" (`GoroutineCreation` ↔ `ArchGoroutine` stesso file e riga), nessun nuovo codice Delve. Snapshot pprof: riuso codice `goroutine` in `goide/pprof*.go` (da esaminare). — **IMPLEMENTATO; NON VERIFICATO manualmente:** nei frame "created at" delle race, un frame che coincide per file e riga con un avvio statico mostra "Static launch · N hints" e apre la vista Goroutines (usa l'analisi in cache: nulla se non è stata lanciata). **Non fatto:** la lista goroutine di Delve (`GoStudioGoroutineTree`) e gli snapshot pprof non sono collegati; `goide/pprof*.go` non esaminato.
 
 **Test**
-- [ ] IDE-4.T1 Go a tabella: `go func(){}()`, `go f(x)`, `go s.m()`, `errgroup.Go`, `wg.Go`, `time.AfterFunc`, initializer package, spawn in `for`/`range`, bounded/unbounded, ctx/`Done`, ogni regola di rischio.
-- [ ] IDE-4.T2 Copertura `Resolve`/`Merge`; `internal/ide/architecture_test.go` verde.
-- [ ] IDE-4.T3 Vitest raggruppamento e filtri (stile `goStudioArchitecture.test.ts`).
-- [ ] IDE-4.M1 Manuale su un progetto reale con goroutine; analisi statica solo su progetto trusted; timeout 3 min rispettato.
+- [x] IDE-4.T1 Go a tabella: `go func(){}()`, `go f(x)`, `go s.m()`, `errgroup.Go`, `wg.Go`, `time.AfterFunc`, initializer package, spawn in `for`/`range`, bounded/unbounded, ctx/`Done`, ogni regola di rischio. — `architecture_goroutines_test.go` (fixture con stub di `errgroup`, anche `context.AfterFunc`, semaforo, handler con/senza `recover`, modulo go 1.21 vs 1.22 per `loop-var-capture`). Non è a tabella pura ma copre ogni forma e ogni regola.
+- [x] IDE-4.T2 Copertura `Resolve`/`Merge`; `internal/ide/architecture_test.go` verde. — `TestGoroutinesResolveMergeAndOrdering`; `go test ./internal/ide/... ./internal/goide ./internal/languages/golang` verdi.
+- [x] IDE-4.T3 Vitest raggruppamento e filtri (stile `goStudioArchitecture.test.ts`). — 3 test (raggruppamento, filtri, `matchGoroutineSite` con percorsi Windows). Suite `components/goide` + `lib` verde (1212 test).
+- [ ] IDE-4.M1 Manuale su un progetto reale con goroutine; analisi statica solo su progetto trusted; timeout 3 min rispettato. — **NON VERIFICATO:** richiede `wails3 task dev` su un progetto reale (es. adOmnia stessa).
 
-**Gate IDE-4:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate IDE-4:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** serve la vista in `wails3 task dev` su un progetto con goroutine.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -355,24 +388,26 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 
 ### GS-4. Barra AI: un'unica icona "AI" con Copilot / milk / Claude
 
-**Stato (nota).** Oggi le tre icone stanno nella stripe **destra** (`components/goide/GoStudioToolStripes.tsx`: `GoStudioLeftStripe` `:80`; `GoStudioRightStripe` `:113-135` con Copilot `:129`, milk `:130`, Claude `:131`). Icona unica nella stripe attuale; se si preferisce a sinistra, spostare solo il bottone.
+**Stato (nota).** Oggi le tre icone stanno nella stripe **destra** (`components/goide/GoStudioToolStripes.tsx`: `GoStudioLeftStripe` `:80`; `GoStudioRightStripe` `:113-135` con Copilot `:129`, milk `:130`, Claude `:131`). Icona unica nella stripe attuale; se si preferisce a sinistra, spostare solo il bottone. **Decisione (2026-10-15):** bottone unico nella stripe destra, al posto delle tre icone.
 
 **Struttura da riusare.** `stores/goStudioAssistant.ts:3-31` (`pane`, `draft`, `open`, `openWithDraft`, `takeDraft`, `close`, `toggle`); `GoStudioSidePane.tsx:27-34,49`; `GoStudioWorkspace.tsx:52,57` (`sideKey`); `studioToolState.ts:4,7,25,30`; `DetachedStudioToolWindow.tsx:45`; `internal/panelwindow/manager.go:93,112`; chat `GoStudioCopilotChat`/`GoStudioMilkChat`/`GoStudioClaudeChat` (wrapper di `GoStudioAgentChat.tsx`); store `milk.ts`, `claudeCode.ts`, `copilot.ts`; comandi `goStudioCommands.ts:30,247-249`, handler `GoStudioPanel.tsx:801-809`, icone `goStudioCommandIcons.ts:242-244`. Chiamanti: `GoStudioConcurrencyView.tsx:244`, `GoStudioDebugPanel.tsx:118`, `GoStudioImpactPanel.tsx:163`, `GoStudioMemoryModel.tsx:32`, `GoStudioTestsPanel.tsx:271`, `goStudioAIActionsRunner.ts:34-37`. Layout persistito: `adomnia.goide.layout.v1` e `adomnia.studio.toolLayout.v1` (`tool-<session>-<copilot|milk|claude>`).
 
 **Fix**
-- [ ] GS-4.1 Mantenere `GoStudioAssistantPane`/`GoStudioChatPane` (id `copilot|milk|claude` validi per placement, finestre staccate, `?tool=`); `lastProvider` nello store, persistito in `adomnia.goide.ai.lastProvider.v1`, fallback `copilot`.
-- [ ] GS-4.2 Nella stripe, **un solo bottone "AI"** che apre `lastProvider` via `toggleAssistant`; badge/stato del provider attivo.
-- [ ] GS-4.3 Nuovo `GoStudioAiHubPanel.tsx` montato da `GoStudioSidePane` quando `isChatPane(pane)`: tab Copilot / milk / Claude con pallino di stato (verde ready; ambra starting/installing; rosso crashed; grigio not installed/signed out); chat esistenti come figli senza modifiche; click su tab → `open(id)` + aggiorna `lastProvider`. Copilot/milk/claude fuori da `TABS`; `a0` (AICompanion, `HubMascot.tsx:31`) resta fuori.
-- [ ] GS-4.4 `sideKey` derivato da `lastProvider` (non più fallback fisso `'copilot'`, `GoStudioWorkspace.tsx:52`). Se in futuro chiave unica `tool-<s>-ai`: accettarla nella regex di `studioToolState.ts:30` e copiare una volta la chiave legacy.
-- [ ] GS-4.5 Comandi: i tre `tools.*Chat` restano alias; aggiungere `tools.aiHub` "Open AI Assistant" con shortcut (Alt+9 se libero). Aggiornati `GoStudioAssistantPane.test.ts:11-14` e test dei comandi.
-- [ ] GS-4.6 Lo stato "errore di rete/proxy" (da GS-3) ha un tooltip col messaggio classificato.
+- [ ] GS-4.1 Mantenere `GoStudioAssistantPane`/`GoStudioChatPane` (id `copilot|milk|claude` validi per placement, finestre staccate, `?tool=`); `lastProvider` nello store, persistito in `adomnia.goide.ai.lastProvider.v1`, fallback `copilot`. — **IMPLEMENTATO; NON VERIFICATO manualmente** (persistenza nell'app). `stores/goStudioAssistant.ts`: `lastProvider` aggiornato da `open`/`openWithDraft`/`toggle` (solo id chat, `a0` escluso), `close` non lo azzera. Nessuna migrazione: le chiavi `tool-<session>-<copilot|milk|claude>` restano quelle di sempre (`studioToolState.ts` invariato).
+- [ ] GS-4.2 Nella stripe, **un solo bottone "AI"** che apre `lastProvider` via `toggleAssistant`; badge/stato del provider attivo. — **IMPLEMENTATO; NON VERIFICATO manualmente.** `GoStudioToolStripes.tsx`: un `StripeButton` con icona `Sparkles`, badge dal tono del provider (`aiProviderBadge`), tooltip col messaggio classificato.
+- [ ] GS-4.3 Nuovo `GoStudioAiHubPanel.tsx` montato da `GoStudioSidePane` quando `isChatPane(pane)`: tab Copilot / milk / Claude con pallino di stato (verde ready; ambra starting/installing; rosso crashed; grigio not installed/signed out); chat esistenti come figli senza modifiche; click su tab → `open(id)` + aggiorna `lastProvider`. Copilot/milk/claude fuori da `TABS`; `a0` (AICompanion, `HubMascot.tsx:31`) resta fuori. — **IMPLEMENTATO; NON VERIFICATO manualmente.** Tab unico "AI Assistant" in `TABS`; il tono viene da `aiProviderTone` (`goStudioAiHub.ts`, sui `State` di `copilot`/`milk`/`claudeCode`), gli stati raccolti da `useAiProviders.ts` senza avviare i provider (`ensure()` = solo status + settings).
+- [ ] GS-4.4 `sideKey` derivato da `lastProvider` (non più fallback fisso `'copilot'`, `GoStudioWorkspace.tsx:52`). Se in futuro chiave unica `tool-<s>-ai`: accettarla nella regex di `studioToolState.ts:30` e copiare una volta la chiave legacy. — **IMPLEMENTATO; NON VERIFICATO manualmente.** Chiave unica `tool-…-ai` non introdotta: le chiavi per provider restano, niente migrazione.
+- [ ] GS-4.5 Comandi: i tre `tools.*Chat` restano alias; aggiungere `tools.aiHub` "Open AI Assistant" con shortcut (Alt+9 se libero). Aggiornati `GoStudioAssistantPane.test.ts:11-14` e test dei comandi. — **IMPLEMENTATO; NON VERIFICATO manualmente.** **Alt+9 non era libero** (`view.contextInspector`): usato **Alt+2** (l'unico digit libero insieme al 3). `goStudioCommands.ts` con binding; `GoStudioPanel.tsx` gestisce `tools.aiHub` insieme ai tre alias; icona in `goStudioCommandIcons.ts`; test comandi estesi (Alt+2 + nessun binding duplicato) e `GoStudioAssistantPane.test.ts` riscritto per la hub.
+- [ ] GS-4.6 Lo stato "errore di rete/proxy" (da GS-3) ha un tooltip col messaggio classificato. — **IMPLEMENTATO; NON VERIFICATO manualmente.** `aiProviderTooltip` mostra `Status.message` (classificato da GS-3) sul pallino dei tab e sul bottone AI.
 
 **Verifica**
-- [ ] GS-4.M1 Un solo bottone AI; il click riapre l'ultimo provider; cambio provider dai tab.
-- [ ] GS-4.M2 Layout salvato con vecchi id si carica senza migrazione; finestra staccata del chat funziona.
-- [ ] GS-4.M3 Azioni AI contestuali (test, debug, impact…) aprono il provider giusto.
+- [x] GS-4.T1 `goStudioAiHub.test.ts`: mapping tono per ogni `State` (pronto/avvio/errore/non installato), badge, tooltip col messaggio classificato, `lastProvider` persistito, non azzerrato alla chiusura, ignora `a0`, fallback su valore sconosciuto.
+- [x] GS-4.T2 `GoStudioAssistantPane.test.ts` e `goStudioCommands.test.ts`: un solo bottone/tab AI, chat figlie invariate, Alt+2 senza rubare Alt+9, nessun binding duplicato.
+- [ ] GS-4.M1 Un solo bottone AI; il click riapre l'ultimo provider; cambio provider dai tab. — **NON VERIFICATO:** richiede `wails3 task dev`.
+- [ ] GS-4.M2 Layout salvato con vecchi id si carica senza migrazione; finestra staccata del chat funziona. — **NON VERIFICATO:** richiede uso interattivo dell'app.
+- [ ] GS-4.M3 Azioni AI contestuali (test, debug, impact…) aprono il provider giusto. — **NON VERIFICATO:** richiede uso interattivo dell'app.
 
-**Gate GS-4:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-4:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** serve `wails3 task dev` (bottone, hub, finestra staccata, azioni contestuali).  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -383,30 +418,18 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 **Causa.** `components/ui/ResizeHandle.tsx` con `withLine={false}` (`GoStudioWorkspace.tsx:71,76,80`): striscia 8px `bg-surface-0`, accent 8% solo in hover (in dark l'accent è `#FFF`, `globals.css:27`). Il divisore reale è il `gap-1.5` (`GoStudioWorkspace.tsx:68`); `.go-studio-gap` (`goStudioChrome.css:231`) inutilizzato. Isole dark `surface-1 #080808` su `surface-0 #000` senza bordo; ombra (`goStudioChrome.css:9`) invisibile; il light ha bordo 1px + ring (`:24,30-33`). Contrasti WCAG isola/sfondo: dark 1.05, light 1.04, obsidian 1.04, solarized 1.15, gruvbox 1.27; `border-1`/sfondo: dark 1.35, light 1.43, obsidian 1.24, solarized 1.15, gruvbox 1.27. `border-2`/`border-3` in Midnight, Forest, Sunset (`themes.go:336-337,372-373,408-409`), Tokyo, Obsidian, Carbon sono **più scuri** di `border-1`: non usarli come divisore. Manca `--color-border-strong`.
 
 **Fix**
-- [ ] GS-5.1 In `goStudioChrome.css`, sotto `.go-studio-root`:
-```css
-.go-studio-root {
-  --gs-divider: color-mix(in srgb, var(--color-text-1) 22%, var(--color-surface-0));
-  --gs-divider-hover: color-mix(in srgb, var(--color-accent) 70%, transparent);
-}
-.go-studio-island { box-shadow: var(--gs-island-shadow), 0 0 0 1px color-mix(in srgb, var(--color-text-1) 12%, transparent); }
-.go-studio-splitter { position:absolute; z-index:20; background:transparent; }
-.go-studio-splitter[aria-orientation='vertical']   { inset-block:0; width:10px; cursor:col-resize; }
-.go-studio-splitter[aria-orientation='horizontal'] { inset-inline:0; height:10px; cursor:row-resize; }
-.go-studio-splitter::after { content:''; position:absolute; background:var(--gs-divider); transition:background .12s; }
-.go-studio-splitter[aria-orientation='vertical']::after   { inset-block:6px; left:50%; width:2px; }
-.go-studio-splitter[aria-orientation='horizontal']::after { inset-inline:6px; top:50%; height:2px; }
-.go-studio-splitter:hover::after, .go-studio-splitter:active::after, .go-studio-splitter:focus-visible::after { background:var(--gs-divider-hover); }
-```
-- [ ] GS-5.2 Hit area 10px a cavallo del bordo dell'isola (`-right-2`/`-left-2`, non `right-0`/`left-0`), divisore visibile 2px dentro.
-- [ ] GS-5.3 `ResizeHandle.tsx`: `aria-orientation`, `tabIndex=0`, resize da tastiera con le frecce, prop `onDoubleClick`; double-click → reset a `DEFAULT_LAYOUT` (`stores/goide.ts:142-145`: 244, 220, 190) via `beginResize` (`GoStudioPanel.tsx:568`). Una sola costante per i clamp oggi duplicati (`GoStudioPanel.tsx:577-578`, `stores/goide.ts:157-159`).
-- [ ] GS-5.4 Altri pannelli (Git, Markdown, Database) con `ResizeHandle` `withLine` di default (`bg-border-1`, `:42`): passare a `--gs-divider` o a un `--color-divider` globale con fallback.
-- [ ] GS-5.5 (Opzionale) chiave `border-strong` in `internal/themes/themes.go` e nell'elenco di `extended.go:34-36`, con la coppia in `CheckContrast` (`extended.go:107`).
+- [ ] GS-5.1 Token di divisore + alone isola. — **IMPLEMENTATO; NON VERIFICATO manualmente** (skin scuro). `--color-divider` e `--color-divider-hover` in `globals.css` (derivati da `--color-text-1`/`--color-surface-0`/`--color-accent`, quindi ogni tema e skin li ricalcola senza nuove chiavi); alone `0 0 0 1px color-mix(...)` su `.go-studio-island` in dark (`goStudioChrome.css`), nesso non raddoppiato nel light che ha già il bordo 1px. Il blocco CSS previsto era sotto `.go-studio-root` con `--gs-divider`: usato il token globale `--color-divider` (opzione prevista da GS-5.4) così anche Git/Markdown/Database lo condividono.
+- [ ] GS-5.2 Hit area 10px a cavallo del bordo dell'isola (`-right-2`/`-left-2`/`-top-2`, non `right-0`/`left-0`), divisore visibile 2px dentro. — **IMPLEMENTATO; NON VERIFICATO manualmente.** Serviva far uscire lo splitter dall'`overflow: hidden` dell'isola: ogni cella della griglia (`GoStudioWorkspace.tsx`) è ora un wrapper `relative` con l'isola `absolute inset-0` e lo splitter come fratello, posizionato sul bordo. Nessuna dipendenza dal resto: `.go-studio-island` è ancora ritagliata sui suoi angoli.
+- [ ] GS-5.3 `ResizeHandle.tsx`: `aria-orientation`, `tabIndex=0` (solo quando c'è `onArrow`), resize da tastiera con le frecce (Maiusc = passo grande), prop `onDoubleClick`; double-click → reset a `DEFAULT_PANE_SIZES` (`lib/goStudioLayout.ts`) via `beginResize`. Una sola costante per i clamp oggi duplicati (`GoStudioPanel.tsx`, `stores/goide.ts`): `clampPaneSize` + `MIN_PANE_WIDTH`/`MIN_PANE_HEIGHT`/`MIN_EDITOR_*` in `lib/goStudioLayout.ts`, usati sia dal caricamento del layout sia dal trascinamento. — **IMPLEMENTATO; NON VERIFICATO manualmente** (frecce e doppio click nell'app).
+- [ ] GS-5.4 Altri pannelli (Git, Markdown, Database, LaTeX, Mermaid, API, Log Inspector): la hairline di `ResizeHandle` passa da `bg-border-1` a `bg-[var(--color-divider,var(--color-border-1))]`. — **IMPLEMENTATO; NON VERIFICATO manualmente.**
+- [x] GS-5.5 (Opzionale) chiave `border-strong` in `internal/themes/themes.go` e nell'elenco di `extended.go:34-36`, con la coppia in `CheckContrast` (`extended.go:107`). — **NON NECESSARIO:** il divisore non usa `border-1`/`border-strong` ma `--color-divider`, derivato dai token del tema già validati; una chiave `border-strong` sarebbe configurazione inutilizzata. Se in futuro servirà un bordo statico, riprendere la voce.
 
 **Verifica**
-- [ ] GS-5.M1 Screenshot a 1440 e 1024 su tutti i temi built-in (dark, light, obsidian, solarized, gruvbox, midnight, forest, sunset, tokyo, carbon): divisore visibile a riposo, accent in hover, cursore corretto, double-click reset, frecce da tastiera.
+- [x] GS-5.T1 Guardia `components/goide/goStudioSplitter.test.ts`: fallisce se spariscono `--color-divider`, la linea dei 2px, gli stati hover/active/focus, l'hit area 10px o la tastiera/doppio click. — rossa prima del fix (5 asserzioni), verde dopo.
+- [x] GS-5.T2 `lib/goStudioLayout.test.ts`: clamp min/max, riserva dell'editor, doppio pannello laterale, finestre strette, dimensioni di default. — l'unica asserzione sbagliata era nel test ("finestre strette": con 400px il massimo corretto è 240 = 400 − 160 di editor, non il minimo); corretta e documentata nel test.
+- [ ] GS-5.M1 Screenshot a 1440 e 1024 su tutti i temi built-in (dark, light, obsidian, solarized, gruvbox, midnight, forest, sunset, tokyo, carbon): divisore visibile a riposo, accent in hover, cursore corretto, double-click reset, frecce da tastiera. — **NON VERIFICATO:** richiede `wails3 task dev` e controllo visivo di ogni tema.
 
-**Gate GS-5:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-5:** [x] Impl  [x] Test  [ ] Manuale — **NON VERIFICATO:** serve il controllo visivo in `wails3 task dev` su tutti i temi.  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -534,28 +557,29 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - Riusabili: `components/loginspector/JsonTree.tsx` (ricerca, expand/collapse all, wrap, raw, Copy JSON, copia valore e JSONPath; props `{value, title?, className?, actions?}`; token `--color-json-*`; non virtualizzato, ignora i wrapper BSON); `components/jsonviewer/JsonViewerPanel.tsx` (fullscreen ed Esc `:204`, `:391`); `BsonField` di `DocumentCard.tsx`. Nessuna libreria di virtualizzazione.
 
 **Fix** (in ordine)
-- [ ] DB-1.0 Riprodotto su collezione Mongo con sotto-oggetti/array (es. `M0001…M0005`) e su colonna `jsonb` Postgres.
-- [ ] DB-1.1 `lib/dbValue.ts` (nuovo, test accanto a `bson.test.ts`), funzioni pure: `normalizeCell(value, driver)` (stringa che inizia con `{`/`[` e fa `JSON.parse`, solo sotto ~1 MB; mappa `$oid`/`$date` via `bsonDisplay`); `previewValue(v, maxLen=60)` (`{ street: "Via Roma", city: "Milano" }`, `[ "a", "b", +1 ]`, `{…}` oltre la profondità). Mai più `Object (N fields)` come unico testo.
-- [ ] DB-1.2 `database/ValueCell.tsx` condiviso: sostituisce `BsonInline` in `DocumentTable` e `CellValue` in `DataTable` per i contenitori; chevron + `previewValue`; click apre l'Inspector, doppio click/Invio con focus. Scalari invariati (`KIND_CLASS` `DocumentCard.tsx:9`). In `bson.ts:87-88` solo fallback legacy.
-- [ ] DB-1.3 Cell Inspector (popover/drawer token-styled) con `JsonTree` come corpo, alimentato da `toEditable(value)` per i BSON. `JsonTree` esteso con `startExpanded` (profondità) e hook `renderScalar` (`ObjectId('…')`, date ISO); Copy JSON + "Copy path". Header: colonna, tipo, dimensione.
-- [ ] DB-1.4 "Document view": click sul numero di riga (o Spazio) apre l'Inspector con l'intera riga; per Mongo `DocumentCard` in sola lettura (`onSave` omesso); "Copy row JSON".
-- [ ] DB-1.5 Schermo intero vero: `ResultsFrame` con `fixed inset-0 z-[240] bg-surface-0` (sotto i modali `z-[260]`), Esc per uscire (modello `JsonViewerPanel.tsx:204`), **Ctrl+Shift+F** solo con il pannello Database a fuoco (non F11). Applicato a `ResultsView` (al posto di `inset-3`, `:61`) e a `MongoWorkspace` (Maximize2 accanto al toggle, ~`:239`). Mostrare quanto è caricato: "N righe (limit L, auto-limited)" / "pagina X di totale" / Mongo "solo pagina corrente: N di totale".
-- [ ] DB-1.6 Virtualizzazione: `database/useWindowedRows.ts` (~60 righe, altezza riga fissa 40px come `ResultsView.tsx:219`, slice da `scrollTop`, spaziatori, header `sticky`). Nessuna libreria. Schermo intero: tutte le righe caricate (fino a 5000); fuori, paginazione client. Chiavi stabili al posto di `key={idx}` (`ResultsView.tsx:218`).
-- [ ] DB-1.7 Ridimensionamento colonne: maniglia sul `th` (modello `ui/ResizeHandle`/`useResizableSize`), larghezze in stato locale per set di colonne; via `max-w-[360px]`/`[320px]`.
-- [ ] DB-1.8 Toggle Tabella / Albero / JSON: Mongo List → "Tree", JSON comprimibile con `JsonTree`; stesso controllo in `ResultsView` (oggi tab Results e JSON, `:52-53`), JSON con `normalizeCell`.
-- [ ] DB-1.9 Appiattimento colonne annidate: toggle "Expand nested" nelle due griglie; `flattenRow(row, depth=2)` → colonne puntate (`address.city`), array come preview o `[i]` fino a N. Aggancio in `documentColumns` (`bson.ts:248`) e `columns`/`visibleColumns` di `ResultsView` (`:36-37`); "Choose columns" (`:115`) invariato.
-- [ ] DB-1.10 Export corretto (`DatabasePanel.tsx:518-527`): CSV con `JSON.stringify` degli oggetti; JSON via `normalizeCell`/`toEditable` perché i valori canonici Mongo sopravvivano.
-- [ ] DB-1.11 Postgres/MySQL/SQLite: `ValueCell` su json/jsonb/array via `normalizeCell` (parsing frontend con guardia di dimensione).
+- [ ] DB-1.0 Riprodotto su collezione Mongo con sotto-oggetti/array (es. `M0001…M0005`) e su colonna `jsonb` Postgres. — **NON RIPRODOTTO manualmente nell'app:** la causa (`bsonDisplay` → `Object (2 fields)`, `String(value)` → `[object Object]`) è verificata sul codice e i casi sono coperti da `dbValue.test.ts`.
+- [x] DB-1.1 Funzioni pure `normalizeCell`, `previewValue`, `flattenRow` con test accanto. — Implementato in `components/database/dbValue.ts` (non `lib/`: deve usare i wrapper BSON di `mongo/bson.ts`, e i test stanno accanto alle altre funzioni del pannello). `normalizeCell(value, driver)`: stringhe JSON sotto 1 MB parsate, wrapper BSON `$oid`/`$date`/`$number*` letti come `ObjectId('…')`/ISO/numeri **solo per Mongo** (su SQL `{"$oid":…}` resta un oggetto); `previewValue(v, maxLen=60)` → `{ street: "Via Roma", city: "Milano" }`, `[ "a", "b", +1 ]`, `{…}` oltre la profondità; `flattenRow(row, depth=2)` → `address.city`, `tag[0]`…`tag[N]`, `tag[…]` per il resto. Mai più `Object (N fields)` come unico testo.
+- [ ] DB-1.2 `ValueCell.tsx` condiviso: sostituisce `BsonInline` in `DocumentTable` e `CellValue` in `DataTable` per i contenitori; chevron + `previewValue`; click apre l'Inspector. Scalari invariati (`BsonInline`/`CellValue`). In `bson.ts:87-88` solo fallback legacy. — **IMPLEMENTATO; NON VERIFICATO manualmente.**
+- [ ] DB-1.3 Cell Inspector (`ValueInspector.tsx`, drawer di destra, token del tema) con `JsonTree` come corpo, alimentato dal valore **grezzo** (i tipi BSON sopravvivono a "Copy JSON"); `JsonTree` esteso con `startExpanded` (profondità) e hook `renderScalar` (`ObjectId('…')`, date ISO). Header: colonna, tipo, dimensione; Copy JSON + "Copy path" per nodo. — **IMPLEMENTATO; NON VERIFICATO manualmente.**
+- [ ] DB-1.4 "Document view": click sul numero di riga apre l'Inspector con l'intera riga; per Mongo `DocumentCard` in sola lettura (`onSave` omesso), per SQL la riga come albero; "Copy row JSON". — **IMPLEMENTATO; NON VERIFICATO manualmente.**
+- [ ] DB-1.5 Schermo intero vero: hook condiviso `useResultsFullscreen.ts` con `fixed inset-0 z-[240]` (sotto i modali `z-[260]`), Esc per uscire (modello `JsonViewerPanel.tsx:204`), **Ctrl+Shift+F** solo con il pannello Database a fuoco. Applicato a `ResultsView` (al posto di `inset-3`) e a `MongoWorkspace` (Maximize2 accanto al toggle). Mostrare quanto è caricato: "N righe (limit L, auto-limited)". — **IMPLEMENTATO; NON VERIFICATO manualmente.** Resta da aggiungere la riga "pagina X di totale" / "solo pagina corrente: N di totale".
+- [ ] DB-1.6 Virtualizzazione: `database/useWindowedRows.ts` (~60 righe, altezza riga fissa 40px come `ResultsView.tsx:219`, slice da `scrollTop`, spaziatori, header `sticky`). Nessuna libreria. Schermo intero: tutte le righe caricate (fino a 5000); fuori, paginazione client. Chiavi stabili al posto di `key={idx}` (`ResultsView.tsx:218`). — **FATTO SOLO PER LE CHIAVI:** riga con `JSON.stringify(row._id ?? …)` in `DataTable` e `DocumentTable` (anche con righe che cambiano pagina). La virtualizzazione resta **da fare**.
+- [ ] DB-1.7 Ridimensionamento colonne: maniglia sul `th` (modello `ui/ResizeHandle`/`useResizableSize`), larghezze in stato locale per set di colonne; via `max-w-[360px]`/`[320px]`. — **DA FARE.**
+- [ ] DB-1.8 Toggle Tabella / Albero / JSON: Mongo List → "Tree", JSON comprimibile con `JsonTree`; stesso controllo in `ResultsView` (oggi tab Results e JSON, `:52-53`), JSON con `normalizeCell`. — **DA FARE** (il JSON di `ResultsView` resta un `<pre>`).
+- [ ] DB-1.9 Appiattimento colonne annidate: toggle "Expand nested" nelle due griglie; `flattenRow(row, depth=2)` → colonne puntate (`address.city`), array come preview o `[i]` fino a N. Aggancio in `documentColumns` (`bson.ts:248`) e `columns`/`visibleColumns` di `ResultsView` (`:36-37`); "Choose columns" (`:115`) invariato. — **IMPLEMENTATO; NON VERIFICATO manualmente.** In modalità piatta le celle mostrano i valori già normalizzati (quindi l'Inspector copia la forma piatta).
+- [ ] DB-1.10 Export corretto (`DatabasePanel.tsx:570-579`): CSV con `JSON.stringify` degli oggetti (`csvEscape` in `dbShared.tsx`); JSON via `toEditable` perché i valori canonici Mongo sopravvivano. — **IMPLEMENTATO; NON VERIFICATO manualmente.**
+- [ ] DB-1.11 Postgres/MySQL/SQLite: `ValueCell` su json/jsonb/array via `normalizeCell` (parsing frontend con guardia di dimensione da 1 MB). — **IMPLEMENTATO; NON VERIFICATO manualmente.**
 
-**Rischi da verificare.** `JsonTree` non conserva lo stato di collasso tra aperture; valori enormi → guardia prima di `JSON.parse`; ObjectId/Date non devono perdere il tipo nel "Copy as JSON editabile".
+**Rischi da verificare.** `JsonTree` non conserva lo stato di collasso tra aperture; valori enormi → guardia prima di `JSON.parse`; ObjectId/Date non devono perdere il tipo nel "Copy as JSON editabile". — **Aggiornato:** la guardia c'è (`MAX_JSON_PARSE_BYTES`, 1 MB) e l'Inspector riceve il valore **grezzo** (i `renderScalar` servono solo al display), quindi "Copy JSON" conserva `{"$oid":…}`/`{"$date":…}`. Restano aperti lo stato di collasso tra aperture e il comportamento con valori enormi già parsati.
 
 **Verifica**
-- [ ] DB-1.T1 Test unitari `normalizeCell`, `previewValue`, `flattenRow`.
-- [ ] DB-1.M1 Vista Tabella con preview leggibili; click → contenuto ad albero; "Document view" riga intera; Ctrl+Shift+F tutto schermo con tutti i dati, Esc esce; colonne ridimensionabili; "Expand nested" colonne puntate; export CSV/JSON con dati reali.
-- [ ] DB-1.M2 Query Postgres su colonna `jsonb`: stesso comportamento. Skin scuro e chiaro.
-- [ ] DB-1.M3 Nessuna regressione su Mongo Explorer (List/JSON/Table), editing documenti, export.
+- [x] DB-1.T1 `dbValue.test.ts`: `normalizeCell` (JSON, testo, guardia dimensione, wrapper Mongo solo su Mongo), `previewValue` (le tre forme della specifica, mai `Object (N fields)`), `flattenRow` (colonne puntate, array `[i]`/`[…]`, profondità), `isContainerValue`.
+- [x] DB-1.T2 `dbGridInspection.test.ts` (contratti sul codice) + `csvEscape` in `dbShared.test.ts`: preview con Inspector, vista riga/documento, schermo intero con Esc/Ctrl+Shift+F, export JSON/CSV, "Expand nested".
+- [ ] DB-1.M1 Vista Tabella con preview leggibili; click → contenuto ad albero; "Document view" riga intera; Ctrl+Shift+F tutto schermo con tutti i dati, Esc esce; "Expand nested" colonne puntate; export CSV/JSON con dati reali. — **NON VERIFICATO:** richiede `wails3 task dev` e un database reale.
+- [ ] DB-1.M2 Query Postgres su colonna `jsonb`: stesso comportamento. Skin scuro e chiaro. — **NON VERIFICATO.**
+- [ ] DB-1.M3 Nessuna regressione su Mongo Explorer (List/JSON/Table), editing documenti, export. — **NON VERIFICATO.**
 
-**Gate DB-1:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate DB-1:** [ ] Impl — **PARZIALE:** fatte 1.1, 1.2, 1.3, 1.4, 1.5, 1.9, 1.10, 1.11; mancano **1.6 (virtualizzazione), 1.7 (colonne ridimensionabili), 1.8 (toggle Tabella/Albero/JSON)** e la riga "pagina X di totale" di 1.5.  [x] Test  [ ] Manuale  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -692,11 +716,11 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 
 ## 4. Note aperte da chiarire (non assumere)
 - Cause marcate "probabile / da confermare" (IDE-1, IDE-2.1): riprodurre prima.
-- IDE-3.6: gli archi `Imports` sono solo diretti? Non controllato.
-- IDE-4.10: codice pprof `goide/pprof*.go` non esaminato nel dettaglio.
+- IDE-3.6: gli archi `Imports` sono solo diretti? — **RISOLTO (2026-10-15):** sì, sono gli import diretti project→project.
+- IDE-4.10: codice pprof `goide/pprof*.go` non esaminato nel dettaglio (2026-10-15: il collegamento runtime copre solo i frame "created at" delle race).
 - IDE-5.10: percorso UI dei profili terminale sincrono? Non confermato.
 - GS-3.1: `CLAUDE_CODE_EXECUTABLE` è supportato dalla versione pinnata; confermato dal changelog upstream dell'adapter.
-- GS-4: icona AI nella stripe destra (stato attuale) o sinistra? Decidere prima di implementare.
+- GS-4: icona AI nella stripe destra (stato attuale) o sinistra? — **RISOLTO (2026-10-15):** stripe destra. Scorciatoia: **Alt+2**, non Alt+9 (`view.contextInspector` occupa Alt+9; liberi restavano solo 2 e 3).
 - GS-9.4: binding Git senza UI non tutti verificati.
 
 ---
@@ -713,4 +737,13 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | GS-3 Impl/Test/Doc | 2026-10-14 | Codex | Commit `fad8907`; test mirati `./internal/claudecode ./internal/milk ./internal/copilot ./internal/ide/sdk`, `go build ./...`, `npx tsc --noEmit`, `npm run build`, `npm run check:startup` (600158 B < 650 kB), binding Wails beta.28. Suite frontend completa non ripetuta secondo la verifica proporzionata. Portale aziendale, Bedrock reale e UI desktop ancora NON VERIFICATI. |               |
 | DB-2.0 / DB-2.3 preparazione | 2026-10-14 | Codex | `npx vitest run src/components/database/dbSecrets.test.ts`: 5 test verdi, incluso riproduzione della perdita al reset della memoria renderer. `go test -race ./internal/vault`: prima FAIL con DATA RACE su timeout/timer, dopo verde; test callback obsoleta dopo riapertura e limiti timeout 1–120. Nessuna verifica manuale o chiusura Gate DB-2. |               |
 | DB-2 / release 1.0.2 | 2026-10-15 | Codex | `go test -count=1 -timeout 10m ./...` verde; 316 file / 1383 test frontend verdi; `go test -race ./internal/database ./internal/vault` verde; `go test -count=1 -run TestPostgresCredential ./internal/database` con PostgreSQL 16.15 temporaneo: stesso backend PID, lock Vault, Disconnect/riapertura, credenziali cifrate utilizzabili da secondo processo Windows. `wails3 task build` beta.28, VERSION=1.0.2 verde; startup 600541 B < 650 kB. Revisione autore: rifiuto del chiaro, niente segreti nelle risposte driver, chiave DPAPI nel fallback Windows, preservazione dati su errore. Revisione indipendente e matrice UI completa aperte. |               |
+| GS-5 Impl/Test/Doc | 2026-10-15 | OpenCode | Prima rosso: `goStudioSplitter.test.ts` + `goStudioLayout.test.ts` fallivano (5 test). Dopo: 10/10 verdi; `npx vitest run src/components/goide src/components/ui src/lib/loginspector/platformJourneyContract.test.ts src/styles src/stores/goidePreviewTab.test.ts` = 108 file / 476 test verdi; `npx vitest run` sui pannelli che usano `ResizeHandle` (database, markdown, mermaid, latex, loginspector, workspace, layout, apidocs) = 16 file / 60 test verdi; `npx tsc --noEmit` pulito; `npm run build` exit 0; `npm run check:startup` 601081 B < 650 kB. Corretto un asserzione errata del test sulle finestre strette (v. GS-5.T2). Controllo visivo dei temi NON VERIFICATO. |               |
+| GS-4 Impl/Test/Doc | 2026-10-15 | OpenCode | `goStudioAiHub.test.ts` (12 test: toni, badge, tooltip, `lastProvider` su localStorage), `GoStudioAssistantPane.test.ts` riscritto per la hub, `goStudioCommands.test.ts` esteso (Alt+2, Alt+9 invariato); suite completa frontend: 323 file / 1417 test verdi; `npx tsc --noEmit` pulito; `npm run build` exit 0; `npm run check:startup` 601122 B < 650 kB e `deferredModulesStillOnStartup: []` (Go Studio resta lazy). Aggiornati `CHANGELOG.md` e `docs/GO-STUDIO.md`. I test nuovi falliscono sul codice pre-GS-4 (modulo `goStudioAiHub` assente, tre bottoni nella stripe). Verifica manuale del bottone/hub/finestra staccata NON VERIFICATA. |               |
+| DB-1 (parziale) | 2026-10-15 | OpenCode | `dbValue.test.ts` (13 test) + `dbGridInspection.test.ts` (5 contratti) + `csvEscape` in `dbShared.test.ts`; suite completa frontend: 330 file / 1462 test verdi; `npx tsc --noEmit` pulito; `npm run build` exit 0. Implementate: DB-1.1, 1.2, 1.3, 1.4, 1.5, 1.9, 1.10, 1.11 (`dbValue.ts`, `ValueCell.tsx`, `ValueInspector.tsx`, `useResultsFullscreen.ts`, estensione `JsonTree` con `startExpanded`/`renderScalar`, export CSV/JSON). Mancano: DB-1.6 virtualizzazione, 1.7 colonne ridimensionabili, 1.8 toggle Tabella/Albero/JSON, riga "pagina X di totale" di 1.5. Verifica manuale su database reale NON VERIFICATA. |               |
+| GS-9 / repository nelle sottocartelle | 2026-10-15 | Codex | Riprodotto prima del fix con due repository Git locali in una cartella non versionata: `TestVCSStatusFindsNestedRepositories` rosso (`Available:false`). Dopo: test VCS e discovery verdi (`go test -count=1 -timeout 10m -run 'TestVCS|TestRepositoryFolders' ./internal/goide ./internal/git`), 19 test frontend mirati verdi; TypeScript, `go build ./...`, guardie architettura e build UI verdi. Selettore repository, cronologia per repository proprietario, isolamento stage e protezione da risposte obsolete. Binding beta.28 rigenerati. Verifica manuale desktop NON VERIFICATA; il Gate GS-9 complessivo resta aperto. |               |
+| GS-9 / grafo Git nel pannello inferiore | 2026-10-15 | Codex | Ripristinato renderer `GitCommitGraph` con `buildGitGraphLayout` nella vista Log, ora predefinita: corsie, connessioni ai parent, merge e ref branch/tag. Riuso dei parent già forniti da `Overview --all --topo-order`; righe IDE da 36 px, renderer standalone invariato a 58 px. `GoStudioGitLog.test.tsx` + `graphLayout.test.ts`: 5 test verdi; TypeScript verde. Verifica visiva desktop NON VERIFICATA. |               |
 |                |      |     |                                                  |               |
+| GS / icone barra IDE | 2026-10-15 | Codex | Icone distinte per Project, log, utilizzi, ricerca, TODO e problemi; eliminato il doppione log/utilizzi. Simboli da 19 px e tooltip visibili con mouse e focus tastiera. TypeScript e build frontend verdi. Verifica visiva desktop NON VERIFICATA. |               |
+| GS / navigazione IDE | 2026-10-15 | Codex | Ripristinato Git nella barra sinistra; selezione esclusiva tra Project, log e tool inferiori, azzeramento massimizzazione al cambio. Aperture da tastiera chiudono i log della sessione. Structure mostra solo Structure/Context/Project, AI solo il proprio hub. Ricerca in finestra Ctrl+F, senza icona laterale, filtri e sostituzione espandibili. 31 test mirati, TypeScript e build verdi; verifica desktop NON VERIFICATA. |               |
+| IDE-3 Impl/Test/Doc | 2026-10-15 | Claude | `lib/layeredGraph.test.ts` (9) + `packageView` in `goStudioArchitecture.test.ts`; suite `components/goide` + `observe` + `lib` verde; `npx tsc --noEmit` pulito (esclusi errori Database di altri lavori); `npm run build` ok; `npm run check:startup` `deferredModulesStillOnStartup: []`. Controllo visivo con ≥80 package NON VERIFICATO. |               |
+| IDE-4 Impl/Test/Doc | 2026-10-15 | Claude | `go vet` e `go test ./internal/languages/golang ./internal/ide/... ./internal/goide` verdi (5 test goroutine nuovi, incluso `loop-var-capture` solo su go < 1.22); Vitest goide + lib: 270 file / 1212 test verdi. Bindings TS di `ArchGoroutine` scritti a mano (generatore bloccato da `go.sum`). Verifica manuale della vista NON VERIFICATA. |               |

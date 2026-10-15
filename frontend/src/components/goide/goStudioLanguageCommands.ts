@@ -62,6 +62,7 @@ export function runLanguageCommand(id: GoStudioCommandId, sessionId: string | nu
     case 'view.config': lsp.showToolWindow('config'); return true
     case 'view.runtimeLens': setRuntimeLensEnabled(!runtimeLensEnabled()); return true
     case 'view.interfaces': lsp.showToolWindow('interfaces'); return true
+    case 'view.goroutines': lsp.showToolWindow('goroutines'); return true
     case 'view.documentation': lsp.showToolWindow('docs'); return true
     case 'view.vulnerabilities': lsp.showToolWindow('vulns'); return true
     case 'code.formatOnSave': lsp.updatePreferences({ formatOnSave: !lsp.preferences.formatOnSave }); return true

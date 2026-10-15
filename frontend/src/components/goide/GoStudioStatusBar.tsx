@@ -2,7 +2,7 @@ import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useMemo, useState } from 'react'
 import { recordLintSample } from './goStudioQualityHistory'
-import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, Loader2, LockKeyhole, Moon, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
+import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, GitBranch, Loader2, LockKeyhole, Moon, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/goide-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useGoStudioCursorStore } from './goStudioCursor'
@@ -147,8 +147,11 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
       </button>
+      <button type="button" aria-label="Git" onClick={() => showToolWindow('git')} title="Git" className={`${ITEM} gap-1`}>
+        <GitBranch size={12} />Git
+      </button>
       {goModules(session.project).length > 0 && (
-        <button type="button" onClick={() => showToolWindow('go')} title="Go optimization · profiling, escape analysis, struct layout and tools · Alt+0" className={`${ITEM} gap-1`}>
+        <button type="button" aria-label="Go optimization" onClick={() => showToolWindow('go')} title="Go optimization · profiling, escape analysis, struct layout and tools · Alt+0" className={`${ITEM} gap-1`}>
           <Flame size={12} />Go
         </button>
       )}

@@ -62,6 +62,10 @@ type Handler interface {
 // ErrMethodNotFound segnala al server che il client non implementa il metodo richiesto.
 var ErrMethodNotFound = errors.New("metodo non supportato")
 
+// ErrTooManyPendingRequests è backpressure: il server ha già troppe richieste
+// in sospeso e accumularne altre allungherebbe solo le code.
+var ErrTooManyPendingRequests = errors.New("troppe richieste LSP in sospeso")
+
 // Conn è una connessione JSON-RPC 2.0 con framing LSP su uno stream bidirezionale.
 type Conn struct {
 	reader  *bufio.Reader
@@ -71,9 +75,19 @@ type Conn struct {
 	nextID  atomic.Int64
 	mu      sync.Mutex
 	pending map[int64]chan response
-	closed  bool
-	done    chan struct{}
-	err     error
+	// pendingLimit è il massimo di richieste in sospeso (0 = illimitato).
+	pendingLimit int
+	closed       bool
+	done         chan struct{}
+	err          error
+}
+
+// SetPendingLimit immette backpressure: oltre il limite le nuove Call falliscono
+// subito con ErrTooManyPendingRequests invece di accumularsi.
+func (c *Conn) SetPendingLimit(limit int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pendingLimit = limit
 }
 
 // PendingRequests lets lifecycle owners defer idle shutdown while a service is using LSP.
@@ -130,6 +144,10 @@ func (c *Conn) Call(ctx context.Context, method string, params, result any) erro
 	if c.closed {
 		c.mu.Unlock()
 		return ErrClosed
+	}
+	if c.pendingLimit > 0 && len(c.pending) >= c.pendingLimit {
+		c.mu.Unlock()
+		return ErrTooManyPendingRequests
 	}
 	c.pending[id] = reply
 	c.mu.Unlock()

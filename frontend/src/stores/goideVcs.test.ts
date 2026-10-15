@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: vi.fn(() => () => undefined) }))
 vi.mock('@/lib/goide-vcs-api', () => ({
   checkoutGoIDEBranch: vi.fn(), commitGoIDEFiles: vi.fn(), getGoIDEBlame: vi.fn(),
-  getGoIDEFileAtRevision: vi.fn(), getGoIDEVCSStatus: vi.fn(),
+  getGoIDEFileAtRevision: vi.fn(), getGoIDEVCSStatus: vi.fn(), selectGoIDERepository: vi.fn(),
 }))
 
-import { getGoIDEFileAtRevision } from '@/lib/goide-vcs-api'
+import { getGoIDEFileAtRevision, getGoIDEVCSStatus, selectGoIDERepository } from '@/lib/goide-vcs-api'
 import type { GoIDEVCSStatus } from '@/lib/goide-vcs-api'
 import { isBinaryText, lineDiff } from '@/lib/goide/goStudioLineDiff'
 import { headKey, syncGitStudioToSession, useGoIDEVCSStore } from './goideVcs'
@@ -32,6 +32,19 @@ describe('Go Studio VCS gutter baseline', () => {
     await useGoIDEVCSStore.getState().loadHead('s1', 'new.go')
     expect(fileAtRevision).not.toHaveBeenCalled()
     expect(useGoIDEVCSStore.getState().head[headKey('s1', 'new.go')]).toBeNull()
+  })
+
+  it('keeps a repository selection when an older status request finishes late', async () => {
+    let finish!: (value: GoIDEVCSStatus) => void
+    vi.mocked(getGoIDEVCSStatus).mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    const refreshing = useGoIDEVCSStore.getState().refreshStatus('multi-repo')
+    vi.mocked(selectGoIDERepository).mockResolvedValueOnce({ ...status([]), repoRoot: '/workspace/worker' } as GoIDEVCSStatus)
+    useGoIDEVCSStore.setState({ head: { [headKey('multi-repo', 'api/main.go')]: 'old baseline' } })
+    await useGoIDEVCSStore.getState().selectRepository('multi-repo', '/workspace/worker')
+    finish({ ...status([]), repoRoot: '/workspace/api' } as GoIDEVCSStatus)
+    await refreshing
+    expect(useGoIDEVCSStore.getState().status['multi-repo']?.repoRoot).toBe('/workspace/worker')
+    expect(useGoIDEVCSStore.getState().head[headKey('multi-repo', 'api/main.go')]).toBeUndefined()
   })
 
   it('treats a binary HEAD revision like an unversioned file', async () => {

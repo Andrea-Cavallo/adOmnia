@@ -1,6 +1,8 @@
+import { GoStudioModal } from './GoStudioModal'
+import { GoStudioFindInFiles } from './GoStudioFindInFiles'
 import { useMemo } from 'react'
 import { studioToolLayout } from './studioToolLayout'
-import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import { ResizeHandle, type ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
 import { GoStudioEditor } from './GoStudioEditor'
 import { GoStudioSidePane } from './GoStudioSidePane'
 import { GoStudioProjectTree } from './GoStudioProjectTree'
@@ -22,9 +24,9 @@ interface GoStudioWorkspaceProps {
   projectOpen: boolean
   structureOpen: boolean
   bottomOpen: boolean
-  onProjectResize: (event: React.MouseEvent<HTMLDivElement>) => void
-  onStructureResize: (event: React.MouseEvent<HTMLDivElement>) => void
-  onBottomResize: (event: React.MouseEvent<HTMLDivElement>) => void
+  onProjectResize: ResizeHandleInteraction
+  onStructureResize: ResizeHandleInteraction
+  onBottomResize: ResizeHandleInteraction
   onCursor: (line: number, column: number) => void
   onRequestCloseDocument: (documents: GoIDEEditorDocument[]) => void
   onRunTarget: GoStudioRunTargetHandler
@@ -43,17 +45,20 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
   const active = documents.find((item) => item.document.id === activeDocumentId) ?? null
   const view = useGoIDELspStore((state) => state.toolWindow)
   const assistant = useGoStudioAssistantStore((state) => state.pane)
+  // La chiave della tool window segue il provider AI corrente (o l'ultimo usato):
+  // il bottone unico dell'hub non deve perdere posizione e finestra staccata.
+  const lastProvider = useGoStudioAssistantStore((state) => state.lastProvider)
   const detached = useStudioTools((state) => state.detached)
   const placements = useStudioTools((state) => state.placements)
   const maximized = useStudioTools((state) => state.maximized)
   const error = useStudioTools((state) => state.error)
   const [logsOpen] = useToolView(session.id, 'logs', 'open', false)
   const bottomKey = toolKey(session.id, view === 'terminal' ? 'terminal' : 'run')
-  const sideKey = toolKey(session.id, isChatPane(assistant) ? assistant : 'copilot')
+  const sideKey = toolKey(session.id, isChatPane(assistant) ? assistant : lastProvider)
   const logsKey = toolKey(session.id, 'logs')
   const panes = [
     { id: 'project', key: 'project', position: 'left' as ToolPlacement, open: projectOpen, width: projectWidth },
-    { id: 'run', key: bottomKey, position: placements[bottomKey] ?? 'bottom', open: bottomOpen, detached: (view === 'run' || view === 'terminal') && detached.includes(bottomKey), width: Math.max(320, structureWidth) },
+    { id: 'run', key: bottomKey, position: placements[bottomKey] ?? 'bottom', open: bottomOpen && view !== 'find', detached: (view === 'run' || view === 'terminal') && detached.includes(bottomKey), width: Math.max(320, structureWidth) },
     { id: 'side', key: sideKey, position: assistant ? placements[sideKey] ?? 'right' : 'right', open: structureOpen, detached: isChatPane(assistant) && detached.includes(sideKey), width: structureWidth },
     { id: 'logs', key: logsKey, position: placements[logsKey] ?? 'bottom', open: logsOpen, detached: detached.includes(logsKey), width: Math.max(320, structureWidth) },
   ]
@@ -61,26 +66,42 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
 
   return (
     <div className="flex min-h-0 flex-1">
+      <GoStudioModal open={bottomOpen && view === 'find'} onClose={() => useGoIDEStore.getState().updateLayout({ bottomOpen: false })} title="Search project" size="xl" tall top flush>
+        <GoStudioFindInFiles sessionId={session.id} />
+      </GoStudioModal>
       {!zen && <GoStudioLeftStripe session={session} onCommit={onCommit} onBookmarks={onBookmarks} />}
       {/* Stile Islands: ogni pannello è un'isola; i separatori ridimensionabili sono lo spazio tra le isole. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {error && <div role="alert" className="flex items-center gap-2 p-2 text-xs text-danger"><span className="flex-1">{error}</span><button type="button" onClick={() => useStudioTools.setState({ error: null })}>Dismiss</button></div>}
         <div className="grid min-h-0 min-w-0 flex-1 gap-1.5 pb-1.5" style={gridStyle}>
-          <div className="go-studio-island relative" style={styleFor('project')}>
-            <GoStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} onCommand={onCommand} />
-            {!focused && <div className="absolute inset-y-0 right-0"><ResizeHandle label="Resize project pane" className="h-full" withLine={false} onMouseDown={onProjectResize} /></div>}
+          {/* Ogni cella della griglia contiene l'isola (assoluta, così resta ritagliata
+              sui suoi angoli) e lo splitter come fratello: l'area di presa può
+              sconfinare nel gap senza essere tagliata da overflow: hidden. */}
+          <div className="relative" style={styleFor('project')}>
+            <div className="go-studio-island absolute inset-0">
+              <GoStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} onCommand={onCommand} />
+            </div>
+            {!focused && <ResizeHandle variant="splitter" label="Resize project pane" className="absolute inset-y-0 -right-2" {...onProjectResize} />}
           </div>
-          <div className="go-studio-island" style={focused ? { display: 'none' } : { gridColumn: `${left.length + 1} / span ${centerColumns}`, gridRow: 1 }}><GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></div>
-          <div className="go-studio-island relative" style={styleFor('side')}>
-            <GoStudioSidePane session={session} document={active} />
-            {!focused && (placements[sideKey] ?? 'right') !== 'bottom' && <div className="absolute inset-y-0 left-0"><ResizeHandle label="Resize structure pane" className="h-full" withLine={false} onMouseDown={onStructureResize} /></div>}
+          <div className="relative" style={focused ? { display: 'none' } : { gridColumn: `${left.length + 1} / span ${centerColumns}`, gridRow: 1 }}>
+            <div className="go-studio-island absolute inset-0"><GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></div>
           </div>
-          <div className="go-studio-island relative" style={styleFor('run')}>
-            <GoStudioRunPanel session={session} visible={bottomOpen} />
-            {!focused && (placements[bottomKey] ?? 'bottom') === 'bottom' && <div className="absolute inset-x-0 top-0"><ResizeHandle label="Resize tool window" orientation="horizontal" withLine={false} onMouseDown={onBottomResize} /></div>}
+          <div className="relative" style={styleFor('side')}>
+            <div className="go-studio-island absolute inset-0">
+              <GoStudioSidePane session={session} document={active} />
+            </div>
+            {!focused && (placements[sideKey] ?? 'right') !== 'bottom' && <ResizeHandle variant="splitter" label="Resize structure pane" className="absolute inset-y-0 -left-2" {...onStructureResize} />}
           </div>
-          <div className="go-studio-island relative" style={styleFor('logs')}>
-            <GoStudioRunPanel session={session} fixedView="run" logsOnly visible={logsOpen} />
+          <div className="relative" style={styleFor('run')}>
+            <div className="go-studio-island absolute inset-0">
+              {view !== 'find' && <GoStudioRunPanel session={session} visible={bottomOpen} />}
+            </div>
+            {!focused && (placements[bottomKey] ?? 'bottom') === 'bottom' && <ResizeHandle variant="splitter" orientation="horizontal" label="Resize tool window" className="absolute inset-x-0 -top-2" {...onBottomResize} />}
+          </div>
+          <div className="relative" style={styleFor('logs')}>
+            <div className="go-studio-island absolute inset-0">
+              <GoStudioRunPanel session={session} fixedView="run" logsOnly visible={logsOpen} />
+            </div>
           </div>
         </div>
       </div>

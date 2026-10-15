@@ -125,3 +125,50 @@ func TestVCSStatusOutsideRepository(t *testing.T) {
 		t.Fatalf("fuori da un repository Git non ci sono dati VCS: %+v %v", status, err)
 	}
 }
+
+func TestVCSStatusFindsNestedRepositories(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git unavailable")
+	}
+	root := t.TempDir()
+	for _, name := range []string{"api", "worker"} {
+		dir := filepath.Join(root, name)
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		gitCommand(t, dir, "init", "-q", "-b", name)
+		writeFixtureFile(t, dir, "README.md", name+"\n")
+		gitCommand(t, dir, "add", ".")
+		gitCommand(t, dir, "commit", "-q", "-m", "initial")
+	}
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := service.VCSStatus(string(session.ID))
+	if err != nil || !status.Available {
+		t.Fatalf("workspace with two Git projects was not detected: %+v %v", status, err)
+	}
+	if len(status.Repositories) != 2 {
+		t.Fatalf("expected two repositories: %+v", status.Repositories)
+	}
+	selected, err := service.VCSSelectRepository(string(session.ID), filepath.Join(root, "worker"))
+	if err != nil || selected.Branch != "worker" {
+		t.Fatalf("wrong selected repository: %+v %v", selected, err)
+	}
+	if text, err := service.VCSFileAtRevision(string(session.ID), "api/README.md", "HEAD"); err != nil || text != "api\n" {
+		t.Fatalf("file history must use its owning repository: %q %v", text, err)
+	}
+	writeFixtureFile(t, root, "worker/README.md", "changed worker\n")
+	if err := service.VCSStage(string(session.ID), []string{"worker/README.md"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.VCSStage(string(session.ID), []string{"api/README.md"}, true); err == nil {
+		t.Fatal("accepted a file from the other repository")
+	}
+	if _, err := service.VCSSelectRepository(string(session.ID), t.TempDir()); err == nil {
+		t.Fatal("accepted an unrelated repository")
+	}
+}

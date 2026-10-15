@@ -1,4 +1,5 @@
 import { isGoModPath, syncLocalReplaces } from '@/lib/goModLocalReplaces'
+import { DEFAULT_PANE_SIZES, MIN_PANE_HEIGHT, MIN_PANE_WIDTH } from '@/lib/goStudioLayout'
 import { fuzzTargetOfCommand, parseFuzzSession, recordFuzzSession } from '@/lib/goide/goStudioFuzzSessions'
 import { recordRunHistory } from '@/lib/goide/goStudioRunHistory'
 import { caretsFor, restoreCarets } from '@/lib/goide/goStudioCaretMemory'
@@ -140,9 +141,7 @@ export interface GoIDEConsoleChunk {
 }
 
 const DEFAULT_LAYOUT: GoIDELayout = {
-  projectWidth: 244,
-  structureWidth: 220,
-  bottomHeight: 190,
+  ...DEFAULT_PANE_SIZES,
   projectOpen: true,
   structureOpen: true,
   bottomOpen: true,
@@ -154,9 +153,9 @@ function loadLayout(): GoIDELayout {
     if (!raw) return DEFAULT_LAYOUT
     const parsed = JSON.parse(raw) as Partial<GoIDELayout>
     return {
-      projectWidth: Math.max(180, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth),
-      structureWidth: Math.max(180, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth),
-      bottomHeight: Math.max(112, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight),
+      projectWidth: Math.max(MIN_PANE_WIDTH, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth),
+      structureWidth: Math.max(MIN_PANE_WIDTH, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth),
+      bottomHeight: Math.max(MIN_PANE_HEIGHT, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight),
       projectOpen: parsed.projectOpen ?? true,
       structureOpen: parsed.structureOpen ?? true,
       bottomOpen: parsed.bottomOpen ?? true,
@@ -1328,4 +1327,31 @@ export function activeGoIDEDocument(state: GoIDEState): GoIDEEditorDocument | nu
 
 export function dirtyGoIDEDocuments(state: GoIDEState, sessionId: string): GoIDEEditorDocument[] {
   return state.documents.filter((item) => item.document.sessionId === sessionId && item.dirty)
+}
+
+/** Documento attivo di una sessione: il selector re-renderizza solo quando cambia quel documento. */
+export function sessionGoIDEDocument(state: GoIDEState, sessionId: string): GoIDEEditorDocument | null {
+  const documentId = state.activeDocumentBySession[sessionId] ?? null
+  return state.documents.find((item) => item.document.id === documentId && item.document.sessionId === sessionId) ?? null
+}
+
+/** Path del documento attivo: primitiva, non ridisegna il pannello a ogni battuta. */
+export function activeGoIDERelativePath(state: GoIDEState, sessionId: string): string {
+  return sessionGoIDEDocument(state, sessionId)?.document.relativePath ?? ''
+}
+
+/**
+ * Chiave dei documenti dirty (id separati da virgola). Stringa primitiva che
+ * cambia solo quando l'insieme dei dirty cambia, non quando i buffer vengono
+ * rigenerati a ogni battuta.
+ */
+export function goIDEDirtyKey(state: GoIDEState): string {
+  let key = ''
+  for (const item of state.documents) if (item.dirty) key += `${item.document.id},`
+  return key
+}
+
+/** Tutti i documenti dirty della finestra (tutte le sessioni). */
+export function goIDEDirtyDocuments(state: GoIDEState): GoIDEEditorDocument[] {
+  return state.documents.filter((item) => item.dirty)
 }

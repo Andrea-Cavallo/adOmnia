@@ -4,21 +4,25 @@ import { type GoIDEArchitecture, type GoIDEArchitectureResult, type GoIDESession
 import { openEntity } from '@/lib/entities/router'
 import { showModule } from '@/lib/moduleRouting'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, kafkaTopics, moduleGraph, packageGraph, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, kafkaTopics, moduleGraph, packageView, DEFAULT_PACKAGE_VIEW, searchFunctions, shortPackage, type ArchGraph, type ArchNode } from './goStudioArchitecture'
 import { GoStudioGraphView } from './GoStudioGraphView'
 import { GoStudioArchitectureRules } from './GoStudioArchitectureRules'
 import { GoStudioDependencyHeatmap } from './GoStudioDependencyHeatmap'
 import { GoStudioApiContract } from './GoStudioApiContract'
 import { GoStudioBinaryInspector } from './GoStudioBinaryInspector'
 import { GoStudioMemoryModel } from './GoStudioMemoryModel'
+import { GoStudioGoroutinesView } from './GoStudioGoroutinesView'
 import { GoStudioInterfaceExplorer, SiteLink, openArchSite } from './GoStudioInterfaceExplorer'
 import { GoStudioDataAccessView } from './GoStudioDataAccessView'
 import { layoutLayered, type LayeredNode } from './goStudioLayeredGraph'
 
-export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract' | 'binary' | 'memory'
+export type ArchitectureTab = 'packages' | 'calls' | 'interfaces' | 'services' | 'data' | 'modules' | 'rules' | 'heatmap' | 'contract' | 'binary' | 'memory' | 'goroutines'
 
 const NODE_COLOR: Record<ArchNode['kind'], string> = {
   package: 'var(--color-accent)',
+  group: 'var(--color-warning)',
+  std: 'var(--color-text-4)',
+  external: 'var(--color-info)',
   function: 'var(--color-info)',
   interface: 'var(--color-accent)',
   implementation: 'var(--color-success)',
@@ -70,6 +74,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
     ['calls', 'Call graph'],
     ['interfaces', `Interfaces${report ? ` (${report.interfaces.length})` : ''}`],
     ['services', `Entry points & services${report ? ` (${report.entries.length})` : ''}`],
+    ['goroutines', `Goroutines${report ? ` (${report.goroutines.length})` : ''}`],
     ['data', `Data access${report ? ` (${report.queries.length})` : ''}`],
     ['modules', `Modules${report ? ` (${report.modules.length})` : ''}`],
     ['heatmap', 'Heatmap'],
@@ -106,6 +111,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
             : tab === 'calls' ? <CallsView report={report} query={query} />
               : tab === 'interfaces' ? <GoStudioInterfaceExplorer report={report} query={query} />
                 : tab === 'services' ? <ServicesView report={report} query={query} sessionId={sessionId} />
+                  : tab === 'goroutines' ? <GoStudioGoroutinesView report={report} query={query} />
                   : tab === 'data' ? <GoStudioDataAccessView report={report} query={query} />
                   : <ModulesView report={report} />}
       </div>
@@ -123,22 +129,49 @@ function mainTargets(report: GoIDEArchitecture | null): string[] {
   return [...new Set(folders.length ? folders : ['.'])].sort()
 }
 
+function Toggle({ label, on, onChange, title }: { label: string; on: boolean; onChange: (value: boolean) => void; title: string }) {
+  return (
+    <button type="button" aria-pressed={on} title={title} onClick={() => onChange(!on)} className={`rounded px-1.5 py-0.5 ${on ? 'bg-accent/15 text-accent' : 'text-text-3 hover:bg-surface-3'}`}>{label}</button>
+  )
+}
+
 function PackagesView({ report, query }: { report: GoIDEArchitecture; query: string }) {
-  const [mode, setMode] = useState<'imports' | 'calls'>('imports')
-  const [focus, setFocus] = useState<string | null>(null)
+  const [options, setOptions] = useState(DEFAULT_PACKAGE_VIEW)
   const needle = query.trim().toLowerCase()
   const match = needle ? report.packages.find((pkg) => pkg.path.toLowerCase().includes(needle))?.path ?? null : null
-  const center = focus ?? match
-  const graph = useMemo(() => packageGraph(report, mode, center), [center, mode, report])
+  const center = options.focus ?? match
+  const view = useMemo(() => packageView(report, { ...options, focus: center }), [center, options, report])
   const selected = report.packages.find((pkg) => pkg.path === center)
+  const set = (patch: Partial<typeof options>) => setOptions((current) => ({ ...current, ...patch }))
+  const onSelect = (node: LayeredNode<ArchNode>) => {
+    if (node.data.kind === 'group') set({ expanded: new Set([...options.expanded, node.id.slice('group:'.length)]) })
+    else if (node.data.kind === 'package') set({ focus: node.id === options.focus ? null : node.id })
+  }
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 py-1 text-text-3">
-        {(['imports', 'calls'] as const).map((value) => <button key={value} type="button" onClick={() => setMode(value)} className={`rounded px-1.5 py-0.5 ${mode === value ? 'bg-accent/15 text-accent' : 'hover:bg-surface-3'}`}>{value === 'imports' ? 'Import graph' : 'Calls between packages'}</button>)}
-        {center && <button type="button" onClick={() => setFocus(null)} className="text-accent hover:underline">Show all</button>}
-        {selected && <span className="truncate">Focus: <SiteLink site={selected.site} label={shortPackage(selected.path, selected.module)} />{selected.external.length > 0 && <span className="text-text-4"> · external: {selected.external.join(', ')}</span>}</span>}
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 px-2 py-1 text-text-3">
+        {(['imports', 'calls'] as const).map((value) => <button key={value} type="button" onClick={() => set({ mode: value })} className={`rounded px-1.5 py-0.5 ${options.mode === value ? 'bg-accent/15 text-accent' : 'hover:bg-surface-3'}`}>{value === 'imports' ? 'Import graph' : 'Calls between packages'}</button>)}
+        <span className="mx-0.5 h-3 w-px bg-border-1" aria-hidden="true" />
+        <Toggle label="Reduce" on={options.reduce} onChange={(reduce) => set({ reduce })} title="Hide an edge when the same dependency is already reachable through another package" />
+        <Toggle label="Group" on={options.group} onChange={(group) => set({ group, expanded: new Set() })} title="Collapse packages that share a top-level folder; click a group to expand it" />
+        <Toggle label="Cycles" on={options.cyclesOnly} onChange={(cyclesOnly) => set({ cyclesOnly })} title="Show only packages that import each other in a loop" />
+        <Toggle label="Std" on={options.std} onChange={(std) => set({ std })} title="Show standard library imports" />
+        <Toggle label="External" on={options.external} onChange={(external) => set({ external })} title="Show external module imports" />
+        {center && (
+          <>
+            <label className="flex items-center gap-1" title="How many import hops around the focused package to draw">
+              Depth
+              <select value={options.depth} onChange={(event) => set({ depth: Number(event.target.value) })} className="rounded border border-border-1 bg-surface-2 px-1 py-0.5 text-text-2">
+                {[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={() => set({ focus: null })} className="text-accent hover:underline">Show all</button>
+          </>
+        )}
+        <span className="ml-auto tabular-nums text-text-4">{view.shown} of {view.total} packages{view.reduced > 0 ? ` · ${view.reduced} edges reduced` : ''}{view.cycles > 0 ? ` · ${view.cycles} in cycles` : ''}</span>
       </div>
-      <Graph graph={graph} label="Package graph" selected={center} onSelect={(node) => setFocus(node.id === focus ? null : node.id)} />
+      {selected && <p className="shrink-0 truncate px-2 pb-1 text-text-3">Focus: <SiteLink site={selected.site} label={shortPackage(selected.path, selected.module)} />{selected.external.length > 0 && <span className="text-text-4"> · external: {selected.external.join(', ')}</span>}</p>}
+      <Graph graph={view} label="Package graph" selected={center} onSelect={onSelect} />
     </>
   )
 }

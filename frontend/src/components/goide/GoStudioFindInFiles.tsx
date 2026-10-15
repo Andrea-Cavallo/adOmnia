@@ -61,6 +61,8 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [replacement, setReplacement] = useState('')
+  const [replaceOpen, setReplaceOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [replacing, setReplacing] = useState(false)
   const [replaceNote, setReplaceNote] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -77,6 +79,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
     if (findRequest.query) setQuery(findRequest.query)
     if (findRequest.include !== undefined) setInclude(findRequest.include)
     if (findRequest.focus === 'replace') {
+      setReplaceOpen(true)
       window.setTimeout(() => replaceRef.current?.focus(), 0)
     } else {
       window.setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 0)
@@ -118,19 +121,23 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <form onSubmit={(event) => { event.preventDefault(); search() }} className="flex shrink-0 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
-        <label className="flex h-6 min-w-48 flex-1 items-center gap-1 rounded border border-border-1 bg-surface-0 px-1.5 focus-within:border-accent">
+      <form onSubmit={(event) => { event.preventDefault(); search() }} className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-1 p-3">
+        <label className="flex h-9 min-w-48 flex-1 items-center gap-2 rounded-lg border border-border-1 bg-surface-0 px-1.5 focus-within:border-accent">
           <Search size={11} className="text-text-4" />
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find in project (Enter)" aria-label="Search text" className="min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none" />
+          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} data-autofocus placeholder="Search across project files…" aria-label="Search text" className="min-w-0 flex-1 bg-transparent text-[13px] text-text-1 outline-none" />
         </label>
         {toggle('caseSensitive', 'Match case', CaseSensitive)}
         {toggle('wholeWord', 'Whole words', WholeWord)}
         {toggle('regex', 'Regular expression', Regex)}
+        <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)} className="gs-btn gs-btn-sm gs-btn-ghost">Filters</button>
+        <button type="button" aria-expanded={replaceOpen} onClick={() => setReplaceOpen(!replaceOpen)} className="gs-btn gs-btn-sm gs-btn-ghost">Replace</button>
+        {filtersOpen && <div className="flex w-full flex-wrap gap-2">
         <input value={include} onChange={(event) => setInclude(event.target.value)} placeholder="Include: *.go" aria-label="Include patterns" className="h-6 w-28 rounded border border-border-1 bg-surface-0 px-1.5 font-mono text-[10px] text-text-2 outline-none focus:border-accent" />
         <input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="Exclude: testdata/**" aria-label="Exclude patterns" className="h-6 w-32 rounded border border-border-1 bg-surface-0 px-1.5 font-mono text-[10px] text-text-2 outline-none focus:border-accent" />
+        </div>}
         {loading ? <button type="button" onClick={() => { void running.current?.cancel(); setLoading(false) }} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-3"><Loader2 size={11} className="animate-spin" /> Cancel</button> : <button type="submit" disabled={!query.trim()} className="h-6 rounded bg-accent/15 px-2 text-[10px] font-medium text-accent disabled:opacity-40">Search</button>}
       </form>
-      <div className="flex shrink-0 items-center gap-1 border-b border-border-1 px-2 py-1">
+      {replaceOpen && <div className="flex shrink-0 items-center gap-2 border-b border-border-1 px-3 py-2">
         <label className="flex h-6 min-w-48 flex-1 items-center gap-1 rounded border border-border-1 bg-surface-0 px-1.5 focus-within:border-accent">
           <Replace size={11} className="text-text-4" />
           <input ref={replaceRef} value={replacement} onChange={(event) => setReplacement(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void replaceAll() }} placeholder={options.regex ? 'Replace with ($1, $2… for groups)' : 'Replace with'} aria-label="Replace text" className="min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none" />
@@ -140,6 +147,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
         </button>
         {replaceNote && <span className="truncate text-[10px] text-text-4">{replaceNote}</span>}
       </div>
+      }
       <div className="min-h-0 flex-1 overflow-auto py-1 text-[11px]">
         {error && <p className="p-3 text-[10px] text-danger">{error}</p>}
         {!error && result && <div className="px-2 pb-1 text-[10px] text-text-4">{result.matches.length} match{result.matches.length === 1 ? '' : 'es'} in {groups.length} file{groups.length === 1 ? '' : 's'} · {result.filesScanned} files scanned{result.truncated ? ' · results truncated' : ''}</div>}
@@ -148,7 +156,7 @@ export function GoStudioFindInFiles({ sessionId }: GoStudioFindInFilesProps) {
           <div key={file}>
             <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><GoStudioFileIcon name={file.split(/[\\/]/).pop() ?? file} relativePath={file} size={12} /><span className="truncate">{file}</span><span className="text-[9px] text-text-4">{matches.length}</span></div>
             {matches.map((match) => (
-              <button key={`${match.line}:${match.column}`} type="button" onClick={() => void openLocation(file, match.line, match.column)} className="flex h-6 w-full items-center gap-2 pl-6 pr-2 text-left hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
+              <button key={`${match.line}:${match.column}`} type="button" onClick={() => { useGoIDEStore.getState().updateLayout({ bottomOpen: false }); void openLocation(file, match.line, match.column) }} className="flex h-6 w-full items-center gap-2 pl-6 pr-2 text-left hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
                 <span className="w-12 shrink-0 text-right font-mono text-[9px] text-text-4">{match.line}</span>
                 <span className="min-w-0 flex-1 truncate whitespace-pre font-mono text-[10px] text-text-2"><Highlighted match={match} /></span>
               </button>

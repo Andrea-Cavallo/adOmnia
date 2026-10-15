@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DATABASE_PENDING_CONNECTION_KEY } from '@/lib/moduleHandoff'
 import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { confirm } from '@/lib/confirmDialog'
 import { useResolvedVars } from '@/stores/environments'
@@ -14,6 +15,7 @@ import { ResultsView } from './ResultsView'
 import { sqlAliases } from './sqlComplete'
 import { RightRail } from './RightRail'
 import { MongoWorkspace } from './mongo/MongoWorkspace'
+import { toEditable } from './mongo/bson'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useResizableSize } from '@/hooks/useResizableSize'
 import {
@@ -363,8 +365,8 @@ export function DatabasePanel() {
       if (!cancelled) setStatuses(Object.fromEntries(updates.filter((u) => u !== null)))
     }
     void poll()
-    const timer = window.setInterval(() => void poll(), 3000)
-    return () => { cancelled = true; window.clearInterval(timer) }
+    const stop = visibleInterval(() => void poll(), 3000)
+    return () => { cancelled = true; stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, port, connections])
 
@@ -569,7 +571,10 @@ export function DatabasePanel() {
 
   const exportJson = () => {
     if (!result) return
-    download('database-result.json', JSON.stringify({ columns: result.columns, rows: result.rows, durationMs: result.durationMs }, null, 2), 'application/json')
+    // toEditable: i valori canonici Mongo ($numberInt, $date…) escono leggibili
+    // ma tipizzati, senza perdere $oid e compagni (DB-1.10).
+    const rows = result.rows.map((row) => toEditable(row))
+    download('database-result.json', JSON.stringify({ columns: result.columns, rows, durationMs: result.durationMs }, null, 2), 'application/json')
   }
 
   const exportCsv = () => {

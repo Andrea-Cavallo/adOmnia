@@ -330,7 +330,8 @@ export function download(filename: string, content: string, type: string) {
 }
 
 export function csvEscape(value: unknown) {
-  const text = value == null ? '' : String(value)
+  // Oggetti e array escono come JSON: `String(value)` dava `[object Object]` (DB-1.10).
+  const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

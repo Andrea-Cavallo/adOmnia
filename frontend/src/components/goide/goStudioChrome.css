@@ -30,6 +30,8 @@ html.light .go-studio-root,
 html.light .go-studio-root .go-studio-island,
 .light .go-studio-root .go-studio-island {
   border: 1px solid rgb(116 135 168 / 0.12);
+  /* Il light ha già il bordo 1px: niente alone, che doppierebbe la linea. */
+  box-shadow: var(--gs-island-shadow);
 }
 html.light .go-studio-root .go-studio-run-group,
 .light .go-studio-root .go-studio-run-group {
@@ -44,7 +46,46 @@ html.light .go-studio-root .go-studio-run-group,
   overflow: hidden;
   border-radius: var(--gs-radius);
   background: var(--gs-island);
-  box-shadow: var(--gs-island-shadow);
+  /* Alone da 1px oltre all'ombra: in dark surface-0/surface-1 hanno contrasto
+     1.05 e le isole si scioglierebbero nel fondo. */
+  box-shadow: var(--gs-island-shadow), 0 0 0 1px color-mix(in srgb, var(--color-text-1) 12%, transparent);
+}
+
+/*
+ * Splitter tra le isole. L'area di presa è da 10px e cavalca il bordo dell'isola
+ * (i wrapper in GoStudioWorkspace la posizionano con -right-2/-left-2/-top-2),
+ * così si afferra il gap senza mangiare il contenuto dei pannelli. La linea da
+ * 2px è visibile a riposo in ogni skin: --color-border-1 in dark non si vedeva.
+ */
+.go-studio-splitter {
+  background: transparent;
+}
+.go-studio-splitter::after {
+  content: '';
+  position: absolute;
+  border-radius: 1px;
+  background: var(--color-divider, var(--color-border-1));
+  transition: background 0.12s;
+}
+.go-studio-splitter[aria-orientation='vertical']::after {
+  inset-block: 6px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+}
+.go-studio-splitter[aria-orientation='horizontal']::after {
+  inset-inline: 6px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+.go-studio-splitter:hover::after,
+.go-studio-splitter:active::after,
+.go-studio-splitter:focus-visible::after {
+  background: var(--color-divider-hover, var(--color-accent));
+}
+.go-studio-splitter:focus-visible {
+  outline: none;
 }
 
 /*
@@ -144,6 +185,35 @@ html.light .go-studio-root .go-studio-run-group,
 .go-studio-stripe-button[aria-pressed='true'] {
   background: color-mix(in srgb, var(--color-accent) 20%, var(--gs-island));
   color: var(--color-text-1);
+}
+.go-studio-stripe-tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  z-index: 100;
+  width: max-content;
+  max-width: 280px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border-1);
+  border-radius: 6px;
+  background: var(--color-surface-2);
+  color: var(--color-text-1);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%);
+}
+.go-studio-stripe-button:hover .go-studio-stripe-tooltip,
+.go-studio-stripe-button:focus-visible .go-studio-stripe-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+.go-studio-stripe[aria-label='Go Studio side tool windows'] .go-studio-stripe-tooltip {
+  left: auto;
+  right: calc(100% + 8px);
 }
 .go-studio-stripe-badge {
   position: absolute;

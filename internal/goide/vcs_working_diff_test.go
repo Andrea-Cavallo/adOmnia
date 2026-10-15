@@ -34,7 +34,9 @@ func TestVCSWorkingDiffCoversEveryKindOfChange(t *testing.T) {
 	}
 	id := string(session.ID)
 	cases := map[string]func(VCSWorkingDiff) bool{
-		"main.go":  func(d VCSWorkingDiff) bool { return d.Original == "package main\n\nfunc main() {}\n" && d.Modified == "package main\n\nfunc main() { println(1) }\n" },
+		"main.go": func(d VCSWorkingDiff) bool {
+			return d.Original == "package main\n\nfunc main() {}\n" && d.Modified == "package main\n\nfunc main() { println(1) }\n"
+		},
 		"new.go":   func(d VCSWorkingDiff) bool { return d.Original == "" && d.Modified != "" },
 		"old.go":   func(d VCSWorkingDiff) bool { return d.Original == "package main\n" && d.Modified == "" },
 		"logo.png": func(d VCSWorkingDiff) bool { return d.Binary && d.Modified == "" },

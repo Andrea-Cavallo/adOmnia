@@ -5,13 +5,23 @@ import { describe, expect, it } from 'vitest'
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
 
 describe('Go Studio right assistant column', () => {
-  it('hosts both Copilot and milk as closable tool-window choices', () => {
+  it('hosts Copilot, milk and Claude as one AI hub with per-provider status', () => {
     const pane = source('src/components/goide/GoStudioSidePane.tsx')
     const stripe = source('src/components/goide/GoStudioToolStripes.tsx')
-    expect(pane).toContain("label: 'Copilot'")
-    expect(pane).toContain("label: 'milk'")
-    expect(stripe).toContain("toggleAssistant('copilot')")
-    expect(stripe).toContain("toggleAssistant('milk')")
+    const hub = source('src/components/goide/GoStudioAiHubPanel.tsx')
+    // Un solo tab e un solo bottone al posto dei tre: la scelta vive in lastProvider.
+    expect(pane).toContain("label: 'AI Assistant'")
+    expect(pane).not.toContain("label: 'Copilot'")
+    expect(pane).not.toContain("label: 'milk'")
+    expect(pane).toContain('<GoStudioAiHubPanel')
+    expect(stripe).toContain('toggleAssistant(lastProvider)')
+    expect(stripe).not.toContain("toggleAssistant('copilot')")
+    expect(stripe).not.toContain("toggleAssistant('milk')")
+    expect(stripe).not.toContain("toggleAssistant('claude')")
+    // Le chat restano i componenti di sempre, montate come figli della hub.
+    expect(hub).toContain('GoStudioCopilotChat')
+    expect(hub).toContain('GoStudioMilkChat')
+    expect(hub).toContain('GoStudioClaudeChat')
   })
 
   it('removes the old global floating assistant', () => {

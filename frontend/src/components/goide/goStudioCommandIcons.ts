@@ -238,6 +238,7 @@ export const GO_STUDIO_COMMAND_ICONS: Partial<Record<GoStudioCommandId, GoStudio
   'tools.services': icon(Server),
   'tools.httpRequest': icon(Send),
   'tools.plugins': icon(Plug),
+  'tools.aiHub': icon(Sparkles),
   'tools.copilot': icon(Sparkles),
   'tools.copilotChat': icon(Sparkles),
   'tools.milkChat': icon(Bot),

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bug, Copy, Loader2, Power, RefreshCw, Search, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDESession } from '@/lib/goide-api'
+import { visibleInterval } from '@/lib/visiblePolling'
 import {
   clearGoIDESonarBaseline, configureGoIDESonarScanner, detectGoIDESonarScanner, fetchGoIDESonarIssues,
   getGoIDESonarConfig, runGoIDESonarScan, saveGoIDESonarBaseline, saveGoIDESonarConfig, setGoIDESonarToken,
@@ -57,9 +58,8 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
   useEffect(() => { void load() }, [load])
 
   useEffect(() => {
-    if (!busy) return
-    const timer = window.setInterval(() => setNow(Date.now()), 500)
-    return () => window.clearInterval(timer)
+    if (!busy) return undefined
+    return visibleInterval(() => setNow(Date.now()), 500)
   }, [busy])
 
   const issues = useMemo(() => (result ? sortSonarIssues(result.issues) : []), [result])

@@ -12,6 +12,7 @@ import (
 	"adomnia/internal/plugins"
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -54,6 +55,11 @@ func NewGoIDE() *GoIDE {
 	_ = service.ConfigureHistoryStore(goide.HistoryBoltStore)
 	_ = service.ConfigureSupervisorStore(goide.SupervisorBoltStore)
 	binding = &GoIDE{service: service}
+	// Prima del runtime lock: lo sweep dei figli orfani deve poter leggere il
+	// lock dell'istanza precedente per capire se qualcuno li possiede ancora.
+	if orphaned := goide.SweepOrphanChildren(filepath.Join(dataDir(), "goide")); len(orphaned) > 0 {
+		log.Printf("[goide] orphaned child processes terminated at startup: %v", orphaned)
+	}
 	if lock, status, err := goide.AcquireRuntimeLock(filepath.Join(dataDir(), "goide"), nil); err == nil {
 		binding.runtimeLock = lock
 		service.SetCrashStatus(status)
@@ -774,6 +780,10 @@ func (g *GoIDE) WatcherStatus(sessionID string) (goide.WatcherStatus, error) {
 // VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
 func (g *GoIDE) VCSStatus(sessionID string) (goide.VCSStatus, error) {
 	return g.service.VCSStatus(sessionID)
+}
+
+func (g *GoIDE) VCSSelectRepository(sessionID, root string) (goide.VCSStatus, error) {
+	return g.service.VCSSelectRepository(sessionID, root)
 }
 
 // VCSFileAtRevision restituisce il file a una revisione (HEAD per il gutter diff).

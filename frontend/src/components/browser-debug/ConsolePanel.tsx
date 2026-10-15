@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import {
   evalJS,
   getConsoleLogs,
@@ -46,7 +47,6 @@ export function ConsolePanel() {
 
   const logEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const scrollToBottom = useCallback(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -66,14 +66,7 @@ export function ConsolePanel() {
       }
     }
     poll()
-    pollRef.current = setInterval(poll, 1000)
-
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
+    return visibleInterval(poll, 1000)
   }, [])
 
   // Auto-scroll on new logs

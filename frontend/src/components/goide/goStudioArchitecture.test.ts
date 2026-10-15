@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEArchEntry } from '@/lib/goide-api'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, kafkaTopics, isWrite, packageGraph, queriesByTable, searchFunctions, shortPackage } from './goStudioArchitecture'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, kafkaTopics, isWrite, packageGraph, packageView, DEFAULT_PACKAGE_VIEW, cycleMembers, packageGroup, groupGoroutines, filterGoroutines, matchGoroutineSite, NO_GOROUTINE_FILTER, queriesByTable, searchFunctions, shortPackage } from './goStudioArchitecture'
 
 const site = (relativePath: string, line = 1) => ({ relativePath, line, column: 1 })
 const pkg = (path: string) => ({ path, name: path.split('/').pop()!, module: 'example.com/shop', files: 2, site: site(`${path}.go`), external: [], std: 1 })
@@ -100,5 +100,89 @@ describe('kafka topics', () => {
     expect(topics[0].groups).toEqual(['billing', 'audit'])
     expect(topics[1].role).toBe('dead-letter')
     expect(kafkaTopics(entries, 'audit').map((t) => t.topic)).toEqual(['orders'])
+  })
+})
+
+describe('packageView', () => {
+  const base = 'example.com/shop'
+  const names = ['cmd', 'internal/api', 'internal/store', 'internal/cache', 'pkg/util']
+  const wide = {
+    ...report,
+    packages: names.map((name) => ({ ...pkg(`${base}/${name}`), stdImports: ['fmt'], external: name === 'pkg/util' ? ['github.com/x/y'] : [] })),
+    imports: [
+      ['cmd', 'internal/api'], ['cmd', 'internal/store'], ['internal/api', 'internal/store'], ['internal/store', 'internal/cache'],
+      ['internal/api', 'internal/cache'], ['internal/cache', 'internal/store'], ['internal/api', 'pkg/util'],
+    ].map(([from, to]) => ({ from: `${base}/${from}`, to: `${base}/${to}`, count: 1 })),
+  } as typeof report
+  const view = (patch = {}) => packageView(wide, { ...DEFAULT_PACKAGE_VIEW, ...patch })
+
+  it('shows every package and counts the transitive edges it hides', () => {
+    const result = view()
+    expect(result.shown).toBe(5)
+    expect(result.total).toBe(5)
+    expect(result.reduced).toBe(2)
+    expect(view({ reduce: false }).reduced).toBe(0)
+  })
+
+  it('focuses on a package up to the chosen depth instead of cutting at a fixed size', () => {
+    const focus = `${base}/pkg/util`
+    expect(view({ focus, depth: 1 }).nodes.map((node) => node.id).sort()).toEqual([`${base}/internal/api`, focus].sort())
+    expect(view({ focus, depth: 2 }).shown).toBe(5)
+    expect(view({ focus: `${base}/cmd`, depth: 1 }).shown).toBe(3)
+  })
+
+  it('reports cycles and can show only them', () => {
+    expect(cycleMembers(view({ reduce: false }).links)).toEqual(new Set([`${base}/internal/store`, `${base}/internal/cache`]))
+    const cycles = view({ cyclesOnly: true })
+    expect(cycles.nodes.map((node) => node.id).sort()).toEqual([`${base}/internal/cache`, `${base}/internal/store`])
+    expect(cycles.cycles).toBe(2)
+  })
+
+  it('collapses packages by top-level folder until the group is expanded', () => {
+    expect(packageGroup(`${base}/internal/store`, base)).toBe('internal')
+    expect(packageGroup(`${base}/cmd`, base)).toBe('')
+    const grouped = view({ group: true })
+    expect(grouped.nodes.map((node) => node.id)).toContain('group:internal')
+    expect(grouped.nodes.some((node) => node.id === `${base}/internal/api`)).toBe(false)
+    expect(view({ group: true, expanded: new Set(['internal']) }).nodes.some((node) => node.id === `${base}/internal/api`)).toBe(true)
+  })
+
+  it('adds standard library and external nodes only when asked', () => {
+    expect(view().nodes.some((node) => node.data.kind === 'std' || node.data.kind === 'external')).toBe(false)
+    expect(view({ std: true }).nodes.filter((node) => node.data.kind === 'std')).toHaveLength(1)
+    expect(view({ external: true }).nodes.filter((node) => node.data.kind === 'external')).toHaveLength(1)
+  })
+})
+
+describe('goroutine grouping and filters', () => {
+  const launch = (patch: Record<string, unknown>) => ({ kind: 'go', shape: 'literal', package: 'example.com/shop/api', function: 'Handler', site: site('api/api.go', 10), risks: [], severity: 'none', ...patch }) as any
+  const items = [
+    launch({ function: 'Handler', risks: ['fire-and-forget-in-handler'], severity: 'medium' }),
+    launch({ function: 'Handler', site: site('api/api.go', 12), kind: 'errgroup', inLoop: true, loopKind: 'for', bounded: true }),
+    launch({ package: 'example.com/shop/store', function: 'Flush', site: site('store/s.go', 4), inLoop: true, risks: ['unbounded-loop-spawn', 'loop-var-capture'], severity: 'high' }),
+    launch({ package: 'example.com/shop/util', function: 'Tick', kind: 'afterfunc', site: site('util/u.go', 2) }),
+  ]
+
+  it('groups by package then function, riskiest package first', () => {
+    const groups = groupGoroutines(items)
+    expect(groups.map((group) => group.package)).toEqual(['example.com/shop/store', 'example.com/shop/api', 'example.com/shop/util'])
+    expect(groups[1].functions).toHaveLength(1)
+    expect(groups[1].functions[0].items).toHaveLength(2)
+    expect(groups[1]).toMatchObject({ count: 2, risky: 1 })
+  })
+
+  it('filters by risk, loop, kind and text', () => {
+    expect(filterGoroutines(items, { ...NO_GOROUTINE_FILTER, risksOnly: true })).toHaveLength(2)
+    expect(filterGoroutines(items, { ...NO_GOROUTINE_FILTER, inLoopOnly: true })).toHaveLength(2)
+    expect(filterGoroutines(items, { ...NO_GOROUTINE_FILTER, kinds: new Set(['errgroup', 'afterfunc']) })).toHaveLength(2)
+    expect(filterGoroutines(items, { ...NO_GOROUTINE_FILTER, query: 'flush' })).toHaveLength(1)
+    expect(filterGoroutines(items, { ...NO_GOROUTINE_FILTER, query: 'loop-var' })).toHaveLength(1)
+    expect(groupGoroutines(items, { ...NO_GOROUTINE_FILTER, query: 'nothing here' })).toEqual([])
+  })
+
+  it('matches a runtime creation frame to the static launch by file and line', () => {
+    expect(matchGoroutineSite(items, 'C:\\proj\\store\\s.go', 4)?.function).toBe('Flush')
+    expect(matchGoroutineSite(items, '/work/proj/api/api.go', 12)?.kind).toBe('errgroup')
+    expect(matchGoroutineSite(items, '/work/proj/api/api.go', 99)).toBeUndefined()
   })
 })

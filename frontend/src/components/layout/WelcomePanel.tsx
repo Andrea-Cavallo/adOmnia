@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, Plus, CircleDot, X, SlidersHorizontal, ArrowLeftRight, RotateCcw, Check } from 'lucide-react'
 import { FEATURE_REGISTRY, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
+import { minuteAlignedTimeout } from '@/lib/visiblePolling'
 import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout } from './hubLayout'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
@@ -33,10 +34,9 @@ function cardCopy(id: RailItem) {
 
 function useNow() {
   const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
+  // La Hub mostra solo ore e minuti: il tick è allineato al cambio di minuto,
+  // non al secondo (REFACTOR.md voce 3).
+  useEffect(() => minuteAlignedTimeout(() => setNow(new Date())), [])
   return now
 }
 

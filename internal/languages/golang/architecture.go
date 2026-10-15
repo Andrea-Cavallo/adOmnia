@@ -66,6 +66,9 @@ func (r *ArchitectureReport) Resolve(resolve func(path string, offset int) (stri
 	for index := range r.Reads {
 		fix(&r.Reads[index].Site)
 	}
+	for index := range r.Goroutines {
+		fix(&r.Goroutines[index].Site)
+	}
 	for index := range r.Syncs {
 		fix(&r.Syncs[index].Site)
 	}
@@ -119,6 +122,7 @@ func (r *ArchitectureReport) Merge(other ArchitectureReport) {
 	r.ContextCalls = append(r.ContextCalls, other.ContextCalls...)
 	r.Reads = append(r.Reads, other.Reads...)
 	r.Syncs = append(r.Syncs, other.Syncs...)
+	r.Goroutines = append(r.Goroutines, other.Goroutines...)
 	r.Truncated = r.Truncated || other.Truncated
 }
 
@@ -178,6 +182,8 @@ type ArchitectureReport struct {
 	Reads     []ArchRead `json:"reads,omitempty"`
 	// Syncs: operazioni di sincronizzazione (canali, mutex, atomic, WaitGroup, Once, go).
 	Syncs []ArchSync `json:"syncs,omitempty"`
+	// Goroutines: avvii di lavoro concorrente (go, errgroup, WaitGroup.Go, AfterFunc) con forma, contesto e rischi.
+	Goroutines []ArchGoroutine `json:"goroutines"`
 	Truncated bool       `json:"truncated,omitempty"`
 }
 
@@ -235,6 +241,7 @@ func AnalyzeArchitecture(fset *token.FileSet, loaded []*packages.Package, read f
 	a.collectContextFlow()
 	a.collectInterfaces()
 	a.collectEntries()
+	a.collectGoroutines()
 	a.finish()
 	return a.report
 }
@@ -455,4 +462,8 @@ func (a *architecture) finish() {
 		a.report.ContextCalls = []ArchContextCall{}
 	}
 	sortContextCalls(a.report.ContextCalls)
+	if a.report.Goroutines == nil {
+		a.report.Goroutines = []ArchGoroutine{}
+	}
+	sortGoroutines(a.report.Goroutines)
 }

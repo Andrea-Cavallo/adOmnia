@@ -20,7 +20,7 @@ const initialModules = initialChunks.flatMap((chunk) => Object.entries(chunk.mod
   bytes: value.renderedLength,
 })))
 const deferredAppModule = /\/(?:components\/(?:goide\/[^/]+|ide\/[\w/]+|collections\/CollectionTree|layout\/(?:Sidebar|CommandPalette)|assistant\/AICompanion|environment\/EnvModal|hosts\/HostModal)|stores\/goide\w*|lib\/(?:goide-[\w-]+|goide\/\w+|aiEngine|collectionTransfer|interopHub|openapiImport))\.[jt]sx?$/
-const deferredVendor = /\/node_modules\/(?:yaml|monaco-editor|monaco-yaml|mermaid|pdf-lib|pdfjs-dist)\//
+const deferredVendor = /\/node_modules\/(?:yaml|monaco-editor|monaco-yaml|mermaid|pdf-lib|pdfjs-dist|yjs|y-monaco|d3-force|@xterm\/[\w-]+)\//
 const report = {
   initialJavaScriptBytes: initialChunks.reduce((sum, chunk) => sum + Buffer.byteLength(chunk.code), 0),
   initialChunks: initialChunks.map((chunk) => ({ file: chunk.fileName, bytes: Buffer.byteLength(chunk.code) })).sort((a, b) => b.bytes - a.bytes),

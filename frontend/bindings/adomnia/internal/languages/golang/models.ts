@@ -913,6 +913,72 @@ export class ArchSync {
     }
 }
 
+/**
+ * ArchGoroutine è un punto del codice che avvia lavoro concorrente: `go`, errgroup.Go, sync.WaitGroup.Go,
+ * time.AfterFunc e context.AfterFunc. Le regole di Risks sono indizi dall'analisi statica, non prove.
+ */
+export class ArchGoroutine {
+    "kind": string;
+    "shape": string;
+    "launches"?: string;
+    "launchesId"?: string;
+    "package": string;
+    "function": string;
+    "site": ArchSite;
+    "spawner"?: string;
+    "inLoop"?: boolean;
+    "loopKind"?: string;
+    "bounded"?: boolean;
+    "ctx"?: boolean;
+    "cancellable"?: boolean;
+    "waitGroup"?: boolean;
+    "errGroup"?: boolean;
+    "channels"?: number;
+    "recover"?: boolean;
+    "entries"?: string[];
+    "risks": string[];
+    "severity": string;
+
+    /** Creates a new ArchGoroutine instance. */
+    constructor($$source: Partial<ArchGoroutine> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("shape" in $$source)) {
+            this["shape"] = "";
+        }
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("function" in $$source)) {
+            this["function"] = "";
+        }
+        if (!("site" in $$source)) {
+            this["site"] = (new ArchSite());
+        }
+        if (!("risks" in $$source)) {
+            this["risks"] = [];
+        }
+        if (!("severity" in $$source)) {
+            this["severity"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ArchGoroutine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ArchGoroutine {
+        const $$createField6_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("site" in $$parsedSource) {
+            $$parsedSource["site"] = $$createField6_0($$parsedSource["site"]);
+        }
+        return new ArchGoroutine($$parsedSource as Partial<ArchGoroutine>);
+    }
+}
+
 export class ArchitectureReport {
     "packages": ArchPackage[];
     "imports": ArchEdge[];
@@ -935,6 +1001,11 @@ export class ArchitectureReport {
      * Syncs: operazioni di sincronizzazione (canali, mutex, atomic, WaitGroup, Once, go).
      */
     "syncs"?: ArchSync[];
+
+    /**
+     * Goroutines: avvii di lavoro concorrente (go, errgroup, WaitGroup.Go, AfterFunc) con forma, contesto e rischi.
+     */
+    "goroutines": ArchGoroutine[];
     "truncated"?: boolean;
 
     /** Creates a new ArchitectureReport instance. */
@@ -972,6 +1043,9 @@ export class ArchitectureReport {
         if (!("contextCalls" in $$source)) {
             this["contextCalls"] = [];
         }
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -993,6 +1067,7 @@ export class ArchitectureReport {
         const $$createField10_0 = $$createType35;
         const $$createField11_0 = $$createType37;
         const $$createField12_0 = $$createType39;
+        const $$createField13_0 = $$createType901;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField0_0($$parsedSource["packages"]);
@@ -1032,6 +1107,9 @@ export class ArchitectureReport {
         }
         if ("syncs" in $$parsedSource) {
             $$parsedSource["syncs"] = $$createField12_0($$parsedSource["syncs"]);
+        }
+        if ("goroutines" in $$parsedSource) {
+            $$parsedSource["goroutines"] = $$createField13_0($$parsedSource["goroutines"]);
         }
         return new ArchitectureReport($$parsedSource as Partial<ArchitectureReport>);
     }
@@ -2652,6 +2730,8 @@ const $$createType36 = ArchRead.createFrom;
 const $$createType37 = $Create.Array($$createType36);
 const $$createType38 = ArchSync.createFrom;
 const $$createType39 = $Create.Array($$createType38);
+const $$createType900 = ArchGoroutine.createFrom;
+const $$createType901 = $Create.Array($$createType900);
 const $$createType40 = BinaryModule.createFrom;
 const $$createType41 = $Create.Array($$createType40);
 const $$createType42 = BinarySize.createFrom;

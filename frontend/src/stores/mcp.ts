@@ -119,8 +119,9 @@ function loadConfigs(): McpSavedConfig[] {
 }
 
 function persistConfigs(configs: McpSavedConfig[]): void {
-  safeSetItem(STORAGE_KEY, JSON.stringify(configs))
-  void safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, JSON.stringify(configs))
+  const serialized = JSON.stringify(configs)
+  safeSetItem(STORAGE_KEY, serialized)
+  void safeStoragePut(STORAGE_BUCKET, STORAGE_ENTRY, serialized)
 }
 
 function parseConfigs(raw: string): McpSavedConfig[] | null {

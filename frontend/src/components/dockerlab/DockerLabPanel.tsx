@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { BROKER_PENDING_KEY, DATABASE_PENDING_CONNECTION_KEY, handOff, takeDockerLabHandoff, type DockerLabHandoff } from '@/lib/moduleHandoff'
 import {
   type ContainerStatus,
@@ -123,24 +124,17 @@ export function DockerLabPanel() {
     ? [...PRESETS.filter((preset) => suggestion.presetIds.includes(preset.id)), ...PRESETS.filter((preset) => !suggestion.presetIds.includes(preset.id))]
     : PRESETS
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   // Poll container status when a lab is running
   useEffect(() => {
-    if (!runningLab) {
-      if (pollRef.current) clearInterval(pollRef.current)
-      return
-    }
+    if (!runningLab) return
     const poll = async () => {
       const s = await labStatus(runningLab.projectName)
       setContainers(s ?? [])
     }
     poll()
-    pollRef.current = setInterval(poll, 3000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
+    return visibleInterval(poll, 3000)
   }, [runningLab])
 
   // Auto-scroll logs

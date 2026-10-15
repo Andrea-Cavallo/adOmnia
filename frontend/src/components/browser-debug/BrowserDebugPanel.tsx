@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useBrowserDebugStore, type TypeFilter } from '@/stores/browser-debug'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { blankRequest, uid } from '@/lib/types'
 import { appendMockEndpoints } from '@/lib/mockEndpointStore'
 import type { RequestItem, HttpMethod } from '@/lib/types'
@@ -443,7 +444,6 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
   const [connectedTab, setConnectedTab]   = useState<DebugTarget | null>(null)
   const [activeTab, setActiveTab]         = useState<DebugTab>(initialTab)
   const [connectionError, setConnectionError] = useState('')
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Command-palette deep links select a tab via this event (see commandPalette.ts).
   useEffect(() => {
@@ -491,7 +491,6 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
     setConnected(false)
     setConnectedTab(null)
     setShowPicker(true)
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
   }, [setConnected])
 
   const handleClear = useCallback(async () => {
@@ -506,24 +505,20 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
 
   // Poll traffic while connected
   useEffect(() => {
-    if (connected) {
-      const poll = async () => {
-        try {
-          const traffic = await getTraffic()
-          if (traffic.length > 0) {
-            setEntries(traffic)
-            setConnectionError('')
-          }
-        } catch (err: unknown) {
-          setConnectionError(err instanceof Error ? err.message : 'Failed to read browser traffic')
+    if (!connected) return undefined
+    const poll = async () => {
+      try {
+        const traffic = await getTraffic()
+        if (traffic.length > 0) {
+          setEntries(traffic)
+          setConnectionError('')
         }
+      } catch (err: unknown) {
+        setConnectionError(err instanceof Error ? err.message : 'Failed to read browser traffic')
       }
-      poll()
-      pollRef.current = setInterval(poll, 1000)
     }
-    return () => {
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-    }
+    poll()
+    return visibleInterval(poll, 1000)
   }, [connected, setEntries])
 
   useEffect(() => { setBrowserRunning(connected) }, [connected, setBrowserRunning])

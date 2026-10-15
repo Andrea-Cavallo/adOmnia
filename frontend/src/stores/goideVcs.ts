@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
 import {
-  checkoutGoIDEBranch, commitGoIDEFiles, getGoIDEBlame, getGoIDEFileAtRevision, getGoIDEVCSStatus,
+  checkoutGoIDEBranch, commitGoIDEFiles, getGoIDEBlame, getGoIDEFileAtRevision, getGoIDEVCSStatus, selectGoIDERepository,
   type GoIDEVCSBlameLine, type GoIDEVCSStatus,
 } from '@/lib/goide-vcs-api'
 import { isBinaryText, type GoStudioLineHunk } from '@/lib/goide/goStudioLineDiff'
@@ -24,6 +24,7 @@ interface GoIDEVCSState {
   hunkPopup: GoIDEHunkPopup | null
   error: string | null
   refreshStatus: (sessionId: string) => Promise<void>
+  selectRepository: (sessionId: string, root: string) => Promise<void>
   loadHead: (sessionId: string, relativePath: string) => Promise<void>
   toggleBlame: (sessionId: string, documentId: string, relativePath: string) => Promise<void>
   commit: (sessionId: string, message: string, relativePaths: string[]) => Promise<string | null>
@@ -57,6 +58,8 @@ export function headKey(sessionId: string, relativePath: string): string {
 
 let unsubscribe: (() => void) | null = null
 const refreshTimers: Record<string, number> = {}
+const statusEpoch: Record<string, number> = {}
+const selectingRepository: Record<string, boolean> = {}
 
 export const useGoIDEVCSStore = create<GoIDEVCSState>((set, get) => {
   const ensureSubscribed = () => {
@@ -81,14 +84,29 @@ export const useGoIDEVCSStore = create<GoIDEVCSState>((set, get) => {
     hunkPopup: null,
     error: null,
 
+    selectRepository: async (sessionId, root) => {
+      const epoch = (statusEpoch[sessionId] ?? 0) + 1
+      statusEpoch[sessionId] = epoch
+      selectingRepository[sessionId] = true
+      try {
+        const next = await selectGoIDERepository(sessionId, root)
+        if (statusEpoch[sessionId] !== epoch) return
+        dropHeads(sessionId)
+        set((state) => ({ status: { ...state.status, [sessionId]: next } }))
+      } finally { if (statusEpoch[sessionId] === epoch) selectingRepository[sessionId] = false }
+    },
+
     refreshStatus: async (sessionId) => {
       ensureSubscribed()
+      if (selectingRepository[sessionId]) return
+      const epoch = statusEpoch[sessionId] ?? 0
       try {
         const next = await getGoIDEVCSStatus(sessionId)
+        if (epoch !== (statusEpoch[sessionId] ?? 0) || selectingRepository[sessionId]) return
         const previous = get().status[sessionId]
         set((state) => ({ status: { ...state.status, [sessionId]: next } }))
         // Nuovo commit o cambio di branch (anche dal terminale): i contenuti HEAD vanno riletti.
-        if (previous && (previous.head !== next.head || previous.branch !== next.branch)) dropHeads(sessionId)
+        if (previous && (previous.repoRoot !== next.repoRoot || previous.head !== next.head || previous.branch !== next.branch)) dropHeads(sessionId)
       } catch (error) {
         set({ error: errorMessage(error) })
       }
