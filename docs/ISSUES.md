@@ -1,6 +1,6 @@
 # adOmnia - Open Issues & Missing Features
 *Perspective: a developer who uses adOmnia daily as their primary API tool.*
-*Last reviewed: 2026-06-13*
+*Release queue updated: 2026-10-15; historical audit below: 2026-06-13.*
 
 This file contains only work that is still open. Completed items are archived in the "Recently Resolved" section below.
 
@@ -15,8 +15,7 @@ This file contains only work that is still open. Completed items are archived in
 
 ## Open Queue
 
-_No verified-open issues. The previously-listed backlog items were re-checked against
-the current codebase on 2026-06-13 and found already resolved (see below)._
+The active stabilization queue is [FIX.md](../mds/FIX.md), with [post-1.0.2 release targets](ROADMAP-FIXES.md). DB-2 implementation is included in 1.0.2; the complete remote-driver desktop matrix and independent review remain open. The historical audit below does not supersede this queue.
 
 ## Recently Resolved (verified against code 2026-06-13)
 

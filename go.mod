@@ -57,10 +57,13 @@ require golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 require (
 	github.com/shirou/gopsutil/v4 v4.26.9
 	github.com/tetratelabs/wazero v1.12.0
+	github.com/zalando/go-keyring v0.2.6
 	go.opentelemetry.io/proto/otlp v1.11.1
 )
 
 require (
+	al.essio.dev/pkg/shellescape v1.6.0 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect

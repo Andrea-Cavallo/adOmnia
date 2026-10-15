@@ -470,8 +470,9 @@ What we DON'T chase:
 ## Security and Privacy Constraints
 
 - **Local-first by design** — no telemetry, no external calls
-- **Plaintext storage** — localStorage is not encrypted, document this
+- **Plaintext storage** — general localStorage is not encrypted. Database passwords and all DSNs must be sealed before bbolt/localStorage writes; database queries resolve opaque references only in Go. The automatic local key uses the OS keychain (DPAPI-protected file fallback on Windows); extra passphrase protection remains optional. See `docs/DATABASE-CONNECTIONS.md`.
 - **AI environment mode** — environment credentials are intentionally machine-local and not persisted, but are available to processes launched with the same user environment; never log or render their values
+- **Vault inactivity** — timeout, unlock/lock and timer state share one mutex; stale timer callbacks cannot lock a reopened Vault. Changing the timeout while unlocked restarts the inactivity timer (1–120 minutes).
 - **Script execution** — user scripts run in renderer, warn about risks
 - **Certificate handling** — validate cert paths, never auto-trust
 - **Proxy CA export** — in progress, document trust implications

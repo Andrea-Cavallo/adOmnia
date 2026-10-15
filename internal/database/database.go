@@ -25,16 +25,19 @@ import (
 )
 
 type dbConnectionRequest struct {
-	Driver     string `json:"driver"`
-	DSN        string `json:"dsn"`
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	Database   string `json:"database"`
-	Collection string `json:"collection"`
-	User       string `json:"user"`
-	Password   string `json:"password"`
-	SSLMode    string `json:"sslMode"`
-	SQLitePath string `json:"sqlitePath"`
+	IdleTimeoutMinutes int    `json:"idleTimeoutMinutes,omitempty"`
+	ID                 string `json:"id"`
+	Variables          string `json:"variables,omitempty"`
+	Driver             string `json:"driver"`
+	DSN                string `json:"dsn"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	Database           string `json:"database"`
+	Collection         string `json:"collection"`
+	User               string `json:"user"`
+	Password           string `json:"password"`
+	SSLMode            string `json:"sslMode"`
+	SQLitePath         string `json:"sqlitePath"`
 	// MongoDB only: SRV lookup (mongodb+srv://) and extra URI options such as
 	// "authSource=admin&tls=true&replicaSet=rs0".
 	SRV     bool   `json:"srv"`
@@ -42,13 +45,16 @@ type dbConnectionRequest struct {
 }
 
 type dbQueryRequest struct {
-	Connection dbConnectionRequest `json:"connection"`
-	Query      string              `json:"query"`
-	Limit      int                 `json:"limit"`
-	Confirm    bool                `json:"confirm"`
-	Explain    bool                `json:"explain"`
-	Analyze    bool                `json:"analyze"`
-	TimeoutMS  int                 `json:"timeoutMs"`
+	ConnectionID string            `json:"connectionId"`
+	Variables    map[string]string `json:"variables"`
+	handle       *connectionHandle
+	Connection   dbConnectionRequest `json:"connection"`
+	Query        string              `json:"query"`
+	Limit        int                 `json:"limit"`
+	Confirm      bool                `json:"confirm"`
+	Explain      bool                `json:"explain"`
+	Analyze      bool                `json:"analyze"`
+	TimeoutMS    int                 `json:"timeoutMs"`
 }
 
 type dbQueryResponse struct {
@@ -85,18 +91,32 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
+	if req.ID != "" && req.Driver == "" {
+		var err error
+		req, err = savedConfig(req.ID)
+		if err != nil {
+			http.Error(w, "saved connection not found", 400)
+			return
+		}
+	}
+	var credentialErr error
+	req, credentialErr = resolveCredentials(req)
+	if credentialErr != nil {
+		http.Error(w, credentialErr.Error(), 400)
+		return
+	}
 	if isMongoDriver(req.Driver) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		start := time.Now()
 		client, _, err := openMongoDatabase(ctx, req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		defer client.Disconnect(context.Background())
 		if err := client.Ping(ctx, readpref.Primary()); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "mongodb", "durationMs": time.Since(start).Milliseconds()})
@@ -108,12 +128,12 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		client, err := openRedisDatabase(req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		defer client.Close()
 		if err := client.Ping(ctx).Err(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "redis", "durationMs": time.Since(start).Milliseconds()})
@@ -121,7 +141,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	db, driver, err := openDatabase(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
 	defer db.Close()
@@ -129,7 +149,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	start := time.Now()
 	if err := db.PingContext(ctx); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
 	dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": driver, "durationMs": time.Since(start).Milliseconds()})
@@ -156,6 +176,36 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Limit > 5000 {
 		req.Limit = 5000
 	}
+	if req.ConnectionID != "" {
+		var err error
+		req.Connection, err = savedConfig(req.ConnectionID)
+		if err != nil {
+			http.Error(w, "saved connection not found", 400)
+			return
+		}
+	}
+	if len(req.Variables) > 0 {
+		data, _ := json.Marshal(req.Variables)
+		req.Connection.Variables = string(data)
+	}
+	if req.Connection.ID != "" {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		h, release, err := connections.acquire(ctx, req.Connection)
+		cancel()
+		if err != nil {
+			http.Error(w, safeDatabaseError(err), 400)
+			return
+		}
+		defer release()
+		req.handle = h
+	} else {
+		var err error
+		req.Connection, err = resolveCredentials(req.Connection)
+		if err != nil {
+			http.Error(w, safeDatabaseError(err), 400)
+			return
+		}
+	}
 	if strings.EqualFold(req.Connection.Driver, "redis") {
 		resp, err := runRedisQuery(r.Context(), req)
 		if err != nil {
@@ -163,7 +213,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(err.Error(), "requires confirmation") {
 				status = http.StatusConflict
 			}
-			http.Error(w, err.Error(), status)
+			http.Error(w, safeDatabaseError(err), status)
 			return
 		}
 		dbWriteJSON(w, resp)
@@ -176,7 +226,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(err.Error(), "requires confirmation") {
 				status = http.StatusConflict
 			}
-			http.Error(w, err.Error(), status)
+			http.Error(w, safeDatabaseError(err), status)
 			return
 		}
 		dbWriteJSON(w, resp)
@@ -187,17 +237,26 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "dangerous query requires confirmation", http.StatusConflict)
 		return
 	}
-	db, driver, err := openDatabase(req.Connection)
+	var db *sql.DB
+	var driver string
+	var err error
+	if req.handle != nil {
+		db, driver = req.handle.sql, req.handle.driver
+	} else {
+		db, driver, err = openDatabase(req.Connection)
+	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
-	defer db.Close()
+	if req.handle == nil {
+		defer db.Close()
+	}
 	explainMode := ""
 	if req.Explain || req.Analyze {
 		explained, err := explainQuery(driver, query, req.Analyze)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		query = explained
@@ -219,7 +278,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if isResultQuery(limitedQuery) {
 		cols, rows, err := runRows(ctx, db, limitedQuery)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		resp.Columns = cols
@@ -227,7 +286,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		res, err := db.ExecContext(ctx, limitedQuery)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
 		resp.RowsAffected, _ = res.RowsAffected()
@@ -253,7 +312,7 @@ func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	path, err := createLocalSQLite(filepath.Join(configDir, "adomnia", "databases"), req.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
 	dbWriteJSON(w, map[string]interface{}{"ok": true, "path": path})
@@ -261,6 +320,10 @@ func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
 
 // RegisterHandlers registers Database Studio endpoints.
 func RegisterHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/database/seal", databaseSealHandler)
+	for _, action := range []string{"connect", "disconnect", "status"} {
+		mux.HandleFunc("/database/"+action, databaseConnectionHandler(action))
+	}
 	mux.HandleFunc("/database/test", databaseTestHandler)
 	mux.HandleFunc("/database/query", databaseQueryHandler)
 	mux.HandleFunc("/database/sqlite/create-local", databaseCreateLocalSQLiteHandler)
@@ -500,11 +563,20 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	start := time.Now()
-	client, db, err := openMongoDatabase(ctx, req.Connection)
+	var client *mongo.Client
+	var db *mongo.Database
+	var err error
+	if req.handle != nil {
+		client, db = req.handle.mongo, req.handle.mongoDB
+	} else {
+		client, db, err = openMongoDatabase(ctx, req.Connection)
+	}
 	if err != nil {
 		return dbQueryResponse{}, err
 	}
-	defer client.Disconnect(context.Background())
+	if req.handle == nil {
+		defer client.Disconnect(context.Background())
+	}
 	if name := strings.TrimSpace(cmd.Database); name != "" {
 		db = client.Database(name)
 	}

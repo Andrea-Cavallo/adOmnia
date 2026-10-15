@@ -28,7 +28,8 @@ describe('Redis database connections', () => {
     expect(isDangerousRedis('{"command":"FLUSHALL"}')).toBe(true)
   })
   it('does not persist Redis URI credentials or plaintext passwords', () => {
-    const stored = serializeDatabaseConnections([{ ...blankConnection(), driver: 'redis', password: 'redis-password', dsn: 'redis://default:uri-password@localhost:6379/0' }])
+    expect(() => serializeDatabaseConnections([{ ...blankConnection(), driver: 'redis', password: 'redis-password', dsn: 'redis://default:uri-password@localhost:6379/0' }])).toThrow('Encrypt database credentials before saving')
+    const stored = serializeDatabaseConnections([{ ...blankConnection(), driver: 'redis', password: 'vault:local:v1:password', dsn: 'vault:local:v1:dsn' }])
     expect(stored).not.toContain('redis-password')
     expect(stored).not.toContain('uri-password')
   })

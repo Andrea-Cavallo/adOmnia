@@ -637,8 +637,8 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E1.4.5 | **Indexes** | Index list with key directions, type (regular/compound/text/geo/hashed/wildcard), size, usage ops, unique/sparse/partial/TTL/hidden badges; create (multi-field, unique, sparse, TTL, partial filter) and drop. |
 | E1.4.6 | **Validation** | View and edit `$jsonSchema` / query validators with validation level and action (`collMod`). |
 | E1.6 | **DSN Override** | Raw DSN textarea for advanced override. |
-| E1.7 | **Connection Test** | Database ping with success/error feedback. |
-| E1.8 | **Connection Management** | Dropdown with saved connections; add, select, delete. |
+| E1.7 | **Connection Test** | Stateless database ping with success/error feedback; Test opens and closes a separate client. |
+| E1.8 | **Connection Management** | Saved connections with Connect/Disconnect, live status and latency, client reuse, keepalive, retry backoff and configurable idle timeout. |
 | E1.9 | **Query Editor** | Textarea with `{{var}}` variable substitution. |
 | E1.10 | **Esegui Query** | Invia query al database backend; risultati in griglia. |
 | E1.11 | **Explain Plan** | Esegui EXPLAIN (SQL); MongoDB explain lives in the Explorer Documents tab. |
@@ -648,7 +648,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E1.15 | **Export JSON / CSV** | Scarica risultati correnti. |
 | E1.16 | **Query History** | Sidebar with previous queries; click to reload. |
 | E1.17 | **Query Favorite** | Toggle preferito su ogni query; sidebar dedicata. |
-| E1.18 | **Vault Integration** | Replaces plaintext passwords and credential-bearing DSNs with encrypted Vault references; unprotected credentials are session-only and references are resolved only when the connection is used. |
+| E1.18 | **Vault Integration** | Automatically encrypts passwords and all DSNs at save time using a system-keychain master key; opaque references are resolved only in Go. Optional passphrase protection and legacy Vault references remain supported. See [connection migration](DATABASE-CONNECTIONS.md). |
 | E1.19 | **Row Counter** | Shows returned rows and affected rows. |
 | E1.20 | **Query Workspace Restore** | Restores open query tabs, active query, row limit and timeout from local storage after restart. |
 

@@ -21,40 +21,82 @@ import (
 )
 
 var (
-	vaultMu       sync.RWMutex
-	vaultUnlocked bool
-	vaultIdentity age.Identity
-	vaultTimeout  = 30 * time.Minute
-	vaultTimer    *time.Timer
+	vaultMu              sync.RWMutex
+	vaultUnlocked        bool
+	vaultIdentity        age.Identity
+	vaultTimeout         = 30 * time.Minute
+	vaultTimer           *time.Timer
+	vaultTimerGeneration uint64
 )
 
 // TimeoutMinutes reports the configured inactivity timeout.
 func TimeoutMinutes() int {
+	vaultMu.RLock()
+	defer vaultMu.RUnlock()
 	return int(vaultTimeout.Minutes())
 }
 
 // SetTimeoutMinutes updates the inactivity timeout used while unlocked.
 func SetTimeoutMinutes(minutes int) {
+	vaultMu.Lock()
+	defer vaultMu.Unlock()
+	if minutes < 1 {
+		minutes = 1
+	}
+	if minutes > 120 {
+		minutes = 120
+	}
 	vaultTimeout = time.Duration(minutes) * time.Minute
+	if vaultUnlocked {
+		resetVaultTimerLocked()
+	}
 }
 
 func resetVaultTimer() {
+	vaultMu.Lock()
+	defer vaultMu.Unlock()
+	if !vaultUnlocked {
+		return
+	}
+	resetVaultTimerLocked()
+}
+
+// Caller holds vaultMu. A stopped callback may already be running, so it
+// must also check its generation before locking a newly unlocked vault.
+func resetVaultTimerLocked() {
 	if vaultTimer != nil {
 		vaultTimer.Stop()
 	}
+	vaultTimerGeneration++
+	generation := vaultTimerGeneration
 	vaultTimer = time.AfterFunc(vaultTimeout, func() {
-		lockVault()
-		log.Println("[vault] auto-locked after inactivity")
+		expireVaultTimer(generation)
 	})
+}
+
+func expireVaultTimer(generation uint64) {
+	vaultMu.Lock()
+	defer vaultMu.Unlock()
+	if generation != vaultTimerGeneration || !vaultUnlocked {
+		return
+	}
+	lockVaultLocked()
+	log.Println("[vault] auto-locked after inactivity")
 }
 
 func lockVault() {
 	vaultMu.Lock()
 	defer vaultMu.Unlock()
+	lockVaultLocked()
+}
+
+func lockVaultLocked() {
+	vaultTimerGeneration++
 	vaultUnlocked = false
 	vaultIdentity = nil
 	if vaultTimer != nil {
 		vaultTimer.Stop()
+		vaultTimer = nil
 	}
 }
 
@@ -158,9 +200,8 @@ func vaultUnlockHandler(w http.ResponseWriter, r *http.Request) {
 	vaultMu.Lock()
 	vaultUnlocked = true
 	vaultIdentity = identity
+	resetVaultTimerLocked()
 	vaultMu.Unlock()
-
-	resetVaultTimer()
 	log.Println("[vault] unlocked")
 
 	w.Header().Set("Content-Type", "application/json")

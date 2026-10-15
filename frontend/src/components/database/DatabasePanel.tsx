@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DATABASE_PENDING_CONNECTION_KEY } from '@/lib/moduleHandoff'
 import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,7 @@ import { confirm } from '@/lib/confirmDialog'
 import { useResolvedVars } from '@/stores/environments'
 import { useAppStore } from '@/stores/app'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
+import { StoragePut } from '@/wailsjs/go/main/App'
 import { ConnectionsSidebar } from './ConnectionsSidebar'
 import { QueryEditor } from './QueryEditor'
 import { ResultsView } from './ResultsView'
@@ -28,8 +29,8 @@ import {
   clearDatabaseConnectionSecrets,
   hydrateDatabaseConnections,
   protectDatabaseConnection,
-  resolveDatabaseConnection,
   serializeDatabaseConnections,
+  sealDatabaseConnection,
 } from './dbSecrets'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
@@ -42,6 +43,10 @@ export function DatabasePanel() {
   const vars = useResolvedVars()
 
   const [connections, setConnections] = useState<DbConnection[]>([])
+  const connectionDrafts = useRef<DbConnection[]>([])
+  const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  const saveGeneration = useRef(0)
+  const [statuses, setStatuses] = useState<Record<string, { state: string; latencyMs: number; error?: string }>>({})
   const [activeId, setActiveId] = useState('')
   const [tabs, setTabs] = useState<QueryTab[]>([blankTab('Query 1')])
   const [activeTabId, setActiveTabId] = useState(tabs[0].id)
@@ -102,20 +107,22 @@ export function DatabasePanel() {
         safeStorageGet(STORAGE_BUCKET, WORKSPACE_KEY),
       ])
       let nextConnections = [blankConnection()]
+      let connectionsWritable = true
       if (rawConnections) {
         try {
           const loaded = JSON.parse(rawConnections) as Partial<DbConnection>[]
           if (Array.isArray(loaded) && loaded.length) {
             nextConnections = hydrateDatabaseConnections(loaded.map(normalizeConnection))
-            await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections))
+
           }
         } catch {
-          setError('Saved database connections could not be read; a clean local connection was created.')
+          connectionsWritable = false
+          setError('Saved database credentials could not be migrated. Unlock the Vault/keychain and reopen this panel; existing stored data has been preserved.')
         }
       }
       const pendingRaw = sessionStorage.getItem(DATABASE_PENDING_CONNECTION_KEY)
         ?? localStorage.getItem(DATABASE_PENDING_CONNECTION_KEY)
-      if (pendingRaw) {
+      if (pendingRaw && connectionsWritable) {
         try {
           const pending = JSON.parse(pendingRaw) as Partial<DbConnection>
           const pendingConn = normalizeConnection({ ...pending, id: crypto.randomUUID() })
@@ -124,7 +131,6 @@ export function DatabasePanel() {
           nextConnections = existing
             ? [existing, ...nextConnections.filter((connection) => connection.id !== existing.id)]
             : [pendingConn, ...nextConnections]
-          await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections))
           setMessage(existing ? `Connection "${existing.name}" selected` : `Connection "${pendingConn.name}" added`)
         } catch {
           setError('Could not import the database connection')
@@ -133,7 +139,11 @@ export function DatabasePanel() {
           localStorage.removeItem(DATABASE_PENDING_CONNECTION_KEY)
         }
       }
+      if (connectionsWritable) {
+        try { nextConnections = await Promise.all(nextConnections.map((c) => sealDatabaseConnection(c))); await StoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections)); await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(nextConnections)) } catch (e) { setError(e instanceof Error ? e.message : 'Could not save credentials') }
+      }
       setConnections(nextConnections)
+      connectionDrafts.current = nextConnections
       setActiveId(nextConnections[0]?.id ?? '')
       try { setFavorites(rawFavorites ? JSON.parse(rawFavorites) : []) } catch { setFavorites([]) }
       // migrate legacy history (string[]) → HistoryItem[]
@@ -178,12 +188,21 @@ export function DatabasePanel() {
 
   // ── persistence helpers ─────────────────────────────────────────────────
   const persistConnections = async (next: DbConnection[]) => {
+    connectionDrafts.current = next
     setConnections(next)
-    await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(next))
+    const generation = ++saveGeneration.current
+    const save = saveQueue.current.catch(() => undefined).then(async () => {
+      const sealed = await Promise.all(next.map((c) => sealDatabaseConnection(c)))
+      await StoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(sealed))
+      await safeStoragePut(STORAGE_BUCKET, CONNECTIONS_KEY, serializeDatabaseConnections(sealed))
+      if (generation === saveGeneration.current) { connectionDrafts.current = sealed; setConnections(sealed) }
+    })
+    saveQueue.current = save
+    try { await save } catch (e) { setError(e instanceof Error ? e.message : 'Could not save database credentials'); throw e }
   }
 
   const updateActive = (patch: Partial<DbConnection>) => {
-    void persistConnections(connections.map((c) => c.id === active.id ? { ...c, ...patch } : c))
+    void persistConnections(connectionDrafts.current.map((c) => c.id === active.id ? { ...c, ...patch } : c)).catch(() => undefined)
   }
 
   const setQuery = (q: string) => {
@@ -205,6 +224,7 @@ export function DatabasePanel() {
 
   const selectConnection = (id: string) => {
     setActiveId(id)
+    if (connections.find((c) => c.id === id)?.autoConnect) { void saveQueue.current.then(() => api('/database/connect', { connectionId: id })).catch((e) => setError(String(e))) }
     setResult(null)
     setError('')
     setSchemaItems([])
@@ -252,6 +272,7 @@ export function DatabasePanel() {
     if (connections.length <= 1) return
     const next = connections.filter((c) => c.id !== id)
     void persistConnections(next)
+    void api('/database/disconnect', { connectionId: id }).catch(() => undefined)
     clearDatabaseConnectionSecrets(id)
     if (activeId === id) setActiveId(next[0]?.id ?? '')
   }
@@ -315,6 +336,38 @@ export function DatabasePanel() {
     return text ? JSON.parse(text) : {}
   }
 
+  const queryConnection = async (target: DbConnection) => {
+    await saveQueue.current
+    const current = connectionDrafts.current.find((c) => c.id === target.id) ?? target
+    // Non-secret environment substitutions still work; opaque credentials stay in Go.
+    return { connectionId: current.id, variables: vars }
+  }
+
+  const connectActive = async (disconnect = false) => {
+    setRunning(true); setError('')
+    try {
+      await saveQueue.current
+      const status = await api(disconnect ? '/database/disconnect' : '/database/connect', { connectionId: active.id, variables: vars })
+      setStatuses((previous) => ({ ...previous, [active.id]: status }))
+      if (!disconnect) { void refreshSchema(active); setMongoReload((n) => n + 1) }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setRunning(false) }
+  }
+
+  useEffect(() => {
+    if (!hydrated || !port) return
+    let cancelled = false
+    const poll = async () => {
+      const updates = await Promise.all(connections.map(async (c) => {
+        try { return [c.id, await api('/database/status', { connectionId: c.id })] as const } catch { return null }
+      }))
+      if (!cancelled) setStatuses(Object.fromEntries(updates.filter((u) => u !== null)))
+    }
+    void poll()
+    const timer = window.setInterval(() => void poll(), 3000)
+    return () => { cancelled = true; window.clearInterval(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, port, connections])
+
   const runQuery = async (explain = false, confirmed = false, analyze = false) => {
     setError('')
     const connectionError = validateConnection(active)
@@ -337,7 +390,7 @@ export function DatabasePanel() {
     }
     setRunning(true)
     try {
-      const data = await api('/database/query', { connection: await resolveDatabaseConnection(active), query: renderedQuery, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
+      const data = await api('/database/query', { ...await queryConnection(active), query: renderedQuery, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
       setResult(data)
       const item: HistoryItem = { query, ts: Date.now(), label: activeTab?.name }
       const nextHistory = [item, ...history.filter((h) => h.query !== query)].slice(0, 50)
@@ -361,10 +414,9 @@ export function DatabasePanel() {
     if (connectionError) { setError(connectionError); return }
     setRunning(true)
     try {
-      const data = await api('/database/test', await resolveDatabaseConnection(active)) as { driver: string; durationMs: number }
-      setMessage(`Connected to ${data.driver} in ${data.durationMs} ms`)
-      if (isMongo) setMongoReload((n) => n + 1)
-      void refreshSchema(active)
+      await saveQueue.current
+      const data = await api('/database/test', { id: active.id }) as { driver: string; durationMs: number }
+      setMessage(`Test passed: ${data.driver} in ${data.durationMs} ms`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -380,15 +432,15 @@ export function DatabasePanel() {
     setSchemaLoading(true)
     setSchemaError('')
     try {
-      const runtimeConnection = await resolveDatabaseConnection(target)
-      const data = await api('/database/query', { connection: runtimeConnection, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
+      const runtimeConnection = await queryConnection(target)
+      const data = await api('/database/query', { ...runtimeConnection, query: introspection, limit: 1000, timeoutMs, explain: false, confirm: false }) as DbResult
       const names = extractNames(data)
       const baseItems: SchemaItem[] = names.map((name) => ({ name, count: null }))
       setSchemaItems(baseItems)
       const colQuery = columnsQuery(target.driver)
       // Column names only feed editor completion: a failure here must not hide the table list.
       if (colQuery) {
-        api('/database/query', { connection: runtimeConnection, query: colQuery, limit: 20000, timeoutMs, explain: false, confirm: false })
+        api('/database/query', { ...runtimeConnection, query: colQuery, limit: 20000, timeoutMs, explain: false, confirm: false })
           .then((r) => setSchemaColumns(extractColumns(r as DbResult)))
           .catch(() => setSchemaColumns({}))
       }
@@ -396,7 +448,7 @@ export function DatabasePanel() {
       if (target.driver === 'redis') return
       const capped = names.slice(0, 30)
       const counts = await Promise.allSettled(
-        capped.map((n) => api('/database/query', { connection: runtimeConnection, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
+        capped.map((n) => api('/database/query', { ...runtimeConnection, query: countQuery(target.driver, n), limit: 1, timeoutMs, explain: false, confirm: false }) as Promise<DbResult>)
       )
       setSchemaItems(baseItems.map((item, idx) => {
         const r = counts[idx]
@@ -417,7 +469,7 @@ export function DatabasePanel() {
     const res = await sidecarFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connection: await resolveDatabaseConnection(active), query: JSON.stringify(command), limit: 1000, timeoutMs, explain: false, confirm: options?.confirm ?? false }),
+      body: JSON.stringify({ ...await queryConnection(active), query: JSON.stringify(command), limit: 1000, timeoutMs, explain: false, confirm: options?.confirm ?? false }),
     })
     const text = await res.text()
     if (!res.ok) throw new Error(text.trim() || res.statusText)
@@ -464,7 +516,7 @@ export function DatabasePanel() {
     }
     setRunning(true)
     try {
-      await api('/database/query', { connection: await resolveDatabaseConnection(active), query: statement, limit: 1, timeoutMs, explain: false, confirm: isRedis })
+      await api('/database/query', { ...await queryConnection(active), query: statement, limit: 1, timeoutMs, explain: false, confirm: isRedis })
       setCreateObjectOpen(false)
       setCreateObjectName('')
       setMessage(`${isRedis ? 'Key' : active.driver === 'mongodb' ? 'Collection' : 'Table'} created`)
@@ -565,6 +617,9 @@ export function DatabasePanel() {
         onUpdate={updateActive}
         onSetDriver={setDriver}
         onTest={testConnection}
+        statuses={statuses}
+        onConnect={() => void connectActive()}
+        onDisconnect={() => void connectActive(true)}
         onVault={protectConnectionSecrets}
         onCreateLocalSQLite={() => void createLocalSQLite()}
       />

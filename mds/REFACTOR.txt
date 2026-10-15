@@ -1,0 +1,342 @@
+# adOmnia | Performance & Resource Optimization
+
+## Obiettivo
+
+Ottimizzare l'intera applicazione **adOmnia**, con particolare attenzione a Go Studio, senza sacrificare funzionalità, stabilità, sicurezza o qualità grafica.
+
+Stack attuale: **Wails 3, Go, React 19, TypeScript, Monaco Editor e gopls**.
+
+L'obiettivo non è riscrivere l'applicazione, ma individuare ed eliminare sprechi di CPU, memoria, I/O e operazioni ridondanti.
+
+### Principi obbligatori
+
+- Analizzare il codice esistente prima di implementare modifiche.
+- Non duplicare ottimizzazioni già presenti.
+- Misurare ogni problema prima e dopo l'intervento.
+- Preservare tutte le funzionalità e l'interfaccia attuale.
+- Evitare nuovi processi, dipendenze o astrazioni non necessari.
+- Non modificare i contratti Wails o i formati persistenti senza compatibilità.
+- Non introdurre telemetria remota. Le metriche rimangono locali.
+- Preferire soluzioni semplici e incrementali.
+- Valutare Rust soltanto quando i benchmark dimostrano un beneficio concreto.
+
+---
+
+## P0 | Misurazione e ottimizzazioni immediate
+
+### 1. Performance baseline e profiling
+
+**Obiettivo:** identificare le reali cause dei consumi.
+
+Implementare un sistema locale di benchmark ripetibili per:
+
+- Avvio a freddo e a caldo.
+- Hub principale senza workspace.
+- Go Studio con un progetto piccolo e uno grande.
+- Apertura contemporanea di 3-5 workspace.
+- Digitazione continua, autocompletamento e diagnostica.
+- Apertura di file grandi e documenti JSON complessi.
+- Cambio rapido tra moduli e tab.
+- Dieci cicli di apertura e chiusura di progetti.
+- Applicazione inattiva per 5, 15 e 30 minuti.
+
+Misurare CPU, memoria privata/RSS, heap, goroutine, processi figli, tempi di risposta, latenza RPC, frame persi e latenza di input.
+
+**Strumenti:** pprof, runtime trace, React Profiler, Chrome Performance, Windows Performance Counters.
+
+**Criterio di accettazione:** report baseline riproducibile con misurazioni separate per backend Go, WebView2, gopls e processi figli.
+
+### 2. Ottimizzazione del ciclo di vita di gopls
+
+File di riferimento:
+- `internal/goide/lsp_idle.go`
+- `internal/languages/golang/gopls.go`
+- `internal/ide/lsp/`
+
+Verificare e migliorare l'attuale sospensione dopo cinque minuti di inattività.
+
+- Evitare istanze duplicate per lo stesso workspace quando non necessarie.
+- Valutare la sospensione di gopls anche con editor aperti ma inattivi.
+- Preservare sempre buffer modificati, diagnostiche e stato degli editor.
+- Riattivare gopls quando servono operazioni LSP.
+- Evitare riavvii ripetuti dovuti a cambiamenti irrilevanti.
+- Applicare configurazioni e filtri per ridurre le analisi non necessarie.
+- Ridurre controlli ripetuti di SDK, PATH e versioni degli strumenti, soprattutto con VPN o proxy.
+- Verificare l'efficacia di `GOMEMLIMIT` senza compromettere CPU e latenza.
+
+**Criterio di accettazione:** niente processi gopls duplicati o orfani, riattivazione affidabile e riduzione misurabile del consumo durante l'inattività.
+
+### 3. Riduzione dei re-render React
+
+Analizzare componenti, hook e store Zustand.
+
+- Identificare i componenti che si aggiornano troppo frequentemente.
+- Usare selector Zustand specifici e uguaglianza appropriata.
+- Evitare modifiche di stato globale a ogni keypress.
+- Applicare memoizzazione soltanto dove il profiling dimostra benefici.
+- Ridurre i polling periodici.
+- Non aggiornare componenti nascosti quando non serve.
+- Verificare il corretto cleanup di timer, listener e observer.
+- Aggiornare l'orologio della Hub al cambio di minuto, non ogni secondo, se non sono visualizzati i secondi.
+- Evitare che animazioni decorative consumino risorse quando la finestra è inattiva.
+
+**Criterio di accettazione:** meno commit React, nessun aggiornamento superfluo e nessuna regressione visiva.
+
+### 4. Ottimizzazione comunicazione React ↔ Go
+
+Analizzare le chiamate Wails RPC esistenti.
+
+- Identificare RPC ripetute con gli stessi parametri.
+- Batchare richieste indipendenti quando utile.
+- Introdurre deduplicazione delle chiamate concorrenti equivalenti.
+- Implementare caching con invalidazione corretta.
+- Evitare trasferimenti frequenti di payload JSON molto grandi.
+- Usare eventi o streaming per operazioni lunghe.
+- Applicare cancellation e timeout dove supportati.
+- Separare operazioni prioritarie per la UI da attività in background.
+
+**Criterio di accettazione:** riduzione del numero di chiamate e della latenza P95, senza risultati obsoleti o inconsistenze di stato.
+
+### 5. Ottimizzazione editing e diagnostica
+
+- Misurare la latenza dalla digitazione al rendering.
+- Evitare analisi costose a ogni carattere.
+- Conservare la reattività immediata di Monaco e dell'autocompletamento.
+- Cancellare richieste LSP obsolete quando possibile.
+- Evitare diagnostiche duplicate.
+- Verificare il costo di semantic tokens, inlay hints e decorations.
+- Gestire gli aggiornamenti incrementali dei documenti.
+- Non duplicare nella UI analisi già effettuate da gopls.
+
+**Criterio di accettazione:** digitazione fluida anche durante indicizzazione e diagnostica, senza perdita di funzionalità LSP.
+
+---
+
+## P1 | Memoria, workspace e scalabilità
+
+### 6. Lifecycle completo di Monaco Editor
+
+- Caricare Monaco soltanto quando necessario.
+- Riutilizzare i document models tra editor e tab.
+- Rilasciare editor, decorations, disposable e modelli non più utilizzati.
+- Non ricreare modelli quando si cambia tab.
+- Gestire correttamente i documenti modificati ma temporaneamente nascosti.
+- Misurare l'heap JavaScript durante apertura e chiusura ripetuta dei file.
+
+**Criterio di accettazione:** nessuna crescita progressiva ingiustificata della memoria dopo ripetuti cicli di utilizzo.
+
+### 7. Virtualizzazione e caricamento incrementale
+
+Analizzare file tree, risultati di ricerca, log, cronologia, database explorer e dependency graph.
+
+- Virtualizzare liste di grandi dimensioni.
+- Caricare i nodi degli alberi soltanto quando vengono espansi.
+- Evitare di renderizzare migliaia di elementi nascosti.
+- Usare paginazione e caricamento progressivo quando appropriato.
+- Conservare selezione, scroll e stato dei nodi durante gli aggiornamenti.
+- Non introdurre virtualizzazione complessa su liste piccole.
+
+**Criterio di accettazione:** navigazione fluida e memoria controllata anche con decine di migliaia di elementi.
+
+### 8. Filesystem watchers e indicizzazione
+
+- Verificare il riutilizzo dei watcher esistenti.
+- Evitare la registrazione di watcher duplicati.
+- Applicare filtri coerenti con `.gitignore` e le esclusioni del progetto.
+- Ignorare `node_modules`, `.git`, directory di build e cache, salvo necessità esplicite.
+- Raggruppare eventi ravvicinati.
+- Eliminare eventi duplicati.
+- Applicare aggiornamenti incrementali.
+- Rilasciare watcher e risorse alla chiusura del progetto.
+- Gestire correttamente rename, delete, eventi persi e overflow.
+
+**Criterio di accettazione:** consumo proporzionato alle modifiche effettive e nessuna perdita di sincronizzazione.
+
+### 9. Cache condivisa e invalidazione intelligente
+
+Analizzare l'eventuale ripetizione di:
+
+- Parsing del codice.
+- Dependency graph.
+- Analisi di architettura.
+- Git status e diff.
+- Ricerca di simboli.
+- Analisi dei moduli.
+- Metadati della toolchain.
+
+Utilizzare cache in memoria con limiti LRU e persistenza locale soltanto quando utile.
+
+Definire regole di invalidazione basate su modifiche dei file, versione SDK, configurazione del workspace e dipendenze.
+
+**Criterio di accettazione:** riduzione dei tempi delle operazioni ripetute, senza mostrare dati obsoleti.
+
+### 10. Controllo della concorrenza
+
+- Identificare goroutine e task non necessari.
+- Usare concorrenza limitata per operazioni pesanti.
+- Applicare backpressure alle code.
+- Dare priorità a digitazione, completamento e navigazione.
+- Eseguire indicizzazione e analisi secondarie in background.
+- Cancellare task obsoleti.
+- Evitare creazione illimitata di worker e subprocess.
+- Verificare race condition e goroutine leak.
+
+**Criterio di accettazione:** nessuna saturazione improvvisa della CPU e interfaccia utilizzabile durante operazioni pesanti.
+
+### 11. Modalità idle intelligente
+
+Introdurre una politica centralizzata per la gestione delle risorse inattive.
+
+Stati logici:
+
+- **Active:** utilizzo normale.
+- **Background:** workspace non visibile ma ancora operativo.
+- **Idle:** assenza prolungata di interazione.
+- **Suspended:** servizi sospendibili rilasciati in sicurezza.
+
+Ridurre frequenza dei polling, aggiornamenti decorativi e analisi secondarie. Sospendere solamente le risorse che possono essere ripristinate correttamente.
+
+Non interrompere terminali, debug, richieste, registrazioni o processi esplicitamente avviati dall'utente.
+
+**Criterio di accettazione:** CPU prossima allo zero durante l'inattività reale, senza interrompere attività intenzionali.
+
+---
+
+## P2 | Ottimizzazioni avanzate
+
+### 12. Bundle frontend e startup
+
+File di riferimento:
+- `frontend/src/App.tsx`
+- `frontend/src/hooks/useAppInit.ts`
+- `frontend/scripts/check-startup-bundle.mjs`
+
+- Preservare il lazy loading già implementato.
+- Analizzare il bundle con il visualizer.
+- Rimuovere import statici non necessari.
+- Ritardare l'inizializzazione dei moduli non utilizzati.
+- Ridurre serializzazioni e caricamenti ridondanti.
+- Riutilizzare i meccanismi di bootstrap esistenti.
+- Mantenere il controllo automatico sulla dimensione del bundle iniziale.
+- Misurare il tempo fino alla prima interazione realmente utilizzabile.
+
+**Criterio di accettazione:** startup migliorato senza compromettere ripristino dello stato e navigazione.
+
+### 13. Valutazione selettiva di Rust
+
+Non migrare automaticamente componenti esistenti.
+
+Valutare Rust soltanto per operazioni CPU-bound effettivamente lente, come:
+
+- Ricerca fuzzy e scansione di workspace molto grandi.
+- Diff su file particolarmente grandi.
+- Indicizzazione custom non già fornita da gopls.
+- Parsing binario e analisi di grandi quantità di dati.
+
+Per ogni candidato confrontare:
+
+1. Implementazione Go ottimizzata.
+2. Implementazione Rust.
+3. Tempo di esecuzione e memoria.
+4. Costo di integrazione e comunicazione.
+5. Portabilità Windows/macOS/Linux.
+6. Complessità di build, manutenzione e recovery.
+
+Preferire un subprocess isolato quando porta benefici concreti. Non introdurre CGO o WASM senza una motivazione misurabile.
+
+**Criterio di accettazione:** adottare Rust soltanto se il vantaggio netto giustifica la complessità aggiuntiva.
+
+### 14. Stabilità e prevenzione dei memory leak
+
+Verificare cicli ripetuti di:
+
+- Apertura e chiusura workspace.
+- Creazione e distruzione dei Monaco models.
+- Avvio e arresto di gopls.
+- Apertura e chiusura terminali.
+- Avvio e arresto debug.
+- Connessione e disconnessione database e broker.
+- Creazione e chiusura finestre secondarie.
+
+Controllare file descriptor, handle Windows, goroutine, worker JavaScript, event listener e processi orfani.
+
+**Criterio di accettazione:** nessuna crescita di risorse non giustificata dopo il ritorno allo stato iniziale.
+
+---
+
+## P3 | Performance regression e qualità
+
+### 15. Performance budget
+
+Definire una baseline prima delle modifiche, utilizzando build release, hardware e condizioni di test controllate.
+
+Target iniziali da validare:
+
+| Indicatore | Obiettivo |
+|---|---|
+| CPU idle totale | Inferiore al 2% sul sistema di test, senza task attivi |
+| RAM idle | Riduzione almeno del 20% rispetto alla baseline, dove esistono sprechi |
+| Startup | Riduzione del tempo P95 senza regressioni funzionali |
+| Latenza digitazione | P95 sotto 50 ms input-to-render negli scenari concordati |
+| Apertura file | Riduzione del tempo P95 rispetto alla baseline |
+| Cicli apertura/chiusura | Nessun leak persistente |
+| Processi figli | Nessun processo orfano dopo chiusura |
+| Regressioni funzionali | Zero nei workflow coperti dai test |
+
+Non fissare un tetto assoluto di memoria per workspace prima di conoscere dimensioni reali e carichi di lavoro.
+
+### 16. Benchmark automatici e report
+
+- Introdurre benchmark per backend e frontend.
+- Eseguire test di performance ripetibili.
+- Confrontare baseline e risultati dopo ogni intervento.
+- Aggiungere controlli CI dove le misurazioni sono sufficientemente stabili.
+- Evitare blocchi CI basati su benchmark troppo variabili.
+- Salvare report localmente, senza telemetria esterna.
+
+---
+
+## Ordine di implementazione
+
+**Fase A: Audit e quick wins**
+
+Profiling, identificazione processi, polling e render inutili, lifecycle gopls, RPC ridondanti.
+
+**Fase B: Scalabilità**
+
+Monaco lifecycle, virtualizzazione, filesystem watcher, caching, isolamento e controllo della concorrenza.
+
+**Fase C: Hardening**
+
+Idle intelligente, memory leak, benchmark automatici, regression budget ed eventuale valutazione Rust.
+
+## Istruzioni operative per l'assistente AI
+
+Prima di ogni modifica:
+
+1. Leggi `CLAUDE.md`, l'architettura e i componenti coinvolti.
+2. Verifica se l'ottimizzazione esiste già.
+3. Identifica il collo di bottiglia con dati o una prova riproducibile.
+4. Proponi la modifica minima necessaria.
+5. Implementa preservando API, funzionalità e UX.
+6. Esegui test pertinenti e benchmark comparativi.
+7. Documenta risultati e possibili compromessi.
+
+**Non implementare tutte le ottimizzazioni contemporaneamente.** Procedi in ordine di impatto, una modifica verificabile alla volta.
+
+### Output richiesto per ogni attività
+
+- Problema identificato.
+- Evidenza e metrica iniziale.
+- File interessati.
+- Causa tecnica.
+- Soluzione implementata.
+- Test eseguiti.
+- Risultato prima/dopo.
+- Eventuali rischi o ottimizzazioni successive.
+
+### Risultato finale
+
+adOmnia deve risultare sensibilmente più leggera, reattiva e stabile, anche con più workspace e strumenti aperti contemporaneamente.
+
+La priorità assoluta è eliminare lavoro inutile, non sostituire tecnologie che già funzionano correttamente.

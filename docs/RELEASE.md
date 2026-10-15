@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.2 — correzioni IDE e connessioni database
+
+[Release notes](releases/v1.0.2.md), [migrazione database](DATABASE-CONNECTIONS.md) e [roadmap dei fix successivi](ROADMAP-FIXES.md). I gate manuali ancora aperti restano espliciti.
+
 ## v0.10.0-beta.2 — stabilization toward v1
 
 See [beta notes](releases/v0.10.0-beta.2.md) and [v1 acceptance checklist](V1-CHECKLIST.md).

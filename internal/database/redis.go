@@ -99,11 +99,19 @@ func runRedisQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 	}
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
-	client, err := openRedisDatabase(req.Connection)
+	var client *redis.Client
+	var err error
+	if req.handle != nil {
+		client = req.handle.redis
+	} else {
+		client, err = openRedisDatabase(req.Connection)
+	}
 	if err != nil {
 		return dbQueryResponse{}, err
 	}
-	defer client.Close()
+	if req.handle == nil {
+		defer client.Close()
+	}
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 200

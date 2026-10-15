@@ -23,6 +23,10 @@ export interface DbConnection {
   sslMode: string
   sqlitePath: string
   savedInVault?: boolean
+  credentialWarning?: string
+  autoConnect?: boolean
+  extraProtected?: boolean
+  idleTimeoutMinutes?: number
   /** MongoDB: extra URI options (authSource=admin&tls=true) and SRV lookup. */
   options?: string
   srv?: boolean

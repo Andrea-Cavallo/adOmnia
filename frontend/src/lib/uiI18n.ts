@@ -9,6 +9,16 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Change password': 'Cambia password',
+  'Remove password': 'Rimuovi password',
+  'Remove DSN': 'Rimuovi DSN',
+  'Encrypted DSN saved': 'DSN cifrato salvato',
+  'Database password': 'Password del database',
+  'Database DSN': 'DSN del database',
+  'Idle timeout minutes': 'Timeout di inattività in minuti',
+  'Idle (min)': 'Inattività (min)',
+  'Auto-connect on selection': 'Connetti automaticamente alla selezione',
+
   'Debug across services': 'Debug tra servizi',
   'Preparing distributed debug…': 'Preparazione debug distribuito…',
   'Arm distributed debug': 'Attiva debug distribuito',

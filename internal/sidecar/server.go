@@ -31,6 +31,7 @@ import (
 var httpSidecar *http.Server
 
 func Stop() {
+	database.CloseAll()
 	// Live sources own processes and goroutines: closing the sidecar must not
 	// leave a kubectl or docker follow running.
 	logstream.CloseAll()

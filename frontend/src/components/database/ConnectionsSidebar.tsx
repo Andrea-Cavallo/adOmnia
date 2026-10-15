@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CheckCircle2, Database, Eye, EyeOff, MoreVertical, Plus, Search, Shield, Trash2, Wand2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -6,6 +6,7 @@ import {
   type DbConnection, type DbDriver, type SelectableDbDriver,
 } from './dbShared'
 import { databaseCredentialState } from './dbSecrets'
+import { isVaultRef } from '@/lib/vaultRefs'
 
 interface ConnectionsSidebarProps {
   width: number
@@ -18,6 +19,9 @@ interface ConnectionsSidebarProps {
   onUpdate: (patch: Partial<DbConnection>) => void
   onSetDriver: (driver: DbDriver) => void
   onTest: () => void
+  onConnect: () => void
+  onDisconnect: () => void
+  statuses: Record<string, { state: string; latencyMs: number; error?: string }>
   onVault: (passphrase: string) => Promise<void>
   onCreateLocalSQLite: () => void
 }
@@ -35,7 +39,19 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 const inputCls = 'h-8 w-full rounded-md border border-border-2 bg-surface-2 px-2.5 text-[12px] text-text-1 outline-none transition-colors focus:border-accent/60 focus:bg-surface-3'
 
 export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
-  const { width, connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite } = props
+  const { width, connections, active, running, onSelect, onAdd, onDelete, onUpdate, onSetDriver, onTest, onVault, onCreateLocalSQLite, onConnect, onDisconnect, statuses } = props
+  const [passwordDraft, setPasswordDraft] = useState('')
+  const [dsnDraft, setDsnDraft] = useState('')
+  const [editingPassword, setEditingPassword] = useState(false)
+  const [editingDsn, setEditingDsn] = useState(false)
+  const secretSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleSecretSave = (patch: Partial<DbConnection>) => {
+    if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current)
+    secretSaveTimer.current = setTimeout(() => { secretSaveTimer.current = null; onUpdate(patch) }, 250)
+  }
+  useEffect(() => () => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current) }, [active.id])
+  useEffect(() => { setPasswordDraft(''); setDsnDraft(''); setEditingPassword(false); setEditingDsn(false) }, [active.id])
+  const status = statuses[active.id]
   const [search, setSearch] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [vaultPassphrase, setVaultPassphrase] = useState('')
@@ -100,6 +116,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                   <span className="min-w-0 flex-1">
                     <span className={cn('block truncate text-[12.5px] font-medium', isActive ? 'text-text-1' : 'text-text-2')}>{conn.name}</span>
                     <span className="block truncate text-[10.5px] text-text-4">{sub}</span>
+                    <span className={cn('block text-[10px]', statuses[conn.id]?.state === 'connected' ? 'text-success' : statuses[conn.id]?.state === 'error' ? 'text-danger' : 'text-text-4')}>{statuses[conn.id]?.state ?? 'disconnected'}{statuses[conn.id]?.state === 'connected' ? ` · ${statuses[conn.id].latencyMs} ms` : ''}</span>
                   </span>
                 </button>
                 <button
@@ -221,8 +238,11 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={active.password}
-                    onChange={(e) => onUpdate({ password: e.target.value, savedInVault: false })}
+                    aria-label="Database password"
+                    value={passwordDraft}
+                    placeholder={isVaultRef(active.password) ? '•••••••• saved' : 'Password'}
+                    onChange={(e) => { setPasswordDraft(e.target.value); setEditingPassword(true); if (e.target.value) scheduleSecretSave({ password: e.target.value }) }}
+                    onBlur={() => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current); if (editingPassword && passwordDraft) { onUpdate({ password: passwordDraft }); setPasswordDraft(''); setEditingPassword(false) } }}
                     className={cn(inputCls, 'pr-8')}
                   />
                   <button
@@ -234,20 +254,28 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                   </button>
                 </div>
               </Field>
+              {isVaultRef(active.password) && <div className="ml-[90px] flex gap-3 text-[11px]"><button type="button" onClick={() => setEditingPassword(true)} className="text-accent">Change password</button><button type="button" onClick={() => onUpdate({ password: '' })} className="text-danger">Remove password</button></div>}
             </>
           )}
           <Field label="Raw DSN">
             <input
-              value={active.dsn}
-              onChange={(e) => onUpdate({ dsn: e.target.value })}
+              aria-label="Database DSN"
+              value={editingDsn ? dsnDraft : isVaultRef(active.dsn) ? '' : active.dsn}
+              onChange={(e) => { setDsnDraft(e.target.value); setEditingDsn(true); if (e.target.value) scheduleSecretSave({ dsn: e.target.value }) }}
+              onBlur={() => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current); if (editingDsn && dsnDraft) { onUpdate({ dsn: dsnDraft }); setDsnDraft(''); setEditingDsn(false) } }}
               className={cn(inputCls, 'font-mono text-[11px] text-text-3')}
-              placeholder={active.driver === 'redis' ? 'redis://127.0.0.1:6379/0' : 'optional connection string'}
+              placeholder={isVaultRef(active.dsn) ? 'Encrypted DSN saved' : active.driver === 'redis' ? 'redis://127.0.0.1:6379/0' : 'optional connection string'}
             />
           </Field>
+          {isVaultRef(active.dsn) && <button type="button" onClick={() => onUpdate({ dsn: '' })} className="ml-[90px] text-[11px] text-danger">Remove DSN</button>}
+          <Field label="Idle (min)"><input aria-label="Idle timeout minutes" type="number" min={1} max={120} value={active.idleTimeoutMinutes ?? 15} onChange={(e) => onUpdate({ idleTimeoutMinutes: Math.max(1, Math.min(120, Number(e.target.value))) })} className={inputCls} /></Field>
+          <label className="flex gap-2 text-[11px] text-text-2"><input type="checkbox" checked={!!active.autoConnect} onChange={(e) => onUpdate({ autoConnect: e.target.checked })} />Auto-connect on selection</label>
         </div>
 
         {/* actions */}
         <div className="mt-4 grid grid-cols-2 gap-2">
+          <button type="button" disabled={running} onClick={status?.state === 'connected' ? onDisconnect : onConnect} className="col-span-2 h-8 rounded-md border border-accent bg-accent/10 text-[12px] text-accent disabled:opacity-40">{running ? 'Working…' : status?.state === 'connected' ? 'Disconnect' : 'Connect'}</button>
+          <p className="col-span-2 text-[11px] text-text-3">{status?.state ?? 'disconnected'}{status?.state === 'connected' ? ` · ${status.latencyMs} ms` : ''}</p>
           <button
             onClick={onTest}
             disabled={running}
@@ -257,16 +285,16 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
           </button>
           <button
             onClick={() => void onVault(vaultPassphrase).then(() => setVaultPassphrase('')).catch(() => undefined)}
-            disabled={credentialState !== 'session' || !vaultPassphrase}
+            disabled={credentialState === 'none' || !vaultPassphrase}
             className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-border-2 bg-surface-2 text-[11.5px] font-medium text-text-2 transition-colors hover:border-accent/50 hover:text-text-1 disabled:opacity-40"
           >
             <Shield size={13} /> Protect
           </button>
         </div>
 
-        {credentialState === 'session' && (
+        {credentialState !== 'none' && (
           <div className="mt-2 space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[10.5px] text-warning">
-            <p>Plain credentials are session-only and are not written to storage. Enter the Vault passphrase to reuse them after restart.</p>
+            <p>Credentials save automatically with local encryption. Optional extra passphrase protection requires unlocking the Vault after restart.</p>
             <input
               type="password"
               value={vaultPassphrase}
@@ -299,6 +327,8 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             Credentials are encrypted at rest and resolved only while this connection is used.
           </div>
         )}
+        {active.credentialWarning && <p className="mt-2 text-[11px] text-warning">{active.credentialWarning}</p>}
+        {active.user && !active.password && !active.dsn && <p className="mt-2 text-[11px] text-warning">If this connection previously had a password, enter it once again. Older session-only credentials cannot be recovered.</p>}
         {active.driver === 'db2' && (
           <div className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[10.5px] text-warning">
             This Db2 preset is retained for compatibility, but Db2 is unavailable in this portable build. Select a supported driver.
