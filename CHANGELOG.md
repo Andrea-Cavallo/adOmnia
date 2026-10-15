@@ -43,6 +43,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Fixed
 
+- Go Studio error colours now follow the active theme: `--color-danger` was never defined, so editor diagnostics, the context graph and other danger styling fell back to a fixed red. It is now an alias of `--color-error`.
+- Go Studio editor tabs scroll the active tab into view and can be switched with the arrow keys, Home and End; only the active tab takes part in the Tab order. The Change Signature and Move Symbol dialogs use the shared modal backdrop, and the window close button and a few red hovers use the theme error colour.
 - Revoking trust on a project now also closes its terminals and debug sessions, not just run processes and the language server.
 - Saving a file on Windows retries when an antivirus, indexer or gopls briefly holds it, then explains that another program is using the file; saving through a symbolic link keeps the link instead of replacing it with a regular file.
 - Errors from tools Go Studio runs (go commands, gist creation, shutdown analysis, move symbol) no longer dump raw terminal output: colour codes are stripped and long output is reduced to its first and last lines.

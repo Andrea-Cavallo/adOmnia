@@ -51,7 +51,7 @@
   width: 3px !important;
 }
 .go-studio-cov-covered { background: var(--color-success, #22c55e); opacity: 0.75; }
-.go-studio-cov-uncovered { background: var(--color-danger, #ef4444); opacity: 0.75; }
+.go-studio-cov-uncovered { background: var(--color-danger); opacity: 0.75; }
 .go-studio-cov-partial { background: var(--color-warning, #f59e0b); opacity: 0.8; }
 
 /* Costo per riga del profilo aperto nel Performance Studio: barra calda accanto a quella di coverage. */
@@ -62,8 +62,8 @@
 }
 .go-studio-heat-1 { background: var(--color-warning, #f59e0b); opacity: 0.3; }
 .go-studio-heat-2 { background: var(--color-warning, #f59e0b); opacity: 0.65; }
-.go-studio-heat-3 { background: var(--color-danger, #ef4444); opacity: 0.7; }
-.go-studio-heat-4 { background: var(--color-danger, #ef4444); opacity: 1; }
+.go-studio-heat-3 { background: var(--color-danger); opacity: 0.7; }
+.go-studio-heat-4 { background: var(--color-danger); opacity: 1; }
 .go-studio-heat-label {
   color: var(--color-warning, #f59e0b);
   font-style: italic;
@@ -88,12 +88,12 @@
   height: 11px;
   margin-top: -5.5px;
   border-radius: 50%;
-  background: var(--color-danger, #ef4444);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger, #ef4444) 40%, transparent);
+  background: var(--color-danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 40%, transparent);
 }
 .monaco-editor .line-numbers.go-studio-bp-pending::after {
   background: transparent;
-  border: 2px solid var(--color-danger, #ef4444);
+  border: 2px solid var(--color-danger);
   box-sizing: border-box;
 }
 /* Condizione o hit count: "?" nel pallino. Logpoint: rombo. Disattivato: grigio. Come GoLand/VS Code. */
@@ -108,7 +108,7 @@
   transform: rotate(45deg) scale(0.82);
 }
 .monaco-editor .line-numbers.go-studio-bp-pending.go-studio-bp-cond::after {
-  color: var(--color-danger, #ef4444);
+  color: var(--color-danger);
   line-height: 7px;
 }
 .monaco-editor .line-numbers.go-studio-bp-disabled::after {
@@ -125,7 +125,7 @@
   height: 11px;
   margin-top: -5.5px;
   border-radius: 50%;
-  background: var(--color-danger, #ef4444);
+  background: var(--color-danger);
   opacity: 0.25;
 }
 
@@ -189,7 +189,7 @@
   font-weight: 700;
   line-height: 1;
 }
-.go-studio-ctx-error::before { content: '⨯'; color: var(--color-danger, #ef4444); }
+.go-studio-ctx-error::before { content: '⨯'; color: var(--color-danger); }
 .go-studio-ctx-warning::before { content: '!'; color: var(--color-warning, #f59e0b); }
 .go-studio-ctx-info::before { content: '·'; color: var(--color-accent, #8b5cf6); }
 .go-studio-ctx-glyph:hover::before { filter: brightness(1.3); }

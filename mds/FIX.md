@@ -8,7 +8,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**53 chiuse · 56 implementate da verificare · 114 da fare — su 223 voci.**
+**55 chiuse · 58 implementate da verificare · 110 da fare — su 223 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -26,7 +26,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-7 | 1 | 2 | 2 | 5 |
 | GS-8 | 1 | 1 | 2 | 4 |
 | GS-9 | 0 | 0 | 7 | 7 |
-| GS-10 | 0 | 0 | 12 | 12 |
+| GS-10 | 2 | 2 | 8 | 12 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 11 | 7 | 18 |
 | DB-3 | 0 | 0 | 35 | 35 |
@@ -519,19 +519,19 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 ### GS-10. Altri problemi nel frontend (audit)
 
 **P1**
-- [ ] GS-10.1 `--color-danger` mai definito come variabile CSS (solo alias Tailwind `tailwind.config.ts:55`; `globals.css` ha solo `--color-error`): 31 usi in `components/goide/goStudioEditor.css` (54, 65-66, 91-96, 111, 128, 192, …) cadono sul fallback `#ef4444` e non seguono il tema; `GoStudioContextPanel.tsx:170` senza fallback non risolve. Fix: `--color-danger: var(--color-error)` in entrambi i blocchi tema, poi togliere i fallback hex.
+- [x] GS-10.1 `--color-danger` mai definito come variabile CSS (solo alias Tailwind `tailwind.config.ts:55`; `globals.css` ha solo `--color-error`): 31 usi in `components/goide/goStudioEditor.css` (54, 65-66, 91-96, 111, 128, 192, …) cadono sul fallback `#ef4444` e non seguono il tema; `GoStudioContextPanel.tsx:170` senza fallback non risolve. Fix: `--color-danger: var(--color-error)` in entrambi i blocchi tema, poi togliere i fallback hex. — `--color-danger: var(--color-error)` in entrambi i blocchi di `globals.css`, tolti i 9 fallback `#ef4444`; `goStudioTokens.test.ts` lo protegge. Il `var(--color-danger, var(--color-error))` restante (4 usi) è equivalente.
 - [ ] GS-10.2 Feedback sulle azioni asincrone: errori run/test in un solo `ErrorBanner` persistente (`stores/goide.ts:1165`, `goideTests.ts:102`, `GoStudioPanel.tsx:846,939`); nessun toast IDE (successi "Coverage saved", "AI started", "Run started" muti); `GoStudioWorkspace.tsx:67` mostra `useStudioTools.error` come `<div>` senza stile. Fix: store `studioToast` in `GoStudioPanel` alimentato da `errorMessage()`; errore del workspace con `ErrorBanner`; `goideTests.ts:101-102` scrive l'errore in due store (comparso due volte): uno solo.
-- [ ] GS-10.3 Tab bar editor (`GoStudioEditorTabs.tsx:85`): la tab attiva non viene portata in vista, nessun menu "tutte le tab", nessun roving tabindex/frecce; il close (`:110`) è `<span role="button" tabIndex={-1}>` dentro `<button role="tab">` (non raggiungibile da tastiera, interattivi annidati). Fix: `scrollIntoView({inline:'nearest'})` su `activeId`, menu overflow, close come bottone fratello.
+- [ ] GS-10.3 Tab bar editor (`GoStudioEditorTabs.tsx:85`): la tab attiva non viene portata in vista, nessun menu "tutte le tab", nessun roving tabindex/frecce; il close (`:110`) è `<span role="button" tabIndex={-1}>` dentro `<button role="tab">` (non raggiungibile da tastiera, interattivi annidati). Fix: `scrollIntoView({inline:'nearest'})` su `activeId`, menu overflow, close come bottone fratello. — **IMPLEMENTATO; NON VERIFICATO manualmente:** **parziale:** la tab attiva viene portata in vista, frecce/Home/End cambiano tab, tabindex a rotazione (solo l'attiva è nel Tab). Non fatti: menu "tutte le tab" e il close come bottone fratello (resta `<span role="button">` dentro il tab).
 - [ ] GS-10.4 Status bar tagliata su finestre strette (`GoStudioStatusBar.tsx:99` `overflow-hidden`; destra `shrink-0` `:125-160`): Trusted/Restricted e tema escono dal bordo. Fix: Profile/Trace/Sonar/Security (`:137-148`) in un menu "Tools"; gruppo destro `overflow-x-auto`. `languageServerLabel` (`:49-56`) e titolo `:125-128` hanno "gopls" hardcoded: leggere dalla contribution del linguaggio.
 
 **P2**
 - [ ] GS-10.5 Albero progetto non accessibile (`GoStudioProjectTree.tsx:128-148`): `role="tree"`/`treeitem`, `aria-expanded`, roving tabindex.
 - [ ] GS-10.6 Pulsanti icona senza `aria-label` (solo `title`): StatusBar `:137-148`, Toolbar, `Titlebar.tsx`; ogni `go-studio-icon-button` ha `aria-label`.
-- [ ] GS-10.7 Colori fuori token: `layout/MainArea.tsx:1178` (`hover:text-red-300` → `text-error`), `Titlebar.tsx:39` (`hover:bg-red-500/80` → `bg-error`); backdrop `bg-black/40` in `GoStudioChangeSignatureDialog.tsx:72`, `GoStudioMoveSymbolDialog.tsx:68`, `layout/DropOverlay.tsx:25` → overlay standard `goStudioModal.css`; `text-white` sui bottoni accent in ~14 pannelli (`GoStudioElsewhere:33,37`, `GoStudioEmptyState:28`, `GoStudioTestsPanel:358`, `GoStudioVulnPanel:90`, `GoStudioErrorsPanel:99`, …) → `text-on-accent` (stesso lavoro di IDE-5.7: farlo una volta). `GoStudioHtmlView.tsx:46,60` (`bg-white`) voluto per l'iframe: aggiungere un commento.
+- [ ] GS-10.7 Colori fuori token: `layout/MainArea.tsx:1178` (`hover:text-red-300` → `text-error`), `Titlebar.tsx:39` (`hover:bg-red-500/80` → `bg-error`); backdrop `bg-black/40` in `GoStudioChangeSignatureDialog.tsx:72`, `GoStudioMoveSymbolDialog.tsx:68`, `layout/DropOverlay.tsx:25` → overlay standard `goStudioModal.css`; `text-white` sui bottoni accent in ~14 pannelli (`GoStudioElsewhere:33,37`, `GoStudioEmptyState:28`, `GoStudioTestsPanel:358`, `GoStudioVulnPanel:90`, `GoStudioErrorsPanel:99`, …) → `text-on-accent` (stesso lavoro di IDE-5.7: farlo una volta). `GoStudioHtmlView.tsx:46,60` (`bg-white`) voluto per l'iframe: aggiungere un commento. — **IMPLEMENTATO; NON VERIFICATO manualmente:** **parziale:** `Titlebar` e `MainArea` usano `error`, i dialoghi Change Signature e Move Symbol usano `gs-modal-backdrop`. Non fatti: `DropOverlay` (overlay volutamente scuro), `text-white` sui bottoni accent (vedi IDE-5.7), commento su `GoStudioHtmlView`.
 - [ ] GS-10.8 Split editor: `GoStudioSplitPane.tsx:49-55` `<select>` nativo `w-24` (troncato, rompe WebKitGTK); divisore `GoStudioHtmlView.tsx:43` `w-px` statico; tab bar dello split con `tabIndex=0` su ogni tab (`:35`). Fix: `ResizeHandle`, menu custom, roving tabindex.
 - [ ] GS-10.9 Larghezze salvate senza limite superiore (`stores/goide.ts:157-159`): clamp rispetto al contenitore al caricamento.
 - [ ] GS-10.10 Binding senza UI oltre a Git: `GraphSearch` (`goide_bindings.go:1417`; `GraphSearchReady` è usato) → Search Everywhere; `Collab.PreviewShare` (`collab_bindings.go:65`); `McpClient` `GetSessionStatus`.
-- [ ] GS-10.11 Welcome: `layout/WelcomePanel.tsx:34-40` (`useNow`) re-render ogni secondo con HH:MM → tick al cambio minuto; "Open project" (`:~58`) cambia solo rail su `goide`, senza recenti né picker → riusare i recenti dell'empty state di Studio.
+- [x] GS-10.11 Welcome: `layout/WelcomePanel.tsx:34-40` (`useNow`) re-render ogni secondo con HH:MM → tick al cambio minuto; "Open project" (`:~58`) cambia solo rail su `goide`, senza recenti né picker → riusare i recenti dell'empty state di Studio. — **tick già risolto** (`minuteAlignedTimeout` in `WelcomePanel.tsx`); "Open project" senza recenti/picker NON fatto.
 - [ ] GS-10.12 `.catch(() => undefined)` silenziosi: `GoStudioCommitDialog.tsx:112`, `GoStudioPrivateModules.tsx:33`, `GoStudioDebugSession.tsx:389`, `GoStudioCloseGuard.tsx:33` → stato "non disponibile" (si sovrappone a IDE-5.8).
 
 **Gate manuali aperti con più impatto** (`mds/todo-ide.md`): M24 tastiera/focus visibile (`:101`), M25 contrasto/zoom/tema (`:102`), M2/M23 processi orfani e chiusura con file sporchi, M31 finestre separate (`:87`), runtime macOS/Linux (`:129`, `:186`). Le voci 3-9 alimentano M24/M25.

@@ -1163,7 +1163,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
               </button>
               <button
                 onClick={() => executePendingClose(pendingClose, false)}
-                className="px-3 py-1.5 text-xs font-medium text-error hover:text-red-300 bg-surface-2 hover:bg-surface-3 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-error hover:text-error/80 bg-surface-2 hover:bg-surface-3 rounded-md transition-colors"
               >
                 {tr('Discard & Close')}
               </button>

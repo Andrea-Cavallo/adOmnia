@@ -66,7 +66,7 @@ export function GoStudioMoveSymbolDialog() {
     }
   }
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40" onMouseDown={(event) => { if (event.target === event.currentTarget) close() }}>
+    <div className="gs-modal-backdrop ad-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close() }}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="go-studio-move-symbol-title" className="w-[520px] max-w-[calc(100vw-32px)] rounded-lg border border-border-1 bg-surface-1 p-4 shadow-xl">
         <div className="mb-3 flex items-center gap-2">
           <FolderInput size={15} className="text-accent" />

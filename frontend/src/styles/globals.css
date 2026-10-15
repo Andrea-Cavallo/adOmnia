@@ -42,6 +42,7 @@
     --color-success: oklch(0.78 0.15 145);
     --color-warning: oklch(0.80 0.14 85);
     --color-error: oklch(0.70 0.18 25);
+    --color-danger: var(--color-error);
     --color-info: oklch(0.65 0.12 250);
 
     /* HTTP Methods */
@@ -127,6 +128,7 @@
     --color-success: oklch(0.55 0.15 145);
     --color-warning: oklch(0.60 0.14 85);
     --color-error: oklch(0.50 0.18 25);
+    --color-danger: var(--color-error);
     --color-info: oklch(0.48 0.12 250);
 
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);

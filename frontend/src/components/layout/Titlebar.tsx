@@ -36,7 +36,7 @@ export function WindowControls({ height = 'h-8' }: { height?: string }) {
     <div data-window-controls className={`flex ${height} shrink-0 items-stretch`} style={NO_DRAG}>
       <button type="button" onClick={onMinimise} aria-label={tr('Minimize window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MinusIcon /></button>
       <button type="button" onClick={onMaximise} aria-label={tr('Maximize or restore window')} className={`${button} hover:bg-surface-3 hover:text-text-1`} style={NO_DRAG}><MaxIcon /></button>
-      <button type="button" onClick={onClose} aria-label={tr('Close window')} className={`${button} hover:bg-red-500/80 hover:text-white`} style={NO_DRAG}><CloseIcon /></button>
+      <button type="button" onClick={onClose} aria-label={tr('Close window')} className={`${button} hover:bg-error/80 hover:text-white`} style={NO_DRAG}><CloseIcon /></button>
     </div>
   )
 }

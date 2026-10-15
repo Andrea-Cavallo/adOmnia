@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ArrowRightToLine, Columns2, Lock, Pin, RotateCcw, Rows2, SquareDashed, Trash2, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -50,6 +50,20 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
   const selectDocument = useGoIDEStore((state) => state.selectDocument)
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
   const ordered = useMemo(() => orderTabs(documents, pinned), [documents, pinned])
+  const listRef = useRef<HTMLDivElement>(null)
+  // Con molte tab aperte quella attiva (Ctrl+Tab, Search Everywhere…) può stare fuori dalla riga visibile.
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+  }, [activeId])
+  const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    const keys: Record<string, number | undefined> = { ArrowRight: 1, ArrowLeft: -1 }
+    const current = ordered.findIndex((item) => item.document.id === activeId)
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? ordered.length - 1 : keys[event.key] === undefined ? -1 : current + (keys[event.key] as number)
+    if (next < 0 || next >= ordered.length || current < 0) return
+    event.preventDefault()
+    selectDocument(ordered[next].document.id)
+    requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus())
+  }
   const previewId = useGoIDEStore((state) => (ordered[0] ? state.previewDocumentBySession[ordered[0].document.sessionId] ?? null : null))
   const qualifiers = useMemo(() => tabQualifiers(documents), [documents])
 
@@ -82,7 +96,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
 
   return (
     <div className="flex h-10 shrink-0 items-stretch border-b border-border-1">
-    <div role="tablist" aria-label="Open files" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
+    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
       {ordered.map((item) => {
         const active = item.document.id === activeId
         const isPinned = !!pinned[item.document.id]
@@ -92,6 +106,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
             type="button"
             role="tab"
             aria-selected={active}
+            tabIndex={active ? 0 : -1}
             onClick={() => selectDocument(item.document.id)}
             // Come negli IDE JetBrains: doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
             onDoubleClick={() => useGoIDEStore.getState().toggleEditorMaximized()}

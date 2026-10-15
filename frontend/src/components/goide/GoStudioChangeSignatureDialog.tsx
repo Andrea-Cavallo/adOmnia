@@ -69,7 +69,7 @@ export function GoStudioChangeSignatureDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 pt-[12vh] backdrop-blur-[1px]" onClick={close}>
+    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" onClick={close}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Change Signature" className="w-[min(640px,84vw)] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center gap-2 border-b border-border-1 px-3">
           <PenLine size={14} className="text-accent" aria-hidden="true" />
