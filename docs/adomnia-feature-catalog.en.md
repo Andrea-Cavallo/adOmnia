@@ -23,7 +23,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | B | [Protocols & Streaming](#b-protocols--streaming) | gRPC, SOAP, WebSocket, SSE, Broker Studio | ~65 |
 | C | [Infrastructure & Simulation](#c-infrastructure--simulation) | Mock Server (+ Smart Mock), Proxy/Interceptor, Docker Lab, Load Testing | ~47 |
 | D | [Debugging & Analysis](#d-debugging--analysis) | Browser Debug (+ Discovery), HAR Viewer, Network Tools, JSON Tools, XML Tools, Power Tools, Dev Logs, Observability, Secret Scanner, PDF Editor | ~110 |
-| E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~58 |
+| E | [Local Data](#e-local-data) | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | ~62 |
 | F | [Customization & Extensibility](#f-customization--extensibility) | Themes, JavaScript plugins, Template | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
@@ -651,6 +651,10 @@ Existing `{{variable}}` references are also linked when their current environmen
 | E1.18 | **Vault Integration** | Automatically encrypts passwords and all DSNs at save time using a system-keychain master key; opaque references are resolved only in Go. Optional passphrase protection and legacy Vault references remain supported. See [connection migration](DATABASE-CONNECTIONS.md). |
 | E1.19 | **Row Counter** | Shows returned rows and affected rows. |
 | E1.20 | **Query Workspace Restore** | Restores open query tabs, active query, row limit and timeout from local storage after restart. |
+| E1.21 | **Query Console** | Collapsible panel beside the editor with query templates grouped by category (Search, Insert, Update, Delete, Aggregate, Schema & admin; Redis shows key-oriented categories) for MongoDB, PostgreSQL, MySQL, SQLite and Redis. Each template carries a Read / Write / Destructive badge; picking a table or collection precompiles it, and **Tab / Shift+Tab** walk its placeholders (choice lists offer real column names). Read templates can run directly. |
+| E1.22 | **Query Interpreter** | A plain-language line under the editor says what the query will do and flags it (no filter, multiple statements, full document replacement, unknown table/column, unindexed field), with one-click fixes (Add WHERE, Add LIMIT, Count rows, Count first, Add filter). Destructive runs ask for confirmation that explains why and, when it can be counted safely, how many rows/documents will be affected. SQL scripts run per statement (**Ctrl+Enter** the statement or selection, **Ctrl+Shift+Enter** all, stopping at the first error). The backend applies the same rules (strings and comments ignored, real `WHERE` detection). |
+| E1.23 | **Context-aware Completion** | SQL completion narrows by position (columns of the updated table after `SET`, of the target table inside `INSERT INTO t (`, columns in scope after `WHERE`/`ON`) and shows column types; MongoDB/Redis JSON completes operations, collections, sampled field names and `$` operators. Mongo fields are sampled lazily from the collection a query names, only on a live connection. |
+| E1.24 | **Saved Queries and Ask AI** | Saved queries keep a name, category and connection scope, can be renamed, filtered, pinned as personal templates and exported/imported as a file (connection ids dropped, secret-looking values redacted). **Ask AI** (only with a verified provider) turns a request into a proposed query shown as a diff with its risk; the request carries schema names and the current query, never result rows, and nothing runs until you run it. |
 
 ---
 
@@ -1090,7 +1094,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **B — Protocols & Streaming** | gRPC, SOAP, WebSocket, SSE, Broker Studio (5 broker) | 65 |
 | **C — Infrastructure & Simulation** | Mock Server (+ Smart Mock), Proxy, Docker Lab, Load Testing | 47 |
 | **D — Debugging & Analysis** | Browser Debug (+ Discovery), HAR, Network Tools, JSON Tools, XML Tools, Dev Utils, Dev Logs, Observability, Secret Scanner, PDF Editor | 110 |
-| **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 58 |
+| **E — Local Data** | Database Studio, Storage Inspector, Workspace, Vault, Document Studio | 62 |
 | **F — Customization & Extensibility** | Themes, JavaScript plugins, Template | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |

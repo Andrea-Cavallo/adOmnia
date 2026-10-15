@@ -32,3 +32,30 @@ describe('sqlCompletions', () => {
     expect(sqlCompletions('SELECT * FROM us', 16, schema)?.start).toBe(14)
   })
 })
+
+describe('contextual completion', () => {
+  const at = (q: string, explicit = true) => sqlCompletions(q, q.length, schema, explicit)?.items.map((i) => i.label) ?? []
+
+  it('offers only the updated table columns after SET', () => {
+    expect(at('UPDATE users SET ')).toEqual(['id', 'email', 'created_at'])
+    expect(at('UPDATE users SET email = 1, cr', false)).toEqual(['created_at'])
+  })
+
+  it('offers only the target table columns inside INSERT INTO t (', () => {
+    expect(at('INSERT INTO orders (')).toEqual(['id', 'user_id', 'total'])
+    expect(at('INSERT INTO orders (id, ')).toEqual(['user_id', 'total'])
+  })
+
+  it('offers columns in scope after WHERE and ON, not tables', () => {
+    expect(at('SELECT * FROM orders o JOIN users u ON o.user_id = u.id WHERE ')).toEqual(
+      expect.arrayContaining(['total', 'email']),
+    )
+    expect(at('SELECT * FROM users WHERE em', false)).toEqual(['email'])
+  })
+
+  it('shows the column type next to the suggestion', () => {
+    const types = { users: { email: 'text' } }
+    const items = sqlCompletions('SELECT * FROM users WHERE em', 28, schema, false, types)?.items
+    expect(items?.[0]).toMatchObject({ label: 'email', detail: 'users · text' })
+  })
+})

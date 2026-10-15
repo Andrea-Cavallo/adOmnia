@@ -10,9 +10,21 @@ import { useAppStore } from '@/stores/app'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { StoragePut } from '@/wailsjs/go/main/App'
 import { ConnectionsSidebar } from './ConnectionsSidebar'
-import { QueryEditor } from './QueryEditor'
+import { QueryEditor, type RunScope, type SnippetRequest } from './QueryEditor'
+import { QueryConsole } from './QueryConsole'
 import { ResultsView } from './ResultsView'
 import { sqlAliases } from './sqlComplete'
+import { countRewrite, interpret, splitStatements, type DbKind, type QueryInterpretation } from './queryInterpreter'
+import { useDbSchema } from './useDbSchema'
+import { AiQueryAssistant } from './AiQueryAssistant'
+import type { AiSchemaTable } from './aiQuerySuggest'
+import { isAICompanionAvailable } from '@/lib/aiAvailability'
+import { useSettingsStore } from '@/stores/settings'
+import {
+  SAVED_QUERIES_KEY, addSavedQuery, createSavedQuery, exportSavedQueries, filterSavedQueries, importSavedQueries,
+  mergeSavedQueries, migrateFavorites, normalizeSavedQueries, queryFamily, removeSavedQuery, renameSavedQuery, setPersonal,
+  type SavedQuery,
+} from './savedQueries'
 import { RightRail } from './RightRail'
 import { MongoWorkspace } from './mongo/MongoWorkspace'
 import { toEditable } from './mongo/bson'
@@ -55,7 +67,7 @@ export function DatabasePanel() {
   const [limit, setLimit] = useState(200)
   const [timeoutMs, setTimeoutMs] = useState(30000)
   const [history, setHistory] = useState<HistoryItem[]>([])
-  const [favorites, setFavorites] = useState<string[]>([])
+  const [saved, setSaved] = useState<SavedQuery[]>([])
   const [result, setResult] = useState<DbResult | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -75,6 +87,13 @@ export function DatabasePanel() {
   const [createObjectOpen, setCreateObjectOpen] = useState(false)
   const [createObjectName, setCreateObjectName] = useState('')
   const [createObjectError, setCreateObjectError] = useState('')
+  const [consoleOpen, setConsoleOpen] = useState(false)
+  const [consoleTarget, setConsoleTarget] = useState('')
+  const [snippetRequest, setSnippetRequest] = useState<SnippetRequest | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const aiSettings = useSettingsStore((s) => s.settings.ai)
+  const aiAvailable = isAICompanionAvailable(aiSettings)
+  const runMongoRef = useRef<(command: Record<string, unknown>) => Promise<DbResult>>(() => Promise.reject(new Error('Backend not ready')))
 
   const active = connections.find((c) => c.id === activeId) ?? connections[0] ?? blankConnection()
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]
@@ -82,15 +101,43 @@ export function DatabasePanel() {
   const isMongo = active.driver === 'mongodb'
   const isRedis = active.driver === 'redis'
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
-  const dangerous = isRedis ? isDangerousRedis(renderedQuery) : isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery)
-  const completionSchema = useMemo(
-    () => Object.fromEntries(schemaItems.map((t) => [t.name, (schemaColumns[t.name] ?? []).map((c) => c.name)])),
-    [schemaItems, schemaColumns],
+  const queryKind: DbKind | null = active.driver === 'db2' ? null : active.driver
+  const connected = statuses[active.id]?.state === 'connected'
+  const dbSchema = useDbSchema({
+    driver: active.driver, connectionId: active.id, connected, schemaItems, schemaColumns, runMongo: (command) => runMongoRef.current(command),
+  })
+  const { completionSchema } = dbSchema
+  const interpretation = useMemo(
+    () => (queryKind && renderedQuery.trim() ? interpret(queryKind, renderedQuery, dbSchema.querySchema) : null),
+    [queryKind, renderedQuery, dbSchema.querySchema],
+  )
+  // The interpreter drives the confirmation; the legacy checks stay as a floor so nothing that asked before stops asking.
+  const dangerous = interpretation?.risk === 'destructive'
+    || (isRedis ? isDangerousRedis(renderedQuery) : isMongo ? isDangerousMongo(renderedQuery) : isDangerous(renderedQuery))
+  // Names only: this is all "Ask AI" ever sends about the database.
+  const aiSchema = useMemo<AiSchemaTable[]>(() => {
+    if (isRedis) return []
+    if (isMongo) return schemaItems.map((t) => ({ name: t.name, columns: (dbSchema.jsonContext?.fields[t.name] ?? []).map((name) => ({ name })) }))
+    return schemaItems.map((t) => ({ name: t.name, columns: (schemaColumns[t.name] ?? []).map((c) => ({ name: c.name, type: c.type })) }))
+  }, [isMongo, isRedis, schemaItems, schemaColumns, dbSchema.jsonContext])
+  const visibleSaved = useMemo(
+    () => filterSavedQueries(saved, { family: queryFamily(active.driver), connectionId: active.id }),
+    [saved, active.driver, active.id],
   )
   const queryTables = useMemo(
     () => (isMongo || isRedis ? [] : [...new Set(sqlAliases(renderedQuery, completionSchema).values())]),
     [isMongo, isRedis, renderedQuery, completionSchema],
   )
+
+  // A Mongo query that names a collection samples its fields once, so completion and "unknown column" checks have data.
+  const namedCollection = isMongo ? /"collection"\s*:\s*"([^"]+)"/.exec(query)?.[1] ?? '' : ''
+  useEffect(() => { if (namedCollection) dbSchema.ensureSample(namedCollection) }, [namedCollection, dbSchema.ensureSample])
+  const consoleColumns = useMemo(() => {
+    if (!consoleTarget) return []
+    return isMongo ? (dbSchema.jsonContext?.fields[consoleTarget] ?? []) : (completionSchema[consoleTarget] ?? [])
+  }, [consoleTarget, isMongo, dbSchema.jsonContext, completionSchema])
+  useEffect(() => { if (isMongo && consoleTarget) dbSchema.ensureSample(consoleTarget) }, [isMongo, consoleTarget, dbSchema.ensureSample])
+  useEffect(() => { setConsoleTarget('') }, [active.id])
 
   // ── auto-dismiss success toast ────────────────────────────────────────────
   useEffect(() => {
@@ -102,11 +149,12 @@ export function DatabasePanel() {
   // ── load persisted state ──────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      const [rawConnections, rawHistory, rawFavorites, rawWorkspace] = await Promise.all([
+      const [rawConnections, rawHistory, rawFavorites, rawWorkspace, rawSaved] = await Promise.all([
         safeStorageGet(STORAGE_BUCKET, CONNECTIONS_KEY),
         safeStorageGet(STORAGE_BUCKET, HISTORY_KEY),
         safeStorageGet(STORAGE_BUCKET, FAVORITES_KEY),
         safeStorageGet(STORAGE_BUCKET, WORKSPACE_KEY),
+        safeStorageGet(STORAGE_BUCKET, SAVED_QUERIES_KEY),
       ])
       let nextConnections = [blankConnection()]
       let connectionsWritable = true
@@ -147,7 +195,16 @@ export function DatabasePanel() {
       setConnections(nextConnections)
       connectionDrafts.current = nextConnections
       setActiveId(nextConnections[0]?.id ?? '')
-      try { setFavorites(rawFavorites ? JSON.parse(rawFavorites) : []) } catch { setFavorites([]) }
+      // Saved queries are records now; the old bare-string favorites migrate once and stay in place for a rollback.
+      let loadedSaved: SavedQuery[] = []
+      try {
+        if (rawSaved) loadedSaved = normalizeSavedQueries(JSON.parse(rawSaved))
+        else if (rawFavorites) {
+          loadedSaved = migrateFavorites(JSON.parse(rawFavorites))
+          if (loadedSaved.length) void safeStoragePut(STORAGE_BUCKET, SAVED_QUERIES_KEY, JSON.stringify(loadedSaved))
+        }
+      } catch { loadedSaved = [] }
+      setSaved(loadedSaved)
       // migrate legacy history (string[]) → HistoryItem[]
       if (rawHistory) {
         try {
@@ -370,32 +427,63 @@ export function DatabasePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, port, connections])
 
-  const runQuery = async (explain = false, confirmed = false, analyze = false) => {
+  /** How many rows/documents a write would touch, via a read-only count; null when it cannot be told safely. */
+  const estimateImpact = async (kind: DbKind, text: string): Promise<number | null> => {
+    const rewrite = countRewrite(kind, text)
+    if (!rewrite) return null
+    try {
+      const data = await api('/database/query', { ...await queryConnection(active), query: rewrite, limit: 1, timeoutMs: Math.min(timeoutMs, 8000), explain: false, confirm: false }) as DbResult
+      return extractCount(data)
+    } catch { return null }
+  }
+
+  /** Plain-language reason for the confirmation, with the issues and the estimate when there is one. */
+  const confirmationMessage = (interp: QueryInterpretation | null, estimate: number | null): string => {
+    const unit = isMongo ? 'document' : 'row'
+    const lines = [interp?.summary ?? 'This query changes data on the selected connection.']
+    if (estimate !== null) lines.push(`It will affect ${estimate.toLocaleString()} ${unit}${estimate === 1 ? '' : 's'}.`)
+    else if (interp?.writes && interp.issues.includes('no filter')) lines.push('There is no filter, so every record is affected.')
+    const notes = (interp?.issues ?? []).filter((issue) => issue !== 'no filter')
+    if (notes.length) lines.push(`Notes: ${notes.join('; ')}.`)
+    lines.push('Continue?')
+    return lines.join('\n')
+  }
+
+  /** Asks before a destructive run; false when the user declines. */
+  const confirmRun = async (kind: DbKind | null, text: string, interp: QueryInterpretation | null, estimate = true): Promise<boolean> => {
+    const count = estimate && kind ? await estimateImpact(kind, text) : null
+    return confirm({
+      title: isMongo || isRedis ? 'Confirm write operation' : 'Confirm dangerous query',
+      message: confirmationMessage(interp, count),
+      confirmLabel: 'Run query',
+      variant: 'danger',
+    })
+  }
+
+  const runQuery = async (explain = false, confirmed = false, analyze = false, override?: string) => {
     setError('')
     const connectionError = validateConnection(active)
     if (connectionError) { setError(connectionError); return }
-    if (!renderedQuery.trim()) { setError('Write a query before running it.'); return }
+    const source = override ?? query
+    const text = override === undefined ? renderedQuery : substituteVars(override, vars)
+    if (!text.trim()) { setError('Write a query before running it.'); return }
     if (isMongo || isRedis) {
-      try { JSON.parse(renderedQuery) } catch { setError(`${isRedis ? 'Redis' : 'MongoDB'} queries must be valid JSON.`); return }
+      try { JSON.parse(text) } catch { setError(`${isRedis ? 'Redis' : 'MongoDB'} queries must be valid JSON.`); return }
     }
-    if (dangerous && !confirmed) {
-      const ok = await confirm({
-        title: isMongo || isRedis ? 'Confirm write operation' : 'Confirm dangerous query',
-        message: isRedis ? 'This Redis command changes data on the selected connection. Continue?' : isMongo
-          ? 'MongoDB write operation detected. updateMany/deleteMany change local or remote data. Continue?'
-          : 'Dangerous query detected. DROP/TRUNCATE or DELETE/UPDATE without WHERE changes data. Continue?',
-        confirmLabel: 'Run query',
-        variant: 'danger',
-      })
-      if (!ok) return
+    const interp = override === undefined ? interpretation : queryKind ? interpret(queryKind, text, dbSchema.querySchema) : null
+    const needsConfirm = override === undefined
+      ? dangerous
+      : interp?.risk === 'destructive' || (isRedis ? isDangerousRedis(text) : isMongo ? isDangerousMongo(text) : isDangerous(text))
+    if (needsConfirm && !confirmed) {
+      if (!await confirmRun(queryKind, text, interp)) return
       confirmed = true
     }
     setRunning(true)
     try {
-      const data = await api('/database/query', { ...await queryConnection(active), query: renderedQuery, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
+      const data = await api('/database/query', { ...await queryConnection(active), query: text, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
       setResult(data)
-      const item: HistoryItem = { query, ts: Date.now(), label: activeTab?.name }
-      const nextHistory = [item, ...history.filter((h) => h.query !== query)].slice(0, 50)
+      const item: HistoryItem = { query: source, ts: Date.now(), label: activeTab?.name }
+      const nextHistory = [item, ...history.filter((h) => h.query !== source)].slice(0, 50)
       setHistory(nextHistory)
       await safeStoragePut(STORAGE_BUCKET, HISTORY_KEY, JSON.stringify(nextHistory))
       setLogs([
@@ -408,6 +496,59 @@ export function DatabasePanel() {
     } finally {
       setRunning(false)
     }
+  }
+
+  /** Runs part of a SQL script: one statement/selection, or every statement in turn, stopping at the first error. */
+  const runScript = async (scope: RunScope, text: string) => {
+    if (scope !== 'all') { await runQuery(false, false, false, text); return }
+    setError('')
+    const connectionError = validateConnection(active)
+    if (connectionError) { setError(connectionError); return }
+    const statements = splitStatements(substituteVars(text, vars))
+    if (!statements.length) { setError('Write a query before running it.'); return }
+    const whole = queryKind ? interpret(queryKind, statements.join(';\n'), dbSchema.querySchema) : null
+    // Same floor as runQuery: the interpreter, the legacy checks, and every driver (db2 has no interpreter).
+    const needsConfirm = whole?.risk === 'destructive' || statements.some((statement) => isDangerous(statement))
+    // `confirm` reaches the backend only when the user actually confirmed: the server-side gate stays armed otherwise.
+    let confirmed = false
+    if (needsConfirm) {
+      if (!await confirmRun(queryKind, text, whole, false)) return
+      confirmed = true
+    }
+    setRunning(true)
+    const lines: string[] = []
+    try {
+      let last: DbResult | null = null
+      for (let i = 0; i < statements.length; i += 1) {
+        const label = `${i + 1}/${statements.length}`
+        try {
+          last = await api('/database/query', { ...await queryConnection(active), query: statements[i], limit, timeoutMs, explain: false, analyze: false, confirm: confirmed }) as DbResult
+          lines.push(`[${label}] ${last.statementType || 'query'}: ${last.columns?.length ? `${last.rows.length} rows` : `${last.rowsAffected} affected`} in ${last.durationMs} ms`)
+        } catch (e) {
+          const reason = e instanceof Error ? e.message : String(e)
+          lines.push(`[${label}] error: ${reason}`)
+          setError(`Statement ${label} failed: ${reason}`)
+          break
+        }
+      }
+      if (last) setResult(last)
+      setLogs(lines)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  /** Puts a console template in the editor, or in a new tab when the current one already has content. */
+  const insertTemplate = (body: string, newTab: boolean) => {
+    if (newTab || query.trim()) {
+      const tab = blankTab(nextQueryName(tabs), '')
+      setTabs((prev) => [...prev, tab])
+      setActiveTabId(tab.id)
+      setResult(null)
+      setError('')
+      setLogs([])
+    }
+    setSnippetRequest({ token: Date.now(), body })
   }
 
   const testConnection = async () => {
@@ -477,6 +618,7 @@ export function DatabasePanel() {
     if (!res.ok) throw new Error(text.trim() || res.statusText)
     return JSON.parse(text) as DbResult
   }, [active, port, timeoutMs])
+  runMongoRef.current = runMongo
 
   const createLocalSQLite = async () => {
     setError('')
@@ -538,18 +680,36 @@ export function DatabasePanel() {
     }
   }
 
+  const persistSaved = (next: SavedQuery[]) => {
+    setSaved(next)
+    void safeStoragePut(STORAGE_BUCKET, SAVED_QUERIES_KEY, JSON.stringify(next))
+  }
+
   const saveQuery = () => {
-    if (!query.trim() || favorites.includes(query)) { setMessage('Query already saved'); return }
-    const next = [query, ...favorites].slice(0, 30)
-    setFavorites(next)
-    void safeStoragePut(STORAGE_BUCKET, FAVORITES_KEY, JSON.stringify(next))
+    if (!query.trim() || visibleSaved.some((q) => q.query === query && !q.personal)) { setMessage('Query already saved'); return }
+    persistSaved(addSavedQuery(saved, createSavedQuery({ query, driver: active.driver, connectionId: active.id, name: activeTab?.name })))
     setMessage('Query saved to favorites')
   }
 
   const toggleFavorite = () => {
-    const next = favorites.includes(query) ? favorites.filter((f) => f !== query) : [query, ...favorites].slice(0, 30)
-    setFavorites(next)
-    void safeStoragePut(STORAGE_BUCKET, FAVORITES_KEY, JSON.stringify(next))
+    const existing = visibleSaved.find((q) => q.query === query && !q.personal)
+    if (existing) persistSaved(removeSavedQuery(saved, existing.id))
+    else if (query.trim()) persistSaved(addSavedQuery(saved, createSavedQuery({ query, driver: active.driver, connectionId: active.id })))
+  }
+
+  const exportSaved = () => {
+    download('adomnia-saved-queries.json', exportSavedQueries(saved), 'application/json')
+    setMessage('Saved queries exported (secret-looking values redacted)')
+  }
+
+  const importSaved = (text: string) => {
+    try {
+      const incoming = importSavedQueries(text)
+      persistSaved(mergeSavedQueries(saved, incoming))
+      setMessage(`${incoming.length} saved ${incoming.length === 1 ? 'query' : 'queries'} imported`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const clearHistory = () => {
@@ -635,7 +795,45 @@ export function DatabasePanel() {
       ) : (<>
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         {isMongo && <div className="flex h-9 items-center justify-end border-b border-border-1 bg-surface-1 px-3">{mongoModeSwitch}</div>}
-        <div className="flex min-h-0 flex-none flex-col [&>*]:flex-1" style={{ height: editorPane.size }}>
+        <div className="flex min-h-0 flex-none" style={{ height: editorPane.size }}>
+        {consoleOpen && (
+          <QueryConsole
+            driver={active.driver}
+            targets={schemaItems.map((item) => item.name)}
+            target={consoleTarget}
+            onTarget={setConsoleTarget}
+            columns={consoleColumns}
+            database={isMongo ? active.database : ''}
+            recent={history.map((h) => h.query)}
+            saved={visibleSaved}
+            currentQuery={query}
+            onSaveCurrent={(name, personal) => {
+              if (!query.trim()) return
+              persistSaved(addSavedQuery(saved, createSavedQuery({ query, driver: active.driver, connectionId: personal ? null : active.id, name, personal })))
+              setMessage(personal ? 'Saved as a personal template' : 'Query saved')
+            }}
+            onRenameSaved={(id, name) => persistSaved(renameSavedQuery(saved, id, name))}
+            onRemoveSaved={(id) => persistSaved(removeSavedQuery(saved, id))}
+            onTogglePersonal={(id, personal) => persistSaved(setPersonal(saved, id, personal))}
+            onExportSaved={exportSaved}
+            onImportSaved={importSaved}
+            onInsert={insertTemplate}
+            onRun={(text) => void runQuery(false, false, false, text)}
+            onPickQuery={pickQuery}
+            onClose={() => setConsoleOpen(false)}
+          />
+        )}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col [&>*]:flex-1">
+        {aiAvailable && aiOpen && queryKind && (
+          <AiQueryAssistant
+            driver={queryKind}
+            provider={aiSettings.provider}
+            currentQuery={query}
+            schema={aiSchema}
+            onInsert={(text) => { setQuery(text); setFocusToken((token) => token + 1) }}
+            onClose={() => setAiOpen(false)}
+          />
+        )}
         <QueryEditor
           tabs={tabs}
           activeTabId={activeTabId}
@@ -659,7 +857,20 @@ export function DatabasePanel() {
           canAnalyze={active.driver === 'postgres' || active.driver === 'mysql'}
           onFormat={formatQuery}
           onSave={saveQuery}
+          driver={queryKind ?? 'sqlite'}
+          interpretation={interpretation}
+          jsonContext={dbSchema.jsonContext}
+          columnTypes={dbSchema.columnTypes}
+          snippetRequest={snippetRequest}
+          onSnippetApplied={() => setSnippetRequest(null)}
+          consoleOpen={consoleOpen}
+          onToggleConsole={() => setConsoleOpen((open) => !open)}
+          aiAvailable={aiAvailable}
+          aiOpen={aiOpen}
+          onToggleAi={() => setAiOpen((open) => !open)}
+          onRunScript={(scope, text) => void runScript(scope, text)}
         />
+        </div>
         </div>
         <ResizeHandle orientation="horizontal" withLine={false} label="Drag to resize editor and results" onMouseDown={editorPane.startResize} />
         <ResultsView
@@ -667,6 +878,7 @@ export function DatabasePanel() {
           isMongo={isMongo}
           error={error}
           logs={logs}
+          limit={limit}
           onExportJson={exportJson}
           onExportCsv={exportCsv}
           onRerun={() => void runQuery(false)}
@@ -678,7 +890,7 @@ export function DatabasePanel() {
         width={rightPane.size}
         isMongo={isMongo}
         isRedis={isRedis}
-        favorites={favorites}
+        favorites={visibleSaved.filter((q) => !q.personal).map((q) => q.query)}
         history={history}
         schemaItems={schemaItems}
         schemaDb={schemaDb}

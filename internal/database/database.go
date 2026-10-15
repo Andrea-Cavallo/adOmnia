@@ -232,7 +232,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		dbWriteJSON(w, resp)
 		return
 	}
-	destructive, strict := destructiveQuery(query)
+	destructive, strict := destructiveQuery(req.Connection.Driver, query)
 	if strict && !req.Confirm {
 		http.Error(w, "dangerous query requires confirmation", http.StatusConflict)
 		return
@@ -1058,10 +1058,118 @@ func explainQuery(driver, query string, analyze bool) (string, error) {
 	}
 }
 
-func destructiveQuery(query string) (bool, bool) {
-	upper := strings.ToUpper(strings.TrimSpace(query))
-	destructive := strings.HasPrefix(upper, "DROP ") || strings.HasPrefix(upper, "DELETE ") || strings.HasPrefix(upper, "TRUNCATE ") || strings.HasPrefix(upper, "ALTER ") || strings.HasPrefix(upper, "UPDATE ")
-	strict := strings.HasPrefix(upper, "DROP ") || strings.HasPrefix(upper, "TRUNCATE ") || (strings.HasPrefix(upper, "DELETE ") && !strings.Contains(upper, " WHERE ")) || (strings.HasPrefix(upper, "UPDATE ") && !strings.Contains(upper, " WHERE "))
+var (
+	whereRe       = regexp.MustCompile(`(?i)\bwhere\b`)
+	cteWriteRe    = regexp.MustCompile(`(?i)\b(delete|update)\b`)
+	dollarQuoteRe = regexp.MustCompile(`^\$[A-Za-z_]*\$`)
+)
+
+// backslashEscapesStrings reports whether a backslash escapes the next character inside
+// a '…' literal: true for MySQL/MariaDB only. PostgreSQL (standard_conforming_strings) and
+// SQLite read it literally, so `'\'` is a complete string there.
+func backslashEscapesStrings(driver string) bool {
+	return strings.EqualFold(driver, "mysql") || strings.EqualFold(driver, "mariadb")
+}
+
+// maskSQLNonCode blanks string literals, quoted identifiers, comments and
+// dollar-quoted bodies so keyword checks never match inside them. Length is kept.
+func maskSQLNonCode(query string, backslashEscapes bool) string {
+	out := []byte(query)
+	n := len(query)
+	blank := func(from, to int) {
+		for i := from; i < to && i < n; i++ {
+			if out[i] != '\n' {
+				out[i] = ' '
+			}
+		}
+	}
+	for i := 0; i < n; {
+		c := query[i]
+		switch {
+		case c == '-' && i+1 < n && query[i+1] == '-':
+			j := i
+			for j < n && query[j] != '\n' {
+				j++
+			}
+			blank(i, j)
+			i = j
+		case c == '/' && i+1 < n && query[i+1] == '*':
+			j := strings.Index(query[i+2:], "*/")
+			if j < 0 {
+				j = n
+			} else {
+				j += i + 4
+			}
+			blank(i, j)
+			i = j
+		case c == '\'' || c == '"' || c == '`':
+			j := i + 1
+			for j < n {
+				if c == '\'' && backslashEscapes && query[j] == '\\' {
+					j += 2
+					continue
+				}
+				if query[j] == c {
+					if j+1 < n && query[j+1] == c {
+						j += 2
+						continue
+					}
+					j++
+					break
+				}
+				j++
+			}
+			blank(i, j)
+			i = j
+		case c == '$':
+			tag := dollarQuoteRe.FindString(query[i:])
+			if tag == "" {
+				i++
+				continue
+			}
+			j := strings.Index(query[i+len(tag):], tag)
+			if j < 0 {
+				j = n
+			} else {
+				j += i + 2*len(tag)
+			}
+			blank(i, j)
+			i = j
+		default:
+			i++
+		}
+	}
+	return string(out)
+}
+
+// destructiveQuery reports whether any statement of the script changes or drops
+// data (destructive) and whether it needs an explicit confirmation (strict):
+// DROP/TRUNCATE, or DELETE/UPDATE without a real WHERE clause. Strings and
+// comments are ignored, so a WHERE on its own line counts and a leading comment
+// cannot hide the statement.
+func destructiveQuery(driver, query string) (bool, bool) {
+	destructive, strict := false, false
+	for _, stmt := range strings.Split(maskSQLNonCode(query, backslashEscapesStrings(driver)), ";") {
+		fields := strings.Fields(strings.ToUpper(stmt))
+		if len(fields) == 0 {
+			continue
+		}
+		first := fields[0]
+		if first == "WITH" && cteWriteRe.MatchString(stmt) {
+			first = strings.ToUpper(cteWriteRe.FindString(stmt))
+		}
+		switch first {
+		case "DROP", "TRUNCATE":
+			destructive, strict = true, true
+		case "ALTER":
+			destructive = true
+		case "DELETE", "UPDATE":
+			destructive = true
+			if !whereRe.MatchString(stmt) {
+				strict = true
+			}
+		}
+	}
 	return destructive, strict
 }
 

@@ -1,11 +1,31 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlignLeft, ChevronDown, FilePlus2, Play, Save, Terminal, X, Zap, CheckCircle2, AlertCircle, Plus, Gauge } from 'lucide-react'
+import { AlignLeft, ChevronDown, FilePlus2, Play, Save, Terminal, X, Zap, CheckCircle2, AlertCircle, Plus, Gauge, LayoutTemplate, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   caretPosition, highlightedJson, highlightedSql, jsonValidity,
   type QueryTab,
 } from './dbShared'
-import { sqlCompletions, type SqlCompletion, type SqlCompletionItem, type SqlSchema } from './sqlComplete'
+import { sqlCompletions, type SqlColumnTypes, type SqlCompletion, type SqlCompletionItem, type SqlSchema } from './sqlComplete'
+import { jsonCompletions, type JsonCompleteContext } from './jsonComplete'
+import { activeStop, parseSnippet, renderSnippetText, type ParsedSnippet } from './snippet'
+import { splitStatements, statementAt, type DbKind, type QueryInterpretation } from './queryInterpreter'
+import { applyChip, suggestChips } from './queryChips'
+
+/** A template to expand in the editor; `token` changes on every request so the same body can be inserted twice. */
+export interface SnippetRequest {
+  token: number
+  body: string
+}
+
+/** How a Ctrl+Enter run is scoped on SQL scripts (FIX.md DB-3.2.4). */
+export type RunScope = 'selection' | 'statement' | 'all'
+
+interface SnippetSession {
+  parsed: ParsedSnippet
+  /** Current span of each tab position (index 0 = position 1), kept in step with the user's typing. */
+  spans: { start: number; end: number }[]
+  current: number
+}
 
 interface QueryEditorProps {
   tabs: QueryTab[]
@@ -32,9 +52,33 @@ interface QueryEditorProps {
   canAnalyze: boolean
   onFormat: () => void
   onSave: () => void
+  /** Driver id for the interpreter and the chips. */
+  driver: DbKind
+  /** What the query does and how risky it is, from `interpret()`; null while the editor is empty. */
+  interpretation: QueryInterpretation | null
+  /** Context for Mongo/Redis JSON completion. */
+  jsonContext: JsonCompleteContext | null
+  /** table → column → type for SQL completion details. */
+  columnTypes: SqlColumnTypes
+  snippetRequest: SnippetRequest | null
+  /** Called once the request has been expanded, so the owner can drop it. */
+  onSnippetApplied: () => void
+  consoleOpen: boolean
+  onToggleConsole: () => void
+  /** Settings has a verified AI provider: only then is "Ask AI" offered. */
+  aiAvailable: boolean
+  aiOpen: boolean
+  onToggleAi: () => void
+  /** Runs a part of the script: the selection, the statement under the caret or every statement in turn. */
+  onRunScript: (scope: RunScope, text: string) => void
 }
 
 const LINE_HEIGHT = 21
+const RISK_BADGE: Record<QueryInterpretation['risk'], { label: string; className: string }> = {
+  read: { label: 'Read', className: 'bg-success/15 text-success' },
+  write: { label: 'Write', className: 'bg-warning/15 text-warning' },
+  destructive: { label: 'Destructive', className: 'bg-error/15 text-error' },
+}
 const PAD = 12
 const KIND_STYLE: Record<SqlCompletionItem['kind'], string> = {
   table: 'text-accent',
@@ -73,26 +117,85 @@ export function QueryEditor(props: QueryEditorProps) {
     onSelectTab, onAddTab, onCloseTab, onChangeQuery, onSetLimit, onSetTimeout, onRun, onFormat, onSave, canAnalyze,
   } = props
   const isJson = isMongo || !!props.isRedis
+  const { driver, interpretation, jsonContext, columnTypes, snippetRequest, consoleOpen, onToggleConsole, onRunScript } = props
 
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const session = useRef<SnippetSession | null>(null)
   const [caret, setCaret] = useState({ line: 1, col: 1 })
   const [runMenu, setRunMenu] = useState(false)
   const [completion, setCompletion] = useState<(SqlCompletion & { caret: number }) | null>(null)
   const [selected, setSelected] = useState(0)
   const lineCount = Math.max(query.split('\n').length, 1)
   const validity = isJson ? jsonValidity(query) : null
+  const chips = suggestChips(driver, query, interpretation)
 
   useEffect(() => {
     taRef.current?.focus()
   }, [focusToken])
+
+  // A tab switch or a new connection ends any snippet in progress: its offsets belong to the old buffer.
+  useEffect(() => { session.current = null }, [activeTabId, focusToken])
 
   const updateCaret = () => {
     const el = taRef.current
     if (el) setCaret(caretPosition(query, el.selectionStart))
   }
 
+  /** Moves the selection to a tab position of the running snippet; ends the snippet past the last one. */
+  const goToStop = (position: number) => {
+    const s = session.current
+    const el = taRef.current
+    if (!s || !el) return
+    if (position < 1 || position > s.spans.length) { session.current = null; setCompletion(null); return }
+    s.current = position
+    const span = s.spans[position - 1]
+    const stop = activeStop(s.parsed, position)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(span.start, span.end)
+      updateCaret()
+      if (stop?.choices && stop.choices.length > 1) {
+        setCompletion({ start: span.start, prefix: '', caret: span.end, items: stop.choices.map((label) => ({ label, kind: 'keyword' as const })) })
+        setSelected(0)
+      } else {
+        setCompletion(null)
+      }
+    })
+  }
+
+  // Expands a console template: the buffer gets the default text, then Tab walks the stops.
+  useEffect(() => {
+    if (!snippetRequest) return
+    const parsed = parseSnippet(snippetRequest.body)
+    const text = renderSnippetText(parsed, {})
+    const spans = Array.from({ length: parsed.stops }, (_, i) => activeStop(parsed, i + 1) ?? { start: text.length, end: text.length })
+    onChangeQuery(text)
+    session.current = spans.length ? { parsed, spans, current: 1 } : null
+    if (spans.length) goToStop(1)
+    else requestAnimationFrame(() => { const el = taRef.current; if (el) { el.focus(); el.setSelectionRange(text.length, text.length) } })
+    // Consumed: a remount of the editor (for example back from the Mongo explorer) must not replay it over the user's edits.
+    props.onSnippetApplied()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snippetRequest?.token])
+
+  /** Keeps the snippet spans aligned with an edit; typing outside the active stop ends the snippet. */
+  const trackSnippetEdit = (previous: string, next: string, caretAt: number) => {
+    const s = session.current
+    if (!s) return
+    const active = s.spans[s.current - 1]
+    const delta = next.length - previous.length
+    if (!active || caretAt < active.start || caretAt > active.end + Math.max(delta, 0)) { session.current = null; return }
+    const oldEnd = active.end
+    s.spans = s.spans.map((span, i) => {
+      if (i === s.current - 1) return { start: span.start, end: Math.max(span.start, span.end + delta) }
+      return span.start >= oldEnd ? { start: span.start + delta, end: span.end + delta } : span
+    })
+  }
+
   const suggest = (value: string, caretAt: number, explicit = false) => {
-    const next = isJson ? null : sqlCompletions(value, caretAt, schema, explicit)
+    const next = isJson
+      ? (jsonContext ? jsonCompletions(value, caretAt, jsonContext, explicit) : null)
+      : sqlCompletions(value, caretAt, schema, explicit, columnTypes)
     setCompletion(next && { ...next, caret: caretAt })
     setSelected(0)
   }
@@ -102,9 +205,22 @@ export function QueryEditor(props: QueryEditorProps) {
     if (!completion || !el) return
     const next = query.slice(0, completion.start) + item.label + query.slice(completion.caret)
     const pos = completion.start + item.label.length
+    trackSnippetEdit(query, next, pos)
     onChangeQuery(next)
     setCompletion(null)
     requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = pos; el.focus(); updateCaret() })
+  }
+
+  const runFromCaret = (all: boolean) => {
+    const el = taRef.current
+    if (isJson || !el) { onRun(false); return }
+    const selection = query.slice(el.selectionStart, el.selectionEnd)
+    if (!all && selection.trim()) { onRunScript('selection', selection); return }
+    if (splitStatements(query).length < 2) { onRun(false); return }
+    if (all) { onRunScript('all', query); return }
+    const statement = statementAt(query, el.selectionStart)
+    if (statement) onRunScript('statement', statement.text)
+    else onRun(false)
   }
 
   const popupStyle = (() => {
@@ -201,6 +317,8 @@ export function QueryEditor(props: QueryEditorProps) {
         <ToolButton icon={<Zap size={12} />} label="Explain" onClick={() => onRun(true)} disabled={running || isJson} />
         {canAnalyze && <ToolButton icon={<Gauge size={12} />} label="Analyze" onClick={() => onRun(true, true)} disabled={running} />}
         <ToolButton icon={<AlignLeft size={12} />} label="Format" onClick={onFormat} />
+        <ToolButton icon={<LayoutTemplate size={12} />} label="Console" onClick={onToggleConsole} active={consoleOpen} />
+        {props.aiAvailable && <ToolButton icon={<Sparkles size={12} />} label="Ask AI" onClick={props.onToggleAi} active={props.aiOpen} />}
         <div className="ml-1 flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-text-3">
           Variables <span className="rounded bg-accent/15 px-1.5 py-px font-semibold text-accent">{varsCount}</span>
         </div>
@@ -251,9 +369,9 @@ export function QueryEditor(props: QueryEditorProps) {
           <textarea
             ref={taRef}
             value={query}
-            onChange={(e) => { onChangeQuery(e.target.value); updateCaret(); suggest(e.target.value, e.target.selectionStart) }}
+            onChange={(e) => { trackSnippetEdit(query, e.target.value, e.target.selectionStart); onChangeQuery(e.target.value); updateCaret(); suggest(e.target.value, e.target.selectionStart) }}
             onKeyUp={updateCaret}
-            onClick={() => { updateCaret(); setCompletion(null) }}
+            onClick={() => { updateCaret(); setCompletion(null); session.current = null }}
             onBlur={() => setCompletion(null)}
             onScroll={() => setCompletion((c) => c && { ...c })}
             spellCheck={false}
@@ -285,6 +403,12 @@ export function QueryEditor(props: QueryEditorProps) {
                 suggest(query, e.currentTarget.selectionStart, true)
                 return
               }
+              if (session.current && (e.key === 'Tab' || e.key === 'Escape')) {
+                e.preventDefault()
+                if (e.key === 'Escape') { session.current = null; setCompletion(null); return }
+                goToStop(session.current.current + (e.shiftKey ? -1 : 1))
+                return
+              }
               if (e.key === 'Tab') {
                 e.preventDefault()
                 const t = e.currentTarget
@@ -295,7 +419,7 @@ export function QueryEditor(props: QueryEditorProps) {
               }
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault()
-                onRun(false)
+                runFromCaret(e.shiftKey)
               }
             }}
           />
@@ -328,6 +452,29 @@ export function QueryEditor(props: QueryEditorProps) {
           )}
         </div>
       </div>
+
+      {/* ── what the query does ───────────────────────────────────────── */}
+      {interpretation && query.trim() && (
+        <div aria-live="polite" className="flex min-h-8 flex-none flex-wrap items-center gap-x-2 gap-y-1 border-t border-border-1 px-3 py-1 text-[11px]">
+          <span className={cn('flex-none rounded px-1.5 py-px text-[10px] font-semibold', RISK_BADGE[interpretation.risk].className)}>
+            {RISK_BADGE[interpretation.risk].label}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-text-2" title={interpretation.summary}>{interpretation.summary}</span>
+          {interpretation.issues.slice(0, 3).map((issue) => (
+            <span key={issue} className="flex-none rounded border border-border-2 bg-surface-2 px-1.5 py-px text-[10px] text-text-3">{issue}</span>
+          ))}
+          {chips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => { onChangeQuery(applyChip(driver, query, chip.id)); taRef.current?.focus() }}
+              className="flex-none rounded-full border border-accent/40 bg-accent/10 px-2 py-px text-[10.5px] font-medium text-accent hover:bg-accent/20"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── status bar ────────────────────────────────────────────────── */}
       <div className="flex h-7 flex-none items-center gap-2 border-t border-border-1 px-3 text-[11px]">

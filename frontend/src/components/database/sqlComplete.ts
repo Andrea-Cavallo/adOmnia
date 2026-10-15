@@ -59,7 +59,47 @@ function rank(items: SqlCompletionItem[], prefix: string): SqlCompletionItem[] {
   return [...starts, ...contains].slice(0, MAX_ITEMS)
 }
 
-export function sqlCompletions(query: string, caret: number, schema: SqlSchema, explicit = false): SqlCompletion | null {
+/** table → column → type, shown as detail next to a suggested column. */
+export type SqlColumnTypes = Record<string, Record<string, string>>
+
+function columnItems(table: string, schema: SqlSchema, types?: SqlColumnTypes, skip?: Set<string>): SqlCompletionItem[] {
+  return (schema[table] ?? [])
+    .filter((c) => !skip?.has(c.toLowerCase()))
+    .map((c) => ({ label: c, kind: 'column' as const, detail: types?.[table]?.[c] ? `${table} · ${types[table][c]}` : table }))
+}
+
+/**
+ * Statement-aware narrowing (FIX.md DB-3.1.6): after `UPDATE x SET` only x's columns,
+ * inside `INSERT INTO t (` only t's columns, after WHERE/ON/HAVING only columns in scope.
+ * Returns null when the caret is not in one of those positions.
+ */
+function contextualColumns(query: string, before: string, schema: SqlSchema, types?: SqlColumnTypes): { items: SqlCompletionItem[]; operators: boolean } | null {
+  const known = new Map(Object.keys(schema).map((t) => [t.toLowerCase(), t]))
+  const statement = before.slice(before.lastIndexOf(';') + 1)
+
+  const insert = /\bINSERT\s+INTO\s+[`"]?([\w$]+)[`"]?\s*\(([^)]*)$/i.exec(statement)
+  if (insert) {
+    const table = known.get(insert[1].toLowerCase())
+    if (!table) return null
+    const used = new Set(insert[2].split(',').map((c) => c.trim().replace(/[`"]/g, '').toLowerCase()).filter(Boolean))
+    return { items: columnItems(table, schema, types, used), operators: false }
+  }
+
+  const update = /\bUPDATE\s+[`"]?([\w$]+)[`"]?(?:\s+(?:AS\s+)?[\w$]+)?\s+SET\b([\s\S]*)$/i.exec(statement)
+  if (update && !/\bWHERE\b/i.test(update[2]) && /(^|,)\s*[\w$]*$/.test(update[2])) {
+    const table = known.get(update[1].toLowerCase())
+    return table ? { items: columnItems(table, schema, types), operators: false } : null
+  }
+
+  if (/\b(?:WHERE|ON|HAVING|AND|OR)\s+(?:[^;]*?[\s(,=<>!+*/-])?[\w$]*$/i.test(statement) || /\b(?:GROUP|ORDER)\s+BY\s+(?:[^;]*,\s*)?[\w$]*$/i.test(statement)) {
+    const scope = [...new Set(sqlAliases(query, schema).values())]
+    if (!scope.length) return null
+    return { items: scope.flatMap((t) => columnItems(t, schema, types)), operators: true }
+  }
+  return null
+}
+
+export function sqlCompletions(query: string, caret: number, schema: SqlSchema, explicit = false, types?: SqlColumnTypes): SqlCompletion | null {
   const before = query.slice(0, caret)
   // ponytail: no tokenizer, so completion is suppressed only inside an unterminated '…' string or -- comment on this line.
   const line = before.slice(before.lastIndexOf('\n') + 1)
@@ -70,7 +110,7 @@ export function sqlCompletions(query: string, caret: number, schema: SqlSchema, 
     const table = sqlAliases(query, schema).get(qualified[1].toLowerCase())
       ?? Object.keys(schema).find((t) => t.toLowerCase() === qualified[1].toLowerCase())
     if (!table) return null
-    const items = rank((schema[table] ?? []).map((c) => ({ label: c, kind: 'column' as const, detail: table })), qualified[2])
+    const items = rank(columnItems(table, schema, types), qualified[2])
     return items.length ? { start: caret - qualified[2].length, prefix: qualified[2], items } : null
   }
 
@@ -81,11 +121,17 @@ export function sqlCompletions(query: string, caret: number, schema: SqlSchema, 
   const keywords = SQL_COMPLETION_KEYWORDS.map((k) => ({ label: k, kind: 'keyword' as const }))
 
   let candidates: SqlCompletionItem[]
-  if (TABLE_CONTEXT.test(before.slice(0, start))) {
+  const tableContext = TABLE_CONTEXT.test(before.slice(0, start))
+  const narrowed = tableContext ? null : contextualColumns(query, before.slice(0, start), schema, types)
+  if (tableContext) {
     candidates = tables
+  } else if (narrowed) {
+    candidates = narrowed.operators
+      ? [...narrowed.items, ...keywords.filter((k) => /^(AND|OR|NOT|NULL|IS NULL|IS NOT NULL|LIKE|IN|BETWEEN|ASC|DESC)$/.test(k.label))]
+      : narrowed.items
   } else {
     const inScope = [...new Set(sqlAliases(query, schema).values())]
-    const columns = inScope.flatMap((t) => schema[t].map((c) => ({ label: c, kind: 'column' as const, detail: t })))
+    const columns = inScope.flatMap((t) => columnItems(t, schema, types))
     candidates = [...columns, ...tables, ...keywords]
   }
   const items = rank(candidates, word)
