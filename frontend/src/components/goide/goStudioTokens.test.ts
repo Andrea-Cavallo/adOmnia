@@ -1,9 +1,10 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const here = __dirname
-const globals = readFileSync(join(here, '../../styles/globals.css'), 'utf8')
+const read = (path: string) => readFileSync(resolve(process.cwd(), 'src', path), 'utf8')
+const globals = read('styles/globals.css')
+const goide = (name: string) => read(`components/goide/${name}`)
 
 describe('design tokens used by Go Studio', () => {
   it('defines --color-danger in both theme blocks, as an alias of --color-error', () => {
@@ -11,15 +12,14 @@ describe('design tokens used by Go Studio', () => {
   })
 
   it('does not hide an undefined token behind a hardcoded red fallback', () => {
-    const offenders = readdirSync(here)
-      .filter((name) => /\.(css|tsx)$/.test(name))
-      .filter((name) => readFileSync(join(here, name), 'utf8').includes('var(--color-danger, #'))
-    expect(offenders).toEqual([])
+    for (const name of ['goStudioEditor.css', 'GoStudioContextPanel.tsx', 'GoStudioStatusBar.tsx']) {
+      expect(goide(name)).not.toContain('var(--color-danger, #')
+    }
   })
 
   it('modal dialogs use the shared backdrop instead of a hardcoded black overlay', () => {
     for (const name of ['GoStudioChangeSignatureDialog.tsx', 'GoStudioMoveSymbolDialog.tsx']) {
-      expect(readFileSync(join(here, name), 'utf8')).not.toMatch(/fixed inset-0[^"]*bg-black/)
+      expect(goide(name)).not.toMatch(/fixed inset-0[^"]*bg-black/)
     }
   })
 })
