@@ -30,7 +30,7 @@ Criterio d'ordine: **fiducia** (provare ciò che esiste) → **lacune reali** �
 | **P0** | Dimostrare: collaudo desktop, gate, rilascio v1 | Aperto — 8 sessioni di prova |
 | **P1** | Chiudere le lacune reali (voci “parziali” che sono lavoro vero) | Aperto — 6 blocchi |
 | **P2** | Effetti wow (vetrina e unicità) | Idee, nessuna avviata |
-| **P3** | Funzioni 2027 e Copilot Edit/Agent | Ricerca, nessun perimetro |
+| **P3** | Funzioni 2027, Copilot Edit/Agent, idee da Zed | Ricerca, nessun perimetro |
 | **P4** | Qualità continua: Definition of Done, KPI, “do not build badly” | Criteri, non bloccano il rilascio |
 
 ## 3. Regole
@@ -336,6 +336,47 @@ _Da progettare: ognuna richiede prima un perimetro e criteri verificabili. Non b
 - [ ] **Copilot — tool aggiuntivi**: debugger (Delve), API Workspace, database (read-only di default), Kafka, SOAP/gRPC, log.
 - [ ] **Copilot — governance**: context bar, context preview, audit locale dell'agent, policy per ambiente (LOCAL…PROD).
 - [ ] **Adapter JS/TS**: proposta separata, successiva alla baseline Go collaudata.
+
+## Idee prese da Zed (2026-10-15), da progettare
+
+Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le lacune sono state riverificate su `develop` il 2026-10-15. Valgono la regola di congelamento (§1) e la ricetta *Add a language/IDE feature*: quello che è generico va in `internal/ide/*` e `components/ide`, non nell'adapter Go.
+
+**Già presenti, da non rifare:** vim mode, agenti ACP (milk e Claude Code), collab Yjs, Extend Selection, sticky scroll, Structure (outline), blame, keymap GoLand, zen mode, dev container.
+
+### Z1 — AI dell'IDE affidabile (ordine consigliato: Z1.1 → Z1.2 → Z1.3)
+
+- [ ] **Z1.1 Revisione delle modifiche dell'agente.** A fine turno di milk o Claude Code si apre una vista con tutte le modifiche e accetti o rifiuti ogni hunk, ogni file o tutto. Oggi esiste solo Allow/Deny prima della scrittura. Usa lo stesso componente della voce *Copilot Edit mode* qui sopra: una sola vista di review per tutti gli agenti.
+  - *Accettazione:* l'agente cambia 3 file, ne rifiuti uno e accetti un solo hunk di un altro. Sul disco resta esattamente quello che hai accettato, e il diff Git lo conferma.
+- [ ] **Z1.2 Checkpoint dell'agente.** Ogni messaggio dell'utente salva uno snapshot dei file del progetto toccati dall'agente. *Restore checkpoint* annulla tutto quello che è successo dopo. Il punto di partenza è Local History, da riusare.
+  - *Accettazione:* dopo 3 turni ripristini il checkpoint del primo. I file tornano identici, i file creati dall'agente spariscono e quelli modificati a mano fuori dall'agente vengono segnalati, mai sovrascritti in silenzio.
+- [ ] **Z1.3 MCP server passati agli agenti ACP.** Oggi `internal/milk/manager.go` invia `mcpServers: []`. Serve un elenco unico di server MCP configurati dall'utente, passato a ogni sessione ACP. Il valore aggiunto per adOmnia è esporre come MCP locali le collection API, il mock server, Kafka e il database in sola lettura. Rispetta la AI policy di progetto e `.adomnia/aiignore`, e non avvia nessun processo senza un'azione dell'utente.
+  - *Accettazione:* Claude Code chiama una request di una collection tramite MCP e la risposta compare nella chat. Con la policy `off` il server non viene passato.
+- [ ] **Z1.4 Rules file automatici.** `AGENTS.md`, `CLAUDE.md`, `.rules` e `.cursorrules` alla radice del progetto vengono inclusi nel contesto delle azioni AI e della chat. Un indicatore mostra quali file sono inclusi, con un toggle per escluderli.
+- [ ] **Z1.5 Follow mode.** L'editor segue l'agente mentre modifica (file e riga). Il meccanismo dei cursori remoti del collab è riusabile.
+
+### Z2 — Editor e workflow
+
+- [ ] **Z2.1 Multibuffer.** È il punto di forza principale di Zed: estratti di file diversi in un solo editor modificabile. I primi consumer sono Find in Files, References, Problems del progetto e la review di Z1.1. È il lavoro più grande (modello Monaco con estratti, mappatura delle righe, salvataggio verso i file d'origine), quindi va prima uno spike.
+  - *Accettazione:* rinomini a mano 10 occorrenze in 6 file da un solo multibuffer di References. Il salvataggio scrive 6 file e l'undo funziona su tutti.
+- [ ] **Z2.2 Task leggeri con variabili** (`.adomnia/tasks.json`, condivisibile via Git). Comandi shell con `${file}`, `${line}`, `${symbol}`, `${selection}` e `${projectRoot}`, lanciabili dal command palette e dal gutter, più *Rerun last task*. Sono indipendenti dal linguaggio e affiancano le Run Configurations senza sostituirle. Anche questi avviano processi, quindi solo con `AuthorizationPermitted`.
+- [ ] **Z2.3 Inline Assistant** (Ctrl+Enter sulla selezione). Scrivi un'istruzione e ottieni il diff inline nell'editor, da accettare o scartare. Oggi le azioni AI preparano soltanto un prompt in chat.
+- [ ] **Z2.4 Messaggio di commit generato dall'AI.** Un pulsante nel Commit Dialog che riassume lo staged diff, con la stessa redazione dei segreti e le stesse policy delle azioni AI.
+- [ ] **Z2.5 Stage e unstage di singoli hunk e righe** dal gutter e dall'hunk popup.
+- [ ] **Z2.6 Settings e keymap in JSON con schema**, a livelli (utente, poi progetto `.adomnia/settings.json`) e con autocompletamento. Il keymap supporta contesti (per esempio `editor && vim.normal`). Va migrata la persistenza attuale nei loader, senza rompere nulla.
+
+### Z3 — Rifiniture di prodotto
+
+- [ ] **Z3.1 Budget di velocità esplicito.** Per esempio apertura progetto sotto 1 s e primo editor sotto 300 ms su un progetto di collaudo, misurati in locale (si collega a *Metriche locali di salute* in P2).
+- [ ] **Z3.2 Command palette** con ricerca fuzzy e ranking per uso recente, partendo dal registry di `goStudioCommands.ts`.
+- [ ] **Z3.3 Import dei temi VS Code** (JSON) nei temi adOmnia, per rafforzare le skin importabili.
+- [ ] **Z3.4 Edit prediction** (prossima modifica, non solo completamento) con un provider locale, per esempio Ollama, per restare local-first. Da valutare dopo il completamento Copilot esistente.
+
+### Da non copiare
+
+- **Rendering GPU (GPUI):** non applicabile con Wails e Monaco.
+- **Collaborazione cloud e Channels:** contro il local-first. Il collab LAN con Yjs resta l'approccio giusto.
+- **Remote development SSH con server headless:** costo alto, pochi utenti oggi.
+- **Extension WASM:** esiste già un sistema di extension, un secondo runtime sarebbe over-engineering.
 
 ---
 
