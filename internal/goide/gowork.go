@@ -195,7 +195,7 @@ func (s *Service) runGoCommands(session Session, commands [][]string) error {
 		output, err := command.CombinedOutput()
 		cancel()
 		if err != nil {
-			return fmt.Errorf("go %s: %s", strings.Join(arguments, " "), strings.TrimSpace(string(output)))
+			return fmt.Errorf("go %s: %s", strings.Join(arguments, " "), cleanToolError(output, 0))
 		}
 	}
 	return nil

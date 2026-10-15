@@ -38,7 +38,16 @@ func ListTerminalProfiles() []TerminalProfile {
 		return profiles
 	}
 	terminalProfilesMu.Unlock()
-	profiles := append(detectTerminalProfiles(), remoteTerminalProfiles()...)
+	// Le scoperte lente (WSL, Docker: fino a 3 s ciascuna se il demone non risponde) partono insieme invece che in fila.
+	var remoteProfiles []TerminalProfile
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		remoteProfiles = remoteTerminalProfiles()
+	}()
+	localProfiles := detectTerminalProfiles()
+	<-done
+	profiles := append(localProfiles, remoteProfiles...)
 	terminalProfilesMu.Lock()
 	terminalProfilesCached, terminalProfilesAt = profiles, time.Now()
 	terminalProfilesMu.Unlock()

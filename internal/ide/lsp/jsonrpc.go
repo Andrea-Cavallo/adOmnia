@@ -79,7 +79,10 @@ type Conn struct {
 	pendingLimit int
 	closed       bool
 	done         chan struct{}
-	err          error
+	// ctx vale finché la connessione è aperta: i gestori delle richieste del server lo ricevono e si fermano alla chiusura.
+	ctx    context.Context
+	cancel context.CancelFunc
+	err    error
 }
 
 // SetPendingLimit immette backpressure: oltre il limite le nuove Call falliscono
@@ -99,7 +102,10 @@ func (c *Conn) PendingRequests() int {
 
 // NewConn crea la connessione; Run deve essere avviato per leggere i messaggi.
 func NewConn(stream io.Reader, writer io.Writer, handler Handler) *Conn {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Conn{
+		ctx:     ctx,
+		cancel:  cancel,
 		reader:  bufio.NewReaderSize(stream, 64*1024),
 		writer:  writer,
 		handler: handler,
@@ -221,7 +227,7 @@ func (c *Conn) answer(message wireMessage) {
 	var result any
 	err := ErrMethodNotFound
 	if c.handler != nil {
-		result, err = c.handler.HandleRequest(context.Background(), message.Method, message.Params)
+		result, err = c.handler.HandleRequest(c.ctx, message.Method, message.Params)
 	}
 	reply := map[string]any{"jsonrpc": "2.0", "id": message.ID}
 	switch {
@@ -267,6 +273,7 @@ func (c *Conn) shutdown(cause error) {
 	for _, reply := range pending {
 		reply <- response{err: ErrClosed}
 	}
+	c.cancel()
 	close(c.done)
 }
 

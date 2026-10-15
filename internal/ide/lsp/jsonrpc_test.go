@@ -177,3 +177,44 @@ func TestConnAppliesPendingRequestLimit(t *testing.T) {
 		}
 	}
 }
+
+// blockingHandler resta in attesa finché il contesto della richiesta non viene annullato.
+type blockingHandler struct {
+	recordingHandler
+	started chan struct{}
+	stopped chan error
+}
+
+func (h *blockingHandler) HandleRequest(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+	close(h.started)
+	<-ctx.Done()
+	h.stopped <- ctx.Err()
+	return nil, ctx.Err()
+}
+
+// Alla chiusura della connessione i gestori delle richieste del server ricevono l'annullamento (IDE-5.9).
+func TestConnCancelsServerRequestHandlersOnClose(t *testing.T) {
+	clientReader, serverWriter := io.Pipe()
+	serverReader, clientWriter := io.Pipe()
+	handler := &blockingHandler{started: make(chan struct{}), stopped: make(chan error, 1)}
+	conn := NewConn(clientReader, clientWriter, handler)
+	go conn.Run()
+	t.Cleanup(func() { clientWriter.Close(); serverReader.Close() })
+	go func() { _, _ = io.Copy(io.Discard, serverReader) }()
+	server := fakeServer{reader: bufio.NewReader(serverReader), writer: serverWriter}
+	server.send(t, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "workspace/slow", "params": nil})
+	select {
+	case <-handler.started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler never started")
+	}
+	serverWriter.Close()
+	select {
+	case err := <-handler.stopped:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("handler stopped with %v, want context.Canceled", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler still running after the connection closed")
+	}
+}

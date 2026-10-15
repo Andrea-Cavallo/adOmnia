@@ -58,7 +58,7 @@ func (s *Service) CreateGist(sessionID, relativePath, description string, public
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("create gist: %s", strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("create gist: %s", cleanToolError(output, 0))
 	}
 	url := strings.TrimSpace(string(output))
 	if !strings.HasPrefix(url, "https://gist.github.com/") {

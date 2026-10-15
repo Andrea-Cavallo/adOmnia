@@ -217,7 +217,7 @@ func runGoCommand(binary, dir string, timeout time.Duration, args ...string) err
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("go %s: %s", strings.Join(args, " "), strings.TrimSpace(string(output)))
+		return fmt.Errorf("go %s: %s", strings.Join(args, " "), cleanToolError(output, 0))
 	}
 	return nil
 }

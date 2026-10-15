@@ -317,8 +317,11 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 		return Session{}, err
 	}
 	if !allowed {
+		// Revocare la fiducia ferma tutto ciò che lancia processi: anche shell e debug, come la chiusura della sessione.
 		s.processes.StopSession(session.ID)
 		s.lsp.StopSession(session.ID)
+		s.terminal.CloseSession(session.ID)
+		s.debug.StopSession(session.ID)
 	}
 	s.setTrusted(session.Project.RealPath, allowed)
 	if err := s.saveState(); err != nil {
@@ -345,6 +348,13 @@ func (s *Service) CloseSession(id string) error {
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
 	}
+	s.depGraph.invalidateSession(sessionID)
+	graphs := s.graphs()
+	graphs.mu.Lock()
+	delete(graphs.cached, id)
+	delete(graphs.building, id)
+	graphs.mu.Unlock()
+
 	s.vcsMu.Lock()
 	delete(s.vcsSelected, sessionID)
 	s.vcsMu.Unlock()
@@ -369,9 +379,8 @@ func (s *Service) CloseSession(id string) error {
 	s.tests.CloseSession(sessionID)
 	_ = s.history.ForgetSession(sessionID)
 	s.windows.forget(sessionID)
-	if err := s.recovery.ForgetSession(sessionID); err != nil {
-		return err
-	}
+	// Best-effort come history: la sessione è già rimossa, un errore qui non deve saltare viste, stato ed evento di chiusura.
+	_ = s.recovery.ForgetSession(sessionID)
 	s.viewMu.Lock()
 	delete(s.views, sessionID)
 	s.viewMu.Unlock()

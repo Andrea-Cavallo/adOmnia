@@ -8,7 +8,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**48 chiuse · 54 implementate da verificare · 121 da fare — su 223 voci.**
+**53 chiuse · 56 implementate da verificare · 114 da fare — su 223 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -16,7 +16,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | IDE-2 | 4 | 4 | 3 | 11 |
 | IDE-3 | 2 | 4 | 2 | 8 |
 | IDE-4 | 10 | 3 | 1 | 14 |
-| IDE-5 | 0 | 0 | 12 | 12 |
+| IDE-5 | 5 | 2 | 5 | 12 |
 | GS-1 | 4 | 4 | 3 | 11 |
 | GS-2 | 6 | 0 | 5 | 11 |
 | GS-3 | 9 | 0 | 3 | 12 |
@@ -266,22 +266,22 @@ Tab `GoStudioArchitecturePanel.tsx` → `PackagesView` → `Graph`. Dati: `packa
 
 Per ognuno: riprodurre, fix, test.
 
-- [ ] IDE-5.1 (S) Revocare la fiducia lascia terminali e debug vivi: `internal/goide/service.go:313-317` ferma solo `processes` e `lsp`; `CloseSession` (343-344) ferma anche `terminal` e `debug`; `docs/GO-STUDIO.md:118` promette il contrario. Fix: `terminal.CloseSession` + `debug.StopSession` alla revoca + test.
-- [ ] IDE-5.2 (S) Installazione tool senza timeout: `internal/goide/gopls.go:94-99` usa `context.Background()` per `sdkGoVersion` e `resolveCompatibleToolModule` (`@latest` in rete). Fix: `WithTimeout` ~60 s e messaggio "sei offline?".
-- [ ] IDE-5.3 (M) Salvataggio fragile su Windows, rompe i symlink: `internal/goide/documents.go:417-444` temp + `os.Rename` senza retry (antivirus/indexer/gopls → "Access denied"). Fix: retry 3-5 con backoff, scrivere attraverso il symlink verso il target, messaggio chiaro.
-- [ ] IDE-5.4 (S) `CloseSession` fallisce a metà: `service.go:364-366` se `recovery.ForgetSession` fallisce esce dopo aver rimosso la sessione; saltati `views`, `saveState`, evento `session.closed`. Fix: `ForgetSession` best-effort (log) oppure ultimo.
+- [x] IDE-5.1 (S) Revocare la fiducia lascia terminali e debug vivi: `internal/goide/service.go:313-317` ferma solo `processes` e `lsp`; `CloseSession` (343-344) ferma anche `terminal` e `debug`; `docs/GO-STUDIO.md:118` promette il contrario. Fix: `terminal.CloseSession` + `debug.StopSession` alla revoca + test. — fatto in `SetToolAuthorization`; `trust_revoke_test.go` rosso senza la riga del terminale (terminale vivo dopo la revoca), verde con.
+- [x] IDE-5.2 (S) Installazione tool senza timeout: `internal/goide/gopls.go:94-99` usa `context.Background()` per `sdkGoVersion` e `resolveCompatibleToolModule` (`@latest` in rete). Fix: `WithTimeout` ~60 s e messaggio "sei offline?". — **già coperto dal codice:** `sdkGoVersion` ha 10 s (`localGoVersionTimeout`) e `resolveCompatibleToolModule` 60 s (`toolResolveTimeout`, `toolversion.go`); resta solo il messaggio "sei offline?" (non fatto).
+- [x] IDE-5.3 (M) Salvataggio fragile su Windows, rompe i symlink: `internal/goide/documents.go:417-444` temp + `os.Rename` senza retry (antivirus/indexer/gopls → "Access denied"). Fix: retry 3-5 con backoff, scrivere attraverso il symlink verso il target, messaggio chiaro. — fatto (`replaceFile`: 5 tentativi con backoff 25 ms raddoppiato; `EvalSymlinks` prima di scrivere; messaggio "bloccato da un altro programma"). Test sui retry e sul messaggio; il test del symlink salta su Windows senza privilegio (gira su Linux/macOS).
+- [ ] IDE-5.4 (S) `CloseSession` fallisce a metà: `service.go:364-366` se `recovery.ForgetSession` fallisce esce dopo aver rimosso la sessione; saltati `views`, `saveState`, evento `session.closed`. Fix: `ForgetSession` best-effort (log) oppure ultimo. — **IMPLEMENTATO; NON VERIFICATO manualmente:** ora best-effort come `history.ForgetSession`; **nessun test** (serve un `recovery` che fallisca).
 - [ ] IDE-5.5 (M) Errori in italiano in una UI inglese (~140 su 793 `Errorf`/`errors.New` in `internal/goide`, `ide`, `languages`; es. `documents.go:412,421-441`, `service.go:75-82,327`). Fix: una lingua per gli errori utente (inglese), convertire prima quelli che arrivano ai binding.
-- [ ] IDE-5.6 (S) Output grezzo dei tool negli errori (`CombinedOutput()` non limitato: `templates.go:218-221`, `gist.go:58-61`, `shutdown_analysis.go:53`, `gowork.go:195`, `move_symbol.go:718`, `sonar.go:193,348`, `dependencygraph.go:201-212`). Fix: `cleanToolError(output, max)` (toglie ANSI, prime e ultime righe, limite).
-- [ ] IDE-5.7 (S) Bottoni IDE con `text-white` sull'accento (~17 componenti: `GoStudioArchitecturePanel.tsx:84`, `GoStudioTestsPanel.tsx:358`, `GoStudioEmptyState.tsx:28`…); `globals.css:33` ha `--color-on-accent: #000000` nel tema scuro (`#FFFFFF` riga 119). Fix: `text-on-accent`, meglio classe condivisa `.btn-accent`; `bg-white` solo in `GoStudioHtmlView` e overlay neri. (Coincide con GS-10.7: farlo una volta sola.)
+- [x] IDE-5.6 (S) Output grezzo dei tool negli errori (`CombinedOutput()` non limitato: `templates.go:218-221`, `gist.go:58-61`, `shutdown_analysis.go:53`, `gowork.go:195`, `move_symbol.go:718`, `sonar.go:193,348`, `dependencygraph.go:201-212`). Fix: `cleanToolError(output, max)` (toglie ANSI, prime e ultime righe, limite). — `internal/goide/toolerror.go` + test; usato in `templates.go`, `gist.go`, `shutdown_analysis.go`, `gowork.go`, `move_symbol.go`. Non toccati `sonar.go` (già `tailString`) e `dependencygraph.go` (già limitato in `runModuleCommand`).
+- [ ] IDE-5.7 (S) Bottoni IDE con `text-white` sull'accento (~17 componenti: `GoStudioArchitecturePanel.tsx:84`, `GoStudioTestsPanel.tsx:358`, `GoStudioEmptyState.tsx:28`…); `globals.css:33` ha `--color-on-accent: #000000` nel tema scuro (`#FFFFFF` riga 119). Fix: `text-on-accent`, meglio classe condivisa `.btn-accent`; `bg-white` solo in `GoStudioHtmlView` e overlay neri. (Coincide con GS-10.7: farlo una volta sola.) — **NON FATTO, nota:** `globals.css` ha già regole `.bg-accent.text-white → color: var(--color-on-accent)` per i tema built-in e per l'accento personalizzato (`accentPalette.ts` calcola `on-accent`). Il difetto resta sugli altri skin che non definiscono `on-accent`: da verificare a occhio prima di toccare ~200 occorrenze.
 - [ ] IDE-5.8 (M) ~40 errori ingoiati nel frontend IDE (`catch {}`, `.catch(() => {})`, `.catch(() => undefined)` in `components/goide`, `stores/goide*.ts`, `lib/goide`). Fix: silenzio solo dove best-effort voluto; il resto verso toast/console. (Si sovrappone a GS-10.12.)
-- [ ] IDE-5.9 (S) Handler richieste LSP mai annullati: `internal/ide/lsp/jsonrpc.go:173` `go c.answer(...)`, riga 206 `context.Background()`. Fix: contesto di `Conn` annullato alla chiusura e passato a `HandleRequest`.
-- [ ] IDE-5.10 (S) Lista profili terminale può bloccarsi su Docker/WSL: `terminal_profiles.go:80` (`remote.Containers`), `terminal_profiles_windows.go:31` (`remote.WSLDistributions`), 3 s ciascuno in sequenza (`remote/discover.go:17`); percorso UI sincrono non confermato. Fix: scoperta parallela, cache 30-60 s, shell locali subito.
-- [ ] IDE-5.11 (S) Watcher: oltre 4000 cartelle se ne osserva solo una parte (`internal/goide/watcher.go:22,134`; status bar `watcher.limited` `GoStudioStatusBar.tsx:109`). Fix: tooltip "Osservate N/4000…" con azione Aggiorna.
+- [x] IDE-5.9 (S) Handler richieste LSP mai annullati: `internal/ide/lsp/jsonrpc.go:173` `go c.answer(...)`, riga 206 `context.Background()`. Fix: contesto di `Conn` annullato alla chiusura e passato a `HandleRequest`. — fatto (`Conn.ctx`/`cancel`, annullato in `shutdown`); `TestConnCancelsServerRequestHandlersOnClose`.
+- [ ] IDE-5.10 (S) Lista profili terminale può bloccarsi su Docker/WSL: `terminal_profiles.go:80` (`remote.Containers`), `terminal_profiles_windows.go:31` (`remote.WSLDistributions`), 3 s ciascuno in sequenza (`remote/discover.go:17`); percorso UI sincrono non confermato. Fix: scoperta parallela, cache 30-60 s, shell locali subito. — **IMPLEMENTATO; NON VERIFICATO manualmente:** la scoperta remota (SSH/Docker) ora gira in parallelo con quella locale (WSL), peggior caso da ~6 s a ~3 s; la cache da 5 minuti esisteva già. "Shell locali subito" non fatto (richiede un'API a due fasi).
+- [ ] IDE-5.11 (S) Watcher: oltre 4000 cartelle se ne osserva solo una parte (`internal/goide/watcher.go:22,134`; status bar `watcher.limited` `GoStudioStatusBar.tsx:109`). Fix: tooltip "Osservate N/4000…" con azione Aggiorna. — **parziale:** il tooltip con N e limite esiste già (`GoStudioStatusBar.tsx:123`); manca l'azione Aggiorna.
 - [ ] IDE-5.12 (L, manuale) Gate "Real IDE" Fase 1 aperto: `mds/todo-ide.md` M1-M34 tutti non spuntati; mai eseguiti i controlli Linux/WebKitGTK e macOS. Ordine: M1, M2, M3, M6, poi M23 (chiusura con file modificati e processi vivi) e M22 (offline), dove emergerebbero 5.1-5.4.
 
 Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metodi `GoIDE` esposti hanno un wrapper frontend; finestre IDE staccate e radice con `ErrorBoundary`; `RevealPath` su Windows corretto; percorsi relativi del modello con `/` (solo il fallback in `GoStudioEditorTabs.tsx:29` può mostrare backslash).
 
-**Gate IDE-5:** [ ] Impl  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate IDE-5:** [ ] Impl — restano 5.5, 5.7, 5.8, 5.11 (azione), 5.12  [ ] Test  [ ] Manuale  [ ] Doc  [ ] Verificato da altra persona/agente
 
 ---
 

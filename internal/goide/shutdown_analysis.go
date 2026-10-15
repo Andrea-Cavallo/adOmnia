@@ -51,7 +51,7 @@ func (s *Service) interruptHelper(ctx context.Context, built executable) (string
 	command.Dir, command.Env = temp, append(append([]string(nil), built.environment...), "GO111MODULE=off")
 	configureProcess(command, false)
 	if output, err := command.CombinedOutput(); err != nil {
-		return "", &shutdownError{strings.TrimSpace(string(output))}
+		return "", &shutdownError{cleanToolError(output, 0)}
 	}
 	return path, nil
 }

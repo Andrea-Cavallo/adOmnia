@@ -717,11 +717,7 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		message := strings.TrimSpace(string(output))
-		if len(message) > 1500 {
-			message = message[:1500]
-		}
-		return fmt.Errorf("lo spostamento romperebbe la compilazione, nessuna modifica applicata:\n%s", message)
+		return fmt.Errorf("lo spostamento romperebbe la compilazione, nessuna modifica applicata:\n%s", cleanToolError(output, 0))
 	}
 	return nil
 }
