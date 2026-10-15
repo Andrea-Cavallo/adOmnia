@@ -8,5 +8,6 @@ export const GO_LANGUAGE: IdeLanguageContribution = {
   name: 'Go',
   icon: 'go',
   editorLanguages: ['go'],
+  languageServer: 'gopls',
   menu: { id: 'go', label: 'Go' },
 }

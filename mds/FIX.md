@@ -8,7 +8,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**64 chiuse · 69 implementate da verificare · 80 da fare — su 213 voci.**
+**64 chiuse · 70 implementate da verificare · 79 da fare — su 213 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -26,11 +26,11 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-7 | 1 | 2 | 2 | 5 |
 | GS-8 | 1 | 1 | 2 | 4 |
 | GS-9 | 0 | 0 | 7 | 7 |
-| GS-10 | 2 | 2 | 8 | 12 |
+| GS-10 | 2 | 3 | 7 | 12 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 11 | 7 | 18 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **64** | **69** | **80** | **213** |
+| **TOTALE** | **64** | **70** | **79** | **213** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release.
@@ -522,7 +522,7 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - [x] GS-10.1 `--color-danger` mai definito come variabile CSS (solo alias Tailwind `tailwind.config.ts:55`; `globals.css` ha solo `--color-error`): 31 usi in `components/goide/goStudioEditor.css` (54, 65-66, 91-96, 111, 128, 192, …) cadono sul fallback `#ef4444` e non seguono il tema; `GoStudioContextPanel.tsx:170` senza fallback non risolve. Fix: `--color-danger: var(--color-error)` in entrambi i blocchi tema, poi togliere i fallback hex. — `--color-danger: var(--color-error)` in entrambi i blocchi di `globals.css`, tolti i 9 fallback `#ef4444`; `goStudioTokens.test.ts` lo protegge. Il `var(--color-danger, var(--color-error))` restante (4 usi) è equivalente.
 - [ ] GS-10.2 Feedback sulle azioni asincrone: errori run/test in un solo `ErrorBanner` persistente (`stores/goide.ts:1165`, `goideTests.ts:102`, `GoStudioPanel.tsx:846,939`); nessun toast IDE (successi "Coverage saved", "AI started", "Run started" muti); `GoStudioWorkspace.tsx:67` mostra `useStudioTools.error` come `<div>` senza stile. Fix: store `studioToast` in `GoStudioPanel` alimentato da `errorMessage()`; errore del workspace con `ErrorBanner`; `goideTests.ts:101-102` scrive l'errore in due store (comparso due volte): uno solo.
 - [ ] GS-10.3 Tab bar editor (`GoStudioEditorTabs.tsx:85`): la tab attiva non viene portata in vista, nessun menu "tutte le tab", nessun roving tabindex/frecce; il close (`:110`) è `<span role="button" tabIndex={-1}>` dentro `<button role="tab">` (non raggiungibile da tastiera, interattivi annidati). Fix: `scrollIntoView({inline:'nearest'})` su `activeId`, menu overflow, close come bottone fratello. — **IMPLEMENTATO; NON VERIFICATO manualmente:** **parziale:** la tab attiva viene portata in vista, frecce/Home/End cambiano tab, tabindex a rotazione (solo l'attiva è nel Tab). Non fatti: menu "tutte le tab" e il close come bottone fratello (resta `<span role="button">` dentro il tab).
-- [ ] GS-10.4 Status bar tagliata su finestre strette (`GoStudioStatusBar.tsx:99` `overflow-hidden`; destra `shrink-0` `:125-160`): Trusted/Restricted e tema escono dal bordo. Fix: Profile/Trace/Sonar/Security (`:137-148`) in un menu "Tools"; gruppo destro `overflow-x-auto`. `languageServerLabel` (`:49-56`) e titolo `:125-128` hanno "gopls" hardcoded: leggere dalla contribution del linguaggio.
+- [ ] GS-10.4 Status bar tagliata su finestre strette (`GoStudioStatusBar.tsx:99` `overflow-hidden`; destra `shrink-0` `:125-160`): Trusted/Restricted e tema escono dal bordo. Fix: Profile/Trace/Sonar/Security (`:137-148`) in un menu "Tools"; gruppo destro `overflow-x-auto`. `languageServerLabel` (`:49-56`) e titolo `:125-128` hanno "gopls" hardcoded: leggere dalla contribution del linguaggio. — **IMPLEMENTATO; NON VERIFICATO manualmente:** `GoStudioStatusBar.tsx`: il gruppo centrale scorre in orizzontale (Trusted/Restricted e tema restano sempre visibili a destra), Trace/Sonar/Security sono nel menu **Tools** (`GoStudioStatusMenu.tsx`, posizionato `fixed` per non essere ritagliato, Esc chiude), il nome del language server viene da `IdeLanguageContribution.languageServer` e non più da "gopls" fisso; il pulsante Problems ha `aria-label` con i conteggi. Test in `GoStudioStatusBar.test.tsx`.
 
 **P2**
 - [ ] GS-10.5 Albero progetto non accessibile (`GoStudioProjectTree.tsx:128-148`): `role="tree"`/`treeitem`, `aria-expanded`, roving tabindex.

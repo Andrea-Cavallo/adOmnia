@@ -15,6 +15,8 @@ export interface IdeLanguageContribution {
   icon: BrandIconSlug
   /** ID Monaco dei file serviti dal language server: i provider LSP generici si registrano su questi. */
   editorLanguages: readonly string[]
+  /** Nome del language server mostrato nella status bar (es. "gopls"). */
+  languageServer?: string
   /** Menu proprio del linguaggio nella barra dei menu. */
   menu?: { id: string; label: string }
 }

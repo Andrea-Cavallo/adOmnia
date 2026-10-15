@@ -9,7 +9,8 @@ import { useGoStudioCursorStore } from './goStudioCursor'
 import { GoStudioToolchainSwitcher } from './GoStudioToolchainSwitcher'
 import { GoStudioBreadcrumb } from './GoStudioBreadcrumb'
 import { BrandIcon } from './GoStudioFileIcon'
-import { ideLanguageForEditor } from '@/components/ide/languages'
+import { IDE_LANGUAGES, ideLanguageForEditor } from '@/components/ide/languages'
+import { GoStudioStatusMenu } from './GoStudioStatusMenu'
 import { GoStudioCopilotStatus } from './GoStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useGoIDELspStore } from '@/stores/goideLsp'
 import { useThemesStore } from '@/stores/themes'
@@ -47,12 +48,13 @@ function useWatcherStatus(sessionId: string): GoIDEWatcherStatus | null {
   return status
 }
 
-function languageServerLabel(state: string, version?: string): string {
+/** `server` comes from the language contribution (e.g. "gopls"), never hardcoded here. */
+export function languageServerLabel(state: string, server: string, version?: string): string {
   switch (state) {
-    case 'ready': return `gopls ${version ?? ''}`.trim()
-    case 'starting': return 'gopls starting…'
-    case 'crashed': return 'gopls crashed'
-    default: return 'gopls off'
+    case 'ready': return `${server} ${version ?? ''}`.trim()
+    case 'starting': return `${server} starting…`
+    case 'crashed': return `${server} crashed`
+    default: return `${server} off`
   }
 }
 
@@ -72,6 +74,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const counts = diagnosticCounts(mergedReports(reports, lint?.reports))
   const watcher = useWatcherStatus(session.id)
   const lspState = status?.state ?? 'stopped'
+  const serverName = (documentInfo && ideLanguageForEditor(documentInfo.language)?.languageServer) || IDE_LANGUAGES.find((language) => language.languageServer)?.languageServer || 'Language server'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
   const resourceMode = useGoIDELspStore((state) => state.preferences.resourceMode)
@@ -135,15 +138,17 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
           </button>
         )}
       </div>
+      {/* Centro: può scorrere in orizzontale su finestre strette; tema e fiducia restano sempre visibili a destra. */}
+      <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
-        <span className="max-w-56 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, status?.version)}</span>
+        <span className="max-w-56 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, status?.version)}</span>
       </button>
       <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
         {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}${lint.result.changedOnly ? ' in changed files' : ''}${lint.result.baselined ? ` (+${lint.result.baselined} in baseline)` : ''}` : ''}` : 'No linter'}
       </button>
-      <button type="button" onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
+      <button type="button" aria-label={`Problems: ${counts.errors} errors, ${counts.warnings} warnings`} onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
       </button>
@@ -155,20 +160,22 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
           <Flame size={12} />Go
         </button>
       )}
-      <button type="button" onClick={() => showToolWindow('trace')} title="Go trace (trace.out)" className={`${ITEM} gap-1`}>
-        <Activity size={12} />Trace
-      </button>
-      <button type="button" onClick={() => showToolWindow('sonar')} title="SonarQube (optional)" className={`${ITEM} gap-1`}>
-        <ShieldCheck size={12} />Sonar
-      </button>
-      <button type="button" onClick={() => showToolWindow('vulns')} title="Security: code scan and known vulnerabilities" className={`${ITEM} gap-1`}>
-        <ShieldAlert size={12} />Security
-      </button>
+      <GoStudioStatusMenu
+        label="Tools"
+        title="Trace, SonarQube and security scans"
+        className={`${ITEM} gap-1`}
+        items={[
+          { id: 'trace', label: 'Trace', title: 'Go trace (trace.out)', icon: <Activity size={12} />, onSelect: () => showToolWindow('trace') },
+          { id: 'sonar', label: 'Sonar', title: 'SonarQube (optional)', icon: <ShieldCheck size={12} />, onSelect: () => showToolWindow('sonar') },
+          { id: 'vulns', label: 'Security', title: 'Security: code scan and known vulnerabilities', icon: <ShieldAlert size={12} />, onSelect: () => showToolWindow('vulns') },
+        ]}
+      />
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
       <span className={`${LABEL} flex items-center gap-1`}>{documentInfo && ideLanguageForEditor(documentInfo.language) && <BrandIcon slug={ideLanguageForEditor(documentInfo.language)!.icon} size={12} />}{documentInfo?.language || (goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <GoStudioCopilotStatus className={ITEM} />
+      </div>
       <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Go Studio appearance">
         <button type="button" onClick={() => applyThemeMode('light')} aria-label="Light theme" aria-pressed={themeMode === 'light'} title="Light theme" className={`${ITEM} h-5 px-1 ${themeMode === 'light' ? 'bg-surface-3 text-accent' : ''}`}><Sun size={11} /></button>
         <button type="button" onClick={() => applyThemeMode('dark')} aria-label="Dark theme" aria-pressed={themeMode === 'dark'} title="Dark theme" className={`${ITEM} h-5 px-1 ${themeMode === 'dark' ? 'bg-surface-3 text-accent' : ''}`}><Moon size={11} /></button>
