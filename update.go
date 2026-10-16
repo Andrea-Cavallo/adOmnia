@@ -1,9 +1,13 @@
 package main
 
 import (
+	"adomnia/internal/devlog"
 	"adomnia/internal/update"
 	"path/filepath"
 	"sync"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 var updaterOnce sync.Once
@@ -23,6 +27,17 @@ func (a *App) ScheduleUpdateOnExit(enable bool) (update.State, error) {
 	return appUpdater().Schedule(enable)
 }
 func (a *App) ConfirmUpdateStartup() error { return update.ConfirmStartup(Version) }
+
+// confirmUpdateWhenWindowReady conferma un aggiornamento appena il runtime della finestra principale è
+// caricato: exe, WebView2 e frontend funzionano. Non dipende dal caricamento del workspace, che su progetti
+// grandi o con dialog all'avvio poteva superare il tempo concesso dall'helper e causare il rollback.
+func confirmUpdateWhenWindowReady(window *application.WebviewWindow) {
+	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(*application.WindowEvent) {
+		if err := update.ConfirmStartup(Version); err != nil {
+			devlog.Err("UpdateConfirm", "updated app could not confirm its startup", err, map[string]any{"version": Version})
+		}
+	})
+}
 func (a *App) OpenUpdateApplyLog() error {
 	return update.OpenApplyLog(filepath.Join(dataDir(), "adomnia", "updates"))
 }

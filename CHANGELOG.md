@@ -55,6 +55,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Fixed
 
+- **In-app update kept the old version and could leave no app behind.** The helper moved the executable away before installing the new one and deleted it before restoring the backup, so a locked file (antivirus, OneDrive, the just-closed process) could leave the folder empty. The executable is now replaced in place with an atomic rename and is never removed; the new version confirms as soon as its window runtime is ready instead of after the workspace loads, a version mismatch rolls back at once, and `apply.log` records every step. Windows CI now runs the updater tests.
+
 - Claude Code now really receives the configured MCP servers and adOmnia's built-in one: `session/new` still sent an empty `mcpServers` list.
 
 - The database backend's confirmation check for destructive SQL was easy to sidestep: a leading comment hid a `DELETE` or `DROP`, a `WHERE` on its own line was not seen, and only the first statement of a script was checked. It now ignores strings and comments, recognizes a real `WHERE`, and inspects every statement.

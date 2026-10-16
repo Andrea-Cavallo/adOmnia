@@ -40,6 +40,12 @@ func TestMain(m *testing.M) {
 		if os.Getenv("ADOMNIA_TEST_UPDATE_FAIL") == "1" {
 			os.Exit(3)
 		}
+		if os.Getenv("ADOMNIA_TEST_UPDATE_MISMATCH") == "1" {
+			// Build con versione sbagliata: rifiuta la conferma e resta aperta finché l'helper non la chiude.
+			_ = ConfirmStartup("v1.0.9")
+			time.Sleep(30 * time.Second)
+			os.Exit(0)
+		}
 		if e := ConfirmStartup("v1.1.0"); e != nil {
 			os.Exit(4)
 		}
@@ -55,8 +61,9 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		t.Skip("macOS bundle/codesign acceptance requires a packaged app")
 	}
-	for _, fail := range []bool{false, true} {
-		t.Run(map[bool]string{false: "apply", true: "rollback"}[fail], func(t *testing.T) {
+	for _, mode := range []string{"apply", "rollback", "version-mismatch"} {
+		t.Run(mode, func(t *testing.T) {
+			fail := mode != "apply"
 			root := t.TempDir()
 			stage := filepath.Join(root, "updates")
 			if e := os.Mkdir(stage, 0700); e != nil {
@@ -88,6 +95,9 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
+			oldSize := int64(len(data))
+			// Byte in coda: l'eseguibile resta avviabile ma la nuova versione si distingue dalla vecchia.
+			data = append(data, []byte("adomnia-update-fixture-v1.1.0")...)
 			var b bytes.Buffer
 			z := zip.NewWriter(&b)
 			h := &zip.FileHeader{Name: entry}
@@ -118,10 +128,17 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 			_ = os.WriteFile(planFile, raw, 0600)
 			cmd := exec.Command(helper, "--adomnia-update-helper", planFile)
 			cmd.Env = append(os.Environ(), "ADOMNIA_TEST_INSTALLED=1", "ADOMNIA_TEST_UPDATE_KEY="+base64.StdEncoding.EncodeToString(pub))
-			if fail {
+			switch mode {
+			case "rollback":
 				cmd.Env = append(cmd.Env, "ADOMNIA_TEST_UPDATE_FAIL=1")
+			case "version-mismatch":
+				cmd.Env = append(cmd.Env, "ADOMNIA_TEST_UPDATE_MISMATCH=1")
 			}
+			started := time.Now()
 			e = cmd.Run()
+			if mode == "version-mismatch" && time.Since(started) > 20*time.Second {
+				t.Fatalf("a rejected startup must roll back at once, took %s", time.Since(started))
+			}
 			_ = parent.Wait()
 			if fail && e == nil {
 				t.Fatal("failed startup accepted")
@@ -129,8 +146,12 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 			if !fail && e != nil {
 				t.Fatal(e)
 			}
-			if _, e = os.Stat(target); e != nil {
+			info, e := os.Stat(target)
+			if e != nil {
 				t.Fatal("app lost after update", e)
+			}
+			if want := map[bool]int64{false: int64(len(data)), true: oldSize}[fail]; info.Size() != want {
+				t.Fatalf("installed app has %d bytes, want %d (%s)", info.Size(), want, map[bool]string{false: "new version", true: "old version restored"}[fail])
 			}
 			if _, e = os.Stat(target + ".adomnia-previous"); !os.IsNotExist(e) {
 				t.Fatal("backup was not finalized/restored")

@@ -85,6 +85,10 @@ jobs:
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
         run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
 
+      - name: Updater on Windows
+        # Swap reale dell'exe (rename sopra il file appena chiuso), rollback e conferma d'avvio su NTFS.
+        run: go test ./internal/update/ -count=1
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 

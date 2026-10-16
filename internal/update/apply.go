@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,10 +29,14 @@ type applyPlan struct {
 	Backup     string `json:"backup"`
 }
 
+// fileReleaseTimeout: quanto attendere che Windows o un antivirus rilascino un file (variabile per i test).
+var fileReleaseTimeout = 10 * time.Second
+
 const (
 	parentExitTimeout    = 2 * time.Minute
 	userDataReleaseDelay = 2 * time.Second
-	fileReleaseTimeout   = 10 * time.Second
+	// startupConfirmTimeout: la nuova versione deve aprire la finestra entro questo tempo, altrimenti rollback.
+	startupConfirmTimeout = 90 * time.Second
 )
 
 func installTarget(exe string) (string, string, error) {
@@ -218,6 +223,7 @@ func RunHelper(planPath, current string) (result error) {
 	defer func() {
 		failurePath := filepath.Join(root, "failed-update.json")
 		if result != nil {
+			logf("update not applied: %v", result)
 			raw, _ := json.Marshal(map[string]string{"version": p.Version, "error": result.Error()})
 			_ = os.WriteFile(failurePath, raw, 0600)
 		} else {
@@ -244,6 +250,7 @@ func RunHelper(planPath, current string) (result error) {
 		return errors.New("invalid update destination")
 	}
 	restartAllowed = true
+	logf("updating %s from %s to %s", p.Target, current, p.Version)
 	raw, err = os.ReadFile(p.Manifest)
 	if err != nil {
 		return err
@@ -289,15 +296,18 @@ func RunHelper(planPath, current string) (result error) {
 			return errors.New("macOS bundle signature rejected")
 		}
 	}
+	logf("package verified, waiting for adOmnia (pid %d) to close", p.Parent)
 	if err = waitForParent(p.Parent, parentExitTimeout); err != nil {
 		return err
 	}
 	if err = waitForUserDataRelease(p.UserData); err != nil {
 		return err
 	}
+	logf("adOmnia closed and its data folder is free")
 	backup := p.Backup
 	if _, statErr := os.Stat(backup); statErr == nil {
 		if _, targetErr := os.Stat(p.Target); os.IsNotExist(targetErr) {
+			logf("previous run left no app at %s: restoring it from the backup", p.Target)
 			if err = movePath(backup, p.Target); err != nil {
 				return fmt.Errorf("cannot restore the previous installation backup: %w", err)
 			}
@@ -305,43 +315,58 @@ func RunHelper(planPath, current string) (result error) {
 			return fmt.Errorf("cannot clear a stale update backup: %w", err)
 		}
 	}
-	if err = movePath(p.Target, backup); err != nil {
+	swap := newInstallSwap(p.Target, backup)
+	if err = swap.backup(); err != nil {
 		return err
 	}
-	rollback := func() error {
-		if err := removeWithRetry(p.Target, fileReleaseTimeout); err != nil {
-			return fmt.Errorf("cannot remove failed update; previous app retained at %s: %w", backup, err)
+	logf("backup of the installed app ready")
+	rollback := func(reason string) error {
+		logf("rolling back: %s", reason)
+		if err := swap.restore(); err != nil {
+			logf("rollback failed: %v", err)
+			return err
 		}
-		if err := movePath(backup, p.Target); err != nil {
-			return fmt.Errorf("cannot restore previous app at %s: %w", backup, err)
-		}
+		logf("previous version restored at %s", p.Target)
 		if err := startDesktop(p.Executable, nil); err != nil {
 			return fmt.Errorf("previous version restored but could not restart: %w", err)
 		}
 		relaunched = true
 		return nil
 	}
-	if err = movePath(source, p.Target); err != nil {
-		if restoreErr := rollback(); restoreErr != nil {
+	if err = swap.install(source); err != nil {
+		if restoreErr := rollback("install failed: " + err.Error()); restoreErr != nil {
 			return restoreErr
 		}
 		return err
 	}
+	logf("v%s installed at %s", strings.TrimPrefix(p.Version, "v"), p.Target)
 	marker := p.Archive + ".started"
 	_ = os.Remove(marker)
+	_ = os.Remove(marker + rejectedSuffix)
 	cmd := newDesktopCommand(p.Executable)
 	cmd.Env = append(os.Environ(), "ADOMNIA_UPDATE_CONFIRM="+marker, "ADOMNIA_UPDATE_VERSION="+p.Version)
 	if err = cmd.Start(); err != nil {
-		if restoreErr := rollback(); restoreErr != nil {
+		if restoreErr := rollback("cannot start the new version: " + err.Error()); restoreErr != nil {
 			return restoreErr
 		}
 		return err
 	}
+	logf("new version started (pid %d), waiting up to %s for its window", cmd.Process.Pid, startupConfirmTimeout)
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	for deadline := time.Now().Add(90 * time.Second); time.Now().Before(deadline); {
+	for deadline := time.Now().Add(startupConfirmTimeout); time.Now().Before(deadline); {
+		if reason, readErr := os.ReadFile(marker + rejectedSuffix); readErr == nil {
+			_ = cmd.Process.Kill()
+			<-done
+			_ = os.Remove(marker + rejectedSuffix)
+			if restoreErr := rollback(string(reason)); restoreErr != nil {
+				return restoreErr
+			}
+			return fmt.Errorf("Updated app rejected its startup (%s); restored previous version", reason)
+		}
 		if _, err = os.Stat(marker); err == nil {
-			_ = os.RemoveAll(backup)
+			logf("new version confirmed its startup")
+			swap.finish()
 			_ = os.Remove(p.Archive)
 			_ = os.Remove(p.Manifest)
 			_ = os.Remove(marker)
@@ -349,8 +374,8 @@ func RunHelper(planPath, current string) (result error) {
 			return nil
 		}
 		select {
-		case <-done:
-			if restoreErr := rollback(); restoreErr != nil {
+		case exitErr := <-done:
+			if restoreErr := rollback(fmt.Sprintf("the new version exited before opening its window (%v)", exitStatus(exitErr))); restoreErr != nil {
 				return restoreErr
 			}
 			return errors.New("Updated app exited before startup confirmation; restored previous version")
@@ -361,10 +386,23 @@ func RunHelper(planPath, current string) (result error) {
 	// wait for file handles to close, then restore the old executable/bundle.
 	_ = cmd.Process.Kill()
 	<-done
-	if restoreErr := rollback(); restoreErr != nil {
+	if restoreErr := rollback("the new version did not open its window in time"); restoreErr != nil {
 		return restoreErr
 	}
 	return errors.New("Updated app did not confirm startup; restored previous version")
+}
+
+// exitStatus descrive come è terminato un processo, per il log.
+func exitStatus(err error) string {
+	if err == nil {
+		return "exit code 0"
+	}
+	return err.Error()
+}
+
+// logf scrive un passo dell'helper su stderr, che StartScheduled redirige in apply.log.
+func logf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "%s %s\n", time.Now().Format("15:04:05.000"), fmt.Sprintf(format, args...))
 }
 
 func platformAsset(manifest Manifest) (Asset, error) {
@@ -429,7 +467,7 @@ func movePath(src, dst string) error {
 	deadline := time.Now().Add(fileReleaseTimeout)
 	var renameErr error
 	for {
-		renameErr = os.Rename(src, dst)
+		renameErr = renameFile(src, dst)
 		if renameErr == nil {
 			return nil
 		}
@@ -464,17 +502,30 @@ func movePath(src, dst string) error {
 	}
 	return os.RemoveAll(src)
 }
+
+// rejectedSuffix: file accanto al marker in cui la nuova versione spiega perché rifiuta l'avvio.
+const rejectedSuffix = ".rejected"
+
+// confirmMu serializza le conferme: arrivano sia dal backend (runtime della finestra pronto) sia dal frontend.
+var confirmMu sync.Mutex
+
+// ConfirmStartup scrive il marker atteso dall'helper. È idempotente: dopo la prima conferma non fa nulla.
 func ConfirmStartup(current string) error {
+	confirmMu.Lock()
+	defer confirmMu.Unlock()
 	marker := os.Getenv("ADOMNIA_UPDATE_CONFIRM")
 	version := os.Getenv("ADOMNIA_UPDATE_VERSION")
 	if marker == "" {
 		return nil
 	}
-	if normalizeVersion(current) != normalizeVersion(version) {
-		return fmt.Errorf("updated build version does not match release")
-	}
 	if !filepath.IsAbs(marker) || !strings.HasSuffix(marker, ".zip.started") {
 		return errors.New("invalid startup marker")
+	}
+	if normalizeVersion(current) != normalizeVersion(version) {
+		// L'helper legge il motivo e ripristina subito, invece di attendere il timeout.
+		reason := fmt.Sprintf("the installed build reports version %s but the release is %s", current, version)
+		_ = os.WriteFile(marker+rejectedSuffix, []byte(reason), 0600)
+		return errors.New("updated build version does not match release: " + reason)
 	}
 	if err := os.WriteFile(marker, []byte(current), 0600); err != nil {
 		return err

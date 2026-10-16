@@ -9,11 +9,11 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**68 chiuse · 99 implementate da verificare · 56 da fare - su 223 voci.**
+**68 chiuse · 104 implementate da verificare · 56 da fare - su 228 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
-| IDE-1 | 3 | 8 | 3 | 14 |
+| IDE-1 | 3 | 13 | 3 | 19 |
 | IDE-2 | 4 | 4 | 3 | 11 |
 | IDE-3 | 2 | 4 | 2 | 8 |
 | IDE-4 | 10 | 3 | 1 | 14 |
@@ -32,7 +32,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **68** | **99** | **56** | **223** |
+| **TOTALE** | **68** | **104** | **56** | **228** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -149,6 +149,14 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 
 **Sintomo.** Dopo "Salva e riavvia" l'exe sul Desktop è ancora 1.0.0 e il processo risulta vivo ma senza finestra.
 
+**Ancora presente il 2026-10-16** (segnalazione utente, dopo i fix 1.1–1.9): l'update sembra scaricarsi e applicarsi, ma l'exe resta alla stessa versione e a volte **sparisce**, così l'app non si apre più.
+
+**Cause trovate leggendo il codice (2026-10-16).**
+- Lo swap spostava l'exe fuori dalla cartella prima di installare il nuovo, e il rollback **cancellava** l'exe prima di ripristinare il backup (`apply.go`, `movePath`/`removeWithRetry`): se il ripristino falliva (antivirus, OneDrive sul Desktop, immagine del processo appena chiuso) la cartella restava senza app. Il blocco `defer` ritentava lo stesso spostamento.
+- La conferma d'avvio arrivava solo dal frontend dopo l'idratazione del workspace, il doppio `requestAnimationFrame` e un import lazy (`App.tsx`, `stores/updater.ts`): qualsiasi ritardo oltre 90 s faceva scattare il rollback alla versione vecchia.
+- Una build con versione diversa dal manifest rifiutava la conferma senza dirlo all'helper: rollback solo dopo il timeout, con un messaggio fuorviante.
+- `apply.log` conteneva solo l'errore finale; la CI Windows non eseguiva i test dell'updater.
+
 **Causa radice (probabile, da confermare).** L'helper rilancia l'app GUI con lo stesso helper dei processi in background, che la nasconde.
 - `internal/update/apply.go:269` rilancia con `process.Configure(cmd, false)`; stessa chiamata a `:250` (rollback) e `:114` (helper).
 - `internal/ide/process/adapter_windows.go:23`: `interactive=false` → `HideWindow: true` + `CREATE_NO_WINDOW`; `SW_HIDE` si applica alla prima `ShowWindow` del figlio → finestra principale nascosta.
@@ -170,6 +178,11 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 - [ ] IDE-1.8 `.adomnia-update-*` e `.adomnia-previous` creati accanto all'exe (es. Desktop): serve permesso di scrittura, residui dopo crash; un backup residuo blocca gli update successivi (`apply.go:70`, `:236`) con messaggio vago. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** stage e backup sono nella cache privata, con recupero del backup residuo.
 - [ ] IDE-1.9 Se l'helper fallisce prima dello swap (checksum, `waitForParent`, backup esistente) l'app vecchia non viene rilanciata: rilanciarla sempre. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** con pacchetto firmato corrotto.
 - [x] IDE-1.10 Asset scelto non verificato (`apply.go:199-204`): un asset vuoto cade in un errore di checksum; validarlo. — test per asset mancante e non valido.
+- [ ] IDE-1.11 L'exe non viene mai rimosso: backup = copia privata, il nuovo exe viene copiato accanto (`.adomnia.exe.update`) e rinominato sopra il vecchio (`MoveFileEx` con replace), con retry 10 s; se fallisce resta il vecchio. Rollback con lo stesso meccanismo. Il bundle macOS resta con lo spostamento. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/update/swap.go` (`fileSwap`, `bundleSwap`). Test: `swap_test.go` (rename bloccato in install e in rollback: l'app resta sempre presente), `TestNativeHelperApplyAndRollback` ora controlla che l'exe installato sia davvero il nuovo e che il rollback rimetta il vecchio.
+- [ ] IDE-1.12 Conferma d'avvio dal backend appena il runtime della finestra principale è pronto (`events.Common.WindowRuntimeReady`, `update.go` `confirmUpdateWhenWindowReady`), indipendente dal caricamento del workspace; la conferma del frontend resta (idempotente, `confirmMu`). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.**
+- [ ] IDE-1.13 Versione della build diversa dal manifest: la nuova app scrive il motivo in `<marker>.rejected` e l'helper ripristina subito. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** test `TestNativeHelperApplyAndRollback/version-mismatch`, rosso sul codice precedente (32,6 s, rollback solo all'uscita del figlio), verde ora (4,3 s).
+- [ ] IDE-1.14 `apply.log` con ogni passo e orario (versioni, attesa chiusura, cartella dati libera, backup, installazione, pid, conferma/uscita/timeout, rollback e suo esito). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.**
+- [ ] IDE-1.15 CI Windows: step "Updater on Windows" in `.github/workflows/build.yml` (`go test ./internal/update/`). — **IMPLEMENTATO; da verificare al primo run della CI su Windows.**
 
 **Test e verifica**
 - [x] IDE-1.T1 `apply_test.go` con finto figlio GUI: `STARTF_USESHOWWINDOW` assente.

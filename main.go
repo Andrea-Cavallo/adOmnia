@@ -163,6 +163,7 @@ func main() {
 		EnableFileDrop: true,
 	})
 	configureNativeWindowIcon(mainWindow)
+	confirmUpdateWhenWindowReady(mainWindow)
 	app.SetMainWindow(mainWindow)
 	goIDE.attachMainWindow(mainWindow)
 	app.attachPanelWindowsToMain(mainWindow)

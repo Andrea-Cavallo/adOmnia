@@ -36,7 +36,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 | Sezione | voci manuali | chiuse |
 |---------|-------------:|-------:|
-| IDE-1 | 11 | 0 |
+| IDE-1 | 15 | 0 |
 | IDE-2 | 7 (+6 sottovoci) | 0 |
 | IDE-3 | 5 | 0 |
 | IDE-4 | 4 | 0 |
@@ -55,7 +55,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **139** | **0** |
+| **TOTALE** | **143** | **0** |
 
 ---
 
@@ -75,6 +75,10 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **IDE-1.6** Con un update pianificato, chiudendo l'app helper e piano sono già pronti: nessuna uscita silenziosa senza installare né errore.
 - [ ] **IDE-1.8** Nessun `.adomnia-update-*`/`.adomnia-previous` accanto all'exe (es. Desktop): stage e backup nella cache privata; un backup residuo viene recuperato senza errore vago.
 - [ ] **IDE-1.9** Con un pacchetto firmato corrotto (checksum, backup esistente) l'app vecchia viene comunque rilanciata.
+- [ ] **IDE-1.11** Durante tutto l'update l'exe resta sul Desktop (mai cartella vuota), anche con Desktop su OneDrive e con l'antivirus attivo; dopo il successo l'exe è la nuova versione (Proprietà → Dettagli), dopo un rollback la vecchia. Accanto all'exe non resta `.adomnia.exe.update`.
+- [ ] **IDE-1.12** Con un workspace grande (o un dialog all'avvio) l'update viene confermato appena compare la finestra, senza rollback.
+- [ ] **IDE-1.13** Con una build 1.0.1 compilata senza `VERSION` (riporta `dev`): rollback entro pochi secondi e notifica col motivo "the installed build reports version…".
+- [ ] **IDE-1.14** `apply.log` (pulsante della notifica o `%APPDATA%\adomnia\adomnia\updates\apply.log`) mostra ogni passo con l'orario.
 
 **Verifiche manuali**
 - [ ] **IDE-1.M1** Manuale Windows: la finestra appare, esiste `<updates>/…zip.started`, exe = 1.0.1 (proprietà del file).
