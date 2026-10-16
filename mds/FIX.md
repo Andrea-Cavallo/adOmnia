@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**67 chiuse · 96 implementate da verificare · 54 da fare - su 217 voci.**
+**68 chiuse · 99 implementate da verificare · 56 da fare - su 223 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -28,10 +28,11 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-8 | 1 | 2 | 1 | 4 |
 | GS-9 | 2 | 3 | 2 | 7 |
 | GS-10 | 3 | 9 | 0 | 12 |
+| GS-11 | 1 | 3 | 2 | 6 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **67** | **96** | **54** | **217** |
+| **TOTALE** | **68** | **99** | **56** | **223** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -125,6 +126,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | GS-8 | Mermaid nell'IDE (`.mmd`/`.mermaid`) | P2 | M |
 | GS-9 | Git dentro l'IDE (tool window) | P1 | L |
 | GS-10 | Altri problemi frontend (audit) | P1-P2 | vari |
+| GS-11 | Revisione delle modifiche degli agenti AI + MCP a Claude Code | P1 | M |
 | DB-1 | Valori annidati illeggibili + schermo intero | P1 | L |
 | DB-2 | Password che sparisce + Connect persistente | P0 | L |
 | DB-3 | Console query per categoria con interprete | P2 | L |
@@ -534,6 +536,25 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 **Gate manuali aperti con più impatto** (`mds/todo-ide.md`) → elenco e passi in **`mds/MANUAL-CHECK.md`** (sezione **GS-10**): M24 tastiera/focus visibile (`:101`), M25 contrasto/zoom/tema (`:102`), M2/M23 processi orfani e chiusura con file sporchi, M31 finestre separate (`:87`), runtime macOS/Linux (`:129`, `:186`). Le voci 3-9 alimentano M24/M25.
 
 **Gate GS-10:** [ ] Impl  [ ] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-10)  [ ] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### GS-11. Revisione delle modifiche degli agenti AI (milk, Claude Code)
+
+**Contesto:** con gli strumenti MCP gli agenti cambiano più file per turno; prima esisteva solo Allow/Deny prima della scrittura, nessuna vista di cosa avevano cambiato. Piano: `mds/03-GO-STUDIO-PIANO-UNIFICATO.md` (Z1.1, Z1.3).
+
+**Fix**
+- [ ] GS-11.1 Backend della review: foto in memoria dei file di testo a inizio turno, confronto a fine turno, accetta/rifiuta per blocco, file e tutto; un blocco rifiutato si scrive solo se il file è ancora quello mostrato. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/ide/agentreview` (Tracker, limiti 20.000 file / 64 MB, cartelle `.git`, `node_modules`, `vendor`, `dist`, `target`… escluse), hook `TurnObserver` in `internal/milk/manager.go` (stesso per milk e Claude Code), binding `AgentReview`/`Accept*`/`Reject*` in `goide_agentreview_bindings.go`. Salvataggio atomico estratto in `internal/ide/fileio` (riusato da `internal/goide`). Test: `go test ./internal/ide/agentreview ./internal/ide/fileio ./internal/milk ./internal/goide`.
+- [ ] GS-11.2 UI: barra "N files changed by the agent · Review" sopra il composer della chat, dialog *Review agent changes* (file con +/−, blocchi con contesto, Accept/Reject per blocco e file, Accept all/Reject all con conferma), comando `tools.reviewAgentChanges` (*Tools → Review Agent Changes…*), anche nelle chat staccate. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `GoStudioAgentReviewBar.tsx`, `GoStudioAgentReviewDialog.tsx`, store `stores/goideAgentReview.ts`, helper `lib/goide/agentReview.ts` (riusa `goStudioLineDiff`). Test: `npx vitest run src/lib/goide/agentReview.test.ts`, `npx tsc --noEmit`, `npm run build`, `npm run check:startup`.
+- [ ] GS-11.3 Claude Code riceve davvero i server MCP: `session/new` inviava sempre `mcpServers: []` (`sessionMCPServers` mai chiamata). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/milk/manager.go` `sessionFor`.
+- [ ] GS-11.4 milk (protocollo proprio) non riceve i server MCP: verificare se `milk serve --acp` accetta `mcpServers` in `session/new` prima di inviarli (un campo sconosciuto potrebbe far fallire la sessione).
+- [ ] GS-11.5 I server MCP partono anche con la AI policy del progetto `off` o `local-only`: decidere e applicare il controllo prima di `session/new`.
+- [x] GS-11.6 Documenti: `docs/GO-STUDIO.md` (Claude Code → *Review agent changes*, MCP solo per Claude Code), `CHANGELOG.md`, `docs/adomnia-feature-catalog.en.md`, piano 03. — **FATTO (2026-10-16).**
+
+**Verifica**
+- Verifiche manuali **GS-11.M1…M3** → `mds/MANUAL-CHECK.md` (sezione **GS-11**).
+
+**Gate GS-11:** [ ] Impl  [ ] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-11)  [ ] Doc  [ ] Verificato da altra persona/agente
 
 ---
 

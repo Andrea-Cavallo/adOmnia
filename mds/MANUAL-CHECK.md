@@ -30,6 +30,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | tutti i 10 temi built-in + skin white/black mask, win95, sketch | GS-5, GS-6 |
 | database reale per driver (Mongo, Postgres, MySQL, SQLite, Redis) | DB-1, DB-2, DB-3 |
 | provider AI verificato in Settings → AI | DB-3.M5 |
+| Claude Code e milk attivi, progetto Go con Git, un server MCP configurato | GS-11 |
 
 ## Stato a colpo d'occhio
 
@@ -50,10 +51,11 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | GS-8 | 2 | 0 |
 | GS-9 | 5 | 0 |
 | GS-10 | 9 | 0 |
+| GS-11 | 6 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **133** | **0** |
+| **TOTALE** | **139** | **0** |
 
 ---
 
@@ -318,6 +320,24 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **Runtime macOS e Linux** (`todo-ide.md:129,186`) — WebKitGTK incluso.
 
 **Gate manuale GS-10:** [ ]
+
+---
+
+## GS-11 — Revisione delle modifiche degli agenti
+
+**Prerequisito:** Claude Code (e milk) attivi in un progetto Go con Git; per GS-11.3 un server MCP in *Context servers (MCP)*.
+
+**Implementate, da verificare**
+- [ ] **GS-11.1** A fine turno compaiono i file creati, modificati ed eliminati dall'agente; un file riscritto identico non compare; i turni successivi si sommano mantenendo la versione di partenza.
+- [ ] **GS-11.2** Barra sopra la chat con *Review*; dialog con elenco file, blocchi, Accept/Reject per blocco e file, Accept all/Reject all (con conferma); *Tools → Review Agent Changes…*; funziona anche nella chat staccata.
+- [ ] **GS-11.3** Claude Code vede i server MCP configurati e `adomnia` (es. chiede `collection_list_requests`).
+
+**Verifiche manuali**
+- [ ] **GS-11.M1** Chiedere a Claude Code di modificare 3 file e crearne uno; rifiutarne uno intero, accettare un solo blocco di un altro, rifiutare il file creato: su disco resta esattamente quanto accettato (confermare con il diff Git), l'editor aperto si aggiorna.
+- [ ] **GS-11.M2** Caso limite: con il dialog aperto modificare e salvare a mano lo stesso file, poi *Reject* su un blocco: niente sovrascrittura, messaggio e review aggiornata. Un file con modifiche non salvate nell'editor conserva il buffer.
+- [ ] **GS-11.M3** Skin scuro e chiaro: righe aggiunte/tolte leggibili, pulsanti coerenti con gli altri dialog; progetto oltre i limiti (es. cartella con >20.000 file) mostra l'avviso nella chat invece della review.
+
+**Gate manuale GS-11:** [ ]
 
 ---
 

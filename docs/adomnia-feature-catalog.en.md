@@ -1010,8 +1010,9 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to milk and Claude Code at every new chat session. |
+| I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code at every new chat session (milk's own protocol does not take them yet). |
 | I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). Per-agent switch to turn it off. |
+| I4.3 | **Review Agent Changes** | After a milk or Claude Code turn, the files the agent created, modified or deleted are listed above the chat and in *Tools → Review Agent Changes…*; accept or reject each change, each file or the whole turn. Rejections never overwrite a file changed after the review was shown. |
 
 ---
 

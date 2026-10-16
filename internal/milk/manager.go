@@ -79,6 +79,13 @@ type Manager struct {
 	log           []string
 	emit          Emitter
 	mcpServers    func() []MCPServer // context server condivisi, letti a ogni session/new
+	turnObserver  TurnObserver
+}
+
+// TurnObserver è avvisato prima di ogni turno di chat; la funzione restituita viene chiamata a turno finito
+// (completato, fallito o annullato). La review delle modifiche dell'agente parte da qui.
+type TurnObserver interface {
+	BeginTurn(root, agent string) (end func())
 }
 
 // NewManager crea il manager di milk; il processo parte solo con Start.
@@ -106,6 +113,23 @@ func (m *Manager) SetMCPServers(source func() []MCPServer) {
 	m.mu.Lock()
 	m.mcpServers = source
 	m.mu.Unlock()
+}
+
+// SetTurnObserver collega chi osserva l'inizio e la fine dei turni.
+func (m *Manager) SetTurnObserver(observer TurnObserver) {
+	m.mu.Lock()
+	m.turnObserver = observer
+	m.mu.Unlock()
+}
+
+func (m *Manager) beginTurn(root string) func() {
+	m.mu.Lock()
+	observer := m.turnObserver
+	m.mu.Unlock()
+	if observer == nil {
+		return func() {}
+	}
+	return observer.BeginTurn(root, m.agent.Name)
 }
 
 func (m *Manager) SetEmitter(emit Emitter) {
@@ -701,6 +725,8 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	if err != nil {
 		return PromptResponse{}, err
 	}
+	endTurn := m.beginTurn(root)
+	defer endTurn()
 	ctx, cancel := context.WithTimeout(parent, promptTimeout)
 	defer cancel()
 	var result struct {

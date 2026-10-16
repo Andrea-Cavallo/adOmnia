@@ -6,6 +6,7 @@ import (
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
 	"adomnia/internal/goidewindow"
+	"adomnia/internal/ide/agentreview"
 	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
 	"adomnia/internal/ide/run"
@@ -35,6 +36,8 @@ type GoIDE struct {
 	serviceListeners []func(goide.EventEnvelope)
 	// runtimeLock segnala ai prossimi avvii se questo si è chiuso in modo anomalo.
 	runtimeLock *goide.RuntimeLock
+	// agentReview raccoglie i file cambiati dagli agenti ACP (milk, Claude Code) per la revisione.
+	agentReview *agentreview.Tracker
 }
 
 func NewGoIDE() *GoIDE {
@@ -56,7 +59,7 @@ func NewGoIDE() *GoIDE {
 	_ = service.ConfigureRecoveryStore(goide.RecoveryBoltStore)
 	_ = service.ConfigureHistoryStore(goide.HistoryBoltStore)
 	_ = service.ConfigureSupervisorStore(goide.SupervisorBoltStore)
-	binding = &GoIDE{service: service}
+	binding = &GoIDE{service: service, agentReview: agentreview.NewTracker()}
 	// Prima del runtime lock: lo sweep dei figli orfani deve poter leggere il
 	// lock dell'istanza precedente per capire se qualcuno li possiede ancora.
 	if orphaned := goide.SweepOrphanChildren(filepath.Join(dataDir(), "goide")); len(orphaned) > 0 {
@@ -90,6 +93,7 @@ func (g *GoIDE) ProjectServices(sessionID string) ([]goide.ProjectService, error
 
 func (g *GoIDE) attachDesktop(desktop *application.App) {
 	g.desktop = desktop
+	g.agentReview.SetEmitter(func(event string, payload any) { desktop.Event.Emit(event, payload) })
 	g.windows = goidewindow.New(desktop, windowchrome.IsApp(startupWindowChrome), func(windowID string) {
 		g.service.ReleaseWindow(windowID)
 	})

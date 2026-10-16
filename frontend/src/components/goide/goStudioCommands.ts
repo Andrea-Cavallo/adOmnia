@@ -27,7 +27,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -249,6 +249,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
   { id: 'tools.claudeChat', menu: 'tools', label: 'Open Claude Code' },
+  { id: 'tools.reviewAgentChanges', menu: 'tools', label: 'Review Agent Changes…' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
   { id: 'tools.dependencyGraph', menu: 'tools', label: 'Dependency Graph…' },
   { id: 'tools.adrLinks', menu: 'tools', label: 'Architecture Decisions…' },

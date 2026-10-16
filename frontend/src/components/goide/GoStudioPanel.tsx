@@ -46,6 +46,7 @@ import { GoStudioMilkDialog } from './GoStudioMilkDialog'
 import { GoStudioClaudeDialog } from './GoStudioClaudeCode'
 import { useGoStudioCopilot } from './useGoStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
+import { useAgentReviewStore } from '@/stores/goideAgentReview'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandsForKey, isStaleEditorKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
@@ -85,6 +86,7 @@ import { GoStudioGitHistoryDialog } from './GoStudioGitHistoryDialog'
 import { GoStudioProjectServicesDialog } from './GoStudioProjectServicesDialog'
 import { runIntegrationCommand } from './goStudioIntegrationCommands'
 import { GoStudioHunkPopup } from './GoStudioHunkPopup'
+import { GoStudioAgentReviewDialog } from './GoStudioAgentReviewDialog'
 import { GoStudioBreakpointPopover } from './GoStudioBreakpointPopover'
 import { GoStudioBreakpointsDialog } from './GoStudioBreakpointsDialog'
 import { runVcsCommand, type GoStudioVcsDialog } from './goStudioVcsCommands'
@@ -869,6 +871,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
         useGoStudioAssistantStore.getState().open(pane)
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       }
+      case 'tools.reviewAgentChanges': return activeSession ? useAgentReviewStore.getState().open(activeSession.project.realPath) : undefined
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
       case 'tools.adrLinks': return setADRLinksOpen(true)
@@ -974,6 +977,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <GoStudioMilkDialog />
       <GoStudioClaudeDialog />
+      <GoStudioAgentReviewDialog />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />
       <GoStudioQualityDialog session={activeSession} open={qualityOpen} onClose={() => setQualityOpen(false)} />

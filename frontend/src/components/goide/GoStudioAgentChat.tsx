@@ -1,4 +1,5 @@
 import { ProjectRulesToggle } from './ProjectRulesToggle'
+import { GoStudioAgentReviewBar } from './GoStudioAgentReviewBar'
 import { memo, useEffect, useMemo, useRef, type ComponentType, type MouseEvent } from 'react'
 import { ChevronRight, Plus, Send, Settings2, Square } from 'lucide-react'
 import DOMPurify from 'dompurify'
@@ -215,6 +216,7 @@ export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentCha
       </div>
 
       <div className="milk-composer">
+        <GoStudioAgentReviewBar root={root} busy={busy} />
         <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label={`${name} context`}>
           <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
           <button type="button" aria-pressed={includeFile} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>

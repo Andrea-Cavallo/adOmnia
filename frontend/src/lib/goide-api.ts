@@ -1,6 +1,7 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
+import type { FileChange as AgentReviewFileModel, Review as AgentReviewModel } from '../../bindings/adomnia/internal/ide/agentreview/models'
 import type {
   WatcherStatus,
   HistoryRevision,
@@ -734,4 +735,22 @@ export async function deleteGoIDEPath(sessionId: string, relativePath: string): 
 
 export async function revealGoIDEPath(sessionId: string, relativePath: string): Promise<void> {
   return GoIDEBindings.RevealPath(sessionId, relativePath)
+}
+
+export type AgentReview = AgentReviewModel
+export type AgentReviewFile = AgentReviewFileModel
+
+/** Evento emesso dal backend quando cambia la review delle modifiche di un agente in un progetto. */
+export const AGENT_REVIEW_CHANGED_EVENT = 'agentReview.changed'
+
+export const getAgentReview = (root: string): Promise<AgentReview> => GoIDEBindings.AgentReview(root)
+export const acceptAgentFile = (root: string, path: string): Promise<void> => GoIDEBindings.AcceptAgentFile(root, path)
+export const rejectAgentFile = (root: string, path: string): Promise<void> => GoIDEBindings.RejectAgentFile(root, path)
+export const acceptAllAgentChanges = (root: string): Promise<void> => GoIDEBindings.AcceptAllAgentChanges(root)
+export const rejectAllAgentChanges = (root: string): Promise<void> => GoIDEBindings.RejectAllAgentChanges(root)
+export const acceptAgentHunks = (root: string, path: string, baseline: string): Promise<void> => GoIDEBindings.AcceptAgentHunks(root, path, baseline)
+export const rejectAgentHunks = (root: string, path: string, content: string, expected: string): Promise<void> => GoIDEBindings.RejectAgentHunks(root, path, content, expected)
+
+export function subscribeAgentReviewChanges(handler: (root: string) => void): () => void {
+  return Events.On(AGENT_REVIEW_CHANGED_EVENT, (event) => handler((event.data as { root: string }).root))
 }

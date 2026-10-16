@@ -214,6 +214,19 @@
 
 /* Composer */
 .milk-composer { flex-shrink: 0; padding: 10px; border-top: 1px solid var(--color-border-1); }
+/* Modifiche dell'agente in attesa di revisione, sopra il composer. */
+.milk-review-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 6px 8px 6px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  font-size: 12px;
+  color: var(--color-text-2);
+}
 .milk-composer textarea {
   display: block;
   width: 100%;

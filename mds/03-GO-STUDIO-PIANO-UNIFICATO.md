@@ -6,7 +6,7 @@
 >
 > **Principio chiave:** **From code to runtime, everything is connected.**
 
-Aggiornato il 2026-10-13. Questo file **unisce** il vecchio piano 2027 e il vecchio `todo-ide.md` (collaudo desktop M1–M34, gate, evidenze, Copilot). L'originale di `todo-ide.md` è conservato in `archivio/todo-ide-originale-2026-10-11.md` (solo consultazione).
+Aggiornato il 2026-10-16. Questo file **unisce** il vecchio piano 2027 e il vecchio `todo-ide.md` (collaudo desktop M1–M34, gate, evidenze, Copilot). L'originale di `todo-ide.md` è conservato in `archivio/todo-ide-originale-2026-10-11.md` (solo consultazione).
 
 ## 1. Dove siamo davvero
 
@@ -347,11 +347,14 @@ Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le la
 
 - [ ] **Z1.1 Revisione delle modifiche dell'agente.** A fine turno di milk o Claude Code si apre una vista con tutte le modifiche e accetti o rifiuti ogni hunk, ogni file o tutto. Oggi esiste solo Allow/Deny prima della scrittura. Usa lo stesso componente della voce *Copilot Edit mode* qui sopra: una sola vista di review per tutti gli agenti.
   - *Accettazione:* l'agente cambia 3 file, ne rifiuti uno e accetti un solo hunk di un altro. Sul disco resta esattamente quello che hai accettato, e il diff Git lo conferma.
+  - *Parziale (2026-10-16):* codice presente. `internal/ide/agentreview` (baseline in memoria a inizio turno, confronto a fine turno, accetta/rifiuta per blocco, file e tutto, scrittura solo se il file è ancora quello mostrato), barra nella chat, dialog *Tools → Review Agent Changes…*, test Go e Vitest. Manca la prova desktop con un turno reale di Claude Code e di milk.
 - [ ] **Z1.2 Checkpoint dell'agente.** Ogni messaggio dell'utente salva uno snapshot dei file del progetto toccati dall'agente. *Restore checkpoint* annulla tutto quello che è successo dopo. Il punto di partenza è Local History, da riusare.
   - *Accettazione:* dopo 3 turni ripristini il checkpoint del primo. I file tornano identici, i file creati dall'agente spariscono e quelli modificati a mano fuori dall'agente vengono segnalati, mai sovrascritti in silenzio.
 - [ ] **Z1.3 MCP server passati agli agenti ACP.** Oggi `internal/milk/manager.go` invia `mcpServers: []`. Serve un elenco unico di server MCP configurati dall'utente, passato a ogni sessione ACP. Il valore aggiunto per adOmnia è esporre come MCP locali le collection API, il mock server, Kafka e il database in sola lettura. Rispetta la AI policy di progetto e `.adomnia/aiignore`, e non avvia nessun processo senza un'azione dell'utente.
   - *Accettazione:* Claude Code chiama una request di una collection tramite MCP e la risposta compare nella chat. Con la policy `off` il server non viene passato.
+  - *Parziale (2026-10-16):* elenco unico (`acp-mcp-servers.json`) e server integrato `adomnia mcp` (collection e mock) presenti; il passaggio in `session/new` è stato corretto solo ora (prima partiva sempre vuoto). Mancano: milk (protocollo proprio, non accetta ancora `mcpServers`), controllo della AI policy prima di passare i server, tool per Kafka e database in sola lettura, prova desktop.
 - [ ] **Z1.4 Rules file automatici.** `AGENTS.md`, `CLAUDE.md`, `.rules` e `.cursorrules` alla radice del progetto vengono inclusi nel contesto delle azioni AI e della chat. Un indicatore mostra quali file sono inclusi, con un toggle per escluderli.
+  - *Parziale (2026-10-16):* `internal/copilot/rules.go` e il toggle nelle chat (Agent e Copilot). Mancano le azioni AI dell'editor e la prova desktop.
 - [ ] **Z1.5 Follow mode.** L'editor segue l'agente mentre modifica (file e riga). Il meccanismo dei cursori remoti del collab è riusabile.
 
 ### Z2 — Editor e workflow

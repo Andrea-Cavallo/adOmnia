@@ -86,6 +86,8 @@ func main() {
 	copilotService := NewCopilot(goIDE)
 	milkService := NewMilk()
 	claudeService := NewClaudeCode()
+	milkService.manager.SetTurnObserver(goIDE.agentReview)
+	claudeService.manager.SetTurnObserver(goIDE.agentReview)
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
