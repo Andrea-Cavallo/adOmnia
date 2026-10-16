@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, typeInfoFromHover } from './goStudioSemanticTokens'
+import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, typeInfoFromHover, semanticRetryDelay, SEMANTIC_RETRY_LIMIT } from './goStudioSemanticTokens'
 
 const type = (name: string) => CLIENT_TOKEN_TYPES.indexOf(name as never)
 const modifier = (name: string) => 1 << CLIENT_TOKEN_MODIFIERS.indexOf(name as never)
@@ -45,5 +45,13 @@ describe('typeInfoFromHover', () => {
   it('extracts the first Go code block from gopls hover', () => {
     expect(typeInfoFromHover('```go\nvar total int\n```\n\nSome docs')).toBe('var total int')
     expect(typeInfoFromHover('plain text only')).toBeNull()
+  })
+})
+
+describe('semantic token retries', () => {
+  it('backs off while gopls is still loading and gives up after the limit', () => {
+    const delays = Array.from({ length: SEMANTIC_RETRY_LIMIT + 1 }, (_, attempt) => semanticRetryDelay(attempt))
+    expect(delays).toEqual([2_000, 4_000, 8_000, 16_000, 30_000, 30_000, null])
+    expect(semanticRetryDelay(-1)).toBeNull()
   })
 })

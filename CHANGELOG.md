@@ -55,6 +55,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Fixed
 
+- **Go Studio: some Go files stayed without semantic colors** (functions, types, parameters, packages). When gopls was still loading a large project, the first request timed out and Monaco never asked again. Failed requests are now retried with backoff (2 s up to 30 s, six times) and every open file is refreshed when gopls finishes loading. The general editor themes also carry the semantic colors, so opening an API Studio editor no longer turns Go functions white.
+
 - **In-app update kept the old version and could leave no app behind.** The helper moved the executable away before installing the new one and deleted it before restoring the backup, so a locked file (antivirus, OneDrive, the just-closed process) could leave the folder empty. The executable is now replaced in place with an atomic rename and is never removed; the new version confirms as soon as its window runtime is ready instead of after the workspace loads, a version mismatch rolls back at once, and `apply.log` records every step. Windows CI now runs the updater tests.
 
 - Claude Code now really receives the configured MCP servers and adOmnia's built-in one: `session/new` still sent an empty `mcpServers` list.

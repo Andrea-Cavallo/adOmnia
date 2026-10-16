@@ -90,3 +90,14 @@ export function typeInfoFromHover(markdown: string): string | null {
   const code = match[1].trim()
   return code.length > 0 ? code : null
 }
+
+/** Tentativi di semantic tokens dopo un errore di gopls (timeout mentre carica i pacchetti, file non ancora nel workspace). */
+export const SEMANTIC_RETRY_LIMIT = 6
+const SEMANTIC_RETRY_BASE_MS = 2_000
+const SEMANTIC_RETRY_MAX_MS = 30_000
+
+/** Attesa prima del tentativo `attempt` (0-based), o null se i tentativi sono finiti: 2, 4, 8, 16, 30, 30 s. */
+export function semanticRetryDelay(attempt: number): number | null {
+  if (attempt < 0 || attempt >= SEMANTIC_RETRY_LIMIT) return null
+  return Math.min(SEMANTIC_RETRY_MAX_MS, SEMANTIC_RETRY_BASE_MS * 2 ** attempt)
+}

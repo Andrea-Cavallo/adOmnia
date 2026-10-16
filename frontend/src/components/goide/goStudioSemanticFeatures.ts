@@ -16,7 +16,7 @@ import {
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { currentGoStudioDocumentVersion } from './goStudioLspSync'
 import { prepareDocument, toEditorRange, toMonacoRange } from './goStudioLanguageFeatures'
-import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, typeInfoFromHover } from './goStudioSemanticTokens'
+import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, semanticRetryDelay, typeInfoFromHover } from './goStudioSemanticTokens'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
 const LANGUAGE = languageServerEditorLanguages()
@@ -55,6 +55,27 @@ async function settle<T>(request: CancellablePromise<T>, token: monaco.Cancellat
   }
 }
 
+/** Tentativi falliti per documento: si azzerano al primo successo. */
+const semanticFailures = new Map<string, number>()
+let semanticRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * gopls può fallire o andare in timeout mentre carica i pacchetti di un progetto grande. Monaco non
+ * richiede più i token di un modello finché non cambia: senza un nuovo tentativo quel file restava
+ * senza colori semantici (funzioni e tipi bianchi) mentre i file aperti dopo si coloravano.
+ */
+function scheduleSemanticRetry(documentId: string): void {
+  const attempt = semanticFailures.get(documentId) ?? 0
+  const delay = semanticRetryDelay(attempt)
+  if (delay === null) return
+  semanticFailures.set(documentId, attempt + 1)
+  if (semanticRetryTimer) return
+  semanticRetryTimer = setTimeout(() => {
+    semanticRetryTimer = null
+    semanticChanged.fire()
+  }, delay)
+}
+
 function registerSemanticTokens(): void {
   monaco.languages.registerDocumentSemanticTokensProvider(LANGUAGE, {
     onDidChange: semanticChanged.event,
@@ -64,8 +85,12 @@ function registerSemanticTokens(): void {
       const prepared = await prepareDocument(model)
       const features = prepared ? featuresFor(prepared.sessionId) : null
       if (!prepared || !features?.semanticTokens) return null
-      const result = await settle(requestSemanticTokens(prepared.sessionId, prepared.documentId), token).catch(() => { throw cancelled() })
+      const result = await settle(requestSemanticTokens(prepared.sessionId, prepared.documentId), token).catch(() => {
+        if (!token.isCancellationRequested) scheduleSemanticRetry(prepared.documentId)
+        throw cancelled()
+      })
       if (!isCurrent(prepared.documentId, result.version)) throw cancelled()
+      semanticFailures.delete(prepared.documentId)
       return { data: remapSemanticTokens(result.data, features.tokenTypes, features.tokenModifiers) }
     },
     releaseDocumentSemanticTokens: () => undefined,
@@ -135,7 +160,10 @@ export function registerGoStudioSemanticFeatures(): void {
     const preferencesChanged = state.preferences.semanticHighlighting !== previous.preferences.semanticHighlighting || state.preferences.inlayHints !== previous.preferences.inlayHints
       || state.preferences.typeHints !== previous.preferences.typeHints
       || state.preferences.resourceMode !== previous.preferences.resourceMode || state.onBattery !== previous.onBattery
-    if (state.status !== previous.status || preferencesChanged) {
+    // Fine di un lavoro di gopls (caricamento pacchetti, indicizzazione): ora può rispondere per tutti i file.
+    const workFinished = Object.keys(previous.progress).some((sessionId) => previous.progress[sessionId] && !state.progress[sessionId])
+    if (workFinished) semanticFailures.clear()
+    if (state.status !== previous.status || preferencesChanged || workFinished) {
       semanticChanged.fire()
       inlayChanged.fire()
     }

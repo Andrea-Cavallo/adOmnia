@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**68 chiuse · 104 implementate da verificare · 56 da fare - su 228 voci.**
+**68 chiuse · 107 implementate da verificare · 56 da fare - su 231 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -29,10 +29,11 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-9 | 2 | 3 | 2 | 7 |
 | GS-10 | 3 | 9 | 0 | 12 |
 | GS-11 | 1 | 3 | 2 | 6 |
+| GS-12 | 0 | 3 | 0 | 3 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **68** | **104** | **56** | **228** |
+| **TOTALE** | **68** | **107** | **56** | **231** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -127,6 +128,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | GS-9 | Git dentro l'IDE (tool window) | P1 | L |
 | GS-10 | Altri problemi frontend (audit) | P1-P2 | vari |
 | GS-11 | Revisione delle modifiche degli agenti AI + MCP a Claude Code | P1 | M |
+| GS-12 | File Go senza colori semantici (funzioni bianche) | P1 | S |
 | DB-1 | Valori annidati illeggibili + schermo intero | P1 | L |
 | DB-2 | Password che sparisce + Connect persistente | P0 | L |
 | DB-3 | Console query per categoria con interprete | P2 | L |
@@ -568,6 +570,25 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - Verifiche manuali **GS-11.M1…M3** → `mds/MANUAL-CHECK.md` (sezione **GS-11**).
 
 **Gate GS-11:** [ ] Impl  [ ] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-11)  [ ] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### GS-12. File Go senza colori semantici (funzioni, tipi, parametri bianchi)
+
+**Sintomo (segnalazione 2026-10-16).** In un progetto Go alcuni file si colorano, altri restano con funzioni e tipi bianchi; gopls ci mette molto anche per gli usages.
+
+**Cause trovate leggendo il codice.**
+- `goStudioSemanticFeatures.ts`: ogni errore di `requestSemanticTokens` diventava "Canceled"; Monaco conserva i token precedenti (nessuno) e non richiede più finché il file non cambia. Con gopls ancora in caricamento la prima richiesta va in timeout (`defaultRequestTimeout` 15 s, `internal/goide/lsp.go`): i file aperti in quel momento restavano senza colori semantici.
+- `monacoSetup.ts`: le regole dei semantic tokens erano solo nei temi `adomnia-go-*`. Monaco ha un tema per pagina: se un editor dell'API Studio (script, spec OpenAPI) impostava `adomnia-dark/light`, `function`, `method`, `parameter`, `namespace` e `property` cadevano sul colore di default (bianco).
+
+**Fix**
+- [ ] GS-12.1 Nuovo tentativo con backoff (2, 4, 8, 16, 30, 30 s) dopo un errore che non è un annullamento di Monaco; contatore per documento azzerato al successo. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `semanticRetryDelay` in `goStudioSemanticTokens.ts` (test), `scheduleSemanticRetry` in `goStudioSemanticFeatures.ts`.
+- [ ] GS-12.2 A fine lavoro di gopls (`lsp.progress` con `end`, es. caricamento pacchetti) si richiedono di nuovo semantic tokens e inlay hint per tutti i file aperti. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.**
+- [ ] GS-12.3 Regole dei semantic tokens anche nei temi `adomnia-dark/light`, tranne `type` (già token sintattico di YAML/JS). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.** `npx tsc --noEmit`, `npm run build`, `npm run check:startup` verdi.
+
+**Limite noto.** La lentezza del primo caricamento è di gopls (default già leggeri: staticcheck e vulncheck spenti); i colori arrivano quando ha finito.
+
+**Gate GS-12:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-12)  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 

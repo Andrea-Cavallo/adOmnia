@@ -52,10 +52,11 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | GS-9 | 5 | 0 |
 | GS-10 | 9 | 0 |
 | GS-11 | 6 | 0 |
+| GS-12 | 4 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **143** | **0** |
+| **TOTALE** | **147** | **0** |
 
 ---
 
@@ -342,6 +343,22 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **GS-11.M3** Skin scuro e chiaro: righe aggiunte/tolte leggibili, pulsanti coerenti con gli altri dialog; progetto oltre i limiti (es. cartella con >20.000 file) mostra l'avviso nella chat invece della review.
 
 **Gate manuale GS-11:** [ ]
+
+---
+
+## GS-12 — Colori semantici nei file Go
+
+**Prerequisito:** progetto Go grande (va bene adOmnia stessa), gopls installato, skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-12.1** Aprire 5-6 file subito dopo l'apertura del progetto, mentre la status bar mostra il caricamento di gopls: a caricamento finito tutti i file hanno funzioni, tipi, parametri e package colorati, senza modificarli.
+- [ ] **GS-12.2** Riavviare gopls con file aperti: i colori tornano da soli.
+- [ ] **GS-12.3** Con Go Studio aperto, aprire una request con lo Scripts editor o una spec OpenAPI nell'API Studio e tornare a Go Studio: le funzioni restano colorate; gli editor YAML/JS hanno gli stessi colori di prima.
+
+**Verifiche manuali**
+- [ ] **GS-12.M1** Caso limite: gopls spento a metà caricamento (kill del processo): nessun errore a schermo, i colori sintattici restano, quelli semantici tornano al riavvio.
+
+**Gate manuale GS-12:** [ ]
 
 ---
 
