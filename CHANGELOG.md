@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+
+- **High CPU while adOmnia sits idle.** Several pieces of work kept running with nothing to do:
+  - the developer log poll re-read and re-parsed the whole log file every 1.5 s on every screen (the log is on in release builds too) and de-duplicated entries with a quadratic scan; it now reads only the lines added since the last poll;
+  - in a Git project, `git status` rewrote `.git/index`, the project watcher reported the `.git` folder as changed and the Git panel ran six to seven git processes again, in a loop. The watcher now ignores `.git`, `node_modules` and `.gitignore` entries, and git reads run with `GIT_OPTIONAL_LOCKS=0`;
+  - the status bar resource indicator enumerated every process on the system once per process in adOmnia's tree (on Linux and macOS it spawned `pgrep` each time); it now reads the process table once per sample, every 5 s instead of 2 s;
+  - a late or foreign gopls progress report could leave the Go Studio spinner on forever, with a 500 ms timer behind it; error toasts kept that timer running too;
+  - every open terminal woke the backend 40 times per second even with no output.
+
 ## [1.0.5] — 2026-10-16
 
 Includes the changes tagged as 1.0.2–1.0.4, which had no separate section. Release notes: [docs/releases/v1.0.5.md](docs/releases/v1.0.5.md).

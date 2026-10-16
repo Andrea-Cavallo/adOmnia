@@ -3,6 +3,7 @@ import type { GoStudioResourceMode } from '@/components/goide/goStudioResourceMo
 import type { GoStudioEditorMode } from '@/components/goide/goStudioEditorModes'
 import type { GoStudioSignature } from '@/components/goide/goStudioChangeSignature'
 import { create } from 'zustand'
+import { nextLanguageServerProgress } from '@/lib/goide/lspProgress'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { GO_LANGUAGE_ID } from '@/lib/goide/goLanguage'
@@ -461,7 +462,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     }
     if (event.type === 'lsp.progress') {
       const progress = event.payload as GoIDELanguageServerProgress
-      set((state) => ({ progress: { ...state.progress, [sessionId]: progress.kind === 'end' ? null : { ...state.progress[sessionId], ...progress } } }))
+      set((state) => ({ progress: { ...state.progress, [sessionId]: nextLanguageServerProgress(state.progress[sessionId] ?? null, progress) } }))
       return
     }
     if (event.type === 'lsp.message') {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -194,8 +195,33 @@ func (m *WatchManager) run(sessionID SessionID, state *sessionWatch) {
 	}
 }
 
+// ignoredPath è vero per i percorsi che il progetto non osserva: cartelle ignorate (.git, node_modules…)
+// a qualsiasi livello e voci di .gitignore. Su Windows l'osservazione della radice segnala come
+// modificata una sua sottocartella quando ne cambia il contenuto: senza questo filtro ogni git status
+// che riscriveva .git/index generava un files.changed, che rilanciava lo stato Git in un ciclo continuo.
+func (w *sessionWatch) ignoredPath(path string) bool {
+	relative, err := filepath.Rel(w.root, path)
+	if err != nil || relative == "." || strings.HasPrefix(relative, "..") {
+		return false
+	}
+	segments := strings.Split(filepath.ToSlash(relative), "/")
+	for _, segment := range segments[:len(segments)-1] {
+		if isIgnoredDirectory(segment) {
+			return true
+		}
+	}
+	if isIgnoredDirectory(segments[len(segments)-1]) {
+		return true
+	}
+	// Un percorso eliminato non si può più interrogare: vale sia come file sia come cartella.
+	return gitIgnored(w.ignore, w.root, path, false) || gitIgnored(w.ignore, w.root, path, true)
+}
+
 // record accumula l'evento; le cartelle nuove entrano subito nell'osservazione.
 func (w *sessionWatch) record(event fsnotify.Event) {
+	if w.ignoredPath(event.Name) {
+		return
+	}
 	kind := FileChanged
 	switch {
 	case event.Has(fsnotify.Create):

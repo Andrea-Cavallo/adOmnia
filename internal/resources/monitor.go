@@ -28,6 +28,27 @@ type Snapshot struct {
 	CPU       float64   `json:"cpu"`
 	Instances int       `json:"instances"`
 }
+
+// processInfo è una riga della tabella dei processi: padre e nome dell'eseguibile.
+type processInfo struct {
+	parent int32
+	name   string
+}
+
+// sampleTimeout limita la lettura di un campione.
+const sampleTimeout = 1500 * time.Millisecond
+
+// childrenOf indicizza la tabella per padre, così l'albero si percorre senza altre enumerazioni.
+func childrenOf(table map[int32]processInfo) map[int32][]int32 {
+	children := map[int32][]int32{}
+	for pid, info := range table {
+		if pid != info.parent {
+			children[info.parent] = append(children[info.parent], pid)
+		}
+	}
+	return children
+}
+
 type previous struct {
 	at      time.Time
 	cpu     float64
@@ -49,13 +70,18 @@ func Sample(targets []Target) Snapshot {
 	if !sampler.cached.At.IsZero() && now.Sub(sampler.cached.At) < time.Second {
 		return sampler.cached
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), sampleTimeout)
 	defer cancel()
 	root, err := process.NewProcessWithContext(ctx, int32(os.Getpid()))
 	result := Snapshot{At: now, Processes: []Usage{}}
 	if err != nil {
 		return result
 	}
+	table, err := processTable()
+	if err != nil {
+		table = map[int32]processInfo{}
+	}
+	children := childrenOf(table)
 	known := make(map[int32]Target)
 	for _, target := range targets {
 		if target.PID > 0 {
@@ -74,8 +100,8 @@ func Sample(targets []Target) Snapshot {
 		if !ok {
 			target = inherited
 			target.PID = int(p.Pid)
-			if name, e := p.NameWithContext(ctx); e == nil {
-				target.Name = name
+			if info, found := table[p.Pid]; found && info.name != "" {
+				target.Name = info.name
 			}
 		}
 		usage := Usage{Target: target}
@@ -101,9 +127,10 @@ func Sample(targets []Target) Snapshot {
 			result.Instances++
 		}
 		result.Processes = append(result.Processes, usage)
-		children, _ := p.ChildrenWithContext(ctx)
-		for _, child := range children {
-			walk(child, target, depth+1)
+		for _, pid := range children[p.Pid] {
+			if child, err := process.NewProcessWithContext(ctx, pid); err == nil {
+				walk(child, target, depth+1)
+			}
 		}
 	}
 	walk(root, Target{Name: "adOmnia"}, 0)

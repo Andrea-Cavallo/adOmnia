@@ -11,15 +11,16 @@ function appBinding() {
   return AppBindings
 }
 
-export async function getBackendDevLogs(): Promise<BackendDevLogEntry[]> {
-  const raw = await appBinding()?.GetDevLogs?.()
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+export interface BackendDevLogChunk {
+  entries: BackendDevLogEntry[]
+  /** Offset in byte da passare alla lettura successiva. */
+  next: number
+}
+
+/** Solo le voci scritte dopo `offset`: il polling periodico non rilegge più l'intero file. */
+export async function getBackendDevLogsSince(offset: number): Promise<BackendDevLogChunk> {
+  const chunk = await appBinding().GetDevLogsSince(offset)
+  return { entries: (chunk?.entries ?? []) as unknown as BackendDevLogEntry[], next: chunk?.next ?? offset }
 }
 
 export async function clearBackendDevLogs(): Promise<void> {

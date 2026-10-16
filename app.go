@@ -278,13 +278,27 @@ func (a *App) SelectFolder(title string) (string, error) {
 	return path, nil
 }
 
+// maxDevLogEntries: voci al massimo per lettura, come il limite dello store dei log nel frontend.
+const maxDevLogEntries = 2000
+
 func (a *App) GetDevLogs() string {
 	path := devlog.CurrentPath()
-	entries, err := devlog.ReadEntries(path, 2000)
+	entries, err := devlog.ReadEntries(path, maxDevLogEntries)
 	if err != nil {
 		devlog.Err("GetDevLogs", "lettura file dev logs fallita", err, map[string]any{"path": path})
 	}
 	return marshalLogEntries(entries)
+}
+
+// GetDevLogsSince restituisce solo le voci scritte dopo offset (byte) e l'offset da cui riprendere:
+// il polling periodico del frontend non rilegge più l'intero file.
+func (a *App) GetDevLogsSince(offset int64) devlog.Chunk {
+	chunk, err := devlog.ReadSince(devlog.CurrentPath(), offset, maxDevLogEntries)
+	if err != nil && !os.IsNotExist(err) {
+		// Niente devlog.Err qui: scriverebbe una riga che il giro successivo rileggerebbe.
+		return devlog.Chunk{Entries: []devlog.Entry{}, Next: offset}
+	}
+	return chunk
 }
 
 func marshalLogEntries(entries []devlog.Entry) string {

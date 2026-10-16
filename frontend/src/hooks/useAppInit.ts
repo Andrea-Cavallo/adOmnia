@@ -9,7 +9,7 @@ import { useAppStore } from '@/stores/app'
 import { normalizeRailItem, type RailItem } from '@/lib/navigation'
 import { loadUiSessionMemento } from '@/lib/uiSessionMemento'
 import { useDevLogsStore } from '@/stores/devLogs'
-import { getBackendDevLogs, clearBackendDevLogs } from '@/lib/devlogs-api'
+import { getBackendDevLogsSince, clearBackendDevLogs } from '@/lib/devlogs-api'
 import { visibleInterval } from '@/lib/visiblePolling'
 import { requestPersistentStorage } from '@/lib/storageMaintenance'
 import { GetStartupWindowChrome, LoadBootstrapState, LoadBootstrapStateV2 } from '@/wailsjs/go/main/App'
@@ -255,13 +255,18 @@ export function useAppInit(): AppInitResult {
   useEffect(() => {
     if (!firstStableFrame) return
     let cancelled = false
+    // Byte già letti del file dei log: ogni giro legge solo le righe nuove.
+    let offset = 0
     const sync = async () => {
       try {
-        const entries = await getBackendDevLogs()
-        if (!cancelled) mergeBackendLogs(entries)
+        const chunk = await getBackendDevLogsSince(offset)
+        if (cancelled) return
+        offset = chunk.next
+        mergeBackendLogs(chunk.entries)
         if (!backendLogsClearedRef.current) {
           backendLogsClearedRef.current = true
-          void clearBackendDevLogs()
+          await clearBackendDevLogs()
+          offset = 0
         }
       } catch {
         // Dev logs must never break the shell

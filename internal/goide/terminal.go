@@ -314,8 +314,6 @@ func (m *TerminalManager) Shutdown() {
 // la sua naturale backpressure alla shell, come in un terminale vero.
 func (m *TerminalManager) pump(managed *managedTerminal) {
 	defer close(managed.pumped)
-	ticker := time.NewTicker(terminalFlushInterval)
-	defer ticker.Stop()
 	chunks := make(chan []byte, 16)
 	go func() {
 		defer close(chunks)
@@ -343,6 +341,14 @@ func (m *TerminalManager) pump(managed *managedTerminal) {
 		m.emit("terminal.output", managed.snapshot(), TerminalOutput{TerminalID: managed.session.ID, Data: string(ready)})
 		pending = append(pending[:0], pending[len(ready):]...)
 	}
+	// Il timer è armato solo con output in attesa: un terminale fermo non sveglia il processo
+	// (prima un ticker da 25 ms girava per ogni terminale aperto, anche senza output).
+	var flushDue <-chan time.Time
+	arm := func() {
+		if len(pending) > 0 && flushDue == nil {
+			flushDue = time.After(terminalFlushInterval)
+		}
+	}
 	for {
 		select {
 		case chunk, ok := <-chunks:
@@ -354,8 +360,11 @@ func (m *TerminalManager) pump(managed *managedTerminal) {
 			if len(pending) >= terminalReadChunkBytes {
 				flush(false)
 			}
-		case <-ticker.C:
+			arm()
+		case <-flushDue:
+			flushDue = nil
 			flush(false)
+			arm()
 		}
 	}
 }

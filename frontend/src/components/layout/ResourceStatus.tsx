@@ -5,6 +5,8 @@ import { Activity } from 'lucide-react'
 import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
 import { useUiTranslation } from '@/lib/uiI18n'
 
+// Indicatore della status bar: ogni campione legge la tabella dei processi del sistema.
+const RESOURCE_POLL_MS = 5000
 const mib = (bytes: number) => `${(bytes / 1048576).toFixed(0)} MB`
 export function ResourceStatus() {
   const tr = useUiTranslation()
@@ -19,7 +21,7 @@ export function ResourceStatus() {
       }
     }
     void poll()
-    const stop = visibleInterval(() => { void poll() }, 2000, { kind: "decorative" })
+    const stop = visibleInterval(() => { void poll() }, RESOURCE_POLL_MS, { kind: "decorative" })
     return () => { disposed = true; stop() }
   }, [])
   const cpuReady = sample?.processes.some(p => p.cpu != null)

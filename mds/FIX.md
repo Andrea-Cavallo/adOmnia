@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**68 chiuse · 107 implementate da verificare · 56 da fare - su 231 voci.**
+**68 chiuse · 112 implementate da verificare · 56 da fare - su 236 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -18,6 +18,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | IDE-3 | 2 | 4 | 2 | 8 |
 | IDE-4 | 10 | 3 | 1 | 14 |
 | IDE-5 | 5 | 6 | 1 | 12 |
+| IDE-6 | 0 | 5 | 0 | 5 |
 | GS-1 | 4 | 4 | 3 | 11 |
 | GS-2 | 6 | 0 | 5 | 11 |
 | GS-3 | 9 | 0 | 3 | 12 |
@@ -33,7 +34,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **68** | **107** | **56** | **231** |
+| **TOTALE** | **68** | **112** | **56** | **236** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -117,6 +118,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | IDE-3 | Import graph illeggibile | P1 | M-L |
 | IDE-4 | Nuova vista Goroutines | P1 | L |
 | IDE-5 | Altri difetti IDE (12 voci) | P1-P2 | vari |
+| IDE-6 | CPU alta ad app ferma (~20%) | P0 | M |
 | GS-1 | Play/Run non funziona con `main.go` in `cmd/` | P0 | L |
 | GS-2 | "Run with Coverage" su cartella: niente / 0.0% | P1 | M-L |
 | GS-3 | Claude Code / milk: `EMAXREDIRECT`, "process is not available" | P0 | L |
@@ -304,6 +306,23 @@ Per ognuno: riprodurre, fix, test.
 Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metodi `GoIDE` esposti hanno un wrapper frontend; finestre IDE staccate e radice con `ErrorBoundary`; `RevealPath` su Windows corretto; percorsi relativi del modello con `/` (solo il fallback in `GoStudioEditorTabs.tsx:29` può mostrare backslash).
 
 **Gate IDE-5:** [ ] Impl — restano 5.5, 5.7, 5.8, 5.11 (azione)  [ ] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-5, incl. 5.12)  [ ] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### IDE-6. CPU alta ad app ferma (~20%)
+
+**Sintomo (segnalazione 2026-10-16).** adOmnia occupa circa il 20% di CPU senza che l'utente faccia nulla. Nessun profilo dalla macchina dell'utente: cause trovate leggendo il codice; il peso relativo va misurato.
+
+**Fix**
+- [ ] IDE-6.1 Polling dei dev log (`hooks/useAppInit.ts`, ogni 1,5 s su ogni schermata; `devlog.IsDev` è `true` anche in release): rileggeva e serializzava l'intero file e deduplicava con un `some()` su tutto lo store (fino a 2000×2000 confronti). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `devlog.ReadSince` (solo righe nuove, riparte dopo un Clear) e binding `GetDevLogsSince`; deduplicazione con mappa per messaggio. Test `TestReadSinceReadsOnlyNewCompleteLines`, `devLogs.test.ts`.
+- [ ] IDE-6.2 Ciclo Git: `git status` riscriveva `.git/index`, il watcher segnalava `.git` come cambiata, `goideVcs` rilanciava `VCSStatus` (6-7 processi git). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `sessionWatch.ignoredPath` (cartelle ignorate a ogni livello e `.gitignore`), `gitEnviron()` con `GIT_OPTIONAL_LOCKS=0`, timeout anche su `statusPorcelain`. Test `TestWatcherIgnoresEventsOnIgnoredAndGitignoredPaths` (rosso prima) e `TestStatusDoesNotRewriteTheIndex` (rosso sul codice precedente).
+- [ ] IDE-6.3 Indicatore risorse: gopsutil `Children()` enumerava tutti i processi del sistema per ogni nodo (Windows: snapshot Toolhelp; Linux/macOS: `pgrep`). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `processTable()` una volta per campione (`table_windows.go`, `table_other.go`), polling 5 s. Test `TestSampleIncludesChildProcesses`.
+- [ ] IDE-6.4 Spinner gopls bloccato: `lsp.progress` non legato al token, un `report` tardivo lo riaccendeva; timer 500 ms anche sui toast di errore. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `lib/goide/lspProgress.ts` (test), timer 1 s solo mentre conta i secondi.
+- [ ] IDE-6.5 Terminale: ticker 25 ms per terminale anche senza output. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** timer armato solo con output in attesa.
+
+**Non toccati (da valutare con una misura):** pannelli con polling `live` (Proxy 0,7-1,5 s, Debugger 0,5 s, WebSocket, Kube, Mock…) che non rallentano in Idle; `useLiveSources.ts` (1,5 s senza gate); il tick del ticker database (1 s). Il test `internal/ide/startup` fallisce in questo ambiente anche su `HEAD` (attende una porta).
+
+**Gate IDE-6:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-6)  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 

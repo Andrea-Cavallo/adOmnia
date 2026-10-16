@@ -41,6 +41,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | IDE-3 | 5 | 0 |
 | IDE-4 | 4 | 0 |
 | IDE-5 | 5 | 0 |
+| IDE-6 | 4 | 0 |
 | GS-1 | 6 | 0 |
 | GS-2 | 4 | 0 |
 | GS-3 | 3 | 0 |
@@ -56,7 +57,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **147** | **0** |
+| **TOTALE** | **151** | **0** |
 
 ---
 
@@ -164,6 +165,20 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **IDE-5.12** Gate "Real IDE" Fase 1 (`mds/todo-ide.md` M1-M34, tutti aperti): ordine **M1, M2, M3, M6**, poi **M23** (chiusura con file modificati e processi vivi) e **M22** (offline) — dove emergerebbero IDE-5.1…5.4. Mai eseguiti i controlli Linux/WebKitGTK e macOS.
 
 **Gate manuale IDE-5:** [ ]
+
+---
+
+## IDE-6 — CPU ad app ferma
+
+**Prerequisito:** release Windows, Task Manager (scheda Dettagli, colonna CPU di `adomnia.exe` e `msedgewebview2.exe`), progetto Go con Git, un terminale aperto.
+
+**Verifiche manuali**
+- [ ] **IDE-6.M1** Go Studio aperto su un progetto Git, finestra in primo piano senza toccare nulla per 2 minuti: CPU totale di adOmnia sotto il 2% (escluso gopls nei primi minuti di caricamento). Annotare il valore prima/dopo l'update.
+- [ ] **IDE-6.M2** Process Explorer (o Task Manager) ad app ferma con un progetto Git aperto: nessun `git.exe` che compare a ripetizione.
+- [ ] **IDE-6.M3** Indicatore risorse nella status bar: valori aggiornati ogni ~5 s, elenco processi completo (WebView2, gopls, agenti).
+- [ ] **IDE-6.M4** Riavviare gopls durante il caricamento: lo spinner sparisce a lavoro finito; un toast di errore resta ma senza timer attivo.
+
+**Gate manuale IDE-6:** [ ]
 
 ---
 

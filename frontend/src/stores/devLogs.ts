@@ -66,17 +66,22 @@ export const useDevLogsStore = create<DevLogsState>((set) => ({
     if (backendEntries.length === 0) return
     set((s) => {
       const known = new Set(s.entries.map((entry) => entry.id))
+      // Orari delle voci frontend per messaggio: il controllo dei duplicati era un some() su tutto lo store
+      // per ogni voce, fino a 2000×2000 confronti a ogni giro di polling.
+      const frontendTimes = new Map<string, number[]>()
+      for (const entry of s.entries) {
+        if (entry.source !== 'frontend') continue
+        const times = frontendTimes.get(entry.message)
+        if (times) times.push(entry.timestamp)
+        else frontendTimes.set(entry.message, [entry.timestamp])
+      }
       const next = [...s.entries]
       for (const backendEntry of backendEntries) {
         const id = `${backendEntry.source || 'backend'}-${backendEntry.i}`
         if (known.has(id)) continue
         const timestamp = Number.isNaN(Date.parse(backendEntry.ts)) ? Date.now() : Date.parse(backendEntry.ts)
         const source = (backendEntry.source === 'frontend' ? 'frontend' : 'backend')
-        if (source === 'frontend' && s.entries.some((entry) =>
-          entry.source === 'frontend'
-          && entry.message === backendEntry.msg
-          && Math.abs(entry.timestamp - timestamp) < 2000
-        )) {
+        if (source === 'frontend' && frontendTimes.get(backendEntry.msg)?.some((time) => Math.abs(time - timestamp) < 2000)) {
           known.add(id)
           continue
         }

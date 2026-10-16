@@ -55,6 +55,9 @@ async function settle<T>(request: CancellablePromise<T>, token: monaco.Cancellat
   }
 }
 
+const WORK_REFRESH_MS = 5_000
+let lastWorkRefresh = 0
+
 /** Tentativi falliti per documento: si azzerano al primo successo. */
 const semanticFailures = new Map<string, number>()
 let semanticRetryTimer: ReturnType<typeof setTimeout> | null = null
@@ -161,8 +164,14 @@ export function registerGoStudioSemanticFeatures(): void {
       || state.preferences.typeHints !== previous.preferences.typeHints
       || state.preferences.resourceMode !== previous.preferences.resourceMode || state.onBattery !== previous.onBattery
     // Fine di un lavoro di gopls (caricamento pacchetti, indicizzazione): ora può rispondere per tutti i file.
+    // Al massimo un aggiornamento ogni WORK_REFRESH_MS: se una richiesta facesse ripartire un lavoro di gopls,
+    // il suo `end` non deve innescare un ciclo di richieste.
     const workFinished = Object.keys(previous.progress).some((sessionId) => previous.progress[sessionId] && !state.progress[sessionId])
-    if (workFinished) semanticFailures.clear()
+      && Date.now() - lastWorkRefresh >= WORK_REFRESH_MS
+    if (workFinished) {
+      lastWorkRefresh = Date.now()
+      semanticFailures.clear()
+    }
     if (state.status !== previous.status || preferencesChanged || workFinished) {
       semanticChanged.fire()
       inlayChanged.fire()

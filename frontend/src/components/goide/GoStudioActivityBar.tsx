@@ -4,6 +4,8 @@ import type { GoIDESession } from '@/lib/goide-api'
 import { visibleInterval } from '@/lib/visiblePolling'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 
+const SECOND_MS = 1000
+
 const STATE_LABELS: Record<string, string> = {
   stopped: 'gopls stopped',
   starting: 'Starting gopls…',
@@ -29,14 +31,16 @@ export function GoStudioActivityBar({ session, onOpenLog }: { session: GoIDESess
   const visible = !!activity || busy
   const startedAt = activity?.startedAt ?? 0
 
+  const isError = activity?.error === true || state === 'crashed'
+  // Il timer serve solo al contatore dei secondi: fermo sugli errori, che restano finché non li chiudi.
+  const counting = visible && !isError && startedAt > 0
   useEffect(() => {
-    if (!visible) return undefined
-    return visibleInterval(() => setNow(Date.now()), 500, { scope: `goide:${session.id}`, kind: "decorative" })
-  }, [visible, session.id])
+    if (!counting) return undefined
+    return visibleInterval(() => setNow(Date.now()), SECOND_MS, { scope: `goide:${session.id}`, kind: "decorative" })
+  }, [counting, session.id])
 
   if (!visible) return null
 
-  const isError = activity?.error === true || state === 'crashed'
   const label = activity?.label ?? progress?.title ?? STATE_LABELS[state] ?? 'gopls'
   const detail = activity?.detail || progress?.message || (isError ? status?.error : '')
   const percent = progress?.percentage

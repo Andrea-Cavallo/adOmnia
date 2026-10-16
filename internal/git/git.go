@@ -94,12 +94,20 @@ type WorkingTreeFileSnapshot struct {
 	Diff       string `json:"diff"`
 }
 
+// gitEnviron è l'ambiente dei comandi git di adOmnia. GIT_OPTIONAL_LOCKS=0 impedisce a una lettura
+// (git status) di riscrivere .git/index per aggiornarne la cache: quella scrittura cambiava la cartella
+// .git, il watcher del progetto la segnalava e il pannello Git rilanciava lo stato in un ciclo continuo.
+// I comandi che scrivono davvero prendono comunque i loro lock.
+func gitEnviron() []string {
+	return append(netpolicy.Environ(), "GIT_OPTIONAL_LOCKS=0")
+}
+
 func runGit(dir string, args ...string) (string, error) {
 	ctx, cancel := gitContext(args)
 	defer cancel()
 	cmd := procutil.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
-	cmd.Env = netpolicy.Environ()
+	cmd.Env = gitEnviron()
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -141,8 +149,11 @@ func gitTimeoutError(args []string) error {
 // (e.g. " M file" → "M file"), shifting the status columns and corrupting the
 // first changed file's name/status. Porcelain parsing must keep column 0.
 func statusPorcelain(repoPath string) (string, error) {
-	cmd := procutil.Command("git", "status", "--porcelain")
+	ctx, cancel := gitContext([]string{"status"})
+	defer cancel()
+	cmd := procutil.CommandContext(ctx, "git", "status", "--porcelain")
 	cmd.Dir = repoPath
+	cmd.Env = gitEnviron()
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

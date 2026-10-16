@@ -6,6 +6,81 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * Chunk sono le voci aggiunte dopo un offset e l'offset da cui riprendere.
+ */
+export class Chunk {
+    "entries": Entry[];
+    "next": number;
+
+    /** Creates a new Chunk instance. */
+    constructor($$source: Partial<Chunk> = {}) {
+        if (!("entries" in $$source)) {
+            this["entries"] = [];
+        }
+        if (!("next" in $$source)) {
+            this["next"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Chunk instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Chunk {
+        const $$createField0_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("entries" in $$parsedSource) {
+            $$parsedSource["entries"] = $$createField0_0($$parsedSource["entries"]);
+        }
+        return new Chunk($$parsedSource as Partial<Chunk>);
+    }
+}
+
+export class Entry {
+    "i": number;
+    "ts": string;
+    "source"?: string;
+    "func": string;
+    "level": string;
+    "msg": string;
+    "data"?: { [_ in string]?: any };
+
+    /** Creates a new Entry instance. */
+    constructor($$source: Partial<Entry> = {}) {
+        if (!("i" in $$source)) {
+            this["i"] = 0;
+        }
+        if (!("ts" in $$source)) {
+            this["ts"] = "";
+        }
+        if (!("func" in $$source)) {
+            this["func"] = "";
+        }
+        if (!("level" in $$source)) {
+            this["level"] = "";
+        }
+        if (!("msg" in $$source)) {
+            this["msg"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Entry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Entry {
+        const $$createField6_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("data" in $$parsedSource) {
+            $$parsedSource["data"] = $$createField6_0($$parsedSource["data"]);
+        }
+        return new Entry($$parsedSource as Partial<Entry>);
+    }
+}
+
+/**
  * FileInfo describes one JSONL file in the logs directory.
  */
 export class FileInfo {
@@ -36,3 +111,8 @@ export class FileInfo {
         return new FileInfo($$parsedSource as Partial<FileInfo>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = Entry.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $Create.Map($Create.Any, $Create.Any);

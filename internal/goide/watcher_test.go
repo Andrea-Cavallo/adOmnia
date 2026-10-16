@@ -7,6 +7,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"adomnia/internal/ide/project"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type batchRecorder struct {
@@ -243,5 +247,30 @@ func TestWatcherSkipsGitignoredFoldersAndReportsRenames(t *testing.T) {
 	})
 	if _, seen := changedPaths(batches)["generated/x.go"]; seen {
 		t.Fatal("le cartelle in .gitignore non vanno osservate")
+	}
+}
+
+// Su Windows l'osservazione non ricorsiva della radice segnala come modificata una sua cartella quando
+// cambia il contenuto (.git/index riscritto da git status): quell'evento rilanciava lo stato Git, che
+// riscriveva l'indice, in un ciclo continuo che teneva occupata la CPU.
+func TestWatcherIgnoresEventsOnIgnoredAndGitignoredPaths(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("bin/\n*.log\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	state := &sessionWatch{root: root, ignore: project.LoadGitIgnore(root), pending: map[string]DiskChangeKind{}}
+	for _, event := range []fsnotify.Event{
+		{Name: filepath.Join(root, ".git"), Op: fsnotify.Write},
+		{Name: filepath.Join(root, ".git", "index.lock"), Op: fsnotify.Create},
+		{Name: filepath.Join(root, "node_modules"), Op: fsnotify.Write},
+		{Name: filepath.Join(root, "bin"), Op: fsnotify.Write},
+		{Name: filepath.Join(root, "bin", "app.exe"), Op: fsnotify.Remove},
+		{Name: filepath.Join(root, "debug.log"), Op: fsnotify.Write},
+		{Name: filepath.Join(root, "main.go"), Op: fsnotify.Write},
+	} {
+		state.record(event)
+	}
+	if len(state.pending) != 1 || state.pending[filepath.Join(root, "main.go")] != FileChanged {
+		t.Fatalf("pending = %v, want only main.go", state.pending)
 	}
 }
