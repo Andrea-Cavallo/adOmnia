@@ -342,6 +342,7 @@ func (m *Manager) launch(command Launch, root string) error {
 	if strings.TrimSpace(root) != "" {
 		cmd.Dir = root
 	}
+	cmd.Env = withNativeClaude(cmd.Env)
 	configureProcess(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

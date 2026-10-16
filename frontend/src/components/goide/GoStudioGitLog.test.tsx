@@ -11,11 +11,15 @@ describe('IDE Git log graph', () => {
   it('renders branch/merge paths and ref labels in the commit list', () => {
     const commits = [commit('merge', ['main', 'feature'], ['HEAD -> main']), commit('feature', ['base'], ['feature']), commit('main', ['base']), commit('base', [])]
     const html = renderToStaticMarkup(<GoStudioGitLog commits={commits} selectedHash="merge" onSelect={() => undefined} />)
-    expect(html.match(/<svg /g)).toHaveLength(4)
+    expect(html.match(/viewBox="0 0 100 40"/g)).toHaveLength(4)
     expect(html).toContain('<path')
     expect(html).toContain('HEAD -&gt; main')
     expect(html).toContain('aria-label="Merge: merge"')
-    expect(html).toContain('height="36"')
+    expect(html).toContain('height="40"')
+    expect(html).toContain('Branch / tag')
+    expect(html).toContain('Commit message')
+    expect(html).toContain('stroke="#22b8a8"')
+    expect(html).toContain('stroke="#8b7cf8"')
     expect(html).toContain('aria-selected="true"')
   })
   it('keeps the standalone Git Studio renderer at its existing height', () => {

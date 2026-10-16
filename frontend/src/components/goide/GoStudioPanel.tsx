@@ -1,4 +1,5 @@
 import { useActivityScope } from '@/hooks/useActivity'
+import { GO_STUDIO_USED_KEY } from './GoStudioWarmup'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './goStudioRunOnSave'
@@ -50,6 +51,8 @@ import { useAgentReviewStore } from '@/stores/goideAgentReview'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { GoStudioShortcutsDialog } from './GoStudioShortcutsDialog'
 import { commandAvailability, commandChecked, commandsForKey, isStaleEditorKey, type GoStudioCommandContext, type GoStudioCommandId } from './goStudioCommands'
+import { activeWhenContext } from '@/stores/goStudioWhenContext'
+import { useGoStudioProjectSettings } from '@/stores/goideProjectSettings'
 import { activeGoStudioEditor, hasGoStudioEditor, subscribeGoStudioEditor, isGoStudioEditorCommand, runGoStudioEditorCommand } from './goStudioEditorRegistry'
 import { GoStudioStatusBar } from './GoStudioStatusBar'
 import { GoStudioSymbolSearch } from './GoStudioSymbolSearch'
@@ -70,6 +73,7 @@ import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
 import { GoStudioMoveSymbolDialog } from './GoStudioMoveSymbolDialog'
 import { GoStudioSearchEverywhere } from './GoStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './goStudioSearchRanking'
+import { rememberCommand } from './goStudioSearchExtras'
 import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction, targetScope } from './goStudioQuickActions'
 import { flushBufferRecovery } from '@/lib/goide/goStudioRecovery'
 import { useGoIDETestsStore } from '@/stores/goideTests'
@@ -275,6 +279,7 @@ export function GoStudioPanel() {
 
   useEffect(() => { void store.initialize() }, [store.initialize])
   useEffect(() => { startStudioToolOwner() }, [])
+  useEffect(() => { try { localStorage.setItem(GO_STUDIO_USED_KEY, '1') } catch { /* storage non disponibile: niente warm-up */ } }, [])
   useEffect(() => { void useGoIDEWindowsStore.getState().load() }, [])
 
   // Progetti già autorizzati: rileva l'SDK e avvia gopls senza clic extra; quelli non autorizzati restano inerti.
@@ -306,11 +311,13 @@ export function GoStudioPanel() {
         return
       }
       // Più comandi possono condividere un tasto (es. F5 di VS Code): vince il primo disponibile.
-      const candidates = commandsForKey(event)
+      // Il contesto `when` (editor, input, vim.normal…) filtra i binding condizionati della keymap.
+      const when = activeWhenContext(event.target as HTMLElement | null)
+      const candidates = commandsForKey(event, when)
       const command = candidates.find((item) => availabilityRef.current(item.id) === true) ?? candidates[0]
       if (!command) {
         // Tasto predefinito di un'azione dell'editor rimappata altrove: non deve più eseguirla.
-        if (isStaleEditorKey(event)) { event.preventDefault(); event.stopPropagation() }
+        if (isStaleEditorKey(event, when)) { event.preventDefault(); event.stopPropagation() }
         return
       }
       if (command.passThroughWhenUnavailable && availabilityRef.current(command.id) !== true) return
@@ -321,6 +328,12 @@ export function GoStudioPanel() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [])
+
+  // Impostazioni di progetto (`.adomnia/settings.json`): caricate per la sessione attiva; il
+  // file si modifica nell'editor e il buffer aperto viene ricaricato da `useProjectSettings`.
+  useEffect(() => {
+    if (activeSessionId) void useGoStudioProjectSettings.getState().refresh(activeSessionId)
+  }, [activeSessionId])
 
   // Comandi chiesti da fuori del pannello (es. il rilancio dopo un crash): passano dallo stesso flusso dei menu.
   useEffect(() => {
@@ -778,6 +791,8 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       if (/^(run|nav|code|debug)\./.test(id)) useGoIDELspStore.setState({ message: availability })
       return
     }
+    // Uso recente per il ranking della palette e la sezione "Recent actions": vale per ogni via.
+    rememberCommand(id)
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return

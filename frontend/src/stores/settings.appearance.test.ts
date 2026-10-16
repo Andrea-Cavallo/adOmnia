@@ -71,7 +71,8 @@ describe('appearance settings persistence', () => {
           },
         }),
       )
-    expect(useSettingsStore.getState().settings.version).toBe(14)
+    // La versione viene sempre ristampata a quella corrente delle impostazioni (ora 15: sezione keymap).
+    expect(useSettingsStore.getState().settings.version).toBe(15)
     expect(useSettingsStore.getState().settings.appearance.accentColor).toBe(
       '#FACC15',
     )

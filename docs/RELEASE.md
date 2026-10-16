@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## Unreleased (develop)
+
+[Notes of 2026-10-16](releases/unreleased-2026-10-16.md): toolbar and Run window of Go Studio, gopls warm-up, TODO export, milk fix for Claude Code on Windows.
+
 ## v1.0.2 — correzioni IDE e connessioni database
 
 [Release notes](releases/v1.0.2.md), [migrazione database](DATABASE-CONNECTIONS.md) e [roadmap dei fix successivi](ROADMAP-FIXES.md). I gate manuali ancora aperti restano espliciti.

@@ -1,5 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Download, Loader2, RefreshCw } from 'lucide-react'
+import { saveBase64File } from '@/lib/fileUtils'
+import { todosToMarkdown } from '@/lib/goide/todoExport'
 import { requestProjectSearch, type GoIDESearchMatch } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
 
@@ -33,6 +35,7 @@ const KEYWORD_CLASS: Record<TodoKeyword, string> = {
 /** Finestra TODO: commenti da completare nel progetto, raggruppati per file e cliccabili. */
 export const GoStudioTodoPanel = memo(function GoStudioTodoPanel({ sessionId }: { sessionId: string }) {
   const openLocation = useGoIDEStore((state) => state.openLocation)
+  const project = useGoIDEStore((state) => state.sessions.find((session) => session.id === sessionId)?.project)
   const [items, setItems] = useState<GoStudioTodoItem[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +55,18 @@ export const GoStudioTodoPanel = memo(function GoStudioTodoPanel({ sessionId }: 
 
   useEffect(() => scan(), [scan])
 
+  const exportMarkdown = useCallback(() => {
+    if (!project || !items) return
+    const projectRoot = project.rootPath ?? ''
+    const projectName = projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? 'project'
+    const markdown = todosToMarkdown(
+      items.map((item) => ({ keyword: item.keyword, text: item.text, relativePath: item.match.relativePath ?? '', line: item.match.line })),
+      { projectName, projectRoot, units: project.units ?? [] },
+    )
+    const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(markdown)))
+    saveBase64File(`TODO-${projectName}.md`, base64).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }, [items, project])
+
   const visible = useMemo(() => (items ?? []).filter((item) => filter === 'all' || item.keyword === filter), [filter, items])
   const groups = useMemo(() => {
     const byFile = new Map<string, GoStudioTodoItem[]>()
@@ -70,6 +85,8 @@ export const GoStudioTodoPanel = memo(function GoStudioTodoPanel({ sessionId }: 
             {keyword === 'all' ? `All ${items?.length ?? 0}` : `${keyword} ${counts[keyword] ?? 0}`}
           </button>
         ))}
+        <button type="button" onClick={exportMarkdown} disabled={!items?.length} title="Export all TODOs as Markdown, grouped by module" aria-label="Export TODOs as Markdown"
+          className="ml-auto flex h-6 items-center gap-1 rounded px-2 text-[10px] font-semibold text-text-3 hover:bg-surface-3 disabled:opacity-40"><Download size={11} />Export .md</button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto py-1 text-[11px]">
         {error && <p role="alert" className="px-3 py-2 text-danger">{error}</p>}

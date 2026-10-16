@@ -58,10 +58,12 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | GS-13 | 9 | 0 |
 | GS-14 | 6 | 0 |
 | GS-15 | 7 | 0 |
+| GS-16 | 9 | 0 |
+| GS-17 | 5 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **173** | **0** |
+| **TOTALE** | **187** | **0** |
 
 ---
 
@@ -437,6 +439,44 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 ---
 
+## GS-16 — Settings e keymap in JSON con schema a livelli
+
+**Prerequisito:** `wails3 task dev`; progetto Go con Git (per il file committabile); per GS-16.M3 modalità Vim attiva. Skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-16.1** Creare `.adomnia/settings.json` in un progetto e aprirlo nell'editor: autocompletamento per chiavi, id dei comandi reali in `keymap.bindings`, valori enum e termini `when`; una chiave sconosciuta o un valore sbagliato viene sottolineato con messaggio e il resto del file si applica lo stesso.
+- [ ] **GS-16.2** Effetti a livelli: `editor.fontSize`, `wordWrap`, `lineNumbers`, `editorMode`, `stickyScroll`, `fontLigatures` valgono negli editor di Go Studio; `tabSize`/`softTabs` vincono su `.editorconfig` e sulle Settings utente; salvando il file l'effetto arriva senza riavvio.
+- [ ] **GS-16.3** Keymap a livelli: un binding di progetto vince su quello dell'utente, `null` toglie il tasto, `preset` di progetto cambia la base; un binding con `when` non valido per il contesto salta al livello successivo.
+- [ ] **GS-16.4** Migrazione: con la vecchia chiave `adomnia.goide.keymap` valorizzata (personalizzazioni o preset vscode), al primo avvio con impostazioni v14 le scorciatoie sono nella sezione `keymap` e funzionano; la vecchia chiave resta aggiornata alle modifiche successive (rollback).
+
+**Verifiche manuali**
+- [ ] **GS-16.M1** Percorso felice: file di progetto con `editor.tabSize: 4` e un binding `file.save` → Ctrl+S e tabulazione cambiano davvero; confronto con e senza file.
+- [ ] **GS-16.M2** Contesti: `when: 'editor && vim.normal'` scatta solo in vim normal (in insert/visual no, con sub-modalità tracciate dalla barra di stato vim); `when: '!input'` non scatta scrivendo in un campo di testo; la stessa combinazione assegnata in due contesti diversi non si sovrappone (nessun conflitto nel dialog Scorciatoie).
+- [ ] **GS-16.M3** File non valido: JSON rotto (marker in cima al file), `format` mancante, chiave sconosciuta e valore fuori enum → segnalati, resto del file attivo; niente crash a modificarlo mentre si scrive.
+- [ ] **GS-16.M4** Rollback: con la doppia scrittura, tornando a una build precedente le scorciatoie personalizzate risultano ancora dalla vecchia chiave; esportando/importando le impostazioni la sezione `keymap` resta coerente.
+- [ ] **GS-16.M5** Nessuna regressione sugli altri editor JSON: in API Studio lo SpecEditor mantiene i propri completamenti; skin scuro e chiaro leggibili per marker e suggerimenti.
+
+**Gate manuale GS-16:** [ ]
+
+---
+
+## GS-17 — Command palette fuzzy e ranking per uso recente
+
+**Prerequisito:** `wails3 task dev`; progetto Go aperto. Skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-17.1** Ricerca fuzzy graduata in Search Everywhere (Shift Shift): prefisso > inizio parola > sottostringa > sottosequenza; `bld` trova *Build*, `bui` mette *Build* prima di *Rebuild*; query senza corrispondenza non mostra nulla di forzato.
+- [ ] **GS-17.2** Uso recente nel ranking: eseguire un comando da tasto o menu, poi cercarlo → è più in alto dei pari merito; a query vuota "Recent actions" riflette l'uso reale (anche da tastiera, non solo dalla palette).
+
+**Verifiche manuali**
+- [ ] **GS-17.M1** Percorso felice: `bui` → *Build* in cima, scorciatoia ancora cercabile ("ctrl shift f" → *Find in Files*), frecce/Enter invariati.
+- [ ] **GS-17.M2** Recente: eseguire *Run* dal menu, poi *Debug* da F5; cercare "run": *Run* (appena usato) prima dei comandi mai usati; riavviare l'app e verificare che la lista sopravviva (chiave `adomnia.goide.recentCommands`).
+- [ ] **GS-17.M3** Nessuna regressione nella palette: file, simboli, test, run configurations, settings, pannelli e comandi estensioni rispondono come prima; skin scuro e chiaro leggibili.
+
+**Gate manuale GS-17:** [ ]
+
+---
+
 ## DB-1 — Valori annidati leggibili + schermo intero
 
 **Prerequisito:** Mongo con collezione che ha sotto-oggetti/array (es. `M0001…M0005`); Postgres con colonna `jsonb`; MySQL e SQLite per il controllo tipi.
@@ -564,3 +604,10 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 |------|------|-----|-----------------------------------|-------|
 | REF-11.M1 (Hub vuota) | 2026-10-15 | Codex | Build Windows production Wails beta.28, Windows 11 Pro build 26300, profilo APPDATA isolato, working tree sporco; SHA256 `FED200A3A856603F9E646A03DF6BBBC6AB2C76066C3A8EB343AD3CF073825BDC`. Registrazione reale 1.840 s, 369 campioni ogni 5 s. Primo campione Idle a 305 s: CPU totale 0,0335%. Checkpoint sull'ultimo minuto: 5 min Active 0,06% medio / 0,10% max (prima della soglia del renderer); 15 min Idle 0,04% / 0,09%; 30 min Idle 0,04% / 0,07%. RAM totale a 15/30 min: 464,1/468,2 MiB; goroutine finali 20. Chiusura normale, nessun PID registrato ancora presente. Dati in `.artifacts/idle-native/`; nessuna prova di riduzione rispetto a una versione precedente. | Parziale: Hub vuota misurata; API/IDE e REF-11.M2/M3 aperte |
 |      |      |     |                                   |       |
+
+### Git — cronologia visiva (2026-10-16)
+
+- [ ] Aprire Log in un repository con merge reali: verificare corsie colorate continue, colonne Branch/tag, Graph, Commit, autore/data; selezionare commit e parent caricati, controllare i dettagli.
+- [ ] Provare temi chiaro/scuro e pannelli sotto 740 px: dettagli sotto la cronologia, scroll indipendente, nomi/ref lunghi troncati con tooltip e nessuna sovrapposizione. Riprovare checkout, creazione branch, merge e cancellazione con le conferme esistenti.
+
+Anteprima browser della sola cronologia verificata con 45 commit reali; non sostituisce la prova nativa del pannello completo. Test Git mirati: 14 verdi; TypeScript e build verdi. Guardia startup sul checkout concorrente: 607489 B / 650000, fallisce per `lib/goide/legacyKeymap.ts` importato dalle impostazioni globali (modifiche parallele).

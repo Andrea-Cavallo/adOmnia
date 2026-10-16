@@ -21,12 +21,13 @@ function graphLaneX(lane: number): number {
   return GIT_GRAPH_LANE_START + lane * GIT_GRAPH_LANE_GAP
 }
 
-export function GitCommitGraph({ layout, width, height = 58 }: { layout: GitGraphRowLayout; width: number; height?: number }) {
+export function GitCommitGraph({ layout, width, height = 58, colors }: { layout: GitGraphRowLayout; width: number; height?: number; colors?: readonly string[] }) {
+  const colorFor = (index: number) => colors?.length ? colors[index % colors.length] : graphColor(index)
   const centerY = height / 2
   const bottomY = height
   const bend = Math.min(12, height / 4)
   const x = graphLaneX(layout.lane)
-  const nodeColor = graphColor(layout.nodeColor)
+  const nodeColor = colorFor(layout.nodeColor)
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0 overflow-visible" aria-hidden="true">
@@ -37,7 +38,7 @@ export function GitCommitGraph({ layout, width, height = 58 }: { layout: GitGrap
           y1="0"
           x2={graphLaneX(line.lane)}
           y2={bottomY}
-          stroke={graphColor(line.color)}
+          stroke={colorFor(line.color)}
           strokeWidth="2.25"
           strokeLinecap="round"
           opacity="0.72"
@@ -48,7 +49,7 @@ export function GitCommitGraph({ layout, width, height = 58 }: { layout: GitGrap
       )}
       {layout.parents.map((edge, index) => {
         const targetX = graphLaneX(edge.toLane)
-        const color = graphColor(edge.color)
+        const color = colorFor(edge.color)
         return edge.fromLane === edge.toLane ? (
           <line key={`parent-${index}`} x1={x} y1={centerY} x2={targetX} y2={bottomY} stroke={color} strokeWidth="2.5" strokeLinecap="round" />
         ) : (

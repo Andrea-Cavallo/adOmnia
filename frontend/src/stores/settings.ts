@@ -147,6 +147,15 @@ export interface AppSettings {
   markdown: {
     templatesFolder: string
   }
+  /**
+   * Scorciatoie Go Studio come JSON, allo stesso livello di `.adomnia/settings.json` del
+   * progetto: preset base e personalizzazioni (con condizione `when`). Migrato dalla chiave
+   * localStorage `adomnia.goide.keymap` alla versione 15 delle impostazioni.
+   */
+  keymap: {
+    preset: 'goland' | 'vscode'
+    bindings: Record<string, { key: string; mod?: boolean; shift?: boolean; alt?: boolean; when?: string } | null>
+  }
 }
 
 function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Partial<T> | undefined): T {
@@ -158,6 +167,14 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
     }
   }
   return merged
+}
+
+import { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap } from '@/lib/goide/legacyKeymap'
+
+export { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap }
+
+function readLegacyKeymap(): string | null {
+  try { return localStorage.getItem(LEGACY_KEYMAP_STORAGE_KEY) } catch { return null }
 }
 
 
@@ -193,7 +210,7 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 14,
+  version: 15,
   general: {
     autoCheckUpdates: true,
     autoDownloadUpdates: false,
@@ -297,6 +314,7 @@ const defaultSettings: AppSettings = {
   markdown: {
     templatesFolder: '',
   },
+  keymap: { preset: 'goland', bindings: {} },
 }
 
 interface SettingsState {
@@ -317,6 +335,7 @@ interface SettingsState {
   updateAi: (patch: Partial<AppSettings['ai']>) => void
   updateFeatures: (patch: Partial<AppSettings['features']>) => void
   updateMarkdown: (patch: Partial<AppSettings['markdown']>) => void
+  updateKeymap: (patch: Partial<AppSettings['keymap']>) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -360,6 +379,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedSettingsVersion = (parsed.version ?? 0) < defaultSettings.version
       const general = mergeBlock(defaultSettings.general, parsed.general)
       general.startupBehavior = general.startupBehavior === 'fixed' ? 'fixed' : 'resume'
+      // v15: le scorciatoie Go Studio passano dalla chiave localStorage alla sezione JSON
+      // `keymap`; la vecchia chiave resta scritta per il rollback, ma non è più la fonte.
+      const keymap = mergeBlock(defaultSettings.keymap, parsed.keymap)
+      let migratedKeymap = false
+      if ((parsed.version ?? 0) < 15 && keymap.preset === 'goland' && Object.keys(keymap.bindings).length === 0) {
+        const legacy = legacyGoStudioKeymap(readLegacyKeymap())
+        if (legacy && (legacy.preset !== 'goland' || Object.keys(legacy.bindings).length > 0)) {
+          keymap.preset = legacy.preset
+          keymap.bindings = legacy.bindings
+          migratedKeymap = true
+        }
+      }
       const merged: AppSettings = {
         ...defaultSettings,
         ...parsed,
@@ -374,6 +405,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         ai: migratedCredentials,
         features: mergeBlock(defaultSettings.features, parsed.features),
         markdown: mergeBlock(defaultSettings.markdown, parsed.markdown),
+        keymap,
       }
       setAutoSaveDelay(merged.general.autoSaveIntervalMs)
       set({ settings: merged, loaded: true })
@@ -382,7 +414,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         normalizeRailItem(merged.general.defaultStartupRail) ?? 'collections',
       )
       // Persist one-time migrations so the change survives without a manual edit.
-      if (migratedToV3 || migratedAiModels || migratedAiCredentials || migratedStartupBehavior || migratedSettingsVersion) get().save()
+      if (migratedToV3 || migratedAiModels || migratedAiCredentials || migratedStartupBehavior || migratedKeymap || migratedSettingsVersion) get().save()
     } catch {
       set({ settings: defaultSettings, loaded: true })
     }
@@ -476,6 +508,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateMarkdown: (patch) => {
     set((s) => ({
       settings: { ...s.settings, markdown: { ...s.settings.markdown, ...patch } },
+    }))
+    get().save()
+  },
+
+  updateKeymap: (patch) => {
+    set((s) => ({
+      settings: { ...s.settings, keymap: { ...s.settings.keymap, ...patch } },
     }))
     get().save()
   },

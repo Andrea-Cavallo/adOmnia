@@ -1038,7 +1038,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 |---|-------------|-------------|
 | J2.1 | **Monaco Editor** | Tabs with pinning, reopen closed tab, split editor with its own tabs, atomic saves, GoLand keymap, multi-caret and column selection. |
 | J2.2 | **Completion & Diagnostics** | gopls completion with auto-imports and diagnostics computed on unsaved buffers. |
-| J2.3 | **Navigation** | Ctrl+click / Ctrl+B declaration, implementations, super method, usages, symbol search, Search Everywhere, back/forward history, bookmarks, structure view and symbolic breadcrumb. |
+| J2.3 | **Navigation** | Ctrl+click / Ctrl+B declaration, implementations, super method, usages, symbol search, Search Everywhere (fuzzy matching ranked by prefix/word/substring/subsequence, with recently used actions pushed up), back/forward history, bookmarks, structure view and symbolic breadcrumb. |
 | J2.4 | **Implementation Markers** | Gutter markers for implementations and implemented interfaces, including SDK interfaces. |
 | J2.5 | **Refactoring** | Rename with multi-file preview and gopls code actions (extract variable/constant/function, inline, move to new file), applied all-or-nothing. |
 | J2.6 | **Semantic Editing** | Semantic highlighting, inlay hints, quick documentation, parameter info, Implement Interface. |
@@ -1095,6 +1095,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J6.9 | **Security panel: dependencies (govulncheck)** | On-demand govulncheck scan ranked by reachability (called / imported / required only), advisory detail and aliases, found → fixed version, call paths from project code that open each source, module dependency path, upgrade preview with confirmed `go get`, Markdown export for AI. |
 | J6.10 | **AI commit message** | *Draft message with AI* in the Commit Dialog (Ctrl+K) summarises the diff and the changed symbols of the ticked files into a Conventional Commits message, editable before committing. Secrets in the diff are redacted and stay redacted in the draft, `.adomnia/aiignore` files are listed without their content, and the project AI policy (`off` / `local-only`) is enforced like the other AI features. |
 | J6.11 | **Partial staging** | Stage and unstage single change blocks from the editor gutter popup (*Stage* / *Unstage* next to *Revert*) and single lines from *Stage/Unstage single lines…* or the ✂ button on a change row of the project Git workbench. The buffer is saved first, only the chosen hunks move to or from the index, and the change list refreshes. |
+| J6.12 | **Project settings and keymap in JSON** | `.adomnia/settings.json` (schema, autocompletion in the editor, errors marked and skipped) layers the project over the user settings: editor behavior (tab size, soft tabs, wrap, line numbers, font, vim/emacs mode, sticky scroll — winning over `.editorconfig`) and the keymap (preset plus per-command bindings). Shortcuts accept `when` contexts (`editor && vim.normal`, `!input`, `vim.visual`, `terminal`, …) with fall-through across layers. The legacy `adomnia.goide.keymap` storage migrates into the settings JSON once. |
 
 ---
 

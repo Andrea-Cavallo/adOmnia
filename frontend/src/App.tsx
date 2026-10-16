@@ -33,6 +33,7 @@ const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalet
 // Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
 const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioCloseGuard').then((module) => ({ default: module.GoStudioCloseGuard })))
+const GoStudioWarmup = React.lazy(() => import('@/components/goide/GoStudioWarmup').then((module) => ({ default: module.GoStudioWarmup })))
 // Live Development Session: the debug bar and its overlays load after the first frame, outside the startup bundle.
 const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
@@ -152,6 +153,7 @@ function App() {
         <EntityNotice />
         <ConfirmDialogHost />
         {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><GoStudioWarmup /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><UpdateNotice /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}

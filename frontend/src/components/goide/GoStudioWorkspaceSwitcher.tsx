@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Layers, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Layers, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { confirm } from '@/lib/confirmDialog'
 import { DEFAULT_STUDIO_WORKSPACE_ID } from '@/lib/goide-workspaces-api'
@@ -110,9 +110,10 @@ function WorkspaceSwitcher() {
       <button type="button" aria-haspopup="menu" title={`Go Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 2 }) }}
         className={`go-studio-widget max-w-48 ${menu ? 'is-active' : ''}`}>
-        <Layers size={13} className="shrink-0 text-text-3" />
-        <span className="truncate">{active.name}</span>
-        <span className="shrink-0 text-text-4">{activeCount}</span>
+        <Layers size={15} className="shrink-0 text-text-2" />
+        <span className="truncate text-[13.5px] font-medium text-text-1">{active.name}</span>
+        <span className="go-studio-count shrink-0">{activeCount}</span>
+        <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items} onSelect={select} onClose={() => setMenu(null)} />}
       {dialog && <WorkspaceNameDialog dialog={dialog} onClose={() => setDialog(null)} />}

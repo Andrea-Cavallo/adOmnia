@@ -1,4 +1,8 @@
-/** Punteggio di corrispondenza: prefisso > parola > sottostringa > sottosequenza; null se non corrisponde. */
+/**
+ * Punteggio di corrispondenza: prefisso > parola > sottostringa > sottosequenza fuzzy; null se
+ * non corrisponde. La sottosequenza pesa contiguità, inizi di parola e salti brevi: "ril" batte
+ * "rnl" su "Run Linter".
+ */
 export function matchScore(query: string, text: string): number | null {
   const needle = query.trim().toLowerCase()
   if (!needle) return 0
@@ -7,23 +11,40 @@ export function matchScore(query: string, text: string): number | null {
   const index = haystack.indexOf(needle)
   if (index >= 0) return (/[\s./_-]/.test(haystack[index - 1] ?? '') ? 70 : 50) - Math.min(20, index)
   let cursor = 0
+  let previous = -2
+  let bonus = 0
   for (const character of needle) {
-    cursor = haystack.indexOf(character, cursor)
-    if (cursor < 0) return null
-    cursor += 1
+    const found = haystack.indexOf(character, cursor)
+    if (found < 0) return null
+    if (found === previous + 1) bonus += 3 // caratteri contigui
+    if (found === 0 || /[\s./_-]/.test(haystack[found - 1] ?? '')) bonus += 4 // inizio parola
+    bonus -= Math.min(3, found - cursor) // salti lunghi costano
+    previous = found
+    cursor = found + 1
   }
-  return 20
+  return Math.max(1, 10 + Math.min(15, bonus))
 }
 
 export interface SearchCandidate<T> {
   item: T
   text: string
+  /** Punteggio extra (es. uso recente): sommato a quello di corrispondenza, mai capovolge un non-match. */
+  boost?: number
+}
+
+/** Punteggio per l'uso recente: decresce lungo la lista dei comandi eseguiti di recente. */
+export function recencyBoost(recentIds: readonly string[], id: string): number {
+  const index = recentIds.indexOf(id)
+  return index < 0 ? 0 : Math.max(0, 30 - index * 4)
 }
 
 /** Filtra e ordina per punteggio (stabile a parità), fermandosi a limit risultati. */
 export function rankCandidates<T>(query: string, candidates: SearchCandidate<T>[], limit: number): T[] {
   return candidates
-    .map((candidate, index) => ({ candidate, index, score: matchScore(query, candidate.text) }))
+    .map((candidate, index) => {
+      const score = matchScore(query, candidate.text)
+      return { candidate, index, score: score === null ? null : score + (candidate.boost ?? 0) }
+    })
     .filter((entry): entry is { candidate: SearchCandidate<T>; index: number; score: number } => entry.score !== null)
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, limit)

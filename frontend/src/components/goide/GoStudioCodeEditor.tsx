@@ -1,4 +1,8 @@
 import { attachEditorMode } from './goStudioEditorModes'
+import { registerGoStudioSettingsJson } from './goStudioSettingsJson'
+import { editorConfigWithProject } from '@/lib/goide/projectSettings'
+import { useProjectSettings } from '@/stores/goideProjectSettings'
+import { useGoStudioWhenStore } from '@/stores/goStudioWhenContext'
 import { caretFor, rememberCaret } from '@/lib/goide/goStudioCaretMemory'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
@@ -50,6 +54,7 @@ startGoStudioLspSync()
 registerGoStudioDebugHover()
 registerGoStudioExtraLanguages()
 startGoStudioExtensions()
+registerGoStudioSettingsJson()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 
@@ -108,10 +113,16 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const clearRevealLocation = useGoIDEStore((state) => state.clearRevealLocation)
   const semanticHighlighting = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'semanticHighlighting'))
   const inlayHints = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'inlayHints'))
-  const stickyScroll = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
-  const fontLigatures = useGoIDELspStore((state) => state.preferences.fontLigatures)
-  const fontSize = useGoIDELspStore((state) => state.preferences.fontSize)
-  const editorMode = useGoIDELspStore((state) => state.preferences.editorMode)
+  const stickyScrollPref = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
+  const fontLigaturesPref = useGoIDELspStore((state) => state.preferences.fontLigatures)
+  const fontSizePref = useGoIDELspStore((state) => state.preferences.fontSize)
+  const editorModePref = useGoIDELspStore((state) => state.preferences.editorMode)
+  // `.adomnia/settings.json` del progetto vince sulle preferenze utente, chiave per chiave.
+  const projectEditor = useProjectSettings(document.document.sessionId).settings.editor
+  const stickyScroll = projectEditor.stickyScroll ?? stickyScrollPref
+  const fontLigatures = projectEditor.fontLigatures ?? fontLigaturesPref
+  const fontSize = projectEditor.fontSize ?? fontSizePref
+  const editorMode = projectEditor.editorMode ?? editorModePref
   const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
   const extensions = useIDEExtensionsStore(state => state.items)
@@ -249,7 +260,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     if (!editor || editorMode === 'default') return
     let detach: (() => void) | null = null
     let cancelled = false
-    void attachEditorMode(editor, editorMode, modeStatusRef.current).then((dispose) => {
+    void attachEditorMode(editor, editorMode, modeStatusRef.current, (mode) => useGoStudioWhenStore.getState().setVimMode(mode)).then((dispose) => {
       if (cancelled) dispose()
       else detach = dispose
     }).catch((error) => useGoIDELspStore.setState({ message: `Could not start ${editorMode} mode: ${error instanceof Error ? error.message : String(error)}` }))
@@ -283,7 +294,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
         // Panoramica a tutta altezza (fill), a blocchi leggibili (scala 2), con il riquadro della vista sempre visibile.
         minimap: { enabled: false },
-        lineNumbers: 'on',
+        lineNumbers: projectEditor.lineNumbers ?? 'on',
+        wordWrap: projectEditor.wordWrap ?? 'off',
         folding: true,
         // Parentesi monocromatiche come in IntelliJ: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
         bracketPairColorization: { enabled: false },
@@ -312,8 +324,8 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
         codeLensFontSize: 11,
         codeLensFontFamily: 'var(--font-sans)',
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
-        // Per gli altri file vale .editorconfig, se il progetto lo dichiara.
-        ...indentationFor(document.document.language, editorConfig),
+        // Per gli altri file vale .editorconfig, e `.adomnia/settings.json` è il livello più esplicito.
+        ...indentationFor(document.document.language, editorConfigWithProject(editorConfig, projectEditor)),
         padding: { top: 6, bottom: 6 },
       }}
     />

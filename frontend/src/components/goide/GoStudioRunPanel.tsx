@@ -153,6 +153,12 @@ function executionDetails(execution: GoIDEExecution): string {
   return parts.join(' · ')
 }
 
+/** Nome breve di un'esecuzione nella barra dei servizi: l'ultima cartella di lavoro, altrimenti il tipo. */
+function executionLabel(execution: GoIDEExecution): string {
+  const folder = execution.workingDirectory.replace(/\\/g, '/').split('/').filter(Boolean).pop()
+  return folder ? `${folder} · ${execution.kind}` : execution.kind
+}
+
 const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   run: 'Run',
   problems: 'Problems',
@@ -234,7 +240,10 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
   const debugState = useGoIDEDebugStore(selectDebugState(sessionId))
   const failedTests = useGoIDETestsStore((state) => selectedTestRun(state, sessionId)?.summary.failed ?? 0)
   const problemCount = counts.errors + counts.warnings + buildProblems.length
-  const matchingLines = lines.filter((line) => (!logsOnly || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase())))
+  // "Service logs" vive dentro Run: la barra in alto sceglie il servizio e può nascondere le righe di sistema.
+  const [serviceLogs, setServiceLogs] = useToolView(sessionId, tool, 'serviceLogs', false)
+  const onlyLogs = logsOnly || serviceLogs
+  const matchingLines = lines.filter((line) => (!onlyLogs || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase())))
   // Output intenso: si disegna solo la coda, con "mostra precedenti" a richiesta; Copy e la
   // ricerca lavorano comunque su tutto il buffer (4 MB). Con la ricerca attiva la finestra
   // si apre al cap per non nascondere i match vecchi.
@@ -290,6 +299,19 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
+        {executions.length > 1 && (
+          <div role="tablist" aria-label="Service logs" className="flex h-8 shrink-0 items-center gap-1 overflow-x-auto border-b border-border-1 px-2">
+            {executions.map((execution) => (
+              <button key={execution.id} type="button" role="tab" aria-selected={execution.id === active?.id} onClick={() => void selectToolRun(sessionId, tool, execution.id)} title={`${execution.command}\n${execution.workingDirectory}`}
+                className={`flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-[11px] ${execution.id === active?.id ? 'bg-[var(--gs-raised)] text-text-1' : 'text-text-3 hover:bg-surface-3'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[execution.status] ?? 'bg-text-4'}`} aria-hidden="true" />
+                <span className="max-w-40 truncate">{executionLabel(execution)}</span>
+              </button>
+            ))}
+            <button type="button" aria-pressed={serviceLogs} onClick={() => setServiceLogs(!serviceLogs)} title="Show only the service's own output, without adOmnia's system lines"
+              className={`ml-auto h-6 shrink-0 rounded-md px-2 text-[10.5px] font-semibold ${serviceLogs ? 'bg-accent/15 text-text-1' : 'text-text-3 hover:bg-surface-3'}`}>Logs only</button>
+          </div>
+        )}
         {buildSteps.length > 0 && <details className="max-h-40 shrink-0 overflow-auto border-b border-border-1 px-3 py-2 text-[11px]">
           <summary className="cursor-pointer text-accent">BuildKit · {buildSteps.filter(step=>step.state==='done'||step.state==='cached').length}/{buildSteps.length} steps · {buildSteps.filter(step=>step.state==='cached').length} cached</summary>
           {buildSteps.map(step=><p key={step.id} className={step.state==='error'?'text-danger':'text-text-3'}>#{step.id} · {step.state} · {step.title} {step.duration ?? ''}</p>)}

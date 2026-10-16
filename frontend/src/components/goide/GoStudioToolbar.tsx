@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGoIDEWindowsStore } from '@/stores/goideWindows'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
-import { Bug, ChevronDown, Hammer, Maximize2, Minimize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
+import { Bug, ChevronDown, Hammer, Maximize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
 import { Container, Database, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
 import type { RailItem } from '@/lib/navigation'
 import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
@@ -165,7 +165,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
 
   const titlebar = useGoStudioTitlebar()
   return (
-    <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
+    <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`go-studio-toolbar flex h-12 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
       {mainMenu}
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`go-studio-widget max-w-60 pl-1.5 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
@@ -175,11 +175,11 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
       </button>
       {extra}
 
-      <div className="flex min-w-0 flex-1 justify-center px-3">
-        <button type="button" onClick={props.onSearchEverywhere} title="Search Everywhere · Shift Shift" className="flex h-8 w-full max-w-[400px] items-center gap-2.5 rounded-[10px] border border-border-1 bg-[var(--gs-island)] px-3 text-text-4 transition-colors hover:border-border-2 hover:text-text-2">
-          <Search size={13} className="shrink-0" />
-          <span className="flex-1 truncate text-left text-[12px]">Search files, symbols, actions</span>
-          <kbd className="shrink-0 rounded-[5px] bg-[var(--gs-raised)] px-1.5 font-mono text-[10px] text-text-3">⇧⇧</kbd>
+      <div className="flex min-w-0 flex-1 px-1.5">
+        <button type="button" onClick={props.onSearchEverywhere} title="Search Everywhere · Shift Shift" className="flex h-[34px] w-full max-w-[560px] items-center gap-2.5 rounded-[11px] bg-[var(--gs-island)] px-3.5 text-text-4 shadow-[inset_0_0_0_1px_var(--color-border-1)] transition-colors hover:text-text-2 hover:shadow-[inset_0_0_0_1px_var(--color-border-2,var(--color-border-1))]">
+          <Search size={15} className="shrink-0" />
+          <span className="flex-1 truncate text-left text-[13px]">Search files, symbols, actions…</span>
+          <span className="flex shrink-0 items-center gap-1"><kbd className="go-studio-key">⇧</kbd><kbd className="go-studio-key">⇧</kbd></span>
         </button>
       </div>
 
@@ -190,22 +190,19 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
           <ChevronDown size={11} className="shrink-0 text-text-4" />
         </button>
         <span className="mx-0.5 h-4 w-px bg-border-1" aria-hidden="true" />
-        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading} aria-label="Run" title="Run · Ctrl/Cmd+F5" className="go-studio-icon-button h-[26px] w-[30px] bg-success/15 text-success"><Play size={14} fill="currentColor" /></button>
-        <button type="button" onClick={props.onDebug} disabled={!toolsReady || loading} aria-label="Debug" title="Debug · Shift+F9" className="go-studio-icon-button h-[26px] w-[30px] text-info"><Bug size={14} /></button>
-        <button type="button" onClick={props.onStop} disabled={!running} aria-label="Stop" title="Stop process tree · Shift+F5" className="go-studio-icon-button h-[26px] w-[30px] text-danger"><Square size={11} fill="currentColor" /></button>
+        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading} aria-label="Run" title="Run · Ctrl/Cmd+F5" className="go-studio-icon-button h-[28px] w-[32px] bg-success/20 text-success"><Play size={15} fill="currentColor" /></button>
+        <button type="button" onClick={props.onDebug} disabled={!toolsReady || loading} aria-label="Debug" title="Debug · Shift+F9" className="go-studio-icon-button h-[28px] w-[32px] text-info"><Bug size={15} /></button>
+        <button type="button" onClick={props.onStop} disabled={!running} aria-label="Stop" title="Stop process tree · Shift+F5" className="go-studio-icon-button h-[28px] w-[32px] bg-danger/15 text-danger"><Square size={12} fill="currentColor" /></button>
       </div>
-      <button type="button" onClick={props.onBuild} disabled={!toolsReady || loading} aria-label="Build" title="Build · Ctrl/Cmd+Shift+B" className="go-studio-icon-button h-8 w-8"><Hammer size={15} /></button>
+      <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
+      <button type="button" onClick={props.onBuild} disabled={!toolsReady || loading} aria-label="Build" title="Build · Ctrl/Cmd+Shift+B" className="go-studio-icon-button h-8 w-8"><Hammer size={16} /></button>
       <button type="button" aria-label="More Go actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title="Toolchain, dependencies, go mod tidy" className={`go-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><MoreVertical size={15} /></button>
+      <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-label="Open an adOmnia studio in its own window" aria-haspopup="menu" aria-expanded={menu?.kind === 'studios'} onClick={(event) => openMenu('studios', event.currentTarget)} title="Studios: API, Database, Broker, Mock… each in its own window beside the code" className={`go-studio-icon-button relative h-8 w-8 ${menu?.kind === 'studios' ? 'is-active' : ''}`}>
         <LayoutGrid size={15} />
         {detachedStudios.length > 0 && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />}
       </button>
       {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
-      {props.onToggleMaximize && (
-        <button type="button" onClick={props.onToggleMaximize} aria-label={props.maximized ? 'Restore adOmnia layout' : 'Maximize Go Studio'} aria-pressed={!!props.maximized} title={`${props.maximized ? 'Restore adOmnia rail and header' : 'Maximize Go Studio: hide adOmnia rail and header'} · Ctrl/Cmd+Shift+F11`} className={`go-studio-icon-button h-8 w-8 ${props.maximized ? 'is-active' : ''}`}>
-          {props.maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
-      )}
       {/* Nella barra della finestra la X è quella della finestra: Close Project resta nel menu File. */}
       {!titlebar.active && <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="go-studio-icon-button h-8 w-8"><X size={14} /></button>}
       <GoStudioWindowControls />

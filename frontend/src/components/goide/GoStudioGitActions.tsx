@@ -40,15 +40,15 @@ export function GoStudioGitBranches({ repoRoot, branches, busy, run }: BranchesP
   }
 
   return (
-    <aside aria-label="Branches" className="flex min-h-0 flex-col overflow-auto border-r border-border-1 p-2 text-[11.5px]">
+    <aside aria-label="Branches" className="gs-git-branches flex min-h-0 flex-col overflow-auto border-r border-border-1 p-2 text-[11.5px]">
       <form className="mb-2 flex gap-1" onSubmit={(event) => { event.preventDefault(); create() }}>
         <input aria-label="New branch name" value={name} onChange={(event) => { setName(event.target.value); setFormError('') }} placeholder="New branch…" className="h-7 min-w-0 flex-1 rounded border border-border-2 bg-surface-1 px-2 text-[11px] text-text-1 outline-none focus:border-accent" />
         <button type="submit" disabled={busy || !name.trim()} title="Create and switch to the new branch" aria-label="Create branch" className="go-studio-icon-button h-7 w-7"><Plus size={13} /></button>
       </form>
       {formError && <p role="alert" className="mb-1 text-[10.5px] text-danger">{formError}</p>}
-      <div className="mb-1 font-semibold text-text-2">Local</div>
+      <div className="gs-git-branch-heading"><span>Local</span><span>{local.length}</span></div>
       {local.map((branch) => (
-        <div key={branch.name} className={`group flex h-6 items-center gap-1 px-1 ${branch.current ? 'text-accent' : 'text-text-3'}`}>
+        <div key={branch.name} className={`gs-git-branch-row group flex h-8 items-center gap-1 px-2 ${branch.current ? 'is-current text-text-1' : 'text-text-3'}`}>
           <button type="button" disabled={busy || branch.current} onClick={() => void run(() => GitSync.CheckoutBranch(repoRoot, branch.name))} title={branch.current ? 'Current branch' : `Switch to ${branch.name}`} className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left hover:text-text-1">
             <GitBranch size={11} className="shrink-0" /><span className="truncate">{branch.name}</span>{branch.current && <Check size={11} className="shrink-0" />}
           </button>
@@ -58,9 +58,9 @@ export function GoStudioGitBranches({ repoRoot, branches, busy, run }: BranchesP
           </>}
         </div>
       ))}
-      <div className="mb-1 mt-3 font-semibold text-text-2">Remote</div>
+      <div className="gs-git-branch-heading mt-3"><span>Remote</span><span>{remote.length}</span></div>
       {remote.map((branch) => (
-        <button key={branch.name} type="button" disabled={busy} onClick={() => void run(() => GitSync.CheckoutRemoteBranch(repoRoot, branch.name))} title={`Check out ${shortBranch(branch.name)} as a tracking branch`} className="flex h-6 w-full items-center gap-1.5 truncate px-1 text-left text-text-4 hover:text-text-1">
+        <button key={branch.name} type="button" disabled={busy} onClick={() => void run(() => GitSync.CheckoutRemoteBranch(repoRoot, branch.name))} title={`Check out ${shortBranch(branch.name)} as a tracking branch`} className="gs-git-branch-row flex h-8 w-full items-center gap-1.5 truncate px-2 text-left text-text-4 hover:text-text-1">
           <GitFork size={11} className="shrink-0" /><span className="truncate">{branch.name}</span>
         </button>
       ))}

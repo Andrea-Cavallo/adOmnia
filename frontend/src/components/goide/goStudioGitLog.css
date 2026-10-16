@@ -1,0 +1,51 @@
+.gs-git-history { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--color-border-1); background: var(--color-surface-0); }
+.gs-git-history-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 38px; padding: 0 14px; border-bottom: 1px solid var(--color-border-1); background: var(--color-surface-1); color: var(--color-text-3); font-size: 11px; }
+.gs-git-history-summary > span:first-child { display: flex; align-items: center; gap: 8px; color: var(--color-text-2); font-weight: 600; }
+.gs-git-history-scroll { overflow: auto; min-height: 0; flex: 1; }
+.gs-git-history-table { width: 100%; }
+.gs-git-history-head { display: grid; position: sticky; top: 0; z-index: 1; height: 28px; align-items: center; background: var(--color-surface-1); color: var(--color-text-4); border-bottom: 1px solid var(--color-border-1); text-transform: uppercase; letter-spacing: .07em; font-size: 9px; }
+.gs-git-history-head > span { padding-left: 12px; }
+.gs-git-history-row { display: grid; width: 100%; height: 40px; align-items: center; text-align: left; background: linear-gradient(90deg, color-mix(in srgb, var(--git-lane) 6%, transparent), transparent 80%); box-shadow: inset 0 -1px color-mix(in srgb, var(--color-border-1) 40%, transparent); }
+.gs-git-history-row:hover { background: color-mix(in srgb, var(--git-lane) 9%, var(--color-surface-1)); }
+.gs-git-history-row[aria-selected=true] { background: color-mix(in srgb, var(--git-lane) 15%, var(--color-surface-1)); box-shadow: inset 3px 0 var(--git-lane); }
+.gs-git-history-row:focus-visible { outline: 2px solid var(--git-lane); outline-offset: -2px; }
+.gs-git-history-refs { display: flex; align-items: flex-start; flex-direction: column; gap: 3px; padding: 4px 10px; min-width: 0; }
+.gs-git-history-ref { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 6px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--git-lane) 35%, transparent); background: color-mix(in srgb, var(--git-lane) 12%, var(--color-surface-1)); color: var(--color-text-2); font-size: 10px; line-height: 15px; }
+.gs-git-history-ref > svg { flex-shrink: 0; color: var(--git-lane); }
+.gs-git-history-ref > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.gs-git-history-ref.is-head { border-color: var(--git-lane); font-weight: 600; }
+.gs-git-history-ref.is-tag { border-style: dashed; }
+.gs-git-history-graph { align-self: stretch; display: flex; align-items: center; border-left: 1px solid color-mix(in srgb, var(--color-border-1) 45%, transparent); }
+.gs-git-history-message { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 12px; color: var(--color-text-1); font-size: 11.5px; }
+.gs-git-history-message > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.gs-git-history-message code { flex-shrink: 0; margin-left: auto; color: var(--color-text-4); font-size: 10px; }
+.gs-git-history-author { display: flex; flex-direction: column; min-width: 0; gap: 2px; padding: 0 12px; color: var(--color-text-3); font-size: 10.5px; }
+.gs-git-history-author > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.gs-git-history-author time { color: var(--color-text-4); font-size: 9.5px; }
+.gs-git-log-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr) minmax(180px, 230px); flex: 1; min-height: 0; min-width: 0; }
+.gs-git-branches { background: var(--color-surface-1); }
+.gs-git-branch-heading { display: flex; justify-content: space-between; padding: 10px 7px 7px; color: var(--color-text-4); text-transform: uppercase; letter-spacing: .08em; font-size: 9px; font-weight: 600; }
+.gs-git-branch-row { border-radius: 4px; flex-shrink: 0; }
+.gs-git-branch-row:hover { background: var(--color-surface-2); }
+.gs-git-branch-row.is-current { background: color-mix(in srgb, #22b8a8 14%, var(--color-surface-1)); box-shadow: inset 2px 0 #22b8a8; }
+.gs-git-branch-row.is-current svg { color: #22b8a8; }
+.gs-git-commit-detail { min-width: 0; overflow: auto; background: var(--color-surface-1); }
+.gs-git-detail-heading { display: flex; align-items: center; height: 38px; padding: 0 16px; border-bottom: 1px solid var(--color-border-1); color: var(--color-text-3); font-size: 11px; font-weight: 600; }
+.gs-git-detail-body { padding: 18px 16px; }
+.gs-git-detail-body h4 { color: var(--color-text-1); font-size: 14px; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+.gs-git-detail-avatar { display: grid; place-items: center; width: 32px; height: 32px; margin: 20px 0 8px; border-radius: 50%; background: color-mix(in srgb, #22b8a8 16%, var(--color-surface-1)); color: var(--color-text-2); font-size: 11px; font-weight: 600; }
+.gs-git-detail-metadata { margin-top: 20px; border-top: 1px solid var(--color-border-1); padding-top: 14px; }
+.gs-git-detail-metadata dt { margin-bottom: 6px; color: var(--color-text-4); font-size: 10px; }
+.gs-git-detail-metadata dd { margin-bottom: 14px; overflow-wrap: anywhere; font-family: monospace; color: var(--color-text-3); font-size: 10px; line-height: 1.7; }
+.gs-git-detail-metadata button { margin-right: 6px; color: var(--color-text-2); text-decoration: underline; text-underline-offset: 3px; }
+.gs-git-detail-metadata button:disabled { color: var(--color-text-4); text-decoration: none; }
+
+
+
+.gs-git-panel { container-type: inline-size; }
+@container (max-width: 740px) {
+  .gs-git-log-layout { grid-template-columns: 140px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .gs-git-log-layout > .gs-git-branches { grid-row: 1 / span 2; }
+  .gs-git-log-layout > .gs-git-commit-detail { grid-column: 2; max-height: 160px; border-top: 1px solid var(--color-border-1); }
+}
+

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDoubleShiftDetector, matchScore, rankCandidates } from './goStudioSearchRanking'
+import { createDoubleShiftDetector, matchScore, rankCandidates, recencyBoost } from './goStudioSearchRanking'
 
 describe('matchScore', () => {
   it('prefers prefix, then word start, then substring, then subsequence', () => {
@@ -12,6 +12,13 @@ describe('matchScore', () => {
     expect(inner).toBeGreaterThan(subsequence)
     expect(matchScore('xyz', 'Run Linter')).toBeNull()
   })
+
+  it('scores fuzzy matches by contiguity and word starts', () => {
+    // "nt" è contiguo in "linter"; "ut" salta fino alla fine: deve perdere.
+    expect(matchScore('nt', 'Run Linter')!).toBeGreaterThan(matchScore('ut', 'Run Linter')!)
+    // Inizi di parola battono gli stessi caratteri in mezzo alle parole: "rl" (Run, Linter) su "ul".
+    expect(matchScore('rl', 'Run Linter')!).toBeGreaterThan(matchScore('ul', 'Run Linter')!)
+  })
 })
 
 describe('rankCandidates', () => {
@@ -19,6 +26,19 @@ describe('rankCandidates', () => {
     const items = ['Build All', 'Run', 'Rebuild', 'Build Current Package'].map((text) => ({ item: text, text }))
     expect(rankCandidates('build', items, 3)).toEqual(['Build All', 'Build Current Package', 'Rebuild'])
     expect(rankCandidates('', items, 2)).toEqual(['Build All', 'Run'])
+  })
+
+  it('lets the recency boost reorder matches without rescuing non-matches', () => {
+    const items = [
+      { item: 'Build All', text: 'Build All', boost: 0 },
+      { item: 'Build Current Package', text: 'Build Current Package', boost: recencyBoost(['Build Current Package', 'Build All'], 'Build Current Package') },
+      { item: 'Format', text: 'Format Code', boost: 50 },
+    ]
+    expect(rankCandidates('build', items, 2)).toEqual(['Build Current Package', 'Build All'])
+    // Il boost non fa apparire comandi che non corrispondono alla ricerca.
+    expect(rankCandidates('zzz', items, 5)).toEqual([])
+    expect(recencyBoost(['a', 'b', 'c'], 'b')).toBeGreaterThan(recencyBoost(['a', 'b', 'c'], 'c'))
+    expect(recencyBoost(['a'], 'z')).toBe(0)
   })
 })
 

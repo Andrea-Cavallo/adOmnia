@@ -3,8 +3,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const values = new Map<string, string>()
 vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) })
 
+const settings = vi.hoisted(() => {
+  const listeners: Array<(state: unknown) => void> = []
+  return {
+    listeners,
+    loaded: true,
+    keymap: { preset: 'goland', bindings: {} } as { preset: 'goland' | 'vscode'; bindings: Record<string, unknown> },
+  }
+})
+vi.mock('@/stores/settings', () => ({
+  useSettingsStore: {
+    getState: () => ({
+      loaded: settings.loaded,
+      settings: { keymap: settings.keymap },
+      updateKeymap: (patch: { preset?: 'goland' | 'vscode'; bindings?: Record<string, unknown> }) => {
+        settings.keymap = { ...settings.keymap, ...patch }
+        settings.listeners.forEach((listener) => listener({ loaded: settings.loaded, settings: { keymap: settings.keymap } }))
+      },
+    }),
+    subscribe: (listener: (state: unknown) => void) => {
+      settings.listeners.push(listener)
+      return () => settings.listeners.splice(settings.listeners.indexOf(listener), 1)
+    },
+  },
+}))
+
 const { GO_STUDIO_COMMANDS, commandsForKey, commandShortcut, isStaleEditorKey } = await import('./goStudioCommands')
 const { bindingConflicts, bindingFromEvent, effectiveBinding, useGoStudioKeymap } = await import('./goStudioKeymap')
+const { legacyGoStudioKeymap } = await import('@/lib/goide/legacyKeymap')
 
 const command = (id: string) => GO_STUDIO_COMMANDS.find((item) => item.id === id)!
 const key = (k: string, mods: { ctrl?: boolean; shift?: boolean; alt?: boolean } = {}) => ({ key: k, ctrlKey: !!mods.ctrl, metaKey: false, shiftKey: !!mods.shift, altKey: !!mods.alt })
@@ -12,7 +38,8 @@ const key = (k: string, mods: { ctrl?: boolean; shift?: boolean; alt?: boolean }
 describe('goStudioKeymap', () => {
   beforeEach(() => {
     values.clear()
-    useGoStudioKeymap.setState({ keymap: 'goland', custom: {} })
+    settings.keymap = { preset: 'goland', bindings: {} }
+    useGoStudioKeymap.setState({ keymap: 'goland', custom: {}, project: {}, projectPreset: undefined, when: {} })
   })
 
   it('switches to the VS Code keymap and back', () => {
@@ -31,7 +58,7 @@ describe('goStudioKeymap', () => {
     expect(isStaleEditorKey(key('b', { ctrl: true }))).toBe(true)
     state.setBinding('run.run', null)
     expect(commandShortcut(command('run.run'))).toBe('')
-    state.resetBinding('run.run')
+    state.resetBinding(command('run.run').id)
     expect(commandShortcut(command('run.run'))).not.toBe('')
   })
 
@@ -45,5 +72,58 @@ describe('goStudioKeymap', () => {
     expect(bindingFromEvent(key('Shift', { shift: true }))).toBeNull()
     expect(bindingFromEvent(key('K', { ctrl: true, shift: true }))).toEqual({ key: 'k', mod: true, shift: true })
     expect(bindingFromEvent(key(' ', { ctrl: true }))).toEqual({ key: 'Space', mod: true })
+  })
+
+  it('takes the bindings from the settings JSON layer', () => {
+    settings.keymap = { preset: 'vscode', bindings: { 'code.rename': { key: 'r', mod: true } } }
+    settings.listeners.forEach((listener) => listener({ loaded: true, settings: { keymap: settings.keymap } }))
+    expect(effectiveBinding(command('code.rename'))).toEqual({ key: 'r', mod: true })
+    expect(effectiveBinding(command('view.quickOpen'))).toEqual({ key: 'p', mod: true })
+  })
+
+  it('layers project over user over preset over the command default', () => {
+    useGoStudioKeymap.setState({ keymap: 'goland' })
+    useGoStudioKeymap.getState().setBinding('code.rename', { key: 'n', mod: true })
+    useGoStudioKeymap.getState().setProjectKeymap({ bindings: { 'code.rename': { key: 'r', mod: true, shift: true } } })
+    expect(effectiveBinding(command('code.rename'))).toEqual({ key: 'r', mod: true, shift: true })
+    // Un binding del progetto con null toglie il tasto anche alle personalizzazioni utente.
+    useGoStudioKeymap.getState().setProjectKeymap({ bindings: { 'code.rename': null } })
+    expect(effectiveBinding(command('code.rename'))).toBeUndefined()
+    // Il preset del progetto vale quando il progetto non rimappa il comando e l'utente nemmeno.
+    useGoStudioKeymap.getState().resetBinding('code.rename')
+    useGoStudioKeymap.getState().setProjectKeymap({ preset: 'vscode', bindings: {} })
+    expect(effectiveBinding(command('code.rename'))).toEqual({ key: 'F2' })
+  })
+
+  it('falls through to the lower layer when the when condition does not match', () => {
+    useGoStudioKeymap.getState().setBinding('code.rename', { key: 'n', mod: true, when: 'vim.normal' })
+    expect(effectiveBinding(command('code.rename'))).toEqual({ key: 'F6', shift: true })
+    expect(effectiveBinding(command('code.rename'), { ...useGoStudioKeymap.getState(), when: { 'vim.normal': true } })).toMatchObject({ key: 'n', mod: true })
+    expect(commandsForKey(key('n', { ctrl: true }), { 'vim.normal': true }).map((item) => item.id)).toContain('code.rename')
+    // Due scorciatoie sullo stesso tasto in contesti diversi non sono in conflitto.
+    useGoStudioKeymap.getState().setBinding('view.terminal', { key: 'n', mod: true })
+    const conflicts = [...bindingConflicts(GO_STUDIO_COMMANDS, { ...useGoStudioKeymap.getState(), when: { 'vim.normal': true } }).keys()]
+    expect(conflicts).not.toContain('M:n')
+  })
+})
+
+describe('legacy keymap migration', () => {
+  it('converts the old localStorage shape, including unbinds and conditions', () => {
+    expect(legacyGoStudioKeymap(JSON.stringify({
+      keymap: 'vscode',
+      custom: {
+        'code.rename': { key: 'r', mod: true, when: 'editor' },
+        'nav.back': null,
+        'broken': 42,
+      },
+    }))).toEqual({
+      preset: 'vscode',
+      bindings: {
+        'code.rename': { key: 'r', mod: true, when: 'editor' },
+        'nav.back': null,
+      },
+    })
+    expect(legacyGoStudioKeymap(null)).toBeNull()
+    expect(legacyGoStudioKeymap('not json')).toBeNull()
   })
 })

@@ -93,7 +93,7 @@ export function GoStudioGitPanel({ session, onCommand }: { session: GoIDESession
   if (!vcsStatus?.available) return <div className="grid h-full place-items-center p-6 text-center text-[12px] text-text-4"><div><GitBranch size={24} className="mx-auto mb-2 opacity-60" /><p>This project is not inside a Git repository.</p></div></div>
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="gs-git-panel flex h-full min-h-0 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-1 px-2">
         {(['git', 'log', 'worktrees', 'prs'] as const).map((id) => <button key={id} type="button" aria-selected={tab === id} onClick={() => setTab(id)} className={`h-8 border-b-2 px-3 text-[12px] font-medium capitalize ${tab === id ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1'}`}>{TAB_LABEL[id]}</button>)}
         <select aria-label="Git repository" title={repoRoot} value={repoRoot} disabled={loading} onChange={(event) => { setLoading(true); void useGoIDEVCSStore.getState().selectRepository(sessionId, event.target.value).catch((reason) => { setError(errorText(reason)); setLoading(false) }) }} className="ml-2 min-w-0 flex-1 rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10.5px] text-text-2">
@@ -132,10 +132,10 @@ export function GoStudioGitPanel({ session, onCommand }: { session: GoIDESession
         )}
       </div>}
 
-      {tab === 'log' && overview && <div className="grid min-h-0 flex-1 grid-cols-[210px_minmax(320px,1fr)_minmax(220px,0.7fr)]">
+      {tab === 'log' && overview && <div className="gs-git-log-layout">
         <GoStudioGitBranches repoRoot={repoRoot} branches={overview.branches} busy={loading} run={run} />
         <GoStudioGitLog commits={overview.commits} selectedHash={selectedHash} onSelect={setSelectedHash} />
-        <div className="overflow-auto p-3">{selectedCommit ? <><h4 className="text-[12.5px] font-medium text-text-1">{selectedCommit.message}</h4><p className="mt-2 font-mono text-[10.5px] text-text-4">{selectedCommit.fullHash}</p><p className="mt-2 text-[11.5px] text-text-3">{selectedCommit.author}<br />{selectedCommit.date}</p>{selectedCommit.decorations?.length > 0 && <div className="mt-3 flex flex-wrap gap-1">{selectedCommit.decorations.map((item) => <span key={item} className="gs-badge">{item}</span>)}</div>}</> : <p className="text-[12px] text-text-4">Select a commit to view details.</p>}</div>
+        <aside className="gs-git-commit-detail" aria-label="Commit details"><div className="gs-git-detail-heading">Commit details</div>{selectedCommit ? <div className="gs-git-detail-body"><h4>{selectedCommit.message}</h4><div className="gs-git-detail-avatar" aria-hidden="true">{selectedCommit.author.slice(0, 2).toUpperCase()}</div><p className="text-[12px] text-text-2">{selectedCommit.author}</p><p className="mt-1 text-[11px] text-text-4">{selectedCommit.date}</p><dl className="gs-git-detail-metadata"><dt>Commit</dt><dd>{selectedCommit.fullHash}</dd><dt>Parents</dt><dd>{selectedCommit.parents.length ? selectedCommit.parents.map((parent) => <button type="button" key={parent} disabled={!overview.commits.some((commit) => commit.fullHash === parent)} onClick={() => setSelectedHash(parent)} title={parent}>{parent.slice(0, 8)}</button>) : '—'}</dd></dl>{selectedCommit.decorations?.length > 0 && <div className="mt-4 flex flex-wrap gap-1">{selectedCommit.decorations.map((item) => <span key={item} className="gs-badge">{item}</span>)}</div>}</div> : <p className="p-4 text-[12px] text-text-4">Select a commit to view details.</p>}</aside>
       </div>}
 
       {tab === 'prs' && overview && <div className="min-h-0 flex-1 overflow-auto">

@@ -1,4 +1,5 @@
-import { effectiveAltBindings, effectiveBinding, isRemapped } from './goStudioKeymap'
+import { effectiveAltBindings, effectiveBinding, isRemapped, useGoStudioKeymap, type GoStudioKeymapLayers } from './goStudioKeymap'
+import type { GoStudioWhenContext } from '@/lib/goide/when'
 import { IDE_LANGUAGES, languageRequirement, type IdeRegisteredLanguage } from '@/components/ide/languages'
 import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide/languages/go/commands'
 
@@ -37,6 +38,8 @@ export interface GoStudioKeyBinding {
   mod?: boolean
   shift?: boolean
   alt?: boolean
+  /** Condizione sul contesto (es. `editor && vim.normal`, `!input`): senza `when` il tasto vale sempre. */
+  when?: string
 }
 
 export interface GoStudioCommand {
@@ -302,23 +305,26 @@ function keyMatches(binding: GoStudioKeyBinding, event: KeyLike): boolean {
 }
 
 /**
- * Comandi Go Studio intercettabili per un evento tastiera, nell'ordine del registro, con la keymap corrente.
- * I comandi gestiti da Monaco si intercettano solo se l'utente o la keymap ne hanno cambiato il tasto.
+ * Comandi Go Studio intercettabili per un evento tastiera, nell'ordine del registro, con la keymap
+ * corrente. I comandi gestiti da Monaco si intercettano solo se l'utente o la keymap ne hanno
+ * cambiato il tasto. Il contesto `when` (editor, input, vim.normal…) filtra i binding condizionati.
  */
-export function commandsForKey(event: KeyLike): GoStudioCommand[] {
+export function commandsForKey(event: KeyLike, when?: GoStudioWhenContext): GoStudioCommand[] {
+  const state: GoStudioKeymapLayers = { ...useGoStudioKeymap.getState(), when: when ?? {} }
   return GO_STUDIO_COMMANDS.filter((command) => {
-    if (command.editorOwned && !isRemapped(command)) return false
-    return [effectiveBinding(command), ...effectiveAltBindings(command)].some((binding) => !!binding && keyMatches(binding, event))
+    if (command.editorOwned && !isRemapped(command, state)) return false
+    return [effectiveBinding(command, state), ...effectiveAltBindings(command, state)].some((binding) => !!binding && keyMatches(binding, event))
   })
 }
 
-export function commandForKey(event: KeyLike): GoStudioCommand | null {
-  return commandsForKey(event)[0] ?? null
+export function commandForKey(event: KeyLike, when?: GoStudioWhenContext): GoStudioCommand | null {
+  return commandsForKey(event, when)[0] ?? null
 }
 
 /** Il tasto predefinito di un comando dell'editor che è stato rimappato: non deve più eseguire l'azione vecchia. */
-export function isStaleEditorKey(event: KeyLike): boolean {
-  return GO_STUDIO_COMMANDS.some((command) => command.editorOwned && !!command.binding && isRemapped(command) && keyMatches(command.binding, event))
+export function isStaleEditorKey(event: KeyLike, when?: GoStudioWhenContext): boolean {
+  const state: GoStudioKeymapLayers = { ...useGoStudioKeymap.getState(), when: when ?? {} }
+  return GO_STUDIO_COMMANDS.some((command) => command.editorOwned && !!command.binding && isRemapped(command, state) && keyMatches(command.binding, event))
 }
 
 /** Scorciatoia mostrata in menu, palette e dialog: quella effettiva della keymap corrente. */

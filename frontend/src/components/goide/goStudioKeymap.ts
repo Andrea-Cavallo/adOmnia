@@ -1,5 +1,9 @@
 import { create } from 'zustand'
 import type { GoStudioCommand, GoStudioCommandId, GoStudioKeyBinding } from './goStudioCommands'
+import { evaluateWhen, type GoStudioWhenContext } from '@/lib/goide/when'
+import type { ProjectKeymapOverride } from '@/lib/goide/projectSettings'
+import { LEGACY_KEYMAP_STORAGE_KEY } from '@/lib/goide/legacyKeymap'
+import { useSettingsStore } from '@/stores/settings'
 
 /** goland: la keymap predefinita (JetBrains). vscode: le scorciatoie di VS Code per chi arriva da lì. */
 export type GoStudioKeymapId = 'goland' | 'vscode'
@@ -53,17 +57,25 @@ export function isRebindable(command: GoStudioCommand): boolean {
 
 export interface GoStudioKeymapState {
   keymap: GoStudioKeymapId
-  /** Scorciatoie dell'utente: un binding o null per togliere il tasto al comando. */
+  /** Scorciatoie dell'utente (impostazioni JSON): un binding o null per togliere il tasto al comando. */
   custom: Partial<Record<GoStudioCommandId, GoStudioKeyBinding | null>>
+  /** Scorciatoie del progetto (`.adomnia/settings.json`): vincolano quelle dell'utente. */
+  project: Partial<Record<GoStudioCommandId, GoStudioKeyBinding | null>>
+  /** Preset base scelto dal progetto; senza, vale quello dell'utente. */
+  projectPreset?: GoStudioKeymapId
+  /** Contesto attivo per i binding con `when`; senza contesto i binding condizionati non valgono. */
+  when: GoStudioWhenContext
   setKeymap: (keymap: GoStudioKeymapId) => void
   setBinding: (id: GoStudioCommandId, binding: GoStudioKeyBinding | null) => void
   resetBinding: (id: GoStudioCommandId) => void
   resetAll: () => void
+  setProjectKeymap: (keymap: ProjectKeymapOverride) => void
+  setWhen: (when: GoStudioWhenContext) => void
 }
 
-const STORAGE_KEY = 'adomnia.goide.keymap'
+const STORAGE_KEY = LEGACY_KEYMAP_STORAGE_KEY
 
-function load(): Pick<GoStudioKeymapState, 'keymap' | 'custom'> {
+function loadLegacy(): Pick<GoStudioKeymapState, 'keymap' | 'custom'> {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<GoStudioKeymapState>
     return { keymap: parsed.keymap === 'vscode' ? 'vscode' : 'goland', custom: parsed.custom && typeof parsed.custom === 'object' ? parsed.custom : {} }
@@ -72,45 +84,105 @@ function load(): Pick<GoStudioKeymapState, 'keymap' | 'custom'> {
   }
 }
 
-function save(state: Pick<GoStudioKeymapState, 'keymap' | 'custom'>): void {
+/** Doppia scrittura: la chiave storica resta aggiornata per il rollback a versioni precedenti. */
+function saveLegacy(state: Pick<GoStudioKeymapState, 'keymap' | 'custom'>): void {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ keymap: state.keymap, custom: state.custom })) } catch { /* solo locale */ }
 }
 
 export const useGoStudioKeymap = create<GoStudioKeymapState>((set, get) => ({
-  ...load(),
-  setKeymap: (keymap) => { set({ keymap }); save(get()) },
-  setBinding: (id, binding) => { set({ custom: { ...get().custom, [id]: binding } }); save(get()) },
+  ...loadLegacy(),
+  project: {},
+  when: {},
+  setKeymap: (keymap) => {
+    set({ keymap })
+    useSettingsStore.getState().updateKeymap({ preset: keymap })
+    saveLegacy(get())
+  },
+  setBinding: (id, binding) => {
+    const custom = { ...get().custom, [id]: binding }
+    set({ custom })
+    useSettingsStore.getState().updateKeymap({ bindings: custom })
+    saveLegacy(get())
+  },
   resetBinding: (id) => {
     const custom = { ...get().custom }
     delete custom[id]
     set({ custom })
-    save(get())
+    useSettingsStore.getState().updateKeymap({ bindings: custom })
+    saveLegacy(get())
   },
-  resetAll: () => { set({ custom: {} }); save(get()) },
+  resetAll: () => {
+    set({ custom: {} })
+    useSettingsStore.getState().updateKeymap({ bindings: {} })
+    saveLegacy(get())
+  },
+  setProjectKeymap: (keymap) => set({
+    project: { ...(keymap.bindings as Partial<Record<GoStudioCommandId, GoStudioKeyBinding | null>>) },
+    projectPreset: keymap.preset,
+  }),
+  setWhen: (when) => set({ when }),
 }))
 
-/** Il tasto che il comando usa davvero: personalizzazione dell'utente, poi keymap scelta, poi GoLand. */
-export function effectiveBinding(command: GoStudioCommand, state: Pick<GoStudioKeymapState, 'keymap' | 'custom'> = useGoStudioKeymap.getState()): GoStudioKeyBinding | undefined {
-  if (command.id in state.custom) return state.custom[command.id] ?? undefined
-  return KEYMAP_OVERRIDES[state.keymap][command.id] ?? command.binding
+// Le impostazioni sono la fonte della keymap: quando caricano (o cambiano) lo specchio si allinea.
+// Prima del caricamento vale la vecchia chiave locale, così il dialog non mostra una keymap vuota.
+useSettingsStore.subscribe((state) => {
+  if (!state.loaded) return
+  const { preset, bindings } = state.settings.keymap
+  const current = useGoStudioKeymap.getState()
+  if (current.keymap === preset && JSON.stringify(current.custom) === JSON.stringify(bindings)) return
+  useGoStudioKeymap.setState({ keymap: preset, custom: { ...bindings } })
+})
+
+/** I livelli con cui si risolve una scorciatoia: progetto, utente, preset scelto, default del comando. */
+export interface GoStudioKeymapLayers {
+  keymap: GoStudioKeymapId
+  custom: Partial<Record<GoStudioCommandId, GoStudioKeyBinding | null>>
+  project?: Partial<Record<GoStudioCommandId, GoStudioKeyBinding | null>>
+  projectPreset?: GoStudioKeymapId
+  when?: GoStudioWhenContext
+}
+
+function firstBinding(entries: Array<{ present: boolean; value: GoStudioKeyBinding | null | undefined }>, when: GoStudioWhenContext | undefined): GoStudioKeyBinding | undefined {
+  for (const entry of entries) {
+    if (!entry.present) continue
+    const value = entry.value
+    // Un binding condizionato che non vale per il contesto salta al livello successivo.
+    if (value && value.when !== undefined && !evaluateWhen(value.when, when ?? {})) continue
+    return value ?? undefined
+  }
+  return undefined
+}
+
+/**
+ * Il tasto che il comando usa davvero, per il contesto attivo: scorciatoie del progetto
+ * (`.adomnia/settings.json`), poi personalizzazioni dell'utente, poi keymap scelta, poi GoLand.
+ */
+export function effectiveBinding(command: GoStudioCommand, state: GoStudioKeymapLayers = useGoStudioKeymap.getState()): GoStudioKeyBinding | undefined {
+  return firstBinding([
+    { present: command.id in (state.project ?? {}), value: state.project?.[command.id] },
+    { present: command.id in state.custom, value: state.custom[command.id] },
+    { present: command.id in KEYMAP_OVERRIDES[state.projectPreset ?? state.keymap], value: KEYMAP_OVERRIDES[state.projectPreset ?? state.keymap][command.id] },
+    { present: true, value: command.binding },
+  ], state.when)
 }
 
 /** Le alternative storiche (F6 di Eclipse, F10 di VS Code) valgono solo finché il comando tiene il tasto predefinito. */
-export function effectiveAltBindings(command: GoStudioCommand, state: Pick<GoStudioKeymapState, 'keymap' | 'custom'> = useGoStudioKeymap.getState()): GoStudioKeyBinding[] {
+export function effectiveAltBindings(command: GoStudioCommand, state: GoStudioKeymapLayers = useGoStudioKeymap.getState()): GoStudioKeyBinding[] {
   return isRemapped(command, state) ? [] : command.altBindings ?? []
 }
 
-export function isRemapped(command: GoStudioCommand, state: Pick<GoStudioKeymapState, 'keymap' | 'custom'> = useGoStudioKeymap.getState()): boolean {
+export function isRemapped(command: GoStudioCommand, state: GoStudioKeymapLayers = useGoStudioKeymap.getState()): boolean {
   return bindingSignature(effectiveBinding(command, state)) !== bindingSignature(command.binding)
 }
 
+/** Firma del tasto; la condizione `when` fa fede: due scorciatoie sullo stesso tasto in contesti diversi non si sovrappongono. */
 export function bindingSignature(binding: GoStudioKeyBinding | undefined): string {
   if (!binding) return ''
-  return `${binding.mod ? 'M' : ''}${binding.alt ? 'A' : ''}${binding.shift ? 'S' : ''}:${binding.key.length === 1 ? binding.key.toLowerCase() : binding.key}`
+  return `${binding.mod ? 'M' : ''}${binding.alt ? 'A' : ''}${binding.shift ? 'S' : ''}:${binding.key.length === 1 ? binding.key.toLowerCase() : binding.key}${binding.when ? `@${binding.when}` : ''}`
 }
 
 /** Scorciatoie assegnate a più comandi con la keymap corrente: firma → comandi in conflitto. */
-export function bindingConflicts(commands: readonly GoStudioCommand[], state: Pick<GoStudioKeymapState, 'keymap' | 'custom'> = useGoStudioKeymap.getState()): Map<string, GoStudioCommand[]> {
+export function bindingConflicts(commands: readonly GoStudioCommand[], state: GoStudioKeymapLayers = useGoStudioKeymap.getState()): Map<string, GoStudioCommand[]> {
   const byKey = new Map<string, GoStudioCommand[]>()
   for (const command of commands) {
     const signature = bindingSignature(effectiveBinding(command, state))

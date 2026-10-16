@@ -441,6 +441,39 @@ Managed Go SDKs are stored under `<data>/goide/toolchains` and tools under `<dat
 
 Ownership of projects by separate windows is not persisted: after a restart every project belongs to the main window.
 
+## Project settings and keymap (`.adomnia/settings.json`)
+
+Settings live in two layers: the **user** settings (the Settings window, stored as JSON on this machine and exportable) and the **project** file `.adomnia/settings.json`, which wins key by key and is meant to be committed to Git. The project file has a schema: opening it in the editor gives autocompletion for every key and value, and unknown keys or invalid values are underlined and skipped — the rest of the file keeps working.
+
+```json
+{
+  "format": "adomnia-settings",
+  "version": 1,
+  "editor": {
+    "tabSize": 4,
+    "softTabs": true,
+    "fontSize": 14,
+    "editorMode": "vim",
+    "wordWrap": "on",
+    "lineNumbers": "on",
+    "fontLigatures": true,
+    "stickyScroll": true
+  },
+  "keymap": {
+    "preset": "goland",
+    "bindings": {
+      "file.save": { "key": "s", "mod": true, "when": "!input" },
+      "code.rename": null
+    }
+  }
+}
+```
+
+- **`editor`** applies to the IDE editors of this project and wins over `.editorconfig` and over the user settings. Only keys with a real effect exist in the schema.
+- **`keymap`** layers over the user keymap: `preset` picks the base map (`goland`, `vscode`), `bindings` rebinds commands by id (autocompletion lists the real command ids) and `null` removes a shortcut.
+- **`when`** limits a shortcut to a context: `editor`, `input`, `terminal`, `vim`, `emacs`, `vim.normal`, `vim.insert`, `vim.visual`, combined with `&&`, `||` and `!` — for example `editor && vim.normal` or `!input`. When the condition does not match, the shortcut falls through to the next layer (project → user → preset → default).
+- The shortcuts dialog (`help.shortcuts`) edits the user layer; `.adomnia/settings.json` is the place for team-shared bindings and contexts. The old `adomnia.goide.keymap` browser key is migrated into the user settings once and kept up to date so a rollback loses nothing.
+
 ## Keyboard shortcuts
 
 Go Studio follows the GoLand keymap. The table below is generated from the command registry that also drives the menus and the *Help → Keyboard Shortcuts* dialog. Editor-owned keys (for example Ctrl+Z and Ctrl+F) are handled by the editor. Ctrl+W closes the active editor tab, so *Extend Selection* is Shift+Alt+→.
@@ -449,7 +482,7 @@ Go Studio follows the GoLand keymap. The table below is generated from the comma
 
 **Settings** (*File → Settings…*, Ctrl+Alt+S) gathers every Go Studio preference in one searchable dialog: editor, save actions, gopls options, low-resource mode, plus links to keymap, toolchains, tool paths and Copilot.
 
-**Search Everywhere** (Shift Shift) also finds tests and benchmarks (Enter runs them in the Test Explorer), run configurations (Enter runs them), adOmnia settings (Enter opens the right Settings section) and actions by shortcut; with an empty query it shows the recently used actions.
+**Search Everywhere** (Shift Shift) also finds tests and benchmarks (Enter runs them in the Test Explorer), run configurations (Enter runs them), adOmnia settings (Enter opens the right Settings section) and actions by shortcut; with an empty query it shows the recently used actions. Matching is fuzzy and ranked: prefix beats word starts, word starts beat substrings, and loose matches (a subsequence like `bld` for *Build*) are scored by contiguity and word starts, so `bui` finds *Build* before *Rebuild*. Actions you ran recently — from a keybinding, the menu or the palette — rank higher among the matches.
 
 ### File
 

@@ -15,10 +15,10 @@ import { GO_STUDIO_COMMANDS, commandShortcut, type GoStudioCommand, type GoStudi
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioSymbolIcon } from './GoStudioSymbolIcon'
 import { navigateToLocation } from './goStudioLanguageFeatures'
-import { matchScore, rankCandidates } from './goStudioSearchRanking'
+import { matchScore, rankCandidates, recencyBoost } from './goStudioSearchRanking'
 import { testRequestForTarget } from './goStudioQuickActions'
 import { pinnedFirst } from '@/lib/goide/goStudioRunHistory'
-import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, rememberCommand, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
+import { SETTINGS_INDEX, bindingSearchText, readRecentCommands, testTargetFromSymbol, type GoStudioSettingEntry } from './goStudioSearchExtras'
 import { GoStudioPalette } from './GoStudioModal'
 import { useIDEExtensionsStore } from '@/stores/ideExtensions'
 import { runIDEContribution } from './goStudioExtensions'
@@ -143,10 +143,16 @@ export function GoStudioSearchEverywhere({ open, sessionId, availability, onComm
 
   const rows = useMemo<ResultRow[]>(() => {
     const close = (action: () => void) => () => { onClose(); action() }
-    const runCommand = (id: GoStudioCommandId) => close(() => { rememberCommand(id); onCommand(id) })
+    // L'uso recente lo registra `runCommand` del pannello: vale per tasti, menu e palette.
+    const runCommand = (id: GoStudioCommandId) => close(() => onCommand(id))
     const trimmed = query.trim()
-    // La scorciatoia è cercabile: "ctrl shift f" trova Find in Files.
-    const actions = rankCandidates(query, GO_STUDIO_COMMANDS.map((command) => ({ item: command, text: `${command.label} ${command.menu} ${bindingSearchText(commandShortcut(command))}` })), ACTION_LIMIT)
+    // La scorciatoia è cercabile: "ctrl shift f" trova Find in Files. Con una query, l'uso recente
+    // spinge in alto i comandi già usati; a query vuota c'è già la sezione "Recent actions".
+    const actions = rankCandidates(query, GO_STUDIO_COMMANDS.map((command) => ({
+      item: command,
+      text: `${command.label} ${command.menu} ${bindingSearchText(commandShortcut(command))}`,
+      boost: trimmed ? recencyBoost(recent, command.id) : 0,
+    })), ACTION_LIMIT)
     const panels = rankCandidates(query, COMMAND_PALETTE_PANEL_FEATURES.filter((feature) => isFeatureVisible(feature.id, featureFlags)).map((feature) => ({ item: feature, text: `${feature.railLabel ?? feature.title} ${feature.keywords}` })), trimmed ? PANEL_LIMIT : 0)
     const settings = trimmed ? rankCandidates(query, SETTINGS_INDEX.map((entry) => ({ item: entry, text: `${entry.label} ${entry.keywords}` })), SETTING_LIMIT) : []
     const configs = rankCandidates(query, pinnedFirst(runConfigs ?? []).map((config) => ({ item: config, text: `${config.name} ${config.kind}` })), trimmed ? RUN_CONFIG_LIMIT : 0)

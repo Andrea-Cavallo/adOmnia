@@ -1,12 +1,12 @@
 import type { ComponentType } from 'react'
-import { Bookmark, Braces, Bug, FlaskConical, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, ScrollText, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Bookmark, Braces, Bug, FlaskConical, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import { selectDebugState } from './goStudioDebugCommands'
 import { isChatPane, useGoStudioAssistantStore, type GoStudioAssistantPane } from '@/stores/goStudioAssistant'
-import { useStudioTools, useToolView } from './studioToolState'
+import { useStudioTools } from './studioToolState'
 import { aiProviderBadge, aiProviderTooltip, providerLabel } from './goStudioAiHub'
 import { useAiProviders } from './useAiProviders'
 import type { GoIDESession } from '@/lib/goide-api'
@@ -82,7 +82,6 @@ interface GoStudioLeftStripeProps {
 /** Barra sinistra: Project, Commit e Bookmarks in alto, le tool window del pannello inferiore in basso. */
 export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioLeftStripeProps) {
   const sessionId = session.id
-  const [logsOpen, setLogsOpen] = useToolView(sessionId, 'logs', 'open', false)
   const projectOpen = useGoIDEStore((state) => state.layout.projectOpen)
   const bottomOpen = useGoIDEStore((state) => state.layout.bottomOpen)
   const updateLayout = useGoIDEStore((state) => state.updateLayout)
@@ -92,7 +91,6 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
 
   const closePrevious = () => {
     useStudioTools.setState({ maximized: null })
-    setLogsOpen(false)
     updateLayout({ projectOpen: false, bottomOpen: false })
   }
   const toggleToolWindow = (id: GoIDEToolWindow) => {
@@ -107,7 +105,6 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
       <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { closePrevious(); onCommit() }} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { closePrevious(); onBookmarks() }} />
       <div className="flex-1" />
-      <StripeButton label="Service logs" icon={ScrollText} pressed={logsOpen} onClick={() => { closePrevious(); setLogsOpen(!logsOpen) }} />
       {TOOL_WINDOWS.map((entry) => (
         <StripeButton key={entry.id} label={entry.label} icon={entry.icon} pressed={bottomOpen && toolWindow === entry.id} badge={badges[entry.id]} onClick={() => toggleToolWindow(entry.id)} />
       ))}
