@@ -1,4 +1,4 @@
-package goide
+package fileio
 
 import (
 	"errors"
@@ -9,10 +9,10 @@ import (
 )
 
 func TestAtomicWriteRetriesTransientRename(t *testing.T) {
-	original := renameFile
-	t.Cleanup(func() { renameFile = original })
+	original := RenameFile
+	t.Cleanup(func() { RenameFile = original })
 	failures := 2
-	renameFile = func(from, to string) error {
+	RenameFile = func(from, to string) error {
 		if failures > 0 {
 			failures--
 			return errors.New("Access is denied")
@@ -20,7 +20,7 @@ func TestAtomicWriteRetriesTransientRename(t *testing.T) {
 		return os.Rename(from, to)
 	}
 	path := filepath.Join(t.TempDir(), "a.go")
-	if err := atomicWriteFile(path, []byte("package a\n"), 0o644); err != nil {
+	if err := AtomicWriteFile(path, []byte("package a\n"), 0o644); err != nil {
 		t.Fatalf("save must survive two transient failures: %v", err)
 	}
 	if data, _ := os.ReadFile(path); string(data) != "package a\n" {
@@ -29,10 +29,10 @@ func TestAtomicWriteRetriesTransientRename(t *testing.T) {
 }
 
 func TestAtomicWriteGivesUpWithClearMessage(t *testing.T) {
-	original := renameFile
-	t.Cleanup(func() { renameFile = original })
-	renameFile = func(string, string) error { return errors.New("Access is denied") }
-	err := atomicWriteFile(filepath.Join(t.TempDir(), "b.go"), []byte("x"), 0o644)
+	original := RenameFile
+	t.Cleanup(func() { RenameFile = original })
+	RenameFile = func(string, string) error { return errors.New("Access is denied") }
+	err := AtomicWriteFile(filepath.Join(t.TempDir(), "b.go"), []byte("x"), 0o644)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -51,7 +51,7 @@ func TestAtomicWriteKeepsSymlink(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Skipf("symlink not available: %v", err)
 	}
-	if err := atomicWriteFile(link, []byte("new"), 0o644); err != nil {
+	if err := AtomicWriteFile(link, []byte("new"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
