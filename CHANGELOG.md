@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.5] — 2026-10-16
+
+Includes the changes tagged as 1.0.2–1.0.4, which had no separate section. Release notes: [docs/releases/v1.0.5.md](docs/releases/v1.0.5.md).
+
 ### Highlights
 
 - **LSP document updates** use negotiated incremental UTF-16 edits; superseded read queries are canceled and identical diagnostics no longer schedule backend notifications. Full buffers remain available for restart replay and separate sessions retain independent unsaved overlays.
