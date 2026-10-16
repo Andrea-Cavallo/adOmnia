@@ -215,8 +215,13 @@ func RunHelper(planPath, current string) (result error) {
 	if p.Backup == "" {
 		p.Backup = filepath.Join(root, "previous-install")
 	}
-	if filepath.Dir(planPath) != root || filepath.Dir(p.Archive) != root || filepath.Dir(p.Manifest) != root || filepath.Dir(p.Backup) != root || p.Parent <= 0 {
-		return errors.New("invalid update plan")
+	if p.Parent <= 0 {
+		return errors.New("invalid update plan: missing parent process")
+	}
+	for _, path := range []string{planPath, p.Archive, p.Manifest, p.Backup} {
+		if !samePath(filepath.Dir(path), root) {
+			return fmt.Errorf("invalid update plan: %s is outside the updater folder %s", path, root)
+		}
 	}
 	restartAllowed := false
 	relaunched := false
@@ -246,8 +251,8 @@ func RunHelper(planPath, current string) (result error) {
 	if err != nil {
 		return err
 	}
-	if expectedTarget != p.Target {
-		return errors.New("invalid update destination")
+	if !samePath(expectedTarget, p.Target) {
+		return fmt.Errorf("invalid update destination: %s is not the running app %s", p.Target, expectedTarget)
 	}
 	restartAllowed = true
 	logf("updating %s from %s to %s", p.Target, current, p.Version)
@@ -399,6 +404,24 @@ func RunHelper(planPath, current string) (result error) {
 		return restoreErr
 	}
 	return errors.New("Updated app did not confirm startup; restored previous version")
+}
+
+// samePath confronta due percorsi dopo averli risolti: su Windows un percorso può arrivare con il
+// nome corto 8.3 (C:\Users\RUNNER~1) o attraverso una junction, mentre l'eseguibile dell'helper è già
+// risolto. Il confronto testuale rifiutava il piano: l'aggiornamento non partiva e l'app non ripartiva.
+func samePath(a, b string) bool {
+	return canonicalPath(a) == canonicalPath(b)
+}
+
+func canonicalPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	path = filepath.Clean(path)
+	if runtime.GOOS == "windows" {
+		return strings.ToLower(path)
+	}
+	return path
 }
 
 // exitStatus descrive come è terminato un processo, per il log.

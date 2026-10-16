@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -29,6 +30,7 @@ func TestMain(m *testing.M) {
 	}
 	if len(os.Args) == 3 && os.Args[1] == "--adomnia-update-helper" {
 		if e := RunHelper(os.Args[2], "v1.0.0"); e != nil {
+			fmt.Fprintln(os.Stderr, "helper:", e)
 			os.Exit(2)
 		}
 		os.Exit(0)
@@ -67,7 +69,7 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 	for _, mode := range []string{"apply", "apply-immediate-exit", "rollback", "version-mismatch"} {
 		t.Run(mode, func(t *testing.T) {
 			fail := mode == "rollback" || mode == "version-mismatch"
-			root := t.TempDir()
+			root := linkedTempDir(t)
 			stage := filepath.Join(root, "updates")
 			if e := os.Mkdir(stage, 0700); e != nil {
 				t.Fatal(e)
@@ -259,5 +261,48 @@ func TestCheckUsesCacheAndETag(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatal("manual check did not revalidate")
+	}
+}
+
+// Il piano scritto dall'app e l'helper possono vedere la stessa cartella con percorsi diversi
+// (nome corto 8.3 su Windows, junction, collegamento simbolico): devono valere come la stessa.
+
+// linkedTempDir restituisce una cartella temporanea raggiunta tramite un collegamento: il piano usa quel
+// percorso, l'helper vede quello risolto, come con i nomi corti 8.3 dei runner Windows.
+func linkedTempDir(t *testing.T) string {
+	t.Helper()
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	if err := os.Mkdir(real, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(real, link); err != nil {
+		return real
+	}
+	return link
+}
+
+// Il piano scritto dall'app e l'helper possono vedere la stessa cartella con percorsi diversi
+// (nome corto 8.3 su Windows, junction, collegamento simbolico): devono valere come la stessa.
+func TestSamePathResolvesLinkedPaths(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "updates")
+	if err := os.Mkdir(real, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "linked")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	resolved, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !samePath(link, resolved) {
+		t.Fatalf("%s and %s are the same folder", link, resolved)
+	}
+	if samePath(root, resolved) {
+		t.Fatal("different folders must not match")
 	}
 }

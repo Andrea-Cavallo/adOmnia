@@ -8,6 +8,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Fixed
 
+- **In-app update refused to start from linked folders.** The update helper compared its plan with its own resolved path as plain text, so an updates folder reached through a Windows 8.3 short name, a junction or a symbolic link made it reject the plan: nothing was installed and the app was not restarted. Paths are now resolved on both sides before the comparison; the helper prints the reason when it refuses a plan.
 - **High CPU while adOmnia sits idle.** Several pieces of work kept running with nothing to do:
   - the developer log poll re-read and re-parsed the whole log file every 1.5 s on every screen (the log is on in release builds too) and de-duplicated entries with a quadratic scan; it now reads only the lines added since the last poll;
   - in a Git project, `git status` rewrote `.git/index`, the project watcher reported the `.git` folder as changed and the Git panel ran six to seven git processes again, in a loop. The watcher now ignores `.git`, `node_modules` and `.gitignore` entries, and git reads run with `GIT_OPTIONAL_LOCKS=0`;
