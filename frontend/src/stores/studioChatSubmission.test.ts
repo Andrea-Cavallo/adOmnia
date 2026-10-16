@@ -6,6 +6,7 @@ vi.mock('@/lib/copilot-api', () => ({ sendCopilotChat: transport.copilot }))
 vi.mock('@/stores/goideLsp', () => ({ useGoIDELspStore: { getState: () => ({}) } }))
 vi.mock('@/lib/goide-api', () => ({
   getGoIDEAIPolicy: async () => transport.policy,
+  getGoIDEProjectRules: async () => [],
   listGoIDEAIExcludedPaths: async () => [],
   quickOpenGoIDEFiles: async () => [{ relativePath: 'src/Other.java' }],
 }))

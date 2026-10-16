@@ -43,6 +43,7 @@ export interface CopilotChatThread {
 }
 
 export interface CopilotChatContext {
+  includeRules?: boolean
   documentId?: string
   selection?: CopilotChatSelection | null
   includeDocument: boolean

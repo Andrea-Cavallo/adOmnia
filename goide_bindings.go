@@ -159,6 +159,15 @@ func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
 	return copilot.LoadAIPolicy(root), nil
 }
 
+// AIProjectRules loads bounded root guidance through the existing project AI filter.
+func (g *GoIDE) AIProjectRules(sessionID string) ([]copilot.ProjectRule, error) {
+	root, err := g.sessionRoot(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return copilot.ProjectRules(root), nil
+}
+
 // SetAIProjectPolicy scrive .adomnia/ai-policy.json (o lo rimuove per "allowed").
 func (g *GoIDE) SetAIProjectPolicy(sessionID, policy string) error {
 	root, err := g.sessionRoot(sessionID)

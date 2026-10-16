@@ -10,6 +10,7 @@ export {
     InlineCompletionItem,
     InlineCompletionRequest,
     ProfileType,
+    ProjectRule,
     ProxySettings,
     ServerBinary,
     Settings,

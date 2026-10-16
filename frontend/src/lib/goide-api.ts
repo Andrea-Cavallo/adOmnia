@@ -675,6 +675,8 @@ export async function listGoIDEAIExcludedPaths(sessionId: string, relativePaths:
 
 export type GoIDEAIPolicy = 'allowed' | 'local-only' | 'off'
 
+export const getGoIDEProjectRules = (sessionId: string) => GoIDEBindings.AIProjectRules(sessionId)
+
 export async function getGoIDEAIPolicy(sessionId: string): Promise<GoIDEAIPolicy> {
   return (await GoIDEBindings.AIProjectPolicy(sessionId)) as GoIDEAIPolicy
 }

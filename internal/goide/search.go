@@ -103,24 +103,41 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 	// Leggere i file in parallelo conta soprattutto su Windows, dove aprire un file costa più che cercarci.
 	perFile := make([][]SearchMatch, len(candidates))
 	next := make(chan int)
-	// Una volta raggiunto il tetto di risultati i file successivi non servono: restano invariati ordine e troncamento,
-	// perché ogni file saltato ha un indice maggiore di tutti quelli che hanno già contribuito.
-	var found atomic.Int64
+	// Una volta che i file consecutivi dall'inizio bastano a superare il tetto, i successivi non servono. Il conteggio
+	// vale solo per il prefisso completato: con più worker un file precedente può finire dopo uno successivo.
+	var (
+		progress         sync.Mutex
+		done             = make([]bool, len(candidates))
+		prefix, inPrefix int
+	)
+	var capped atomic.Bool
+	finish := func(index int) {
+		progress.Lock()
+		defer progress.Unlock()
+		done[index] = true
+		for prefix < len(done) && done[prefix] {
+			inPrefix += len(perFile[prefix])
+			prefix++
+		}
+		if inPrefix > maxSearchResults {
+			capped.Store(true)
+		}
+	}
 	var workers sync.WaitGroup
 	for worker := 0; worker < min(searchWorkers, max(1, len(candidates))); worker++ {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			for index := range next {
-				if ctx.Err() == nil && found.Load() <= maxSearchResults {
+				if ctx.Err() == nil && !capped.Load() {
 					perFile[index] = searchFile(candidates[index].path, candidates[index].relative, matcher)
-					found.Add(int64(len(perFile[index])))
+					finish(index)
 				}
 			}
 		}()
 	}
 	for index := range candidates {
-		if found.Load() > maxSearchResults {
+		if capped.Load() {
 			break
 		}
 		next <- index

@@ -314,6 +314,32 @@ export enum ProfileType {
     ProfileEnterpriseServer = "ghes",
 };
 
+export class ProjectRule {
+    "path": string;
+    "text": string;
+    "truncated"?: boolean;
+
+    /** Creates a new ProjectRule instance. */
+    constructor($$source: Partial<ProjectRule> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProjectRule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProjectRule {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProjectRule($$parsedSource as Partial<ProjectRule>);
+    }
+}
+
 /**
  * ProxySettings è il proxy HTTP aziendale passato al Language Server; vuoto = proxy di sistema.
  */

@@ -1,3 +1,4 @@
+import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { GitHubMark } from './GoStudioCopilotStatus'
 import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
@@ -105,6 +106,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
   const [includeFile, setIncludeFile] = useToolView(session.id, 'copilot', 'includeFile', true)
   const [includeSelection, setIncludeSelection] = useToolView(session.id, 'copilot', 'includeSelection', true)
   const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, 'copilot', 'includeWorkspace', true)
+  const [includeRules, setIncludeRules] = useToolView(session.id, 'copilot', 'includeRules', true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const busy = !!thread?.busyToken
   const ready = status?.state === 'ready'
@@ -133,6 +135,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
       selection,
       includeDocument: includeFile,
       includeWorkspace,
+      includeRules,
       labels,
     })
   }
@@ -185,6 +188,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
         <div className="mb-1.5 flex flex-wrap gap-1">
           <ContextToggle icon={FileCode2} label={document?.document.relativePath || 'No file'} active={includeFile && !!document} disabled={!document} onClick={() => setIncludeFile(!includeFile)} />
           <ContextToggle icon={TextSelect} label="Selection" active={includeSelection} disabled={!document} onClick={() => setIncludeSelection(!includeSelection)} />
+          <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
           <ContextToggle icon={FolderTree} label="Workspace" active={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} />
         </div>
         <div className="rounded-xl border border-border-2 bg-surface-0 focus-within:border-accent/50">

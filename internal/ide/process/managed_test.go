@@ -25,6 +25,8 @@ func spawnHelper(t *testing.T) *exec.Cmd {
 	if err := command.Start(); err != nil {
 		t.Fatalf("avvio helper: %v", err)
 	}
+	// Reap the child when the sweep kills it: an unreaped zombie still answers kill(pid, 0) and ps.
+	go func() { _ = command.Wait() }()
 	t.Cleanup(func() { _ = TerminateTreeByPID(command.Process.Pid) })
 	return command
 }

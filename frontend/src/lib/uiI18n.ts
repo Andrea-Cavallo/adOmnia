@@ -35,6 +35,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Beta': 'Beta',
   'Open Project in New Window': 'Apri progetto in una nuova finestra',
   'Application resources': 'Consumi applicazione',
+  'Project rules': 'Regole del progetto',
+  'Include project rules (.rules, AGENTS.md, CLAUDE.md, .cursorrules)': 'Includi le regole del progetto (.rules, AGENTS.md, CLAUDE.md, .cursorrules)',
   'Resources unavailable': 'Consumi non disponibili',
   'Measuring resources…': 'Misurazione consumi…',
   'Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.': 'Applicazione e processi figli. CPU misurata su tutti i core logici. Aggiornamento sospeso durante l’inattività.',

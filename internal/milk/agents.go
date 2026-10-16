@@ -30,6 +30,13 @@ var Providers = []Provider{
 	{ID: "openrouter", Label: "OpenRouter", EnvVars: []string{"OPENROUTER_API_KEY"}, URL: "https://openrouter.ai/api", Model: "deepseek/deepseek-chat"},
 	{ID: "groq", Label: "Groq", EnvVars: []string{"GROQ_API_KEY"}, URL: "https://api.groq.com/openai", Model: "llama-3.3-70b-versatile"},
 	{ID: "mistral", Label: "Mistral", EnvVars: []string{"MISTRAL_API_KEY"}, URL: "https://api.mistral.ai", Model: "mistral-small-latest"},
+	{ID: "mimo", Label: "Xiaomi MiMo", EnvVars: []string{"MIMO_API_KEY", "XIAOMI_MIMO_API_KEY"}, URL: "https://api.xiaomimimo.com", Model: "mimo-v2-flash"},
+	{ID: "moonshot", Label: "Moonshot Kimi", EnvVars: []string{"MOONSHOT_API_KEY", "KIMI_API_KEY"}, URL: "https://api.moonshot.ai", Model: "kimi-k2-0905-preview"},
+	{ID: "zai", Label: "Z.ai GLM", EnvVars: []string{"ZAI_API_KEY", "ZHIPU_API_KEY"}, URL: "https://api.z.ai/api/paas/v4", Model: "glm-4.6", ChatPath: "/chat/completions"},
+	{ID: "xai", Label: "xAI Grok", EnvVars: []string{"XAI_API_KEY"}, URL: "https://api.x.ai", Model: "grok-4"},
+	{ID: "qwen", Label: "Alibaba Qwen", EnvVars: []string{"DASHSCOPE_API_KEY", "QWEN_API_KEY"}, URL: "https://dashscope-intl.aliyuncs.com/compatible-mode", Model: "qwen-plus"},
+	{ID: "together", Label: "Together AI", EnvVars: []string{"TOGETHER_API_KEY"}, URL: "https://api.together.xyz", Model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"},
+	{ID: "cerebras", Label: "Cerebras", EnvVars: []string{"CEREBRAS_API_KEY"}, URL: "https://api.cerebras.ai", Model: "llama-3.3-70b"},
 }
 
 // ProviderStatus descrive un provider per la UI: mai il valore della chiave, solo il nome della variabile.

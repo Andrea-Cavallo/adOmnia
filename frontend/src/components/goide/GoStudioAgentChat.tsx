@@ -1,3 +1,4 @@
+import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { memo, useEffect, useMemo, useRef, type ComponentType, type MouseEvent } from 'react'
 import { ChevronRight, Plus, Send, Settings2, Square } from 'lucide-react'
 import DOMPurify from 'dompurify'
@@ -125,6 +126,7 @@ export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentCha
   const [draft, setDraft] = useToolView(session.id, tool, 'draft', '')
   const [includeFile, setIncludeFile] = useToolView(session.id, tool, 'includeFile', true)
   const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, tool, 'includeWorkspace', true)
+  const [includeRules, setIncludeRules] = useToolView(session.id, tool, 'includeRules', true)
   const pendingDraft = useGoStudioAssistantStore((state) => state.draft)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -156,6 +158,7 @@ export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentCha
       selection: includeFile ? selectedRange(document ?? null) : null,
       includeDocument: includeFile,
       includeWorkspace,
+      includeRules,
     })
   }
 
@@ -213,6 +216,7 @@ export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentCha
 
       <div className="milk-composer">
         <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label={`${name} context`}>
+          <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
           <button type="button" aria-pressed={includeFile} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>
           <button type="button" aria-pressed={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} title={session.project.name} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeWorkspace ? '✓ ' : ''}{session.project.name}</button>
         </div>

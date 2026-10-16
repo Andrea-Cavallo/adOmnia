@@ -12,6 +12,7 @@ const fixture = vi.hoisted(() => ({
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => fixture.state } }))
 vi.mock('@/lib/goide-api', () => ({
   getGoIDEAIPolicy: vi.fn(async () => fixture.policy),
+  getGoIDEProjectRules: vi.fn(async () => []),
   listGoIDEAIExcludedPaths: vi.fn(async () => fixture.excluded),
   quickOpenGoIDEFiles: vi.fn(async () => [{ relativePath: 'src/unexpanded/Other.java' }]),
 }))
