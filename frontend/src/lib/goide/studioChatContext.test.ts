@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fixture = vi.hoisted(() => ({
-  policy: 'allowed', excluded: [] as string[],
+  policy: 'allowed', excluded: [] as string[], rules: [] as { path: string; text: string; truncated?: boolean }[],
   state: {
     sessions: [{ id: 's1', project: { realPath: '/project', name: 'Example' } }],
     activeDocumentBySession: { s1: 'doc1' },
@@ -12,13 +12,14 @@ const fixture = vi.hoisted(() => ({
 vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => fixture.state } }))
 vi.mock('@/lib/goide-api', () => ({
   getGoIDEAIPolicy: vi.fn(async () => fixture.policy),
-  getGoIDEProjectRules: vi.fn(async () => []),
+  getGoIDEProjectRules: vi.fn(async () => fixture.rules),
   listGoIDEAIExcludedPaths: vi.fn(async () => fixture.excluded),
   quickOpenGoIDEFiles: vi.fn(async () => [{ relativePath: 'src/unexpanded/Other.java' }]),
 }))
 import { prepareStudioChat } from './studioChatContext'
 
 beforeEach(() => {
+  fixture.rules = []
   fixture.policy = 'allowed'
   fixture.excluded = ['.env']
   fixture.state.activeDocumentBySession.s1 = 'doc1'
@@ -81,4 +82,19 @@ describe('chat receives the editor context, not just the project folder', () => 
     expect(new TextEncoder().encode(prompt.message).length).toBeLessThanOrEqual(64 * 1024)
     expect(prompt.message).toContain('[Context truncated]')
   })
+})
+
+it('automatically attaches named project rules, redacts secrets and allows opt-out', async () => {
+  fixture.rules = [{ path: 'AGENTS.md', text: 'Use focused tests. api_key = "very-secret-token"' }, { path: 'CLAUDE.md', text: 'Keep state local.', truncated: true }]
+  const prompt = await prepareStudioChat('/project', 'Explain', { includeDocument: false, includeWorkspace: false })
+  expect(prompt.message).toContain('Project rules: AGENTS.md')
+  expect(prompt.message).toContain('Use focused tests.')
+  expect(prompt.message).not.toContain('very-secret-token')
+  expect(prompt.labels).toEqual(['AGENTS.md', 'CLAUDE.md (truncated)'])
+  expect(prompt.message).toContain('[Rules truncated]')
+  const off = await prepareStudioChat('/project', 'Explain', { includeDocument: false, includeWorkspace: false, includeRules: false })
+  expect(off.message).not.toContain('Use focused tests.')
+  expect(off.labels).toEqual([])
+  fixture.rules = [{ path: 'AGENTS.md', text: 'Changed on disk' }]
+  expect((await prepareStudioChat('/project', 'Again', enabled)).message).toContain('Changed on disk')
 })

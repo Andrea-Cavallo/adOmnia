@@ -13,3 +13,13 @@ export function gitPathInProject(projectRoot: string, repoRoot: string, path: st
   }
   return null
 }
+
+/** Path assoluto → path relativo al repository, per i pathspec di `git -C <repo>`. */
+export function gitPathFromAbsolute(repoRoot: string, absolutePath: string): string {
+  const clean = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '')
+  const repo = clean(repoRoot)
+  const path = clean(absolutePath)
+  const insensitive = /^[A-Za-z]:\//.test(repo) || repo.startsWith('//')
+  const compare = (value: string) => insensitive ? value.toLowerCase() : value
+  return compare(path).startsWith(`${compare(repo)}/`) ? path.slice(repo.length + 1) : path
+}

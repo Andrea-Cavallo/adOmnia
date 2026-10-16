@@ -26,7 +26,7 @@ func TestGoplsServerSpecDescribesTheGoServer(t *testing.T) {
 	for _, entry := range spec.Environment {
 		defaults[entry]++
 	}
-	if defaults["GOMEMLIMIT=2GiB"] != 1 || defaults["GOMEMLIMIT=1GiB"] != 0 || defaults["GO_TELEMETRY_CHILD=2"] != 1 {
+	if defaults["GOMEMLIMIT=2GiB"] != 1 || defaults["GOMEMLIMIT=768MiB"] != 0 || defaults["GO_TELEMETRY_CHILD=2"] != 1 {
 		t.Fatalf("i predefiniti non devono sovrascrivere le scelte dell'utente: %v", spec.Environment)
 	}
 	if !spec.WatchesFile("/p/go.sum") || spec.WatchesFile("/p/README.md") {

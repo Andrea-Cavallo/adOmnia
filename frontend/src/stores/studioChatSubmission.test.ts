@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const transport = vi.hoisted(() => ({ milk: vi.fn(async () => ({})), copilot: vi.fn(async () => ({ conversationId: 'c', turnId: 't' })), policy: 'allowed' }))
+const transport = vi.hoisted(() => ({ milk: vi.fn(async () => ({})), copilot: vi.fn(async () => ({ conversationId: 'c', turnId: 't' })), policy: 'allowed', rules: [] as { path: string; text: string }[] }))
 vi.mock('@/lib/milk-api', () => ({ sendMilkPrompt: transport.milk }))
 vi.mock('@/lib/copilot-api', () => ({ sendCopilotChat: transport.copilot }))
 vi.mock('@/stores/goideLsp', () => ({ useGoIDELspStore: { getState: () => ({}) } }))
 vi.mock('@/lib/goide-api', () => ({
   getGoIDEAIPolicy: async () => transport.policy,
-  getGoIDEProjectRules: async () => [],
+  getGoIDEProjectRules: async () => transport.rules,
   listGoIDEAIExcludedPaths: async () => [],
   quickOpenGoIDEFiles: async () => [{ relativePath: 'src/Other.java' }],
 }))
@@ -19,6 +19,7 @@ import { useMilkStore } from './milk'
 import { useCopilotStore } from './copilot'
 
 beforeEach(() => {
+  transport.rules = []
   transport.policy = 'allowed'
   transport.milk.mockClear()
   transport.copilot.mockClear()
@@ -44,4 +45,12 @@ describe('both chat transports attach the actual editor buffer', () => {
     expect(transport.copilot).not.toHaveBeenCalled()
     expect(useMilkStore.getState().chatThreads['/p'].error).toContain('turned off')
   })
+})
+
+it('adds project rules to both agent and Copilot transports by default', async () => {
+  transport.rules = [{ path: '.rules', text: 'Prefer local storage.' }]
+  await useMilkStore.getState().sendChat('/p', 'Question')
+  expect(transport.milk).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('Prefer local storage.') }))
+  await useCopilotStore.getState().sendChat('/p', 'Question', { includeDocument: false, includeWorkspace: false, labels: [] })
+  expect(transport.copilot).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('Prefer local storage.') }))
 })

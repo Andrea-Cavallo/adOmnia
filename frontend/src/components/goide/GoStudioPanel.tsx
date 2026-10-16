@@ -64,6 +64,7 @@ import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudio
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/goide-api'
 import { useGoStudioCloseFlow } from './useGoStudioCloseFlow'
 import { GoStudioCaretPopup } from './GoStudioCaretPopup'
+import { GoStudioInlineAssistantPopup } from './GoStudioInlineAssistantPopup'
 import { GoStudioImplementInterfaceDialog } from './GoStudioImplementInterfaceDialog'
 import { GoStudioChangeSignatureDialog } from './GoStudioChangeSignatureDialog'
 import { GoStudioMoveSymbolDialog } from './GoStudioMoveSymbolDialog'
@@ -932,6 +933,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
       <GoStudioCaretPopup />
+      <GoStudioInlineAssistantPopup />
       <GoStudioHierarchyDialog />
       <GoStudioGoWorkDialog open={goWorkOpen} sessionId={activeSession.id} onClose={() => setGoWorkOpen(false)} />
       <GoStudioGenerateMenu />

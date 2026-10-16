@@ -1055,6 +1055,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J3.3 | **Problems Window** | gopls, linter and build problems grouped by file with navigation. |
 | J3.4 | **Copilot Ask Chat** | Per-project streaming chat backed by the official Copilot language server, with optional current-file, live-selection and filtered workspace-manifest context, Stop and New Chat. Its header lists account-available chat models and starts a clean conversation when the model changes. Secret patterns and `.adomnia/aiignore` are enforced before context is sent; history remains session-only. |
 | J3.5 | **AI di a0 Tool Window** | The existing provider-configured a0 assistant lives in the same closable right tool window as Structure, Project and Copilot instead of a floating launcher. Its header switches cached or custom model IDs after live verification, without opening Settings. It keeps its API-workspace actions, local permission boundary and verified-provider requirement. |
+| J3.6 | **Inline Assistant** | **Ctrl+Enter on a selection** (or the enclosing declaration) opens a small instruction popup anchored under the code; Enter sends the fragment and the instruction to the configured AI provider and the proposal opens as an **inline diff in the editor**: removed lines struck through, proposed lines in green blocks, ✓/✗ per change block plus Accept all / Reject all. Nothing is written without accepting; accepted changes are unsaved, undoable edits and stay inside the edited fragment. Secrets are redacted, `.adomnia/aiignore` and the project AI policy are enforced, and a prose reply is refused instead of replacing code. |
 
 ### J4. Run, Test & Debug
 
@@ -1092,6 +1093,8 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J6.7 | **SonarQube Integration** | Optional: runs `sonar-scanner` on the trusted project, waits for the server to process the report, and imports open issues (SonarQube 9.9 LTA, 10.x incl. MQR severities, SonarCloud). Severity/security filters, file:line navigation, *Copy problems*, *Resolve with AI* and a versionable `.adomnia/sonar-baseline.json`. Token in memory only; respects Offline mode, proxy and corporate CA. |
 | J6.8 | **Security panel: code scan** | Offline scan of the project files (no network, no processes): hardcoded secrets and committed private keys (masked), disabled TLS verification and obsolete TLS versions, weak crypto and small RSA keys, plain HTTP, SQL built from strings, shell commands built from data, path traversal and zip slip, gob decoding of untrusted input, unbounded request bodies, world-writable permissions. Suppression only with a written reason (panel or `// adomnia:security-ignore <rule>: <reason>`), versionable baseline in `.adomnia/security.json`, Markdown export for AI. |
 | J6.9 | **Security panel: dependencies (govulncheck)** | On-demand govulncheck scan ranked by reachability (called / imported / required only), advisory detail and aliases, found → fixed version, call paths from project code that open each source, module dependency path, upgrade preview with confirmed `go get`, Markdown export for AI. |
+| J6.10 | **AI commit message** | *Draft message with AI* in the Commit Dialog (Ctrl+K) summarises the diff and the changed symbols of the ticked files into a Conventional Commits message, editable before committing. Secrets in the diff are redacted and stay redacted in the draft, `.adomnia/aiignore` files are listed without their content, and the project AI policy (`off` / `local-only`) is enforced like the other AI features. |
+| J6.11 | **Partial staging** | Stage and unstage single change blocks from the editor gutter popup (*Stage* / *Unstage* next to *Revert*) and single lines from *Stage/Unstage single lines…* or the ✂ button on a change row of the project Git workbench. The buffer is saved first, only the chosen hunks move to or from the index, and the change list refreshes. |
 
 ---
 
@@ -1148,3 +1151,13 @@ canceled by document/method, also on synchronized buffer change or closure.
 Explicit rename, formatting and commands are preserved. Sessions keep separate
 connections and overlays; sharing a root does not merge unsaved documents.
 Validated with installed gopls v0.23.0; desktop acceptance remains REF-2.M1.
+
+### Automatic project rules for IDE agent chat
+
+Copilot, milk and Claude chats attach `.rules`, `AGENTS.md`, `CLAUDE.md` and
+`.cursorrules` from the open workspace root at send time. A per-chat Project
+rules toggle opts out, and sent-message context chips identify included files.
+The existing AI policy, ignore list, secret redactor and 64 KiB prompt budget
+apply; each rule file is capped at 8 KiB with an explicit truncation marker.
+Files are never executed, referenced paths are not followed, and slash commands
+retain their original meaning. Native UI acceptance remains Z1.4.M1.

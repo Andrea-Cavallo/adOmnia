@@ -166,6 +166,29 @@ func TestLaterTurnsKeepTheOriginalBaseline(t *testing.T) {
 	}
 }
 
+func TestEqualSizeAndTimestampChangesKeepOriginalBaseline(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "a.go", "v1\n")
+	path := filepath.Join(root, "a.go")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracker := NewTracker()
+	for _, text := range []string{"v2\n", "v3\n"} {
+		agentTurn(t, tracker, root, func() {
+			writeFile(t, root, "a.go", text)
+			if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	files := tracker.Get(root).Files
+	if len(files) != 1 || files[0].Baseline != "v1\n" || files[0].Current != "v3\n" {
+		t.Fatalf("lost original review baseline: %+v", files)
+	}
+}
+
 func TestOnlyPathsInReviewCanBeWritten(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "a.go", "a\n")

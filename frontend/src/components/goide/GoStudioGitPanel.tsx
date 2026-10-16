@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, ExternalLink, GitBranch, GitFork, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowDown, ArrowUp, ExternalLink, GitBranch, GitFork, Loader2, RefreshCw, Scissors } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import type { GoIDESession } from '@/lib/goide-api'
 import { pullGoIDERepository, pushGoIDERepository } from '@/lib/goide-vcs-api'
@@ -11,6 +11,7 @@ import { GoStudioGitLog } from './GoStudioGitLog'
 import { changeLabel, isStagedChange, parseGitOverview, parseJSON, type GitOverview } from '@/lib/git/overview'
 import { GitCollaborationSection } from '@/components/workspace/git/GitCollaborationSection'
 import { GoStudioGitBranches, GoStudioGitChangesActions } from './GoStudioGitActions'
+import { HunkStageDialog } from '@/components/workspace/git/HunkStageDialog'
 import type { GoStudioCommandId } from './goStudioCommands'
 
 interface GitWorktree { path: string; head: string; branch: string; bare: boolean; detached: boolean }
@@ -31,6 +32,7 @@ export function GoStudioGitPanel({ session, onCommand }: { session: GoIDESession
   const [selectedHash, setSelectedHash] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hunkStage, setHunkStage] = useState<{ path: string; mode: 'stage' | 'unstage' } | null>(null)
   const repoRoot = vcsStatus?.repoRoot ?? ''
   const refreshVersion = useRef(0)
   const repositories = vcsStatus?.repositories ?? (repoRoot ? [repoRoot] : [])
@@ -116,8 +118,18 @@ export function GoStudioGitPanel({ session, onCommand }: { session: GoIDESession
             <button type="button" onClick={() => void toggleStage(change)} className={`w-14 rounded px-1 py-0.5 text-[10px] ${staged ? 'bg-success/15 text-success' : 'bg-surface-3 text-text-3'}`}>{staged ? 'staged' : 'stage'}</button>
             <button type="button" onDoubleClick={() => { const path = toProjectPath(change.path); if (path) void useGoIDEStore.getState().openLocation(path, 1) }} title={toProjectPath(change.path) ? 'Double-click to open in the editor' : 'This change belongs to another folder in the repository'} className="min-w-0 flex-1 truncate text-left font-mono text-[11.5px] text-text-2">{change.path}</button>
             <span className={`text-[10.5px] ${change.conflicted ? 'text-danger' : 'text-text-4'}`}>{changeLabel(change)}</span>
+            <button type="button" onClick={() => setHunkStage({ path: change.path, mode: staged ? 'unstage' : 'stage' })} title={`Stage or unstage single hunks and lines of ${change.path}`} aria-label={`Hunks of ${change.path}`} className="go-studio-icon-button h-6 w-6 shrink-0"><Scissors size={11} /></button>
           </div>
         })}
+        {hunkStage && (
+          <HunkStageDialog
+            repoPath={repoRoot}
+            path={hunkStage.path}
+            mode={hunkStage.mode}
+            onDone={() => { void refresh() }}
+            onClose={() => setHunkStage(null)}
+          />
+        )}
       </div>}
 
       {tab === 'log' && overview && <div className="grid min-h-0 flex-1 grid-cols-[210px_minmax(320px,1fr)_minmax(220px,0.7fr)]">

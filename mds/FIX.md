@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**68 chiuse · 112 implementate da verificare · 56 da fare - su 236 voci.**
+**71 chiuse · 119 implementate da verificare · 56 da fare - su 246 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -31,10 +31,13 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-10 | 3 | 9 | 0 | 12 |
 | GS-11 | 1 | 3 | 2 | 6 |
 | GS-12 | 0 | 3 | 0 | 3 |
+| GS-13 | 1 | 3 | 0 | 4 |
+| GS-14 | 1 | 2 | 0 | 3 |
+| GS-15 | 1 | 2 | 0 | 3 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **68** | **112** | **56** | **236** |
+| **TOTALE** | **71** | **119** | **56** | **246** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -131,6 +134,9 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | GS-10 | Altri problemi frontend (audit) | P1-P2 | vari |
 | GS-11 | Revisione delle modifiche degli agenti AI + MCP a Claude Code | P1 | M |
 | GS-12 | File Go senza colori semantici (funzioni bianche) | P1 | S |
+| GS-13 | Inline Assistant (Ctrl+Enter sulla selezione) | P1 | M |
+| GS-14 | Messaggio di commit generato dall'AI (voce Z2.4 del piano) | P2 | S |
+| GS-15 | Stage/unstage di singoli hunk e righe (voce Z2.5 del piano) | P2 | S-M |
 | DB-1 | Valori annidati illeggibili + schermo intero | P1 | L |
 | DB-2 | Password che sparisce + Connect persistente | P0 | L |
 | DB-3 | Console query per categoria con interprete | P2 | L |
@@ -611,6 +617,49 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 
 ---
 
+### GS-13. Inline Assistant (Ctrl+Enter sulla selezione)
+
+**P1** — voce Z2.3 di `mds/03-GO-STUDIO-PIANO-UNIFICATO.md`. Le 18 AI actions restano invariate (preparano il prompt in chat): questo è un comando nuovo che toglie il salto di contesto.
+- [ ] GS-13.1 Comando `goStudio.ai.inlineAssistant` con **Ctrl+Enter** sulla selezione (o sulla dichiarazione sotto il cursore) e voce "AI: Inline Assistant…" nel menu contestuale: popup `gs-popover` ancorato sotto il codice con l'input dell'istruzione (Enter genera, Esc annulla, clic fuori chiude), senza selezione valida rifiuto esplicito. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `goStudioInlineAssistantSession.ts` (`openInlineAssistant`, `rangeFor`, `targetFor`), `GoStudioInlineAssistantPopup.tsx` montato in `GoStudioPanel`, azione registrata in `goStudioAIActionsRunner.ts` (`installGoStudioAIActions`).
+- [ ] GS-13.2 Diff inline di revisione dentro l'editor: righe proposte in zone verdi con ✓/✗ per blocco, righe tolte barrate in rosso, toolbar con contatore +N −M, Accept all / Reject all (Ctrl+Enter / Esc). Ogni accettazione è una modifica non salvata e annullabile (un solo Ctrl+Z per blocco; Accept all = un solo passo di undo); le coordinate dei blocchi restano valide dopo ogni accettazione (shift per delta di righe). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `renderReview`/`acceptInlineHunk`/`acceptAllInlineAssistant` in `goStudioInlineAssistantSession.ts`, `shiftInlineHunks`/`inlineEditHunks` in `goStudioInlineAssistant.ts` (test).
+- [ ] GS-13.3 Gate di sicurezza: serve un provider AI verificato (altrimenti rimando a Settings → AI); `.adomnia/aiignore` e policy `off`/`local-only` rifiutano; segreti redatti con `createAIRedactor` e ripristinati nella proposta; una risposta in prosa viene rifiutata invece di sostituire codice; modifica del file durante la revisione scarta la proposta con messaggio; frammento oltre 24k caratteri rifiutato. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `blockedByPolicy`, `parseInlineEditResponse` (test), guardia `onDidChangeModelContent` in `goStudioInlineAssistantSession.ts`.
+- [x] GS-13.4 Test automatici e documentazione: `goStudioInlineAssistant.test.ts` (15 test: prompt senza fence di linguaggio, estrazione blocco recintato, rifiuto risposte chiacchierone, forma del frammento, coordinate hunk, shift dopo accettazione) verdi con `goStudioAIFix.test.ts`; `docs/GO-STUDIO.md` (bullet di sicurezza + scorciatoia), `docs/adomnia-feature-catalog.en.md` J3.6. — **FATTO (2026-10-16):** vedi Registro.
+
+**Verifica**
+- Verifica manuale **GS-13.M1…M6** → `mds/MANUAL-CHECK.md` (sezione **GS-13**).
+
+**Gate GS-13:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-13)  [x] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### GS-14. Messaggio di commit generato dall'AI (Z2.4 del piano)
+
+**P2** — voce Z2.4 di `mds/03-GO-STUDIO-PIANO-UNIFICATO.md`. Prima non esisteva nessun generatore di messaggi per il commit pendente (solo `ai.betterMessage` su commit già fatti, in Git Studio).
+- [ ] GS-14.1 Bottone *Draft message with AI* nel Commit Dialog (Ctrl+K), accanto alla textarea del messaggio: riassume il diff HEAD → working copy dei file spuntati (e i simboli Go cambiati) in un messaggio Conventional Commits che resta modificabile prima del commit; disattivato senza file spuntati, assente senza provider AI verificato. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `goStudioCommitMessageAI.ts` (`buildCommitMessagePrompt`, `parseCommitMessage`, `draftGoStudioCommitMessage`) e bottone in `GoStudioCommitDialog.tsx`.
+- [ ] GS-14.2 Gate di sicurezza: policy `off`/`local-only` rifiutano prima di ogni chiamata; `.adomnia/aiignore` elenca il file senza inviarne il contenuto; segreti redatti con `createAIRedactor` e **mai ripristinati** nella risposta (un messaggio di commit non deve rimetterli nello storico Git); file binari/troppo grandi annotati senza bloccare la bozza. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** test `goStudioCommitMessageAI.test.ts`.
+- [x] GS-14.3 Test automatici e documentazione: `goStudioCommitMessageAI.test.ts` (8 test: prompt, parsing, rifiuto risposta vuota, policy, esclusione contenuti, diff vuoto); `docs/GO-STUDIO.md` (bullet di sicurezza + "Commit and integrate"), `docs/adomnia-feature-catalog.en.md` J6.10. — **FATTO (2026-10-16):** vedi Registro.
+
+**Verifica**
+- Verifica manuale **GS-14.M1…M4** → `mds/MANUAL-CHECK.md` (sezione **GS-14**).
+
+**Gate GS-14:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-14)  [x] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### GS-15. Stage e unstage di singoli hunk e righe (Z2.5 del piano)
+
+**P2** — voce Z2.5 di `mds/03-GO-STUDIO-PIANO-UNIFICATO.md`. Il backend era già pronto e testato (`internal/git/staging.go` `FileDiff`/`ApplyHunkToIndex`, binding `GitSync.*`, matematica dei patch in `lib/git/hunks.ts`, dialog `HunkStageDialog.tsx` completa ma **orfana**: nessuno la montava).
+- [ ] GS-15.1 Stage / Unstage del singolo blocco dall'hunk popup (clic sul gutter): prima il buffer su disco se dirty, poi `git apply --cached` (avanti per stage, al contrario per unstage) solo sui blocchi che toccano le righe del popup; messaggio di esito e refresh dello stato; il resto del file non viene toccato. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `goStudioVcsHunkStage.ts` (`applyGoStudioHunkToIndex`), `hunksOverlapping`/`hunkRange` in `lib/git/hunks.ts`, pulsanti in `GoStudioHunkPopup.tsx`.
+- [ ] GS-15.2 Singole righe: `HunkStageDialog` montata dal popup (*Stage/Unstage single lines…*) e dal Git workbench (icona forbici sulla riga di ogni modifica), con checkbox per blocco e per riga +/-. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** mount in `GoStudioHunkPopup.tsx` e `GoStudioGitPanel.tsx`.
+- [x] GS-15.3 Test automatici e documentazione: `hunks.test.ts` esteso (11 test totali fra `hunkRange`, `hunksOverlapping`, `selectHunkLines`) e `goStudioVcsHunkStage.test.ts` (stage/unstage/nessuna corrispondenza/fuori repository); `docs/GO-STUDIO.md` ("Commit and integrate"), `docs/adomnia-feature-catalog.en.md` J6.11. Nessuna modifica Go: il backend esistente resta come è. — **FATTO (2026-10-16):** vedi Registro.
+
+**Verifica**
+- Verifica manuale **GS-15.M1…M5** → `mds/MANUAL-CHECK.md` (sezione **GS-15**).
+
+**Gate GS-15:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-15)  [x] Doc  [ ] Verificato da altra persona/agente
+
+---
+
 ## PARTE C — Pannello Database
 
 DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionManager` di DB-2 ma può partire in parallelo.
@@ -844,3 +893,6 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | Riorganizzazione verifiche manuali | 2026-10-15 | OpenCode | Creato `mds/MANUAL-CHECK.md` con tutte le voci che richiedono l'app: 40 voci spostate da qui (voci `…M*`, gate manuali M12/M24/M25/M2/M23/M31, IDE-5.12, riproduzioni IDE-1.0/IDE-2.0/DB-1.0) più la verifica delle 76 voci `IMPLEMENTATO` → 127 controlli manuali con prerequisiti e passi. Aggiunta la regola 0.8 ("da ora in poi le verifiche manuali si scrivono in MANUAL-CHECK.md"); marker `IMPLEMENTATO; NON VERIFICATO manualmente` rinominati in `verifica manuale in MANUAL-CHECK.md`; tabella di stato ricalcolata (213 → 173 voci: ✅ 66 e 🟡 76 invariati, ⬜ 71 → 31). Nessuna modifica al codice. |               |
 
 | Checkpoint integrazione develop | 2026-10-16 | Codex | Build Windows production `wails3 task build` beta.28 verde, binding rigenerati; frontend completo 353 file / 1717 test verdi; `check:startup` 605567 B / 650000, zero moduli differiti nello startup; `go test -p 4 ./... -count=1 -timeout 10m` verde (Go Studio 166,112 s). Prima esecuzione parallela: soglia cache AI instabile sotto carico, poi invariata verde 3 volte e nella suite finale. Corretti due difetti nei test: socket accettati OTLP trattenuti fino alla verifica e cache invalidata per le porte effimere (20 run con race detector verdi); isolamento progetti Windows con profilo cmd per escludere suggerimenti PSReadLine da cronologia condivisa (5 run verdi). Build/runtime dell'app non modificati da queste correzioni ai test. Ulteriori test CLI/milk/OTLP verdi sullo stato aggiornato, 9 test dei report Node verdi. Log locali `.artifacts/publish-*`; prove manuali e review indipendenti ancora aperte, nessuna casella UI chiusa da questo checkpoint. | |
+| GS-13.4 Impl/Test/Doc | 2026-10-16 | MiMo (OpenCode) | Inline Assistant (voce Z2.3 del piano): `goStudioInlineAssistant.ts` (prompt, parsing risposte, hunk in coordinate di file, shift dopo accettazione), `goStudioInlineAssistantSession.ts` (sessione Monaco, view zone + decorazioni, gate di sicurezza), `GoStudioInlineAssistantPopup.tsx` + CSS con token; comando `goStudio.ai.inlineAssistant` (Ctrl+Enter) in `installGoStudioAIActions`, popup montato in `GoStudioPanel`. Rosso→verde: il round-trip degli hunk falliva con le coordinate di test sbagliate (startLine 10 su testo di 3 righe), corretto il test; codice invariato. `npx vitest run src/components/goide/goStudioInlineAssistant.test.ts src/components/goide/goStudioAIFix.test.ts` = 29 test verdi; `goStudioAIFixRunner.test.ts` 8 verdi; `goStudioSplitter.test.ts` 5 verdi; `npx tsc --noEmit` pulito; `npm run build` exit 0. Docs: `GO-STUDIO.md` (sicurezza + scorciatoia), `adomnia-feature-catalog.en.md` J3.6. Verifica manuale GS-13.M1…M6 NON VERIFICATA (richiede app desktop e provider AI reale). | |
+| GS-14.3 + GS-15.3 Impl/Test/Doc | 2026-10-16 | MiMo (OpenCode) | Z2.4 (messaggio di commit AI) + Z2.5 (stage/unstage hunk e righe). Z2.4: `goStudioCommitMessageAI.ts` (prompt Conventional Commits da `VCSWorkingDiff` + `unifiedDiff`, parsing, gate provider/policy/aiignore/redazione senza ripristino) e bottone *Draft message with AI* in `GoStudioCommitDialog.tsx`. Z2.5: `lib/git/hunks.ts` esteso (`hunkRange`, `hunksOverlapping`, refactor di `selectHunkLines` sullo stesso parser di header), `goStudioVcsHunkStage.ts` (`git apply --cached` avanti/al contrario sui blocchi scelti), pulsanti Stage/Unstage + *single lines…* in `GoStudioHunkPopup.tsx`, mount di `HunkStageDialog` (prima orfana) dal popup e da `GoStudioGitPanel.tsx`, `gitPathFromAbsolute` in `goStudioGitPaths.ts`. Rosso→verde: 2 test inizialmente rossi per difetti dei test stessi (mock con lo stesso contenuto per entrambi i file, asserzione sul messaggio d'errore) e 5 errori TS sui tuple type dei mock; corretti i test, codice invariato. Verdi: `goStudioCommitMessageAI.test.ts` 8, `hunks.test.ts` + `goStudioVcsHunkStage.test.ts` 11, suite `src/components/goide` + `src/lib/git` = 123 file / 563 test; `npx tsc --noEmit` pulito; `npm run build` exit 0. Docs: `GO-STUDIO.md` (sicurezza + "Commit and integrate"), `adomnia-feature-catalog.en.md` J6.10/J6.11. Verifiche manuali GS-14.M1…M4 e GS-15.M1…M5 NON VERIFICATE (richiedono app desktop e repository Git reale). | |
+| Checkpoint finale develop e regole progetto | 2026-10-16 | Codex | Build Windows production `wails3 task build` beta.28 verde; frontend completo 358 file / 1760 test verdi; 9 test report Node verdi; `check:startup` 606600 B / 650000 e nessun modulo differito nello startup. Suite Go completa `go test -p 4 ./... -count=1 -timeout 10m` verde (Go Studio 119,397 s). Trovato e corretto un difetto reale nella review agente: scritture con dimensione e timestamp uguali potevano perdere la baseline originale; confronto anche del contenuto testuale limitato e regressione deterministica, 10 ripetizioni con race detector verdi. Regole progetto: test caricamento, aggiornamento, policy, limiti, redazione e invio Copilot/milk verdi; test symlink saltato su Windows per privilegi insufficienti. Log locali `.artifacts/final16-*`. Verifiche desktop Z1.4.M1 e degli altri flussi ancora aperte in MANUAL-CHECK.md; nessuna accettazione manuale dedotta dalla build. | |

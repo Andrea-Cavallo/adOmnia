@@ -65,6 +65,7 @@ type lspSession struct {
 	idleTimer     *time.Timer
 	suspended     bool
 	userInitiated bool
+	restartEpoch  uint64 // invalidates crash retries after an explicit lifecycle change
 
 	mu       sync.Mutex
 	id       SessionID
@@ -228,6 +229,10 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	state.lifecycle.Lock()
 	defer state.lifecycle.Unlock()
 	state.mu.Lock()
+	if state.closed {
+		state.mu.Unlock()
+		return LanguageServerStatus{}, fmt.Errorf("language server session is closed")
+	}
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
 	}
@@ -241,6 +246,7 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 		return status, nil
 	}
 	state.launching = true
+	state.restartEpoch++
 	state.options = options
 	state.stopping = false
 	state.status = LanguageServerStatus{SessionID: session.ID, Language: options.Language, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
@@ -385,6 +391,10 @@ func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
 
 func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 	state.mu.Lock()
+	if state.closed || state.stopping {
+		state.mu.Unlock()
+		return
+	}
 	now := time.Now()
 	recent := state.crashes[:0]
 	for _, crash := range state.crashes {
@@ -393,6 +403,7 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 		}
 	}
 	state.crashes = append(recent, now)
+	epoch := state.restartEpoch
 	attempt := len(state.crashes)
 	state.status.Restarts++
 	state.mu.Unlock()
@@ -403,8 +414,10 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 	m.setState(state, LanguageServerStarting, reason+"; riavvio in corso")
 	go func() {
 		time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
+		state.lifecycle.Lock()
+		defer state.lifecycle.Unlock()
 		state.mu.Lock()
-		cancelled := state.stopping || state.process != nil || state.launching
+		cancelled := state.restartEpoch != epoch || state.closed || state.stopping || state.process != nil || state.launching
 		if !cancelled {
 			state.launching = true
 		}
@@ -414,6 +427,8 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 		}
 		if err := m.launch(state); err != nil {
 			m.handleCrash(state, err.Error())
+		} else {
+			m.armIdle(state)
 		}
 	}()
 }
@@ -426,9 +441,14 @@ func (m *LSPManager) Stop(sessionID SessionID, languageID string) {
 }
 
 func (m *LSPManager) stop(state *lspSession) {
+	m.stopState(state, false)
+}
+
+func (m *LSPManager) stopState(state *lspSession, closeSession bool) {
 	state.lifecycle.Lock()
 	defer state.lifecycle.Unlock()
 	state.mu.Lock()
+	state.closed = state.closed || closeSession
 	state.suspended = false
 	state.userInitiated = false
 	m.activity.Forget(lspActivityID(state))
@@ -439,6 +459,7 @@ func (m *LSPManager) stop(state *lspSession) {
 func (m *LSPManager) stopLocked(state *lspSession) {
 	state.mu.Lock()
 	state.stopping = true
+	state.restartEpoch++
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
 	}
@@ -490,7 +511,9 @@ func (m *LSPManager) StopSession(sessionID SessionID) {
 
 // CloseSession arresta i language server della sessione e ne dimentica documenti e diagnostica.
 func (m *LSPManager) CloseSession(sessionID SessionID) {
-	m.StopSession(sessionID)
+	for _, state := range m.servers(sessionID) {
+		m.stopState(state, true)
+	}
 	m.mu.Lock()
 	for key, state := range m.sessions {
 		if key.session != sessionID {

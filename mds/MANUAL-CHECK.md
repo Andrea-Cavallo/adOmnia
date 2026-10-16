@@ -31,6 +31,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | database reale per driver (Mongo, Postgres, MySQL, SQLite, Redis) | DB-1, DB-2, DB-3 |
 | provider AI verificato in Settings → AI | DB-3.M5 |
 | Claude Code e milk attivi, progetto Go con Git, un server MCP configurato | GS-11 |
+| provider AI verificato in Settings → AI | GS-11, GS-12, DB-3.M5 |
 
 ## Stato a colpo d'occhio
 
@@ -54,10 +55,13 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | GS-10 | 9 | 0 |
 | GS-11 | 6 | 0 |
 | GS-12 | 4 | 0 |
+| GS-13 | 9 | 0 |
+| GS-14 | 6 | 0 |
+| GS-15 | 7 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **151** | **0** |
+| **TOTALE** | **173** | **0** |
 
 ---
 
@@ -357,8 +361,6 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **GS-11.M2** Caso limite: con il dialog aperto modificare e salvare a mano lo stesso file, poi *Reject* su un blocco: niente sovrascrittura, messaggio e review aggiornata. Un file con modifiche non salvate nell'editor conserva il buffer.
 - [ ] **GS-11.M3** Skin scuro e chiaro: righe aggiunte/tolte leggibili, pulsanti coerenti con gli altri dialog; progetto oltre i limiti (es. cartella con >20.000 file) mostra l'avviso nella chat invece della review.
 
-**Gate manuale GS-11:** [ ]
-
 ---
 
 ## GS-12 — Colori semantici nei file Go
@@ -374,6 +376,64 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **GS-12.M1** Caso limite: gopls spento a metà caricamento (kill del processo): nessun errore a schermo, i colori sintattici restano, quelli semantici tornano al riavvio.
 
 **Gate manuale GS-12:** [ ]
+
+---
+
+## GS-13 — Inline Assistant (Ctrl+Enter sulla selezione)
+
+**Prerequisito:** `wails3 task dev` con il progetto Go di riferimento; provider AI verificato in Settings → AI; per GS-13.M4 anche `.adomnia/aiignore` e `.adomnia/ai-policy.json` nel progetto. Skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-13.1** Ctrl+Enter su una selezione apre il popup ancorato sotto il codice con l'input di istruzione (Enter genera, Esc annulla, clic fuori chiude); senza selezione si usa la dichiarazione sotto il cursore; nel menu contestuale c'è "AI: Inline Assistant…".
+- [ ] **GS-13.2** La proposta compare come diff inline: righe nuove verdi in un blocco con ✓/✗, righe tolte barrate rosse, toolbar con +N −M e Accept all / Reject all (Ctrl+Enter / Esc).
+- [ ] **GS-13.3** Accettare un blocco lo applica subito ed è annullabile con un solo Ctrl+Z; rifiutarlo lascia il codice; Accept all è un solo passo di undo; accettare i blocchi in ordine sparso li applica alle posizioni giuste.
+
+**Verifiche manuali**
+- [ ] **GS-13.M1** Percorso felice: selezionare una funzione, istruzione "aggiungi gestione errori", generare, Accept all: il codice cambia solo nella selezione, il buffer resta non salvato e un solo Ctrl+Z ripristina l'originale.
+- [ ] **GS-13.M2** Per hunk: proposta con più blocchi, ✓ su uno e ✗ su un altro; sul buffer resta esattamente quello scelto (confronto col gutter diff vs HEAD o con Undo).
+- [ ] **GS-13.M3** Casi limite: Esc durante la generazione; Esc in revisione (tutto scartato); modifica a mano del file durante la revisione (proposta scartata con messaggio); selezione oltre i 24k caratteri (rifiuto con limite); file in sola lettura; Ctrl+Enter senza selezione valida.
+- [ ] **GS-13.M4** Sicurezza: file escluso in `.adomnia/aiignore` rifiutato; policy `off` e `local-only` con provider remoto rifiutate; un segreto nel codice non compare nella proposta (redazione e ripristino); risposta "chiacchierona" del modello non sostituisce mai codice (resta il messaggio "did not change the fragment").
+- [ ] **GS-13.M5** Skin scuro e chiaro: popup, righe verdi, righe barrate e pulsanti ✓/✗ leggibili in entrambi.
+- [ ] **GS-13.M6** Senza provider AI attivo/verificato il messaggio rimanda a Settings → AI e non parte nessuna chiamata; con provider locale (Ollama) il progetto `local-only` è accettato.
+
+**Gate manuale GS-13:** [ ]
+
+---
+
+## GS-14 — Messaggio di commit generato dall'AI
+
+**Prerequisito:** `wails3 task dev`; progetto Git con modifiche non committate; provider AI verificato in Settings → AI. Per GS-14.M2 anche `.adomnia/aiignore` e `.adomnia/ai-policy.json` nel progetto.
+
+**Implementate, da verificare**
+- [ ] **GS-14.1** Nel Commit Dialog (Ctrl+K) il bottone *Draft message with AI* riempie la textarea con un messaggio Conventional Commits coerente col diff dei file spuntati (e i simboli cambiati); disattivato senza file spuntati, assente senza provider AI; il messaggio resta modificabile e il commit non parte mai da solo.
+- [ ] **GS-14.2** Gate: policy `off` e `local-only` (provider remoto) rifiutate con messaggio leggibile prima di ogni chiamata; file escluso in `.adomnia/aiignore` elencato ma non inviato; segreti nel diff non compaiono nel messaggio (redazione senza ripristino); file binario e file troppo grande annotati senza bloccare la bozza.
+
+**Verifiche manuali**
+- [ ] **GS-14.M1** Percorso felice: progetto con 2-3 file modificati, spuntarli, *Draft message with AI*: il messaggio descrive davvero le modifiche (tipo, soggetto < 72 caratteri), si modifica e si committa.
+- [ ] **GS-14.M2** Policy e aiignore: con `.adomnia/ai-policy.json` `off` e `local-only`+provider remoto l'errore è chiaro e non parte nessuna chiamata; con un file escluso da `.adomnia/aiignore` la bozza lo cita senza contenerne il testo.
+- [ ] **GS-14.M3** Segreti: una API key nel diff non compare nella bozza (solo segnaposto o formulazione generica); con un solo file binario o enorme la bozza funziona lo stesso.
+- [ ] **GS-14.M4** Skin scuro e chiaro: bottone, spinner e errori leggibili in entrambi; bottone disattivato con zero file spuntati.
+
+**Gate manuale GS-14:** [ ]
+
+---
+
+## GS-15 — Stage e unstage di singoli hunk e righe
+
+**Prerequisito:** `wails3 task dev`; progetto Git con più blocchi di modifica nello stesso file (almeno uno salvato e uno non salvato), skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-15.1** Dall'hunk popup (clic sulla barra diff del gutter) *Stage* e *Unstage* portano dall'index (o riportano indietro) solo il blocco mostrato; il buffer non salvato viene salvato prima; il resto del file non cambia e la lista modifiche si aggiorna.
+- [ ] **GS-15.2** *Stage single lines…* / *Unstage single lines…* nel popup e l'icona forbici sulle righe del Git workbench aprono la dialog con checkbox per blocco e per riga +/-; applicando una riga sola solo quella passa nell'index.
+
+**Verifiche manuali**
+- [ ] **GS-15.M1** Percorso felice: file con due blocchi modificati, clic sul gutter del primo → Stage; `git diff --cached` (o il Git workbench) mostra solo quel blocco, il secondo resta unstaged.
+- [ ] **GS-15.M2** Unstage: dall'hunk popup di un blocco già staged, Unstage lo riporta fuori dall'index senza toccare il worktree.
+- [ ] **GS-15.M3** Buffer non salvato: modificare l'editor senza salvare, Stage dal popup salva e poi porta il blocco nell'index (nessun errore di patch, nessuna modifica persa).
+- [ ] **GS-15.M4** Righe singole: *Stage single lines…* con una sola riga + spuntata → solo quella nell'index; *Unstage single lines…* fa il contrario; stessa dialog dall'icona forbici del Git workbench.
+- [ ] **GS-15.M5** Casi limite: blocco già tutto staged (messaggio "nothing to stage/unstage"), file non versionato o binario (nessun crash), skin scuro e chiaro leggibili.
+
+**Gate manuale GS-15:** [ ]
 
 ---
 
@@ -484,6 +544,10 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **REF-11.M1** Release Windows inattiva a 5/15/30 min: report locale CPU/RAM dell'intero albero e stato osservato. **Hub vuota misurata**, restano workspace API popolato e progetto IDE; niente inferenze dai clock simulati. Evidenze locali in `.artifacts/idle-native/`: `report.json`, JSONL, ambiente, SHA256 binario e `completion.json`.
 - [ ] **REF-11.M2** Dopo Idle/Background: primo input riattiva clock, risorse, Runtime Lens e analisi secondarie; navigazione e ripristino dello stato funzionanti. Split e finestra staccata visibile proteggono anche il workspace senza focus tastiera.
 - [ ] **REF-11.M3** Terminale con comando lungo, debug, richiesta/stream e registrazione intenzionale continuano durante Idle e finestra nascosta; LSP avviato esplicitamente resta protetto, quello automatico senza editor si sospende e riparte alla successiva richiesta.
+
+## Z1.4 — regole automatiche del progetto
+
+- [ ] **Z1.4.M1** Copilot, milk e Claude: progetto con i quattro file root, inviare un messaggio e controllare i nomi nei chip del contesto; disattivare Project rules e verificare che il turno successivo le escluda. Modificare un file e inviare di nuovo; verificare aggiornamento, marker per file oltre 8 KiB e rispetto di `.adomnia/aiignore`. Slash command milk invariati. Provare finestra staccata, tema chiaro e scuro. I test automatici non chiudono questa verifica.
 
 ## Verifica globale di rilascio
 

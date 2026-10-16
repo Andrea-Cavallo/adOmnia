@@ -3,6 +3,14 @@ package golang
 import "testing"
 
 func TestGoplsResourceSettingsPreserveDefaultScope(t *testing.T) {
+	spec := GoplsServerSpec(GoplsInfo{}, nil, GoplsSettings{})
+	budget := false
+	for _, entry := range spec.Environment {
+		budget = budget || entry == "GOMEMLIMIT=768MiB"
+	}
+	if !budget {
+		t.Fatal("missing default memory budget")
+	}
 	defaultConfig := goplsConfiguration(GoplsSettings{})
 	if _, ok := defaultConfig["expandWorkspaceToModule"]; ok {
 		t.Fatal("default scope narrowed")

@@ -116,7 +116,7 @@ func (t *Tracker) endTurn(root, agent string, baseline map[string]baselineFile) 
 	t.mu.Lock()
 	project := t.projectLocked(root)
 	project.notice = ""
-	for _, relative := range changedPaths(baseline, current) {
+	for _, relative := range changedPaths(root, baseline, current) {
 		if _, tracked := project.files[relative]; tracked {
 			continue // la baseline più vecchia resta: la review copre tutti i turni non ancora rivisti
 		}
@@ -137,11 +137,18 @@ func pendingFromBaseline(baseline map[string]baselineFile, relative, agent strin
 
 // changedPaths elenca i file aggiunti, eliminati o con impronta diversa. Un file riscritto con lo stesso
 // contenuto non conta: pruneLocked lo scarta confrontando il testo.
-func changedPaths(baseline map[string]baselineFile, current map[string]fingerprint) []string {
+func changedPaths(root string, baseline map[string]baselineFile, current map[string]fingerprint) []string {
 	var changed []string
 	for relative, before := range baseline {
 		after, exists := current[relative]
-		if !exists || after != before.fingerprint {
+		changedContent := false
+		if exists && after == before.fingerprint && before.text != nil {
+			// Equal-size writes can share a filesystem timestamp. The bounded text
+			// baseline is authoritative; metadata alone must not hide an edit.
+			text, readable := readText(filepath.Join(root, filepath.FromSlash(relative)))
+			changedContent = !readable || text != *before.text
+		}
+		if !exists || after != before.fingerprint || changedContent {
 			changed = append(changed, relative)
 		}
 	}

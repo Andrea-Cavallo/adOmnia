@@ -1,6 +1,9 @@
 import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal } from 'lucide-react'
+import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal, Sparkles } from 'lucide-react'
+import { isAICompanionAvailable } from '@/lib/aiAvailability'
+import { draftGoStudioCommitMessage, type CommitMessageSymbol } from './goStudioCommitMessageAI'
+import { useSettingsStore } from '@/stores/settings'
 import { getGoIDEChangedSymbols, type GoIDEVCSChangedSymbol } from '@/lib/goide-vcs-api'
 import { runGoStudioChangedTests } from './goStudioQuickActions'
 import { useGoIDEStore } from '@/stores/goide'
@@ -98,6 +101,8 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   const [blocked, setBlocked] = useState<GoStudioPrecommitSummary | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
   const [localReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
+  const [aiBusy, setAiBusy] = useState(false)
+  const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
   const messageRef = useRef<HTMLTextAreaElement>(null)
   const changes = status?.changes ?? []
 
@@ -171,6 +176,24 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   }
 
   const canCommit = !busy && !!message.trim() && selected.size > 0
+
+  /** Bozza del messaggio dal diff dei file spuntati: la bozza si può sempre modificare prima del commit. */
+  const draftMessage = async () => {
+    if (aiBusy || selected.size === 0) return
+    setAiBusy(true)
+    setError(null)
+    try {
+      const changed: CommitMessageSymbol[] = symbols
+        .filter((symbol) => selected.has(symbol.relativePath))
+        .map((symbol) => ({ name: symbol.name, kind: symbol.kind, change: symbol.change, breaking: symbol.breaking, test: symbol.test }))
+      setMessage(await draftGoStudioCommitMessage(sessionId, [...selected], changed, status?.branch ?? ''))
+    } catch (reason) {
+      setError(`AI commit message: ${reason instanceof Error ? reason.message : String(reason)}`)
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   return (
     <GoStudioModal
       open={open}
@@ -210,6 +233,12 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
       <form id="go-studio-commit-form" className="flex shrink-0 flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
         <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
+        {aiAvailable && (
+          <div className="flex items-center gap-2">
+            <GoStudioButton small variant="secondary" icon={Sparkles} loading={aiBusy} disabled={selected.size === 0} onClick={() => void draftMessage()}>Draft message with AI</GoStudioButton>
+            <span className="text-[11px] text-text-4">Summarises the selected changes · secrets are redacted</span>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-[12px] text-text-3">
           <input type="checkbox" checked={checkFirst} onChange={(event) => { setCheckFirst(event.target.checked); savePrecommitPreference(event.target.checked) }} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />
           Check for errors and lint warnings in these files before committing

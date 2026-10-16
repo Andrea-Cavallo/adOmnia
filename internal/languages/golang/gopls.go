@@ -102,8 +102,9 @@ func goplsVersion(binary string) (string, error) {
 // raccolta; la modalità globale scelta con `go telemetry` resta intatta.
 // GOTELEMETRY invece è di sola lettura e non spegne nulla: verificato su Windows con
 // gopls v0.23.0 (con GOTELEMETRY=off il figlio parte, con GO_TELEMETRY_CHILD=2 no).
-// GOMEMLIMIT: il GC di gopls diventa più aggressivo vicino a 1 GiB e taglia i picchi, al costo di un po' di CPU.
-var goplsEnvironmentDefaults = map[string]string{"GO_TELEMETRY_CHILD": "2", "GOMEMLIMIT": "1GiB"}
+// GOMEMLIMIT: soft GC budget, not a process RSS cap. 768 MiB balances local
+// workspace measurements against hover/symbol latency; user environment wins.
+var goplsEnvironmentDefaults = map[string]string{"GO_TELEMETRY_CHILD": "2", "GOMEMLIMIT": "768MiB"}
 
 // GoplsServerSpec descrive gopls al manager LSP generico: avvio, configurazione e file osservati.
 // environment è quello dell'SDK della sessione (con il suo `go` per primo nel PATH).

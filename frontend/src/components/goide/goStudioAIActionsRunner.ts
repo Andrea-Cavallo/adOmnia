@@ -10,6 +10,7 @@ import { isChatPane, type GoStudioChatPane, useGoStudioAssistantStore } from '@/
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
 import { documentForModel } from './goStudioLanguageFeatures'
+import { openInlineAssistant } from './goStudioInlineAssistantSession'
 import type { GoIDEArchitecture } from '@/lib/goide-api'
 import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
 import { mergedReports } from '@/stores/goideLsp'
@@ -175,5 +176,15 @@ export function installGoStudioAIActions(editor: monaco.editor.IStandaloneCodeEd
       contextMenuOrder: index,
       run: (target) => { void runGoStudioAIAction(target, action) },
     })
+  })
+  // Ctrl+Enter sulla selezione: l'istruzione diventa un diff inline da accettare o scartare,
+  // senza passare dalla chat (le azioni sopra continuano a preparare lì il loro prompt).
+  editor.addAction({
+    id: 'goStudio.ai.inlineAssistant',
+    label: 'AI: Inline Assistant…',
+    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+    contextMenuGroupId: '9_ai',
+    contextMenuOrder: GO_STUDIO_AI_ACTIONS.length,
+    run: (target) => { openInlineAssistant(target) },
   })
 }

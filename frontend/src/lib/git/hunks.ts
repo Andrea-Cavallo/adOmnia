@@ -18,6 +18,61 @@ export interface ParsedFileDiff {
   hunks: Hunk[]
 }
 
+/** Parti dell'header `@@ -a,b +c,d @@ …`; i conteggi omessi valgono 1, `-0,0` è un inserto. */
+function headerParts(header: string): { oldStart: number; oldCount: number; newStart: number; newCount: number; rest: string } | null {
+  const match = header.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/)
+  if (!match) return null
+  return {
+    oldStart: Number(match[1]),
+    oldCount: match[2] === undefined ? 1 : Number(match[2]),
+    newStart: Number(match[3]),
+    newCount: match[4] === undefined ? 1 : Number(match[4]),
+    rest: match[5],
+  }
+}
+
+/** Righe 1-based coperte da un hunk sui due lati; end < start = nessuna riga (inserto o cancellazione). */
+export interface HunkRange {
+  oldStart: number
+  oldEnd: number
+  newStart: number
+  newEnd: number
+}
+
+export function hunkRange(hunk: Hunk): HunkRange | null {
+  const parts = headerParts(hunk.header)
+  if (!parts) return null
+  return {
+    oldStart: parts.oldStart,
+    oldEnd: parts.oldStart + parts.oldCount - 1,
+    newStart: parts.newStart,
+    newEnd: parts.newStart + parts.newCount - 1,
+  }
+}
+
+/** Un lato senza righe è ancorato alla sua riga start: conta come quella riga. */
+function span(start: number, end: number): [number, number] {
+  return [Math.min(start, end + 1), Math.max(start, end)]
+}
+
+function intersects(left: [number, number], right: [number, number]): boolean {
+  return left[0] <= right[1] && right[0] <= left[1]
+}
+
+/**
+ * Hunks che toccano le righe indicate su uno dei due lati. Serve per allineare un blocco
+ * dell'editor (righe contro HEAD) agli hunks di `git diff` (index → worktree o HEAD → index).
+ */
+export function hunksOverlapping(hunks: readonly Hunk[], target: HunkRange): Hunk[] {
+  const oldTarget = span(target.oldStart, target.oldEnd)
+  const newTarget = span(target.newStart, target.newEnd)
+  return hunks.filter((hunk) => {
+    const range = hunkRange(hunk)
+    if (!range) return false
+    return intersects(oldTarget, span(range.oldStart, range.oldEnd)) || intersects(newTarget, span(range.newStart, range.newEnd))
+  })
+}
+
 export function parseFileDiff(diff: string): ParsedFileDiff {
   const lines = diff.split('\n')
   // git output ends with a trailing newline → drop the final empty element so
@@ -59,8 +114,8 @@ export function buildPatch(fileHeader: string, hunks: Hunk[]): string {
  * deletions become context; unselected additions disappear. Header counts are
  * recalculated so git apply can stage one changed line at a time. */
 export function selectHunkLines(hunk: Hunk, selected: Set<number>): Hunk | null {
-  const match = hunk.header.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/)
-  if (!match) return null
+  const parts = headerParts(hunk.header)
+  if (!parts) return null
   const transformed: string[] = []
   let keptChange = false
   for (let index = 0; index < hunk.lines.length; index++) {
@@ -77,6 +132,6 @@ export function selectHunkLines(hunk: Hunk, selected: Set<number>): Hunk | null 
   if (!keptChange) return null
   const oldCount = transformed.filter((line) => !line.startsWith('+') && !line.startsWith('\\')).length
   const newCount = transformed.filter((line) => !line.startsWith('-') && !line.startsWith('\\')).length
-  const header = `@@ -${match[1]},${oldCount} +${match[3]},${newCount} @@${match[5]}`
+  const header = `@@ -${parts.oldStart},${oldCount} +${parts.newStart},${newCount} @@${parts.rest}`
   return { header, lines: transformed, text: [header, ...transformed].join('\n') }
 }
