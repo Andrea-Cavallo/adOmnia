@@ -49,6 +49,9 @@ func TestMain(m *testing.M) {
 		if e := ConfirmStartup("v1.1.0"); e != nil {
 			os.Exit(4)
 		}
+		if os.Getenv("ADOMNIA_TEST_UPDATE_IMMEDIATE_EXIT") == "1" {
+			os.Exit(0)
+		}
 		time.Sleep(time.Second)
 		os.Exit(0)
 	}
@@ -61,9 +64,9 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		t.Skip("macOS bundle/codesign acceptance requires a packaged app")
 	}
-	for _, mode := range []string{"apply", "rollback", "version-mismatch"} {
+	for _, mode := range []string{"apply", "apply-immediate-exit", "rollback", "version-mismatch"} {
 		t.Run(mode, func(t *testing.T) {
-			fail := mode != "apply"
+			fail := mode == "rollback" || mode == "version-mismatch"
 			root := t.TempDir()
 			stage := filepath.Join(root, "updates")
 			if e := os.Mkdir(stage, 0700); e != nil {
@@ -129,12 +132,17 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 			cmd := exec.Command(helper, "--adomnia-update-helper", planFile)
 			cmd.Env = append(os.Environ(), "ADOMNIA_TEST_INSTALLED=1", "ADOMNIA_TEST_UPDATE_KEY="+base64.StdEncoding.EncodeToString(pub))
 			switch mode {
+			case "apply-immediate-exit":
+				cmd.Env = append(cmd.Env, "ADOMNIA_TEST_UPDATE_IMMEDIATE_EXIT=1")
 			case "rollback":
 				cmd.Env = append(cmd.Env, "ADOMNIA_TEST_UPDATE_FAIL=1")
 			case "version-mismatch":
 				cmd.Env = append(cmd.Env, "ADOMNIA_TEST_UPDATE_MISMATCH=1")
 			}
 			started := time.Now()
+			var helperOutput bytes.Buffer
+			cmd.Stdout = &helperOutput
+			cmd.Stderr = &helperOutput
 			e = cmd.Run()
 			if mode == "version-mismatch" && time.Since(started) > 20*time.Second {
 				t.Fatalf("a rejected startup must roll back at once, took %s", time.Since(started))
@@ -144,7 +152,7 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 				t.Fatal("failed startup accepted")
 			}
 			if !fail && e != nil {
-				t.Fatal(e)
+				t.Fatalf("helper failed: %v\n%s", e, helperOutput.String())
 			}
 			info, e := os.Stat(target)
 			if e != nil {

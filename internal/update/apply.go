@@ -354,6 +354,15 @@ func RunHelper(planPath, current string) (result error) {
 	logf("new version started (pid %d), waiting up to %s for its window", cmd.Process.Pid, startupConfirmTimeout)
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
+	confirmed := func() error {
+		logf("new version confirmed its startup")
+		swap.finish()
+		_ = os.Remove(p.Archive)
+		_ = os.Remove(p.Manifest)
+		_ = os.Remove(marker)
+		_ = os.Remove(planPath)
+		return nil
+	}
 	for deadline := time.Now().Add(startupConfirmTimeout); time.Now().Before(deadline); {
 		if reason, readErr := os.ReadFile(marker + rejectedSuffix); readErr == nil {
 			_ = cmd.Process.Kill()
@@ -365,16 +374,16 @@ func RunHelper(planPath, current string) (result error) {
 			return fmt.Errorf("Updated app rejected its startup (%s); restored previous version", reason)
 		}
 		if _, err = os.Stat(marker); err == nil {
-			logf("new version confirmed its startup")
-			swap.finish()
-			_ = os.Remove(p.Archive)
-			_ = os.Remove(p.Manifest)
-			_ = os.Remove(marker)
-			_ = os.Remove(planPath)
-			return nil
+			return confirmed()
 		}
 		select {
 		case exitErr := <-done:
+			// The child can confirm between the check above and its exit. Once
+			// Wait returns, its final marker is visible: do not roll back a
+			// successfully confirmed installation just because polling lost the race.
+			if _, markerErr := os.Stat(marker); markerErr == nil {
+				return confirmed()
+			}
 			if restoreErr := rollback(fmt.Sprintf("the new version exited before opening its window (%v)", exitStatus(exitErr))); restoreErr != nil {
 				return restoreErr
 			}
