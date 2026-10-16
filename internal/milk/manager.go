@@ -80,6 +80,8 @@ type Manager struct {
 	emit          Emitter
 	mcpServers    func() []MCPServer // context server condivisi, letti a ogni session/new
 	turnObserver  TurnObserver
+	lastUsed      time.Time // ultimo Prompt, per lo spegnimento da inattività
+	idleStopped   bool      // spento da reapWhenIdle: riparte al prossimo Prompt
 }
 
 // TurnObserver è avvisato prima di ogni turno di chat; la funzione restituita viene chiamata a turno finito
@@ -362,8 +364,10 @@ func (m *Manager) launch(command Launch, root string) error {
 	go m.collectStderr(running, stderr)
 	m.mu.Lock()
 	m.current = running
+	m.lastUsed = time.Now()
 	m.mu.Unlock()
 	go m.watch(running)
+	go m.reapWhenIdle(running)
 
 	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
 	defer cancel()
@@ -699,6 +703,9 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 		m.mu.Lock()
 		root = m.root
 		m.mu.Unlock()
+	}
+	if err := m.wakeIfIdle(); err != nil {
+		return PromptResponse{}, err
 	}
 	if m.Status().State != StateReady {
 		return PromptResponse{}, fmt.Errorf("%s is not ready; enable it in its settings", m.agent.Name)
