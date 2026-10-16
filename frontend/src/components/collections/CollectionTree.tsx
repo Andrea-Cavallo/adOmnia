@@ -8,6 +8,7 @@ import {
   Copy,
   Download,
   Folder,
+  FolderOpen,
   FolderPlus,
   GripVertical,
   Link,
@@ -23,6 +24,7 @@ import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { Prompt } from '@/components/ui/prompt'
+import { CollectionFolderDialog } from './CollectionFolderDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DialogOverlay, DialogContent, DialogHeader, DialogBody } from '@/components/ui/dialog'
 import { copyToClipboard, generateCode } from '@/lib/codegen'
@@ -461,6 +463,7 @@ export function CollectionTree({
   const [query, setQuery] = useState(savedSession?.query ?? '')
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(savedSession?.open ?? collections.map((c) => c.id)))
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [collectionFolder, setCollectionFolder] = useState<{ collectionId: string } | null>(null)
   const [folderPrompt, setFolderPrompt] = useState<{ collectionId: string; parentId: string | null } | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ collectionId: string; requestId: string; folders: FolderItem[] } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
@@ -1095,6 +1098,7 @@ export function CollectionTree({
               <MenuButton onClick={() => { onAddCollection(); setContext(null) }}><FolderPlus size={12} /> {tr('New Collection')}</MenuButton>
               <MenuButton onClick={() => { fileInputRef.current?.click(); setContext(null) }}><Upload size={12} /> {tr('Import file')}</MenuButton>
               <MenuButton onClick={() => { exportAll('adomnia'); setContext(null) }}><Download size={12} /> {tr('Export all collections')}</MenuButton>
+              <MenuButton onClick={() => { setCollectionFolder({ collectionId: '' }); setContext(null) }}><FolderOpen size={12} /> {tr('Collection folder...')}</MenuButton>
               <div className="border-t border-border-1 py-1">
                 <MenuButton onClick={() => { document.dispatchEvent(new CustomEvent('adomnia:open-environments')); setContext(null) }}><Layers size={12} /> {tr('Manage environments')}</MenuButton>
                 <MenuButton onClick={() => { setOpenIds(new Set(collections.map((collection) => collection.id))); setContext(null) }}><ChevronRight size={12} /> {tr('Expand all')}</MenuButton>
@@ -1106,6 +1110,7 @@ export function CollectionTree({
             <>
               <MenuButton onClick={() => { setEditingId(context.collection.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
               <MenuButton onClick={() => { onImportCollection(cloneCollection(context.collection)); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
+              <MenuButton onClick={() => { setCollectionFolder({ collectionId: context.collection.id }); setContext(null) }}><FolderOpen size={12} /> {tr('Collection folder...')}</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> {tr('New Folder')}</MenuButton>
               <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
               {workspaceTargets.length > 0 && (
@@ -1162,6 +1167,8 @@ export function CollectionTree({
         </div>
       )}
       {exporting && <div role="status" className="absolute bottom-2 left-2 right-2 z-50 rounded border border-border-2 bg-surface-2 px-3 py-2 text-xs text-text-2 shadow-lg">{tr('Exporting collection...')}</div>}
+
+      <CollectionFolderDialog open={Boolean(collectionFolder)} collectionId={collectionFolder?.collectionId} onClose={() => setCollectionFolder(null)} />
 
       <Prompt
         open={Boolean(folderPrompt)}

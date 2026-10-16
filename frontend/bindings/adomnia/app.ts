@@ -7,6 +7,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as activity$0 from "./internal/activity/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as bootstrap$0 from "./internal/bootstrap/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -27,6 +30,12 @@ import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+export function ActivitySnapshot(): $CancellablePromise<activity$0.Snapshot> {
+    return $Call.ByID(1734184048).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
 
 /**
  * AttachDesktop gives the binding service access to the Wails v3 application.
@@ -61,13 +70,13 @@ export function CancelUpdateDownload(): $CancellablePromise<void> {
  */
 export function CheckForUpdate(): $CancellablePromise<update$0.UpdateInfo> {
     return $Call.ByID(2347956003).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType1($result);
     });
 }
 
 export function CheckUpdateChannel(channel: string, force: boolean): $CancellablePromise<update$0.State> {
     return $Call.ByID(3433799417, channel, force).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -110,7 +119,7 @@ export function ConfirmUpdateStartup(): $CancellablePromise<void> {
 
 export function CreateMarkdownFile(root: string, relPath: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3160060858, root, relPath, content).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -137,7 +146,7 @@ export function DetachRequestAndResponse(tabID: string, snapshotJSON: string, ti
 
 export function DownloadUpdate(): $CancellablePromise<update$0.State> {
     return $Call.ByID(115027584).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -182,7 +191,7 @@ export function GetDevLogs(): $CancellablePromise<string> {
  */
 export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
     return $Call.ByID(2699211190).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -191,7 +200,7 @@ export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
  */
 export function GetNetworkSettings(): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1026796858).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -209,7 +218,7 @@ export function GetStartupWindowChrome(): $CancellablePromise<string> {
 
 export function GetUpdateState(): $CancellablePromise<update$0.State> {
     return $Call.ByID(2688708227).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -222,7 +231,7 @@ export function GetVaultTimeout(): $CancellablePromise<number> {
 
 export function ImportMarkdownFolderToWorkspace(sourceRoot: string): $CancellablePromise<markdown$0.WorkspaceInfo> {
     return $Call.ByID(421526873, sourceRoot).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -246,13 +255,13 @@ export function IsDevMode(): $CancellablePromise<boolean> {
  */
 export function ListLogFiles(): $CancellablePromise<devlog$0.FileInfo[]> {
     return $Call.ByID(2963318464).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
 export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.FileEntry[]> {
     return $Call.ByID(2340622615, root).then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     });
 }
 
@@ -261,7 +270,7 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
  */
 export function ListPanelWindows(): $CancellablePromise<string[]> {
     return $Call.ByID(998307998).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
@@ -271,13 +280,13 @@ export function ListPanelWindows(): $CancellablePromise<string[]> {
  */
 export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
     return $Call.ByID(705221870).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
 export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
     return $Call.ByID(1584322926).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -342,6 +351,24 @@ export function OpenUpdateApplyLog(): $CancellablePromise<void> {
     return $Call.ByID(1683811382);
 }
 
+/**
+ * PerfPushFrontendMetrics receives renderer-side metrics as a JSON object and
+ * merges them into the following scenario samples. No-op without an active
+ * recording; malformed payloads are ignored.
+ */
+export function PerfPushFrontendMetrics(metricsJSON: string): $CancellablePromise<void> {
+    return $Call.ByID(1197499043, metricsJSON);
+}
+
+/**
+ * PerfRecordingStatus reports the active scenario recording as local JSON:
+ * {"active":bool,"scenario":string,"path":string}. Used by the renderer to
+ * enable input-latency capture only while a baseline scenario is recorded.
+ */
+export function PerfRecordingStatus(): $CancellablePromise<string> {
+    return $Call.ByID(4029378599);
+}
+
 export function ReadDroppedFiles(paths: string[]): $CancellablePromise<string> {
     return $Call.ByID(1904195336, paths);
 }
@@ -374,9 +401,19 @@ export function RecordStartupPerformance(frontendJSON: string): $CancellableProm
     return $Call.ByID(1831790581, frontendJSON);
 }
 
+export function RemoveActivity(): $CancellablePromise<void> {
+    return $Call.ByID(561200716);
+}
+
 export function RenameMarkdownFile(root: string, oldRelPath: string, newRelPath: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(3235207952, root, oldRelPath, newRelPath).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
+    });
+}
+
+export function ReportActivity(state: activity$0.State, scopes: string[]): $CancellablePromise<activity$0.Snapshot> {
+    return $Call.ByID(1689745818, state, scopes).then(($result: any) => {
+        return $$createType0($result);
     });
 }
 
@@ -394,7 +431,7 @@ export function SaveCollectionWorkspaces(indexJSON: string, workspaceJSON: strin
 
 export function SaveMarkdownFileAs(defaultName: string, content: string): $CancellablePromise<markdown$0.FileEntry> {
     return $Call.ByID(305697395, defaultName, content).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -403,7 +440,7 @@ export function SaveMarkdownFileAs(defaultName: string, content: string): $Cance
  */
 export function SaveNetworkSettings(settings: netpolicy$0.Settings): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1280426947, settings).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -413,7 +450,7 @@ export function SaveSettings(settingsJSON: string): $CancellablePromise<void> {
 
 export function ScheduleUpdateOnExit(enable: boolean): $CancellablePromise<update$0.State> {
     return $Call.ByID(163994384, enable).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -474,13 +511,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
@@ -505,18 +542,19 @@ export function WriteMarkdownFile(path: string, content: string): $CancellablePr
 }
 
 // Private type creation functions
-const $$createType0 = update$0.UpdateInfo.createFrom;
-const $$createType1 = update$0.State.createFrom;
-const $$createType2 = markdown$0.FileEntry.createFrom;
-const $$createType3 = netpolicy$0.Event.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = netpolicy$0.Settings.createFrom;
-const $$createType6 = markdown$0.WorkspaceInfo.createFrom;
-const $$createType7 = devlog$0.FileInfo.createFrom;
-const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = $Create.Array($$createType2);
-const $$createType10 = $Create.Array($Create.Any);
-const $$createType11 = bootstrap$0.State.createFrom;
-const $$createType12 = bootstrap$0.StateV2.createFrom;
-const $$createType13 = $models.StorageEntry.createFrom;
-const $$createType14 = $Create.Array($$createType13);
+const $$createType0 = activity$0.Snapshot.createFrom;
+const $$createType1 = update$0.UpdateInfo.createFrom;
+const $$createType2 = update$0.State.createFrom;
+const $$createType3 = markdown$0.FileEntry.createFrom;
+const $$createType4 = netpolicy$0.Event.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = netpolicy$0.Settings.createFrom;
+const $$createType7 = markdown$0.WorkspaceInfo.createFrom;
+const $$createType8 = devlog$0.FileInfo.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = $Create.Array($$createType3);
+const $$createType11 = $Create.Array($Create.Any);
+const $$createType12 = bootstrap$0.State.createFrom;
+const $$createType13 = bootstrap$0.StateV2.createFrom;
+const $$createType14 = $models.StorageEntry.createFrom;
+const $$createType15 = $Create.Array($$createType14);

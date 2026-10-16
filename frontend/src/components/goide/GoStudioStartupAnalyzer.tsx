@@ -62,7 +62,7 @@ export function GoStudioStartupAnalyzer({ sessionId }: { sessionId: string }) {
         <input id="startup-target" value={target} onChange={(event) => setTarget(event.target.value)} className="h-7 w-40 rounded border border-border-2 bg-surface-2 px-1.5 font-mono text-text-1 outline-none focus:border-accent" />
         <label htmlFor="startup-health" className="text-text-4">Ready when</label>
         <input id="startup-health" value={health} onChange={(event) => setHealth(event.target.value)} placeholder="the port opens (or /healthz)" className="h-7 w-44 rounded border border-border-2 bg-surface-2 px-1.5 font-mono text-text-1 outline-none focus:border-accent" />
-        <button type="button" onClick={() => void analyze()} disabled={busy} className="flex h-7 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50">{busy ? <Loader2 size={12} className="animate-spin" /> : <Rocket size={12} />}Analyze startup</button>
+        <button type="button" onClick={() => void analyze()} disabled={busy} className="flex h-7 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{busy ? <Loader2 size={12} className="animate-spin" /> : <Rocket size={12} />}Analyze startup</button>
         <span className="ml-auto flex items-center gap-1">
           <label htmlFor="shutdown-grace" className="text-text-4">Grace (s)</label>
           <input id="shutdown-grace" value={grace} onChange={(event) => setGrace(event.target.value)} className="h-7 w-12 rounded border border-border-2 bg-surface-2 px-1.5 font-mono text-text-1 outline-none focus:border-accent" />

@@ -74,11 +74,11 @@ func readDependencyState(project Project, directory string) (DependencyState, er
 	goModPath := filepath.Join(moduleDirectory, "go.mod")
 	data, err := os.ReadFile(goModPath)
 	if err != nil {
-		return DependencyState{}, fmt.Errorf("go.mod non leggibile: %w", err)
+		return DependencyState{}, fmt.Errorf("go.mod unreadable: %w", err)
 	}
 	parsed, err := modfile.Parse(goModPath, data, nil)
 	if err != nil {
-		return DependencyState{}, fmt.Errorf("go.mod non valido: %w", err)
+		return DependencyState{}, fmt.Errorf("invalid go.mod: %w", err)
 	}
 	state := DependencyState{ModuleDirectory: moduleDirectory, GoModPath: goModPath, Dependencies: []GoDependency{}, Replacements: []GoReplacement{}, Excludes: []GoExclusion{}, Retracts: []GoRetraction{}}
 	if parsed.Module != nil {
@@ -135,23 +135,23 @@ func goModEditArguments(action string, request DependencyActionRequest) ([]strin
 	switch action {
 	case "goversion":
 		if !goDirectivePattern.MatchString(value) {
-			return nil, true, fmt.Errorf("versione Go non valida: usa 1.23 o 1.23.4")
+			return nil, true, fmt.Errorf("invalid Go version: use 1.23 or 1.23.4")
 		}
 		return []string{"mod", "edit", "-go=" + value}, true, nil
 	case "toolchain":
 		if !toolchainPattern.MatchString(value) {
-			return nil, true, fmt.Errorf("toolchain non valida: usa go1.23.4 oppure none")
+			return nil, true, fmt.Errorf("invalid toolchain: use go1.23.4 or none")
 		}
 		return []string{"mod", "edit", "-toolchain=" + value}, true, nil
 	case "module":
 		path := strings.TrimSpace(request.ModulePath)
 		if !modulePathPattern.MatchString(path) || strings.Contains(path, "//") {
-			return nil, true, fmt.Errorf("module path non valido")
+			return nil, true, fmt.Errorf("invalid module path")
 		}
 		return []string{"mod", "edit", "-module=" + path}, true, nil
 	case "retract", "dropretract":
 		if !validRetraction(value) {
-			return nil, true, fmt.Errorf("retract non valido: usa v1.2.3 oppure [v1.0.0,v1.2.0]")
+			return nil, true, fmt.Errorf("invalid retract: use v1.2.3 or [v1.0.0,v1.2.0]")
 		}
 		return []string{"mod", "edit", "-" + action + "=" + value}, true, nil
 	}
@@ -182,7 +182,7 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 	}
 	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
-		return nil, fmt.Errorf("percorso modulo non valido")
+		return nil, fmt.Errorf("invalid module path")
 	}
 	switch action {
 	case "remove":
@@ -192,7 +192,7 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 	case "exclude", "dropexclude":
 		version := strings.TrimSpace(request.Version)
 		if !semverPattern.MatchString(version) {
-			return nil, fmt.Errorf("versione da escludere non valida: usa v1.2.3")
+			return nil, fmt.Errorf("invalid version to exclude: use v1.2.3")
 		}
 		return []string{"mod", "edit", "-" + action + "=" + modulePath + "@" + version}, nil
 	case "replace":
@@ -207,11 +207,11 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 			version = "latest"
 		}
 		if version != "latest" && !moduleVersionPattern.MatchString(version) {
-			return nil, fmt.Errorf("versione modulo non valida")
+			return nil, fmt.Errorf("invalid module version")
 		}
 		return []string{"get", modulePath + "@" + version}, nil
 	}
-	return nil, fmt.Errorf("azione dipendenza non supportata")
+	return nil, fmt.Errorf("unsupported dependency action")
 }
 
 // localReplacementPath valida la cartella locale di una replace (deve contenere un go.mod) e la
@@ -219,17 +219,17 @@ func dependencyArguments(request DependencyActionRequest, moduleDirectory string
 func localReplacementPath(moduleDirectory, candidate string) (string, error) {
 	candidate = strings.TrimSpace(candidate)
 	if candidate == "" {
-		return "", fmt.Errorf("scegli la cartella locale del modulo")
+		return "", fmt.Errorf("choose the module's local folder")
 	}
 	if !filepath.IsAbs(candidate) {
 		candidate = filepath.Join(moduleDirectory, candidate)
 	}
 	candidate = filepath.Clean(candidate)
 	if strings.ContainsAny(candidate, "=\x00") {
-		return "", fmt.Errorf("percorso locale non valido")
+		return "", fmt.Errorf("invalid local path")
 	}
 	if info, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil || info.IsDir() {
-		return "", fmt.Errorf("la cartella scelta non contiene un go.mod")
+		return "", fmt.Errorf("the chosen folder does not contain a go.mod")
 	}
 	relative, err := filepath.Rel(moduleDirectory, candidate)
 	if err != nil || filepath.VolumeName(relative) != "" {
@@ -253,11 +253,11 @@ func (s *Service) ListModuleVersions(sessionID, moduleDirectory, modulePath stri
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	modulePath = strings.TrimSpace(modulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
-		return nil, fmt.Errorf("percorso modulo non valido")
+		return nil, fmt.Errorf("invalid module path")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {
@@ -277,7 +277,7 @@ func parseModuleVersions(output string) ([]string, error) {
 		Version  string   `json:"Version"`
 	}
 	if err := json.Unmarshal([]byte(output), &listed); err != nil {
-		return nil, fmt.Errorf("risposta di go list non leggibile: %w", err)
+		return nil, fmt.Errorf("go list response unreadable: %w", err)
 	}
 	versions := listed.Versions
 	if len(versions) == 0 && listed.Version != "" {

@@ -1,43 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, GitBranch, GitFork, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowDown, ArrowUp, ExternalLink, GitBranch, GitFork, Loader2, RefreshCw } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import type { GoIDESession } from '@/lib/goide-api'
 import { pullGoIDERepository, pushGoIDERepository } from '@/lib/goide-vcs-api'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDEVCSStore } from '@/stores/goideVcs'
+import type { FileChange as GitChange } from '@/lib/git/types'
 import { gitPathInProject } from './goStudioGitPaths'
 import { GoStudioGitLog } from './GoStudioGitLog'
-import type { CommitInfo as GitCommitInfo } from '@/lib/git/types'
+import { changeLabel, isStagedChange, parseGitOverview, parseJSON, type GitOverview } from '@/lib/git/overview'
+import { GitCollaborationSection } from '@/components/workspace/git/GitCollaborationSection'
+import { GoStudioGitBranches, GoStudioGitChangesActions } from './GoStudioGitActions'
+import type { GoStudioCommandId } from './goStudioCommands'
 
-interface GitChange { path: string; index: string; worktree: string; status: string; conflicted: boolean }
-interface GitBranchInfo { name: string; remote: boolean; current: boolean; upstream: string; commitHash: string; updated: string }
-interface GitOverview {
-  status: { branch: string; dirty: boolean; aheadCount: number; behindCount: number }
-  changes: GitChange[]
-  branches: GitBranchInfo[]
-  commits: GitCommitInfo[]
-}
 interface GitWorktree { path: string; head: string; branch: string; bare: boolean; detached: boolean }
 
-type Tab = 'git' | 'log' | 'worktrees'
+type Tab = 'git' | 'log' | 'worktrees' | 'prs'
 
-function parseJSON<T>(raw: string, fallback: T): T {
-  try { return JSON.parse(raw) as T } catch { return fallback }
-}
-
-function changeLabel(change: GitChange): string {
-  if (change.conflicted) return 'Conflict'
-  if (change.status === '??') return 'Untracked'
-  if (change.index === 'A' || change.worktree === 'A') return 'Added'
-  if (change.index === 'D' || change.worktree === 'D') return 'Deleted'
-  if (change.index === 'R' || change.worktree === 'R') return 'Renamed'
-  return 'Modified'
-}
+const TAB_LABEL: Record<Tab, string> = { git: 'Git', log: 'Log', worktrees: 'Worktrees', prs: 'Pull requests' }
 
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error) }
 
 /** Git workbench scoped to one IDE session. It never reads the global Git Studio repository choice. */
-export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
+export function GoStudioGitPanel({ session, onCommand }: { session: GoIDESession; onCommand?: (id: GoStudioCommandId) => void }) {
   const sessionId = session.id
   const vcsStatus = useGoIDEVCSStore((state) => state.status[sessionId])
   const [tab, setTab] = useState<Tab>('log')
@@ -61,11 +46,7 @@ export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
     try {
       const [rawOverview, rawWorktrees] = await Promise.all([GitSync.Overview(root, 300), GitSync.ListWorktrees(root)])
       if (version !== refreshVersion.current) return
-      const parsed = parseJSON<Partial<GitOverview>>(rawOverview, {})
-      const next: GitOverview = {
-        status: { branch: '', dirty: false, aheadCount: 0, behindCount: 0, ...(parsed.status ?? {}) },
-        changes: parsed.changes ?? [], branches: parsed.branches ?? [], commits: (parsed.commits ?? []).map((commit) => ({ ...commit, parents: commit.parents ?? [], decorations: commit.decorations ?? [] })),
-      }
+      const next = parseGitOverview(rawOverview)
       setOverview(next)
       setWorktrees(parseJSON<GitWorktree[]>(rawWorktrees, []))
       setSelectedHash((value) => value && next.commits.some((commit) => commit.fullHash === value) ? value : next.commits[0]?.fullHash ?? '')
@@ -74,8 +55,6 @@ export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
 
   useEffect(() => { setOverview(null); void refresh(); return () => { refreshVersion.current++ } }, [refresh])
   const selectedCommit = useMemo(() => overview?.commits.find((commit) => commit.fullHash === selectedHash) ?? null, [overview, selectedHash])
-  const localBranches = overview?.branches.filter((branch) => !branch.remote) ?? []
-  const remoteBranches = overview?.branches.filter((branch) => branch.remote) ?? []
   const toProjectPath = (path: string): string | null => gitPathInProject(session.project.realPath, repoRoot, path)
 
   const sync = async (kind: 'pull' | 'push') => {
@@ -85,8 +64,24 @@ export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
       await refresh()
     } catch (reason) { setError(errorText(reason)); setLoading(false) }
   }
+  /** Mutations on the repository: errors go to the banner, success reloads the overview. */
+  const run = useCallback(async (action: () => Promise<unknown>) => {
+    setLoading(true); setError('')
+    let failure = ''
+    try { await action() } catch (reason) { failure = errorText(reason) }
+    await refresh()
+    if (failure) setError(failure)
+    void useGoIDEStore.getState().checkActiveDocument()
+  }, [refresh])
+  const openRemote = async () => {
+    const url = await GitSync.RemoteWebURL(repoRoot)
+    if (!url) return setError('No web URL could be derived from the remotes.')
+    if (!url.startsWith('https://')) return setError('The remote does not use an https web address.')
+    const { BrowserOpenURL } = await import('@/wailsjs/runtime/runtime')
+    BrowserOpenURL(url)
+  }
   const toggleStage = async (change: GitChange) => {
-    const staged = !!change.index && change.index !== ' ' && change.index !== '?'
+    const staged = isStagedChange(change)
     try {
       if (staged) await GitSync.UnstageFile(repoRoot, change.path); else await GitSync.StageFile(repoRoot, change.path)
       await refresh()
@@ -98,23 +93,25 @@ export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-1 px-2">
-        {(['git', 'log', 'worktrees'] as const).map((id) => <button key={id} type="button" aria-selected={tab === id} onClick={() => setTab(id)} className={`h-8 border-b-2 px-3 text-[12px] font-medium capitalize ${tab === id ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1'}`}>{id === 'git' ? 'Git' : id === 'log' ? 'Log' : 'Worktrees'}</button>)}
+        {(['git', 'log', 'worktrees', 'prs'] as const).map((id) => <button key={id} type="button" aria-selected={tab === id} onClick={() => setTab(id)} className={`h-8 border-b-2 px-3 text-[12px] font-medium capitalize ${tab === id ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-1'}`}>{TAB_LABEL[id]}</button>)}
         <select aria-label="Git repository" title={repoRoot} value={repoRoot} disabled={loading} onChange={(event) => { setLoading(true); void useGoIDEVCSStore.getState().selectRepository(sessionId, event.target.value).catch((reason) => { setError(errorText(reason)); setLoading(false) }) }} className="ml-2 min-w-0 flex-1 rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10.5px] text-text-2">
           {repositories.map((root) => <option key={root} value={root}>{root}</option>)}
         </select>
         <span className="text-[11px] text-text-3">{overview?.status.branch || vcsStatus.branch}</span>
         {(overview?.status.aheadCount ?? vcsStatus.ahead) > 0 && <span className="flex items-center gap-0.5 text-[10.5px] text-success"><ArrowUp size={11} />{overview?.status.aheadCount ?? vcsStatus.ahead}</span>}
         {(overview?.status.behindCount ?? vcsStatus.behind) > 0 && <span className="flex items-center gap-0.5 text-[10.5px] text-warning"><ArrowDown size={11} />{overview?.status.behindCount ?? vcsStatus.behind}</span>}
-        <button type="button" onClick={() => void sync('pull')} disabled={loading} className="go-studio-icon-button h-7 px-2 text-[11px]" title="Pull with rebase and autostash"><ArrowDown size={12} /> Pull</button>
-        <button type="button" onClick={() => void sync('push')} disabled={loading} className="go-studio-icon-button h-7 px-2 text-[11px]" title="Push current branch"><ArrowUp size={12} /> Push</button>
-        <button type="button" onClick={() => void refresh()} disabled={loading} className="go-studio-icon-button h-7 w-7" title="Refresh"><RefreshCw size={13} className={loading ? 'animate-spin' : ''} /></button>
+        <button type="button" onClick={() => void sync('pull')} disabled={loading} className="go-studio-icon-button h-7 px-2 text-[11px]" title="Pull with rebase and autostash" aria-label="Pull with rebase and autostash"><ArrowDown size={12} /> Pull</button>
+        <button type="button" onClick={() => void sync('push')} disabled={loading} className="go-studio-icon-button h-7 px-2 text-[11px]" title="Push current branch" aria-label="Push current branch"><ArrowUp size={12} /> Push</button>
+        <button type="button" onClick={() => void openRemote()} disabled={loading || !overview?.remotes.length} className="go-studio-icon-button h-7 w-7" title="Open the repository on its remote host" aria-label="Open on remote"><ExternalLink size={13} /></button>
+        <button type="button" onClick={() => void refresh()} disabled={loading} className="go-studio-icon-button h-7 w-7" title="Refresh" aria-label="Refresh"><RefreshCw size={13} className={loading ? 'animate-spin' : ''} /></button>
       </div>
       {error && <div role="alert" className="border-b border-danger/30 bg-danger/10 px-3 py-1.5 text-[11.5px] text-danger">{error}</div>}
       {loading && !overview && <div className="grid flex-1 place-items-center text-text-4"><Loader2 size={18} className="animate-spin" /></div>}
 
       {tab === 'git' && overview && <div className="min-h-0 flex-1 overflow-auto">
+        <GoStudioGitChangesActions repoRoot={repoRoot} changes={overview.changes} conflicts={overview.conflicts} stashes={overview.stashes} busy={loading} run={run} onResolve={() => onCommand?.('vcs.resolveConflicts')} />
         {overview.changes.length === 0 ? <p className="p-4 text-[12px] text-text-4">Working tree clean.</p> : overview.changes.map((change) => {
-          const staged = !!change.index && change.index !== ' ' && change.index !== '?'
+          const staged = isStagedChange(change)
           return <div key={change.path} className="flex h-8 items-center gap-2 border-b border-border-1/60 px-3 hover:bg-surface-2/60">
             <button type="button" onClick={() => void toggleStage(change)} className={`w-14 rounded px-1 py-0.5 text-[10px] ${staged ? 'bg-success/15 text-success' : 'bg-surface-3 text-text-3'}`}>{staged ? 'staged' : 'stage'}</button>
             <button type="button" onDoubleClick={() => { const path = toProjectPath(change.path); if (path) void useGoIDEStore.getState().openLocation(path, 1) }} title={toProjectPath(change.path) ? 'Double-click to open in the editor' : 'This change belongs to another folder in the repository'} className="min-w-0 flex-1 truncate text-left font-mono text-[11.5px] text-text-2">{change.path}</button>
@@ -124,12 +121,13 @@ export function GoStudioGitPanel({ session }: { session: GoIDESession }) {
       </div>}
 
       {tab === 'log' && overview && <div className="grid min-h-0 flex-1 grid-cols-[210px_minmax(320px,1fr)_minmax(220px,0.7fr)]">
-        <aside className="overflow-auto border-r border-border-1 p-2 text-[11.5px]">
-          <div className="mb-1 font-semibold text-text-2">Local</div>{localBranches.map((branch) => <div key={branch.name} className={`flex h-6 items-center gap-1.5 truncate px-1 ${branch.current ? 'text-accent' : 'text-text-3'}`}><GitBranch size={11} />{branch.name}</div>)}
-          <div className="mb-1 mt-3 font-semibold text-text-2">Remote</div>{remoteBranches.map((branch) => <div key={branch.name} className="flex h-6 items-center gap-1.5 truncate px-1 text-text-4"><GitFork size={11} />{branch.name}</div>)}
-        </aside>
+        <GoStudioGitBranches repoRoot={repoRoot} branches={overview.branches} busy={loading} run={run} />
         <GoStudioGitLog commits={overview.commits} selectedHash={selectedHash} onSelect={setSelectedHash} />
         <div className="overflow-auto p-3">{selectedCommit ? <><h4 className="text-[12.5px] font-medium text-text-1">{selectedCommit.message}</h4><p className="mt-2 font-mono text-[10.5px] text-text-4">{selectedCommit.fullHash}</p><p className="mt-2 text-[11.5px] text-text-3">{selectedCommit.author}<br />{selectedCommit.date}</p>{selectedCommit.decorations?.length > 0 && <div className="mt-3 flex flex-wrap gap-1">{selectedCommit.decorations.map((item) => <span key={item} className="gs-badge">{item}</span>)}</div>}</> : <p className="text-[12px] text-text-4">Select a commit to view details.</p>}</div>
+      </div>}
+
+      {tab === 'prs' && overview && <div className="min-h-0 flex-1 overflow-auto">
+        <GitCollaborationSection repoPath={repoRoot} currentBranch={overview.status.branch} branches={overview.branches} remotes={overview.remotes} loading={loading} />
       </div>}
 
       {tab === 'worktrees' && <div className="min-h-0 flex-1 overflow-auto p-3">

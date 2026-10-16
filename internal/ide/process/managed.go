@@ -164,6 +164,10 @@ func RegisterManagedChild(pid int, name string) {
 	managedMu.Lock()
 	registry := managedRegistry
 	managedMu.Unlock()
+	if registry != nil && pid > 0 {
+		// Best effort: registry sweep remains available if OS containment is denied.
+		containManagedChild(pid)
+	}
 	registry.Add(pid, name)
 }
 

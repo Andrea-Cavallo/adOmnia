@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	ideproject "adomnia/internal/ide/project"
 )
 
 // fileIndex tiene in memoria l'elenco dei file di ogni progetto per Quick Open: si costruisce alla
@@ -38,6 +40,7 @@ func (m *DocumentManager) projectFiles(project Project) ([]indexedFile, error) {
 		return cached, nil
 	}
 	files := make([]indexedFile, 0, 256)
+	ignore := ideproject.LoadGitIgnore(project.RealPath)
 	err := filepath.WalkDir(project.RealPath, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			if entry != nil && entry.IsDir() {
@@ -49,9 +52,12 @@ func (m *DocumentManager) projectFiles(project Project) ([]indexedFile, error) {
 			return nil
 		}
 		if entry.IsDir() {
-			if isIgnoredDirectory(entry.Name()) {
+			if isIgnoredDirectory(entry.Name()) || gitIgnored(ignore, project.RealPath, path, true) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if gitIgnored(ignore, project.RealPath, path, false) {
 			return nil
 		}
 		if len(files) >= MaxQuickOpenFiles {

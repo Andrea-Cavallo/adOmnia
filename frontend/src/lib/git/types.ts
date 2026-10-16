@@ -112,5 +112,5 @@ export interface SearchFilters {
 export type ResetMode = 'soft' | 'mixed' | 'hard'
 
 // The empty-tree object id — diff base for a commit with no parent (the very
-// first commit). Mirrors the constant used in GitSyncPanel.
+// first commit).
 export const EMPTY_TREE_REF = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'

@@ -54,14 +54,14 @@ func (t Target) Validate() error {
 	switch t.Kind {
 	case KindWSL:
 		if runtime.GOOS != "windows" {
-			return fmt.Errorf("WSL è disponibile solo su Windows")
+			return fmt.Errorf("WSL is only available on Windows")
 		}
 	case KindSSH, KindContainer:
 		if !path.IsAbs(t.Directory) {
-			return fmt.Errorf("indica la cartella del progetto su %s come percorso assoluto, es. /home/me/progetto", t.Name)
+			return fmt.Errorf("specify the project folder on %s as an absolute path, e.g. /home/me/project", t.Name)
 		}
 	default:
-		return fmt.Errorf("ambiente remoto non supportato: %q", t.Kind)
+		return fmt.Errorf("unsupported remote environment: %q", t.Kind)
 	}
 	if t.User != "" && (t.Kind != KindContainer || !namePattern.MatchString(t.User)) {
 		return fmt.Errorf("invalid container user")
@@ -70,10 +70,10 @@ func (t Target) Validate() error {
 		return fmt.Errorf("dev container requires a container target")
 	}
 	if !namePattern.MatchString(t.Name) {
-		return fmt.Errorf("nome dell'ambiente remoto non valido: %q", t.Name)
+		return fmt.Errorf("invalid remote environment name: %q", t.Name)
 	}
 	if strings.ContainsAny(t.Directory, "\x00\n\r") {
-		return fmt.Errorf("cartella remota non valida")
+		return fmt.Errorf("invalid remote folder")
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (t Target) RemoteRoot(localRoot string) (string, error) {
 		return path.Clean(t.Directory), nil
 	}
 	if t.Kind != KindWSL {
-		return "", fmt.Errorf("cartella remota mancante")
+		return "", fmt.Errorf("remote folder missing")
 	}
 	return WSLPath(localRoot)
 }
@@ -121,7 +121,7 @@ func WSLPath(windowsPath string) (string, error) {
 		rest := strings.ReplaceAll(strings.Trim(clean[2:], `\`), `\`, "/")
 		return strings.TrimRight("/mnt/"+drive+"/"+rest, "/"), nil
 	}
-	return "", fmt.Errorf("%s non è raggiungibile da WSL", windowsPath)
+	return "", fmt.Errorf("%s is not reachable from WSL", windowsPath)
 }
 
 // Wrap traduce un comando locale (eseguibile, argomenti, cartella) in un comando eseguito nel target.
@@ -139,12 +139,12 @@ func (t Target) Wrap(localRoot, executable string, arguments []string, workingDi
 	mapPath := func(value string) string { return mapLocalPath(localRoot, remoteRoot, value) }
 	directory := mapPath(workingDirectory)
 	if !path.IsAbs(directory) {
-		return Command{}, fmt.Errorf("la cartella %s non è dentro il progetto", workingDirectory)
+		return Command{}, fmt.Errorf("the folder %s is not inside the project", workingDirectory)
 	}
 	keys := make([]string, 0, len(environment))
 	for key := range environment {
 		if !envKeyPattern.MatchString(key) {
-			return Command{}, fmt.Errorf("nome di variabile non valido: %q", key)
+			return Command{}, fmt.Errorf("invalid variable name: %q", key)
 		}
 		keys = append(keys, key)
 	}

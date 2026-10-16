@@ -12,7 +12,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	if len(config.LanguageOptions) > 0 && (config.Language == "" || config.Language == golang.ID) && config.GoArguments == nil && config.BuildTags == nil && config.GOOS == "" && config.GOARCH == "" && !config.Race && !config.Coverage && config.Profile == "" && config.DebugFlags == nil {
 		var options golang.RunOptions
 		if err := json.Unmarshal(config.LanguageOptions, &options); err != nil {
-			return RunConfiguration{}, fmt.Errorf("opzioni Go non valide: %w", err)
+			return RunConfiguration{}, fmt.Errorf("invalid Go options: %w", err)
 		}
 		config.GoArguments = options.GoArguments
 		config.BuildTags = options.BuildTags
@@ -26,7 +26,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 
 	config.Name = strings.TrimSpace(config.Name)
 	if config.Name == "" {
-		return RunConfiguration{}, fmt.Errorf("il nome della configurazione non può essere vuoto")
+		return RunConfiguration{}, fmt.Errorf("the configuration name cannot be empty")
 	}
 	if config.Kind == "" {
 		config.Kind = RunKindPackage
@@ -60,7 +60,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	case RunKindBinary:
 		config.BinaryPath = strings.TrimSpace(config.BinaryPath)
 		if config.BinaryPath == "" {
-			return RunConfiguration{}, fmt.Errorf("indica il binario compilato da eseguire")
+			return RunConfiguration{}, fmt.Errorf("specify the compiled binary to run")
 		}
 		config.Target = ""
 		config.Files = nil
@@ -78,10 +78,10 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		config = normalized
 	default:
 		if config.Language == "" || config.Language == golang.ID {
-			return RunConfiguration{}, fmt.Errorf("tipo di configurazione %q non supportato", config.Kind)
+			return RunConfiguration{}, fmt.Errorf("unsupported configuration type %q", config.Kind)
 		}
 		if !json.Valid(config.LanguageOptions) {
-			return RunConfiguration{}, fmt.Errorf("opzioni del linguaggio non valide")
+			return RunConfiguration{}, fmt.Errorf("invalid language options")
 		}
 	}
 	if config.Kind != RunKindDockerBuild && config.Kind != RunKindDockerRun {
@@ -104,7 +104,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 			continue
 		}
 		if strings.ContainsAny(key, "=\x00") {
-			return RunConfiguration{}, fmt.Errorf("nome di variabile non valido: %q", key)
+			return RunConfiguration{}, fmt.Errorf("invalid variable name: %q", key)
 		}
 		if _, duplicate := seen[key]; duplicate {
 			return RunConfiguration{}, fmt.Errorf("variabile duplicata: %q", key)

@@ -166,30 +166,30 @@ func (s *Service) LoadTrace(sessionID, relativePath string) (TraceReport, error)
 	root := session.Project.RealPath
 	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
 	if candidate == "" {
-		return TraceReport{}, fmt.Errorf("nessuna traccia selezionata")
+		return TraceReport{}, fmt.Errorf("no trace selected")
 	}
 	if !filepath.IsAbs(candidate) {
 		candidate = filepath.Join(root, candidate)
 	}
 	candidate = filepath.Clean(candidate)
 	if err := ensureWithinRoot(root, candidate); err != nil {
-		return TraceReport{}, fmt.Errorf("traccia fuori dal progetto: %w", err)
+		return TraceReport{}, fmt.Errorf("trace outside the project: %w", err)
 	}
 	info, err := os.Stat(candidate)
 	if err != nil {
-		return TraceReport{}, fmt.Errorf("traccia non trovata: %s", relativePath)
+		return TraceReport{}, fmt.Errorf("trace not found: %s", relativePath)
 	}
 	if info.IsDir() || info.Size() == 0 || info.Size() > maxTraceSize {
-		return TraceReport{}, fmt.Errorf("traccia non valida o troppo grande (max 512 MB)")
+		return TraceReport{}, fmt.Errorf("trace invalid or too large (max 512 MB)")
 	}
 	file, err := os.Open(candidate)
 	if err != nil {
-		return TraceReport{}, fmt.Errorf("apertura della traccia fallita: %w", err)
+		return TraceReport{}, fmt.Errorf("opening the trace failed: %w", err)
 	}
 	defer file.Close()
 	reader, err := trace.NewReader(file)
 	if err != nil {
-		return TraceReport{}, fmt.Errorf("traccia Go non valida: %w", err)
+		return TraceReport{}, fmt.Errorf("invalid Go trace: %w", err)
 	}
 	report, err := buildTraceReport(root, candidate, reader)
 	if err != nil {
@@ -251,7 +251,7 @@ func buildTraceReport(root, path string, reader *trace.Reader) (TraceReport, err
 			break
 		}
 		if err != nil {
-			return TraceReport{}, fmt.Errorf("lettura della traccia fallita: %w", err)
+			return TraceReport{}, fmt.Errorf("reading the trace failed: %w", err)
 		}
 		t := int64(event.Time())
 		mark(t)

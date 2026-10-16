@@ -110,11 +110,11 @@ func (r *studioWorkspaceRegistry) indexLocked(id string) int {
 func (r *studioWorkspaceRegistry) validateNameLocked(name, exceptID string) (string, error) {
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" || utf8.RuneCountInString(trimmed) > maxStudioWorkspaceName {
-		return "", fmt.Errorf("il nome del workspace deve avere da 1 a %d caratteri", maxStudioWorkspaceName)
+		return "", fmt.Errorf("the workspace name must be 1 to %d characters", maxStudioWorkspaceName)
 	}
 	for _, item := range r.items {
 		if item.ID != exceptID && strings.EqualFold(item.Name, trimmed) {
-			return "", fmt.Errorf("esiste già un workspace chiamato %q", item.Name)
+			return "", fmt.Errorf("a workspace named %q already exists", item.Name)
 		}
 	}
 	return trimmed, nil
@@ -140,7 +140,7 @@ func (r *studioWorkspaceRegistry) rename(id, name string) error {
 	defer r.mu.Unlock()
 	index := r.indexLocked(id)
 	if index < 0 {
-		return fmt.Errorf("workspace Go Studio non trovato")
+		return fmt.Errorf("Go Studio workspace not found")
 	}
 	trimmed, err := r.validateNameLocked(name, id)
 	if err != nil {
@@ -154,11 +154,11 @@ func (r *studioWorkspaceRegistry) remove(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if id == DefaultStudioWorkspaceID {
-		return fmt.Errorf("il workspace predefinito non si può eliminare")
+		return fmt.Errorf("the default workspace cannot be deleted")
 	}
 	index := r.indexLocked(id)
 	if index < 0 {
-		return fmt.Errorf("workspace Go Studio non trovato")
+		return fmt.Errorf("Go Studio workspace not found")
 	}
 	r.items = append(r.items[:index], r.items[index+1:]...)
 	if r.active == id {
@@ -171,7 +171,7 @@ func (r *studioWorkspaceRegistry) activate(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.indexLocked(id) < 0 {
-		return fmt.Errorf("workspace Go Studio non trovato")
+		return fmt.Errorf("Go Studio workspace not found")
 	}
 	r.active = id
 	return nil
@@ -206,7 +206,7 @@ func (s *Service) DeleteStudioWorkspace(id string) (StudioWorkspaces, error) {
 	return s.changeStudioWorkspaces(func() error {
 		for _, session := range s.workspace.ListSessions() {
 			if session.WorkspaceID == id {
-				return fmt.Errorf("chiudi prima i progetti aperti in questo workspace")
+				return fmt.Errorf("close the projects open in this workspace first")
 			}
 		}
 		return s.studioWorkspaces.remove(id)

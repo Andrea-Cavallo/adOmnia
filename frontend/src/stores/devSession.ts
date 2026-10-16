@@ -127,8 +127,9 @@ export function startDevSessionSync(): () => void {
 
 /**
  * Re-render on session, run and preference changes only, not on every log
- * line: read the full state with getState() after calling it.
+ * line, SQL statement or broker message (its three consumers read none of them):
+ * read the full state with getState() after calling it.
  */
 export function useLiveCore(): void {
-  useDevSessionStore(useShallow((state) => [state.sessions, state.order, state.runs, state.runOrder, state.focusedSessionId, state.prefs, state.error, state.queries, state.messages]))
+  useDevSessionStore(useShallow((state) => [state.sessions, state.order, state.runs, state.runOrder, state.focusedSessionId, state.prefs, state.error]))
 }

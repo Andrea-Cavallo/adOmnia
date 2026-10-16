@@ -22,7 +22,7 @@ func normalizeRestartPolicy(policy string) (string, error) {
 	case RestartPolicyNever, RestartPolicyAlways:
 		return policy, nil
 	default:
-		return "", fmt.Errorf("restart policy non valida: %q (prompt, never, always)", policy)
+		return "", fmt.Errorf("invalid restart policy: %q (prompt, never, always)", policy)
 	}
 }
 
@@ -65,7 +65,7 @@ func (p *ProcessSupervisor) Configure(store Store) error {
 	p.store = store
 	data, err := store.Load()
 	if err != nil {
-		return fmt.Errorf("lettura del supervisore fallita: %w", err)
+		return fmt.Errorf("reading the supervisor failed: %w", err)
 	}
 	var state supervisorState
 	if len(data) > 0 && json.Unmarshal(data, &state) == nil {

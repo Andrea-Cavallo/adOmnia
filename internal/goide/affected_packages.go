@@ -22,7 +22,7 @@ func (s *Service) AffectedTestPackages(sessionID, moduleDirectory string, packag
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {

@@ -325,17 +325,23 @@ const SQL_KEYWORD_KIND: Record<string, SqlKindInfo> = {
   DESCRIBE: { kind: 'select', writes: false, destructive: false },
   VALUES: { kind: 'select', writes: false, destructive: false },
   INSERT: { kind: 'insert', writes: true, destructive: false },
-  REPLACE: { kind: 'insert', writes: true, destructive: false },
+  // REPLACE/MERGE/CALL/DO/COPY/LOAD/GRANT/REVOKE possono cambiare dati, stato o privilegi:
+  // il server li blocca senza conferma (review di sicurezza DB-2) e qui il badge/dialogo
+  // deve raccontare la stessa cosa.
+  REPLACE: { kind: 'insert', writes: true, destructive: true },
   UPDATE: { kind: 'update', writes: true, destructive: false },
   DELETE: { kind: 'delete', writes: true, destructive: false },
-  MERGE: { kind: 'merge', writes: true, destructive: false },
+  MERGE: { kind: 'merge', writes: true, destructive: true },
   CREATE: { kind: 'create', writes: true, destructive: false },
   ALTER: { kind: 'alter', writes: true, destructive: false },
   DROP: { kind: 'drop', writes: true, destructive: true },
   TRUNCATE: { kind: 'truncate', writes: true, destructive: true },
-  GRANT: { kind: 'grant', writes: true, destructive: false },
-  REVOKE: { kind: 'revoke', writes: true, destructive: false },
-  CALL: { kind: 'call', writes: true, destructive: false },
+  GRANT: { kind: 'grant', writes: true, destructive: true },
+  REVOKE: { kind: 'revoke', writes: true, destructive: true },
+  CALL: { kind: 'call', writes: true, destructive: true },
+  DO: { kind: 'do', writes: true, destructive: true },
+  COPY: { kind: 'copy', writes: true, destructive: true },
+  LOAD: { kind: 'load', writes: true, destructive: true },
   BEGIN: { kind: 'begin', writes: false, destructive: false },
   COMMIT: { kind: 'commit', writes: false, destructive: false },
   ROLLBACK: { kind: 'rollback', writes: false, destructive: false },
@@ -865,7 +871,10 @@ function interpretMongo(text: string, schema?: QuerySchema): QueryInterpretation
         const lower = name.toLowerCase()
         const read = /^(list|get|count|find|aggregate|explain|collstats|dbstats|buildinfo|ping|distinct|ismaster|hello)/.test(lower)
         writes = !read
-        destructive = lower.startsWith('drop')
+        // Payload arbitrario: il server chiede conferma per ogni runCommand (review di
+        // sicurezza DB-2), quindi il rischio è sempre distruttivo e il dialogo compare
+        // prima della chiamata, non dopo l'errore.
+        destructive = true
         summary = `Runs the \`${name}\` command${collection ? ` on \`${collection}\`` : ''}.`
         break
       }

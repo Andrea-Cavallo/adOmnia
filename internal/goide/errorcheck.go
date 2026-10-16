@@ -135,7 +135,7 @@ func (s *Service) forEachGoModuleAt(sessionID, base string, visit func(root stri
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, errors.New("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, errors.New("explicitly authorize the tools for this project")
 	}
 	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *Service) forEachGoModuleAt(sessionID, base string, visit func(root stri
 	}
 	binary, err := s.toolchain.GoBinary(SessionID(sessionID))
 	if err != nil {
-		return nil, errors.New("go non disponibile: rileva o configura la toolchain")
+		return nil, errors.New("go unavailable: detect or configure the toolchain")
 	}
 	environment = withGoFirstInPath(environment, binary)
 	root := session.Project.RealPath
@@ -200,7 +200,7 @@ func newErrorTexts(root string) *errorTexts {
 
 func (t *errorTexts) read(path string) ([]byte, error) {
 	if relativeWithin(t.root, path) == "" {
-		return nil, errors.New("file fuori dal progetto")
+		return nil, errors.New("file outside the project")
 	}
 	if text, ok := t.files[path]; ok {
 		return []byte(text), nil

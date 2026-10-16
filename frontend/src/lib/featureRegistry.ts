@@ -68,12 +68,9 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'powertools', title: 'Power Tools', group: 'Power Tools', keywords: 'encode decode jwt uuid toolbox hash hmac regex yaml pem folder diff', maturity: 'core', railLabel: 'Tool Launcher' },
   { id: 'secretscanner', title: 'Secret Scanner', group: 'Power Tools', keywords: 'credential scan security token api key private key', maturity: 'advanced' },
 
-  { id: 'markdown', title: 'Markdown Notes', group: 'Document Studio', keywords: 'md preview notes docs backlinks outline graph', maturity: 'core' },
-  { id: 'mermaid', title: 'Mermaid Diagrams', group: 'Document Studio', keywords: 'diagram graph flowchart sequence mermaid mmd preview fullscreen zoom export', maturity: 'advanced' },
   { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
   { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
-  { id: 'gitsync', title: 'Git Sync', group: 'Workspace', keywords: 'git compare diff workspace sync version control branch commit push stash', maturity: 'advanced' },
   { id: 'collab', title: 'Live Collaboration', group: 'Workspace', keywords: 'collaboration share invite lan team pair live session collection request environment', maturity: 'advanced' },
   { id: 'goide', title: 'Go Studio', group: 'Workspace', keywords: 'go golang ide editor project module workspace development', maturity: 'core', railLabel: 'Go Studio' },
   { id: 'workspace', title: 'Workspace Settings', group: 'Workspace', keywords: 'workspace import export settings local file', maturity: 'advanced' },
@@ -117,7 +114,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'docs', label: 'Document Studio', code: 'DOC',
     groups: [
-      { title: 'Documents', items: ['markdown', 'pdfeditor', 'mermaid', 'latex'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Documents', items: ['pdfeditor', 'latex'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {
@@ -136,7 +133,7 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
 ]
 
 export const COMMAND_PALETTE_PANEL_FEATURES = FEATURE_REGISTRY.filter(
-  (feature) => feature.maturity !== 'deprecated' && feature.id !== 'gitsync',
+  (feature) => feature.maturity !== 'deprecated',
 )
 
 // Discovery gate only: file imports and existing workspace data keep their openers.

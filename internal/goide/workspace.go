@@ -82,7 +82,7 @@ func (m *WorkspaceManager) GetSession(id SessionID) (Session, error) {
 	session, ok := m.sessions[id]
 	m.mu.RUnlock()
 	if !ok {
-		return Session{}, fmt.Errorf("sessione Go Studio non trovata")
+		return Session{}, fmt.Errorf("Go Studio session not found")
 	}
 	return session, nil
 }
@@ -95,19 +95,19 @@ func (m *WorkspaceManager) CreateProjectDirectory(parentPath, name string) (stri
 	}
 	trimmedName := strings.TrimSpace(name)
 	if !projectNamePattern.MatchString(trimmedName) || trimmedName == "." || trimmedName == ".." {
-		return "", fmt.Errorf("nome progetto non valido: usa lettere, numeri, punto, trattino o underscore")
+		return "", fmt.Errorf("invalid project name: use letters, digits, dot, dash or underscore")
 	}
 	target := filepath.Join(parent, trimmedName)
 	if err := ensureWithinRoot(parent, target); err != nil {
 		return "", err
 	}
 	if _, err := os.Stat(target); err == nil {
-		return "", fmt.Errorf("esiste già un file o una cartella con questo nome")
+		return "", fmt.Errorf("a file or folder with this name already exists")
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("impossibile verificare la destinazione: %w", err)
+		return "", fmt.Errorf("could not verify the destination: %w", err)
 	}
 	if err := os.Mkdir(target, 0o755); err != nil {
-		return "", fmt.Errorf("impossibile creare la cartella del progetto: %w", err)
+		return "", fmt.Errorf("could not create the project folder: %w", err)
 	}
 	return target, nil
 }
@@ -118,7 +118,7 @@ func (m *WorkspaceManager) SetToolAuthorization(id SessionID, allowed bool) (Ses
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return Session{}, fmt.Errorf("sessione Go Studio non trovata")
+		return Session{}, fmt.Errorf("Go Studio session not found")
 	}
 	state := AuthorizationOpened
 	if allowed {
@@ -136,7 +136,7 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return Session{}, fmt.Errorf("sessione Go Studio non trovata")
+		return Session{}, fmt.Errorf("Go Studio session not found")
 	}
 	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath)
 	session.Project.Units = fresh.Units
@@ -180,18 +180,18 @@ func (m *WorkspaceManager) ReplaceSessions(sessions []Session) {
 func resolveProjectRoot(path string) (string, string, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
-		return "", "", fmt.Errorf("seleziona una cartella di progetto")
+		return "", "", fmt.Errorf("select a project folder")
 	}
 	abs, err := filepath.Abs(filepath.Clean(trimmed))
 	if err != nil {
-		return "", "", fmt.Errorf("percorso progetto non valido: %w", err)
+		return "", "", fmt.Errorf("invalid project path: %w", err)
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return "", "", fmt.Errorf("impossibile aprire la cartella del progetto: %w", err)
+		return "", "", fmt.Errorf("could not open the project folder: %w", err)
 	}
 	if !info.IsDir() {
-		return "", "", fmt.Errorf("il percorso selezionato non è una cartella")
+		return "", "", fmt.Errorf("the selected path is not a folder")
 	}
 	// Se l'utente apre cmd/server o un altro package, usa il modulo/workspace Go più vicino
 	// come radice del progetto. La posizione di main.go non partecipa alla detection.
@@ -207,19 +207,19 @@ func resolveProjectRoot(path string) (string, string, error) {
 	}
 	directory, err := os.Open(abs)
 	if err != nil {
-		return "", "", fmt.Errorf("la cartella del progetto non è accessibile: %w", err)
+		return "", "", fmt.Errorf("the project folder is not accessible: %w", err)
 	}
 	_, readErr := directory.Readdirnames(1)
 	closeErr := directory.Close()
 	if readErr != nil && readErr != io.EOF {
-		return "", "", fmt.Errorf("la cartella del progetto non è leggibile: %w", readErr)
+		return "", "", fmt.Errorf("the project folder is not readable: %w", readErr)
 	}
 	if closeErr != nil {
-		return "", "", fmt.Errorf("chiusura della cartella del progetto fallita: %w", closeErr)
+		return "", "", fmt.Errorf("closing the project folder failed: %w", closeErr)
 	}
 	realRoot, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return "", "", fmt.Errorf("impossibile risolvere la cartella del progetto: %w", err)
+		return "", "", fmt.Errorf("could not resolve the project folder: %w", err)
 	}
 	return abs, realRoot, nil
 }
@@ -284,4 +284,16 @@ func newID(prefix string) string {
 		return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 	}
 	return prefix + "-" + hex.EncodeToString(random)
+}
+
+// whileOpen serializes short in-memory cache updates with session removal.
+// The callback must not call back into WorkspaceManager or perform I/O.
+func (m *WorkspaceManager) whileOpen(id SessionID, update func()) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if _, ok := m.sessions[id]; !ok {
+		return false
+	}
+	update()
+	return true
 }

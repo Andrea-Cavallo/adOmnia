@@ -60,7 +60,7 @@ func LoadSettings(root string) (Settings, error) {
 	}
 	settings := emptySettings()
 	if err := json.Unmarshal(data, &settings); err != nil {
-		return emptySettings(), fmt.Errorf("%s non valido: %w", SettingsFile, err)
+		return emptySettings(), fmt.Errorf("invalid %s: %w", SettingsFile, err)
 	}
 	if settings.Suppressions == nil {
 		settings.Suppressions = []Suppression{}
@@ -94,13 +94,13 @@ func ApplySettings(findings []Finding, settings Settings) {
 func Suppress(root string, finding Finding, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return errors.New("scrivi perché questo finding è accettabile: la motivazione è obbligatoria")
+		return errors.New("explain why this finding is acceptable: a reason is required")
 	}
 	if len([]rune(reason)) > maxReasonRunes {
-		return fmt.Errorf("motivazione troppo lunga (massimo %d caratteri)", maxReasonRunes)
+		return fmt.Errorf("reason too long (at most %d characters)", maxReasonRunes)
 	}
 	if finding.Fingerprint == "" || finding.Rule == "" {
-		return errors.New("finding non valido")
+		return errors.New("invalid finding")
 	}
 	settings, err := LoadSettings(root)
 	if err != nil {
@@ -191,7 +191,7 @@ func saveSettings(root string, settings Settings) error {
 	}
 	path := filepath.Join(root, filepath.FromSlash(SettingsFile))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("cartella .adomnia non scrivibile: %w", err)
+		return fmt.Errorf(".adomnia folder is not writable: %w", err)
 	}
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".security-*.json")
 	if err != nil {

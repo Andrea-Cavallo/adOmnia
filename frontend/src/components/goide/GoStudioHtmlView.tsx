@@ -41,6 +41,7 @@ export function GoStudioHtmlView({ document, mode, onModeChange, editor }: GoStu
   return (
     <div className="relative flex h-full min-h-0 min-w-0">
       {mode !== 'preview' && <div className="min-h-0 min-w-0 flex-1">{editor}</div>}
+      {/* bg-white below is intentional: the previewed page assumes a white canvas, whatever the IDE theme. */}
       {mode === 'split' && <div className="w-px shrink-0 bg-border-1" aria-hidden="true" />}
       {mode !== 'editor' && (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">

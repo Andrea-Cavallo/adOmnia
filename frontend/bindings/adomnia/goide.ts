@@ -1609,6 +1609,12 @@ export function ResourceUsage(): $CancellablePromise<resources$0.Snapshot> {
     });
 }
 
+export function RestartAutomaticLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+    return $Call.ByID(1075626585, sessionID, settings).then(($result: any) => {
+        return $$createType57($result);
+    });
+}
+
 /**
  * RestartLanguageServer riavvia gopls azzerando il contatore dei crash.
  */
@@ -1900,6 +1906,15 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
 export function SonarConfigFor(sessionID: string): $CancellablePromise<goide$0.SonarConfig> {
     return $Call.ByID(4113315866, sessionID).then(($result: any) => {
         return $$createType144($result);
+    });
+}
+
+/**
+ * Automatic entry points keep the existing editor-driven suspension policy.
+ */
+export function StartAutomaticLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+    return $Call.ByID(2833059104, sessionID, settings).then(($result: any) => {
+        return $$createType57($result);
     });
 }
 

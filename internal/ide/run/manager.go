@@ -31,7 +31,7 @@ func NewManager(normalize func(Configuration) (Configuration, error)) *Manager {
 
 func (m *Manager) CommandSpec(runner Runner, request Request) (CommandSpec, error) {
 	if runner == nil || !slices.Contains(runner.RunKinds(), request.Kind) {
-		return CommandSpec{}, fmt.Errorf("tipo di esecuzione non supportato: %s", request.Kind)
+		return CommandSpec{}, fmt.Errorf("unsupported run type: %s", request.Kind)
 	}
 	return runner.CommandSpec(request)
 }
@@ -64,7 +64,7 @@ func (m *Manager) Get(sessionID SessionID, id string) (Configuration, error) {
 			return cloneConfiguration(config), nil
 		}
 	}
-	return Configuration{}, fmt.Errorf("configurazione %q non trovata nella sessione", id)
+	return Configuration{}, fmt.Errorf("configuration %q not found in the session", id)
 }
 
 // Save crea o aggiorna una configurazione dopo averla validata.
@@ -90,7 +90,7 @@ func (m *Manager) Save(sessionID SessionID, config Configuration) (Configuration
 		}
 	}
 	if len(existing) >= maxConfigurationsPerSession {
-		return Configuration{}, fmt.Errorf("massimo %d configurazioni per sessione", maxConfigurationsPerSession)
+		return Configuration{}, fmt.Errorf("at most %d configurations per session", maxConfigurationsPerSession)
 	}
 	m.counter++
 	normalized.ID = fmt.Sprintf("cfg-%d-%d", now.UnixNano(), m.counter)
@@ -115,7 +115,7 @@ func (m *Manager) Duplicate(sessionID SessionID, id string) (Configuration, erro
 func (m *Manager) Rename(sessionID SessionID, id, name string) (Configuration, error) {
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" {
-		return Configuration{}, fmt.Errorf("il nome della configurazione non può essere vuoto")
+		return Configuration{}, fmt.Errorf("the configuration name cannot be empty")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -128,7 +128,7 @@ func (m *Manager) Rename(sessionID SessionID, id, name string) (Configuration, e
 		m.configs[sessionID][index] = config
 		return cloneConfiguration(config), nil
 	}
-	return Configuration{}, fmt.Errorf("configurazione %q non trovata nella sessione", id)
+	return Configuration{}, fmt.Errorf("configuration %q not found in the session", id)
 }
 
 // Reorder riordina le configurazioni secondo la sequenza di identificatori indicata.
@@ -142,7 +142,7 @@ func (m *Manager) Reorder(sessionID SessionID, ids []string) ([]Configuration, e
 	}
 	for _, config := range existing {
 		if _, ok := position[config.ID]; !ok {
-			return nil, fmt.Errorf("riordino incompleto: manca la configurazione %q", config.ID)
+			return nil, fmt.Errorf("incomplete reorder: configuration %q is missing", config.ID)
 		}
 	}
 	for index, config := range existing {
@@ -175,7 +175,7 @@ func (m *Manager) Delete(sessionID SessionID, id string) error {
 		m.configs[sessionID] = existing
 		return nil
 	}
-	return fmt.Errorf("configurazione %q non trovata nella sessione", id)
+	return fmt.Errorf("configuration %q not found in the session", id)
 }
 
 // CloseSession rilascia le configurazioni della sola sessione chiusa.

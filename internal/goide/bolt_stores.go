@@ -39,7 +39,7 @@ func (s BoltStore) Save(data []byte) error {
 
 func saveBolt(key string, data []byte, deleteEmpty bool) error {
 	if storage.DB() == nil {
-		return fmt.Errorf("archivio locale non inizializzato")
+		return fmt.Errorf("local store not initialized")
 	}
 	if deleteEmpty && len(data) == 0 {
 		return storage.Delete(boltBucket, key)

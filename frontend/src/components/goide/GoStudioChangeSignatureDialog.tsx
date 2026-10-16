@@ -69,7 +69,7 @@ export function GoStudioChangeSignatureDialog() {
   }
 
   return (
-    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" onClick={close}>
+    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" data-a11y-click-exempt="dialog-backdrop" onClick={close}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Change Signature" className="w-[min(640px,84vw)] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-10 items-center gap-2 border-b border-border-1 px-3">
           <PenLine size={14} className="text-accent" aria-hidden="true" />
@@ -112,7 +112,7 @@ export function GoStudioChangeSignatureDialog() {
         <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0 px-3 py-2">
           {problem && problem !== 'Nothing to change.' && <span className="mr-auto text-[10px] text-warning">{problem}</span>}
           <button type="button" onClick={close} className="h-7 rounded px-3 text-[11px] text-text-2 hover:bg-surface-3">Cancel</button>
-          <button type="button" disabled={!!problem || working} onClick={() => void apply()} className="inline-flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-[11px] font-medium text-white hover:bg-accent-light disabled:opacity-40">
+          <button type="button" disabled={!!problem || working} onClick={() => void apply()} className="inline-flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-[11px] font-medium text-on-accent hover:bg-accent-light disabled:opacity-40">
             {working && <Loader2 size={12} className="animate-spin" />}Preview Changes
           </button>
         </div>

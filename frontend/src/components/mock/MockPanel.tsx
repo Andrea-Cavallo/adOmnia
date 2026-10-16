@@ -869,7 +869,7 @@ export function MockPanel() {
     if (!port) return
     refreshStatus()
     refreshHits()
-    return visibleInterval(() => { void refreshStatus(); void refreshHits() }, 2000)
+    return visibleInterval(() => { void refreshStatus(); void refreshHits() }, 2000, { scope: "mock", kind: "live" })
   }, [port, refreshStatus, refreshHits])
 
   const handleStart = useCallback(async () => {

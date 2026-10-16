@@ -120,7 +120,7 @@ func TestMoveFunctionRefusesCycles(t *testing.T) {
 	service, id, _ := moveFixture(t)
 	// Price.String in money usa Format: spostarlo in orders farebbe importare orders da money, che orders importa già.
 	_, err := service.MoveSymbol(id, MoveSymbolRequest{RelativePath: "money/money.go", Line: 6, Column: 7, TargetDirectory: "orders"})
-	if err == nil || !strings.Contains(err.Error(), "ciclo") {
+	if err == nil || !strings.Contains(err.Error(), "import cycle") {
 		t.Fatalf("atteso un ciclo di import, ottenuto: %v", err)
 	}
 }

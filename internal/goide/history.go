@@ -181,7 +181,7 @@ func (h *LocalHistory) Content(sessionID SessionID, relativePath, revisionID str
 			return revision.Content, nil
 		}
 	}
-	return "", fmt.Errorf("versione non più disponibile nella local history")
+	return "", fmt.Errorf("version no longer available in the local history")
 }
 
 // ForgetSession elimina la cronologia di un progetto chiuso.

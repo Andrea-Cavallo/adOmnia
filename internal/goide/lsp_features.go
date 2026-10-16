@@ -45,7 +45,7 @@ func (m *LSPManager) Completion(ctx context.Context, sessionID SessionID, docume
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
 	var raw json.RawMessage
-	if err := process.conn.Call(ctx, "textDocument/completion", positionParams(document, line, column), &raw); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/completion", positionParams(document, line, column), &raw); err != nil {
 		return CompletionResult{}, err
 	}
 	list := lsp.CompletionList{}
@@ -94,7 +94,7 @@ func (m *LSPManager) Hover(ctx context.Context, sessionID SessionID, documentID 
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
 	var hover *lsp.Hover
-	if err := process.conn.Call(ctx, "textDocument/hover", positionParams(document, line, column), &hover); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/hover", positionParams(document, line, column), &hover); err != nil {
 		return HoverResult{}, err
 	}
 	result := HoverResult{Version: document.version}
@@ -118,7 +118,7 @@ func (m *LSPManager) SignatureHelp(ctx context.Context, sessionID SessionID, doc
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
 	var help *lsp.SignatureHelp
-	if err := process.conn.Call(ctx, "textDocument/signatureHelp", positionParams(document, line, column), &help); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/signatureHelp", positionParams(document, line, column), &help); err != nil {
 		return SignatureResult{}, err
 	}
 	result := SignatureResult{Version: document.version, Signatures: []SignatureEntry{}}
@@ -143,7 +143,7 @@ func (m *LSPManager) SignatureHelp(ctx context.Context, sessionID SessionID, doc
 func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documentID DocumentID, kind string, line, column int) ([]EditorLocation, error) {
 	method, ok := locationMethods[kind]
 	if !ok {
-		return nil, fmt.Errorf("tipo di navigazione non supportato")
+		return nil, fmt.Errorf("unsupported navigation type")
 	}
 	document, process, err := m.snapshot(sessionID, documentID)
 	if err != nil {
@@ -251,7 +251,7 @@ func (m *LSPManager) DocumentSymbols(ctx context.Context, sessionID SessionID, d
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
 	var symbols []lsp.DocumentSymbol
-	if err := process.conn.Call(ctx, "textDocument/documentSymbol", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: document.uri}}, &symbols); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/documentSymbol", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: document.uri}}, &symbols); err != nil {
 		return nil, 0, err
 	}
 	return symbolNodes(symbols), document.version, nil
@@ -273,7 +273,7 @@ func symbolNodes(symbols []lsp.DocumentSymbol) []SymbolNode {
 func (m *LSPManager) WorkspaceSymbols(ctx context.Context, sessionID SessionID, query string) ([]WorkspaceSymbol, error) {
 	servers := m.readyServers(sessionID)
 	if len(servers) == 0 {
-		return nil, fmt.Errorf("nessun language server pronto per questa sessione")
+		return nil, fmt.Errorf("no language server ready for this session")
 	}
 	type symbolResponse struct {
 		server  readyServer
@@ -351,7 +351,7 @@ func (m *LSPManager) PrepareRename(ctx context.Context, sessionID SessionID, doc
 		return RenameTarget{}, err
 	}
 	if result == nil {
-		return RenameTarget{}, fmt.Errorf("nessun simbolo rinominabile in questa posizione")
+		return RenameTarget{}, fmt.Errorf("no renameable symbol at this position")
 	}
 	return RenameTarget{Version: document.version, Range: editorRange(result.Range), Placeholder: result.Placeholder}, nil
 }
@@ -360,7 +360,7 @@ func (m *LSPManager) PrepareRename(ctx context.Context, sessionID SessionID, doc
 func (m *LSPManager) Rename(ctx context.Context, sessionID SessionID, documentID DocumentID, line, column int, newName string) (WorkspaceChange, error) {
 	newName = strings.TrimSpace(newName)
 	if newName == "" {
-		return WorkspaceChange{}, fmt.Errorf("il nuovo nome non può essere vuoto")
+		return WorkspaceChange{}, fmt.Errorf("the new name cannot be empty")
 	}
 	document, process, err := m.snapshot(sessionID, documentID)
 	if err != nil {
@@ -477,7 +477,7 @@ func (m *LSPManager) ResolveCodeAction(ctx context.Context, sessionID SessionID,
 		}
 	}
 	if !found {
-		return WorkspaceChange{}, fmt.Errorf("azione non più disponibile: richiedila di nuovo")
+		return WorkspaceChange{}, fmt.Errorf("action no longer available: request it again")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*defaultRequestTimeout)
 	defer cancel()
@@ -508,7 +508,7 @@ func signatureArguments(indexes []int) ([]int, error) {
 	}
 	for _, index := range indexes {
 		if index < 0 || index >= maxSignatureItems {
-			return nil, fmt.Errorf("indice di parametro non valido: %d", index)
+			return nil, fmt.Errorf("invalid parameter index: %d", index)
 		}
 	}
 	return append([]int{}, indexes...), nil
@@ -558,7 +558,7 @@ func (m *LSPManager) executeCommand(ctx context.Context, state *lspSession, proc
 	for _, edit := range collected {
 		changes, created, ok := edit.Normalize()
 		if !ok {
-			return WorkspaceChange{}, fmt.Errorf("l'azione richiede operazioni sui file non supportate (rinomina o eliminazione di file)")
+			return WorkspaceChange{}, fmt.Errorf("the action requires unsupported file operations (renaming or deleting files)")
 		}
 		for _, uri := range created {
 			operation, _ := json.Marshal(map[string]string{"kind": "create", "uri": uri})
@@ -588,18 +588,18 @@ func (m *LSPManager) overlappingDiagnostics(state *lspSession, uri string, reque
 func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.WorkspaceEdit) (WorkspaceChange, error) {
 	changes, created, ok := edit.Normalize()
 	if !ok {
-		return WorkspaceChange{}, fmt.Errorf("la modifica richiede operazioni sui file non supportate (rinomina o eliminazione di file)")
+		return WorkspaceChange{}, fmt.Errorf("the change requires unsupported file operations (renaming or deleting files)")
 	}
 	result := WorkspaceChange{Label: label, Files: make([]FileChange, 0, len(changes))}
 	for uri, edits := range changes {
 		path := pathFromURI(uri)
 		relative := relativeWithin(state.root, path)
 		if relative == "" {
-			return WorkspaceChange{}, fmt.Errorf("modifica esterna al progetto rifiutata: %s", path)
+			return WorkspaceChange{}, fmt.Errorf("change outside the project rejected: %s", path)
 		}
 		isNew := slices.Contains(created, uri)
 		if _, err := os.Lstat(path); isNew && err == nil {
-			return WorkspaceChange{}, fmt.Errorf("%s esiste già: la modifica non lo sovrascrive", relative)
+			return WorkspaceChange{}, fmt.Errorf("%s already exists: the change does not overwrite it", relative)
 		}
 		text := ""
 		if !isNew {

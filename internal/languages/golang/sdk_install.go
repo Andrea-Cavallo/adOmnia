@@ -104,10 +104,10 @@ func NewToolchainInstaller(emit func(string, ToolchainInstallation)) *ToolchainI
 func (i *ToolchainInstaller) ConfigureRoot(root string) error {
 	abs, err := filepath.Abs(filepath.Clean(root))
 	if err != nil {
-		return fmt.Errorf("cartella toolchain non valida: %w", err)
+		return fmt.Errorf("invalid toolchain folder: %w", err)
 	}
 	if err := os.MkdirAll(abs, 0o755); err != nil {
-		return fmt.Errorf("impossibile preparare la cartella toolchain: %w", err)
+		return fmt.Errorf("could not prepare the toolchain folder: %w", err)
 	}
 	i.mu.Lock()
 	i.root = abs
@@ -123,7 +123,7 @@ func (i *ToolchainInstaller) ListReleases(ctx context.Context) ([]ToolchainRelea
 	}
 	response, err := toolchainDownloadClient().Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("catalogo Go non raggiungibile: %w", err)
+		return nil, fmt.Errorf("Go catalog unreachable: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -132,7 +132,7 @@ func (i *ToolchainInstaller) ListReleases(ctx context.Context) ([]ToolchainRelea
 	var releases []goDownloadRelease
 	decoder := json.NewDecoder(io.LimitReader(response.Body, maxDownloadIndex))
 	if err := decoder.Decode(&releases); err != nil {
-		return nil, fmt.Errorf("catalogo Go non valido: %w", err)
+		return nil, fmt.Errorf("invalid Go catalog: %w", err)
 	}
 	result := make([]ToolchainRelease, 0, 20)
 	for _, release := range releases {
@@ -180,22 +180,22 @@ func newerGoVersion(left, right string) bool { return goversion.Compare(left, ri
 // Start avvia download, verifica ed estrazione senza bloccare il chiamante.
 func (i *ToolchainInstaller) Start(request InstallToolchainRequest, release ToolchainRelease, completed func(string, error)) (ToolchainInstallation, error) {
 	if !request.Confirmed {
-		return ToolchainInstallation{}, fmt.Errorf("conferma esplicita richiesta prima del download")
+		return ToolchainInstallation{}, fmt.Errorf("explicit confirmation required before downloading")
 	}
 	if !validGoVersion(release.Version) || request.Version != release.Version {
-		return ToolchainInstallation{}, fmt.Errorf("versione Go non valida")
+		return ToolchainInstallation{}, fmt.Errorf("invalid Go version")
 	}
 	if filepath.Base(release.Filename) != release.Filename || release.SHA256 == "" {
-		return ToolchainInstallation{}, fmt.Errorf("metadati archivio Go non validi")
+		return ToolchainInstallation{}, fmt.Errorf("invalid Go archive metadata")
 	}
 	root, err := i.configuredRoot()
 	if err != nil {
 		return ToolchainInstallation{}, err
 	}
 	if _, err := os.Stat(filepath.Join(root, release.Version)); err == nil {
-		return ToolchainInstallation{}, fmt.Errorf("%s è già installata", release.Version)
+		return ToolchainInstallation{}, fmt.Errorf("%s is already installed", release.Version)
 	} else if !os.IsNotExist(err) {
-		return ToolchainInstallation{}, fmt.Errorf("impossibile verificare la versione installata: %w", err)
+		return ToolchainInstallation{}, fmt.Errorf("could not verify the installed version: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	state := ToolchainInstallation{ID: newInstallID(), SessionID: request.SessionID, Version: release.Version, Status: "downloading", TotalBytes: release.Size, Message: "Download dall'archivio ufficiale Go", Log: []string{"Download avviato da https://go.dev/dl/" + release.Filename}}
@@ -214,7 +214,7 @@ func (i *ToolchainInstaller) Start(request InstallToolchainRequest, release Tool
 		if operation.state.Status == "downloading" || operation.state.Status == "extracting" {
 			i.mu.Unlock()
 			cancel()
-			return ToolchainInstallation{}, fmt.Errorf("un'installazione Go è già in corso")
+			return ToolchainInstallation{}, fmt.Errorf("a Go installation is already in progress")
 		}
 	}
 	i.operations[state.ID] = &installOperation{state: state, cancel: cancel, done: make(chan struct{})}
@@ -230,7 +230,7 @@ func (i *ToolchainInstaller) Cancel(id string) error {
 	operation := i.operations[id]
 	i.mu.RUnlock()
 	if operation == nil {
-		return fmt.Errorf("installazione Go non trovata")
+		return fmt.Errorf("Go installation not found")
 	}
 	operation.cancel()
 	return nil
@@ -239,14 +239,14 @@ func (i *ToolchainInstaller) Cancel(id string) error {
 // Remove elimina una singola toolchain gestita dopo conferma esplicita.
 func (i *ToolchainInstaller) Remove(version string, confirmed bool) error {
 	if !confirmed {
-		return fmt.Errorf("conferma esplicita richiesta prima della rimozione")
+		return fmt.Errorf("explicit confirmation required before removal")
 	}
 	root, err := i.configuredRoot()
 	if err != nil {
 		return err
 	}
 	if !validGoVersion(version) {
-		return fmt.Errorf("versione Go non valida")
+		return fmt.Errorf("invalid Go version")
 	}
 	target := filepath.Join(root, version)
 	if err := project.EnsureWithin(root, target); err != nil {
@@ -330,7 +330,7 @@ func (i *ToolchainInstaller) run(ctx context.Context, id string, release Toolcha
 	}
 	binary := filepath.Join(extractRoot, "go", "bin", GoExecutableName())
 	if info, statErr := os.Stat(binary); statErr != nil || info.IsDir() {
-		err = fmt.Errorf("l'archivio non contiene un binario Go valido")
+		err = fmt.Errorf("the archive does not contain a valid Go binary")
 		i.finish(id, "failed", err.Error(), "", err)
 		completed("", err)
 		return
@@ -347,7 +347,7 @@ func (i *ToolchainInstaller) run(ctx context.Context, id string, release Toolcha
 
 func (i *ToolchainInstaller) download(ctx context.Context, id string, release ToolchainRelease, destination string) error {
 	if release.Size > maxToolchainArchive {
-		return fmt.Errorf("archivio Go oltre il limite consentito")
+		return fmt.Errorf("Go archive exceeds the allowed limit")
 	}
 	return sdk.Download(ctx, toolchainDownloadClient(), "Go", "https://go.dev/dl/"+release.Filename, destination, release.SHA256, maxToolchainArchive, func(bytes int64) {
 		i.update(id, func(state *ToolchainInstallation) { state.DownloadedBytes = bytes })
@@ -395,7 +395,7 @@ func (i *ToolchainInstaller) configuredRoot() (string, error) {
 	root := i.root
 	i.mu.RUnlock()
 	if root == "" {
-		return "", fmt.Errorf("archivio toolchain non configurato")
+		return "", fmt.Errorf("toolchain archive not configured")
 	}
 	return root, nil
 }
@@ -437,7 +437,7 @@ func toolchainDownloadClient() *http.Client {
 	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		host := strings.ToLower(request.URL.Hostname())
 		if host != "go.dev" && host != "dl.google.com" {
-			return fmt.Errorf("redirect download non consentito: %s", host)
+			return fmt.Errorf("download redirect not allowed: %s", host)
 		}
 		if len(via) > 5 {
 			return fmt.Errorf("troppi redirect download")

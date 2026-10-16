@@ -1,12 +1,79 @@
 package goide
 
 import (
+	"encoding/json"
 	"sync"
 	"testing"
 	"time"
 
 	"adomnia/internal/ide/lsp"
 )
+
+func TestDiagnosticsDeduplicateContentButPreserveClearAndReopen(t *testing.T) {
+	manager := NewLSPManager(newLanguageRegistry())
+	state := manager.ensure(Session{ID: "dedup", Project: Project{RealPath: t.TempDir()}}, "go")
+	var reports []DiagnosticsReport
+	manager.SetEmitter(func(kind string, _ SessionID, _ string, payload any) {
+		if kind == "lsp.diagnostics" {
+			reports = append(reports, payload.(DiagnosticsReport))
+		}
+	})
+	uri := fileURI(state.root + "/main.go")
+	state.byURI[uri] = "first"
+	report := lsp.PublishDiagnosticsParams{URI: uri, Diagnostics: []lsp.Diagnostic{{Message: "problem", Severity: 1, Code: json.RawMessage(`1`)}}}
+	flush := func() {
+		state.mu.Lock()
+		if state.diagnosticsTimer != nil {
+			state.diagnosticsTimer.Stop()
+		}
+		state.mu.Unlock()
+		manager.flushDiagnostics(state)
+	}
+	manager.publishDiagnostics(state, report)
+	flush()
+	for range 100 {
+		manager.publishDiagnostics(state, report)
+	}
+	state.mu.Lock()
+	timer := state.diagnosticsTimer
+	state.mu.Unlock()
+	if timer != nil {
+		timer.Stop()
+		t.Error("identical reports scheduled another timer")
+	}
+	flush()
+	if len(reports) != 1 {
+		t.Errorf("identical reports emitted: %d", len(reports))
+	}
+	// Data used for code actions must still refresh when the rendered fields match.
+	report.Diagnostics[0].Code = json.RawMessage(`"1"`)
+	manager.publishDiagnostics(state, report)
+	flush()
+	if len(reports) != 1 || string(state.diagnostics[uri][0].Code) != `"1"` {
+		t.Error("raw diagnostics lost or invisible change emitted")
+	}
+	state.byURI[uri] = "reopened"
+	manager.publishDiagnostics(state, report)
+	flush()
+	if len(reports) != 2 || reports[1].DocumentID != "reopened" {
+		t.Error("new document identity lost")
+	}
+	manager.publishDiagnostics(state, lsp.PublishDiagnosticsParams{URI: uri})
+	flush()
+	manager.publishDiagnostics(state, lsp.PublishDiagnosticsParams{URI: uri})
+	flush()
+	if len(reports) != 3 || len(reports[2].Diagnostics) != 0 {
+		t.Error("clear missing or duplicated")
+	}
+	manager.publishDiagnostics(state, report)
+	flush()
+	manager.setState(state, LanguageServerStopped, "")
+	manager.publishDiagnostics(state, report)
+	flush()
+	if len(reports) != 5 {
+		t.Errorf("restart suppressed fresh diagnostics: %d", len(reports))
+	}
+}
 
 func TestDiagnosticsAreThrottledAndCapped(t *testing.T) {
 	manager := NewLSPManager(newLanguageRegistry())

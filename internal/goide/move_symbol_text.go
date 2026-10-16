@@ -41,7 +41,7 @@ func applyByteEdits(text string, edits []byteEdit) (string, error) {
 	sort.SliceStable(sorted, func(left, right int) bool { return sorted[left].start > sorted[right].start })
 	for index, edit := range sorted {
 		if edit.start < 0 || edit.end < edit.start || edit.end > len(text) {
-			return "", errors.New("modifica fuori dal testo")
+			return "", errors.New("edit outside the text")
 		}
 		if index > 0 && edit.end > sorted[index-1].start {
 			return "", errors.New("modifiche sovrapposte")
@@ -53,13 +53,13 @@ func applyByteEdits(text string, edits []byteEdit) (string, error) {
 
 func byteOffsetAt(text string, line, column int) (int, error) {
 	if line < 1 {
-		return 0, errors.New("posizione non valida")
+		return 0, errors.New("invalid position")
 	}
 	offset := 0
 	for current := 1; current < line; current++ {
 		next := strings.IndexByte(text[offset:], '\n')
 		if next < 0 {
-			return 0, errors.New("posizione oltre la fine del file")
+			return 0, errors.New("position past the end of the file")
 		}
 		offset += next + 1
 	}

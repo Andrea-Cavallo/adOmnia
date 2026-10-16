@@ -218,7 +218,7 @@ export function ForwardsView({ reloadKey }: { reloadKey: number }) {
   const refresh = useCallback(async () => setForwards(await listForwards(port)), [port])
   useEffect(() => {
     void refresh()
-    return visibleInterval(() => { void refresh() }, FORWARD_POLL_MS)
+    return visibleInterval(() => { void refresh() }, FORWARD_POLL_MS, { scope: "kube", kind: "live" })
   }, [refresh, reloadKey])
 
   return (

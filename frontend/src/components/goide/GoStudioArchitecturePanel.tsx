@@ -86,7 +86,7 @@ export function GoStudioArchitecturePanel({ session, initialTab = 'packages' }: 
   return (
     <div className="flex h-full min-h-0 flex-col text-[11px]">
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border-1 px-2 py-1">
-        <button type="button" disabled={!authorized || running} onClick={() => void analyze()} title={authorized ? 'Load every module with go/packages and build the architecture model' : 'Trust the project to run go list'} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-white hover:opacity-90 disabled:opacity-40">
+        <button type="button" disabled={!authorized || running} onClick={() => void analyze()} title={authorized ? 'Load every module with go/packages and build the architecture model' : 'Trust the project to run go list'} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-on-accent hover:opacity-90 disabled:opacity-40">
           {running ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} aria-hidden="true" />} {report ? 'Analyze again' : 'Analyze'}
         </button>
         {result && <span className="text-text-4">{result.modules} module{result.modules === 1 ? '' : 's'} · {report?.functions.length} functions · {report?.calls.length} calls{report?.truncated ? ' (truncated)' : ''}</span>}

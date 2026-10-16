@@ -8,6 +8,7 @@ export {
     ArchEntry,
     ArchField,
     ArchFunction,
+    ArchGoroutine,
     ArchHint,
     ArchImplementation,
     ArchInterface,

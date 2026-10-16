@@ -324,7 +324,7 @@ export function DebuggerPanel() {
       }
     }
     poll()
-    return visibleInterval(poll, 500)
+    return visibleInterval(poll, 500, { scope: "browser", kind: "live" })
   }, [enabled])
 
   useEffect(() => {

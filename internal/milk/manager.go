@@ -78,6 +78,7 @@ type Manager struct {
 	pending       map[string]*permission
 	log           []string
 	emit          Emitter
+	mcpServers    func() []MCPServer // context server condivisi, letti a ogni session/new
 }
 
 // NewManager crea il manager di milk; il processo parte solo con Start.
@@ -98,6 +99,13 @@ func NewAgentManager(store *SettingsStore, agent Agent) *Manager {
 		turns:         map[string]string{},
 		pending:       map[string]*permission{},
 	}
+}
+
+// SetMCPServers collega la sorgente dei context server passati a ogni nuova sessione.
+func (m *Manager) SetMCPServers(source func() []MCPServer) {
+	m.mu.Lock()
+	m.mcpServers = source
+	m.mu.Unlock()
 }
 
 func (m *Manager) SetEmitter(emit Emitter) {
@@ -639,6 +647,17 @@ func (m *Manager) sessionFor(root string) (string, error) {
 		m.setStatus(func(status *Status) { status.Model = model })
 	}
 	return result.SessionID, nil
+}
+
+func (m *Manager) sessionMCPServers(root string) []any {
+	m.mu.Lock()
+	source := m.mcpServers
+	m.mu.Unlock()
+	var servers []MCPServer
+	if source != nil {
+		servers = source()
+	}
+	return acpMCPServers(withBuiltinMCPServer(servers, root, m.Settings().DisableBuiltinMCP))
 }
 
 // Prompt invia un turno. I delta arrivano come evento milk.chat; cancel interrompe.

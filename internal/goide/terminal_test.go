@@ -301,9 +301,11 @@ func TestTerminalStreamsLargeMultibyteOutputIntact(t *testing.T) {
 func TestTerminalRenameIsKeptInList(t *testing.T) {
 	manager := NewTerminalManager()
 	manager.SetEventSink(func(string, TerminalSession, any) {})
+	// Cleanup is LIFO: stop the shell before TempDir tries to remove its cwd.
+	directory := t.TempDir()
 	t.Cleanup(manager.Shutdown)
 
-	opened, err := manager.Open(TerminalRequest{SessionID: "session-a", WorkingDirectory: t.TempDir()}, os.Environ())
+	opened, err := manager.Open(TerminalRequest{SessionID: "session-a", WorkingDirectory: directory}, os.Environ())
 	if err != nil {
 		t.Skipf("PTY non disponibile in questo ambiente: %v", err)
 	}

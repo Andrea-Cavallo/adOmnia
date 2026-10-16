@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Check, ChevronLeft, ChevronRight, Columns3, Download, ListTree, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectCellType, inferColumnKind, type DbResult } from './dbShared'
@@ -8,14 +8,22 @@ import { PlanView } from './PlanView'
 import { ValueCell } from './ValueCell'
 import { ValueInspector, type CellInspectorRequest } from './ValueInspector'
 import { useResultsFullscreen } from './useResultsFullscreen'
+import { useWindowedRows } from './useWindowedRows'
+import { useColumnWidths } from './useColumnWidths'
+import { JsonTree } from '@/components/loginspector/JsonTree'
 
-type ResultTab = 'plan' | 'results' | 'json' | 'stats' | 'logs'
+type ResultTab = 'plan' | 'results' | 'stats' | 'logs'
+type ResultsMode = 'table' | 'tree' | 'json'
+
+const ROW_HEIGHT = 40
 
 interface ResultsViewProps {
   result: DbResult | null
   isMongo: boolean
   error: string
   logs: string[]
+  /** Limite chiesto al backend, per dire quanto è caricato davvero. */
+  limit?: number
   onExportJson: () => void
   onExportCsv: () => void
   onRerun: () => void
@@ -23,8 +31,9 @@ interface ResultsViewProps {
 
 const PAGE_SIZES = [25, 50, 100, 200]
 
-export function ResultsView({ result, isMongo, error, logs, onExportJson, onExportCsv, onRerun }: ResultsViewProps) {
+export function ResultsView({ result, isMongo, error, logs, limit, onExportJson, onExportCsv, onRerun }: ResultsViewProps) {
   const [tab, setTab] = useState<ResultTab>('results')
+  const [mode, setMode] = useState<ResultsMode>('table')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
   const [search, setSearch] = useState('')
@@ -58,14 +67,19 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   }, [rows, columns, search])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize)
-  const rangeStart = filtered.length === 0 ? 0 : (page - 1) * pageSize + 1
-  const rangeEnd = Math.min(page * pageSize, filtered.length)
+  // A schermo intero tutte le righe caricate; fuori, paginazione client (DB-1.6).
+  const startIndex = expanded ? 0 : (page - 1) * pageSize
+  const shownRows = expanded ? filtered : filtered.slice(startIndex, startIndex + pageSize)
+  const rangeStart = filtered.length === 0 ? 0 : startIndex + 1
+  const rangeEnd = Math.min(startIndex + (expanded ? filtered.length : pageSize), filtered.length)
+
+  const tableRows = tab === 'results' && mode === 'table' && result?.columns?.length ? shownRows : []
+  const windowed = useWindowedRows<Record<string, unknown>>(tableRows, ROW_HEIGHT, { enabled: tableRows.length > 80 })
+  const columnWidths = useColumnWidths()
 
   const tabs: { id: ResultTab; label: string }[] = [
     ...(plan ? [{ id: 'plan' as const, label: 'Plan' }] : []),
     { id: 'results', label: 'Results' },
-    { id: 'json', label: 'JSON' },
     { id: 'stats', label: 'Stats' },
     { id: 'logs', label: 'Logs' },
   ]
@@ -103,9 +117,12 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
           <span className="text-[11.5px] text-text-3">
             <b className="font-semibold text-text-1">{result.columns?.length ? filtered.length : result.rowsAffected}</b>{' '}
             {result.columns?.length ? (isMongo ? 'documents' : 'rows') : 'affected'}
+            {result.columns?.length && result.limited ? (
+              // Quanto è caricato davvero (DB-1.5): N righe su un limite di L.
+              <span className="ml-1 text-warning" title={result.warning}> (limit {limit ?? '?'}, auto-limited)</span>
+            ) : null}
             <span className="mx-1.5 text-text-4">·</span>
             <span className="text-success">{(result.durationMs / 1000).toFixed(3)}s</span>
-            {result.limited && <span className="ml-1.5 text-warning" title={result.warning}>· auto-limited</span>}
           </span>
         ) : (
           <span className="text-[11.5px] text-text-4">No results</span>
@@ -121,6 +138,22 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
                 placeholder="Filter rows"
                 className="h-7 w-40 rounded-md border border-border-2 bg-surface-2 pl-7 pr-2 text-[11px] text-text-1 outline-none placeholder:text-text-4 focus:border-accent/50"
               />
+            </div>
+          ) : null}
+          {result?.columns?.length ? (
+            <div role="tablist" aria-label="Results view" className="mr-1 flex rounded-md border border-border-2 p-0.5">
+              {([['table', 'Table'], ['tree', 'Tree'], ['json', 'JSON']] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === id}
+                  onClick={() => setMode(id)}
+                  className={cn('h-6 rounded px-2 text-[10.5px]', mode === id ? 'bg-surface-3 text-text-1' : 'text-text-4 hover:text-text-1')}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           ) : null}
           <button
@@ -184,23 +217,36 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
       </div>
 
       {/* body */}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div ref={windowed.scrollRef} className="min-h-0 flex-1 overflow-auto">
         {error ? (
           <div className="m-4 rounded-lg border border-error/30 bg-error/8 p-4 font-mono text-[12px] leading-relaxed text-error">{error}</div>
         ) : !result ? (
           <EmptyState />
         ) : tab === 'plan' && plan ? (
           <PlanView plan={plan} analyzed={result.explain === 'analyze'} />
-        ) : tab === 'json' ? (
-          <pre className="p-4 font-mono text-[11.5px] leading-relaxed text-text-2">{JSON.stringify(result.rows, null, 2)}</pre>
         ) : tab === 'stats' ? (
           <StatsView result={result} isMongo={isMongo} rowCount={filtered.length} />
         ) : tab === 'logs' ? (
           <div className="p-4 font-mono text-[11.5px] leading-relaxed text-text-3">
             {logs.length === 0 ? <span className="text-text-4">No log output.</span> : logs.map((l, i) => <div key={i}>{l}</div>)}
           </div>
+        ) : result.columns?.length && mode === 'json' ? (
+          <pre className="p-4 font-mono text-[11.5px] leading-relaxed text-text-2">{JSON.stringify(rows.map((row) => normalizeCell(row, isMongo ? 'mongodb' : '')), null, 2)}</pre>
+        ) : result.columns?.length && mode === 'tree' ? (
+          <JsonTree value={rows.map((row) => normalizeCell(row, isMongo ? 'mongodb' : ''))} className="min-h-0 flex-1" startExpanded={1} />
         ) : result.columns?.length ? (
-          <DataTable columns={visibleColumns} rows={pageRows} allRows={rows} startIndex={(page - 1) * pageSize} isMongo={isMongo && !expandNested} onInspect={setInspector} />
+          <DataTable
+            columns={visibleColumns}
+            rows={windowed.rows}
+            allRows={rows}
+            startIndex={startIndex + windowed.start}
+            paddingTop={windowed.paddingTop}
+            paddingBottom={windowed.paddingBottom}
+            widthOf={columnWidths.widthOf}
+            gripProps={columnWidths.gripProps}
+            isMongo={isMongo && !expandNested}
+            onInspect={setInspector}
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-[12px] text-text-4">
             Statement executed. Rows affected: {result.rowsAffected}
@@ -208,12 +254,13 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
         )}
       </div>
 
-      {/* pagination */}
-      {result?.columns?.length && tab === 'results' ? (
+      {/* pagination: a schermo intero si vedono tutte le righe caricate */}
+      {result?.columns?.length && tab === 'results' && !expanded ? (
         <div className="flex h-10 flex-none items-center gap-3 border-t border-border-1 bg-surface-1 px-3">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="grid h-7 w-7 place-items-center rounded-md border border-border-2 text-text-3 hover:text-text-1 disabled:opacity-30"><ChevronLeft size={14} /></button>
           <span className="grid h-7 min-w-[28px] place-items-center rounded-md border border-accent/50 bg-accent/10 px-2 text-[11.5px] font-medium text-accent">{page}</span>
           <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="grid h-7 w-7 place-items-center rounded-md border border-border-2 text-text-3 hover:text-text-1 disabled:opacity-30"><ChevronRight size={14} /></button>
+          <span className="text-[11px] text-text-4">Page {page} of {totalPages}</span>
           <select
             value={pageSize}
             onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
@@ -231,24 +278,52 @@ export function ResultsView({ result, isMongo, error, logs, onExportJson, onExpo
   )
 }
 
-function DataTable({ columns, rows, allRows, startIndex, isMongo, onInspect }: { columns: string[]; rows: Record<string, unknown>[]; allRows: Record<string, unknown>[]; startIndex: number; isMongo: boolean; onInspect: (request: CellInspectorRequest) => void }) {
+interface DataTableProps {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  allRows: Record<string, unknown>[]
+  startIndex: number
+  /** Spaziatori della virtualizzazione (DB-1.6). */
+  paddingTop?: number
+  paddingBottom?: number
+  /** Larghezze colonne impostate trascinando la maniglia (DB-1.7). */
+  widthOf?: (column: string) => number | undefined
+  gripProps?: (column: string) => {
+    onMouseDown: (event: ReactMouseEvent<HTMLElement>) => void
+    onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void
+  }
+  isMongo: boolean
+  onInspect: (request: CellInspectorRequest) => void
+}
+
+function DataTable({ columns, rows, allRows, startIndex, paddingTop = 0, paddingBottom = 0, widthOf, gripProps, isMongo, onInspect }: DataTableProps) {
   return (
     <table className="min-w-full border-separate border-spacing-0 text-left">
+      <colgroup>
+        <col style={{ width: 40 }} />
+        {columns.map((col) => (
+          <col key={col} style={widthOf?.(col) ? { width: widthOf(col) } : undefined} />
+        ))}
+      </colgroup>
       <thead className="sticky top-0 z-10">
         <tr>
           <th className="sticky left-0 z-20 w-10 border-b border-r border-border-1 bg-surface-2" style={{ height: 38 }} />
           {columns.map((col) => (
-            <th key={col} className="whitespace-nowrap border-b border-r border-border-1 bg-surface-2 px-3.5 text-left align-middle" style={{ height: 38 }}>
+            <th key={col} className="relative whitespace-nowrap border-b border-r border-border-1 bg-surface-2 px-3.5 text-left align-middle" style={{ height: 38, width: widthOf?.(col) }}>
               <div className="text-[11.5px] font-semibold text-text-1">{col}</div>
               <div className="text-[9.5px] font-normal text-text-4">{inferColumnKind(col, allRows)}</div>
+              {gripProps && (
+                <div {...gripProps(col)} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40" aria-hidden="true" />
+              )}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
+        {paddingTop > 0 && <tr aria-hidden="true" style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
         {rows.map((row, idx) => (
           <tr key={JSON.stringify(row._id ?? startIndex + idx)} className="group">
-            <td className="sticky left-0 w-10 border-b border-r border-border-1 bg-surface-1 pr-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2" style={{ height: 40 }}>
+            <td className="sticky left-0 w-10 border-b border-r border-border-1 bg-surface-1 pr-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2" style={{ height: ROW_HEIGHT }}>
               {/* Il numero di riga apre la riga intera come albero (DB-1.4). */}
               <button
                 type="button"
@@ -271,7 +346,7 @@ function DataTable({ columns, rows, allRows, startIndex, isMongo, onInspect }: {
                 <td
                   key={col}
                   className={cn('max-w-[360px] truncate border-b border-r border-border-1 px-3.5 font-mono text-[11.5px] group-hover:bg-surface-1', isRight && 'text-right')}
-                  style={{ height: 40 }}
+                  style={{ height: ROW_HEIGHT, maxWidth: widthOf?.(col) }}
                 >
                   <ValueCell
                     variant={isMongo ? 'mongo' : 'sql'}
@@ -290,6 +365,7 @@ function DataTable({ columns, rows, allRows, startIndex, isMongo, onInspect }: {
             })}
           </tr>
         ))}
+        {paddingBottom > 0 && <tr aria-hidden="true" style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
       </tbody>
     </table>
   )

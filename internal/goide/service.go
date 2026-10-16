@@ -1,6 +1,7 @@
 package goide
 
 import (
+	"adomnia/internal/ide/flight"
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/run"
 	"context"
@@ -79,6 +80,8 @@ type Service struct {
 	graphState *workspaceGraphs
 	// depGraph è la cache del grafo dipendenze (dependencygraph_cache.go).
 	depGraph *dependencyGraphCache
+	// depFlights unifica i calcoli concorrenti dello stesso grafo (più pannelli che lo chiedono insieme).
+	depFlights flight.Group[DependencyGraphReport]
 }
 
 func NewService(store Store, eventSink func(EventEnvelope)) *Service {
@@ -198,11 +201,11 @@ func (s *Service) OpenProject(path string) (Session, error) {
 // soltanto dopo conferma esplicita. Se un passo fallisce la cartella appena creata viene rimossa.
 func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResult, error) {
 	if !request.Confirmed {
-		return CreateProjectResult{}, fmt.Errorf("conferma esplicita richiesta prima di eseguire go mod init")
+		return CreateProjectResult{}, fmt.Errorf("explicit confirmation required before running go mod init")
 	}
 	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
-		return CreateProjectResult{}, fmt.Errorf("module path non valido")
+		return CreateProjectResult{}, fmt.Errorf("invalid module path")
 	}
 	sources, template, err := s.resolveProjectTemplate(request.Template)
 	if err != nil {
@@ -215,7 +218,7 @@ func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResu
 	binary, err := exec.LookPath("go")
 	if err != nil {
 		_ = os.Remove(target)
-		return CreateProjectResult{}, errors.New("go non trovato: installalo o configura il PATH prima di creare un modulo")
+		return CreateProjectResult{}, errors.New("go not found: install it or configure PATH before creating a module")
 	}
 	if err := runGoCommand(binary, target, 20*time.Second, "mod", "init", modulePath); err != nil {
 		_ = os.RemoveAll(target)
@@ -338,12 +341,12 @@ func (s *Service) CloseSession(id string) error {
 	}
 	sessionID := SessionID(id)
 	if s.processes.HasActiveSession(sessionID) {
-		return fmt.Errorf("la sessione contiene processi attivi: arrestali prima di chiuderla")
+		return fmt.Errorf("the session has running processes: stop them before closing it")
 	}
 	// I buffer non salvati di una finestra separata vivono solo lì: il progetto si chiude
 	// dopo averlo riportato nella finestra principale, che passa dalla conferma.
 	if owner := s.windows.owner(sessionID); owner != MainWindowID {
-		return fmt.Errorf("%w: riportalo nella finestra principale prima di chiuderlo", ErrSessionInOtherWindow)
+		return fmt.Errorf("%w: bring it back to the main window before closing it", ErrSessionInOtherWindow)
 	}
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
@@ -352,6 +355,7 @@ func (s *Service) CloseSession(id string) error {
 	graphs := s.graphs()
 	graphs.mu.Lock()
 	delete(graphs.cached, id)
+	graphs.fresh.forget(id)
 	delete(graphs.building, id)
 	graphs.mu.Unlock()
 
@@ -430,7 +434,7 @@ func (s *Service) ReadFileDataURL(sessionID, relativePath string) (string, error
 		return "", err
 	}
 	if _, ok := imageMimeType(path); !ok {
-		return "", fmt.Errorf("il file non è un'immagine supportata")
+		return "", fmt.Errorf("the file is not a supported image")
 	}
 	dataURL, _, _, err := readImageFile(path)
 	if err != nil {
@@ -547,7 +551,7 @@ func (s *Service) ListToolchainReleases(sessionID string) ([]ToolchainRelease, e
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti prima di accedere alla rete")
+		return nil, fmt.Errorf("explicitly authorize the tools before accessing the network")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -569,7 +573,7 @@ func (s *Service) InstallToolchain(request InstallToolchainRequest) (ToolchainIn
 		return ToolchainInstallation{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return ToolchainInstallation{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima dell'installazione")
+		return ToolchainInstallation{}, fmt.Errorf("explicitly authorize the tools before installing")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	releases, err := s.installer.ListReleases(ctx)
@@ -585,7 +589,7 @@ func (s *Service) InstallToolchain(request InstallToolchainRequest) (ToolchainIn
 		}
 	}
 	if selected.Version == "" {
-		return ToolchainInstallation{}, fmt.Errorf("versione Go non presente nel catalogo ufficiale")
+		return ToolchainInstallation{}, fmt.Errorf("Go version not in the official catalog")
 	}
 	return s.installer.Start(request, selected, func(binary string, installErr error) {
 		if installErr != nil || !request.Activate {
@@ -614,7 +618,7 @@ func (s *Service) SelectInstalledToolchain(sessionID, version string) error {
 			return s.configureInstalledToolchain(SessionID(sessionID), candidate.GoBinary)
 		}
 	}
-	return fmt.Errorf("toolchain Go installata non trovata")
+	return fmt.Errorf("installed Go toolchain not found")
 }
 
 func (s *Service) configureInstalledToolchain(sessionID SessionID, binary string) error {
@@ -639,7 +643,7 @@ func (s *Service) RemoveInstalledToolchain(version string, confirmed bool) error
 	}
 	for _, candidate := range installed {
 		if candidate.Version == version && s.toolchain.UsesBinary(candidate.GoBinary) {
-			return fmt.Errorf("la toolchain è selezionata da una sessione: scegline un'altra prima di rimuoverla")
+			return fmt.Errorf("the toolchain is selected by a session: choose another one before removing it")
 		}
 	}
 	return s.installer.Remove(version, confirmed)
@@ -657,14 +661,14 @@ func (s *Service) ListDependencies(sessionID, moduleDirectory string) (Dependenc
 // StartDependencyAction esegue go get soltanto dopo anteprima e conferma esplicita.
 func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execution, error) {
 	if !request.Confirmed {
-		return Execution{}, fmt.Errorf("conferma esplicita richiesta prima di modificare le dipendenze")
+		return Execution{}, fmt.Errorf("explicit confirmation required before changing dependencies")
 	}
 	session, err := s.session(string(request.SessionID))
 	if err != nil {
 		return Execution{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	state, err := readDependencyState(session.Project, request.ModuleDirectory)
 	if err != nil {
@@ -676,7 +680,7 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di modificare le dipendenze")
+		return Execution{}, errors.New("go unavailable: detect or configure the toolchain before changing dependencies")
 	}
 	environment, err := s.toolchain.Environment(session.ID, nil)
 	if err != nil {
@@ -702,11 +706,11 @@ func (s *Service) runAdapter(id, kind string) (language.Runner, error) {
 	}
 	adapter, ok := s.workspace.languages.Get(id)
 	if !ok {
-		return nil, fmt.Errorf("linguaggio non registrato: %s", id)
+		return nil, fmt.Errorf("language not registered: %s", id)
 	}
 	runner, ok := adapter.(language.Runner)
 	if !ok || !slices.Contains(runner.RunKinds(), kind) {
-		return nil, fmt.Errorf("tipo di esecuzione non supportato: %s", kind)
+		return nil, fmt.Errorf("unsupported run type: %s", kind)
 	}
 	return runner, nil
 }
@@ -735,7 +739,7 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 			binary, err = "go", nil // nell'ambiente remoto conta il go del suo PATH, non quello locale
 		}
 		if err != nil {
-			return CommandSpec{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
+			return CommandSpec{}, errors.New("go unavailable: detect or configure the toolchain before running")
 		}
 	}
 	options := request.LanguageOptions
@@ -761,10 +765,10 @@ func resolveProjectBinary(workingDirectory, target string) (string, error) {
 	path := filepath.Clean(filepath.Join(workingDirectory, filepath.FromSlash(target)))
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", fmt.Errorf("binario non trovato: compila prima il progetto (%s)", target)
+		return "", fmt.Errorf("binary not found: build the project first (%s)", target)
 	}
 	if info.IsDir() {
-		return "", fmt.Errorf("%s è una cartella, non un binario", target)
+		return "", fmt.Errorf("%s is a folder, not a binary", target)
 	}
 	return path, nil
 }
@@ -776,7 +780,7 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 		return Execution{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	request.Environment = s.withSharedEnvironment(request.Environment)
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
@@ -869,13 +873,13 @@ func (s *Service) RestartRun(runID string) (Execution, error) {
 	request, ok := s.runRequests[id]
 	s.runMu.RUnlock()
 	if !ok {
-		return Execution{}, fmt.Errorf("configurazione dell'esecuzione non trovata")
+		return Execution{}, fmt.Errorf("run configuration not found")
 	}
 	if err := s.processes.Stop(id); err != nil {
 		return Execution{}, err
 	}
 	if !s.processes.WaitStopped(id, 3*time.Second) {
-		return Execution{}, errors.New("l'esecuzione precedente non si è arrestata in tempo: riprova")
+		return Execution{}, errors.New("the previous run did not stop in time: retry")
 	}
 	return s.StartRun(request)
 }
@@ -1095,6 +1099,7 @@ func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
 	if session, err := s.workspace.GetSession(sessionID); err == nil && changesFileList(batch) {
 		s.documents.InvalidateFileIndex(session.Project.RealPath)
 	}
+	s.noteGraphChanges(sessionID, batch)
 	s.lsp.NotifyWatchedFiles(sessionID, batch.Changes)
 	s.emit("files.changed", sessionID, string(sessionID), batch)
 }

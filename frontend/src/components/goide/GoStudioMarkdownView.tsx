@@ -6,6 +6,7 @@ import { readGoIDEAssetDataUrl } from '@/lib/goide-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { isMermaidPath, mermaidAsMarkdown, useMarkdownMode, type GoStudioMarkdownMode } from './goStudioMarkdownMode'
 import { localMarkdownAssets, substituteMarkdownAssets } from './goStudioMarkdownAssets'
+import { GoStudioMarkdownTools, MarkdownToolsButton } from './GoStudioMarkdownTools'
 
 // Cache per sessione: gli asset locali non vengono riletti a ogni battitura del Markdown.
 const assetCache = new Map<string, string>()
@@ -79,6 +80,9 @@ export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: G
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const path = document.document.relativePath
   const assets = useMarkdownAssets(document)
+  // GS-7.4: outline, backlinks e grafo come pannelli laterali (niente per i file Mermaid puri).
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const showTools = toolsOpen && !isMermaidPath(path)
   const html = useMemo(() => (mode === 'editor' ? '' : renderMarkdown(substituteMarkdownAssets(isMermaidPath(path) ? mermaidAsMarkdown(document.buffer) : document.buffer, assets), path)), [document.buffer, path, mode, assets])
   const openLink = (href: string) => {
     const target = resolveMarkdownLink(path, href)
@@ -94,12 +98,16 @@ export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: G
       {mode !== 'preview' && <div className="min-h-0 min-w-0 flex-1">{editor}</div>}
       {mode === 'split' && <div className="w-px shrink-0 bg-border-1" aria-hidden="true" />}
       {mode !== 'editor' && <MarkdownPreview className="min-w-0 bg-[var(--gs-island,var(--color-surface-0))]" html={html} onInternalLink={openLink} />}
-      <div role="radiogroup" aria-label="Markdown view" className="absolute right-4 top-2 z-10 flex gap-0.5 rounded-lg border border-border-1 bg-surface-1/90 p-0.5 shadow-sm backdrop-blur">
-        {MODES.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" role="radio" aria-checked={mode === id} aria-label={label} title={label} onClick={() => onModeChange(id)} className={`grid h-6 w-6 place-items-center rounded-md transition-colors ${mode === id ? 'bg-accent/20 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2'}`}>
-            <Icon size={13} />
-          </button>
-        ))}
+      {showTools && <GoStudioMarkdownTools document={document} onJumpToLine={(line) => void useGoIDEStore.getState().openLocation(path, line, 1)} />}
+      <div className="absolute right-4 top-2 z-10 flex items-center gap-1">
+        {!isMermaidPath(path) && <MarkdownToolsButton open={toolsOpen} onToggle={() => setToolsOpen((value) => !value)} />}
+        <div role="radiogroup" aria-label="Markdown view" className="flex gap-0.5 rounded-lg border border-border-1 bg-surface-1/90 p-0.5 shadow-sm backdrop-blur">
+          {MODES.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" role="radio" aria-checked={mode === id} aria-label={label} title={label} onClick={() => onModeChange(id)} className={`grid h-6 w-6 place-items-center rounded-md transition-colors ${mode === id ? 'bg-accent/20 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2'}`}>
+              <Icon size={13} />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

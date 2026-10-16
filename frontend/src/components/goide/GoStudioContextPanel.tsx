@@ -1,3 +1,4 @@
+import { useActivityPhase } from '@/hooks/useActivity'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, Info, GitBranch, Timer, Network, Loader2, RefreshCw } from 'lucide-react'
 import { sessionGoIDEDocument, useGoIDEStore } from '@/stores/goide'
@@ -56,6 +57,7 @@ export function GoStudioContextPanel({ sessionId }: GoStudioContextPanelProps) {
   // Solo il documento attivo della sessione: le battute sugli altri documenti
   // non devono ridisegnare il pannello.
   const document = useGoIDEStore((state) => sessionGoIDEDocument(state, sessionId))
+  const activityPhase = useActivityPhase(`goide:${sessionId}`)
   const buffer = document?.buffer ?? ''
   const documentId = document?.document.id ?? null
   const isGo = !!document && document.document.relativePath.endsWith('.go') && !document.document.external
@@ -67,12 +69,13 @@ export function GoStudioContextPanel({ sessionId }: GoStudioContextPanelProps) {
   const [analysisBuffer, setAnalysisBuffer] = useState(buffer)
   const analysisDocumentId = useRef(documentId)
   useEffect(() => {
+    if (activityPhase !== 'Active') return
     const switched = analysisDocumentId.current !== documentId
     analysisDocumentId.current = documentId
     if (switched) setAnalysisBuffer(buffer)
     const timer = window.setTimeout(() => setAnalysisBuffer(buffer), ANALYSIS_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [buffer, documentId])
+  }, [buffer, documentId, activityPhase])
 
   const analysis = useMemo(() => analyzeContextPropagation(analysisBuffer, { timeoutThresholdMs: threshold }), [analysisBuffer, threshold])
   const summary = useMemo(() => contextFindingSummary(analysis.findings), [analysis.findings])

@@ -1,6 +1,10 @@
 package database
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+)
 
 func TestDestructiveQuery(t *testing.T) {
 	cases := []struct {
@@ -48,5 +52,41 @@ func TestDestructiveQueryBackslashEscapesOnlyOnMySQL(t *testing.T) {
 	// On MySQL the backslash escapes the quote, so the same text is one long string.
 	if destructive, _ := destructiveQuery("mysql", query); destructive {
 		t.Errorf("mysql: the text after an escaped quote is still inside the string")
+	}
+}
+
+func TestMongoRunCommandAlwaysNeedsConfirmation(t *testing.T) {
+	// Review di sicurezza DB-2: `runcommand` esegue comandi arbitrari (dropDatabase,
+	// write massive, drop) e non è classificabile dal nome: sempre distruttivo e strict.
+	destructive, strict := mongoDestructiveOperation("runcommand")
+	if !destructive || !strict {
+		t.Fatalf("mongoDestructiveOperation(runcommand) = (%v, %v), want (true, true)", destructive, strict)
+	}
+	_, err := runMongoQuery(context.Background(), dbQueryRequest{Query: `{"operation":"runcommand","command":{"dropDatabase":1}}`})
+	if err == nil || !strings.Contains(err.Error(), "confirmation") {
+		t.Fatalf("runcommand without confirm = %v, want a confirmation error", err)
+	}
+}
+
+func TestDestructiveQueryCoversSideEffectStatements(t *testing.T) {
+	// Review di sicurezza DB-2: CALL/DO/COPY/MERGE/REPLACE/LOAD/GRANT/REVOKE non erano
+	// marcati e giravano senza conferma: possono cambiare dati o privilegi.
+	for _, query := range []string{
+		"CALL cleanup()",
+		"DO $$ BEGIN NULL; END $$",
+		"COPY users FROM '/tmp/x.csv'",
+		"MERGE INTO users USING staging ON users.id = staging.id",
+		"REPLACE INTO users VALUES (1, 'x')",
+		"LOAD DATA INFILE 'x' INTO TABLE users",
+		"GRANT SELECT ON users TO reader",
+		"REVOKE SELECT ON users FROM reader",
+	} {
+		if destructive, strict := destructiveQuery("postgres", query); !destructive || !strict {
+			t.Errorf("destructiveQuery(%q) = (%v, %v), want (true, true)", query, destructive, strict)
+		}
+	}
+	// REPLACE usata come funzione dentro una SELECT resta una lettura.
+	if destructive, strict := destructiveQuery("postgres", `SELECT REPLACE(name, 'a', 'b') FROM users`); destructive || strict {
+		t.Fatalf("SELECT REPLACE() = (%v, %v), want (false, false)", destructive, strict)
 	}
 }

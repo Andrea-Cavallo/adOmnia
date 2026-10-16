@@ -5,7 +5,7 @@ import { useAppInit } from '@/hooks/useAppInit'
 import { useAppearance } from '@/hooks/useAppearance'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useAppStore } from '@/stores/app'
-import { PanelActiveContext } from '@/components/layout/PanelActivity'
+import { PanelActiveContext, PanelVisibleContext } from '@/components/layout/PanelActivity'
 const PdfEditorPanel = lazy(() => import('@/components/pdfeditor/PdfEditorPanel').then(m => ({ default: m.PdfEditorPanel })))
 import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { startModuleActionListener } from '@/lib/moduleRouting'
@@ -30,7 +30,7 @@ export function DetachedGoStudioWindow() {
     <ErrorBoundary>
       <ThemeProvider>
         <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-0">
-          <div className={pdfOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}><PanelActiveContext value={!pdfOpen}><GoStudioPanel /></PanelActiveContext></div>
+          <div className={pdfOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}><PanelActiveContext value={!pdfOpen}><PanelVisibleContext value={!pdfOpen}><GoStudioPanel /></PanelVisibleContext></PanelActiveContext></div>
           {(pdfOpen || pdfMounted) && <div className={pdfOpen ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
             <button type="button" className="shrink-0 self-start px-3 py-2 text-xs text-accent" onClick={() => useAppStore.getState().setActiveRail('goide')}>← gO Studio</button>
             <div className="min-h-0 flex-1"><Suspense fallback={null}><PdfEditorPanel /></Suspense></div>

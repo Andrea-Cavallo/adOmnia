@@ -3,7 +3,7 @@ import { FEATURE_ICONS } from './Rail'
 import type { RailItem } from '@/stores/app'
 
 export function TileIcon({ target }: { target: RailItem }) {
-  if (['goide', 'collections', 'database', 'jsonviewer', 'gitsync', 'powertools'].includes(target)) return <StudioIcon target={target}/>
+  if (['goide', 'collections', 'database', 'jsonviewer', 'powertools'].includes(target)) return <StudioIcon target={target}/>
   const Icon = FEATURE_ICONS[target] ?? CircleDot
   return <Icon size={40} strokeWidth={1.2}/>
 }
@@ -29,10 +29,6 @@ function StudioIcon({ target }: { target: string }) {
       {target === 'jsonviewer' && <>
         <path d="M10 20l28 9v29l-28-9zM23 20v-6l28 9v29M36 14V8l24 8v29"/>
         {[19, 25, 31].flatMap(x => [35, 42].map(y => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" fill="currentColor" stroke="none"/>))}
-      </>}
-      {target === 'gitsync' && <>
-        <path d="M14 32h9c17 0 8-20 24-20M23 32c17 0 8 20 24 20"/>
-        <circle cx="8" cy="32" r="5"/><circle cx="53" cy="12" r="5"/><circle cx="53" cy="52" r="5"/>
       </>}
       {target === 'powertools' && <>
         <path d="M21 8h7M36 8h7M49 13l11 18M58 39L47 56M39 59h-7M24 59h-7M12 53L3 37M5 28l10-16"/>

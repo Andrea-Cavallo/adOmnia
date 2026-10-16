@@ -24,7 +24,7 @@ const (
 )
 
 // ErrClosed indica che la connessione con il language server è terminata.
-var ErrClosed = errors.New("language server non disponibile")
+var ErrClosed = errors.New("language server unavailable")
 
 // ResponseError è l'errore tipizzato restituito dal server.
 type ResponseError struct {
@@ -60,7 +60,7 @@ type Handler interface {
 }
 
 // ErrMethodNotFound segnala al server che il client non implementa il metodo richiesto.
-var ErrMethodNotFound = errors.New("metodo non supportato")
+var ErrMethodNotFound = errors.New("unsupported method")
 
 // ErrTooManyPendingRequests è backpressure: il server ha già troppe richieste
 // in sospeso e accumularne altre allungherebbe solo le code.
@@ -75,6 +75,7 @@ type Conn struct {
 	nextID  atomic.Int64
 	mu      sync.Mutex
 	pending map[int64]chan response
+	latest  map[requestKey]*latestRequest
 	// pendingLimit è il massimo di richieste in sospeso (0 = illimitato).
 	pendingLimit int
 	closed       bool
@@ -144,6 +145,9 @@ func (c *Conn) Run() {
 
 // Call invia una richiesta e attende la risposta; se ctx termina invia $/cancelRequest.
 func (c *Conn) Call(ctx context.Context, method string, params, result any) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	id := c.nextID.Add(1)
 	reply := make(chan response, 1)
 	c.mu.Lock()
@@ -170,7 +174,7 @@ func (c *Conn) Call(ctx context.Context, method string, params, result any) erro
 			return nil
 		}
 		if err := json.Unmarshal(answer.result, result); err != nil {
-			return fmt.Errorf("risposta %s non valida: %w", method, err)
+			return fmt.Errorf("invalid %s response: %w", method, err)
 		}
 		return nil
 	case <-ctx.Done():
@@ -301,13 +305,13 @@ func readFrame(reader *bufio.Reader) ([]byte, error) {
 		if ok && strings.EqualFold(strings.TrimSpace(name), contentLength) {
 			parsed, err := strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
-				return nil, fmt.Errorf("header Content-Length non valido")
+				return nil, fmt.Errorf("invalid Content-Length header")
 			}
 			length = parsed
 		}
 	}
 	if length < 0 || length > MaxMessageBytes {
-		return nil, fmt.Errorf("messaggio LSP senza lunghezza valida")
+		return nil, fmt.Errorf("LSP message without a valid length")
 	}
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(reader, payload); err != nil {

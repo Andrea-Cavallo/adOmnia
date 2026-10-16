@@ -36,7 +36,7 @@ func TestAtomicWriteGivesUpWithClearMessage(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	if want := "bloccato da un altro programma"; !strings.Contains(err.Error(), want) {
+	if want := "locked by another program"; !strings.Contains(err.Error(), want) {
 		t.Errorf("error %q should mention %q", err, want)
 	}
 }

@@ -112,7 +112,7 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 		return DependencyGraphReport{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return DependencyGraphReport{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return DependencyGraphReport{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {
@@ -120,12 +120,12 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 	}
 	modulePath := golang.ReadModulePath(filepath.Join(directory, "go.mod"))
 	if modulePath == "" {
-		return DependencyGraphReport{}, fmt.Errorf("go.mod non valido: direttiva module assente")
+		return DependencyGraphReport{}, fmt.Errorf("invalid go.mod: module directive missing")
 	}
 
 	goBinary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return DependencyGraphReport{}, errors.New("go non disponibile: rileva o configura la toolchain prima di analizzare le dipendenze")
+		return DependencyGraphReport{}, errors.New("go unavailable: detect or configure the toolchain before analyzing dependencies")
 	}
 	// Cache per (sessione, directory, binario): senza modifiche ai file del
 	// modulo il grafo già calcolato viene riutilizzato.
@@ -135,24 +135,26 @@ func (s *Service) DependencyGraph(sessionID, moduleDirectory string) (Dependency
 		return report, nil
 	}
 
-	listOutput, err := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-m", "-json", "all")
-	if err != nil {
-		return DependencyGraphReport{}, err
-	}
-	graphOutput, err := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "mod", "graph")
-	if err != nil {
-		return DependencyGraphReport{}, err
-	}
-	// Best effort: l'uso effettivo dei pacchetti serve a distinguere dipendenze inutilizzate
-	// e a contare i pacchetti che ogni modulo porta nel build. Senza file .go non c'è nulla da contare.
-	depsOutput, _ := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-deps", "-f", "{{if not .Standard}}{{.Module.Path}}{{end}}", "./...")
+	return s.depFlights.Do(key, func() (DependencyGraphReport, error) {
+		listOutput, err := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-m", "-json", "all")
+		if err != nil {
+			return DependencyGraphReport{}, err
+		}
+		graphOutput, err := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "mod", "graph")
+		if err != nil {
+			return DependencyGraphReport{}, err
+		}
+		// Best effort: l'uso effettivo dei pacchetti serve a distinguere dipendenze inutilizzate
+		// e a contare i pacchetti che ogni modulo porta nel build. Senza file .go non c'è nulla da contare.
+		depsOutput, _ := s.runModuleCommand(session.ID, directory, dependencyGraphTimeout, "list", "-deps", "-f", "{{if not .Standard}}{{.Module.Path}}{{end}}", "./...")
 
-	report, err := buildDependencyGraph(modulePath, directory, listOutput, graphOutput, depsOutput)
-	if err != nil {
-		return DependencyGraphReport{}, err
-	}
-	s.depGraph.set(key, stamp, report)
-	return report, nil
+		report, err := buildDependencyGraph(modulePath, directory, listOutput, graphOutput, depsOutput)
+		if err != nil {
+			return DependencyGraphReport{}, err
+		}
+		s.workspace.whileOpen(session.ID, func() { s.depGraph.set(key, stamp, report) })
+		return report, nil
+	})
 }
 
 // DependencyUpdates legge le versioni più recenti disponibili per i moduli del grafo (richiede rete).
@@ -162,7 +164,7 @@ func (s *Service) DependencyUpdates(sessionID, moduleDirectory string) ([]Depend
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {
@@ -183,7 +185,7 @@ func (s *Service) DependencyVulnerabilities(sessionID, moduleDirectory string) (
 		return nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return nil, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return nil, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {
@@ -194,7 +196,7 @@ func (s *Service) DependencyVulnerabilities(sessionID, moduleDirectory string) (
 		return nil, err
 	}
 	if !tool.Available {
-		return nil, fmt.Errorf("govulncheck non installato: installalo da Go → Toolchains o con go install golang.org/x/vuln/cmd/govulncheck@latest")
+		return nil, fmt.Errorf("govulncheck is not installed: install it from Go → Toolchains or with go install golang.org/x/vuln/cmd/govulncheck@latest")
 	}
 	return runGovulncheck(directory, tool.Path)
 }
@@ -203,7 +205,7 @@ func (s *Service) DependencyVulnerabilities(sessionID, moduleDirectory string) (
 func (s *Service) runModuleCommand(sessionID SessionID, workingDirectory string, timeout time.Duration, arguments ...string) (string, error) {
 	binary, err := s.toolchain.GoBinary(sessionID)
 	if err != nil {
-		return "", errors.New("go non disponibile: rileva o configura la toolchain prima di analizzare le dipendenze")
+		return "", errors.New("go unavailable: detect or configure the toolchain before analyzing dependencies")
 	}
 	environment, err := s.toolchain.Environment(sessionID, nil)
 	if err != nil {
@@ -236,10 +238,10 @@ func (s *Service) runModuleCommand(sessionID SessionID, workingDirectory string,
 func buildDependencyGraph(modulePath, directory, listOutput, graphOutput, depsOutput string) (DependencyGraphReport, error) {
 	modules, err := parseModuleList(listOutput)
 	if err != nil {
-		return DependencyGraphReport{}, fmt.Errorf("go list -m -json non interpretabile: %w", err)
+		return DependencyGraphReport{}, fmt.Errorf("go list -m -json output could not be parsed: %w", err)
 	}
 	if len(modules) > maxDependencyNodes {
-		return DependencyGraphReport{}, fmt.Errorf("grafo delle dipendenze troppo grande: %d moduli", len(modules))
+		return DependencyGraphReport{}, fmt.Errorf("dependency graph too large: %d modules", len(modules))
 	}
 	edges, edgeLookup := parseModuleGraph(graphOutput)
 

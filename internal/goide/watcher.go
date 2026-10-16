@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"adomnia/internal/ide/project"
+
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -57,6 +59,7 @@ type WatchManager struct {
 
 type sessionWatch struct {
 	root     string
+	ignore   *project.GitIgnore
 	watcher  *fsnotify.Watcher
 	done     chan struct{}
 	stopped  chan struct{}
@@ -81,7 +84,7 @@ func (m *WatchManager) Watch(sessionID SessionID, root string) error {
 	if err != nil {
 		return err
 	}
-	state := &sessionWatch{root: root, watcher: watcher, done: make(chan struct{}), stopped: make(chan struct{}), pending: map[string]DiskChangeKind{}}
+	state := &sessionWatch{root: root, ignore: project.LoadGitIgnore(root), watcher: watcher, done: make(chan struct{}), stopped: make(chan struct{}), pending: map[string]DiskChangeKind{}}
 	state.addTree(root)
 	m.sessions[sessionID] = state
 	go m.run(sessionID, state)
@@ -122,13 +125,22 @@ func (m *WatchManager) Watching(sessionID SessionID) bool {
 	return ok
 }
 
+// gitIgnored applica il .gitignore della radice a un percorso assoluto sotto di essa.
+func gitIgnored(ignore *project.GitIgnore, root, path string, isDir bool) bool {
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return ignore.Ignored(filepath.ToSlash(relative), isDir)
+}
+
 // addTree aggiunge la cartella e le sottocartelle non ignorate, fino al limite.
 func (w *sessionWatch) addTree(root string) {
 	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil || !entry.IsDir() {
 			return nil
 		}
-		if path != w.root && isIgnoredDirectory(entry.Name()) {
+		if path != w.root && (isIgnoredDirectory(entry.Name()) || gitIgnored(w.ignore, w.root, path, true)) {
 			return filepath.SkipDir
 		}
 		if w.watched.Load() >= maxWatchedDirectories {
@@ -188,7 +200,7 @@ func (w *sessionWatch) record(event fsnotify.Event) {
 	switch {
 	case event.Has(fsnotify.Create):
 		kind = FileCreated
-		if info, err := os.Stat(event.Name); err == nil && info.IsDir() && !isIgnoredDirectory(info.Name()) {
+		if info, err := os.Stat(event.Name); err == nil && info.IsDir() && !isIgnoredDirectory(info.Name()) && !gitIgnored(w.ignore, w.root, event.Name, true) {
 			w.addTree(event.Name)
 		}
 	case event.Has(fsnotify.Remove), event.Has(fsnotify.Rename):

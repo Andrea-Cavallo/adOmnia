@@ -150,7 +150,7 @@ func parseGovulncheckStream(output []byte) (VulnReport, error) {
 		}
 		if err != nil {
 			if parsed == 0 {
-				return VulnReport{}, fmt.Errorf("output di govulncheck non riconosciuto: %w", err)
+				return VulnReport{}, fmt.Errorf("unrecognized govulncheck output: %w", err)
 			}
 			break // output troncato: si tiene quanto letto
 		}
@@ -435,7 +435,7 @@ func (s *Service) VulnerabilityScan(sessionID, moduleDirectory string) (VulnRepo
 		return VulnReport{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return VulnReport{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return VulnReport{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	directory, err := s.documents.resolveDirectory(session.Project, moduleDirectory)
 	if err != nil {
@@ -443,14 +443,14 @@ func (s *Service) VulnerabilityScan(sessionID, moduleDirectory string) (VulnRepo
 	}
 	modulePath := golang.ReadModulePath(filepath.Join(directory, "go.mod"))
 	if modulePath == "" {
-		return VulnReport{}, fmt.Errorf("go.mod non trovato o senza direttiva module in %s", directory)
+		return VulnReport{}, fmt.Errorf("go.mod not found or without a module directive in %s", directory)
 	}
 	tool, err := s.DetectGoTool(sessionID, "govulncheck")
 	if err != nil {
 		return VulnReport{}, err
 	}
 	if !tool.Available {
-		return VulnReport{}, fmt.Errorf("govulncheck non installato: installalo da Tools → Go Tools o con go install golang.org/x/vuln/cmd/govulncheck@latest")
+		return VulnReport{}, fmt.Errorf("govulncheck is not installed: install it from Tools → Go Tools or with go install golang.org/x/vuln/cmd/govulncheck@latest")
 	}
 	environment, envErr := s.toolchain.Environment(session.ID, nil)
 	if envErr != nil {

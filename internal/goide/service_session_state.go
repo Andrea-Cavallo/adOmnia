@@ -292,7 +292,7 @@ func (s *Service) RevealPath(sessionID, relativePath string) error {
 // ConfigureHistoryStore collega lo store persistente della local history.
 func (s *Service) ConfigureHistoryStore(store Store) error {
 	if store == nil {
-		return fmt.Errorf("store della local history non valido")
+		return fmt.Errorf("invalid local history store")
 	}
 	s.history = NewLocalHistory(store)
 	return nil

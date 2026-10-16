@@ -90,7 +90,7 @@ func TestStudioWorkspaceRulesProtectOpenProjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.DeleteStudioWorkspace(state.ActiveID); err == nil || !strings.Contains(err.Error(), "chiudi") {
+	if _, err := service.DeleteStudioWorkspace(state.ActiveID); err == nil || !strings.Contains(err.Error(), "close the projects") {
 		t.Fatalf("a workspace with open projects must not be deleted: %v", err)
 	}
 	if err := service.CloseSession(string(session.ID)); err != nil {

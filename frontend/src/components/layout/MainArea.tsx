@@ -47,7 +47,7 @@ import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, MarkdownPanel, MermaidPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, GitSyncPanel, McpPanel, GoStudioPanel } from './lazyPanels'
+import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, GoStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -1264,8 +1264,6 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'har':         return { component: <UtilsPanel initialTool="harviewer" />, titleKey: 'Power Tools', overflow: true }
     case 'observe':     return { component: <UtilsPanel initialTool="observability" />, titleKey: 'Power Tools', overflow: true }
     case 'dockerlab':   return { component: <UtilsPanel initialTool="dockerlab" />, titleKey: 'Power Tools', overflow: true }
-    case 'markdown':    return { component: <MarkdownPanel />,        titleKey: 'markdown',  overflow: true }
-    case 'mermaid':     return { component: <MermaidPanel />,         titleKey: 'mermaid',   overflow: true }
     case 'latex':       return { component: <LatexStudioPanel />,      titleKey: 'latex',     overflow: true }
     case 'pdfeditor':   return { component: <PdfEditorPanel />,        titleKey: 'pdfeditor', overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
@@ -1281,7 +1279,6 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'templates':   return { component: <SettingsPanel initialSection="templates" />, titleKey: 'settings', overflow: true }
     case 'plugins':     return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
-    case 'gitsync':     return { component: <GitSyncPanel />,         titleKey: 'Git Sync', overflow: true }
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
     case 'goide':       return { component: <GoStudioPanel />,        titleKey: 'goide', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }

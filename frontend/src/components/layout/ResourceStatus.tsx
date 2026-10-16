@@ -1,3 +1,5 @@
+import { currentActivityPhase } from '@/stores/activity'
+import { visibleInterval } from '@/lib/visiblePolling'
 import { useEffect, useState } from 'react'
 import { Activity } from 'lucide-react'
 import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
@@ -10,16 +12,15 @@ export function ResourceStatus() {
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     let disposed = false
-    let timer: ReturnType<typeof setTimeout>
     const poll = async () => {
-      if (document.visibilityState === 'visible') {
+      if (currentActivityPhase() === 'Active') {
         try { const { ResourceUsage } = await import('../../../bindings/adomnia/goide'); const next = await ResourceUsage(); if (!disposed) { setSample(next); setFailed(false) } }
         catch { if (!disposed) setFailed(true) }
       }
-      if (!disposed) timer = setTimeout(poll, 2000)
     }
     void poll()
-    return () => { disposed = true; clearTimeout(timer) }
+    const stop = visibleInterval(() => { void poll() }, 2000, { kind: "decorative" })
+    return () => { disposed = true; stop() }
   }, [])
   const cpuReady = sample?.processes.some(p => p.cpu != null)
   return <details className="relative">
@@ -29,7 +30,7 @@ export function ResourceStatus() {
     </summary>
     <div className="absolute bottom-full left-0 z-50 mb-2 w-[min(520px,90vw)] rounded-lg border border-border-2 bg-surface-1 p-3 text-text-2 shadow-xl">
       <h3 className="api-dot-label mb-2">{tr('Application resources')}</h3>
-      <p className="mb-2 text-text-4">{tr('Application and child processes. CPU is measured across all logical cores. Refreshed every 2 seconds.')}</p>
+      <p className="mb-2 text-text-4">{tr('Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.')}</p>
       {failed && <p className="text-warning">{tr('Resources unavailable')}</p>}
       <div className="max-h-60 overflow-auto">
         {sample?.processes.map(p => <div key={p.pid} className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-border-1 py-1.5 font-mono tabular-nums">

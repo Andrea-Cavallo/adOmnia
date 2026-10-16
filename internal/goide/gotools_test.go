@@ -36,7 +36,7 @@ func TestGoToolsPreviewValidatesTargetsAndRunsForReal(t *testing.T) {
 			t.Fatalf("%s %q doveva essere rifiutato", tool, target)
 		}
 	}
-	if _, err := ide.StartGoTool(GoToolRequest{SessionID: session.ID, Tool: "vet"}); err == nil || !strings.Contains(err.Error(), "autorizza") {
+	if _, err := ide.StartGoTool(GoToolRequest{SessionID: session.ID, Tool: "vet"}); err == nil || !strings.Contains(err.Error(), "authorize") {
 		t.Fatalf("senza autorizzazione nessun comando: %v", err)
 	}
 	if _, err := ide.SetToolAuthorization(string(session.ID), true); err != nil {

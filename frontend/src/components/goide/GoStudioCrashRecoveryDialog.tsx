@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, FileClock, LifeBuoy, Play, RotateCcw } from 'lucide-react'
 import { acknowledgeGoIDECrash, dismissGoIDEInterruptedProcess, getGoIDECrashStatus, listGoIDEInterruptedProcesses, type GoIDECrashStatus, type GoIDEProcessDescriptor } from '@/lib/goide-api'
@@ -31,7 +32,7 @@ export function GoStudioCrashRecoveryDialog({ sessionId }: { sessionId: string }
 
   useEffect(() => {
     void getGoIDECrashStatus().then(setCrash).catch(() => setCrash(null))
-    void listGoIDEInterruptedProcesses().then((list) => setProcesses(list.filter((item) => item.sessionId === sessionId))).catch(() => undefined)
+    void listGoIDEInterruptedProcesses().then((list) => setProcesses(list.filter((item) => item.sessionId === sessionId))).catch(logBackgroundError('interrupted process list'))
   }, [sessionId])
 
   // Restart policy "always": l'utente l'ha scelta per quella configurazione, si rilancia da sola (se il progetto è fidato).

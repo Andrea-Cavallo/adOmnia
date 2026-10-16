@@ -27,6 +27,7 @@ type initializeResult struct {
 }
 
 type serverCapabilities struct {
+	TextDocumentSync       json.RawMessage `json:"textDocumentSync"`
 	SemanticTokensProvider *struct {
 		Legend struct {
 			TokenTypes     []string `json:"tokenTypes"`
@@ -37,6 +38,23 @@ type serverCapabilities struct {
 	InlayHintProvider         json.RawMessage `json:"inlayHintProvider"`
 	DocumentHighlightProvider json.RawMessage `json:"documentHighlightProvider"`
 	CallHierarchyProvider     json.RawMessage `json:"callHierarchyProvider"`
+}
+
+func (c serverCapabilities) syncKind() int {
+	if len(c.TextDocumentSync) == 0 {
+		return 1
+	} // legacy servers/fixtures
+	var kind int
+	if json.Unmarshal(c.TextDocumentSync, &kind) == nil {
+		return kind
+	}
+	var options struct {
+		Change int `json:"change"`
+	}
+	if json.Unmarshal(c.TextDocumentSync, &options) == nil {
+		return options.Change
+	}
+	return 1
 }
 
 // providerEnabled interpreta un provider LSP che può essere booleano o un oggetto di opzioni.
@@ -75,7 +93,7 @@ func (m *LSPManager) SemanticTokens(ctx context.Context, sessionID SessionID, do
 	var tokens *struct {
 		Data []uint32 `json:"data"`
 	}
-	if err := process.conn.Call(ctx, "textDocument/semanticTokens/full", documentParams(document), &tokens); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/semanticTokens/full", documentParams(document), &tokens); err != nil {
 		return SemanticTokensResult{}, err
 	}
 	result := SemanticTokensResult{Version: document.version, Data: []uint32{}}
@@ -105,7 +123,7 @@ func (m *LSPManager) InlayHints(ctx context.Context, sessionID SessionID, docume
 		PaddingLeft  bool            `json:"paddingLeft"`
 		PaddingRight bool            `json:"paddingRight"`
 	}
-	if err := process.conn.Call(ctx, "textDocument/inlayHint", params, &hints); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/inlayHint", params, &hints); err != nil {
 		return InlayHintsResult{}, err
 	}
 	result := InlayHintsResult{Version: document.version, Hints: make([]InlayHintEntry, 0, len(hints))}
@@ -146,7 +164,7 @@ func (m *LSPManager) DocumentHighlights(ctx context.Context, sessionID SessionID
 		Range lsp.Range `json:"range"`
 		Kind  int       `json:"kind"`
 	}
-	if err := process.conn.Call(ctx, "textDocument/documentHighlight", positionParams(document, line, column), &highlights); err != nil {
+	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/documentHighlight", positionParams(document, line, column), &highlights); err != nil {
 		return HighlightsResult{}, err
 	}
 	result := HighlightsResult{Version: document.version, Highlights: make([]HighlightEntry, 0, len(highlights))}
@@ -255,7 +273,7 @@ func recursiveCallsOf(ctx context.Context, process *serverProcess, document trac
 // validateEditorRange rifiuta intervalli invertiti prima di inoltrarli a gopls.
 func validateEditorRange(value EditorRange) error {
 	if value.StartLine < 1 || value.EndLine < value.StartLine {
-		return fmt.Errorf("intervallo non valido")
+		return fmt.Errorf("invalid range")
 	}
 	return nil
 }

@@ -53,6 +53,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if args[0] == "stress" {
 		return Stress(args[1:], stdout, stderr)
 	}
+	if args[0] == "mcp" {
+		return MCP(args, os.Stdin, stdout, stderr)
+	}
 	if args[0] != "run" {
 		return 0
 	}
@@ -79,27 +82,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
 		return 2
 	}
-	vars, err := loadDotEnvVars(folder)
+	vars, variableSources, err := loadRunVars(folder, *envName, envVars)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
 		return 2
-	}
-	variableSources := make(map[string]string, len(vars))
-	for key := range vars {
-		variableSources[key] = ".env"
-	}
-	environmentVars, err := loadEnvironmentVars(folder, *envName)
-	if err != nil {
-		fmt.Fprintf(stderr, "adomnia run: %v\n", err)
-		return 2
-	}
-	for key, value := range environmentVars {
-		vars[key] = value
-		variableSources[key] = "environment:" + *envName
-	}
-	for key, value := range envVars {
-		vars[key] = value
-		variableSources[key] = "cli"
 	}
 	summary := executeCollection(collection, *bail, vars, variableSources, *folderFilter)
 	rendered, err := renderSummary(summary, *reporter)
@@ -119,6 +105,31 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// loadRunVars layers .env, the named environment and explicit overrides, remembering where each came from.
+func loadRunVars(folder, envName string, overrides map[string]string) (map[string]string, map[string]string, error) {
+	vars, err := loadDotEnvVars(folder)
+	if err != nil {
+		return nil, nil, err
+	}
+	sources := make(map[string]string, len(vars))
+	for key := range vars {
+		sources[key] = ".env"
+	}
+	environmentVars, err := loadEnvironmentVars(folder, envName)
+	if err != nil {
+		return nil, nil, err
+	}
+	for key, value := range environmentVars {
+		vars[key] = value
+		sources[key] = "environment:" + envName
+	}
+	for key, value := range overrides {
+		vars[key] = value
+		sources[key] = "cli"
+	}
+	return vars, sources, nil
 }
 
 func loadDotEnvVars(root string) (map[string]string, error) {

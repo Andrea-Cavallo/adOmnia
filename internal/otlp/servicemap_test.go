@@ -4,8 +4,10 @@ import (
 	"context"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestServiceMapFromTraces(t *testing.T) {
@@ -124,11 +126,15 @@ func TestAnnotateConnectionsWithRealSockets(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	accepted := make(chan net.Conn, 2)
 	go func() {
-		for {
-			if _, err := db.Accept(); err != nil {
+		defer close(accepted)
+		for range 2 {
+			connection, err := db.Accept()
+			if err != nil {
 				return
 			}
+			accepted <- connection
 		}
 	}()
 	for i := 0; i < 2; i++ {
@@ -138,13 +144,32 @@ func TestAnnotateConnectionsWithRealSockets(t *testing.T) {
 		}
 		defer c.Close()
 	}
+	// Keep both server ends alive: discarding Accept's result allowed the GC
+	// finalizer to close sockets before liveSockets took its snapshot.
+	for range 2 {
+		select {
+		case connection, ok := <-accepted:
+			if !ok {
+				t.Fatal("accept failed before both connections were established")
+			}
+			defer connection.Close()
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out accepting test connections")
+		}
+	}
 	serverPort, dbPort := strconv.Itoa(server.Addr().(*net.TCPAddr).Port), strconv.Itoa(db.Addr().(*net.TCPAddr).Port)
+	runtime.GC() // accepted connections must remain live even across collection
 	store := NewStore(10)
 	store.Add([]Span{
 		{TraceID: "t", SpanID: "s", Service: "orders", Kind: "server", Category: "http", Attributes: map[string]string{"server.port": serverPort}},
 		{TraceID: "t", SpanID: "q", ParentSpanID: "s", Service: "orders", Kind: "client", Category: "db", Attributes: map[string]string{"db.system": "postgresql", "server.port": dbPort}},
 	})
 	m := store.ServiceMap()
+	// Every fixture opens new ephemeral ports. A previous test's cached socket
+	// snapshot (5 s TTL) cannot describe them, especially under -count.
+	sockets.Lock()
+	sockets.at = time.Time{}
+	sockets.Unlock()
 	conns, listeners, ok := liveSockets(context.Background())
 	if !ok {
 		t.Skip("no socket listing tool")

@@ -10,12 +10,24 @@ import (
 
 // Milk espone a React l'integrazione milk di Go Studio. La logica vive in internal/milk.
 type Milk struct {
-	manager *milk.Manager
+	manager    *milk.Manager
+	mcpServers *milk.MCPServerStore
 }
 
 // NewMilk crea il servizio; il processo `milk serve --acp` parte solo con ServiceStartup.
 func NewMilk() *Milk {
-	return &Milk{manager: milk.NewManager(milk.NewSettingsStore(dataDir()))}
+	store := milk.NewMCPServerStore(dataDir())
+	manager := milk.NewManager(milk.NewSettingsStore(dataDir()))
+	manager.SetMCPServers(store.Load)
+	return &Milk{manager: manager, mcpServers: store}
+}
+
+// MCPServers restituisce i context server passati a ogni agente ACP.
+func (m *Milk) MCPServers() []milk.MCPServer { return m.mcpServers.Load() }
+
+// SaveMCPServers valida e salva i context server condivisi (valgono dalla prossima sessione).
+func (m *Milk) SaveMCPServers(servers []milk.MCPServer) ([]milk.MCPServer, error) {
+	return m.mcpServers.Save(servers)
 }
 
 func (m *Milk) attachDesktop(desktop *application.App) {

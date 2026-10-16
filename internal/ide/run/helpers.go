@@ -58,11 +58,11 @@ func trimArguments(values []string) []string {
 func validateRunTarget(root, workingDirectory, target string) error {
 	trimmed := strings.TrimSpace(target)
 	if trimmed == "" || strings.HasPrefix(trimmed, "-") || strings.ContainsRune(trimmed, '\x00') {
-		return fmt.Errorf("target non valido")
+		return fmt.Errorf("invalid target")
 	}
 	converted := filepath.FromSlash(trimmed)
 	if filepath.IsAbs(converted) || filepath.VolumeName(converted) != "" {
-		return fmt.Errorf("il target deve restare relativo al progetto")
+		return fmt.Errorf("the target must stay relative to the project")
 	}
 	candidate := filepath.Clean(filepath.Join(workingDirectory, converted))
 	if err := ensureWithinRoot(root, candidate); err != nil {

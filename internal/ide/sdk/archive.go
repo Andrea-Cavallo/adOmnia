@@ -35,7 +35,7 @@ func Download(ctx context.Context, client *http.Client, label, url, destination,
 		return fmt.Errorf("download %s: risposta HTTP %d", label, response.StatusCode)
 	}
 	if response.ContentLength > maxBytes {
-		return fmt.Errorf("archivio %s oltre il limite consentito", label)
+		return fmt.Errorf("archive %s exceeds the allowed limit", label)
 	}
 	file, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -52,10 +52,10 @@ func Download(ctx context.Context, client *http.Client, label, url, destination,
 		return closeErr
 	}
 	if written > maxBytes {
-		return fmt.Errorf("archivio %s oltre il limite consentito", label)
+		return fmt.Errorf("archive %s exceeds the allowed limit", label)
 	}
 	if !strings.EqualFold(hex.EncodeToString(hash.Sum(nil)), expectedSHA256) {
-		return fmt.Errorf("checksum SHA-256 non valido")
+		return fmt.Errorf("invalid SHA-256 checksum")
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func ExtractArchive(ctx context.Context, label, archivePath, destination string,
 	case strings.HasSuffix(lower, ".tar.gz"):
 		return extractTarGzip(ctx, label, archivePath, destination, maxBytes)
 	}
-	return fmt.Errorf("formato archivio %s non supportato", label)
+	return fmt.Errorf("unsupported archive format %s", label)
 }
 
 func extractZip(ctx context.Context, label, archivePath, destination string, maxBytes int64) error {
@@ -106,14 +106,14 @@ func extractZip(ctx context.Context, label, archivePath, destination string, max
 		}
 		expanded += entry.UncompressedSize64
 		if expanded > uint64(maxBytes) {
-			return fmt.Errorf("archivio %s espanso oltre il limite consentito", label)
+			return fmt.Errorf("archive %s expands beyond the allowed limit", label)
 		}
 		target := filepath.Join(destination, filepath.FromSlash(entry.Name))
 		if err := project.EnsureWithin(destination, target); err != nil {
-			return fmt.Errorf("archivio %s non sicuro: %w", label, err)
+			return fmt.Errorf("archive %s is unsafe: %w", label, err)
 		}
 		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("archivio %s contiene un symlink non consentito", label)
+			return fmt.Errorf("archive %s contains a forbidden symlink", label)
 		}
 		if entry.FileInfo().IsDir() {
 			if err := os.MkdirAll(target, 0o755); err != nil {
@@ -167,10 +167,10 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 		}
 		target := filepath.Join(destination, filepath.FromSlash(header.Name))
 		if err := project.EnsureWithin(destination, target); err != nil {
-			return fmt.Errorf("archivio %s non sicuro: %w", label, err)
+			return fmt.Errorf("archive %s is unsafe: %w", label, err)
 		}
 		if header.Size < 0 || expanded+header.Size > maxBytes {
-			return fmt.Errorf("archivio %s espanso oltre il limite consentito", label)
+			return fmt.Errorf("archive %s expands beyond the allowed limit", label)
 		}
 		expanded += header.Size
 		switch header.Typeflag {
@@ -191,7 +191,7 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 				return err
 			}
 		default:
-			return fmt.Errorf("archivio %s contiene un elemento non consentito", label)
+			return fmt.Errorf("archive %s contains a forbidden entry", label)
 		}
 	}
 }

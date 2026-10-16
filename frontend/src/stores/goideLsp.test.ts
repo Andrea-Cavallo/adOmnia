@@ -8,7 +8,7 @@ vi.mock('@/lib/goide-lsp-api', () => ({
 }))
 
 import { diagnosticCounts, isGoplsInstall, useGoIDELspStore } from './goideLsp'
-import { restartLanguageServer } from '@/lib/goide-lsp-api'
+import { restartLanguageServer, startLanguageServer } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from './goide'
 
 const report = (uri: string, severity: number) => ({
@@ -62,7 +62,7 @@ describe('Go Studio language server store', () => {
     try {
       await useGoIDELspStore.getState().refreshAfterToolchainChange('a')
       expect(detect).toHaveBeenCalledWith('a')
-      expect(restart).toHaveBeenCalledWith('a')
+      expect(restart).toHaveBeenCalledWith('a', false)
     } finally {
       useGoIDEStore.setState({ sessions: originalSessions })
       useGoIDELspStore.setState({ detectGopls: originalLsp.detectGopls, restart: originalLsp.restart })
@@ -83,6 +83,16 @@ describe('Go Studio language server store', () => {
     const { diagnostics } = useGoIDELspStore.getState()
     expect(diagnosticCounts(diagnostics.a)).toEqual({ errors: 0, warnings: 0 })
     expect(diagnosticCounts(diagnostics.b)).toEqual({ errors: 0, warnings: 1 })
+  })
+
+  it('keeps the same state when the server republishes identical diagnostics', () => {
+    const { handleEvent } = useGoIDELspStore.getState()
+    handleEvent(event('a', 'lsp.diagnostics', report('file:///a/main.go', 1)))
+    const before = useGoIDELspStore.getState().diagnostics
+    handleEvent(event('a', 'lsp.diagnostics', { ...report('file:///a/main.go', 1), version: 9 }))
+    expect(useGoIDELspStore.getState().diagnostics).toBe(before)
+    handleEvent(event('a', 'lsp.diagnostics', report('file:///a/main.go', 2)))
+    expect(useGoIDELspStore.getState().diagnostics).not.toBe(before)
   })
 
   it('clears diagnostics and progress when gopls stops or crashes', () => {
@@ -114,4 +124,13 @@ describe('exclusive IDE tool navigation', () => {
       useStudioTools.setState({ views: {} })
     }
   })
+})
+
+it('protects explicit server starts but not automatic ensure starts', async () => {
+  vi.mocked(startLanguageServer).mockResolvedValue({ sessionId: 'idle', state: 'ready', pid: 1 } as never)
+  vi.mocked(startLanguageServer).mockClear()
+  await useGoIDELspStore.getState().start('idle', false)
+  expect(startLanguageServer).toHaveBeenLastCalledWith("idle", expect.anything(), false)
+  await useGoIDELspStore.getState().start('idle')
+  expect(startLanguageServer).toHaveBeenLastCalledWith("idle", expect.anything(), true)
 })

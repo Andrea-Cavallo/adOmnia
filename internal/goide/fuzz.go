@@ -170,18 +170,18 @@ func (s *Service) fuzzInputPath(sessionID, packageDir, target, source, name stri
 		return "", err
 	}
 	if write && session.Project.Authorization != AuthorizationPermitted {
-		return "", fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return "", fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	if !golang.ValidFuzzTargetName(target) {
-		return "", fmt.Errorf("target fuzz non valido: %q", target)
+		return "", fmt.Errorf("invalid fuzz target: %q", target)
 	}
 	if name == "" || name != filepath.Base(name) || strings.ContainsAny(name, `/\:`) || name == "." || name == ".." {
-		return "", fmt.Errorf("nome dell'input non valido: %q", name)
+		return "", fmt.Errorf("invalid input name: %q", name)
 	}
 	root := session.Project.RealPath
 	directory := filepath.Clean(filepath.Join(root, filepath.FromSlash(packageDir)))
 	if err := ensureWithinRoot(root, directory); err != nil {
-		return "", fmt.Errorf("package fuori dal progetto: %w", err)
+		return "", fmt.Errorf("package outside the project: %w", err)
 	}
 	switch source {
 	case fuzzSourceTestdata:
@@ -189,11 +189,11 @@ func (s *Service) fuzzInputPath(sessionID, packageDir, target, source, name stri
 	case fuzzSourceCache:
 		dir := golang.FuzzCacheDir(golang.GoBuildCache(nil), packageImportPath(root, directory), target)
 		if dir == "" {
-			return "", fmt.Errorf("cache del fuzzing non disponibile per questo package")
+			return "", fmt.Errorf("fuzzing cache not available for this package")
 		}
 		return filepath.Join(dir, name), nil
 	}
-	return "", fmt.Errorf("sorgente del corpus non valida: %q", source)
+	return "", fmt.Errorf("invalid corpus source: %q", source)
 }
 
 func listFuzzInputs(directory, source string) ([]FuzzInput, int) {
@@ -260,10 +260,10 @@ func fileDigest(path string) (string, error) {
 func readLimited(path string, limit int64) ([]byte, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("input non trovato: %s", filepath.Base(path))
+		return nil, fmt.Errorf("input not found: %s", filepath.Base(path))
 	}
 	if info.IsDir() || info.Size() > limit {
-		return nil, fmt.Errorf("input non valido o troppo grande (max %d KB)", limit>>10)
+		return nil, fmt.Errorf("input invalid or too large (max %d KB)", limit>>10)
 	}
 	return os.ReadFile(path)
 }

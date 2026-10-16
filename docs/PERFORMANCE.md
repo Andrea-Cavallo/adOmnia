@@ -97,8 +97,9 @@ API workspace has not mounted. It indicates controls readiness; it does not
 prove an actual user action completed or a lazy body editor is fully loaded.
 For acceptance, record cold/warm native samples with a populated workspace,
 edit the restored URL, and switch away and back. Native samples remain pending;
-the current integration build is blocked by concurrent Database Studio and
-Go Studio architecture TypeScript changes.
+those concurrent TypeScript changes were resolved at the following checkpoint,
+where frontend build, TypeScript, startup guard and Go build passed. Native
+interaction samples remain pending.
 
 Startup backup keeps schema 1.0 and the existing setting, but writes the
 snapshot to backend storage bucket `workspace`, key `backup`. The previous
@@ -111,3 +112,238 @@ comparison. The initial Node 22.14.0 sample on a 1 MB body was 1.3493 ms median
 for JSON round-trip versus 0.1963 ms for structuredClone (20 warmups, 100 samples).
 This is not a native launch benchmark. History tests verify nested snapshot
 isolation on capture and reopen.
+
+## Lifecycle hardening: 2026-10-15
+
+Closing an IDE session now releases dependency/workspace graph caches and graph
+builder locks; late results cannot repopulate a closed session. Deferred Monaco
+cleanup rechecks current ownership to preserve immediately reopened documents.
+The registry test uses simulated Monaco models; native WebView model counts
+and terminal/debug/database/broker/secondary-window cycles remain pending.
+
+Registered Windows managed children use a non-inheritable Job Object with
+kill-on-close, supplementing the existing registry sweep. A real subprocess
+owner-crash test covers OS cleanup; 12 measured child/job cycles after warmup
+kept handles at 112. Assignment is best effort and occurs after process start:
+existing descendants or rejected assignment still need tree termination/sweep.
+Independent GUI/updater processes and unregistered terminals are not enrolled.
+See [Microsoft Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
+
+## Repeatable local reports
+
+From the repository root:
+
+```powershell
+node scripts/benchmark-performance.mjs
+node scripts/benchmark-performance.mjs --baseline .artifacts/performance/phase-c16-initial/report.json
+node --test scripts/performance-report.test.mjs
+```
+
+Optional `--out DIRECTORY` chooses the output directory; `--conditions TEXT`
+records the declared measurement conditions. Use the same conditions string
+when comparing. The runner records hardware, toolchain, commit and tracked
+working-tree state. It runs sequentially to avoid its own benchmarks competing
+for CPU. It does not control other programs or certify an idle system.
+
+Each local report contains JSON schema v1 (`kind: developer-microbenchmark`),
+raw lifecycle/Go/Vitest output, frontend latency statistics, production startup
+graph and a self-contained HTML dashboard. Report directories are ignored by
+Git. Go metrics retain all three samples; frontend rows use the p50 of their
+measured iteration distribution, with full distributions' summary statistics
+in the accompanying JSON. No application data, credentials or telemetry is sent.
+
+Comparisons require matching CPU, logical CPU count, OS/architecture, Go/Node
+versions, protocol and declared conditions, and compare only the same metric
+and unit. Incompatible comparisons show pending rather than a percentage.
+Deltas are descriptive, with no statistical significance claim or CI threshold.
+A failed command leaves `failure.txt` and exits nonzero.
+
+The backend fixtures cover project open, file open and search at 10/100/1000
+files, source fingerprint at 10/1000 files, and dependency graph cold/cache-hit.
+Frontend fixtures exercise benchmark comparison and persistence splitting of
+25 tabs with 250 kB responses. These CPU microbenchmarks do not measure React
+commit/input latency, WebView startup, or a complete user workflow.
+
+Initial environment: Windows amd64, i7-14700KF (28 logical CPUs),
+68,539,883,520 bytes RAM, Go 1.26.5, Node 22.14.0. The workstation had uncontrolled
+background activity. Dependency graph medians were 146.8192 ms cold and
+2.149756 ms for cache-hit. This supports retaining the Go cache path; it does
+not justify adding Rust or establish a native before/after speedup.
+
+## Native scenario baseline protocol
+
+The scenario suite below produces the controlled release baseline that the
+proposed budgets require. Two opt-in, local-only tools cover the capture; both
+are inert unless explicitly enabled.
+
+**Recording (Go, `internal/perf`).** Launch the built app (or `wails3 task dev`)
+with the scenario environment set:
+
+```powershell
+$env:ADOMNIA_PERF_SCENARIO = 'typing-continuous'   # enables recording
+$env:ADOMNIA_PERF_INTERVAL = '1s'                  # optional, default 1s
+$env:ADOMNIA_PERF_DURATION = '10m'                 # optional auto-stop (0 = until shutdown)
+```
+
+Each sample is one JSONL line in `<dataDir>/perf/<scenario>-<timestamp>.jsonl`
+(0600, local only) with Go runtime counters (goroutines, heap, GC pauses) and
+the complete process tree — the WebView2 processes, gopls, debug adapters and
+any child tool — with per-process RAM and CPU. `ADOMNIA_PPROF=1` additionally
+exposes `net/http/pprof` on `127.0.0.1:6069` (any other value is a loopback
+address; non-loopback is refused) for heap/goroutine/CPU profiles of the Go
+backend itself.
+
+While a recording is active, the renderer also measures keypress-to-paint input
+latency (double `requestAnimationFrame`) and merges p50/p95/max per window into
+the same samples through `main.App.PerfPushFrontendMetrics`. Without a recording
+the module stays inert and adds no timers or listeners.
+
+**Aggregation.** From the repository root:
+
+```powershell
+node scripts/perf-scenario-report.mjs <perf-dir> --out baseline-report.json
+node --test scripts/perf-scenario-report.test.mjs
+```
+
+The report (`kind: native-scenario-baseline`) groups every sample by component —
+`backend-go`, `webview2`, `gopls`, `debug-adapter`, `other-children` — with
+RAM/CPU average, max and median per component, observed process counts, runtime
+aggregates and the input-latency window, plus a Markdown table for this file.
+Comparisons require the same hardware/conditions as the microbenchmark runner.
+
+**Scenario suite.** One recording per row; record cold and warm samples
+separately and state dataset sizes in `--conditions`.
+
+| Scenario id | Procedure | Duration | Primary metrics |
+| --- | --- | --- | --- |
+| `cold-start` / `warm-start` | Launch the release build (cold: reboot or cleared caches; warm: relaunch) with an empty Hub | until interactive | backend-go RAM/CPU, webview2 count, startup marks |
+| `hub-empty` | Leave the Hub open with no workspace | 5 min | idle CPU per component |
+| `gostudio-small` / `gostudio-large` | Open a small / large Go project in Go Studio, let gopls settle | 5 min each | gopls RAM/CPU, backend-go heap |
+| `workspaces-3-5` | Keep 3–5 workspaces open across tabs/windows | 10 min | per-component RAM growth |
+| `typing-continuous` | Type continuously in a large file with completion and diagnostics on | 10 min | input p95, gopls CPU, heap |
+| `large-files-json` | Open very large files / complex JSON payloads, scroll and edit | 10 min | heap max, webview2 RAM |
+| `rapid-tabs` | Switch rapidly between modules/tabs and panels | 5 min | CPU spikes, input p95 |
+| `open-close-10x` | Ten open/close cycles of the same project | one run | no resource growth (RAM/goroutine first vs last) |
+| `idle-5m` / `idle-15m` / `idle-30m` | Leave the app idle in the foreground, then hidden | one run each | CPU near zero, zero child processes left |
+
+Frame drops and full input-to-render traces need the plan's profiling tools on
+top of the recording: React Profiler and Chrome/WebView2 DevTools Performance
+for the renderer, `pprof`/runtime trace for the Go backend, Windows Performance
+Counters for OS-level CPU. Record their findings (P50/P95, sample counts)
+alongside `baseline-report.json`; never mark a missing measurement as zero.
+
+**Status (2026-10-15).** Recording, classification and reporting are implemented
+and covered by unit tests (`internal/perf`, `scripts/perf-scenario-report.test.mjs`,
+`frontend/src/lib/inputLatency.test.ts`), including a real child-process
+recording. The native numbers themselves are collected by running the suite
+above on the target machine; until then the per-component table stays empty and
+the proposed budgets remain unvalidated.
+
+## Proposed native budgets — awaiting controlled release baseline
+
+| Indicator | Proposed target | Validation status |
+| --- | --- | --- |
+| Total idle CPU | Below 2% on the declared test machine | Pending |
+| Idle RAM | Reduce 20% where measured waste exists | Pending; no absolute workspace cap |
+| Startup | Lower P95 without restore/navigation regressions | Pending native cold/warm runs |
+| Typing | P95 input-to-render below 50 ms | Pending React/WebView capture |
+| File open | Lower P95 vs baseline | Backend fixture available; native pending |
+| Open/close cycles | No persistent resource growth | Dedicated tests pass; native workflows pending |
+| Children | No orphan after close | Job owner-crash test passes; full lifecycle pending |
+| Functional regressions | Zero in covered workflows | Focused checks pass; native acceptance pending |
+
+For the release baseline, record the build/commit, dirty state, hardware, OS,
+power mode, tool versions and dataset sizes. Separate empty Hub, populated API
+workspace, small/large IDE projects and 3–5 workspaces. Keep cold and warm
+samples separate; collect per-process CPU/private RAM for the Go host, WebView,
+gopls and children. Cover typing/completion/diagnostics, large files, rapid tab
+switching, ten lifecycle cycles, and idle at 5/15/30 minutes. Report sample
+count and P50/P95; do not mark missing measurements as zero or validate targets
+from development microbenchmarks. Only stable startup size is a timing-related
+CI budget; resource correctness tests remain ordinary functional checks.
+
+## LSP incremental updates and process sharing
+
+The backend negotiates `textDocumentSync` and sends a contiguous UTF-16 edit
+for incremental servers, preserving Unicode and CRLF boundaries. The renderer
+binding still sends a complete buffer to the backend; this change reduces
+backend-to-server payloads, not the separate Monaco/store hot path. Replaceable
+read requests are superseded by connection, URI and method; buffer changes and
+closure cancel these reads through the existing `$/cancelRequest` transport.
+Explicit rename, formatting and execution requests are excluded.
+
+The 2026-10-15 evaluation retains one connection/process per language/session.
+Two sessions may have different unsaved contents for the same URI. Root-path
+deduplication with a refcount would merge overlays, diagnostics and settings.
+The [official gopls daemon design](https://go.dev/gopls/daemon) instead keeps
+separate client sessions/views while sharing a cache. Adopting it here requires
+central daemon ownership (not a child owned by the first session's Windows Job
+Object), SDK/environment/configuration compatibility, explicit-start protection,
+last-consumer teardown and crash recovery tests. It is not enabled by default.
+Measure multi-session memory/CPU savings before adding this lifecycle.
+
+An opt-in test uses an already installed binary, without downloading tools:
+set `ADOMNIA_TEST_GOPLS` to its absolute path and run
+`go test -race ./internal/goide -run TestIncrementalWithInstalledGopls -count=1`.
+It validates delta/reverse delta, restart replay and independent overlays on
+the same workspace root. Desktop editing acceptance remains REF-2.M1 in
+`mds/MANUAL-CHECK.md`.
+
+## Central activity policy
+
+`internal/activity` owns the backend state and release allowlist; the small
+frontend activity store/tracker publishes transitions and visible workspace
+scopes from every renderer. Wails derives the reporter identity from the calling
+native window; closed windows are discarded against the native registry.
+No heartbeat, stored preference or workspace-format change is introduced.
+
+| State | Meaning |
+| --- | --- |
+| Active | Visible workspace with recent trusted input; any active native window wins |
+| Background | Workspace is not visible in a renderer, or its window is hidden |
+| Idle | Visible window with no trusted input for five minutes |
+| Suspended | All tracked automatic resources for that inactive scope were actually released |
+
+Suspended is backend resource state, not a claim the renderer can send. In split
+view both panes are visible even though only one owns keyboard shortcuts.
+Activity is distinct from ownership/focus, so the other visible pane is protected.
+A reopened editor resumes its suspended language server through the existing
+buffer replay path. Open/dirty editors and pending language-server requests
+continue to block suspension. Explicit LSP start/restart remains pinned until
+Stop/Close and survives automatic settings/toolchain restarts. Existing public
+binding signatures remain; additive automatic entry points serve editor work.
+
+The manager never cancels terminal, debug, request, recording, run, database,
+broker, WS/SSE or unknown resource kinds. Only automatic, restorable language
+servers are currently on the release allowlist. Existing module-specific timeouts
+and reapers are not accelerated or replaced by the global idle policy.
+
+The shared polling helper parks timers in Background/Suspended, slows ordinary
+Idle status to at least 15 seconds, and stops decorative clocks in Idle. Live
+status consumers for intentional work retain their cadence while visible; their
+backend operations are never stopped by visibility. Runtime Lens observes the
+same scopes and prevents overlapping resume polls. Secondary context analysis
+waits until its workspace becomes Active. The Hub clock and resource sampler
+pause in Idle and refresh on return; a game already playing retains intentional
+simulation while existing blur/visibility behavior is preserved.
+
+Tests exercise transitions, detached-window precedence, reporter cleanup,
+protected resource kinds and actual LSP helper processes. Fake-clock checks
+cover 30 minutes without decorative timer activity and 100 consecutive inputs
+without extra RPC/store notifications. These are scheduling/correctness checks,
+not native CPU measurements. A production Windows empty-Hub recording completed
+on 2026-10-15: 369 samples over 1,840 seconds; first observed Idle at 305 seconds;
+total CPU averaged 0.04% in the trailing minute at both 15 and 30 minutes.
+The five-minute trailing window was still Active; it is reported as such.
+Evidence, build hash and limitations are recorded in `mds/MANUAL-CHECK.md`,
+REF-11.M1. Populated API/IDE datasets and intentional workloads across hidden,
+split and detached windows still require acceptance, including interaction
+resume. Do not infer a CPU percentage from the absence of timer callbacks.
+
+Opt-in native scenario recordings include an `activity` snapshot (aggregate
+state and workspace scopes) alongside process CPU/RAM. The scenario report
+includes 5/15/30-minute checkpoints using the trailing minute at each elapsed
+time, retaining mixed states such as Active/Idle at the five-minute transition.
+Incomplete checkpoints are marked incomplete in JSON and omitted from the
+Markdown table. Recordings made before activity instrumentation show Unknown;
+low CPU alone never supplies an inferred idle state.

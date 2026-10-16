@@ -249,6 +249,29 @@ func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DB-2.11: il sidecar registra qui il controllo che rifiuta la decifrazione dei
+// riferimenti usati dalle credenziali database. Quelle si aprono solo in Go:
+// `/vault/decrypt` serve le env-var e il pannello Vault, non il database.
+var (
+	credentialRefMu    sync.RWMutex
+	credentialRefCheck func(string) bool
+)
+
+// SetCredentialRefGuard registra il controllo sui riferimenti che non devono mai
+// tornare al renderer in chiaro.
+func SetCredentialRefGuard(check func(string) bool) {
+	credentialRefMu.Lock()
+	credentialRefCheck = check
+	credentialRefMu.Unlock()
+}
+
+func blockedCredentialRef(ciphertext string) bool {
+	credentialRefMu.RLock()
+	check := credentialRefCheck
+	credentialRefMu.RUnlock()
+	return check != nil && check(ciphertext)
+}
+
 func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -266,6 +289,11 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.Ciphertext == "" {
 		http.Error(w, "ciphertext required", http.StatusBadRequest)
+		return
+	}
+
+	if blockedCredentialRef(req.Ciphertext) {
+		http.Error(w, "database credentials stay in Go: the database runner opens this reference, not the renderer", http.StatusForbidden)
 		return
 	}
 

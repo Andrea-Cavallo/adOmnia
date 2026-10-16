@@ -12,7 +12,7 @@ export const DEFAULT_HUB_LAYOUT: HubLayout = {
   todaySide: 'right',
 }
 /** Rails that make no sense as a Hub tile. */
-export const HUB_EXCLUDED = new Set<RailItem>(['welcome', 'settings', 'gitsync'])
+export const HUB_EXCLUDED = new Set<RailItem>(['welcome', 'settings'])
 
 export function parseHubLayout(raw: string | null): HubLayout {
   try {

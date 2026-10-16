@@ -3,6 +3,7 @@ package goide
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/activity"
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/lsp"
 	"adomnia/internal/procutil"
@@ -38,10 +40,11 @@ type LanguageServerOptions = lsp.ServerSpec
 type lspEmitter func(eventType string, sessionID SessionID, resourceID string, payload any)
 
 type serverProcess struct {
-	command *exec.Cmd
-	stdin   io.WriteCloser
-	conn    *lsp.Conn
-	exited  chan struct{}
+	syncKind int
+	command  *exec.Cmd
+	stdin    io.WriteCloser
+	conn     *lsp.Conn
+	exited   chan struct{}
 }
 
 type trackedDocument struct {
@@ -55,10 +58,13 @@ type trackedDocument struct {
 }
 
 type lspSession struct {
-	idleEpoch uint64
-	lifecycle sync.Mutex
-	idleTimer *time.Timer
-	suspended bool
+	// documentsMu orders didOpen/change/close without holding mu during pipe writes.
+	documentsMu   sync.Mutex
+	idleEpoch     uint64
+	lifecycle     sync.Mutex
+	idleTimer     *time.Timer
+	suspended     bool
+	userInitiated bool
 
 	mu       sync.Mutex
 	id       SessionID
@@ -85,8 +91,10 @@ type lspSession struct {
 	// Diagnostica in attesa di essere inviata alla UI: gopls ne pubblica a raffiche durante
 	// il type-check, si invia solo l'ultima per file dopo diagnosticsThrottle.
 	pendingDiagnostics map[string]DiagnosticsReport
-	diagnosticsTimer   *time.Timer
-	closed             bool
+	// Only non-empty normalized reports are retained; empty reports evict their URI.
+	diagnosticSignatures map[string][sha256.Size]byte
+	diagnosticsTimer     *time.Timer
+	closed               bool
 }
 
 // lspKey identifica un language server: uno per linguaggio in ogni sessione.
@@ -96,6 +104,7 @@ type lspKey struct {
 }
 
 type LSPManager struct {
+	activity  *activity.Manager
 	mu        sync.Mutex
 	sessions  map[lspKey]*lspSession
 	emit      lspEmitter
@@ -103,7 +112,7 @@ type LSPManager struct {
 }
 
 func NewLSPManager(languages *language.Registry) *LSPManager {
-	return &LSPManager{sessions: make(map[lspKey]*lspSession), languages: languages}
+	return &LSPManager{activity: activity.NewManager(), sessions: make(map[lspKey]*lspSession), languages: languages}
 }
 
 // SetEmitter collega gli eventi LSP al proprietario applicativo.
@@ -213,7 +222,7 @@ func (m *LSPManager) Log(sessionID SessionID, languageID string) []string {
 // tracciati per quel linguaggio vengono riaperti.
 func (m *LSPManager) Start(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
 	if options.Language == "" {
-		return LanguageServerStatus{}, fmt.Errorf("linguaggio del language server non indicato")
+		return LanguageServerStatus{}, fmt.Errorf("language server language not specified")
 	}
 	state := m.ensure(session, options.Language)
 	state.lifecycle.Lock()
@@ -224,6 +233,7 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	}
 	state.idleEpoch++
 	state.suspended = false
+	m.activity.Track(lspActivityID(state), "goide:"+string(session.ID))
 	if state.process != nil || state.launching {
 		status := state.status
 		state.mu.Unlock()
@@ -263,15 +273,15 @@ func (m *LSPManager) launch(state *lspSession) error {
 	configureProcess(command, false)
 	stdin, err := command.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stdin di %s: %w", name, err)
+		return fmt.Errorf("could not attach stdin of %s: %w", name, err)
 	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stdout di %s: %w", name, err)
+		return fmt.Errorf("could not attach stdout of %s: %w", name, err)
 	}
 	stderr, err := command.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("impossibile collegare stderr di %s: %w", name, err)
+		return fmt.Errorf("could not attach stderr of %s: %w", name, err)
 	}
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("avvio %s fallito: %w", name, err)
@@ -301,6 +311,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 		return fmt.Errorf("inizializzazione %s fallita: %w", name, err)
 	}
 	features := initialized.Capabilities.features()
+	process.syncKind = initialized.Capabilities.syncKind()
 	state.mu.Lock()
 	state.status.Features = &features
 	state.mu.Unlock()
@@ -309,20 +320,20 @@ func (m *LSPManager) launch(state *lspSession) error {
 		return err
 	}
 	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
-	state.mu.Lock()
-	state.synced = process
-	state.mu.Unlock()
 	m.reopenDocuments(state, process)
 	m.setState(state, LanguageServerReady, "")
 	return nil
 }
 
 func (m *LSPManager) reopenDocuments(state *lspSession, process *serverProcess) {
+	state.documentsMu.Lock()
+	defer state.documentsMu.Unlock()
 	state.mu.Lock()
 	documents := make([]trackedDocument, 0, len(state.documents))
 	for _, document := range state.documents {
 		documents = append(documents, *document)
 	}
+	state.synced = process
 	state.mu.Unlock()
 	for _, document := range documents {
 		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
@@ -419,6 +430,8 @@ func (m *LSPManager) stop(state *lspSession) {
 	defer state.lifecycle.Unlock()
 	state.mu.Lock()
 	state.suspended = false
+	state.userInitiated = false
+	m.activity.Forget(lspActivityID(state))
 	state.idleEpoch++
 	state.mu.Unlock()
 	m.stopLocked(state)
@@ -450,8 +463,17 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 
 // Restart arresta e riavvia il server di options.Language azzerando il contatore dei crash.
 func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
+	explicit := false
+	if state, ok := m.server(session.ID, options.Language); ok {
+		state.mu.Lock()
+		explicit = state.userInitiated
+		state.mu.Unlock()
+	}
 	m.Stop(session.ID, options.Language)
 	if state, ok := m.server(session.ID, options.Language); ok {
+		state.mu.Lock()
+		state.userInitiated = explicit
+		state.mu.Unlock()
 		state.mu.Lock()
 		state.crashes = nil
 		state.mu.Unlock()
@@ -522,6 +544,9 @@ func (m *LSPManager) isCurrent(state *lspSession, process *serverProcess) bool {
 
 func (m *LSPManager) setState(state *lspSession, value LanguageServerState, message string) {
 	state.mu.Lock()
+	if value == LanguageServerStopped || value == LanguageServerCrashed {
+		state.diagnosticSignatures = nil
+	}
 	state.status.State = value
 	state.status.Error = message
 	state.mu.Unlock()
@@ -718,13 +743,33 @@ func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDia
 	if state.closed {
 		return
 	}
-	if state.pendingDiagnostics == nil {
-		state.pendingDiagnostics = make(map[string]DiagnosticsReport)
-	}
-	state.pendingDiagnostics[report.URI] = DiagnosticsReport{
+	next := DiagnosticsReport{
 		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.byURI[report.URI],
 		Diagnostics: diagnostics,
 	}
+	previous, exists := state.diagnosticSignatures[report.URI]
+	if len(diagnostics) == 0 {
+		if !exists {
+			return
+		}
+		delete(state.diagnosticSignatures, report.URI)
+	} else {
+		// Compare the visible, capped report, not raw diagnostics: invisible fields
+		// still refresh above for code actions. Metadata is part of the identity.
+		encoded, _ := json.Marshal(next) // report contains only JSON-safe value types
+		signature := sha256.Sum256(encoded)
+		if exists && previous == signature {
+			return
+		}
+		if state.diagnosticSignatures == nil {
+			state.diagnosticSignatures = make(map[string][sha256.Size]byte)
+		}
+		state.diagnosticSignatures[report.URI] = signature
+	}
+	if state.pendingDiagnostics == nil {
+		state.pendingDiagnostics = make(map[string]DiagnosticsReport)
+	}
+	state.pendingDiagnostics[report.URI] = next
 	if state.diagnosticsTimer == nil {
 		state.diagnosticsTimer = time.AfterFunc(diagnosticsThrottle, func() { m.flushDiagnostics(state) })
 	}

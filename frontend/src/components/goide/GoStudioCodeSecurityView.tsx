@@ -88,7 +88,7 @@ export function GoStudioCodeSecurityView({ session, lead }: { session: GoIDESess
     <div className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header flex-wrap gap-2">
         {lead ?? <span className="go-studio-tool-title">Code security</span>}
-        <button type="button" onClick={() => void scan()} disabled={scanning} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
+        <button type="button" onClick={() => void scan()} disabled={scanning} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
           {scanning ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}{scanning ? 'Scanning…' : report ? 'Scan again' : 'Scan code'}
         </button>
         <span className="flex items-center gap-1 text-[11px] text-text-4" title="Reads the project files only: no network, no processes."><Info size={11} />Offline</span>

@@ -15,7 +15,7 @@ func NormalizeTaskIDs(self string, ids []string, when string) ([]string, error) 
 			continue
 		}
 		if self != "" && id == self {
-			return nil, fmt.Errorf("una configurazione non può eseguire se stessa %s dell'avvio", when)
+			return nil, fmt.Errorf("a configuration cannot run itself %s startup", when)
 		}
 		out = append(out, id)
 	}
@@ -27,7 +27,7 @@ func NormalizeTaskIDs(self string, ids []string, when string) ([]string, error) 
 func NormalizeParameters(config Configuration) (Configuration, error) {
 	config.EnvFile = strings.TrimSpace(config.EnvFile)
 	if config.Port < 0 || config.Port > 65535 {
-		return config, fmt.Errorf("porta non valida: %d", config.Port)
+		return config, fmt.Errorf("invalid port: %d", config.Port)
 	}
 	var err error
 	config.PreRun, err = NormalizeTaskIDs(config.ID, config.PreRun, "prima")

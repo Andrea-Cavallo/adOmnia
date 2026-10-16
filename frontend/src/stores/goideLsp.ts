@@ -151,9 +151,9 @@ interface GoIDELspState {
   requestTerminal: (workingDirectory: string) => void
   detectGopls: (sessionId: string) => Promise<GoIDEGoplsInfo | null>
   ensureStarted: (sessionId: string) => Promise<void>
-  start: (sessionId: string) => Promise<void>
+  start: (sessionId: string, userInitiated?: boolean) => Promise<void>
   stop: (sessionId: string) => Promise<void>
-  restart: (sessionId: string) => Promise<void>
+  restart: (sessionId: string, userInitiated?: boolean) => Promise<void>
   refreshAfterToolchainChange: (sessionId: string) => Promise<void>
   install: (sessionId: string) => Promise<GoIDEExecution | null>
   detectLinter: (sessionId: string) => Promise<GoIDELinterInfo | null>
@@ -221,6 +221,12 @@ function isTrusted(sessionId: string): boolean {
 const persisted = loadPersisted()
 let unsubscribe: (() => void) | null = null
 
+/** Due report della stessa risorsa con diagnostiche identiche (la versione del documento non conta). */
+export function sameDiagnostics(previous: GoIDEDiagnosticsReport | undefined, next: GoIDEDiagnosticsReport): boolean {
+  if (!previous) return next.diagnostics.length === 0
+  return previous.diagnostics.length === next.diagnostics.length && JSON.stringify(previous.diagnostics) === JSON.stringify(next.diagnostics)
+}
+
 export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
   settings: persisted.settings,
   preferences: persisted.preferences,
@@ -284,17 +290,17 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
       return
     }
     const info = get().gopls[sessionId] ?? await get().detectGopls(sessionId)
-    if (info?.available) await get().start(sessionId)
+    if (info?.available) await get().start(sessionId, false)
   },
 
-  start: async (sessionId) => {
+  start: async (sessionId, userInitiated = true) => {
     set((state) => ({
       userStopped: { ...state.userStopped, [sessionId]: false },
       message: null,
       activity: { ...state.activity, [sessionId]: { label: 'Starting gopls…', startedAt: Date.now(), forceReload: true } },
     }))
     try {
-      const status = await startLanguageServer(sessionId, get().settings)
+      const status = await startLanguageServer(sessionId, get().settings, userInitiated)
       set((state) => ({ status: { ...state.status, [sessionId]: status }, activity: { ...state.activity, [sessionId]: status.state === 'ready' ? null : state.activity[sessionId] } }))
     } catch (error) {
       const detail = errorMessage(error)
@@ -307,14 +313,14 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     try { await stopLanguageServer(sessionId) } catch (error) { set({ message: errorMessage(error) }) }
   },
 
-  restart: async (sessionId) => {
+  restart: async (sessionId, userInitiated = true) => {
     set((state) => ({
       userStopped: { ...state.userStopped, [sessionId]: false },
       message: null,
       activity: { ...state.activity, [sessionId]: { label: 'Restarting gopls…', startedAt: Date.now(), forceReload: true } },
     }))
     try {
-      const status = await restartLanguageServer(sessionId, get().settings)
+      const status = await restartLanguageServer(sessionId, get().settings, userInitiated)
       set((state) => ({ status: { ...state.status, [sessionId]: status }, activity: { ...state.activity, [sessionId]: status.state === 'ready' ? null : state.activity[sessionId] } }))
     } catch (error) {
       const detail = errorMessage(error)
@@ -326,8 +332,8 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     const info = await get().detectGopls(sessionId)
     if (!info?.available || !isTrusted(sessionId)) return
     const state = get().status[sessionId]?.state
-    if (state === 'ready' || state === 'starting') await get().restart(sessionId)
-    else if (!get().userStopped[sessionId]) await get().start(sessionId)
+    if (state === 'ready' || state === 'starting') await get().restart(sessionId, false)
+    else if (!get().userStopped[sessionId]) await get().start(sessionId, false)
   },
 
   install: async (sessionId) => {
@@ -393,7 +399,7 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     const settings = { ...get().settings, ...patch }
     set({ settings })
     safeSetItem(SETTINGS_KEY, JSON.stringify({ settings, preferences: get().preferences, version: PREFERENCES_VERSION }))
-    if (sessionId && get().status[sessionId]?.state === 'ready') await get().restart(sessionId)
+    if (sessionId && get().status[sessionId]?.state === 'ready') await get().restart(sessionId, false)
   },
 
   updatePreferences: (patch) => {
@@ -443,6 +449,9 @@ export const useGoIDELspStore = create<GoIDELspState>((set, get) => ({
     if (event.type === 'lsp.diagnostics') {
       const report = event.payload as GoIDEDiagnosticsReport
       set((state) => {
+        const previous = state.diagnostics[sessionId]?.[report.uri]
+        // Il server ripubblica spesso lo stesso elenco: stesso contenuto, nessun re-render di editor e pannelli.
+        if (sameDiagnostics(previous, report)) return state
         const current = { ...(state.diagnostics[sessionId] ?? {}) }
         if (report.diagnostics.length === 0) delete current[report.uri]
         else current[report.uri] = report

@@ -14,7 +14,7 @@ describe('compact application rail', () => {
   })
 
   it('uses transparent icon controls and an icon-height active marker', () => {
-    expect(stylesheet).toMatch(/\.adomnia-rail__category-main\s*\{[^}]*width:\s*40px;[^}]*border:\s*0;[^}]*background:\s*transparent;/s)
+    expect(stylesheet).toMatch(/\.adomnia-rail__category-main\s*\{[^}]*width:\s*44px;[^}]*border:\s*0;[^}]*background:\s*transparent;/s)
     expect(stylesheet).toMatch(/\.adomnia-rail__category\[data-active='true'\]::before[\s\S]*?height:\s*22px;/)
     expect(stylesheet).not.toContain('width: 54px')
   })

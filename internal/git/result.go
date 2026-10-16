@@ -65,12 +65,17 @@ var defaultProtectedBranches = map[string]bool{
 // real reason an operation failed.
 func runFull(dir string, args ...string) (stdout, stderr, command string, err error) {
 	command = "git " + strings.Join(args, " ")
-	cmd := procutil.Command("git", args...)
+	ctx, cancel := gitContext(args)
+	defer cancel()
+	cmd := procutil.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	err = cmd.Run()
+	if err != nil && timedOut(ctx) {
+		err = gitTimeoutError(args)
+	}
 	return strings.TrimSpace(out.String()), strings.TrimSpace(errBuf.String()), command, err
 }
 

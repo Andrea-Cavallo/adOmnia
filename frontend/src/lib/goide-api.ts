@@ -1,5 +1,6 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
+import type { CancellablePromise } from '@wailsio/runtime'
 import type {
   WatcherStatus,
   HistoryRevision,
@@ -225,12 +226,13 @@ export async function removeInstalledGoIDEToolchain(version: string): Promise<vo
   await GoIDEBindings.RemoveInstalledToolchain(version, true)
 }
 
-export async function listGoIDEDependencies(sessionId: string, moduleDirectory: string): Promise<DependencyState> {
+/** `go list` sul modulo: cancellabile — un cambio cartella/sessione ferma il lavoro. */
+export function listGoIDEDependencies(sessionId: string, moduleDirectory: string): CancellablePromise<DependencyState> {
   return GoIDEBindings.ListDependencies(sessionId, moduleDirectory)
 }
 
 /** Versioni pubblicate di una dipendenza, dalla più recente (go list -m -versions, passa dal GOPROXY). */
-export async function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): Promise<string[]> {
+export function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): CancellablePromise<string[]> {
   return GoIDEBindings.ListModuleVersions(sessionId, moduleDirectory, modulePath)
 }
 
@@ -243,17 +245,17 @@ export type GoIDEDependencyUpdate = Awaited<ReturnType<typeof GoIDEBindings.Depe
 export type GoIDEDependencyVulnerability = Awaited<ReturnType<typeof GoIDEBindings.DependencyVulnerabilities>>[number]
 
 /** Grafo delle dipendenze offline: albero, duplicati transitivi, licenze, peso e pacchetti. */
-export async function getGoIDEDependencyGraph(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyGraphReport> {
+export function getGoIDEDependencyGraph(sessionId: string, moduleDirectory: string): CancellablePromise<GoIDEDependencyGraphReport> {
   return GoIDEBindings.DependencyGraph(sessionId, moduleDirectory)
 }
 
 /** Versioni più recenti disponibili (richiede rete). */
-export async function listGoIDEDependencyUpdates(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyUpdate[]> {
+export function listGoIDEDependencyUpdates(sessionId: string, moduleDirectory: string): CancellablePromise<GoIDEDependencyUpdate[]> {
   return GoIDEBindings.DependencyUpdates(sessionId, moduleDirectory)
 }
 
 /** Esegue govulncheck sul modulo (richiede rete e govulncheck installato). */
-export async function scanGoIDEDependencyVulnerabilities(sessionId: string, moduleDirectory: string): Promise<GoIDEDependencyVulnerability[]> {
+export function scanGoIDEDependencyVulnerabilities(sessionId: string, moduleDirectory: string): CancellablePromise<GoIDEDependencyVulnerability[]> {
   return GoIDEBindings.DependencyVulnerabilities(sessionId, moduleDirectory)
 }
 
@@ -262,7 +264,7 @@ export type GoIDEVulnFinding = GoIDEVulnReport['findings'][number]
 export type GoIDEVulnFrame = NonNullable<GoIDEVulnFinding['callPaths']>[number][number]
 
 /** govulncheck con percorsi di chiamata, versione corretta e catena di dipendenze (contatta vuln.go.dev). */
-export async function scanGoIDEVulnerabilities(sessionId: string, moduleDirectory: string): Promise<GoIDEVulnReport> {
+export function scanGoIDEVulnerabilities(sessionId: string, moduleDirectory: string): CancellablePromise<GoIDEVulnReport> {
   return GoIDEBindings.VulnerabilityScan(sessionId, moduleDirectory)
 }
 
@@ -273,12 +275,12 @@ export type GoIDESecurityRule = GoIDESecurityReport['rules'][number]
 export type GoIDESecurityExposure = Awaited<ReturnType<typeof GoIDEBindings.SecurityExposures>>[number]
 
 /** Da quali route, metodi gRPC e topic (workspace graph) si raggiunge la funzione di ogni finding. */
-export async function securityExposures(sessionId: string, findings: readonly GoIDESecurityFinding[]): Promise<GoIDESecurityExposure[]> {
+export function securityExposures(sessionId: string, findings: readonly GoIDESecurityFinding[]): CancellablePromise<GoIDESecurityExposure[]> {
   return GoIDEBindings.SecurityExposures(sessionId, findings.filter((finding) => finding.file.endsWith('.go')).map((finding) => ({ fingerprint: finding.fingerprint, file: finding.file, line: finding.line })))
 }
 
 /** Scansione offline dei file del progetto: segreti e regole statiche (TLS, crypto, injection, permessi). */
-export async function scanGoIDESecurity(sessionId: string): Promise<GoIDESecurityReport> {
+export function scanGoIDESecurity(sessionId: string): CancellablePromise<GoIDESecurityReport> {
   return GoIDEBindings.SecurityScan(sessionId)
 }
 
@@ -539,13 +541,16 @@ export async function setGoIDESonarToken(sessionId: string, token: string): Prom
   await GoIDEBindings.SetSonarToken(sessionId, token)
 }
 
-/** Esegue sonar-scanner sul progetto e importa gli issue dalla Web API. */
-export async function runGoIDESonarScan(sessionId: string, token: string): Promise<GoIDESonarScanResult> {
+/**
+ * Esegue sonar-scanner sul progetto e importa gli issue dalla Web API. Restituisce la
+ * `CancellablePromise` del binding: `cancel()` ferma il ctx Go, il subprocess e il polling.
+ */
+export function runGoIDESonarScan(sessionId: string, token: string): CancellablePromise<GoIDESonarScanResult> {
   return GoIDEBindings.RunSonarScan(sessionId, token)
 }
 
-/** Reimporta gli issue già presenti sul server, senza rieseguire la scansione. */
-export async function fetchGoIDESonarIssues(sessionId: string, token: string): Promise<GoIDESonarScanResult> {
+/** Reimporta gli issue già presenti sul server, senza rieseguire la scansione. Cancellabile come la scansione. */
+export function fetchGoIDESonarIssues(sessionId: string, token: string): CancellablePromise<GoIDESonarScanResult> {
   return GoIDEBindings.FetchSonarIssues(sessionId, token)
 }
 

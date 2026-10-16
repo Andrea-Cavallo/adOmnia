@@ -17,7 +17,7 @@ var windowIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 // ErrSessionInOtherWindow segnala che il progetto è aperto in modifica in
 // un'altra finestra: i buffer non salvati vivono nel frontend di ciascuna
 // finestra, quindi due finestre sulla stessa sessione si sovrascriverebbero.
-var ErrSessionInOtherWindow = errors.New("il progetto è aperto in un'altra finestra")
+var ErrSessionInOtherWindow = errors.New("the project is open in another window")
 
 // SessionWindow indica quale finestra possiede una sessione.
 type SessionWindow struct {
@@ -95,7 +95,7 @@ func (r *windowRegistry) snapshot() map[SessionID]string {
 
 func validateWindowID(windowID string) error {
 	if !windowIDPattern.MatchString(windowID) {
-		return fmt.Errorf("identificativo di finestra non valido: %q", windowID)
+		return fmt.Errorf("invalid window identifier: %q", windowID)
 	}
 	return nil
 }

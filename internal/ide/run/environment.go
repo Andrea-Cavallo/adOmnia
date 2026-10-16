@@ -17,7 +17,7 @@ const maxEnvFileSize = 256 * 1024
 func PortAvailable(port int) error {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
-		return fmt.Errorf("la porta %d è già in uso: chiudi il processo che la occupa o scegline un'altra", port)
+		return fmt.Errorf("port %d is already in use: close the process using it or choose another", port)
 	}
 	return listener.Close()
 }
@@ -30,19 +30,19 @@ func LoadEnvFile(root, workingDirectory, path string) (map[string]string, error)
 	}
 	candidate = filepath.Clean(candidate)
 	if err := ensureWithinRoot(root, candidate); err != nil {
-		return nil, fmt.Errorf("env file fuori dal progetto: %w", err)
+		return nil, fmt.Errorf("env file outside the project: %w", err)
 	}
 	if resolved, err := filepath.EvalSymlinks(candidate); err == nil {
 		if err := ensureWithinRoot(root, resolved); err != nil {
-			return nil, fmt.Errorf("env file fuori dal progetto: %w", err)
+			return nil, fmt.Errorf("env file outside the project: %w", err)
 		}
 	}
 	info, err := os.Stat(candidate)
 	if err != nil {
-		return nil, fmt.Errorf("env file %s non trovato", path)
+		return nil, fmt.Errorf("env file %s not found", path)
 	}
 	if info.IsDir() || info.Size() > maxEnvFileSize {
-		return nil, fmt.Errorf("env file %s non valido o più grande di 256 KB", path)
+		return nil, fmt.Errorf("env file %s is invalid or larger than 256 KB", path)
 	}
 	data, err := os.ReadFile(candidate)
 	if err != nil {
@@ -63,7 +63,7 @@ func ParseEnvFile(data []byte) (map[string]string, error) {
 		key, value, found := strings.Cut(line, "=")
 		key = strings.TrimSpace(key)
 		if !found || !validEnvironmentName(key) {
-			return nil, fmt.Errorf("env file, riga %d: atteso NOME=valore", number)
+			return nil, fmt.Errorf("env file, line %d: expected NAME=value", number)
 		}
 		value = strings.TrimSpace(value)
 		if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {

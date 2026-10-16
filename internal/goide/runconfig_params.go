@@ -76,7 +76,7 @@ func (s *Service) taskSteps(session Session, ids []string, phase chainPhase, sec
 	for _, id := range ids {
 		config, err := s.runConfigs.Get(session.ID, id)
 		if err != nil {
-			return nil, fmt.Errorf("task non trovato: la configurazione è stata eliminata")
+			return nil, fmt.Errorf("task not found: the configuration was deleted")
 		}
 		request, err := s.buildRunRequest(session, config, secrets)
 		if err != nil {

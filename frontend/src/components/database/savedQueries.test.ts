@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addSavedQuery, categorizeQuery, createSavedQuery, exportSavedQueries, filterSavedQueries, importSavedQueries,
-  mergeSavedQueries, migrateFavorites, normalizeSavedQueries, redactQueryText, removeSavedQuery, renameSavedQuery,
+  addSavedQuery, categorizeQuery, createHistoryRecord, createSavedQuery, exportSavedQueries, filterSavedQueries, importSavedQueries,
+  MAX_HISTORY, mergeSavedQueries, migrateFavorites, migrateHistory, normalizeSavedQueries, redactQueryText, removeSavedQuery, renameSavedQuery,
   setPersonal, queryFamily, MAX_SAVED_QUERIES,
 } from './savedQueries'
 
@@ -116,5 +116,38 @@ describe('storage and sharing', () => {
     for (let i = 0; i < MAX_SAVED_QUERIES + 10; i += 1) list = addSavedQuery(list, createSavedQuery({ query: `SELECT ${i}`, driver: 'sqlite' }))
     expect(list.filter((q) => !q.personal)).toHaveLength(MAX_SAVED_QUERIES)
     expect(list.some((q) => q.personal)).toBe(true)
+  })
+})
+
+describe('history records', () => {
+  it('records where a query ran and deduces its category', () => {
+    const record = createHistoryRecord({ query: 'DELETE FROM users', driver: 'postgres', connectionId: 'pg-1', name: 'Cleanup' })
+    expect(record).toMatchObject({ name: 'Cleanup', category: 'delete', driver: 'postgres', connectionId: 'pg-1' })
+    expect(record.id).toBeTruthy()
+    expect(record.query).toBe('DELETE FROM users')
+    expect(record.ts).toBeGreaterThan(0)
+  })
+
+  it('names a record after the flattened query when the tab had no name', () => {
+    expect(createHistoryRecord({ query: 'SELECT *\nFROM users', driver: 'sqlite' }).name).toBe('SELECT * FROM users')
+  })
+
+  it('migrates bare strings and old {query, ts, label} entries into full records', () => {
+    const migrated = migrateHistory(['SELECT 1', { query: 'UPDATE t SET a = 1 WHERE id = 2', ts: 5, label: 'Fix' }], 'mysql')
+    expect(migrated).toHaveLength(2)
+    expect(migrated[0]).toMatchObject({ query: 'SELECT 1', category: 'search', driver: 'mysql', connectionId: null })
+    expect(migrated[1]).toMatchObject({ name: 'Fix', category: 'update', driver: 'mysql', ts: 5 })
+  })
+
+  it('keeps the recorded driver on already-migrated entries and ignores garbage', () => {
+    const migrated = migrateHistory([{ query: 'db.users.find()', driver: 'mongodb', connectionId: 'm1' }, null, {}, { query: '   ' }, 7], 'sqlite')
+    expect(migrated).toHaveLength(1)
+    expect(migrated[0]).toMatchObject({ driver: 'mongodb', connectionId: 'm1', category: 'search' })
+    expect(migrateHistory('nope', 'sqlite')).toEqual([])
+  })
+
+  it('caps the history at MAX_HISTORY', () => {
+    const migrated = migrateHistory(Array.from({ length: MAX_HISTORY + 20 }, (_, i) => `SELECT ${i}`), 'sqlite')
+    expect(migrated).toHaveLength(MAX_HISTORY)
   })
 })

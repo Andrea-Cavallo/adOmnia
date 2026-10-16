@@ -31,15 +31,15 @@ func (*Language) RunKinds() []string {
 
 func (l *Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if !slices.Contains(l.RunKinds(), request.Kind) {
-		return run.CommandSpec{}, fmt.Errorf("tipo Go non supportato: %s", request.Kind)
+		return run.CommandSpec{}, fmt.Errorf("unsupported Go type: %s", request.Kind)
 	}
 	if request.Kind == "go-tool" && !ValidSubcommand(request.Target) {
-		return run.CommandSpec{}, fmt.Errorf("comando go non valido: %q", request.Target)
+		return run.CommandSpec{}, fmt.Errorf("invalid go command: %q", request.Target)
 	}
 	var options RunOptions
 	if len(request.LanguageOptions) > 0 {
 		if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
-			return run.CommandSpec{}, fmt.Errorf("opzioni Go non valide: %w", err)
+			return run.CommandSpec{}, fmt.Errorf("invalid Go options: %w", err)
 		}
 	}
 	if err := project.EnsureWithin(request.Root, request.WorkingDirectory); err != nil {
@@ -63,11 +63,11 @@ func (l *Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if request.Kind != "go-tool" {
 		for _, target := range append([]string{request.Target}, options.ExtraTargets...) {
 			if strings.TrimSpace(target) == "" || strings.HasPrefix(target, "-") || strings.ContainsRune(target, '\x00') {
-				return run.CommandSpec{}, fmt.Errorf("target Go non valido")
+				return run.CommandSpec{}, fmt.Errorf("invalid Go target")
 			}
 			path := filepath.FromSlash(target)
 			if filepath.IsAbs(path) || filepath.VolumeName(path) != "" {
-				return run.CommandSpec{}, fmt.Errorf("il target deve restare relativo al progetto")
+				return run.CommandSpec{}, fmt.Errorf("the target must stay relative to the project")
 			}
 			path = filepath.Join(request.WorkingDirectory, path)
 			if err := project.EnsureWithin(request.Root, path); err != nil {
@@ -81,7 +81,7 @@ func (l *Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		}
 	}
 	if strings.TrimSpace(request.Executable) == "" {
-		return run.CommandSpec{}, fmt.Errorf("go non disponibile: rileva o configura la toolchain prima di eseguire")
+		return run.CommandSpec{}, fmt.Errorf("go unavailable: detect or configure the toolchain before running")
 	}
 	kind := request.Kind
 	if kind == "package" || kind == "files" {

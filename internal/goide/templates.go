@@ -93,7 +93,7 @@ func (s *Service) ListProjectTemplates() (ProjectTemplateList, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			return list, nil
 		}
-		return list, fmt.Errorf("impossibile leggere i template personalizzati: %w", err)
+		return list, fmt.Errorf("could not read the custom templates: %w", err)
 	}
 	for _, entry := range entries {
 		if entry.IsDir() && projectNamePattern.MatchString(entry.Name()) {
@@ -113,7 +113,7 @@ func resolveProjectTemplate(id string) ([]fs.FS, ProjectTemplate, error) {
 	}
 	if name, ok := strings.CutPrefix(id, customTemplatePrefix); ok {
 		if !projectNamePattern.MatchString(name) {
-			return nil, ProjectTemplate{}, fmt.Errorf("template personalizzato non valido")
+			return nil, ProjectTemplate{}, fmt.Errorf("invalid custom template")
 		}
 		root, err := customTemplatesRoot()
 		if err != nil {
@@ -121,7 +121,7 @@ func resolveProjectTemplate(id string) ([]fs.FS, ProjectTemplate, error) {
 		}
 		dir := filepath.Join(root, name)
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
-			return nil, ProjectTemplate{}, fmt.Errorf("template personalizzato %q non trovato", name)
+			return nil, ProjectTemplate{}, fmt.Errorf("custom template %q not found", name)
 		}
 		return []fs.FS{os.DirFS(dir)}, ProjectTemplate{ID: id, Name: name, Custom: true}, nil
 	}
@@ -180,7 +180,7 @@ func renderProjectTemplate(sources []fs.FS, target string, replacer *strings.Rep
 				return os.MkdirAll(destination, 0o755)
 			}
 			if count++; count > maxTemplateFiles {
-				return fmt.Errorf("il template supera %d file", maxTemplateFiles)
+				return fmt.Errorf("the template exceeds %d files", maxTemplateFiles)
 			}
 			info, err := entry.Info()
 			if err != nil {
@@ -202,7 +202,7 @@ func renderProjectTemplate(sources []fs.FS, target string, replacer *strings.Rep
 			return os.WriteFile(destination, data, 0o644)
 		})
 		if err != nil {
-			return fmt.Errorf("copia del template fallita: %w", err)
+			return fmt.Errorf("copying the template failed: %w", err)
 		}
 	}
 	return nil

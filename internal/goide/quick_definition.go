@@ -25,7 +25,7 @@ func (m *LSPManager) QuickDefinition(ctx context.Context, sessionID SessionID, d
 	}
 	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
-		return QuickDefinitionResult{}, fmt.Errorf("documento non sincronizzato con un language server")
+		return QuickDefinitionResult{}, fmt.Errorf("document not synchronized with a language server")
 	}
 	location := locations[0]
 	text := m.documentText(state, location.URI, location.Path)

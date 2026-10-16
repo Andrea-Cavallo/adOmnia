@@ -79,6 +79,18 @@ function FolderIcon({ name, open }: { name: string; open: boolean }) {
   return <GoStudioFolderIcon open={open} />
 }
 
+/** Frecce su/giù, Home e End spostano il focus tra le righe visibili (roving tabindex: solo la riga attiva è nel Tab). */
+function moveTreeFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+  if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+  const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+  const index = rows.indexOf(document.activeElement as HTMLElement)
+  if (index < 0 || rows.length === 0) return
+  event.preventDefault()
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : Math.min(rows.length - 1, Math.max(0, index + (event.key === 'ArrowDown' ? 1 : -1)))
+  rows[next].focus()
+}
+
 /** Memoizzato: aprire o aggiornare una cartella non ridisegna le sorelle (progetti con centinaia di cartelle). */
 // ponytail: righe native + cartelle enormi a pagine; lista piatta virtualizzata solo se un progetto reale lo richiede.
 const TREE_PAGE = 500
@@ -132,7 +144,16 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         onClick={entry.directory ? () => setOpen((value) => !value) : () => void openDocument(entry.relativePath, { preview: useGoIDELspStore.getState().preferences.previewTab })}
         onDoubleClick={entry.directory ? undefined : () => void openDocument(entry.relativePath)}
         onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onContext(entry, event.clientX, event.clientY) }}
+        role="treeitem"
+        aria-level={depth - 1}
+        aria-expanded={entry.directory ? open : undefined}
+        aria-selected={selected}
+        tabIndex={selected ? 0 : -1}
         onKeyDown={(event) => {
+          if (entry.directory && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+            if (event.key === 'ArrowRight' && !open) { event.preventDefault(); setOpen(true); return }
+            if (event.key === 'ArrowLeft' && open) { event.preventDefault(); setOpen(false); return }
+          }
           const action = treeKeyAction(event)
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
@@ -291,6 +312,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
           type="button"
           onClick={() => void toggleShowIgnored()}
           aria-pressed={showIgnored}
+          aria-label="Show ignored folders"
           title={showIgnored ? 'Hide ignored folders (.git, vendor, node_modules, build output)' : 'Show ignored folders (.git, vendor, node_modules, build output)'}
           className={`go-studio-icon-button h-6 w-6 ${showIgnored ? 'is-active text-accent' : ''}`}
         >
@@ -298,14 +320,14 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
         </button>
         <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="go-studio-icon-button h-6 w-6"><Minus size={14} /></button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-2 pb-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
+      <div role="tree" aria-label="Project files" onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-2 pb-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
         if (event.target !== event.currentTarget) return
         event.preventDefault()
         const source = event.dataTransfer.getData('application/x-adomnia-goide-path')
         setDropTarget(null)
         if (source) onMove(source, '')
       }}>
-        <div role="button" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${dropTarget === '' ? 'bg-accent/15 outline outline-1 outline-accent' : ''}`} title={session.project.rootPath}
+        <div role="treeitem" aria-level={1} aria-expanded="true" aria-selected={false} tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${dropTarget === '' ? 'bg-accent/15 outline outline-1 outline-accent' : ''}`} title={session.project.rootPath}
           onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget('') }}
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) }}
           onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-goide-path'); setDropTarget(null); if (source) onMove(source, '') }}

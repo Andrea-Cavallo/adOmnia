@@ -73,7 +73,7 @@ func NormalizeMakeArguments(values []string) ([]string, error) {
 	arguments := trimArguments(values)
 	for _, argument := range arguments {
 		if !makeArgumentPattern.MatchString(argument) {
-			return nil, fmt.Errorf("argomento make non valido: %q (usa target o VAR=valore; i flag vanno in MAKEFLAGS)", argument)
+			return nil, fmt.Errorf("invalid make argument: %q (use a target or VAR=value; flags go in MAKEFLAGS)", argument)
 		}
 	}
 	return arguments, nil
@@ -88,20 +88,20 @@ func NormalizeComposeArguments(values []string) ([]string, error) {
 		arguments = []string{"up"}
 	}
 	if arguments[0] != "up" && arguments[0] != "down" {
-		return nil, fmt.Errorf("comando compose non supportato: %q (up o down)", arguments[0])
+		return nil, fmt.Errorf("unsupported compose command: %q (up or down)", arguments[0])
 	}
 	if arguments[0] == "down" {
 		// Clean workspace: solo questi due flag, mai servizi o altre opzioni.
 		for _, flag := range arguments[1:] {
 			if flag != "--volumes" && flag != "--remove-orphans" {
-				return nil, errors.New("compose down vale per l'intero file, senza servizi (solo --volumes e --remove-orphans)")
+				return nil, errors.New("compose down applies to the whole file, without services (only --volumes and --remove-orphans)")
 			}
 		}
 		return arguments, nil
 	}
 	for _, service := range arguments[1:] {
 		if !composeServicePattern.MatchString(service) {
-			return nil, fmt.Errorf("nome di servizio compose non valido: %q", service)
+			return nil, fmt.Errorf("invalid compose service name: %q", service)
 		}
 	}
 	return arguments, nil
@@ -114,11 +114,11 @@ func NormalizeDockerOptions(options DockerOptions) (DockerOptions, error) {
 	}
 	options.Tag = strings.TrimSpace(options.Tag)
 	if options.Tag != "" && !dockerTagPattern.MatchString(options.Tag) {
-		return options, fmt.Errorf("tag immagine non valido: %q (minuscole, cifre, . _ - / :)", options.Tag)
+		return options, fmt.Errorf("invalid image tag: %q (lowercase, digits, . _ - / :)", options.Tag)
 	}
 	options.Stage = strings.TrimSpace(options.Stage)
 	if options.Stage != "" && !dockerStagePattern.MatchString(options.Stage) {
-		return options, fmt.Errorf("stage Docker non valido: %q", options.Stage)
+		return options, fmt.Errorf("invalid Docker stage: %q", options.Stage)
 	}
 	buildArgs, err := NormalizeEntries(options.BuildArgs, "build arg")
 	if err != nil {
@@ -128,7 +128,7 @@ func NormalizeDockerOptions(options DockerOptions) (DockerOptions, error) {
 	options.Ports = trimArguments(options.Ports)
 	for _, port := range options.Ports {
 		if !dockerPortPattern.MatchString(port) {
-			return options, fmt.Errorf("porta non valida: %q (es. 8080 o 8080:80)", port)
+			return options, fmt.Errorf("invalid port: %q (e.g. 8080 or 8080:80)", port)
 		}
 	}
 	options.Volumes = trimArguments(options.Volumes)
@@ -150,7 +150,7 @@ func NormalizeEntries(entries []EnvironmentEntry, label string) ([]EnvironmentEn
 			continue
 		}
 		if !validEnvironmentName(key) {
-			return nil, fmt.Errorf("nome di %s non valido: %q", label, key)
+			return nil, fmt.Errorf("invalid %s name: %q", label, key)
 		}
 		if _, duplicate := seen[key]; duplicate {
 			return nil, fmt.Errorf("%s duplicato: %q", label, key)
@@ -166,20 +166,20 @@ func NormalizeEntries(entries []EnvironmentEntry, label string) ([]EnvironmentEn
 func SplitVolume(volume string) (host, container, mode string, err error) {
 	parts := strings.Split(volume, ":")
 	if len(parts) < 2 || len(parts) > 3 {
-		return "", "", "", fmt.Errorf("volume non valido: %q (usa percorso/relativo:/percorso/container[:ro])", volume)
+		return "", "", "", fmt.Errorf("invalid volume: %q (use relative/path:/container/path[:ro])", volume)
 	}
 	host, container = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 	if len(parts) == 3 {
 		mode = strings.TrimSpace(parts[2])
 		if mode != "ro" && mode != "rw" {
-			return "", "", "", fmt.Errorf("modalità volume non valida: %q (ro o rw)", mode)
+			return "", "", "", fmt.Errorf("invalid volume mode: %q (ro or rw)", mode)
 		}
 	}
 	if host == "" || strings.HasPrefix(host, "-") || strings.HasPrefix(host, "/") || strings.HasPrefix(host, `\`) {
-		return "", "", "", fmt.Errorf("il volume %q deve partire da un percorso relativo al progetto", volume)
+		return "", "", "", fmt.Errorf("the volume %q must start from a path relative to the project", volume)
 	}
 	if !strings.HasPrefix(container, "/") || strings.ContainsRune(volume, '\x00') {
-		return "", "", "", fmt.Errorf("il percorso nel container di %q deve essere assoluto", volume)
+		return "", "", "", fmt.Errorf("the container path of %q must be absolute", volume)
 	}
 	return host, container, mode, nil
 }
@@ -213,7 +213,7 @@ func ValidateToolPaths(root, workingDirectory string, kind Kind, target string, 
 func (s *Tools) ToolCommandSpec(session Session, kind, workingDirectory, target string, request ToolRequest) (CommandSpec, error) {
 	file := filepath.Clean(filepath.Join(workingDirectory, filepath.FromSlash(target)))
 	if info, err := os.Stat(file); err != nil || info.IsDir() {
-		return CommandSpec{}, fmt.Errorf("file %q non trovato nel progetto", target)
+		return CommandSpec{}, fmt.Errorf("file %q not found in the project", target)
 	}
 	if kind == string(RunKindDockerCompose) {
 		return ComposeCommandSpec(file, target, request.ProgramArguments)
@@ -371,7 +371,7 @@ func stopContainer(docker, name string) {
 func ResolveDocker() (string, error) {
 	binary, err := exec.LookPath("docker")
 	if err != nil {
-		return "", errors.New("Docker non trovato: installa Docker Desktop (o Docker Engine) e assicurati che `docker` sia nel PATH")
+		return "", errors.New("Docker not found: install Docker Desktop (or Docker Engine) and make sure `docker` is in PATH")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), dockerProbeTimeout)
 	defer cancel()
@@ -382,7 +382,7 @@ func ResolveDocker() (string, error) {
 		if len(detail) > 200 {
 			detail = detail[:200] + "…"
 		}
-		return "", fmt.Errorf("Docker daemon non raggiungibile: avvia Docker Desktop e riprova (%s)", detail)
+		return "", fmt.Errorf("Docker daemon unreachable: start Docker Desktop and retry (%s)", detail)
 	}
 	return binary, nil
 }

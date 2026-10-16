@@ -4,6 +4,7 @@ import type {
   AgentsInfo,
   PromptRequest,
   PromptResponse,
+  MCPServer,
   Settings,
   Status,
 } from '../../bindings/adomnia/internal/milk/models'
@@ -58,6 +59,9 @@ export interface MilkPermissionEvent {
 export const getMilkStatus = (): Promise<MilkStatus> => MilkBindings.Status()
 export const getMilkSettings = (): Promise<MilkSettings> => MilkBindings.Settings()
 export const saveMilkSettings = (settings: MilkSettings): Promise<MilkSettings> => MilkBindings.SaveSettings(settings)
+export type MilkMCPServer = MCPServer
+export const getMcpServers = (): Promise<MilkMCPServer[]> => MilkBindings.MCPServers()
+export const saveMcpServers = (servers: MilkMCPServer[]): Promise<MilkMCPServer[]> => MilkBindings.SaveMCPServers(servers)
 export const getMilkAgents = (): Promise<MilkAgentsInfo> => MilkBindings.Agents()
 export const assignMilkProvider = (id: string, role: MilkAgentRole): Promise<MilkAgentsInfo> => MilkBindings.UseProvider(id, role)
 export const installMilk = (): Promise<MilkStatus> => MilkBindings.Install()

@@ -59,7 +59,7 @@ func readGoWork(root string) (bool, string, map[string]string, error) {
 	}
 	work, err := modfile.ParseWork(path, data, nil)
 	if err != nil {
-		return true, "", nil, fmt.Errorf("go.work non valido: %w", err)
+		return true, "", nil, fmt.Errorf("invalid go.work: %w", err)
 	}
 	uses := make(map[string]string, len(work.Use))
 	for _, use := range work.Use {
@@ -111,7 +111,7 @@ func (s *Service) UpdateGoWork(sessionID string, directories []string) (GoWorkSt
 		return GoWorkState{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return GoWorkState{}, errors.New("autorizza gli strumenti del progetto per modificare go.work")
+		return GoWorkState{}, errors.New("authorize the project tools to modify go.work")
 	}
 	current, err := goWorkState(session.Project)
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *Service) UpdateGoWork(sessionID string, directories []string) (GoWorkSt
 	for _, directory := range directories {
 		directory = workDirectory(session.Project.RootPath, directory)
 		if !known[directory] {
-			return GoWorkState{}, fmt.Errorf("%q non è un modulo rilevato nel progetto", directory)
+			return GoWorkState{}, fmt.Errorf("%q is not a module detected in the project", directory)
 		}
 		wanted[directory] = true
 	}
@@ -180,7 +180,7 @@ func (s *Service) runGoCommands(session Session, commands [][]string) error {
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return errors.New("go non disponibile: rileva o configura la toolchain")
+		return errors.New("go unavailable: detect or configure the toolchain")
 	}
 	environment, err := s.toolchain.Environment(session.ID, nil)
 	if err != nil {
@@ -205,18 +205,18 @@ func (s *Service) runGoCommands(session Session, commands [][]string) error {
 func CloneDestination(parent, remoteURL string) (string, error) {
 	parent = strings.TrimSpace(parent)
 	if parent == "" || !filepath.IsAbs(parent) {
-		return "", errors.New("scegli una cartella di destinazione")
+		return "", errors.New("choose a destination folder")
 	}
 	name := strings.TrimSuffix(strings.TrimRight(strings.TrimSpace(remoteURL), "/"), ".git")
 	if index := strings.LastIndexAny(name, "/:"); index >= 0 {
 		name = name[index+1:]
 	}
 	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `\/:*?"<>|`) {
-		return "", fmt.Errorf("nome del repository non valido in %q", remoteURL)
+		return "", fmt.Errorf("invalid repository name in %q", remoteURL)
 	}
 	destination := filepath.Join(parent, name)
 	if _, err := os.Stat(destination); err == nil {
-		return "", fmt.Errorf("%s esiste già: scegli un'altra cartella", destination)
+		return "", fmt.Errorf("%s already exists: choose another folder", destination)
 	}
 	return destination, nil
 }

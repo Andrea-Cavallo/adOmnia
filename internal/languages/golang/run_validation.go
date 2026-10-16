@@ -12,7 +12,7 @@ func ValidateGoArguments(root, workingDirectory string, arguments []string) erro
 	for index := 0; index < len(arguments); index++ {
 		argument := arguments[index]
 		if strings.ContainsRune(argument, '\x00') {
-			return fmt.Errorf("flag Go non valido")
+			return fmt.Errorf("invalid Go flag")
 		}
 		flag, value, hasValue := strings.Cut(argument, "=")
 		if !pathFlags[flag] {
@@ -21,23 +21,23 @@ func ValidateGoArguments(root, workingDirectory string, arguments []string) erro
 		if !hasValue {
 			index++
 			if index >= len(arguments) {
-				return fmt.Errorf("%s richiede un percorso", flag)
+				return fmt.Errorf("%s requires a path", flag)
 			}
 			value = arguments[index]
 		}
 		if strings.TrimSpace(value) == "" {
-			return fmt.Errorf("%s richiede un percorso", flag)
+			return fmt.Errorf("%s requires a path", flag)
 		}
 		candidate := filepath.FromSlash(value)
 		if !filepath.IsAbs(candidate) {
 			candidate = filepath.Join(workingDirectory, candidate)
 		}
 		if err := project.EnsureWithin(root, filepath.Clean(candidate)); err != nil {
-			return fmt.Errorf("percorso di %s non consentito: %w", flag, err)
+			return fmt.Errorf("path of %s not allowed: %w", flag, err)
 		}
 		if resolved, err := filepath.EvalSymlinks(candidate); err == nil {
 			if err := project.EnsureWithin(root, resolved); err != nil {
-				return fmt.Errorf("percorso di %s non consentito: %w", flag, err)
+				return fmt.Errorf("path of %s not allowed: %w", flag, err)
 			}
 		}
 	}

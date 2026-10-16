@@ -41,29 +41,35 @@ func NewDocumentManager() *DocumentManager {
 }
 
 // ListDirectory legge un solo livello del progetto e mantiene la navigazione confinata alla radice reale.
-func (m *DocumentManager) ListDirectory(project Project, relativePath string, includeIgnored bool) ([]FileEntry, error) {
-	directory, err := m.resolveDirectory(project, relativePath)
+// Come watcher, ricerca e quick open, rispetta il `.gitignore` della radice oltre alle
+// cartelle sempre escluse (`IgnoredDirectory`); "mostra ignorati" li rivela marcati tali.
+func (m *DocumentManager) ListDirectory(proj Project, relativePath string, includeIgnored bool) ([]FileEntry, error) {
+	directory, err := m.resolveDirectory(proj, relativePath)
 	if err != nil {
 		return nil, err
 	}
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return nil, fmt.Errorf("impossibile leggere la cartella: %w", err)
+		return nil, fmt.Errorf("could not read the folder: %w", err)
 	}
+	ignore := project.LoadGitIgnore(proj.RealPath)
 	result := make([]FileEntry, 0, min(len(entries), MaxDirectoryItems))
 	for _, entry := range entries {
 		if len(result) >= MaxDirectoryItems {
 			break
 		}
-		ignored := isIgnoredDirectory(entry.Name()) && entry.IsDir()
-		if ignored && !includeIgnored {
+		path := filepath.Join(directory, entry.Name())
+		ignored := (isIgnoredDirectory(entry.Name()) && entry.IsDir()) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
+		// Le cartelle ignorate restano nascoste come già accade per node_modules e build;
+		// i file ignorati restano visibili ma marcati (es. .env, spesso in .gitignore).
+		if ignored && entry.IsDir() && !includeIgnored {
 			continue
 		}
 		info, infoErr := entry.Info()
 		if infoErr != nil {
 			continue
 		}
-		rel, relErr := filepath.Rel(project.RealPath, filepath.Join(directory, entry.Name()))
+		rel, relErr := filepath.Rel(proj.RealPath, path)
 		if relErr != nil {
 			continue
 		}
@@ -132,16 +138,16 @@ func (m *DocumentManager) OpenDocument(session Session, relativePath string) (Op
 // SaveDocument scrive atomicamente un buffer e rifiuta sovrascritture di modifiche esterne non confermate.
 func (m *DocumentManager) SaveDocument(session Session, documentID DocumentID, content, expectedDiskToken string, force bool) (OpenDocument, error) {
 	if int64(len(content)) > MaxDocumentBytes {
-		return OpenDocument{}, fmt.Errorf("documento troppo grande: limite %d byte", MaxDocumentBytes)
+		return OpenDocument{}, fmt.Errorf("document too large: limit %d bytes", MaxDocumentBytes)
 	}
 	m.mu.RLock()
 	record, ok := m.documents[documentID]
 	m.mu.RUnlock()
 	if !ok || record.document.SessionID != session.ID {
-		return OpenDocument{}, fmt.Errorf("documento Go Studio non trovato")
+		return OpenDocument{}, fmt.Errorf("Go Studio document not found")
 	}
 	if record.document.ReadOnly {
-		return OpenDocument{}, fmt.Errorf("i sorgenti dell'SDK e della module cache sono in sola lettura")
+		return OpenDocument{}, fmt.Errorf("SDK and module cache sources are read-only")
 	}
 	path, err := m.ResolveProjectPath(session.Project, record.document.Path)
 	if err != nil {
@@ -152,7 +158,7 @@ func (m *DocumentManager) SaveDocument(session Session, documentID DocumentID, c
 		return OpenDocument{}, err
 	}
 	if !force && expectedDiskToken != "" && currentToken != expectedDiskToken {
-		return OpenDocument{}, fmt.Errorf("il file è stato modificato esternamente; ricaricalo, confrontalo o conferma la sovrascrittura")
+		return OpenDocument{}, fmt.Errorf("the file was modified externally; reload it, compare it or confirm the overwrite")
 	}
 	if err := atomicWriteFile(path, []byte(content), info.Mode().Perm()); err != nil {
 		return OpenDocument{}, err
@@ -176,7 +182,7 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 	record, ok := m.documents[documentID]
 	m.mu.RUnlock()
 	if !ok || record.document.SessionID != session.ID {
-		return DocumentDiskState{}, fmt.Errorf("documento Go Studio non trovato")
+		return DocumentDiskState{}, fmt.Errorf("Go Studio document not found")
 	}
 	if record.document.ReadOnly {
 		return DocumentDiskState{DocumentID: documentID, DiskToken: expectedDiskToken}, nil
@@ -201,14 +207,14 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 func (m *DocumentManager) OpenExternalDocument(session Session, path string, allowedRoots []string) (OpenDocument, error) {
 	abs, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
-		return OpenDocument{}, fmt.Errorf("percorso non valido: %w", err)
+		return OpenDocument{}, fmt.Errorf("invalid path: %w", err)
 	}
 	realPath, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return OpenDocument{}, fmt.Errorf("impossibile risolvere il file: %w", err)
+		return OpenDocument{}, fmt.Errorf("could not resolve the file: %w", err)
 	}
 	if !withinAnyRoot(realPath, allowedRoots) {
-		return OpenDocument{}, fmt.Errorf("il file non appartiene al progetto, all'SDK Go o alla module cache")
+		return OpenDocument{}, fmt.Errorf("the file does not belong to the project, the Go SDK or the module cache")
 	}
 	mediaType, isImage := imageMimeType(realPath)
 	content, dataURL, info, token := "", "", (os.FileInfo)(nil), ""
@@ -290,7 +296,7 @@ func (m *DocumentManager) ResolveProjectPath(project Project, candidate string) 
 func (m *DocumentManager) resolveProjectPathLimit(project Project, candidate string, limit int64) (string, error) {
 	root := project.RealPath
 	if root == "" {
-		return "", fmt.Errorf("radice reale del progetto non disponibile")
+		return "", fmt.Errorf("real project root unavailable")
 	}
 	path := candidate
 	if !filepath.IsAbs(path) {
@@ -298,24 +304,24 @@ func (m *DocumentManager) resolveProjectPathLimit(project Project, candidate str
 	}
 	abs, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
-		return "", fmt.Errorf("percorso documento non valido: %w", err)
+		return "", fmt.Errorf("invalid document path: %w", err)
 	}
 	realPath, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return "", fmt.Errorf("impossibile risolvere il documento: %w", err)
+		return "", fmt.Errorf("could not resolve the document: %w", err)
 	}
 	if err := ensureWithinRoot(root, realPath); err != nil {
 		return "", err
 	}
 	info, err := os.Stat(realPath)
 	if err != nil {
-		return "", fmt.Errorf("impossibile leggere il documento: %w", err)
+		return "", fmt.Errorf("could not read the document: %w", err)
 	}
 	if info.IsDir() {
-		return "", fmt.Errorf("il percorso richiesto è una cartella")
+		return "", fmt.Errorf("the requested path is a folder")
 	}
 	if info.Size() > limit {
-		return "", fmt.Errorf("documento troppo grande: limite %d byte", limit)
+		return "", fmt.Errorf("document too large: limit %d bytes", limit)
 	}
 	return realPath, nil
 }
@@ -327,21 +333,21 @@ func (m *DocumentManager) resolveDirectory(project Project, relativePath string)
 	}
 	abs, err := filepath.Abs(filepath.Clean(candidate))
 	if err != nil {
-		return "", fmt.Errorf("percorso cartella non valido: %w", err)
+		return "", fmt.Errorf("invalid folder path: %w", err)
 	}
 	realPath, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return "", fmt.Errorf("impossibile risolvere la cartella: %w", err)
+		return "", fmt.Errorf("could not resolve the folder: %w", err)
 	}
 	if err := ensureWithinRoot(project.RealPath, realPath); err != nil {
 		return "", err
 	}
 	info, err := os.Stat(realPath)
 	if err != nil {
-		return "", fmt.Errorf("impossibile leggere la cartella: %w", err)
+		return "", fmt.Errorf("could not read the folder: %w", err)
 	}
 	if !info.IsDir() {
-		return "", fmt.Errorf("il percorso richiesto non è una cartella")
+		return "", fmt.Errorf("the requested path is not a folder")
 	}
 	return realPath, nil
 }
@@ -378,17 +384,17 @@ func imageMimeType(path string) (string, bool) {
 func readImageFile(path string) (string, string, os.FileInfo, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("impossibile leggere l'immagine: %w", err)
+		return "", "", nil, fmt.Errorf("could not read the image: %w", err)
 	}
 	if info.IsDir() {
-		return "", "", nil, fmt.Errorf("il percorso è una cartella")
+		return "", "", nil, fmt.Errorf("the path is a folder")
 	}
 	if info.Size() > MaxDocumentBytes {
-		return "", "", nil, fmt.Errorf("immagine troppo grande: limite %d byte", MaxDocumentBytes)
+		return "", "", nil, fmt.Errorf("image too large: limit %d bytes", MaxDocumentBytes)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("impossibile leggere l'immagine: %w", err)
+		return "", "", nil, fmt.Errorf("could not read the image: %w", err)
 	}
 	mime, ok := imageMimeType(path)
 	if !ok {
@@ -400,17 +406,17 @@ func readImageFile(path string) (string, string, os.FileInfo, error) {
 func readTextFile(path string) (string, os.FileInfo, string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", nil, "", fmt.Errorf("impossibile leggere il documento: %w", err)
+		return "", nil, "", fmt.Errorf("could not read the document: %w", err)
 	}
 	if info.Size() > MaxDocumentBytes {
-		return "", nil, "", fmt.Errorf("documento troppo grande: limite %d byte", MaxDocumentBytes)
+		return "", nil, "", fmt.Errorf("document too large: limit %d bytes", MaxDocumentBytes)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", nil, "", fmt.Errorf("impossibile leggere il documento: %w", err)
+		return "", nil, "", fmt.Errorf("could not read the document: %w", err)
 	}
 	if bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
-		return "", nil, "", fmt.Errorf("il file non è un documento testuale UTF-8")
+		return "", nil, "", fmt.Errorf("the file is not a UTF-8 text document")
 	}
 	return string(data), info, diskToken(data, info), nil
 }
@@ -433,7 +439,7 @@ func replaceFile(temporaryPath, path string) error {
 		}
 		time.Sleep(saveRenameBackoff << attempt)
 	}
-	return fmt.Errorf("il file è bloccato da un altro programma (antivirus, indicizzatore o language server): riprova tra un attimo (%w)", err)
+	return fmt.Errorf("the file is locked by another program (antivirus, indexer or language server): retry in a moment (%w)", err)
 }
 
 func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
@@ -444,27 +450,27 @@ func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	directory := filepath.Dir(path)
 	temporary, err := os.CreateTemp(directory, ".adomnia-save-*")
 	if err != nil {
-		return fmt.Errorf("impossibile preparare il salvataggio: %w", err)
+		return fmt.Errorf("could not prepare the save: %w", err)
 	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
 	if err := temporary.Chmod(mode); err != nil {
 		temporary.Close()
-		return fmt.Errorf("impossibile conservare i permessi del file: %w", err)
+		return fmt.Errorf("could not preserve the file permissions: %w", err)
 	}
 	if _, err := temporary.Write(data); err != nil {
 		temporary.Close()
-		return fmt.Errorf("scrittura del documento fallita: %w", err)
+		return fmt.Errorf("writing the document failed: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
 		temporary.Close()
-		return fmt.Errorf("sincronizzazione del documento fallita: %w", err)
+		return fmt.Errorf("synchronizing the document failed: %w", err)
 	}
 	if err := temporary.Close(); err != nil {
-		return fmt.Errorf("chiusura del documento temporaneo fallita: %w", err)
+		return fmt.Errorf("closing the temporary document failed: %w", err)
 	}
 	if err := replaceFile(temporaryPath, path); err != nil {
-		return fmt.Errorf("salvataggio del documento fallito: %w", err)
+		return fmt.Errorf("saving the document failed: %w", err)
 	}
 	return nil
 }

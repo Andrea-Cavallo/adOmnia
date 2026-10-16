@@ -901,7 +901,7 @@ function MockServerPanel({ port, onConnectToMock, onSystem }: {
 
   useEffect(() => {
     if (!port || !running) return undefined
-    return visibleInterval(() => void poll(), 1200)
+    return visibleInterval(() => void poll(), 1200, { scope: "websocket", kind: "live" })
   }, [poll, port, running])
 
   const startMock = async () => {

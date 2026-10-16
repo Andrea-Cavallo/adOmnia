@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { AlertTriangle, GitCompare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
@@ -9,7 +9,7 @@ import { GoStudioEditorTabs } from './GoStudioEditorTabs'
 import { GoStudioSplitPane } from './GoStudioSplitPane'
 import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { useGoStudioDocumentSymbols } from './goStudioSymbols'
-import { copiesInOtherSessions } from './goStudioSharedCopies'
+import { copiesForKey } from './goStudioSharedCopies'
 import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { isGeneratedGoFile } from './goStudioExtraLanguages'
 import { coverageForDocument } from './goStudioCoverage'
@@ -37,7 +37,15 @@ export function GoStudioEditor({ documents, active, onCursor, onRequestClose, on
   const sessions = useGoIDEStore((state) => state.sessions)
   const coverage = useGoIDETestsStore((state) => (active ? visibleCoverage(state, active.document.sessionId) : null))
   const coverageMatch = active ? coverageForDocument(coverage, active.document.relativePath, active.diskToken, active.dirty) : { state: 'none' as const }
-  const dirtyElsewhere = active ? copiesInOtherSessions(allDocuments, active).filter((item) => item.dirty) : []
+  // Voce 3 (REFACTOR.md): il banner "aperto anche altrove" si memoizza sulle sole chiavi
+  // del documento attivo, non sull'oggetto documento che cambia a ogni battuta.
+  const activePath = active?.document.path ?? ''
+  const activeSession = active?.document.sessionId ?? ''
+  const activeReadOnly = active?.document.readOnly ?? false
+  const dirtyElsewhere = useMemo(
+    () => (activePath ? copiesForKey(allDocuments, { path: activePath, sessionId: activeSession, readOnly: activeReadOnly }).filter((item) => item.dirty) : []),
+    [allDocuments, activePath, activeSession, activeReadOnly],
+  )
   const elsewhereNames = dirtyElsewhere.map((item) => sessions.find((session) => session.id === item.document.sessionId)?.project.name ?? 'another project')
   useGoStudioDocumentSymbols(active)
 

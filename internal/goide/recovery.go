@@ -172,7 +172,7 @@ func recoveryKey(sessionID SessionID, relativePath string) string {
 // Configure collega lo store persistente e ne carica il contenuto.
 func (m *RecoveryManager) Configure(store Store) error {
 	if store == nil {
-		return errors.New("store di recupero non valido")
+		return errors.New("invalid recovery store")
 	}
 	m.mu.Lock()
 	m.store = store
@@ -255,10 +255,10 @@ func (m *RecoveryManager) workspaceIDsLocked() []string {
 // Remember registra il contenuto corrente di un buffer non salvato.
 func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, diskToken string) error {
 	if sessionID == "" || strings.TrimSpace(relativePath) == "" {
-		return fmt.Errorf("buffer di recupero senza sessione o percorso")
+		return fmt.Errorf("recovery buffer without session or path")
 	}
 	if len(content) > MaxRecoveredBufferBytes {
-		return fmt.Errorf("buffer troppo grande per il recupero automatico (%d byte)", len(content))
+		return fmt.Errorf("buffer too large for automatic recovery (%d bytes)", len(content))
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -286,7 +286,7 @@ func (m *RecoveryManager) Remember(sessionID SessionID, relativePath, content, d
 		entry.Previous = entry.Previous[:len(entry.Previous)-1]
 	}
 	if m.totalBytesLocked()-previous.bytes()+entry.bytes() > MaxRecoveredTotalBytes {
-		return fmt.Errorf("spazio di recupero esaurito: salva qualche file per proteggere i nuovi buffer")
+		return fmt.Errorf("recovery space exhausted: save some files to protect new buffers")
 	}
 	m.buffers[key] = entry
 	if exists && previous.WorkspaceID != entry.WorkspaceID {

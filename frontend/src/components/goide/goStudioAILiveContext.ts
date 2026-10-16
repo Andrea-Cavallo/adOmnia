@@ -4,7 +4,8 @@ import { safeStorageGet } from '@/lib/wailsStorage'
 import { serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { listBrokerConnectionProfiles, loadLastBrokerConnection, resolveBrokerPayload } from '@/lib/brokerConnections'
 import { CONNECTIONS_KEY, STORAGE_BUCKET, normalizeConnection, type DbConnection, type DbDriver, type DbResult } from '@/components/database/dbShared'
-import { hydrateDatabaseConnections, resolveDatabaseConnection } from '@/components/database/dbSecrets'
+import { hydrateDatabaseConnections } from '@/components/database/dbSecrets'
+import { useEnvironmentsStore } from '@/stores/environments'
 
 /**
  * Contesto "live" per le azioni AI: lo schema del database e i metadati Kafka letti davvero dai
@@ -82,11 +83,20 @@ export async function liveDatabaseSchema(sessionId: string, codeTables: readonly
       ? Boolean(item.sqlitePath)
       : Number(item.port) === Number(source.attrs.port) && sameHost(item.host, source.attrs.host) && (!source.attrs.database || item.database === source.attrs.database)))
     if (!connection) continue
-    const result = await sidecarPost<DbResult>('/database/query', { connection: await resolveDatabaseConnection(connection), query: columnsQuery(connection.driver), limit: 2000, timeoutMs: LIVE_TIMEOUT_MS, explain: false, confirm: false })
+    const result = await sidecarPost<DbResult>('/database/query', liveSchemaQuery(connection.id, connection.driver, useEnvironmentsStore.getState().getResolvedVars()))
     const schema = formatSchema(result.rows ?? [], codeTables)
     if (schema) return `${connection.driver} database "${connection.database || connection.name}" (Database Studio connection "${connection.name}"):\n${schema}`
   }
   return undefined
+}
+
+/**
+ * Corpo della query di sola lettura per il sidecar (DB-2.13): solo `connectionId` e
+ * variabili di ambiente, come fa il pannello Database. Credenziali e riferimenti vault
+ * restano in Go: il renderer non deve risolverli per leggere lo schema.
+ */
+export function liveSchemaQuery(connectionId: string, driver: DbDriver, variables: Record<string, string>) {
+  return { connectionId, variables, query: columnsQuery(driver), limit: 2000, timeoutMs: LIVE_TIMEOUT_MS, explain: false, confirm: false }
 }
 
 interface KafkaBrokerConfig {

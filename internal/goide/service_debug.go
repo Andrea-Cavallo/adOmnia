@@ -34,10 +34,10 @@ func (s *Service) ConfigureDelve(sessionID, binary string) error {
 	if binary != "" {
 		abs, err := filepath.Abs(binary)
 		if err != nil {
-			return fmt.Errorf("percorso dlv non valido: %w", err)
+			return fmt.Errorf("invalid dlv path: %w", err)
 		}
 		if info, err := os.Stat(abs); err != nil || info.IsDir() {
-			return fmt.Errorf("il percorso indicato non è un eseguibile dlv")
+			return fmt.Errorf("the given path is not a dlv executable")
 		}
 		binary = abs
 	}
@@ -63,7 +63,7 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 		return DebugSessionInfo{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return DebugSessionInfo{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return DebugSessionInfo{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	request.SessionID = session.ID
 	// Il server remoto è un dlv già in ascolto: non serve Delve sulla macchina locale.
@@ -73,7 +73,7 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 		}
 		if request.RemoteSourceRoot != "" {
 			if strings.ContainsAny(request.RemoteSourceRoot, "\x00\r\n") || !(path.IsAbs(request.RemoteSourceRoot) || filepath.IsAbs(request.RemoteSourceRoot)) {
-				return DebugSessionInfo{}, fmt.Errorf("indica la radice sorgenti remota come percorso assoluto")
+				return DebugSessionInfo{}, fmt.Errorf("specify the remote source root as an absolute path")
 			}
 			request.LocalSourceRoot = session.Project.RealPath
 		}
@@ -90,13 +90,13 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 	switch request.Mode {
 	case debugModeAttach:
 		if request.ProcessID <= 0 || request.ProcessID == os.Getpid() {
-			return DebugSessionInfo{}, fmt.Errorf("scegli un processo valido a cui agganciarsi")
+			return DebugSessionInfo{}, fmt.Errorf("choose a valid process to attach to")
 		}
 		s.seedBreakpoints(session)
 		return s.debug.Start(debugLaunch{session: session, request: request, binary: delve.Binary, moduleDir: session.Project.RealPath, environment: os.Environ()})
 	case "debug", "test":
 	default:
-		return DebugSessionInfo{}, fmt.Errorf("modalità di debug non supportata")
+		return DebugSessionInfo{}, fmt.Errorf("unsupported debug mode")
 	}
 	moduleDir, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {
@@ -347,11 +347,11 @@ func (s *Service) seedBreakpoints(session Session) {
 func validateRemoteAddress(address string) error {
 	host, port, err := net.SplitHostPort(strings.TrimSpace(address))
 	if err != nil || host == "" || strings.ContainsAny(host, "/\\ ") {
-		return fmt.Errorf("indica l'indirizzo del server Delve come host:porta, es. 127.0.0.1:2345")
+		return fmt.Errorf("specify the Delve server address as host:port, e.g. 127.0.0.1:2345")
 	}
 	number, err := strconv.Atoi(port)
 	if err != nil || number < 1 || number > 65535 {
-		return fmt.Errorf("porta del server Delve non valida")
+		return fmt.Errorf("invalid Delve server port")
 	}
 	return nil
 }

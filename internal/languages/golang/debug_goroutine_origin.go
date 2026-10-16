@@ -25,12 +25,12 @@ func (m *DebugExtensions) GoroutineCreation(id DebugSessionID, threadID int) (Go
 		return GoroutineCreation{}, err
 	}
 	if len(frames) == 0 {
-		return GoroutineCreation{}, fmt.Errorf("la goroutine non ha frame da cui leggere il runtime")
+		return GoroutineCreation{}, fmt.Errorf("the goroutine has no frame to read the runtime from")
 	}
 	frameID := frames[0].ID
 	gopc, err := m.evaluateUint(id, "runtime.curg.gopc", frameID)
 	if err != nil {
-		return GoroutineCreation{}, fmt.Errorf("punto di creazione non leggibile: %w", err)
+		return GoroutineCreation{}, fmt.Errorf("creation site unreadable: %w", err)
 	}
 	result := GoroutineCreation{}
 	if parent, err := m.evaluateUint(id, "runtime.curg.parentGoid", frameID); err == nil {
@@ -75,7 +75,7 @@ func (m *DebugExtensions) evaluateUint(id DebugSessionID, expression string, fra
 	}
 	fields := strings.Fields(value.Result)
 	if len(fields) == 0 {
-		return 0, fmt.Errorf("valore vuoto per %s", expression)
+		return 0, fmt.Errorf("empty value for %s", expression)
 	}
 	return strconv.ParseUint(strings.TrimSuffix(fields[0], ","), 0, 64)
 }

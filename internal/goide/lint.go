@@ -174,10 +174,10 @@ func linterVersion(kind, binary string) (string, error) {
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
-		return "", fmt.Errorf("%s non risponde", kind)
+		return "", fmt.Errorf("%s does not respond", kind)
 	}
 	if err != nil {
-		return "", fmt.Errorf("%s non eseguibile: %s", kind, strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("%s is not executable: %s", kind, strings.TrimSpace(string(output)))
 	}
 	text := strings.TrimSpace(strings.SplitN(string(output), "\n", 2)[0])
 	if match := golangciVersionPattern.FindStringSubmatch(text); match != nil {
@@ -195,10 +195,10 @@ func (s *Service) ConfigureLinter(sessionID, binary string) error {
 	if binary != "" {
 		abs, err := filepath.Abs(binary)
 		if err != nil {
-			return fmt.Errorf("percorso linter non valido: %w", err)
+			return fmt.Errorf("invalid linter path: %w", err)
 		}
 		if info, err := os.Stat(abs); err != nil || info.IsDir() {
-			return fmt.Errorf("il percorso indicato non è un eseguibile")
+			return fmt.Errorf("the given path is not an executable")
 		}
 		binary = abs
 	}
@@ -216,7 +216,7 @@ func (s *Service) ConfigureLinter(sessionID, binary string) error {
 func (s *Service) InstallLinter(sessionID, kind string, confirmed bool) (Execution, error) {
 	module, ok := linterModules[kind]
 	if !ok {
-		return Execution{}, fmt.Errorf("linter non supportato")
+		return Execution{}, fmt.Errorf("unsupported linter")
 	}
 	return s.installTool(sessionID, module, confirmed)
 }
@@ -240,7 +240,7 @@ func (s *Service) changedGoFiles(sessionID string) (map[string]bool, []string, e
 		return nil, nil, err
 	}
 	if !status.Available {
-		return nil, nil, fmt.Errorf("il progetto non è in un repository Git: %s", status.Reason)
+		return nil, nil, fmt.Errorf("the project is not in a Git repository: %s", status.Reason)
 	}
 	files := map[string]bool{}
 	seen := map[string]bool{}
@@ -289,7 +289,7 @@ func (s *Service) collectLintIssues(ctx context.Context, sessionID string, chang
 		return Session{}, "", nil, nil, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Session{}, "", nil, nil, fmt.Errorf("autorizza esplicitamente gli strumenti prima di eseguire il linter")
+		return Session{}, "", nil, nil, fmt.Errorf("explicitly authorize the tools before running the linter")
 	}
 	info, err := s.DetectLinter(sessionID)
 	if err != nil {
@@ -438,7 +438,7 @@ func parseGolangci(root string, output []byte) ([]lintIssue, error) {
 		} `json:"Issues"`
 	}
 	if err := json.NewDecoder(bytes.NewReader(output[start:])).Decode(&report); err != nil {
-		return nil, fmt.Errorf("output golangci-lint non valido: %w", err)
+		return nil, fmt.Errorf("invalid golangci-lint output: %w", err)
 	}
 	issues := make([]lintIssue, 0, len(report.Issues))
 	for _, issue := range report.Issues {
@@ -483,7 +483,7 @@ func parseStaticcheck(output []byte) ([]lintIssue, error) {
 			} `json:"location"`
 		}
 		if err := json.Unmarshal(line, &issue); err != nil {
-			return nil, fmt.Errorf("output staticcheck non valido: %w", err)
+			return nil, fmt.Errorf("invalid staticcheck output: %w", err)
 		}
 		if issue.Location.File == "" {
 			continue

@@ -3,7 +3,7 @@ import { AlertCircle, Download, ExternalLink } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import milkAvatar from '../../../../assets/images/milk-avatar.png'
 import { GoStudioAlert, GoStudioButton, GoStudioModal } from './GoStudioModal'
-import { assignMilkProvider, getMilkAgents, getMilkLog, type MilkAgentRole, type MilkAgentsInfo, type MilkSettings } from '@/lib/milk-api'
+import { assignMilkProvider, getMcpServers, getMilkAgents, saveMcpServers, getMilkLog, type MilkAgentRole, type MilkAgentsInfo, type MilkSettings } from '@/lib/milk-api'
 import { useMilkStore } from '@/stores/milk'
 
 /** Upstream project: adOmnia drives the milk binary installed on this machine, so updating milk updates the chat. */
@@ -97,6 +97,52 @@ function MilkAgentsSection() {
   )
 }
 
+/** Context servers (MCP) configured once and handed to every ACP agent session. */
+function McpServersSection() {
+  const [text, setText] = useState('')
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    getMcpServers().then((servers) => setText(JSON.stringify(servers ?? [], null, 2)), (reason: unknown) => setError(String(reason)))
+  }, [])
+
+  const save = () => {
+    setError('')
+    setSaved(false)
+    let parsed: unknown
+    try { parsed = JSON.parse(text || '[]') } catch { setError('Invalid JSON'); return }
+    if (!Array.isArray(parsed)) { setError('Expected a JSON array'); return }
+    saveMcpServers(parsed).then(
+      (servers) => { setText(JSON.stringify(servers ?? [], null, 2)); setSaved(true) },
+      (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)),
+    )
+  }
+
+  return (
+    <section className="flex flex-col gap-2.5">
+      <h3 className="gs-section-title">Context servers (MCP)</h3>
+      <p className="text-[12.5px] text-text-2">
+        Configured once, passed to every agent (milk, Claude Code) when a new chat session starts. Stdio: <span className="gs-mono">command</span>, <span className="gs-mono">args</span>, <span className="gs-mono">env</span>. HTTP: <span className="gs-mono">url</span>, <span className="gs-mono">headers</span>.
+      </p>
+      {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
+      <textarea
+        value={text}
+        onChange={(event) => { setText(event.target.value); setSaved(false) }}
+        spellCheck={false}
+        rows={7}
+        aria-label="MCP servers JSON"
+        placeholder='[{"name": "my-server", "command": "node", "args": ["server.js"]}]'
+        className="gs-input gs-mono"
+      />
+      <div className="flex items-center gap-3">
+        <GoStudioButton small onClick={save}>Save</GoStudioButton>
+        {saved && <span className="text-[11.5px] text-success">Saved — applies to new chats</span>}
+      </div>
+    </section>
+  )
+}
+
 /** milk settings in gO Studio: enable, binary path, permissions, process status and logs. */
 export function GoStudioMilkDialog() {
   const open = useMilkStore((state) => state.dialogOpen)
@@ -165,6 +211,7 @@ export function GoStudioMilkDialog() {
       </section>
 
       <MilkAgentsSection />
+      <McpServersSection />
 
       <section className="flex flex-col gap-2.5">
         <h3 className="gs-section-title">Binary</h3>
@@ -185,6 +232,10 @@ export function GoStudioMilkDialog() {
           Approve every tool call without asking
         </label>
         {draft.skipPermissions && <GoStudioAlert icon={AlertCircle}>milk will run shell commands and edit files in the project without confirmation.</GoStudioAlert>}
+        <label className="gs-check">
+          <input type="checkbox" checked={!draft.disableBuiltinMcp} onChange={(event) => setDraft({ ...draft, disableBuiltinMcp: !event.target.checked })} />
+          Give the agent adOmnia's collections and mock server (MCP)
+        </label>
       </section>
     </GoStudioModal>
   )

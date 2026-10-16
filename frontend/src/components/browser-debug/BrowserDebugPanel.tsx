@@ -518,7 +518,7 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
       }
     }
     poll()
-    return visibleInterval(poll, 1000)
+    return visibleInterval(poll, 1000, { scope: "browser", kind: "live" })
   }, [connected, setEntries])
 
   useEffect(() => { setBrowserRunning(connected) }, [connected, setBrowserRunning])

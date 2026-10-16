@@ -57,11 +57,11 @@ func (s *Service) CaptureLiveProfile(ctx context.Context, request LiveProfileReq
 		return ProfileFile{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return ProfileFile{}, fmt.Errorf("autorizza il progetto prima di salvare profili al suo interno")
+		return ProfileFile{}, fmt.Errorf("authorize the project before saving profiles inside it")
 	}
 	prefix, ok := liveProfileFiles[request.Kind]
 	if !ok {
-		return ProfileFile{}, fmt.Errorf("tipo di profilo non supportato: %q", request.Kind)
+		return ProfileFile{}, fmt.Errorf("unsupported profile type: %q", request.Kind)
 	}
 	endpoint, timeout, err := liveProfileEndpoint(request)
 	if err != nil {
@@ -72,13 +72,13 @@ func (s *Service) CaptureLiveProfile(ctx context.Context, request LiveProfileReq
 		return ProfileFile{}, err
 	}
 	if _, err := profile.ParseData(data); err != nil {
-		return ProfileFile{}, fmt.Errorf("la risposta di %s non è un profilo pprof: %w", endpoint, err)
+		return ProfileFile{}, fmt.Errorf("the response from %s is not a pprof profile: %w", endpoint, err)
 	}
 	root := session.Project.RealPath
 	name := fmt.Sprintf("%s-%s.pprof", prefix, time.Now().Format("20060102-150405"))
 	path := filepath.Join(root, name)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return ProfileFile{}, fmt.Errorf("salvataggio del profilo fallito: %w", err)
+		return ProfileFile{}, fmt.Errorf("saving the profile failed: %w", err)
 	}
 	return ProfileFile{Path: path, Relative: relativeWithin(root, path), Name: name, Kind: profileKind(name), Size: int64(len(data)), Modified: time.Now().UTC().Format(time.RFC3339)}, nil
 }
@@ -88,17 +88,17 @@ func (s *Service) CaptureLiveProfile(ctx context.Context, request LiveProfileReq
 func liveProfileEndpoint(request LiveProfileRequest) (string, time.Duration, error) {
 	raw := strings.TrimSpace(request.URL)
 	if raw == "" {
-		return "", 0, fmt.Errorf("indica l'indirizzo del servizio, es. http://localhost:6060")
+		return "", 0, fmt.Errorf("specify the service address, e.g. http://localhost:6060")
 	}
 	if !strings.Contains(raw, "://") {
 		raw = "http://" + raw
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return "", 0, fmt.Errorf("indirizzo non valido: %q", request.URL)
+		return "", 0, fmt.Errorf("invalid address: %q", request.URL)
 	}
 	if host := parsed.Hostname(); !netpolicy.IsLocalHost(host) {
-		return "", 0, fmt.Errorf("solo servizi su questa macchina (localhost): %s non è locale", host)
+		return "", 0, fmt.Errorf("only services on this machine (localhost): %s is not local", host)
 	}
 	base := strings.TrimRight(parsed.Path, "/")
 	if index := strings.Index(base, "/debug/pprof"); index >= 0 {
@@ -133,18 +133,18 @@ func fetchLiveProfile(ctx context.Context, endpoint string, timeout time.Duratio
 	client := &http.Client{Transport: &http.Transport{Proxy: nil, DialContext: (&net.Dialer{Timeout: 5 * time.Second}).DialContext}}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("servizio non raggiungibile su %s: avvialo e importa net/http/pprof (%w)", endpoint, err)
+		return nil, fmt.Errorf("service unreachable at %s: start it and import net/http/pprof (%w)", endpoint, err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s ha risposto %s: il servizio espone net/http/pprof?", endpoint, response.Status)
+		return nil, fmt.Errorf("%s answered %s: does the service expose net/http/pprof?", endpoint, response.Status)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxProfileSize+1))
 	if err != nil {
-		return nil, fmt.Errorf("lettura del profilo interrotta: %w", err)
+		return nil, fmt.Errorf("reading the profile was interrupted: %w", err)
 	}
 	if len(data) > maxProfileSize {
-		return nil, fmt.Errorf("profilo troppo grande (max 512 MB)")
+		return nil, fmt.Errorf("profile too large (max 512 MB)")
 	}
 	return data, nil
 }

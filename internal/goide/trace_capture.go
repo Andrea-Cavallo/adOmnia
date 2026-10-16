@@ -20,7 +20,7 @@ func (s *Service) CaptureLiveTrace(ctx context.Context, request LiveProfileReque
 		return ProfileFile{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return ProfileFile{}, fmt.Errorf("autorizza il progetto prima di salvare tracce al suo interno")
+		return ProfileFile{}, fmt.Errorf("authorize the project before saving traces inside it")
 	}
 	request.Kind = "trace"
 	endpoint, timeout, err := liveProfileEndpoint(request)
@@ -32,12 +32,12 @@ func (s *Service) CaptureLiveTrace(ctx context.Context, request LiveProfileReque
 		return ProfileFile{}, err
 	}
 	if _, err := trace.NewReader(bytes.NewReader(data)); err != nil {
-		return ProfileFile{}, fmt.Errorf("la risposta di %s non è una trace Go: %w", endpoint, err)
+		return ProfileFile{}, fmt.Errorf("the response from %s is not a Go trace: %w", endpoint, err)
 	}
 	name := fmt.Sprintf("trace-%s.out", time.Now().Format("20060102-150405"))
 	path := filepath.Join(session.Project.RealPath, name)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return ProfileFile{}, fmt.Errorf("salvataggio della trace fallito: %w", err)
+		return ProfileFile{}, fmt.Errorf("saving the trace failed: %w", err)
 	}
 	return ProfileFile{Path: path, Relative: name, Name: name, Kind: "trace", Size: int64(len(data)), Modified: time.Now().UTC().Format(time.RFC3339)}, nil
 }

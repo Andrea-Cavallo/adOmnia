@@ -55,7 +55,7 @@ export function GoStudioBreakpointPopover() {
       <div className="flex items-center gap-1 border-t border-border-1 px-2 py-1.5">
         <button type="button" onClick={() => useGoStudioBreakpointUi.getState().setDialogOpen(true)} title="All breakpoints · Ctrl+Shift+F8" className="flex h-7 items-center gap-1.5 rounded px-2 text-[11px] text-text-3 hover:bg-surface-3 hover:text-text-1"><ListChecks size={12} /> All breakpoints</button>
         {existing && <button type="button" onClick={remove} className="flex h-7 items-center gap-1.5 rounded px-2 text-[11px] text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={12} /> Remove</button>}
-        <button type="button" onClick={apply} disabled={!canApply(draft)} className="ml-auto h-7 rounded-md bg-accent px-3 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-40">Done</button>
+        <button type="button" onClick={apply} disabled={!canApply(draft)} className="ml-auto h-7 rounded-md bg-accent px-3 text-[11px] font-semibold text-on-accent hover:opacity-90 disabled:opacity-40">Done</button>
       </div>
     </div>
   )

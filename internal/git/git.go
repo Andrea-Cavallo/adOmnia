@@ -5,6 +5,7 @@ import (
 	"adomnia/internal/procutil"
 
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -94,16 +95,45 @@ type WorkingTreeFileSnapshot struct {
 }
 
 func runGit(dir string, args ...string) (string, error) {
-	cmd := procutil.Command("git", args...)
+	ctx, cancel := gitContext(args)
+	defer cancel()
+	cmd := procutil.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	cmd.Env = netpolicy.Environ()
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
+		if timedOut(ctx) {
+			return "", gitTimeoutError(args)
+		}
 		return "", fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+const (
+	// gitLocalTimeout e gitNetworkTimeout sono reti di sicurezza: un git bloccato (lock, credenziali, rete) non deve
+	// tenere appeso per sempre il pannello; restano ampi per repository e connessioni lente.
+	gitLocalTimeout   = 3 * time.Minute
+	gitNetworkTimeout = 10 * time.Minute
+)
+
+func gitContext(args []string) (context.Context, context.CancelFunc) {
+	timeout := gitLocalTimeout
+	if len(args) > 0 {
+		switch args[0] {
+		case "fetch", "pull", "push", "clone", "ls-remote", "remote", "submodule":
+			timeout = gitNetworkTimeout
+		}
+	}
+	return context.WithTimeout(context.Background(), timeout)
+}
+
+func timedOut(ctx context.Context) bool { return errors.Is(ctx.Err(), context.DeadlineExceeded) }
+
+func gitTimeoutError(args []string) error {
+	return fmt.Errorf("git %s: timed out; check for a stuck lock, credential prompt or slow connection", strings.Join(args, " "))
 }
 
 // statusPorcelain runs `git status --porcelain` trimming only the trailing
@@ -531,39 +561,51 @@ func CreateBranch(repoPath, branch string) error {
 	return err
 }
 
-func CheckoutBranch(repoPath, branch string) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return fmt.Errorf("branch name is empty")
+// refArg trims a branch/ref and rejects an empty value or one git would parse as an option.
+func refArg(ref string) (string, error) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return "", fmt.Errorf("branch name is empty")
 	}
-	_, err := runGit(repoPath, "checkout", branch)
+	if strings.HasPrefix(ref, "-") {
+		return "", fmt.Errorf("invalid branch name %q: must not start with '-'", ref)
+	}
+	return ref, nil
+}
+
+func CheckoutBranch(repoPath, branch string) error {
+	branch, err := refArg(branch)
+	if err != nil {
+		return err
+	}
+	_, err = runGit(repoPath, "checkout", branch)
 	return err
 }
 
 func CreateAndCheckoutBranch(repoPath, branch string) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return fmt.Errorf("branch name is empty")
+	branch, err := refArg(branch)
+	if err != nil {
+		return err
 	}
-	_, err := runGit(repoPath, "checkout", "-b", branch)
+	_, err = runGit(repoPath, "checkout", "-b", branch)
 	return err
 }
 
 func MergeBranch(repoPath, branch string) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return fmt.Errorf("branch name is empty")
+	branch, err := refArg(branch)
+	if err != nil {
+		return err
 	}
-	_, err := runGit(repoPath, "merge", branch)
+	_, err = runGit(repoPath, "merge", branch)
 	return err
 }
 
 func RebaseBranch(repoPath, branch string) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return fmt.Errorf("branch name is empty")
+	branch, err := refArg(branch)
+	if err != nil {
+		return err
 	}
-	_, err := runGit(repoPath, "rebase", branch)
+	_, err = runGit(repoPath, "rebase", branch)
 	return err
 }
 

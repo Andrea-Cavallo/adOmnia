@@ -357,7 +357,7 @@ export const GoStudioTestsPanel = memo(function GoStudioTestsPanel({ session }: 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-[11px] text-text-4">
         <p>Run tests from the ▶ next to a test, the “▶ Test” lens on a package, or Run → Test All.</p>
-        <button type="button" onClick={() => void start({ sessionId, workingDirectory: '', packages: ['./...'] })} className="flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[11px] font-semibold text-white"><Play size={11} fill="currentColor" aria-hidden="true" /> Run all tests</button>
+        <button type="button" onClick={() => void start({ sessionId, workingDirectory: '', packages: ['./...'] })} className="flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[11px] font-semibold text-on-accent"><Play size={11} fill="currentColor" aria-hidden="true" /> Run all tests</button>
       </div>
     )
   }

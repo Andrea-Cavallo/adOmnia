@@ -40,12 +40,12 @@ func (m *DebugExtensions) ReadMemory(id DebugSessionID, location string, length,
 		}
 		address = evaluatedHex.FindString(result.Result)
 		if address == "" {
-			return DebugMemory{}, fmt.Errorf("%s non ha un indirizzo leggibile", location)
+			return DebugMemory{}, fmt.Errorf("%s has no readable address", location)
 		}
 	}
 	start, err := strconv.ParseUint(address[2:], 16, 64)
 	if err != nil {
-		return DebugMemory{}, fmt.Errorf("indirizzo non valido: %s", address)
+		return DebugMemory{}, fmt.Errorf("invalid address: %s", address)
 	}
 	memory := DebugMemory{Address: fmt.Sprintf("0x%x", start), Bytes: []int{}}
 	for offset := 0; offset < length; offset += debugMemoryChunk {
@@ -81,7 +81,7 @@ func parseByteArray(result string, size int) ([]int, error) {
 	for _, field := range fields {
 		value, err := strconv.Atoi(strings.TrimSpace(field))
 		if err != nil || value < 0 || value > 255 {
-			return nil, fmt.Errorf("byte non valido %q", field)
+			return nil, fmt.Errorf("invalid byte %q", field)
 		}
 		values = append(values, value)
 	}

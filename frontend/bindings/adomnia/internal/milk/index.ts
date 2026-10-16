@@ -3,6 +3,7 @@
 
 export {
     AgentsInfo,
+    MCPServer,
     PromptRequest,
     PromptResponse,
     ProviderStatus,

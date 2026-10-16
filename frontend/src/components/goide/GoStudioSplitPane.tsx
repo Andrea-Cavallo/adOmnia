@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
 import { GoStudioCodeEditor } from './GoStudioCodeEditor'
@@ -23,6 +24,7 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
   const setSplit = useGoIDEStore((state) => state.setSplit)
   const tabIds = useGoIDEStore((state) => (state.activeSessionId ? state.splitBySession[state.activeSessionId]?.tabs : undefined))
   const [cursor, setCursor] = useState({ line: 1, column: 1 })
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null)
   const tabs = (tabIds ?? [document.document.id]).map((id) => documents.find((item) => item.document.id === id)).filter((item): item is GoIDEEditorDocument => !!item)
   const addable = documents.filter((item) => !tabs.some((tab) => tab.document.id === item.document.id))
 
@@ -33,8 +35,16 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
           {tabs.map((tab) => {
             const selected = tab.document.id === document.document.id
             return (
-              <div key={tab.document.id} role="tab" aria-selected={selected} tabIndex={0} onClick={() => setSplitDocument(tab.document.id)}
-                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSplitDocument(tab.document.id) } }}
+              <div key={tab.document.id} role="tab" aria-selected={selected} tabIndex={selected ? 0 : -1} onClick={() => setSplitDocument(tab.document.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSplitDocument(tab.document.id); return }
+                  const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+                  if (!step) return
+                  event.preventDefault()
+                  const target = tabs[(tabs.findIndex((item) => item.document.id === tab.document.id) + step + tabs.length) % tabs.length]
+                  setSplitDocument(target.document.id)
+                  requestAnimationFrame(() => (event.currentTarget.parentElement?.querySelector('[aria-selected="true"]') as HTMLElement | null)?.focus())
+                }}
                 title={tab.document.relativePath}
                 className={`group flex max-w-48 shrink-0 cursor-pointer items-center gap-1.5 border-r border-border-1 px-2 ${selected ? 'border-b border-b-accent bg-[var(--gs-raised)] text-text-1' : 'text-text-3 hover:text-text-1'}`}>
                 <GoStudioFileIcon name={tab.document.name} relativePath={tab.document.relativePath} size={11} />
@@ -47,17 +57,13 @@ export function GoStudioSplitPane({ documents, document, onRunTarget, onCursor }
           })}
         </div>
         {addable.length > 0 && (
-          <label className="flex shrink-0 items-center gap-1 border-l border-border-1 px-1.5 text-text-3" title="Open another file in the split">
-            <Plus size={11} aria-hidden="true" />
-            <select aria-label="Open file in split" value="" onChange={(event) => { if (event.target.value) setSplitDocument(event.target.value) }} className="h-6 w-24 rounded border border-border-1 bg-surface-2 px-1 text-[10px] text-text-2">
-              <option value="">Open…</option>
-              {addable.map((item) => <option key={item.document.id} value={item.document.id}>{item.document.relativePath}{item.dirty ? ' •' : ''}</option>)}
-            </select>
-          </label>
+          <button type="button" aria-haspopup="menu" aria-expanded={!!addMenu} aria-label="Open file in split" title="Open another file in the split" className="grid w-7 shrink-0 place-items-center border-l border-border-1 text-text-3 hover:bg-surface-3 hover:text-text-1"
+            onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setAddMenu({ x: rect.left, y: rect.bottom + 4 }) }}><Plus size={12} /></button>
         )}
         <span className="flex shrink-0 items-center px-2 text-[9px] text-text-4">Ln {cursor.line}, Col {cursor.column}</span>
         <button type="button" onClick={() => setSplit(null)} title="Close split" aria-label="Close split" className="grid w-7 shrink-0 place-items-center text-text-3 hover:bg-surface-3 hover:text-text-1"><X size={11} /></button>
       </div>
+      {addMenu && <ContextMenu appearance="studio" x={addMenu.x} y={addMenu.y} items={addable.map((item) => ({ id: item.document.id, label: `${item.document.relativePath}${item.dirty ? ' •' : ''}` }))} onSelect={(id) => { setAddMenu(null); setSplitDocument(id) }} onClose={() => setAddMenu(null)} />}
       <div className="min-h-0 flex-1">
         {(() => {
           const editor = <GoStudioCodeEditor document={document} handlesReveal={false} onRunTarget={onRunTarget} onCursor={(line, column) => { setCursor({ line, column }); onCursor(line, column) }} />

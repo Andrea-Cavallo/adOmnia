@@ -30,12 +30,12 @@ func (r *Registry) Register(l Language) error {
 	}
 	id := l.ID()
 	if !idPattern.MatchString(id) {
-		return fmt.Errorf("ID linguaggio non valido: %q", id)
+		return fmt.Errorf("invalid language ID: %q", id)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.byID[id]; exists {
-		return fmt.Errorf("linguaggio %q già registrato", id)
+		return fmt.Errorf("language %q is already registered", id)
 	}
 	r.byID[id] = l
 	r.languages = append(r.languages, l)

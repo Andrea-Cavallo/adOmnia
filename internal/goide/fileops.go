@@ -27,16 +27,16 @@ func resolveExistingEntry(project Project, relativePath string) (string, os.File
 	clean := filepath.Clean(filepath.FromSlash(strings.TrimSpace(relativePath)))
 	rooted := filepath.IsAbs(clean) || filepath.VolumeName(clean) != "" || strings.HasPrefix(clean, string(filepath.Separator))
 	if clean == "." || clean == "" || rooted || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || strings.ContainsRune(clean, 0) {
-		return "", nil, fmt.Errorf("percorso non valido: %q", relativePath)
+		return "", nil, fmt.Errorf("invalid path: %q", relativePath)
 	}
 	path := filepath.Join(project.RealPath, clean)
 	info, err := os.Lstat(path)
 	if err != nil {
-		return "", nil, fmt.Errorf("%s non esiste più", filepath.ToSlash(clean))
+		return "", nil, fmt.Errorf("%s no longer exists", filepath.ToSlash(clean))
 	}
 	realParent, err := filepath.EvalSymlinks(filepath.Dir(path))
 	if err != nil {
-		return "", nil, fmt.Errorf("impossibile risolvere la cartella: %w", err)
+		return "", nil, fmt.Errorf("could not resolve the folder: %w", err)
 	}
 	if err := ensureWithinRoot(project.RealPath, realParent); err != nil {
 		return "", nil, err
@@ -51,7 +51,7 @@ func (m *DocumentManager) CreateDirectory(project Project, relativePath string) 
 		return err
 	}
 	if err := os.MkdirAll(path, 0o755); err != nil {
-		return fmt.Errorf("impossibile creare la cartella: %w", err)
+		return fmt.Errorf("could not create the folder: %w", err)
 	}
 	return nil
 }
@@ -67,17 +67,17 @@ func (m *DocumentManager) MovePath(project Project, from, to string) error {
 		return err
 	}
 	if info.IsDir() && ensureWithinRoot(source, target) == nil {
-		return fmt.Errorf("impossibile spostare una cartella dentro sé stessa")
+		return fmt.Errorf("cannot move a folder into itself")
 	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return fmt.Errorf("impossibile creare la cartella di destinazione: %w", err)
+		return fmt.Errorf("could not create the destination folder: %w", err)
 	}
 	rewrites, err := planMovedPackageImports(project, from, to, info.IsDir())
 	if err != nil {
 		return err
 	}
 	if err := os.Rename(source, target); err != nil {
-		return fmt.Errorf("impossibile rinominare: %w", err)
+		return fmt.Errorf("could not rename: %w", err)
 	}
 	for index, rewrite := range rewrites {
 		path := rewrite.path
@@ -95,7 +95,7 @@ func (m *DocumentManager) MovePath(project Project, from, to string) error {
 				_ = os.WriteFile(restorePath, rewrites[previous].original, rewrites[previous].mode)
 			}
 			_ = os.Rename(target, source)
-			return fmt.Errorf("spostamento annullato: impossibile aggiornare gli import in %s: %w", filepath.Base(path), err)
+			return fmt.Errorf("move cancelled: could not update the imports in %s: %w", filepath.Base(path), err)
 		}
 	}
 	return nil
@@ -204,7 +204,7 @@ func planMovedPackageImports(project Project, from, to string, directory bool) (
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("impossibile analizzare gli import del progetto: %w", err)
+		return nil, fmt.Errorf("could not analyze the project imports: %w", err)
 	}
 	return rewrites, nil
 }
@@ -216,14 +216,14 @@ func (m *DocumentManager) DuplicatePath(project Project, from, to string) error 
 		return err
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
-		return fmt.Errorf("i collegamenti simbolici non vengono duplicati")
+		return fmt.Errorf("symbolic links are not duplicated")
 	}
 	target, err := resolveNewFilePath(project, to)
 	if err != nil {
 		return err
 	}
 	if info.IsDir() && ensureWithinRoot(source, target) == nil {
-		return fmt.Errorf("impossibile copiare una cartella dentro sé stessa")
+		return fmt.Errorf("cannot copy a folder into itself")
 	}
 	count := 0
 	err = filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -245,7 +245,7 @@ func (m *DocumentManager) DuplicatePath(project Project, from, to string) error 
 	})
 	if err != nil {
 		_ = os.RemoveAll(target)
-		return fmt.Errorf("duplicazione non riuscita: %w", err)
+		return fmt.Errorf("duplication failed: %w", err)
 	}
 	return nil
 }
@@ -292,7 +292,7 @@ func (m *DocumentManager) DeletePath(project Project, relativePath string, keep 
 		})
 	}
 	if err := os.RemoveAll(path); err != nil {
-		return fmt.Errorf("impossibile eliminare: %w", err)
+		return fmt.Errorf("could not delete: %w", err)
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func (m *DocumentManager) RevealPath(project Project, relativePath string) error
 		command = exec.Command("xdg-open", filepath.Dir(path))
 	}
 	if err := command.Start(); err != nil {
-		return fmt.Errorf("impossibile aprire il file manager: %w", err)
+		return fmt.Errorf("could not open the file manager: %w", err)
 	}
 	go func() { _ = command.Wait() }()
 	return nil

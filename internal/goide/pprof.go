@@ -160,29 +160,29 @@ func (s *Service) LoadProfile(sessionID, relativePath string) (ProfileReport, er
 	root := session.Project.RealPath
 	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
 	if candidate == "" {
-		return ProfileReport{}, fmt.Errorf("nessun profilo selezionato")
+		return ProfileReport{}, fmt.Errorf("no profile selected")
 	}
 	if !filepath.IsAbs(candidate) {
 		candidate = filepath.Join(root, candidate)
 	}
 	candidate = filepath.Clean(candidate)
 	if err := ensureWithinRoot(root, candidate); err != nil {
-		return ProfileReport{}, fmt.Errorf("profilo fuori dal progetto: %w", err)
+		return ProfileReport{}, fmt.Errorf("profile outside the project: %w", err)
 	}
 	info, err := os.Stat(candidate)
 	if err != nil {
-		return ProfileReport{}, fmt.Errorf("profilo non trovato: %s", relativePath)
+		return ProfileReport{}, fmt.Errorf("profile not found: %s", relativePath)
 	}
 	if info.IsDir() || info.Size() == 0 || info.Size() > maxProfileSize {
-		return ProfileReport{}, fmt.Errorf("profilo non valido o troppo grande (max 512 MB)")
+		return ProfileReport{}, fmt.Errorf("profile invalid or too large (max 512 MB)")
 	}
 	data, err := os.ReadFile(candidate)
 	if err != nil {
-		return ProfileReport{}, fmt.Errorf("lettura del profilo fallita: %w", err)
+		return ProfileReport{}, fmt.Errorf("reading the profile failed: %w", err)
 	}
 	parsed, err := profile.ParseData(data)
 	if err != nil {
-		return ProfileReport{}, fmt.Errorf("profilo pprof non valido: %w", err)
+		return ProfileReport{}, fmt.Errorf("invalid pprof profile: %w", err)
 	}
 	return buildProfileReport(root, candidate, parsed), nil
 }

@@ -40,12 +40,12 @@ const maxCodeGenSource = 4 << 20
 // GenerateGoCode esegue il generatore richiesto; gli errori spiegano cosa serve al cursore.
 func GenerateGoCode(request CodeGenRequest) (CodeGenResult, error) {
 	if len(request.Text) > maxCodeGenSource || len(request.TestText) > maxCodeGenSource {
-		return CodeGenResult{}, errors.New("file troppo grande per il generatore")
+		return CodeGenResult{}, errors.New("file too large for the generator")
 	}
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", request.Text, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return CodeGenResult{}, fmt.Errorf("il file non si analizza: correggi prima gli errori di sintassi (%v)", err)
+		return CodeGenResult{}, fmt.Errorf("the file could not be parsed: fix the syntax errors first (%v)", err)
 	}
 	switch request.Kind {
 	case "constructor", "getters", "setters", "interface":
@@ -68,7 +68,7 @@ func GenerateGoCode(request CodeGenRequest) (CodeGenResult, error) {
 			return CodeGenResult{}, err
 		}
 		if strings.Contains(request.TestText, "func "+symbol+"(") {
-			return CodeGenResult{}, fmt.Errorf("%s esiste già nel file di test", symbol)
+			return CodeGenResult{}, fmt.Errorf("%s already exists in the test file", symbol)
 		}
 		testText, err := appendToTestFile(request.TestText, file.Name.Name, code)
 		if err != nil {
@@ -94,7 +94,7 @@ func structAtLine(fset *token.FileSet, file *ast.File, line int) (*ast.TypeSpec,
 			}
 		}
 	}
-	return nil, nil, token.NoPos, errors.New("metti il cursore su una struct")
+	return nil, nil, token.NoPos, errors.New("place the cursor on a struct")
 }
 
 func funcAtLine(fset *token.FileSet, file *ast.File, line int) (*ast.FuncDecl, error) {
@@ -103,7 +103,7 @@ func funcAtLine(fset *token.FileSet, file *ast.File, line int) (*ast.FuncDecl, e
 			return function, nil
 		}
 	}
-	return nil, errors.New("metti il cursore su una funzione o un metodo")
+	return nil, errors.New("place the cursor on a function or a method")
 }
 
 func containsLine(fset *token.FileSet, node ast.Node, line int) bool {
@@ -166,7 +166,7 @@ func declaredFunc(file *ast.File, name string) bool {
 
 func structCode(kind string, file *ast.File, spec *ast.TypeSpec, structType *ast.StructType) (string, string, error) {
 	if spec.TypeParams != nil && spec.TypeParams.NumFields() > 0 {
-		return "", "", errors.New("le struct generiche non sono ancora supportate dal generatore")
+		return "", "", errors.New("generic structs are not supported by the generator yet")
 	}
 	typeName := spec.Name.Name
 	fields := fieldsOf(structType)
@@ -180,7 +180,7 @@ func structCode(kind string, file *ast.File, spec *ast.TypeSpec, structType *ast
 	case "constructor":
 		name := "New" + upperFirst(typeName)
 		if declaredFunc(file, name) {
-			return "", "", fmt.Errorf("%s esiste già", name)
+			return "", "", fmt.Errorf("%s already exists", name)
 		}
 		params := make([]string, 0, len(fields))
 		assignments := make([]string, 0, len(fields))
@@ -214,7 +214,7 @@ func structCode(kind string, file *ast.File, spec *ast.TypeSpec, structType *ast
 			}
 		}
 		if first == "" {
-			return "", "", errors.New("nessun campo non esportato senza accessor: i campi esportati si usano direttamente")
+			return "", "", errors.New("no unexported field without an accessor: exported fields are used directly")
 		}
 		return code.String(), first, nil
 	default: // interface
@@ -228,7 +228,7 @@ func structCode(kind string, file *ast.File, spec *ast.TypeSpec, structType *ast
 			methods = append(methods, "\t"+method.Name.Name+signature)
 		}
 		if len(methods) == 0 {
-			return "", "", fmt.Errorf("%s non ha metodi esportati in questo file", typeName)
+			return "", "", fmt.Errorf("%s has no exported methods in this file", typeName)
 		}
 		fmt.Fprintf(&code, "// %s descrive il comportamento di %s.\ntype %s interface {\n%s\n}\n", name, typeName, name, strings.Join(methods, "\n"))
 		return code.String(), name, nil
@@ -238,7 +238,7 @@ func structCode(kind string, file *ast.File, spec *ast.TypeSpec, structType *ast
 func insertAfter(text string, offset int, code, symbol string) (CodeGenResult, error) {
 	formatted, err := format.Source([]byte(code))
 	if err != nil {
-		return CodeGenResult{}, fmt.Errorf("codice generato non valido: %w", err)
+		return CodeGenResult{}, fmt.Errorf("invalid generated code: %w", err)
 	}
 	return CodeGenResult{Text: text[:offset] + "\n\n" + strings.TrimRight(string(formatted), "\n") + text[offset:], Symbol: symbol}, nil
 }
@@ -286,7 +286,7 @@ func parametersOf(function *ast.FuncDecl) []callParameter {
 
 func testCode(kind string, function *ast.FuncDecl) (string, string, error) {
 	if function.Type.TypeParams != nil && function.Type.TypeParams.NumFields() > 0 {
-		return "", "", errors.New("le funzioni generiche non sono ancora supportate dal generatore")
+		return "", "", errors.New("generic functions are not supported by the generator yet")
 	}
 	params := parametersOf(function)
 	target := function.Name.Name
@@ -325,13 +325,13 @@ func testCode(kind string, function *ast.FuncDecl) (string, string, error) {
 	var fuzzParams, seeds []string
 	for _, param := range params {
 		if !fuzzableTypes[param.typeText] || param.variadic {
-			return "", "", fmt.Errorf("i fuzz test accettano solo string, []byte, bool e tipi numerici: %s è %s", param.name, param.typeText)
+			return "", "", fmt.Errorf("fuzz tests only accept string, []byte, bool and numeric types: %s is %s", param.name, param.typeText)
 		}
 		fuzzParams = append(fuzzParams, param.name+" "+param.typeText)
 		seeds = append(seeds, zeroLiteral(param.typeText))
 	}
 	if len(params) == 0 {
-		return "", "", errors.New("un fuzz test serve a una funzione con parametri")
+		return "", "", errors.New("a fuzz test needs a function with parameters")
 	}
 	fmt.Fprintf(&code, "func %s(f *testing.F) {\n\tf.Add(%s) // TODO: add seed inputs\n\tf.Fuzz(func(t *testing.T, %s) {\n", name, strings.Join(seeds, ", "), strings.Join(fuzzParams, ", "))
 	if receiverDecl != "" {
@@ -361,7 +361,7 @@ func zeroLiteral(typeText string) string {
 func appendToTestFile(testText, packageName, code string) (string, error) {
 	formatted, err := format.Source([]byte(code))
 	if err != nil {
-		return "", fmt.Errorf("codice generato non valido: %w", err)
+		return "", fmt.Errorf("invalid generated code: %w", err)
 	}
 	snippet := strings.TrimRight(string(formatted), "\n") + "\n"
 	if strings.TrimSpace(testText) == "" {
@@ -370,7 +370,7 @@ func appendToTestFile(testText, packageName, code string) (string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", testText, parser.ImportsOnly)
 	if err != nil {
-		return "", fmt.Errorf("il file di test non si analizza: %v", err)
+		return "", fmt.Errorf("the test file could not be parsed: %v", err)
 	}
 	text := testText
 	if !importsPackage(file, "testing") {

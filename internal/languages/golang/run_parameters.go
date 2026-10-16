@@ -20,15 +20,15 @@ var profileFlags = map[string]string{"cpu": "-cpuprofile=cpu.pprof", "mem": "-me
 func ValidateRunOptions(kind string, options RunOptions) error {
 	for label, value := range map[string]string{"GOOS": options.GOOS, "GOARCH": options.GOARCH} {
 		if value != "" && !platformNamePattern.MatchString(value) {
-			return fmt.Errorf("%s non valido: %q", label, value)
+			return fmt.Errorf("invalid %s: %q", label, value)
 		}
 	}
 	if options.Profile != "" {
 		if _, ok := profileFlags[options.Profile]; !ok {
-			return fmt.Errorf("profilo non supportato: %q (cpu, mem, block, mutex, trace)", options.Profile)
+			return fmt.Errorf("unsupported profile: %q (cpu, mem, block, mutex, trace)", options.Profile)
 		}
 		if kind != "test" {
-			return fmt.Errorf("il profiling è disponibile per le configurazioni di test")
+			return fmt.Errorf("profiling is available for test configurations")
 		}
 	}
 	return nil
@@ -63,7 +63,7 @@ func ApplyRunOptions(wd, kind string, options RunOptions, environment map[string
 		if kind != "test" {
 			directory := filepath.Join(wd, ".gocoverdata")
 			if err := os.MkdirAll(directory, 0755); err != nil {
-				return nil, fmt.Errorf("impossibile creare .gocoverdata: %w", err)
+				return nil, fmt.Errorf("could not create .gocoverdata: %w", err)
 			}
 			environment["GOCOVERDIR"] = directory
 		}

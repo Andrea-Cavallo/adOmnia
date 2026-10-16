@@ -15,8 +15,6 @@ export const RAIL_ITEMS = [
   'xmltools',
   'flows',
   'soap',
-  'markdown',
-  'mermaid',
   'latex',
   'pdfeditor',
   'powertools',
@@ -32,7 +30,6 @@ export const RAIL_ITEMS = [
   'secretscanner',
   'settings',
   'welcome',
-  'gitsync',
   'collab',
   'mcp',
   'apidocs',
@@ -49,6 +46,10 @@ const LEGACY_RAIL_ALIASES: Record<string, RailItem> = {
   jsontools: 'jsonviewer',
   nettools: 'browser',
   utils: 'powertools',
+  // Folded into Go Studio: Markdown/Mermaid preview in the editor, Git as a tool window.
+  markdown: 'goide',
+  mermaid: 'goide',
+  gitsync: 'goide',
 }
 
 export function normalizeRailItem(value: unknown): RailItem | null {

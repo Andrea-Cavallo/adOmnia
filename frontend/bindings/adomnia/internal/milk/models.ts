@@ -54,6 +54,49 @@ export class AgentsInfo {
 }
 
 /**
+ * MCPServer è un "context server" configurato una volta sola e passato a ogni
+ * sessione ACP di ogni agente (session/new.mcpServers). Stdio se Command è
+ * valorizzato, altrimenti HTTP su URL.
+ */
+export class MCPServer {
+    "name": string;
+    "command"?: string;
+    "args"?: string[];
+    "env"?: { [_ in string]?: string };
+    "url"?: string;
+    "headers"?: { [_ in string]?: string };
+
+    /** Creates a new MCPServer instance. */
+    constructor($$source: Partial<MCPServer> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MCPServer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MCPServer {
+        const $$createField2_0 = $$createType2;
+        const $$createField3_0 = $$createType3;
+        const $$createField5_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("args" in $$parsedSource) {
+            $$parsedSource["args"] = $$createField2_0($$parsedSource["args"]);
+        }
+        if ("env" in $$parsedSource) {
+            $$parsedSource["env"] = $$createField3_0($$parsedSource["env"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField5_0($$parsedSource["headers"]);
+        }
+        return new MCPServer($$parsedSource as Partial<MCPServer>);
+    }
+}
+
+/**
  * PromptRequest descrive un turno di chat milk. Token è generato dal frontend e
  * collega progress/cancel; Root è la cartella del progetto attivo.
  */
@@ -180,6 +223,11 @@ export class Settings {
     "ignoreApiKey"?: boolean;
 
     /**
+     * DisableBuiltinMCP non passa all'agente il server MCP di adOmnia (collection e mock).
+     */
+    "disableBuiltinMcp"?: boolean;
+
+    /**
      * Env aggiunge variabili non segrete o riferimenti a credenziali già presenti
      * all'ambiente dell'agente. I valori restano nel file locale delle impostazioni.
      */
@@ -209,14 +257,14 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField4_0 = $$createType3;
-        const $$createField5_0 = $$createType2;
+        const $$createField5_0 = $$createType3;
+        const $$createField6_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("env" in $$parsedSource) {
-            $$parsedSource["env"] = $$createField4_0($$parsedSource["env"]);
+            $$parsedSource["env"] = $$createField5_0($$parsedSource["env"]);
         }
         if ("extraArgs" in $$parsedSource) {
-            $$parsedSource["extraArgs"] = $$createField5_0($$parsedSource["extraArgs"]);
+            $$parsedSource["extraArgs"] = $$createField6_0($$parsedSource["extraArgs"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }

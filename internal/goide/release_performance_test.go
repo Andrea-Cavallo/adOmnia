@@ -44,6 +44,18 @@ func BenchmarkReleaseRepository(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
+			b.Run("OpenFile", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					document, err := service.OpenDocument(string(session.ID), "pkg0000/source.go")
+					if err != nil {
+						b.Fatal(err)
+					}
+					if !strings.Contains(document.Content, "ReleaseNeedle") {
+						b.Fatal("missing source content")
+					}
+				}
+			})
 			b.Run("Search", func(b *testing.B) {
 				b.ReportAllocs()
 				for i := 0; i < b.N; i++ {
@@ -56,6 +68,47 @@ func BenchmarkReleaseRepository(b *testing.B) {
 					}
 				}
 			})
+		})
+	}
+}
+
+// Cold measures the actual three offline Go commands; Warm includes file stamps
+// and the facade/cache hit. No subprocess fixture generation is timed.
+func BenchmarkDependencyGraph(b *testing.B) {
+	root := b.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/depbench\n\ngo 1.26\n"), 0600); err != nil {
+		b.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "source.go"), []byte("package depbench\nfunc Value() int { return 1 }\n"), 0600); err != nil {
+		b.Fatal(err)
+	}
+	service := NewService(&memoryStore{}, nil)
+	defer service.Shutdown()
+	session, err := service.OpenProject(root)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if _, err := service.SetToolAuthorization(string(session.ID), true); err != nil {
+		b.Fatal(err)
+	}
+	if _, err := service.DependencyGraph(string(session.ID), ""); err != nil {
+		b.Fatal(err)
+	}
+	for _, mode := range []string{"Cold", "Warm"} {
+		b.Run(mode, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				if mode == "Cold" {
+					service.depGraph.invalidateSession(session.ID)
+				}
+				result, err := service.DependencyGraph(string(session.ID), "")
+				if err != nil {
+					b.Fatal(err)
+				}
+				if result.ModulePath != "example.test/depbench" {
+					b.Fatal("unexpected graph")
+				}
+			}
 		})
 	}
 }

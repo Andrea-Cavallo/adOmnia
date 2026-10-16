@@ -49,7 +49,7 @@ func (s *Service) LinterConfigFile(sessionID string, create bool) (string, error
 		return "", errors.New(info.Error)
 	}
 	if info.Kind == LinterCustom {
-		return "", errors.New("un analizzatore personalizzato non ha un file di configurazione standard")
+		return "", errors.New("a custom analyzer has no standard configuration file")
 	}
 	if info.ConfigPath != "" {
 		return relativeWithin(session.Project.RealPath, info.ConfigPath), nil

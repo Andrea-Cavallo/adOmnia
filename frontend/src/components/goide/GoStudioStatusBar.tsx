@@ -1,3 +1,5 @@
+import { useGoIDEStore } from '@/stores/goide'
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { goModules, goProjectLayout } from '@/lib/goide/goProject'
 import { isLowResource, watchBattery } from './goStudioResourceMode'
 import { useEffect, useMemo, useState } from 'react'
@@ -41,7 +43,7 @@ function useWatcherStatus(sessionId: string): GoIDEWatcherStatus | null {
   useEffect(() => {
     setStatus(null)
     const timers = WATCHER_STATUS_DELAYS_MS.map((delay) => window.setTimeout(() => {
-      getGoIDEWatcherStatus(sessionId).then(setStatus).catch(() => undefined)
+      getGoIDEWatcherStatus(sessionId).then(setStatus).catch(logBackgroundError('watcher status'))
     }, delay))
     return () => timers.forEach((timer) => window.clearTimeout(timer))
   }, [sessionId])
@@ -123,9 +125,9 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         ))}
         {tasks.length > 2 && <span className="shrink-0 text-text-4">+{tasks.length - 2}</span>}
         {watcher?.limited && (
-          <span role="status" title={`This project has more than ${watcher.limit} folders: only the first ${watcher.directories} are watched, so changes made outside Go Studio in the others are not detected automatically. Reopen files to see their disk version.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning">
-            <EyeOff size={12} /> Partially watched
-          </span>
+          <button type="button" onClick={() => void useGoIDEStore.getState().refreshProject()} title={`Watching ${watcher.directories} of ${watcher.limit}+ folders: changes made outside Go Studio in the others are not detected automatically. Click to re-read the project from disk.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning hover:underline">
+            <EyeOff size={12} /> Partially watched · {watcher.directories}/{watcher.limit} · Refresh
+          </button>
         )}
         {lowResource && (
           <button

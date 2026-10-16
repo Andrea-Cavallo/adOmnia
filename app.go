@@ -8,10 +8,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"adomnia/internal/activity"
 	"adomnia/internal/bootstrap"
 	"adomnia/internal/collectionsstore"
 	"adomnia/internal/devlog"
@@ -19,6 +21,7 @@ import (
 	"adomnia/internal/httpexec"
 	"adomnia/internal/nettools"
 	"adomnia/internal/panelwindow"
+	"adomnia/internal/perf"
 	pluginRuntime "adomnia/internal/plugins"
 	"adomnia/internal/proxy"
 	"adomnia/internal/requestwindow"
@@ -55,6 +58,14 @@ func NewApp() *App {
 // touches native windows, dialogs, and the application event bus.
 func (a *App) AttachDesktop(desktop *application.App) {
 	a.desktop = desktop
+	activity.Default.SetWindowAlive(func(id string) bool {
+		windowID, err := strconv.ParseUint(id, 10, 32)
+		if err != nil {
+			return false
+		}
+		_, alive := desktop.Window.GetByID(uint(windowID))
+		return alive
+	})
 	a.requestWindows = requestwindow.New(desktop)
 	a.swaggerWindow = swaggerwindow.New(desktop)
 	a.panelWindows = panelwindow.New(desktop, windowchrome.IsApp(startupWindowChrome))
@@ -139,6 +150,14 @@ func (a *App) OnStartup(ctx context.Context) {
 	startupStarted := time.Now()
 	stageStarted := startupStarted
 	devlog.Init(dataDir())
+	if addr, err := perf.StartPprofFromEnv(); err != nil {
+		devlog.Err("OnStartup", "endpoint pprof non avviato", err, nil)
+	} else if addr != "" {
+		devlog.Log("OnStartup", "endpoint pprof dev-only attivo", map[string]any{"addr": addr})
+	}
+	if recorder := perf.MaybeStartFromEnv(dataDir(), nil); recorder != nil {
+		devlog.Log("OnStartup", "registrazione scenario di performance avviata", map[string]any{"scenario": recorder.Scenario(), "path": recorder.Path()})
+	}
 	startupStages := map[string]any{
 		"devlogMs": float64(time.Since(stageStarted).Microseconds()) / 1000,
 	}
@@ -357,6 +376,11 @@ func (a *App) OnShutdown(ctx context.Context) {
 
 func (a *App) shutdown(ctx context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
+	if recorder := perf.Current(); recorder != nil {
+		if err := recorder.Stop(); err != nil {
+			log.Printf("[app] perf recording stop error: %v", err)
+		}
+	}
 	if globalAIEngine != nil {
 		if err := globalAIEngine.StopGateway(); err != nil {
 			log.Printf("[app] AI gateway stop error: %v", err)

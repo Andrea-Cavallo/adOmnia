@@ -31,8 +31,8 @@ export function GoStudioActivityBar({ session, onOpenLog }: { session: GoIDESess
 
   useEffect(() => {
     if (!visible) return undefined
-    return visibleInterval(() => setNow(Date.now()), 500)
-  }, [visible])
+    return visibleInterval(() => setNow(Date.now()), 500, { scope: `goide:${session.id}`, kind: "decorative" })
+  }, [visible, session.id])
 
   if (!visible) return null
 

@@ -1,3 +1,4 @@
+import { startActivityTracking } from './lib/activityTracking'
 import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -118,6 +119,9 @@ window.addEventListener('unhandledrejection', (event) => {
 console.info(`--- SESSION START ${new Date().toISOString()} ---`)
 // Seed a few test entries so the user can see that logging works
 console.info('DevLog interceptor active — press Ctrl+Shift+D or click LOG icon to view')
+
+const stopActivityTracking = startActivityTracking()
+if (import.meta.hot) import.meta.hot.dispose(stopActivityTracking)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

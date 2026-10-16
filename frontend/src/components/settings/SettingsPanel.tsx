@@ -431,6 +431,12 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 }}
               />
               <Toggle
+                label={s.general.backupWorkspace}
+                desc={s.general.backupWorkspaceDesc}
+                checked={settings.general.backupWorkspaceOnStartup}
+                onChange={(v) => updateGeneral({ backupWorkspaceOnStartup: v })}
+              />
+              <Toggle
                 label={s.general.showWelcome}
                 desc={s.general.showWelcomeDesc}
                 checked={settings.general.showWelcomeOnEmptyWorkspace}

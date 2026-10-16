@@ -72,7 +72,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
       {!zen && <GoStudioLeftStripe session={session} onCommit={onCommit} onBookmarks={onBookmarks} />}
       {/* Stile Islands: ogni pannello è un'isola; i separatori ridimensionabili sono lo spazio tra le isole. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {error && <div role="alert" className="flex items-center gap-2 p-2 text-xs text-danger"><span className="flex-1">{error}</span><button type="button" onClick={() => useStudioTools.setState({ error: null })}>Dismiss</button></div>}
+        {error && <div role="alert" className="mb-1.5 flex shrink-0 items-center gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[11px] text-danger"><span className="flex-1 whitespace-pre-wrap">{error}</span><button type="button" onClick={() => useStudioTools.setState({ error: null })} className="rounded px-1.5 hover:bg-danger/15">Dismiss</button></div>}
         <div className="grid min-h-0 min-w-0 flex-1 gap-1.5 pb-1.5" style={gridStyle}>
           {/* Ogni cella della griglia contiene l'isola (assoluta, così resta ritagliata
               sui suoi angoli) e lo splitter come fratello: l'area di presa può
@@ -94,7 +94,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
           </div>
           <div className="relative" style={styleFor('run')}>
             <div className="go-studio-island absolute inset-0">
-              {view !== 'find' && <GoStudioRunPanel session={session} visible={bottomOpen} />}
+              {view !== 'find' && <GoStudioRunPanel session={session} visible={bottomOpen} onCommand={onCommand} />}
             </div>
             {!focused && (placements[bottomKey] ?? 'bottom') === 'bottom' && <ResizeHandle variant="splitter" orientation="horizontal" label="Resize tool window" className="absolute inset-x-0 -top-2" {...onBottomResize} />}
           </div>

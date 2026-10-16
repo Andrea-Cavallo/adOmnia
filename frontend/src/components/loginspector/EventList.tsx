@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildLookup, flattenPayload, highlightSegments } from '@/lib/loginspector'
@@ -186,7 +186,7 @@ export function EventList({
                   highlights={highlights}
                   repeats={repeatCounts?.get(event.id) ?? 0}
                   selected={event.id === selectedId}
-                  onSelect={() => onSelect(event)}
+                  onSelect={onSelect}
                   onContextMenu={onContextMenu}
                 />
               ))}
@@ -207,7 +207,7 @@ interface EventRowProps {
   highlights: string[]
   repeats: number
   selected: boolean
-  onSelect: () => void
+  onSelect: (event: LogEvent) => void
   onContextMenu?: (event: LogEvent, position: { x: number; y: number }) => void
 }
 
@@ -234,14 +234,15 @@ function columnValue(event: LogEvent, id: ListColumnId): string {
   return ''
 }
 
-function EventRow({ event, height, wrap, columns, columnWidths, highlights, repeats, selected, onSelect, onContextMenu }: EventRowProps) {
+// Memoizzata: durante lo scroll cambia solo l'intervallo visibile, le righe già presenti non si ridisegnano.
+const EventRow = memo(function EventRow({ event, height, wrap, columns, columnWidths, highlights, repeats, selected, onSelect, onContextMenu }: EventRowProps) {
   const segments = highlightSegments(event.message, highlights)
   return (
     <div
       role="row"
       tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(keyEvent) => { if (keyEvent.key === 'Enter' || keyEvent.key === ' ') { keyEvent.preventDefault(); onSelect() } }}
+      onClick={() => onSelect(event)}
+      onKeyDown={(keyEvent) => { if (keyEvent.key === 'Enter' || keyEvent.key === ' ') { keyEvent.preventDefault(); onSelect(event) } }}
       onContextMenu={(mouseEvent) => {
         if (!onContextMenu) return
         mouseEvent.preventDefault()
@@ -299,4 +300,4 @@ function EventRow({ event, height, wrap, columns, columnWidths, highlights, repe
       </span>
     </div>
   )
-}
+})

@@ -134,7 +134,7 @@ export function DockerLabPanel() {
       setContainers(s ?? [])
     }
     poll()
-    return visibleInterval(poll, 3000)
+    return visibleInterval(poll, 3000, { scope: "dockerlab", kind: "live" })
   }, [runningLab])
 
   // Auto-scroll logs

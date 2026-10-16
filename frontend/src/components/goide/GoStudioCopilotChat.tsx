@@ -1,5 +1,5 @@
 import { GitHubMark } from './GoStudioCopilotStatus'
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import { useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { Check, ChevronDown, Code2, Copy, FileCode2, FolderTree, Plus, Send, Settings2, Square, TextSelect } from 'lucide-react'
 import type { GoIDESession } from '@/lib/goide-api'
@@ -27,6 +27,17 @@ export function selectedRange(document: GoIDEEditorDocument | null): CopilotChat
     endCharacter: selection.endColumn - 1,
   }
 }
+
+// Memoizzato: durante lo streaming cambia solo l'ultimo messaggio.
+const MessageView = memo(function MessageView({ message }: { message: CopilotChatMessage }) {
+  return (
+    <article className={message.role === 'user' ? 'ml-4 rounded-xl rounded-br-sm bg-accent/12 p-2.5' : 'mr-1'}>
+      <div className="mb-1 flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wide text-text-4">{message.role === 'user' ? 'You' : <><GitHubMark size={10} />Copilot</>}</div>
+      <div className="text-[10.5px] leading-[1.55] text-text-2"><MessageBody message={message} /></div>
+      {!!message.context?.length && <div className="mt-2 flex flex-wrap gap-1">{message.context.map((item) => <span key={item} className="rounded bg-surface-0/60 px-1.5 py-0.5 text-[11px] text-text-4">{item}</span>)}</div>}
+    </article>
+  )
+})
 
 function MessageBody({ message }: { message: CopilotChatMessage }) {
   const blocks = message.content.split(/(```[\s\S]*?```)/g).filter(Boolean)
@@ -151,7 +162,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
             <GitHubMark size={22} className="mx-auto mb-2 text-text-4" />
             <p className="text-[13px] font-medium text-text-2">Copilot Chat needs an active Copilot account.</p>
             <p className="mt-1 text-[12px] leading-4 text-text-4">Enable Copilot, install its language server, then sign in. gopls and Go Studio keep working independently.</p>
-            <button type="button" onClick={() => useCopilotStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-white"><Settings2 size={11} />Open settings</button>
+            <button type="button" onClick={() => useCopilotStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent"><Settings2 size={11} />Open settings</button>
           </div>
         ) : !thread?.messages.length ? (
           <div className="mt-4 text-center">
@@ -164,13 +175,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
           </div>
         ) : (
           <div className="space-y-3">
-            {thread.messages.map((message) => (
-              <article key={message.id} className={message.role === 'user' ? 'ml-4 rounded-xl rounded-br-sm bg-accent/12 p-2.5' : 'mr-1'}>
-                <div className="mb-1 flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wide text-text-4">{message.role === 'user' ? 'You' : <><GitHubMark size={10} />Copilot</>}</div>
-                <div className="text-[10.5px] leading-[1.55] text-text-2"><MessageBody message={message} /></div>
-                {!!message.context?.length && <div className="mt-2 flex flex-wrap gap-1">{message.context.map((item) => <span key={item} className="rounded bg-surface-0/60 px-1.5 py-0.5 text-[11px] text-text-4">{item}</span>)}</div>}
-              </article>
-            ))}
+            {thread.messages.map((message) => <MessageView key={message.id} message={message} />)}
             {thread.error && <div role="alert" className="rounded-lg border border-danger/25 bg-danger/10 p-2 text-[12px] leading-4 text-danger">{thread.error}</div>}
           </div>
         )}

@@ -62,9 +62,17 @@ export interface QueryWorkspaceState {
 }
 
 export interface HistoryItem {
+  /** Record della cronologia (DB-3.4.1), non più una stringa nuda. */
+  id: string
+  /** Nome leggibile: la tab di provenienza, altrimenti la query appiattita su una riga. */
+  name: string
+  /** Categoria dedotta dall'interprete, per filtrare come nei preferiti. */
+  category: 'search' | 'insert' | 'update' | 'delete' | 'aggregate' | 'schema'
+  driver: string
+  /** Valgono per tutte le connessioni dello stesso driver. */
+  connectionId: string | null
   query: string
   ts: number
-  label?: string
 }
 
 export interface SchemaItem {

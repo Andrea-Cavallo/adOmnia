@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useResizableSize } from '@/hooks/useResizableSize'
 import { Braces, ChevronLeft, ChevronRight, Code2, Download, FileJson, Gauge, List, ListTree, Loader2, Maximize2, Minimize2, Plus, RefreshCw, Table2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { download, highlightedJson, type DbConnection } from '../dbShared'
+import { download, type DbConnection } from '../dbShared'
 import { AggregationsTab } from './AggregationsTab'
 import { documentColumns, stringifyEditable, toEditable, type BsonDoc } from './bson'
 import type { CodeRequest } from './codegen'
@@ -23,6 +23,9 @@ import { ValueCell } from '../ValueCell'
 import { ValueInspector, type CellInspectorRequest } from '../ValueInspector'
 import { useResultsFullscreen } from '../useResultsFullscreen'
 import { flattenRow, normalizeCell } from '../dbValue'
+import { useWindowedRows } from '../useWindowedRows'
+import { useColumnWidths } from '../useColumnWidths'
+import { JsonTree } from '@/components/loginspector/JsonTree'
 
 type ViewMode = 'list' | 'table' | 'json'
 type WorkspaceTab = 'documents' | 'aggregations' | 'schema' | 'indexes' | 'validation'
@@ -35,7 +38,7 @@ interface MongoWorkspaceProps {
 }
 
 const VIEW_MODES: { id: ViewMode; label: string; icon: ReactNode }[] = [
-  { id: 'list', label: 'List', icon: <List size={13} /> },
+  { id: 'list', label: 'Tree', icon: <List size={13} /> },
   { id: 'json', label: 'JSON', icon: <Braces size={13} /> },
   { id: 'table', label: 'Table', icon: <Table2 size={13} /> },
 ]
@@ -76,6 +79,15 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
   const [inspector, setInspector] = useState<CellInspectorRequest | null>(null)
   const [expandNested, setExpandNested] = useState(false)
   const { expanded, toggle, containerRef, focusProps } = useResultsFullscreen<HTMLElement>()
+  // Virtualizzazione (DB-1.6) e colonne ridimensionabili (DB-1.7) della vista tabella.
+  const tableRows = useMemo<Record<string, unknown>[]>(() => {
+    if (view !== 'table' || tab !== 'documents') return []
+    return expandNested
+      ? m.docs.map((doc) => flattenRow(normalizeCell(doc, 'mongodb') as Record<string, unknown>))
+      : (m.docs as Record<string, unknown>[])
+  }, [view, tab, m.docs, expandNested])
+  const windowed = useWindowedRows<Record<string, unknown>>(tableRows, 32, { enabled: tableRows.length > 80 })
+  const columnWidths = useColumnWidths()
 
   const selected = m.selected
   const limit = Math.min(1000, Math.max(1, Number(m.query.limit) || 20))
@@ -247,6 +259,10 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                 <span className="text-[11px] tabular-nums text-text-3">
                   {from}–{to}{m.total != null && <> of <b className="font-semibold text-text-1">{m.total.toLocaleString()}</b></>}
                   {m.durationMs != null && <span className="text-text-4"> · {m.durationMs} ms</span>}
+                  {m.total != null && m.docs.length < m.total && (
+                    // Quanto è caricato davvero (DB-1.5): l'Explorer porta in memoria solo la pagina.
+                    <span className="text-warning" title="Only the current page is loaded. Use the pager to load more."> · only the current page is loaded: {m.docs.length} of {m.total.toLocaleString()}</span>
+                  )}
                 </span>
                 <button type="button" aria-label="Previous page" onClick={() => m.goToPage(m.page - 1)} disabled={m.page === 0 || m.loading} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronLeft size={14} /></button>
                 <button type="button" aria-label="Next page" onClick={() => m.goToPage(m.page + 1)} disabled={!hasNext || m.loading} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronRight size={14} /></button>
@@ -276,7 +292,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-auto">
+            <div ref={windowed.scrollRef} className="min-h-0 flex-1 overflow-auto">
               <ErrorBox message={m.error} className="m-3" />
               {!m.loading && !m.error && m.docs.length === 0 ? (
                 <EmptyState title="No documents" text="Nothing matches this query. Change the filter or add data." />
@@ -294,9 +310,22 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                   ))}
                 </div>
               ) : view === 'json' ? (
-                <pre className="whitespace-pre-wrap break-all p-3 font-mono text-[11.5px] leading-5">{highlightedJson(JSON.stringify(m.docs.map(toEditable), null, 2))}</pre>
+                // JSON comprimibile (DB-1.8), con i valori Mongo già leggibili.
+                <JsonTree value={m.docs.map((doc) => toEditable(doc))} className="min-h-0 flex-1" startExpanded={1} />
               ) : (
-                <DocumentTable docs={m.docs} offset={m.page * limit} expandNested={expandNested} onInspect={setInspector} />
+                <DocumentTable
+                  allRows={tableRows}
+                  rows={windowed.rows}
+                  start={windowed.start}
+                  paddingTop={windowed.paddingTop}
+                  paddingBottom={windowed.paddingBottom}
+                  widthOf={columnWidths.widthOf}
+                  gripProps={columnWidths.gripProps}
+                  rawDocs={m.docs}
+                  offset={m.page * limit}
+                  expandNested={expandNested}
+                  onInspect={setInspector}
+                />
               )}
             </div>
           </>
@@ -352,60 +381,92 @@ function ToolbarButton({ icon, label, onClick, disabled, title }: { icon: ReactN
   )
 }
 
-function DocumentTable({ docs, offset, expandNested, onInspect }: { docs: BsonDoc[]; offset: number; expandNested: boolean; onInspect: (request: CellInspectorRequest) => void }) {
-  // Con "Expand nested" ogni riga è piatta (`address.city`, `tags[0]`) e già normalizzata.
-  const rows = useMemo(
-    () => (expandNested ? docs.map((doc) => flattenRow(normalizeCell(doc, 'mongodb') as Record<string, unknown>)) : docs),
-    [docs, expandNested],
+interface DocumentTableProps {
+  /** Tutte le righe della pagina (già piatte in modalità "Expand nested"). */
+  allRows: Record<string, unknown>[]
+  /** Sole righe da rendere, dalla virtualizzazione. */
+  rows: Record<string, unknown>[]
+  start: number
+  paddingTop: number
+  paddingBottom: number
+  widthOf: (column: string) => number | undefined
+  gripProps: (column: string) => {
+    onMouseDown: (event: ReactMouseEvent<HTMLElement>) => void
+    onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void
+  }
+  /** Documenti grezzi, per la vista documento dell'Inspector. */
+  rawDocs: BsonDoc[]
+  offset: number
+  expandNested: boolean
+  onInspect: (request: CellInspectorRequest) => void
+}
+
+function DocumentTable({ allRows, rows, start, paddingTop, paddingBottom, widthOf, gripProps, rawDocs, offset, expandNested, onInspect }: DocumentTableProps) {
+  const columns = useMemo(
+    () => (expandNested
+      ? [...new Set(allRows.flatMap((row) => Object.keys(row)))]
+      : documentColumns(rawDocs)),
+    [expandNested, allRows, rawDocs],
   )
-  const columns = expandNested
-    ? [...new Set(rows.flatMap((row) => Object.keys(row)))]
-    : documentColumns(docs)
   return (
     <table className="border-separate border-spacing-0 text-left">
+      <colgroup>
+        <col style={{ width: 40 }} />
+        {columns.map((col) => (
+          <col key={col} style={widthOf(col) ? { width: widthOf(col) } : undefined} />
+        ))}
+      </colgroup>
       <thead className="sticky top-0 z-10">
         <tr>
           <th className="sticky left-0 z-20 w-10 border-b border-r border-border-1 bg-surface-2" />
           {columns.map((col) => (
-            <th key={col} className="h-8 whitespace-nowrap border-b border-r border-border-1 bg-surface-2 px-3 text-[11.5px] font-semibold text-text-1">{col}</th>
+            <th key={col} className="relative h-8 whitespace-nowrap border-b border-r border-border-1 bg-surface-2 px-3 text-[11.5px] font-semibold text-text-1" style={{ width: widthOf(col) }}>
+              {col}
+              <div {...gripProps(col)} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40" aria-hidden="true" />
+            </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, i) => (
-          <tr key={JSON.stringify(docs[i]?._id ?? i)} className="group">
-            <td className="sticky left-0 border-b border-r border-border-1 bg-surface-1 px-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2">
-              {/* Il numero di riga apre la vista documento (DB-1.4). */}
-              <button
-                type="button"
-                onClick={() => onInspect({
-                  title: `Document ${offset + i + 1}`,
-                  value: docs[i],
-                  kind: 'Document',
-                  driver: 'mongodb',
-                  document: docs[i],
-                  copyText: JSON.stringify(docs[i], null, 2),
-                })}
-                className="rounded px-1 hover:bg-surface-3 hover:text-text-1"
-                title="Open document view"
-              >
-                {offset + i + 1}
-              </button>
-            </td>
-            {columns.map((col) => (
-              <td key={col} className="h-8 max-w-[320px] truncate border-b border-r border-border-1 px-3 text-[11.5px] group-hover:bg-surface-1">
-                {col in row ? (
-                  <ValueCell
-                    variant={expandNested ? 'sql' : 'mongo'}
-                    column={col}
-                    value={row[col]}
-                    onInspect={(value, kind) => onInspect({ title: `${col} · document ${offset + i + 1}`, value, kind, driver: 'mongodb' })}
-                  />
-                ) : <span className="text-text-4">—</span>}
+        {paddingTop > 0 && <tr aria-hidden="true" style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
+        {rows.map((row, i) => {
+          const raw = rawDocs[start + i]
+          return (
+            <tr key={JSON.stringify(raw?._id ?? start + i)} className="group">
+              <td className="sticky left-0 border-b border-r border-border-1 bg-surface-1 px-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2">
+                {/* Il numero di riga apre la vista documento (DB-1.4). */}
+                <button
+                  type="button"
+                  onClick={() => onInspect({
+                    title: `Document ${offset + start + i + 1}`,
+                    value: raw ?? row,
+                    kind: 'Document',
+                    driver: 'mongodb',
+                    document: raw ?? (row as BsonDoc),
+                    copyText: JSON.stringify(raw ?? row, null, 2),
+                  })}
+                  className="rounded px-1 hover:bg-surface-3 hover:text-text-1"
+                  title="Open document view"
+                >
+                  {offset + start + i + 1}
+                </button>
               </td>
-            ))}
-          </tr>
-        ))}
+              {columns.map((col) => (
+                <td key={col} className="h-8 max-w-[320px] truncate border-b border-r border-border-1 px-3 text-[11.5px] group-hover:bg-surface-1" style={{ maxWidth: widthOf(col) }}>
+                  {col in row ? (
+                    <ValueCell
+                      variant={expandNested ? 'sql' : 'mongo'}
+                      column={col}
+                      value={row[col]}
+                      onInspect={(value, kind) => onInspect({ title: `${col} · document ${offset + start + i + 1}`, value, kind, driver: 'mongodb' })}
+                    />
+                  ) : <span className="text-text-4">—</span>}
+                </td>
+              ))}
+            </tr>
+          )
+        })}
+        {paddingBottom > 0 && <tr aria-hidden="true" style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
       </tbody>
     </table>
   )

@@ -116,14 +116,14 @@ func (m *TerminalManager) emit(eventType string, terminal TerminalSession, paylo
 // Non inietta mai comandi né credenziali nel terminale appena aperto.
 func (m *TerminalManager) Open(request TerminalRequest, environment []string) (TerminalSession, error) {
 	if request.SessionID == "" {
-		return TerminalSession{}, fmt.Errorf("terminale senza sessione di appartenenza")
+		return TerminalSession{}, fmt.Errorf("terminal without an owning session")
 	}
 	// Controllo del limite, avvio della shell e registrazione sono un'unica
 	// operazione: due aperture concorrenti non possono superare il limite.
 	m.openMu.Lock()
 	defer m.openMu.Unlock()
 	if count := m.countForSession(request.SessionID); count >= MaxTerminalsPerSession {
-		return TerminalSession{}, fmt.Errorf("massimo %d terminali per sessione", MaxTerminalsPerSession)
+		return TerminalSession{}, fmt.Errorf("at most %d terminals per session", MaxTerminalsPerSession)
 	}
 
 	shell := strings.TrimSpace(request.Shell)
@@ -132,10 +132,10 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 		shell, arguments = defaultShell()
 	}
 	if shell == "" {
-		return TerminalSession{}, fmt.Errorf("nessuna shell disponibile su questa piattaforma")
+		return TerminalSession{}, fmt.Errorf("no shell available on this platform")
 	}
 	if info, err := os.Stat(request.WorkingDirectory); err != nil || !info.IsDir() {
-		return TerminalSession{}, fmt.Errorf("working directory del terminale non valida")
+		return TerminalSession{}, fmt.Errorf("invalid terminal working directory")
 	}
 
 	terminal, err := pty.New()
@@ -151,7 +151,7 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 	}
 	if err := terminal.Resize(columns, rows); err != nil {
 		_ = terminal.Close()
-		return TerminalSession{}, fmt.Errorf("dimensionamento del terminale fallito: %w", err)
+		return TerminalSession{}, fmt.Errorf("sizing the terminal failed: %w", err)
 	}
 
 	command := terminal.Command(shell, arguments...)
@@ -159,7 +159,7 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 	command.Env = environment
 	if err := command.Start(); err != nil {
 		_ = terminal.Close()
-		return TerminalSession{}, fmt.Errorf("avvio della shell fallito: %w", err)
+		return TerminalSession{}, fmt.Errorf("starting the shell failed: %w", err)
 	}
 
 	id := TerminalID(fmt.Sprintf("term-%d-%d", time.Now().UnixNano(), m.counter.Add(1)))
@@ -199,7 +199,7 @@ func (m *TerminalManager) Write(id TerminalID, data string) error {
 		return err
 	}
 	if managed.exited.Load() {
-		return fmt.Errorf("il terminale è terminato")
+		return fmt.Errorf("the terminal has exited")
 	}
 	managed.writeMu.Lock()
 	defer managed.writeMu.Unlock()
@@ -217,7 +217,7 @@ func (m *TerminalManager) Rename(id TerminalID, name string) (TerminalSession, e
 	}
 	name = strings.TrimSpace(name)
 	if name == "" || len([]rune(name)) > 64 {
-		return TerminalSession{}, fmt.Errorf("il nome del terminale deve avere da 1 a 64 caratteri")
+		return TerminalSession{}, fmt.Errorf("the terminal name must be 1 to 64 characters")
 	}
 	managed.sessionMu.Lock()
 	managed.session.Name = name
@@ -235,10 +235,10 @@ func (m *TerminalManager) Resize(id TerminalID, columns, rows int) error {
 		return nil
 	}
 	if columns <= 0 || rows <= 0 {
-		return fmt.Errorf("dimensioni del terminale non valide")
+		return fmt.Errorf("invalid terminal size")
 	}
 	if err := managed.pty.Resize(columns, rows); err != nil {
-		return fmt.Errorf("ridimensionamento del terminale fallito: %w", err)
+		return fmt.Errorf("resizing the terminal failed: %w", err)
 	}
 	return nil
 }
@@ -434,7 +434,7 @@ func (m *TerminalManager) lookup(id TerminalID) (*managedTerminal, error) {
 	managed, ok := m.terminals[id]
 	m.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("terminale %q non trovato", id)
+		return nil, fmt.Errorf("terminal %q not found", id)
 	}
 	return managed, nil
 }

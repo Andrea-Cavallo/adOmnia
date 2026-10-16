@@ -80,10 +80,10 @@ func (s *Service) ConfigureMake(sessionID, binary string) error {
 	if binary != "" {
 		abs, err := filepath.Abs(binary)
 		if err != nil {
-			return fmt.Errorf("percorso make non valido: %w", err)
+			return fmt.Errorf("invalid make path: %w", err)
 		}
 		if info, err := os.Stat(abs); err != nil || info.IsDir() {
-			return fmt.Errorf("il percorso indicato non è un eseguibile make")
+			return fmt.Errorf("the given path is not a make executable")
 		}
 		binary = abs
 	}

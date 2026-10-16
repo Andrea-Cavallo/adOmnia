@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect } from 'react'
 import { focusCopilotDocument, setCopilotWorkspace } from '@/lib/copilot-api'
 import { useCopilotStore } from '@/stores/copilot'
@@ -10,10 +11,10 @@ export function useGoStudioCopilot(projectRoot: string | null, activeDocumentId:
   useEffect(() => { void useCopilotStore.getState().ensure() }, [])
 
   useEffect(() => {
-    if (projectRoot) void setCopilotWorkspace(projectRoot).catch(() => undefined)
+    if (projectRoot) void setCopilotWorkspace(projectRoot).catch(logBackgroundError('copilot context'))
   }, [projectRoot])
 
   useEffect(() => {
-    if (activeDocumentId) void focusCopilotDocument(activeDocumentId).catch(() => undefined)
+    if (activeDocumentId) void focusCopilotDocument(activeDocumentId).catch(logBackgroundError('copilot context'))
   }, [activeDocumentId])
 }

@@ -1,3 +1,4 @@
+import { currentActivityPhase } from '@/stores/activity'
 import { create } from 'zustand'
 import { CheckUpdateChannel, GetUpdateState, DownloadUpdate, CancelUpdateDownload, ScheduleUpdateOnExit, ConfirmUpdateStartup, OpenUpdateApplyLog } from '../../bindings/adomnia/app'
 import { useSettingsStore } from './settings'
@@ -55,7 +56,7 @@ export function startUpdater(): () => void {
     }
    } catch(error) { if (!disposed) failure(error) } finally { polling = false }
   }
-  if (!disposed && document.visibilityState !== 'hidden' && general.autoCheckUpdates !== false && Date.now()-lastCheck > 6*60*60*1000) {
+  if (!disposed && currentActivityPhase() === 'Active' && general.autoCheckUpdates !== false && Date.now()-lastCheck > 6*60*60*1000) {
    lastCheck = Date.now(); await useUpdaterStore.getState().check(false)
   }
   if (!disposed) timer = window.setTimeout(() => void tick(), ['checking','downloading','verifying'].includes(useUpdaterStore.getState().status.phase) ? 1000 : 60000)

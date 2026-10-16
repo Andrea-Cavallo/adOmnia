@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { cancellationPath, contextChainOf, goroutineOrigin, type ContextLink, type GoroutineOrigin } from '@/lib/goide/goroutineWhy'
 import { useEffect, useState } from 'react'
 import { Eye, EyeOff, GitFork, MapPin, OctagonAlert, Rocket } from 'lucide-react'
@@ -359,7 +360,7 @@ function FramesPane({ view }: { view: GoIDEDebugView }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <PaneHeader title="Call stack" count={paused ? view.frames.length : undefined}>
         {paused && view.frames.length > 0 && (
-          <button type="button" onClick={() => setShowLibrary(!showLibrary)} aria-pressed={showLibrary} title={showLibrary ? 'Hide runtime and library frames' : 'Show runtime and library frames'} className="go-studio-icon-button h-6 w-6">
+          <button type="button" onClick={() => setShowLibrary(!showLibrary)} aria-pressed={showLibrary} aria-label="Show runtime and library frames" title={showLibrary ? 'Hide runtime and library frames' : 'Show runtime and library frames'} className="go-studio-icon-button h-6 w-6">
             {showLibrary ? <Eye size={13} /> : <EyeOff size={13} />}
           </button>
         )}
@@ -386,7 +387,7 @@ function GoroutineCreatedAt({ debugId, goroutineId, onSelectGoroutine }: { debug
   useEffect(() => {
     let cancelled = false
     setCreation(null)
-    GoIDEBindings.DebugGoroutineCreation(debugId, goroutineId).then((value) => { if (!cancelled) setCreation(value) }).catch(() => undefined)
+    GoIDEBindings.DebugGoroutineCreation(debugId, goroutineId).then((value) => { if (!cancelled) setCreation(value) }).catch(logBackgroundError('goroutine creation lookup'))
     return () => { cancelled = true }
   }, [debugId, goroutineId])
   if (!creation?.location && !creation?.parentId) return null

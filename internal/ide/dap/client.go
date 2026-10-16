@@ -229,12 +229,12 @@ func readFrame(reader *bufio.Reader) ([]byte, error) {
 		if ok && strings.EqualFold(strings.TrimSpace(name), "Content-Length") {
 			length, err = strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
-				return nil, fmt.Errorf("Content-Length non valido: %w", err)
+				return nil, fmt.Errorf("invalid Content-Length: %w", err)
 			}
 		}
 	}
 	if length < 0 || length > maxFrameBytes {
-		return nil, fmt.Errorf("frame DAP non valido (%d byte)", length)
+		return nil, fmt.Errorf("invalid DAP frame (%d bytes)", length)
 	}
 	frame := make([]byte, length)
 	_, err := io.ReadFull(reader, frame)

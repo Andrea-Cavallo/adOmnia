@@ -54,7 +54,7 @@ func writeSonarBaseline(root string, issues []SonarIssue) (int, error) {
 	}
 	path := filepath.Join(root, filepath.FromSlash(sonarBaselineFile))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return 0, fmt.Errorf("cartella .adomnia non scrivibile: %w", err)
+		return 0, fmt.Errorf(".adomnia folder is not writable: %w", err)
 	}
 	if err := atomicWriteFile(path, append(data, '\n'), 0o644); err != nil {
 		return 0, err

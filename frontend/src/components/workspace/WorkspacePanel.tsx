@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock, Download, FileCode, FolderOpen, LogIn, RefreshCw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
+import { Clock, Download, FileCode, FolderOpen, LogIn, RefreshCw, RotateCcw, Save, Shield, ShieldAlert, Trash2, Undo2, Upload } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -12,6 +12,7 @@ import { loadFlowDefinitions, type SavedFlowDefinition } from '@/lib/flowStorage
 import { applyWorkspaceState, type WorkspaceState } from '@/lib/workspaceState'
 import { rememberRecentWorkspace, removeRecentWorkspace, type WorkspaceMeta } from '@/lib/workspaceRecents'
 import { redactSensitiveData } from '@/lib/secretRedaction'
+import { readStartupBackup, type StartupBackupSnapshot } from '@/lib/startupBackup'
 import { OasImportModal } from './OasImportModal'
 
 export function WorkspacePanel() {
@@ -24,6 +25,9 @@ export function WorkspacePanel() {
   const [importBundle, setImportBundle] = useState<InteropBundle | null>(null)
   const [undoState, setUndoState] = useState<string | null>(null)
   const [exportConfirm, setExportConfirm] = useState<{ state: string; secrets: number } | null>(null)
+  const [startupBackup, setStartupBackup] = useState<StartupBackupSnapshot | null>(null)
+  const [restoreConfirm, setRestoreConfirm] = useState<StartupBackupSnapshot | null>(null)
+  const [undoReason, setUndoReason] = useState<'import' | 'restore'>('import')
   const [flowDefinitions, setFlowDefinitions] = useState<SavedFlowDefinition[]>([])
   const [showOasImport, setShowOasImport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -83,6 +87,10 @@ export function WorkspacePanel() {
 
   useEffect(() => {
     void loadFlowDefinitions().then(setFlowDefinitions)
+  }, [])
+
+  useEffect(() => {
+    void readStartupBackup().then(setStartupBackup)
   }, [])
 
   const run = async (fn: () => Promise<void>) => {
@@ -164,6 +172,7 @@ export function WorkspacePanel() {
   const applyImport = () => {
     if (!importBundle) return
     setUndoState(makeState())
+    setUndoReason('import')
     const colStore = useCollectionsStore.getState()
     const envStore = useEnvironmentsStore.getState()
 
@@ -204,9 +213,24 @@ export function WorkspacePanel() {
       useEnvironmentsStore.setState({ environments: state.environments, activeEnvId: state.activeEnvId ?? null, loaded: true })
       useEnvironmentsStore.getState().save()
     }
-    setMessage('Last import undone.')
+    setMessage(undoReason === 'restore' ? 'Backup restore undone.' : 'Last import undone.')
+    setUndoReason('import')
     setUndoState(null)
   }
+
+  const restoreBackup = () => run(async () => {
+    if (!restoreConfirm) return
+    const snapshot = restoreConfirm
+    setRestoreConfirm(null)
+    setUndoState(makeState())
+    setUndoReason('restore')
+    await applyWorkspaceState({
+      collections: snapshot.collections,
+      environments: snapshot.environments,
+      activeEnvId: snapshot.activeEnvId ?? null,
+    })
+    setMessage(`Workspace restored from the startup backup${snapshot.backedUpAt ? ` (${new Date(snapshot.backedUpAt).toLocaleString()})` : ''}`)
+  })
 
   const exportWorkspaceFile = () => {
     const state = makeState(false)
@@ -324,6 +348,17 @@ export function WorkspacePanel() {
           >
             <Undo2 size={11} /> Undo last import
           </button>
+
+          <button
+            onClick={() => startupBackup && setRestoreConfirm(startupBackup)}
+            disabled={!startupBackup}
+            title={startupBackup
+              ? `Snapshot taken ${startupBackup.backedUpAt ? new Date(startupBackup.backedUpAt).toLocaleString() : 'at startup'} · ${startupBackup.collections.length} collection(s) · ${startupBackup.environments.length} environment(s)`
+              : 'No startup backup available'}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-2 px-3 py-2 text-xs text-text-3 transition-colors hover:border-accent/40 hover:text-text-1 disabled:opacity-40"
+          >
+            <RotateCcw size={11} /> Restore from startup backup
+          </button>
         </div>
 
         {(message || error) && (
@@ -437,6 +472,47 @@ export function WorkspacePanel() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Startup backup restore confirmation modal */}
+      {restoreConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-[440px] bg-surface-0 border border-border-2 rounded-lg shadow-2xl overflow-hidden">
+            <div className="flex items-center h-8 px-3 gap-2 border-b border-border-1 bg-yellow-500/5">
+              <ShieldAlert size={14} className="text-yellow-400" />
+              <span className="text-[10px] font-semibold text-text-1 uppercase tracking-wider">
+                Restore startup backup
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-text-2">
+                Current collections and environments will be replaced with the snapshot taken
+                <strong className="text-text-1"> {restoreConfirm.backedUpAt ? new Date(restoreConfirm.backedUpAt).toLocaleString() : 'at startup'}</strong>.
+              </p>
+              <ul className="space-y-1 text-[10px] text-text-3">
+                <li className="flex items-start gap-1.5">
+                  <Shield size={10} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <span><strong className="text-text-1">{restoreConfirm.collections.length} collection(s), {restoreConfirm.environments.length} environment(s)</strong> &mdash; open tabs and flows are not affected. The restore can be undone from this panel.</span>
+                </li>
+              </ul>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={restoreBackup}
+                  className="flex-1 rounded bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw size={11} />
+                  Restore
+                </button>
+                <button
+                  onClick={() => setRestoreConfirm(null)}
+                  className="rounded border border-border-2 px-3 py-1.5 text-xs text-text-3 hover:text-text-1 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

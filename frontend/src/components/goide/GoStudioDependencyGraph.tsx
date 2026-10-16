@@ -9,6 +9,7 @@ import {
   type GoIDESession,
 } from '@/lib/goide-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
+import { RequestEpoch, cancelInFlight, type Cancellable } from '@/lib/goide/goStudioStaleRequest'
 
 interface GoStudioDependencyGraphProps {
   open: boolean
@@ -38,17 +39,31 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   useModalFocusTrap(open, onClose, dialogRef)
+  // REFACTOR.md voce 10: scarto stale + cancel sulle analisi lunghe (grafo, aggiornamenti, vulns).
+  const graphEpoch = useRef(new RequestEpoch())
+  const updatesEpoch = useRef(new RequestEpoch())
+  const vulnsEpoch = useRef(new RequestEpoch())
+  const graphRequest = useRef<Cancellable | null>(null)
+  const updatesRequest = useRef<Cancellable | null>(null)
+  const vulnsRequest = useRef<Cancellable | null>(null)
 
   const load = async (directory = moduleDirectory) => {
     if (!directory) return
+    const request = getGoIDEDependencyGraph(session.id, directory)
+    const token = graphEpoch.current.begin()
+    cancelInFlight(graphRequest)
+    graphRequest.current = request
     setLoading(true)
     setError(null)
     try {
-      setReport(await getGoIDEDependencyGraph(session.id, directory))
+      const result = await request
+      if (!graphEpoch.current.isCurrent(token)) return
+      setReport(result)
     } catch (reason) {
-      setError(String(reason))
+      if (graphEpoch.current.isCurrent(token)) setError(String(reason))
     } finally {
-      setLoading(false)
+      if (graphRequest.current === request) graphRequest.current = null
+      if (graphEpoch.current.isCurrent(token)) setLoading(false)
     }
   }
 
@@ -60,35 +75,52 @@ export function GoStudioDependencyGraph({ open, session, onClose }: GoStudioDepe
     setUpdates({})
     setVulns({})
     if (directory) void load(directory)
+    // Cambio sessione o chiusura: le analisi in corso non servono più.
+    return () => {
+      graphEpoch.current.invalidate(); updatesEpoch.current.invalidate(); vulnsEpoch.current.invalidate()
+      cancelInFlight(graphRequest); cancelInFlight(updatesRequest); cancelInFlight(vulnsRequest)
+    }
   }, [open, session.id])
 
   if (!open) return null
 
   const checkUpdates = async () => {
+    const request = listGoIDEDependencyUpdates(session.id, moduleDirectory)
+    const token = updatesEpoch.current.begin()
+    cancelInFlight(updatesRequest)
+    updatesRequest.current = request
     setChecking('updates')
     setError(null)
     try {
-      const list = await listGoIDEDependencyUpdates(session.id, moduleDirectory)
+      const list = await request
+      if (!updatesEpoch.current.isCurrent(token)) return
       setUpdates(Object.fromEntries(list.flatMap((item) => (item.latest ? [[item.path, item.latest]] : []))))
     } catch (reason) {
-      setError(String(reason))
+      if (updatesEpoch.current.isCurrent(token)) setError(String(reason))
     } finally {
-      setChecking(null)
+      if (updatesRequest.current === request) updatesRequest.current = null
+      if (updatesEpoch.current.isCurrent(token)) setChecking(null)
     }
   }
 
   const scanVulns = async () => {
+    const request = scanGoIDEDependencyVulnerabilities(session.id, moduleDirectory)
+    const token = vulnsEpoch.current.begin()
+    cancelInFlight(vulnsRequest)
+    vulnsRequest.current = request
     setChecking('vulns')
     setError(null)
     try {
-      const list = await scanGoIDEDependencyVulnerabilities(session.id, moduleDirectory)
+      const list = await request
+      if (!vulnsEpoch.current.isCurrent(token)) return
       const counts: Record<string, number> = {}
       for (const item of list) counts[item.module] = (counts[item.module] ?? 0) + 1
       setVulns(counts)
     } catch (reason) {
-      setError(String(reason))
+      if (vulnsEpoch.current.isCurrent(token)) setError(String(reason))
     } finally {
-      setChecking(null)
+      if (vulnsRequest.current === request) vulnsRequest.current = null
+      if (vulnsEpoch.current.isCurrent(token)) setChecking(null)
     }
   }
 

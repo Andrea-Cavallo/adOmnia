@@ -13,7 +13,7 @@ import (
 func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idetesting.EventParser, error) {
 	var options TestOptions
 	if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
-		return run.CommandSpec{}, nil, fmt.Errorf("opzioni test Go non valide: %w", err)
+		return run.CommandSpec{}, nil, fmt.Errorf("invalid Go test options: %w", err)
 	}
 	for _, pattern := range options.Packages {
 		if err := run.ValidateTarget(request.Root, request.WorkingDirectory, strings.TrimSuffix(pattern, "/...")); err != nil {
@@ -69,14 +69,14 @@ func TestArguments(request TestOptions, coverageFile string) ([]string, error) {
 	}
 	for _, expression := range []string{request.Run, request.Bench} {
 		if _, err := regexp.Compile(strings.ReplaceAll(expression, "/", "|")); err != nil {
-			return nil, fmt.Errorf("espressione di filtro non valida %q: %w", expression, err)
+			return nil, fmt.Errorf("invalid filter expression %q: %w", expression, err)
 		}
 	}
 	if request.Repeat < 0 || request.Repeat > maxTestRepeat {
-		return nil, fmt.Errorf("ripetizioni non valide: da 1 a %d", maxTestRepeat)
+		return nil, fmt.Errorf("invalid repetitions: 1 to %d", maxTestRepeat)
 	}
 	if request.Shuffle != "" && !shuffleSeed.MatchString(request.Shuffle) {
-		return nil, fmt.Errorf("shuffle non valido %q: usa \"on\" o un seed numerico", request.Shuffle)
+		return nil, fmt.Errorf("invalid shuffle %q: use \"on\" or a numeric seed", request.Shuffle)
 	}
 	arguments := []string{"test", "-json", fmt.Sprintf("-count=%d", max(1, request.Repeat))}
 	if request.Shuffle != "" {
@@ -86,7 +86,7 @@ func TestArguments(request TestOptions, coverageFile string) ([]string, error) {
 		values := make([]string, 0, len(request.CPU))
 		for _, cpu := range request.CPU {
 			if cpu < 1 || cpu > 1024 || len(request.CPU) > 16 {
-				return nil, fmt.Errorf("valori -cpu non validi: da 1 a 1024, al massimo 16")
+				return nil, fmt.Errorf("invalid -cpu values: 1 to 1024, at most 16")
 			}
 			values = append(values, strconv.Itoa(cpu))
 		}

@@ -10,8 +10,11 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"adomnia/internal/ide/project"
 )
 
 const (
@@ -61,6 +64,7 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 	result := SearchResult{Matches: []SearchMatch{}}
 	candidates := []searchCandidate{}
 	root := session.Project.RealPath
+	ignore := project.LoadGitIgnore(root)
 	walkErr := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -73,12 +77,12 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 		}
 		relative := filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(path, root), string(filepath.Separator)))
 		if entry.IsDir() {
-			if path != root && (isIgnoredDirectory(entry.Name()) || matchesAny(query.Exclude, relative, entry.Name())) {
+			if path != root && (isIgnoredDirectory(entry.Name()) || ignore.Ignored(relative, true) || matchesAny(query.Exclude, relative, entry.Name())) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if matchesAny(query.Exclude, relative, entry.Name()) || (len(query.Include) > 0 && !matchesAny(query.Include, relative, entry.Name())) {
+		if ignore.Ignored(relative, false) || matchesAny(query.Exclude, relative, entry.Name()) || (len(query.Include) > 0 && !matchesAny(query.Include, relative, entry.Name())) {
 			return nil
 		}
 		result.FilesScanned++
@@ -99,19 +103,26 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 	// Leggere i file in parallelo conta soprattutto su Windows, dove aprire un file costa più che cercarci.
 	perFile := make([][]SearchMatch, len(candidates))
 	next := make(chan int)
+	// Una volta raggiunto il tetto di risultati i file successivi non servono: restano invariati ordine e troncamento,
+	// perché ogni file saltato ha un indice maggiore di tutti quelli che hanno già contribuito.
+	var found atomic.Int64
 	var workers sync.WaitGroup
 	for worker := 0; worker < min(searchWorkers, max(1, len(candidates))); worker++ {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			for index := range next {
-				if ctx.Err() == nil {
+				if ctx.Err() == nil && found.Load() <= maxSearchResults {
 					perFile[index] = searchFile(candidates[index].path, candidates[index].relative, matcher)
+					found.Add(int64(len(perFile[index])))
 				}
 			}
 		}()
 	}
 	for index := range candidates {
+		if found.Load() > maxSearchResults {
+			break
+		}
 		next <- index
 	}
 	close(next)
@@ -149,7 +160,7 @@ func compileSearch(query SearchQuery) (*regexp.Regexp, error) {
 	}
 	compiled, err := regexp.Compile(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("espressione regolare non valida: %w", err)
+		return nil, fmt.Errorf("invalid regular expression: %w", err)
 	}
 	return compiled, nil
 }

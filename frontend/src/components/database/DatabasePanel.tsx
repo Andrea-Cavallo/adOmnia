@@ -21,8 +21,8 @@ import type { AiSchemaTable } from './aiQuerySuggest'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useSettingsStore } from '@/stores/settings'
 import {
-  SAVED_QUERIES_KEY, addSavedQuery, createSavedQuery, exportSavedQueries, filterSavedQueries, importSavedQueries,
-  mergeSavedQueries, migrateFavorites, normalizeSavedQueries, queryFamily, removeSavedQuery, renameSavedQuery, setPersonal,
+  SAVED_QUERIES_KEY, addSavedQuery, createHistoryRecord, createSavedQuery, exportSavedQueries, filterSavedQueries, importSavedQueries,
+  MAX_HISTORY, mergeSavedQueries, migrateFavorites, migrateHistory, normalizeSavedQueries, queryFamily, removeSavedQuery, renameSavedQuery, setPersonal,
   type SavedQuery,
 } from './savedQueries'
 import { RightRail } from './RightRail'
@@ -205,14 +205,10 @@ export function DatabasePanel() {
         }
       } catch { loadedSaved = [] }
       setSaved(loadedSaved)
-      // migrate legacy history (string[]) → HistoryItem[]
+      // Cronologia come record (DB-3.4.1): stringhe e `{query, ts, label}` vecchie migrate una volta.
       if (rawHistory) {
         try {
-          const parsed = JSON.parse(rawHistory) as unknown[]
-          const items: HistoryItem[] = parsed.map((h) =>
-            typeof h === 'string' ? { query: h, ts: 0 } : (h as HistoryItem)
-          )
-          setHistory(items)
+          setHistory(migrateHistory(JSON.parse(rawHistory), nextConnections[0]?.driver ?? ''))
         } catch { setHistory([]) }
       }
       const first = nextConnections[0]
@@ -422,7 +418,7 @@ export function DatabasePanel() {
       if (!cancelled) setStatuses(Object.fromEntries(updates.filter((u) => u !== null)))
     }
     void poll()
-    const stop = visibleInterval(() => void poll(), 3000)
+    const stop = visibleInterval(() => void poll(), 3000, { scope: "database", kind: "live" })
     return () => { cancelled = true; stop() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, port, connections])
@@ -482,8 +478,8 @@ export function DatabasePanel() {
     try {
       const data = await api('/database/query', { ...await queryConnection(active), query: text, limit, timeoutMs, explain, analyze, confirm: confirmed }) as DbResult
       setResult(data)
-      const item: HistoryItem = { query: source, ts: Date.now(), label: activeTab?.name }
-      const nextHistory = [item, ...history.filter((h) => h.query !== source)].slice(0, 50)
+      const item = createHistoryRecord({ query: source, driver: active.driver, connectionId: active.id, name: activeTab?.name })
+      const nextHistory = [item, ...history.filter((h) => h.query !== source)].slice(0, MAX_HISTORY)
       setHistory(nextHistory)
       await safeStoragePut(STORAGE_BUCKET, HISTORY_KEY, JSON.stringify(nextHistory))
       setLogs([

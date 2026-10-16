@@ -64,7 +64,7 @@ const T = {
         autoSaveInterval: 'Auto-save interval (ms)',
         autoSaveIntervalDesc: 'How long to wait before auto-saving the current tab.',
         backupWorkspace: 'Backup workspace on startup',
-        backupWorkspaceDesc: 'Create a .adomnia backup before overwriting on startup.',
+        backupWorkspaceDesc: 'Snapshot collections and environments at startup; restorable from the Workspace panel.',
         maxConcurrentRequests: 'Max concurrent requests',
         maxConcurrentRequestsDesc: 'Global throttle for parallel request execution.',
         railOptions: {
@@ -350,7 +350,7 @@ const T = {
         autoSaveInterval: 'Intervallo auto-salvataggio (ms)',
         autoSaveIntervalDesc: 'Tempo di attesa prima di salvare automaticamente il tab corrente.',
         backupWorkspace: 'Backup workspace all\'avvio',
-        backupWorkspaceDesc: 'Crea una copia .adomnia prima di sovrascrivere all\'avvio.',
+        backupWorkspaceDesc: 'Cattura collections e ambienti all\'avvio; ripristinabili dal pannello Workspace.',
         maxConcurrentRequests: 'Max richieste concorrenti',
         maxConcurrentRequestsDesc: 'Limite globale per richieste eseguite in parallelo.',
         railOptions: {

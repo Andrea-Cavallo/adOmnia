@@ -99,12 +99,12 @@ export async function installGopls(sessionId: string): Promise<Execution> {
   return GoIDEBindings.InstallGopls(sessionId, true)
 }
 
-export async function startLanguageServer(sessionId: string, settings: LanguageServerSettings): Promise<LanguageServerStatus> {
-  return GoIDEBindings.StartLanguageServer(sessionId, settings)
+export async function startLanguageServer(sessionId: string, settings: LanguageServerSettings, userInitiated = true): Promise<LanguageServerStatus> {
+  return userInitiated ? GoIDEBindings.StartLanguageServer(sessionId, settings) : GoIDEBindings.StartAutomaticLanguageServer(sessionId, settings)
 }
 
-export async function restartLanguageServer(sessionId: string, settings: LanguageServerSettings): Promise<LanguageServerStatus> {
-  return GoIDEBindings.RestartLanguageServer(sessionId, settings)
+export async function restartLanguageServer(sessionId: string, settings: LanguageServerSettings, userInitiated = true): Promise<LanguageServerStatus> {
+  return userInitiated ? GoIDEBindings.RestartLanguageServer(sessionId, settings) : GoIDEBindings.RestartAutomaticLanguageServer(sessionId, settings)
 }
 
 export async function stopLanguageServer(sessionId: string): Promise<void> {

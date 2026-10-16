@@ -111,7 +111,7 @@ func parseCoverageProfile(data []byte) (string, map[string][]rawCoverageBlock, e
 		files[file] = append(files[file], block)
 	}
 	if mode == "" {
-		return "", nil, fmt.Errorf("profilo di coverage senza intestazione mode")
+		return "", nil, fmt.Errorf("coverage profile without a mode header")
 	}
 	return mode, files, scanner.Err()
 }
@@ -121,11 +121,11 @@ func parseCoverageLine(line string) (string, rawCoverageBlock, error) {
 	fields := strings.Fields(line)
 	colon := strings.LastIndex(fields[0], ":")
 	if len(fields) != 3 || colon < 0 {
-		return "", rawCoverageBlock{}, fmt.Errorf("riga di coverage non valida: %q", line)
+		return "", rawCoverageBlock{}, fmt.Errorf("invalid coverage line: %q", line)
 	}
 	start, end, ok := strings.Cut(fields[0][colon+1:], ",")
 	if !ok {
-		return "", rawCoverageBlock{}, fmt.Errorf("intervallo di coverage non valido: %q", line)
+		return "", rawCoverageBlock{}, fmt.Errorf("invalid coverage range: %q", line)
 	}
 	var block rawCoverageBlock
 	var err error
@@ -136,10 +136,10 @@ func parseCoverageLine(line string) (string, rawCoverageBlock, error) {
 		return "", rawCoverageBlock{}, err
 	}
 	if block.statements, err = strconv.Atoi(fields[1]); err != nil {
-		return "", rawCoverageBlock{}, fmt.Errorf("numero di istruzioni non valido: %q", line)
+		return "", rawCoverageBlock{}, fmt.Errorf("invalid statement count: %q", line)
 	}
 	if block.count, err = strconv.Atoi(fields[2]); err != nil {
-		return "", rawCoverageBlock{}, fmt.Errorf("conteggio non valido: %q", line)
+		return "", rawCoverageBlock{}, fmt.Errorf("invalid count: %q", line)
 	}
 	return fields[0][:colon], block, nil
 }
@@ -149,7 +149,7 @@ func parsePosition(value string) (int, int, error) {
 	line, lineErr := strconv.Atoi(lineText)
 	column, columnErr := strconv.Atoi(columnText)
 	if !ok || lineErr != nil || columnErr != nil {
-		return 0, 0, fmt.Errorf("posizione di coverage non valida: %q", value)
+		return 0, 0, fmt.Errorf("invalid coverage position: %q", value)
 	}
 	return line, column, nil
 }
@@ -299,14 +299,14 @@ func loadCoverageForModules(projectRoot string, modules []coverageModule, profil
 	data, err := os.ReadFile(profilePath)
 	_ = os.Remove(profilePath)
 	if err != nil {
-		return nil, fmt.Errorf("profilo di coverage non disponibile: %w", err)
+		return nil, fmt.Errorf("coverage profile unavailable: %w", err)
 	}
 	report, err := buildCoverageReportForModules(projectRoot, modules, data)
 	if err != nil {
 		return nil, err
 	}
 	if len(report.Files) == 0 {
-		return nil, fmt.Errorf("il profilo di coverage non contiene file del progetto")
+		return nil, fmt.Errorf("the coverage profile contains no project files")
 	}
 	return &report, nil
 }

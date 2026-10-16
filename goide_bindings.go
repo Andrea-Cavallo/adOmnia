@@ -1,6 +1,7 @@
 package main
 
 import (
+	"adomnia/internal/activity"
 	"adomnia/internal/copilot"
 	"adomnia/internal/git"
 	"adomnia/internal/goide"
@@ -49,6 +50,7 @@ func NewGoIDE() *GoIDE {
 			}
 		}
 	})
+	service.SetActivityManager(activity.Default)
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	service.ConfigureGraphStore(filepath.Join(dataDir(), "goide", "graphs"))
 	_ = service.ConfigureRecoveryStore(goide.RecoveryBoltStore)
@@ -904,12 +906,12 @@ func (g *GoIDE) InstallGopls(sessionID string, confirmed bool) (goide.Execution,
 
 // StartLanguageServer avvia gopls per un progetto autorizzato.
 func (g *GoIDE) StartLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
-	return g.service.StartLanguageServer(sessionID, settings)
+	return g.service.StartLanguageServerFromUser(sessionID, settings)
 }
 
 // RestartLanguageServer riavvia gopls azzerando il contatore dei crash.
 func (g *GoIDE) RestartLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
-	return g.service.RestartLanguageServer(sessionID, settings)
+	return g.service.RestartLanguageServerFromUser(sessionID, settings)
 }
 
 // StopLanguageServer arresta gopls della sessione.
@@ -1537,4 +1539,12 @@ func (g *GoIDE) GraphSearchReady(sessionID, query string, kinds []string, limit 
 // Documentation legge la documentazione dei package Go e dei file .proto del progetto (solo parsing).
 func (g *GoIDE) Documentation(sessionID string) (goide.DocumentationReport, error) {
 	return g.service.Documentation(sessionID)
+}
+
+// Automatic entry points keep the existing editor-driven suspension policy.
+func (g *GoIDE) StartAutomaticLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
+	return g.service.StartLanguageServer(sessionID, settings)
+}
+func (g *GoIDE) RestartAutomaticLanguageServer(sessionID string, settings goide.LanguageServerSettings) (goide.LanguageServerStatus, error) {
+	return g.service.RestartLanguageServer(sessionID, settings)
 }

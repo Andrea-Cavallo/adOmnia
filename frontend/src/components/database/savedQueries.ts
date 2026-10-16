@@ -4,6 +4,7 @@
 
 import type { ConsoleCategory } from './consoleTemplates'
 import { interpret, type DbKind } from './queryInterpreter'
+import type { HistoryItem } from './dbShared'
 
 export const SAVED_QUERIES_KEY = 'savedQueries.v2'
 export const MAX_SAVED_QUERIES = 200
@@ -211,4 +212,49 @@ export function importSavedQueries(text: string): SavedQuery[] {
 export function mergeSavedQueries(existing: readonly SavedQuery[], incoming: readonly SavedQuery[]): SavedQuery[] {
   // Added last-to-first so the file's first record ends up first, as it was exported.
   return [...incoming].reverse().reduce<SavedQuery[]>((list, record) => addSavedQuery(list, record), [...existing])
+}
+
+// ── query history (DB-3.4.1) ─────────────────────────────────────────────────
+export const MAX_HISTORY = 50
+
+/** A history entry as a record: id, deduced category, driver and where it ran. */
+export function createHistoryRecord(input: { query: string; driver: string; connectionId?: string | null; name?: string; ts?: number }): HistoryItem {
+  const query = input.query.slice(0, MAX_SAVED_QUERY_CHARS)
+  return {
+    id: newId(),
+    name: (input.name ?? '').trim().slice(0, 120) || nameFor(query),
+    category: categorizeQuery(input.driver, query),
+    driver: input.driver,
+    connectionId: input.connectionId ?? null,
+    query,
+    ts: typeof input.ts === 'number' ? input.ts : Date.now(),
+  }
+}
+
+/**
+ * Old bare strings and partial records (`{query, ts, label}`) become full records.
+ * Migrated entries carry no `connectionId`: they are valid for every connection of
+ * their driver, exactly like migrated favorites.
+ */
+export function migrateHistory(raw: unknown, driver: string, connectionId: string | null = null): HistoryItem[] {
+  if (!Array.isArray(raw)) return []
+  const out: HistoryItem[] = []
+  for (const entry of raw) {
+    if (out.length >= MAX_HISTORY) break
+    if (typeof entry === 'string') {
+      if (entry.trim()) out.push(createHistoryRecord({ query: entry, driver, connectionId }))
+      continue
+    }
+    if (!entry || typeof entry !== 'object') continue
+    const record = entry as Partial<HistoryItem> & { label?: string }
+    if (typeof record.query !== 'string' || !record.query.trim()) continue
+    out.push(createHistoryRecord({
+      query: record.query,
+      driver: typeof record.driver === 'string' && record.driver ? record.driver : driver,
+      connectionId: record.connectionId ?? connectionId,
+      name: record.name ?? record.label,
+      ts: typeof record.ts === 'number' ? record.ts : 0,
+    }))
+  }
+  return out
 }

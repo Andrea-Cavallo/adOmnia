@@ -81,7 +81,7 @@ export function LargeFilePanel({ onClose, onImportPage }: LargeFilePanelProps) {
     if (!status || status.done || !idRef.current) return undefined
     return visibleInterval(() => {
       void logIndexStatus(port, idRef.current).then((next) => { setStatus(next) })
-    }, 500)
+    }, 500, { scope: "loginspector", kind: "live" })
   }, [port, status])
 
   const runSearch = () => {

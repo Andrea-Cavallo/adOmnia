@@ -41,8 +41,6 @@ export const ADOMNIA_CAPABILITIES: AdomniaCapability[] = [
   { id: 'logs', label: 'Log Inspector', panel: 'loginspector', aliases: ['log', 'trace', 'stacktrace'], summary: 'Analyze logs and turn detected call chains into flows or mocks.' },
   { id: 'observe', label: 'Observability', panel: 'observe', aliases: ['observe', 'observability', 'metric', 'otel'], summary: 'Inspect application and API observability signals.' },
   { id: 'secret-scanner', label: 'Secret Scanner', panel: 'secretscanner', aliases: ['scan secret', 'leak', 'credential scan'], summary: 'Find exposed credentials in local content.' },
-  { id: 'markdown', label: 'Markdown Studio', panel: 'markdown', aliases: ['markdown', 'notes', 'readme'], summary: 'Write technical notes with live preview.' },
-  { id: 'mermaid', label: 'Mermaid Studio', panel: 'mermaid', aliases: ['mermaid', 'diagram', 'sequence'], summary: 'Create and preview technical diagrams.' },
   { id: 'latex', label: 'LaTeX Studio', panel: 'latex', aliases: ['latex', 'tex', 'cv', 'report'], summary: 'Edit LaTeX documents and technical reports.' },
   { id: 'pdf', label: 'PDF Editor', panel: 'pdfeditor', aliases: ['pdf', 'sign', 'signature'], summary: 'Edit, annotate, organize and sign PDF files.' },
   { id: 'templates', label: 'Templates', panel: 'templates', aliases: ['template', 'preset'], summary: 'Install and share request, flow, mock and environment templates.' },

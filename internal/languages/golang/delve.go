@@ -39,15 +39,15 @@ func delveVersion(binary string) (string, error) {
 	process.Configure(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
-		return "", fmt.Errorf("dlv non risponde a 'dlv version'")
+		return "", fmt.Errorf("dlv does not answer 'dlv version'")
 	}
 	if err != nil {
-		return "", fmt.Errorf("dlv non eseguibile: %s", strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("dlv is not executable: %s", strings.TrimSpace(string(output)))
 	}
 	for _, line := range strings.Split(string(output), "\n") {
 		if version, ok := strings.CutPrefix(strings.TrimSpace(line), "Version:"); ok {
 			return strings.TrimSpace(version), nil
 		}
 	}
-	return "", fmt.Errorf("versione di dlv non riconosciuta")
+	return "", fmt.Errorf("unrecognized dlv version")
 }

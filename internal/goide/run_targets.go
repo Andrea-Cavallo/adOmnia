@@ -61,7 +61,7 @@ func (s *Service) resolveLanguageRunTarget(session Session, languageID, kind, wo
 	}
 	adapter, ok := s.workspace.languages.Get(languageID)
 	if !ok {
-		return "", "", fmt.Errorf("linguaggio non registrato: %s", languageID)
+		return "", "", fmt.Errorf("language not registered: %s", languageID)
 	}
 	if _, ok := adapter.(language.RunTargetResolver); !ok {
 		return workingDirectory, target, nil

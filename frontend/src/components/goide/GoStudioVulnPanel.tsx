@@ -87,7 +87,7 @@ export function GoStudioVulnPanel({ session, lead }: { session: GoIDESession; le
             {modules.map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}
           </select>
         )}
-        <button type="button" onClick={() => void scan()} disabled={scanning} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
+        <button type="button" onClick={() => void scan()} disabled={scanning} className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
           {scanning ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}{scanning ? 'Scanning…' : report ? 'Scan again' : 'Scan with govulncheck'}
         </button>
         <span className="flex items-center gap-1 text-[11px] text-text-4" title="govulncheck downloads the Go vulnerability database; offline and air-gapped network modes block it."><Info size={11} />Contacts vuln.go.dev</span>

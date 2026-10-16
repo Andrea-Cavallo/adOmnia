@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { isVaultRef, resolveVaultReferences } from '@/lib/vaultRefs'
@@ -21,8 +22,8 @@ async function push(): Promise<void> {
 export function startSharedEnvironmentSync(): void {
   if (started) return
   started = true
-  void push().catch(() => undefined)
+  void push().catch(logBackgroundError('environment sync'))
   useEnvironmentsStore.subscribe((state, previous) => {
-    if (state.environments !== previous.environments || state.activeEnvId !== previous.activeEnvId) void push().catch(() => undefined)
+    if (state.environments !== previous.environments || state.activeEnvId !== previous.activeEnvId) void push().catch(logBackgroundError('environment sync'))
   })
 }

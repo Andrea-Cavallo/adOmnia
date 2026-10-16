@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Bug, Copy, Loader2, Power, RefreshCw, Search, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import type { GoIDESession } from '@/lib/goide-api'
+import { RequestEpoch, cancelInFlight, type Cancellable } from '@/lib/goide/goStudioStaleRequest'
 import { visibleInterval } from '@/lib/visiblePolling'
 import {
   clearGoIDESonarBaseline, configureGoIDESonarScanner, detectGoIDESonarScanner, fetchGoIDESonarIssues,
@@ -41,6 +42,10 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
   const [query, setQuery] = useState('')
   const [severity, setSeverity] = useState('')
   const [securityOnly, setSecurityOnly] = useState(false)
+  // REFACTOR.md voce 10: il modello di `stores/goideLsp.ts` — scarto stale + cancel —
+  // per le scansioni lunghe: cambio sessione o chiusura del pannello fermano il lavoro.
+  const running = useRef<Cancellable | null>(null)
+  const requests = useRef(new RequestEpoch())
 
   const load = useCallback(async () => {
     try {
@@ -57,10 +62,12 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
 
   useEffect(() => { void load() }, [load])
 
+  useEffect(() => () => { requests.current.invalidate(); cancelInFlight(running) }, [sessionId])
+
   useEffect(() => {
     if (!busy) return undefined
-    return visibleInterval(() => setNow(Date.now()), 500)
-  }, [busy])
+    return visibleInterval(() => setNow(Date.now()), 500, { scope: `goide:${sessionId}`, kind: "decorative" })
+  }, [busy, sessionId])
 
   const issues = useMemo(() => (result ? sortSonarIssues(result.issues) : []), [result])
   const visible = useMemo(() => filterSonarIssues(issues, { query, severity, securityOnly }), [issues, query, severity, securityOnly])
@@ -68,29 +75,40 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
   const aiReady = goStudioAIFixAvailable()
 
   const runScan = async () => {
+    const request = runGoIDESonarScan(sessionId, token)
+    const requestToken = requests.current.begin()
+    running.current = request
     setBusy('scan'); setStartedAt(Date.now()); setNow(Date.now()); setError(null); setNotice(null)
     try {
-      const outcome = await runGoIDESonarScan(sessionId, token)
+      const outcome = await request
+      if (!requests.current.isCurrent(requestToken)) return
       setResult(outcome)
       setConfig((current) => ({ ...current, hasToken: current.hasToken || token.trim() !== '' }))
       if (token.trim()) setToken('')
       setNotice(outcome.warning ?? (outcome.issueCount === 0 ? 'Scan finished: no open issues found.' : null))
     } catch (problem) {
-      setError(errorMessage(problem))
+      if (requests.current.isCurrent(requestToken)) setError(errorMessage(problem))
     } finally {
-      setBusy(null)
+      if (running.current === request) running.current = null
+      if (requests.current.isCurrent(requestToken)) setBusy(null)
     }
   }
 
   const refresh = async () => {
+    const request = fetchGoIDESonarIssues(sessionId, token)
+    const requestToken = requests.current.begin()
+    running.current = request
     setBusy('fetch'); setStartedAt(Date.now()); setNow(Date.now()); setError(null); setNotice(null)
     try {
-      setResult(await fetchGoIDESonarIssues(sessionId, token))
+      const outcome = await request
+      if (!requests.current.isCurrent(requestToken)) return
+      setResult(outcome)
       if (token.trim()) { await setGoIDESonarToken(sessionId, token); setConfig((current) => ({ ...current, hasToken: true })); setToken('') }
     } catch (problem) {
-      setError(errorMessage(problem))
+      if (requests.current.isCurrent(requestToken)) setError(errorMessage(problem))
     } finally {
-      setBusy(null)
+      if (running.current === request) running.current = null
+      if (requests.current.isCurrent(requestToken)) setBusy(null)
     }
   }
 
@@ -185,8 +203,8 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
         {config.hasToken && <span className="rounded bg-surface-3 px-1 text-[10px] text-text-3">token set</span>}
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {busy && <span className="flex items-center gap-1 text-[11px] text-accent"><Loader2 size={12} className="animate-spin" />{busy === 'scan' ? 'Scanning' : 'Refreshing'} · {seconds}s</span>}
-          <button type="button" onClick={() => setShowSettings((value) => !value)} title="Settings" className={`go-studio-icon-button h-7 w-7 ${settings ? 'text-accent' : ''}`}><Settings2 size={13} /></button>
-          <button type="button" onClick={() => void refresh()} disabled={!config.enabled || !!busy} title="Reimport issues (no rescan)" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} /></button>
+          <button type="button" onClick={() => setShowSettings((value) => !value)} title="Settings" aria-label="Settings" className={`go-studio-icon-button h-7 w-7 ${settings ? 'text-accent' : ''}`}><Settings2 size={13} /></button>
+          <button type="button" onClick={() => void refresh()} disabled={!config.enabled || !!busy} title="Reimport issues (no rescan)" aria-label="Reimport issues (no rescan)" className="go-studio-icon-button h-7 w-7"><RefreshCw size={13} /></button>
         </div>
       </div>
 
@@ -233,10 +251,10 @@ export function GoStudioSonarPanel({ session }: GoStudioSonarPanelProps) {
             <label className="flex items-center gap-1.5 text-text-3"><input type="checkbox" checked={securityOnly} onChange={(event) => setSecurityOnly(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Security only</label>
             <div className="ml-auto flex items-center gap-1">
               <button type="button" onClick={() => void runScan()} disabled={!!scanBlockedReason || !!busy} title={scanBlockedReason || 'Run sonar-scanner again'} className="go-studio-icon-button h-7 w-7 text-success"><Bug size={13} /></button>
-              <button type="button" onClick={copyProblems} disabled={visible.length === 0} title="Copy all problems" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
+              <button type="button" onClick={copyProblems} disabled={visible.length === 0} title="Copy all problems" aria-label="Copy all problems" className="go-studio-icon-button h-7 w-7"><Copy size={13} /></button>
               <button type="button" onClick={fixWithAI} disabled={visible.length === 0 || !aiReady} title={aiReady ? 'Resolve with AI (preview before applying)' : 'Enable an AI provider in Settings → AI'} className="go-studio-icon-button h-7 w-7 text-accent"><Sparkles size={13} /></button>
-              <button type="button" onClick={() => void saveBaseline()} disabled={!!busy} title="Save baseline (hide current problems)" className="go-studio-icon-button h-7 w-7"><ShieldCheck size={13} /></button>
-              <button type="button" onClick={() => void clearBaseline()} title="Clear baseline" className="go-studio-icon-button h-7 w-7"><Trash2 size={13} /></button>
+              <button type="button" onClick={() => void saveBaseline()} disabled={!!busy} title="Save baseline (hide current problems)" aria-label="Save baseline (hide current problems)" className="go-studio-icon-button h-7 w-7"><ShieldCheck size={13} /></button>
+              <button type="button" onClick={() => void clearBaseline()} title="Clear baseline" aria-label="Clear baseline" className="go-studio-icon-button h-7 w-7"><Trash2 size={13} /></button>
             </div>
           </div>
 

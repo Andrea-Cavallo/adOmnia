@@ -1,7 +1,8 @@
 import { goModules } from '@/lib/goide/goProject'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ArrowUpCircle, History, Loader2, Package, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
 import { listGoIDEDependencies, listGoIDEModuleVersions, startGoIDEDependencyAction, type GoIDEDependencyState, type GoIDESession } from '@/lib/goide-api'
+import { RequestEpoch, cancelInFlight, type Cancellable } from '@/lib/goide/goStudioStaleRequest'
 import { confirm } from '@/lib/confirmDialog'
 import { useGoIDEStore } from '@/stores/goide'
 import { GoStudioAlert, GoStudioButton, GoStudioField, GoStudioModal } from './GoStudioModal'
@@ -24,15 +25,32 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
   const [tab, setTab] = useState<'requirements' | 'gomod' | 'workspace'>('requirements')
   // Versioni pubblicate per dipendenza, caricate solo su richiesta (passano dal GOPROXY).
   const [versions, setVersions] = useState<Record<string, string[] | 'loading'>>({})
+  // REFACTOR.md voce 10: scarto stale + cancel sui `go list` lunghi, come in `stores/goideLsp.ts`.
+  const listEpoch = useRef(new RequestEpoch())
+  const versionEpoch = useRef(new RequestEpoch())
+  const listRequest = useRef<Cancellable | null>(null)
+  const versionRequest = useRef<Cancellable | null>(null)
   const executions = useGoIDEStore((store) => store.executions)
   const updateLayout = useGoIDEStore((store) => store.updateLayout)
   const lastDependencyRun = useMemo(() => executions.filter((execution) => execution.sessionId === session.id && execution.kind === 'dependency').sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0] ?? null, [executions, session.id])
 
   const load = async (directory = moduleDirectory) => {
     if (!directory) return
+    const request = listGoIDEDependencies(session.id, directory)
+    const token = listEpoch.current.begin()
+    cancelInFlight(listRequest)
+    listRequest.current = request
     setLoading(true); setError(null)
-    try { setState(await listGoIDEDependencies(session.id, directory)) } catch (reason) { setError(String(reason)) }
-    finally { setLoading(false) }
+    try {
+      const result = await request
+      if (!listEpoch.current.isCurrent(token)) return
+      setState(result)
+    } catch (reason) {
+      if (listEpoch.current.isCurrent(token)) setError(String(reason))
+    } finally {
+      if (listRequest.current === request) listRequest.current = null
+      if (listEpoch.current.isCurrent(token)) setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -42,6 +60,11 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
     setState(null)
     setVersions({})
     if (directory) void load(directory)
+    // Cambio sessione o chiusura: il `go list` in corso non serve più.
+    return () => {
+      listEpoch.current.invalidate(); versionEpoch.current.invalidate()
+      cancelInFlight(listRequest); cancelInFlight(versionRequest)
+    }
   }, [open, session.id])
 
   useEffect(() => {
@@ -75,13 +98,20 @@ export function GoStudioDependencies({ open, session, onClose }: GoStudioDepende
   }
 
   const loadVersions = async (path: string) => {
+    const request = listGoIDEModuleVersions(session.id, moduleDirectory, path)
+    const token = versionEpoch.current.begin()
+    versionRequest.current = request
     setVersions((current) => ({ ...current, [path]: 'loading' }))
     try {
-      const list = await listGoIDEModuleVersions(session.id, moduleDirectory, path)
+      const list = await request
+      if (!versionEpoch.current.isCurrent(token)) return
       setVersions((current) => ({ ...current, [path]: list }))
     } catch (reason) {
+      if (!versionEpoch.current.isCurrent(token)) return
       setVersions((current) => { const next = { ...current }; delete next[path]; return next })
       setError(String(reason))
+    } finally {
+      if (versionRequest.current === request) versionRequest.current = null
     }
   }
 

@@ -70,7 +70,7 @@ function describeDropFile(name: string): DropPreview {
   const lower = name.toLowerCase()
   if (lower.endsWith('.har')) return { name, kind: 'HAR', target: 'HAR Viewer', supported: true }
   if (lower.endsWith('.wsdl')) return { name, kind: 'WSDL', target: 'SOAP Studio', supported: true }
-  if (/\.(mmd|mermaid)$/i.test(lower)) return { name, kind: 'Mermaid', target: 'Mermaid Studio', supported: true }
+  if (/\.(mmd|mermaid)$/i.test(lower)) return { name, kind: 'Mermaid', target: 'Go Studio', supported: true }
   if (lower.endsWith('.tex')) return { name, kind: 'LaTeX', target: 'LaTeX Studio', supported: true }
   if (lower.endsWith('.pdf')) return { name, kind: 'PDF', target: 'PDF Editor', supported: true }
   if (lower.endsWith('.proto')) return { name, kind: 'Proto', target: 'gRPC Client', supported: true }
@@ -150,8 +150,8 @@ export function useFileDrop(): FileDropResult {
         if (routed.kind !== 'collection') {
           if (routedTool || totalImported > 0) { errors.push(`${file.name}: drop tool files one at a time.`); continue }
           useAppStore.getState().queueFileImport(routed)
-          const target = routed.kind === 'har' ? 'har' : routed.kind === 'wsdl' ? 'soap' : routed.kind === 'mermaid' ? 'mermaid' : routed.kind === 'latex' ? 'latex' : routed.kind === 'pdf' ? 'pdfeditor' : routed.kind === 'proto' ? 'grpc' : routed.kind === 'sql' ? 'database' : 'powertools'
-          const label = routed.kind === 'har' ? 'HAR Viewer' : routed.kind === 'wsdl' ? 'SOAP Studio' : routed.kind === 'mermaid' ? 'Mermaid Studio' : routed.kind === 'latex' ? 'LaTeX Studio' : routed.kind === 'pdf' ? 'PDF Editor' : routed.kind === 'proto' ? 'gRPC Client' : routed.kind === 'sql' ? 'Database Studio' : 'Class File Inspector'
+          const target = routed.kind === 'har' ? 'har' : routed.kind === 'wsdl' ? 'soap' : routed.kind === 'mermaid' ? 'goide' : routed.kind === 'latex' ? 'latex' : routed.kind === 'pdf' ? 'pdfeditor' : routed.kind === 'proto' ? 'grpc' : routed.kind === 'sql' ? 'database' : 'powertools'
+          const label = routed.kind === 'har' ? 'HAR Viewer' : routed.kind === 'wsdl' ? 'SOAP Studio' : routed.kind === 'mermaid' ? 'Go Studio (use File → Open to edit it)' : routed.kind === 'latex' ? 'LaTeX Studio' : routed.kind === 'pdf' ? 'PDF Editor' : routed.kind === 'proto' ? 'gRPC Client' : routed.kind === 'sql' ? 'Database Studio' : 'Class File Inspector'
           setActiveRail(target)
           showFeedback(`${file.name} opened in ${label}.`, true)
           routedTool = true; continue

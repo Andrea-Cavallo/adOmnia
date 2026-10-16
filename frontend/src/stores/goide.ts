@@ -64,6 +64,7 @@ import { openExternalDocument } from '@/lib/goide-lsp-api'
 import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudioWorkspace } from '@/lib/goide-workspaces-api'
 import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { confirm } from '@/lib/confirmDialog'
+import { studioToast } from './goideToast'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/goide/goStudioRecovery'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/goide/goStudioDiskChanges'
 
@@ -147,15 +148,21 @@ const DEFAULT_LAYOUT: GoIDELayout = {
   bottomOpen: true,
 }
 
+/** Un layout salvato su un monitor grande non deve produrre pannelli più larghi della finestra attuale. */
+function clampPane(value: number, min: number, viewport: number | undefined, ratio: number): number {
+  const max = viewport && viewport > 0 ? Math.max(min, Math.floor(viewport * ratio)) : Infinity
+  return Math.min(max, Math.max(min, value))
+}
+
 function loadLayout(): GoIDELayout {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY)
     if (!raw) return DEFAULT_LAYOUT
     const parsed = JSON.parse(raw) as Partial<GoIDELayout>
     return {
-      projectWidth: Math.max(MIN_PANE_WIDTH, parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth),
-      structureWidth: Math.max(MIN_PANE_WIDTH, parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth),
-      bottomHeight: Math.max(MIN_PANE_HEIGHT, parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight),
+      projectWidth: clampPane(parsed.projectWidth ?? DEFAULT_LAYOUT.projectWidth, MIN_PANE_WIDTH, globalThis.innerWidth, 0.5),
+      structureWidth: clampPane(parsed.structureWidth ?? DEFAULT_LAYOUT.structureWidth, MIN_PANE_WIDTH, globalThis.innerWidth, 0.5),
+      bottomHeight: clampPane(parsed.bottomHeight ?? DEFAULT_LAYOUT.bottomHeight, MIN_PANE_HEIGHT, globalThis.innerHeight, 0.7),
       projectOpen: parsed.projectOpen ?? true,
       structureOpen: parsed.structureOpen ?? true,
       bottomOpen: parsed.bottomOpen ?? true,
@@ -1242,7 +1249,9 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
       if (event.type === 'run.finished') {
         recordConfiguredRun(get(), execution)
         recordFuzzRun(get(), execution)
+        if (execution.status === 'exited' && !execution.error && !execution.exitCode) studioToast(`Finished: ${execution.command}`)
       }
+      if (event.type === 'run.started') studioToast(`Started: ${execution.command}`, 'info')
     }
   },
 

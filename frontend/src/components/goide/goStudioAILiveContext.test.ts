@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { columnsQuery, formatSchema, formatTopic } from './goStudioAILiveContext'
+import { columnsQuery, formatSchema, formatTopic, liveSchemaQuery } from './goStudioAILiveContext'
 
 describe('live AI context', () => {
   it('reads columns for each SQL driver', () => {
@@ -7,6 +7,13 @@ describe('live AI context', () => {
     expect(columnsQuery('mysql')).toContain('DATABASE()')
     expect(columnsQuery('sqlite')).toContain('pragma_table_info')
     expect(columnsQuery('mongodb')).toBe('')
+  })
+
+  it('asks the sidecar by connection id, never with credentials (DB-2.13)', () => {
+    const body = liveSchemaQuery('conn-1', 'postgres', { DB_HOST: 'localhost' })
+    expect(body).toMatchObject({ connectionId: 'conn-1', variables: { DB_HOST: 'localhost' }, confirm: false, explain: false })
+    expect(Object.keys(body)).not.toContain('connection')
+    expect(JSON.stringify(body)).not.toContain('password')
   })
 
   it('formats one line per table, code tables first when there are many', () => {

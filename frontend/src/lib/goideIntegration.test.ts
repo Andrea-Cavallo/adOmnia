@@ -16,6 +16,5 @@ describe('Go Studio navigation integration', () => {
   it('keeps project Git inside Go Studio and leaves collaboration in Workspace', () => {
     const workspace = RAIL_CATEGORIES.find((category) => category.key === 'workspace')
     expect(workspace?.groups.flatMap((group) => group.items.map((item) => item.id))).toEqual(['collab'])
-    expect(COMMAND_PALETTE_PANELS.some((feature) => feature.id === 'gitsync')).toBe(false)
   })
 })

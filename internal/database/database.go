@@ -861,8 +861,14 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 func mongoDestructiveOperation(op string) (bool, bool) {
 	switch op {
 	case "insertone", "insertmany", "updateone", "updatemany", "replaceone", "deleteone", "deletemany":
+		// Le write mirate sono marcate come distruttive ma non bloccate: l'utente le ha
+		// scritte per nome. Le versioni "many" senza filtro chiedono conferma.
 		return true, op == "updatemany" || op == "deletemany"
 	case "dropcollection", "dropdatabase":
+		return true, true
+	case "runcommand":
+		// Comando arbitrario (dropDatabase, write massive, drop…): il payload non è
+		// classificabile dal nome, quindi sempre distruttivo e strict (review DB-2).
 		return true, true
 	default:
 		return false, false
@@ -1159,7 +1165,10 @@ func destructiveQuery(driver, query string) (bool, bool) {
 			first = strings.ToUpper(cteWriteRe.FindString(stmt))
 		}
 		switch first {
-		case "DROP", "TRUNCATE":
+		// DROP/TRUNCATE distruggono; CALL/DO/COPY/MERGE/REPLACE/LOAD/GRANT/REVOKE possono
+		// cambiare dati, stato o privilegi senza che lo si veda dallo statement: sempre conferma
+		// (review di sicurezza DB-2). Anche `COPY … TO` è una lettura, ma scrive su file.
+		case "DROP", "TRUNCATE", "CALL", "DO", "COPY", "MERGE", "REPLACE", "LOAD", "GRANT", "REVOKE":
 			destructive, strict = true, true
 		case "ALTER":
 			destructive = true

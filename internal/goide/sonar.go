@@ -192,10 +192,10 @@ func sonarScannerVersion(binary string) (string, error) {
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
-		return "", fmt.Errorf("sonar-scanner non risponde")
+		return "", fmt.Errorf("sonar-scanner does not respond")
 	}
 	if err != nil {
-		return "", fmt.Errorf("sonar-scanner non eseguibile: %s", strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("sonar-scanner is not executable: %s", strings.TrimSpace(string(output)))
 	}
 	if match := sonarVersionPattern.FindString(string(output)); match != "" {
 		return match, nil
@@ -212,10 +212,10 @@ func (s *Service) ConfigureSonarScanner(sessionID, binary string) error {
 	if binary != "" {
 		abs, err := filepath.Abs(binary)
 		if err != nil {
-			return fmt.Errorf("percorso sonar-scanner non valido: %w", err)
+			return fmt.Errorf("invalid sonar-scanner path: %w", err)
 		}
 		if info, err := os.Stat(abs); err != nil || info.IsDir() {
-			return fmt.Errorf("il percorso indicato non è un eseguibile")
+			return fmt.Errorf("the given path is not an executable")
 		}
 		binary = abs
 	}
@@ -252,7 +252,7 @@ func (s *Service) SaveSonarConfig(sessionID string, config SonarConfig) (SonarCo
 		}
 		config.ServerURL = normalized
 		if config.ProjectKey == "" {
-			return SonarConfig{}, fmt.Errorf("la chiave del progetto SonarQube è obbligatoria")
+			return SonarConfig{}, fmt.Errorf("the SonarQube project key is required")
 		}
 	} else {
 		config.ServerURL = strings.TrimRight(config.ServerURL, "/")
@@ -282,11 +282,11 @@ func (s *Service) SetSonarToken(sessionID, token string) error {
 func normalizeSonarServerURL(raw string) (string, error) {
 	raw = strings.TrimRight(strings.TrimSpace(raw), "/")
 	if raw == "" {
-		return "", fmt.Errorf("l'URL del server SonarQube è obbligatorio")
+		return "", fmt.Errorf("the SonarQube server URL is required")
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return "", fmt.Errorf("URL del server SonarQube non valido: usa http(s)://host")
+		return "", fmt.Errorf("invalid SonarQube server URL: use http(s)://host")
 	}
 	return raw, nil
 }
@@ -299,18 +299,18 @@ func (s *Service) RunSonarScan(ctx context.Context, sessionID, token string) (So
 		return SonarScanResult{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return SonarScanResult{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima di eseguire una scansione")
+		return SonarScanResult{}, fmt.Errorf("explicitly authorize the tools before running a scan")
 	}
 	config := s.sonar.config(session.ID)
 	if !config.Enabled {
-		return SonarScanResult{}, fmt.Errorf("abilita SonarQube per questo progetto prima di scansionare")
+		return SonarScanResult{}, fmt.Errorf("enable SonarQube for this project before scanning")
 	}
 	serverURL, err := normalizeSonarServerURL(config.ServerURL)
 	if err != nil {
 		return SonarScanResult{}, err
 	}
 	if config.ProjectKey == "" {
-		return SonarScanResult{}, fmt.Errorf("configura la chiave del progetto SonarQube")
+		return SonarScanResult{}, fmt.Errorf("configure the SonarQube project key")
 	}
 	if netpolicy.Current().Offline {
 		return SonarScanResult{}, netpolicy.ErrOffline
@@ -348,10 +348,10 @@ func (s *Service) RunSonarScan(ctx context.Context, sessionID, token string) (So
 	output, err := command.CombinedOutput()
 	trimmed := tailString(string(output), sonarMaxOutput)
 	if scanContext.Err() != nil {
-		return SonarScanResult{}, fmt.Errorf("scansione SonarQube interrotta per timeout")
+		return SonarScanResult{}, fmt.Errorf("SonarQube scan interrupted by timeout")
 	}
 	if err != nil {
-		return SonarScanResult{}, fmt.Errorf("sonar-scanner è terminato con errore: %s", lastNonEmptyLine(trimmed))
+		return SonarScanResult{}, fmt.Errorf("sonar-scanner exited with an error: %s", lastNonEmptyLine(trimmed))
 	}
 	result := SonarScanResult{ServerURL: serverURL, ProjectKey: config.ProjectKey, Output: trimmed, ScannedAt: time.Now().UTC()}
 	// Il server indicizza il report in modo asincrono: senza attendere il task si leggerebbero
@@ -380,18 +380,18 @@ func (s *Service) FetchSonarIssues(ctx context.Context, sessionID, token string)
 		return SonarScanResult{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return SonarScanResult{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima di contattare SonarQube")
+		return SonarScanResult{}, fmt.Errorf("explicitly authorize the tools before contacting SonarQube")
 	}
 	config := s.sonar.config(session.ID)
 	if !config.Enabled {
-		return SonarScanResult{}, fmt.Errorf("abilita SonarQube per questo progetto")
+		return SonarScanResult{}, fmt.Errorf("enable SonarQube for this project")
 	}
 	serverURL, err := normalizeSonarServerURL(config.ServerURL)
 	if err != nil {
 		return SonarScanResult{}, err
 	}
 	if config.ProjectKey == "" {
-		return SonarScanResult{}, fmt.Errorf("configura la chiave del progetto SonarQube")
+		return SonarScanResult{}, fmt.Errorf("configure the SonarQube project key")
 	}
 	token = s.effectiveSonarToken(session.ID, token)
 	if token == "" {
@@ -499,7 +499,7 @@ func (s *Service) waitSonarTask(ctx context.Context, root, serverURL, token stri
 		setSonarAuth(request, token)
 		response, err := client.Do(request)
 		if err != nil {
-			return fmt.Errorf("stato dell'analisi non leggibile: %w", err)
+			return fmt.Errorf("analysis status unreadable: %w", err)
 		}
 		var parsed struct {
 			Task struct {
@@ -510,16 +510,16 @@ func (s *Service) waitSonarTask(ctx context.Context, root, serverURL, token stri
 		decodeErr := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&parsed)
 		response.Body.Close()
 		if response.StatusCode != http.StatusOK || decodeErr != nil {
-			return fmt.Errorf("stato dell'analisi non leggibile (HTTP %d)", response.StatusCode)
+			return fmt.Errorf("analysis status unreadable (HTTP %d)", response.StatusCode)
 		}
 		switch parsed.Task.Status {
 		case "SUCCESS":
 			return nil
 		case "FAILED", "CANCELED":
-			return fmt.Errorf("il server non ha elaborato l'analisi: %s %s", parsed.Task.Status, parsed.Task.ErrorMessage)
+			return fmt.Errorf("the server did not process the analysis: %s %s", parsed.Task.Status, parsed.Task.ErrorMessage)
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("il server sta ancora elaborando l'analisi")
+			return fmt.Errorf("the server is still processing the analysis")
 		}
 		select {
 		case <-ctx.Done():
@@ -539,7 +539,7 @@ func (s *Service) fetchSonarIssues(ctx context.Context, session Session, config 
 	}
 	parsedURL, err := url.Parse(serverURL)
 	if err != nil {
-		return nil, fmt.Errorf("URL del server SonarQube non valido")
+		return nil, fmt.Errorf("invalid SonarQube server URL")
 	}
 	host := parsedURL.Host
 	if err := netpolicy.Allow("sonarqube", host); err != nil {
@@ -570,7 +570,7 @@ func (s *Service) fetchSonarIssues(ctx context.Context, session Session, config 
 		}
 		var parsed sonarIssuesResponse
 		if err := json.Unmarshal(body, &parsed); err != nil {
-			return nil, fmt.Errorf("risposta della Web API non valida: %w", err)
+			return nil, fmt.Errorf("invalid Web API response: %w", err)
 		}
 		for _, item := range parsed.Issues {
 			issues = append(issues, sonarIssueFrom(session.Project.RealPath, item))
@@ -656,14 +656,14 @@ func (s *Service) SaveSonarBaseline(ctx context.Context, sessionID, token string
 		return 0, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return 0, fmt.Errorf("autorizza esplicitamente gli strumenti prima di contattare SonarQube")
+		return 0, fmt.Errorf("explicitly authorize the tools before contacting SonarQube")
 	}
 	config := s.sonar.config(session.ID)
 	if _, err := normalizeSonarServerURL(config.ServerURL); err != nil {
 		return 0, err
 	}
 	if config.ProjectKey == "" {
-		return 0, fmt.Errorf("configura la chiave del progetto SonarQube")
+		return 0, fmt.Errorf("configure the SonarQube project key")
 	}
 	token = s.effectiveSonarToken(session.ID, token)
 	if token == "" {

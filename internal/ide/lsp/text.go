@@ -12,13 +12,13 @@ import (
 // Riconosce \n, \r\n e \r come terminatori di riga; una colonna oltre la fine riga viene limitata alla riga.
 func OffsetForPosition(text string, position Position) (int, error) {
 	if position.Line < 0 || position.Character < 0 {
-		return 0, fmt.Errorf("posizione negativa non valida")
+		return 0, fmt.Errorf("invalid negative position")
 	}
 	offset := 0
 	for line := 0; line < position.Line; line++ {
 		next, ok := nextLineStart(text, offset)
 		if !ok {
-			return 0, fmt.Errorf("riga %d oltre la fine del documento", position.Line)
+			return 0, fmt.Errorf("line %d is past the end of the document", position.Line)
 		}
 		offset = next
 	}
@@ -95,7 +95,7 @@ func ApplyEdits(text string, edits []TextEdit) (string, error) {
 	cursor := 0
 	for _, current := range spans {
 		if current.start < cursor {
-			return "", fmt.Errorf("modifiche sovrapposte non applicabili")
+			return "", fmt.Errorf("overlapping edits cannot be applied")
 		}
 		builder.WriteString(text[cursor:current.start])
 		builder.WriteString(current.newText)

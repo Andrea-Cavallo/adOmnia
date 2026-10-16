@@ -66,7 +66,7 @@ export function ConsolePanel() {
       }
     }
     poll()
-    return visibleInterval(poll, 1000)
+    return visibleInterval(poll, 1000, { scope: "browser", kind: "live" })
   }, [])
 
   // Auto-scroll on new logs

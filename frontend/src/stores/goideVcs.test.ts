@@ -9,8 +9,7 @@ vi.mock('@/lib/goide-vcs-api', () => ({
 import { getGoIDEFileAtRevision, getGoIDEVCSStatus, selectGoIDERepository } from '@/lib/goide-vcs-api'
 import type { GoIDEVCSStatus } from '@/lib/goide-vcs-api'
 import { isBinaryText, lineDiff } from '@/lib/goide/goStudioLineDiff'
-import { headKey, syncGitStudioToSession, useGoIDEVCSStore } from './goideVcs'
-import { loadLastRepo, saveLastRepo } from '@/lib/gitRepos'
+import { headKey, useGoIDEVCSStore } from './goideVcs'
 
 const fileAtRevision = vi.mocked(getGoIDEFileAtRevision)
 
@@ -77,43 +76,5 @@ describe('binary detection', () => {
     expect(isBinaryText('package main\n')).toBe(false)
     expect(isBinaryText('abc\u0000def')).toBe(true)
     expect(isBinaryText(`${'a'.repeat(9000)}\u0000`)).toBe(false)
-  })
-})
-
-describe('Git Studio follows the active Go Studio project', () => {
-  const values = new Map<string, string>()
-  beforeEach(() => {
-    values.clear()
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => values.set(key, value),
-      removeItem: (key: string) => values.delete(key),
-    })
-    vi.stubGlobal('window', new EventTarget())
-    useGoIDEVCSStore.setState({ status: {}, head: {} })
-  })
-
-  it('points Git Studio at the repository root, even for a project in a subfolder', () => {
-    useGoIDEVCSStore.setState({ status: { s1: { ...status([]), repoRoot: 'C:/repos/mono' } } })
-    syncGitStudioToSession('s1')
-    expect(loadLastRepo()).toBe('C:/repos/mono')
-  })
-
-  it('respects a manual choice in Git Studio until the project changes, unless forced', () => {
-    useGoIDEVCSStore.setState({ status: { s1: { ...status([]), repoRoot: 'C:/repos/a' }, s2: { ...status([]), repoRoot: 'C:/repos/b' } } })
-    syncGitStudioToSession('s1')
-    saveLastRepo('C:/elsewhere')
-    syncGitStudioToSession('s1')
-    expect(loadLastRepo()).toBe('C:/elsewhere')
-    syncGitStudioToSession('s1', true)
-    expect(loadLastRepo()).toBe('C:/repos/a')
-    syncGitStudioToSession('s2')
-    expect(loadLastRepo()).toBe('C:/repos/b')
-  })
-
-  it('does nothing for a project outside any repository', () => {
-    useGoIDEVCSStore.setState({ status: { s3: { ...status([]), available: false } } })
-    syncGitStudioToSession('s3')
-    expect(loadLastRepo()).toBe('')
   })
 })

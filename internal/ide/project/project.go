@@ -29,6 +29,8 @@ type Unit struct {
 var ignoredDirectories = map[string]struct{}{
 	".git": {}, ".idea": {}, ".vscode": {}, "node_modules": {}, "vendor": {},
 	"bin": {}, "build": {}, "dist": {}, "coverage": {}, ".cache": {},
+	"__pycache__": {}, ".venv": {}, ".gradle": {}, ".next": {}, ".nuxt": {}, ".turbo": {}, ".terraform": {},
+	".pytest_cache": {}, ".mypy_cache": {},
 }
 
 // IgnoredDirectory dice se una cartella va saltata da indicizzazione e detection.
@@ -41,10 +43,10 @@ func IgnoredDirectory(name string) bool {
 func EnsureWithin(root, candidate string) error {
 	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
 	if err != nil {
-		return fmt.Errorf("impossibile verificare il percorso: %w", err)
+		return fmt.Errorf("could not verify the path: %w", err)
 	}
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
-		return fmt.Errorf("il percorso richiesto è esterno al progetto")
+		return fmt.Errorf("the requested path is outside the project")
 	}
 	return nil
 }

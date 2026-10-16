@@ -136,7 +136,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 	processcore.Configure(command, false)
 	stdin, err := command.StdinPipe()
 	if err != nil {
-		return Execution{}, fmt.Errorf("impossibile collegare stdin: %w", err)
+		return Execution{}, fmt.Errorf("could not attach stdin: %w", err)
 	}
 	if err := command.Start(); err != nil {
 		return Execution{}, fmt.Errorf("avvio processo fallito: %w", err)
@@ -164,11 +164,11 @@ func (m *ProcessManager) Notice(execution Execution, text string) {
 // WriteStdin invia testo alla singola esecuzione indicata senza passare da una shell.
 func (m *ProcessManager) WriteStdin(runID RunID, text string) error {
 	if len(text) > maxStdinBytes {
-		return fmt.Errorf("input troppo grande: limite %d byte", maxStdinBytes)
+		return fmt.Errorf("input too large: limit %d bytes", maxStdinBytes)
 	}
 	process := m.active(runID)
 	if process == nil {
-		return errors.New("esecuzione non attiva")
+		return errors.New("run is not active")
 	}
 	if _, err := io.WriteString(process.stdin, text); err != nil {
 		return fmt.Errorf("invio input fallito: %w", err)

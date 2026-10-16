@@ -22,7 +22,6 @@ const CARD_COPY: Partial<Record<RailItem, { title: string; description: string }
   collections: { title: 'API & Protocols', description: 'Requests and flows' },
   database: { title: 'Data & Messaging', description: 'Connections and streams' },
   jsonviewer: { title: 'Docs & Payloads', description: 'Schemas and specifications' },
-  gitsync: { title: 'Version Control', description: 'Branches and changes' },
   powertools: { title: 'Power Tools', description: 'Inspect and transform' },
 }
 const HUB_CANDIDATES = FEATURE_REGISTRY.filter(f => f.maturity !== 'deprecated' && !HUB_EXCLUDED.has(f.id))

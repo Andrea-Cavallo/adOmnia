@@ -20,6 +20,7 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	}
 	state := m.ensure(session, owner.ID())
 	state.lifecycle.Lock()
+	state.documentsMu.Lock()
 	state.mu.Lock()
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
@@ -30,6 +31,7 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 
 	if _, exists := state.documents[document.ID]; exists {
 		state.mu.Unlock()
+		state.documentsMu.Unlock()
 		state.lifecycle.Unlock()
 		return
 	}
@@ -38,27 +40,28 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	state.byURI[document.URI] = document.ID
 	process := state.synced
 	state.mu.Unlock()
+	if process != nil {
+		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{URI: tracked.uri, LanguageID: languageID, Version: 1, Text: text}})
+	}
+	state.documentsMu.Unlock()
 	state.lifecycle.Unlock()
 	if resume {
 		_, _ = m.Start(session, options)
 		return
-	}
-	if process != nil {
-		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
-			URI: tracked.uri, LanguageID: languageID, Version: 1, Text: text,
-		}})
 	}
 }
 
 // UpdateDocument sincronizza il buffer non salvato; versioni non crescenti vengono rifiutate come obsolete.
 func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, version int, text string) error {
 	if int64(len(text)) > MaxDocumentBytes {
-		return fmt.Errorf("documento troppo grande per la sincronizzazione")
+		return fmt.Errorf("document too large to synchronize")
 	}
 	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
 		return nil
 	}
+	state.documentsMu.Lock()
+	defer state.documentsMu.Unlock()
 	state.mu.Lock()
 	tracked, ok := state.documents[documentID]
 	if !ok {
@@ -73,6 +76,7 @@ func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, 
 		state.mu.Unlock()
 		return ErrStaleDocumentVersion
 	}
+	before := tracked.text
 	tracked.version = version
 	tracked.text = text
 	uri := tracked.uri
@@ -81,9 +85,17 @@ func (m *LSPManager) UpdateDocument(sessionID SessionID, documentID DocumentID, 
 	if process == nil {
 		return nil
 	}
+	process.conn.CancelDocument(uri)
+	if process.syncKind == 0 {
+		return nil
+	}
+	change := lsp.ContentChange{Text: text}
+	if process.syncKind == 2 {
+		change = lsp.IncrementalChange(before, text)
+	}
 	return process.conn.Notify("textDocument/didChange", map[string]any{
 		"textDocument":   lsp.VersionedTextDocumentIdentifier{URI: uri, Version: version},
-		"contentChanges": []map[string]string{{"text": text}},
+		"contentChanges": []lsp.ContentChange{change},
 	})
 }
 
@@ -108,6 +120,8 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 	if !ok {
 		return
 	}
+	state.documentsMu.Lock()
+	defer state.documentsMu.Unlock()
 	state.mu.Lock()
 	tracked, ok := state.documents[documentID]
 	if ok {
@@ -116,10 +130,11 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 	}
 	process := state.synced
 	state.mu.Unlock()
-	m.armIdle(state)
 	if ok && process != nil {
+		process.conn.CancelDocument(tracked.uri)
 		_ = process.conn.Notify("textDocument/didClose", map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: tracked.uri}})
 	}
+	m.armIdle(state)
 }
 
 // snapshot restituisce una copia del documento e la connessione del server che lo possiede;
@@ -127,14 +142,18 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 func (m *LSPManager) snapshot(sessionID SessionID, documentID DocumentID) (trackedDocument, *serverProcess, error) {
 	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {
-		return trackedDocument{}, nil, fmt.Errorf("documento non sincronizzato con un language server")
+		return trackedDocument{}, nil, fmt.Errorf("document not synchronized with a language server")
 	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.process == nil || state.status.State != LanguageServerReady {
-		return trackedDocument{}, nil, fmt.Errorf("%s non è pronto", state.options.DisplayName())
+	document, exists := state.documents[documentID]
+	if !exists {
+		return trackedDocument{}, nil, fmt.Errorf("document no longer synchronized with a language server")
 	}
-	return *state.documents[documentID], state.process, nil
+	if state.process == nil || state.status.State != LanguageServerReady {
+		return trackedDocument{}, nil, fmt.Errorf("%s is not ready", state.options.DisplayName())
+	}
+	return *document, state.process, nil
 }
 
 func pathFromURI(uri string) string {

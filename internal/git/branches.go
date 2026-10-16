@@ -37,15 +37,15 @@ func CheckoutRemoteBranch(repoPath, remoteRef string) error {
 
 // DeleteLocalBranch deletes a local branch. force uses -D (drop even if unmerged).
 func DeleteLocalBranch(repoPath, branch string, force bool) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return fmt.Errorf("branch name is empty")
+	branch, err := refArg(branch)
+	if err != nil {
+		return err
 	}
 	flag := "-d"
 	if force {
 		flag = "-D"
 	}
-	_, err := runGit(repoPath, "branch", flag, branch)
+	_, err = runGit(repoPath, "branch", flag, branch)
 	return err
 }
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,13 @@ func TestTwoProjectsStayIsolatedWhileRunningTogether(t *testing.T) {
 		if _, err := ide.StartRun(RunRequest{SessionID: session.ID, Kind: "run", Target: "."}); err != nil {
 			t.Fatal(err)
 		}
-		terminal, err := ide.OpenTerminal(TerminalRequest{SessionID: session.ID, Columns: 80, Rows: 24})
+		request := TerminalRequest{SessionID: session.ID, Columns: 80, Rows: 24}
+		// PowerShell's shared PSReadLine history can render another terminal's
+		// command as a prediction. Test PTY routing with a history-free shell.
+		if runtime.GOOS == "windows" {
+			request.Profile = "cmd"
+		}
+		terminal, err := ide.OpenTerminal(request)
 		if err != nil {
 			t.Skipf("PTY non disponibile: %v", err)
 		}

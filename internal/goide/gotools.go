@@ -51,7 +51,7 @@ var (
 func (s *Service) goToolArguments(session Session, request GoToolRequest) ([]string, string, goToolSpec, error) {
 	spec, ok := goTools[request.Tool]
 	if !ok {
-		return nil, "", goToolSpec{}, fmt.Errorf("strumento Go non supportato")
+		return nil, "", goToolSpec{}, fmt.Errorf("unsupported Go tool")
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {
@@ -68,7 +68,7 @@ func (s *Service) goToolArguments(session Session, request GoToolRequest) ([]str
 		}
 	case "import":
 		if !importPathPattern.MatchString(target) {
-			return nil, "", goToolSpec{}, fmt.Errorf("indica un percorso di modulo o package, es. golang.org/x/text")
+			return nil, "", goToolSpec{}, fmt.Errorf("specify a module or package path, e.g. golang.org/x/text")
 		}
 	case "symbol":
 		if !symbolPattern.MatchString(target) {
@@ -98,7 +98,7 @@ func (s *Service) StartGoTool(request GoToolRequest) (Execution, error) {
 		return Execution{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	arguments, workingDirectory, _, err := s.goToolArguments(session, request)
 	if err != nil {
@@ -106,7 +106,7 @@ func (s *Service) StartGoTool(request GoToolRequest) (Execution, error) {
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire")
+		return Execution{}, errors.New("go unavailable: detect or configure the toolchain before running")
 	}
 	environment, err := s.toolchain.Environment(session.ID, nil)
 	if err != nil {

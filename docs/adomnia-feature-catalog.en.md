@@ -1,4 +1,4 @@
-# adOmnia — Feature Catalog
+﻿# adOmnia — Feature Catalog
 
 **adOmnia** is a local-first desktop API Development Toolbox built with Go (Wails 3) + React 19 (TypeScript), with an integrated Go IDE (Go Studio).  
 All features are offline-first: no account, no telemetry, and no data sent outside the machine.
@@ -28,7 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
-| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~38 |
+| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~39 |
 
 ---
 
@@ -1006,6 +1006,13 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | I3.3 | **Auth Passthrough** | The generated server passes through authentication for the mapped requests. |
 | I3.4 | **Output Directory Picker** | Choose the output directory; generation runs from the "Generate Server" tab in the MCP panel. |
 
+### I4. MCP for AI Agents
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to milk and Claude Code at every new chat session. |
+| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). Per-agent switch to turn it off. |
+
 ---
 
 ## J. GO STUDIO (GO IDE)
@@ -1036,6 +1043,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J2.6 | **Semantic Editing** | Semantic highlighting, inlay hints, quick documentation, parameter info, Implement Interface. |
 | J2.7 | **Formatting** | Reformat code and optimize imports, optionally on save; gofumpt optional. |
 | J2.8 | **File Icons** | Gopher for Go sources (test marker), Go logo for module files, Simple Icons brands for Docker, Git, GitHub Actions, `.env` and common formats; readable on both themes. |
+| J2.9 | **Markdown & Mermaid documents** | `.md` files open in Preview with the eye / split / editor switch remembered per file; `.mmd`/`.mermaid` render as diagrams with the same switch and show syntax errors under the diagram. **Markdown tools** side panels: outline with click-to-jump, backlinks found by project search, and a local graph of the note with unresolved/orphan toggles and a folder filter. Covered by automated tests; manual check pending. |
 
 ### J3. Lint & AI
 
@@ -1099,7 +1107,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 38 |
+| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
 | **Total** | 44 sections | **~573** |
 
 
@@ -1114,3 +1122,28 @@ The arcade pauses on window blur, hidden documents and when scrolled out of view
 API collections, request tabs, controls, and response guidance use locally bundled Geist Sans. URLs, HTTP methods, payloads, and technical details use Geist Mono. Palette colors remain theme-driven, and custom skins retain their explicit typography overrides.
 
 Collaboration inbox supports import-as-new, explicit replacement, and field-by-field merge with local-revision guards. Environment secrets require per-variable opt-in and an exact payload preview; private environments and vault references remain excluded by the Go backend. Canonical transfer revisions reuse collectionfs SHA-256 hashing. Operational audit is local in devlog and excludes shared values and invitation credentials.
+
+### Central activity and idle policy
+
+Window/workspace activity is tracked locally as Active, Background, Idle or
+Suspended (released automatic resources). Hidden-panel polling stops, secondary
+analysis and decorative refresh pause during inactivity, and normal status polls
+slow down. Explicit terminal/debug/request/recording/run activity is protected;
+only eligible automatic language servers use the existing reversible suspension
+path. Detached windows and both visible split panes contribute visibility. No
+workspace migration or telemetry is introduced. Native CPU measurements at
+5/15/30 minutes is available for an empty Hub (Idle confirmed after five minutes,
+0.04% average total CPU at 15/30 minutes); populated API/IDE and interaction
+acceptance remain pending. See `docs/PERFORMANCE.md` and REF-11 in
+`mds/MANUAL-CHECK.md`.
+
+### Incremental language-server synchronization
+
+Servers negotiating incremental document sync receive contiguous UTF-16 edits
+with Unicode/CRLF-safe boundaries; full-sync servers retain complete updates.
+Complete buffers are retained for restart replay. Superseded completion, hover,
+signature, semantic-token, inlay-hint, highlight and document-symbol reads are
+canceled by document/method, also on synchronized buffer change or closure.
+Explicit rename, formatting and commands are preserved. Sessions keep separate
+connections and overlays; sharing a root does not merge unsaved documents.
+Validated with installed gopls v0.23.0; desktop acceptance remains REF-2.M1.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ComponentType, type MouseEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, type ComponentType, type MouseEvent } from 'react'
 import { ChevronRight, Plus, Send, Settings2, Square } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { Browser } from '@wailsio/runtime'
@@ -88,7 +88,8 @@ function ToolList({ tools }: { tools: AgentToolActivity[] }) {
   )
 }
 
-function Reply({ agent, message, command }: { agent: ChatAgent; message: AgentChatMessage; command: boolean }) {
+// Memoizzata: durante lo streaming cambia solo l'ultimo messaggio, i precedenti non rifanno il parsing markdown.
+const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgent; message: AgentChatMessage; command: boolean }) {
   const waiting = !message.content && !message.stopped
   const { Logo } = agent
   return (
@@ -113,7 +114,7 @@ function Reply({ agent, message, command }: { agent: ChatAgent; message: AgentCh
       {message.stopped && <p className="milk-stopped">Stopped before finishing.</p>}
     </article>
   )
-}
+})
 
 export function GoStudioAgentChat({ agent, session, document }: GoStudioAgentChatProps) {
   const { store, Logo, name, tool } = agent

@@ -116,7 +116,7 @@ export function RightRail(props: RightRailProps) {
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
               >
                 <Clock size={11} className="flex-none text-text-4" />
-                <span className="min-w-0 flex-1 truncate text-[11px] text-text-2">{item.label || queryLabel(item.query)}</span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-text-2">{item.name || queryLabel(item.query)}</span>
                 <span className="flex-none text-[10px] text-text-4">{relativeTime(item.ts)}</span>
               </button>
             ))}

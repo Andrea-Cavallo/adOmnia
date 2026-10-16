@@ -171,7 +171,7 @@ export function TraceStudio() {
   useEffect(() => { void refresh() }, [refresh])
   useEffect(() => {
     if (!status?.running) return undefined
-    return visibleInterval(() => void refresh(), 2000)
+    return visibleInterval(() => void refresh(), 2000, { scope: "observe", kind: "live" })
   }, [status?.running, refresh])
 
   useEffect(() => {

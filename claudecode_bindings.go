@@ -17,7 +17,9 @@ type ClaudeCode struct {
 
 // NewClaudeCode crea il servizio; l'adapter parte solo con ServiceStartup se attivo.
 func NewClaudeCode() *ClaudeCode {
-	return &ClaudeCode{manager: milk.NewAgentManager(milk.NewSettingsStoreFile(dataDir(), "claude-code.json"), claudecode.Agent())}
+	manager := milk.NewAgentManager(milk.NewSettingsStoreFile(dataDir(), "claude-code.json"), claudecode.Agent())
+	manager.SetMCPServers(milk.NewMCPServerStore(dataDir()).Load)
+	return &ClaudeCode{manager: manager}
 }
 
 func (c *ClaudeCode) attachDesktop(desktop *application.App) {

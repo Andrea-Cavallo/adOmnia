@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect, useState } from 'react'
 import { KeyRound, PlugZap } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
@@ -30,7 +31,7 @@ export function GoStudioPrivateModules({ sessionId, form, onChange }: Props) {
 
   useEffect(() => {
     for (const host of hostKey ? hostKey.split(',') : []) {
-      GoIDEBindings.PrivateRepoCredentialStatus(host).then((result) => setStatus((current) => ({ ...current, [host]: result }))).catch(() => undefined)
+      GoIDEBindings.PrivateRepoCredentialStatus(host).then((result) => setStatus((current) => ({ ...current, [host]: result }))).catch(logBackgroundError('private repository status'))
     }
   }, [hostKey])
 

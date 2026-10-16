@@ -44,7 +44,7 @@ func TestDocumentOpenSaveAndExternalConflict(t *testing.T) {
 	if err := os.WriteFile(path, []byte("package changed\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := manager.SaveDocument(session, opened.Document.ID, "package mine\n", saved.DiskToken, false); err == nil || !strings.Contains(err.Error(), "modificato esternamente") {
+	if _, err := manager.SaveDocument(session, opened.Document.ID, "package mine\n", saved.DiskToken, false); err == nil || !strings.Contains(err.Error(), "modified externally") {
 		t.Fatalf("conflitto esterno non rilevato: %v", err)
 	}
 	data, err := os.ReadFile(path)
@@ -79,6 +79,64 @@ func TestDirectoryIsLazyAndQuickOpenIsBounded(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].RelativePath != "cmd/server/main.go" {
 		t.Fatalf("quick open inatteso: %#v", results)
+	}
+}
+
+func TestListDirectoryHonoursGitIgnore(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("out/\n*.log\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "out"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "node_modules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.go", "x.log"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manager := NewDocumentManager()
+	proj := testSession(root).Project
+
+	// Senza la richiesta esplicita l'albero è coerente con .gitignore: le cartelle di
+	// output spariscono (come node_modules), i file ignorati restano visibili ma marcati.
+	entries, err := manager.ListDirectory(proj, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(entries))
+	flags := map[string]bool{}
+	for _, entry := range entries {
+		names = append(names, entry.RelativePath)
+		flags[entry.RelativePath] = entry.Ignored
+	}
+	want := []string{".gitignore", "main.go", "x.log"}
+	if strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Fatalf("albero = %v, want %v", names, want)
+	}
+	if !flags["x.log"] || flags["main.go"] || flags[".gitignore"] {
+		t.Fatalf("marcature errate: %#v", flags)
+	}
+
+	// Con "mostra ignorati" tornano anche le cartelle, marcate come ignorate.
+	all, err := manager.ListDirectory(proj, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allFlags := map[string]bool{}
+	for _, entry := range all {
+		allFlags[entry.RelativePath] = entry.Ignored
+	}
+	for _, name := range []string{"out", "node_modules", "x.log"} {
+		if !allFlags[name] {
+			t.Fatalf("%s deve essere marcato ignorato: %#v", name, all)
+		}
+	}
+	if allFlags["main.go"] {
+		t.Fatalf("i file normali non sono ignorati: %#v", allFlags)
 	}
 }
 

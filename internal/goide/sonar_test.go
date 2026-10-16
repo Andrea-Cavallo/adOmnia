@@ -97,7 +97,7 @@ func TestRunSonarScanRequiresTrustAndOnline(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Progetto non autorizzato: nessuna scansione, nessun processo.
-	if _, err := service.RunSonarScan(context.Background(), id, "token"); err == nil || !strings.Contains(err.Error(), "autorizza") {
+	if _, err := service.RunSonarScan(context.Background(), id, "token"); err == nil || !strings.Contains(err.Error(), "authorize") {
 		t.Fatalf("expected trust error, got %v", err)
 	}
 	if _, err := service.SetToolAuthorization(id, true); err != nil {

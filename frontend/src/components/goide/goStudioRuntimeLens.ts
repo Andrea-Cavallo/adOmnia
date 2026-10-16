@@ -1,9 +1,10 @@
+import { currentActivityPhase, pollingDelay, useActivityStore } from '@/stores/activity'
 import { monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore } from '@/stores/goide'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens, type OtlpLensStat } from '@/lib/otlp-api'
 import { relativeToRoots } from '@/lib/sourcePaths'
-import { fileCounts, lensPollDelayMs, lensPollingActive, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
+import { fileCounts, lensPollDelayMs, lensTitle, lensTooltip } from '@/lib/goide/runtimeLens'
 import { documentForModel } from './goStudioLanguageFeatures'
 import { useGoStudioRuntimeProfile } from '@/stores/goStudioRuntimeProfile'
 import { formatProfileValue } from './goStudioProfiles'
@@ -18,7 +19,9 @@ let registered = false
 let timer: number | null = null
 let snapshot = ''
 let emptyPolls = 0
-let visibilityBound = false
+let activityBound = false
+let generation = 0
+let inFlight: Promise<OtlpLensStat[]> | null = null
 let byFile = new Map<string, OtlpLensStat[]>() // sessionId \u0000 relativePath → stats
 const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
 
@@ -26,10 +29,12 @@ export function runtimeLensEnabled(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) !== 'off' } catch { return true }
 }
 
-async function poll(provider: monaco.languages.CodeLensProvider): Promise<boolean> {
+async function poll(): Promise<OtlpLensStat[]> {
   const port = await getServerPort()
-  if (!port) return false
-  const stats = await getOtlpLens(port).catch(() => [] as OtlpLensStat[])
+  return port ? getOtlpLens(port).catch(() => [] as OtlpLensStat[]) : []
+}
+
+function applyStats(stats: OtlpLensStat[], provider: monaco.languages.CodeLensProvider): void {
   const key = JSON.stringify(stats)
   if (key !== snapshot) {
     snapshot = key
@@ -44,30 +49,32 @@ async function poll(provider: monaco.languages.CodeLensProvider): Promise<boolea
     byFile = next
     changed.fire(provider)
   }
-  return stats.length > 0
 }
 
 function schedule(provider: monaco.languages.CodeLensProvider): void {
+  const epoch = ++generation
   if (timer !== null) window.clearTimeout(timer)
   timer = null
   if (!runtimeLensEnabled()) {
-    byFile = new Map()
-    snapshot = ''
-    emptyPolls = 0
-    changed.fire(provider)
+    byFile = new Map(); snapshot = ''; emptyPolls = 0; changed.fire(provider)
     return
   }
-  if (!visibilityBound) {
-    visibilityBound = true
-    // A hidden window stops polling; coming back to the foreground resumes immediately.
-    document.addEventListener('visibilitychange', () => schedule(provider))
+  if (!activityBound) {
+    activityBound = true
+    useActivityStore.subscribe((state, previous) => {
+      if (state.phase !== previous.phase || state.scopes !== previous.scopes) schedule(provider)
+    })
   }
+  const delay = () => pollingDelay(lensPollDelayMs(emptyPolls), currentActivityPhase('goide'))
   const run = async (): Promise<void> => {
-    if (!lensPollingActive(runtimeLensEnabled(), !document.hidden)) return
-    const hadSpans = await poll(provider)
-    emptyPolls = hadSpans ? 0 : emptyPolls + 1
-    if (timer !== null) window.clearTimeout(timer)
-    if (lensPollingActive(runtimeLensEnabled(), !document.hidden)) timer = window.setTimeout(() => void run(), lensPollDelayMs(emptyPolls))
+    if (epoch !== generation || delay() === null) return
+    inFlight ??= poll().catch(() => [] as OtlpLensStat[]).finally(() => { inFlight = null })
+    const stats = await inFlight
+    if (epoch !== generation || delay() === null) return
+    applyStats(stats, provider)
+    emptyPolls = stats.length ? 0 : emptyPolls + 1
+    const ms = delay()
+    if (ms !== null) timer = window.setTimeout(() => void run(), ms)
   }
   void run()
 }

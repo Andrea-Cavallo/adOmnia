@@ -157,8 +157,8 @@ function TrafficTab({
     if (!port) return
     refresh()
     refreshPending()
-    const stop = visibleInterval(refresh, 1500)
-    const stopPending = visibleInterval(refreshPending, 700)
+    const stop = visibleInterval(refresh, 1500, { scope: "proxy", kind: "live" })
+    const stopPending = visibleInterval(refreshPending, 700, { scope: "proxy", kind: "live" })
     return () => { stop(); stopPending() }
   }, [port, refresh, refreshPending])
 
@@ -863,7 +863,7 @@ export function ProxyPanel() {
   useEffect(() => {
     if (!port) return
     refreshStatus()
-    return visibleInterval(refreshStatus, 3000)
+    return visibleInterval(refreshStatus, 3000, { scope: "proxy", kind: "live" })
   }, [port, refreshStatus])
 
   const handleStart = useCallback(async () => {

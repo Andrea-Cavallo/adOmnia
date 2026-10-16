@@ -20,7 +20,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		return TestRunSnapshot{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return TestRunSnapshot{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return TestRunSnapshot{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	moduleDir, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {
@@ -33,7 +33,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	if id == golang.ID && len(request.LanguageOptions) > 0 {
 		var options TestRunRequest
 		if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
-			return TestRunSnapshot{}, fmt.Errorf("opzioni test Go non valide: %w", err)
+			return TestRunSnapshot{}, fmt.Errorf("invalid Go test options: %w", err)
 		}
 		options.SessionID, options.WorkingDirectory, options.Environment = request.SessionID, request.WorkingDirectory, request.Environment
 		options.Language, options.LanguageOptions = request.Language, request.LanguageOptions
@@ -48,14 +48,14 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	adapter, found := s.workspace.languages.Get(id)
 	runner, supported := adapter.(language.TestRunner)
 	if !found || !supported {
-		return TestRunSnapshot{}, fmt.Errorf("test non disponibili per %s", id)
+		return TestRunSnapshot{}, fmt.Errorf("tests unavailable for %s", id)
 	}
 	coverageFile := ""
 	binary := ""
 	if id == golang.ID {
 		binary, err = s.toolchain.GoBinary(session.ID)
 		if err != nil {
-			return TestRunSnapshot{}, errors.New("go non disponibile: rileva o configura la toolchain prima di eseguire i test")
+			return TestRunSnapshot{}, errors.New("go unavailable: detect or configure the toolchain before running tests")
 		}
 		if request.Coverage {
 			coverageFile, err = newCoverageProfilePath()
@@ -157,7 +157,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 func newCoverageProfilePath() (string, error) {
 	directory := filepath.Join(os.TempDir(), "adomnia-coverage")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return "", fmt.Errorf("cartella temporanea per la coverage non disponibile: %w", err)
+		return "", fmt.Errorf("temporary coverage folder unavailable: %w", err)
 	}
 	return filepath.Join(directory, newID("cover")+".out"), nil
 }

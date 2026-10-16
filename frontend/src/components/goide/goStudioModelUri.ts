@@ -29,6 +29,13 @@ export async function releaseModelsOfClosedDocuments(): Promise<void> {
     const open = new Set(state.documents.map((item) => editorModelUri(item.document)))
     const closed = previous.documents.map((item) => editorModelUri(item.document)).filter((uri) => !open.has(uri))
     // After React has switched the editors to the next document.
-    if (closed.length) window.setTimeout(() => closed.forEach((uri) => monaco.editor.getModel(monaco.Uri.parse(uri))?.dispose()), 0)
+    if (closed.length) window.setTimeout(() => {
+      // A close/reopen can complete before this deferred cleanup. Never dispose
+      // a model now owned by a reopened document or another editor.
+      const current = new Set(useGoIDEStore.getState().documents.map((item) => editorModelUri(item.document)))
+      for (const uri of closed) {
+        if (!current.has(uri)) monaco.editor.getModel(monaco.Uri.parse(uri))?.dispose()
+      }
+    }, 0)
   })
 }

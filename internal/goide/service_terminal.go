@@ -14,7 +14,7 @@ func (s *Service) OpenTerminal(request TerminalRequest) (TerminalSession, error)
 		return TerminalSession{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return TerminalSession{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return TerminalSession{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
 	if err != nil {

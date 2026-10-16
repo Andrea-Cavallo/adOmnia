@@ -23,6 +23,8 @@ type Settings struct {
 	// IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
 	// dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
 	IgnoreAPIKey bool `json:"ignoreApiKey,omitempty"`
+	// DisableBuiltinMCP non passa all'agente il server MCP di adOmnia (collection e mock).
+	DisableBuiltinMCP bool `json:"disableBuiltinMcp,omitempty"`
 	// Env aggiunge variabili non segrete o riferimenti a credenziali già presenti
 	// all'ambiente dell'agente. I valori restano nel file locale delle impostazioni.
 	Env map[string]string `json:"env,omitempty"`

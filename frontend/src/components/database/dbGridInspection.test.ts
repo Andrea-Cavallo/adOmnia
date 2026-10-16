@@ -50,4 +50,43 @@ describe('Database grids show nested values (DB-1)', () => {
     expect(source('src/components/database/ResultsView.tsx')).toContain('flattenRow')
     expect(source('src/components/database/mongo/MongoWorkspace.tsx')).toContain('flattenRow')
   })
+
+  it('virtualizes long result sets and keeps stable row keys', () => {
+    const results = source('src/components/database/ResultsView.tsx')
+    const mongo = source('src/components/database/mongo/MongoWorkspace.tsx')
+    expect(results).toContain('useWindowedRows')
+    expect(mongo).toContain('useWindowedRows')
+    expect(results).toContain('paddingTop')
+    expect(mongo).toContain('paddingBottom')
+    expect(results).not.toContain('key={idx}')
+  })
+
+  it('resizes columns from a grip on the header', () => {
+    const results = source('src/components/database/ResultsView.tsx')
+    const mongo = source('src/components/database/mongo/MongoWorkspace.tsx')
+    const widths = source('src/components/database/useColumnWidths.ts')
+    expect(results).toContain('gripProps')
+    expect(mongo).toContain('gripProps')
+    expect(results).toContain('cursor-col-resize')
+    expect(mongo).toContain('cursor-col-resize')
+    expect(widths).toContain('MIN_COLUMN_WIDTH')
+    expect(widths).toContain('onDoubleClick')
+  })
+
+  it('switches between table, tree and JSON views', () => {
+    const results = source('src/components/database/ResultsView.tsx')
+    const mongo = source('src/components/database/mongo/MongoWorkspace.tsx')
+    expect(results).toContain("const [mode, setMode] = useState<ResultsMode>('table')")
+    expect(results).toContain("<JsonTree")
+    expect(mongo).toContain("label: 'Tree'")
+    expect(mongo).toContain('<JsonTree')
+  })
+
+  it('says how much is really loaded', () => {
+    const results = source('src/components/database/ResultsView.tsx')
+    const mongo = source('src/components/database/mongo/MongoWorkspace.tsx')
+    expect(results).toContain('auto-limited')
+    expect(results).toContain('Page {page} of {totalPages}')
+    expect(mongo).toContain('only the current page is loaded')
+  })
 })

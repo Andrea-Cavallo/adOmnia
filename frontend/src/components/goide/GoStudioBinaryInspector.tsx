@@ -57,7 +57,7 @@ export function GoStudioBinaryInspector({ sessionId, targets }: { sessionId: str
         <label htmlFor="binary-target" className="text-text-4">Main package</label>
         <input id="binary-target" list="binary-targets" value={target} onChange={(event) => setTarget(event.target.value)} className="h-6 w-44 rounded border border-border-1 bg-surface-2 px-1.5 font-mono text-text-1 outline-none focus:border-accent" />
         <datalist id="binary-targets">{targets.map((item) => <option key={item} value={item} />)}</datalist>
-        <button type="button" onClick={() => void act('build')} disabled={!!busy} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-white hover:opacity-90 disabled:opacity-50">{busy === 'build' ? <Loader2 size={11} className="animate-spin" /> : <Package size={11} />}Build &amp; inspect</button>
+        <button type="button" onClick={() => void act('build')} disabled={!!busy} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{busy === 'build' ? <Loader2 size={11} className="animate-spin" /> : <Package size={11} />}Build &amp; inspect</button>
         <span className="ml-auto flex items-center gap-1">
           <label htmlFor="binary-base" className="text-text-4">Compare size with</label>
           <input id="binary-base" value={base} onChange={(event) => setBase(event.target.value)} className="h-6 w-28 rounded border border-border-1 bg-surface-2 px-1.5 font-mono text-text-1 outline-none focus:border-accent" />

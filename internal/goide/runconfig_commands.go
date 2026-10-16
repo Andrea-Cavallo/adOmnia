@@ -23,7 +23,7 @@ func normalizeCommandConfiguration(config RunConfiguration) (RunConfiguration, e
 		config.Target = strings.TrimSpace(config.Target)
 		config.Files, config.BinaryPath, config.Compound = nil, "", nil
 		if !golang.ValidSubcommand(config.Target) {
-			return config, fmt.Errorf("indica il comando go (es. generate, vet, tool)")
+			return config, fmt.Errorf("specify the go command (e.g. generate, vet, tool)")
 		}
 		return config, nil
 	}
@@ -55,7 +55,7 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 	var spec CommandSpec
 	if kind == string(RunKindGoTool) {
 		if !golang.ValidSubcommand(target) {
-			return Execution{}, fmt.Errorf("comando go non valido: %q", target)
+			return Execution{}, fmt.Errorf("invalid go command: %q", target)
 		}
 		spec, err = s.runCommandSpec(session.ID, kind, workingDirectory, target, request)
 		if err != nil {
@@ -64,7 +64,7 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 	} else if request.Remote != nil {
 		// Il comando esiste nell'ambiente remoto: non si cerca sul PATH locale.
 		if target == "" || strings.HasPrefix(target, "-") {
-			return Execution{}, fmt.Errorf("comando non valido: %q", target)
+			return Execution{}, fmt.Errorf("invalid command: %q", target)
 		}
 		spec = CommandSpec{Executable: target, Arguments: append([]string(nil), request.ProgramArguments...)}
 	} else {
@@ -97,7 +97,7 @@ func (s *Service) validateCompound(session Session, config RunConfiguration) err
 			return fmt.Errorf("la compound cita una configurazione inesistente: %s", id)
 		}
 		if member.Kind == RunKindCompound {
-			return fmt.Errorf("una compound non può contenere un'altra compound (%s)", member.Name)
+			return fmt.Errorf("a compound cannot contain another compound (%s)", member.Name)
 		}
 	}
 	return nil

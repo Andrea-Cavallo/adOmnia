@@ -95,7 +95,7 @@ function RegistersToggle({ view }: { view: GoIDEDebugView }) {
     }
   }
   return (
-    <button type="button" onClick={() => void toggle()} disabled={busy || view.info.state !== 'stopped'} aria-pressed={shown} title={shown ? 'Hide CPU registers' : 'Show CPU registers of the selected frame'} className={`go-studio-icon-button h-6 w-6 ${shown ? 'text-accent' : ''}`}>
+    <button type="button" onClick={() => void toggle()} disabled={busy || view.info.state !== 'stopped'} aria-pressed={shown} aria-label="Show CPU registers" title={shown ? 'Hide CPU registers' : 'Show CPU registers of the selected frame'} className={`go-studio-icon-button h-6 w-6 ${shown ? 'text-accent' : ''}`}>
       <Cpu size={13} aria-hidden="true" />
     </button>
   )

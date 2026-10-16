@@ -1,3 +1,4 @@
+import { useActivityPhase } from '@/hooks/useActivity'
 import { useEffect, useRef, type MutableRefObject } from 'react'
 import { monaco } from '@/lib/monacoSetup'
 import type { GoIDEEditorDocument } from '@/stores/goide'
@@ -38,6 +39,7 @@ export function contextMarkerDecorations(findings: readonly ContextFinding[]): m
 
 /** Marcatori nel gutter del file attivo: ricalcolati con debounce sul buffer, senza gopls. */
 export function useGoStudioContextMarkers(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+  const activityPhase = useActivityPhase(`goide:${document.document.sessionId}`)
   const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const { external, readOnly, relativePath } = document.document
   const enabled = relativePath.endsWith('.go') && !external && !readOnly
@@ -52,10 +54,11 @@ export function useGoStudioContextMarkers(editorRef: MutableRefObject<monaco.edi
       collectionRef.current?.clear()
       return
     }
+    if (activityPhase !== 'Active') return
     const timer = window.setTimeout(() => {
       const analysis = analyzeContextPropagation(document.buffer, { timeoutThresholdMs: loadContextTimeoutThreshold() })
       collectionRef.current?.set(contextMarkerDecorations(analysis.findings))
     }, REFRESH_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [document.buffer, enabled, mountCount])
+  }, [document.buffer, enabled, mountCount, activityPhase])
 }

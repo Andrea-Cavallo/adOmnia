@@ -57,7 +57,7 @@ func (s *Service) languageServerOptions(sessionID string, settings LanguageServe
 		return Session{}, LanguageServerOptions{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Session{}, LanguageServerOptions{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima di avviare gopls")
+		return Session{}, LanguageServerOptions{}, fmt.Errorf("explicitly authorize the tools before starting gopls")
 	}
 	gopls, err := s.DetectGopls(sessionID)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, er
 	}
 	info, ok := s.toolchain.LastDetected(session.ID)
 	if !ok {
-		return OpenDocument{}, fmt.Errorf("rileva il Go SDK per navigare nei suoi sorgenti")
+		return OpenDocument{}, fmt.Errorf("detect the Go SDK to browse its sources")
 	}
 	document, err := s.documents.OpenExternalDocument(session, path, []string{info.GOROOT, info.GOMODCACHE})
 	if err != nil {
@@ -211,4 +211,19 @@ func (s *Service) ExpandHierarchy(ctx context.Context, sessionID, direction, tok
 // QuickDefinition restituisce il sorgente della dichiarazione del simbolo al cursore, per il popup Quick Definition.
 func (s *Service) QuickDefinition(ctx context.Context, sessionID, documentID string, line, column int) (QuickDefinitionResult, error) {
 	return s.lsp.QuickDefinition(ctx, SessionID(sessionID), DocumentID(documentID), line, column)
+}
+
+// Public user actions pin a server; automatic editor starts use the existing
+// lifecycle entry points and never remove an explicit pin.
+func (s *Service) StartLanguageServerFromUser(sessionID string, settings LanguageServerSettings) (LanguageServerStatus, error) {
+	if err := s.ProtectLanguageServer(sessionID, golang.ID); err != nil {
+		return LanguageServerStatus{}, err
+	}
+	return s.StartLanguageServer(sessionID, settings)
+}
+func (s *Service) RestartLanguageServerFromUser(sessionID string, settings LanguageServerSettings) (LanguageServerStatus, error) {
+	if err := s.ProtectLanguageServer(sessionID, golang.ID); err != nil {
+		return LanguageServerStatus{}, err
+	}
+	return s.RestartLanguageServer(sessionID, settings)
 }

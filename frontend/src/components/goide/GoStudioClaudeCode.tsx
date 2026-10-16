@@ -238,6 +238,10 @@ export function GoStudioClaudeDialog() {
           Approve every tool call without asking
         </label>
         {draft.skipPermissions && <GoStudioAlert icon={AlertCircle}>Claude Code will run shell commands and edit files in the project without confirmation.</GoStudioAlert>}
+        <label className="gs-check">
+          <input type="checkbox" checked={!draft.disableBuiltinMcp} onChange={(event) => setDraft({ ...draft, disableBuiltinMcp: !event.target.checked })} />
+          Give the agent adOmnia's collections and mock server (MCP)
+        </label>
       </section>
     </GoStudioModal>
   )

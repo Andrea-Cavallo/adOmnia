@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, memo } from 'react'
+import { useEffect, useMemo, useRef, useState, memo } from 'react'
+import type { GoStudioCommandId } from './goStudioCommands'
 import { Copy, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useGoIDEStore, type GoIDEConsoleChunk } from '@/stores/goide'
@@ -11,6 +12,7 @@ import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
 import { GoStudioTerminalPanel } from './GoStudioTerminalPanel'
 import { resolveConsolePath } from './goStudioConsolePaths'
+import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './goStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './goStudioLogLevels'
 import { GoStudioProblems, type GoStudioBuildProblem } from './GoStudioProblems'
 import { GoStudioContextPanel } from './GoStudioContextPanel'
@@ -40,6 +42,7 @@ interface GoStudioRunPanelProps {
   logsOnly?: boolean
   standalone?: boolean
   visible?: boolean
+  onCommand?: (id: GoStudioCommandId) => void
 }
 
 interface ParsedLine {
@@ -191,10 +194,8 @@ function statusClass(status: string): string {
 }
 
 /** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
-/** Righe disegnate nella Run console; le precedenti restano nel buffer. */
-const MAX_RENDERED_LINES = 5000
-
-export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedView, logsOnly = false, standalone = false, visible = true }: GoStudioRunPanelProps) {
+/** Righe disegnate nella Run console; le precedenti restano nel buffer e si aprono a richiesta (REFACTOR.md voce 7). */
+export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedView, logsOnly = false, standalone = false, visible = true, onCommand }: GoStudioRunPanelProps) {
   const sessionId = session.id
   const selectedView = useGoIDELspStore((state) => state.toolWindow)
   const view = fixedView ?? selectedView
@@ -234,9 +235,13 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
   const failedTests = useGoIDETestsStore((state) => selectedTestRun(state, sessionId)?.summary.failed ?? 0)
   const problemCount = counts.errors + counts.warnings + buildProblems.length
   const matchingLines = lines.filter((line) => (!logsOnly || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase())))
-  // Output intenso: si disegna solo la coda; Copy e la ricerca lavorano comunque su tutto il buffer (4 MB).
-  const hiddenLines = Math.max(0, matchingLines.length - MAX_RENDERED_LINES)
-  const visibleLines = hiddenLines ? matchingLines.slice(hiddenLines) : matchingLines
+  // Output intenso: si disegna solo la coda, con "mostra precedenti" a richiesta; Copy e la
+  // ricerca lavorano comunque su tutto il buffer (4 MB). Con la ricerca attiva la finestra
+  // si apre al cap per non nascondere i match vecchi.
+  const [consoleWindow, setConsoleWindow] = useState(CONSOLE_WINDOW)
+  const windowStart = consoleVisibleStart(matchingLines.length, consoleWindow, Boolean(search))
+  const hiddenLines = windowStart.hidden
+  const visibleLines = matchingLines.slice(windowStart.start)
 
   const submitInput = async () => {
     if (!active || !input) return
@@ -292,7 +297,15 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
         <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
-          {hiddenLines > 0 && <p className="font-sans text-[11px] text-text-4">{hiddenLines.toLocaleString()} earlier lines not shown · use search or Copy console for the full output.</p>}
+          {hiddenLines > 0 && (
+            <button
+              type="button"
+              onClick={() => setConsoleWindow((value) => Math.min(value + CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES))}
+              className="font-sans text-[11px] text-text-4 underline decoration-dotted underline-offset-2 hover:text-text-2"
+            >
+              {Math.min(hiddenLines, CONSOLE_WINDOW_STEP).toLocaleString()} earlier lines not shown · show more (search and Copy console use the full output)
+            </button>
+          )}
           {visibleLines.map((line, index) => {
             const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
             return (
@@ -331,7 +344,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
       {view === 'errors' && <div className="min-h-0 flex-1"><GoStudioErrorsPanel session={session} /></div>}
       {view === 'fuzz' && <div className="min-h-0 flex-1"><GoStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><GoStudioSecurityPanel session={session} /></div>}
-      {view === 'git' && <div className="min-h-0 flex-1"><GoStudioGitPanel session={session} /></div>}
+      {view === 'git' && <div className="min-h-0 flex-1"><GoStudioGitPanel session={session} onCommand={onCommand} /></div>}
       {view === 'go' && <div className="min-h-0 flex-1"><GoStudioGoPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       {!terminalDetached && !logsOnly && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><GoStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}

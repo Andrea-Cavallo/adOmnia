@@ -18,3 +18,7 @@ export function usePanelActiveRef(): { readonly current: boolean } {
   ref.current = active
   return ref
 }
+
+/** Visibility is independent of keyboard ownership in split view. */
+export const PanelVisibleContext = createContext(true)
+export function usePanelVisible(): boolean { return useContext(PanelVisibleContext) }

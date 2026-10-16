@@ -48,7 +48,7 @@ const credentialTimeout = 20 * time.Second
 func validCredentialHost(host string) (string, error) {
 	host = strings.ToLower(strings.TrimSpace(host))
 	if !credentialHostPattern.MatchString(host) || !strings.Contains(host, ".") && !strings.HasPrefix(host, "localhost") {
-		return "", fmt.Errorf("host non valido %q: usa solo il nome, es. git.example.com", host)
+		return "", fmt.Errorf("invalid host %q: use the name only, e.g. git.example.com", host)
 	}
 	return host, nil
 }
@@ -108,10 +108,10 @@ func (s *Service) SavePrivateRepoCredential(host, username, token string) (Priva
 		return PrivateRepoCredential{}, errors.New("username e token sono obbligatori")
 	}
 	if strings.ContainsAny(username+token, "\r\n\x00") {
-		return PrivateRepoCredential{}, errors.New("username o token contengono caratteri non validi")
+		return PrivateRepoCredential{}, errors.New("username or token contain invalid characters")
 	}
 	if !credentialHelperConfigured() {
-		return PrivateRepoCredential{}, errors.New("nessun credential helper Git configurato: installa Git Credential Manager (Windows) o imposta credential.helper (osxkeychain, libsecret)")
+		return PrivateRepoCredential{}, errors.New("no Git credential helper configured: install Git Credential Manager (Windows) or set credential.helper (osxkeychain, libsecret)")
 	}
 	if _, err := runGitCredential("approve", fmt.Sprintf("protocol=https\nhost=%s\nusername=%s\npassword=%s\n\n", host, username, token)); err != nil {
 		return PrivateRepoCredential{}, err

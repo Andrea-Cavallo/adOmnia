@@ -81,7 +81,7 @@ export function GoStudioSnapshots({ sessionId }: { sessionId: string }) {
               {services.map((item) => <option key={item.id} value={item.id}>{item.service}{item.port ? ` :${item.port}` : ''}</option>)}
             </select>
             <input aria-label="Snapshot label" value={label} onChange={(event) => setLabel(event.target.value)} placeholder="label, e.g. before load test" className="h-7 w-48 rounded border border-border-2 bg-surface-2 px-1.5 text-text-1 outline-none focus:border-accent" />
-            <button type="button" onClick={() => void take()} disabled={busy} className="flex h-7 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-50">{busy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}Take snapshot</button>
+            <button type="button" onClick={() => void take()} disabled={busy} className="flex h-7 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{busy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}Take snapshot</button>
           </>
         )}
       </div>

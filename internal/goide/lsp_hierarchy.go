@@ -49,7 +49,7 @@ var (
 func (m *LSPManager) PrepareHierarchy(ctx context.Context, sessionID SessionID, documentID DocumentID, kind string, line, column int) ([]HierarchyItem, error) {
 	method, ok := hierarchyPrepareMethods[kind]
 	if !ok {
-		return nil, fmt.Errorf("gerarchia non supportata: %q", kind)
+		return nil, fmt.Errorf("unsupported hierarchy: %q", kind)
 	}
 	document, process, err := m.snapshot(sessionID, documentID)
 	if err != nil {
@@ -69,22 +69,22 @@ func (m *LSPManager) PrepareHierarchy(ctx context.Context, sessionID SessionID, 
 func (m *LSPManager) ExpandHierarchy(ctx context.Context, sessionID SessionID, direction, token string) ([]HierarchyItem, error) {
 	method, ok := hierarchyExpandMethods[direction]
 	if !ok {
-		return nil, fmt.Errorf("direzione non supportata: %q", direction)
+		return nil, fmt.Errorf("unsupported direction: %q", direction)
 	}
 	var item hierarchyItem
 	if err := json.Unmarshal([]byte(token), &item); err != nil || item.URI == "" {
-		return nil, fmt.Errorf("nodo della gerarchia non valido")
+		return nil, fmt.Errorf("invalid hierarchy node")
 	}
 	// Il nodo può stare in un file non aperto: il server è quello del linguaggio del file.
 	state, ok := m.forPath(sessionID, pathFromURI(item.URI))
 	if !ok {
-		return nil, fmt.Errorf("nessun language server avviato per %s", filepath.Base(pathFromURI(item.URI)))
+		return nil, fmt.Errorf("no language server started for %s", filepath.Base(pathFromURI(item.URI)))
 	}
 	state.mu.Lock()
 	process, ready, name := state.process, state.status.State == LanguageServerReady, state.options.DisplayName()
 	state.mu.Unlock()
 	if process == nil || !ready {
-		return nil, fmt.Errorf("%s non è pronto", name)
+		return nil, fmt.Errorf("%s is not ready", name)
 	}
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()

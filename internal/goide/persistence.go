@@ -65,7 +65,7 @@ func (p *Persistence) LoadState() (persistedState, error) {
 		return empty, nil
 	}
 	if state.Version > PersistenceSchemaVersion {
-		return persistedState{}, fmt.Errorf("schema Go Studio %d non supportato", state.Version)
+		return persistedState{}, fmt.Errorf("unsupported Go Studio schema %d", state.Version)
 	}
 	if state.Version < 2 && len(state.Recent) == 0 {
 		for _, session := range state.Sessions {

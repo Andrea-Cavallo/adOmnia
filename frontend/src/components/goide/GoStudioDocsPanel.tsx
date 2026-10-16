@@ -114,7 +114,7 @@ export function GoStudioDocsPanel({ session }: { session: GoIDESession }) {
                       <div key={id} className="flex items-center gap-3 rounded-lg border border-border-1 bg-surface-2/60 px-3 py-2">
                         <Icon size={16} className="shrink-0 text-accent" aria-hidden="true" />
                         <div className="min-w-0 flex-1"><div className="font-semibold text-text-1">{title}</div><div className="text-text-3">{detail}</div></div>
-                        <button type="button" disabled={busy !== null || (needsTrust && !authorized)} onClick={() => void run(id, action)} title={needsTrust && !authorized ? 'Trust the project: this uses the architecture analysis (go list)' : 'Generate and open it in the editor (nothing is saved until you save)'} className="flex h-7 shrink-0 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-40">
+                        <button type="button" disabled={busy !== null || (needsTrust && !authorized)} onClick={() => void run(id, action)} title={needsTrust && !authorized ? 'Trust the project: this uses the architecture analysis (go list)' : 'Generate and open it in the editor (nothing is saved until you save)'} className="flex h-7 shrink-0 items-center gap-1 rounded bg-accent px-2.5 font-semibold text-on-accent hover:opacity-90 disabled:opacity-40">
                           {busy === id ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} aria-hidden="true" />} Generate
                         </button>
                       </div>

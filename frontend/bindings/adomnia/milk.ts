@@ -56,11 +56,20 @@ export function Log(): $CancellablePromise<string[]> {
 }
 
 /**
+ * MCPServers restituisce i context server passati a ogni agente ACP.
+ */
+export function MCPServers(): $CancellablePromise<milk$0.MCPServer[]> {
+    return $Call.ByID(1901222849).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
  * Prompt invia un turno di chat. I delta arrivano come evento milk.chat.
  */
 export function Prompt(request: milk$0.PromptRequest): $CancellablePromise<milk$0.PromptResponse> {
     return $Call.ByID(1998047459, request).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
     });
 }
 
@@ -86,11 +95,20 @@ export function Restart(): $CancellablePromise<void> {
 }
 
 /**
+ * SaveMCPServers valida e salva i context server condivisi (valgono dalla prossima sessione).
+ */
+export function SaveMCPServers(servers: milk$0.MCPServer[]): $CancellablePromise<milk$0.MCPServer[]> {
+    return $Call.ByID(1337834956, servers).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
  * SaveSettings valida, salva e applica la configurazione.
  */
 export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(4063823965, settings).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType6($result);
     });
 }
 
@@ -106,7 +124,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
  */
 export function Settings(): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(3002270608).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType6($result);
     });
 }
 
@@ -133,5 +151,7 @@ export function UseProvider(id: string, role: string): $CancellablePromise<milk$
 const $$createType0 = milk$0.AgentsInfo.createFrom;
 const $$createType1 = milk$0.Status.createFrom;
 const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = milk$0.PromptResponse.createFrom;
-const $$createType4 = milk$0.Settings.createFrom;
+const $$createType3 = milk$0.MCPServer.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = milk$0.PromptResponse.createFrom;
+const $$createType6 = milk$0.Settings.createFrom;

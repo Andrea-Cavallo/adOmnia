@@ -60,7 +60,7 @@ func AcquireRuntimeLock(directory string, now func() time.Time) (*RuntimeLock, C
 		}
 	}
 	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return nil, status, fmt.Errorf("cartella del runtime lock non disponibile: %w", err)
+		return nil, status, fmt.Errorf("runtime lock folder unavailable: %w", err)
 	}
 	instance := make([]byte, 12)
 	if _, err := rand.Read(instance); err != nil {

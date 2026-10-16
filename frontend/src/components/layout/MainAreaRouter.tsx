@@ -10,14 +10,14 @@ import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 import { markStartup } from '@/lib/startupPerformance'
-import { PanelActiveContext } from '@/components/layout/PanelActivity'
+import { PanelActiveContext, PanelVisibleContext } from '@/components/layout/PanelActivity'
 import { DetachedPanelPlaceholder } from '@/components/layout/DetachedPanelPlaceholder'
 import { usePanelLabel } from '@/components/layout/panelLabel'
 import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, MarkdownPanel, MermaidPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, GitSyncPanel, CollabPanel, McpPanel, GoStudioPanel, KubePanel } from './lazyPanels'
+import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, GoStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -124,8 +124,6 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'har': return { component: <UtilsPanel initialTool="harviewer" />, titleKey: 'Power Tools', overflow: true }
     case 'observe': return { component: <UtilsPanel initialTool="observability" />, titleKey: 'Power Tools', overflow: true }
     case 'dockerlab': return { component: <UtilsPanel initialTool="dockerlab" />, titleKey: 'Power Tools', overflow: true }
-    case 'markdown': return { component: <MarkdownPanel />, titleKey: 'markdown', overflow: true }
-    case 'mermaid': return { component: <MermaidPanel />, titleKey: 'mermaid', overflow: true }
     case 'latex': return { component: <LatexStudioPanel />, titleKey: 'latex', overflow: true }
     case 'pdfeditor': return { component: <PdfEditorPanel />, titleKey: 'pdfeditor', overflow: true }
     case 'storage': return { component: <StoragePanel />, titleKey: 'storage', overflow: true }
@@ -141,7 +139,6 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'templates': return { component: <SettingsPanel initialSection="templates" />, titleKey: 'settings', overflow: true }
     case 'plugins': return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
-    case 'gitsync': return { component: <GitSyncPanel />, titleKey: 'Git Sync', overflow: true }
     case 'collab': return { component: <CollabPanel />, titleKey: 'Live Collaboration', overflow: true }
     case 'mcp': return { component: <McpPanel />, titleKey: 'MCP Client', overflow: true }
     case 'goide': return { component: <GoStudioPanel />, titleKey: 'goide', overflow: true }
@@ -246,6 +243,7 @@ export function MainAreaRouter() {
               : 'flex-1 flex flex-col min-w-0 overflow-hidden panel-enter'
           return (
             <PanelActiveContext.Provider key={rail} value={active}>
+              <PanelVisibleContext.Provider value={shown}>
               <div
                 className={className}
                 style={split && rail === 'goide' ? { flexBasis: `${splitRatio * 100}%` } : undefined}
@@ -256,6 +254,7 @@ export function MainAreaRouter() {
               >
                 <Suspense fallback={rail === 'collections' ? <WorkspaceMainSkeleton quiet /> : <PanelSkeleton />}>{panelFor(rail).component}</Suspense>
               </div>
+            </PanelVisibleContext.Provider>
             </PanelActiveContext.Provider>
           )
         })}

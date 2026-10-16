@@ -39,11 +39,11 @@ func (s *Service) ConfigureGopls(sessionID, binary string) error {
 	if binary != "" {
 		abs, err := filepath.Abs(binary)
 		if err != nil {
-			return fmt.Errorf("percorso gopls non valido: %w", err)
+			return fmt.Errorf("invalid gopls path: %w", err)
 		}
 		info, err := os.Stat(abs)
 		if err != nil || info.IsDir() {
-			return fmt.Errorf("il percorso indicato non è un eseguibile gopls")
+			return fmt.Errorf("the given path is not a gopls executable")
 		}
 		binary = abs
 	}
@@ -65,25 +65,25 @@ func (s *Service) InstallGopls(sessionID string, confirmed bool) (Execution, err
 // installTool esegue `go install module` con GOBIN nella cartella strumenti, visibile nella Run console.
 func (s *Service) installTool(sessionID, module string, confirmed bool) (Execution, error) {
 	if !confirmed {
-		return Execution{}, fmt.Errorf("conferma esplicita richiesta prima di scaricare lo strumento")
+		return Execution{}, fmt.Errorf("explicit confirmation required before downloading the tool")
 	}
 	session, err := s.session(sessionID)
 	if err != nil {
 		return Execution{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti prima dell'installazione")
+		return Execution{}, fmt.Errorf("explicitly authorize the tools before installing")
 	}
 	if s.toolsRoot == "" {
-		return Execution{}, fmt.Errorf("cartella strumenti di adOmnia non configurata")
+		return Execution{}, fmt.Errorf("adOmnia tools folder not configured")
 	}
 	binary, err := s.toolchain.GoBinary(session.ID)
 	if err != nil {
-		return Execution{}, fmt.Errorf("serve un Go SDK per installare lo strumento: rilevalo o installalo prima")
+		return Execution{}, fmt.Errorf("a Go SDK is needed to install the tool: detect or install it first")
 	}
 	binDirectory := filepath.Join(s.toolsRoot, "bin")
 	if err := os.MkdirAll(binDirectory, 0o755); err != nil {
-		return Execution{}, fmt.Errorf("impossibile preparare la cartella strumenti: %w", err)
+		return Execution{}, fmt.Errorf("could not prepare the tools folder: %w", err)
 	}
 	environment, err := s.toolchain.Environment(session.ID, map[string]string{"GOBIN": binDirectory})
 	if err != nil {

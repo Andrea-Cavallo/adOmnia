@@ -1,3 +1,4 @@
+import { useActivityScope } from '@/hooks/useActivity'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './goStudioRunOnSave'
@@ -116,6 +117,7 @@ import {
 import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
 import { ListLocalPorts } from '../../../bindings/adomnia/devsession'
 import { GoStudioWorkspaceBar } from './GoStudioWorkspaceBar'
+import { GoStudioToasts } from './GoStudioToasts'
 import { GoStudioSnapshots, useSnapshotsDrawer } from './GoStudioSnapshots'
 import { GoStudioStartupAnalyzer, useStartupDrawer } from './GoStudioStartupAnalyzer'
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
@@ -127,7 +129,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useGoIDEStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/goide'
 import { useGoStudioCursorStore } from './goStudioCursor'
 import { useGoIDELspStore } from '@/stores/goideLsp'
-import { usePanelActiveRef } from '@/components/layout/PanelActivity'
+import { usePanelVisible, usePanelActiveRef } from '@/components/layout/PanelActivity'
 import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
 import { GoStudioRunTargetPicker } from './GoStudioRunTargetPicker'
 import { configurationForRunTarget, preferredRunTarget } from './goStudioDiscoveredRunTargets'
@@ -187,6 +189,7 @@ export function GoStudioPanel() {
   // Kept mounted while hidden: its shortcuts must not fire from other tools.
   const panelActive = usePanelActiveRef()
   const store = useGoIDEStore(useShallow(selectPanelState))
+  useActivityScope(store.activeSessionId ? `goide:${store.activeSessionId}` : null, usePanelVisible())
   const summary = useGoIDEStore(useShallow(selectDocumentSummary))
   const setCursor = useGoStudioCursorStore((state) => state.setCursor)
   const [createOpen, setCreateOpen] = useState(false)
@@ -906,6 +909,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
       {!zen && <GoStudioWorkspaceBar goSessionId={activeSession.id} />}
+      <GoStudioToasts />
       <GoStudioSnapshots sessionId={activeSession.id} />
       <GoStudioStartupAnalyzer sessionId={activeSession.id} />
       <GoStudioRecoveryBanner sessionId={activeSession.id} />

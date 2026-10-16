@@ -42,6 +42,11 @@ Copilot ghost text and the per-project Ask chat are implemented. The chat stream
 
 Open:
 
+- LSP incremental synchronization and superseded read cancellation are implemented
+  and tested with local gopls v0.23.0; desktop editing/multi-window acceptance is
+  pending (REF-2.M1 in `mds/MANUAL-CHECK.md`). Root-only process sharing was
+  evaluated and not enabled because sessions own independent unsaved overlays.
+
 - [ ] **P1 — Manual checks in the running app** (M1–M31 in `mds/todo-ide.md`): real-project flows on Windows, Task Manager clean-up, ConPTY in the window, debugger from the UI, themes, and the quality bar compared with the approved mocks.
 - [ ] **P2 — Separate windows not declared yet**: implemented and tested automatically; to be declared in the release notes after the real-window check (M31).
 - [ ] **P1 — Docker Build & Run by hand** (v0.9.39): with Docker Desktop running, Build image, Build & Run and Stop on a real Dockerfile (container removed, `docker ps` clean). The automated test skips without a daemon; Make is already covered end to end.
@@ -49,7 +54,7 @@ Open:
 
 Residual limits (by design, stated in the product):
 
-- Push, pull, merge, conflicts, rebase and stash stay in Git Studio; other version control systems are not supported.
+- Push, pull, merge, conflicts, branches, stash and pull requests are in the IDE Git tool window; rebase and drag-and-drop cherry-pick stay hidden in V1; other version control systems are not supported.
 - Plugins get read-only events (contract v1) and no commands.
 - The API Client CodeLens resolves route prefixes only within the same file.
 - Remote debugging needs identical source paths for breakpoints.

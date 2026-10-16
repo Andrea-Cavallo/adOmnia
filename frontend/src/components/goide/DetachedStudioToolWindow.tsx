@@ -1,3 +1,4 @@
+import { useActivityScope } from '@/hooks/useActivity'
 import { useEffect, useState } from 'react'
 import { Events } from '@wailsio/runtime'
 import * as AppBindings from '../../../bindings/adomnia/app'
@@ -25,6 +26,7 @@ export function DetachedStudioToolWindow() {
   const titlebar = useWindowTitlebar()
   const [ready, setReady] = useState(false)
   const session = useGoIDEStore((state) => state.sessions[0])
+  useActivityScope(session?.id ? `goide:${session.id}` : null, true)
   const document = useGoIDEStore((state) => state.documents[0] ?? null)
   const error = useStudioTools((state) => state.error)
   useEffect(() => {

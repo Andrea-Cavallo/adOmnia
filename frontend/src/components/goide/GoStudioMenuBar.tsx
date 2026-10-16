@@ -89,7 +89,7 @@ export function GoStudioMenuBar({ state, recentProjects, openProjectPaths, onCom
     <>
       {/* Logo adOmnia: torna all'hub principale (la rail e il menu di adOmnia ricompaiono). */}
       <button type="button" onClick={() => showModule('welcome')} title="Back to the adOmnia hub" aria-label="Back to the adOmnia hub" className="go-studio-icon-button go-studio-brand-button h-9 w-9">
-        <AppLogo decorative className="h-7 w-7 object-contain" />
+        <AppLogo decorative className="h-8 w-8 object-contain" />
       </button>
       <button
         type="button"

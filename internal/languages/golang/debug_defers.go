@@ -33,7 +33,7 @@ func (m *DebugExtensions) PendingDefers(id DebugSessionID, threadID int) ([]Pend
 		return nil, err
 	}
 	if len(frames) == 0 {
-		return nil, fmt.Errorf("la goroutine non ha frame da cui leggere il runtime")
+		return nil, fmt.Errorf("the goroutine has no frame to read the runtime from")
 	}
 	frameID := frames[0].ID
 	sources := newSourceLineCache()
@@ -42,7 +42,7 @@ func (m *DebugExtensions) PendingDefers(id DebugSessionID, threadID int) ([]Pend
 	for len(defers) < maxPendingDefers {
 		empty, err := m.Evaluate(id, expression+" == nil", frameID, "watch")
 		if err != nil {
-			return nil, fmt.Errorf("catena dei defer non leggibile: %w", err)
+			return nil, fmt.Errorf("defer chain unreadable: %w", err)
 		}
 		if strings.TrimSpace(empty.Result) != "false" {
 			break

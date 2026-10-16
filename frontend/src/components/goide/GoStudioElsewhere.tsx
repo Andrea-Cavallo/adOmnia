@@ -30,11 +30,11 @@ export function GoStudioElsewhere(props: GoStudioElsewhereProps) {
         </div>
         {elsewhere ? (
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={props.onFocus} className="flex h-8 items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><AppWindow size={13} /> Show Window</button>
+            <button type="button" onClick={props.onFocus} className="flex h-8 items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-on-accent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><AppWindow size={13} /> Show Window</button>
             <button type="button" onClick={props.onBringBack} className="flex h-8 items-center justify-center gap-2 rounded-md border border-border-2 px-3 text-xs font-semibold text-text-2 hover:border-accent hover:text-text-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><ArrowDownToLine size={13} /> Move Back Here</button>
           </div>
         ) : (
-          <button type="button" onClick={props.onClose} className="flex h-8 w-full items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><X size={13} /> Close Window</button>
+          <button type="button" onClick={props.onClose} className="flex h-8 w-full items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-on-accent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><X size={13} /> Close Window</button>
         )}
       </div>
     </div>

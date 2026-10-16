@@ -1,3 +1,4 @@
+import { currentActivityPhase } from '@/stores/activity'
 import { create } from 'zustand'
 import { Events } from '@wailsio/runtime'
 import { checkDevContextStale, getDevContext, rescanDevContext, type DevSnapshot } from '@/lib/devcontext-api'
@@ -47,6 +48,7 @@ export function startDevContextSync(): () => void {
     if (sessionId && useDevContextStore.getState().snapshots[sessionId]) void useDevContextStore.getState().load(sessionId)
   })
   const onFocus = () => {
+    if (currentActivityPhase('goide') !== 'Active') return
     const sessionId = useGoIDEStore.getState().activeSessionId
     if (sessionId) void useDevContextStore.getState().checkStale(sessionId)
   }

@@ -59,6 +59,24 @@ const sqlCases: InterpretCase[] = [
     want: { kind: 'select', targets: ['utenti'], filterPresent: false, writes: false, risk: 'read', issues: ['select *'] },
   },
   {
+    name: 'CALL is destructive: the server confirms it',
+    driver: 'postgres',
+    text: 'CALL cleanup()',
+    want: { kind: 'call', targets: [], filterPresent: false, writes: true, risk: 'destructive', issues: [] },
+  },
+  {
+    name: 'GRANT is destructive: privileges need confirmation',
+    driver: 'postgres',
+    text: 'GRANT SELECT ON utenti TO reader',
+    want: { kind: 'grant', targets: [], filterPresent: false, writes: true, risk: 'destructive', issues: [] },
+  },
+  {
+    name: 'REPLACE is destructive: it deletes conflicting rows',
+    driver: 'mysql',
+    text: 'REPLACE INTO utenti VALUES (1, 2)',
+    want: { kind: 'insert', targets: ['utenti'], filterPresent: false, writes: true, risk: 'destructive', issues: [] },
+  },
+  {
     name: 'DELETE without WHERE on the next line is still unfiltered',
     driver: 'postgres',
     text: 'DELETE\nFROM utenti',
@@ -256,6 +274,20 @@ const mongoCases: InterpretCase[] = [
     text: '{"operation":"updateMany","collection":"users","filter":{"active":false},"update":{"$set":{"a":1}}}',
     want: { kind: 'updateMany', targets: ['users'], filterPresent: true, writes: true, risk: 'write', issues: [] },
     summary: 'Updates documents in `users` where ….',
+  },
+  {
+    name: 'runCommand is always destructive: the server confirms every command',
+    driver: 'mongodb',
+    text: '{"operation":"runcommand","command":{"ping":1}}',
+    want: { kind: 'runCommand', targets: [], filterPresent: false, writes: false, risk: 'destructive', issues: [] },
+    summaryIncludes: 'Runs the `ping` command',
+  },
+  {
+    name: 'runCommand with a write command stays destructive',
+    driver: 'mongodb',
+    text: '{"operation":"runcommand","command":{"dropDatabase":1}}',
+    want: { kind: 'runCommand', targets: [], filterPresent: false, writes: true, risk: 'destructive', issues: [] },
+    summaryIncludes: 'Runs the `dropDatabase` command',
   },
   {
     name: 'update without operators is a full document replacement',

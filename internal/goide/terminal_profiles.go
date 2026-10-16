@@ -64,7 +64,7 @@ func resolveTerminalProfile(id string) (TerminalProfile, error) {
 		profiles = ListTerminalProfiles()
 	}
 	if len(profiles) == 0 {
-		return TerminalProfile{}, fmt.Errorf("nessuna shell disponibile su questa piattaforma")
+		return TerminalProfile{}, fmt.Errorf("no shell available on this platform")
 	}
 	if id == "" {
 		return profiles[0], nil
@@ -74,7 +74,7 @@ func resolveTerminalProfile(id string) (TerminalProfile, error) {
 			return profile, nil
 		}
 	}
-	return TerminalProfile{}, fmt.Errorf("profilo terminale %q non disponibile", id)
+	return TerminalProfile{}, fmt.Errorf("terminal profile %q unavailable", id)
 }
 
 // remoteTerminalProfiles aggiunge un terminale per ogni host di ~/.ssh/config e ogni container in esecuzione.

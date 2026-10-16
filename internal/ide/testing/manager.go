@@ -54,7 +54,7 @@ func NewManager() *Manager { return &Manager{runs: make(map[run.RunID]*testRun)}
 
 func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, parser EventParser, request json.RawMessage, hooks Hooks) (Snapshot, error) {
 	if parser == nil {
-		return Snapshot{}, fmt.Errorf("parser dei test non disponibile")
+		return Snapshot{}, fmt.Errorf("test parser unavailable")
 	}
 	r := &testRun{tree: NewTree(), parser: parser, hooks: hooks, snapshot: Snapshot{SessionID: spec.SessionID, Request: append(json.RawMessage(nil), request...), Status: TestRunning, StartedAt: time.Now().UTC(), Results: []TestResult{}}}
 	ready, stop := make(chan struct{}), make(chan struct{})
@@ -224,7 +224,7 @@ func (m *Manager) Snapshot(id run.RunID) (Snapshot, error) {
 	r := m.runs[id]
 	m.mu.Unlock()
 	if r == nil {
-		return Snapshot{}, fmt.Errorf("esecuzione di test non trovata")
+		return Snapshot{}, fmt.Errorf("test run not found")
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -235,13 +235,13 @@ func (m *Manager) Output(id run.RunID, nodeID string) (string, error) {
 	r := m.runs[id]
 	m.mu.Unlock()
 	if r == nil {
-		return "", fmt.Errorf("esecuzione di test non trovata")
+		return "", fmt.Errorf("test run not found")
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	n, ok := r.tree.Node(nodeID)
 	if !ok {
-		return "", fmt.Errorf("test non trovato")
+		return "", fmt.Errorf("test not found")
 	}
 	return n.Output, nil
 }

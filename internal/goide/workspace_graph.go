@@ -22,6 +22,65 @@ type workspaceGraphs struct {
 	building map[string]*sync.Mutex // una costruzione per sessione
 	cached   map[string]*cachedGraph
 	store    *graph.Store
+	fresh    graphFreshness
+}
+
+// graphFreshness evita di ripercorrere l'albero ad ogni richiesta: il watcher incrementa la generazione di una
+// sessione quando cambia qualcosa che il grafo legge; il grafo è "pulito" se è stato verificato alla generazione corrente.
+type graphFreshness struct {
+	generation map[string]uint64
+	verified   map[string]uint64
+}
+
+func (f *graphFreshness) bump(sessionID string) {
+	if f.generation == nil {
+		f.generation = map[string]uint64{}
+	}
+	f.generation[sessionID]++
+}
+
+func (f *graphFreshness) current(sessionID string) uint64 { return f.generation[sessionID] }
+
+func (f *graphFreshness) markVerified(sessionID string, generation uint64) {
+	if f.verified == nil {
+		f.verified = map[string]uint64{}
+	}
+	f.verified[sessionID] = generation
+}
+
+func (f *graphFreshness) isClean(sessionID string) bool {
+	verified, ok := f.verified[sessionID]
+	return ok && verified == f.generation[sessionID]
+}
+
+func (f *graphFreshness) forget(sessionID string) {
+	delete(f.generation, sessionID)
+	delete(f.verified, sessionID)
+}
+
+// graphRelevant dice se il batch può cambiare il grafo: un file sorgente/compose modificato, o qualunque
+// creazione, eliminazione o rinomina (anche di cartelle), o un overflow del watcher.
+func graphRelevant(batch FilesChanged) bool {
+	if batch.Overflow || batch.Limited {
+		return true
+	}
+	for _, change := range batch.Changes {
+		if change.Kind != FileChanged || isGoSource(change.RelativePath) {
+			return true
+		}
+	}
+	return false
+}
+
+// noteGraphChanges è chiamata dal watcher per ogni batch.
+func (s *Service) noteGraphChanges(sessionID SessionID, batch FilesChanged) {
+	if !graphRelevant(batch) {
+		return
+	}
+	graphs := s.graphs()
+	graphs.mu.Lock()
+	graphs.fresh.bump(string(sessionID))
+	graphs.mu.Unlock()
 }
 
 type cachedGraph struct {
@@ -71,16 +130,43 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 	}
 	root := session.Project.RealPath
 	graphs := s.graphs()
-	graphs.mu.Lock()
-	lock, ok := graphs.building[sessionID]
-	if !ok {
-		lock = &sync.Mutex{}
-		graphs.building[sessionID] = lock
+	var lock *sync.Mutex
+	var store *graph.Store
+	if !s.workspace.whileOpen(SessionID(sessionID), func() {
+		graphs.mu.Lock()
+		defer graphs.mu.Unlock()
+		lock = graphs.building[sessionID]
+		if lock == nil {
+			lock = &sync.Mutex{}
+			graphs.building[sessionID] = lock
+		}
+		store = graphs.store
+	}) {
+		return nil, false, errors.New("Go Studio session not found")
 	}
-	store := graphs.store
-	graphs.mu.Unlock()
 	lock.Lock()
 	defer lock.Unlock()
+
+	// Percorso veloce: con il watcher completo e nessuna modifica rilevante dall'ultima verifica il grafo
+	// in memoria è ancora valido e l'albero non va ripercorso.
+	graphs.mu.Lock()
+	startGeneration := graphs.fresh.current(sessionID)
+	fastEntry := graphs.cached[sessionID]
+	clean := graphs.fresh.isClean(sessionID)
+	graphs.mu.Unlock()
+	status := s.watcher.Status(SessionID(sessionID))
+	watchedFully := status.Watching && !status.Limited
+	if !force && clean && fastEntry != nil && watchedFully {
+		return fastEntry, true, nil
+	}
+	verified := func(entry *cachedGraph, cached bool) (*cachedGraph, bool, error) {
+		if watchedFully {
+			graphs.mu.Lock()
+			graphs.fresh.markVerified(sessionID, startGeneration)
+			graphs.mu.Unlock()
+		}
+		return entry, cached, nil
+	}
 
 	fingerprint, err := graph.Fingerprint(root, isGoSource)
 	if err != nil {
@@ -92,10 +178,10 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 		current := graphs.cached[sessionID]
 		graphs.mu.Unlock()
 		if current != nil && current.graph.Fingerprint == fingerprint {
-			return current, true, nil
+			return verified(current, true)
 		}
 		if saved, ok := store.Load(root, "go"); ok && saved.Fingerprint == fingerprint {
-			return s.remember(sessionID, saved), true, nil
+			return verified(s.remember(sessionID, saved), true)
 		}
 	}
 	result, err := s.AnalyzeArchitecture(sessionID)
@@ -108,15 +194,17 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 	built.Root, built.Language, built.Fingerprint, built.BuiltAt = root, "go", fingerprint, time.Now()
 	built.Truncated, built.Problems = result.Report.Truncated, result.Problems
 	_ = store.Save(built) // ponytail: un grafo non salvato si ricostruisce al prossimo avvio
-	return s.remember(sessionID, built), false, nil
+	return verified(s.remember(sessionID, built), false)
 }
 
 func (s *Service) remember(sessionID string, g graph.Graph) *cachedGraph {
 	entry := &cachedGraph{graph: g, index: graph.NewIndex(&g)}
 	graphs := s.graphs()
-	graphs.mu.Lock()
-	graphs.cached[sessionID] = entry
-	graphs.mu.Unlock()
+	s.workspace.whileOpen(SessionID(sessionID), func() {
+		graphs.mu.Lock()
+		graphs.cached[sessionID] = entry
+		graphs.mu.Unlock()
+	})
 	return entry
 }
 

@@ -81,10 +81,10 @@ func goplsVersion(binary string) (string, error) {
 	process.Configure(command, false)
 	output, err := command.CombinedOutput()
 	if ctx.Err() != nil {
-		return "", fmt.Errorf("gopls non risponde a 'gopls version'")
+		return "", fmt.Errorf("gopls does not answer 'gopls version'")
 	}
 	if err != nil {
-		return "", fmt.Errorf("gopls non eseguibile: %s", strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("gopls is not executable: %s", strings.TrimSpace(string(output)))
 	}
 	for _, line := range strings.Split(string(output), "\n") {
 		fields := strings.Fields(line)

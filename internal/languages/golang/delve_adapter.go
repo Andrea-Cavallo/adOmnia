@@ -109,7 +109,7 @@ func explainLaunchError(err error) error {
 	if strings.Contains(err.Error(), "too old for this version of Delve") {
 		return fmt.Errorf("the project Go SDK is older than this Delve supports: select a newer SDK (Go → Go SDKs & Toolchains…) or point to a compatible dlv (Go → Tool Paths…). Details: %w", err)
 	}
-	return fmt.Errorf("avvio del programma in debug fallito: %w", err)
+	return fmt.Errorf("starting the program under debug failed: %w", err)
 }
 
 const (

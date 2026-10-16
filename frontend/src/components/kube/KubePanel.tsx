@@ -338,7 +338,7 @@ function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; n
       if (!poll.running) setRunning(false)
       if (poll.error) setError(poll.error)
     }
-    const stop = visibleInterval(() => { void tick() }, POLL_MS)
+    const stop = visibleInterval(() => { void tick() }, POLL_MS, { scope: "kube", kind: "live" })
     void tick()
     return () => { cancelled = true; stop() }
   }, [port, sourceId])

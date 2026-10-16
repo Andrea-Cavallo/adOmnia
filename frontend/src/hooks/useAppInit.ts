@@ -1,4 +1,4 @@
-import { persistStartupBackup } from '@/lib/startupBackup'
+import { buildStartupBackupSnapshot, persistStartupBackup, type StartupBackupSnapshot } from '@/lib/startupBackup'
 import { useEffect, useRef, useState } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
@@ -65,13 +65,7 @@ export function useAppInit(): AppInitResult {
   const backupDoneRef = useRef(false)
   const bootstrapStartedRef = useRef(false)
   const gatewayRestoredRef = useRef(false)
-  const pendingBackupRef = useRef<{
-    format: string
-    version: string
-    backedUpAt: string
-    collections: ReturnType<typeof useCollectionsStore.getState>['collections']
-    environments: ReturnType<typeof useEnvironmentsStore.getState>['environments']
-  } | null>(null)
+  const pendingBackupRef = useRef<StartupBackupSnapshot | null>(null)
 
   useEffect(() => {
     const ready = () => setFirstStableFrame(true)
@@ -89,13 +83,11 @@ export function useAppInit(): AppInitResult {
     if (!backupWorkspaceOnStartup) return
     if (!collectionsLoaded || !environmentsLoaded) return
     if (collectionsLoadError || environmentsLoadError) return
-    pendingBackupRef.current = {
-      format: 'adomnia-workspace-backup',
-      version: '1.0',
-      backedUpAt: new Date().toISOString(),
+    pendingBackupRef.current = buildStartupBackupSnapshot({
       collections: useCollectionsStore.getState().collections,
       environments: useEnvironmentsStore.getState().environments,
-    }
+      activeEnvId: useEnvironmentsStore.getState().activeEnvId,
+    })
   }, [
     settingsLoaded,
     backupWorkspaceOnStartup,
@@ -236,6 +228,17 @@ export function useAppInit(): AppInitResult {
       ])
     })
   }, [firstStableFrame, loadDeferredTabs])
+
+  // Input latency is measured only while a performance scenario recording is
+  // active (docs/PERFORMANCE.md); the module is otherwise completely inert.
+  useEffect(() => {
+    if (!firstStableFrame) return
+    return scheduleStartupIdle(() => {
+      void import('@/lib/inputLatency')
+        .then(({ maybeStartInputLatencyCapture }) => maybeStartInputLatencyCapture())
+        .catch(() => undefined)
+    })
+  }, [firstStableFrame])
 
   useEffect(() => {
     if (!settingsLoaded || !firstStableFrame || gatewayRestoredRef.current) return

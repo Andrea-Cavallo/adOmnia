@@ -18,15 +18,15 @@ import (
 func ResolveExecutable(candidate, label string) (string, error) {
 	resolved, err := exec.LookPath(strings.TrimSpace(candidate))
 	if err != nil {
-		return "", fmt.Errorf("binario %s non trovato: %w", label, err)
+		return "", fmt.Errorf("binary %s not found: %w", label, err)
 	}
 	abs, err := filepath.Abs(resolved)
 	if err != nil {
-		return "", fmt.Errorf("percorso del binario %s non valido: %w", label, err)
+		return "", fmt.Errorf("invalid path for binary %s: %w", label, err)
 	}
 	info, err := os.Stat(abs)
 	if err != nil || info.IsDir() {
-		return "", fmt.Errorf("il percorso %s configurato non è un eseguibile valido", label)
+		return "", fmt.Errorf("the configured path %s is not a valid executable", label)
 	}
 	return abs, nil
 }

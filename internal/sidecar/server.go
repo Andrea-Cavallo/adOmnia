@@ -91,6 +91,7 @@ func Start() int {
 
 	// Database Studio
 	database.RegisterHandlers(mux)
+	vault.SetCredentialRefGuard(database.IsCredentialRef)
 
 	// Vault
 	vault.RegisterHandlers(mux)

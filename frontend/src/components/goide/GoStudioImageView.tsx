@@ -37,7 +37,7 @@ export function GoStudioImageView({ document }: { document: GoIDEEditorDocument 
           <button type="button" onClick={() => { setFit(false); setZoom((value) => Math.max(0.1, value - 0.25)) }} aria-label="Zoom out" title="Zoom out" className="go-studio-icon-button h-6 w-6"><Minus size={12} /></button>
           <span className="w-12 text-center font-mono tabular-nums text-text-4">{Math.round(zoom * 100)}%</span>
           <button type="button" onClick={() => { setFit(false); setZoom((value) => Math.min(8, value + 0.25)) }} aria-label="Zoom in" title="Zoom in" className="go-studio-icon-button h-6 w-6"><Plus size={12} /></button>
-          <button type="button" onClick={() => setFit(true)} aria-pressed={fit} title="Fit to window" className={`go-studio-icon-button h-6 w-6 ${fit ? 'text-accent' : ''}`}><Maximize2 size={12} /></button>
+          <button type="button" onClick={() => setFit(true)} aria-pressed={fit} title="Fit to window" aria-label="Fit to window" className={`go-studio-icon-button h-6 w-6 ${fit ? 'text-accent' : ''}`}><Maximize2 size={12} /></button>
         </span>
       </div>
       <div

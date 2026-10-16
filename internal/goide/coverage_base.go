@@ -42,20 +42,20 @@ func (s *Service) BaseBranchCoverage(sessionID, base string, packageDirs, buildT
 		return BaseCoverage{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return BaseCoverage{}, errors.New("autorizza esplicitamente gli strumenti per questo progetto")
+		return BaseCoverage{}, errors.New("explicitly authorize the tools for this project")
 	}
 	base = strings.TrimSpace(base)
 	if base == "" || strings.HasPrefix(base, "-") || strings.ContainsAny(base, " \t\r\n") {
-		return BaseCoverage{}, fmt.Errorf("branch base non valido: %q", base)
+		return BaseCoverage{}, fmt.Errorf("invalid base branch: %q", base)
 	}
 	if len(packageDirs) == 0 {
-		return BaseCoverage{}, errors.New("nessun package nel report di coverage")
+		return BaseCoverage{}, errors.New("no package in the coverage report")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), baseCoverageTimeout)
 	defer cancel()
 	mergeBase, err := gitOutput(ctx, paths.repoRoot, "merge-base", base, "HEAD")
 	if err != nil {
-		return BaseCoverage{}, fmt.Errorf("merge-base con %s non trovato: %w", base, err)
+		return BaseCoverage{}, fmt.Errorf("merge-base with %s not found: %w", base, err)
 	}
 	worktree, err := os.MkdirTemp("", "adomnia-base-coverage-")
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Service) BaseBranchCoverage(sessionID, base string, packageDirs, buildT
 	}
 	_ = os.Remove(worktree)
 	if _, err := gitOutput(ctx, paths.repoRoot, "worktree", "add", "--detach", "--quiet", worktree, mergeBase); err != nil {
-		return BaseCoverage{}, fmt.Errorf("worktree temporaneo non creato: %w", err)
+		return BaseCoverage{}, fmt.Errorf("temporary worktree not created: %w", err)
 	}
 	defer func() {
 		_, _ = gitOutput(context.Background(), paths.repoRoot, "worktree", "remove", "--force", worktree)
@@ -80,7 +80,7 @@ func (s *Service) BaseBranchCoverage(sessionID, base string, packageDirs, buildT
 	for _, dir := range packageDirs {
 		dir = path.Clean(filepath.ToSlash(dir))
 		if dir == ".." || strings.HasPrefix(dir, "../") || path.IsAbs(dir) {
-			return BaseCoverage{}, fmt.Errorf("package fuori dal progetto: %s", dir)
+			return BaseCoverage{}, fmt.Errorf("package outside the project: %s", dir)
 		}
 		if !hasGoFiles(filepath.Join(baseProject, filepath.FromSlash(dir))) {
 			result.Missing = append(result.Missing, dir)
@@ -142,7 +142,7 @@ func runBaseCoverage(ctx context.Context, binary string, environment []string, b
 	command.Stdout, command.Stderr = &output, &output
 	runErr := command.Run()
 	if ctx.Err() != nil {
-		return CoverageReport{}, false, errors.New("coverage del branch base scaduta")
+		return CoverageReport{}, false, errors.New("base branch coverage timed out")
 	}
 	data, readErr := os.ReadFile(profile)
 	if readErr != nil || len(data) == 0 {
@@ -150,7 +150,7 @@ func runBaseCoverage(ctx context.Context, binary string, environment []string, b
 		if len(message) > 2000 {
 			message = message[len(message)-2000:]
 		}
-		return CoverageReport{}, false, fmt.Errorf("go test sul branch base non ha prodotto coverage: %s", message)
+		return CoverageReport{}, false, fmt.Errorf("go test on the base branch produced no coverage: %s", message)
 	}
 	report, err := buildCoverageReport(baseProject, module, golang.ReadModulePath(filepath.Join(moduleDir, "go.mod")), data)
 	return report, runErr != nil, err

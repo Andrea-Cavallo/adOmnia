@@ -25,7 +25,7 @@ export function GoStudioEmptyState({ loading, recentProjects, onOpenProject, onC
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onOpenProject} disabled={loading} className="flex h-8 items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-50"><FolderOpen size={13} /> {loading ? 'Opening…' : 'Open Project…'}</button>
+          <button type="button" onClick={onOpenProject} disabled={loading} className="flex h-8 items-center justify-center gap-2 rounded-md bg-accent px-3 text-xs font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-50"><FolderOpen size={13} /> {loading ? 'Opening…' : 'Open Project…'}</button>
           <button type="button" onClick={onCreateProject} disabled={loading} className="flex h-8 items-center justify-center gap-2 rounded-md border border-border-2 px-3 text-xs font-semibold text-text-2 hover:border-accent hover:text-text-1 disabled:opacity-50"><Plus size={13} /> Create Project…</button>
           <button type="button" onClick={onClone} disabled={loading} className="flex h-8 items-center justify-center gap-2 rounded-md border border-border-2 px-3 text-xs font-semibold text-text-2 hover:border-accent hover:text-text-1 disabled:opacity-50"><GitBranch size={13} /> Clone Repository…</button>
         </div>

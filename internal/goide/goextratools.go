@@ -33,7 +33,7 @@ func (s *Service) DetectGoTool(sessionID, binary string) (GoToolInfo, error) {
 	}
 	binary = strings.TrimSpace(binary)
 	if !toolBinaryPattern.MatchString(binary) {
-		return GoToolInfo{}, fmt.Errorf("nome di tool non valido: %q", binary)
+		return GoToolInfo{}, fmt.Errorf("invalid tool name: %q", binary)
 	}
 	info := GoToolInfo{Binary: binary}
 	name := executableName(binary)
@@ -70,7 +70,7 @@ func (s *Service) DetectGoTool(sessionID, binary string) (GoToolInfo, error) {
 func (s *Service) InstallGoModule(sessionID, module string, confirmed bool) (Execution, error) {
 	module = strings.TrimSpace(module)
 	if !toolModulePattern.MatchString(module) || strings.Contains(module, "..") {
-		return Execution{}, fmt.Errorf("modulo non valido: usa percorso@versione, es. golang.org/x/vuln/cmd/govulncheck@latest")
+		return Execution{}, fmt.Errorf("invalid module: use path@version, e.g. golang.org/x/vuln/cmd/govulncheck@latest")
 	}
 	return s.installTool(sessionID, module, confirmed)
 }
@@ -82,7 +82,7 @@ func (s *Service) RunGoTool(sessionID, binary string, arguments []string, workin
 		return Execution{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("autorizza esplicitamente gli strumenti per questo progetto")
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
 	}
 	info, err := s.DetectGoTool(sessionID, binary)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *Service) RunGoTool(sessionID, binary string, arguments []string, workin
 	}
 	for _, argument := range arguments {
 		if strings.ContainsRune(argument, '\x00') {
-			return Execution{}, fmt.Errorf("argomento non valido")
+			return Execution{}, fmt.Errorf("invalid argument")
 		}
 	}
 	// I tool Go invocano a loro volta `go` (packages.Load): serve lo stesso SDK del progetto per primo nel PATH.

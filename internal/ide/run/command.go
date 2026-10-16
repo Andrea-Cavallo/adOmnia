@@ -17,13 +17,13 @@ func ResolveCommandExecutable(root, workingDirectory, target string) (string, er
 		path := filepath.Clean(filepath.Join(workingDirectory, filepath.FromSlash(target)))
 		info, err := os.Stat(path)
 		if err != nil || info.IsDir() {
-			return "", fmt.Errorf("comando non trovato nel progetto: %s", target)
+			return "", fmt.Errorf("command not found in the project: %s", target)
 		}
 		return path, nil
 	}
 	path, err := exec.LookPath(target)
 	if err != nil {
-		return "", fmt.Errorf("%s non trovato nel PATH", target)
+		return "", fmt.Errorf("%s not found in PATH", target)
 	}
 	return path, nil
 }
@@ -40,7 +40,7 @@ func NormalizeCommandConfiguration(config Configuration) (Configuration, error) 
 	config.Target = strings.TrimSpace(config.Target)
 	config.Files, config.BinaryPath = nil, ""
 	if config.Kind == "command" && (config.Target == "" || strings.ContainsRune(config.Target, '\x00') || strings.HasPrefix(config.Target, "-")) {
-		return config, fmt.Errorf("indica il comando da eseguire (es. npm, ./scripts/seed.sh)")
+		return config, fmt.Errorf("specify the command to run (e.g. npm, ./scripts/seed.sh)")
 	}
 	if config.Kind == "compound" {
 		config.Target = ""

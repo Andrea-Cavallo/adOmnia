@@ -64,7 +64,7 @@ func Compound(processes *ProcessManager, name string, steps []Step) (Execution, 
 		}
 	}
 	if first == nil {
-		return Execution{}, fmt.Errorf("nessuna configurazione della compound è partita: %s", strings.Join(failures, "; "))
+		return Execution{}, fmt.Errorf("no configuration of the compound started: %s", strings.Join(failures, "; "))
 	}
 	if len(failures) > 0 {
 		processes.Notice(*first, "Compound "+name+": non partite "+strings.Join(failures, "; "))

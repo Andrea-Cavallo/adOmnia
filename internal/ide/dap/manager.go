@@ -162,7 +162,7 @@ func (m *DebugManager) get(id DebugSessionID) (*debugger, error) {
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return nil, fmt.Errorf("sessione di debug non trovata o terminata")
+		return nil, fmt.Errorf("debug session not found or finished")
 	}
 	return session, nil
 }
@@ -170,21 +170,21 @@ func (m *DebugManager) get(id DebugSessionID) (*debugger, error) {
 // Start avvia adapter dap e restituisce subito la sessione in stato starting; il resto procede in background.
 func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 	if launch.Spec.AdapterID == "" || launch.Spec.Launch == nil {
-		return DebugSessionInfo{}, errors.New("specifica del debug adapter incompleta")
+		return DebugSessionInfo{}, errors.New("incomplete debug adapter specification")
 	}
 	if launch.Spec.Address == "" {
 		if launch.Spec.Executable == "" {
-			return DebugSessionInfo{}, errors.New("eseguibile del debug adapter mancante")
+			return DebugSessionInfo{}, errors.New("debug adapter executable missing")
 		}
 		switch launch.Spec.Transport {
 		case Stdio:
 		case TCPListen:
 			ready, err := regexp.Compile(launch.Spec.ReadyPattern)
 			if err != nil || ready.NumSubexp() < 1 {
-				return DebugSessionInfo{}, errors.New("il pattern DAP deve catturare l'indirizzo TCP")
+				return DebugSessionInfo{}, errors.New("the DAP pattern must capture the TCP address")
 			}
 		default:
-			return DebugSessionInfo{}, fmt.Errorf("trasporto DAP non supportato: %s", launch.Spec.Transport)
+			return DebugSessionInfo{}, fmt.Errorf("unsupported DAP transport: %s", launch.Spec.Transport)
 		}
 	}
 	if launch.Spec.Address != "" {
@@ -192,7 +192,7 @@ func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 	}
 	buildDir, err := os.MkdirTemp("", "adomnia-debug-")
 	if err != nil {
-		return DebugSessionInfo{}, fmt.Errorf("cartella temporanea per il debug non disponibile: %w", err)
+		return DebugSessionInfo{}, fmt.Errorf("temporary debug folder unavailable: %w", err)
 	}
 	session := &debugger{spec: launch.Spec, exited: make(chan struct{}), root: launch.Root, buildDir: buildDir, detach: launch.Spec.Detach, info: DebugSessionInfo{
 		ID: DebugSessionID(newID("debug")), SessionID: launch.SessionID, State: DebugStarting, Title: launch.Spec.Title, StartedAt: time.Now().UTC(),
@@ -333,7 +333,7 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 	select {
 	case <-initialized:
 	case <-time.After(debugRequestTimeout):
-		return errors.New("debug adapter non ha completato l'inizializzazione")
+		return errors.New("debug adapter did not finish initializing")
 	}
 	_, projectID := session.identity()
 	for path, breakpoints := range m.breakpointsFor(projectID) {
@@ -556,7 +556,7 @@ func (m *DebugManager) call(id DebugSessionID, command string, arguments, result
 	client := session.client
 	session.mu.Unlock()
 	if client == nil {
-		return fmt.Errorf("il debugger si sta ancora avviando")
+		return fmt.Errorf("the debugger is still starting")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), debugRequestTimeout)
 	defer cancel()
@@ -568,7 +568,7 @@ func (m *DebugManager) Step(id DebugSessionID, action string, threadID int) erro
 	commands := map[string]string{"continue": "continue", "pause": "pause", "next": "next", "stepIn": "stepIn", "stepOut": "stepOut"}
 	command, ok := commands[action]
 	if !ok {
-		return fmt.Errorf("azione di debug non supportata")
+		return fmt.Errorf("unsupported debug action")
 	}
 	if err := m.call(id, command, map[string]any{"threadId": threadID}, nil); err != nil {
 		return err
@@ -654,7 +654,7 @@ func (m *DebugManager) Disassemble(id DebugSessionID, address string, before, af
 	}
 	address = strings.TrimSpace(address)
 	if address == "" {
-		return nil, fmt.Errorf("indirizzo dell'istruzione mancante: il frame non ha un instruction pointer")
+		return nil, fmt.Errorf("instruction address missing: the frame has no instruction pointer")
 	}
 	before, after = min(max(before, 0), maxDisassembly), min(max(after, 0), maxDisassembly)
 	var response struct {
@@ -704,7 +704,7 @@ func (m *DebugManager) Variables(id DebugSessionID, reference int) ([]DebugVaria
 func (m *DebugManager) Evaluate(id DebugSessionID, expression string, frameID int, context string) (EvaluateResult, error) {
 	expression = strings.TrimSpace(expression)
 	if expression == "" {
-		return EvaluateResult{}, fmt.Errorf("espressione vuota")
+		return EvaluateResult{}, fmt.Errorf("empty expression")
 	}
 	if context != "watch" && context != "repl" && context != "hover" {
 		context = "watch"

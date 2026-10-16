@@ -47,7 +47,7 @@ func (s *Service) MoveSymbol(sessionID string, request MoveSymbolRequest) (Works
 		return WorkspaceChange{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return WorkspaceChange{}, errors.New("autorizza esplicitamente gli strumenti per questo progetto")
+		return WorkspaceChange{}, errors.New("explicitly authorize the tools for this project")
 	}
 	root := session.Project.RealPath
 	sourcePath := filepath.Join(root, filepath.FromSlash(request.RelativePath))
@@ -56,7 +56,7 @@ func (s *Service) MoveSymbol(sessionID string, request MoveSymbolRequest) (Works
 	}
 	targetDirectory := filepath.Join(root, filepath.FromSlash(strings.TrimSpace(request.TargetDirectory)))
 	if strings.TrimSpace(request.TargetDirectory) == "" || ensureWithinRoot(root, targetDirectory) != nil {
-		return WorkspaceChange{}, errors.New("cartella di destinazione non valida")
+		return WorkspaceChange{}, errors.New("invalid destination folder")
 	}
 	moduleRelative := moduleForDir(root, goLayoutOf(session.Project).Modules, path.Dir(filepath.ToSlash(request.RelativePath)))
 	moduleDir := filepath.Join(root, filepath.FromSlash(moduleRelative))
@@ -133,7 +133,7 @@ func loadModule(ctx context.Context, environment []string, moduleDir string) (*m
 	}
 	loaded, err := packages.Load(config, "./...")
 	if err != nil {
-		return nil, fmt.Errorf("analisi del modulo fallita: %w", err)
+		return nil, fmt.Errorf("module analysis failed: %w", err)
 	}
 	result := &moveContext{fset: config.Fset, files: map[string]*fileInfo{}, byDir: map[string]*packages.Package{}, importers: map[string][]string{}, moduleDir: moduleDir}
 	var problems []string
@@ -166,7 +166,7 @@ func loadModule(ctx context.Context, environment []string, moduleDir string) (*m
 		}
 	}
 	if len(problems) > 0 {
-		return nil, fmt.Errorf("il modulo non compila, correggi prima questi errori: %s", strings.Join(firstN(problems, 3), "; "))
+		return nil, fmt.Errorf("the module does not compile, fix these errors first: %s", strings.Join(firstN(problems, 3), "; "))
 	}
 	return result, nil
 }
@@ -178,7 +178,7 @@ func planMove(ctx context.Context, environment []string, moduleDir, sourcePath s
 	}
 	source := module.files[filepath.Clean(sourcePath)]
 	if source == nil {
-		return movePlan{}, errors.New("il file non fa parte di un package del modulo")
+		return movePlan{}, errors.New("the file is not part of a package of the module")
 	}
 	offset, err := byteOffsetAt(string(source.text), line, column)
 	if err != nil {
@@ -186,7 +186,7 @@ func planMove(ctx context.Context, environment []string, moduleDir, sourcePath s
 	}
 	decl := topLevelDeclAt(module.fset, source.file, offset)
 	if decl == nil {
-		return movePlan{}, errors.New("posiziona il cursore su una dichiarazione di primo livello (func, type, var o const)")
+		return movePlan{}, errors.New("place the cursor on a top-level declaration (func, type, var or const)")
 	}
 	primary, err := declaredObject(source.pkg.TypesInfo, decl)
 	if err != nil {
@@ -195,10 +195,10 @@ func planMove(ctx context.Context, environment []string, moduleDir, sourcePath s
 	sourcePkg := primary.Pkg()
 	targetDirectory = filepath.Clean(targetDirectory)
 	if filepath.Clean(filepath.Dir(sourcePath)) == targetDirectory {
-		return movePlan{}, errors.New("la destinazione è il package di partenza")
+		return movePlan{}, errors.New("the destination is the source package")
 	}
 	if ensureWithinRoot(moduleDir, targetDirectory) != nil || hasNestedModule(moduleDir, targetDirectory) {
-		return movePlan{}, errors.New("la destinazione deve essere nello stesso modulo Go")
+		return movePlan{}, errors.New("the destination must be in the same Go module")
 	}
 	target := module.byDir[targetDirectory]
 	targetPath := module.modulePath + "/" + filepath.ToSlash(relativeWithin(moduleDir, targetDirectory))
@@ -206,16 +206,16 @@ func planMove(ctx context.Context, environment []string, moduleDir, sourcePath s
 	if target != nil {
 		targetPath, targetName = target.PkgPath, target.Name
 	} else if hasGoFiles(targetDirectory) {
-		return movePlan{}, errors.New("la cartella di destinazione contiene file Go che non fanno parte di un package valido")
+		return movePlan{}, errors.New("the destination folder contains Go files that are not part of a valid package")
 	}
 	if targetName == "main" {
-		return movePlan{}, errors.New("un package main non si può importare: scegli un altro package")
+		return movePlan{}, errors.New("a main package cannot be imported: choose another package")
 	}
 	if sourcePkg.Name() == "main" {
-		return movePlan{}, errors.New("da un package main si possono spostare simboli solo con Move to New File")
+		return movePlan{}, errors.New("symbols can only be moved out of a main package with Move to New File")
 	}
 	if target != nil && target.Types.Scope().Lookup(primary.Name()) != nil {
-		return movePlan{}, fmt.Errorf("%s esiste già in %s", primary.Name(), targetPath)
+		return movePlan{}, fmt.Errorf("%s already exists in %s", primary.Name(), targetPath)
 	}
 
 	moved := movedDecls(module, sourcePkg, decl, primary)
@@ -303,19 +303,19 @@ func declaredObject(info *types.Info, decl ast.Decl) (types.Object, error) {
 		return info.Defs[value.Name], nil
 	case *ast.GenDecl:
 		if len(value.Specs) != 1 {
-			return nil, errors.New("la dichiarazione fa parte di un gruppo: separala prima di spostarla")
+			return nil, errors.New("the declaration is part of a group: split it before moving it")
 		}
 		switch spec := value.Specs[0].(type) {
 		case *ast.TypeSpec:
 			return info.Defs[spec.Name], nil
 		case *ast.ValueSpec:
 			if len(spec.Names) != 1 {
-				return nil, errors.New("la dichiarazione definisce più nomi: separali prima di spostarla")
+				return nil, errors.New("the declaration defines several names: split them before moving it")
 			}
 			return info.Defs[spec.Names[0]], nil
 		}
 	}
-	return nil, errors.New("dichiarazione non supportata")
+	return nil, errors.New("unsupported declaration")
 }
 
 func topLevelDeclAt(fset *token.FileSet, file *ast.File, offset int) ast.Decl {
@@ -408,7 +408,7 @@ func (b *moveBuilder) analyseMovedCode(moved []movedDecl) error {
 				if selection := info.Selections[value]; selection != nil {
 					field := selection.Obj()
 					if field.Pkg() == b.sourcePkg && !field.Exported() && !b.isMoved(field) && !b.ownedByMovedType(field) {
-						problem = fmt.Errorf("%s usa %s, non esportato in %s: esportalo prima di spostare", b.primary.Name(), field.Name(), b.sourcePkg.Name())
+						problem = fmt.Errorf("%s uses %s, which is not exported in %s: export it before moving", b.primary.Name(), field.Name(), b.sourcePkg.Name())
 					}
 				}
 			case *ast.Ident:
@@ -417,7 +417,7 @@ func (b *moveBuilder) analyseMovedCode(moved []movedDecl) error {
 					return true
 				}
 				if !obj.Exported() {
-					problem = fmt.Errorf("%s usa %s, non esportato in %s: esportalo prima di spostare", b.primary.Name(), obj.Name(), b.sourcePkg.Name())
+					problem = fmt.Errorf("%s uses %s, which is not exported in %s: export it before moving", b.primary.Name(), obj.Name(), b.sourcePkg.Name())
 					return false
 				}
 				b.targetImportsSource = true
@@ -515,7 +515,7 @@ func (b *moveBuilder) rewriteReferences(moved []movedDecl) error {
 					return true
 				}
 				if !obj.Exported() {
-					problem = fmt.Errorf("%s non è esportato ed è usato ancora in %s (%s): esportalo prima di spostarlo", obj.Name(), b.sourcePkg.Name(), b.module.fset.Position(value.Pos()))
+					problem = fmt.Errorf("%s is not exported and is still used in %s (%s): export it before moving it", obj.Name(), b.sourcePkg.Name(), b.module.fset.Position(value.Pos()))
 					return false
 				}
 				b.edits[filePath] = append(b.edits[filePath], byteEdit{start: b.offset(value.Pos()), end: b.offset(value.Pos()), text: b.targetName + "."})
@@ -569,7 +569,7 @@ func (b *moveBuilder) checkCycles() error {
 			continue
 		}
 		if reaches(b.targetPath, user, extra) {
-			return fmt.Errorf("spostare %s creerebbe un ciclo di import: %s userebbe %s, che importa già (anche indirettamente) %s", b.primary.Name(), user, b.targetPath, user)
+			return fmt.Errorf("moving %s would create an import cycle: %s would use %s, which already imports (even indirectly) %s", b.primary.Name(), user, b.targetPath, user)
 		}
 	}
 	return nil
@@ -631,7 +631,7 @@ func (b *moveBuilder) renderTo(moved []movedDecl, targetDirectory, destinationNa
 		}
 		for index := range files {
 			if files[index].path == filepath.Clean(destination) {
-				return nil, errors.New("il file di destinazione è anche un file da modificare: scegli un'altra cartella")
+				return nil, errors.New("the destination file is also a file to be modified: choose another folder")
 			}
 		}
 		files = append(files, movedFile{path: destination, original: original, content: formatted})
@@ -650,7 +650,7 @@ func fixImports(source string, required map[string]string) (string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
-		return "", fmt.Errorf("risultato non valido: %w", err)
+		return "", fmt.Errorf("invalid result: %w", err)
 	}
 	for importPath, name := range required {
 		if name != "" && name != path.Base(importPath) {
@@ -717,7 +717,7 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("lo spostamento romperebbe la compilazione, nessuna modifica applicata:\n%s", cleanToolError(output, 0))
+		return fmt.Errorf("the move would break the build, no change applied:\n%s", cleanToolError(output, 0))
 	}
 	return nil
 }

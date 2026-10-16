@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal } from 'lucide-react'
 import { getGoIDEChangedSymbols, type GoIDEVCSChangedSymbol } from '@/lib/goide-vcs-api'
@@ -109,7 +110,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     let cancelled = false
     setSymbols([])
     // Facoltativo: se il calcolo fallisce il commit resta disponibile, senza riepilogo.
-    getGoIDEChangedSymbols(sessionId).then((items) => { if (!cancelled) setSymbols(items) }).catch(() => undefined)
+    getGoIDEChangedSymbols(sessionId).then((items) => { if (!cancelled) setSymbols(items) }).catch(logBackgroundError('changed symbols'))
     const timer = window.setTimeout(() => messageRef.current?.focus(), 30)
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [open, sessionId])

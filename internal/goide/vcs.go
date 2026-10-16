@@ -65,7 +65,7 @@ type VCSBlameLine struct {
 func repositoryRoot(projectRoot string) (string, error) {
 	binary, err := exec.LookPath("git")
 	if err != nil {
-		return "", errors.New("git non è installato o non è nel PATH")
+		return "", errors.New("git is not installed or not in PATH")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), vcsQueryTimeout)
 	defer cancel()
@@ -132,7 +132,7 @@ func (s *Service) vcsPaths(sessionID string) (Session, vcsPaths, error) {
 	}
 	root := s.selectedRepository(session, roots)
 	if root == "" {
-		return Session{}, vcsPaths{}, fmt.Errorf("il progetto non è in un repository Git")
+		return Session{}, vcsPaths{}, fmt.Errorf("the project is not in a Git repository")
 	}
 	return session, vcsPaths{projectRoot: session.Project.RealPath, repoRoot: root}, nil
 }
@@ -193,7 +193,7 @@ func (s *Service) VCSFileAtRevision(sessionID, relativePath, revision string) (s
 		return "", err
 	}
 	if revision = strings.TrimSpace(revision); revision == "" || strings.HasPrefix(revision, "-") {
-		return "", fmt.Errorf("revisione non valida")
+		return "", fmt.Errorf("invalid revision")
 	}
 	return git.FileAtCommit(paths.repoRoot, revision, repoPath)
 }
@@ -313,7 +313,7 @@ func (s *Service) VCSCheckout(sessionID, branch string) error {
 	}
 	branch = strings.TrimSpace(branch)
 	if branch == "" || strings.HasPrefix(branch, "-") {
-		return fmt.Errorf("nome di branch non valido")
+		return fmt.Errorf("invalid branch name")
 	}
 	// Solo branch locali esistenti: "git checkout <nome>" su un nome di file ripristinerebbe il file.
 	overview, err := git.GetOverview(paths.repoRoot, 1)
@@ -325,7 +325,7 @@ func (s *Service) VCSCheckout(sessionID, branch string) error {
 			return git.CheckoutBranch(paths.repoRoot, branch)
 		}
 	}
-	return fmt.Errorf("branch locale %q non trovato", branch)
+	return fmt.Errorf("local branch %q not found", branch)
 }
 
 // VCSStage aggiunge o rimuove dall'index i percorsi selezionati, senza committare.
@@ -335,7 +335,7 @@ func (s *Service) VCSStage(sessionID string, relativePaths []string, staged bool
 		return err
 	}
 	if len(relativePaths) == 0 {
-		return fmt.Errorf("nessun file selezionato")
+		return fmt.Errorf("no file selected")
 	}
 	for _, relativePath := range relativePaths {
 		repoPath, err := paths.toRepo(relativePath)
@@ -362,7 +362,7 @@ func (s *Service) VCSRevert(sessionID string, relativePaths []string) error {
 		return err
 	}
 	if len(relativePaths) == 0 {
-		return fmt.Errorf("nessun file selezionato")
+		return fmt.Errorf("no file selected")
 	}
 	for _, relativePath := range relativePaths {
 		repoPath, err := paths.toRepo(relativePath)

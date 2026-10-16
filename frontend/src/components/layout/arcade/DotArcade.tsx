@@ -1,3 +1,4 @@
+import { currentActivityPhase, useActivityStore } from '@/stores/activity'
 import { useEffect, useRef, useState } from 'react'
 import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import type { DotGame, GameId, GameKey, Ink, Painter } from './types'
@@ -51,7 +52,7 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
     let matrix: Path2D | null = null, matrixWidth = -1, matrixHeight = -1
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
     let colors = { ink: '#e8edf5', accent: '#7dd3fc' }
-    const schedule = () => { if (!raf && visible && !document.hidden) raf = requestAnimationFrame(tick) }
+    const schedule = () => { if (!raf && visible && currentActivityPhase('welcome') !== 'Background' && (phaseNow === 'playing' || currentActivityPhase('welcome') === 'Active')) raf = requestAnimationFrame(tick) }
     const held = new Set<GameKey>()
     const setPhaseBoth = (p: Phase) => { phaseNow = p; setPhase(p) }
     const readColors = () => {
@@ -196,7 +197,11 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
     themeObserver.observe(document.body, { attributes: true, attributeFilter: ['style', 'class', 'data-theme'] })
     const intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (!visible) onBlur(); else draw() })
     intersection.observe(wrap)
-    document.addEventListener('visibilitychange', onVisibility)
+    const stopActivity = useActivityStore.subscribe(() => {
+      if (currentActivityPhase('welcome') === 'Background') { if (raf) cancelAnimationFrame(raf); raf = 0; onBlur() }
+      else if (currentActivityPhase('welcome') !== 'Active' && phaseNow !== 'playing') { if (raf) cancelAnimationFrame(raf); raf = 0 }
+      else onVisibility()
+    })
     const observer = new ResizeObserver(fit)
     observer.observe(canvas)
     readColors()
@@ -215,7 +220,7 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
       observer.disconnect()
       themeObserver.disconnect()
       intersection.disconnect()
-      document.removeEventListener('visibilitychange', onVisibility)
+      stopActivity()
       window.removeEventListener('keydown', onKeyDown, { capture: true })
       window.removeEventListener('keyup', onKeyUp, { capture: true })
       document.removeEventListener('pointerdown', onPointerDown, { capture: true })

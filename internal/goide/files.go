@@ -22,10 +22,10 @@ func resolveNewFilePath(project Project, relativePath string) (string, error) {
 	// Su Windows "\etc\passwd" ha una radice ma non è IsAbs: va rifiutato come gli assoluti.
 	rooted := filepath.IsAbs(clean) || filepath.VolumeName(clean) != "" || strings.HasPrefix(clean, string(filepath.Separator))
 	if clean == "." || clean == "" || rooted || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("percorso del nuovo file non valido: %q", relativePath)
+		return "", fmt.Errorf("invalid path for the new file: %q", relativePath)
 	}
 	if strings.ContainsRune(clean, 0) {
-		return "", fmt.Errorf("percorso del nuovo file non valido")
+		return "", fmt.Errorf("invalid path for the new file")
 	}
 	path := filepath.Join(project.RealPath, clean)
 	// La cartella esistente più vicina deve stare nel progetto anche dopo aver risolto i symlink.
@@ -36,19 +36,19 @@ func resolveNewFilePath(project Project, relativePath string) (string, error) {
 		}
 		parent := filepath.Dir(existing)
 		if parent == existing {
-			return "", fmt.Errorf("cartella del nuovo file non valida")
+			return "", fmt.Errorf("invalid folder for the new file")
 		}
 		existing = parent
 	}
 	realParent, err := filepath.EvalSymlinks(existing)
 	if err != nil {
-		return "", fmt.Errorf("impossibile risolvere la cartella: %w", err)
+		return "", fmt.Errorf("could not resolve the folder: %w", err)
 	}
 	if err := ensureWithinRoot(project.RealPath, realParent); err != nil {
 		return "", err
 	}
 	if _, err := os.Lstat(path); err == nil {
-		return "", fmt.Errorf("%s esiste già", filepath.ToSlash(clean))
+		return "", fmt.Errorf("%s already exists", filepath.ToSlash(clean))
 	}
 	return path, nil
 }
@@ -56,12 +56,12 @@ func resolveNewFilePath(project Project, relativePath string) (string, error) {
 // CreateFiles crea file nuovi nel progetto, tutti o nessuno: non sovrascrive mai un file esistente.
 func (m *DocumentManager) CreateFiles(project Project, files []NewFile) error {
 	if len(files) == 0 || len(files) > maxNewFiles {
-		return fmt.Errorf("numero di file da creare non valido")
+		return fmt.Errorf("invalid number of files to create")
 	}
 	paths := make([]string, 0, len(files))
 	for _, file := range files {
 		if int64(len(file.Content)) > MaxDocumentBytes {
-			return fmt.Errorf("%s: contenuto troppo grande", file.RelativePath)
+			return fmt.Errorf("%s: content too large", file.RelativePath)
 		}
 		path, err := resolveNewFilePath(project, file.RelativePath)
 		if err != nil {
@@ -78,20 +78,20 @@ func (m *DocumentManager) CreateFiles(project Project, files []NewFile) error {
 	}
 	for index, path := range paths {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return rollback(fmt.Errorf("impossibile creare la cartella: %w", err))
+			return rollback(fmt.Errorf("could not create the folder: %w", err))
 		}
 		handle, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if err != nil {
 			if errors.Is(err, os.ErrExist) {
-				return rollback(fmt.Errorf("%s esiste già", files[index].RelativePath))
+				return rollback(fmt.Errorf("%s already exists", files[index].RelativePath))
 			}
-			return rollback(fmt.Errorf("impossibile creare %s: %w", files[index].RelativePath, err))
+			return rollback(fmt.Errorf("could not create %s: %w", files[index].RelativePath, err))
 		}
 		written = append(written, path)
 		_, writeErr := handle.WriteString(files[index].Content)
 		closeErr := handle.Close()
 		if writeErr != nil || closeErr != nil {
-			return rollback(fmt.Errorf("impossibile scrivere %s", files[index].RelativePath))
+			return rollback(fmt.Errorf("could not write %s", files[index].RelativePath))
 		}
 	}
 	return nil

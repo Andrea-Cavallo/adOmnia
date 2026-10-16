@@ -163,7 +163,7 @@ func (s *Service) StartConfiguredBuild(sessionID, configID string) (Execution, e
 		return Execution{}, err
 	}
 	if config.Kind != RunKindPackage && config.Kind != RunKindBuild {
-		return Execution{}, fmt.Errorf("la build è disponibile per configurazioni package o build")
+		return Execution{}, fmt.Errorf("build is available for package or build configurations")
 	}
 	public := config.Environment[:0:0]
 	for _, entry := range config.Environment {
@@ -235,7 +235,7 @@ func (s *Service) buildRunRequest(session Session, config RunConfiguration, secr
 		request.Kind = string(config.Kind)
 		request.Target = config.Target
 	case RunKindCompound:
-		return RunRequest{}, fmt.Errorf("una configurazione compound avvia altre configurazioni, non un comando")
+		return RunRequest{}, fmt.Errorf("a compound configuration starts other configurations, not a command")
 	default:
 		if _, err := s.runAdapter(config.Language, string(config.Kind)); err != nil {
 			return RunRequest{}, err
@@ -298,7 +298,7 @@ func resolveEntryValue(entry EnvironmentEntry, secrets map[string]string) (strin
 	}
 	value, provided := secrets[entry.Key]
 	if !provided || value == "" {
-		return "", fmt.Errorf("%q è segreta: fornisci il valore per avviare", entry.Key)
+		return "", fmt.Errorf("%q is secret: provide its value to start", entry.Key)
 	}
 	return value, nil
 }

@@ -210,3 +210,38 @@ func TestWatcherStatusReportsPartialObservation(t *testing.T) {
 		t.Fatalf("sessione inesistente: %+v", status)
 	}
 }
+
+func TestWatcherSkipsGitignoredFoldersAndReportsRenames(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/generated/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"generated", "src"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "old.go"), []byte("package p\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	recorder := &batchRecorder{}
+	manager := NewWatchManager(recorder.record)
+	t.Cleanup(manager.Shutdown)
+	if err := manager.Watch("s", root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "generated", "x.go"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(root, "old.go"), filepath.Join(root, "src", "new.go")); err != nil {
+		t.Fatal(err)
+	}
+	batches := recorder.waitFor(t, func(batches []FilesChanged) bool {
+		paths := changedPaths(batches)
+		_, created := paths["src/new.go"]
+		return created && paths["old.go"] == FileDeleted
+	})
+	if _, seen := changedPaths(batches)["generated/x.go"]; seen {
+		t.Fatal("le cartelle in .gitignore non vanno osservate")
+	}
+}

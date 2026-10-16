@@ -55,7 +55,7 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint" || os.Args[1] == "stress") {
+	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint" || os.Args[1] == "stress" || os.Args[1] == "mcp") {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 

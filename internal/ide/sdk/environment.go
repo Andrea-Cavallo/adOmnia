@@ -35,10 +35,10 @@ func ValidateEnvironment(environment map[string]string) (map[string]string, erro
 	for key, value := range environment {
 		key = strings.TrimSpace(key)
 		if !ValidEnvironmentName(key) {
-			return nil, fmt.Errorf("nome variabile ambiente non valido: %s", key)
+			return nil, fmt.Errorf("invalid environment variable name: %s", key)
 		}
 		if len(value) > maxEnvironmentValue {
-			return nil, fmt.Errorf("valore ambiente troppo grande per %s", key)
+			return nil, fmt.Errorf("environment value too large for %s", key)
 		}
 		clean[key] = value
 	}
@@ -107,10 +107,10 @@ func ProcessEnvironment(configured, overrides map[string]string) (map[string]str
 	merged := CopyEnvironment(configured)
 	for key, value := range overrides {
 		if !ValidEnvironmentName(key) {
-			return nil, fmt.Errorf("nome variabile ambiente non valido: %s", key)
+			return nil, fmt.Errorf("invalid environment variable name: %s", key)
 		}
 		if len(value) > maxEnvironmentValue {
-			return nil, fmt.Errorf("valore ambiente troppo grande per %s", key)
+			return nil, fmt.Errorf("environment value too large for %s", key)
 		}
 		merged[key] = value
 	}

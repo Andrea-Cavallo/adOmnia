@@ -97,7 +97,7 @@ export function GoStudioErrorsPanel({ session }: { session: GoIDESession }) {
   return (
     <div className="flex h-full min-h-0 flex-col text-[11px]">
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border-1 px-2 py-1">
-        <button type="button" disabled={!authorized || running} onClick={() => void analyze()} title={authorized ? 'Load every module with go/packages and analyze error handling' : 'Trust the project to run go list'} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-white hover:opacity-90 disabled:opacity-40">
+        <button type="button" disabled={!authorized || running} onClick={() => void analyze()} title={authorized ? 'Load every module with go/packages and analyze error handling' : 'Trust the project to run go list'} className="flex h-6 items-center gap-1 rounded bg-accent px-2 font-semibold text-on-accent hover:opacity-90 disabled:opacity-40">
           {running ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} aria-hidden="true" />} {report ? 'Analyze again' : 'Analyze'}
         </button>
         {report && <span className="text-text-4">{report.modules} module{report.modules === 1 ? '' : 's'}{analyzedAt ? ` · ${analyzedAt.toLocaleTimeString()}` : ''}</span>}

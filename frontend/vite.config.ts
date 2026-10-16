@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { execSync } from 'child_process'
@@ -109,6 +109,9 @@ export default defineConfig(async () => {
           manualChunks,
         },
       },
+    },
+    test: {
+      setupFiles: ['./vitest.setup.ts'],
     },
   }
 })

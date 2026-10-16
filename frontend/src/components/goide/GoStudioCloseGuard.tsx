@@ -1,3 +1,4 @@
+import { logBackgroundError } from '@/lib/goide/backgroundError'
 import { useEffect, useState } from 'react'
 import { Save, Square } from 'lucide-react'
 import { confirmGoIDEAppClose, setGoIDEDirtyDocumentCount, subscribeGoIDEAppCloseRequests } from '@/lib/goide-api'
@@ -34,7 +35,7 @@ export function GoStudioCloseGuard({ windowId = MAIN_GO_STUDIO_WINDOW }: GoStudi
   useEffect(() => {
     const count = goIDEDirtyDocuments(useGoIDEStore.getState()).length
     const sync = detached ? setGoIDEWindowDirtyDocumentCount(windowId, count) : setGoIDEDirtyDocumentCount(count)
-    void sync.catch(() => undefined)
+    void sync.catch(logBackgroundError('close guard sync'))
   }, [detached, dirtyKey, windowId])
 
   useEffect(() => {
