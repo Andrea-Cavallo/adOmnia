@@ -634,7 +634,7 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	}
 	params := map[string]any{"cwd": root}
 	if m.agent.Protocol == 1 {
-		params["mcpServers"] = []any{}
+		params["mcpServers"] = m.sessionMCPServers(root)
 	}
 	if err := conn.Call(ctx, "session/new", params, &result); err != nil {
 		return "", fmt.Errorf("cannot open %s session for %s: %w", m.agent.Name, root, err)
