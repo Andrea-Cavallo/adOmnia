@@ -190,6 +190,9 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		"Dockerfile": "dockerfile", "build/Dockerfile.dev": "dockerfile", "api.dockerfile": "dockerfile",
 		"Makefile": "makefile", "rules.mk": "makefile", "pipeline.yaml": "yaml",
 		".env": "ini", ".env.local": "ini", "query.sql": "sql", "README.md": "markdown", "docs/flow.mmd": "mermaid", "d.MERMAID": "mermaid", "LICENSE": "plaintext",
+		// Formati base senza runtime (piano MULTILANGUAGE-IDE, fase 7): solo file support.
+		"theme/app.scss": "scss", "Cargo.toml": "ini", "pom.xml": "xml", "config.yml": "yaml", "tsconfig.jsonc": "json",
+		"scripts/deploy.sh": "shell", "build.ps1": "powershell", "run.cmd": "bat", "CHANGELOG.markdown": "markdown",
 		"api/orders.proto": "proto", // Monaco id is "proto" ("protobuf" is only an alias: no colors)
 	}
 	for path, want := range cases {

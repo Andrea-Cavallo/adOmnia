@@ -175,8 +175,8 @@ Devono funzionare bene **fin dall'inizio**, senza adapter di runtime: sono "file
 | Automazione | Bash, PowerShell, Dockerfile | highlighting, snippet, "Run file" via Shell Command; Dockerfile → build/run già in `run` |
 | Documentazione | Markdown | preview affiancata (riusare l'esistente `markdown` binding), outline |
 
-- [ ] 7.1 Tabella unica `fileSupport` (estensione/nome file → Monaco language + LSP opzionale + azioni) in `components/ide/`, **non** una cartella per formato.
-- [ ] 7.2 Verifica per ciascun formato: apre, evidenzia, formatta, outline dove sensato. Segnare i buchi qui sotto invece di inventare feature.
+- [x] 7.1 *(GIÀ OK 2026-10-17: la tabella unica è `languageByExtension`/`languageForPath` in `internal/codestudio/documents.go`; il frontend legge `document.language`, nessuna cartella per formato; `TestLanguageForPathCoversProjectFiles` ora copre html/css/scss/sql/json/jsonc/yaml/toml/xml/sh/ps1/bat/Dockerfile/md)* Tabella unica `fileSupport` (estensione/nome file → Monaco language + LSP opzionale + azioni) in `components/ide/`, **non** una cartella per formato.
+- [ ] 7.2 *(parziale: mappatura estensione→linguaggio provata da test; evidenziazione/formattazione/outline = ML-7.M1; buco noto: TOML usa la sintassi `ini`, SCSS/YAML senza language server dedicato)* Verifica per ciascun formato: apre, evidenzia, formatta, outline dove sensato. Segnare i buchi qui sotto invece di inventare feature.
 - [ ] 7.3 SQL: azione "Esegui nella connessione…" che riusa `internal/database` (nessun nuovo client); credenziali sempre sigillate come da CLAUDE.md.
 - [ ] 7.4 Script (Bash/PowerShell): "Run file" come configurazione *generica* (Shell Command) proposta in automatico; su Windows i processi spawnati nascosti salvo uso interattivo.
 - [ ] 7.5 Server dei linguaggi di config: solo se assenti in Monaco; nessun download silenzioso (local-first, vedi 9.3).

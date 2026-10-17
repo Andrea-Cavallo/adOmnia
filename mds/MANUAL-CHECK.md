@@ -659,3 +659,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 ### ML-6 — Run: configurazioni raggruppate per unità (2026-10-17)
 
 - [ ] ML-6.M1 In un workspace con almeno due unità di linguaggi diversi (es. cartella Go + cartella Node) e configurazioni salvate in ciascuna, la lista di "Run configurations" mostra intestazioni `nome-cartella · Linguaggio`; con una sola unità non compaiono intestazioni. Le frecce su/giù, duplica ed elimina funzionano come prima.
+
+### ML-7 — File base (2026-10-17)
+
+- [ ] ML-7.M1 Cartella "polyglot" con un file per formato (`.html`, `.css`, `.scss`, `.sql`, `.json`, `.yaml`, `.toml`, `.xml`, `.sh`, `.ps1`, `Dockerfile`, `.md`): ognuno si apre, è evidenziato, "Format document" funziona dove Monaco lo offre e la console non mostra errori. Annotare qui i buchi (es. TOML usa la sintassi `ini`).
