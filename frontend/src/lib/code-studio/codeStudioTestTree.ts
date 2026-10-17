@@ -70,9 +70,24 @@ function packageDirectories(run: GoIDETestRun): Map<string, string | undefined> 
   return new Map(run.results.filter((result) => !result.name).map((result) => [result.package, result.directory]))
 }
 
-/** Riesegue un singolo test o sottotest dello stesso run, nel suo package. */
+/** Il run è del runner Go (anche i run salvati prima dei linguaggi, senza `language`). */
+export function isGoTestRun(run: GoIDETestRun): boolean {
+  return !run.request.language || run.request.language === 'go'
+}
+
+/** Filtro per nome dei runner JS/TS (`-t`): i livelli describe/test uniti da spazio, l'ultimo ancorato; U+2215 torna "/". */
+export function namePatternFor(name: string): string {
+  return `${name.split('/').map((segment) => escapeRegex(segment.replace(/∕/g, '/'))).join(' ')}$`
+}
+
+/** Riesegue un singolo test o sottotest dello stesso run, nel suo package (per JS/TS: il file di test). */
 export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDETestRunRequest {
   const moduleDirectory = run.request.workingDirectory
+  if (!isGoTestRun(run)) {
+    const prefix = moduleDirectory ? `${moduleDirectory}/` : ''
+    const file = result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
+    return { ...run.request, packages: [file], run: result.name ? namePatternFor(result.name) : '', coverage: false }
+  }
   const pattern = packagePattern(packageDirectories(run).get(result.package), moduleDirectory)
   const name = result.name ?? ''
   const benchmark = name.startsWith('Benchmark')

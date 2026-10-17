@@ -11,7 +11,9 @@ import { useCodeStudioCursorStore } from './codeStudioCursor'
 import { CodeStudioToolchainSwitcher } from './CodeStudioToolchainSwitcher'
 import { CodeStudioBreadcrumb } from './CodeStudioBreadcrumb'
 import { BrandIcon } from './CodeStudioFileIcon'
-import { IDE_LANGUAGES, ideLanguageForEditor } from '@/components/ide/languages'
+import { IDE_LANGUAGES, IDE_LANGUAGE_NAMES, ideLanguage, ideLanguageForEditor } from '@/components/ide/languages'
+import { WEB_LANGUAGE_IDS } from '@/components/ide/languages/web'
+import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { CodeStudioStatusMenu } from './CodeStudioStatusMenu'
 import { CodeStudioCopilotStatus } from './CodeStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -79,10 +81,14 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
   const counts = diagnosticCounts(mergedReports(reports, lint?.reports))
   const watcher = useWatcherStatus(session.id)
   // Per un file web la voce parla del suo language server, non di gopls.
-  const webLanguage = documentInfo ? webLanguageForEditor(documentInfo.language) : undefined
+  // Senza un file aperto la voce segue il linguaggio del progetto: un'app Node non deve parlare di gopls.
+  const profile = useMemo(() => projectProfile(session.project, IDE_LANGUAGE_NAMES), [session.project])
+  const projectWebLanguage = !profile.hasGo && profile.primaryLanguage && WEB_LANGUAGE_IDS.includes(profile.primaryLanguage) ? profile.primaryLanguage : undefined
+  const webLanguage = documentInfo ? webLanguageForEditor(documentInfo.language) : projectWebLanguage
+  const showGo = profile.hasGo || (!!documentInfo && ideLanguageForEditor(documentInfo.language)?.id === 'go')
   const webServer = useIdeWebServersStore((state) => webLanguage ? webServerEntry(state, session.id, webLanguage) : null)
   const lspState = webServer ? (webServer.state === 'missing' ? 'unavailable' : webServer.state) : status?.state ?? 'stopped'
-  const serverName = (documentInfo && ideLanguageForEditor(documentInfo.language)?.languageServer) || IDE_LANGUAGES.find((language) => language.languageServer)?.languageServer || 'Language server'
+  const serverName = (documentInfo ? ideLanguageForEditor(documentInfo.language)?.languageServer : profile.primaryLanguage ? ideLanguage(profile.primaryLanguage)?.languageServer : undefined) || IDE_LANGUAGES.find((language) => language.languageServer)?.languageServer || 'Language server'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
   const resourceMode = useCodeStudioLspStore((state) => state.preferences.resourceMode)
@@ -152,10 +158,10 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
         {lspState === 'starting' || (!webServer && progress) ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
         <span className="max-w-56 truncate">{!webServer && progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version)}</span>
       </button>
-      <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
+      {showGo && <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
         {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}${lint.result.changedOnly ? ' in changed files' : ''}${lint.result.baselined ? ` (+${lint.result.baselined} in baseline)` : ''}` : ''}` : 'No linter'}
-      </button>
+      </button>}
       <button type="button" aria-label={`Problems: ${counts.errors} errors, ${counts.warnings} warnings`} onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
@@ -181,8 +187,8 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
       />
       {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
       {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
-      <span className={`${LABEL} flex items-center gap-1`}>{documentInfo && ideLanguageForEditor(documentInfo.language) && <BrandIcon slug={ideLanguageForEditor(documentInfo.language)!.icon} size={12} />}{documentInfo?.language || (goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
-      <CodeStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
+      <span className={`${LABEL} flex items-center gap-1`}>{documentInfo && ideLanguageForEditor(documentInfo.language) && <BrandIcon slug={ideLanguageForEditor(documentInfo.language)!.icon} size={12} />}{documentInfo?.language || (!profile.hasGo ? (profile.primaryLanguage ? IDE_LANGUAGE_NAMES[profile.primaryLanguage] ?? profile.primaryLanguage : 'Folder') : goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
+      {showGo && <CodeStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />}
       <CodeStudioCopilotStatus className={ITEM} />
       </div>
       <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Code Studio appearance">

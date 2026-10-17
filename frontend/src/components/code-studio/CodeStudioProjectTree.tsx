@@ -1,4 +1,6 @@
-import { goModules, goProjectLayout } from '@/lib/code-studio/goProject'
+import { goModules } from '@/lib/code-studio/goProject'
+import { projectProfile } from '@/lib/code-studio/projectProfile'
+import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
@@ -350,7 +352,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         {entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
       <div className="shrink-0 px-4 py-2 text-[10.5px] leading-4 text-text-4">
-        {goModules(session.project).length} module{goModules(session.project).length === 1 ? '' : 's'} · {goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'folder mode'}
+        {projectProfile(session.project, IDE_LANGUAGE_NAMES).summary}
       </div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <CodeStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />

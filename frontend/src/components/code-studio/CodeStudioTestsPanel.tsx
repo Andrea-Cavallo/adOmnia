@@ -7,7 +7,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
-import { buildTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, failureRateByCPU, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
+import { buildTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, failureRateByCPU, filterTestTree, flakyCauses, formatDuration, isFailed, isFlaky, isGoTestRun, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { functionsByCoverage, untakenBranches } from './codeStudioCoverage'
 import { CodeStudioPatchCoverage } from './CodeStudioPatchCoverage'
@@ -63,6 +63,7 @@ function TestRow({ node, depth, selected, run, sessionId, records, entry = false
   const selectNode = useCodeStudioTestsStore((state) => state.selectNode)
   const rerunNode = useCodeStudioTestsStore((state) => state.rerunNode)
   const { result } = node
+  const goRun = isGoTestRun(run)
   const active = selected === result.id
   const record = result.name && !isFlaky(result) ? records.get(`${result.package}\u0000${result.name}`) : undefined
   return (
@@ -103,12 +104,12 @@ function TestRow({ node, depth, selected, run, sessionId, records, entry = false
             <Play size={10} fill="currentColor" aria-hidden="true" />
           </button>
         )}
-        {run.status !== 'running' && result.name && !result.name.startsWith('Benchmark') && (
+        {goRun && run.status !== 'running' && result.name && !result.name.startsWith('Benchmark') && (
           <button type="button" title={`Run ${result.name} 20 times in random order`} onClick={(event) => { event.stopPropagation(); void useCodeStudioTestsStore.getState().start(repeatRequestForNode(run, result, 20)) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-accent opacity-0 hover:bg-accent/10 group-hover:opacity-100">
             <Repeat size={10} aria-hidden="true" />
           </button>
         )}
-        {run.status !== 'running' && result.name && (
+        {goRun && run.status !== 'running' && result.name && (
           <button type="button" title={`Debug ${result.name}`} onClick={(event) => { event.stopPropagation(); const request = debugRequestForNode(run, result); if (request) void useCodeStudioDebugStore.getState().start(request) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-warning opacity-0 hover:bg-warning/10 group-hover:opacity-100">
             <Bug size={10} aria-hidden="true" />
           </button>
@@ -367,6 +368,7 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
     )
   }
   const running = run.status === 'running'
+  const goRun = isGoTestRun(run)
   const summary = run.summary
   const repeated = (run.request.repeat ?? 0) > 1
   const flakyCount = run.results.filter((result) => isFlaky(result) || (!!result.name && records.has(`${result.package}\u0000${result.name}`))).length
@@ -378,13 +380,13 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
       <div role="toolbar" aria-label="Tests toolbar" className="flex h-8 shrink-0 items-center gap-1 border-b border-border-1 px-2 text-[12px]">
         <button type="button" disabled={running} onClick={() => void rerunAll(sessionId)} title="Rerun" className="grid h-6 w-6 place-items-center rounded text-success hover:bg-success/10 disabled:opacity-30"><Play size={11} fill="currentColor" aria-hidden="true" /></button>
         <button type="button" disabled={running || summary.failed === 0} onClick={() => void rerunFailed(sessionId)} title="Rerun failed tests" className="flex h-6 items-center gap-1 rounded px-1.5 text-danger hover:bg-danger/10 disabled:opacity-30"><RotateCcw size={11} aria-hidden="true" /> Failed</button>
-        <span className="flex h-6 items-center rounded border border-border-1">
+        {goRun && <span className="flex h-6 items-center rounded border border-border-1">
           <button type="button" disabled={running} onClick={() => void start({ ...run.request, repeat, shuffle: 'on', bench: '', coverage: false })} title={`Rerun ${repeat} times in random order to find flaky tests`} className="flex h-full items-center gap-1 rounded-l px-1.5 text-accent hover:bg-accent/10 disabled:opacity-30"><Repeat size={11} aria-hidden="true" /> ×</button>
           <select aria-label="Repetitions" value={repeat} onChange={(event) => setRepeat(Number(event.target.value))} className="h-full rounded-r bg-surface-2 pr-0.5 text-[12px] text-text-2 outline-none">
             {REPEAT_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
-        </span>
-        <button type="button" disabled={running} onClick={() => void runCodeStudioBenchmarks('package')} title="Run all benchmarks in the current package with benchmem" className="grid h-6 w-6 place-items-center rounded text-accent hover:bg-accent/10 disabled:opacity-30"><Gauge size={12} aria-hidden="true" /></button>
+        </span>}
+        {goRun && <button type="button" disabled={running} onClick={() => void runCodeStudioBenchmarks('package')} title="Run all benchmarks in the current package with benchmem" className="grid h-6 w-6 place-items-center rounded text-accent hover:bg-accent/10 disabled:opacity-30"><Gauge size={12} aria-hidden="true" /></button>}
         {benchmarkHistory.length > 0 && <button type="button" onClick={() => void WailsClipboard.SetText(benchmarkHistoryCsv(benchmarkHistory))} title="Copy saved benchmark metrics as CSV" className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><Copy size={11} aria-hidden="true" /></button>}
         {benchmarkHistory.length > 0 && <button type="button" onClick={() => { clearBenchmarkHistory(session.project.rootPath); setBenchmarkHistory([]) }} title={`Clear ${benchmarkHistory.length} saved local benchmark measurement${benchmarkHistory.length === 1 ? '' : 's'}`} className="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-danger"><Trash2 size={11} aria-hidden="true" /></button>}
         <button type="button" disabled={!running} onClick={() => void stopRun(run.runId)} title="Stop tests" className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger/10 disabled:opacity-30"><Square size={10} fill="currentColor" aria-hidden="true" /></button>

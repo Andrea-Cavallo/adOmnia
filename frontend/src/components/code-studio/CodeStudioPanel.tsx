@@ -5,6 +5,7 @@ import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './codeStudioRunOnSave'
 import { pinnedFirst } from '@/lib/code-studio/codeStudioRunHistory'
 import { devServerPreviewRequest } from '@/lib/code-studio/runPreview'
+import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { useLivePreviewStore } from '@/stores/livePreview'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
@@ -434,6 +435,11 @@ export function CodeStudioPanel() {
     // La build di una configurazione salvata passa dal backend: GOOS/GOARCH, env file, race e tag inclusi.
     if (kind === 'build' && activeConfig && (activeConfig.kind === 'package' || activeConfig.kind === 'build')) {
       await store.startConfiguredBuild(activeConfig.id)
+      return
+    }
+    // Senza moduli Go non c'è un "main package" da cercare: si apre il gestore, dove compaiono le proposte rilevate.
+    if (!activeConfig && activeSession && !projectProfile(activeSession.project).hasGo) {
+      setConfigureOpen(true)
       return
     }
     if (!activeConfig && activeSession) {

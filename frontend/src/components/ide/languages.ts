@@ -35,6 +35,9 @@ export interface IdeRegisteredLanguage {
 
 export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES]
 
+/** Nome mostrato di ogni linguaggio registrato, per i riepiloghi che ricevono solo l'id dal backend. */
+export const IDE_LANGUAGE_NAMES: Readonly<Record<string, string>> = Object.fromEntries(IDE_LANGUAGES.map((language) => [language.id, language.name]))
+
 export function ideLanguage(id: string): IdeLanguageContribution | undefined {
   return IDE_LANGUAGES.find((language) => language.id === id)
 }

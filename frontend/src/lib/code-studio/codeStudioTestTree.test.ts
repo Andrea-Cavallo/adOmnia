@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
-import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor } from './codeStudioTestTree'
+import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, namePatternFor } from './codeStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -128,5 +128,24 @@ describe('concurrency correlation', () => {
     expect(rates).toEqual([{ cpu: 1, runs: 2, failures: 0 }, { cpu: 2, runs: 2, failures: 1 }, { cpu: 4, runs: 2, failures: 1 }, { cpu: 8, runs: 2, failures: 1 }])
     expect(cpuCorrelationVerdict(rates)).toMatch(/only with parallelism \(GOMAXPROCS ≥ 2\)/)
     expect(failureRateByCPU(base, base.results[1])).toEqual([])
+  })
+})
+
+describe('JS/TS test runs', () => {
+  const jsRun = (workingDirectory = 'web') => ({ ...run([], workingDirectory), request: { sessionId: 's', language: 'typescript', workingDirectory, packages: [], coverage: false } }) as unknown as GoIDETestRun
+
+  it('tells Go runs from other runners, including runs saved without a language', () => {
+    expect(isGoTestRun(run([]))).toBe(true)
+    expect(isGoTestRun(jsRun())).toBe(false)
+  })
+
+  it('reruns one JS test by file and by its describe/test names, relative to the unit folder', () => {
+    const test = node('web/src/sum.test.ts', 'sum/edge∕cases/overflows', 'fail')
+    expect(requestForNode(jsRun(), test)).toMatchObject({ language: 'typescript', packages: ['src/sum.test.ts'], run: 'sum edge/cases overflows$', coverage: false })
+  })
+
+  it('reruns a whole JS file without a name filter', () => {
+    expect(requestForNode(jsRun(''), node('src/sum.test.ts', '', 'fail'))).toMatchObject({ packages: ['src/sum.test.ts'], run: '' })
+    expect(namePatternFor('a(b)')).toBe(String.raw`a\(b\)$`)
   })
 })

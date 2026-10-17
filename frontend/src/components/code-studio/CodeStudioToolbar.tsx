@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
 import { Bug, ChevronDown, Hammer, Maximize2, MoreVertical, Play, Search, Square, X } from 'lucide-react'
@@ -8,6 +8,8 @@ import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindow
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchainInfo, GoIDERecentProject } from '@/lib/code-studio-api'
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
+import { projectProfile } from '@/lib/code-studio/projectProfile'
+import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { GoGopherIcon } from './GoGopherIcon'
 import { useCodeStudioTitlebar, CodeStudioWindowControls } from './CodeStudioTitlebar'
 
@@ -87,7 +89,9 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
   useEffect(() => { startPanelWindows() }, [startPanelWindows])
   const authorized = activeSession.project.authorization === 'tooling-permitted'
   const running = activeExecution?.status === 'running'
-  const toolsReady = !!(authorized && toolchain?.available)
+  const profile = useMemo(() => projectProfile(activeSession.project, IDE_LANGUAGE_NAMES), [activeSession.project])
+  // Il toolchain Go serve solo ai progetti con unità Go: un'app Node si avvia con Node, non con `go`.
+  const toolsReady = !!(authorized && (toolchain?.available || !profile.hasGo))
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
 
   const openMenu = (kind: ToolbarMenu, target: HTMLElement) => {
@@ -129,7 +133,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     }))
     if (kind === 'config') return [
       ...runConfigurations.map((config) => ({ id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined })),
-      { id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 },
+      ...(profile.hasGo ? [{ id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 }] : []),
       { id: 'configure', label: 'Edit Configurations…', icon: Settings2, separatorBefore: true },
     ]
     return [
@@ -185,8 +189,8 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
 
       <div className="code-studio-run-group" role="group" aria-label="Run">
         <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'config'} onClick={(event) => openMenu('config', event.currentTarget)} title="Active run configuration" className={`code-studio-widget h-6 max-w-48 px-2 ${menu?.kind === 'config' ? 'is-active' : ''}`}>
-          <GoGopherIcon size={14} />
-          <span className="truncate text-text-1">{activeConfig?.name ?? 'go run .'}</span>
+          {profile.hasGo ? <GoGopherIcon size={14} /> : <Terminal size={14} aria-hidden="true" />}
+          <span className="truncate text-text-1">{activeConfig?.name ?? (profile.hasGo ? 'go run .' : 'Add configuration')}</span>
           <ChevronDown size={11} className="shrink-0 text-text-4" />
         </button>
         <span className="mx-0.5 h-4 w-px bg-border-1" aria-hidden="true" />
