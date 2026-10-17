@@ -1,0 +1,194 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Check, CloudDownload, Cpu, Download, HardDrive, Loader2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
+import { cancelGoIDEToolchainInstall, installGoIDEToolchain, listGoIDEToolchainReleases, listInstalledGoIDEToolchains, removeInstalledGoIDEToolchain, selectInstalledGoIDEToolchain, type GoIDEInstalledToolchain, type GoIDEToolchainRelease } from '@/lib/code-studio-api'
+import { confirm } from '@/lib/confirmDialog'
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import type { CodeStudioCommandId } from './codeStudioCommands'
+import { ToolchainConfigSection } from './CodeStudioToolchainConfig'
+import { ToolchainToolsSection } from './CodeStudioToolchainTools'
+import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
+
+interface ToolchainDialogProps {
+  open: boolean
+  onClose: () => void
+  onRunCommand: (id: CodeStudioCommandId) => void
+}
+
+function bytes(value: number): string {
+  if (!value) return '—'
+  return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+export function ToolchainDialog({ open, onClose, onRunCommand }: ToolchainDialogProps) {
+  const sessionId = useCodeStudioStore((state) => state.activeSessionId)
+  const info = useCodeStudioStore((state) => sessionId ? state.toolchains[sessionId] ?? null : null)
+  const installations = useCodeStudioStore((state) => state.toolchainInstallations)
+  const detectToolchain = useCodeStudioStore((state) => state.detectToolchain)
+  const [installed, setInstalled] = useState<GoIDEInstalledToolchain[]>([])
+  const [releases, setReleases] = useState<GoIDEToolchainRelease[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const handledInstall = useRef<string | null>(null)
+  const trusted = useCodeStudioStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.authorization === 'tooling-permitted')
+  const operation = useMemo(() => {
+    const items = Object.values(installations).filter((item) => item.sessionId === sessionId)
+    return items.find((item) => item.status === 'downloading' || item.status === 'extracting') ?? items[items.length - 1] ?? null
+  }, [installations, sessionId])
+
+  const refreshInstalled = async () => {
+    if (!sessionId) return
+    setInstalled(await listInstalledGoIDEToolchains(sessionId))
+  }
+
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    void refreshInstalled().catch((reason) => setError(String(reason)))
+  }, [open, sessionId])
+
+  useEffect(() => {
+    if (!sessionId || operation?.status !== 'installed' || handledInstall.current === operation.id) return
+    handledInstall.current = operation.id
+    void (async () => {
+      await refreshInstalled()
+      if (useCodeStudioStore.getState().activeSessionId !== sessionId) return
+      await detectToolchain()
+      await useCodeStudioLspStore.getState().refreshAfterToolchainChange(sessionId)
+    })().catch((reason) => setError(String(reason)))
+  }, [operation?.id, operation?.status, sessionId])
+
+  if (!open || !sessionId) return null
+
+  const loadCatalog = async () => {
+    setBusy(true); setError(null)
+    try { setReleases(await listGoIDEToolchainReleases(sessionId)) } catch (reason) { setError(String(reason)) }
+    finally { setBusy(false) }
+  }
+  const reload = async () => {
+    setBusy(true); setError(null)
+    try {
+      await detectToolchain()
+      await useCodeStudioLspStore.getState().refreshAfterToolchainChange(sessionId)
+    } catch (reason) { setError(String(reason)) }
+    finally { setBusy(false) }
+  }
+  const install = async (release: GoIDEToolchainRelease) => {
+    const approved = await confirm({ title: `Install ${release.version}?`, message: `Official archive: ${release.filename}\nSize: ${bytes(release.size)}\nSHA-256: ${release.sha256}\n\nThe archive is downloaded from go.dev, verified, and extracted into adOmnia's local toolchain store.`, confirmLabel: 'Download & install' })
+    if (!approved) return
+    try { await installGoIDEToolchain(sessionId, release.version, true) } catch (reason) { setError(String(reason)) }
+  }
+  const activate = async (toolchain: GoIDEInstalledToolchain) => {
+    try {
+      await selectInstalledGoIDEToolchain(sessionId, toolchain.version)
+      await detectToolchain()
+      await useCodeStudioLspStore.getState().refreshAfterToolchainChange(sessionId)
+    } catch (reason) { setError(String(reason)) }
+  }
+  const installLatest = async () => {
+    setBusy(true); setError(null)
+    try {
+      const catalog = await listGoIDEToolchainReleases(sessionId)
+      setReleases(catalog)
+      const latest = catalog.find((release) => release.stable)
+      if (!latest) throw new Error('No stable Go release is available for this platform.')
+      const installedNow = await listInstalledGoIDEToolchains(sessionId)
+      setInstalled(installedNow)
+      const existing = installedNow.find((item) => item.version === latest.version)
+      if (existing) await activate(existing)
+      else await install(latest)
+    } catch (reason) { setError(String(reason)) }
+    finally { setBusy(false) }
+  }
+  const remove = async (toolchain: GoIDEInstalledToolchain) => {
+    const approved = await confirm({ title: `Remove ${toolchain.version}?`, message: 'This removes only the isolated copy managed by adOmnia. Projects and system Go installations are untouched.', confirmLabel: 'Remove', variant: 'danger' })
+    if (!approved) return
+    try { await removeInstalledGoIDEToolchain(toolchain.version); await refreshInstalled() } catch (reason) { setError(String(reason)) }
+  }
+
+  const installing = !!operation && ['downloading', 'extracting'].includes(operation.status)
+  return (
+    <CodeStudioModal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      tall
+      divided
+      icon={Cpu}
+      title="Go SDKs & toolchains"
+      subtitle="The Go SDK and environment used by this project. The global default applies to projects without their own."
+      actions={<CodeStudioButton small variant="ghost" icon={RefreshCw} loading={busy} onClick={() => void reload()}>Reload Go + gopls</CodeStudioButton>}
+      footer={<CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>}
+    >
+      {error && <CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert>}
+      {info?.warning && <CodeStudioAlert tone="warning" icon={TriangleAlert}>{info.warning}</CodeStudioAlert>}
+      {info && (
+        <dl className="gs-surface grid grid-cols-[96px_1fr_96px_1fr] gap-x-3 gap-y-1.5 px-3 py-2.5 text-[12px]">
+          {([
+            ['Binary', info.goBinary || info.error, true], ['Version', info.version?.replace(/^go version\s+/, ''), false], ['Scope', info.scope === 'project' ? 'This project' : 'Global default', false],
+            ['GOROOT', info.goroot, true], ['GOPATH', info.gopath, true], ['GOPROXY', info.goproxy, true], ['GOPRIVATE', info.goprivate, false], ['GONOPROXY', info.gonoproxy, false],
+            ['GONOSUMDB', info.gonosumdb, false], ['CGO_ENABLED', info.cgoEnabled, false], ['GOOS/GOARCH', info.goos ? `${info.goos}/${info.goarch}` : '', false], ['GOFLAGS', info.goflags, false],
+            ['GOTOOLCHAIN', info.gotoolchain, false], ['go.mod', [info.goDirective && `go ${info.goDirective}`, info.toolchainDirective && `toolchain ${info.toolchainDirective}`].filter(Boolean).join(' · '), false],
+          ] as [string, string | undefined, boolean][]).map(([label, value, wide]) => (
+            <div key={label} className="contents">
+              <dt className="text-text-4">{label}</dt>
+              <dd className={`${wide ? 'col-span-3 ' : ''}gs-mono truncate text-[11.5px] text-text-2`} title={value}>{value || '—'}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {info?.available && (
+        <div className="gs-surface flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-text-4" title="Detection timings: go env runs in the background and never blocks the IDE">
+          {info.cached && <span className="gs-badge text-accent">saved config</span>}
+          {(info.timings ?? []).map((timing) => <span key={timing.phase}>{timing.phase} <strong className="gs-mono text-text-2">{timing.ms} ms</strong>{timing.note ? ` (${timing.note})` : ''}</span>)}
+          {info.envPending && <span className="inline-flex items-center gap-1 text-text-3"><Loader2 size={11} className="animate-spin" />reading go env in background…</span>}
+          {info.envError && <span className="text-warning">{info.envError}</span>}
+        </div>
+      )}
+      {operation && (
+        <div className={`gs-alert ${installing ? 'gs-tone-accent' : operation.status === 'failed' ? 'gs-tone-danger' : 'gs-tone-success'} flex-col`}>
+          <div className="flex w-full items-center gap-2 font-medium text-text-1">
+            {installing && <Loader2 size={14} className="animate-spin" />}
+            {operation.version} · {operation.message}
+            {installing && <CodeStudioButton small variant="ghost" className="ml-auto" onClick={() => void cancelGoIDEToolchainInstall(operation.id)}>Cancel</CodeStudioButton>}
+          </div>
+          {installing && <div className="w-full"><div className="h-1.5 overflow-hidden rounded-full bg-surface-3"><div className="h-full rounded-full bg-accent transition-[width]" style={{ width: operation.totalBytes ? `${Math.min(100, operation.downloadedBytes / operation.totalBytes * 100)}%` : '12%' }} /></div><p className="mt-1 text-[11.5px] text-text-4">{bytes(operation.downloadedBytes)} / {bytes(operation.totalBytes)}</p></div>}
+          {operation.log.length > 0 && <div className="gs-mono max-h-16 w-full overflow-auto text-[11px] leading-4 text-text-4">{operation.log.map((line, index) => <div key={`${index}-${line}`}>{line}</div>)}</div>}
+        </div>
+      )}
+      <ToolchainToolsSection sessionId={sessionId} goAvailable={info?.available === true} onRunCommand={onRunCommand} />
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center"><h3 className="gs-section-title flex items-center gap-1.5"><HardDrive size={12} /> Installed versions</h3><CodeStudioButton small variant="ghost" className="gs-btn-icon ml-auto" onClick={() => void refreshInstalled()} aria-label="Refresh installed versions" title="Refresh"><RefreshCw size={13} /></CodeStudioButton></div>
+        <div className="gs-list">
+          {installed.length === 0 && <p className="gs-list-empty">No adOmnia-managed toolchains installed yet.</p>}
+          {installed.map((toolchain) => {
+            const active = info?.goBinary === toolchain.goBinary
+            return (
+              <div key={toolchain.version} className="gs-list-row">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 font-medium text-text-1">{toolchain.version}{active && <span className="gs-badge h-[18px] text-[10.5px] text-success"><Check size={11} className="mr-1" />active</span>}</div>
+                  <div className="gs-mono truncate text-[11px] text-text-4">{toolchain.goBinary}</div>
+                </div>
+                {!active && <CodeStudioButton small variant="secondary" onClick={() => void activate(toolchain)}>Use</CodeStudioButton>}
+                <CodeStudioButton small variant="danger-ghost" className="gs-btn-icon" disabled={active} onClick={() => void remove(toolchain)} aria-label={`Remove ${toolchain.version}`} title="Remove managed version"><Trash2 size={13} /></CodeStudioButton>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2"><h3 className="gs-section-title flex items-center gap-1.5"><CloudDownload size={12} /> Official releases</h3><div className="ml-auto flex items-center gap-2"><CodeStudioButton small variant="primary" icon={Download} loading={busy} disabled={!trusted || installing} title={trusted ? 'Download the latest stable Go SDK' : 'Trust this project before downloading'} onClick={() => void installLatest()}>Install latest</CodeStudioButton><CodeStudioButton small variant="secondary" icon={RefreshCw} loading={busy} disabled={!trusted} onClick={() => void loadCatalog()}>Choose version</CodeStudioButton></div></div>
+        {releases.length === 0
+          ? <p className="gs-surface gs-list-empty">Choose a version or install the latest stable release. Downloads require confirmation.</p>
+          : <div className="gs-list max-h-48">{releases.map((release) => (
+              <div key={release.filename} className="gs-list-row">
+                <span className="w-24 shrink-0 font-medium text-text-1">{release.version}</span>
+                <span className="gs-mono flex-1 truncate text-[11px] text-text-4">{release.filename} · {bytes(release.size)}</span>
+                <CodeStudioButton small variant="secondary" icon={Download} disabled={installing || !trusted} onClick={() => void install(release)}>Install</CodeStudioButton>
+              </div>
+            ))}</div>}
+      </section>
+      <ToolchainConfigSection sessionId={sessionId} onError={setError} />
+    </CodeStudioModal>
+  )
+}

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { primarySession } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRequestTab, openRunSource } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openRequestTab, openRunSource } from '@/lib/devsession/navigation'
 import { basename } from './liveUi'
 
 interface FlowItem { id: string; icon: ReactNode; title: string; detail: string; open: () => void }
@@ -22,7 +22,7 @@ export function flowItems(session: LiveSession | null, run: RequestRun | null, o
       id: 'code', icon: where ? <Bug size={14} className="text-warning" /> : <Code2 size={14} />,
       title: session.service,
       detail: where ? `${basename(where.relativePath || where.file || '')}:${where.line} · ${where.function}()` : `Code Studio · ${session.kind === 'debug' ? 'debugging' : 'running'}${session.port ? ` · :${session.port}` : ''}`,
-      open: () => void openFrameInGoStudio(session),
+      open: () => void openFrameInCodeStudio(session),
     })
   }
   if (run) {

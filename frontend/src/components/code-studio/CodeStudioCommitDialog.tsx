@@ -1,0 +1,291 @@
+import { logBackgroundError } from '@/lib/code-studio/backgroundError'
+import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal, Sparkles } from 'lucide-react'
+import { isAICompanionAvailable } from '@/lib/aiAvailability'
+import { draftCodeStudioCommitMessage, type CommitMessageSymbol } from './codeStudioCommitMessageAI'
+import { useSettingsStore } from '@/stores/settings'
+import { getGoIDEChangedSymbols, type GoIDEVCSChangedSymbol } from '@/lib/code-studio-vcs-api'
+import { runCodeStudioChangedTests } from './codeStudioQuickActions'
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { mergedReports, useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { precommitProblems, type CodeStudioPrecommitSummary } from './codeStudioPrecommit'
+import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
+import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
+import { CodeStudioFileIcon } from './CodeStudioFileIcon'
+import { CodeStudioCommitDiff } from './CodeStudioCommitDiff'
+import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import { activeLocalReplaces, isGoModPath, type GoModReplace } from '@/lib/goModLocalReplaces'
+
+interface CodeStudioCommitDialogProps {
+  sessionId: string
+  open: boolean
+  onClose: () => void
+  onResolveConflicts?: () => void
+}
+
+const STATUS_LABEL: Record<string, string> = { M: 'modified', A: 'added', D: 'deleted', R: 'renamed', '?': 'untracked', U: 'conflict' }
+
+function describe(status: string): string {
+  const code = status.trim().charAt(0) || status.trim().charAt(1)
+  return STATUS_LABEL[code] ?? status.trim()
+}
+
+const STATUS_TONE: Record<string, string> = { M: 'text-accent', A: 'text-success', D: 'text-danger', R: 'text-warning' }
+
+const PRECOMMIT_KEY = 'adomnia.codeStudio.precommitChecks'
+
+function loadPrecommitPreference(): boolean {
+  try { return localStorage.getItem(PRECOMMIT_KEY) !== 'off' } catch { return true }
+}
+
+function savePrecommitPreference(enabled: boolean): void {
+  try { localStorage.setItem(PRECOMMIT_KEY, enabled ? 'on' : 'off') } catch { /* preferenza solo locale */ }
+}
+
+/** Errori gopls e risultati del linter sui file modificati, limitati ai file spuntati. */
+async function runPrecommitChecks(sessionId: string, selected: Set<string>): Promise<CodeStudioPrecommitSummary> {
+  const lsp = useCodeStudioLspStore.getState()
+  if (lsp.linter[sessionId]?.available) await lsp.runLint(sessionId, true)
+  const state = useCodeStudioLspStore.getState()
+  return precommitProblems(Object.values(mergedReports(state.diagnostics[sessionId], state.lint[sessionId]?.reports)), selected)
+}
+
+const TOUCH_LABEL: Record<string, string> = { http: 'HTTP API', grpc: 'gRPC', db: 'database', broker: 'broker' }
+
+const CHANGE_MARK: Record<string, { mark: string; className: string }> = {
+  added: { mark: '+', className: 'text-success' },
+  modified: { mark: '~', className: 'text-accent' },
+  removed: { mark: '−', className: 'text-danger' },
+}
+
+/** Dichiarazioni Go toccate dai file spuntati: cosa cambia davvero, prima di scrivere il messaggio. */
+function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChangedSymbol[]; selected: Set<string>; onClose: () => void }) {
+  const openLocation = useCodeStudioStore((state) => state.openLocation)
+  const visible = symbols.filter((symbol) => selected.has(symbol.relativePath))
+  if (visible.length === 0) return null
+  const tests = visible.filter((symbol) => symbol.test).length
+  const api = visible.filter((symbol) => symbol.exported && !symbol.test).length
+  const breaking = visible.filter((symbol) => symbol.breaking).length
+  const touching = (tag: string) => visible.filter((symbol) => symbol.touches?.includes(tag)).length
+  const areas = (['http', 'grpc', 'db', 'broker'] as const).map((tag) => ({ tag, count: touching(tag) })).filter((item) => item.count > 0)
+  return (
+    <details className="border-b border-border-1 px-3 py-2 text-[12px]">
+      <summary className="flex cursor-pointer items-center gap-2 text-text-2">
+        <span className="font-medium">{visible.length} changed symbol{visible.length === 1 ? '' : 's'}</span>
+        <span className="text-text-4">· {api} exported · {tests} test{tests === 1 ? '' : 's'}{areas.map((item) => ` · ${item.count} ${TOUCH_LABEL[item.tag]}`).join('')}</span>
+        {breaking > 0 && <span className="text-danger">{breaking} breaking</span>}
+        <button type="button" onClick={(event) => { event.preventDefault(); onClose(); void runCodeStudioChangedTests() }} title="Run go test on the packages with changed Go files and on the packages that import them" className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-success hover:bg-success/10">
+          <FlaskConical size={12} aria-hidden="true" /> Test changed packages
+        </button>
+      </summary>
+      <div className="mt-1.5 max-h-[18vh] overflow-auto">
+        {visible.map((symbol) => {
+          const change = CHANGE_MARK[symbol.change] ?? CHANGE_MARK.modified
+          const label = <><span className={`w-3 shrink-0 text-center font-semibold ${change.className}`} aria-label={symbol.change}>{change.mark}</span><span className="w-12 shrink-0 text-[10.5px] text-text-4">{symbol.kind}</span><span className={`truncate font-mono text-[11.5px] ${symbol.exported ? 'text-text-1' : 'text-text-2'}`}>{symbol.name}</span>{symbol.breaking && <span title={symbol.change === 'removed' ? 'Exported symbol removed: callers outside the package break' : 'Exported signature changed: callers outside the package may break'} className="gs-badge h-[16px] text-[10px] text-danger">breaking</span>}{symbol.test && <span className="gs-badge h-[16px] text-[10px]">test</span>}{symbol.touches?.map((tag) => <span key={tag} title={`Touches ${TOUCH_LABEL[tag] ?? tag} (read from the source)`} className="gs-badge h-[16px] text-[10px] text-warning">{TOUCH_LABEL[tag] ?? tag}</span>)}<span className="ml-auto shrink-0 truncate font-mono text-[10.5px] text-text-4">{symbol.relativePath}{symbol.line ? `:${symbol.line}` : ''}</span></>
+          return symbol.line
+            ? <button key={`${symbol.relativePath}:${symbol.kind}:${symbol.name}`} type="button" onClick={() => { onClose(); void openLocation(symbol.relativePath, symbol.line, 1) }} className="flex h-6 w-full items-center gap-2 rounded px-1.5 text-left hover:bg-surface-2/60">{label}</button>
+            : <div key={`${symbol.relativePath}:${symbol.kind}:${symbol.name}`} className="flex h-6 items-center gap-2 px-1.5 opacity-80" title="Removed: no longer in the file">{label}</div>
+        })}
+      </div>
+    </details>
+  )
+}
+
+/** Commit (Ctrl+K): si registrano solo i file spuntati; i file non versionati partono esclusi, come in GoLand. */
+export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConflicts }: CodeStudioCommitDialogProps) {
+  const status = useCodeStudioVCSStore((state) => state.status[sessionId] ?? null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [symbols, setSymbols] = useState<GoIDEVCSChangedSymbol[]>([])
+  const [checkFirst, setCheckFirst] = useState(loadPrecommitPreference)
+  const [blocked, setBlocked] = useState<CodeStudioPrecommitSummary | null>(null)
+  const [focused, setFocused] = useState<string | null>(null)
+  const [localReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
+  const [aiBusy, setAiBusy] = useState(false)
+  const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
+  const messageRef = useRef<HTMLTextAreaElement>(null)
+  const [formHeight, setFormHeight] = useState(300)
+  const changes = status?.changes ?? []
+
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    setBlocked(null)
+    setBusy(false)
+    void useCodeStudioVCSStore.getState().refreshStatus(sessionId)
+    let cancelled = false
+    setSymbols([])
+    // Facoltativo: se il calcolo fallisce il commit resta disponibile, senza riepilogo.
+    getGoIDEChangedSymbols(sessionId).then((items) => { if (!cancelled) setSymbols(items) }).catch(logBackgroundError('changed symbols'))
+    const timer = window.setTimeout(() => messageRef.current?.focus(), 30)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [open, sessionId])
+  useEffect(() => {
+    if (!open) return
+    setSelected(new Set(changes.filter((change) => !change.untracked && !change.conflicted).map((change) => change.relativePath)))
+    setFocused((current) => (current && changes.some((change) => change.relativePath === current) ? current : changes.find((change) => !change.untracked)?.relativePath ?? changes[0]?.relativePath ?? null))
+    // Si ricalcola solo quando cambia l'elenco dei file, non a ogni spunta.
+  }, [open, changes.map((change) => change.relativePath).join('\n')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedGoMods = [...selected].filter(isGoModPath).sort().join('\n')
+  useEffect(() => {
+    if (!open || !selectedGoMods) { setLocalReplaces([]); return }
+    let cancelled = false
+    void Promise.all(selectedGoMods.split('\n').map(async (file) => {
+      try {
+        const diff = await GoIDEBindings.VCSWorkingDiff(sessionId, file)
+        return activeLocalReplaces(diff.modified).map((entry) => ({ ...entry, file }))
+      } catch {
+        return []
+      }
+    })).then((found) => { if (!cancelled) setLocalReplaces(found.flat()) })
+    return () => { cancelled = true }
+  }, [open, sessionId, selectedGoMods])
+
+  if (!open) return null
+
+  const toggle = (path: string) => setSelected((current) => {
+    const next = new Set(current)
+    if (next.has(path)) next.delete(path)
+    else next.add(path)
+    return next
+  })
+
+  const commit = async (force = false) => {
+    if (busy || !message.trim() || selected.size === 0) return
+    setBusy(true)
+    setError(null)
+    setBlocked(null)
+    try {
+      // Si registra il contenuto salvato: prima si salvano gli editor modificati.
+      if (!await useCodeStudioStore.getState().saveAllDocuments(sessionId)) return setBusy(false)
+      if (checkFirst && !force) {
+        const problems = await runPrecommitChecks(sessionId, selected)
+        if (problems.errors + problems.warnings > 0) {
+          setBlocked(problems)
+          return setBusy(false)
+        }
+      }
+      const hash = await useCodeStudioVCSStore.getState().commit(sessionId, message.trim(), [...selected])
+      useCodeStudioLspStore.setState({ message: `Committed ${selected.size} file(s) as ${hash ?? 'a new commit'}.` })
+      setMessage('')
+      onClose()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      setBusy(false)
+    }
+  }
+
+  /** Trascina il bordo fra elenco file e commit: l'altezza del pannello cambia senza toccare il diff. */
+  const resizeForm = (event: React.MouseEvent) => {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = formHeight
+    const move = (next: MouseEvent) => setFormHeight(Math.min(560, Math.max(170, startHeight + startY - next.clientY)))
+    const stop = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop) }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', stop)
+  }
+
+  const canCommit = !busy && !!message.trim() && selected.size > 0
+
+  /** Bozza del messaggio dal diff dei file spuntati: la bozza si può sempre modificare prima del commit. */
+  const draftMessage = async () => {
+    if (aiBusy || selected.size === 0) return
+    setAiBusy(true)
+    setError(null)
+    try {
+      const changed: CommitMessageSymbol[] = symbols
+        .filter((symbol) => selected.has(symbol.relativePath))
+        .map((symbol) => ({ name: symbol.name, kind: symbol.kind, change: symbol.change, breaking: symbol.breaking, test: symbol.test }))
+      setMessage(await draftCodeStudioCommitMessage(sessionId, [...selected], changed, status?.branch ?? ''))
+    } catch (reason) {
+      setError(`AI commit message: ${reason instanceof Error ? reason.message : String(reason)}`)
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  return (
+    <CodeStudioModal
+      open={open}
+      onClose={onClose}
+      size="full"
+      tall
+      className="!h-[min(90vh,920px)] !w-[min(1480px,95vw)]"
+      divided
+      flush
+      icon={GitCommitHorizontal}
+      title={<>Commit to <span className="gs-mono text-[14px]">{status?.branch ?? 'branch'}</span></>}
+      ariaLabel="Commit changes"
+      subtitle="Local only: nothing is pushed."
+      footerStart={<>{selected.size} of {changes.length} file{changes.length === 1 ? '' : 's'} · <span className="gs-kbd">Ctrl</span><span className="gs-kbd">Enter</span> commits</>}
+      footer={<>
+        <CodeStudioButton variant="ghost" onClick={onClose}>Cancel</CodeStudioButton>
+        <CodeStudioButton variant="primary" type="submit" form="code-studio-commit-form" loading={busy} disabled={!canCommit}>Commit</CodeStudioButton>
+      </>}
+    >
+      <div className="flex min-h-0 flex-1">
+      <div className="flex w-[400px] min-w-[300px] shrink-0 flex-col border-r border-border-1">
+      <div className="min-h-0 flex-1 overflow-auto p-1.5">
+        {changes.length === 0 && <p className="gs-list-empty">No local changes in this project.</p>}
+        {changes.map((change) => (
+          <div key={change.relativePath} role="button" tabIndex={0} aria-pressed={focused === change.relativePath} onClick={() => setFocused(change.relativePath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setFocused(change.relativePath) } }} title="Show the changes of this file"
+            className={`flex h-8 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 ${focused === change.relativePath ? 'bg-accent/12 ring-1 ring-accent/30' : 'hover:bg-surface-2/60'} ${change.conflicted ? 'opacity-60' : ''}`}>
+            <input type="checkbox" aria-label={`Include ${change.relativePath}`} checked={selected.has(change.relativePath)} disabled={change.conflicted} onClick={(event) => event.stopPropagation()} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
+            <CodeStudioFileIcon name={change.relativePath.split('/').pop() ?? change.relativePath} relativePath={change.relativePath} />
+            <span className="flex min-w-0 flex-1 items-baseline gap-2" title={change.relativePath}>
+              <span className="shrink-0 truncate text-[12.5px] font-medium text-text-1">{change.relativePath.split('/').pop()}</span>
+              <span className="min-w-0 truncate font-mono text-[11px] text-text-4">{change.relativePath.split('/').slice(0, -1).join('/')}</span>
+            </span>
+            {change.conflicted && onResolveConflicts
+              ? <button type="button" onClick={(event) => { event.preventDefault(); onResolveConflicts() }} className="gs-badge h-[18px] text-[10.5px] text-danger underline-offset-2 hover:underline">conflict · resolve…</button>
+              : <span title={change.conflicted ? 'conflict · resolve in Project Git' : describe(change.status)} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded text-[10.5px] font-semibold ${change.untracked ? 'text-text-3' : change.conflicted ? 'text-danger' : STATUS_TONE[change.status.trim().charAt(0)] ?? 'text-accent'}`}>{change.untracked ? 'U' : change.conflicted ? '!' : change.status.trim().charAt(0) || 'M'}</span>}
+          </div>
+        ))}
+      </div>
+      <div role="separator" aria-orientation="horizontal" aria-label="Resize commit panel" title="Drag to resize the commit panel" onMouseDown={resizeForm} className="-mt-px h-1.5 shrink-0 cursor-row-resize border-t border-border-1 hover:bg-accent/30" />
+      <div className="min-h-0 shrink-0 overflow-auto" style={{ height: formHeight }}>
+      <ChangedSymbols symbols={symbols} selected={selected} onClose={onClose} />
+      <form id="code-studio-commit-form" className="flex flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
+        <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
+          rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
+        {aiAvailable && (
+          <div className="flex items-center gap-2">
+            <CodeStudioButton small variant="secondary" icon={Sparkles} loading={aiBusy} disabled={selected.size === 0} onClick={() => void draftMessage()}>Draft message with AI</CodeStudioButton>
+            <span className="text-[11px] text-text-4">Summarises the selected changes · secrets are redacted</span>
+          </div>
+        )}
+        <label className="flex items-center gap-2 text-[12px] text-text-3">
+          <input type="checkbox" checked={checkFirst} onChange={(event) => { setCheckFirst(event.target.checked); savePrecommitPreference(event.target.checked) }} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />
+          Check for errors and lint warnings in these files before committing
+        </label>
+        {localReplaces.length > 0 && (
+          <CodeStudioAlert tone="warning" icon={AlertTriangle}>
+            Local replace in {[...new Set(localReplaces.map((entry) => entry.file))].join(', ')}: {localReplaces.map((entry) => `${entry.module} => ${entry.target}`).join(', ')}. Fine for a local commit, but pushing it breaks the build for everyone else; adOmnia will ask before any push.
+          </CodeStudioAlert>
+        )}
+        {blocked && (
+          <CodeStudioAlert tone="warning" icon={AlertTriangle}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{blocked.errors} error{blocked.errors === 1 ? '' : 's'} and {blocked.warnings} warning{blocked.warnings === 1 ? '' : 's'} in {blocked.files.length} file{blocked.files.length === 1 ? '' : 's'} you are committing.</span>
+              <span className="ml-auto flex gap-1.5">
+                <CodeStudioButton small variant="ghost" onClick={() => { useCodeStudioLspStore.getState().showToolWindow('problems'); onClose() }}>Show Problems</CodeStudioButton>
+                <CodeStudioButton small variant="secondary" onClick={() => void commit(true)}>Commit anyway</CodeStudioButton>
+              </span>
+            </div>
+          </CodeStudioAlert>
+        )}
+        {error && <CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert>}
+      </form>
+      </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <CodeStudioCommitDiff sessionId={sessionId} relativePath={focused} />
+      </div>
+      </div>
+    </CodeStudioModal>
+  )
+}

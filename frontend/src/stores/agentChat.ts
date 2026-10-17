@@ -1,5 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand'
-import { prepareStudioChat, type StudioChatContext } from '@/lib/goide/studioChatContext'
+import { prepareStudioChat, type StudioChatContext } from '@/lib/code-studio/studioChatContext'
 import type {
   MilkChatEvent,
   MilkPermissionEvent,

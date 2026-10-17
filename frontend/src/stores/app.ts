@@ -33,14 +33,14 @@ interface AppState {
   browserRunning: boolean
   pendingFileImport: RoutedToolFile | null
   /** Code Studio a tutta finestra: nasconde rail, intestazione e status bar di adOmnia (solo mentre Code Studio è attivo). */
-  goStudioMaximized: boolean
+  codeStudioMaximized: boolean
   /** Finestra principale senza barra di sistema: Code Studio massimizzato usa la sua toolbar come barra del titolo. */
   appWindowChrome: boolean
   setAppWindowChrome: (enabled: boolean) => void
-  toggleGoStudioMaximized: () => void
+  toggleCodeStudioMaximized: () => void
   /** Zen Mode: solo il codice. Implica Code Studio a tutta finestra; vale solo mentre Code Studio è attivo. */
-  goStudioZen: boolean
-  setGoStudioZen: (zen: boolean) => void
+  codeStudioZen: boolean
+  setCodeStudioZen: (zen: boolean) => void
   setActiveRail: (rail: RailItem) => void
   /** Panels kept mounted (hidden) once visited, so switching tools never loses their state. */
   keptPanels: RailItem[]
@@ -85,12 +85,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   browserRunning: false,
   pendingFileImport: null,
   // Code Studio si apre a tutto schermo come un IDE; il logo aO o il tasto restore riportano la rail.
-  goStudioMaximized: true,
+  codeStudioMaximized: true,
   appWindowChrome: false,
   setAppWindowChrome: (enabled) => set({ appWindowChrome: enabled }),
-  toggleGoStudioMaximized: () => set((s) => ({ goStudioMaximized: !s.goStudioMaximized })),
-  goStudioZen: false,
-  setGoStudioZen: (zen) => set({ goStudioZen: zen }),
+  toggleCodeStudioMaximized: () => set((s) => ({ codeStudioMaximized: !s.codeStudioMaximized })),
+  codeStudioZen: false,
+  setCodeStudioZen: (zen) => set({ codeStudioZen: zen }),
   setActiveRail: (rail) => {
     rememberActiveRail(rail)
     set((s) => ({

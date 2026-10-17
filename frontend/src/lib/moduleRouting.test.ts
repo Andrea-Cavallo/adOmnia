@@ -64,7 +64,7 @@ describe('module routing', () => {
   })
 
   it('from a Code Studio project window, sends to the main window', () => {
-    atUrl('?window=go-studio&session=s1&windowId=go-studio-s1')
+    atUrl('?window=code-studio&session=s1&windowId=code-studio-s1')
     showModule('database', { kind: 'handoff', key: 'k', value: 1 })
     expect(runtime.emit).toHaveBeenCalledWith('panelwindow:module-action', expect.objectContaining({ target: 'main', rail: 'database' }))
     expect(bindings.focusMain).toHaveBeenCalled()

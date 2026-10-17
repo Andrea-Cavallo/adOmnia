@@ -13,13 +13,13 @@ function projectFile(file: string, sessions: Sessions, activeSessionId: string |
 
 /** Open the span's code in Code Studio: inside an open project when possible, else as an external file. */
 export async function openSpanSource(file: string, line: number): Promise<void> {
-  const [{ useGoIDEStore }, { useAppStore }] = await Promise.all([import('@/stores/goide'), import('@/stores/app')])
-  const store = useGoIDEStore.getState()
+  const [{ useCodeStudioStore }, { useAppStore }] = await Promise.all([import('@/stores/codeStudio'), import('@/stores/app')])
+  const store = useCodeStudioStore.getState()
   const match = projectFile(file, store.sessions, store.activeSessionId)
   useAppStore.getState().setActiveRail('goide')
   if (match) {
     if (store.activeSessionId !== match.sessionId) await store.selectSession(match.sessionId)
-    await useGoIDEStore.getState().openLocation(match.relativePath, line, 1)
+    await useCodeStudioStore.getState().openLocation(match.relativePath, line, 1)
   } else {
     await store.openExternalLocation(file, line, 1)
   }
@@ -31,13 +31,13 @@ export async function openSpanSource(file: string, line: number): Promise<void> 
  * Returns what happened, for the caller to show.
  */
 export async function breakAtSpanSource(file: string, line: number): Promise<string> {
-  const [{ useGoIDEStore }, { useGoIDEDebugStore }] = await Promise.all([import('@/stores/goide'), import('@/stores/goideDebug')])
-  const store = useGoIDEStore.getState()
+  const [{ useCodeStudioStore }, { useCodeStudioDebugStore }] = await Promise.all([import('@/stores/codeStudio'), import('@/stores/codeStudioDebug')])
+  const store = useCodeStudioStore.getState()
   if (!store.initialized) await store.initialize()
-  const current = useGoIDEStore.getState()
+  const current = useCodeStudioStore.getState()
   const match = projectFile(file, current.sessions, current.activeSessionId)
   if (!match) return 'Open the project of this service in Code Studio to set a breakpoint in it.'
-  const debug = useGoIDEDebugStore.getState()
+  const debug = useCodeStudioDebugStore.getState()
   const already = (debug.breakpoints[match.sessionId]?.[match.relativePath] ?? []).some((item) => item.line === line)
   if (!already) await debug.toggleBreakpoint(match.sessionId, match.relativePath, line)
   await openSpanSource(file, line)

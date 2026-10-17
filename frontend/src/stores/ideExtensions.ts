@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { IDEContributions } from '../../bindings/adomnia/goide'
 import type { Contribution } from '../../bindings/adomnia/internal/plugins/models'
-import type { GoIDEDiagnosticsReport } from '@/lib/goide-lsp-api'
+import type { GoIDEDiagnosticsReport } from '@/lib/code-studio-lsp-api'
 export type IDEContribution = Contribution
 
 export const useIDEExtensionsStore = create<{ items: Contribution[]; reports: Record<string,Record<string,GoIDEDiagnosticsReport>>; error: string | null; load: () => Promise<void> }>((set) => ({

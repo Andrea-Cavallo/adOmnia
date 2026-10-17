@@ -9,7 +9,7 @@ import { openEntity } from '@/lib/entities/router'
 import { cn } from '@/lib/utils'
 import { useDevSessionStore } from '@/stores/devSession'
 import type { ServiceTarget } from '@/stores/devSessionModel'
-import { openFrameInGoStudio } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio } from '@/lib/devsession/navigation'
 import { basename } from './liveUi'
 
 const SQL_TYPES = new Set(['postgres', 'mysql', 'mariadb'])
@@ -96,7 +96,7 @@ export function ServiceView({ session }: { session: LiveSession }) {
       </div>
       <ul>
         <Node icon={<FolderGit2 size={13} />} title="Go project" detail={basename(session.projectRoot)}
-          action={<SmallButton onClick={() => void openFrameInGoStudio(session)}>Open</SmallButton>} />
+          action={<SmallButton onClick={() => void openFrameInCodeStudio(session)}>Open</SmallButton>} />
         <Node icon={<Globe size={13} />} title="REST API" detail={`${routes.length} route${routes.length === 1 ? '' : 's'}`}>
           <ul className="ml-1">
             {routes.slice(0, 12).map((route) => (

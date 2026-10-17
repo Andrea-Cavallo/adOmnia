@@ -4,17 +4,17 @@ import { MonacoBinding } from 'y-monaco'
 import { collabApi, subscribeCollabEvents } from '@/lib/collab-api'
 import { CollabYjsProvider, type DocumentMessage } from '@/lib/collab/yjsProvider'
 import { useCollabStore } from '@/stores/collab'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useSettingsStore } from '@/stores/settings'
-import { configureMonacoLoader, applyGoStudioMonacoThemes, GO_STUDIO_THEMES } from '@/lib/monacoSetup'
+import { configureMonacoLoader, applyCodeStudioMonacoThemes, CODE_STUDIO_THEMES } from '@/lib/monacoSetup'
 import type { ProjectEntry } from '../../../bindings/adomnia/internal/collab/models'
-import '../goide/goStudioCollab.css'
+import '../code-studio/codeStudioCollab.css'
 
 configureMonacoLoader()
 
 export default function CollabProject() {
   const status = useCollabStore(state => state.status)
-  const sessions = useGoIDEStore(state => state.sessions)
+  const sessions = useCodeStudioStore(state => state.sessions)
   const [session, setSession] = useState('')
   const [entries, setEntries] = useState<ProjectEntry[]>([])
   const [file, setFile] = useState<{path:string;content:string} | null>(null)
@@ -22,7 +22,7 @@ export default function CollabProject() {
   const [busy, setBusy] = useState(false)
   const request = useRef(0)
   useEffect(() => {
-    if (status?.mode === 'host') void useGoIDEStore.getState().initialize().catch(err => setError(String(err)))
+    if (status?.mode === 'host') void useCodeStudioStore.getState().initialize().catch(err => setError(String(err)))
   }, [status?.mode])
   useEffect(() => {
     request.current++
@@ -108,7 +108,7 @@ function RemoteCode({id,path,content,live}:{id:string;path:string;content:string
     <p className="text-xs text-text-3">{live ? editable ? 'Modifica live · il salvataggio su disco spetta all’host.' : 'Live · sola lettura' : 'Snapshot · sola lettura'}</p>
     {error && <p role="alert" className="text-xs text-status-err">{error}</p>}
     <div className="h-80 overflow-hidden rounded border border-border-1">
-      <Editor path={`collab://${id}`} defaultValue={live?'':content} language={language[extension] ?? 'plaintext'} theme={theme==='light'?GO_STUDIO_THEMES.light:GO_STUDIO_THEMES.dark} beforeMount={applyGoStudioMonacoThemes} onMount={editor=>{editorRef.current=editor;setMount(n=>n+1)}} options={{automaticLayout:true,readOnly:!editable || !!error,fontFamily:'var(--font-mono)',fontSize:13,minimap:{enabled:false},scrollBeyondLastLine:false}} />
+      <Editor path={`collab://${id}`} defaultValue={live?'':content} language={language[extension] ?? 'plaintext'} theme={theme==='light'?CODE_STUDIO_THEMES.light:CODE_STUDIO_THEMES.dark} beforeMount={applyCodeStudioMonacoThemes} onMount={editor=>{editorRef.current=editor;setMount(n=>n+1)}} options={{automaticLayout:true,readOnly:!editable || !!error,fontFamily:'var(--font-mono)',fontSize:13,minimap:{enabled:false},scrollBeyondLastLine:false}} />
     </div>
   </div>
 }

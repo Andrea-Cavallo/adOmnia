@@ -3,7 +3,7 @@
 // template, logs and stacks. Secrets are stripped; non-deterministic values are listed.
 import type { LiveLogEntry, LiveMessage, LiveQuery, RequestRun } from '@/lib/devsession-api'
 import type { OtlpSpan } from '@/lib/otlp-api'
-import type { ConfigReport, ConfigKey } from '@/lib/goide/configReport'
+import type { ConfigReport, ConfigKey } from '@/lib/code-studio/configReport'
 import type { KVRow, RequestBody } from '@/lib/types'
 import { FIXTURE_FORMAT } from '@/lib/kafkaFixture'
 

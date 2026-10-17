@@ -22,17 +22,17 @@ export class DebugRequestError extends Error {}
 
 /** The gO project behind a service name, or the active project when the request is not linked. */
 async function findGoSession(service: string | null): Promise<string | null> {
-  const { useGoIDEStore } = await import('@/stores/goide')
-  const goide = useGoIDEStore.getState()
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  const goide = useCodeStudioStore.getState()
   if (!goide.initialized) await goide.initialize()
-  const sessions = useGoIDEStore.getState().sessions
+  const sessions = useCodeStudioStore.getState().sessions
   if (service) {
     for (const session of sessions) {
       if ((await serviceNameFor(session.id).catch(() => '')) === service) return session.id
     }
     return null
   }
-  return useGoIDEStore.getState().activeSessionId ?? (sessions.length === 1 ? sessions[0].id : null)
+  return useCodeStudioStore.getState().activeSessionId ?? (sessions.length === 1 ? sessions[0].id : null)
 }
 
 /** Asks Code Studio to start its active Debug configuration, mounting it (hidden) when never opened. */

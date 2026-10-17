@@ -2,7 +2,7 @@ import { currentActivityPhase } from '@/stores/activity'
 import { create } from 'zustand'
 import { Events } from '@wailsio/runtime'
 import { checkDevContextStale, getDevContext, rescanDevContext, type DevSnapshot } from '@/lib/devcontext-api'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 
 interface DevContextState {
   snapshots: Record<string, DevSnapshot>
@@ -49,7 +49,7 @@ export function startDevContextSync(): () => void {
   })
   const onFocus = () => {
     if (currentActivityPhase('goide') !== 'Active') return
-    const sessionId = useGoIDEStore.getState().activeSessionId
+    const sessionId = useCodeStudioStore.getState().activeSessionId
     if (sessionId) void useDevContextStore.getState().checkStale(sessionId)
   }
   window.addEventListener('focus', onFocus)

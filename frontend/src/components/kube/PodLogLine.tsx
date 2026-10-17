@@ -1,4 +1,4 @@
-import { remoteLogLocations } from '@/lib/goide/remoteLogSource'
+import { remoteLogLocations } from '@/lib/code-studio/remoteLogSource'
 import { openEntity } from '@/lib/entities/router'
 
 export function PodLogLine({ text, sessionId, paths }: { text: string; sessionId: string; paths: readonly string[] }) {

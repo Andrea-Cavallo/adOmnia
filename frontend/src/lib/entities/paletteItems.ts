@@ -1,5 +1,5 @@
 import { entityRefFrom, type DevSnapshot } from '../devcontext-api'
-import type { GoIDEWorkspaceSymbol } from '../goide-lsp-api'
+import type { GoIDEWorkspaceSymbol } from '../code-studio-lsp-api'
 import type { EntityKind, EntityRef } from './types'
 
 export interface EntityPaletteItem {

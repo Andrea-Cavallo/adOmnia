@@ -3,7 +3,7 @@ import { sendRequest } from '@/lib/sendRequest'
 import { useTabsStore } from '@/stores/tabs'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { liveVars } from './liveRequest'
-import { openLocationInGoStudio } from './navigation'
+import { openLocationInCodeStudio } from './navigation'
 
 export const PROFILE_SECONDS = 5
 
@@ -16,7 +16,7 @@ export async function profileRequest(run: RequestRun, session: LiveSession, onPr
   const tab = useTabsStore.getState().tabs.find((item) => item.id === run.tabId)
   if (!tab) throw new Error('The request tab was closed.')
   if (!session.port) throw new Error('The service port is unknown: set it in the live bar first.')
-  const [{ captureGoIDELiveProfile }, { focusArtifact }] = await Promise.all([import('@/lib/goide-api'), import('@/lib/goide/goStudioRemote')])
+  const [{ captureGoIDELiveProfile }, { focusArtifact }] = await Promise.all([import('@/lib/code-studio-api'), import('@/lib/code-studio/codeStudioRemote')])
   const vars = liveVars(useEnvironmentsStore.getState().getResolvedVars())
   let settled = false
   const capture = captureGoIDELiveProfile({ sessionId: session.goSessionId, url: `http://127.0.0.1:${session.port}`, kind: 'profile', seconds: PROFILE_SECONDS })
@@ -31,8 +31,8 @@ export async function profileRequest(run: RequestRun, session: LiveSession, onPr
   }
   const file = await capture
   focusArtifact('profile', file.relative)
-  await openLocationInGoStudio(session.goSessionId, null)
-  const { useGoIDELspStore } = await import('@/stores/goideLsp')
-  useGoIDELspStore.getState().showToolWindow('profile')
+  await openLocationInCodeStudio(session.goSessionId, null)
+  const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
+  useCodeStudioLspStore.getState().showToolWindow('profile')
   return `${sent} requests in ${PROFILE_SECONDS} s → ${file.relative}`
 }

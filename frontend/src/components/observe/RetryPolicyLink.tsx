@@ -3,11 +3,11 @@ import type { OtlpSpan } from '@/lib/otlp-api'
 import { spanSource } from './traceStudioModel'
 import { openEntity } from '@/lib/entities/router'
 import { serviceNameFor } from '@/lib/devsession-api'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { relativeToRoots } from '@/lib/sourcePaths'
-import { projectArtifactText } from '@/lib/goide/projectArtifacts'
+import { projectArtifactText } from '@/lib/code-studio/projectArtifacts'
 import { FindRetryPolicies } from '../../../bindings/adomnia/goide'
-import { GoStudioModal, GoStudioButton } from '@/components/goide/GoStudioModal'
+import { CodeStudioModal, CodeStudioButton } from '@/components/code-studio/CodeStudioModal'
 
 export function retryPolicySource(span:OtlpSpan,spans:readonly OtlpSpan[]) {
  const seen=new Set<string>();let current:OtlpSpan|undefined=span
@@ -27,11 +27,11 @@ export function RetryPolicyLink({span,spans}: {span:OtlpSpan;spans:OtlpSpan[]}) 
  const open=async()=> {
   setBusy(true);setError('')
   try {
-   if(!useGoIDEStore.getState().initialized) await useGoIDEStore.getState().initialize()
+   if(!useCodeStudioStore.getState().initialized) await useCodeStudioStore.getState().initialize()
    const policy=retryPolicySource(span,spans)
    const source=policy ?? (spanSource(span) ? {...spanSource(span)!,service:span.service}:null)
    if(!source) throw new Error('No policy source or span source was captured')
-   const matches=(await Promise.all(useGoIDEStore.getState().sessions.map(async session=>({session,name:await serviceNameFor(session.id)})))).filter(item=>item.name===source.service)
+   const matches=(await Promise.all(useCodeStudioStore.getState().sessions.map(async session=>({session,name:await serviceNameFor(session.id)})))).filter(item=>item.name===source.service)
    if(matches.length!==1) throw new Error(`Open exactly one Go project for ${source.service}`)
    const session=matches[0].session
    const mapped=relativeToRoots(source.file,[{id:session.id,root:session.project.realPath},{id:session.id,root:session.project.rootPath}])
@@ -46,8 +46,8 @@ export function RetryPolicyLink({span,spans}: {span:OtlpSpan;spans:OtlpSpan[]}) 
   }catch(error){setError(String(error))}finally{setBusy(false)}
  }
  return <div><button type="button" disabled={busy} onClick={()=>void open()} className="rounded border border-warning/50 px-2 py-1 text-warning">{busy?'Locating retry policy…':'Retry → policy'}</button>{error && <p role="alert" className="mt-1 text-error">{error}</p>}
-  <GoStudioModal open={!!candidates} onClose={()=>setCandidates(null)} title="Retry candidates" subtitle="Static calls in the span function. Select a declaration; runtime ownership is not established." size="md">
-   {candidates?.items.map((item,i)=><GoStudioButton key={i} onClick={()=> {void openEntity({kind:'symbol',id:`retry:${candidates.sessionId}:${item.line}`,sessionId:candidates.sessionId,label:item.name,attrs:{},source:{file:candidates.file,line:item.line}},'open');setCandidates(null)}}>{item.name} · {candidates.file}:{item.line}</GoStudioButton>)}
-  </GoStudioModal>
+  <CodeStudioModal open={!!candidates} onClose={()=>setCandidates(null)} title="Retry candidates" subtitle="Static calls in the span function. Select a declaration; runtime ownership is not established." size="md">
+   {candidates?.items.map((item,i)=><CodeStudioButton key={i} onClick={()=> {void openEntity({kind:'symbol',id:`retry:${candidates.sessionId}:${item.line}`,sessionId:candidates.sessionId,label:item.name,attrs:{},source:{file:candidates.file,line:item.line}},'open');setCandidates(null)}}>{item.name} · {candidates.file}:{item.line}</CodeStudioButton>)}
+  </CodeStudioModal>
  </div>
 }

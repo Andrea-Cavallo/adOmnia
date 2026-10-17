@@ -1,7 +1,7 @@
 import type { OtlpSpan } from '@/lib/otlp-api'
 import { spanSource } from './traceStudioModel'
-import { useGoIDEStore } from '@/stores/goide'
-import { useGoIDEDebugStore } from '@/stores/goideDebug'
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { useDevSessionStore } from '@/stores/devSession'
 import { useDistributedDebugStore } from '@/stores/distributedDebug'
 import { ensureDebugSession } from '@/lib/devsession/debugRequest'
@@ -10,10 +10,10 @@ import { relativeToRoots } from '@/lib/sourcePaths'
 
 /** Arm the actual projects of this trace, before the next request. No service is silently guessed. */
 export async function armDistributedDebug(spans: readonly OtlpSpan[]): Promise<string> {
- const store = useGoIDEStore.getState()
+ const store = useCodeStudioStore.getState()
  if (!store.initialized) await store.initialize()
  if (!useDevSessionStore.getState().ready) await useDevSessionStore.getState().load()
- const sessions = useGoIDEStore.getState().sessions
+ const sessions = useCodeStudioStore.getState().sessions
  const named = await Promise.all(sessions.map(async session => ({session, name: await serviceNameFor(session.id)})))
  const services = [...new Set(spans.map(span => span.service))]
  if (services.length < 2 || services.length > 16) throw new Error('Select a trace with 2 to 16 services')
@@ -34,7 +34,7 @@ export async function armDistributedDebug(spans: readonly OtlpSpan[]): Promise<s
  useDistributedDebugStore.getState().clear()
  const members: string[] = []
  for (const {service, session, points} of plan) {
-   const debug = useGoIDEDebugStore.getState()
+   const debug = useCodeStudioDebugStore.getState()
    for (const point of points) {
      if (!(debug.breakpoints[session.id]?.[point.file] ?? []).some(item => item.line === point.line)) await debug.toggleBreakpoint(session.id, point.file, point.line)
    }

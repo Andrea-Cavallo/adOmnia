@@ -9,7 +9,7 @@ import { liveLogs, liveMessages, liveQueries } from '@/lib/devsession-api'
 import { cn } from '@/lib/utils'
 import { useDevSessionStore, type DebugRequestProgress } from '@/stores/devSession'
 import { runForTab } from '@/stores/devSessionModel'
-import { openFrameInGoStudio } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio } from '@/lib/devsession/navigation'
 import { streamSessionToLogInspector } from '@/lib/devsession/logInspectorSource'
 import { requestLogInspectorQuery } from '@/lib/loginspector/handoff'
 import { LiveLogList, LiveMessageList, LiveQueryList, RequestSummary, RequestTimeline } from './LiveRequestViews'
@@ -164,7 +164,7 @@ function HitList({ run, session }: { run: RequestRun; session: LiveSession | nul
             <span className="block truncate font-mono text-text-1">{basename(hit.relativePath || hit.file || '')}:{hit.line} <span className="text-text-3">{hit.function}() · goroutine {hit.threadId ?? "?"} · {sessions[hit.sessionId ?? run.sessionId]?.service}</span></span>
             {hit.confidence === 'probable' && <span className="text-[10.5px] text-text-4">Time correlation: probably this request.</span>}
           </span>
-          {session && <button type="button" onClick={() => void openFrameInGoStudio(sessions[hit.sessionId ?? run.sessionId] ?? session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Code Studio</button>}
+          {session && <button type="button" onClick={() => void openFrameInCodeStudio(sessions[hit.sessionId ?? run.sessionId] ?? session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Code Studio</button>}
         </li>
       ))}
     </ul>
@@ -200,7 +200,7 @@ function PausedCard({ run, session }: { run: RequestRun; session: LiveSession })
         <span className="h-2 w-2 animate-pulse rounded-full bg-warning" aria-hidden="true" />Paused at breakpoint
       </div>
       {where && (
-        <button type="button" onClick={() => void openFrameInGoStudio(session, where)} className="group text-center">
+        <button type="button" onClick={() => void openFrameInCodeStudio(session, where)} className="group text-center">
           <span className="block font-mono text-[15px] text-text-1 group-hover:text-accent">{basename(where.relativePath || where.file || '')}:{where.line}</span>
           <span className="block font-mono text-[12px] text-text-3">{where.function}()</span>
         </button>
@@ -213,7 +213,7 @@ function PausedCard({ run, session }: { run: RequestRun; session: LiveSession })
         <span>Response</span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <ActionButton tone="primary" onClick={() => void openFrameInGoStudio(session, where)}><Bug size={13} />Open in Code Studio</ActionButton>
+        <ActionButton tone="primary" onClick={() => void openFrameInCodeStudio(session, where)}><Bug size={13} />Open in Code Studio</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'continue')} title="F9"><Play size={12} fill="currentColor" />Continue</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'next')} title="F8"><Redo2 size={13} />Step Over</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'stepIn')} title="F7"><ArrowDownToLine size={13} />Step Into</ActionButton>

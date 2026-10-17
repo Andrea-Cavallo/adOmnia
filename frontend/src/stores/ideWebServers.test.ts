@@ -15,10 +15,10 @@ vi.mock('@/lib/livepreview-api', () => ({
   stopWebLanguageServer: mocks.stopWebLanguageServer,
   installWebTools: mocks.installWebTools,
 }))
-vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
+vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
-vi.mock('@/stores/goideToast', () => ({ studioToast: vi.fn() }))
-vi.mock('@/stores/goide', () => ({ useGoIDEStore: Object.assign(() => undefined, { getState: () => mocks.state, subscribe: () => () => undefined }) }))
+vi.mock('@/stores/codeStudioToast', () => ({ studioToast: vi.fn() }))
+vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: Object.assign(() => undefined, { getState: () => mocks.state, subscribe: () => () => undefined }) }))
 
 import { isWebServerReady, useIdeWebServersStore, webLanguageForEditor, webServerEntry } from './ideWebServers'
 

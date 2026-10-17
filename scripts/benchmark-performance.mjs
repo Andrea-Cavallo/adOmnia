@@ -24,13 +24,13 @@ const dirty = !!run('git', ['status', '--porcelain', '--untracked-files=no']).tr
 mkdirSync(out, { recursive: true })
 try {
  console.log('Running lifecycle checks...')
- const lifecycle = run('go', ['test', './internal/ide/process', './internal/goide', '-run', 'Job|SessionCycles', '-count=1', '-v', '-timeout', '2m'])
+ const lifecycle = run('go', ['test', './internal/ide/process', './internal/codestudio', '-run', 'Job|SessionCycles', '-count=1', '-v', '-timeout', '2m'])
  writeFileSync(resolve(out, 'lifecycle.txt'), lifecycle)
  console.log('Running backend benchmarks (3 samples, 100ms each)...')
- const goOutput = run('go', ['test', './internal/ide/graph', './internal/goide', '-run', '^$', '-bench', 'BenchmarkWorkspaceFingerprint|BenchmarkDependencyGraph|BenchmarkReleaseRepository', '-benchmem', '-benchtime=100ms', '-count=3', '-timeout', '10m'])
+ const goOutput = run('go', ['test', './internal/ide/graph', './internal/codestudio', '-run', '^$', '-bench', 'BenchmarkWorkspaceFingerprint|BenchmarkDependencyGraph|BenchmarkReleaseRepository', '-benchmem', '-benchtime=100ms', '-count=3', '-timeout', '10m'])
  writeFileSync(resolve(out, 'go-bench.txt'), goOutput)
  console.log('Running frontend CPU benchmarks...')
- const vitest = run(process.execPath, [resolve(frontend, 'node_modules/vitest/vitest.mjs'), 'bench', '--run', 'src/components/goide/performance.bench.ts'], frontend)
+ const vitest = run(process.execPath, [resolve(frontend, 'node_modules/vitest/vitest.mjs'), 'bench', '--run', 'src/components/code-studio/performance.bench.ts'], frontend)
  writeFileSync(resolve(out, 'frontend-bench.txt'), vitest)
  const frontendMetrics = [['benchmark comparison 10 samples', 'performance-comparison.json'], ['split 25 response tabs', 'performance-tabs.json']].map(([name, file]) => {
   const raw = JSON.parse(readFileSync(resolve(frontend, '.artifacts', file), 'utf8'))

@@ -1,8 +1,8 @@
 // Debug a Kafka consumer or producer from a message: find the Go function that handles the
 // topic, put a breakpoint where the message is in hand, and run the project under Delve.
-import type { GoIDEArchEntry } from '@/lib/goide-api'
+import type { GoIDEArchEntry } from '@/lib/code-studio-api'
 import type { LiveSession } from '@/lib/devsession-api'
-import { architectureFor } from '@/lib/goide/architectureCache'
+import { architectureFor } from '@/lib/code-studio/architectureCache'
 import { useDevSessionStore } from '@/stores/devSession'
 import { liveSessions } from '@/stores/devSessionModel'
 import { DebugRequestError, startGoDebug, waitForDebugSession } from './debugRequest'
@@ -25,10 +25,10 @@ export function kafkaBreakSite(entry: GoIDEArchEntry): { relativePath: string; l
 
 /** The first trusted open Go project (active one first) whose code consumes or produces the topic. */
 export async function findKafkaFunction(topic: string, role: KafkaRole): Promise<KafkaDebugTarget | null> {
-  const { useGoIDEStore } = await import('@/stores/goide')
-  const goide = useGoIDEStore.getState()
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  const goide = useCodeStudioStore.getState()
   if (!goide.initialized) await goide.initialize()
-  const { sessions, activeSessionId } = useGoIDEStore.getState()
+  const { sessions, activeSessionId } = useCodeStudioStore.getState()
   const ordered = [...sessions].sort((a, b) => Number(b.id === activeSessionId) - Number(a.id === activeSessionId))
   for (const session of ordered) {
     if (session.project.authorization !== 'tooling-permitted') continue
@@ -41,8 +41,8 @@ export async function findKafkaFunction(topic: string, role: KafkaRole): Promise
 
 /** Sets a line breakpoint and makes sure the project runs under Delve; resolves with the live debug session. */
 export async function debugGoAt(target: { goSessionId: string; relativePath: string; line: number }): Promise<LiveSession> {
-  const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
-  await useGoIDEDebugStore.getState().putBreakpoint(target.goSessionId, target.relativePath, { line: target.line })
+  const { useCodeStudioDebugStore } = await import('@/stores/codeStudioDebug')
+  await useCodeStudioDebugStore.getState().putBreakpoint(target.goSessionId, target.relativePath, { line: target.line })
   const running = liveSessions(useDevSessionStore.getState()).find((s) => s.goSessionId === target.goSessionId && s.kind === 'debug')
   if (running) return running
   const since = new Date(Date.now() - 1000).toISOString()

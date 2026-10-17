@@ -16,11 +16,11 @@ import { Braces, Database, FileCode, Package, Radio, Route, Table, Variable } fr
 import type { EntityKind, EntityRef } from '@/lib/entities/types'
 import { actionsFor, openEntity } from '@/lib/entities/router'
 import { entityPaletteItems, symbolPaletteItems, type EntityPaletteItem } from '@/lib/entities/paletteItems'
-import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/goide-lsp-api'
+import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/code-studio-lsp-api'
 import { useDevContextStore } from '@/stores/devcontext'
 import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { devSessionCommands } from '@/lib/devsession/paletteCommands'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 
 interface CommandPaletteProps {
   open: boolean
@@ -71,7 +71,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const newTab = useTabsStore((s) => s.newTab)
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const featureFlags = useSettingsStore((s) => s.settings.features)
-  const goSessionId = useGoIDEStore((s) => s.activeSessionId)
+  const goSessionId = useCodeStudioStore((s) => s.activeSessionId)
   const snapshot = useDevContextStore((s) => (goSessionId ? s.snapshots[goSessionId] : undefined))
   const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
   const [actionRef, setActionRef] = useState<EntityRef | null>(null)

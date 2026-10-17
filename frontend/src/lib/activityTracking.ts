@@ -47,7 +47,7 @@ export function startActivityTracking(): () => void {
     const kind = params.get('window')
     let scopes: string[]
     if (kind === 'panel') scopes = [params.get('panel') ?? '']
-    else if (kind === 'go-studio') scopes = [app.activeRail === 'pdfeditor' ? 'pdfeditor' : 'goide']
+    else if (kind === 'code-studio') scopes = [app.activeRail === 'pdfeditor' ? 'pdfeditor' : 'goide']
     else if (kind === 'studio-tool') scopes = ['goide', ...(params.get('session') ? ['goide:' + params.get('session')] : [])]
     else if (kind === 'api-request') scopes = ['collections']
     else if (kind === 'swagger-editor') scopes = ['apidocs']

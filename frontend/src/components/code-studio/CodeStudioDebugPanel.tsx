@@ -1,0 +1,186 @@
+import { memo, useEffect, useState, type ReactNode } from 'react'
+import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Sparkles, Square, Workflow, X } from 'lucide-react'
+import { useKnownUiTranslation } from '@/lib/uiI18n'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { DEBUG_AI_ACTIONS, debugAIDraft, debugSituation, relevantFrame, type DebugAIAction } from '@/lib/code-studio/debugAI'
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
+import type { GoIDESession } from '@/lib/code-studio-api'
+import type { GoIDEDebugStepAction } from '@/lib/code-studio-debug-api'
+import { activeDebugView, useCodeStudioDebugStore, type GoIDEDebugView } from '@/stores/codeStudioDebug'
+import { diagnoseConcurrency, raceDiagnostics } from './codeStudioConcurrency'
+import { CodeStudioConcurrencyView, useRaceReports } from './CodeStudioConcurrencyView'
+import { CodeStudioDebugSession } from './CodeStudioDebugSession'
+import { useDevSessionStore } from '@/stores/devSession'
+import { RequestContextView } from '@/components/devsession/RequestContextView'
+import type { RequestRun } from '@/lib/devsession-api'
+import { CODE_STUDIO_COMMANDS, commandShortcut, type CodeStudioCommandId } from './codeStudioCommands'
+import { useCodeStudioKeymap } from './codeStudioKeymap'
+
+type DebugTab = 'session' | 'concurrency' | 'request'
+
+/** The API request this debugger is serving: the newest one sent to it from adOmnia. */
+function useDebuggedRequest(debugId: string | undefined): RequestRun | null {
+  return useDevSessionStore((state) => {
+    if (!debugId) return null
+    for (let i = state.runOrder.length - 1; i >= 0; i--) {
+      const run = state.runs[state.runOrder[i]]
+      if (run?.sessionId === `debug:${debugId}`) return run
+    }
+    return null
+  })
+}
+
+interface CodeStudioDebugPanelProps {
+  session: GoIDESession
+  editor?: ReactNode
+}
+
+const STATE_LABEL: Record<string, { label: string; tone: string; dot: string }> = {
+  starting: { label: 'Starting Delve…', tone: 'text-text-3', dot: 'bg-text-4 animate-pulse' },
+  running: { label: 'Running', tone: 'text-success', dot: 'bg-success animate-pulse' },
+  stopped: { label: 'Paused', tone: 'text-warning', dot: 'bg-warning' },
+  terminated: { label: 'Finished', tone: 'text-text-4', dot: 'bg-text-4' },
+}
+
+function ToolButton({ label, shortcut, disabled, onClick, children, tone }: { label: string; shortcut?: string; disabled?: boolean; onClick: () => void; children: ReactNode; tone?: string }) {
+  const tr = useKnownUiTranslation()
+  const title = shortcut ? `${tr(label)} · ${shortcut}` : tr(label)
+  return (
+    <button type="button" title={title} aria-label={tr(label)} disabled={disabled} onClick={onClick}
+      className={`code-studio-icon-button h-8 w-8 ${tone ?? ''}`}>
+      {children}
+    </button>
+  )
+}
+
+function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: GoIDEDebugView; sessionId: string; tab: DebugTab; onTab: (tab: DebugTab) => void; alerts: number; request: RequestRun | null }) {
+  useCodeStudioKeymap()
+  const shortcut = (id: CodeStudioCommandId) => { const command = CODE_STUDIO_COMMANDS.find(item => item.id === id); return command ? commandShortcut(command) : undefined }
+  const debuggers = useCodeStudioDebugStore((state) => state.debuggers)
+  const { step, stop, restart, selectDebugger } = useCodeStudioDebugStore.getState()
+  const paused = view.info.state === 'stopped'
+  const live = view.info.state !== 'terminated'
+  const sessionDebuggers = Object.values(debuggers).filter((item) => item.info.sessionId === sessionId)
+  const run = (action: GoIDEDebugStepAction) => void step(view.info.id, action)
+  const state = STATE_LABEL[view.info.state] ?? STATE_LABEL.running
+  return (
+    <div role="toolbar" aria-label="Debugger" className="flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-surface-2/70 p-0.5">
+        {paused || !live
+          ? <ToolButton label="Resume Program" shortcut={shortcut('debug.resume')} disabled={!paused} tone="text-success" onClick={() => run('continue')}><Play size={15} fill="currentColor" /></ToolButton>
+          : <ToolButton label="Pause Program" shortcut={shortcut('debug.pause')} disabled={view.info.state !== 'running'} onClick={() => run('pause')}><Pause size={15} /></ToolButton>}
+        <ToolButton label="Step Over" shortcut={shortcut('debug.stepOver')} disabled={!paused} tone="text-info" onClick={() => run('next')}><Redo2 size={15} /></ToolButton>
+        <ToolButton label="Step Into" shortcut={shortcut('debug.stepInto')} disabled={!paused} tone="text-info" onClick={() => run('stepIn')}><ArrowDownToLine size={15} /></ToolButton>
+        <ToolButton label="Step Out" shortcut={shortcut('debug.stepOut')} disabled={!paused} tone="text-info" onClick={() => run('stepOut')}><ArrowUpFromLine size={15} /></ToolButton>
+        <ToolButton label="Restart" shortcut={shortcut('debug.restart')} disabled={!view.request || view.info.state === 'starting'} onClick={() => void restart(view.info.id)}><RotateCcw size={15} /></ToolButton>
+        <ToolButton label="Stop" shortcut={shortcut('debug.stop')} disabled={!live} tone="text-danger" onClick={() => void stop(view.info.id)}><Square size={12} fill="currentColor" /></ToolButton>
+      </div>
+      <div role="tablist" aria-label="Debug view" className="ml-2 flex items-center gap-0.5 rounded-[10px] bg-surface-2/70 p-0.5">
+        <button type="button" role="tab" aria-selected={tab === 'session'} onClick={() => onTab('session')} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] ${tab === 'session' ? 'bg-[var(--gs-raised)] font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}><Bug size={13} />Session</button>
+        <button type="button" role="tab" aria-selected={tab === 'concurrency'} onClick={() => onTab('concurrency')} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] ${tab === 'concurrency' ? 'bg-[var(--gs-raised)] font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>
+          <Workflow size={13} />Concurrency
+          {alerts > 0 && <span className="rounded-full bg-danger/20 px-1.5 text-[10.5px] font-semibold text-danger">{alerts}</span>}
+        </button>
+        {request && (
+          <button type="button" role="tab" aria-selected={tab === 'request'} onClick={() => onTab('request')} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] ${tab === 'request' ? 'bg-[var(--gs-raised)] font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>
+            <Globe size={13} />Request
+            {request.state === 'paused' && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-label="paused on this request" />}
+          </button>
+        )}
+      </div>
+      {sessionDebuggers.length > 1 && (
+        <select aria-label="Debug session" value={view.info.id} onChange={(event) => selectDebugger(sessionId, event.target.value)}
+          className="ml-2 h-8 max-w-56 rounded-lg border-0 bg-surface-2 px-2 text-[12px] text-text-2 outline-none focus:ring-1 focus:ring-accent">
+          {sessionDebuggers.map((item) => <option key={item.info.id} value={item.info.id}>{item.info.title} · {STATE_LABEL[item.info.state]?.label ?? item.info.state}</option>)}
+        </select>
+      )}
+      <DebugWithAI view={view} sessionId={sessionId} />
+      <span className="ml-auto flex min-w-0 items-center gap-3">
+        <span className="truncate text-[12px] text-text-3" title={view.info.title}>{view.info.title}</span>
+        <span role="status" aria-label="Debugger state" className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold ${state.tone}`}>
+          <span className={`h-2 w-2 rounded-full ${state.dot}`} aria-hidden="true" />
+          Session: {state.label}{view.info.stopReason && paused ? ` · ${view.info.stopReason}` : ''}
+        </span>
+      </span>
+      <ToolButton label="Close debugger view" onClick={() => useCodeStudioStore.getState().updateLayout({ bottomOpen: false })}><X size={14} /></ToolButton>
+    </div>
+  )
+}
+
+/** Debug with AI: stack, locals, goroutines, request, logs, Git and graph context in a reviewable chat draft. */
+function DebugWithAI({ view, sessionId }: { view: GoIDEDebugView; sessionId: string }) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const paused = view.info.state === 'stopped' && view.frames.length > 0
+  const prepare = async (action: DebugAIAction) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const { collectDebugEvidence } = await import('@/lib/code-studio/debugAIEvidence')
+      const evidence = await collectDebugEvidence(sessionId, view.info.id)
+      const assistant = useCodeStudioAssistantStore.getState()
+      assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'claude', debugAIDraft(evidence, action))
+      setError(`${debugSituation(evidence).title}: draft ready in the chat, review it and press Enter.`)
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : String(problem))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      <button type="button" disabled={!paused || busy} onClick={(event) => { const box = event.currentTarget.getBoundingClientRect(); setMenu({ x: box.left, y: box.bottom + 4 }) }}
+        title={paused ? 'Ask the AI about this stop: likely cause, fix, regression test, reproduction or the commit that broke it' : 'Pause the program first'}
+        className="ml-2 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-text-2 hover:bg-surface-2 disabled:opacity-40">
+        <Sparkles size={13} className="text-accent" />{busy ? 'Collecting…' : 'Debug with AI'}
+      </button>
+      {error && <span role="status" className="max-w-72 truncate text-[11px] text-text-3" title={error}>{error}</span>}
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={[{ id: 'open', label: 'Open relevant code' }, ...DEBUG_AI_ACTIONS.map((action) => ({ id: action.id, label: action.label }))]} onSelect={(id) => {
+        setMenu(null)
+        if (id !== 'open') return void prepare(id as DebugAIAction)
+        const frame = relevantFrame(view.frames)
+        if (frame?.relativePath) void useCodeStudioStore.getState().openLocation(frame.relativePath, frame.line)
+      }} onClose={() => setMenu(null)} />}
+    </>
+  )
+}
+
+function DebugEmptyState({ session, races, onShowRaces }: { session: GoIDESession; races: number; onShowRaces: () => void }) {
+  const breakpointCount = useCodeStudioDebugStore((state) => Object.values(state.breakpoints[session.id] ?? {}).reduce((total, lines) => total + lines.length, 0))
+  const error = useCodeStudioDebugStore((state) => state.error)
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/15 text-accent"><Bug size={20} /></div>
+      <p className="max-w-xl text-[12.5px] leading-5 text-text-2">Click a line number to add a breakpoint, then press ▶ next to <span className="font-mono">func main</span> or a test and choose Debug, or press Shift+F9.</p>
+      <p className="text-[11.5px] text-text-4">{breakpointCount === 1 ? '1 breakpoint' : `${breakpointCount} breakpoints`} · F8 or F6 step over · F7 step into · Shift+F8 step out · F9 resume</p>
+      <p className="flex items-center gap-1.5 text-[11.5px] text-text-4"><Network size={12} />When paused, the Concurrency view shows every goroutine, what it waits on and possible deadlocks.</p>
+      {races > 0 && <button type="button" onClick={onShowRaces} className="rounded-lg bg-danger/15 px-3 py-1.5 text-[12px] font-semibold text-danger hover:bg-danger/25">{races} data race{races === 1 ? '' : 's'} found in recent runs · Show</button>}
+      {error && <p role="alert" className="text-[11.5px] text-danger">{error}</p>}
+    </div>
+  )
+}
+
+/** Tool window Debug: controlli, vista Session (goroutine, stack, variabili, console) e vista Concurrency. */
+export const CodeStudioDebugPanel = memo(function CodeStudioDebugPanel({ session, editor }: CodeStudioDebugPanelProps) {
+  const view = useCodeStudioDebugStore((state) => activeDebugView(state, session.id))
+  const loadBreakpoints = useCodeStudioDebugStore((state) => state.loadBreakpoints)
+  const races = useRaceReports(session.id).reports
+  const [tab, setTab] = useState<DebugTab>('session')
+  const request = useDebuggedRequest(view?.info.id)
+  useEffect(() => { void loadBreakpoints(session.id) }, [loadBreakpoints, session.id])
+  const alerts = raceDiagnostics(races).length + diagnoseConcurrency(view?.goroutines?.goroutines ?? []).filter((item) => item.severity !== 'info').length
+  if (!view && tab === 'concurrency') {
+    return <div className="flex h-full min-h-0 flex-col"><CodeStudioConcurrencyView view={null} sessionId={session.id} /></div>
+  }
+  if (!view) return <div className="flex h-full min-h-0 flex-col">{editor && <div className="flex min-h-0 flex-1 flex-col">{editor}</div>}<div className={editor ? 'h-40 shrink-0' : 'h-full'}><DebugEmptyState session={session} races={races.length} onShowRaces={() => setTab('concurrency')} /></div></div>
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <DebugToolbar view={view} sessionId={session.id} tab={tab} onTab={setTab} alerts={alerts} request={request} />
+      {tab === 'request' && request ? <RequestContextView run={request} />
+        : tab === 'concurrency' ? <CodeStudioConcurrencyView view={view} sessionId={session.id} />
+          : <CodeStudioDebugSession view={view} sessionId={session.id} editor={editor} />}
+    </div>
+  )
+})

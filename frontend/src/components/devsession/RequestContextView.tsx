@@ -3,12 +3,12 @@ import { cn } from '@/lib/utils'
 import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
 import { getServerPort } from '@/lib/useServerPort'
 import { traceIdFor } from '@/lib/devsession/traceparent'
-import type { ConfigReport } from '@/lib/goide/configReport'
+import type { ConfigReport } from '@/lib/code-studio/configReport'
 import { useState, type ReactNode } from 'react'
 import { ExternalLink, FileArchive } from 'lucide-react'
 import { useDevSessionStore } from '@/stores/devSession'
 import { buildReproduction, tablesIn, type ReproDatasource } from '@/lib/devsession/reproduction'
-import { liveDatabaseSchema } from '@/components/goide/goStudioAILiveContext'
+import { liveDatabaseSchema } from '@/components/code-studio/codeStudioAILiveContext'
 import type { RequestRun } from '@/lib/devsession-api'
 import { substVars } from '@/lib/substVars'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -60,7 +60,7 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
 /** Variables the project's code reads and their .env values, from the project scan (masked secrets). */
 async function serviceContext(goSessionId: string): Promise<{ config?: ConfigReport; datasources: ReproDatasource[] }> {
   try {
-    const [{ useDevContextStore }, { configReport }] = await Promise.all([import('@/stores/devcontext'), import('@/lib/goide/configReport')])
+    const [{ useDevContextStore }, { configReport }] = await Promise.all([import('@/stores/devcontext'), import('@/lib/code-studio/configReport')])
     await useDevContextStore.getState().ensure(goSessionId)
     const entities = useDevContextStore.getState().snapshots[goSessionId]?.entities ?? []
     const datasources = entities.filter((entity) => entity.kind === 'datasource').map((entity) => ({
@@ -108,12 +108,12 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
         spans: await requestSpans(run.correlationId),
         config, datasources, dbSchema,
       })
-      const [{ createGoIDEFiles }, { useGoIDEStore }] = await Promise.all([import('@/lib/goide-api'), import('@/stores/goide')])
+      const [{ createGoIDEFiles }, { useCodeStudioStore }] = await Promise.all([import('@/lib/code-studio-api'), import('@/stores/codeStudio')])
       await createGoIDEFiles(session.goSessionId, result.files)
       setState({ busy: false, text: `Saved ${result.files.length} files in ${result.dir}${result.secretsStripped ? ` · ${result.secretsStripped} secrets stripped` : ''}` })
-      const goide = useGoIDEStore.getState()
+      const goide = useCodeStudioStore.getState()
       if (goide.activeSessionId !== session.goSessionId) await goide.selectSession(session.goSessionId)
-      await useGoIDEStore.getState().openLocation(`${result.dir}/README.md`, 1, 1)
+      await useCodeStudioStore.getState().openLocation(`${result.dir}/README.md`, 1, 1)
     } catch (error) {
       setState({ busy: false, text: error instanceof Error ? error.message : String(error), error: true })
     }

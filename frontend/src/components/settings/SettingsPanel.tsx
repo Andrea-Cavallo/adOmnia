@@ -1,8 +1,8 @@
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { PersonalAppearance } from './PersonalAppearance'
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { exportGoStudioSettings, importGoStudioSettings } from '@/stores/goideLsp'
-import { useGoIDEStore } from '@/stores/goide'
+import { exportCodeStudioSettings, importCodeStudioSettings } from '@/stores/codeStudioLsp'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import type { AppSettings } from '@/stores/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemesStore } from '@/stores/themes'
@@ -279,7 +279,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   }, [normalizedSearch, section, sectionDefs])
 
   const handleExportSettings = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ ...redactSensitiveData(settings), goStudio: exportGoStudioSettings() }, null, 2)], {
+    const blob = new Blob([JSON.stringify({ ...redactSensitiveData(settings), codeStudio: exportCodeStudioSettings() }, null, 2)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)
@@ -299,8 +299,8 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
       if (!file) return
       try {
         const text = await file.text()
-        const { goStudio, ...parsed } = JSON.parse(text)
-        importGoStudioSettings(goStudio, useGoIDEStore.getState().activeSessionId)
+        const { codeStudio, ...parsed } = JSON.parse(text)
+        importCodeStudioSettings(codeStudio, useCodeStudioStore.getState().activeSessionId)
         useSettingsStore.getState().update(parsed)
       } catch {
         console.error('Failed to import settings')

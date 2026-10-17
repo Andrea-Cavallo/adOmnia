@@ -100,7 +100,7 @@ function runLocally(rail: RailItem, action: ModuleAction | null, reveal: boolean
     case 'event': document.dispatchEvent(new CustomEvent(action.name)); break
     case 'dispatch': deliverWhenMounted(rail, action.eventName, action.detail, onTimeout); break
     // Code Studio stays out of the startup bundle: loaded only when a link really opens code.
-    case 'open-location': void import('@/stores/goide').then(async ({ useGoIDEStore }) => { if (action.sessionId) { if (!useGoIDEStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useGoIDEStore.getState().selectSession(action.sessionId) }; await useGoIDEStore.getState().openLocation(action.file, action.line, 1) }); break
+    case 'open-location': void import('@/stores/codeStudio').then(async ({ useCodeStudioStore }) => { if (action.sessionId) { if (!useCodeStudioStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useCodeStudioStore.getState().selectSession(action.sessionId) }; await useCodeStudioStore.getState().openLocation(action.file, action.line, 1) }); break
   }
 }
 

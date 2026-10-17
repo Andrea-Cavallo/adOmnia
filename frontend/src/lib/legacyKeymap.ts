@@ -23,7 +23,7 @@ export interface LegacyKeymapState {
  * Converte il contenuto della vecchia chiave nel formato attuale. null se la chiave non c'è o
  * non è valida: nessuna scorciatoia viene inventata.
  */
-export function legacyGoStudioKeymap(raw: string | null): LegacyKeymapState | null {
+export function legacyCodeStudioKeymap(raw: string | null): LegacyKeymapState | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as { keymap?: unknown; custom?: unknown }

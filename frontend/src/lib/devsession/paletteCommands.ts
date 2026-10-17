@@ -2,7 +2,7 @@ import type { DebugAction } from '@/lib/devsession-api'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { primarySession } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRequestTab } from './navigation'
+import { openFrameInCodeStudio, openRequestTab } from './navigation'
 
 export interface DevSessionCommand {
   id: string
@@ -48,7 +48,7 @@ export function devSessionCommands(state: State): DevSessionCommand[] {
   }
   if (session.kind !== 'debug') return commands
   if (session.pause) {
-    commands.push({ id: 'live:breakpoint', title: 'Go to current breakpoint', subtitle: `${session.pause.relativePath || session.pause.file}:${session.pause.line}`, keywords: 'breakpoint paused code go studio', run: () => void openFrameInGoStudio(session) })
+    commands.push({ id: 'live:breakpoint', title: 'Go to current breakpoint', subtitle: `${session.pause.relativePath || session.pause.file}:${session.pause.line}`, keywords: 'breakpoint paused code go studio', run: () => void openFrameInCodeStudio(session) })
   }
   const step = (id: string, title: string, action: DebugAction, keys: string) => ({ id, title, subtitle: `${session.service} · ${keys}`, keywords: `debugger ${action} step`, run: () => void state.step(session.id, action) })
   if (session.state === 'paused') {

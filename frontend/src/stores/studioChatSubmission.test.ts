@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const transport = vi.hoisted(() => ({ milk: vi.fn(async () => ({})), copilot: vi.fn(async () => ({ conversationId: 'c', turnId: 't' })), policy: 'allowed', rules: [] as { path: string; text: string }[] }))
 vi.mock('@/lib/milk-api', () => ({ sendMilkPrompt: transport.milk }))
 vi.mock('@/lib/copilot-api', () => ({ sendCopilotChat: transport.copilot }))
-vi.mock('@/stores/goideLsp', () => ({ useGoIDELspStore: { getState: () => ({}) } }))
-vi.mock('@/lib/goide-api', () => ({
+vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: { getState: () => ({}) } }))
+vi.mock('@/lib/code-studio-api', () => ({
   getGoIDEAIPolicy: async () => transport.policy,
   getGoIDEProjectRules: async () => transport.rules,
   listGoIDEAIExcludedPaths: async () => [],
   quickOpenGoIDEFiles: async () => [{ relativePath: 'src/Other.java' }],
 }))
-vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: () => ({
+vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => ({
   sessions: [{ id: 's', project: { name: 'Project', realPath: '/p' } }],
   activeDocumentBySession: { s: 'd' }, directoryEntries: {},
   documents: [{ document: { id: 'd', sessionId: 's', relativePath: 'src/Current.java' }, buffer: 'class Current { /* unsaved */ }', dirty: true }],

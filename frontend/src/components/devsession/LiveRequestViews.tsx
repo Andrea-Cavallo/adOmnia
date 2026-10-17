@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { showModule } from '@/lib/moduleRouting'
 import { Database, MessageSquare, ScrollText, Search } from 'lucide-react'
 import type { LiveFrame, LiveLogEntry, LiveMessage, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
-import { architectureFor, cachedArchitecture } from '@/lib/goide/architectureCache'
+import { architectureFor, cachedArchitecture } from '@/lib/code-studio/architectureCache'
 import { SLOW_QUERY_MS, lockHint, nPlusOneHints, searchFragment, sourceForStatement, summarizeQueries } from '@/lib/devsession/sqlInsights'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
@@ -11,7 +11,7 @@ import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEn
 import { useTabsStore } from '@/stores/tabs'
 import { cn } from '@/lib/utils'
 import { codePathFor, timeOf } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openLocationInGoStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openLocationInCodeStudio, openRequestTab } from '@/lib/devsession/navigation'
 import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
 import { replayBlocker, replayMessage } from '@/lib/devsession/replayMessage'
@@ -90,7 +90,7 @@ function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSes
   return (
     <span className="flex shrink-0 items-center gap-1 font-sans">
       {location && goSessionId && (
-        <button type="button" title={`Open ${location[1]}:${location[2]} in Code Studio`} onClick={() => void openLocationInGoStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
+        <button type="button" title={`Open ${location[1]}:${location[2]} in Code Studio`} onClick={() => void openLocationInCodeStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
           className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">code</button>
       )}
       {tabId && <button type="button" title="Open the request that logged this line" onClick={() => openRequestTab(tabId)} className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">request</button>}
@@ -102,12 +102,12 @@ function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSes
 async function findQueryInCode(query: LiveQuery, goSessionId: string): Promise<void> {
   const site = sourceForStatement(query.sql, cachedArchitecture(goSessionId)?.report.queries ?? [])
   if (site) {
-    await openLocationInGoStudio(goSessionId, { function: '', relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
+    await openLocationInCodeStudio(goSessionId, { function: '', relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
     return
   }
-  if (!(await openLocationInGoStudio(goSessionId, null))) return
-  const { useGoIDELspStore } = await import('@/stores/goideLsp')
-  useGoIDELspStore.getState().requestFind(searchFragment(query.sql))
+  if (!(await openLocationInCodeStudio(goSessionId, null))) return
+  const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
+  useCodeStudioLspStore.getState().requestFind(searchFragment(query.sql))
 }
 
 function QueryOutcome({ query }: { query: LiveQuery }) {
@@ -203,7 +203,7 @@ async function openKafkaCode(topic: string, role: KafkaRole, goSessionIds: strin
     const entry = entries.find((item) => item.kind === role && item.topics?.includes(topic))
     if (!entry) continue
     const site = entry.breakSite ?? entry.site
-    await openLocationInGoStudio(goSessionId, { function: entry.name, relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
+    await openLocationInCodeStudio(goSessionId, { function: entry.name, relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
     return
   }
   showEntityNotice(`No ${role === 'kafka-producer' ? 'producer' : 'consumer'} of ${topic} found in the projects open in Code Studio.`)
@@ -327,9 +327,9 @@ export function RequestTimeline({ run, session, logs, queries, messages }: { run
     const owner = sessions[hit.sessionId ?? run.sessionId] ?? session
     const frames = [...(hit.stack ?? [])].reverse().filter((frame) => frame.relativePath && !frame.relativePath.startsWith('..'))
     for (const frame of frames.slice(0, -1)) {
-      steps.push({ at: hit.at, kind: 'frame', label: `${frame.function.split('/').pop()}()`, detail: `${basename(frame.relativePath ?? '')}:${frame.line}`, onOpen: owner ? () => void openFrameInGoStudio(owner, frame) : undefined })
+      steps.push({ at: hit.at, kind: 'frame', label: `${frame.function.split('/').pop()}()`, detail: `${basename(frame.relativePath ?? '')}:${frame.line}`, onOpen: owner ? () => void openFrameInCodeStudio(owner, frame) : undefined })
     }
-    steps.push({ at: hit.at, kind: 'hit', label: `${hit.function.split('/').pop()}()`, detail: `${owner?.service ?? hit.sessionId ?? ""} · goroutine ${hit.threadId ?? "?"} · breakpoint · ${basename(hit.relativePath || hit.file || '')}:${hit.line}${hit.confidence === 'probable' ? ' · probable' : ''}`, onOpen: owner ? () => void openFrameInGoStudio(owner, hit) : undefined })
+    steps.push({ at: hit.at, kind: 'hit', label: `${hit.function.split('/').pop()}()`, detail: `${owner?.service ?? hit.sessionId ?? ""} · goroutine ${hit.threadId ?? "?"} · breakpoint · ${basename(hit.relativePath || hit.file || '')}:${hit.line}${hit.confidence === 'probable' ? ' · probable' : ''}`, onOpen: owner ? () => void openFrameInCodeStudio(owner, hit) : undefined })
   }
   for (const query of queries) steps.push({ at: query.at, kind: 'sql', label: query.sql.split(/\s+/).slice(0, 4).join(' '), detail: 'SQL' })
   for (const message of messages) steps.push({ at: message.at, kind: 'message', label: message.topic, detail: `produced · p${message.partition} · offset ${message.offset}` })

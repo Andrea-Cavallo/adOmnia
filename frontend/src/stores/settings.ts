@@ -174,9 +174,9 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
   return merged
 }
 
-import { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap } from '@/lib/legacyKeymap'
+import { LEGACY_KEYMAP_STORAGE_KEY, legacyCodeStudioKeymap } from '@/lib/legacyKeymap'
 
-export { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap }
+export { LEGACY_KEYMAP_STORAGE_KEY, legacyCodeStudioKeymap }
 
 function readLegacyKeymap(): string | null {
   try { return localStorage.getItem(LEGACY_KEYMAP_STORAGE_KEY) } catch { return null }
@@ -391,7 +391,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const keymap = mergeBlock(defaultSettings.keymap, parsed.keymap)
       let migratedKeymap = false
       if ((parsed.version ?? 0) < 15 && keymap.preset === 'goland' && Object.keys(keymap.bindings).length === 0) {
-        const legacy = legacyGoStudioKeymap(readLegacyKeymap())
+        const legacy = legacyCodeStudioKeymap(readLegacyKeymap())
         if (legacy && (legacy.preset !== 'goland' || Object.keys(legacy.bindings).length > 0)) {
           keymap.preset = legacy.preset
           keymap.bindings = legacy.bindings

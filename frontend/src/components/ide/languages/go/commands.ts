@@ -1,4 +1,4 @@
-import type { GoStudioCommand } from '@/components/goide/goStudioCommands'
+import type { CodeStudioCommand } from '@/components/code-studio/codeStudioCommands'
 import { GO_LANGUAGE_ID } from '.'
 
 export type GoLanguageCommandId =
@@ -11,7 +11,7 @@ export type GoLanguageCommandId =
 const requires = { language: GO_LANGUAGE_ID }
 
 /** Comandi del menu Go: contribuiti dall'adapter, disponibili solo se il backend registra Go. */
-export const GO_LANGUAGE_COMMANDS: ReadonlyArray<GoStudioCommand> = ([
+export const GO_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'go.toolchains', menu: 'go', label: 'Go SDKs & Toolchains…' },
   { id: 'go.detect', menu: 'go', label: 'Detect Go SDK' },
   { id: 'go.dependencies', menu: 'go', label: 'Module Dependencies…', separatorBefore: true },
@@ -37,4 +37,4 @@ export const GO_LANGUAGE_COMMANDS: ReadonlyArray<GoStudioCommand> = ([
   { id: 'go.installStaticcheck', menu: 'go', label: 'Install staticcheck…' },
   { id: 'go.installDelve', menu: 'go', label: 'Install Delve (debugger)…' },
   { id: 'go.toolPaths', menu: 'go', label: 'Tool Paths (gopls, linter, dlv)…' },
-] satisfies ReadonlyArray<Omit<GoStudioCommand, 'requires'>>).map((command) => ({ ...command, requires }))
+] satisfies ReadonlyArray<Omit<CodeStudioCommand, 'requires'>>).map((command) => ({ ...command, requires }))

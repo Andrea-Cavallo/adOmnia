@@ -47,7 +47,7 @@ import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, GoStudioPanel } from './lazyPanels'
+import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -1280,7 +1280,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'plugins':     return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
-    case 'goide':       return { component: <GoStudioPanel />,        titleKey: 'goide', overflow: true }
+    case 'goide':       return { component: <CodeStudioPanel />,        titleKey: 'goide', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }
     default:            return { component: <WelcomePanel /> }
   }

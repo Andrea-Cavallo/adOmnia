@@ -9,13 +9,13 @@ const DetachedRequestWindow = React.lazy(() =>
     default: module.DetachedRequestWindow,
   })),
 )
-const DetachedGoStudioWindow = React.lazy(() =>
-  import('./components/goide/DetachedGoStudioWindow').then((module) => ({
-    default: module.DetachedGoStudioWindow,
+const DetachedCodeStudioWindow = React.lazy(() =>
+  import('./components/code-studio/DetachedCodeStudioWindow').then((module) => ({
+    default: module.DetachedCodeStudioWindow,
   })),
 )
 const DetachedStudioToolWindow = React.lazy(() =>
-  import('./components/goide/DetachedStudioToolWindow').then((module) => ({ default: module.DetachedStudioToolWindow })),
+  import('./components/code-studio/DetachedStudioToolWindow').then((module) => ({ default: module.DetachedStudioToolWindow })),
 )
 const DetachedPanelWindow = React.lazy(() =>
   import('./components/layout/DetachedPanelWindow').then((module) => ({
@@ -132,8 +132,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         ? <DetachedRequestWindow />
         : new URLSearchParams(window.location.search).get('window') === 'swagger-editor'
           ? <DetachedSwaggerEditorWindow />
-          : new URLSearchParams(window.location.search).get('window') === 'go-studio'
-            ? <DetachedGoStudioWindow />
+          : new URLSearchParams(window.location.search).get('window') === 'code-studio'
+            ? <DetachedCodeStudioWindow />
             : detachedPanelOfThisWindow()
               ? <DetachedPanelWindow rail={detachedPanelOfThisWindow()!} />
               : <App />}

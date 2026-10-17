@@ -7,31 +7,31 @@ import { showEntityNotice } from '@/lib/entities/notice'
  * Opens a frame of a live session in Code Studio: the right project, file,
  * line and debugger, without closing the API tab the developer came from.
  */
-export async function openFrameInGoStudio(session: LiveSession, frame?: LiveFrame | null, options: { switchRail?: boolean } = {}): Promise<void> {
+export async function openFrameInCodeStudio(session: LiveSession, frame?: LiveFrame | null, options: { switchRail?: boolean } = {}): Promise<void> {
   const target = frame ?? session.pause ?? null
-  const opened = await openLocationInGoStudio(session.goSessionId, target, { ...options, label: session.service })
+  const opened = await openLocationInCodeStudio(session.goSessionId, target, { ...options, label: session.service })
   if (!opened || session.kind !== 'debug') return
-  const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
-  useGoIDEDebugStore.getState().selectDebugger(session.goSessionId, session.resourceId)
+  const { useCodeStudioDebugStore } = await import('@/stores/codeStudioDebug')
+  useCodeStudioDebugStore.getState().selectDebugger(session.goSessionId, session.resourceId)
 }
 
 /** Opens a file:line of a gO project (relative path, or an absolute one outside the project). */
-export async function openLocationInGoStudio(goSessionId: string, target: LiveFrame | null, options: { switchRail?: boolean; label?: string } = {}): Promise<boolean> {
-  const { useGoIDEStore } = await import('@/stores/goide')
-  const goide = useGoIDEStore.getState()
+export async function openLocationInCodeStudio(goSessionId: string, target: LiveFrame | null, options: { switchRail?: boolean; label?: string } = {}): Promise<boolean> {
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  const goide = useCodeStudioStore.getState()
   if (!goide.initialized) await goide.initialize()
-  if (!useGoIDEStore.getState().sessions.some((s) => s.id === goSessionId)) {
+  if (!useCodeStudioStore.getState().sessions.some((s) => s.id === goSessionId)) {
     showEntityNotice(`The ${options.label ?? 'service'} project is no longer open in Code Studio.`)
     return false
   }
   if (options.switchRail !== false) useAppStore.getState().setActiveRail('goide')
   else useAppStore.getState().keepPanel('goide')
-  if (useGoIDEStore.getState().activeSessionId !== goSessionId) await useGoIDEStore.getState().selectSession(goSessionId)
+  if (useCodeStudioStore.getState().activeSessionId !== goSessionId) await useCodeStudioStore.getState().selectSession(goSessionId)
   if (!target) return true
   if (target.relativePath && !target.relativePath.startsWith('..')) {
-    await useGoIDEStore.getState().openLocation(target.relativePath, target.line, 1)
+    await useCodeStudioStore.getState().openLocation(target.relativePath, target.line, 1)
   } else if (target.file) {
-    await useGoIDEStore.getState().openExternalLocation(target.file, target.line, 1)
+    await useCodeStudioStore.getState().openExternalLocation(target.file, target.line, 1)
   }
   return true
 }
@@ -66,9 +66,9 @@ export async function openSplitDebugView(tabId: string, session: LiveSession | n
   if (app.activeRail !== 'collections' && app.activeRail !== 'goide') app.setActiveRail('collections')
   app.setSplitView(true)
   if (session) {
-    await openFrameInGoStudio(session, null, { switchRail: false })
-    const { useGoIDELspStore } = await import('@/stores/goideLsp')
-    useGoIDELspStore.getState().showToolWindow('debug')
+    await openFrameInCodeStudio(session, null, { switchRail: false })
+    const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
+    useCodeStudioLspStore.getState().showToolWindow('debug')
   }
 }
 

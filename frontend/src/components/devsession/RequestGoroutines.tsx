@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { captureRequestGoroutines, type RequestRun } from '@/lib/devsession-api'
 import { useDevSessionStore } from '@/stores/devSession'
-import { openFrameInGoStudio } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio } from '@/lib/devsession/navigation'
 
 export function RequestGoroutines({run}: {run:RequestRun}) {
  const sessions=useDevSessionStore(state=>state.sessions)
@@ -22,7 +22,7 @@ export function RequestGoroutines({run}: {run:RequestRun}) {
    {capture.error && <p className="text-error">{capture.error}</p>}
    {capture.goroutines.map(thread=><details key={thread.id} className="border-t border-border-1 py-1"><summary className={thread.id===capture.stoppedThreadId?'cursor-pointer text-warning':'cursor-pointer'}>#{thread.id} {thread.name}{thread.id===capture.stoppedThreadId?' · stopped':''}</summary>
     {thread.error && <p className="text-error">{thread.error}</p>}
-    {(thread.stack ?? []).map((frame,i)=><button key={i} type="button" disabled={!sessions[capture.sessionId]} onClick={()=>void openFrameInGoStudio(sessions[capture.sessionId],frame)} className="block max-w-full truncate py-1 font-mono text-accent">{frame.function} · {frame.relativePath||frame.file}:{frame.line}</button>)}
+    {(thread.stack ?? []).map((frame,i)=><button key={i} type="button" disabled={!sessions[capture.sessionId]} onClick={()=>void openFrameInCodeStudio(sessions[capture.sessionId],frame)} className="block max-w-full truncate py-1 font-mono text-accent">{frame.function} · {frame.relativePath||frame.file}:{frame.line}</button>)}
    </details>)}
   </section>)}
  </div>

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { liveSessions, primarySession } from '@/stores/devSessionModel'
-import { openFrameInGoStudio, openRunSource } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openRunSource } from '@/lib/devsession/navigation'
 import { basename, LiveDot, stateLabel } from './liveUi'
 import { PortEditor } from './PortEditor'
 
@@ -73,7 +73,7 @@ export function DebugBar() {
         {stateLabel(session)}
       </span>
       {paused && session.pause && (
-        <button type="button" onClick={() => void openFrameInGoStudio(session)} title="Open in Code Studio"
+        <button type="button" onClick={() => void openFrameInCodeStudio(session)} title="Open in Code Studio"
           className="min-w-0 truncate font-mono text-text-2 hover:text-accent hover:underline">
           {basename(session.pause.relativePath || session.pause.file || '')}:{session.pause.line}
           <span className="ml-1.5 text-text-4">{session.pause.function}()</span>
@@ -104,7 +104,7 @@ export function DebugBar() {
           <BarButton label="Split Debug View" onClick={() => state.openSplit(run.tabId ?? null)}><Columns2 size={12} /></BarButton>
         )}
         <BarButton label="Service logs" onClick={() => openServiceLogs(session)}><ScrollText size={12} /></BarButton>
-        {debug && <BarButton label="Open in Code Studio" onClick={() => void openFrameInGoStudio(session)}><Bug size={12} /></BarButton>}
+        {debug && <BarButton label="Open in Code Studio" onClick={() => void openFrameInCodeStudio(session)}><Bug size={12} /></BarButton>}
       </span>
       {state.error && <ErrorFlash message={state.error} onDone={state.clearError} />}
     </div>

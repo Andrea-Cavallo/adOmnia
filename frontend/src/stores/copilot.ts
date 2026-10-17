@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { prepareStudioChat } from '@/lib/goide/studioChatContext'
+import { prepareStudioChat } from '@/lib/code-studio/studioChatContext'
 import {
   cancelCopilotChat,
   copilotSignIn,
@@ -21,7 +21,7 @@ import {
   type CopilotSignInPrompt,
   type CopilotStatus,
 } from '@/lib/copilot-api'
-import { useGoIDELspStore } from '@/stores/goideLsp'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 
 export interface CopilotChatMessage {
   id: string
@@ -87,7 +87,7 @@ const uuid = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? cry
 let subscribed = false
 
 function notify(text: string): void {
-  useGoIDELspStore.setState({ message: text })
+  useCodeStudioLspStore.setState({ message: text })
 }
 
 export function applyCopilotChatEvent(threads: Record<string, CopilotChatThread>, event: CopilotChatEvent): Record<string, CopilotChatThread> {

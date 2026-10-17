@@ -1,17 +1,17 @@
 import { create } from 'zustand'
 import { Browser } from '@wailsio/runtime'
-import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
-import { logBackgroundError } from '@/lib/goide/backgroundError'
+import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
+import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import {
   DEFAULT_PLACEMENT, MAX_BRIDGE_LOG, currentPreview, isPlacement, isRunning, pickChoice, upsertPreview,
   type BridgeLogEntry, type BridgeMessage, type DeviceId, type LivePreviewPlacement, type PreviewChoice,
-} from '@/lib/goide/livePreview'
+} from '@/lib/code-studio/livePreview'
 import {
   detectWebProject, dismissPreviews, installWebDependencies, openPreviewWindow, readyPreviewUrl, savePreviewConfig, startPreview, stopPreview,
   type LivePreview, type LivePreviewReport, type LivePreviewRequest,
 } from '@/lib/livepreview-api'
-import { useGoIDELspStore } from '@/stores/goideLsp'
-import { studioToast } from '@/stores/goideToast'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { studioToast } from '@/stores/codeStudioToast'
 
 /** Installazione delle dipendenze del progetto avviata dalla preview. */
 export interface PreviewInstall {
@@ -196,7 +196,7 @@ export const useLivePreviewStore = create<LivePreviewState>((set, get) => {
       const next = placement ?? current(sessionId).placement
       if (placement) get().setPlacement(sessionId, placement)
       if (next === 'panel') {
-        useGoIDELspStore.getState().showToolWindow('preview')
+        useCodeStudioLspStore.getState().showToolWindow('preview')
         patch(sessionId, { visible: false, tabActive: false })
       } else if (next === 'window') {
         patch(sessionId, { visible: false, tabActive: false })

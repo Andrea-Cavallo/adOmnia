@@ -22,10 +22,10 @@ vi.mock('@/lib/livepreview-api', () => ({
   openPreviewWindow: mocks.openPreviewWindow,
   readyPreviewUrl: mocks.readyPreviewUrl,
 }))
-vi.mock('@/lib/goide-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
+vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
 vi.mock('@wailsio/runtime', () => ({ Browser: { OpenURL: vi.fn() } }))
-vi.mock('@/stores/goideLsp', () => ({ useGoIDELspStore: { getState: () => ({ showToolWindow: mocks.showToolWindow }) } }))
-vi.mock('@/stores/goideToast', () => ({ studioToast: vi.fn() }))
+vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: { getState: () => ({ showToolWindow: mocks.showToolWindow }) } }))
+vi.mock('@/stores/codeStudioToast', () => ({ studioToast: vi.fn() }))
 
 import { selectSessionPreview, useLivePreviewStore } from './livePreview'
 

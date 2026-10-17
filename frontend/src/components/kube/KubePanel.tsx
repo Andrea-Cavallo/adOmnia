@@ -20,7 +20,7 @@ import { ConfigMapsView, DeploymentsView, ForwardsView, SecretsView, ServicesVie
 import { ForwardForm, PodExec, PodFiles } from './PodTools'
 import { PodGoTools } from './PodGoTools'
 import { PodLogLine } from './PodLogLine'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { RemoteSourceFiles } from '../../../bindings/adomnia/goide'
 
 const POLL_MS = 1500
@@ -276,8 +276,8 @@ function PodContainerTool({ pod, context, namespace, tool }: { pod: KubePod; con
 }
 
 function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; namespace: string }) {
-  const sessions = useGoIDEStore((state) => state.sessions)
-  const activeSessionId = useGoIDEStore((state) => state.activeSessionId)
+  const sessions = useCodeStudioStore((state) => state.sessions)
+  const activeSessionId = useCodeStudioStore((state) => state.activeSessionId)
   const [sourceProject, setSourceProject] = useState(activeSessionId ?? '')
   const [sourcePaths, setSourcePaths] = useState<string[]>([])
   const [sourceError, setSourceError] = useState('')

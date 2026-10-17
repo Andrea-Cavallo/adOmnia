@@ -7,7 +7,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { timeOf } from '@/stores/devSessionModel'
 import { DebugRequestError, startGoCommand } from './debugRequest'
 import { liveVars } from './liveRequest'
-import { openLocationInGoStudio } from './navigation'
+import { openLocationInCodeStudio } from './navigation'
 
 const START_TIMEOUT_MS = 180_000 // a -race build is slower
 const READY_TIMEOUT_MS = 60_000
@@ -59,6 +59,6 @@ export async function raceRequest(run: RequestRun, session: LiveSession): Promis
   if (response.error) throw new Error(`The request failed under -race: ${response.error.message}`)
   await new Promise((resolve) => window.setTimeout(resolve, SETTLE_MS))
   const races = raceReports(useDevSessionStore.getState().logs[raced.id] ?? [], sentAt)
-  if (races > 0) await openLocationInGoStudio(raced.goSessionId, null)
+  if (races > 0) await openLocationInCodeStudio(raced.goSessionId, null)
   return races ? `${races} data race${races === 1 ? '' : 's'} reported: see the Run console in Code Studio.` : `No data race on this request (HTTP ${response.status}).`
 }

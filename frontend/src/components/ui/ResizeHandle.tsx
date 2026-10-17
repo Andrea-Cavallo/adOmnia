@@ -75,7 +75,7 @@ export function ResizeHandle({ label, onMouseDown, withLine = true, orientation 
         splitter ? 'bg-transparent hover:bg-transparent' : 'bg-surface-0 hover:bg-accent/[0.08]',
         isVertical ? 'cursor-ew-resize' : 'cursor-ns-resize',
         isVertical ? (splitter ? 'w-[10px]' : 'w-[8px]') : (splitter ? 'h-[10px]' : 'h-[8px]'),
-        splitter && 'go-studio-splitter',
+        splitter && 'code-studio-splitter',
         className,
       )}
     >

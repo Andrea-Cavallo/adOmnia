@@ -1,8 +1,8 @@
 /** Native close preserves detached-window and running-task guards. */
 export async function restartForUpdate(): Promise<void> {
-  const { useGoIDEStore } = await import('@/stores/goide')
-  for (const doc of useGoIDEStore.getState().documents.filter(doc => doc.dirty)) {
-    if (!await useGoIDEStore.getState().saveDocument(doc.document.id)) throw new Error('Could not save an open file. Save your work and try again.')
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  for (const doc of useCodeStudioStore.getState().documents.filter(doc => doc.dirty)) {
+    if (!await useCodeStudioStore.getState().saveDocument(doc.document.id)) throw new Error('Could not save an open file. Save your work and try again.')
   }
   const { flushPendingSaves } = await import('./storeSave')
   await flushPendingSaves(true)

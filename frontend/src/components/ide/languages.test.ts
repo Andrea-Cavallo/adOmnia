@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, commandAvailability, type GoStudioCommandContext } from '@/components/goide/goStudioCommands'
+import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
 import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 
 describe('IDE language contributions', () => {
   it('derive menu and LSP editor languages from the contributions', () => {
-    expect(GO_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
+    expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
     expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
@@ -17,7 +17,7 @@ describe('IDE language contributions', () => {
   })
 
   it('every Go menu command requires the Go language', () => {
-    const goMenu = GO_STUDIO_COMMANDS.filter((command) => command.menu === 'go')
+    const goMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'go')
     expect(goMenu.length).toBeGreaterThan(0)
     expect(goMenu.every((command) => command.requires?.language === 'go')).toBe(true)
   })
@@ -26,7 +26,7 @@ describe('IDE language contributions', () => {
     expect(languageRequirement('go', undefined)).toBe(true)
     expect(languageRequirement('go', [{ id: 'go', name: 'Go' }])).toBe(true)
     expect(languageRequirement('java', [{ id: 'go', name: 'Go' }])).toMatch(/java support is not available/)
-    const context = { hasSession: true, authorized: true, languages: [{ id: 'fake', name: 'Fake' }] } as unknown as GoStudioCommandContext
+    const context = { hasSession: true, authorized: true, languages: [{ id: 'fake', name: 'Fake' }] } as unknown as CodeStudioCommandContext
     expect(commandAvailability('go.toolchains', context)).toBe('Go support is not available in this build')
     expect(commandAvailability('go.toolchains', { ...context, languages: [{ id: 'go', name: 'Go' }] })).toBe(true)
   })

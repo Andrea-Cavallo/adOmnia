@@ -4,7 +4,7 @@ import { readDevContextFile } from '@/lib/devcontext-api'
 import { useAppStore } from '@/stores/app'
 import type { RailItem } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { showModule } from '@/lib/moduleRouting'
 import { detachedPanelOfThisWindow } from '@/lib/panel-windows-api'
 import { handoffToPanel } from './dispatch'
@@ -36,11 +36,11 @@ async function openInGo(file: string, line: number, sessionId?: string): Promise
   // From a module window, the code opens in the main window's Code Studio.
   if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line, sessionId })
   if (sessionId) {
-    if (!useGoIDEStore.getState().sessions.some(session => session.id === sessionId)) throw new Error('The source project is no longer open')
-    await useGoIDEStore.getState().selectSession(sessionId)
+    if (!useCodeStudioStore.getState().sessions.some(session => session.id === sessionId)) throw new Error('The source project is no longer open')
+    await useCodeStudioStore.getState().selectSession(sessionId)
   }
   useAppStore.getState().setActiveRail('goide')
-  await useGoIDEStore.getState().openLocation(file, line, 1)
+  await useCodeStudioStore.getState().openLocation(file, line, 1)
 }
 
 function sendRoute(ref: EntityRef): void {
@@ -90,12 +90,12 @@ export function registerDefaultOpeners(): () => void {
   const offs = [
     registerOpener('artifact', { intent: 'inspect', title: 'Inspect certificate or keystore', isDefault: true, run: async ref => {
       if (!ref.sessionId) throw new Error('The source project is no longer open')
-      const { openProjectArtifact } = await import('@/lib/goide/projectArtifacts')
+      const { openProjectArtifact } = await import('@/lib/code-studio/projectArtifacts')
       await openProjectArtifact(ref, 'inspect')
     } }),
     ...(['soap', 'security', 'xml', 'mtls'] as const).map(intent => registerOpener('artifact', {
       intent, title: { soap: 'Open in SOAP Studio', security: 'Configure WS-Security', xml: 'Open in XML Tools', mtls: 'Configure mTLS' }[intent],
-      run: async ref => { const { openProjectArtifact } = await import('@/lib/goide/projectArtifacts'); await openProjectArtifact(ref, intent) },
+      run: async ref => { const { openProjectArtifact } = await import('@/lib/code-studio/projectArtifacts'); await openProjectArtifact(ref, intent) },
     })),
     registerOpener('service', { intent: 'runtime', title: 'Inspect runtime in gO', available: ref => !!ref.attrs.runtimeSpan, run: ref => handoffToPanel('goide', ref, 'runtime') }),
     registerOpener('*', {

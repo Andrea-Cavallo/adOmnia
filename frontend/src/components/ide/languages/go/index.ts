@@ -1,4 +1,4 @@
-import { GO_LANGUAGE_ID } from '@/lib/goide/goLanguage'
+import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
 import type { IdeLanguageContribution } from '../../languages'
 
 export { GO_LANGUAGE_ID }

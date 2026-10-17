@@ -13,7 +13,7 @@ describe('panel windows', () => {
 
   it('ignores the main window, unknown modules and modules that cannot be detached', () => {
     expect(detachedPanelOfThisWindow('')).toBeNull()
-    expect(detachedPanelOfThisWindow('?window=go-studio&panel=database')).toBeNull()
+    expect(detachedPanelOfThisWindow('?window=code-studio&panel=database')).toBeNull()
     expect(detachedPanelOfThisWindow('?window=panel&panel=not-a-module')).toBeNull()
     expect(detachedPanelOfThisWindow('?window=panel&panel=settings')).toBeNull()
   })

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
 import { openReadyForward } from '@/lib/kube-api'
 import { routeToModule } from '@/lib/moduleRouting'
-import { GO_REMOTE_EVENT, type GoRemoteRequest } from '@/lib/goide/goStudioRemote'
+import { GO_REMOTE_EVENT, type GoRemoteRequest } from '@/lib/code-studio/codeStudioRemote'
 
 const INPUT = 'h-7 w-20 rounded border border-border-2 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent/50'
 const BUTTON = 'flex h-7 items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-2 text-[10px] text-accent-light hover:bg-accent/20 disabled:opacity-40'

@@ -32,8 +32,8 @@ import { EntityNotice } from '@/components/layout/EntityNotice'
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
 // Code Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
-const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioCloseGuard').then((module) => ({ default: module.GoStudioCloseGuard })))
-const GoStudioWarmup = React.lazy(() => import('@/components/goide/GoStudioWarmup').then((module) => ({ default: module.GoStudioWarmup })))
+const CodeStudioCloseGuard = React.lazy(() => import('@/components/code-studio/CodeStudioCloseGuard').then((module) => ({ default: module.CodeStudioCloseGuard })))
+const CodeStudioWarmup = React.lazy(() => import('@/components/code-studio/CodeStudioWarmup').then((module) => ({ default: module.CodeStudioWarmup })))
 // Live Development Session: the debug bar and its overlays load after the first frame, outside the startup bundle.
 const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
@@ -48,7 +48,7 @@ function App() {
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
   const splitView = useAppStore((s) => s.splitView)
-  const goStudioMaximized = useAppStore((s) => s.goStudioMaximized || s.goStudioZen) && activeRail === 'goide' && !splitView
+  const codeStudioMaximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'goide' && !splitView
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const addDevLog = useDevLogsStore((s) => s.addEntry)
@@ -137,13 +137,13 @@ function App() {
           {/* Nessuna barra del titolo separata: con "Titlebar app" l'header del pannello (o la toolbar di Code Studio massimizzato) fa da barra della finestra. */}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
-            {!goStudioMaximized && <Rail />}
+            {!codeStudioMaximized && <Rail />}
             {/* Resizable collections sidebar — hidden on welcome hub */}
             {showSidebar && <WorkspaceSidebarColumn />}
             <ErrorBoundary><MainAreaRouter /></ErrorBoundary>
           </div>
-          {!goStudioMaximized && firstStableFrame && <Suspense fallback={null}><DebugBar /></Suspense>}
-          {!goStudioMaximized && <StatusBar />}
+          {!codeStudioMaximized && firstStableFrame && <Suspense fallback={null}><DebugBar /></Suspense>}
+          {!codeStudioMaximized && <StatusBar />}
           {dragOver && <DropOverlay preview={dropPreview} />}
           {dropFeedback && <DropToast feedback={dropFeedback} />}
           <PluginNotificationToast />
@@ -152,8 +152,8 @@ function App() {
         {commandPaletteOpen && <Suspense fallback={null}><CommandPalette open onClose={() => setCommandPaletteOpen(false)} /></Suspense>}
         <EntityNotice />
         <ConfirmDialogHost />
-        {firstStableFrame && <Suspense fallback={null}><GoStudioCloseGuard /></Suspense>}
-        {firstStableFrame && <Suspense fallback={null}><GoStudioWarmup /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><CodeStudioCloseGuard /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><CodeStudioWarmup /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><UpdateNotice /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}

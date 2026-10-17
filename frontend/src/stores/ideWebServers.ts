@@ -1,12 +1,12 @@
 import { create } from 'zustand'
-import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/goide-api'
-import { logBackgroundError } from '@/lib/goide/backgroundError'
+import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
+import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { webLanguageServers, startWebLanguageServer, stopWebLanguageServer, installWebTools, type WebLanguageServer, type WebLanguageServerStatus } from '@/lib/livepreview-api'
 import { ideLanguageForEditor } from '@/components/ide/languages'
 import { WEB_LANGUAGE_IDS } from '@/components/ide/languages/web'
-import { useGoIDEStore } from '@/stores/goide'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { confirm } from '@/lib/confirmDialog'
-import { studioToast } from '@/stores/goideToast'
+import { studioToast } from '@/stores/codeStudioToast'
 
 export type WebServerState = 'stopped' | 'starting' | 'ready' | 'crashed' | 'missing'
 
@@ -80,7 +80,7 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
       ensureSubscribed()
       const current = webServerEntry(get(), sessionId, languageId)
       if (current.state === 'ready' || current.state === 'starting' || current.state === 'missing' || current.state === 'crashed' || current.userStopped) return
-      const session = useGoIDEStore.getState().sessions.find((item) => item.id === sessionId)
+      const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
       if (session?.project.authorization !== 'tooling-permitted') return
       setEntry(sessionId, languageId, { state: 'starting', error: undefined })
       try {
@@ -146,7 +146,7 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
           studioToast('Web language servers installed', 'success')
           // I server mancanti ora esistono: i file web aperti li avviano da soli.
           set((state) => ({ servers: { ...state.servers, [sessionId]: Object.fromEntries(Object.entries(state.servers[sessionId] ?? {}).map(([id, entry]) => [id, entry.state === 'missing' ? { ...entry, state: 'stopped' as const, error: undefined } : entry])) } }))
-          for (const document of useGoIDEStore.getState().documents) {
+          for (const document of useCodeStudioStore.getState().documents) {
             const languageId = document.document.sessionId === sessionId ? webLanguageForEditor(document.document.language) : undefined
             if (languageId) void get().ensureStarted(sessionId, languageId)
           }
@@ -166,15 +166,15 @@ let watching = false
 export function watchWebDocuments(): void {
   if (watching) return
   watching = true
-  const reconcile = (documents: ReturnType<typeof useGoIDEStore.getState>['documents']) => {
+  const reconcile = (documents: ReturnType<typeof useCodeStudioStore.getState>['documents']) => {
     for (const document of documents) {
       if (document.document.readOnly || document.document.external) continue
       const languageId = webLanguageForEditor(document.document.language)
       if (languageId) void useIdeWebServersStore.getState().ensureStarted(document.document.sessionId, languageId)
     }
   }
-  reconcile(useGoIDEStore.getState().documents)
-  useGoIDEStore.subscribe((state, previous) => {
+  reconcile(useCodeStudioStore.getState().documents)
+  useCodeStudioStore.subscribe((state, previous) => {
     // Nuovi file aperti, o un progetto appena fidato: i server mancanti all'appello partono ora.
     if ((state.documents !== previous.documents && state.documents.length > previous.documents.length) || state.sessions !== previous.sessions) reconcile(state.documents)
   })

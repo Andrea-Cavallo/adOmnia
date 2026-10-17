@@ -4,7 +4,7 @@ vi.mock('@/lib/mockEndpointStore', () => ({}))
 vi.mock('@/lib/devcontext-api', () => ({}))
 vi.mock('@/stores/app', () => ({ useAppStore: { getState: vi.fn() } }))
 vi.mock('@/stores/environments', () => ({ useEnvironmentsStore: { getState: vi.fn() } }))
-vi.mock('@/stores/goide', () => ({ useGoIDEStore: { getState: vi.fn() } }))
+vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: vi.fn() } }))
 vi.mock('@/stores/tabs', () => ({ useTabsStore: { getState: vi.fn() } }))
 
 import { grpcTargetAddress, websocketUrlFor } from './openers'

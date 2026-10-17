@@ -171,10 +171,10 @@ function withoutSyntaxTokens(rules: monaco.editor.ITokenThemeRule[]): monaco.edi
   return rules.filter((rule) => rule.token !== 'type')
 }
 
-export const GO_STUDIO_THEMES = { dark: 'adomnia-go-dark', light: 'adomnia-go-light' } as const
+export const CODE_STUDIO_THEMES = { dark: 'adomnia-go-dark', light: 'adomnia-go-light' } as const
 
-/** Sfondo dell'editor uguale alle isole di Code Studio (--gs-island in goStudioChrome.css). */
-const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
+/** Sfondo dell'editor uguale alle isole di Code Studio (--gs-island in codeStudioChrome.css). */
+const CODE_STUDIO_DARK_COLORS: monaco.editor.IColors = {
   ...DARK_COLORS,
   'editor.background': '#11171D',
   'editorGutter.background': '#11171D',
@@ -183,7 +183,7 @@ const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
   'editorWidget.background': '#222D39',
 }
 
-const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
+const CODE_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
   ...LIGHT_COLORS,
   'editor.background': '#FFFFFF',
   'editorGutter.background': '#FFFFFF',
@@ -192,16 +192,16 @@ const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
 }
 
 /** Temi di Code Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
-export function applyGoStudioMonacoThemes(m: typeof monaco): void {
+export function applyCodeStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...GO_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark') } })
-  m.editor.defineTheme(GO_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...GO_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light') } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark') } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light') } })
 }
 
 useSettingsStore.subscribe((state, previous) => {
-  if (state.settings.appearance.accentColor !== previous.settings.appearance.accentColor) applyGoStudioMonacoThemes(monaco)
+  if (state.settings.appearance.accentColor !== previous.settings.appearance.accentColor) applyCodeStudioMonacoThemes(monaco)
 })
 // Redefining an active theme repaints every open editor immediately.
-window.addEventListener('adomnia:theme-tokens', () => applyGoStudioMonacoThemes(monaco))
+window.addEventListener('adomnia:theme-tokens', () => applyCodeStudioMonacoThemes(monaco))
 
 export { monaco }

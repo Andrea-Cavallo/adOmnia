@@ -3,7 +3,7 @@ import { useDevSessionStore } from '@/stores/devSession'
 import { sessionForRequest } from '@/stores/devSessionModel'
 import { requestPath, routeMatches } from './routeMatch'
 import { ensureDebugSession } from './debugRequest'
-import { openLocationInGoStudio } from './navigation'
+import { openLocationInCodeStudio } from './navigation'
 
 const READY_TIMEOUT_MS = 60_000
 
@@ -31,7 +31,7 @@ export async function websocketHandlerFor(url: string): Promise<WebSocketHandler
 }
 
 export function openWebSocketHandler(target: WebSocketHandler): Promise<boolean> {
-  return openLocationInGoStudio(target.session.goSessionId, { function: target.handler, relativePath: target.relativePath, line: target.line })
+  return openLocationInCodeStudio(target.session.goSessionId, { function: target.handler, relativePath: target.relativePath, line: target.line })
 }
 
 /**
@@ -39,8 +39,8 @@ export function openWebSocketHandler(target: WebSocketHandler): Promise<boolean>
  * ready to accept the connection that will stop there.
  */
 export async function debugWebSocketHandler(target: WebSocketHandler, progress: (message: string) => void): Promise<LiveSession> {
-  const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
-  const debug = useGoIDEDebugStore.getState()
+  const { useCodeStudioDebugStore } = await import('@/stores/codeStudioDebug')
+  const debug = useCodeStudioDebugStore.getState()
   if (!(debug.breakpoints[target.session.goSessionId]?.[target.relativePath] ?? []).some((item) => item.line === target.line)) {
     await debug.toggleBreakpoint(target.session.goSessionId, target.relativePath, target.line)
   }
@@ -106,15 +106,15 @@ export async function showConnectionGoroutines(target: WebSocketHandler): Promis
     const deadline = Date.now() + 10_000
     while (!useDevSessionStore.getState().sessions[session.id]?.pause && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 150))
   }
-  const { useGoIDEDebugStore } = await import('@/stores/goideDebug')
+  const { useCodeStudioDebugStore } = await import('@/stores/codeStudioDebug')
   const debugId = session.resourceId
-  await useGoIDEDebugStore.getState().refreshGoroutines(debugId)
-  const goroutines = useGoIDEDebugStore.getState().debuggers[debugId]?.goroutines?.goroutines ?? []
+  await useCodeStudioDebugStore.getState().refreshGoroutines(debugId)
+  const goroutines = useCodeStudioDebugStore.getState().debuggers[debugId]?.goroutines?.goroutines ?? []
   const name = target.handler.split('.').pop() ?? target.handler
   const serving = goroutines.filter((goroutine) => goroutine.frames.some((frame) => frame.name.split('.').pop() === name))
-  await openLocationInGoStudio(session.goSessionId, null)
-  if (serving[0]) await useGoIDEDebugStore.getState().selectThread(debugId, serving[0].id)
-  const { useGoIDELspStore } = await import('@/stores/goideLsp')
-  useGoIDELspStore.getState().showToolWindow('debug')
+  await openLocationInCodeStudio(session.goSessionId, null)
+  if (serving[0]) await useCodeStudioDebugStore.getState().selectThread(debugId, serving[0].id)
+  const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
+  useCodeStudioLspStore.getState().showToolWindow('debug')
   return serving.length ? `${serving.length} goroutine${serving.length === 1 ? '' : 's'} in ${target.handler}(): #${serving.map((goroutine) => goroutine.id).join(', #')}` : `No goroutine is running ${target.handler}() at this pause.`
 }

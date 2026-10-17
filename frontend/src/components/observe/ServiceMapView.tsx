@@ -20,14 +20,14 @@ function ms(value: number): string {
 
 /** The code side of the map: Code Studio's Architecture Explorer (entry points, packages, topics, stores). */
 async function openCodeArchitecture(): Promise<void> {
-  const { useGoIDEStore } = await import('@/stores/goide')
-  if (!useGoIDEStore.getState().activeSessionId) {
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  if (!useCodeStudioStore.getState().activeSessionId) {
     showModule('goide')
     return
   }
-  const { useGoIDELspStore } = await import('@/stores/goideLsp')
+  const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
   showModule('goide')
-  useGoIDELspStore.getState().showToolWindow('architecture')
+  useCodeStudioLspStore.getState().showToolWindow('architecture')
 }
 
 function nodeColor(node: OtlpMapNode): string {

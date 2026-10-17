@@ -16,10 +16,10 @@ export function useRouteForRequest(method: string, resolvedUrl: string, preferGo
     }
     let cancelled = false
     let unsubscribe = () => {}
-    void Promise.all([import('@/stores/devcontext'), import('@/stores/goide')]).then(([{ useDevContextStore }, { useGoIDEStore }]) => {
+    void Promise.all([import('@/stores/devcontext'), import('@/stores/codeStudio')]).then(([{ useDevContextStore }, { useCodeStudioStore }]) => {
       if (cancelled) return
       const live = Object.values(useDevSessionStore.getState().sessions).map((session) => session.goSessionId)
-      const open = useGoIDEStore.getState().sessions.map((session) => session.id)
+      const open = useCodeStudioStore.getState().sessions.map((session) => session.id)
       for (const id of new Set([...open, ...live])) void useDevContextStore.getState().ensure(id)
       const compute = () => { if (!cancelled) setMatch(findRoute(useDevContextStore.getState().snapshots, method, resolvedUrl, preferGoSessionId)) }
       compute()
