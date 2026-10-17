@@ -1,11 +1,12 @@
 import type { GoIDEQuickRunKind } from '@/stores/codeStudio'
 import { findToolTargets, type CodeStudioToolTarget } from './codeStudioToolTargets'
 import { functionAtLine } from './codeStudioGoToTest'
+import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 export type CodeStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
 
 /** Un ▶ del gutter: funzione Go, target make o stage Docker. */
-export type CodeStudioRunTarget = CodeStudioGoRunTarget | CodeStudioToolTarget
+export type CodeStudioRunTarget = CodeStudioGoRunTarget | CodeStudioToolTarget | CodeStudioJavaRunTarget
 
 export interface CodeStudioGoRunTarget {
   line: number
@@ -43,6 +44,7 @@ function kindFor(prefix: string): CodeStudioRunTargetKind {
 
 /** Trova le righe eseguibili dal gutter: func main nei package main e le funzioni di test nei file _test.go. */
 export function findRunTargets(relativePath: string, text: string): CodeStudioRunTarget[] {
+  if (relativePath.endsWith('.java')) return findJavaTargets(relativePath, text)
   if (!relativePath.endsWith('.go')) return findToolTargets(relativePath, text)
   const packagePath = packagePathFor(relativePath)
   const isTestFile = relativePath.endsWith('_test.go')

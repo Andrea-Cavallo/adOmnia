@@ -205,3 +205,24 @@ func TestGradleApplicationPluginProposesRun(t *testing.T) {
 	}
 	t.Error("the application plugin must propose gradle run")
 }
+
+func TestMainCommandRunsTheClassInItsMavenModule(t *testing.T) {
+	fakeJava(t, "21.0.4")
+	root := t.TempDir()
+	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>shop</artifactId></project>`)
+	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, "mvnw.cmd"), "")
+	source := filepath.Join(root, "src", "main", "java", "a", "App.java")
+	write(t, source, "package a;")
+	module, ok := ModuleOf(root, source)
+	if !ok || module != root {
+		t.Fatalf("module = %q %v", module, ok)
+	}
+	executable, arguments, display, err := MainCommand(module, "a.App")
+	if err != nil || !strings.HasPrefix(filepath.Base(executable), "mvnw") || !strings.Contains(display, "-Dexec.mainClass=a.App") || arguments[len(arguments)-1] != "-Dexec.mainClass=a.App" {
+		t.Fatalf("%q %v %q %v", executable, arguments, display, err)
+	}
+	if _, _, _, err := MainCommand(t.TempDir(), "a.App"); err == nil {
+		t.Error("a folder without a build file cannot run a class")
+	}
+}

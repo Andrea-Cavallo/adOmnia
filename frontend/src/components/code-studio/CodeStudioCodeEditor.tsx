@@ -32,6 +32,7 @@ import { startCodeStudioLspSync } from './codeStudioLspSync'
 import { useWebMonaco } from '@/components/ide/languages/web/useWebMonaco'
 import { findRunTargets, runCommandFor, type CodeStudioRunTarget, type CodeStudioRunTargetHandler } from './codeStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './codeStudioToolTargets'
+import { isJavaTarget } from './codeStudioJavaTargets'
 import { indentationFor, useEditorConfig } from './codeStudioEditorConfig'
 import { recordCaretPosition, useCodeStudioBookmarks } from './codeStudioNavigationEditor'
 import { openImplementationMarker, useCodeStudioImplementationMarkers } from './codeStudioImplementationMarkers'
@@ -281,10 +282,12 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
-          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
+          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
           glyphMarginHoverMessage: { value: isToolTarget(target)
             ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : target.kind === 'compose' && !target.name ? 'Up, Down' : 'Run'} or save as configuration`
-            : `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
+            : isJavaTarget(target)
+              ? `▶ ${target.kind === 'java-main' ? `Run ${target.className}` : `Run ${target.name}`}${target.kind === 'java-main' ? ' · Run or Debug' : ''}`
+              : `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
         },
       })))
     }, RUN_TARGET_DEBOUNCE_MS)

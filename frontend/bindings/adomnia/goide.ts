@@ -2191,6 +2191,15 @@ export function StartJavaDebug(request: codestudio$0.JavaDebugRequest): $Cancell
 }
 
 /**
+ * StartJavaMain esegue una classe Java con `main` (▶ nel gutter) senza una configurazione salvata.
+ */
+export function StartJavaMain(sessionID: string, relativeFile: string, mainClass: string): $CancellablePromise<codestudio$0.Execution> {
+    return $Call.ByID(973204115, sessionID, relativeFile, mainClass).then(($result: any) => {
+        return $$createType91($result);
+    });
+}
+
+/**
  * StartLanguageServer avvia gopls per un progetto autorizzato.
  */
 export function StartLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {

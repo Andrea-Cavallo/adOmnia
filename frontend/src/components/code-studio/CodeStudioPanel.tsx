@@ -71,6 +71,8 @@ import { isWebOnlyProject } from '@/lib/code-studio/livePreview'
 import { runSaveActions } from './codeStudioSaveActions'
 import { contextRunTarget, runCommandFor, type CodeStudioGoRunTarget, type CodeStudioRunTarget } from './codeStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './codeStudioToolTargets'
+import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
+import { startJavaMain } from '@/lib/code-studio-debug-api'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -797,6 +799,14 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its Makefile or Dockerfile' })
       const { kind, partial } = toolRunRequest(target, action === 'buildRun' || action === 'build' || action === 'down' ? action : 'run')
       return void store.startRun(kind, partial)
+    }
+    if (isJavaTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
+      if (target.kind === 'java-test') return void useCodeStudioTestsStore.getState().start(javaTestRequest(activeSession.id, activeSession.project, target))
+      if (action === 'debug') return void useCodeStudioDebugStore.getState().startJava({ sessionId: activeSession.id, mainClass: target.className, workingDirectory: '' })
+      useCodeStudioLspStore.getState().showToolWindow('run')
+      return void startJavaMain(activeSession.id, target.relativePath, target.className).catch((error: unknown) => useCodeStudioStore.setState({ error: error instanceof Error ? error.message : String(error) }))
     }
     const goTarget: CodeStudioGoRunTarget = target
     const availability = commandAvailability('run.run', commandContext)

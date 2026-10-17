@@ -48,6 +48,11 @@ export function startGoIDEDebug(request: DebugRequest): Promise<DebugSessionInfo
   return GoIDEBindings.StartDebug(request)
 }
 
+/** Esegue una classe Java con `main` (▶ nel gutter): il comando Maven è nella console Run. */
+export function startJavaMain(sessionId: string, relativeFile: string, mainClass: string): Promise<Execution> {
+  return GoIDEBindings.StartJavaMain(sessionId, relativeFile, mainClass)
+}
+
 /** Debug di una classe Java con `main` (Java Debug Server dentro JDT LS); nessun Delve. */
 export function startGoIDEJavaDebug(request: JavaDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartJavaDebug(request)

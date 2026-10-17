@@ -1,6 +1,7 @@
 import { Bug, Container, FlaskConical, FlaskRound, Hammer, Play, Save, Square } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { CodeStudioRunTarget } from './codeStudioRunTargets'
+import { isJavaTarget } from './codeStudioJavaTargets'
 
 export type CodeStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'fuzz' | 'build' | 'buildRun' | 'down' | 'save'
 
@@ -13,6 +14,12 @@ interface CodeStudioRunTargetMenuProps {
 }
 
 function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
+  if (isJavaTarget(target)) {
+    const label = target.kind === 'java-main' ? target.className.slice(target.className.lastIndexOf('.') + 1) : target.name
+    const items: ContextMenuItem[] = [{ id: 'run', label: `Run '${label}'`, icon: Play, iconClassName: 'text-success' }]
+    if (target.kind === 'java-main') items.push({ id: 'debug', label: `Debug '${label}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' })
+    return items
+  }
   if (target.kind === 'make') {
     return [
       { id: 'run', label: `Run 'make ${target.name}'`, icon: Play, iconClassName: 'text-success' },

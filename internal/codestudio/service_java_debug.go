@@ -159,3 +159,38 @@ func validJavaClassName(name string) bool {
 	}
 	return true
 }
+
+// StartJavaMain esegue una classe con `main` (▶ nel gutter) nel modulo che contiene il file, senza una
+// configurazione salvata: stesso comando delle proposte Run, visibile nella console Run.
+func (s *Service) StartJavaMain(sessionID, relativeFile, mainClass string) (Execution, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Execution{}, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
+	}
+	if !validJavaClassName(mainClass) {
+		return Execution{}, fmt.Errorf("%q is not a Java class name", mainClass)
+	}
+	file, err := s.documents.ResolveProjectPath(session.Project, relativeFile)
+	if err != nil {
+		return Execution{}, err
+	}
+	module, ok := java.ModuleOf(session.Project.RealPath, file)
+	if !ok {
+		return Execution{}, fmt.Errorf("no pom.xml or build.gradle contains %s", relativeFile)
+	}
+	executable, arguments, display, err := java.MainCommand(module, mainClass)
+	if err != nil {
+		return Execution{}, err
+	}
+	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
+	if err != nil {
+		return Execution{}, err
+	}
+	return s.processes.Start(CommandSpec{
+		SessionID: session.ID, Kind: "run", Executable: executable, Arguments: arguments,
+		WorkingDirectory: module, Environment: environment, DisplayCommand: display,
+	})
+}

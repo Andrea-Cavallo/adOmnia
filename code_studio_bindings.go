@@ -662,6 +662,11 @@ func (g *GoIDE) InstallDelve(sessionID string, confirmed bool) (codestudio.Execu
 	return g.service.InstallDelve(sessionID, confirmed)
 }
 
+// StartJavaMain esegue una classe Java con `main` (▶ nel gutter) senza una configurazione salvata.
+func (g *GoIDE) StartJavaMain(sessionID, relativeFile, mainClass string) (codestudio.Execution, error) {
+	return g.service.StartJavaMain(sessionID, relativeFile, mainClass)
+}
+
 // StartJavaDebug avvia il debug di una classe Java con `main` tramite il Java Debug Server di JDT LS.
 func (g *GoIDE) StartJavaDebug(request codestudio.JavaDebugRequest) (codestudio.DebugSessionInfo, error) {
 	return g.service.StartJavaDebug(request)
