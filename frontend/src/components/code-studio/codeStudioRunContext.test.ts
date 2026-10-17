@@ -32,4 +32,20 @@ describe('run context, pins and restart on save', () => {
     } as unknown as Parameters<typeof runsToRestart>[0]
     expect(runsToRestart(state, 's')).toEqual(['r1'])
   })
+
+  it('restarts only the runs a saved file belongs to (language and working directory)', () => {
+    const state = {
+      executions: [{ id: 'go', sessionId: 's', status: 'running' }, { id: 'web', sessionId: 's', status: 'running' }],
+      configByRun: { go: 'orders', web: 'ui' },
+      runConfigsBySession: { s: [
+        { id: 'orders', restartOnSave: true, workingDirectory: 'orders' },
+        { id: 'ui', restartOnSave: true, language: 'typescript', workingDirectory: 'web' },
+      ] },
+    } as unknown as Parameters<typeof runsToRestart>[0]
+    expect(runsToRestart(state, 's', { relativePath: 'orders/main.go', editorLanguage: 'go' })).toEqual(['go'])
+    expect(runsToRestart(state, 's', { relativePath: 'web/src/App.tsx', editorLanguage: 'typescript' })).toEqual(['web'])
+    expect(runsToRestart(state, 's', { relativePath: 'web/main.go', editorLanguage: 'go' })).toEqual([])
+    expect(runsToRestart(state, 's', { relativePath: 'orders-legacy/main.go', editorLanguage: 'go' })).toEqual([])
+    expect(runsToRestart(state, 's', { relativePath: 'docs/readme.md', editorLanguage: 'markdown' })).toEqual([])
+  })
 })

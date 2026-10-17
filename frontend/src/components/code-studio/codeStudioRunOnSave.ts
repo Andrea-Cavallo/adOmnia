@@ -1,27 +1,55 @@
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
+import { ideLanguageForEditor } from '@/components/ide/languages'
 
 const RESTART_DELAY_MS = 300
 const timers = new Map<string, number>()
 
-/** Esecuzioni da riavviare: in corso, avviate da una configurazione con "Restart on save" attivo. */
-export function runsToRestart(state: Pick<ReturnType<typeof useCodeStudioStore.getState>, 'executions' | 'configByRun' | 'runConfigsBySession'>, sessionId: string): string[] {
+/** File appena salvato: percorso relativo al progetto e ID Monaco del suo linguaggio. */
+export interface SavedFile {
+  relativePath: string
+  editorLanguage: string
+}
+
+type RestartState = Pick<ReturnType<typeof useCodeStudioStore.getState>, 'executions' | 'configByRun' | 'runConfigsBySession'>
+type RestartConfig = { language?: string; workingDirectory?: string }
+
+const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/\/+$/, '')
+
+/** Il file salvato appartiene al linguaggio della configurazione ed è dentro la sua working directory. */
+function affectsConfiguration(config: RestartConfig, saved: SavedFile): boolean {
+  // Come il backend: una configurazione senza linguaggio è Go.
+  const configLanguage = config.language || GO_LANGUAGE_ID
+  if (ideLanguageForEditor(saved.editorLanguage)?.id !== configLanguage) return false
+  const directory = slash(config.workingDirectory ?? '')
+  const file = slash(saved.relativePath)
+  return directory === '' || file === directory || file.startsWith(`${directory}/`)
+}
+
+/**
+ * Esecuzioni da riavviare: in corso, avviate da una configurazione con "Restart on save" attivo.
+ * Con `saved` si riavviano solo quelle toccate dal file (stesso linguaggio, dentro la loro cartella):
+ * in un workspace misto salvare un .go non deve far ripartire il servizio Node.
+ */
+export function runsToRestart(state: RestartState, sessionId: string, saved?: SavedFile): string[] {
   const configs = state.runConfigsBySession[sessionId] ?? []
   return state.executions
     .filter((execution) => execution.sessionId === sessionId && execution.status === 'running')
-    .filter((execution) => configs.some((config) => config.id === state.configByRun[execution.id] && config.restartOnSave))
+    .filter((execution) => configs.some((config) => config.id === state.configByRun[execution.id] && config.restartOnSave && (!saved || affectsConfiguration(config, saved))))
     .map((execution) => execution.id)
 }
 
 /**
- * Hot restart: dopo il salvataggio di un file Go riparte ogni esecuzione con "Restart on save".
- * Più salvataggi ravvicinati (Save All) producono un solo riavvio.
+ * Hot restart: dopo il salvataggio di un sorgente di un linguaggio dell'IDE riparte ogni esecuzione
+ * con "Restart on save" che lo riguarda. Più salvataggi ravvicinati (Save All) producono un riavvio per esecuzione.
  */
-export function restartRunsOnSave(sessionId: string, relativePath: string): void {
-  if (!relativePath.toLowerCase().endsWith('.go')) return
-  window.clearTimeout(timers.get(sessionId))
-  timers.set(sessionId, window.setTimeout(() => {
-    timers.delete(sessionId)
+export function restartRunsOnSave(sessionId: string, saved: SavedFile): void {
+  if (!ideLanguageForEditor(saved.editorLanguage)) return
+  const key = `${sessionId}|${saved.editorLanguage}|${saved.relativePath.split(/[\\/]/)[0]}`
+  window.clearTimeout(timers.get(key))
+  timers.set(key, window.setTimeout(() => {
+    timers.delete(key)
     const state = useCodeStudioStore.getState()
-    for (const runId of runsToRestart(state, sessionId)) void state.restartRun(runId)
+    for (const runId of runsToRestart(state, sessionId, saved)) void state.restartRun(runId)
   }, RESTART_DELAY_MS))
 }

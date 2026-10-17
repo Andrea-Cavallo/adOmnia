@@ -663,3 +663,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 ### ML-7 — File base (2026-10-17)
 
 - [ ] ML-7.M1 Cartella "polyglot" con un file per formato (`.html`, `.css`, `.scss`, `.sql`, `.json`, `.yaml`, `.toml`, `.xml`, `.sh`, `.ps1`, `Dockerfile`, `.md`): ognuno si apre, è evidenziato, "Format document" funziona dove Monaco lo offre e la console non mostra errori. Annotare qui i buchi (es. TOML usa la sintassi `ini`).
+
+### ML-8 — Auto restart in workspace misto (2026-10-17)
+
+- [ ] ML-8.M1 Con una configurazione Go (cartella `orders`) e una Node (cartella `web`, comando `pnpm run dev`), entrambe con "Restart on save" e in esecuzione: salvare un `.go` in `orders` riavvia solo la Go; salvare un `.ts` in `web` riavvia solo la Node; salvare un `.md` o un file in un’altra cartella non riavvia nulla.

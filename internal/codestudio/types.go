@@ -178,7 +178,7 @@ type RunConfiguration struct {
 	Shared bool `json:"shared,omitempty"`
 	// Pinned: in cima ai selettori di configurazione.
 	Pinned bool `json:"pinned,omitempty"`
-	// RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
+	// RestartOnSave: un'esecuzione in corso riparte quando si salva un sorgente del suo linguaggio dentro la sua working directory.
 	RestartOnSave bool `json:"restartOnSave,omitempty"`
 	// RestartPolicy dopo un crash di adOmnia: "" o prompt (si chiede), never, always.
 	RestartPolicy string `json:"restartPolicy,omitempty"`

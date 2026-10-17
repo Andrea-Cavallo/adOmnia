@@ -578,8 +578,9 @@ export function CodeStudioPanel() {
     await runSaveActions(id)
     const saved = await useCodeStudioStore.getState().saveDocument(id)
     const lspState = useCodeStudioLspStore.getState()
-    const savedPath = useCodeStudioStore.getState().documents.find((item) => item.document.id === id)?.document.relativePath ?? ''
-    if (saved && sessionId) restartRunsOnSave(sessionId, savedPath)
+    const savedDocument = useCodeStudioStore.getState().documents.find((item) => item.document.id === id)?.document
+    const savedPath = savedDocument?.relativePath ?? ''
+    if (saved && sessionId && savedDocument) restartRunsOnSave(sessionId, { relativePath: savedPath, editorLanguage: savedDocument.language })
     if (saved && sessionId && heavyFeatureEnabled(lspState, 'lintOnSave') && lspState.linter[sessionId]?.available) scheduleLintOnSave(sessionId)
     return saved
   }
