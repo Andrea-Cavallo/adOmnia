@@ -9,10 +9,14 @@ describe('testTargets', () => {
       { language: 'go', kind: 'module', root: `${root}\\orders` },
       { language: 'typescript', kind: 'node', root: `${root}\\web` },
       { language: 'go', kind: 'loose', root: `${root}\\scratch` },
+      { language: 'java', kind: 'maven', root: `${root}\\billing` },
+      { language: 'java', kind: 'gradle', root: `${root}\\ledger` },
     ] })
     expect(targets.map((target) => [target.label, target.language, target.workingDirectory, target.packages])).toEqual([
       ['orders · Go', 'go', 'orders', ['./...']],
       ['web · JavaScript / TypeScript', 'typescript', 'web', []],
+      ['billing · Maven', 'java', 'billing', []],
+      ['ledger · Gradle', 'java', 'ledger', []],
     ])
   })
 

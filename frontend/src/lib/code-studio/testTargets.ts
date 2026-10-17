@@ -20,10 +20,12 @@ function relativeDirectory(project: ProjectLike, root: string): string {
   return unit.startsWith(`${base}/`) ? unit.slice(base.length + 1) : unit
 }
 
-// Ogni runner strutturato dichiarato dai linguaggi: Go (un modulo) e JS/TS (un package.json, filtri nei LanguageOptions).
+// Ogni runner strutturato dichiarato dai linguaggi: Go (un modulo), JS/TS (un package.json) e Java (pom.xml / build.gradle): filtri nei LanguageOptions.
 const RUNNERS: ReadonlyArray<{ language: string; kind: string; packages: string[]; name: string }> = [
   { language: 'go', kind: 'module', packages: ['./...'], name: 'Go' },
   { language: 'typescript', kind: 'node', packages: [], name: 'JavaScript / TypeScript' },
+  { language: 'java', kind: 'maven', packages: [], name: 'Maven' },
+  { language: 'java', kind: 'gradle', packages: [], name: 'Gradle' },
 ]
 
 /** Unità del progetto che hanno un test runner strutturato, nell'ordine in cui il backend le ha rilevate. */

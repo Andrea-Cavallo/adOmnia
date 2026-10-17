@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
 )
 
@@ -118,17 +119,17 @@ func TestReportParserReadsTheFileVitestAnnounces(t *testing.T) {
 }
 
 func TestBatchArgumentsAreCheckedOnWindows(t *testing.T) {
-	err := checkBatchSafe(`C:\Program Files\nodejs\npm.cmd`, []string{"exec", "--", "vitest", "-t", "a & b"})
+	err := run.CheckBatchSafe(`C:\Program Files\nodejs\npm.cmd`, []string{"exec", "--", "vitest", "-t", "a & b"})
 	if runtime.GOOS == "windows" && (err == nil || !strings.Contains(err.Error(), "whole test file")) {
 		t.Fatalf("a batch-file package manager must not receive %q, got %v", "a & b", err)
 	}
 	if runtime.GOOS != "windows" && err != nil {
 		t.Fatalf("only Windows batch files need the check, got %v", err)
 	}
-	if err := checkBatchSafe(`C:\tools\node.exe`, []string{"-t", "a & b"}); err != nil {
+	if err := run.CheckBatchSafe(`C:\tools\node.exe`, []string{"-t", "a & b"}); err != nil {
 		t.Fatalf("a real executable takes any argument, got %v", err)
 	}
-	if err := checkBatchSafe(`C:\Program Files\nodejs\npm.cmd`, []string{"exec", "--", "vitest", "run", "--reporter=json", "-t", `sum\x20adds$`}); err != nil {
+	if err := run.CheckBatchSafe(`C:\Program Files\nodejs\npm.cmd`, []string{"exec", "--", "vitest", "run", "--reporter=json", "-t", `sum\x20adds$`}); err != nil {
 		t.Fatalf("an encoded filter is safe, got %v", err)
 	}
 }

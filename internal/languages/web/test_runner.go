@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -70,7 +69,7 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 		reportFile = filepath.Join(request.WorkingDirectory, filepath.FromSlash(reportArgument))
 	}
 	arguments := testArguments(info, options, reportArgument)
-	if err := checkBatchSafe(binary, arguments); err != nil {
+	if err := run.CheckBatchSafe(binary, arguments); err != nil {
 		return run.CommandSpec{}, nil, err
 	}
 	// CI=1 impedisce a Jest e Vitest di entrare in watch mode.
@@ -80,26 +79,6 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 		DisplayCommand: info.PackageManager + " " + strings.Join(arguments, " "), QuietStdout: true,
 	}
 	return spec, &reportParser{root: request.Root, file: reportFile}, nil
-}
-
-// batchUnsafe sono i caratteri che `cmd.exe` interpreta (o che rompono il quoting) quando un .cmd riceve gli argomenti.
-const batchUnsafe = " \t\r\n&|<>^%!\"`"
-
-// checkBatchSafe rifiuta gli argomenti che un package manager installato come .cmd/.bat (npm.cmd, pnpm.cmd)
-// non può ricevere in sicurezza: Windows li rilegge con cmd.exe, quindi `&` in un nome di test diventerebbe un comando.
-func checkBatchSafe(binary string, arguments []string) error {
-	if runtime.GOOS != "windows" {
-		return nil
-	}
-	if extension := strings.ToLower(filepath.Ext(binary)); extension != ".cmd" && extension != ".bat" {
-		return nil
-	}
-	for _, argument := range arguments {
-		if index := strings.IndexAny(argument, batchUnsafe); index >= 0 {
-			return fmt.Errorf("the argument %q contains %q, which Windows cannot pass safely to %s: run the whole test file instead", argument, argument[index], filepath.Base(binary))
-		}
-	}
-	return nil
 }
 
 // testArguments esegue il binario locale del runner tramite il package manager del progetto.
