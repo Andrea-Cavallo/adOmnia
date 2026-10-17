@@ -141,7 +141,7 @@ describe('JS/TS test runs', () => {
 
   it('reruns one JS test by file and by its describe/test names, relative to the unit folder', () => {
     const test = node('web/src/sum.test.ts', 'sum/edge∕cases/overflows', 'fail')
-    expect(requestForNode(jsRun(), test)).toMatchObject({ language: 'typescript', packages: ['src/sum.test.ts'], run: String.raw`sum\x20edge\x2fcases\x20overflows$`, coverage: false })
+    expect(requestForNode(jsRun(), test)).toMatchObject({ language: 'typescript', packages: ['src/sum.test.ts'], run: String.raw`sum[\x20\x3e]+edge\x2fcases[\x20\x3e]+overflows$`, coverage: false })
   })
 
   it('reruns a whole JS file without a name filter', () => {

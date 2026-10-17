@@ -82,10 +82,13 @@ function safeRegexChar(char: string): string {
   return code < 256 ? `\\x${code.toString(16).padStart(2, '0')}` : `\\u${code.toString(16).padStart(4, '0')}`
 }
 
+/** Vitest 5 unisce i livelli con " > ", Jest e le versioni precedenti con uno spazio: la classe accetta entrambi. */
+const LEVEL_SEPARATOR = String.raw`[\x20\x3e]+`
+
 /** Filtro per nome dei runner JS/TS (`-t`): i livelli describe/test uniti da spazio, l'ultimo ancorato; U+2215 torna "/". */
 export function namePatternFor(name: string): string {
   const level = (segment: string) => Array.from(segment.replace(/∕/g, '/')).map(safeRegexChar).join('')
-  return `${name.split('/').map(level).join(safeRegexChar(' '))}$`
+  return `${name.split('/').map(level).join(LEVEL_SEPARATOR)}$`
 }
 
 /** Riesegue un singolo test o sottotest dello stesso run, nel suo package (per JS/TS: il file di test). */
