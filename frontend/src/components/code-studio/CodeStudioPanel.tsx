@@ -4,7 +4,7 @@ import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './codeStudioRunOnSave'
 import { pinnedFirst } from '@/lib/code-studio/codeStudioRunHistory'
-import { devServerPreviewRequest } from '@/lib/code-studio/runPreview'
+import { devServerPreviewRequest, hasWebAppToPreview } from '@/lib/code-studio/runPreview'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { useLivePreviewStore } from '@/stores/livePreview'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
@@ -410,6 +410,13 @@ export function CodeStudioPanel() {
     if (kind === 'build') await store.startConfiguredBuild(saved.id)
     else await store.startConfiguredRun(saved.id, {})
   }, [activeSession, store.saveRunConfiguration, store.startConfiguredBuild, store.startConfiguredRun])
+
+  // ▶ senza configurazione in un progetto solo web: Live Preview se c'è un'app da mostrare, altrimenti il gestore Run.
+  const goLiveOrConfigure = useCallback(async (sessionId: string) => {
+    const report = await useLivePreviewStore.getState().load(sessionId)
+    if (hasWebAppToPreview(report)) runPreviewCommand('preview.goLive', sessionId)
+    else setConfigureOpen(true)
+  }, [])
 
   const startConfigured = useCallback(async (kind: 'build' | 'run') => {
     // Variabili d'ambiente e build arg segreti: stesso nome, stesso valore richiesto una sola volta.
@@ -878,7 +885,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       case 'go.dependencies': return setDependenciesOpen(true)
       case 'go.tidy': return void tidy()
       case 'go.trust': return void authorize(!authorized)
-      case 'run.run': return activeSession && isWebOnlyProject(activeSession.project) ? void runPreviewCommand('preview.goLive', activeSession.id) : startConfigured('run')
+      case 'run.run': return activeSession && !activeConfig && isWebOnlyProject(activeSession.project) ? void goLiveOrConfigure(activeSession.id) : startConfigured('run')
       case 'run.build': return startConfigured('build')
       case 'run.startWorkspace': return startWorkspace()
       case 'run.stopWorkspace': return void Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
