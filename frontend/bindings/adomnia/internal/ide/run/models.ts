@@ -136,6 +136,168 @@ export class Execution {
     }
 }
 
+/**
+ * Field descrive un campo di LanguageOptions (o un campo comune che l'adapter vuole ridefinire).
+ */
+export class Field {
+    "key": string;
+    "label": string;
+    "type": FieldType;
+    "section": string;
+    "required"?: boolean;
+    "default"?: any;
+    "help"?: string;
+    "options"?: FieldOption[];
+    "visibleWhen"?: FieldCondition | null;
+
+    /** Creates a new Field instance. */
+    constructor($$source: Partial<Field> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = FieldType.$zero;
+        }
+        if (!("section" in $$source)) {
+            this["section"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Field instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Field {
+        const $$createField7_0 = $$createType4;
+        const $$createField8_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("options" in $$parsedSource) {
+            $$parsedSource["options"] = $$createField7_0($$parsedSource["options"]);
+        }
+        if ("visibleWhen" in $$parsedSource) {
+            $$parsedSource["visibleWhen"] = $$createField8_0($$parsedSource["visibleWhen"]);
+        }
+        return new Field($$parsedSource as Partial<Field>);
+    }
+}
+
+/**
+ * FieldCondition rende un campo visibile solo quando un altro campo ha uno dei valori indicati.
+ */
+export class FieldCondition {
+    "field": string;
+    "equals": string[];
+
+    /** Creates a new FieldCondition instance. */
+    constructor($$source: Partial<FieldCondition> = {}) {
+        if (!("field" in $$source)) {
+            this["field"] = "";
+        }
+        if (!("equals" in $$source)) {
+            this["equals"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FieldCondition instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FieldCondition {
+        const $$createField1_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("equals" in $$parsedSource) {
+            $$parsedSource["equals"] = $$createField1_0($$parsedSource["equals"]);
+        }
+        return new FieldCondition($$parsedSource as Partial<FieldCondition>);
+    }
+}
+
+/**
+ * FieldOption è una voce di un campo select.
+ */
+export class FieldOption {
+    "value": string;
+    "label": string;
+
+    /** Creates a new FieldOption instance. */
+    constructor($$source: Partial<FieldOption> = {}) {
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FieldOption instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FieldOption {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FieldOption($$parsedSource as Partial<FieldOption>);
+    }
+}
+
+/**
+ * FieldSchema è serializzabile in JSON: la UI genera i campi da qui, senza `if (language)` nel JSX.
+ */
+export class FieldSchema {
+    "language": string;
+    "kind": string;
+    "fields": Field[];
+
+    /** Creates a new FieldSchema instance. */
+    constructor($$source: Partial<FieldSchema> = {}) {
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("fields" in $$source)) {
+            this["fields"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FieldSchema instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FieldSchema {
+        const $$createField2_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("fields" in $$parsedSource) {
+            $$parsedSource["fields"] = $$createField2_0($$parsedSource["fields"]);
+        }
+        return new FieldSchema($$parsedSource as Partial<FieldSchema>);
+    }
+}
+
+/**
+ * FieldType è il tipo di controllo che la UI genera per un campo dello schema.
+ */
+export enum FieldType {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    FieldText = "text",
+    FieldPath = "path",
+    FieldSelect = "select",
+    FieldList = "list",
+    FieldKeyValue = "keyvalue",
+    FieldToggle = "toggle",
+};
+
 export type RunID = string;
 
 /**
@@ -182,3 +344,9 @@ export type SessionID = string;
 const $$createType0 = EnvironmentEntry.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = FieldOption.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = FieldCondition.createFrom;
+const $$createType6 = $Create.Nullable($$createType5);
+const $$createType7 = Field.createFrom;
+const $$createType8 = $Create.Array($$createType7);

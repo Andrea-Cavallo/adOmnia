@@ -5,6 +5,11 @@ export {
     DockerOptions,
     EnvironmentEntry,
     Execution,
+    Field,
+    FieldCondition,
+    FieldOption,
+    FieldSchema,
+    FieldType,
     RunTarget
 } from "./models.js";
 

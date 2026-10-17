@@ -312,6 +312,11 @@ func (g *GoIDE) GetCapabilities() codestudio.Capabilities {
 	return g.service.GetCapabilities()
 }
 
+// GetRunSchema restituisce i campi che il linguaggio aggiunge a una configurazione Run del kind dato.
+func (g *GoIDE) GetRunSchema(languageID, kind string) run.FieldSchema {
+	return g.service.GetRunSchema(languageID, kind)
+}
+
 // OpenProject registra una cartella locale senza avviarne codice o strumenti.
 func (g *GoIDE) OpenProject(path string) (codestudio.Session, error) {
 	return g.service.OpenProject(path)

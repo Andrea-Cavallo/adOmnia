@@ -35,7 +35,7 @@ import type {
   TerminalRequest,
   TerminalProfile,
 } from '../../bindings/adomnia/internal/codestudio/models'
-import type { RunTarget } from '../../bindings/adomnia/internal/ide/run/models'
+import type { FieldSchema, RunTarget } from '../../bindings/adomnia/internal/ide/run/models'
 
 export type GoIDECapabilities = Capabilities
 export type GoIDESession = Session
@@ -93,6 +93,10 @@ export interface GoIDEAppCloseRequest {
 
 export async function getGoIDECapabilities(): Promise<GoIDECapabilities> {
   return GoIDEBindings.GetCapabilities()
+}
+
+export async function getRunSchema(language: string, kind: string): Promise<FieldSchema> {
+  return GoIDEBindings.GetRunSchema(language, kind)
 }
 
 export async function listGoIDESessions(): Promise<GoIDESession[]> {

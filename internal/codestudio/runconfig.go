@@ -46,15 +46,12 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 			if trimmed == "" {
 				continue
 			}
-			if !strings.HasSuffix(strings.ToLower(trimmed), ".go") {
-				return RunConfiguration{}, fmt.Errorf("la lista file accetta solo sorgenti Go: %q", trimmed)
-			}
 			files = append(files, trimmed)
 		}
-		if len(files) == 0 {
-			return RunConfiguration{}, fmt.Errorf("indica almeno un file Go da eseguire")
-		}
 		config.Files = files
+		if err := golang.New().ValidateRunConfiguration(toCoreConfiguration(config)); err != nil {
+			return RunConfiguration{}, err
+		}
 		config.Target = ""
 		config.BinaryPath = ""
 	case RunKindBinary:
