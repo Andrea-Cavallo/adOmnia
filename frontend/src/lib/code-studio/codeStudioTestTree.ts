@@ -75,9 +75,17 @@ export function isGoTestRun(run: GoIDETestRun): boolean {
   return !run.request.language || run.request.language === 'go'
 }
 
+/** Un carattere come regex letterale usando solo [A-Za-z0-9\]: niente spazi né simboli che `cmd.exe` interpreta (`&`, `|`, `^`, `%`). */
+function safeRegexChar(char: string): string {
+  if (/[A-Za-z0-9_]/.test(char)) return char
+  const code = char.charCodeAt(0)
+  return code < 256 ? `\\x${code.toString(16).padStart(2, '0')}` : `\\u${code.toString(16).padStart(4, '0')}`
+}
+
 /** Filtro per nome dei runner JS/TS (`-t`): i livelli describe/test uniti da spazio, l'ultimo ancorato; U+2215 torna "/". */
 export function namePatternFor(name: string): string {
-  return `${name.split('/').map((segment) => escapeRegex(segment.replace(/∕/g, '/'))).join(' ')}$`
+  const level = (segment: string) => Array.from(segment.replace(/∕/g, '/')).map(safeRegexChar).join('')
+  return `${name.split('/').map(level).join(safeRegexChar(' '))}$`
 }
 
 /** Riesegue un singolo test o sottotest dello stesso run, nel suo package (per JS/TS: il file di test). */

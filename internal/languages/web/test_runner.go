@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -61,12 +62,17 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 	if err != nil {
 		return run.CommandSpec{}, nil, fmt.Errorf("%s was not found on this machine", info.PackageManager)
 	}
-	// Vitest 5 non stampa più il report JSON: lo scrive nel file indicato, che il parser legge a fine run.
-	reportFile := ""
+	// Vitest 5 non stampa più il report JSON: lo scrive nel file indicato, che il parser legge a fine run. Il
+	// percorso è relativo e senza spazi (sotto node_modules, che esiste già): niente quoting per cmd.exe.
+	reportArgument, reportFile := "", ""
 	if info.TestFramework == "vitest" {
-		reportFile = filepath.Join(os.TempDir(), "adomnia-tests", strconv.FormatInt(time.Now().UnixNano(), 36)+".json")
+		reportArgument = "node_modules/.adomnia-" + strconv.FormatInt(time.Now().UnixNano(), 36) + ".json"
+		reportFile = filepath.Join(request.WorkingDirectory, filepath.FromSlash(reportArgument))
 	}
-	arguments := testArguments(info, options, reportFile)
+	arguments := testArguments(info, options, reportArgument)
+	if err := checkBatchSafe(binary, arguments); err != nil {
+		return run.CommandSpec{}, nil, err
+	}
 	// CI=1 impedisce a Jest e Vitest di entrare in watch mode.
 	environment := append(append([]string(nil), request.Environment...), "CI=1")
 	spec := run.CommandSpec{
@@ -74,6 +80,26 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 		DisplayCommand: info.PackageManager + " " + strings.Join(arguments, " "), QuietStdout: true,
 	}
 	return spec, &reportParser{root: request.Root, file: reportFile}, nil
+}
+
+// batchUnsafe sono i caratteri che `cmd.exe` interpreta (o che rompono il quoting) quando un .cmd riceve gli argomenti.
+const batchUnsafe = " \t\r\n&|<>^%!\"`"
+
+// checkBatchSafe rifiuta gli argomenti che un package manager installato come .cmd/.bat (npm.cmd, pnpm.cmd)
+// non può ricevere in sicurezza: Windows li rilegge con cmd.exe, quindi `&` in un nome di test diventerebbe un comando.
+func checkBatchSafe(binary string, arguments []string) error {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+	if extension := strings.ToLower(filepath.Ext(binary)); extension != ".cmd" && extension != ".bat" {
+		return nil
+	}
+	for _, argument := range arguments {
+		if index := strings.IndexAny(argument, batchUnsafe); index >= 0 {
+			return fmt.Errorf("the argument %q contains %q, which Windows cannot pass safely to %s: run the whole test file instead", argument, argument[index], filepath.Base(binary))
+		}
+	}
+	return nil
 }
 
 // testArguments esegue il binario locale del runner tramite il package manager del progetto.

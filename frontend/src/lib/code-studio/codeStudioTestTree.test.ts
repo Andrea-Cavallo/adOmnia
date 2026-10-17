@@ -141,11 +141,13 @@ describe('JS/TS test runs', () => {
 
   it('reruns one JS test by file and by its describe/test names, relative to the unit folder', () => {
     const test = node('web/src/sum.test.ts', 'sum/edge∕cases/overflows', 'fail')
-    expect(requestForNode(jsRun(), test)).toMatchObject({ language: 'typescript', packages: ['src/sum.test.ts'], run: 'sum edge/cases overflows$', coverage: false })
+    expect(requestForNode(jsRun(), test)).toMatchObject({ language: 'typescript', packages: ['src/sum.test.ts'], run: String.raw`sum\x20edge\x2fcases\x20overflows$`, coverage: false })
   })
 
   it('reruns a whole JS file without a name filter', () => {
     expect(requestForNode(jsRun(''), node('src/sum.test.ts', '', 'fail'))).toMatchObject({ packages: ['src/sum.test.ts'], run: '' })
-    expect(namePatternFor('a(b)')).toBe(String.raw`a\(b\)$`)
+    expect(namePatternFor('a(b)')).toBe(String.raw`a\x28b\x29$`)
+    // Nessuno spazio né simbolo di cmd.exe nell'argomento: `npm.cmd` passa da cmd e `&`, `|`, `^`, `%` verrebbero interpretati.
+    expect(namePatternFor('x & y | z ^ 100% "q" é')).toMatch(/^[A-Za-z0-9_\\$]+$/)
   })
 })
