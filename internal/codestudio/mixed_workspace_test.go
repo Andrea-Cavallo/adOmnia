@@ -4,9 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"testing"
 
+	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/run"
 )
 
@@ -85,5 +87,48 @@ func TestMixedWorkspaceSuggestionsStayInTheirOwnUnit(t *testing.T) {
 		if entry[:3] != "go/" {
 			t.Errorf("orders got a non-Go suggestion: %s", entry)
 		}
+	}
+}
+
+func TestMixedWorkspaceWithAJavaServiceKeepsItsSuggestionsInItsFolder(t *testing.T) {
+	root := t.TempDir()
+	wrapper := "mvnw"
+	if runtime.GOOS == "windows" {
+		wrapper = "mvnw.cmd"
+	}
+	writeFixtureFiles(t, root, map[string]string{
+		"orders/go.mod":                "module example.com/orders\n\ngo 1.22\n",
+		"billing/pom.xml":              `<project><parent><artifactId>spring-boot-starter-parent</artifactId></parent><artifactId>billing</artifactId></project>`,
+		"billing/" + wrapper:           "",
+		"billing/src/main/java/A.java": "class A {}",
+	})
+	registry := newLanguageRegistry()
+	units, err := registry.DetectUnits(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var suggestions []run.Suggestion
+	languages := map[string]bool{}
+	for _, unit := range units {
+		languages[unit.Language+":"+unit.Kind] = true
+		adapter, _ := registry.Get(unit.Language)
+		if provider, ok := adapter.(run.SuggestionProvider); ok {
+			suggestions = append(suggestions, provider.Suggest(context.Background(), root, unit)...)
+		}
+	}
+	if !languages["go:module"] || !languages["java:maven"] {
+		t.Fatalf("expected a Go module and a Maven unit, got %v", languages)
+	}
+	byDirectory := map[string][]string{}
+	for _, suggestion := range finalizeSuggestions(root, suggestions, nil) {
+		byDirectory[suggestion.Configuration.WorkingDirectory] = append(byDirectory[suggestion.Configuration.WorkingDirectory], suggestion.Language+"/"+suggestion.Action)
+	}
+	if len(byDirectory["billing"]) != 3 || len(byDirectory["orders"]) != 3 {
+		t.Fatalf("Spring Boot run, test and build belong to billing, Go's to orders: %v", byDirectory)
+	}
+	if adapter, _ := registry.Get("java"); adapter == nil {
+		t.Fatal("java must be registered")
+	} else if id, ok := adapter.(language.DocumentSelector).DocumentLanguageID("billing/src/main/java/A.java"); !ok || id != "java" {
+		t.Fatalf("A.java must be a java document, got %q %v", id, ok)
 	}
 }

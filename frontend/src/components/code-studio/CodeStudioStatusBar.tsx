@@ -85,6 +85,8 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
   const profile = useMemo(() => projectProfile(session.project, IDE_LANGUAGE_NAMES), [session.project])
   const projectWebLanguage = !profile.hasGo && profile.primaryLanguage && WEB_LANGUAGE_IDS.includes(profile.primaryLanguage) ? profile.primaryLanguage : undefined
   const webLanguage = documentInfo ? webLanguageForEditor(documentInfo.language) : projectWebLanguage
+  // Il pulsante del language server c'è solo se qualcuno lo serve: Go, un server web o il server del linguaggio del file.
+  const showLsp = profile.hasGo || !!webLanguage || (!!documentInfo && !!ideLanguageForEditor(documentInfo.language)?.languageServer)
   const showGo = profile.hasGo || (!!documentInfo && ideLanguageForEditor(documentInfo.language)?.id === 'go')
   const webServer = useIdeWebServersStore((state) => webLanguage ? webServerEntry(state, session.id, webLanguage) : null)
   const lspState = webServer ? (webServer.state === 'missing' ? 'unavailable' : webServer.state) : status?.state ?? 'stopped'
@@ -154,10 +156,10 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
       </div>
       {/* Centro: può scorrere in orizzontale su finestre strette; tema e fiducia restano sempre visibili a destra. */}
       <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <button type="button" onClick={webLanguage ? () => void useIdeWebServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
+      {showLsp && <button type="button" onClick={webLanguage ? () => void useIdeWebServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || (!webServer && progress) ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
         <span className="max-w-56 truncate">{!webServer && progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version)}</span>
-      </button>
+      </button>}
       {showGo && <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
         {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}${lint.result.changedOnly ? ' in changed files' : ''}${lint.result.baselined ? ` (+${lint.result.baselined} in baseline)` : ''}` : ''}` : 'No linter'}

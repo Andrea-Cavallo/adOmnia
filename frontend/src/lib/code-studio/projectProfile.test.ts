@@ -16,6 +16,11 @@ describe('projectProfile', () => {
     expect(profile).toMatchObject({ hasGo: false, primaryLanguage: 'typescript', summary: '1 TypeScript / JavaScript app' })
   })
 
+  it('describes Maven and Gradle projects as Java projects', () => {
+    const profile = projectProfile({ rootPath: root, units: [unit('java', 'maven', 'billing'), unit('java', 'gradle', 'ledger')] }, { java: 'Java' })
+    expect(profile).toMatchObject({ hasGo: false, primaryLanguage: 'java', summary: '2 Java projects' })
+  })
+
   it('counts several units of the same kind and mixes languages', () => {
     const profile = projectProfile({ rootPath: root, units: [unit('go', 'module', 'orders'), unit('typescript', 'node', 'web'), unit('typescript', 'node', 'admin'), unit('html', 'static', 'docs')] }, names)
     expect(profile.summary).toBe('1 module · folder mode · 2 TypeScript / JavaScript apps · 1 HTML site')

@@ -25,7 +25,8 @@ describe('IDE language contributions', () => {
   it('disable commands of a language the backend does not register', () => {
     expect(languageRequirement('go', undefined)).toBe(true)
     expect(languageRequirement('go', [{ id: 'go', name: 'Go' }])).toBe(true)
-    expect(languageRequirement('java', [{ id: 'go', name: 'Go' }])).toMatch(/java support is not available/)
+    expect(languageRequirement('java', [{ id: 'go', name: 'Go' }])).toMatch(/Java support is not available/)
+    expect(languageRequirement('cobol', [{ id: 'go', name: 'Go' }])).toMatch(/cobol support is not available/)
     const context = { hasSession: true, authorized: true, languages: [{ id: 'fake', name: 'Fake' }] } as unknown as CodeStudioCommandContext
     expect(commandAvailability('go.toolchains', context)).toBe('Go support is not available in this build')
     expect(commandAvailability('go.toolchains', { ...context, languages: [{ id: 'go', name: 'Go' }] })).toBe(true)
