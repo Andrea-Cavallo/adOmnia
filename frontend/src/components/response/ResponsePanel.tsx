@@ -158,7 +158,8 @@ function responseBytes(response: ResponseData): Uint8Array {
     for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
     return bytes
   }
-  return Uint8Array.from(response.body, (c) => c.charCodeAt(0) & 0xff)
+  // Senza base64 il body è testo fedele: la ricodifica UTF-8 corretta, non la mappa a 8 bit.
+  return new TextEncoder().encode(response.body)
 }
 
 type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'ws'; value: string }

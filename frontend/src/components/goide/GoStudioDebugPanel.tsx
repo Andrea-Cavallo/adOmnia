@@ -1,5 +1,6 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Sparkles, Square, Workflow } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Bug, Globe, Network, Pause, Play, Redo2, RotateCcw, Sparkles, Square, Workflow, X } from 'lucide-react'
+import { useKnownUiTranslation } from '@/lib/uiI18n'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { DEBUG_AI_ACTIONS, debugAIDraft, debugSituation, relevantFrame, type DebugAIAction } from '@/lib/goide/debugAI'
 import { useGoIDEStore } from '@/stores/goide'
@@ -13,6 +14,8 @@ import { GoStudioDebugSession } from './GoStudioDebugSession'
 import { useDevSessionStore } from '@/stores/devSession'
 import { RequestContextView } from '@/components/devsession/RequestContextView'
 import type { RequestRun } from '@/lib/devsession-api'
+import { GO_STUDIO_COMMANDS, commandShortcut, type GoStudioCommandId } from './goStudioCommands'
+import { useGoStudioKeymap } from './goStudioKeymap'
 
 type DebugTab = 'session' | 'concurrency' | 'request'
 
@@ -30,6 +33,7 @@ function useDebuggedRequest(debugId: string | undefined): RequestRun | null {
 
 interface GoStudioDebugPanelProps {
   session: GoIDESession
+  editor?: ReactNode
 }
 
 const STATE_LABEL: Record<string, { label: string; tone: string; dot: string }> = {
@@ -40,9 +44,10 @@ const STATE_LABEL: Record<string, { label: string; tone: string; dot: string }> 
 }
 
 function ToolButton({ label, shortcut, disabled, onClick, children, tone }: { label: string; shortcut?: string; disabled?: boolean; onClick: () => void; children: ReactNode; tone?: string }) {
-  const title = shortcut ? `${label} · ${shortcut}` : label
+  const tr = useKnownUiTranslation()
+  const title = shortcut ? `${tr(label)} · ${shortcut}` : tr(label)
   return (
-    <button type="button" title={title} aria-label={label} disabled={disabled} onClick={onClick}
+    <button type="button" title={title} aria-label={tr(label)} disabled={disabled} onClick={onClick}
       className={`go-studio-icon-button h-8 w-8 ${tone ?? ''}`}>
       {children}
     </button>
@@ -50,6 +55,8 @@ function ToolButton({ label, shortcut, disabled, onClick, children, tone }: { la
 }
 
 function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: GoIDEDebugView; sessionId: string; tab: DebugTab; onTab: (tab: DebugTab) => void; alerts: number; request: RequestRun | null }) {
+  useGoStudioKeymap()
+  const shortcut = (id: GoStudioCommandId) => { const command = GO_STUDIO_COMMANDS.find(item => item.id === id); return command ? commandShortcut(command) : undefined }
   const debuggers = useGoIDEDebugStore((state) => state.debuggers)
   const { step, stop, restart, selectDebugger } = useGoIDEDebugStore.getState()
   const paused = view.info.state === 'stopped'
@@ -58,18 +65,16 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: 
   const run = (action: GoIDEDebugStepAction) => void step(view.info.id, action)
   const state = STATE_LABEL[view.info.state] ?? STATE_LABEL.running
   return (
-    <div role="toolbar" aria-label="Debugger" className="flex h-11 shrink-0 items-center gap-1 px-2">
+    <div role="toolbar" aria-label="Debugger" className="flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
       <div className="flex items-center gap-0.5 rounded-[10px] bg-surface-2/70 p-0.5">
-        <ToolButton label="Rerun" disabled={!view.request} onClick={() => void restart(view.info.id)}><RotateCcw size={15} /></ToolButton>
         {paused || !live
-          ? <ToolButton label="Resume Program" shortcut="F9 / F5" disabled={!paused} tone="text-success" onClick={() => run('continue')}><Play size={15} fill="currentColor" /></ToolButton>
-          : <ToolButton label="Pause Program" disabled={view.info.state !== 'running'} onClick={() => run('pause')}><Pause size={15} /></ToolButton>}
-        <ToolButton label="Stop" shortcut="Ctrl+F2" disabled={!live} tone="text-danger" onClick={() => void stop(view.info.id)}><Square size={12} fill="currentColor" /></ToolButton>
-      </div>
-      <div className="flex items-center gap-0.5 rounded-[10px] bg-surface-2/70 p-0.5">
-        <ToolButton label="Step Over" shortcut="F8 / F6 / F10" disabled={!paused} tone="text-info" onClick={() => run('next')}><Redo2 size={15} /></ToolButton>
-        <ToolButton label="Step Into" shortcut="F7" disabled={!paused} tone="text-info" onClick={() => run('stepIn')}><ArrowDownToLine size={15} /></ToolButton>
-        <ToolButton label="Step Out" shortcut="Shift+F8" disabled={!paused} tone="text-info" onClick={() => run('stepOut')}><ArrowUpFromLine size={15} /></ToolButton>
+          ? <ToolButton label="Resume Program" shortcut={shortcut('debug.resume')} disabled={!paused} tone="text-success" onClick={() => run('continue')}><Play size={15} fill="currentColor" /></ToolButton>
+          : <ToolButton label="Pause Program" shortcut={shortcut('debug.pause')} disabled={view.info.state !== 'running'} onClick={() => run('pause')}><Pause size={15} /></ToolButton>}
+        <ToolButton label="Step Over" shortcut={shortcut('debug.stepOver')} disabled={!paused} tone="text-info" onClick={() => run('next')}><Redo2 size={15} /></ToolButton>
+        <ToolButton label="Step Into" shortcut={shortcut('debug.stepInto')} disabled={!paused} tone="text-info" onClick={() => run('stepIn')}><ArrowDownToLine size={15} /></ToolButton>
+        <ToolButton label="Step Out" shortcut={shortcut('debug.stepOut')} disabled={!paused} tone="text-info" onClick={() => run('stepOut')}><ArrowUpFromLine size={15} /></ToolButton>
+        <ToolButton label="Restart" shortcut={shortcut('debug.restart')} disabled={!view.request || view.info.state === 'starting'} onClick={() => void restart(view.info.id)}><RotateCcw size={15} /></ToolButton>
+        <ToolButton label="Stop" shortcut={shortcut('debug.stop')} disabled={!live} tone="text-danger" onClick={() => void stop(view.info.id)}><Square size={12} fill="currentColor" /></ToolButton>
       </div>
       <div role="tablist" aria-label="Debug view" className="ml-2 flex items-center gap-0.5 rounded-[10px] bg-surface-2/70 p-0.5">
         <button type="button" role="tab" aria-selected={tab === 'session'} onClick={() => onTab('session')} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] ${tab === 'session' ? 'bg-[var(--gs-raised)] font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}><Bug size={13} />Session</button>
@@ -95,9 +100,10 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: 
         <span className="truncate text-[12px] text-text-3" title={view.info.title}>{view.info.title}</span>
         <span role="status" aria-label="Debugger state" className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold ${state.tone}`}>
           <span className={`h-2 w-2 rounded-full ${state.dot}`} aria-hidden="true" />
-          {state.label}{view.info.stopReason && paused ? ` · ${view.info.stopReason}` : ''}
+          Session: {state.label}{view.info.stopReason && paused ? ` · ${view.info.stopReason}` : ''}
         </span>
       </span>
+      <ToolButton label="Close debugger view" onClick={() => useGoIDEStore.getState().updateLayout({ bottomOpen: false })}><X size={14} /></ToolButton>
     </div>
   )
 }
@@ -157,7 +163,7 @@ function DebugEmptyState({ session, races, onShowRaces }: { session: GoIDESessio
 }
 
 /** Tool window Debug: controlli, vista Session (goroutine, stack, variabili, console) e vista Concurrency. */
-export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: GoStudioDebugPanelProps) {
+export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session, editor }: GoStudioDebugPanelProps) {
   const view = useGoIDEDebugStore((state) => activeDebugView(state, session.id))
   const loadBreakpoints = useGoIDEDebugStore((state) => state.loadBreakpoints)
   const races = useRaceReports(session.id).reports
@@ -168,13 +174,13 @@ export const GoStudioDebugPanel = memo(function GoStudioDebugPanel({ session }: 
   if (!view && tab === 'concurrency') {
     return <div className="flex h-full min-h-0 flex-col"><GoStudioConcurrencyView view={null} sessionId={session.id} /></div>
   }
-  if (!view) return <DebugEmptyState session={session} races={races.length} onShowRaces={() => setTab('concurrency')} />
+  if (!view) return <div className="flex h-full min-h-0 flex-col">{editor && <div className="flex min-h-0 flex-1 flex-col">{editor}</div>}<div className={editor ? 'h-40 shrink-0' : 'h-full'}><DebugEmptyState session={session} races={races.length} onShowRaces={() => setTab('concurrency')} /></div></div>
   return (
     <div className="flex h-full min-h-0 flex-col">
       <DebugToolbar view={view} sessionId={session.id} tab={tab} onTab={setTab} alerts={alerts} request={request} />
       {tab === 'request' && request ? <RequestContextView run={request} />
         : tab === 'concurrency' ? <GoStudioConcurrencyView view={view} sessionId={session.id} />
-          : <GoStudioDebugSession view={view} sessionId={session.id} />}
+          : <GoStudioDebugSession view={view} sessionId={session.id} editor={editor} />}
     </div>
   )
 })

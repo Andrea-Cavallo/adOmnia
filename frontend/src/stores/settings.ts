@@ -67,6 +67,8 @@ export interface AppSettings {
     followRedirects: boolean
     saveResponsesToHistory: boolean
     maxResponseHistoryPerTab: number
+    /** Budget in MB della history risposte: si taglia anche per peso, non solo per numero. */
+    maxResponseHistoryMB: number
     defaultHttpMethod: string
     skipCertVerify: boolean
     clientCertPem: string
@@ -244,6 +246,7 @@ const defaultSettings: AppSettings = {
     followRedirects: true,
     saveResponsesToHistory: true,
     maxResponseHistoryPerTab: 20,
+    maxResponseHistoryMB: 16,
     defaultHttpMethod: 'GET',
     skipCertVerify: false,
     clientCertPem: '',

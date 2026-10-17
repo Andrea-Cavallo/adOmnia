@@ -9,6 +9,20 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Resume Program': 'Continua esecuzione',
+  'Pause Program': 'Pausa esecuzione',
+  'Step Over': 'Esegui istruzione',
+  'Step Into': 'Entra nella funzione',
+  'Step Out': 'Esci dalla funzione',
+  'Restart': 'Riavvia',
+  'Stop': 'Arresta',
+  'Close debugger view': 'Chiudi vista debugger',
+  'Breakpoints': 'Breakpoint',
+  'Memory': 'Memoria',
+  'Disassembly': 'Disassemblato',
+  'Debug tools': 'Strumenti debug',
+  'Goroutine details': 'Dettagli goroutine',
+  'Runtime states captured at pause; session controls are above.': 'Stati runtime rilevati alla pausa; i controlli della sessione sono in alto.',
   'Git repository': 'Repository Git',
   'Change password': 'Cambia password',
   'Remove password': 'Rimuovi password',

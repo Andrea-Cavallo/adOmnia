@@ -25,7 +25,7 @@ export type GoStudioCommandId =
   | 'run.rerunFailedTests' | 'run.testChanged' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
   | 'debug.debug' | 'debug.toggleBreakpoint' | 'debug.resume' | 'debug.pause' | 'debug.stepOver' | 'debug.stepInto' | 'debug.stepOut'
-  | 'debug.stop' | 'view.debug' | 'debug.attach' | 'debug.remote'
+  | 'debug.stop' | 'debug.restart' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
@@ -242,6 +242,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'debug.stepOut', menu: 'run', label: 'Step Out', binding: { key: 'F8', shift: true }, passThroughWhenUnavailable: true },
   { id: 'debug.runToCursor', menu: 'run', label: 'Run to Cursor', binding: { key: 'F9', alt: true }, passThroughWhenUnavailable: true },
   { id: 'debug.stop', menu: 'run', label: 'Stop Debugging', binding: { key: 'F2', mod: true }, passThroughWhenUnavailable: true },
+  { id: 'debug.restart', menu: 'run', label: 'Restart Debugging', binding: { key: 'F5', mod: true, alt: true }, passThroughWhenUnavailable: true },
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
   { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
@@ -519,6 +520,7 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
     case 'debug.stepInto':
     case 'debug.stepOut': return context.debugState === 'stopped' ? true : 'The debugger is not paused'
     case 'debug.pause': return context.debugState === 'running' ? true : 'The program is not running under the debugger'
+    case 'debug.restart': return context.debugState === 'none' || context.debugState === 'starting' ? 'No restartable debug session is active' : true
     case 'debug.stop': return context.debugState === 'none' ? 'No debug session is active' : true
     case 'nav.symbol': return context.lspState === 'ready' ? true : LSP_NOT_READY
     case 'go.lspStart':

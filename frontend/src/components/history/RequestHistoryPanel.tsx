@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, Check, Clock3, Copy, History, Search, Trash2 } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
+import { HISTORY_SEARCH_EXCERPT_CHARS } from '@/lib/responseMemory'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import type { RequestHistoryEntry } from '@/lib/types'
@@ -36,7 +37,9 @@ function searchableText(entry: RequestHistoryEntry): string {
     entry.response.status,
     entry.response.statusText,
     entry.response.contentType,
-    entry.response.body,
+    // Solo un estratto del body: la ricerca non deve materializzare copie intere da megabyte
+    // (e una corrispondenza oltre l'estratto la trova la ricerca dentro la risposta aperta).
+    entry.response.body?.slice(0, HISTORY_SEARCH_EXCERPT_CHARS),
     entry.response.error?.message,
   ].join(' ').toLowerCase()
 }

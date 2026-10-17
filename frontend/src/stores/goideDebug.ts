@@ -36,6 +36,8 @@ export interface GoIDEWatchValue {
 
 /** Stato di una sessione di debug: dati di pausa validi solo finché info.state è 'stopped'. */
 export interface GoIDEDebugView {
+  /** Changes once per backend pause, independently of lazy scope/goroutine loads. */
+  pauseRevision?: number
   info: GoIDEDebugSession
   threads: GoIDEDebugThread[]
   frames: GoIDEDebugFrame[]
@@ -305,7 +307,7 @@ export const useGoIDEDebugStore = create<GoIDEDebugState>((set, get) => {
       }
       // In esecuzione i dati di pausa non valgono più: si svuotano per non mostrare valori vecchi.
       const view: GoIDEDebugView = paused
-        ? { ...base, info, console, loading: true }
+        ? { ...base, info, console, loading: true, pauseRevision: pauseTokens[info.id] }
         : { ...base, info, console, frames: [], scopes: [], children: {}, watchValues: {}, frameId: null, loading: false, goroutines: null, goroutinesLoading: false }
       return { debuggers: { ...state.debuggers, [info.id]: view } }
     })

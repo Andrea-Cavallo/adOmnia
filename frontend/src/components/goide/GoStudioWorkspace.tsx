@@ -7,12 +7,14 @@ import { GoStudioEditor } from './GoStudioEditor'
 import { GoStudioSidePane } from './GoStudioSidePane'
 import { GoStudioProjectTree } from './GoStudioProjectTree'
 import { GoStudioRunPanel } from './GoStudioRunPanel'
+import { GoStudioDebugPanel } from './GoStudioDebugPanel'
 import { GoStudioLeftStripe, GoStudioRightStripe } from './GoStudioToolStripes'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoStudioRunTargetHandler } from './goStudioRunTargets'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { useGoIDELspStore } from '@/stores/goideLsp'
+import { activeDebugView, useGoIDEDebugStore } from '@/stores/goideDebug'
 import { isChatPane, useGoStudioAssistantStore } from '@/stores/goStudioAssistant'
 import { toolKey, useStudioTools, type ToolPlacement } from './studioToolState'
 
@@ -44,6 +46,9 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
   const activeDocumentId = useGoIDEStore((state) => state.activeDocumentBySession[session.id] ?? null)
   const active = documents.find((item) => item.document.id === activeDocumentId) ?? null
   const view = useGoIDELspStore((state) => state.toolWindow)
+  // Il debug prende il posto dell'area centrale solo con una sessione viva: senza, resta il layout normale.
+  const hasDebugSession = useGoIDEDebugStore((state) => activeDebugView(state, session.id) !== null)
+  const debugging = !zen && bottomOpen && view === 'debug' && hasDebugSession
   const assistant = useGoStudioAssistantStore((state) => state.pane)
   // La chiave della tool window segue il provider AI corrente (o l'ultimo usato):
   // il bottone unico dell'hub non deve perdere posizione e finestra staccata.
@@ -55,11 +60,13 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
   const bottomKey = toolKey(session.id, view === 'terminal' ? 'terminal' : 'run')
   const sideKey = toolKey(session.id, isChatPane(assistant) ? assistant : lastProvider)
   const panes = [
-    { id: 'project', key: 'project', position: 'left' as ToolPlacement, open: projectOpen, width: projectWidth },
+    { id: 'project', key: 'project', position: 'left' as ToolPlacement, open: projectOpen && !debugging, width: projectWidth },
     { id: 'run', key: bottomKey, position: placements[bottomKey] ?? 'bottom', open: bottomOpen && view !== 'find', detached: (view === 'run' || view === 'terminal') && detached.includes(bottomKey), width: Math.max(320, structureWidth) },
     { id: 'side', key: sideKey, position: assistant ? placements[sideKey] ?? 'right' : 'right', open: structureOpen, detached: isChatPane(assistant) && detached.includes(sideKey), width: structureWidth },
   ]
-  const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(panes, zen ? null : maximized, bottomHeight)
+  const debugPanes = debugging ? panes.map(pane => ({ ...pane, open: false })) : panes
+  const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(debugPanes, zen || debugging ? null : maximized, bottomHeight)
+  const editor = <GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} />
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -81,7 +88,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
             {!focused && <ResizeHandle variant="splitter" label="Resize project pane" className="absolute inset-y-0 -right-2" {...onProjectResize} />}
           </div>
           <div className="relative" style={focused ? { display: 'none' } : { gridColumn: `${left.length + 1} / span ${centerColumns}`, gridRow: 1 }}>
-            <div className="go-studio-island absolute inset-0"><GoStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></div>
+            <div className="go-studio-island absolute inset-0">{debugging ? <GoStudioDebugPanel session={session} editor={editor} /> : editor}</div>
           </div>
           <div className="relative" style={styleFor('side')}>
             <div className="go-studio-island absolute inset-0">
@@ -91,7 +98,7 @@ export function GoStudioWorkspace({ session, projectWidth, structureWidth, botto
           </div>
           <div className="relative" style={styleFor('run')}>
             <div className="go-studio-island absolute inset-0">
-              {view !== 'find' && <GoStudioRunPanel session={session} visible={bottomOpen} onCommand={onCommand} />}
+              {view !== 'find' && !debugging && <GoStudioRunPanel session={session} visible={bottomOpen} onCommand={onCommand} />}
             </div>
             {!focused && (placements[bottomKey] ?? 'bottom') === 'bottom' && <ResizeHandle variant="splitter" orientation="horizontal" label="Resize tool window" className="absolute inset-x-0 -top-2" {...onBottomResize} />}
           </div>

@@ -155,6 +155,14 @@ next run, not to processes already running.
 - **Makefiles and Dockerfiles are project code.** They run only in a trusted project. Arguments go to `make` and `docker` as a list, never through a shell. Make accepts targets and `VAR=value`, not flags (use `MAKEFLAGS`). Docker stages, tags and ports are validated. The Dockerfile, the build context and every volume must stay inside the project, so the Docker socket or arbitrary host folders cannot be mounted. Secret build args and secret container variables reach `docker` only through the process environment (`--build-arg NAME`, `-e NAME`), so their values never appear in the command line, the Run console or the saved state.
 - **One window edits a project.** When a project moves to a separate window, the main window cannot edit or close it until it moves back. Closing a window with unsaved files asks first.
 
+## Debugger workspace (2026-10-17)
+
+Opening Debug uses the central IDE surface: the existing source editor remains in the center with its execution-line, breakpoint and inline-value decorations. Goroutines and the selected call stack share the left pane; Variables and Watch occupy the right pane. Previous project/assistant/run placements return when the debug view closes. Console, Breakpoints, Memory and Disassembly share a collapsible lower dock, resizable with mouse or keyboard. Memory/disassembly are mounted on demand. Goroutine origin/context and deferred calls are behind the selected goroutine's details control.
+
+The toolbar reads shortcuts from the active keymap, with Restart Debugging available as Ctrl+Alt+F5 by default. Session state is labelled separately from goroutine runtime states captured at the pause. Loaded locals, nested values and watches highlight changes against earlier observations in the same thread/frame; first observations and unloaded values are not changes. Highlights reset per backend pause independently of asynchronous goroutine refresh. Values remain read-only: the current adapter binding does not expose variable mutation.
+
+Automated coverage includes 43 focused debug decoration/value/keymap/localization tests. TypeScript and the frontend build passed before concurrent response-memory edits; the subsequent integration typecheck reported errors in `stores/tabs.ts` outside this debugger change. The startup graph check passes with no deferred modules on the entry graph. Native Wails verification remains pending for resize/collapse, stepping with inline values, split/editor restoration and concurrent goroutine-state presentation.
+
 ## Optional external tools
 
 Go Studio works without any of these installed. Each feature says clearly what it needs, and offers to install it after you confirm.

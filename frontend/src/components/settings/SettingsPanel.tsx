@@ -613,6 +613,14 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 max={100}
                 onChange={(v) => updateRequests({ maxResponseHistoryPerTab: v })}
               />
+              <NumberInput
+                label={s.requests.maxHistoryMB}
+                desc={s.requests.maxHistoryMBDesc}
+                value={settings.requests.maxResponseHistoryMB}
+                min={1}
+                max={512}
+                onChange={(v) => updateRequests({ maxResponseHistoryMB: v })}
+              />
             </SettingsCard>
             <SettingsCard>
               <Toggle

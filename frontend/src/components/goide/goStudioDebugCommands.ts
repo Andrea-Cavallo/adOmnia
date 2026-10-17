@@ -59,6 +59,7 @@ export function runDebugCommand(id: GoStudioCommandId, sessionId: string | null,
   }
   const view = activeDebugView(debug, sessionId)
   if (id === 'debug.stop') { if (view) void debug.stop(view.info.id); return true }
+  if (id === 'debug.restart') { if (view?.request) void debug.restart(view.info.id); return true }
   const action = STEP_ACTIONS[id]
   if (!action) return false
   if (view) void debug.step(view.info.id, action)

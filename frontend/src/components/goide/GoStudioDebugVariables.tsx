@@ -1,4 +1,5 @@
-import { Fragment, memo, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Fragment, memo, useEffect, useRef, useState, createContext, useContext, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { changedDebugValues } from './debugVariableChanges'
 import { ChevronDown, ChevronRight, Copy, Cpu, Eye, ScrollText, LoaderCircle, Plus, X } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { evaluateGoIDEDebug, showGoIDEDebugRegisters, type GoIDEDebugVariable } from '@/lib/goide-debug-api'
@@ -14,6 +15,7 @@ import { summarizeGoStudioDebugValue } from './goStudioDebugValueInspector'
 const EMPTY_WATCHES: string[] = []
 const MAX_EVALUATE_HISTORY = 50
 const INDENT_PX = 14
+const VariableChanges = createContext<ReadonlySet<string>>(new Set())
 
 interface VariableRowProps {
   debugId: string
@@ -26,11 +28,13 @@ interface VariableRowProps {
   muted?: boolean
   onRemove?: () => void
   expression: string
+  changePath?: string
   onInspect?: (variable: GoIDEDebugVariable, expression: string) => void
 }
 
 /** Riga dell'albero variabili: i figli si caricano da Delve solo alla prima espansione. */
-const VariableRow = memo(function VariableRow({ debugId, name, value, type, reference, depth, error, muted, onRemove, expression, onInspect }: VariableRowProps) {
+const VariableRow = memo(function VariableRow({ debugId, name, value, type, reference, depth, error, muted, onRemove, expression, onInspect, changePath = expression }: VariableRowProps) {
+  const changed = useContext(VariableChanges).has(changePath)
   const [expanded, setExpanded] = useState(false)
   const children = useGoIDEDebugStore((state) => (reference > 0 ? state.debuggers[debugId]?.children[reference] : undefined))
   const expandable = reference > 0
@@ -46,21 +50,22 @@ const VariableRow = memo(function VariableRow({ debugId, name, value, type, refe
   return (
     <>
       <div role="treeitem" aria-expanded={expandable ? expanded : undefined} aria-level={depth + 1} tabIndex={0} onClick={toggle} onKeyDown={onKeyDown}
-        className="group flex min-h-7 cursor-default items-center gap-1.5 rounded-md pr-1.5 font-mono text-[12px] outline-none hover:bg-surface-2 focus-visible:bg-accent/10"
+        data-value-changed={changed || undefined}
+        className={`group flex min-h-7 cursor-default items-center gap-1.5 rounded-md pr-1.5 font-mono text-[13px] outline-none hover:bg-surface-2 focus-visible:bg-accent/10 ${changed ? 'bg-warning/10 ring-1 ring-inset ring-warning/25' : ''}`}
         style={{ paddingLeft: 6 + depth * INDENT_PX }} title={type ? `${name} (${type})\n${value}` : value}>
         <span className="grid w-3.5 shrink-0 place-items-center text-text-4">{expandable ? (expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}</span>
         <span className="shrink-0 text-accent-light">{name}</span>
         <span className="shrink-0 text-text-4">=</span>
-        <span className={`min-w-0 flex-1 truncate ${tone}`}>{value}</span>
-        {type && <span className="hidden max-w-[35%] shrink-0 truncate text-[11px] text-text-4 xl:inline">{type}</span>}
+        <span className={`min-w-0 flex-1 break-words whitespace-pre-wrap ${tone}`}>{value}{changed && <span className="ml-1 text-warning" title="Changed since the previous pause" aria-label="Changed since the previous pause">●</span>}</span>
+        {type && <span className="hidden max-w-[35%] shrink-0 truncate text-[12.5px] text-text-4 xl:inline">{type}</span>}
         <button type="button" aria-label={`Copy value of ${name}`} title="Copy value" onClick={(event) => { event.stopPropagation(); void WailsClipboard.SetText(value) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-4 opacity-0 hover:text-text-1 group-hover:opacity-100 focus:opacity-100"><Copy size={11} /></button>
         {onInspect && summarizeGoStudioDebugValue({ type: type ?? '', value }) && <button type="button" aria-label={`Inspect ${name}`} title="Inspect Go runtime value" onClick={(event) => { event.stopPropagation(); onInspect({ name, value, type: type ?? '', variablesReference: reference }, expression) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-4 opacity-0 hover:text-accent group-hover:opacity-100 focus:opacity-100"><Eye size={11} /></button>}
         {onRemove && <button type="button" aria-label={`Remove watch ${name}`} title="Remove watch" onClick={(event) => { event.stopPropagation(); onRemove() }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-4 opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100"><X size={11} /></button>}
       </div>
       {expanded && (children ?? []).map((child: GoIDEDebugVariable, index: number) => (
-        <VariableRow key={`${child.name}-${index}`} debugId={debugId} name={child.name} value={child.value} type={child.type} reference={child.variablesReference} depth={depth + 1} expression={childExpression(expression, child.name)} onInspect={onInspect} />
+        <VariableRow key={`${child.name}-${index}`} debugId={debugId} name={child.name} value={child.value} type={child.type} reference={child.variablesReference} depth={depth + 1} expression={childExpression(expression, child.name)} changePath={`${changePath}.${child.name}`} onInspect={onInspect} />
       ))}
-      {expanded && !children && <div className="py-1 text-[11px] text-text-4" style={{ paddingLeft: 26 + depth * INDENT_PX }}>Loading…</div>}
+      {expanded && !children && <div className="py-1 text-[12.5px] text-text-4" style={{ paddingLeft: 26 + depth * INDENT_PX }}>Loading…</div>}
     </>
   )
 })
@@ -107,42 +112,66 @@ export function GoStudioDebugVariables({ view, sessionId }: { view: GoIDEDebugVi
   const [draft, setDraft] = useState('')
   const [inspected, setInspected] = useState<{ variable: GoIDEDebugVariable; expression: string } | null>(null)
   const paused = view.info.state === 'stopped'
+  const history = useRef(new Map<string, Map<string, string>>())
+  const [changes, setChanges] = useState<Set<string>>(new Set())
+  const scopeKey = `${view.info.id}:${view.threadId}:${view.frames.find(frame => frame.id === view.frameId)?.name ?? ''}:${view.frames.findIndex(frame => frame.id === view.frameId)}`
+  useEffect(() => { setChanges(new Set()) }, [scopeKey, view.pauseRevision])
+  useEffect(() => {
+    if (!paused) { setChanges(new Set()); return }
+    const previous = history.current.get(scopeKey) ?? new Map<string, string>()
+    const next = new Map<string, string>()
+    const walk = (path: string, value: string, reference: number, seen: Set<number>) => {
+      if (next.size >= 2000) return
+      next.set(path, value)
+      if (reference <= 0 || seen.has(reference) || seen.size >= 12) return
+      const visited = new Set(seen).add(reference)
+      for (const child of view.children[reference] ?? []) walk(`${path}.${child.name}`, child.value, child.variablesReference, visited)
+    }
+    for (const scope of view.scopes) for (const variable of view.children[scope.variablesReference] ?? []) walk(`${scope.name}:${variable.name}`, variable.value, variable.variablesReference, new Set())
+    for (const [expression, watch] of Object.entries(view.watchValues)) if (!watch.error && !watch.outOfScope) walk(`watch:${expression}`, watch.value, watch.reference, new Set())
+    const changed = changedDebugValues(previous, next)
+    setChanges(current => new Set([...current, ...changed]))
+    for (const [key, value] of next) previous.set(key, value)
+    while (previous.size > 2000) previous.delete(previous.keys().next().value!)
+    history.current.set(scopeKey, previous)
+    if (history.current.size > 32) history.current.delete(history.current.keys().next().value!)
+  }, [paused, scopeKey, view.children, view.scopes, view.watchValues])
   const pending: GoIDEWatchValue = { value: paused ? '…' : 'not available while running', reference: 0 }
   return (
-    <section aria-label="Variables" className="flex min-h-0 flex-col">
+    <VariableChanges.Provider value={changes}><section aria-label="Variables" className="flex min-h-0 min-w-0 flex-col">
       <PaneHeader title="Variables"><RegistersToggle view={view} /></PaneHeader>
       <form onSubmit={(event) => { event.preventDefault(); addWatch(sessionId, draft); setDraft('') }} className="mx-2 mb-1.5 flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-surface-0 px-2 focus-within:ring-1 focus-within:ring-accent">
         <Plus size={12} className="shrink-0 text-text-4" />
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add watch, e.g. len(items)" aria-label="New watch expression"
-          className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none" />
+          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-text-1 outline-none" />
       </form>
       <GoStudioDebugValueInspector variable={inspected?.variable ?? null} expression={inspected?.expression ?? ''} debugId={view.info.id} frameId={view.frameId} />
       <div role="tree" aria-label="Variables" className="min-h-0 flex-1 overflow-auto px-1.5 pb-2">
-        {watches.length > 0 && <div className="px-2 pb-0.5 pt-1 text-[11px] font-semibold text-text-3">Watches</div>}
+        {watches.length > 0 && <div className="px-2 pb-0.5 pt-1 text-[12.5px] font-semibold text-text-3">Watches</div>}
         {watches.map((expression) => {
           const watch = view.watchValues[expression] ?? pending
-          return <VariableRow key={`watch-${expression}`} debugId={view.info.id} name={expression} value={watch.value} type={watch.type} reference={paused ? watch.reference : 0} depth={0} error={watch.error} muted={watch.outOfScope} onRemove={() => removeWatch(sessionId, expression)} expression={expression} onInspect={(variable, inspectedExpression) => setInspected({ variable, expression: inspectedExpression })} />
+          return <VariableRow key={`watch-${expression}`} debugId={view.info.id} name={expression} value={watch.value} type={watch.type} reference={paused ? watch.reference : 0} depth={0} error={watch.error} muted={watch.outOfScope} onRemove={() => removeWatch(sessionId, expression)} expression={expression} changePath={`watch:${expression}`} onInspect={(variable, inspectedExpression) => setInspected({ variable, expression: inspectedExpression })} />
         })}
-        {!paused && watches.length === 0 && <p className="px-2 py-1 text-[11.5px] text-text-4">Variables appear when the program is paused.</p>}
-        {paused && view.loading && view.scopes.length === 0 && <p className="px-2 py-1 text-[11.5px] text-text-4">Reading variables…</p>}
+        {!paused && watches.length === 0 && <p className="px-2 py-1 text-[13px] text-text-4">Variables appear when the program is paused.</p>}
+        {paused && view.loading && view.scopes.length === 0 && <p className="px-2 py-1 text-[13px] text-text-4">Reading variables…</p>}
         {paused && view.scopes.map((scope) => {
           const variables = view.children[scope.variablesReference]
           return (
             <div key={scope.variablesReference}>
-              <div className="flex items-center gap-2 px-2 pb-0.5 pt-2 text-[11px] font-semibold text-text-3">
+              <div className="flex items-center gap-2 px-2 pb-0.5 pt-2 text-[12.5px] font-semibold text-text-3">
                 {scope.name}
                 {variables && <span className="font-normal text-text-4">{variables.length}</span>}
               </div>
               {(variables ?? []).map((variable, index) => (
-                <VariableRow key={`${scope.variablesReference}-${variable.name}-${index}`} debugId={view.info.id} name={variable.name} value={variable.value} type={variable.type} reference={variable.variablesReference} depth={0} expression={variable.name} onInspect={(inspectedVariable, expression) => setInspected({ variable: inspectedVariable, expression })} />
+                <VariableRow key={`${scope.variablesReference}-${variable.name}-${index}`} debugId={view.info.id} name={variable.name} value={variable.value} type={variable.type} reference={variable.variablesReference} depth={0} expression={variable.name} changePath={`${scope.name}:${variable.name}`} onInspect={(inspectedVariable, expression) => setInspected({ variable: inspectedVariable, expression })} />
               ))}
-              {variables && variables.length === 0 && <p className="px-2 text-[11px] italic text-text-4">No variables in this scope yet: declarations on the paused line are not executed.</p>}
-              {!variables && scope.expensive && <button type="button" onClick={() => void loadChildren(view.info.id, scope.variablesReference)} className="mx-2 rounded-md px-2 py-0.5 text-[11px] text-accent hover:bg-accent/10">Load {scope.name.toLowerCase()}</button>}
+              {variables && variables.length === 0 && <p className="px-2 text-[12.5px] italic text-text-4">No variables in this scope yet: declarations on the paused line are not executed.</p>}
+              {!variables && scope.expensive && <button type="button" onClick={() => void loadChildren(view.info.id, scope.variablesReference)} className="mx-2 rounded-md px-2 py-0.5 text-[12.5px] text-accent hover:bg-accent/10">Load {scope.name.toLowerCase()}</button>}
             </div>
           )
         })}
       </div>
-    </section>
+    </section></VariableChanges.Provider>
   )
 }
 
@@ -159,12 +188,12 @@ function GoStudioDebugValueInspector({ variable, expression, debugId, frameId }:
             ? <>Reading values, deadline and parent context exposed by Delve…</>
             : <GoStudioErrorChainInspector debugId={debugId} frameId={frameId} expression={expression} initial={variable} />
   return (
-    <div className="mx-2 mb-1.5 rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-2 text-[11px] text-text-2">
+    <div className="mx-2 mb-1.5 rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-2 text-[12.5px] text-text-2">
       <div className="flex items-center gap-1.5"><Eye size={12} className="text-accent" /><b>{summary.label} inspector</b><span className="min-w-0 truncate font-mono text-text-4">{variable.name}</span></div>
       <div className="mt-1 leading-4">{detail}</div>
       {(summary.kind === 'slice' || summary.kind === 'map' || summary.kind === 'channel') && <GoStudioCollectionInspector kind={summary.kind} debugId={debugId} frameId={frameId} expression={expression} />}
       {summary.kind === 'context' && <GoStudioContextInspector debugId={debugId} variable={variable} />}
-      {variable.variablesReference > 0 && <p className="mt-1 text-[10.5px] text-text-4">Use the disclosure arrow on the value to inspect the fields supplied by Delve.</p>}
+      {variable.variablesReference > 0 && <p className="mt-1 text-[12px] text-text-4">Use the disclosure arrow on the value to inspect the fields supplied by Delve.</p>}
     </div>
   )
 }
@@ -175,15 +204,15 @@ function GoStudioContextInspector({ debugId, variable }: { debugId: string; vari
   useEffect(() => {
     if (reference > 0 && !children) void useGoIDEDebugStore.getState().loadChildren(debugId, reference)
   }, [children, debugId, reference])
-  if (reference <= 0) return <p className="mt-1 text-[10.5px] text-text-4">This adapter did not expose context fields at this stop.</p>
-  if (!children) return <p className="mt-1 text-[10.5px] text-text-4">Reading context fields…</p>
+  if (reference <= 0) return <p className="mt-1 text-[12px] text-text-4">This adapter did not expose context fields at this stop.</p>
+  if (!children) return <p className="mt-1 text-[12px] text-text-4">Reading context fields…</p>
   const fields = goStudioContextFields(children)
-  if (fields.length === 0) return <p className="mt-1 text-[10.5px] text-text-4">No key/value, deadline, cancellation or parent field was exposed by this adapter.</p>
+  if (fields.length === 0) return <p className="mt-1 text-[12px] text-text-4">No key/value, deadline, cancellation or parent field was exposed by this adapter.</p>
   const traceId = goStudioContextTraceId(fields)
   return (
     <>
-    {traceId && <button type="button" onClick={() => { requestLogInspectorQuery(traceId); showModule('loginspector') }} title="Search the runtime logs for the trace id carried by this context" className="mt-1 inline-flex h-6 items-center gap-1 rounded border border-border-1 px-2 text-[10.5px] text-accent hover:border-accent"><ScrollText size={11} />Trace {traceId} in logs</button>}
-    <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5 font-mono text-[10.5px]">
+    {traceId && <button type="button" onClick={() => { requestLogInspectorQuery(traceId); showModule('loginspector') }} title="Search the runtime logs for the trace id carried by this context" className="mt-1 inline-flex h-6 items-center gap-1 rounded border border-border-1 px-2 text-[12px] text-accent hover:border-accent"><ScrollText size={11} />Trace {traceId} in logs</button>}
+    <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5 font-mono text-[12px]">
       {fields.map((field) => <Fragment key={field.name}><dt className="text-text-4">{field.name}</dt><dd className="min-w-0 truncate text-text-1" title={field.type ? `${field.value} (${field.type})` : field.value}>{field.value}</dd></Fragment>)}
     </dl>
     </>
@@ -206,7 +235,7 @@ function GoStudioCollectionInspector({ kind, debugId, frameId, expression }: { k
     return () => { cancelled = true }
   }, [kind, debugId, expression, frameId])
   return (
-    <div className="mt-1 flex flex-wrap gap-x-2 text-[10.5px]">
+    <div className="mt-1 flex flex-wrap gap-x-2 text-[12px]">
       {checks.map((check) => <span key={check.label}>{check.label} <b>{values[check.label] ?? '…'}</b></span>)}
       {error && <span className="text-danger">{error}</span>}
     </div>
@@ -254,11 +283,11 @@ export function GoStudioErrorChainInspector({ debugId, frameId, expression, init
   return (
     <div>
       <p>Resolve the wrapper chain only on request: <code>fmt.Errorf</code> wrappers are read directly; other error types call <code>Unwrap()</code> in the paused process.</p>
-      <button type="button" onClick={() => void resolve()} disabled={loading || frameId === null} className="mt-1 rounded bg-accent/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-accent hover:bg-accent/25 disabled:opacity-50">
+      <button type="button" onClick={() => void resolve()} disabled={loading || frameId === null} className="mt-1 rounded bg-accent/15 px-1.5 py-0.5 text-[12px] font-semibold text-accent hover:bg-accent/25 disabled:opacity-50">
         {loading ? <span className="inline-flex items-center gap-1"><LoaderCircle size={10} className="animate-spin" /> Resolving…</span> : 'Resolve wrapped errors'}
       </button>
-      {chain.length > 0 && <ol className="mt-1.5 space-y-0.5 border-l border-accent/30 pl-2 font-mono text-[10.5px]">{chain.map((item, index) => <li key={`${item.value}-${index}`}><span className="text-text-4">{index}.</span> <span className="text-text-1">{item.value}</span>{item.type && <span className="text-text-4"> ({item.type})</span>}</li>)}</ol>}
-      {message && <p className="mt-1 text-[10.5px] text-text-4">{message}</p>}
+      {chain.length > 0 && <ol className="mt-1.5 space-y-0.5 border-l border-accent/30 pl-2 font-mono text-[12px]">{chain.map((item, index) => <li key={`${item.value}-${index}`}><span className="text-text-4">{index}.</span> <span className="text-text-1">{item.value}</span>{item.type && <span className="text-text-4"> ({item.type})</span>}</li>)}</ol>}
+      {message && <p className="mt-1 text-[12px] text-text-4">{message}</p>}
     </div>
   )
 }
@@ -301,17 +330,17 @@ export function GoStudioDebugConsole({ view }: { view: GoIDEDebugView }) {
   return (
     <section aria-label="Debug console" className="flex min-h-0 flex-col">
       <PaneHeader title="Console" />
-      <div ref={scroller} className="min-h-0 flex-1 overflow-auto px-3 pb-1 font-mono text-[12px] leading-5">
-        {view.console.length === 0 && <p className="font-sans text-[11.5px] text-text-4">Program output and evaluation results appear here.</p>}
+      <div ref={scroller} className="min-h-0 flex-1 overflow-auto px-3 pb-1 font-mono text-[13px] leading-5">
+        {view.console.length === 0 && <p className="font-sans text-[13px] text-text-4">Program output and evaluation results appear here.</p>}
         {view.console.map((line) => (
           <div key={line.id} className={`whitespace-pre-wrap break-all ${LINE_CLASS[line.category]}`}>{line.category === 'input' ? `› ${line.text}` : line.text}</div>
         ))}
       </div>
       <form onSubmit={(event) => { event.preventDefault(); submit() }} className="mx-2 mb-2 flex h-8 shrink-0 items-center gap-2 rounded-lg bg-surface-0 px-2.5 focus-within:ring-1 focus-within:ring-accent">
-        <span className="font-mono text-[12px] text-accent">›</span>
+        <span className="font-mono text-[13px] text-accent">›</span>
         <input value={expression} onChange={(event) => setExpression(event.target.value)} onKeyDown={browseHistory} disabled={!paused}
           placeholder={paused ? 'Evaluate in the selected frame, e.g. len(items)' : 'Pause the program to evaluate'} aria-label="Evaluate expression"
-          className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-text-1 outline-none disabled:opacity-50" />
+          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-text-1 outline-none disabled:opacity-50" />
       </form>
     </section>
   )

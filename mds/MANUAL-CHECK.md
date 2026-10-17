@@ -60,10 +60,11 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | GS-15 | 7 | 0 |
 | GS-16 | 9 | 0 |
 | GS-17 | 5 | 0 |
+| GS-18 | 7 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **187** | **0** |
+| **TOTALE** | **194** | **0** |
 
 ---
 
@@ -474,6 +475,25 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] **GS-17.M3** Nessuna regressione nella palette: file, simboli, test, run configurations, settings, pannelli e comandi estensioni rispondono come prima; skin scuro e chiaro leggibili.
 
 **Gate manuale GS-17:** [ ]
+
+---
+
+## GS-18 — Cache risposte per peso e doppioni body
+
+**Prerequisito:** `wails3 task dev`; un endpoint che restituisce body grandi (es. mock o file statico da 5-10 MB) e uno che restituisce un'immagine; Settings → Requests visibili. Skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **GS-18.1** Budget per peso: con più risposte grandi (~5 MB l'una) la history esce di voce vecchia appena superato il budget (impostazione *History memory budget (MB)*, default 16), anche sotto il limite di numero; la risposta più recente resta sempre; il campo si salva e si ripristina.
+- [ ] **GS-18.2** Doppione base64: una risposta testuale (JSON/testo) non conserva la copia base64 (sessione salvata più leggera); una risposta immagine/pdf mostra ancora il preview corretto.
+- [ ] **GS-18.3** Ricerca nella history su estratto: con body da 5 MB la digitazione resta reattiva; le corrispondenze oltre i 32k del body si trovano aprendo la risposta (limite dichiarato).
+
+**Verifiche manuali**
+- [ ] **GS-18.M1** Percorso felice: inviare 8-10 risposte da 5 MB; la history conserva ~budget impostato, le voci vecchie escono, aprire/riaprire una voce funziona; ripristino sessione coerente.
+- [ ] **GS-18.M2** Body testuali con UTF-8 (accenti, emoji): copia negli appunti e "salva su file" producono byte corretti (ricodifica UTF-8, non la mappa a 8 bit).
+- [ ] **GS-18.M3** Binari: immagine e pdf hanno ancora il preview e il salvataggio corretto (base64 tenuto).
+- [ ] **GS-18.M4** Ricerca: query su body grandi reattiva; match dentro i primi 32k trovato; nessuna regressione su filtri stato, apertura, rimozione e pulizia della history.
+
+**Gate manuale GS-18:** [ ]
 
 ---
 

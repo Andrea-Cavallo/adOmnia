@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Tab, RequestItem, RequestHistoryEntry, ResponseData, HttpMethod, ToolTabId } from '@/lib/types'
 import { TOOL_TAB_LABELS } from '@/lib/types'
+import { dropRedundantBodyBase64, responseWeight, trimHistoryByWeight } from '@/lib/responseMemory'
 import { uid, blankRequest } from '@/lib/types'
 import { debouncedSave } from '@/lib/storeSave'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
@@ -92,9 +93,20 @@ interface TabsState {
   replaceTabSnapshot: (tab: Tab, viewState?: TabViewState) => void
 }
 
-function historyLimit(): number {
-  const settings = useSettingsStore.getState().settings
-  return Math.max(0, settings.requests.maxResponseHistoryPerTab || 0)
+/**
+ * Budget della history: per numero **e** per peso. "Ultime N risposte" non protegge la memoria
+ * (N body da 50 MB sono gigabyte), quindi le voci vecchie escono anche solo per byte occupati.
+ */
+function historyBudget(): { maxEntries: number; maxBytes: number } {
+  const requests = useSettingsStore.getState().settings.requests
+  return {
+    maxEntries: Math.max(0, requests.maxResponseHistoryPerTab || 0),
+    maxBytes: Math.max(1, requests.maxResponseHistoryMB || 16) * 1024 * 1024,
+  }
+}
+
+function trimHistory(entries: RequestHistoryEntry[]): RequestHistoryEntry[] {
+  return trimHistoryByWeight(entries, historyBudget(), (entry) => responseWeight(entry.response))
 }
 
 function shouldSaveResponses(): boolean {
@@ -113,6 +125,8 @@ function cleanLoadedTab(tab: Tab): Tab {
     request,
     workspaceId: tab.workspaceId ?? useCollectionsStore.getState().activeWorkspaceId,
     loading: false,
+    // Le sessioni vecchie possono portare il doppione base64 dei body testuali: si perde in lettura.
+    response: tab.response ? dropRedundantBodyBase64(tab.response) : tab.response,
   }
 }
 
@@ -133,14 +147,17 @@ function isHistoryEntry(value: RequestHistoryEntry | ResponseData): value is Req
 }
 
 function cloneForHistory<T>(value: T): T {
-  // Clone nested request metadata and script results without serializing large bodies.
+  // Copia profonda di richiesta e risposta (body compreso: il budget per peso della history
+  // è ciò che li limita, non la copia stessa).
   return structuredClone(value)
 }
 
 function normalizeHistoryEntries(history: Array<RequestHistoryEntry | ResponseData> | undefined): RequestHistoryEntry[] {
-  return (history ?? []).map((item) => isHistoryEntry(item)
-    ? item
-    : { id: uid(), recordedAt: null, response: item })
+  return (history ?? []).map((item) => {
+    const entry = isHistoryEntry(item) ? item : { id: uid(), recordedAt: null, response: item }
+    // Le versioni vecchie portano anche il doppione base64 dei body testuali: si perde in lettura.
+    return { ...entry, response: dropRedundantBodyBase64(entry.response) }
+  })
 }
 
 function defaultViewState(): TabViewState {
@@ -223,7 +240,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         activeTabId,
         responseHistory: progressive
           ? []
-          : normalizeHistoryEntries(parsed.responseHistory).slice(0, historyLimit()),
+          : trimHistory(normalizeHistoryEntries(parsed.responseHistory)),
         loaded: true,
         loadError: false,
         deferredLoaded: !progressive,
@@ -253,11 +270,11 @@ export const useTabsStore = create<TabsState>((set, get) => ({
                   ? { ...tab, response: parsed.responses[tab.id] }
                   : tab
               )),
-              responseHistory: [
+              responseHistory: trimHistory([
                 ...state.responseHistory,
                 ...normalizeHistoryEntries(parsed.responseHistory)
                   .filter((entry) => !currentHistoryIds.has(entry.id)),
-              ].slice(0, historyLimit()),
+              ]),
               deferredLoaded: true,
             }
           })
@@ -286,12 +303,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       version: 2,
       tabs: useSettingsStore.getState().settings.general.restoreTabsOnStartup ? tabs.map(cleanLoadedTab) : [],
       activeTabId,
-      responseHistory: responseHistory.slice(0, historyLimit()),
+      responseHistory: trimHistory(responseHistory),
     }
     const { critical, deferred } = splitTabsForPersistence(
       legacyPayload.tabs,
       activeTabId,
-      responseHistory.slice(0, historyLimit()),
+      trimHistory(responseHistory),
     )
     debouncedSave('tabs', async () => {
       await Promise.all([
@@ -595,7 +612,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       return {
         tabs: s.tabs.map((current) => (current.id === tabId ? { ...current, response, loading: false } : current)),
         responseHistory: entry
-          ? [entry, ...s.responseHistory].slice(0, historyLimit())
+          ? trimHistory([entry, ...s.responseHistory])
           : s.responseHistory,
       }
     })

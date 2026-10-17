@@ -1,4 +1,5 @@
 import { uid, type RequestItem, type ResponseData, type RequestAuth } from '@/lib/types'
+import { isTextualResponse } from '@/lib/responseMemory'
 import { substVars, substJsonVars } from '@/lib/substVars'
 import { applyPathParams } from '@/lib/pathParams'
 import { useSettingsStore } from '@/stores/settings'
@@ -165,7 +166,9 @@ export async function sendRequest(
       statusText: resp.statusText,
       headers: resp.headers ?? {},
       body: resp.body ?? '',
-      bodyBase64: resp.bodyBase64,
+      // Il doppione base64 serve solo ai body binari (immagini, pdf…): sui testuali è una copia
+      // perfetta del body e non si tiene (poi clonata in history e persistita due volte).
+      bodyBase64: isTextualResponse(resp.contentType ?? '', resp.body ?? '') ? undefined : resp.bodyBase64,
       contentType: resp.contentType ?? '',
       ms: resp.ms ?? 0,
       size: resp.size ?? 0,
