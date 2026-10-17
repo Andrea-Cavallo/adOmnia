@@ -114,7 +114,7 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
       try {
         const execution = await installWebTools(sessionId)
         set((state) => ({ installing: { ...state.installing, [sessionId]: execution.id } }))
-        beginToolInstall(sessionId, WEB_TOOLS_TASK, 'Installing TypeScript, HTML, CSS and JSON language servers…')
+        beginToolInstall(sessionId, WEB_TOOLS_TASK, 'Installing language servers…')
       } catch (error) {
         studioToast(errorMessage(error), 'info')
       }
