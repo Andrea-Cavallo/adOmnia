@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -27,6 +28,10 @@ type EclipseProject struct {
 	BuildProperties map[string]string
 	// Bundle is the parsed META-INF/MANIFEST.MF (nil for non-bundle projects).
 	Bundle *Bundle
+	// PdeFiles lists the PDE metadata files present in the project, relative to
+	// it: plugin.xml, feature.xml, *.product, *.launch, build.properties
+	// (spec section 5: recognize them when present, never assume they exist).
+	PdeFiles []string
 	// Problems collects non-fatal issues found while reading (missing libs,
 	// absolute paths that will not resolve elsewhere, malformed files...).
 	Problems []Problem
@@ -134,7 +139,47 @@ func ReadEclipseProject(dir string) (*EclipseProject, error) {
 
 	proj.reportLocalProblems()
 	proj.reportExecutionEnvironment()
+	proj.scanPdeFiles()
 	return proj, nil
+}
+
+// pdeFileNames are the PDE metadata files to recognize when present.
+var pdeFileNames = []string{"plugin.xml", "feature.xml", "build.properties"}
+
+// scanPdeFiles records which PDE metadata files the project carries: the
+// extension points file, the feature definition, product and launch
+// configurations (spec section 5).
+func (p *EclipseProject) scanPdeFiles() {
+	for _, name := range pdeFileNames {
+		if fileExists(filepath.Join(p.Dir, name)) {
+			p.PdeFiles = append(p.PdeFiles, name)
+		}
+	}
+	if fileExists(filepath.Join(p.Dir, "META-INF", "MANIFEST.MF")) {
+		p.PdeFiles = append(p.PdeFiles, filepath.ToSlash(filepath.Join("META-INF", "MANIFEST.MF")))
+	}
+	if entries, err := os.ReadDir(p.Dir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
+			if ext == ".product" || ext == ".launch" {
+				p.PdeFiles = append(p.PdeFiles, entry.Name())
+			}
+		}
+	}
+	sort.Strings(p.PdeFiles)
+}
+
+// HasPdeFile reports whether the project carries the given PDE metadata file.
+func (p *EclipseProject) HasPdeFile(name string) bool {
+	for _, f := range p.PdeFiles {
+		if f == name {
+			return true
+		}
+	}
+	return false
 }
 
 // reportExecutionEnvironment flags the JDK requirement of the bundle

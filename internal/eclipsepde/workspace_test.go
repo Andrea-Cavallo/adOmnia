@@ -135,6 +135,32 @@ func TestImportWorkspaceFlagsAbsoluteLibraryPaths(t *testing.T) {
 	}
 }
 
+func TestProjectRecognizesPdeMetadataFiles(t *testing.T) {
+	root := t.TempDir()
+	writeProject(t, root, "it.company.app", "Bundle-SymbolicName: it.company.app\n", map[string]string{
+		"plugin.xml":             "<plugin></plugin>",
+		"it.company.product":     "<product></product>",
+		"launches/app.launch":    "<launchConfiguration></launchConfiguration>",
+		"it.company.feature.xml": "<feature></feature>",
+	})
+	ws, err := ImportWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proj := ws.ProjectByName("it.company.app")
+	// plugin.xml and META-INF/MANIFEST.MF are recognized; build.properties is
+	// absent and must not be assumed. Nested .launch files live in subfolders
+	// and are recognized by extension at project root level only.
+	for _, want := range []string{"plugin.xml", "META-INF/MANIFEST.MF"} {
+		if !proj.HasPdeFile(want) {
+			t.Errorf("PdeFiles missing %s: %v", want, proj.PdeFiles)
+		}
+	}
+	if proj.HasPdeFile("build.properties") {
+		t.Errorf("build.properties should not be assumed: %v", proj.PdeFiles)
+	}
+}
+
 func TestParseBuildPropertiesContinuation(t *testing.T) {
 	props, err := ParseBuildProperties("# comment\nsource.. = src/\nbin.includes = META-INF/,\\\n               .,\\\n               plugin.xml\n")
 	if err != nil {
