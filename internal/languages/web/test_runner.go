@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
@@ -58,18 +61,23 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 	if err != nil {
 		return run.CommandSpec{}, nil, fmt.Errorf("%s was not found on this machine", info.PackageManager)
 	}
-	arguments := testArguments(info, options)
+	// Vitest 5 non stampa più il report JSON: lo scrive nel file indicato, che il parser legge a fine run.
+	reportFile := ""
+	if info.TestFramework == "vitest" {
+		reportFile = filepath.Join(os.TempDir(), "adomnia-tests", strconv.FormatInt(time.Now().UnixNano(), 36)+".json")
+	}
+	arguments := testArguments(info, options, reportFile)
 	// CI=1 impedisce a Jest e Vitest di entrare in watch mode.
 	environment := append(append([]string(nil), request.Environment...), "CI=1")
 	spec := run.CommandSpec{
 		Executable: binary, Arguments: arguments, WorkingDirectory: request.WorkingDirectory, Environment: environment,
 		DisplayCommand: info.PackageManager + " " + strings.Join(arguments, " "), QuietStdout: true,
 	}
-	return spec, &reportParser{root: request.Root}, nil
+	return spec, &reportParser{root: request.Root, file: reportFile}, nil
 }
 
 // testArguments esegue il binario locale del runner tramite il package manager del progetto.
-func testArguments(info Info, options TestOptions) []string {
+func testArguments(info Info, options TestOptions, reportFile string) []string {
 	var arguments []string
 	switch info.PackageManager {
 	case NPM:
@@ -81,6 +89,9 @@ func testArguments(info Info, options TestOptions) []string {
 	}
 	if info.TestFramework == "vitest" {
 		arguments = append(arguments, "run", "--reporter=json")
+		if reportFile != "" {
+			arguments = append(arguments, "--outputFile="+reportFile)
+		}
 		if options.Run != "" {
 			arguments = append(arguments, "-t", options.Run)
 		}
@@ -117,10 +128,15 @@ const maxReportBytes = 16 << 20
 // reportParser accumula l'output del runner finché forma un documento JSON completo, poi lo converte
 // in eventi. Jest lo stampa su una riga, Vitest indentato: un documento indentato finisce con "}" a colonna 0.
 type reportParser struct {
-	root   string
+	root string
+	// file è dove Vitest scrive il report (vuoto: il runner lo stampa su stdout, come Jest).
+	file   string
 	buffer []byte
 	done   bool
 }
+
+// reportWritten è la riga con cui Vitest annuncia di aver scritto il report su file.
+var reportWritten = regexp.MustCompile(`^JSON report written to `)
 
 func (p *reportParser) Parse([]byte) (idetesting.Event, bool) { return idetesting.Event{}, false }
 
@@ -129,6 +145,9 @@ func (p *reportParser) ParseAll(line []byte) []idetesting.Event {
 		return nil
 	}
 	trimmed := bytes.TrimRight(line, "\r")
+	if p.file != "" && reportWritten.Match(trimmed) {
+		return p.readFile()
+	}
 	if len(p.buffer) == 0 && !bytes.HasPrefix(trimmed, []byte("{")) {
 		return nil
 	}
@@ -142,6 +161,21 @@ func (p *reportParser) ParseAll(line []byte) []idetesting.Event {
 	}
 	var report jsonReport
 	if json.Unmarshal(p.buffer, &report) != nil || report.TestResults == nil {
+		return nil
+	}
+	p.done = true
+	return reportEvents(p.root, report)
+}
+
+// readFile legge (e cancella) il report scritto da Vitest nel file scelto dall'host, mai in uno indicato dall'output.
+func (p *reportParser) readFile() []idetesting.Event {
+	defer os.Remove(p.file)
+	data, err := os.ReadFile(p.file)
+	if err != nil || len(data) > maxReportBytes {
+		return nil
+	}
+	var report jsonReport
+	if json.Unmarshal(data, &report) != nil || report.TestResults == nil {
 		return nil
 	}
 	p.done = true

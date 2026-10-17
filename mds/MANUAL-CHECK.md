@@ -634,7 +634,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 
 ### ML-1 — Code Studio: nome visibile (2026-10-17)
 
-- [ ] ML-1.M1 Avviare l'app (`wails3 task dev`): nell'Hub la card dice **Code Studio** / "Build. Run. Debug." con glifo `</>`; rail, tooltip e palette comandi dicono Code Studio; icona rail `</>`.
+- [x] ML-1.M1 *(2026-10-17, app e2e isolata, tema scuro EN: Hub con card Code Studio + "Build. Run. Debug.", rail con glifo `</>`, nessun "Go Studio" nel testo; light e IT non provati — resta aperto M4)* Avviare l'app (`wails3 task dev`): nell'Hub la card dice **Code Studio** / "Build. Run. Debug." con glifo `</>`; rail, tooltip e palette comandi dicono Code Studio; icona rail `</>`.
 - [ ] ML-1.M2 Aprire un progetto: titolo finestra, menu, impostazioni, scorciatoie, stato vuoto e dialog di fiducia non citano più "Go Studio".
 - [ ] ML-1.M3 Finestra staccata e Split Debug View: titolo "… · Code Studio · adOmnia".
 - [ ] ML-1.M4 Tema chiaro e scuro, lingua IT ed EN (stringhe "Apri in Code Studio", "Compila. Esegui. Debug.").
@@ -654,7 +654,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 ### ML-5 — Run: proposte rilevate (2026-10-17)
 
 - [ ] ML-5.M1 Aprire un progetto con `go.mod` e senza configurazioni: in "Run configurations", sopra "New configuration", compare **Detected** con Run/Test/Build del modulo; un click crea e seleziona la configurazione e la proposta sparisce. Avviarla con ▶.
-- [ ] ML-5.M2 Aprire una cartella con `package.json` (script dev/build) e un lockfile pnpm/yarn/npm: le proposte usano il package manager del lockfile (es. `Vite · pnpm run dev`) e si avviano come comando; in un workspace con Go + Node compaiono entrambe, ciascuna con la propria working directory.
+- [x] ML-5.M2 *(2026-10-17, parziale: progetto Node con `package.json` senza lockfile → Detected propone `Node · npm run dev` e `npm run test`; non provati pnpm/yarn né workspace Go+Node)* Aprire una cartella con `package.json` (script dev/build) e un lockfile pnpm/yarn/npm: le proposte usano il package manager del lockfile (es. `Vite · pnpm run dev`) e si avviano come comando; in un workspace con Go + Node compaiono entrambe, ciascuna con la propria working directory.
 
 ### ML-6 — Run: configurazioni raggruppate per unità (2026-10-17)
 
@@ -668,8 +668,12 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 
 - [ ] ML-8.M1 Con una configurazione Go (cartella `orders`) e una Node (cartella `web`, comando `pnpm run dev`), entrambe con "Restart on save" e in esecuzione: salvare un `.go` in `orders` riavvia solo la Go; salvare un `.ts` in `web` riavvia solo la Node; salvare un `.md` o un file in un’altra cartella non riavvia nulla.
 
+- [x] ML-8.M2 *(2026-10-17, app e2e isolata)* Progetto Node con script `dev`: aggiunta la proposta `npm run dev` e premuto ▶ — si apre la Live Preview (pagina "Hello from dev server" servita sul proxy :5675, server vero :5199), la console Run mostra `npm run dev` e `Local: http://localhost:5199/`. **Difetto trovato:** dopo ■ Stop la preview mostra "The preview could not start — The dev server stopped (exit code 1)" invece di uno stato fermo.
+- [ ] ML-8.M3 Dopo ■ Stop di un dev server avviato da ▶, la Live Preview mostra "Stopped" senza messaggio d'errore (oggi: "could not start", exit code 1).
+
 ### ML-9 — New Project e language server (2026-10-17)
 
 - [ ] ML-9.M1 File > New Project…: il dialog elenca i template Go più **Static website** e **Node.js script**. Scegliendo uno dei due scompare "Module path", il pulsante si abilita con cartella + nome, e il progetto si apre con i suoi file (nessun go.mod). Per un template Go nulla cambia (module path richiesto, `go mod init`).
 - [ ] ML-9.M2 Progetto creato da "Node.js script": in Run configurations la sezione **Detected** propone `npm run start` e `npm run test` (package manager reale); da "Static website" il Run apre la Live Preview.
 - [ ] ML-9.M3 Tools > **Install All Language Servers…** (progetto fidato): un solo dialog elenca `go install …gopls` e `npm install --prefix …`; confermando partono entrambe le installazioni e l'output compare nella console Run; senza fiducia la voce è disabilitata con il motivo.
+- [ ] ML-9.M4 Progetto Vitest/Jest: il pannello Tests, "Run all tests" e ▶ accanto a un test eseguono il runner del progetto (comando `npm exec -- vitest run …`), non `go test`; compaiono suite, test, pass/fail e il punto del fallimento. **Stato 2026-10-17: FALLITO** — su un progetto Node il pannello mostra "Ran go test -json -count=1 ./..." e "build failed": la UI dei test è ancora solo Go (il backend `scriptAdapter.TestCommand` è pronto, manca l'instradamento per unità/linguaggio). Anche barra Run ("go run .") e status bar ("Go folder · go1.26.3", gopls) restano Go in un progetto Node.
