@@ -30,6 +30,8 @@ function describe(status: string): string {
   return STATUS_LABEL[code] ?? status.trim()
 }
 
+const STATUS_TONE: Record<string, string> = { M: 'text-accent', A: 'text-success', D: 'text-danger', R: 'text-warning' }
+
 const PRECOMMIT_KEY = 'adomnia.goStudio.precommitChecks'
 
 function loadPrecommitPreference(): boolean {
@@ -104,6 +106,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
   const [aiBusy, setAiBusy] = useState(false)
   const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
   const messageRef = useRef<HTMLTextAreaElement>(null)
+  const [formHeight, setFormHeight] = useState(300)
   const changes = status?.changes ?? []
 
   useEffect(() => {
@@ -175,6 +178,17 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     }
   }
 
+  /** Trascina il bordo fra elenco file e commit: l'altezza del pannello cambia senza toccare il diff. */
+  const resizeForm = (event: React.MouseEvent) => {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = formHeight
+    const move = (next: MouseEvent) => setFormHeight(Math.min(560, Math.max(170, startHeight + startY - next.clientY)))
+    const stop = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop) }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', stop)
+  }
+
   const canCommit = !busy && !!message.trim() && selected.size > 0
 
   /** Bozza del messaggio dal diff dei file spuntati: la bozza si può sempre modificare prima del commit. */
@@ -215,22 +229,27 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
     >
       <div className="flex min-h-0 flex-1">
       <div className="flex w-[400px] min-w-[300px] shrink-0 flex-col border-r border-border-1">
-      <div className="min-h-0 flex-1 overflow-auto border-b border-border-1 p-1.5">
+      <div className="min-h-0 flex-1 overflow-auto p-1.5">
         {changes.length === 0 && <p className="gs-list-empty">No local changes in this project.</p>}
         {changes.map((change) => (
           <div key={change.relativePath} role="button" tabIndex={0} aria-pressed={focused === change.relativePath} onClick={() => setFocused(change.relativePath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setFocused(change.relativePath) } }} title="Show the changes of this file"
             className={`flex h-8 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 ${focused === change.relativePath ? 'bg-accent/12 ring-1 ring-accent/30' : 'hover:bg-surface-2/60'} ${change.conflicted ? 'opacity-60' : ''}`}>
             <input type="checkbox" aria-label={`Include ${change.relativePath}`} checked={selected.has(change.relativePath)} disabled={change.conflicted} onClick={(event) => event.stopPropagation()} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
             <GoStudioFileIcon name={change.relativePath.split('/').pop() ?? change.relativePath} relativePath={change.relativePath} />
-            <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-1">{change.relativePath}</span>
+            <span className="flex min-w-0 flex-1 items-baseline gap-2" title={change.relativePath}>
+              <span className="shrink-0 truncate text-[12.5px] font-medium text-text-1">{change.relativePath.split('/').pop()}</span>
+              <span className="min-w-0 truncate font-mono text-[11px] text-text-4">{change.relativePath.split('/').slice(0, -1).join('/')}</span>
+            </span>
             {change.conflicted && onResolveConflicts
               ? <button type="button" onClick={(event) => { event.preventDefault(); onResolveConflicts() }} className="gs-badge h-[18px] text-[10.5px] text-danger underline-offset-2 hover:underline">conflict · resolve…</button>
-              : <span className={`gs-badge h-[18px] text-[10.5px] ${change.untracked ? '' : change.conflicted ? 'text-danger' : 'text-accent'}`}>{change.conflicted ? 'conflict · resolve in Project Git' : describe(change.status)}</span>}
+              : <span title={change.conflicted ? 'conflict · resolve in Project Git' : describe(change.status)} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded text-[10.5px] font-semibold ${change.untracked ? 'text-text-3' : change.conflicted ? 'text-danger' : STATUS_TONE[change.status.trim().charAt(0)] ?? 'text-accent'}`}>{change.untracked ? 'U' : change.conflicted ? '!' : change.status.trim().charAt(0) || 'M'}</span>}
           </div>
         ))}
       </div>
+      <div role="separator" aria-orientation="horizontal" aria-label="Resize commit panel" title="Drag to resize the commit panel" onMouseDown={resizeForm} className="-mt-px h-1.5 shrink-0 cursor-row-resize border-t border-border-1 hover:bg-accent/30" />
+      <div className="min-h-0 shrink-0 overflow-auto" style={{ height: formHeight }}>
       <ChangedSymbols symbols={symbols} selected={selected} onClose={onClose} />
-      <form id="go-studio-commit-form" className="flex shrink-0 flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
+      <form id="go-studio-commit-form" className="flex flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
         <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
         {aiAvailable && (
@@ -261,6 +280,7 @@ export function GoStudioCommitDialog({ sessionId, open, onClose, onResolveConfli
         )}
         {error && <GoStudioAlert icon={AlertCircle}>{error}</GoStudioAlert>}
       </form>
+      </div>
       </div>
       <div className="min-w-0 flex-1">
         <GoStudioCommitDiff sessionId={sessionId} relativePath={focused} />

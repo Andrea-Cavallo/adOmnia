@@ -429,3 +429,14 @@ html.dark .go-studio-root {
   line-height: 1.45;
   color: var(--color-text-2);
 }
+
+/* Diff del dialog di commit: evidenziazione morbida, colori semantici del tema invece dei rossi/verdi saturi di Monaco. */
+.go-studio-commit-diff .monaco-editor,
+.go-studio-commit-diff .monaco-diff-editor {
+  --vscode-diffEditor-insertedLineBackground: color-mix(in srgb, var(--color-success) 9%, transparent);
+  --vscode-diffEditor-removedLineBackground: color-mix(in srgb, var(--color-danger) 9%, transparent);
+  --vscode-diffEditor-insertedTextBackground: color-mix(in srgb, var(--color-success) 20%, transparent);
+  --vscode-diffEditor-removedTextBackground: color-mix(in srgb, var(--color-danger) 20%, transparent);
+  --vscode-diffEditorGutter-insertedLineBackground: color-mix(in srgb, var(--color-success) 14%, transparent);
+  --vscode-diffEditorGutter-removedLineBackground: color-mix(in srgb, var(--color-danger) 14%, transparent);
+}
