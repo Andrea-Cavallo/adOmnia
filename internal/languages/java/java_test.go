@@ -96,7 +96,7 @@ func TestSuggestUsesTheWrapperAndAddsSpringBootRun(t *testing.T) {
 	for _, suggestion := range suggestions {
 		titles = append(titles, suggestion.Action+"="+suggestion.Configuration.Target+" "+strings.Join(suggestion.Configuration.ProgramArguments, " "))
 	}
-	want := []string{"run=./" + wrapper + " spring-boot:run", "test=./" + wrapper + " test", "build=./" + wrapper + " package"}
+	want := []string{"run=./" + wrapper + " spring-boot:run", "test=./" + wrapper + " test", "build=./" + wrapper + " package", "build=./" + wrapper + " compile", "build=./" + wrapper + " clean install", "build=./" + wrapper + " clean"}
 	if strings.Join(titles, "|") != strings.Join(want, "|") {
 		t.Fatalf("suggestions = %v, want %v", titles, want)
 	}
@@ -112,7 +112,7 @@ func TestSuggestFallsBackToTheSystemToolAndSkipsWhenThereIsNone(t *testing.T) {
 
 	stubTools(t, "gradle")
 	suggestions := (&Language{}).Suggest(context.Background(), root, unit)
-	if len(suggestions) != 3 || suggestions[0].Configuration.Target != "gradle" || suggestions[0].Configuration.ProgramArguments[0] != "bootRun" {
+	if len(suggestions) != 5 || suggestions[0].Configuration.Target != "gradle" || suggestions[0].Configuration.ProgramArguments[0] != "bootRun" {
 		t.Fatalf("suggestions = %+v", suggestions)
 	}
 

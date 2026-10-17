@@ -394,6 +394,10 @@ func (m *DebugManager) readEvents(session *debugger, client *Client, initialized
 				ThreadID int    `json:"threadId"`
 			}
 			_ = json.Unmarshal(event.Body, &body)
+			// Il Java Debug Server riporta "function breakpoint" anche per i breakpoint di riga: senza funzioni impostate è una riga.
+			if _, projectID := session.identity(); body.Reason == "function breakpoint" && len(m.functionsFor(projectID).Functions) == 0 {
+				body.Reason = "breakpoint"
+			}
 			session.mu.Lock()
 			session.info.State, session.info.StopReason, session.info.ThreadID = DebugStopped, body.Reason, body.ThreadID
 			finished := session.runTo

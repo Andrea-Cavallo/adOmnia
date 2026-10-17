@@ -76,13 +76,24 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 	}
 	var entries []suggestEntry
 	if unit.Kind == UnitMaven {
-		entries = []suggestEntry{{action: "test", name: "test", arguments: []string{"test"}}, {action: "build", name: "package", arguments: []string{"package"}}}
+		entries = []suggestEntry{
+			{action: "test", name: "test", arguments: []string{"test"}},
+			{action: "build", name: "package", arguments: []string{"package"}},
+			{action: "build", name: "compile", arguments: []string{"compile"}, id: ":compile"},
+			{action: "build", name: "clean install", arguments: []string{"clean", "install"}, id: ":clean-install"},
+			{action: "build", name: "clean", arguments: []string{"clean"}, id: ":clean"},
+		}
 		if readPom(unit.Manifest).usesSpringBoot() {
 			entries = append([]suggestEntry{{action: "run", name: "Spring Boot", arguments: []string{"spring-boot:run"}}}, entries...)
 		}
 		entries = append(entries, mainEntries(unit)...)
 	} else {
-		entries = []suggestEntry{{action: "test", name: "test", arguments: []string{"test"}}, {action: "build", name: "build", arguments: []string{"build"}}}
+		entries = []suggestEntry{
+			{action: "test", name: "test", arguments: []string{"test"}},
+			{action: "build", name: "build", arguments: []string{"build"}},
+			{action: "build", name: "clean build", arguments: []string{"clean", "build"}, id: ":clean-build"},
+			{action: "build", name: "clean", arguments: []string{"clean"}, id: ":clean"},
+		}
 		if gradleUsesSpringBoot(unit.Manifest) {
 			entries = append([]suggestEntry{{action: "run", name: "Spring Boot", arguments: []string{"bootRun"}}}, entries...)
 		} else if gradleUsesApplication(unit.Manifest) {
