@@ -98,6 +98,8 @@ type lspSession struct {
 	diagnosticSignatures map[string][sha256.Size]byte
 	diagnosticsTimer     *time.Timer
 	closed               bool
+	// virtualURIs: percorso del file salvato → URI originale (non-file) del documento virtuale del server.
+	virtualURIs map[string]string
 }
 
 // lspKey identifica un language server: uno per linguaggio in ogni sessione.

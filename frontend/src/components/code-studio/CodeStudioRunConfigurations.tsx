@@ -35,11 +35,15 @@ const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: 
   { value: GoIDERunConfigurationKind.RunKindDockerRun, label: 'Docker build & run', hint: 'docker build, then docker run --rm of the image; Stop really stops the container', available: true },
   { value: GoIDERunConfigurationKind.RunKindCommand, label: 'Command', hint: 'any program on the PATH or a script inside the project, run without a shell', available: true },
   { value: GoIDERunConfigurationKind.RunKindGoTool, label: 'Go tool', hint: 'go <command> with the project toolchain: generate, vet, tool pprof, list…', available: true },
+  { value: 'main' as GoIDERunConfiguration['kind'], label: 'Java main class', hint: 'runs a class with a main method through Maven or Gradle, with VM options', available: true },
+  { value: 'attach' as GoIDERunConfiguration['kind'], label: 'Java remote JVM', hint: 'attaches the debugger to a JVM already listening on a JDWP port (press Debug)', available: true },
   { value: GoIDERunConfigurationKind.RunKindCompound, label: 'Compound', hint: 'starts Compose stacks first, waits until their containers are ready, runs the tasks in order, then starts the other configurations', available: true },
 ]
 
 const COMMAND_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool])
-const TOOL_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool, GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
+/** Kind Java: la working directory è il modulo, i campi stanno nello schema dell'adapter (languageOptions). */
+const JAVA_KINDS = new Set<string>(['main', 'attach'])
+const TOOL_KINDS = new Set<string>(['main', 'attach', GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool, GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
 const isDockerKind = (kind: string) => kind === GoIDERunConfigurationKind.RunKindDockerBuild || kind === GoIDERunConfigurationKind.RunKindDockerRun
 
 function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
@@ -216,7 +220,8 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
                   onChange={(event) => {
                     const kind = event.target.value as GoIDERunConfiguration['kind']
                     const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : kind === GoIDERunConfigurationKind.RunKindGoTool ? 'generate' : COMMAND_KINDS.has(kind) || kind === GoIDERunConfigurationKind.RunKindCompound ? '' : '.'
-                    patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target })
+                    const javaKind = JAVA_KINDS.has(kind)
+                    patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target, language: javaKind ? 'java' : JAVA_KINDS.has(draft.kind) ? '' : draft.language, languageOptions: javaKind ? (JAVA_KINDS.has(draft.kind) && draft.language === 'java' ? draft.languageOptions : {}) : undefined })
                   }}
                   className="gs-input"
                 >
@@ -250,7 +255,7 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
                       hint="Migrations, seed data… run one after the other once Compose containers are healthy; a failure keeps the services stopped." />
                   </div>
                 </fieldset>
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindCommand ? (
+              ) : JAVA_KINDS.has(draft.kind) ? null : draft.kind === GoIDERunConfigurationKind.RunKindCommand ? (
                 textField('Command', draft.target, (next) => patch({ target: next }), 'npm  ·  ./scripts/seed.sh')
               ) : draft.kind === GoIDERunConfigurationKind.RunKindGoTool ? (
                 textField('Go command', draft.target, (next) => patch({ target: next }), 'generate  ·  tool  ·  list')

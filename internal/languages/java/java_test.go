@@ -176,17 +176,21 @@ func TestSuggestFindsMainClassesInModulesAndStartsSpringBootAppsThere(t *testing
 		t.Fatalf("one outermost unit expected: %+v", units)
 	}
 	titles := map[string][]string{}
+	var cli *run.Suggestion
 	for _, suggestion := range New().Suggest(context.Background(), root, units[0]) {
 		titles[suggestion.Action+"|"+suggestion.Configuration.Name] = suggestion.Configuration.ProgramArguments
+		if suggestion.Configuration.Name == "Main Cli" {
+			suggestion := suggestion
+			cli = &suggestion
+		}
 	}
 	if args := titles["run|Maven Spring Boot ApiApp"]; strings.Join(args, " ") != "-f api/pom.xml spring-boot:run" {
 		t.Errorf("Spring Boot module app: %v", titles)
 	}
-	cli := strings.Join(titles["run|Maven main Cli"], " ")
-	if !strings.Contains(cli, "-f tools/pom.xml") || !strings.Contains(cli, "exec-maven-plugin") || !strings.HasSuffix(cli, "-Dexec.mainClass=Cli") {
-		t.Errorf("plain main class: %q", cli)
+	if cli == nil || cli.Configuration.Kind != KindMain || cli.UnitRoot != filepath.Join(root, "tools") || !strings.Contains(string(cli.Configuration.LanguageOptions), `"mainClass":"Cli"`) {
+		t.Errorf("plain main class must become a main configuration in its module: %+v", cli)
 	}
-	if _, found := titles["run|Maven main NotMain"]; found {
+	if _, found := titles["run|Main NotMain"]; found {
 		t.Error("test sources are not run targets")
 	}
 }

@@ -1,15 +1,12 @@
 package java
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-
-	"adomnia/internal/ide/run"
 )
 
 // Limiti della scansione: un monorepo enorme non deve bloccare l'apertura del progetto.
@@ -93,31 +90,6 @@ func readMainClass(path, unitRoot string) (mainClass, bool) {
 		module = unitRoot
 	}
 	return mainClass{Module: module, Class: name, Spring: springBootMark.Match(data)}, true
-}
-
-// MainCommand è il comando che esegue una classe `main` del modulo (Maven: compila e poi exec:java col
-// classpath del modulo). Gradle non sa eseguire una classe scelta senza il suo build script: lì serve il
-// task `run` del plugin application, proposto come configurazione.
-func MainCommand(module, mainClass string) (executable string, arguments []string, display string, err error) {
-	unit, ok := unitIn(module)
-	if !ok || unit.Kind != UnitMaven {
-		return "", nil, "", fmt.Errorf("running a chosen class needs a Maven module: use the Gradle application run configuration instead")
-	}
-	tool, ok := resolveBuildTool(unit)
-	if !ok {
-		return "", nil, "", fmt.Errorf("neither the project wrapper nor Maven was found: install Maven or add the wrapper to the project")
-	}
-	arguments = []string{"-B", "compile", execPlugin + ":java", "-Dexec.mainClass=" + mainClass}
-	executable = tool.Target
-	if strings.HasPrefix(executable, "./") {
-		executable = filepath.Join(unit.Root, filepath.FromSlash(strings.TrimPrefix(executable, "./")))
-	} else if found, lookErr := lookPath(executable); lookErr == nil {
-		executable = found
-	}
-	if err := run.CheckBatchSafe(executable, arguments); err != nil {
-		return "", nil, "", err
-	}
-	return executable, arguments, tool.Label + " " + strings.Join(arguments, " "), nil
 }
 
 // ModuleOf è la cartella del modulo (con pom.xml o build file) che contiene il file, risalendo fino a root.

@@ -52,12 +52,7 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 		}
 		return run.CommandSpec{}, nil, fmt.Errorf("neither the project wrapper nor %s was found: install it or add the wrapper to the project", name)
 	}
-	executable := tool.Target
-	if strings.HasPrefix(executable, "./") {
-		executable = filepath.Join(unit.Root, filepath.FromSlash(strings.TrimPrefix(executable, "./")))
-	} else if found, err := lookPath(executable); err == nil {
-		executable = found
-	}
+	executable := tool.resolve(unit)
 	arguments := testArguments(unit.Kind, classes, options.Run)
 	if err := run.CheckBatchSafe(executable, arguments); err != nil {
 		return run.CommandSpec{}, nil, err

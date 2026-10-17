@@ -58,7 +58,7 @@ async function showLocations(editor: monaco.editor.ICodeEditor, kind: GoIDELocat
   const position = editor.getPosition()
   if (!model || !position) return
   const prepared = await prepareDocument(model)
-  if (!prepared) return report('gopls is not ready for this file yet.')
+  if (!prepared) return report('The language server is not ready for this file yet.')
   try {
     const locations = await requestLocations(prepared.sessionId, prepared.documentId, kind, position.lineNumber, position.column)
     if (locations.length === 0) return report(`${title}: nothing found.`)
@@ -100,7 +100,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
   semantic(CODE_STUDIO_ACTIONS.gotoImplementation, 'Go to Implementation', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyB], (target) => showLocations(target, 'implementation', `Implementations of ${wordAt(target)}`))
   semantic(CODE_STUDIO_ACTIONS.findUsages, 'Find Usages', [KeyMod.Alt | KeyCode.F7, KeyMod.Shift | KeyCode.F12], (target) => showLocations(target, 'references', `Usages of ${wordAt(target)}`))
   semantic(CODE_STUDIO_ACTIONS.rename, 'Rename Symbol…', [KeyCode.F2, KeyMod.Shift | KeyCode.F6], requestRename)
-  editor.addAction({ id: CODE_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
+  editor.addAction({ id: CODE_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO, KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('code-studio', 'editor.action.formatDocument', null) } })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { target.trigger('code-studio', 'editor.action.quickFix', null) } })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.quickDocumentation, label: 'Quick Documentation', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyQ], run: (target) => { target.trigger('code-studio', 'editor.action.showHover', { focus: true }) } })

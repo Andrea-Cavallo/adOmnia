@@ -286,7 +286,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
           glyphMarginHoverMessage: { value: isToolTarget(target)
             ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : target.kind === 'compose' && !target.name ? 'Up, Down' : 'Run'} or save as configuration`
             : isJavaTarget(target)
-              ? `▶ ${target.kind === 'java-main' ? `Run ${target.className}` : `Run ${target.name}`}${target.kind === 'java-main' ? ' · Run or Debug' : ''}`
+              ? `▶ ${target.kind === 'java-main' ? `Run ${target.className}` : `Run ${target.name}`}${' · Run or Debug'}`
               : `▶ ${runCommandFor(target).label} · Run, Debug or Coverage` },
         },
       })))

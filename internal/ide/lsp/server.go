@@ -18,6 +18,18 @@ type ServerSpec struct {
 	Configuration         func() any
 	// WatchesFile filtra i file cambiati su disco da notificare al server (nil: nessuno).
 	WatchesFile func(path string) bool
+	// VirtualDocuments descrive i documenti che il server indirizza con URI non-file (es. jdt:// per le
+	// classi di libreria Java): nil se il server restituisce solo file.
+	VirtualDocuments *VirtualDocuments
+}
+
+// VirtualDocuments dice come leggere un documento con URI non-file: l'host lo salva in un file di sola
+// lettura (così si apre come ogni file esterno) e lo sincronizza al server con l'URI originale.
+type VirtualDocuments struct {
+	// Method è la richiesta personalizzata che, dato {"uri": ...}, risponde col testo (es. java/classFileContents).
+	Method string
+	// RelativePath è il percorso del file salvato, relativo alla cartella dei documenti virtuali.
+	RelativePath func(uri string) string
 }
 
 // DisplayName è il nome da mostrare nei messaggi, anche se lo spec non lo indica.

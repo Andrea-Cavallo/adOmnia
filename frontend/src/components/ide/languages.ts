@@ -26,6 +26,8 @@ export interface IdeLanguageContribution {
    * linguaggi che non le hanno ancora verificate con il proprio server; default vero.
    */
   heavyFeatures?: boolean
+  /** Colori semantici (semantic tokens del language server) anche con `heavyFeatures: false`: sono generici, non tarati su gopls. */
+  semanticTokens?: boolean
   /**
    * Il backend gestisce il suo language server (`lsp.ServerProvider`): lo cerca, lo installa dopo
    * conferma e lo avvia all'apertura di un file. Falso per Go, che ha il proprio ciclo di vita.
@@ -56,6 +58,11 @@ export function languageServerEditorLanguages(): string[] {
 /** ID Monaco su cui registrare le funzioni pesanti (colori semantici, inlay hints, Code Vision). */
 export function heavyFeatureEditorLanguages(): string[] {
   return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false).flatMap((language) => language.editorLanguages)
+}
+
+/** ID Monaco su cui registrare i colori semantici: le funzioni pesanti più i linguaggi che li chiedono da soli. */
+export function semanticTokenEditorLanguages(): string[] {
+  return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false || language.semanticTokens).flatMap((language) => language.editorLanguages)
 }
 
 /** Linguaggio dell'IDE che serve i file con questo ID Monaco (per icona, LSP, widget). */

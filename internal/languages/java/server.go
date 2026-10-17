@@ -4,7 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -123,9 +125,15 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 			"-jar", launcherJar(home), "-configuration", configDirectory(home), "-data", data,
 		},
 		// Il Java Debug Server entra in JDT LS come bundle: così "vscode.java.startDebugSession" esiste.
-		InitializationOptions: map[string]any{"bundles": []string{debugBundle(home)}},
-		Configuration:         func() any { return map[string]any{} },
-		WatchesFile:           watchesFile,
+		// classFileContentsSupport: senza, JDT LS non risponde con le classi di libreria (Ctrl+click su Map, String…);
+		// l'host le legge con java/classFileContents (VirtualDocuments).
+		InitializationOptions: map[string]any{
+			"bundles":                    []string{debugBundle(home)},
+			"extendedClientCapabilities": map[string]any{"classFileContentsSupport": true},
+		},
+		Configuration:    func() any { return map[string]any{} },
+		WatchesFile:      watchesFile,
+		VirtualDocuments: &lsp.VirtualDocuments{Method: "java/classFileContents", RelativePath: classFilePath},
 	}, nil
 }
 
@@ -190,4 +198,20 @@ func removeCommand(file string) string {
 		return "del " + file
 	}
 	return "rm " + file
+}
+
+// classFilePath mappa `jdt://contents/java.base/java.util/Map.class?...` (o `Map.java` con i sorgenti allegati) su `java.base/java/util/Map.java`:
+// il file salvato ha l'estensione dei sorgenti, così l'editor lo riconosce come Java.
+func classFilePath(uri string) string {
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) < 3 {
+		return ""
+	}
+	last := parts[len(parts)-1]
+	class := strings.TrimSuffix(last, path.Ext(last))
+	return strings.Join([]string{parts[0], strings.ReplaceAll(parts[len(parts)-2], ".", "/"), class + ".java"}, "/")
 }

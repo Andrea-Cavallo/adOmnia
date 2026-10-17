@@ -17,7 +17,7 @@ function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
   if (isJavaTarget(target)) {
     const label = target.kind === 'java-main' ? target.className.slice(target.className.lastIndexOf('.') + 1) : target.name
     const items: ContextMenuItem[] = [{ id: 'run', label: `Run '${label}'`, icon: Play, iconClassName: 'text-success' }]
-    if (target.kind === 'java-main') items.push({ id: 'debug', label: `Debug '${label}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' })
+    items.push({ id: 'debug', label: `Debug '${label}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' })
     return items
   }
   if (target.kind === 'make') {

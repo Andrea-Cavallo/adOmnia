@@ -141,7 +141,7 @@ import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceF
 import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/codeStudioLayout'
 import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
 import type { GoIDEDebugRequest, GoIDEJavaDebugRequest } from '@/lib/code-studio-debug-api'
-import { javaMainClassOf } from '@/lib/code-studio/javaDebug'
+import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useCodeStudioStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/codeStudio'
@@ -803,6 +803,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (isJavaTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
+      if (target.kind === 'java-test' && action === 'debug') return void useCodeStudioDebugStore.getState().startJava({ sessionId: activeSession.id, testFile: target.relativePath, testMethod: target.name, workingDirectory: '' })
       if (target.kind === 'java-test') return void useCodeStudioTestsStore.getState().start(javaTestRequest(activeSession.id, activeSession.project, target))
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startJava({ sessionId: activeSession.id, mainClass: target.className, workingDirectory: '' })
       useCodeStudioLspStore.getState().showToolWindow('run')
@@ -832,12 +833,10 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return { sessionId: activeSession.id, mode: 'debug', target: request.target, workingDirectory: request.workingDirectory, programArguments: request.programArguments, buildTags: request.buildTags, environment, envFile: debugConfig?.envFile ?? '', buildFlags: debugConfig?.debugFlags ?? [] }
   }
 
-  // Debug di una configurazione Java: la classe è quella di `-Dexec.mainClass=` (proposta Main Class).
+  // Debug di una configurazione Java: classe main, JVM remota oppure test/Spring Boot con la porta JDWP aperta.
   const configuredJavaDebugRequest = (): GoIDEJavaDebugRequest | null => {
-    if (!activeSession || activeConfig?.language !== 'java') return null
-    const mainClass = javaMainClassOf(activeConfig.programArguments ?? [])
-    if (!mainClass) return null
-    return { sessionId: activeSession.id, mainClass, workingDirectory: activeConfig.workingDirectory ?? '' }
+    const target = activeSession && activeConfig ? javaDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
   const openLanguageServerMenu = () => {

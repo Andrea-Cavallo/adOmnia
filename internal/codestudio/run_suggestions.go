@@ -1,6 +1,7 @@
 package codestudio
 
 import (
+	"encoding/json"
 	"context"
 	"path/filepath"
 	"slices"
@@ -50,7 +51,8 @@ func finalizeSuggestions(projectRoot string, suggestions []run.Suggestion, saved
 		for _, config := range saved {
 			if config.Kind == RunConfigurationKind(suggestion.Configuration.Kind) && config.Target == suggestion.Configuration.Target &&
 				filepath.ToSlash(filepath.Clean(config.WorkingDirectory)) == filepath.ToSlash(filepath.Clean(suggestion.Configuration.WorkingDirectory)) &&
-				slices.Equal(config.ProgramArguments, suggestion.Configuration.ProgramArguments) {
+				slices.Equal(config.ProgramArguments, suggestion.Configuration.ProgramArguments) &&
+				mainClassOf(config.LanguageOptions) == mainClassOf(suggestion.Configuration.LanguageOptions) {
 				suggestion.Saved = true
 				break
 			}
@@ -58,4 +60,14 @@ func finalizeSuggestions(projectRoot string, suggestions []run.Suggestion, saved
 		result = append(result, suggestion)
 	}
 	return result
+}
+
+// mainClassOf legge `mainClass` dalle LanguageOptions: due configurazioni "main" sono la stessa proposta solo
+// se eseguono la stessa classe (vuoto per ogni altro kind).
+func mainClassOf(options json.RawMessage) string {
+	var parsed struct {
+		MainClass string `json:"mainClass"`
+	}
+	_ = json.Unmarshal(options, &parsed)
+	return parsed.MainClass
 }

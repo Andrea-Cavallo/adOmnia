@@ -40,6 +40,9 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 		}
 		return
 	}
+	if original, ok := state.virtualURIs[document.Path]; ok {
+		document.URI = original
+	}
 	tracked := &trackedDocument{id: document.ID, uri: document.URI, path: document.Path, languageID: languageID, version: 1, text: text, readOnly: readOnly}
 	state.documents[document.ID] = tracked
 	state.byURI[document.URI] = document.ID

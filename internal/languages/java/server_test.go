@@ -116,3 +116,15 @@ func TestServerSpecLoadsTheDebugBundleIntoJdtls(t *testing.T) {
 		t.Errorf("Lombok must load as a javaagent: %v", spec.Arguments)
 	}
 }
+
+func TestClassFilePathKeepsModuleAndPackage(t *testing.T) {
+	for uri, want := range map[string]string{
+		"jdt://contents/java.base/java.util/Map.class?=app/%5C/usr/jdk%5C/lib%5C/jrt-fs.jar": "java.base/java/util/Map.java",
+		"jdt://contents/java.base/java.lang.reflect/Field.java?=app/x":                       "java.base/java/lang/reflect/Field.java",
+		"jdt://contents/x": "",
+	} {
+		if got := classFilePath(uri); got != want {
+			t.Errorf("classFilePath(%q) = %q, want %q", uri, got, want)
+		}
+	}
+}

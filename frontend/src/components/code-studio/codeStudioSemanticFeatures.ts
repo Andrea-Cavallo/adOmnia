@@ -1,4 +1,4 @@
-import { heavyFeatureEditorLanguages } from '@/components/ide/languages'
+import { heavyFeatureEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
@@ -80,7 +80,7 @@ function scheduleSemanticRetry(documentId: string): void {
 }
 
 function registerSemanticTokens(): void {
-  monaco.languages.registerDocumentSemanticTokensProvider(LANGUAGE, {
+  monaco.languages.registerDocumentSemanticTokensProvider(semanticTokenEditorLanguages(), {
     onDidChange: semanticChanged.event,
     getLegend: () => ({ tokenTypes: [...CLIENT_TOKEN_TYPES], tokenModifiers: [...CLIENT_TOKEN_MODIFIERS] }),
     async provideDocumentSemanticTokens(model, _lastResultId, token) {
@@ -93,7 +93,9 @@ function registerSemanticTokens(): void {
         throw cancelled()
       })
       if (!isCurrent(prepared.documentId, result.version)) throw cancelled()
-      semanticFailures.delete(prepared.documentId)
+      // Un server che sta ancora importando il progetto (JDT LS) risponde senza token: si riprova invece di lasciare il file bianco.
+      if (result.data.length === 0 && model.getLineCount() > 3) scheduleSemanticRetry(prepared.documentId)
+      else semanticFailures.delete(prepared.documentId)
       return { data: remapSemanticTokens(result.data, features.tokenTypes, features.tokenModifiers) }
     },
     releaseDocumentSemanticTokens: () => undefined,

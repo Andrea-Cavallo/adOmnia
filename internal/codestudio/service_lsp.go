@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"adomnia/internal/languages/golang"
 )
@@ -93,11 +95,14 @@ func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, er
 	if err != nil {
 		return OpenDocument{}, err
 	}
-	info, ok := s.toolchain.LastDetected(session.ID)
-	if !ok {
+	// Le sorgenti delle librerie Java (jdt://) sono salvate sotto virtualDocumentsRoot; quelle Go stanno in GOROOT/GOMODCACHE.
+	roots := append([]string{virtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
+	info, detected := s.toolchain.LastDetected(session.ID)
+	if detected {
+		roots = append(roots, info.GOROOT, info.GOMODCACHE)
+	} else if !strings.HasPrefix(filepath.Clean(path), virtualDocumentsRoot()) {
 		return OpenDocument{}, fmt.Errorf("detect the Go SDK to browse its sources")
 	}
-	roots := append([]string{info.GOROOT, info.GOMODCACHE}, localDependencyRoots(session.Project)...)
 	document, err := s.documents.OpenExternalDocument(session, path, roots)
 	if err != nil {
 		return OpenDocument{}, err

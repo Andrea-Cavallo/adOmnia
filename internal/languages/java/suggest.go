@@ -2,6 +2,7 @@ package java
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -42,12 +43,25 @@ func resolveBuildTool(unit project.Unit) (buildTool, bool) {
 	return buildTool{}, false
 }
 
+// resolve è il percorso dell'eseguibile: il wrapper dentro l'unità o lo strumento trovato nel PATH.
+func (t buildTool) resolve(unit project.Unit) string {
+	if strings.HasPrefix(t.Target, "./") {
+		return filepath.Join(unit.Root, filepath.FromSlash(strings.TrimPrefix(t.Target, "./")))
+	}
+	if found, err := lookPath(t.Target); err == nil {
+		return found
+	}
+	return t.Target
+}
+
 // suggestEntry è una proposta prima di diventare una Configuration.
 type suggestEntry struct {
 	action, name string
 	arguments    []string
 	// id distingue più proposte della stessa azione (una per classe main).
 	id string
+	// main è la classe da eseguire: la proposta diventa una configurazione di kind "main" nel suo modulo.
+	main *mainClass
 }
 
 // Suggest propone test e build dell'unità e, per Spring Boot, il run dell'applicazione. Senza wrapper né
@@ -66,7 +80,7 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 		if readPom(unit.Manifest).usesSpringBoot() {
 			entries = append([]suggestEntry{{action: "run", name: "Spring Boot", arguments: []string{"spring-boot:run"}}}, entries...)
 		}
-		entries = append(entries, mavenMainEntries(unit)...)
+		entries = append(entries, mainEntries(unit)...)
 	} else {
 		entries = []suggestEntry{{action: "test", name: "test", arguments: []string{"test"}}, {action: "build", name: "build", arguments: []string{"build"}}}
 		if gradleUsesSpringBoot(unit.Manifest) {
@@ -74,6 +88,7 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 		} else if gradleUsesApplication(unit.Manifest) {
 			entries = append([]suggestEntry{{action: "run", name: "application", arguments: []string{"run"}}}, entries...)
 		}
+		entries = append(entries, mainEntries(unit)...)
 	}
 	label := "Maven"
 	if unit.Kind == UnitGradle {
@@ -81,6 +96,10 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 	}
 	suggestions := make([]run.Suggestion, 0, len(entries))
 	for _, item := range entries {
+		if item.main != nil {
+			suggestions = append(suggestions, mainSuggestion(unit, item))
+			continue
+		}
 		suggestions = append(suggestions, run.Suggestion{
 			ID: ID + "|" + unit.Root + "|" + item.action + item.id, Language: ID, Action: item.action, UnitRoot: unit.Root,
 			Title: label + " · " + tool.Label + " " + strings.Join(item.arguments, " "),
@@ -93,25 +112,40 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 	return suggestions
 }
 
-// mavenMainEntries propone una configurazione per ogni classe con `main` trovata nei moduli: le app Spring
-// Boot dei moduli con `spring-boot:run`, le altre con exec:java (compila e poi esegue col classpath del modulo).
-// Il modulo si seleziona con `-f`: la working directory resta quella dell'unità.
-func mavenMainEntries(unit project.Unit) []suggestEntry {
+// mainEntries propone una configurazione "main" per ogni classe con `main` trovata nei moduli. Le app Spring
+// Boot dei moduli Maven restano `spring-boot:run` (con `-f` per il modulo): la working directory è quella dell'unità.
+func mainEntries(unit project.Unit) []suggestEntry {
 	var entries []suggestEntry
-	for _, main := range findMainClasses(unit.Root) {
-		module := moduleFlag(unit.Root, main.Module)
-		simple := main.Class[strings.LastIndex(main.Class, ".")+1:]
+	for _, found := range findMainClasses(unit.Root) {
+		found := found
+		simple := found.Class[strings.LastIndex(found.Class, ".")+1:]
+		module := moduleFlag(unit.Root, found.Module)
 		switch {
-		case main.Spring && module == nil:
+		case found.Spring && unit.Kind == UnitGradle:
+			// bootRun è già proposto per l'unità.
+		case found.Spring && module == nil:
 			// L'app Spring Boot dell'unità radice è già proposta come "Spring Boot".
-		case main.Spring:
-			entries = append(entries, suggestEntry{action: "run", name: "Spring Boot " + simple, id: ":" + main.Class, arguments: append(module, "spring-boot:run")})
+		case found.Spring:
+			entries = append(entries, suggestEntry{action: "run", name: "Spring Boot " + simple, id: ":" + found.Class, arguments: append(module, "spring-boot:run")})
 		default:
-			arguments := append(append([]string{}, module...), "-B", "compile", execPlugin+":java", "-Dexec.mainClass="+main.Class)
-			entries = append(entries, suggestEntry{action: "run", name: "main " + simple, id: ":" + main.Class, arguments: arguments})
+			entries = append(entries, suggestEntry{action: "run", name: "main " + simple, id: ":" + found.Class, main: &found})
 		}
 	}
 	return entries
+}
+
+// mainSuggestion è la proposta di una classe main: kind "main", classe nelle LanguageOptions, working
+// directory = modulo che la contiene (UnitRoot, da cui l'host ricava il percorso relativo).
+func mainSuggestion(unit project.Unit, item suggestEntry) run.Suggestion {
+	simple := item.main.Class[strings.LastIndex(item.main.Class, ".")+1:]
+	options, _ := json.Marshal(MainOptions{MainClass: item.main.Class})
+	return run.Suggestion{
+		ID: ID + "|" + unit.Root + "|" + item.action + item.id, Language: ID, Action: item.action, UnitRoot: item.main.Module,
+		Title: "Java · main " + simple,
+		Configuration: run.Configuration{
+			Language: ID, Name: "Main " + simple, Kind: KindMain, LanguageOptions: options,
+		},
+	}
 }
 
 // execPlugin è exec-maven-plugin con coordinate complete: funziona senza dichiararlo nel pom.

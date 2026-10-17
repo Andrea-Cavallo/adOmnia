@@ -3586,7 +3586,8 @@ export const InstalledToolchain = golang$0.InstalledToolchain;
 export type InstalledToolchain = golang$0.InstalledToolchain;
 
 /**
- * JavaDebugRequest chiede il debug di una classe con `main`.
+ * JavaDebugRequest chiede il debug di una classe con `main` (MainClass), di un build Maven/Gradle con la JVM
+ * in attesa del debugger (BuildArguments o TestFile) o di una JVM già in ascolto (AttachPort).
  */
 export class JavaDebugRequest {
     "sessionId": SessionID;
@@ -3594,7 +3595,25 @@ export class JavaDebugRequest {
     /**
      * MainClass è il nome qualificato, es. it.acme.App.
      */
-    "mainClass": string;
+    "mainClass"?: string;
+
+    /**
+     * AttachHost e AttachPort collegano il debugger a una JVM avviata con -agentlib:jdwp=...,server=y.
+     */
+    "attachHost"?: string;
+    "attachPort"?: number;
+
+    /**
+     * BuildArguments sono gli argomenti Maven/Gradle di una configurazione (test, spring-boot:run, bootRun):
+     * l'host li esegue nella console Run con la porta JDWP aperta e vi si collega. WorkingDirectory è il modulo.
+     */
+    "buildArguments"?: string[];
+
+    /**
+     * TestFile (relativo al progetto) e TestMethod ("" = tutta la classe) debuggano un test JUnit.
+     */
+    "testFile"?: string;
+    "testMethod"?: string;
 
     /**
      * WorkingDirectory è la cartella del programma, relativa al progetto ("" = radice).
@@ -3609,9 +3628,6 @@ export class JavaDebugRequest {
         if (!("sessionId" in $$source)) {
             this["sessionId"] = "";
         }
-        if (!("mainClass" in $$source)) {
-            this["mainClass"] = "";
-        }
 
         Object.assign(this, $$source);
     }
@@ -3620,18 +3636,22 @@ export class JavaDebugRequest {
      * Creates a new JavaDebugRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): JavaDebugRequest {
-        const $$createField3_0 = $$createType4;
         const $$createField4_0 = $$createType4;
-        const $$createField5_0 = $$createType88;
+        const $$createField8_0 = $$createType4;
+        const $$createField9_0 = $$createType4;
+        const $$createField10_0 = $$createType88;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("buildArguments" in $$parsedSource) {
+            $$parsedSource["buildArguments"] = $$createField4_0($$parsedSource["buildArguments"]);
+        }
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField3_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField8_0($$parsedSource["programArguments"]);
         }
         if ("vmArguments" in $$parsedSource) {
-            $$parsedSource["vmArguments"] = $$createField4_0($$parsedSource["vmArguments"]);
+            $$parsedSource["vmArguments"] = $$createField9_0($$parsedSource["vmArguments"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField10_0($$parsedSource["environment"]);
         }
         return new JavaDebugRequest($$parsedSource as Partial<JavaDebugRequest>);
     }

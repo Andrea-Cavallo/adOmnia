@@ -206,6 +206,9 @@ func (m *LSPManager) editorLocations(state *lspSession, locations []lsp.Location
 	result := make([]EditorLocation, 0, len(locations))
 	for _, location := range locations {
 		path := pathFromURI(location.URI)
+		if path == "" {
+			path = m.virtualDocumentPath(state, location.URI)
+		}
 		text, ok := texts[location.URI]
 		if !ok {
 			text = m.documentText(state, location.URI, path)
