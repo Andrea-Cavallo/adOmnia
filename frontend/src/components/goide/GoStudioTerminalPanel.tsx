@@ -62,7 +62,7 @@ interface DetectedTest {
   test: NonNullable<GoStudioDetectedGoCommand['test']>
 }
 
-const toolButton = 'grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35'
+const toolButton = 'grid h-7 w-7 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35'
 
 /**
  * Pannello dei terminali PTY della sessione. Ogni terminale ha nome, stato e
@@ -298,10 +298,10 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   if (!authorized) {
     return (
       <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col items-start gap-2 p-4">
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-3">
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-text-3">
           <TerminalSquare size={11} /> Terminal
         </div>
-        <p className="text-[11px] leading-4 text-text-4">
+        <p className="text-[12px] leading-4 text-text-4">
           Authorize tooling for this project to open a real shell. Opening a project never starts a process on its own.
         </p>
       </section>
@@ -316,55 +316,60 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
 
   return (
     <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-0.5 border-b border-border-1 px-1">
-        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
-          {terminals.map((terminal) => {
-            const shown = terminal.id === activeId || (splitVisible && terminal.id === splitId)
-            return (
-              <div
-                key={terminal.id}
-                className={`group flex h-6 shrink-0 items-center gap-1 rounded px-2 text-[10px] ${
-                  terminal.id === targetId ? 'bg-surface-3 text-text-1' : shown ? 'bg-surface-2 text-text-2' : 'text-text-3 hover:bg-surface-2'
-                }`}
-              >
-                {renamingId === terminal.id ? (
-                  <input
-                    autoFocus
-                    defaultValue={terminal.name}
-                    maxLength={64}
-                    aria-label="Terminal name"
-                    onBlur={(event) => void rename(terminal.id, event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') void rename(terminal.id, event.currentTarget.value)
-                      if (event.key === 'Escape') setRenamingId(null)
-                    }}
-                    className="h-5 w-28 rounded border border-accent/60 bg-surface-1 px-1 text-[10px] text-text-1 outline-none"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => selectTab(terminal.id)}
-                    onDoubleClick={() => setRenamingId(terminal.id)}
-                    title="Double-click to rename"
-                    className="max-w-32 truncate"
-                  >
-                    {terminal.name}
-                    {terminal.status !== 'running' && <span className="ml-1 text-text-4">({terminal.status})</span>}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void close(terminal.id)}
-                  title="Close terminal"
-                  className="grid h-4 w-4 place-items-center rounded text-text-4 opacity-0 hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-        {/* + e scelta della shell subito dopo le schede, come in VS Code e GoLand: visibili anche con il pannello stretto. */}
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-1 px-2">
+        <TerminalSquare size={14} className="shrink-0 text-text-3" aria-hidden="true" />
+        {(() => {
+          const current = terminals.find((terminal) => terminal.id === targetId) ?? terminals[0]
+          if (!current) return <span className="text-[12px] text-text-4">No terminal</span>
+          return renamingId === current.id ? (
+            <input
+              autoFocus
+              defaultValue={current.name}
+              maxLength={64}
+              aria-label="Terminal name"
+              onBlur={(event) => void rename(current.id, event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void rename(current.id, event.currentTarget.value)
+                if (event.key === 'Escape') setRenamingId(null)
+              }}
+              className="h-6 w-40 rounded border border-accent/60 bg-surface-1 px-1.5 text-[12px] text-text-1 outline-none"
+            />
+          ) : (
+            <button type="button" onDoubleClick={() => setRenamingId(current.id)} title="Double-click to rename" className="max-w-56 truncate text-[12.5px] font-medium text-text-1">
+              {current.name}
+              {current.status !== 'running' && <span className="ml-1.5 font-normal text-text-4">({current.status})</span>}
+            </button>
+          )
+        })()}
+        <div className="min-w-2 flex-1" />
+        <button type="button" onClick={openSearch} disabled={!targetId} title="Find in terminal (Ctrl+F)" className={toolButton}>
+          <Search size={14} />
+        </button>
+        <button type="button" onClick={() => void copyOutput()} disabled={!targetId} title="Copy output as plain text" className={toolButton}>
+          <Copy size={14} />
+        </button>
+        <button type="button" onClick={() => terminalHandle(targetId)?.clear()} disabled={!targetId} title="Clear scrollback" className={toolButton}>
+          <Trash2 size={14} />
+        </button>
+        <button
+          type="button"
+          disabled={!targetId}
+          aria-haspopup="menu"
+          aria-expanded={!!historyMenu}
+          title="Command history of this project"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            setHistoryMenu(historyMenu ? null : { x: rect.right - 320, y: rect.bottom + 4 })
+          }}
+          className={toolButton}
+        >
+          <History size={14} />
+        </button>
+        <button type="button" onClick={toggleSplit} disabled={busy || !activeId} aria-pressed={splitVisible} title={splitVisible ? 'Unsplit terminals' : 'Split terminal'} className={`${toolButton} ${splitVisible ? 'bg-surface-3 text-text-1' : ''}`}>
+          <Columns2 size={14} />
+        </button>
+        <span className="mx-1 h-4 w-px shrink-0 bg-border-1" aria-hidden="true" />
+        {/* + e scelta della shell a destra, come in VS Code. */}
         <button
           type="button"
           onClick={() => void open()}
@@ -372,7 +377,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
           title={`New terminal (${profiles.find((profile) => profile.id === defaultProfile)?.name ?? profiles[0]?.name ?? 'default shell'})`}
           className={toolButton}
         >
-          <Plus size={12} />
+          <Plus size={14} />
         </button>
         <button
           type="button"
@@ -387,34 +392,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
           }}
           className="grid h-6 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1 disabled:opacity-35"
         >
-          <ChevronDown size={12} />
-        </button>
-        <div className="min-w-2 flex-1" />
-        <button type="button" onClick={openSearch} disabled={!targetId} title="Find in terminal (Ctrl+F)" className={toolButton}>
-          <Search size={12} />
-        </button>
-        <button type="button" onClick={() => void copyOutput()} disabled={!targetId} title="Copy output as plain text" className={toolButton}>
-          <Copy size={12} />
-        </button>
-        <button type="button" onClick={() => terminalHandle(targetId)?.clear()} disabled={!targetId} title="Clear scrollback" className={toolButton}>
-          <Trash2 size={12} />
-        </button>
-        <button
-          type="button"
-          disabled={!targetId}
-          aria-haspopup="menu"
-          aria-expanded={!!historyMenu}
-          title="Command history of this project"
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect()
-            setHistoryMenu(historyMenu ? null : { x: rect.right - 320, y: rect.bottom + 4 })
-          }}
-          className={toolButton}
-        >
-          <History size={12} />
-        </button>
-        <button type="button" onClick={toggleSplit} disabled={busy || !activeId} aria-pressed={splitVisible} title={splitVisible ? 'Unsplit terminals' : 'Split terminal'} className={`${toolButton} ${splitVisible ? 'bg-surface-3 text-text-1' : ''}`}>
-          <Columns2 size={12} />
+          <ChevronDown size={14} />
         </button>
         {profileMenu && (
           <ContextMenu
@@ -478,16 +456,16 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
               if (event.key === 'Enter') { event.preventDefault(); find(event.shiftKey) }
               if (event.key === 'Escape') { setSearchOpen(false); terminalHandle(targetId)?.search.clearDecorations(); terminalHandle(targetId)?.focus() }
             }}
-            className="h-5 min-w-0 flex-1 bg-transparent text-[11px] text-text-1 outline-none placeholder:text-text-4"
+            className="h-5 min-w-0 flex-1 bg-transparent text-[12px] text-text-1 outline-none placeholder:text-text-4"
           />
-          <button type="button" onClick={() => find(true)} title="Previous match (Shift+Enter)" className={toolButton}><ChevronUp size={12} /></button>
-          <button type="button" onClick={() => find()} title="Next match (Enter)" className={toolButton}><ChevronDown size={12} /></button>
+          <button type="button" onClick={() => find(true)} title="Previous match (Shift+Enter)" className={toolButton}><ChevronUp size={14} /></button>
+          <button type="button" onClick={() => find()} title="Next match (Enter)" className={toolButton}><ChevronDown size={14} /></button>
           <button type="button" onClick={() => { setSearchOpen(false); terminalHandle(targetId)?.focus() }} title="Close (Esc)" className={toolButton}><X size={12} /></button>
         </div>
       )}
 
       {detected && (
-        <div className="flex h-7 shrink-0 items-center gap-2 border-b border-accent/30 bg-accent/10 px-3 text-[10px] text-text-2">
+        <div className="flex h-7 shrink-0 items-center gap-2 border-b border-accent/30 bg-accent/10 px-3 text-[12px] text-text-2">
           <FlaskConical size={11} className="text-accent" />
           <span className="min-w-0 flex-1 truncate">
             Detected <code className="font-mono text-text-1">{detected.command}</code>: run it in the Test Explorer for a test tree, reruns and coverage.
@@ -498,20 +476,21 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
       )}
 
       {error && (
-        <p role="alert" className="shrink-0 border-b border-danger/30 bg-danger/10 px-3 py-1.5 text-[10px] text-danger">
+        <p role="alert" className="shrink-0 border-b border-danger/30 bg-danger/10 px-3 py-1.5 text-[12px] text-danger">
           {error}
         </p>
       )}
-      {notice && <p role="status" className="shrink-0 border-b border-border-1 px-3 py-1 text-[10px] text-text-3">{notice}</p>}
+      {notice && <p role="status" className="shrink-0 border-b border-border-1 px-3 py-1 text-[12px] text-text-3">{notice}</p>}
 
-      <div className="relative min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1">
+      <div className="relative min-h-0 min-w-0 flex-1">
         {terminals.length === 0 && (
-          <p className="p-3 text-[10px] text-text-4">No terminal open. Use + to start a shell in the project directory.</p>
+          <p className="p-3 text-[12px] text-text-4">No terminal open. Use + to start a shell in the project directory.</p>
         )}
         {terminals.map((terminal) => (
           <div
             key={terminal.id}
-            className={`absolute inset-y-0 p-1 ${splitVisible && terminal.id === splitId ? 'border-l border-border-1' : ''}`}
+            className={`absolute inset-y-0 px-3 py-1.5 ${splitVisible && terminal.id === splitId ? 'border-l border-border-1' : ''}`}
             style={paneStyle(terminal.id)}
             onMouseDown={() => setFocusedId(terminal.id)}
           >
@@ -526,6 +505,31 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
             />
           </div>
         ))}
+      </div>
+      {terminals.length > 1 && (
+        <nav aria-label="Terminals" className="flex w-44 shrink-0 flex-col gap-px overflow-y-auto border-l border-border-1 py-1">
+          {terminals.map((terminal) => {
+            const shown = terminal.id === activeId || (splitVisible && terminal.id === splitId)
+            const current = terminal.id === targetId
+            return (
+              <div
+                key={terminal.id}
+                className={`group relative flex h-7 shrink-0 items-center gap-2 pl-3 pr-1.5 text-[12px] ${current ? 'bg-surface-3 text-text-1' : shown ? 'bg-surface-2 text-text-2' : 'text-text-3 hover:bg-surface-2'}`}
+              >
+                {current && <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-accent" aria-hidden="true" />}
+                <TerminalSquare size={13} className={`shrink-0 ${terminal.status === 'running' ? 'text-success' : 'text-text-4'}`} aria-hidden="true" />
+                <button type="button" onClick={() => selectTab(terminal.id)} onDoubleClick={() => setRenamingId(terminal.id)} title={`${terminal.name} · double-click to rename`} className="min-w-0 flex-1 truncate text-left">
+                  {terminal.name}
+                  {terminal.status !== 'running' && <span className="ml-1 text-text-4">({terminal.status})</span>}
+                </button>
+                <button type="button" onClick={() => void close(terminal.id)} title="Kill terminal" aria-label={`Close ${terminal.name}`} className="grid h-5 w-5 place-items-center rounded text-text-4 opacity-0 hover:bg-danger/15 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100">
+                  <X size={12} />
+                </button>
+              </div>
+            )
+          })}
+        </nav>
+      )}
       </div>
     </section>
   )
