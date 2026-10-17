@@ -140,7 +140,7 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 
 Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for surrounding tools and workspaces.
 
-[Read the Go Studio guide →](docs/GO-STUDIO.md)
+[Read the Go Studio guide →](docs/GO-STUDIO.md) · [Technical reference: the IDE platform →](docs/GO-STUDIO-REFERENCE.md)
 
 ## Download and install
 
@@ -167,6 +167,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Getting started](docs/GETTING-STARTED.md) · [Italian guide](docs/QUICKSTART.it.md) | Send requests, connect a Go project and debug a handler |
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
 | [Go Studio](docs/GO-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
+| [Go Studio technical reference](docs/GO-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) · [FAQ](docs/FAQ.md) | Resolve setup and workflow problems |
