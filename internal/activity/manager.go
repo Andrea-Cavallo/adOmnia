@@ -4,6 +4,7 @@ package activity
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -126,14 +127,7 @@ func (m *Manager) notify() {
 func (m *Manager) baseStateLocked(scope string) State {
 	state := Background
 	for _, window := range m.windows {
-		matches := scope == ""
-		for _, visible := range window.scopes {
-			if visible == scope {
-				matches = true
-				break
-			}
-		}
-		if !matches {
+		if scope != "" && !slices.Contains(window.scopes, scope) {
 			continue
 		}
 		if window.state == Active {
