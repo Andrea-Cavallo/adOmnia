@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   stopWebLanguageServer: vi.fn(),
   installWebTools: vi.fn(),
   confirm: vi.fn(),
+  beginToolInstall: vi.fn(),
+  endToolInstall: vi.fn(),
   state: { sessions: [{ id: 's1', project: { authorization: 'tooling-permitted' } }], documents: [] as unknown[] },
 }))
 
@@ -18,6 +20,7 @@ vi.mock('@/lib/livepreview-api', () => ({
 vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
 vi.mock('@/stores/codeStudioToast', () => ({ studioToast: vi.fn() }))
+vi.mock('@/stores/codeStudioToolInstall', () => ({ WEB_TOOLS_TASK: 'install-web-language-servers', beginToolInstall: mocks.beginToolInstall, endToolInstall: mocks.endToolInstall }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: Object.assign(() => undefined, { getState: () => mocks.state, subscribe: () => () => undefined }) }))
 
 import { isWebServerReady, useIdeWebServersStore, webLanguageForEditor, webServerEntry } from './ideWebServers'
@@ -98,6 +101,8 @@ describe('web language servers', () => {
     await useIdeWebServersStore.getState().confirmInstall('s1')
     expect(mocks.installWebTools).toHaveBeenCalledWith('s1')
     expect(useIdeWebServersStore.getState().installing.s1).toBe('run-9')
+    // L'installazione parte in background: console Run in primo piano e attività nella status bar.
+    expect(mocks.beginToolInstall).toHaveBeenCalledWith('s1', 'install-web-language-servers', expect.stringContaining('language servers'))
   })
 
   it('starts missing servers again once the install succeeds', async () => {
@@ -108,5 +113,12 @@ describe('web language servers', () => {
     useIdeWebServersStore.getState().handleEvent({ version: 1, type: 'run.finished', sessionId: 's1', sequence: 5, timestamp: '', payload: { id: 'run-9', status: 'exited', exitCode: 0 } })
     await vi.waitFor(() => expect(isWebServerReady('s1', 'html')).toBe(true))
     expect(useIdeWebServersStore.getState().installing.s1).toBeNull()
+    expect(mocks.endToolInstall).toHaveBeenCalledWith('s1', 'install-web-language-servers', true)
+  })
+
+  it('reports a failed install so the Run console comes back with the error', () => {
+    useIdeWebServersStore.setState({ installing: { s1: 'run-9' } })
+    useIdeWebServersStore.getState().handleEvent({ version: 1, type: 'run.finished', sessionId: 's1', sequence: 6, timestamp: '', payload: { id: 'run-9', status: 'failed', exitCode: 1 } })
+    expect(mocks.endToolInstall).toHaveBeenCalledWith('s1', 'install-web-language-servers', false)
   })
 })

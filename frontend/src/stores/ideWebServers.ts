@@ -7,6 +7,7 @@ import { WEB_LANGUAGE_IDS } from '@/components/ide/languages/web'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { confirm } from '@/lib/confirmDialog'
 import { studioToast } from '@/stores/codeStudioToast'
+import { WEB_TOOLS_TASK, beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall'
 
 export type WebServerState = 'stopped' | 'starting' | 'ready' | 'crashed' | 'missing'
 
@@ -113,6 +114,7 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
       try {
         const execution = await installWebTools(sessionId)
         set((state) => ({ installing: { ...state.installing, [sessionId]: execution.id } }))
+        beginToolInstall(sessionId, WEB_TOOLS_TASK, 'Installing TypeScript, HTML, CSS and JSON language servers…')
       } catch (error) {
         studioToast(errorMessage(error), 'info')
       }
@@ -142,7 +144,9 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
         const runId = get().installing[sessionId]
         if (!runId || execution?.id !== runId) return
         set((state) => ({ installing: { ...state.installing, [sessionId]: null } }))
-        if (execution.exitCode === 0 || execution.status === 'exited') {
+        const succeeded = execution.exitCode === 0 || execution.status === 'exited'
+        endToolInstall(sessionId, WEB_TOOLS_TASK, succeeded)
+        if (succeeded) {
           studioToast('Web language servers installed', 'success')
           // I server mancanti ora esistono: i file web aperti li avviano da soli.
           set((state) => ({ servers: { ...state.servers, [sessionId]: Object.fromEntries(Object.entries(state.servers[sessionId] ?? {}).map(([id, entry]) => [id, entry.state === 'missing' ? { ...entry, state: 'stopped' as const, error: undefined } : entry])) } }))
