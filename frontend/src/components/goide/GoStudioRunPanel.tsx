@@ -7,6 +7,7 @@ import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
 import { GoStudioTestsPanel } from './GoStudioTestsPanel'
 import { GoStudioDebugPanel } from './GoStudioDebugPanel'
 import { GoStudioTodoPanel } from './GoStudioTodoPanel'
+import { GoStudioLivePreview } from './GoStudioLivePreview'
 import { selectDebugState } from './goStudioDebugCommands'
 import { useGoIDEDebugStore } from '@/stores/goideDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/goide-api'
@@ -183,6 +184,7 @@ const TOOL_WINDOW_TITLES: Record<GoIDEToolWindow, string> = {
   config: 'Config & Environment',
   git: 'Git',
   go: 'Go',
+  preview: 'Live Preview',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -228,7 +230,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
     if (standalone || fixedView || !activeRunId || activeRunId === seenRunId.current) return
     seenRunId.current = activeRunId
     const started = executions.find((execution) => execution.id === activeRunId)
-    if (started?.status === 'running' && started.kind !== 'tests') showToolWindow('run')
+    if (started?.status === 'running' && started.kind !== 'tests' && started.kind !== 'devserver') showToolWindow('run')
   }, [activeRunId, executions, showToolWindow, standalone, fixedView])
   const chunks = active ? consoleByRun[active.id] ?? [] : []
   const lines = useMemo(() => parseLines(chunks), [chunks])
@@ -353,6 +355,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
       {view === 'tests' && <div className="min-h-0 flex-1"><GoStudioTestsPanel session={session} /></div>}
       {view === 'debug' && <div className="min-h-0 flex-1"><GoStudioDebugPanel session={session} /></div>}
       {view === 'todo' && <div className="min-h-0 flex-1"><GoStudioTodoPanel sessionId={sessionId} /></div>}
+      {view === 'preview' && <div className="min-h-0 flex-1"><GoStudioLivePreview session={session} embedded /></div>}
       {view === 'context' && <div className="min-h-0 flex-1"><GoStudioContextPanel sessionId={sessionId} /></div>}
       {view === 'profile' && <div className="min-h-0 flex-1"><GoStudioProfilePanel session={session} /></div>}
       {view === 'trace' && <div className="min-h-0 flex-1"><GoStudioTracePanel session={session} /></div>}

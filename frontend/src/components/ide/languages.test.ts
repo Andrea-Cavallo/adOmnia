@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { GO_STUDIO_COMMANDS, GO_STUDIO_MENUS, commandAvailability, type GoStudioCommandContext } from '@/components/goide/goStudioCommands'
-import { IDE_LANGUAGES, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 
 describe('IDE language contributions', () => {
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(GO_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
-    expect(languageServerEditorLanguages()).toEqual(['go'])
+    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
+    expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
     expect(isLanguageServerEditorLanguage('markdown')).toBe(false)
     expect(new Set(IDE_LANGUAGES.map((language) => language.id)).size).toBe(IDE_LANGUAGES.length)
+  })
+
+  it('keeps the gopls-tuned features (semantic colors, inlay hints, Code Vision) on Go only', () => {
+    expect(heavyFeatureEditorLanguages()).toEqual(['go'])
   })
 
   it('every Go menu command requires the Go language', () => {

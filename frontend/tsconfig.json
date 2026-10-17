@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "*": ["./*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "emmet": ["./node_modules/emmet/dist/index.d.ts"]
     }
   },
   "include": ["src"]

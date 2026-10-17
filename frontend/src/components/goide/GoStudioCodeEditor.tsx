@@ -1,3 +1,4 @@
+import { installInlineDiagnostics } from './goStudioInlineDiagnostics'
 import { attachEditorMode } from './goStudioEditorModes'
 import { registerGoStudioSettingsJson } from './goStudioSettingsJson'
 import { editorConfigWithProject } from '@/lib/goide/projectSettings'
@@ -28,6 +29,7 @@ import { useGoIDETestsStore, visibleCoverage } from '@/stores/goideTests'
 import { coverageForDocument, coverageLineStates } from './goStudioCoverage'
 import { useGoStudioProfileHeatDecorations } from './goStudioProfileHeat'
 import { startGoStudioLspSync } from './goStudioLspSync'
+import { useWebMonaco } from '@/components/ide/languages/web/useWebMonaco'
 import { findRunTargets, runCommandFor, type GoStudioRunTarget, type GoStudioRunTargetHandler } from './goStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './goStudioToolTargets'
 import { indentationFor, useEditorConfig } from './goStudioEditorConfig'
@@ -115,6 +117,7 @@ function MountedGoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   hibernationView: { current: { documentId: string; state: monaco.editor.ICodeEditorViewState | null } | null }
 }) {
   const theme = useGoStudioEditorTheme()
+  useWebMonaco(document.document.sessionId, document.document.language)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const coverageDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
@@ -129,6 +132,15 @@ function MountedGoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
   const semanticHighlighting = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'semanticHighlighting'))
   const inlayHints = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'inlayHints'))
   const stickyScrollPref = useGoIDELspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
+  const inlineDiagnostics = useGoIDELspStore(state => state.preferences.inlineDiagnostics)
+  const inlineWarnings = useGoIDELspStore(state => state.preferences.inlineDiagnosticWarnings)
+  const inlineInfo = useGoIDELspStore(state => state.preferences.inlineDiagnosticInfo)
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || !inlineDiagnostics) return
+    // Hints stay in the normal Monaco hover; inline severities are independently selectable.
+    return installInlineDiagnostics(editor, [monaco.MarkerSeverity.Error, ...(inlineWarnings ? [monaco.MarkerSeverity.Warning] : []), ...(inlineInfo ? [monaco.MarkerSeverity.Info] : [])])
+  }, [mountCount, inlineDiagnostics, inlineWarnings, inlineInfo])
   const fontLigaturesPref = useGoIDELspStore((state) => state.preferences.fontLigatures)
   const fontSizePref = useGoIDELspStore((state) => state.preferences.fontSize)
   const editorModePref = useGoIDELspStore((state) => state.preferences.editorMode)

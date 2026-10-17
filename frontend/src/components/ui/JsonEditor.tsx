@@ -162,12 +162,10 @@ function resolveVarTooltip(
 
 // ─── JSON tokenizer ───────────────────────────────────────────────────────────
 
-const DEPTH_BRACKET_COLORS = ['text-text-1', 'json-bracket-1', 'json-bracket-2', 'json-bracket-3']
 
 function tokenizeJson(text: string): Array<{ text: string; cls: string }> {
   const tokens: Array<{ text: string; cls: string }> = []
   let i = 0
-  let depth = 0
 
   while (i < text.length) {
     const ch = text[i]
@@ -214,16 +212,12 @@ function tokenizeJson(text: string): Array<{ text: string; cls: string }> {
 
     // Brackets — color by depth
     if (ch === '{' || ch === '[') {
-      const cls = DEPTH_BRACKET_COLORS[depth % DEPTH_BRACKET_COLORS.length]
-      tokens.push({ text: ch, cls })
-      depth++
+      tokens.push({ text: ch, cls: ch === '[' ? 'json-array' : 'json-object' })
       i++
       continue
     }
     if (ch === '}' || ch === ']') {
-      depth = Math.max(0, depth - 1)
-      const cls = DEPTH_BRACKET_COLORS[depth % DEPTH_BRACKET_COLORS.length]
-      tokens.push({ text: ch, cls })
+      tokens.push({ text: ch, cls: ch === ']' ? 'json-array' : 'json-object' })
       i++
       continue
     }
@@ -245,6 +239,8 @@ function tokenizeJson(text: string): Array<{ text: string; cls: string }> {
 // ─── HTML builder ─────────────────────────────────────────────────────────────
 
 const CLS_MAP: Record<string, string> = {
+  'json-array': 'var(--color-json-array, var(--color-text-2))',
+  'json-object': 'var(--color-json-object, var(--color-text-1))',
   'json-key':       'var(--color-json-key)',
   'json-string':    'var(--color-json-string)',
   'json-number':    'var(--color-json-number)',

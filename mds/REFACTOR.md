@@ -94,6 +94,8 @@ File: `internal/goide/lsp_idle.go`, `internal/goide/lsp.go`, `internal/languages
 
 ### 3. Riduzione dei re-render React — `P0` · Stato: Parziale · Fattibilità: **Alta** ⭐ quick win
 
+> **Collegamento 2026-10-17:** i residui sul pannello risposte (parse JSON a ogni render, `prettyBody` ricalcolato, copie ritenute `previousBodyRef`/`beautifiedBody`) sono tracciati come **GS-18.5** in `mds/FIX.md` (review "cache per peso"); il resto della voce resta qui.
+
 **Cosa esiste già** (non rifare):
 - [x] Selector scalari e `useShallow` nei punti caldi Go Studio: `GoStudioPanel.tsx:144-174` ("buffer, console e ricerche non devono ridisegnare l'intero IDE"), `goStudioDebugEditor.ts`, `GoStudioStatusBar.tsx`, `GoStudioInspectionWidget.tsx`.
 - [x] Context limitati e a bassa frequenza (solo 3 provider: Theme, PanelActive, TreeInteraction).
@@ -326,6 +328,8 @@ File: `internal/goide/lsp_idle.go`, `internal/goide/lsp.go`, `internal/languages
 ---
 
 ### 14. Stabilità e prevenzione dei memory leak — `P2` · Stato: Parziale · Fattibilità: **Media**
+
+> **Collegamento 2026-10-17:** i limiti di memoria per peso sono tracciati come **GS-18** in `mds/FIX.md` (history risposte con budget in byte + dedup `bodyBase64` fatti; spill file+anteprima, cap log inspector/GraphQL/HAR/flow recorder da fare come GS-18.6…GS-18.9), con il profilo completo nel registro (voce 15).
 
 **Cosa esiste già** (non rifare):
 - [x] `ProcessSupervisor` per le esecuzioni run-config con stato su disco e ripristino post-crash (`supervisor.go`).

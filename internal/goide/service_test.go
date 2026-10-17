@@ -3,11 +3,13 @@ package goide
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/languages/web"
 )
 
 type memoryStore struct {
@@ -118,8 +120,12 @@ func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
 	service := NewService(&memoryStore{}, nil)
 	t.Cleanup(service.Shutdown)
 	languages := service.GetCapabilities().Languages
-	if len(languages) != 1 || languages[0].ID != golang.ID || languages[0].Name != "Go" {
-		t.Fatalf("languages = %+v", languages)
+	ids := make([]string, 0, len(languages))
+	for _, language := range languages {
+		ids = append(ids, language.ID)
+	}
+	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
+		t.Fatalf("languages = %+v, want %v", languages, want)
 	}
 	if capabilities := languages[0].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.Documents {
 		t.Fatalf("Go capabilities = %+v", capabilities)

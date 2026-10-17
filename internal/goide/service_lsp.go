@@ -86,7 +86,8 @@ func (s *Service) UpdateDocumentBuffer(sessionID, documentID string, version int
 	return err
 }
 
-// OpenExternalDocument apre in sola lettura un sorgente dell'SDK Go o della module cache della sessione.
+// OpenExternalDocument apre in sola lettura un sorgente dell'SDK Go, della module cache o di una
+// replace locale del progetto: il codice delle dipendenze si legge ma non si modifica da qui.
 func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -96,7 +97,8 @@ func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, er
 	if !ok {
 		return OpenDocument{}, fmt.Errorf("detect the Go SDK to browse its sources")
 	}
-	document, err := s.documents.OpenExternalDocument(session, path, []string{info.GOROOT, info.GOMODCACHE})
+	roots := append([]string{info.GOROOT, info.GOMODCACHE}, localDependencyRoots(session.Project)...)
+	document, err := s.documents.OpenExternalDocument(session, path, roots)
 	if err != nil {
 		return OpenDocument{}, err
 	}

@@ -1,4 +1,5 @@
 import { languageServerEditorLanguages } from '@/components/ide/languages'
+import { isWebServerReady, webLanguageForEditor } from '@/stores/ideWebServers'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
 import { ExtensionLanguageStatus } from '../../../bindings/adomnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -19,6 +20,8 @@ import {
   type GoIDESymbolNode,
 } from '@/lib/goide-lsp-api'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
+import { navigateToLocation, type StudioLocation } from './goStudioNavigation'
+import { goModDefinitionLocation } from './goStudioDependencySource'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 import { currentGoStudioDocumentVersion, flushGoStudioDocument } from './goStudioLspSync'
 import { applyGoStudioWorkspaceChange } from './goStudioWorkspaceEdits'
@@ -45,7 +48,7 @@ interface PreparedDocument {
   documentId: string
 }
 
-const locationCache = new Map<string, GoIDEEditorLocation>()
+const locationCache = new Map<string, StudioLocation>()
 let registered = false
 let commandsRegistered = false
 const registeredLanguages = new Set<string>()
@@ -68,6 +71,11 @@ export function documentForModel(model: monaco.editor.ITextModel): GoIDEEditorDo
   return useGoIDEStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? null
 }
 
+/** Il go.mod del progetto: le sue dipendenze si aprono come sorgenti, non come simboli. */
+function isGoModDocument(document: GoIDEEditorDocument): boolean {
+  return document.document.relativePath.replace(/\\/g, '/').split('/').pop() === 'go.mod'
+}
+
 function languageServerReady(sessionId: string): boolean {
   return useGoIDELspStore.getState().status[sessionId]?.state === 'ready'
 }
@@ -79,6 +87,8 @@ export async function prepareDocument(model: monaco.editor.ITextModel): Promise<
   const extension = extensionLanguageForPath(document.document.relativePath)
   if (extension) {
     if (!extension.server || (await ExtensionLanguageStatus(document.document.sessionId,extension.id).catch(() => null))?.state !== 'ready') return null
+  } else if (webLanguageForEditor(document.document.language)) {
+    if (!isWebServerReady(document.document.sessionId, webLanguageForEditor(document.document.language)!)) return null
   } else if (!languageServerReady(document.document.sessionId)) return null
   await flushGoStudioDocument(document.document.id)
   return { document, sessionId: document.document.sessionId, documentId: document.document.id }
@@ -103,13 +113,7 @@ function isCurrent(documentId: string, version: number): boolean {
   return current === null || current === version
 }
 
-/** Apre la posizione nel progetto o, per SDK e module cache, in sola lettura. */
-export function navigateToLocation(location: GoIDEEditorLocation): void {
-  const store = useGoIDEStore.getState()
-  const { startLine, startColumn } = location.range
-  if (location.external || !location.relativePath) void store.openExternalLocation(location.path, startLine, startColumn)
-  else void store.openLocation(location.relativePath, startLine, startColumn)
-}
+export { navigateToLocation, type StudioLocation }
 
 const MAX_PREVIEW_MODELS = 20
 const previewModels: string[] = []
@@ -141,7 +145,7 @@ async function ensurePreviewModel(sessionId: string, location: GoIDEEditorLocati
   }
 }
 
-export function rememberLocations(locations: GoIDEEditorLocation[]): monaco.languages.Location[] {
+export function rememberLocations(locations: readonly StudioLocation[]): monaco.languages.Location[] {
   return locations.map((location) => {
     const uri = monaco.Uri.parse(location.uri)
     locationCache.set(uri.toString(), location)
@@ -228,6 +232,14 @@ function registerProviders(): void {
 
   const locationProvider = (kind: 'definition' | 'typeDefinition') => ({
     async provide(model: monaco.editor.ITextModel, position: monaco.Position, token: monaco.CancellationToken) {
+      const owner = documentForModel(model)
+      // go.mod: la definizione di una dipendenza e il suo sorgente (replace locale, progetto o
+      // module cache), una scelta Go-specific che non passa da gopls.
+      if (owner && isGoModDocument(owner)) {
+        if (kind !== 'definition') return null
+        const location = await goModDefinitionLocation(owner, position.lineNumber)
+        return location ? rememberLocations([location]) : null
+      }
       const prepared = await prepareDocument(model)
       if (!prepared) return null
       const locations = await cancellable(requestLocations(prepared.sessionId, prepared.documentId, kind, position.lineNumber, position.column), token)
@@ -339,7 +351,7 @@ function registerProviders(): void {
       const start = selectionOrPosition && 'startLineNumber' in selectionOrPosition
         ? { line: selectionOrPosition.startLineNumber, column: selectionOrPosition.startColumn }
         : { line: selectionOrPosition?.lineNumber ?? 1, column: selectionOrPosition?.column ?? 1 }
-      const location: GoIDEEditorLocation = cached
+      const location: StudioLocation = cached
         ? { ...cached, range: { startLine: start.line, startColumn: start.column, endLine: start.line, endColumn: start.column } }
         : { uri: resource.toString(), path: resource.fsPath, external: true, range: { startLine: start.line, startColumn: start.column, endLine: start.line, endColumn: start.column } }
       navigateToLocation(location)

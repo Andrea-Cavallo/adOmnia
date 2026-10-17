@@ -678,6 +678,10 @@ La callback che memorizza le richieste Make/Docker copia i dati per ogni invocaz
 
 Limiti osservati: Make end-to-end passa; Docker end-to-end è saltato perché il daemon Docker Desktop non è attivo (costruzione comandi, percorsi e segreti sono coperti dai test). Nessuna verifica manuale della nuova build desktop o di macOS/Linux in questo incremento: restano nella Fase 12. Restano aperte soltanto le Fasi 10, 11 e 12.
 
+## 22b. Secondo adapter: web frontend (2026-10-17)
+
+La piattaforma ha ora un secondo linguaggio registrato, senza toccare il core esistente. `internal/languages/web` registra quattro adapter (`typescript` per JS/TS/JSX/TSX, `html`, `css`, `json`), uno per language server standard (il registry ammette un server per linguaggio e sessione). Riconosce le unità `package.json` (monorepo, npm/pnpm/yarn/bun) e i siti statici, rileva Node e il package manager e costruisce i `lsp.ServerSpec`. Il Live Server è nel core, `internal/ide/preview` (server statico con live reload, proxy del dev server con bridge, scanner dell'URL, readiness, `Manager` per sessione), perché non sa nulla di `package.json`. L'host (`internal/goide/service_web.go`) aggiunge fiducia, percorsi autorizzati, configurazione salvata ed eventi `preview.status`. Dettagli, limiti e verifica: [`../LIVE-PREVIEW.md`](../LIVE-PREVIEW.md). Non-goal rispettati: nessuna interfaccia nuova nel core oltre a quelle già usate, nessun `switch language`.
+
 ## 23. Fasi 10–12 — 2026-10-03
 
 Fase 10 porta la piattaforma nella UI senza riscriverla. Il backend dice quali linguaggi esistono, il frontend li descrive con contribuzioni. Comandi, menu e provider editor non sono più cablati su Go. Fase 11 toglie il modello Go da `Project` e i cicli store→components. Fase 12 verifica e documenta.

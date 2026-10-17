@@ -17,6 +17,7 @@ import { GoStudioADRLinks } from './GoStudioADRLinks'
 import { GoStudioRuntimeEnrichment } from './GoStudioRuntimeEnrichment'
 import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
 import { GoStudioQuickOpen } from './GoStudioQuickOpen'
+import { GoStudioFilePicker } from './GoStudioFilePicker'
 import { GoStudioRecoveryBanner } from './GoStudioRecoveryBanner'
 import { GoStudioCrashRecoveryDialog } from './GoStudioCrashRecoveryDialog'
 import { GoStudioSettingsDialog } from './GoStudioSettingsDialog'
@@ -44,6 +45,7 @@ import '@fontsource/jetbrains-mono/600.css'
 import './goStudioChrome.css'
 import { GoStudioCopilotDialog } from './GoStudioCopilotDialog'
 import { GoStudioMilkDialog } from './GoStudioMilkDialog'
+import { GoStudioOpenCodeDialog } from './GoStudioOpenCode'
 import { GoStudioClaudeDialog } from './GoStudioClaudeCode'
 import { useGoStudioCopilot } from './useGoStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
@@ -61,6 +63,8 @@ import { GoStudioLanguageServerLog } from './GoStudioLanguageServerLog'
 import { GoStudioActivityBar } from './GoStudioActivityBar'
 import { GoStudioToolPathsDialog } from './GoStudioToolPathsDialog'
 import { runLanguageCommand } from './goStudioLanguageCommands'
+import { runPreviewCommand } from './goStudioPreviewCommands'
+import { isWebOnlyProject } from '@/lib/goide/livePreview'
 import { runSaveActions } from './goStudioSaveActions'
 import { contextRunTarget, runCommandFor, type GoStudioGoRunTarget, type GoStudioRunTarget } from './goStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './goStudioToolTargets'
@@ -76,6 +80,7 @@ import { createDoubleShiftDetector } from './goStudioSearchRanking'
 import { rememberCommand } from './goStudioSearchExtras'
 import { runGoStudioBenchmarks, runGoStudioChangedTests, runGoStudioQuickCommand, runModuleDependencyAction, targetScope } from './goStudioQuickActions'
 import { flushBufferRecovery } from '@/lib/goide/goStudioRecovery'
+import { cancelAutoSave, scheduleAutoSave, setAutoSaveDelay, setAutoSaveHandler } from '@/lib/goide/goStudioAutoSave'
 import { useGoIDETestsStore } from '@/stores/goideTests'
 import { debugRequestForTarget, fuzzRunRequestForTarget, testRequestForTarget } from './goStudioQuickActions'
 import { runDebugCommand, selectDebugState } from './goStudioDebugCommands'
@@ -605,6 +610,23 @@ export function GoStudioPanel() {
     if (document?.dirty) void saveDocumentWithActions(previous)
   }, [activeDocumentId, autoSave]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto save a tempo (come "files.autoSave": "afterDelay" di VS Code): salva quando si smette
+  // di scrivere per autoSaveDelayMs. Se un salvataggio è già in corso riprova al prossimo tick
+  // invece di sovrapporsi, per non rischiare due scritture con lo stesso diskToken.
+  const autoSaveDelayMs = lsp.preferences.autoSaveDelayMs
+  useEffect(() => {
+    setAutoSaveDelay(autoSaveDelayMs)
+    if (!autoSaveDelayMs) return
+    setAutoSaveHandler(() => {
+      if (useGoIDEStore.getState().documents.some((item) => item.saving)) {
+        scheduleAutoSave()
+        return
+      }
+      void autoSaveRef.current()
+    })
+    return () => { setAutoSaveHandler(null); cancelAutoSave() }
+  }, [autoSaveDelayMs])
+
 
   // Doppio Shift apre Search Everywhere solo quando c'è un progetto aperto.
   useEffect(() => {
@@ -692,6 +714,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   const lspStatus = activeSession ? lsp.statusInfo : undefined
   const commandContext: GoStudioCommandContext = {
     hasSession: !!activeSession,
+    webOnly: !!activeSession && isWebOnlyProject(activeSession.project),
     languages: store.capabilities?.languages,
     documentCount: summary.documentCount,
     hasClosedDocuments: !!activeSession && (store.closedDocuments[activeSession.id]?.length ?? 0) > 0,
@@ -795,6 +818,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
     rememberCommand(id)
     if (isGoStudioEditorCommand(id)) { runGoStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
+    if (runPreviewCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
@@ -835,7 +859,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'go.dependencies': return setDependenciesOpen(true)
       case 'go.tidy': return void tidy()
       case 'go.trust': return void authorize(!authorized)
-      case 'run.run': return startConfigured('run')
+      case 'run.run': return activeSession && isWebOnlyProject(activeSession.project) ? void runPreviewCommand('preview.goLive', activeSession.id) : startConfigured('run')
       case 'run.build': return startConfigured('build')
       case 'run.startWorkspace': return startWorkspace()
       case 'run.stopWorkspace': return void Promise.all(workspaceRunIds.map((runId) => store.stopRun(runId)))
@@ -879,11 +903,12 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
       case 'tools.extensions': return setExtensionsOpen(true)
       case 'tools.copilotChat':
+      case 'tools.opencodeChat':
       case 'tools.claudeChat':
       case 'tools.milkChat':
       case 'tools.aiHub': {
         // L'hub AI riapre l'ultimo provider scelto; i tre comandi restano alias espliciti.
-        const pane = id === 'tools.copilotChat' ? 'copilot' : id === 'tools.claudeChat' ? 'claude' : id === 'tools.milkChat' ? 'milk' : useGoStudioAssistantStore.getState().lastProvider
+        const pane = id === 'tools.opencodeChat' ? 'opencode' : id === 'tools.copilotChat' ? 'copilot' : id === 'tools.claudeChat' ? 'claude' : id === 'tools.milkChat' ? 'milk' : useGoStudioAssistantStore.getState().lastProvider
         useGoStudioAssistantStore.getState().open(pane)
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       }
@@ -909,7 +934,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   if (activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId) {
     return (
       <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-        <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
+        <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
         {windowError}
         <GoStudioElsewhere mode="elsewhere" projectName={activeSession.project.name} onFocus={() => void useGoIDEWindowsStore.getState().focusOwner(activeSession.id)} onBringBack={() => void useGoIDEWindowsStore.getState().bringBack(activeSession.id)} />
         {sharedDialogs}
@@ -923,7 +948,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
 
   return (
     <div className="go-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-      {!zen && <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={goStudioMaximized} onToggleMaximize={toggleGoStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => startConfigured('run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />}
+      {!zen && <GoStudioToolbar mainMenu={mainMenu} trailing={<GoStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<GoStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={goStudioMaximized} onToggleMaximize={toggleGoStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />}
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
@@ -947,6 +972,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       />
       {zen ? <ZenExit onExit={toggleZen} /> : <GoStudioStatusBar session={activeSession} toolchain={toolchain} documentInfo={summary.activeId ? { id: summary.activeId, relativePath: summary.activePath ?? '', language: summary.activeLanguage ?? '', readOnly: summary.activeReadOnly, lineEnding: summary.activeLineEnding ?? 'LF' } : null} execution={activeExecution} onLanguageServer={openLanguageServerMenu} onLinter={() => runCommand(commandAvailability('code.lint', commandContext) === true ? 'code.lint' : 'go.toolPaths')} onSetAuthorization={(allowed) => void authorize(allowed)} onManageToolchains={() => setToolchainOpen(true)} />}
       <GoStudioQuickOpen />
+      <GoStudioFilePicker />
       <GoStudioCaretPopup />
       <GoStudioInlineAssistantPopup />
       <GoStudioHierarchyDialog />
@@ -994,6 +1020,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
       <GoStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <GoStudioMilkDialog />
       <GoStudioClaudeDialog />
+      <GoStudioOpenCodeDialog />
       <GoStudioAgentReviewDialog />
       <GoStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <GoStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />

@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**74 chiuse · 128 implementate da verificare · 56 da fare - su 258 voci.**
+**74 chiuse · 128 implementate da verificare · 61 da fare - su 263 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -36,11 +36,11 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | GS-15 | 1 | 2 | 0 | 3 |
 | GS-16 | 1 | 4 | 0 | 5 |
 | GS-17 | 1 | 2 | 0 | 3 |
-| GS-18 | 1 | 3 | 0 | 4 |
+| GS-18 | 1 | 3 | 5 | 12 |
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **74** | **128** | **56** | **258** |
+| **TOTALE** | **74** | **128** | **61** | **263** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -142,7 +142,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | GS-15 | Stage/unstage di singoli hunk e righe (voce Z2.5 del piano) | P2 | S-M |
 | GS-16 | Settings e keymap in JSON con schema a livelli (voce Z2.6 del piano) | P2 | M |
 | GS-17 | Command palette fuzzy e ranking per uso recente (voce Z3.2 del piano) | P2 | S |
-| GS-18 | Cache risposte per peso e doppioni body (review "cache per peso" 2026-10-17) | P1 | S |
+| GS-18 | Cache risposte per peso e doppioni body (review "cache per peso" 2026-10-17) | P1 | S-M |
 | DB-1 | Valori annidati illeggibili + schermo intero | P1 | L |
 | DB-2 | Password che sparisce + Connect persistente | P0 | L |
 | DB-3 | Console query per categoria con interprete | P2 | L |
@@ -156,6 +156,8 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 6. **GS-7, GS-8, GS-9** e SOLO DOPO **GS-6** (altrimenti l'utente perde Markdown/Mermaid/Git).
 7. **DB-1**, poi **DB-3** (fasi 1, 2, 3 rilasciabili da sole).
 8. **IDE-5** (5.1-5.4, 5.6, 5.7 subito; 5.5 e 5.8 quando c'è tempo) e **GS-10**.
+
+**Piano di refactor performance (collegato, non duplicato):** le voci P0–P3 — re-render React, comunicazione React ↔ Go, virtualizzazione, lifecycle gopls/Monaco, idle, leak, budget e benchmark — vivono in [`REFACTOR.md`](REFACTOR.md), unica fonte di stato: qui non si copiano. Quando una di esse produce lavoro nelle aree di questo documento, diventa una voce GS/IDE/DB con riferimento incrociato: è successo con la review "cache per peso" 2026-10-17 (profilo nel registro di `REFACTOR.md` voce 15; lavoro tracciato qui come **GS-18**, follow-up GS-18.5…GS-18.9).
 
 ---
 
@@ -706,7 +708,14 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - [ ] GS-18.1 History risposte a budget **per peso**: `trimHistoryByWeight` (numero E byte; nuovo campo `requests.maxResponseHistoryMB`, default 16 MB, in Settings → Requests) — le voci vecchie escono per memoria anche sotto il limite di numero; la più recente resta sempre, anche se da sola supera il budget. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `lib/responseMemory.ts`, trim in `stores/tabs.ts`.
 - [ ] GS-18.2 Dedup del doppione `bodyBase64`: tenuto solo per i body binari (unico consumatore: il preview binario di `ResponsePanel`); sui testuali non si crea più (`sendRequest.ts`) e le sessioni storiche lo perdono in lettura. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `isTextualResponse`/`dropRedundantBodyBase64`.
 - [ ] GS-18.3 Ricerca nella history su estratto (32k caratteri per voce): niente più copie intere dei body materializzate a ogni battuta; `responseBytes` ricodifica UTF-8 corretta senza base64. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `RequestHistoryPanel.tsx`, `ResponsePanel.tsx`.
-- [x] GS-18.4 Profilo e test: inventario completo delle cache per numero (frontend + Go) con esito reali/non-reali in `REFACTOR.md`; `responseMemory.test.ts` 7 test; suite completa 368 file / 1812 test verdi; `npx tsc --noEmit` pulito. Follow-up documentati e non fatti: file locale + anteprima per body oltre soglia (pattern `goide/history.go`/`logindex`), cap in byte per log inspector (200k eventi), cache GraphQL (40 schemi), viewer HAR, flow recorder. — **FATTO (2026-10-17):** vedi Registro.
+- [x] GS-18.4 Profilo e test: inventario completo delle cache per numero (frontend + Go) con esito reali/non-reali in `REFACTOR.md`; `responseMemory.test.ts` 7 test; suite completa 368 file / 1812 test verdi; `npx tsc --noEmit` pulito. I follow-up non fatti sono promossi a voci tracciabili qui sotto (GS-18.5…GS-18.9). — **FATTO (2026-10-17):** vedi Registro.
+
+**Follow-up (⬜ da fare, dalla stessa review)**
+- [ ] GS-18.5 **Pipeline di visualizzazione della risposta**: un solo parse JSON per risposta e memoizzato — oggi `ResponsePanel` ricalcola `prettyJson` (che riparsa per validare) e riarma `JSON.parse` per il badge e per `graphData` **a ogni render** — con la stringa formattata condivisa fra vista, ricerca e diff. Valutare le copie ritenute `previousBodyRef` (pretty della risposta precedente per il diff di righe) e `beautifiedBody`, con alternative a estratto. Profilo prima/dopo: è il residuo "visualizzazione" della review (correlato alla voce 3 di `REFACTOR.md`).
+- [ ] GS-18.6 **Body grandi: file locale + anteprima** (ipotesi della review): oltre soglia il body completo vive fuori dalla memoria (spill su storage locale; pattern pronto: `internal/goide/history.go` = metadati + contenuto on-demand, `internal/logindex` = file su disco + indice leggero) e in memoria restano anteprima + peso; riaprire la voce di history carica il corpo per intero. Da fare con la migrazione del formato di persistenza delle sessioni.
+- [ ] GS-18.7 **Log inspector: cap in byte** — 200.000 eventi e sorgenti live oggi limitati solo per conteggio; `bytes` è già tracciato in `useLogImport.ts`, va applicato come tetto (e a valle anche il ring dei log stream Go, oggi fino a 200k righe).
+- [ ] GS-18.8 **Cache GraphQL: cap in byte** — oggi 40 schemi di introspection (oggetti da MB) con LRU per `updatedAt`: il tetto deve essere di peso, non di elementi.
+- [ ] GS-18.9 **HAR e flow recorder: caricamento a peso limitato** — il viewer HAR non ha cap (il flag `_heavy` >512 KB c'è già: usare quel confine per tenere i contenuti pesanti su richiesta); il flow recorder tiene gli alberi completi dei body per tutta la registrazione → estratti o riferimenti.
 
 **Verifica**
 - Verifica manuale **GS-18.M1…M4** → `mds/MANUAL-CHECK.md` (sezione **GS-18**).

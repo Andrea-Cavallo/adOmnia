@@ -1,6 +1,6 @@
 import {
   Bookmark, Bug, ChartNetwork, ClipboardPaste, Columns2, Copy, CopyPlus, FileCode2, FilePlus, FlaskConical, FolderCog, FolderOpen, FolderPlus, FolderSearch, GitBranch,
-  GitCommitHorizontal, GitCompare, GitPullRequestArrow, Globe, Hammer, History, KeyRound, Pencil, Play, RefreshCw, Rows2, ScanSearch, Scissors, Search, Send, SquareTerminal, Trash2, Undo2, Upload, Wand2, Wrench,
+  GitCommitHorizontal, GitCompare, GitPullRequestArrow, Globe, Hammer, History, KeyRound, Pencil, Play, Radio, RefreshCw, Rows2, ScanSearch, Scissors, Search, Send, SquareTerminal, Trash2, Undo2, Upload, Wand2, Wrench,
 } from 'lucide-react'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEFileEntry } from '@/lib/goide-api'
@@ -168,6 +168,7 @@ export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuCon
   return [
     ...(isFile ? [
       { id: 'open', label: 'Open', icon: FileCode2 },
+      ...(isHtmlFile(entry) ? [{ id: 'openWithLivePreview', label: 'Open with Live Preview', icon: Radio }] : []),
       { id: 'openIn', label: 'Open in Split', icon: Columns2, submenu: [
         { id: 'splitRight', label: 'Split Right', icon: Columns2 },
         { id: 'splitDown', label: 'Split Down', icon: Rows2 },

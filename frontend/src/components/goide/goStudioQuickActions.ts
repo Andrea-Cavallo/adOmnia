@@ -175,10 +175,15 @@ async function startDependencyAction(target: DependencyActionTarget, localPath: 
   }
 }
 
+/** Cartella del modulo del go.mod aperto, relativa al progetto ('' per la radice). */
+export function goModDirectoryOf(document: Pick<GoIDEEditorDocument, 'document'>): string {
+  return directoryOf(normalize(document.document.relativePath))
+}
+
 /** Esegue un'azione rapida del go.mod: salva prima il buffer, poi lancia il comando go nella cartella del modulo. */
 export async function runGoModQuickAction(document: GoIDEEditorDocument, action: GoModDependencyAction, modulePath = ''): Promise<void> {
   if (!trustedSession(document.document.sessionId)) return
-  const moduleDirectory = directoryOf(normalize(document.document.relativePath))
+  const moduleDirectory = goModDirectoryOf(document)
   let localPath = ''
   if (action === 'replace') {
     localPath = await selectGoIDEFolder(`Replace ${modulePath} with a local folder`)

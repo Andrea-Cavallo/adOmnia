@@ -1,3 +1,4 @@
+import { normalizeJsonColors, type JsonColors } from '@/lib/jsonColors'
 import { normalizeProfiles, type AppearanceProfile, type PersonalColors } from '@/lib/personalAppearance'
 import { validAccent } from '@/lib/accentPalette'
 import { create } from 'zustand'
@@ -57,6 +58,8 @@ export interface AppSettings {
     baseColor?: string
     /** Base color remembered per quick mode (status bar Dark/White), restored when switching back. */
     modeBases?: { dark?: string; light?: string }
+    /** Optional per-mode JSON syntax overrides. Absent keys inherit the theme. */
+    jsonColors?: JsonColors
     profiles?: AppearanceProfile[]
     accentColor?: string
     accentColorPreset: string
@@ -353,6 +356,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const parsed = decodePersistedJSON<Partial<AppSettings>>(raw)
       const appearance = mergeBlock(defaultSettings.appearance, parsed.appearance)
       appearance.baseColor = validAccent(appearance.baseColor) ? appearance.baseColor : undefined
+      appearance.jsonColors = normalizeJsonColors(appearance.jsonColors)
       appearance.profiles = normalizeProfiles(appearance.profiles)
       appearance.modeBases = Object.fromEntries(Object.entries(appearance.modeBases ?? {}).filter(([k, v]) => (k === 'dark' || k === 'light') && validAccent(v)))
       if (!appearance.themeId) {

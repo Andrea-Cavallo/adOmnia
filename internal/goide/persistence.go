@@ -34,6 +34,8 @@ type persistedState struct {
 	TrustedPaths []string `json:"trustedPaths,omitempty"`
 	// SonarConfigs: configurazione non segreta di SonarQube per sessione (il token non è mai persistito).
 	SonarConfigs map[SessionID]SonarConfig `json:"sonarConfigs,omitempty"`
+	// PreviewConfigs: ultima configurazione di Live Preview per cartella del progetto (percorso reale normalizzato).
+	PreviewConfigs map[string]PreviewConfig `json:"previewConfigs,omitempty"`
 }
 
 type Persistence struct {

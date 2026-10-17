@@ -19,7 +19,7 @@ import { selectedRange } from './GoStudioCopilotChat'
 
 /** One ACP agent as the chat shows it: milk and Claude Code share everything else. */
 export interface ChatAgent {
-  tool: 'milk' | 'claude'
+  tool: 'milk' | 'claude' | 'opencode'
   name: string
   store: AgentChatStore
   Logo: ComponentType<{ size?: number }>

@@ -214,7 +214,7 @@ func (m *DocumentManager) OpenExternalDocument(session Session, path string, all
 		return OpenDocument{}, fmt.Errorf("could not resolve the file: %w", err)
 	}
 	if !withinAnyRoot(realPath, allowedRoots) {
-		return OpenDocument{}, fmt.Errorf("the file does not belong to the project, the Go SDK or the module cache")
+		return OpenDocument{}, fmt.Errorf("the file does not belong to the project, the Go SDK, the module cache or a local replacement")
 	}
 	mediaType, isImage := imageMimeType(realPath)
 	content, dataURL, info, token := "", "", (os.FileInfo)(nil), ""

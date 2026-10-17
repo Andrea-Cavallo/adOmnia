@@ -27,9 +27,12 @@ export interface GoModLens {
   line: number
   title: string
   tooltip: string
-  action: GoModDependencyAction
+  action: GoModLensAction
   modulePath?: string
 }
+
+/** Azione di un CodeLens del go.mod: le azioni backend sulle dipendenze, più l'apertura del codice. */
+export type GoModLensAction = GoModDependencyAction | 'viewcode' | 'browse'
 
 const MODULE_DIRECTIVE = /^\s*module\s+\S+/
 const BLOCK_START = /^\s*(require|replace)\s*\(\s*(\/\/.*)?$/
@@ -97,6 +100,8 @@ export function goModLenses(outline: GoModOutline): GoModLens[] {
   const replaced = new Set(outline.replacements.map((replacement) => replacement.path))
   for (const requirement of outline.requirements) {
     const { line, path } = requirement
+    lenses.push({ line, title: 'View code', tooltip: `Read the ${path} source (local module or module cache)`, action: 'viewcode', modulePath: path })
+    lenses.push({ line, title: 'Browse files', tooltip: `List the files of ${path} and open one`, action: 'browse', modulePath: path })
     lenses.push({ line, title: '↑ Update', tooltip: `go get ${path}@latest`, action: 'update', modulePath: path })
     lenses.push(replaced.has(path)
       ? { line, title: 'Drop replace', tooltip: `go mod edit -dropreplace=${path}`, action: 'dropreplace', modulePath: path }
@@ -104,6 +109,7 @@ export function goModLenses(outline: GoModOutline): GoModLens[] {
     lenses.push({ line, title: 'Remove', tooltip: `go get ${path}@none`, action: 'remove', modulePath: path })
   }
   for (const replacement of outline.replacements) {
+    lenses.push({ line: replacement.line, title: 'View code', tooltip: `Read the ${replacement.target} source`, action: 'viewcode', modulePath: replacement.path })
     lenses.push({ line: replacement.line, title: 'Drop replace', tooltip: `go mod edit -dropreplace=${replacement.path}`, action: 'dropreplace', modulePath: replacement.path })
   }
   return lenses
@@ -115,7 +121,7 @@ export function goModCommandLine(action: GoModDependencyAction, modulePath = '',
     case 'updateall': return 'go get -u ./...'
     case 'updatepatch': return 'go get -u=patch ./...'
     case 'tidy': return 'go mod tidy'
-    case 'download': return 'go mod download'
+    case 'download': return modulePath ? `go mod download ${modulePath}` : 'go mod download'
     case 'verify': return 'go mod verify'
     case 'update': return `go get ${modulePath}@latest`
     case 'remove': return `go get ${modulePath}@none`

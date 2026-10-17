@@ -18,6 +18,15 @@ describe('appearance settings persistence', () => {
     useSettingsStore.getState().previewAppearance(null)
     vi.mocked(SaveSettings).mockClear()
   })
+  it('persists independent JSON palettes and inherits theme colors after reset', async () => {
+    useSettingsStore.getState().updateAppearance({ jsonColors: { dark: { key: '#abcdef', array: '#123456' }, light: { key: '#102030' } } })
+    await flushPendingSaves()
+    const calls = vi.mocked(SaveSettings).mock.calls
+    await useSettingsStore.getState().load(calls[calls.length - 1][0])
+    expect(useSettingsStore.getState().settings.appearance.jsonColors).toEqual({ dark: { key: '#abcdef', array: '#123456' }, light: { key: '#102030' } })
+    await useSettingsStore.getState().load('{}')
+    expect(useSettingsStore.getState().settings.appearance.jsonColors).toEqual({})
+  })
   it('previews without saving or changing the persisted appearance', () => {
     const original = useSettingsStore.getState().settings.appearance
     useSettingsStore

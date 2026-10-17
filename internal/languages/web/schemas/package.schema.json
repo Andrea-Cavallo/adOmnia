@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "package.json",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "description": "Package name: lowercase, URL-safe, optionally scoped (@scope/name).", "maxLength": 214 },
+    "version": { "type": "string", "description": "Semantic version of the package (e.g. 1.0.0)." },
+    "description": { "type": "string" },
+    "private": { "type": "boolean", "description": "true prevents the package from being published to a registry." },
+    "type": { "enum": ["module", "commonjs"], "description": "How .js files are interpreted by Node.js." },
+    "main": { "type": "string" },
+    "module": { "type": "string" },
+    "types": { "type": "string" },
+    "bin": { "type": ["string", "object"], "additionalProperties": { "type": "string" } },
+    "exports": { "type": ["string", "object", "array", "null"] },
+    "files": { "type": "array", "items": { "type": "string" } },
+    "scripts": {
+      "type": "object",
+      "description": "Commands run with `npm run <name>` (or the equivalent of your package manager).",
+      "additionalProperties": { "type": "string" }
+    },
+    "dependencies": { "$ref": "#/definitions/dependencyMap" },
+    "devDependencies": { "$ref": "#/definitions/dependencyMap" },
+    "peerDependencies": { "$ref": "#/definitions/dependencyMap" },
+    "optionalDependencies": { "$ref": "#/definitions/dependencyMap" },
+    "overrides": { "type": "object" },
+    "workspaces": { "type": ["array", "object"], "items": { "type": "string" } },
+    "engines": {
+      "type": "object",
+      "description": "Runtime versions the package supports.",
+      "properties": { "node": { "type": "string" }, "npm": { "type": "string" } },
+      "additionalProperties": { "type": "string" }
+    },
+    "packageManager": {
+      "type": "string",
+      "description": "The package manager used by the project, as name@version (corepack).",
+      "pattern": "^(npm|pnpm|yarn|bun)@\\d+\\.\\d+\\.\\d+.*$"
+    },
+    "keywords": { "type": "array", "items": { "type": "string" } },
+    "license": { "type": "string" },
+    "author": { "type": ["string", "object"] },
+    "repository": { "type": ["string", "object"] },
+    "browserslist": { "type": ["string", "array", "object"] },
+    "sideEffects": { "type": ["boolean", "array"] }
+  },
+  "definitions": {
+    "dependencyMap": {
+      "type": "object",
+      "description": "Package name → version range.",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

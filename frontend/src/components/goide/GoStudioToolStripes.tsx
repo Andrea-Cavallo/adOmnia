@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bookmark, Braces, Bug, FlaskConical, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Bookmark, Braces, Bug, FlaskConical, Globe, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useGoIDEStore } from '@/stores/goide'
 import { diagnosticCounts, mergedReports, useGoIDELspStore, type GoIDEToolWindow } from '@/stores/goideLsp'
 import { selectedTestRun, useGoIDETestsStore } from '@/stores/goideTests'
@@ -10,6 +10,8 @@ import { useStudioTools } from './studioToolState'
 import { aiProviderBadge, aiProviderTooltip, providerLabel } from './goStudioAiHub'
 import { useAiProviders } from './useAiProviders'
 import type { GoIDESession } from '@/lib/goide-api'
+import { isRunning } from '@/lib/goide/livePreview'
+import { selectSessionPreview, useLivePreviewStore } from '@/stores/livePreview'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -51,6 +53,7 @@ const TOOL_WINDOWS: ReadonlyArray<ToolWindowEntry> = [
   { id: 'debug', label: 'Debug · Alt+5', icon: Bug },
   { id: 'tests', label: 'Tests · Alt+8', icon: FlaskConical },
   { id: 'terminal', label: 'Terminal · Alt+F12', icon: SquareTerminal },
+  { id: 'preview', label: 'Live Preview', icon: Globe },
   { id: 'problems', label: 'Problems · Alt+6', icon: TriangleAlert },
   { id: 'references', label: 'Usages', icon: ScanSearch },
   { id: 'git', label: 'Git · Branches and history', icon: GitBranch },
@@ -65,11 +68,17 @@ function useToolWindowBadges(sessionId: string): Partial<Record<GoIDEToolWindow,
   const debugState = useGoIDEDebugStore(selectDebugState(sessionId))
   const running = useGoIDEStore((state) => state.executions.some((execution) => execution.sessionId === sessionId && execution.status === 'running'))
   const counts = diagnosticCounts(mergedReports(reports, lintReports))
+  const previewBadge = useLivePreviewStore((state) => {
+    const view = selectSessionPreview(state, sessionId)
+    if (view.previews.some((item) => item.state === 'failed')) return 'danger' as const
+    return view.previews.some((item) => isRunning(item)) ? 'success' as const : undefined
+  })
   return {
     problems: counts.errors ? 'danger' : counts.warnings ? 'warning' : undefined,
     tests: failedTests > 0 ? 'danger' : undefined,
     debug: debugState === 'stopped' ? 'warning' : debugState !== 'none' ? 'success' : undefined,
     run: running ? 'success' : undefined,
+    preview: previewBadge,
   }
 }
 
@@ -95,6 +104,7 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
     const close = bottomOpen && toolWindow === id
     restoreLayout()
     if (close) updateLayout({ bottomOpen: false })
+    else if (id === 'preview') useLivePreviewStore.getState().show(sessionId, 'panel')
     else showToolWindow(id)
   }
 

@@ -21,7 +21,7 @@ interface SelectSetting {
   label: string
   hint: string
   kind: 'select'
-  pref: 'resourceMode' | 'editorMode'
+  pref: 'resourceMode' | 'editorMode' | 'autoSaveDelayMs'
   options: Array<{ value: string; label: string }>
 }
 
@@ -39,6 +39,9 @@ const SETTINGS: Setting[] = [
   { section: 'Editor', label: 'Font size', hint: 'Editor font size; Ctrl+= / Ctrl+- also zoom.', kind: 'fontSize' },
   { section: 'Editor', label: 'Font ligatures', hint: 'Combine operators such as := and != into ligatures.', kind: 'toggle', pref: 'fontLigatures' },
   { section: 'Editor', label: 'Sticky scroll', hint: 'Keep function and block headers at the top while scrolling.', kind: 'toggle', pref: 'stickyScroll' },
+  { section: 'Editor', label: 'Inline diagnostics', hint: 'Show errors beside the code (Error Lens).', kind: 'toggle', pref: 'inlineDiagnostics' },
+  { section: 'Editor', label: 'Inline warnings', hint: 'Include warnings in inline diagnostics.', kind: 'toggle', pref: 'inlineDiagnosticWarnings' },
+  { section: 'Editor', label: 'Inline information', hint: 'Include information messages in inline diagnostics.', kind: 'toggle', pref: 'inlineDiagnosticInfo' },
   { section: 'Editor', label: 'Preview tab', hint: 'A single click in Project opens a preview tab that the next click replaces.', kind: 'toggle', pref: 'previewTab' },
   { section: 'Editor', label: 'Keyboard emulation', hint: 'Vim or Emacs keys in the editor.', kind: 'select', pref: 'editorMode', options: [{ value: 'default', label: 'Default' }, { value: 'vim', label: 'Vim' }, { value: 'emacs', label: 'Emacs' }] },
   { section: 'Editor', label: 'Semantic highlighting', hint: 'Colors from gopls for parameters, variables and types.', kind: 'toggle', pref: 'semanticHighlighting' },
@@ -48,7 +51,8 @@ const SETTINGS: Setting[] = [
   { section: 'Save actions', label: 'Optimize imports on save', hint: 'Add missing and remove unused imports.', kind: 'toggle', pref: 'organizeImportsOnSave' },
   { section: 'Save actions', label: 'Run linter on save', hint: 'golangci-lint, staticcheck or a custom analyzer, when configured.', kind: 'toggle', pref: 'lintOnSave' },
   { section: 'Save actions', label: 'Trim trailing whitespace', hint: 'For non-Go files; Go files are already formatted.', kind: 'toggle', pref: 'trimTrailingWhitespace' },
-  { section: 'Save actions', label: 'Auto save', hint: 'Save modified files when the editor loses focus.', kind: 'toggle', pref: 'autoSave' },
+  { section: 'Save actions', label: 'Auto save', hint: 'Save every modified file after a pause in typing (VS Code “afterDelay”).', kind: 'select', pref: 'autoSaveDelayMs', options: [{ value: '0', label: 'Off' }, { value: '1000', label: 'After 1 second' }, { value: '2000', label: 'After 2 seconds' }, { value: '5000', label: 'After 5 seconds' }, { value: '10000', label: 'After 10 seconds' }] },
+  { section: 'Save actions', label: 'Save on focus change', hint: 'Save modified files when the editor loses focus or you switch file.', kind: 'toggle', pref: 'autoSave' },
   { section: 'Language server', label: 'Deep diagnostics on save', hint: 'Run deep diagnostics after saving; completion, hover and navigation remain available.', kind: 'toggle', server: 'diagnosticsOnSave' },
   { section: 'Language server', label: 'gofumpt style', hint: 'Stricter formatting rules (restarts gopls).', kind: 'toggle', server: 'gofumpt' },
   { section: 'Language server', label: 'staticcheck analyzers', hint: 'Extra analyzers inside gopls (restarts gopls).', kind: 'toggle', server: 'staticcheck' },
@@ -91,7 +95,7 @@ export function GoStudioSettingsDialog({ open, sessionId, onCommand, onClose }: 
     }
     if (item.kind === 'select') {
       return (
-        <select value={String(preferences[item.pref])} onChange={(event) => lsp.updatePreferences({ [item.pref]: event.target.value } as Partial<GoIDEEditorPreferences>)} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
+        <select value={String(preferences[item.pref])} onChange={(event) => lsp.updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
           {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       )

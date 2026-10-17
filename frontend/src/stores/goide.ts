@@ -66,6 +66,7 @@ import { goStudioWindowContext } from '@/lib/goide-window-api'
 import { confirm } from '@/lib/confirmDialog'
 import { studioToast } from './goideToast'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/goide/goStudioRecovery'
+import { scheduleAutoSave } from '@/lib/goide/goStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/goide/goStudioDiskChanges'
 
 const LAYOUT_KEY = 'adomnia.goide.layout.v1'
@@ -884,8 +885,10 @@ export const useGoIDEStore = create<GoIDEState>((set, get) => ({
     const current = get().documents.find((item) => item.document.id === documentId)
     if (current) {
       const dirty = buffer !== current.savedContent
-      if (dirty) scheduleBufferRecovery(current.document.sessionId, current.document.relativePath, buffer, current.diskToken)
-      else cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
+      if (dirty) {
+        scheduleBufferRecovery(current.document.sessionId, current.document.relativePath, buffer, current.diskToken)
+        scheduleAutoSave()
+      } else cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
     }
     set((state) => {
       const sessionId = current?.document.sessionId

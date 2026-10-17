@@ -174,13 +174,20 @@ func validRetraction(value string) bool {
 // dependencyArguments traduce un'azione rapida del go.mod in argomenti strutturati del comando go.
 func dependencyArguments(request DependencyActionRequest, moduleDirectory string) ([]string, error) {
 	action := strings.ToLower(strings.TrimSpace(request.Action))
+	modulePath := strings.TrimSpace(request.ModulePath)
+	// `go mod download` di un solo modulo: porta nella cache il sorgente da leggere, senza toccare gli altri.
+	if action == "download" && modulePath != "" {
+		if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
+			return nil, fmt.Errorf("invalid module path")
+		}
+		return []string{"mod", "download", modulePath}, nil
+	}
 	if arguments, ok := moduleWideActions[action]; ok {
 		return append([]string(nil), arguments...), nil
 	}
 	if arguments, ok, err := goModEditArguments(action, request); ok {
 		return arguments, err
 	}
-	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
 		return nil, fmt.Errorf("invalid module path")
 	}

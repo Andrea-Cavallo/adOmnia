@@ -1,3 +1,4 @@
+import { useOpenCodeStore } from '@/stores/opencode'
 import { useCopilotStore } from '@/stores/copilot'
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
@@ -12,10 +13,12 @@ export interface AiProviderState {
 
 /** Stato dei tre provider AI, per i pallini della hub e del bottone unico della stripe. */
 export function useAiProviders(): Record<GoStudioChatPane, AiProviderState> {
+  const opencode = useOpenCodeStore(state => state.status)
   const copilot = useCopilotStore((state) => state.status)
   const milk = useMilkStore((state) => state.status)
   const claude = useClaudeCodeStore((state) => state.status)
   return {
+    opencode: { tone: aiProviderTone(opencode?.state), message: opencode?.message ?? null },
     copilot: { tone: aiProviderTone(copilot?.state), message: copilot?.message ?? null },
     milk: { tone: aiProviderTone(milk?.state), message: milk?.message ?? null },
     claude: { tone: aiProviderTone(claude?.state), message: claude?.message ?? null },
@@ -30,4 +33,5 @@ export function ensureAiProviders(): void {
   void useCopilotStore.getState().ensure()
   void useMilkStore.getState().ensure()
   void useClaudeCodeStore.getState().ensure()
+  void useOpenCodeStore.getState().ensure()
 }

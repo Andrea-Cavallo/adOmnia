@@ -98,3 +98,17 @@ it('automatically attaches named project rules, redacts secrets and allows opt-o
   fixture.rules = [{ path: 'AGENTS.md', text: 'Changed on disk' }]
   expect((await prepareStudioChat('/project', 'Again', enabled)).message).toContain('Changed on disk')
 })
+
+
+describe('local agent context', () => {
+  it('allows a restricted local adapter on local-only projects and retains redaction', async () => {
+    fixture.policy = 'local-only'
+    fixture.state.documents[0].buffer = 'const api_key = "very-secret-token"'
+    const result = await prepareStudioChat('/project', 'Explain', enabled, false, true)
+    expect(result.labels).toContain('src/Example.java (unsaved)')
+    expect(result.message).not.toContain('very-secret-token')
+    await expect(prepareStudioChat('/project', 'Explain', enabled)).rejects.toThrow('local AI')
+    fixture.policy = 'off'
+    await expect(prepareStudioChat('/project', 'Explain', enabled, false, true)).rejects.toThrow('turned off')
+  })
+})

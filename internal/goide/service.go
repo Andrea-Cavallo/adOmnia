@@ -3,6 +3,7 @@ package goide
 import (
 	"adomnia/internal/ide/flight"
 	"adomnia/internal/ide/language"
+	"adomnia/internal/ide/preview"
 	"adomnia/internal/ide/run"
 	"context"
 	"encoding/json"
@@ -71,6 +72,9 @@ type Service struct {
 	lint             lintRegistry
 	sonar            sonarRegistry
 	watcher          *WatchManager
+	// previews è il Live Server: server statici e dev server dei progetti web, uno per anteprima e sessione.
+	previews       *preview.Manager
+	previewConfigs previewConfigStore
 	// windows registra le sessioni spostate in finestre separate.
 	windows *windowRegistry
 	// documentObserver riceve apertura, modifiche, salvataggi e chiusure (es. GitHub Copilot).
@@ -113,6 +117,8 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	service.supervisor = NewProcessSupervisor()
 	service.history = NewLocalHistory(nil)
 	service.watcher = NewWatchManager(service.filesChanged)
+	service.previews = preview.NewManager(service.processes, service.previewChanged)
+	service.previews.SetProcessHooks(registerManagedChild, releaseManagedChild)
 	service.lsp.SetEmitter(service.emit)
 	// go env finisce in background: il rilevamento aggiornato va alla UI e nella cache salvata.
 	service.toolchain.SetNotifier(func(sessionID SessionID, info ToolchainInfo) {
@@ -321,6 +327,7 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 	}
 	if !allowed {
 		// Revocare la fiducia ferma tutto ciò che lancia processi: anche shell e debug, come la chiusura della sessione.
+		s.previews.StopSession(string(session.ID))
 		s.processes.StopSession(session.ID)
 		s.lsp.StopSession(session.ID)
 		s.terminal.CloseSession(session.ID)
@@ -340,6 +347,8 @@ func (s *Service) CloseSession(id string) error {
 		return err
 	}
 	sessionID := SessionID(id)
+	// Le anteprime appartengono alla sessione: chiuderla le libera, senza chiedere di fermare il dev server a mano.
+	s.previews.StopSession(id)
 	if s.processes.HasActiveSession(sessionID) {
 		return fmt.Errorf("the session has running processes: stop them before closing it")
 	}
@@ -909,6 +918,7 @@ func (s *Service) HasAnyActiveRuns() bool {
 
 // Shutdown arresta le risorse possedute dal dominio in ordine sicuro.
 func (s *Service) Shutdown() {
+	s.previews.Shutdown()
 	s.watcher.Shutdown()
 	s.installer.Shutdown()
 	s.debug.Shutdown()
@@ -956,6 +966,7 @@ func (s *Service) restore() error {
 	s.trusted = slices.Clone(state.TrustedPaths)
 	s.recentMu.Unlock()
 	s.runConfigs.Replace(state.RunConfigs)
+	s.previewConfigs.replace(state.PreviewConfigs)
 	s.sonar.replaceConfigs(state.SonarConfigs)
 	globalToolchain := ToolchainConfiguration{}
 	if state.GlobalToolchain != nil {
@@ -1003,6 +1014,7 @@ func (s *Service) saveState() error {
 		ActiveWorkspace:    activeWorkspace,
 		TrustedPaths:       trusted,
 		SonarConfigs:       s.sonar.configSnapshot(),
+		PreviewConfigs:     s.previewConfigs.snapshot(),
 	})
 }
 
@@ -1101,6 +1113,7 @@ func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
 	}
 	s.noteGraphChanges(sessionID, batch)
 	s.lsp.NotifyWatchedFiles(sessionID, batch.Changes)
+	s.notifyPreviews(sessionID, batch)
 	s.emit("files.changed", sessionID, string(sessionID), batch)
 }
 

@@ -33,11 +33,12 @@ import {
   type GoIDEQuickDefinition,
   type GoIDEHierarchyItem,
 } from '@/lib/goide-lsp-api'
+import { autoSaveDelayValue } from '@/lib/goide/goStudioAutoSave'
 import { useGoIDEStore } from './goide'
 
 const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
 
-export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace' | 'sonar' | 'vulns' | 'fuzz' | 'errors' | 'architecture' | 'interfaces' | 'goroutines' | 'docs' | 'config' | 'impact' | 'git' | 'go'
+export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace' | 'sonar' | 'vulns' | 'fuzz' | 'errors' | 'architecture' | 'interfaces' | 'goroutines' | 'docs' | 'config' | 'impact' | 'git' | 'go' | 'preview'
 
 export interface GoIDEHierarchyView {
   sessionId: string
@@ -57,11 +58,16 @@ export interface GoIDEEditorPreferences {
   typeHints: boolean
   /** Intestazioni di funzioni e blocchi fissate in alto mentre si scorre. */
   stickyScroll: boolean
+  inlineDiagnostics: boolean
+  inlineDiagnosticWarnings: boolean
+  inlineDiagnosticInfo: boolean
   fontLigatures: boolean
   /** Dimensione del font dell'editor (Zoom In/Out/Reset). */
   fontSize: number
   /** Salva i file modificati quando l'editor perde il focus o la finestra passa in secondo piano. */
   autoSave: boolean
+  /** Auto save a tempo (ms) dopo una pausa nella digitazione; 0 lo disattiva. */
+  autoSaveDelayMs: number
   /** Rimuove gli spazi in coda alle righe al salvataggio (i file Go li sistema già gofmt). */
   trimTrailingWhitespace: boolean
   /** Un clic nel Project apre una tab di anteprima; doppio clic o una modifica la rendono permanente. */
@@ -179,14 +185,16 @@ interface PersistedSettings {
   version?: number
 }
 
-/** v3: minimappa rimossa; la chiave salvata dalle versioni precedenti viene scartata. */
-const PREFERENCES_VERSION = 3
+/** v3: minimappa rimossa; la chiave salvata dalle versioni precedenti viene scartata.
+ *  v4: aggiunto autoSaveDelayMs (auto save a tempo); i valori assenti restano al default. */
+const PREFERENCES_VERSION = 4
 
 const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false }
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
+  inlineDiagnostics: true, inlineDiagnosticWarnings: true, inlineDiagnosticInfo: true,
   typeHints: false, stickyScroll: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
-  autoSave: false, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
+  autoSave: false, autoSaveDelayMs: 0, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()
@@ -199,7 +207,8 @@ function loadPersisted(): PersistedSettings {
     const { minimap: _removed, ...preferences } = (parsed.preferences ?? {}) as Partial<GoIDEEditorPreferences> & { minimap?: unknown }
     return {
       settings: { ...DEFAULT_SETTINGS, ...parsed.settings, semanticLinks: false },
-      preferences: { ...DEFAULT_PREFERENCES, ...preferences },
+      // autoSaveDelayMs viene da un file locale: valori corrotti o fuori scala disattivano l'auto save invece di salvarlo.
+      preferences: { ...DEFAULT_PREFERENCES, ...preferences, autoSaveDelayMs: autoSaveDelayValue(preferences.autoSaveDelayMs) },
     }
   } catch {
     return { settings: DEFAULT_SETTINGS, preferences: DEFAULT_PREFERENCES }
@@ -519,19 +528,22 @@ export function exportGoStudioSettings(): GoStudioSettingsExport {
   return { settings: { ...settings }, preferences: { ...preferences } }
 }
 
-/** Tiene solo le chiavi note e booleane: un file importato non può introdurre valori arbitrari. */
-function knownBooleans<T extends object>(defaults: T, value: unknown): Partial<T> {
+/** Tiene solo le chiavi note del tipo atteso (booleano o numero): un file importato non può introdurre valori arbitrari. */
+function knownValues<T extends object>(defaults: T, value: unknown): Partial<T> {
   if (!value || typeof value !== 'object') return {}
   const source = value as Record<string, unknown>
-  return Object.fromEntries(Object.keys(defaults).filter((key) => typeof source[key] === 'boolean').map((key) => [key, source[key]])) as Partial<T>
+  return Object.fromEntries(Object.keys(defaults).filter((key) => {
+    const expected = typeof (defaults as Record<string, unknown>)[key]
+    return (expected === 'boolean' || expected === 'number') && typeof source[key] === expected
+  }).map((key) => [key, source[key]])) as Partial<T>
 }
 
 /** Applica la sezione Go Studio importata; restituisce false se il file non ne contiene una valida. */
 export function importGoStudioSettings(value: unknown, activeSessionId: string | null): boolean {
   if (!value || typeof value !== 'object') return false
   const section = value as Partial<Record<keyof GoStudioSettingsExport, unknown>>
-  const preferences = knownBooleans(DEFAULT_PREFERENCES, section.preferences)
-  const settings = knownBooleans(DEFAULT_SETTINGS, section.settings)
+  const preferences = knownValues(DEFAULT_PREFERENCES, section.preferences)
+  const settings = knownValues(DEFAULT_SETTINGS, section.settings)
   delete settings.semanticLinks
   if (Object.keys(preferences).length === 0 && Object.keys(settings).length === 0) return false
   const store = useGoIDELspStore.getState()

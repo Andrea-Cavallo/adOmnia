@@ -402,7 +402,7 @@ if (request.auth.type === 'aws4') {
 
 ### Multi-language IDE Platform (Go Studio)
 
-Go Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the only registered language today; Java/Rust/Python/TS are validation scenarios, not features. Rules:
+Go Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features. Rules:
 
 - **Dependency direction:** `internal/goide` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/goide`.
 - **Languages are registered in one place:** `internal/goide/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.

@@ -71,6 +71,12 @@ describe('buildTreeMenu', () => {
     expect(go).not.toContain('openInBrowser')
   })
 
+  it('offers Open with Live Preview only for HTML files', () => {
+    expect(ids(buildTreeMenu(file('index.html'), context))).toContain('openWithLivePreview')
+    expect(ids(buildTreeMenu(file('main.go'), context))).not.toContain('openWithLivePreview')
+    expect(ids(buildTreeMenu(folder('internal'), context))).not.toContain('openWithLivePreview')
+  })
+
   it('shows folder actions and hides file-only ones on a folder', () => {
     const menu = ids(buildTreeMenu(folder('internal'), context))
     expect(menu).toContain('findInFolder')

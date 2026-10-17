@@ -3,7 +3,7 @@ package panelwindow
 import "testing"
 
 func TestToolWindowKey(t *testing.T) {
-	for _, tool := range []string{"run", "logs", "terminal", "copilot", "milk"} {
+	for _, tool := range []string{"run", "logs", "terminal", "copilot", "milk", "claude", "opencode"} {
 		key, err := ToolWindowKey("session-123", tool)
 		if err != nil || key != "tool-session-123-"+tool {
 			t.Fatalf("unexpected key for %s: %q %v", tool, key, err)

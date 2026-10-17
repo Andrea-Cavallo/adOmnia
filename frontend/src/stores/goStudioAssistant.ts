@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 
-export type GoStudioAssistantPane = 'copilot' | 'milk' | 'claude' | 'a0' | null
+export type GoStudioAssistantPane = 'copilot' | 'milk' | 'claude' | 'opencode' | 'a0' | null
 /** Chat panes: they live in the side pane and can be detached into their own window. */
-export type GoStudioChatPane = 'copilot' | 'milk' | 'claude'
-export const isChatPane = (pane: string | null): pane is GoStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude'
+export type GoStudioChatPane = 'copilot' | 'milk' | 'claude' | 'opencode'
+export const isChatPane = (pane: string | null): pane is GoStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude' || pane === 'opencode'
 
 /** Ultimo provider aperto dal bottone AI unico: riapre dove si era rimasti, anche dopo il riavvio. */
 export const LAST_PROVIDER_KEY = 'adomnia.goide.ai.lastProvider.v1'

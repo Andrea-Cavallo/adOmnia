@@ -1,3 +1,4 @@
+import { jsonColorTokens } from '@/lib/jsonColors'
 import { personalColors } from '@/lib/personalAppearance'
 import { accentHue, validAccent, luminance } from '@/lib/accentPalette'
 import { createContext, useCallback, useContext, useEffect } from 'react'
@@ -33,7 +34,7 @@ function injectThemeVariables(theme: Theme) {
   const customAccent = chosen.accentColor
   document.documentElement.toggleAttribute('data-custom-accent', validAccent(customAccent))
   root.setProperty('--brand-palette-filter', validAccent(customAccent) ? `hue-rotate(${accentHue(customAccent) - 190}deg)` : 'none')
-  const colors = personalColors(theme.colors, chosen, inferThemeMode(theme))
+  const colors = { ...personalColors(theme.colors, chosen, inferThemeMode(theme)), ...jsonColorTokens(store.settings.appearance.jsonColors?.[effectiveMode(theme)]) }
 
   // Remove tokens owned by the previous theme so missing values fall back
   // to the current mode instead of retaining the previous palette.
@@ -125,6 +126,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { themes, activeThemeId, setThemes, setActiveThemeId: setStoreActiveId } = useThemesStore()
   const settingsThemeId = useSettingsStore((s) => s.settings.appearance.themeId)
   const accentColor = useSettingsStore(s => s.settings.appearance.accentColor)
+  const jsonColors = useSettingsStore(s => s.settings.appearance.jsonColors)
   const baseColor = useSettingsStore(s => s.settings.appearance.baseColor)
   const preview = useSettingsStore(s => s.appearancePreview)
   const settingsLoaded = useSettingsStore((s) => s.loaded)
@@ -177,7 +179,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return
     }
     syncDocumentIcon(activeThemeId)
-  }, [activeThemeId, themes, accentColor, baseColor, preview])
+  }, [activeThemeId, themes, accentColor, baseColor, jsonColors, preview])
 
   return (
     <ThemeContext.Provider value={{ applyTheme }}>

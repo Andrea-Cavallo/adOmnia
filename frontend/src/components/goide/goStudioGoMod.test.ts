@@ -45,15 +45,18 @@ describe('goModLenses', () => {
   it('puts module-wide actions on the module line and per-dependency actions on each require', () => {
     const lenses = goModLenses(parseGoMod(GO_MOD))
     expect(lenses.filter((lens) => lens.line === 2).map((lens) => lens.action)).toEqual(['updateall', 'updatepatch', 'tidy', 'download', 'verify'])
-    expect(lenses.filter((lens) => lens.line === 6).map((lens) => lens.action)).toEqual(['update', 'replace', 'remove'])
-    expect(lenses.filter((lens) => lens.line === 9).map((lens) => lens.action)).toEqual(['update', 'dropreplace', 'remove'])
-    expect(lenses.find((lens) => lens.line === 13)).toMatchObject({ action: 'dropreplace', modulePath: 'github.com/pkg/errors' })
+    expect(lenses.filter((lens) => lens.line === 6).map((lens) => lens.action)).toEqual(['viewcode', 'browse', 'update', 'replace', 'remove'])
+    expect(lenses.filter((lens) => lens.line === 9).map((lens) => lens.action)).toEqual(['viewcode', 'browse', 'update', 'dropreplace', 'remove'])
+    expect(lenses.filter((lens) => lens.line === 13).map((lens) => lens.action)).toEqual(['viewcode', 'dropreplace'])
+    expect(lenses.find((lens) => lens.line === 13 && lens.action === 'dropreplace')).toMatchObject({ modulePath: 'github.com/pkg/errors' })
   })
 
   it('shows the exact command that will run', () => {
     expect(goModCommandLine('replace', 'github.com/a/b', '/home/me/b')).toBe('go mod edit -replace=github.com/a/b=/home/me/b')
     expect(goModCommandLine('remove', 'github.com/a/b')).toBe('go get github.com/a/b@none')
     expect(goModCommandLine('updatepatch')).toBe('go get -u=patch ./...')
+    expect(goModCommandLine('download')).toBe('go mod download')
+    expect(goModCommandLine('download', 'github.com/a/b')).toBe('go mod download github.com/a/b')
   })
 
   it('asks confirmation only for actions that may reach the network', () => {

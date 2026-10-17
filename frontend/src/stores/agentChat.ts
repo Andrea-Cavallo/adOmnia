@@ -16,6 +16,8 @@ import type {
  * client (internal/milk) for every agent, so the store is one factory too.
  */
 export interface AgentChatApi {
+  /** Only adapters restricted to a local inference endpoint may set this. */
+  localProvider?: boolean
   status: () => Promise<MilkStatus>
   settings: () => Promise<MilkSettings>
   saveSettings: (settings: MilkSettings) => Promise<MilkSettings>
@@ -226,7 +228,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
           },
         }))
         try {
-          const prepared = await prepareStudioChat(root, message, context, true)
+          const prepared = await prepareStudioChat(root, message, context, !api.localProvider, api.localProvider)
           set((state) => {
             const current = state.chatThreads[root]
             if (!current || current.busyToken !== token) return state

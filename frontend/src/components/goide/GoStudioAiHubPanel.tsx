@@ -1,3 +1,4 @@
+import { OpenCodeLogo, GoStudioOpenCodeChat } from './GoStudioOpenCode'
 import { useEffect, type ComponentType } from 'react'
 import type { GoIDESession } from '@/lib/goide-api'
 import type { GoIDEEditorDocument } from '@/stores/goide'
@@ -15,6 +16,7 @@ const PROVIDER_ICONS: Record<GoStudioChatPane, ComponentType<{ size?: number }>>
   copilot: GitHubMark,
   milk: MilkLogo,
   claude: ClaudeLogo,
+  opencode: OpenCodeLogo,
 }
 
 interface GoStudioAiHubPanelProps {
@@ -56,7 +58,7 @@ export function GoStudioAiHubPanel({ session, document }: GoStudioAiHubPanelProp
         })}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {active === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : active === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : <GoStudioClaudeChat session={session} document={document} />}
+        {active === 'copilot' ? <GoStudioCopilotChat session={session} document={document} /> : active === 'milk' ? <GoStudioMilkChat session={session} document={document} /> : active === 'opencode' ? <GoStudioOpenCodeChat session={session} document={document} /> : <GoStudioClaudeChat session={session} document={document} />}
       </div>
     </div>
   )

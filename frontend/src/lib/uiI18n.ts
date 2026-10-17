@@ -9,6 +9,17 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'JSON colors': 'Colori JSON',
+  'JSON keys': 'Chiavi',
+  'JSON strings': 'Stringhe',
+  'JSON numbers': 'Numeri',
+  'JSON arrays []': 'Array []',
+  'JSON objects {}': 'Oggetti {}',
+  'JSON booleans': 'Booleani',
+  'JSON null': 'Null',
+  'Saved for the current light or dark mode.': 'Salvati per la modalità chiara o scura attuale.',
+  'Reset JSON colors': 'Ripristina colori JSON',
+
   'Resume Program': 'Continua esecuzione',
   'Pause Program': 'Pausa esecuzione',
   'Step Over': 'Esegui istruzione',

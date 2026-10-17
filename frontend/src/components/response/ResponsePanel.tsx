@@ -162,7 +162,7 @@ function responseBytes(response: ResponseData): Uint8Array {
   return new TextEncoder().encode(response.body)
 }
 
-type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct' | 'ws'; value: string }
+type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object' | 'punct' | 'ws'; value: string }
 
 function tokenizeJSON(text: string): Token[] {
   const tokens: Token[] = []
@@ -185,6 +185,10 @@ function tokenizeJSON(text: string): Token[] {
       type = 'null'
     } else if (/^-?\d/.test(val)) {
       type = 'number'
+    } else if (val === '[' || val === ']') {
+      type = 'array'
+    } else if (val === '{' || val === '}') {
+      type = 'object'
     } else if (/^\s+$/.test(val)) {
       type = 'ws'
     }
@@ -201,6 +205,8 @@ const TOKEN_COLORS: Record<string, string> = {
   number: 'text-json-number',
   boolean: 'text-json-bool',
   null: 'text-json-null',
+  array: 'text-[var(--color-json-array,var(--color-text-3))]',
+  object: 'text-[var(--color-json-object,var(--color-text-3))]',
   punct: 'text-text-3',
   ws: '',
 }

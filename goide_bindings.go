@@ -33,6 +33,8 @@ type GoIDE struct {
 	allowAppClose      atomic.Bool
 	// windows possiede le finestre Go Studio separate (una per progetto).
 	windows *goidewindow.Manager
+	// previewWindows possiede le finestre native delle Live Preview.
+	previewWindows *goidewindow.PreviewWindows
 	// serviceListeners ricevono gli eventi gO lato backend (es. DevContext).
 	serviceListeners []func(goide.EventEnvelope)
 	// runtimeLock segnala ai prossimi avvii se questo si è chiuso in modo anomalo.
@@ -104,6 +106,7 @@ func (g *GoIDE) attachDesktop(desktop *application.App) {
 	g.windows = goidewindow.New(desktop, windowchrome.IsApp(startupWindowChrome), func(windowID string) {
 		g.service.ReleaseWindow(windowID)
 	})
+	g.attachPreviewWindows()
 }
 
 func (g *GoIDE) attachMainWindow(window *application.WebviewWindow) {
@@ -117,6 +120,7 @@ func (g *GoIDE) attachMainWindow(window *application.WebviewWindow) {
 		if g.windows != nil {
 			g.windows.CloseAll()
 		}
+		g.previewWindows.CloseAll()
 	})
 }
 
@@ -446,6 +450,11 @@ func (g *GoIDE) RemoveInstalledToolchain(version string, confirmed bool) error {
 // ListDependencies legge le dipendenze del modulo senza eseguire comandi.
 func (g *GoIDE) ListDependencies(sessionID, moduleDirectory string) (goide.DependencyState, error) {
 	return g.service.ListDependencies(sessionID, moduleDirectory)
+}
+
+// ResolveDependencySource localizza il codice sorgente di una dipendenza del go.mod.
+func (g *GoIDE) ResolveDependencySource(sessionID, moduleDirectory, modulePath string) (goide.DependencySource, error) {
+	return g.service.ResolveDependencySource(sessionID, moduleDirectory, modulePath)
 }
 
 // ListModuleVersions elenca le versioni pubblicate di una dipendenza, dalla più recente.

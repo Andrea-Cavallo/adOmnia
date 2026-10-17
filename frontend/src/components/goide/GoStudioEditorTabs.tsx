@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowRightToLine, Columns2, Lock, Pin, RotateCcw, Rows2, SquareDashed, Trash2, X } from 'lucide-react'
+import { ArrowRightToLine, Columns2, Globe, Lock, Pin, RotateCcw, Rows2, SquareDashed, Trash2, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useGoIDEStore, type GoIDEEditorDocument } from '@/stores/goide'
 import { GoStudioFileIcon } from './GoStudioFileIcon'
@@ -10,6 +10,10 @@ interface GoStudioEditorTabsProps {
   onRequestClose: (documents: GoIDEEditorDocument[]) => void
   /** Azioni fisse a destra della riga: restano visibili anche quando le tab scorrono. */
   actions?: ReactNode
+  /** Tab virtuale della Live Preview accanto ai file; assente se la preview non è in una tab. */
+  previewTab?: { active: boolean; label: string; onSelect: () => void; onClose: () => void }
+  /** Chiamata quando si seleziona un file: la tab della preview smette di essere quella attiva. */
+  onSelectDocument?: () => void
 }
 
 type TabAction = 'pin' | 'close' | 'closeOthers' | 'closeRight' | 'closeAll' | 'reopen' | 'splitRight' | 'splitDown'
@@ -44,7 +48,7 @@ export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument
   }
 }
 
-export function GoStudioEditorTabs({ documents, activeId, onRequestClose, actions }: GoStudioEditorTabsProps) {
+export function GoStudioEditorTabs({ documents, activeId, onRequestClose, actions, previewTab, onSelectDocument }: GoStudioEditorTabsProps) {
   const pinned = useGoIDEStore((state) => state.pinnedDocuments)
   const hasClosed = useGoIDEStore((state) => (state.activeSessionId ? (state.closedDocuments[state.activeSessionId]?.length ?? 0) > 0 : false))
   const selectDocument = useGoIDEStore((state) => state.selectDocument)
@@ -62,6 +66,7 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
     if (next < 0 || next >= ordered.length || current < 0) return
     event.preventDefault()
     selectDocument(ordered[next].document.id)
+    onSelectDocument?.()
     requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus())
   }
   const previewId = useGoIDEStore((state) => (ordered[0] ? state.previewDocumentBySession[ordered[0].document.sessionId] ?? null : null))
@@ -98,16 +103,16 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
     <div className="flex h-10 shrink-0 items-stretch border-b border-border-1">
     <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
       {ordered.map((item) => {
-        const active = item.document.id === activeId
+        const active = item.document.id === activeId && !previewTab?.active
         const isPinned = !!pinned[item.document.id]
         return (
           <button
             key={item.document.id}
             type="button"
             role="tab"
-            aria-selected={active}
+            aria-selected={active && !previewTab?.active}
             tabIndex={active ? 0 : -1}
-            onClick={() => selectDocument(item.document.id)}
+            onClick={() => { selectDocument(item.document.id); onSelectDocument?.() }}
             // Come negli IDE JetBrains: doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
             onDoubleClick={() => useGoIDEStore.getState().toggleEditorMaximized()}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
@@ -126,6 +131,13 @@ export function GoStudioEditorTabs({ documents, activeId, onRequestClose, action
           </button>
         )
       })}
+      {previewTab && (
+        <button type="button" role="tab" aria-selected={previewTab.active} onClick={previewTab.onSelect} className="go-studio-tab group" title="Live Preview">
+          <Globe size={13} className="shrink-0 text-accent" aria-hidden="true" />
+          <span className="truncate">{previewTab.label}</span>
+          <span role="button" tabIndex={-1} aria-label="Close Live Preview" onClick={(event) => { event.stopPropagation(); previewTab.onClose() }} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded hover:bg-surface-3 hover:text-text-1 ${previewTab.active ? 'opacity-80' : 'opacity-0 group-hover:opacity-100'}`}><X size={12} /></span>
+        </button>
+      )}
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
     </div>
     {actions}

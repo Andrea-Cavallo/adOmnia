@@ -162,24 +162,30 @@ func (s *Service) StartExtensionLanguageServer(sessionID, languageID string) (La
 		if err != nil {
 			return LanguageServerStatus{}, err
 		}
-		s.documents.mu.RLock()
-		documents := []Document{}
-		for _, record := range s.documents.documents {
-			if record.document.SessionID == session.ID && !record.document.External && !record.document.ReadOnly {
-				documents = append(documents, record.document)
-			}
-		}
-		s.documents.mu.RUnlock()
-		for _, document := range documents {
-			if owner, _, ok := s.workspace.languages.ForPath(document.Path); ok && owner.ID() == languageID {
-				if content, err := os.ReadFile(document.Path); err == nil {
-					s.lsp.TrackDocument(session, document, string(content), false)
-				}
-			}
-		}
+		s.trackLanguageDocuments(session, languageID)
 		return s.lsp.Start(session, LanguageServerOptions{Language: c.ID, Name: c.Title, Binary: binary, Arguments: c.Server.Arguments})
 	}
 	return LanguageServerStatus{}, fmt.Errorf("extension language server unavailable")
+}
+
+// trackLanguageDocuments consegna al language server del linguaggio i documenti già aperti nella
+// sessione (modificabili): il server che parte dopo l'apertura dei file li vede comunque.
+func (s *Service) trackLanguageDocuments(session Session, languageID string) {
+	s.documents.mu.RLock()
+	documents := []Document{}
+	for _, record := range s.documents.documents {
+		if record.document.SessionID == session.ID && !record.document.External && !record.document.ReadOnly {
+			documents = append(documents, record.document)
+		}
+	}
+	s.documents.mu.RUnlock()
+	for _, document := range documents {
+		if owner, _, ok := s.workspace.languages.ForPath(document.Path); ok && owner.ID() == languageID {
+			if content, err := os.ReadFile(document.Path); err == nil {
+				s.lsp.TrackDocument(session, document, string(content), false)
+			}
+		}
+	}
 }
 
 func (s *Service) ExtensionLanguageStatus(sessionID, languageID string) (LanguageServerStatus, error) {

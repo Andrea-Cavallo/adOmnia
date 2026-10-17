@@ -41,7 +41,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A1.1 | **Request Composer** | Full HTTP builder: method selector (GET, QUERY, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, TRACE), URL bar with variable highlighting, Send / Save / Load-Test buttons. |
 | A1.2 | **Query Parameters** | Key-value editor with enable/disable toggles, row add/remove, and variable substitution `{{var}}`. |
 | A1.3 | **HTTP Headers** | Key-value editor with toggles, common header suggestions, and variable substitution. A per-row generate action recognizes Request-ID, Correlation-ID and Idempotency/Idempotence-Key (including X- prefixes) for local UUID v7 generation; Timestamp, Request-Timestamp and Webhook-Timestamp support Unix seconds/milliseconds or ISO UTC, and Date generates HTTP-date. Values change only on explicit click and remain editable. |
-| A1.4 | **Body Editor — Raw** | Multi-type editor: JSON, XML, Text, HTML, JavaScript with syntax highlighting and multiple body variants per request. |
+| A1.4 | **Body Editor — Raw** | Multi-type editor: JSON, XML, Text, HTML, JavaScript with syntax highlighting and multiple body variants per request. The JSON colors menu customizes keys, strings, numbers, array/object brackets, booleans and null, with per-category and full theme reset. Optional local appearance overrides are stored separately for dark/light modes; absent keys inherit the theme, so existing settings/workspaces require no migration. |
 | A1.5 | **Body Editor — Form** | URL-Encoded and multipart Form Data with a key-value pair editor. |
 | A1.6 | **Body Editor — GraphQL** | GraphQL query editor with a separate variables editor. |
 | A1.7 | **Pre/Post Request Scripts** | Pre-request and post-response script editor with `pm.*` Postman-compatible API. |
@@ -1045,6 +1045,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J2.7 | **Formatting** | Reformat code and optimize imports, optionally on save; gofumpt optional. |
 | J2.8 | **File Icons** | Gopher for Go sources (test marker), Go logo for module files, Simple Icons brands for Docker, Git, GitHub Actions, `.env` and common formats; readable on both themes. |
 | J2.9 | **Markdown & Mermaid documents** | `.md` files open in Preview with the eye / split / editor switch remembered per file; `.mmd`/`.mermaid` render as diagrams with the same switch and show syntax errors under the diagram. **Markdown tools** side panels: outline with click-to-jump, backlinks found by project search, and a local graph of the note with unresolved/orphan toggles and a folder filter. Covered by automated tests; manual check pending. |
+| J2.10 | **Auto save** | Save on focus change (JetBrains style) and auto save after a pause in typing (1/2/5/10 seconds, off by default), independent and combinable. The delay restarts at every keystroke and never overlaps an in-flight save; save actions (format, imports, lint) still run. |
 
 ### J3. Lint & AI
 
@@ -1078,6 +1079,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J5.1 | **Go SDK Management** | Detects Go or installs official releases (SHA-256 verified); a different SDK per project without changing `PATH`. |
 | J5.2 | **Tool Installation** | Confirmed installs of gopls, golangci-lint, staticcheck and Delve into the adOmnia tools folder; custom tool paths. |
 | J5.3 | **Dependencies** | Previewed `go get`, `go mod tidy`, update, download and verify. |
+| J5.5 | **Dependency source code** | `View code` and `Browse files` on each go.mod requirement (and Ctrl+click on the module path) open the module source: a local `replace` folder, another module of the project or a project imported in adOmnia (editable), or the Go module cache (read-only). A missing module is downloaded on demand with `go mod download <module>`. |
 | J5.4 | **Extra Go Tools** | Detects, installs with confirmation and runs govulncheck, goimports, mockgen, stringer and user-defined tools with structured arguments, the project SDK and Run-console output. |
 
 ### J6. Git & adOmnia Integration

@@ -3,6 +3,8 @@ import { useSettingsStore } from '@/stores/settings'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
+import cssWorker from 'monaco-editor/language/css/css.worker?worker'
+import htmlWorker from 'monaco-editor/language/html/html.worker?worker'
 import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
 import tsWorker from 'monaco-editor/language/typescript/ts.worker?worker'
 import yamlWorker from 'monaco-yaml/yaml.worker?worker'
@@ -17,6 +19,8 @@ export function configureMonacoLoader(): void {
   ;(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
     getWorker(_workerId: string, label: string) {
       if (label === 'json') return new jsonWorker()
+      if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker()
+      if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker()
       if (label === 'yaml') return new yamlWorker()
       if (label === 'javascript' || label === 'typescript') return new tsWorker()
       return new editorWorker()

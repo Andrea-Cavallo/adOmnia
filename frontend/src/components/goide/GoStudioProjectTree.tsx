@@ -14,6 +14,7 @@ import { useGoIDETestsStore } from '@/stores/goideTests'
 import { openPemInPowerTools, openEnterpriseFile, sendFileToApiWorkspace } from './goStudioFileHandoffs'
 import { createGitignore, deletePathWithConfirm, parentOf, revealPath, type GitignoreTemplate } from './goStudioFileActions'
 import { buildTreeMenu, treeKeyAction } from './goStudioTreeMenu'
+import { openHtmlWithLivePreview } from './goStudioPreviewCommands'
 import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, openTerminalIn, pasteInto, previewHtml, repairIde, replaceInFiles, runPackageCommand, runTreeGitAction, useGoStudioTreeClipboard } from './goStudioTreeActions'
 import type { GoStudioCommandId } from './goStudioCommands'
 import { GoStudioPathDialog, type GoStudioPathRequest } from './GoStudioPathDialog'
@@ -260,6 +261,7 @@ export const GoStudioProjectTree = memo(function GoStudioProjectTree({ session, 
       case 'reveal': revealPath(session.id, path); break
       case 'terminal': openTerminalIn(folder); break
       case 'openInBrowser': if (entry) void previewHtml(path); break
+      case 'openWithLivePreview': if (entry) void openHtmlWithLivePreview(session.id, path); break
       case 'localHistory': openThen('file.localHistory'); break
       case 'gitHistory': openThen('vcs.history'); break
       case 'gitAnnotate': openThen('vcs.annotate'); break

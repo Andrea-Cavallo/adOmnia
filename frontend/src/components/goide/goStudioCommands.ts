@@ -2,9 +2,11 @@ import { effectiveAltBindings, effectiveBinding, isRemapped, useGoStudioKeymap, 
 import type { GoStudioWhenContext } from '@/lib/goide/when'
 import { IDE_LANGUAGES, languageRequirement, type IdeRegisteredLanguage } from '@/components/ide/languages'
 import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide/languages/go/commands'
+import { WEB_LANGUAGE_COMMANDS, type WebLanguageCommandId } from '@/components/ide/languages/web/commands'
 
 export type GoStudioCommandId =
   | GoLanguageCommandId
+  | WebLanguageCommandId
   | 'file.openProject' | 'file.newProject' | 'file.clone' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
@@ -28,7 +30,7 @@ export type GoStudioCommandId =
   | 'debug.stop' | 'debug.restart' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.opencodeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type GoStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
@@ -203,6 +205,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'code.staticcheck', menu: 'code', label: 'Staticcheck Analyses' },
   { id: 'code.vulncheck', menu: 'code', label: 'Vulnerability Diagnostics (vuln.go.dev)' },
   ...GO_LANGUAGE_COMMANDS,
+  ...WEB_LANGUAGE_COMMANDS,
   { id: 'run.run', menu: 'run', label: 'Run', binding: { key: 'F5', mod: true } },
   { id: 'run.startWorkspace', menu: 'run', label: 'Start Workspace', separatorBefore: true },
   { id: 'run.stopWorkspace', menu: 'run', label: 'Stop Workspace' },
@@ -252,6 +255,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…' },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
+  { id: 'tools.opencodeChat', menu: 'tools', label: 'Open OpenCode + Ollama' },
   { id: 'tools.claudeChat', menu: 'tools', label: 'Open Claude Code' },
   { id: 'tools.reviewAgentChanges', menu: 'tools', label: 'Review Agent Changes…' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
@@ -383,6 +387,8 @@ export interface GoStudioCommandContext {
   ownedElsewhere?: boolean
   /** Linguaggi registrati nel backend (`GetCapabilities().languages`); undefined finché non sono caricati. */
   languages?: readonly IdeRegisteredLanguage[]
+  /** Il progetto ha solo unità web (nessun modulo Go): ▶ Run avvia la Live Preview. */
+  webOnly?: boolean
 }
 
 const NO_PROJECT = 'Open a Go project first'
@@ -430,6 +436,11 @@ export function commandAvailability(id: GoStudioCommandId, context: GoStudioComm
   if (id === 'view.zenMode') return context.detached ? 'Available in the main window' : true
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'file.clone' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
+  if (id === 'run.run' && context.webOnly) return context.authorized ? true : NOT_TRUSTED
+  if (id.startsWith('preview.') || id === 'web.installTools') {
+    if (id !== 'preview.show' && !id.startsWith('preview.place') && !context.authorized) return NOT_TRUSTED
+    return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
+  }
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {
     case 'nav.back': return context.canGoBack ? true : 'No earlier location'

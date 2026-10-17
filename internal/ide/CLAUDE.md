@@ -8,7 +8,7 @@ The IDE is a flagship area: it must feel like a real IDE (fast, stable, never lo
 
 ## What it is
 
-**adOmnia IDE Platform + language adapters.** Go Studio is the Go adapter on top of a language-agnostic core. Go is the only registered language; Java/Rust/Python/TS are validation scenarios, not features.
+**adOmnia IDE Platform + language adapters.** Go Studio is the Go adapter on top of a language-agnostic core. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON in `internal/languages/web`) are the second adapter, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features.
 
 Read before non-trivial work:
 
@@ -27,6 +27,8 @@ Read before non-trivial work:
 ```
 internal/ide/*              CORE, language-agnostic: language (Language + capabilities, registry), project (Unit),
                             lsp, dap, run, testing, sdk, process, security, graph, apicontract, remote, startup
+internal/ide/preview/       Live Server (static server, dev-server proxy, preview Manager), language-agnostic
+internal/languages/web/     Web ADAPTER: typescript/html/css/json, project + package-manager detection, LSP specs
 internal/languages/golang/  Go ADAPTER: detection, SDK, gopls ServerSpec, run options, test2json, race reports,
                             Delve/runtime extensions, architecture/error/context analyses…
 internal/goide/             HOST: composition root + `Service` facade for Wails; languages registered in languages.go;

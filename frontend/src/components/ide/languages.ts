@@ -1,5 +1,6 @@
 import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import { GO_LANGUAGE } from './languages/go'
+import { WEB_LANGUAGES } from './languages/web'
 
 /**
  * Contribuzione UI di un linguaggio dell'IDE Platform. Il backend dice quali linguaggi sono
@@ -19,6 +20,11 @@ export interface IdeLanguageContribution {
   languageServer?: string
   /** Menu proprio del linguaggio nella barra dei menu. */
   menu?: { id: string; label: string }
+  /**
+   * Funzioni tarate sul server di Go (colori semantici, inlay hints, Code Vision). Falso per i
+   * linguaggi che non le hanno ancora verificate con il proprio server; default vero.
+   */
+  heavyFeatures?: boolean
 }
 
 /** Linguaggio registrato dal backend: basta l'identità per abilitare le contribuzioni. */
@@ -27,7 +33,7 @@ export interface IdeRegisteredLanguage {
   name: string
 }
 
-export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE]
+export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES]
 
 export function ideLanguage(id: string): IdeLanguageContribution | undefined {
   return IDE_LANGUAGES.find((language) => language.id === id)
@@ -36,6 +42,11 @@ export function ideLanguage(id: string): IdeLanguageContribution | undefined {
 /** ID Monaco su cui registrare i provider LSP generici (completion, hover, semantic tokens…). */
 export function languageServerEditorLanguages(): string[] {
   return IDE_LANGUAGES.flatMap((language) => language.editorLanguages)
+}
+
+/** ID Monaco su cui registrare le funzioni pesanti (colori semantici, inlay hints, Code Vision). */
+export function heavyFeatureEditorLanguages(): string[] {
+  return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false).flatMap((language) => language.editorLanguages)
 }
 
 /** Linguaggio dell'IDE che serve i file con questo ID Monaco (per icona, LSP, widget). */

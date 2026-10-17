@@ -232,6 +232,17 @@ export function listGoIDEDependencies(sessionId: string, moduleDirectory: string
   return GoIDEBindings.ListDependencies(sessionId, moduleDirectory)
 }
 
+export type GoIDEDependencySource = Awaited<ReturnType<typeof GoIDEBindings.ResolveDependencySource>>
+export type GoIDEDependencySourceFile = GoIDEDependencySource['files'][number]
+
+/**
+ * Dove si trova il codice di una dipendenza del go.mod: il target di una replace locale, un altro
+ * modulo del progetto oppure il sorgente nella module cache. Non esegue comandi e non tocca la rete.
+ */
+export function resolveGoIDEDependencySource(sessionId: string, moduleDirectory: string, modulePath: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.ResolveDependencySource(sessionId, moduleDirectory, modulePath)
+}
+
 /** Versioni pubblicate di una dipendenza, dalla più recente (go list -m -versions, passa dal GOPROXY). */
 export function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): CancellablePromise<string[]> {
   return GoIDEBindings.ListModuleVersions(sessionId, moduleDirectory, modulePath)

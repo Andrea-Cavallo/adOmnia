@@ -19,6 +19,8 @@ import { useThemesStore } from '@/stores/themes'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import { useGoIDETasksStore } from '@/stores/goideTasks'
+import { GoStudioPreviewStatus } from './GoStudioPreviewStatus'
+import { useIdeWebServersStore, webLanguageForEditor, webServerEntry } from '@/stores/ideWebServers'
 
 interface GoStudioStatusBarProps {
   session: GoIDESession
@@ -56,6 +58,7 @@ export function languageServerLabel(state: string, server: string, version?: str
     case 'ready': return `${server} ${version ?? ''}`.trim()
     case 'starting': return `${server} starting…`
     case 'crashed': return `${server} crashed`
+    case 'unavailable': return `${server} not installed`
     default: return `${server} off`
   }
 }
@@ -75,7 +78,10 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const counts = diagnosticCounts(mergedReports(reports, lint?.reports))
   const watcher = useWatcherStatus(session.id)
-  const lspState = status?.state ?? 'stopped'
+  // Per un file web la voce parla del suo language server, non di gopls.
+  const webLanguage = documentInfo ? webLanguageForEditor(documentInfo.language) : undefined
+  const webServer = useIdeWebServersStore((state) => webLanguage ? webServerEntry(state, session.id, webLanguage) : null)
+  const lspState = webServer ? (webServer.state === 'missing' ? 'unavailable' : webServer.state) : status?.state ?? 'stopped'
   const serverName = (documentInfo && ideLanguageForEditor(documentInfo.language)?.languageServer) || IDE_LANGUAGES.find((language) => language.languageServer)?.languageServer || 'Language server'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
 
@@ -142,9 +148,9 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       </div>
       {/* Centro: può scorrere in orizzontale su finestre strette; tema e fiducia restano sempre visibili a destra. */}
       <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <button type="button" onClick={onLanguageServer} title={status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
-        {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
-        <span className="max-w-56 truncate">{progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, status?.version)}</span>
+      <button type="button" onClick={webLanguage ? () => void useIdeWebServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
+        {lspState === 'starting' || (!webServer && progress) ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
+        <span className="max-w-56 truncate">{!webServer && progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version)}</span>
       </button>
       <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
@@ -154,6 +160,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
       </button>
+      <GoStudioPreviewStatus sessionId={session.id} className={`${ITEM} gap-1`} />
       <button type="button" aria-label="Git" onClick={() => showToolWindow('git')} title="Git" className={`${ITEM} gap-1`}>
         <GitBranch size={12} />Git
       </button>

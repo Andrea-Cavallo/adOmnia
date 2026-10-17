@@ -241,3 +241,12 @@
 .monaco-editor .go-studio-comment-fixme { color: var(--color-error) !important; font-style: normal; font-weight: 600; }
 .monaco-editor .go-studio-comment-note { color: var(--color-info) !important; font-style: normal; }
 .monaco-editor .go-studio-comment-important { color: var(--color-accent) !important; font-style: normal; font-weight: 700; }
+
+/* Inline diagnostics use the same semantic tokens in light and dark skins. */
+.monaco-editor .go-studio-diagnostic-text { font-style: italic; opacity: .9; }
+.monaco-editor .go-studio-diagnostic-text-error { color: var(--color-error) !important; }
+.monaco-editor .go-studio-diagnostic-text-warning { color: var(--color-warning) !important; }
+.monaco-editor .go-studio-diagnostic-text-info { color: var(--color-info) !important; }
+.monaco-editor .go-studio-diagnostic-line-error { background: color-mix(in srgb, var(--color-error) 7%, transparent); }
+.monaco-editor .go-studio-diagnostic-line-warning { background: color-mix(in srgb, var(--color-warning) 7%, transparent); }
+.monaco-editor .go-studio-diagnostic-line-info { background: color-mix(in srgb, var(--color-info) 7%, transparent); }

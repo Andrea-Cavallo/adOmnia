@@ -1,3 +1,4 @@
+import { JsonColorsMenu } from '@/components/ui/JsonColorsMenu'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
 import { Ban, ChevronDown, ChevronRight, ChevronUp, AlertCircle, CheckCircle2, GitBranch, Database, Loader2, RefreshCw, Search, X, Braces, FileText, Link2, Files, Share2, Maximize2, Minimize2 } from 'lucide-react'
@@ -730,6 +731,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantCon
 
         {isJsonBody && (
           <>
+            <JsonColorsMenu />
             <button
               onClick={beautifyJson}
               className="shrink-0 rounded px-2 py-1 text-[10.5px] font-medium text-accent outline-none transition-colors hover:bg-accent/10 hover:text-accent-light focus-visible:ring-2 focus-visible:ring-accent"

@@ -2,8 +2,9 @@ import { monaco } from '@/lib/monacoSetup'
 import { useGoIDEStore, type GoIDEEditorDocument, type GoIDEQuickRunKind } from '@/stores/goide'
 import { packageLenses } from './goStudioRunTargets'
 import { documentForModel } from './goStudioLanguageFeatures'
-import { goModLenses, parseGoMod, type GoModDependencyAction } from './goStudioGoMod'
+import { goModLenses, parseGoMod, type GoModLensAction } from './goStudioGoMod'
 import { runGoModQuickAction, runGoStudioQuickCommand } from './goStudioQuickActions'
+import { openGoModDependencySource } from './goStudioDependencySource'
 import { findHttpRoutes } from './goStudioHttpRoutes'
 import { openRouteInApiClient } from './goStudioIntegrations'
 import { useDevContextStore } from '@/stores/devcontext'
@@ -121,9 +122,12 @@ function editableDocument(documentId: string): GoIDEEditorDocument | null {
 export function registerGoStudioCodeLens(): void {
   if (registered) return
   registered = true
-  monaco.editor.registerCommand(GO_MOD_COMMAND, (_accessor, documentId: string, action: GoModDependencyAction, modulePath: string) => {
+  monaco.editor.registerCommand(GO_MOD_COMMAND, (_accessor, documentId: string, action: GoModLensAction, modulePath: string) => {
     const document = editableDocument(documentId)
-    if (document) void runGoModQuickAction(document, action, modulePath)
+    if (!document) return
+    // View code e Browse files aprono il sorgente della dipendenza, non modificano il go.mod.
+    if (action === 'viewcode' || action === 'browse') void openGoModDependencySource(document, modulePath, action === 'browse')
+    else void runGoModQuickAction(document, action, modulePath)
   })
   monaco.editor.registerCommand(PACKAGE_COMMAND, (_accessor, documentId: string, kind: GoIDEQuickRunKind) => {
     const document = editableDocument(documentId)
