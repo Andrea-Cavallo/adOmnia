@@ -704,3 +704,12 @@ Fase 10 porta la piattaforma nella UI senza riscriverla. Il backend dice quali l
 - [ ] Run, Test (albero test, rerun failed), Debug con breakpoint, terminale, Git.
 - [ ] Dependencies, Dependency Graph, Runtime Enrichment, Toolchain config: il selettore dei moduli mostra i moduli del progetto.
 - [ ] Build nativa macOS e Linux (CI di release) e avvio.
+
+
+## 24. Decisioni per i nuovi linguaggi (2026-10-17, piano `mds/MULTILANGUAGE-IDE.md`)
+
+**9.1 — Struttura JS/TS.** Resta **un solo adapter `internal/languages/web`**: l'editor (LSP, Live Preview) e il runtime condividono rilevamento, package manager reale (`web.Inspect`) e unità `node`. Un secondo adapter `node` avrebbe dovuto duplicare tutto questo senza un secondo consumatore. Il confine si rivede solo se un runtime non-Node (Deno/Bun con LSP proprio) richiede un language server diverso. Il run di JS/TS passa oggi dal kind generico `command` (proposto da `web.Suggest`, eseguito senza shell dal package manager del lockfile); test runner strutturato e debug (js-debug) sono capability **da aggiungere con il loro primo consumatore** nello stesso adapter.
+
+**9.3 — Download di strumenti.** Nessun download silenzioso (local-first). Un server o debugger mancante è lo stato "non installato" con un pulsante **Installa** esplicito; versione pinnata, checksum verificato, cartella strumenti per-utente (`tools` accanto ai dati, come `Service.toolsRoot`), uso offline se già installato. Il pattern da riusare è `internal/languages/golang/sdk_install.go` (indice di release, SHA-256, limite di dimensione, `netpolicy`) sopra `internal/ide/sdk`; quando un secondo linguaggio ne ha bisogno, la parte generica (download + checksum + estrazione confinata) si estrae in `ide/sdk` e `golang` la usa da lì. Non si aggiunge una sesta copia.
+
+**Java.** Il supporto Java legacy (Eclipse PDE/OSGi, `internal/eclipsepde`) è in lavorazione separata: la voce 9.4 si pianifica solo dopo aver deciso come JDT LS, Maven/Gradle e il livello PDE convivono nello stesso adapter.
