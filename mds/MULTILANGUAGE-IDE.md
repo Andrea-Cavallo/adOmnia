@@ -150,14 +150,14 @@ Il rilevamento è per **unità di build** (`project.Unit`), non per cartella rad
 
 Caso d'uso: una cartella con `orders/` (Go), `billing/` (Java), `ml/` (Python), `web/` (React). Un solo Code Studio, quattro unità, ognuna col suo linguaggio.
 
-- [ ] 6.1 Verificare che `project.Project` produca *N unità con linguaggi diversi* nello stesso root, anche annidate e con `go.work`/workspaces npm; correggere i punti in cui un rilevatore "vince" sugli altri.
+- [ ] 6.1 *(parziale 2026-10-17: `TestMixedWorkspaceYieldsOneUnitPerModuleAndLanguage` prova 2 moduli Go + app Node + pacchetto annidato nello stesso root, `TestMixedWorkspaceSuggestionsStayInTheirOwnUnit` prova che ogni unità riceve solo le sue proposte; mancano `go.work`/workspaces npm e i rilevatori Java/Python, che arrivano con la Fase 9)* Verificare che `project.Project` produca *N unità con linguaggi diversi* nello stesso root, anche annidate e con `go.work`/workspaces npm; correggere i punti in cui un rilevatore "vince" sugli altri.
 - [ ] 6.2 Ogni `RunConfiguration` porta `unitId` (modulo di appartenenza) e cwd derivata dall'unità; la barra Run raggruppa per unità (`orders · Go`, `billing · Java`…) con icona di linguaggio (Simple Icons, già nel flusso `generate-brand-icons.mjs`).
 - [ ] 6.3 LSP/DAP **per unità**: un language server per (linguaggio, root dell'unità), avviato lazy alla prima apertura di un file di quel linguaggio, spento per inattività. Verificare l'instradamento per `sessionId`/`language` negli store (nessuno stato che attraversa sessioni).
 - [ ] 6.4 SDK/toolchain per unità (JDK per `billing`, Python venv per `ml`, Node per `web`): l'`ide/sdk` rileva per unità; tool-version cache resta process-wide (decisione già presa, non toccare).
 - [ ] 6.5 Albero progetto, ricerca, problemi e test raggruppati per unità con filtro; i risultati di ricerca non mescolano linguaggi senza etichetta.
 - [ ] 6.6 **Compound configuration** (Fase 8) che avvia più unità diverse insieme: ordine, readiness, log separati per processo con colore/etichetta.
 - [ ] 6.7 Sicurezza: ogni avvio di processo controlla `session.Project.Authorization == AuthorizationPermitted` (già regola del core; test `process_launch_guard_test.go` deve coprire i nuovi provider).
-- [ ] 6.8 Fixture di test: monorepo con 3 unità (Go + Node + Python finto) in `testdata/`; test di rilevamento, di routing LSP e di compound.
+- [ ] 6.8 *(parziale: fixture in cartelle temporanee Go+Node in `mixed_workspace_test.go`; mancano Python, routing LSP e compound)* Fixture di test: monorepo con 3 unità (Go + Node + Python finto) in `testdata/`; test di rilevamento, di routing LSP e di compound.
 
 **Gate Fase 6:** in un monorepo misto, aprire un file per linguaggio avvia il server giusto con la root giusta; Run di una unità non tocca le altre; compound avvia le unità scelte.
 
