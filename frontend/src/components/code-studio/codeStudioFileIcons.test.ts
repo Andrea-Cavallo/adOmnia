@@ -31,8 +31,9 @@ describe('Code Studio file icons', () => {
 
   it('gives other languages and their build files their own brand', () => {
     const slug = (path: string) => { const icon = resolveCodeStudioFileIcon(path); return icon.kind === 'brand' ? icon.slug : icon.kind }
-    expect([slug('src/Main.java'), slug('app.kt'), slug('pom.xml'), slug('build.gradle.kts'), slug('index.php'), slug('lib.cpp'), slug('util.h')])
-      .toEqual(['openjdk', 'kotlin', 'apachemaven', 'gradle', 'php', 'cplusplus', 'c'])
+    expect(resolveCodeStudioFileIcon('Main.java')).toEqual({ kind: 'java' })
+    expect([slug('app.kt'), slug('pom.xml'), slug('build.gradle.kts'), slug('index.php'), slug('lib.cpp'), slug('util.h')])
+      .toEqual(['kotlin', 'apachemaven', 'gradle', 'php', 'cplusplus', 'c'])
   })
 
   it('maps special names and paths to real brands', () => {

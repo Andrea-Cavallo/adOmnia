@@ -5,6 +5,7 @@ vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: Object.assign(() => 
 vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: Object.assign(() => undefined, { getState: () => ({ showToolWindow: vi.fn() }) }) }))
 vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: () => () => undefined }))
 vi.mock('@/lib/livepreview-api', () => ({}))
+vi.mock('@/lib/ide-servers-api', () => ({}))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
 vi.mock('@wailsio/runtime', () => ({ Browser: { OpenURL: vi.fn() } }))
 

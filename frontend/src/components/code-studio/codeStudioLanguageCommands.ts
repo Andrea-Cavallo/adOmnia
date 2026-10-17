@@ -8,7 +8,7 @@ import type { CodeStudioCommandId } from './codeStudioCommands'
 import { activeCodeStudioEditor } from './codeStudioEditorRegistry'
 import { runtimeLensEnabled, setRuntimeLensEnabled } from './codeStudioRuntimeLens'
 import { requestImpactAtCursor } from './CodeStudioImpactPanel'
-import { useIdeWebServersStore } from '@/stores/ideWebServers'
+import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 
 /** Testo selezionato nell'editor attivo, usato per precompilare Find in Files. */
 function selectedText(): string {
@@ -53,7 +53,7 @@ Both download from the Go proxy and the npm registry into adOmnia's own tools fo
   })
   if (!approved) return
   const lsp = useCodeStudioLspStore.getState()
-  await useIdeWebServersStore.getState().install(sessionId)
+  await useIdeLanguageServersStore.getState().install(sessionId, 'typescript')
   const started = await lsp.install(sessionId)
   if (started) lsp.showToolWindow('run')
 }

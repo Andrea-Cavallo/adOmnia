@@ -19,6 +19,9 @@ import * as graph$0 from "../ide/graph/models.js";
 import * as language$0 from "../ide/language/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as lsp$0 from "../ide/lsp/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as preview$0 from "../ide/preview/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -3635,6 +3638,16 @@ export class LanguageServerFeatures {
 }
 
 /**
+ * LanguageServerInfo descrive la disponibilità del server di un linguaggio.
+ */
+export const LanguageServerInfo = lsp$0.ServerInfo;
+
+/**
+ * LanguageServerInfo descrive la disponibilità del server di un linguaggio.
+ */
+export type LanguageServerInfo = lsp$0.ServerInfo;
+
+/**
  * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
  * dal Service, dalla persistenza e dai binding Wails durante la migrazione multi-language.
  */
@@ -5800,6 +5813,16 @@ export class SemanticTokensResult {
     }
 }
 
+/**
+ * ServerInstallPreview è ciò che la UI mostra prima di chiedere conferma: il comando esatto.
+ */
+export const ServerInstallPreview = lsp$0.InstallPlan;
+
+/**
+ * ServerInstallPreview è ciò che la UI mostra prima di chiedere conferma: il comando esatto.
+ */
+export type ServerInstallPreview = lsp$0.InstallPlan;
+
 export class Session {
     "id": SessionID;
     "project": Project;
@@ -7661,7 +7684,7 @@ export class WebProjectReport {
      * Runtime è quello del progetto predefinito (Node.js e il suo package manager).
      */
     "runtime": web$0.Runtime;
-    "servers": web$0.ServerInfo[];
+    "servers": LanguageServerInfo[];
     "config"?: PreviewConfig | null;
     "previews": preview$0.Preview[];
 
@@ -7719,16 +7742,6 @@ export class WebProjectReport {
         return new WebProjectReport($$parsedSource as Partial<WebProjectReport>);
     }
 }
-
-/**
- * Alias dei tipi esposti ai binding: la UI importa tutto da goide.
- */
-export const WebServerInfo = web$0.ServerInfo;
-
-/**
- * Alias dei tipi esposti ai binding: la UI importa tutto da goide.
- */
-export type WebServerInfo = web$0.ServerInfo;
 
 export class WorkspaceChange {
     "label"?: string;
@@ -8038,7 +8051,7 @@ const $$createType182 = $Create.Array($$createType181);
 const $$createType183 = web$0.Info.createFrom;
 const $$createType184 = $Create.Array($$createType183);
 const $$createType185 = web$0.Runtime.createFrom;
-const $$createType186 = web$0.ServerInfo.createFrom;
+const $$createType186 = lsp$0.ServerInfo.createFrom;
 const $$createType187 = $Create.Array($$createType186);
 const $$createType188 = PreviewConfig.createFrom;
 const $$createType189 = $Create.Nullable($$createType188);

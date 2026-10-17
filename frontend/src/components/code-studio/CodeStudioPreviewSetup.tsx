@@ -3,7 +3,7 @@ import { AlertTriangle, Download, Globe2, Loader2, Play, RefreshCw, ShieldAlert,
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useLivePreviewStore, type SessionPreview } from '@/stores/livePreview'
-import { useIdeWebServersStore } from '@/stores/ideWebServers'
+import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { phaseOf, previewChoices, type PreviewChoice } from '@/lib/code-studio/livePreview'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { LivePreview, LivePreviewRequest, LivePreviewTarget } from '@/lib/livepreview-api'
@@ -173,7 +173,7 @@ function titleFor(kind: string | undefined): string {
 
 function Idle({ session, view, confirm, setConfirm }: { session: GoIDESession; view: SessionPreview; confirm: 'dependencies' | 'tools' | null; setConfirm: (value: 'dependencies' | 'tools' | null) => void }) {
   const goLive = useLivePreviewStore((state) => state.goLive)
-  const installTools = useIdeWebServersStore((state) => state.install)
+  const installTools = useIdeLanguageServersStore((state) => state.install)
   const report = view.report
   const choices = previewChoices(report)
   const runtime = report?.runtime
@@ -206,7 +206,7 @@ function Idle({ session, view, confirm, setConfirm }: { session: GoIDESession; v
         <div className="max-w-md text-[11px] leading-4 text-text-4">
           {confirm === 'tools' ? (
             <InstallConfirm title="Install the web language servers?" command="npm install --prefix <adOmnia tools folder> typescript-language-server typescript@^6 vscode-langservers-extracted"
-              onCancel={() => setConfirm(null)} onConfirm={() => { setConfirm(null); void installTools(session.id) }} />
+              onCancel={() => setConfirm(null)} onConfirm={() => { setConfirm(null); void installTools(session.id, 'typescript') }} />
           ) : (
             <p>Editor intelligence for {missingServers.map((server) => server.language).join(', ')} uses the built-in Monaco features until the language servers are installed. <button type="button" className="text-accent underline decoration-dotted underline-offset-2" onClick={() => setConfirm('tools')}>Install them…</button></p>
           )}

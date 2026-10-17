@@ -22,7 +22,7 @@ import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import { useCodeStudioTasksStore } from '@/stores/codeStudioTasks'
 import { CodeStudioPreviewStatus } from './CodeStudioPreviewStatus'
-import { useIdeWebServersStore, webLanguageForEditor, webServerEntry } from '@/stores/ideWebServers'
+import { useIdeLanguageServersStore, serverLanguageForEditor, serverEntry } from '@/stores/ideLanguageServers'
 
 interface CodeStudioStatusBarProps {
   session: GoIDESession
@@ -84,11 +84,11 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
   // Senza un file aperto la voce segue il linguaggio del progetto: un'app Node non deve parlare di gopls.
   const profile = useMemo(() => projectProfile(session.project, IDE_LANGUAGE_NAMES), [session.project])
   const projectWebLanguage = !profile.hasGo && profile.primaryLanguage && WEB_LANGUAGE_IDS.includes(profile.primaryLanguage) ? profile.primaryLanguage : undefined
-  const webLanguage = documentInfo ? webLanguageForEditor(documentInfo.language) : projectWebLanguage
+  const webLanguage = documentInfo ? serverLanguageForEditor(documentInfo.language) : projectWebLanguage
   // Il pulsante del language server c'è solo se qualcuno lo serve: Go, un server web o il server del linguaggio del file.
   const showLsp = profile.hasGo || !!webLanguage || (!!documentInfo && !!ideLanguageForEditor(documentInfo.language)?.languageServer)
   const showGo = profile.hasGo || (!!documentInfo && ideLanguageForEditor(documentInfo.language)?.id === 'go')
-  const webServer = useIdeWebServersStore((state) => webLanguage ? webServerEntry(state, session.id, webLanguage) : null)
+  const webServer = useIdeLanguageServersStore((state) => webLanguage ? serverEntry(state, session.id, webLanguage) : null)
   const lspState = webServer ? (webServer.state === 'missing' ? 'unavailable' : webServer.state) : status?.state ?? 'stopped'
   const serverName = (documentInfo ? ideLanguageForEditor(documentInfo.language)?.languageServer : profile.primaryLanguage ? ideLanguage(profile.primaryLanguage)?.languageServer : undefined) || IDE_LANGUAGES.find((language) => language.languageServer)?.languageServer || 'Language server'
   const lspTone = lspState === 'ready' ? 'text-success' : lspState === 'crashed' ? 'text-danger' : lspState === 'starting' ? 'text-accent' : 'text-text-4'
@@ -156,7 +156,7 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
       </div>
       {/* Centro: può scorrere in orizzontale su finestre strette; tema e fiducia restano sempre visibili a destra. */}
       <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {showLsp && <button type="button" onClick={webLanguage ? () => void useIdeWebServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
+      {showLsp && <button type="button" onClick={webLanguage ? () => void useIdeLanguageServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || (!webServer && progress) ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
         <span className="max-w-56 truncate">{!webServer && progress ? `${progress.title ?? 'gopls'}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version)}</span>
       </button>}

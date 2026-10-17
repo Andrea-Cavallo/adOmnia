@@ -2,7 +2,7 @@ import { updateDocumentBuffer } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { copilotCompletionsActive, useCopilotStore } from '@/stores/copilot'
 import { extensionLanguageForPath, useIDEExtensionsStore } from '@/stores/ideExtensions'
-import { watchWebDocuments, webLanguageForEditor } from '@/stores/ideWebServers'
+import { watchServerDocuments, serverLanguageForEditor } from '@/stores/ideLanguageServers'
 
 const SYNC_DEBOUNCE_MS = 120
 
@@ -22,7 +22,7 @@ function isSynced(document: GoIDEEditorDocument): boolean {
   if (document.document.readOnly || document.document.external) return false
   const name = document.document.name.toLowerCase()
   // gopls vuole solo i file Go; con Copilot attivo il backend inoltra ogni file editabile anche a Copilot.
-  return name.endsWith('.go') || name === 'go.mod' || name === 'go.work' || !!extensionLanguageForPath(document.document.relativePath)?.server || !!webLanguageForEditor(document.document.language) || copilotCompletionsActive(useCopilotStore.getState())
+  return name.endsWith('.go') || name === 'go.mod' || name === 'go.work' || !!extensionLanguageForPath(document.document.relativePath)?.server || !!serverLanguageForEditor(document.document.language) || copilotCompletionsActive(useCopilotStore.getState())
 }
 
 function send(documentId: string): Promise<void> {
@@ -77,7 +77,7 @@ function schedule(documentId: string, text: string): void {
 export function startCodeStudioLspSync(): void {
   if (started) return
   started = true
-  watchWebDocuments()
+  watchServerDocuments()
   reconcile(useCodeStudioStore.getState().documents)
   useCodeStudioStore.subscribe((state, previous) => {
     if (state.documents !== previous.documents) reconcile(state.documents)

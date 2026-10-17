@@ -32,8 +32,7 @@ const (
 
 // Alias dei tipi esposti ai binding: la UI importa tutto da goide.
 type (
-	Preview       = preview.Preview
-	WebServerInfo = web.ServerInfo
+	Preview = preview.Preview
 )
 
 // Modalità di anteprima richieste dalla UI.
@@ -120,7 +119,7 @@ type WebProjectReport struct {
 	Targets []web.Info `json:"targets"`
 	// Runtime è quello del progetto predefinito (Node.js e il suo package manager).
 	Runtime  web.Runtime       `json:"runtime"`
-	Servers  []web.ServerInfo  `json:"servers"`
+	Servers  []LanguageServerInfo `json:"servers"`
 	Config   *PreviewConfig    `json:"config,omitempty"`
 	Previews []preview.Preview `json:"previews"`
 	// Trusted dice se la sessione può avviare processi: senza fiducia l'anteprima non parte.
@@ -141,7 +140,7 @@ func (s *Service) DetectWebProject(sessionID string) (WebProjectReport, error) {
 		return WebProjectReport{}, fmt.Errorf("could not scan the project: %w", err)
 	}
 	report := WebProjectReport{
-		Targets: targets, Servers: s.webServers(session), Previews: s.previews.List(sessionID),
+		Targets: targets, Servers: s.providedServers(session, web.ServerLanguages()), Previews: s.previews.List(sessionID),
 		Trusted: session.Project.Authorization == AuthorizationPermitted,
 	}
 	if config, ok := s.previewConfigs.get(session.Project.RealPath); ok {
@@ -448,90 +447,5 @@ func (s *Service) InstallWebDependencies(sessionID, dir string, confirmed bool) 
 	return s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: "install", Executable: runtimeInfo.PackageManagerBinary, Arguments: arguments,
 		WorkingDirectory: resolved, Environment: os.Environ(), DisplayCommand: displayCommand(info.PackageManager, arguments),
-	})
-}
-
-// webServers elenca i language server web con la loro disponibilità per la sessione.
-func (s *Service) webServers(session Session) []web.ServerInfo {
-	servers := make([]web.ServerInfo, 0, len(web.ServerLanguages()))
-	for _, languageID := range web.ServerLanguages() {
-		servers = append(servers, web.LocateServer(languageID, session.Project.RealPath, "", s.toolsRoot))
-	}
-	return servers
-}
-
-// WebLanguageServers restituisce la disponibilità dei language server web.
-func (s *Service) WebLanguageServers(sessionID string) ([]web.ServerInfo, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return nil, err
-	}
-	return s.webServers(session), nil
-}
-
-// StartWebLanguageServer avvia il language server del linguaggio web per un progetto autorizzato.
-// Se non è installato l'errore lo dice: l'editor continua con le funzioni di Monaco.
-func (s *Service) StartWebLanguageServer(sessionID, languageID string) (LanguageServerStatus, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return LanguageServerStatus{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return LanguageServerStatus{}, fmt.Errorf("trust the project before starting a language server")
-	}
-	info := web.LocateServer(languageID, session.Project.RealPath, "", s.toolsRoot)
-	spec, err := web.ServerSpec(info)
-	if err != nil {
-		return LanguageServerStatus{}, err
-	}
-	s.trackLanguageDocuments(session, languageID)
-	return s.lsp.Start(session, spec)
-}
-
-// StopWebLanguageServer ferma il language server web della sessione.
-func (s *Service) StopWebLanguageServer(sessionID, languageID string) error {
-	if _, err := s.session(sessionID); err != nil {
-		return err
-	}
-	s.lsp.Stop(SessionID(sessionID), languageID)
-	return nil
-}
-
-// WebLanguageServerStatus restituisce lo stato del language server web.
-func (s *Service) WebLanguageServerStatus(sessionID, languageID string) (LanguageServerStatus, error) {
-	if _, err := s.session(sessionID); err != nil {
-		return LanguageServerStatus{}, err
-	}
-	return s.lsp.Status(SessionID(sessionID), languageID), nil
-}
-
-// InstallWebTools installa i language server web nella cartella strumenti di adOmnia (mai nel
-// progetto), dopo conferma esplicita. Il comando è visibile nella console Run.
-func (s *Service) InstallWebTools(sessionID string, confirmed bool) (Execution, error) {
-	if !confirmed {
-		return Execution{}, fmt.Errorf("explicit confirmation required before downloading the tools")
-	}
-	session, err := s.session(sessionID)
-	if err != nil {
-		return Execution{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return Execution{}, fmt.Errorf("trust the project before installing tools")
-	}
-	if s.toolsRoot == "" {
-		return Execution{}, fmt.Errorf("adOmnia tools folder not configured")
-	}
-	runtimeInfo := web.DetectRuntime(web.NPM)
-	if !runtimeInfo.Ready() {
-		return Execution{}, fmt.Errorf("%s: npm is needed to install the web language servers", runtimeInfo.Problem)
-	}
-	prefix := web.ManagedPrefix(s.toolsRoot)
-	if err := os.MkdirAll(prefix, 0o755); err != nil {
-		return Execution{}, fmt.Errorf("could not prepare the tools folder: %w", err)
-	}
-	arguments := append([]string{"install", "--no-audit", "--no-fund", "--prefix", prefix}, web.ManagedPackages...)
-	return s.processes.Start(CommandSpec{
-		SessionID: session.ID, Kind: "install", Executable: runtimeInfo.PackageManagerBinary, Arguments: arguments,
-		WorkingDirectory: prefix, Environment: os.Environ(), DisplayCommand: displayCommand("npm", arguments),
 	})
 }

@@ -8,6 +8,8 @@ export type CodeStudioFileIconKind =
   | { kind: 'brand'; slug: BrandIconSlug }
   /** Jenkinsfile: l'emblema Jenkins (Simple Icons non è incluso nel set generato). */
   | { kind: 'jenkins' }
+  /** File .java: la tazza Java (Simple Icons ha solo OpenJDK). */
+  | { kind: 'java' }
   | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }
 
 const EXACT_NAMES: Record<string, BrandIconSlug> = {
@@ -32,7 +34,7 @@ const EXTENSIONS: Record<string, BrandIconSlug> = {
   js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
   py: 'python', rs: 'rust', sh: 'gnubash', bash: 'gnubash', mk: 'make', tf: 'terraform', tfvars: 'terraform',
   sqlite: 'sqlite', db: 'sqlite', dockerfile: 'docker',
-  java: 'openjdk', kt: 'kotlin', kts: 'kotlin', php: 'php', rb: 'ruby', cs: 'dotnet', csproj: 'dotnet', fs: 'dotnet', sln: 'dotnet',
+  kt: 'kotlin', kts: 'kotlin', php: 'php', rb: 'ruby', cs: 'dotnet', csproj: 'dotnet', fs: 'dotnet', sln: 'dotnet',
   cpp: 'cplusplus', cc: 'cplusplus', cxx: 'cplusplus', hpp: 'cplusplus', c: 'c', h: 'c', swift: 'swift', dart: 'dart', scala: 'scala',
   ex: 'elixir', exs: 'elixir', hs: 'haskell', lua: 'lua', zig: 'zig',
 }
@@ -63,6 +65,7 @@ export function resolveCodeStudioFileIcon(name: string, relativePath = ''): Code
   const lower = name.toLowerCase()
   const path = relativePath.replace(/\\/g, '/').toLowerCase()
   if (lower.endsWith('.go')) return { kind: 'gopher', test: lower.endsWith('_test.go') }
+  if (lower.endsWith('.java')) return { kind: 'java' }
   if (lower === 'go.mod' || lower === 'go.work') return { kind: 'goModule', generated: false }
   if (lower === 'go.sum' || lower === 'go.work.sum') return { kind: 'goModule', generated: true }
   if (lower === 'jenkinsfile' || lower.startsWith('jenkinsfile.') || lower.endsWith('.jenkinsfile')) return { kind: 'jenkins' }

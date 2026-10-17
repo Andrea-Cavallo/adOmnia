@@ -1,7 +1,7 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution, LanguageServerStatus } from '../../bindings/adomnia/internal/codestudio/models'
+import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution } from '../../bindings/adomnia/internal/codestudio/models'
 import type { Preview } from '../../bindings/adomnia/internal/ide/preview/models'
-import type { Info as WebProjectInfo, Runtime as WebRuntime, ServerInfo as WebServerInfo } from '../../bindings/adomnia/internal/languages/web/models'
+import type { Info as WebProjectInfo, Runtime as WebRuntime } from '../../bindings/adomnia/internal/languages/web/models'
 
 export type LivePreview = Preview
 export type LivePreviewConfig = PreviewConfig
@@ -9,8 +9,6 @@ export type LivePreviewRequest = PreviewRequest
 export type LivePreviewReport = WebProjectReport
 export type LivePreviewTarget = WebProjectInfo
 export type LivePreviewRuntime = WebRuntime
-export type WebLanguageServer = WebServerInfo
-export type WebLanguageServerStatus = LanguageServerStatus
 export type LivePreviewExecution = Execution
 
 /** Riconosce progetti web, runtime Node.js e language server. Non esegue nulla. */
@@ -40,26 +38,6 @@ export function savePreviewConfig(sessionId: string, config: LivePreviewConfig):
 
 export function installWebDependencies(sessionId: string, dir: string): Promise<LivePreviewExecution> {
   return GoIDEBindings.InstallWebDependencies(sessionId, dir, true)
-}
-
-export function installWebTools(sessionId: string): Promise<LivePreviewExecution> {
-  return GoIDEBindings.InstallWebTools(sessionId, true)
-}
-
-export function webLanguageServers(sessionId: string): Promise<WebLanguageServer[]> {
-  return GoIDEBindings.WebLanguageServers(sessionId)
-}
-
-export function startWebLanguageServer(sessionId: string, languageId: string): Promise<WebLanguageServerStatus> {
-  return GoIDEBindings.StartWebLanguageServer(sessionId, languageId)
-}
-
-export function stopWebLanguageServer(sessionId: string, languageId: string): Promise<void> {
-  return GoIDEBindings.StopWebLanguageServer(sessionId, languageId)
-}
-
-export function webLanguageServerStatus(sessionId: string, languageId: string): Promise<WebLanguageServerStatus> {
-  return GoIDEBindings.WebLanguageServerStatus(sessionId, languageId)
 }
 
 export function openPreviewWindow(sessionId: string, previewId: string, title: string): Promise<void> {

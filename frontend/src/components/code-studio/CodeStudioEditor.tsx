@@ -17,7 +17,7 @@ import { CodeStudioMarkdownDocument, isMarkdownDocument } from './CodeStudioMark
 import { CodeStudioImageView, isImageDocument } from './CodeStudioImageView'
 import { CodeStudioHtmlView, isHtmlDocument, type CodeStudioHtmlMode } from './CodeStudioHtmlView'
 import { CodeStudioLivePreview } from './CodeStudioLivePreview'
-import { CodeStudioWebServerNotice } from './CodeStudioWebServerNotice'
+import { CodeStudioServerNotice } from './CodeStudioServerNotice'
 import { CodeStudioPreviewSplit } from './CodeStudioPreviewSplit'
 import { selectSessionPreview, useLivePreviewStore } from '@/stores/livePreview'
 
@@ -107,7 +107,7 @@ export function CodeStudioEditor({ documents, active, onCursor, onRequestClose, 
         previewTab={previewInTab ? { active: livePreview.tabActive, label: 'Live Preview', onSelect: () => useLivePreviewStore.getState().setTabActive(active.document.sessionId, true), onClose: () => useLivePreviewStore.getState().hide(active.document.sessionId) } : undefined}
         onSelectDocument={previewInTab ? () => useLivePreviewStore.getState().setTabActive(active.document.sessionId, false) : undefined}
       />
-      <CodeStudioWebServerNotice document={active} />
+      <CodeStudioServerNotice document={active} />
       {active.externalState && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
           <AlertTriangle size={12} /> This file changed on disk. Your buffer was preserved.

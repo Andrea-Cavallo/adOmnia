@@ -113,6 +113,7 @@ export {
     InstallToolchainRequest,
     InstalledToolchain,
     LanguageServerFeatures,
+    LanguageServerInfo,
     LanguageServerSettings,
     LanguageServerState,
     LanguageServerStatus,
@@ -167,6 +168,7 @@ export {
     SecurityFinding,
     SecurityReport,
     SemanticTokensResult,
+    ServerInstallPreview,
     Session,
     SessionView,
     SessionWindow,
@@ -214,7 +216,6 @@ export {
     VulnReport,
     WatcherStatus,
     WebProjectReport,
-    WebServerInfo,
     WorkspaceChange,
     WorkspaceModule,
     WorkspaceSymbol

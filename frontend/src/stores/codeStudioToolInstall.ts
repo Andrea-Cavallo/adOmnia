@@ -1,9 +1,6 @@
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioTasksStore } from '@/stores/codeStudioTasks'
 
-/** Id del task nella status bar per l'installazione dei language server web. */
-export const WEB_TOOLS_TASK = 'install-web-language-servers'
-
 /**
  * Un'installazione di tool parte in background: senza segnali l'utente non sa che sta girando né dove
  * guardare. Apre la console Run (dove arriva l'output) e mostra un'attività in corso nella status bar.

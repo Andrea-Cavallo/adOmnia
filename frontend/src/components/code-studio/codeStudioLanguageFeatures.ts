@@ -1,5 +1,5 @@
 import { languageServerEditorLanguages } from '@/components/ide/languages'
-import { isWebServerReady, webLanguageForEditor } from '@/stores/ideWebServers'
+import { isServerReady, serverLanguageForEditor } from '@/stores/ideLanguageServers'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
 import { ExtensionLanguageStatus } from '../../../bindings/adomnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -87,8 +87,8 @@ export async function prepareDocument(model: monaco.editor.ITextModel): Promise<
   const extension = extensionLanguageForPath(document.document.relativePath)
   if (extension) {
     if (!extension.server || (await ExtensionLanguageStatus(document.document.sessionId,extension.id).catch(() => null))?.state !== 'ready') return null
-  } else if (webLanguageForEditor(document.document.language)) {
-    if (!isWebServerReady(document.document.sessionId, webLanguageForEditor(document.document.language)!)) return null
+  } else if (serverLanguageForEditor(document.document.language)) {
+    if (!isServerReady(document.document.sessionId, serverLanguageForEditor(document.document.language)!)) return null
   } else if (!languageServerReady(document.document.sessionId)) return null
   await flushCodeStudioDocument(document.document.id)
   return { document, sessionId: document.document.sessionId, documentId: document.document.id }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { monaco } from '@/lib/monacoSetup'
 import { registerEmmet } from './emmet'
-import { useIdeWebServersStore, webLanguageForEditor, webServerEntry } from '@/stores/ideWebServers'
+import { useIdeLanguageServersStore, serverLanguageForEditor, serverEntry } from '@/stores/ideLanguageServers'
 
 /**
  * Monaco porta con sé i servizi di JS/TS, HTML, CSS e JSON: senza language server sono l'unico
@@ -91,9 +91,9 @@ function ignoreUnresolvedImports(): void {
  * language server del file è pronto, lo sostituisce ai servizi di Monaco per la vita dell'editor.
  */
 export function useWebMonaco(sessionId: string, editorLanguage: string): void {
-  const languageId = webLanguageForEditor(editorLanguage)
+  const languageId = serverLanguageForEditor(editorLanguage)
   const group = languageId ? GROUP_OF[languageId] : undefined
-  const ready = useIdeWebServersStore((state) => (languageId ? webServerEntry(state, sessionId, languageId).state === 'ready' : false))
+  const ready = useIdeLanguageServersStore((state) => (languageId ? serverEntry(state, sessionId, languageId).state === 'ready' : false))
 
   useEffect(() => {
     if (!group) return

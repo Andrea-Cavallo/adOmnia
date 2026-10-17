@@ -213,14 +213,14 @@ func TestSavePreviewConfigKeepsWhatToRunAndRejectsBadValues(t *testing.T) {
 func TestWebInstallsAndServersNeedTrustAndConfirmation(t *testing.T) {
 	service, session := webProject(t, map[string]string{"package.json": `{"name":"a","dependencies":{"react":"18"}}`})
 	id := string(session.ID)
-	if _, err := service.InstallWebTools(id, true); err == nil {
+	if _, err := service.InstallProvidedLanguageServer(id, "typescript", true); err == nil {
 		t.Error("an untrusted project must not install tools")
 	}
-	if _, err := service.StartWebLanguageServer(id, "typescript"); err == nil {
+	if _, err := service.StartProvidedLanguageServer(id, "typescript"); err == nil {
 		t.Error("an untrusted project must not start a language server")
 	}
 	trust(t, service, session)
-	if _, err := service.InstallWebTools(id, false); err == nil {
+	if _, err := service.InstallProvidedLanguageServer(id, "typescript", false); err == nil {
 		t.Error("installing tools without explicit confirmation must fail")
 	}
 	if _, err := service.InstallWebDependencies(id, ".", false); err == nil {

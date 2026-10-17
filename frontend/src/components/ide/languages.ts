@@ -26,6 +26,11 @@ export interface IdeLanguageContribution {
    * linguaggi che non le hanno ancora verificate con il proprio server; default vero.
    */
   heavyFeatures?: boolean
+  /**
+   * Il backend gestisce il suo language server (`lsp.ServerProvider`): lo cerca, lo installa dopo
+   * conferma e lo avvia all'apertura di un file. Falso per Go, che ha il proprio ciclo di vita.
+   */
+  providedServer?: boolean
 }
 
 /** Linguaggio registrato dal backend: basta l'identità per abilitare le contribuzioni. */

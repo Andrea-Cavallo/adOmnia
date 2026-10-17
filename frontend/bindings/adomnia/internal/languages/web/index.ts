@@ -3,6 +3,5 @@
 
 export {
     Info,
-    Runtime,
-    ServerInfo
+    Runtime
 } from "./models.js";

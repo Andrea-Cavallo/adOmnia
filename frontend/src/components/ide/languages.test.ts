@@ -5,7 +5,7 @@ import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLangu
 describe('IDE language contributions', () => {
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
-    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json'])
+    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
     expect(isLanguageServerEditorLanguage('markdown')).toBe(false)

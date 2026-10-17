@@ -29,6 +29,7 @@ type RunTargetResolver = run.TargetResolver
 type RunTarget = run.RunTarget
 type DebugAdapterProvider = dap.DebugAdapterProvider
 type TestRunner = idetesting.TestRunner
+type ServerProvider = lsp.ServerProvider
 
 // ProjectDetector riconosce le unità di build del linguaggio sotto root.
 type ProjectDetector interface {
@@ -70,6 +71,7 @@ type Capabilities struct {
 	Documents        bool `json:"documents"`
 	Usages           bool `json:"usages"`
 	Declarations     bool `json:"declarations"`
+	LanguageServer   bool `json:"languageServer"`
 }
 
 // CapabilitiesOf restituisce le capability effettivamente implementate da l.
@@ -81,7 +83,8 @@ func CapabilitiesOf(l Language) Capabilities {
 	_, runs := l.(Runner)
 	_, tests := l.(TestRunner)
 	_, debugs := l.(DebugAdapterProvider)
-	return Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts}
+	_, serves := l.(ServerProvider)
+	return Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts, LanguageServer: serves}
 }
 
 // Info descrive un linguaggio registrato per la UI: identità e capability derivate.

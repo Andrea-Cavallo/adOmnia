@@ -167,50 +167,6 @@ export class Runtime {
     }
 }
 
-/**
- * ServerInfo descrive il language server trovato per un linguaggio.
- */
-export class ServerInfo {
-    "language": string;
-    "name": string;
-    "available": boolean;
-    "binary"?: string;
-
-    /**
-     * Source è "project" (node_modules/.bin), "managed" (cartella strumenti di adOmnia), "PATH" o "custom".
-     */
-    "source"?: string;
-
-    /**
-     * TypeScriptLib è la cartella lib di TypeScript usata da tsserver (solo per il linguaggio script).
-     */
-    "typescriptLib"?: string;
-    "error"?: string;
-
-    /** Creates a new ServerInfo instance. */
-    constructor($$source: Partial<ServerInfo> = {}) {
-        if (!("language" in $$source)) {
-            this["language"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("available" in $$source)) {
-            this["available"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ServerInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ServerInfo {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new ServerInfo($$parsedSource as Partial<ServerInfo>);
-    }
-}
-
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = $Create.Array($Create.Any);

@@ -50,29 +50,34 @@ func (g *GoIDE) InstallWebDependencies(sessionID, dir string, confirmed bool) (c
 	return g.service.InstallWebDependencies(sessionID, dir, confirmed)
 }
 
-// InstallWebTools installa i language server web nella cartella strumenti di adOmnia.
-func (g *GoIDE) InstallWebTools(sessionID string, confirmed bool) (codestudio.Execution, error) {
-	return g.service.InstallWebTools(sessionID, confirmed)
+// ProvidedLanguageServers restituisce la disponibilità dei language server gestiti da adOmnia (web, Java…).
+func (g *GoIDE) ProvidedLanguageServers(sessionID string) ([]codestudio.LanguageServerInfo, error) {
+	return g.service.ProvidedLanguageServers(sessionID)
 }
 
-// WebLanguageServers restituisce la disponibilità dei language server web.
-func (g *GoIDE) WebLanguageServers(sessionID string) ([]codestudio.WebServerInfo, error) {
-	return g.service.WebLanguageServers(sessionID)
+// StartProvidedLanguageServer avvia il language server gestito di un linguaggio.
+func (g *GoIDE) StartProvidedLanguageServer(sessionID, languageID string) (codestudio.LanguageServerStatus, error) {
+	return g.service.StartProvidedLanguageServer(sessionID, languageID)
 }
 
-// StartWebLanguageServer avvia il language server di un linguaggio web.
-func (g *GoIDE) StartWebLanguageServer(sessionID, languageID string) (codestudio.LanguageServerStatus, error) {
-	return g.service.StartWebLanguageServer(sessionID, languageID)
+// StopProvidedLanguageServer ferma il language server gestito di un linguaggio.
+func (g *GoIDE) StopProvidedLanguageServer(sessionID, languageID string) error {
+	return g.service.StopProvidedLanguageServer(sessionID, languageID)
 }
 
-// StopWebLanguageServer ferma il language server di un linguaggio web.
-func (g *GoIDE) StopWebLanguageServer(sessionID, languageID string) error {
-	return g.service.StopWebLanguageServer(sessionID, languageID)
+// ProvidedLanguageServerStatus restituisce lo stato del language server gestito di un linguaggio.
+func (g *GoIDE) ProvidedLanguageServerStatus(sessionID, languageID string) (codestudio.LanguageServerStatus, error) {
+	return g.service.ProvidedLanguageServerStatus(sessionID, languageID)
 }
 
-// WebLanguageServerStatus restituisce lo stato del language server di un linguaggio web.
-func (g *GoIDE) WebLanguageServerStatus(sessionID, languageID string) (codestudio.LanguageServerStatus, error) {
-	return g.service.WebLanguageServerStatus(sessionID, languageID)
+// PreviewServerInstall mostra il comando esatto dell'installazione del language server, senza eseguirlo.
+func (g *GoIDE) PreviewServerInstall(sessionID, languageID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewServerInstall(sessionID, languageID)
+}
+
+// InstallProvidedLanguageServer installa il language server nella cartella strumenti dopo conferma esplicita.
+func (g *GoIDE) InstallProvidedLanguageServer(sessionID, languageID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallProvidedLanguageServer(sessionID, languageID, confirmed)
 }
 
 // OpenPreviewWindow mostra un'anteprima in esecuzione in una finestra nativa separata.

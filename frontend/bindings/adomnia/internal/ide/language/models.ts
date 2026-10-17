@@ -16,6 +16,7 @@ export class Capabilities {
     "documents": boolean;
     "usages": boolean;
     "declarations": boolean;
+    "languageServer": boolean;
 
     /** Creates a new Capabilities instance. */
     constructor($$source: Partial<Capabilities> = {}) {
@@ -39,6 +40,9 @@ export class Capabilities {
         }
         if (!("declarations" in $$source)) {
             this["declarations"] = false;
+        }
+        if (!("languageServer" in $$source)) {
+            this["languageServer"] = false;
         }
 
         Object.assign(this, $$source);

@@ -1,7 +1,7 @@
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { currentPreview, isHtmlPath, isRunning, staticRequestForFile, type LivePreviewPlacement } from '@/lib/code-studio/livePreview'
 import { selectSessionPreview, useLivePreviewStore } from '@/stores/livePreview'
-import { useIdeWebServersStore } from '@/stores/ideWebServers'
+import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { studioToast } from '@/stores/codeStudioToast'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 
@@ -39,7 +39,7 @@ export function runPreviewCommand(id: CodeStudioCommandId, sessionId: string | n
     case 'preview.show': previews.show(sessionId); return true
     case 'preview.openWindow': void previews.openWindow(sessionId); return true
     case 'preview.openBrowser': void previews.openExternal(sessionId); return true
-    case 'web.installTools': void useIdeWebServersStore.getState().confirmInstall(sessionId); return true
+    case 'web.installTools': void useIdeLanguageServersStore.getState().confirmInstall(sessionId, 'typescript'); return true
     case 'preview.openFile': {
       const store = useCodeStudioStore.getState()
       const activeId = store.activeDocumentBySession[sessionId]
