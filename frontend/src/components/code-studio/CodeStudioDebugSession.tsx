@@ -67,6 +67,7 @@ export function CodeStudioDebugSession({ view, sessionId, editor }: CodeStudioDe
     <div ref={container} className="flex min-h-0 flex-1 flex-col">
     <div className="flex min-h-0 flex-1">
       <section aria-label="Goroutines and call stack" className="flex min-h-0 min-w-0 shrink-0 flex-col" style={{ width: leftWidth }}>
+        {view.javaRequest ? <JavaThreadsPane view={view} /> : (
         <div className="flex min-h-0 flex-1 flex-col border-b border-border-1">
         <PaneHeader title="Goroutines" count={view.goroutines?.goroutines.length} />
         {paused && <p className="px-3 pb-1 text-[11.5px] text-text-4">{tr('Runtime states captured at pause; session controls are above.')}</p>}
@@ -74,13 +75,16 @@ export function CodeStudioDebugSession({ view, sessionId, editor }: CodeStudioDe
           ? <CodeStudioGoroutineTree overview={view.goroutines} loading={view.goroutinesLoading} selectedId={view.threadId} onSelect={selectGoroutine} />
           : <p className="px-3 py-2 text-[13px] text-text-4">{view.info.state === 'running' ? 'Running. Pause or hit a breakpoint to inspect goroutines.' : 'No goroutines.'}</p>}
         </div>
+        )}
         <div className="flex min-h-0 flex-1 flex-col">
+        {!view.javaRequest && (<>
         <div className="flex shrink-0 items-center gap-1 px-3 pt-1 text-[12.5px] text-text-3">
           <span className="min-w-0 flex-1 truncate">Goroutine #{view.threadId ?? '—'}</span>
           {selected && <span title="Last runtime state reported for this goroutine; independent of the session pause state"><StateBadge state={selected.state} compact /></span>}
           <button type="button" aria-expanded={details} onClick={() => setDetails(!details)} aria-label={tr('Goroutine details')} title={tr('Goroutine details')} className="code-studio-icon-button h-6 w-6">{details ? '−' : '⋯'}</button>
         </div>
         {paused && details && <div className="max-h-48 overflow-auto"><GoroutineDetail goroutine={selected} threadId={view.threadId} debugId={view.info.id} onSelectGoroutine={(id) => void useCodeStudioDebugStore.getState().selectThread(view.info.id, id)} /><DeferredCallInspector debugId={view.info.id} threadId={view.threadId} frame={frame} /></div>}
+        </>)}
         <FramesPane view={view} />
         </div>
       </section>
@@ -372,6 +376,26 @@ function WhyRunning({ goroutine, debugId }: { goroutine: GoIDEGoroutine; debugId
         )}
       </dl>
     </section>
+  )
+}
+
+/** Thread della JVM: il debugger Java non ha goroutine, ma thread con il loro stack. */
+function JavaThreadsPane({ view }: { view: GoIDEDebugView }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col border-b border-border-1">
+      <PaneHeader title="Threads" count={view.threads.length} />
+      <ul className="min-h-0 flex-1 overflow-auto px-1.5 pb-2" aria-label="Threads">
+        {view.threads.map((thread) => (
+          <li key={thread.id}>
+            <button type="button" onClick={() => void useCodeStudioDebugStore.getState().selectThread(view.info.id, thread.id)} aria-current={thread.id === view.threadId ? 'true' : undefined}
+              className={`flex h-7 w-full items-center rounded-md px-1.5 text-left text-[12.5px] hover:bg-surface-2 ${thread.id === view.threadId ? 'bg-surface-2 text-text-1' : 'text-text-3'}`}>
+              <span className="min-w-0 flex-1 truncate">{thread.name}</span>
+            </button>
+          </li>
+        ))}
+        {view.threads.length === 0 && <li className="px-1.5 py-2 text-[13px] text-text-4">{view.info.state === 'running' ? 'Running. Pause or hit a breakpoint to inspect threads.' : 'No threads.'}</li>}
+      </ul>
+    </div>
   )
 }
 

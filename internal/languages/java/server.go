@@ -27,6 +27,22 @@ const (
 	debugPluginURL  = "https://repo1.maven.org/maven2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/" + debugPluginName
 )
 
+// lombokName/URL: l'agent Lombok fa vedere a JDT LS i metodi generati (@Slf4j, @Getter…): senza, ogni
+// progetto con Lombok è pieno di errori finti. Va caricato come javaagent all'avvio del server.
+const (
+	lombokName = "lombok-1.18.42.jar"
+	lombokURL  = "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/" + lombokName
+)
+
+// lombokAgent è il jar installato accanto a JDT LS ("" se manca).
+func lombokAgent(home string) string {
+	path := filepath.Join(home, "bundles", lombokName)
+	if isFile(path) {
+		return path
+	}
+	return ""
+}
+
 // jdtlsHome è la cartella in cui si estrae JDT LS.
 func jdtlsHome(toolsRoot string) string { return filepath.Join(toolsRoot, jdtlsDir) }
 
@@ -73,8 +89,8 @@ func (*Language) LocateServer(_, toolsRoot string) lsp.ServerInfo {
 	}
 	jdk := DetectJDK()
 	switch {
-	case debugBundle(jdtlsHome(toolsRoot)) == "":
-		info.Error = "Eclipse JDT LS needs to be updated to add Java debugging: install it again from the editor notice"
+	case debugBundle(jdtlsHome(toolsRoot)) == "" || lombokAgent(jdtlsHome(toolsRoot)) == "":
+		info.Error = "Eclipse JDT LS needs to be updated to add Java debugging and Lombok support: install it again from the editor notice"
 	case !jdk.Available:
 		info.Error = jdk.Problem + ": Eclipse JDT LS needs a JDK to run"
 	case jdk.Major < jdtlsMinJava:
@@ -102,6 +118,7 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 		Arguments: []string{
 			"-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4",
 			"-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.level=NONE", "-Xmx1G",
+			"-javaagent:" + lombokAgent(home), "-Xbootclasspath/a:" + lombokAgent(home),
 			"--add-modules=ALL-SYSTEM", "--add-opens", "java.base/java.util=ALL-UNNAMED", "--add-opens", "java.base/java.lang=ALL-UNNAMED",
 			"-jar", launcherJar(home), "-configuration", configDirectory(home), "-data", data,
 		},
@@ -142,11 +159,11 @@ func (*Language) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		return lsp.InstallPlan{}, fmt.Errorf("%s: install a JDK (%d+) first, then Eclipse JDT LS", jdk.Problem, jdtlsMinJava)
 	}
 	home := jdtlsHome(toolsRoot)
-	chain := fmt.Sprintf("curl -fL --retry 2 -o jdtls.tar.gz %s && tar -xzf jdtls.tar.gz && %s && curl -fL --retry 2 --create-dirs -o bundles/%s %s", jdtlsURL, removeCommand("jdtls.tar.gz"), debugPluginName, debugPluginURL)
+	chain := fmt.Sprintf("curl -fL --retry 2 -o jdtls.tar.gz %s && tar -xzf jdtls.tar.gz && %s && curl -fL --retry 2 --create-dirs -o bundles/%s %s && curl -fL --retry 2 -o bundles/%s %s", jdtlsURL, removeCommand("jdtls.tar.gz"), debugPluginName, debugPluginURL, lombokName, lombokURL)
 	executable, arguments := shellCommand(chain)
 	return lsp.InstallPlan{
 		Task: installTask, Title: "Install Eclipse JDT LS?", Label: "Installing JDT LS…",
-		Note:       "Downloads Eclipse JDT LS 1.60.0 (about 50 MB) from download.eclipse.org and the Java Debug Server (3 MB) from Maven Central into adOmnia's own tools folder, never into your project. The output appears in the Run console.",
+		Note:       "Downloads Eclipse JDT LS 1.60.0 (about 50 MB) from download.eclipse.org the Java Debug Server (3 MB) and the Lombok agent (2 MB) from Maven Central into adOmnia's own tools folder, never into your project. The output appears in the Run console.",
 		Command:    chain,
 		Executable: executable, Arguments: arguments, Directory: home,
 		// Un'installazione interrotta lascia file a metà: si riparte sempre da una cartella vuota.

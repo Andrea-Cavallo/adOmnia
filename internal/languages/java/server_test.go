@@ -25,6 +25,7 @@ func installFakeJdtls(t *testing.T, tools string) {
 	t.Helper()
 	write(t, filepath.Join(tools, jdtlsDir, "plugins", "org.eclipse.equinox.launcher_1.7.0.jar"), "x")
 	write(t, filepath.Join(tools, jdtlsDir, "bundles", debugPluginName), "x")
+	write(t, filepath.Join(tools, jdtlsDir, "bundles", lombokName), "x")
 }
 
 func TestLocateServerAsksForInstallWhenJdtlsIsMissing(t *testing.T) {
@@ -110,5 +111,8 @@ func TestServerSpecLoadsTheDebugBundleIntoJdtls(t *testing.T) {
 	bundles, _ := options["bundles"].([]string)
 	if len(bundles) != 1 || !strings.HasSuffix(bundles[0], debugPluginName) {
 		t.Fatalf("bundles = %v", options)
+	}
+	if !strings.Contains(strings.Join(spec.Arguments, " "), "-javaagent:"+filepath.Join(tools, jdtlsDir, "bundles", lombokName)) {
+		t.Errorf("Lombok must load as a javaagent: %v", spec.Arguments)
 	}
 }
