@@ -121,7 +121,7 @@ export const useIdeWebServersStore = create<WebServersState>((set, get) => {
     confirmInstall: async (sessionId) => {
       const approved = await confirm({
         title: 'Install the web language servers?',
-        message: "Command: npm install --prefix <adOmnia tools folder> typescript-language-server typescript vscode-langservers-extracted\n\nDownloads the packages from the npm registry into adOmnia's own tools folder, never into your project. It also runs their install scripts. The output appears in the Run console.",
+        message: "Command: npm install --prefix <adOmnia tools folder> typescript-language-server typescript@^6 vscode-langservers-extracted\n\nDownloads the packages from the npm registry into adOmnia's own tools folder, never into your project. It also runs their install scripts. The output appears in the Run console.",
         confirmLabel: 'Install',
       })
       if (approved) await get().install(sessionId)

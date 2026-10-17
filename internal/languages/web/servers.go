@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -21,9 +22,15 @@ var (
 	lookPath        = defaultLookPath
 )
 
+// TypeScriptSpec è il pacchetto TypeScript installato nella cartella gestita. Resta sotto la 7:
+// dalla 7 (rewrite nativo) il pacchetto non contiene più lib/tsserver.js, che
+// typescript-language-server deve avviare, quindi un "typescript" senza vincolo rompe il
+// rilevamento e l'avvio del server.
+const TypeScriptSpec = "typescript@^6"
+
 // ManagedPackages sono i pacchetti npm che adOmnia installa (dopo conferma) nella propria cartella
 // strumenti per avere i language server anche quando il progetto non li ha.
-var ManagedPackages = []string{"typescript-language-server", "typescript", "vscode-langservers-extracted"}
+var ManagedPackages = []string{"typescript-language-server", TypeScriptSpec, "vscode-langservers-extracted"}
 
 // serverBinaries è l'eseguibile del language server standard di ogni linguaggio.
 var serverBinaries = map[string]string{
@@ -80,15 +87,28 @@ func LocateServer(languageID, root, custom, toolsRoot string) ServerInfo {
 	if languageID == ScriptID {
 		if info.TypeScriptLib = findTypeScriptLib(root, toolsRoot); info.TypeScriptLib == "" {
 			info.Available = false
-			info.Error = "TypeScript is not installed for this project: run `npm install` in it, or install the web language servers from the editor notice"
+			info.Error = typeScriptProblem(root, toolsRoot)
 		}
 	}
 	return info
 }
 
+// typeScriptProblem spiega perché manca il tsserver: TypeScript non installato oppure
+// installato in una versione che non porta lib/tsserver.js (dalla 7 il pacchetto non ce l'ha).
+func typeScriptProblem(root, toolsRoot string) string {
+	for _, dir := range typeScriptPackageDirs(root, toolsRoot) {
+		if !isFile(filepath.Join(dir, "package.json")) {
+			continue
+		}
+		version := packageField(filepath.Join(dir, "package.json"), "version")
+		return fmt.Sprintf("TypeScript %s is installed but has no lib/tsserver.js (removed in TypeScript 7): typescript-language-server needs TypeScript 6 or older — run `npm install %s` in the tools folder, or `npm install typescript@^6` in the project", version, TypeScriptSpec)
+	}
+	return "TypeScript is not installed for this project: run `npm install` in it, or install the web language servers from the editor notice"
+}
+
 func installHint(languageID string) string {
 	if languageID == ScriptID {
-		return "typescript-language-server typescript"
+		return "typescript-language-server " + TypeScriptSpec
 	}
 	return "vscode-langservers-extracted"
 }
@@ -140,9 +160,21 @@ func binaryIn(directory, name string) string {
 
 // findTypeScriptLib cerca typescript/lib prima nel progetto (la sua versione vince), poi nella cartella gestita.
 func findTypeScriptLib(root, toolsRoot string) string {
-	for current, steps := filepath.Clean(root), 0; steps < 4; steps++ {
-		if lib := filepath.Join(current, "node_modules", "typescript", "lib"); isFile(filepath.Join(lib, "tsserver.js")) {
+	for _, dir := range typeScriptPackageDirs(root, toolsRoot) {
+		if lib := filepath.Join(dir, "lib"); isFile(filepath.Join(lib, "tsserver.js")) {
 			return lib
+		}
+	}
+	return ""
+}
+
+// typeScriptPackageDirs elenca le cartelle del pacchetto typescript candidate, nella stessa
+// priorità di findTypeScriptLib: progetto (la sua versione vince) e cartella gestita.
+func typeScriptPackageDirs(root, toolsRoot string) []string {
+	var dirs []string
+	for current, steps := filepath.Clean(root), 0; steps < 4; steps++ {
+		if dir := filepath.Join(current, "node_modules", "typescript"); isDir(dir) {
+			dirs = append(dirs, dir)
 		}
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -151,11 +183,25 @@ func findTypeScriptLib(root, toolsRoot string) string {
 		current = parent
 	}
 	if toolsRoot != "" {
-		if lib := filepath.Join(ManagedPrefix(toolsRoot), "node_modules", "typescript", "lib"); isFile(filepath.Join(lib, "tsserver.js")) {
-			return lib
+		if dir := filepath.Join(ManagedPrefix(toolsRoot), "node_modules", "typescript"); isDir(dir) {
+			dirs = append(dirs, dir)
 		}
 	}
-	return ""
+	return dirs
+}
+
+// packageField legge un campo stringa dal package.json di una cartella ("" se illeggibile).
+func packageField(manifestPath, field string) string {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return ""
+	}
+	var manifest map[string]any
+	if json.Unmarshal(data, &manifest) != nil {
+		return ""
+	}
+	value, _ := manifest[field].(string)
+	return value
 }
 
 // ServerSpec descrive il server al manager LSP generico: avvio, opzioni di inizializzazione e

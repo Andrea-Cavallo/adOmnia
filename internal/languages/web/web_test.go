@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"adomnia/internal/ide/language"
@@ -193,6 +194,56 @@ func TestLocateServerPrefersProjectBinaries(t *testing.T) {
 	}
 	if info := LocateServer(ScriptID, root, "", ""); info.Available {
 		t.Fatalf("typescript-language-server without TypeScript must not start: %+v", info)
+	}
+}
+
+func TestLocateServerDistinguishesTypeScriptSevenWithoutTsserver(t *testing.T) {
+	lookPath = func(string) (string, error) { return "", os.ErrNotExist }
+	t.Cleanup(func() { lookPath = defaultLookPath })
+	root := t.TempDir()
+	name := "typescript-language-server"
+	if isWindows() {
+		name += ".cmd"
+	}
+	writeFile(t, filepath.Join(root, "node_modules", ".bin", name), "")
+	// TypeScript 7: il pacchetto esiste ma non porta più lib/tsserver.js.
+	writeFile(t, filepath.Join(root, "node_modules", "typescript", "package.json"), `{"name":"typescript","version":"7.0.2"}`)
+	info := LocateServer(ScriptID, root, "", "")
+	if info.Available {
+		t.Fatalf("TypeScript 7 without tsserver.js must not be usable: %+v", info)
+	}
+	for _, want := range []string{"7.0.2", "tsserver.js", "typescript@^6"} {
+		if !strings.Contains(info.Error, want) {
+			t.Errorf("the error must say %q, got %q", want, info.Error)
+		}
+	}
+
+	// TypeScript 6 con tsserver.js invece risolve.
+	writeFile(t, filepath.Join(root, "node_modules", "typescript", "package.json"), `{"name":"typescript","version":"6.0.3"}`)
+	writeFile(t, filepath.Join(root, "node_modules", "typescript", "lib", "tsserver.js"), "")
+	info = LocateServer(ScriptID, root, "", "")
+	if !info.Available || info.Source != "project" {
+		t.Fatalf("TypeScript 6 with tsserver.js must resolve: %+v", info)
+	}
+}
+
+func TestManagedPackagesPinTypeScriptBelowSeven(t *testing.T) {
+	// Il vincolo di versione è ciò che tiene lontana la 7: un "typescript" senza vincolo
+	// installa la 7 e rompe rilevamento e avvio del server.
+	found := false
+	for _, pkg := range ManagedPackages {
+		if strings.HasPrefix(pkg, "typescript@") {
+			found = true
+			if !strings.Contains(pkg, "^6") {
+				t.Errorf("ManagedPackages must pin typescript below 7, got %q", pkg)
+			}
+		}
+		if pkg == "typescript" {
+			t.Error("ManagedPackages must never request an unpinned typescript")
+		}
+	}
+	if !found {
+		t.Error("ManagedPackages must include a pinned typescript")
 	}
 }
 

@@ -205,7 +205,7 @@ function Idle({ session, view, confirm, setConfirm }: { session: GoIDESession; v
       {missingServers.length > 0 && hasWebCode && (
         <div className="max-w-md text-[11px] leading-4 text-text-4">
           {confirm === 'tools' ? (
-            <InstallConfirm title="Install the web language servers?" command="npm install --prefix <adOmnia tools folder> typescript-language-server typescript vscode-langservers-extracted"
+            <InstallConfirm title="Install the web language servers?" command="npm install --prefix <adOmnia tools folder> typescript-language-server typescript@^6 vscode-langservers-extracted"
               onCancel={() => setConfirm(null)} onConfirm={() => { setConfirm(null); void installTools(session.id) }} />
           ) : (
             <p>Editor intelligence for {missingServers.map((server) => server.language).join(', ')} uses the built-in Monaco features until the language servers are installed. <button type="button" className="text-accent underline decoration-dotted underline-offset-2" onClick={() => setConfirm('tools')}>Install them…</button></p>

@@ -46,7 +46,7 @@ async function installAllLanguageServers(sessionId: string): Promise<void> {
     title: 'Install all language servers?',
     message: `Commands:
 • go install ${INSTALLABLE_TOOLS.gopls.module}  (Go)
-• npm install --prefix <adOmnia tools folder> typescript-language-server typescript vscode-langservers-extracted  (TypeScript, JavaScript, HTML, CSS, JSON)
+• npm install --prefix <adOmnia tools folder> typescript-language-server typescript@^6 vscode-langservers-extracted  (TypeScript, JavaScript, HTML, CSS, JSON)
 
 Both download from the Go proxy and the npm registry into adOmnia's own tools folder, never into your project. Packages may run their install scripts. Output appears in the Run console.`,
     confirmLabel: 'Install all',
