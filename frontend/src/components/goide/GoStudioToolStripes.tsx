@@ -89,21 +89,20 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
   const showToolWindow = useGoIDELspStore((state) => state.showToolWindow)
   const badges = useToolWindowBadges(sessionId)
 
-  const closePrevious = () => {
-    useStudioTools.setState({ maximized: null })
-    updateLayout({ projectOpen: false, bottomOpen: false })
-  }
+  // Project e tool window inferiori sono indipendenti: aprire Run non deve chiudere il progetto.
+  const restoreLayout = () => useStudioTools.setState({ maximized: null })
   const toggleToolWindow = (id: GoIDEToolWindow) => {
     const close = bottomOpen && toolWindow === id
-    closePrevious()
-    if (!close) showToolWindow(id)
+    restoreLayout()
+    if (close) updateLayout({ bottomOpen: false })
+    else showToolWindow(id)
   }
 
   return (
     <nav aria-label="Go Studio tool windows" className="go-studio-stripe">
-      <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { closePrevious(); updateLayout({ projectOpen: !projectOpen }) }} />
-      <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { closePrevious(); onCommit() }} />
-      <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { closePrevious(); onBookmarks() }} />
+      <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { restoreLayout(); updateLayout({ projectOpen: !projectOpen }) }} />
+      <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { restoreLayout(); onCommit() }} />
+      <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { restoreLayout(); onBookmarks() }} />
       <div className="flex-1" />
       {TOOL_WINDOWS.map((entry) => (
         <StripeButton key={entry.id} label={entry.label} icon={entry.icon} pressed={bottomOpen && toolWindow === entry.id} badge={badges[entry.id]} onClick={() => toggleToolWindow(entry.id)} />
