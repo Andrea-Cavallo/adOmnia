@@ -4,6 +4,8 @@ import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './codeStudioRunOnSave'
 import { pinnedFirst } from '@/lib/code-studio/codeStudioRunHistory'
+import { devServerPreviewRequest } from '@/lib/code-studio/runPreview'
+import { useLivePreviewStore } from '@/stores/livePreview'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { CodeStudioEmptyState } from './CodeStudioEmptyState'
@@ -416,6 +418,16 @@ export function CodeStudioPanel() {
       return
     }
     if (kind === 'run' && activeConfig) {
+      // Lo script dev di un'app Node vive nella Live Preview (URL, prontezza, proxy): niente secondo processo.
+      const previews = useLivePreviewStore.getState()
+      const sessionId = activeSession?.id
+      const report = sessionId ? await previews.load(sessionId) : null
+      const previewRequest = sessionId ? devServerPreviewRequest(activeConfig, report) : null
+      if (sessionId && previewRequest) {
+        previews.show(sessionId)
+        await previews.goLive(sessionId, previewRequest)
+        return
+      }
       void store.startConfiguredRun(activeConfig.id, {})
       return
     }
