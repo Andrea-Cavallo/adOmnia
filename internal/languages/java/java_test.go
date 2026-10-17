@@ -157,3 +157,51 @@ func TestDetectJDKPrefersJavaHomeAndExplainsAMissingOne(t *testing.T) {
 		t.Fatalf("a missing JDK must come with a problem and remedies, got %+v", jdk)
 	}
 }
+
+func TestSuggestFindsMainClassesInModulesAndStartsSpringBootAppsThere(t *testing.T) {
+	fakeJava(t, "21.0.4")
+	root := t.TempDir()
+	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>shop</artifactId><packaging>pom</packaging></project>`)
+	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, "mvnw.cmd"), "")
+	write(t, filepath.Join(root, "api", "pom.xml"), `<project><parent><artifactId>spring-boot-starter-parent</artifactId></parent><artifactId>api</artifactId></project>`)
+	write(t, filepath.Join(root, "api", "src", "main", "java", "it", "acme", "ApiApp.java"),
+		"package it.acme;\n@SpringBootApplication\npublic class ApiApp { public static void main(String[] args) {} }")
+	write(t, filepath.Join(root, "tools", "pom.xml"), `<project><artifactId>tools</artifactId></project>`)
+	write(t, filepath.Join(root, "tools", "src", "main", "java", "Cli.java"), "public class Cli { public static void main(final String... args) {} }")
+	write(t, filepath.Join(root, "tools", "src", "test", "java", "NotMain.java"), "class NotMain { public static void main(String[] a) {} }")
+
+	units, _ := New().DetectUnits(context.Background(), root)
+	if len(units) != 1 {
+		t.Fatalf("one outermost unit expected: %+v", units)
+	}
+	titles := map[string][]string{}
+	for _, suggestion := range New().Suggest(context.Background(), root, units[0]) {
+		titles[suggestion.Action+"|"+suggestion.Configuration.Name] = suggestion.Configuration.ProgramArguments
+	}
+	if args := titles["run|Maven Spring Boot ApiApp"]; strings.Join(args, " ") != "-f api/pom.xml spring-boot:run" {
+		t.Errorf("Spring Boot module app: %v", titles)
+	}
+	cli := strings.Join(titles["run|Maven main Cli"], " ")
+	if !strings.Contains(cli, "-f tools/pom.xml") || !strings.Contains(cli, "exec-maven-plugin") || !strings.HasSuffix(cli, "-Dexec.mainClass=Cli") {
+		t.Errorf("plain main class: %q", cli)
+	}
+	if _, found := titles["run|Maven main NotMain"]; found {
+		t.Error("test sources are not run targets")
+	}
+}
+
+func TestGradleApplicationPluginProposesRun(t *testing.T) {
+	fakeJava(t, "21.0.4")
+	root := t.TempDir()
+	write(t, filepath.Join(root, "build.gradle.kts"), "plugins { application }\napplication { mainClass.set(\"x.Main\") }")
+	write(t, filepath.Join(root, "gradlew"), "")
+	write(t, filepath.Join(root, "gradlew.bat"), "")
+	units, _ := New().DetectUnits(context.Background(), root)
+	for _, suggestion := range New().Suggest(context.Background(), root, units[0]) {
+		if suggestion.Action == "run" && strings.Join(suggestion.Configuration.ProgramArguments, " ") == "run" {
+			return
+		}
+	}
+	t.Error("the application plugin must propose gradle run")
+}
