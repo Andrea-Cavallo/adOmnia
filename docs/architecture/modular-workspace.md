@@ -2,7 +2,7 @@
 
 ## Obiettivo
 
-Editor, console, terminali, log e chat possono affiancarsi o vivere su un altro monitor. Spostare una vista mantiene il processo e la conversazione del progetto. Il primo blocco riguarda Go Studio; i moduli adOmnia già staccabili continuano a usare il proprio flusso.
+Editor, console, terminali, log e chat possono affiancarsi o vivere su un altro monitor. Spostare una vista mantiene il processo e la conversazione del progetto. Il primo blocco riguarda Code Studio; i moduli adOmnia già staccabili continuano a usare il proprio flusso.
 
 ## Primo blocco implementato — 2026-10-07
 
@@ -24,7 +24,7 @@ Editor, console, terminali, log e chat possono affiancarsi o vivere su un altro 
 
 - [x] TypeScript, frontend build, budget startup (636.554 byte, sotto 650 kB) e build Go.
 - [x] Test identificatori native tool windows; test isolamento bozze/filtri; test bootstrap PTY senza duplicati; test routing proprietario/esecuzione e invio AI con streaming ancora aperto.
-- [x] Suite frontend completa: 260 file e 1.154 test passati. Test Go dei manager `internal/panelwindow` e `internal/goidewindow` passati.
+- [x] Suite frontend completa: 260 file e 1.154 test passati. Test Go dei manager `internal/panelwindow` e `internal/codestudiowindow` passati.
 - [x] Osservata la finestra Copilot nativa con progetto e stato provider corretti; dopo la sua chiusura la finestra principale era ancora aperta.
 - [ ] Collaudo nativo completo: terminale con lo stesso PID/output prima e dopo distacco; filtro log conservato; risposta AI in streaming durante distacco/riaggancio; ingrandimento/ripristino e posizione su secondo monitor.
 

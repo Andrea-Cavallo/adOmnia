@@ -1,6 +1,6 @@
 # Usare adOmnia: dalla richiesta API al codice
 
-Inizia da API Workspace. Go Studio serve quando vuoi eseguire e debuggare il tuo servizio; non è necessario per chiamare un'API esistente.
+Inizia da API Workspace. Code Studio serve quando vuoi eseguire e debuggare il tuo servizio; non è necessario per chiamare un'API esistente.
 
 ## 1. Crea e invia una richiesta
 
@@ -18,7 +18,7 @@ Workspace seleziona le collection; Environment seleziona le variabili; Hosts sel
 
 ## 3. Apri ed esegui il progetto Go
 
-In Go Studio scegli File → Open Project e apri la cartella del servizio. Sono supportati moduli `go.mod`, workspace `go.work` e cartelle di progetto. Autorizza solo progetti di cui ti fidi: la fiducia abilita tooling e processi.
+In Code Studio scegli File → Open Project e apri la cartella del servizio. Sono supportati moduli `go.mod`, workspace `go.work` e cartelle di progetto. Autorizza solo progetti di cui ti fidi: la fiducia abilita tooling e processi.
 
 Seleziona SDK e configurazione Run del package principale. Avvia il servizio, leggi la porta nel console e aggiorna `baseUrl`. Se compare Connection refused, verifica prima servizio, porta e URL.
 
@@ -28,7 +28,7 @@ Metti un breakpoint nel handler. Avvia Debug oppure scegli Debug Request dalle a
 
 Se adOmnia riconosce la route, la barra HANDLER offre OPEN IN GO IDE. Route dinamiche o framework non supportati possono richiedere la configurazione manuale del debug.
 
-![Go Studio fermo su un breakpoint](screenshots/go-debug-light.png)
+![Code Studio fermo su un breakpoint](screenshots/go-debug-light.png)
 
 ## 5. Collega log, database e messaggi
 
@@ -38,7 +38,7 @@ Save reproduction, quando disponibile, conserva richiesta ed evidenze per ripete
 
 ## 6. Più progetti, un'unica istanza
 
-Apri altri progetti dal selettore di Go Studio. Puoi passare da uno all'altro o scegliere Open Project in New Window per affiancarli. Prima di spostare un progetto salva o scarta le modifiche pendenti. IDE, API Workspace e altri studi usano la stessa applicazione e il suo backend.
+Apri altri progetti dal selettore di Code Studio. Puoi passare da uno all'altro o scegliere Open Project in New Window per affiancarli. Prima di spostare un progetto salva o scarta le modifiche pendenti. IDE, API Workspace e altri studi usano la stessa applicazione e il suo backend.
 
 Il progetto selezionato nella finestra principale viene ricordato per workspace nelle build che includono la correzione; le finestre separate mantengono il proprio progetto.
 
@@ -52,4 +52,4 @@ Il progetto selezionato nella finestra principale viene ricordato per workspace 
 | SQL o messaggi assenti | Capture/watch configurati e trasporto supportato |
 | Tool non disponibili | Fiducia del progetto, SDK, gopls e Delve |
 
-[Guarda la demo da 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s) · [Guida completa Go Studio](GO-STUDIO.md) · [Installazione](INSTALL.md)
+[Guarda la demo da 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s) · [Guida completa Code Studio](CODE-STUDIO.md) · [Installazione](INSTALL.md)

@@ -36,7 +36,7 @@ export function CodeStudioActivityBar({ session, onOpenLog }: { session: GoIDESe
   const counting = visible && !isError && startedAt > 0
   useEffect(() => {
     if (!counting) return undefined
-    return visibleInterval(() => setNow(Date.now()), SECOND_MS, { scope: `goide:${session.id}`, kind: "decorative" })
+    return visibleInterval(() => setNow(Date.now()), SECOND_MS, { scope: `code-studio:${session.id}`, kind: "decorative" })
   }, [counting, session.id])
 
   if (!visible) return null

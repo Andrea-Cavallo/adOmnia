@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { DependencyWhy } from '../../../bindings/adomnia/internal/goide/models'
+import type { DependencyWhy } from '../../../bindings/adomnia/internal/codestudio/models'
 import { moduleFootprint } from '@/lib/code-studio/dependencyHeatmap'
 import { useCodeStudioInsights } from '@/stores/codeStudioInsights'
 import { useCodeStudioRuntimeProfile } from '@/stores/codeStudioRuntimeProfile'

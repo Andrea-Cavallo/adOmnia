@@ -1,6 +1,6 @@
 import * as GoIDE from '../../../bindings/adomnia/goide'
 import type { Impact, Node as GraphNode, Ref } from '../../../bindings/adomnia/internal/ide/graph/models'
-import type { GraphSummary } from '../../../bindings/adomnia/internal/goide/models'
+import type { GraphSummary } from '../../../bindings/adomnia/internal/codestudio/models'
 
 export type GraphImpact = Impact
 export type GraphRef = Ref

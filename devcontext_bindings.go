@@ -2,7 +2,7 @@ package main
 
 import (
 	"adomnia/internal/devcontext"
-	"adomnia/internal/goide"
+	"adomnia/internal/codestudio"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -31,10 +31,10 @@ func newDevContext(resolveRoot devcontext.RootResolver) *DevContext {
 
 func (d *DevContext) attachDesktop(desktop *application.App) { d.desktop = desktop }
 
-func (d *DevContext) handleGoIDEEvent(event goide.EventEnvelope) {
+func (d *DevContext) handleGoIDEEvent(event codestudio.EventEnvelope) {
 	switch event.Type {
 	case "document.saved":
-		if doc, ok := event.Payload.(goide.Document); ok {
+		if doc, ok := event.Payload.(codestudio.Document); ok {
 			go d.manager.Invalidate(string(event.SessionID), doc.RelativePath)
 		}
 	case "session.closed":

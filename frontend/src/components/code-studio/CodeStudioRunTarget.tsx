@@ -39,7 +39,7 @@ export function CodeStudioRunTarget({ draft, patch }: CodeStudioRunTargetProps) 
   const [devBusy,setDevBusy]=useState(false)
   const [devRun,setDevRun]=useState<string|null>(null)
   const [devResult,setDevResult]=useState<{runId:string;target:GoIDERemoteTarget;error?:string}|null>(null)
-  useEffect(()=>Events.On('goide:event',event=>{
+  useEffect(()=>Events.On('code-studio:event',event=>{
     const detail=event.data as {type:string;sessionId:string;payload:{runId:string;target:GoIDERemoteTarget;error?:string}}
     if(detail.type==='devcontainer.ready' && detail.sessionId===draft.sessionId) setDevResult(detail.payload)
   }),[draft.sessionId])

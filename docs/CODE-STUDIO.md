@@ -1,0 +1,798 @@
+# Code Studio
+
+## Source and runtime Context (2026-10-10)
+
+The Context side pane connects a source line to goroutines created or waiting there. It shows their actual channel/mutex waits, links to debugger threads and labels source-only findings as STATIC. Error lines show the matching paused frame's error values and reuse the on-demand Unwrap inspector. Runtime values are optional and appear only for the matching paused frame.
+
+Trace Studio's **Runtime context in gO** action routes a span through the entity router, opens its source in the owning project and reveals Context with service, duration, status, trace ID and attributes. Clear the selection when finished. No process or debugging session starts from this action.
+
+Implemented and checked with TypeScript and focused concurrency/error/line-context tests. Native desktop acceptance remains in `mds/todo-ide.md`.
+
+Code Studio is the Code Studio built into adOmnia. It opens real Go projects, understands them through gopls, and runs, tests and debugs them with the project's own Go SDK. It connects to the rest of adOmnia: Git Studio, Docker Lab, Database Studio, Broker Studio, the API Client, plugins and the AI provider.
+
+Everything stays on your machine. Nothing in a project runs until you trust it.
+
+## IDE platform refactor status (2026-10-03)
+
+The product still exposes the Code Studio UI and the existing `GoIDE` Wails service. The backend now separates the shared IDE core (`internal/ide`) from the Go adapter (`internal/languages/golang`); this does not add another language or change the trust model.
+
+The debugger lifecycle, breakpoint store and DAP operations live in `internal/ide/dap`. Adapter startup supports both stdio and TCP readiness; Delve supplies its launch/attach parameters, Go error messages and explicit console evaluation retry. Goroutines, runtime defer chains, memory inspection and register configuration belong to the Go adapter and use the core's `dap.Session` interface. Existing saved line-number breakpoints and current breakpoint options remain readable.
+
+Run configurations also have additive `language` / `languageOptions` fields. The core stores language options as opaque JSON. Legacy Go fields remain accepted and exposed by the facade for the current frontend; persisted state keys, workspace schema and `.adomnia/run-configurations.json` format/version remain unchanged. Explicit secret environment values are still removed from snapshots and shared files.
+
+Play, Build and Debug resolve their target through the registered language adapter before a command is built. For Go, a project whose `go.mod` is at the root and whose executable is under `cmd/` runs that package from the owning module. Nested modules and `go.work` members keep separate working directories. On the first Play, Code Studio saves a shared module-scoped Run configuration. With several `main` packages it prefers the active file, then `cmd/<module-name>`; if neither identifies one target, it asks instead of guessing.
+
+Phases 1–12 are complete. The shared core owns processes, configurations, Run chains/compound execution, generic Make/Docker/command workflows and test lifecycle/history/publication. Go adapters own command options, test2json, race reports and Go source interpretation; the Wails facade preserves existing APIs and persisted fields. A fixture language runs and tests through the registry with no Go on PATH, including saved opaque options, environment files and generic commands. In the UI, `GetCapabilities().languages` lists the registered languages; each one contributes its icon, menu, commands and editor languages from `frontend/src/components/ide/languages/<id>/`. The project model carries language units only: Go modules, `go.work` and loose folders are derived from them (`goLayoutOf` in the backend, `lib/code-studio/goProject.ts` in the frontend). See [the migration plan](architecture/ide-multilanguage-refactor.md) for the decisions and the manual smoke checklist.
+
+Phase 8 was published in [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/commit/fe3456ac351ebae9ce7d8cbd76b2ca0b070df4e4), following the phase 9 backend in `daa2e89`. Validation passed: full Go suite with managed gopls/Delve, build/vet, focused race regressions, pinned Wails bindings, TypeScript, frontend build and startup budget. Real Make passed; real Docker integration was skipped because the daemon was stopped. The new desktop build has not received the complete manual smoke check, and macOS/Linux validation remains open in phase 12.
+
+## Flexible tool views
+
+Go optimization and Git open from the bottom status bar. Their duplicate left-stripe shortcuts have been removed; the Go action remains conditional on a Go module. Existing panel IDs, shortcuts and saved layout remain compatible.
+
+Git opens on **Log**, with the commit graph, branch/tag labels and merge connections visible beside each commit. The graph reuses Git Studio's layout and renderer with compact IDE rows; **Git** still shows local changes and **Worktrees** lists linked checkouts.
+
+Git also detects separate repositories inside the open project folder, including worktrees with a `.git` file. Select the repository in the Git panel header to inspect its branch, changes and history or run Git actions. File history follows the file's owning repository; staging and commits reject files belonging to a different repository. Discovery stays local, does not follow symlinked directories and skips hidden/generated/dependency folders, with a depth limit of eight and a limit of 10,000 visited directories. Repository selection is session-only; persisted workspace formats are unchanged.
+
+Project and chat columns resize to the available workspace width instead of fixed 420/360 px caps. The bottom panel also follows the available height. Existing saved pane dimensions use the same storage fields and remain readable; no migration is required.
+
+Run output, Terminal, Service logs, Copilot Chat and milk have common controls: choose **Bottom / Left / Right**, **Maximize tool**, or **Open tool in separate window**. Open Service logs with its left tool-stripe button; it shows the selected run's stdout/stderr without the command/exit headers, with an independent text filter. Run and logs can be visible together.
+
+Native tool windows share the existing project's processes and AI conversations. **Bring back to project**, or closing the tool window, returns its view without stopping the process or cancelling the conversation. Settings and source links open in the owning project window. Closing or moving the project closes its detached tool views.
+
+Tool positions are saved locally per session in the additive `adomnia.studio.toolLayout.v1` key. Chat drafts, console filters/stdin and terminal active/split selections are shared between the project and its tool windows for the current app session; they are not written to disk by this feature. Existing workspace and IDE persistence schemas are unchanged. Native window bounds, drag-and-drop docking, arbitrary tab groups and named layout presets are future work; see [the modular workspace plan](architecture/modular-workspace.md).
+
+## Using Code Studio
+
+1. **Open a project** with *File → Open Project* (Ctrl+O), a recent project, or *New Go Project* (which runs `go mod init` after you confirm). New Go Project offers templates — empty module, CLI, REST service, gRPC service, worker, Kafka producer/consumer, library — plus your own templates: folders in `<user config dir>/adomnia/go-templates/`, where `__MODULE__`, `__NAME__` and `__PACKAGE__` are replaced in file contents and paths. The gRPC and Kafka templates run `go mod tidy`, pinned to the versions adOmnia itself uses, so they resolve from the module cache; if that fails (offline) the project is still created and a warning asks you to run Tidy. A project may be a module, a `go.work` workspace, or a folder inside a larger repository.
+2. **Trust it.** A newly opened project is *opened* only: you can browse and edit files, but no tool runs. The first time a folder is opened, a dialog asks whether to trust it; *Trust Folder* allows local Go tools and is remembered for that folder, so reopening it never asks again. *Browse Only* keeps tools off for the session; trust later with *Go → Trust Project Tools* (the same command revokes it).
+3. **Pick a Go SDK.** Code Studio detects Go on `PATH`, or installs an official release from *Go → Go SDKs & Toolchains…*. Each project can use a different SDK; click the Go version in the status bar to switch quickly. The toolchain dialog shows `GOROOT`, `GOPATH`, the module proxy/privacy settings and the target platform, and edits them for *This project* or as the *Global default* used by projects without their own settings: Go binary, `GOPROXY`, `GOPRIVATE`, `GONOPROXY`, `GONOSUMDB`, CGO, `GOOS`/`GOARCH`, build tags (written to `GOFLAGS` as `-tags=`) and other variables. It reads the `go` and `toolchain` directives of `go.mod` and warns when the selected SDK is older: with `GOTOOLCHAIN=local` the build would fail, otherwise `go` would download the newer toolchain. Its *Go tools* section health-checks gopls, the linter and Delve, and installs or updates them to `@latest`.
+4. **Write code.** gopls provides completion, diagnostics on unsaved buffers, hover, signature help, navigation (Ctrl+click or Ctrl+B for the declaration), usages, rename with preview, code actions and refactoring. golangci-lint or staticcheck add lint findings.
+5. **Run, test, debug.** Use Build, Run with stdin, the gutter ▶ next to `func main` and tests, the structured test runner with coverage, the Delve debugger (launch, attach or remote) and a real terminal. Makefile targets and Dockerfiles run for real too (see below).
+6. **Commit and integrate.** The toolbar shows the Git branch and changes, and the gutter shows diffs against HEAD. Commit from Code Studio — the Commit Dialog can draft the message with AI from the changes you are committing — and stage or unstage single change blocks from the gutter popup (or single lines from *Stage single lines…* and the Git workbench rows). Git Studio follows the open project's repository for push, pull and merges. *Tools → Project Services* opens Docker Lab, Database Studio or Broker Studio for the services detected in `go.mod`. HTTP handlers get an *Open in API Client* CodeLens. Package-level functions, methods, types, constants and variables show **Code Vision** above the declaration: the usage count from gopls (click it to list the usages) and the git author of the latest change, with `*` for uncommitted lines. The author is hidden while the buffer has unsaved changes, because blame describes the file on disk.
+
+*View → Maximize Editor* (Ctrl+Shift+F12, or a double-click on an editor tab) closes Project, Structure and the bottom tool window so the code takes all the space; press it again to bring them back exactly as they were. Every pane also closes on its own with its — button or its shortcut (Project Alt+1, Structure Alt+7, bottom tool window Alt+4).
+
+The code editor enables Monaco's inertial and smooth scrolling for touchpads and
+compatible continuous-scroll mouse input. Device classification stays with Monaco;
+ordinary stepped wheels are not forced into touchpad inertia. The system's
+**Reduce motion** preference disables these animations, including changes while
+the editor is open. The caret also moves and blinks smoothly; Reduce motion
+turns off its movement animation and keeps it solid. Main, split and detached
+editors use the same behavior.
+
+Font families, sizes, weights and ligatures stay unchanged. The code editor
+avoids forced text compositing layers and refreshes Monaco's cached glyph
+measurements after local fonts load. Global font smoothing follows the platform
+instead of forcing grayscale. Rendering can still differ between WebKitGTK and
+Chromium; compare on the same monitor and display scale.
+
+The status bar starts with the breadcrumb (file path › enclosing symbol; click a symbol to jump to its siblings) and shows line:column, the line separator (LF/CRLF), the language and the Go SDK. Save and Maximize editor sit at the right of the tab row. The top-right corner of the editor shows the problems of the open file: a green check when it is clean, otherwise error and warning counts with arrows for the previous and next problem (Shift+F8 / F8).
+
+*View → Maximize Code Studio* (Ctrl+Shift+F11, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Code Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Code Studio restores them too.
+
+The project menu in the toolbar lists the open projects and, below them, the recent projects that are not open, so you can reopen one with a click (*File → Open Recent* shows the same list).
+
+Several projects can stay open at the same time, isolated from each other, grouped into Code Studio workspaces that are separate from adOmnia's API workspaces. A project can also move into its own window (*File → Open Project in New Window*).
+
+## Editor
+
+Project rules in the workspace root (`.rules`, `AGENTS.md`, `CLAUDE.md`,
+`.cursorrules`) are attached automatically when sending Copilot, milk or Claude
+chat messages, including drafts opened by AI actions. The **Project rules**
+control disables attachment for that chat; message context chips name the files
+actually loaded and mark individually truncated files. Files are read again on
+each send, limited to 8 KiB per file, filtered by the project AI policy and
+`.adomnia/aiignore`, then passed through the existing secret redactor. Linked,
+binary and unreadable files are skipped; parent folders and referenced files
+are not followed. Slash commands are unchanged. Existing layouts default the
+additive `includeRules` view flag to true; no workspace/storage migration is needed.
+Direct AI gateway actions are separate from these agent chat transports.
+
+Language-server document updates use incremental UTF-16 ranges when negotiated;
+full-sync servers retain full-buffer updates. Complete buffers remain available
+for restart replay. New completion/hover and other replaceable read queries cancel
+older queries for the same document and method; synchronized buffer changes and
+document closure invalidate these reads. Rename, formatting and commands remain
+explicit operations. Sessions keep separate server connections and unsaved
+overlays, including when they open the same workspace root.
+
+- **View:** Sticky Scopes (on by default), Font Ligatures, Preview Tab, Zoom (Ctrl+= / Ctrl+- / Ctrl+0, including the `+` key of Italian layouts and the numeric keypad) and Zen Mode (Alt+Shift+Z: only the code; leaving it restores the panes as they were).
+- **Preview Tab** (off by default): a single click in Project opens the file in an italic tab that the next click replaces. Editing it or double-clicking the file keeps it open.
+- **Code → Type Hints:** the inferred types of `:=` and `range`, composite literal types and constant values, on top of parameter hints.
+- **File → Save Files on Focus Change:** saves modified files when adOmnia goes to the background or you switch file, never while you type.
+- **Auto save** (*File → Settings… → Save actions*, off by default): saves every modified file after a pause in typing (1, 2, 5 or 10 seconds), like VS Code's `files.autoSave: afterDelay`. The timer restarts at every keystroke, so nothing is written while you type; format-on-save, imports and the other save actions still apply, and a save already in flight is never overlapped. The delay is a global preference (`adomnia.codestudio.lsp.v1`, `autoSaveDelayMs`); it is independent of *Save Files on Focus Change*, and both can be on.
+- **File → Trim Trailing Whitespace on Save** and **`.editorconfig`:** the project-root `.editorconfig` sets indentation, trailing whitespace and the final newline for non-Go files; Go, assembly and Makefiles keep tabs. Only the changed characters are edited, so the cursor stays and Ctrl+Z undoes it.
+- **Navigate:** Test (Alt+Shift+T) jumps between a file and its `_test.go` and between a function and its test, and offers to generate a missing test. Call Hierarchy (Ctrl+Alt+H) shows callers and callees, and Type Hierarchy shows supertypes and subtypes, as lazy trees with recursion marked. Recent Locations (Ctrl+Shift+E), Last Edit Location (Ctrl+Shift+Backspace) and Next/Previous Problem (F8 / Shift+F8) are also there.
+- **Code → Generate… (Alt+Insert):** Constructor, Getters and Setters (only for unexported fields), Extract Interface (exported methods), Test (gopls writes a table-driven test), Benchmark and Fuzz Test (added to the `_test.go` file, created when missing; missing imports are added on save). The generated code is inserted after the struct or function, and the rest of the file is untouched. Ctrl+Z undoes it.
+- **Code → Vulnerability Diagnostics** (off by default): after you confirm, gopls downloads the Go vulnerability database from vuln.go.dev and marks the `go.mod` requirements whose imported code has known vulnerabilities. Your source code is not sent.
+- **Replace in Files:** *Replace All… (preview)* in Find in Files opens every change in the change preview, applied all or nothing and undoable. With regular expressions, `$1`, `$2`… insert the captured groups.
+
+## Start workspace
+
+*Run → Start Workspace* brings the local environment up in order. The first time, it detects what the project needs and saves a shared **Start workspace** compound:
+
+1. **Containers**: every Compose file of the project starts attached (`docker compose up`, logs in the Run console).
+2. **Ready check**: adOmnia polls `docker compose ps` until every container runs (and is *healthy* when it has a healthcheck) or finished with exit code 0. An unhealthy or crashed container, or 3 minutes without being ready, stops here with the container's name.
+3. **Tasks**, one after the other: database migrations, then seed data. Detected from `package main` folders named like `cmd/migrate` or `cmd/seed` (run with `go run`; they are no longer started as services) and from Makefile targets such as `migrate`, `db-migrate` or `seed`. Folders of golang-migrate (`*.up.sql`) or goose (`-- +goose Up`) migrations are reported but not wired, because they need your tool and DSN: add them as a Command task.
+4. **Services**: the Go `main` packages, with restart on save.
+
+A failed task keeps the services stopped. Every stage writes a line in the console of the run you are looking at. Any compound can use the same order: its *Tasks after the containers are ready* list is in the run configuration editor. Without Compose members or tasks, a compound still starts everything at once.
+
+Before anything starts, adOmnia compares the ports the workspace binds (Compose `ports:`, a run configuration's *Port*, `docker run -p`) with the sockets already listening on the machine. A port held by another process is listed with its process and PID: *Start anyway* or *Cancel* and free it. Ports that Docker already publishes for the project's own Compose stack are not reported.
+
+While the services run, a **Workspace** bar under the toolbar lists them with the port each one opened. *Open API* adds a `<service> API` collection to the API Workspace with one request per detected route; the requests use `{{service:NAME}}`, so they always reach the running service. *Open logs* streams every running service into the Log Inspector. Both are also in the Run menu.
+
+*Snapshot* (also *Run → Runtime Snapshots…*) saves what a running service looks like now: goroutines and heap in use by function, read from its `/debug/pprof` (the service must `import _ "net/http/pprof"`; otherwise those two parts are skipped with a note), plus what adOmnia observed — recent requests with status and duration, broker messages, SQL with duration, logs, error lines and traces. Snapshots are JSON files in `.adomnia/snapshots` (commit them to share). *Compare* two of them — for example before and after a load test — to see the totals that moved, the functions holding more goroutines or heap, and the error lines that are new.
+
+*Run → Analyze Startup…* measures how a service starts. It builds the main package, starts it with the same environment as a run plus `GODEBUG=inittrace=1`, and records: every output line with its time, the gaps between events (slow configuration loading or dependency setup show up as long gaps before the next line), the first connection to each database or broker (recognized by port: PostgreSQL, MySQL, Redis, MongoDB, Kafka, NATS, RabbitMQ…), the moment it listens and the moment it is ready (port open, or the health path you give answers below 500). The slowest `init` functions of the packages are listed with their time and allocations. Connections and ports are sampled from the sockets every 100 ms (on Windows `netstat` can add about half a second); log lines carry exact times. The process is stopped as soon as it is ready.
+
+*Analyze shutdown*, in the same drawer, starts the service, waits until it is ready, sends it an interrupt (SIGINT; on Windows a CTRL_BREAK to its process group, sent by a tiny helper adOmnia builds once with your Go toolchain and keeps in its cache) and watches it stop for the grace period you set: whether it logged the cancellation, when it stopped listening, when each database or broker connection closed, and when it exited. A process still running at the end is killed and described: the connections it leaves open and, if it imports `net/http/pprof`, the goroutines that keep it alive.
+
+*Run → Clean Workspace…* undoes it: it stops every run of the project and runs `docker compose down --remove-orphans` on each detected Compose file. A second dialog asks whether to delete the volumes too (local database and broker data); *Keep data* leaves them.
+
+## adOmnia environments in runs
+
+Every Run, Build, Test and configured run receives the variables of the active
+adOmnia environment (the one chosen in the API Workspace header or in the
+environment manager) as process environment. A run configuration's own
+Environment entries take precedence and may reference them as `{{NAME}}`, e.g.
+`DSN={{DB_URL}}?sslmode=disable`. Names that are not valid environment names
+(spaces, dashes) are skipped. `vault:` values are decrypted only while the Vault
+is unlocked; otherwise they are not passed. Switching environment applies to the
+next run, not to processes already running.
+
+## Security and project authorization
+
+- **Opening is not trusting.** An opened project reads and saves files only. Every action that starts a process requires *Trust*: gopls, linters, build, run, tests, debugging, the terminal, Go Tools, dependency changes and tool installation. Revoking trust stops the project's processes and gopls.
+- **Nothing runs implicitly.** Opening a project or restoring a session never runs code. Recovered unsaved buffers are offered, never applied silently.
+- **Files stay inside the project.** Paths are confined to the project root, including after resolving symlinks. Run targets and Go Tools arguments that look like flags (for example `-toolexec=…`) are rejected.
+- **Secrets are not persisted.** Run configurations store the names of secret environment variables but never their values, which you enter when you start the run. Local history never records `.env` files, keys or certificates.
+- **Network access only on request.** Code Studio contacts the network only when you install an SDK or tool, or when your own commands do (for example `go get`). SDK downloads come from the official Go catalog and are verified with SHA-256.
+- **Fix with AI sends code only when you click.** It sends the file with the problem and, for `undefined: pkg.Name` errors, the non-test files of that local package, to the AI provider configured in *Settings → AI*. A local provider such as Ollama keeps everything on the machine. The answer may change only the files that were sent and always opens in a preview before anything is applied.
+- **AI actions only prepare a prompt.** *AI: Explain Code*, *Generate Tests* and the other editor AI actions collect the selection or enclosing declaration, the file's problems, gopls references, the uncommitted Git diff, failing tests and coverage. They put the result in the milk or Copilot chat box: nothing is sent until you press Enter. Secrets are redacted first. Files excluded by `.adomnia/aiignore`, or by a project AI policy that is `off` or `local-only`, are refused.
+- **The Inline Assistant writes only what you accept.** *AI: Inline Assistant…* (Ctrl+Enter on a selection) asks for an instruction and sends the selected code, its surrounding context and that instruction to the AI provider configured in *Settings → AI* when you press Enter. The answer is never applied automatically: it opens as an inline diff in the editor where you accept or reject every change block, or all of them at once. Accepted changes are unsaved, undoable editor edits. Secrets are redacted before sending, `.adomnia/aiignore` and the project AI policy are enforced like the other AI features, and a reply that is prose instead of code is refused rather than used to replace code.
+- **Commit messages are drafted, never sent behind your back.** *Draft message with AI* in the Commit Dialog (Ctrl+K) sends the diff and the changed symbols of the ticked files to the AI provider configured in *Settings → AI* when you click. The draft fills the message box and is yours to edit before committing. Secrets in the diff are redacted and stay redacted in the draft (a commit message must not put them back into Git history), files excluded by `.adomnia/aiignore` are listed without their content, and the project AI policy is enforced like the other AI features.
+- **Makefiles and Dockerfiles are project code.** They run only in a trusted project. Arguments go to `make` and `docker` as a list, never through a shell. Make accepts targets and `VAR=value`, not flags (use `MAKEFLAGS`). Docker stages, tags and ports are validated. The Dockerfile, the build context and every volume must stay inside the project, so the Docker socket or arbitrary host folders cannot be mounted. Secret build args and secret container variables reach `docker` only through the process environment (`--build-arg NAME`, `-e NAME`), so their values never appear in the command line, the Run console or the saved state.
+- **One window edits a project.** When a project moves to a separate window, the main window cannot edit or close it until it moves back. Closing a window with unsaved files asks first.
+
+## Debugger workspace (2026-10-17)
+
+Opening Debug uses the central IDE surface: the existing source editor remains in the center with its execution-line, breakpoint and inline-value decorations. Goroutines and the selected call stack share the left pane; Variables and Watch occupy the right pane. Previous project/assistant/run placements return when the debug view closes. Console, Breakpoints, Memory and Disassembly share a collapsible lower dock, resizable with mouse or keyboard. Memory/disassembly are mounted on demand. Goroutine origin/context and deferred calls are behind the selected goroutine's details control.
+
+The toolbar reads shortcuts from the active keymap, with Restart Debugging available as Ctrl+Alt+F5 by default. Session state is labelled separately from goroutine runtime states captured at the pause. Loaded locals, nested values and watches highlight changes against earlier observations in the same thread/frame; first observations and unloaded values are not changes. Highlights reset per backend pause independently of asynchronous goroutine refresh. Values remain read-only: the current adapter binding does not expose variable mutation.
+
+Automated coverage includes 43 focused debug decoration/value/keymap/localization tests. TypeScript and the frontend build passed before concurrent response-memory edits; the subsequent integration typecheck reported errors in `stores/tabs.ts` outside this debugger change. The startup graph check passes with no deferred modules on the entry graph. Native Wails verification remains pending for resize/collapse, stepping with inline values, split/editor restoration and concurrent goroutine-state presentation.
+
+## Optional external tools
+
+Code Studio works without any of these installed. Each feature says clearly what it needs, and offers to install it after you confirm.
+
+| Tool | Used for | How Code Studio gets it |
+| --- | --- | --- |
+| **Go SDK** | Build, run, test, `go mod`, and running the tools below | Detected on `PATH`, or installed from *Go → Go SDKs & Toolchains…* (official releases, checksum-verified). Stored per user in the adOmnia data folder and selectable per project with `GOTOOLCHAIN=local`; the system `PATH` is never changed. |
+| **gopls** | Language intelligence, refactoring, navigation | *Go → Install gopls…* runs `go install golang.org/x/tools/gopls@latest` with the project SDK. |
+| **golangci-lint** or **staticcheck** | Lint findings, lint on save | *Go → Install golangci-lint…* or *Install staticcheck…* runs `go install` for `golangci-lint/v2` or `staticcheck` at `@latest`. The project's own `.golangci.yml` is respected. |
+| **Delve** | Debugger (launch, attach, remote) | *Go → Install Delve (debugger)…* runs `go install github.com/go-delve/delve/cmd/dlv@latest`. |
+| **Git** | VCS in the editor | Uses the Git already installed for Git Studio. |
+| **make** | Makefile targets | Found as `make`, `gmake` or `mingw32-make` on `PATH`, or in the GnuWin32 folder, or set in *Go → Tool Paths*. On Windows: `winget install ezwinports.make`, `choco install make` or `scoop install make`. |
+| **Docker** | Dockerfile build and run | Docker Desktop or Docker Engine with `docker` on `PATH`. Code Studio checks that the daemon answers before starting and says so when it does not. |
+
+gopls starts with `GO_TELEMETRY_CHILD=2`, so Go's telemetry library starts no `** telemetry **` process and collects nothing for it; your global `go telemetry` mode is left untouched. It also starts with `GOMEMLIMIT=768MiB`, a soft garbage-collector budget rather than a cap on resident process memory. Values you set yourself in the environment win. The first hover or Ctrl+hover after opening a project waits for gopls to load the module and its dependencies; the status bar shows its progress. On Windows, excluding `%LOCALAPPDATA%\go-build` and `go env GOMODCACHE` from Defender speeds this up.
+
+Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or a path set in *Go → Tool Paths (gopls, linter, dlv)…*, is used instead when present.
+
+Language-server shutdown bounds protocol writes and the final wait for process exit. On Windows, tree termination has a five-second timeout (plus at most one second to drain output); if it fails, Code Studio logs the error and attempts to kill the direct child. An unconfirmed exit is reported as an error and stays in the managed-child registry until the process watcher confirms exit. Automated regressions cover failed tree termination, missing exit confirmation and an unread protocol pipe; native Wails shutdown acceptance remains a separate manual check.
+
+**Supported versions.** The Go SDK runs the project, so any release the project's `go.mod` accepts works. gopls, the linters and Delve are built with the project SDK and follow their upstream support policy, which usually covers the two most recent Go releases. If the SDK is too old for the installed Delve, Code Studio says so and suggests selecting a newer SDK or a compatible `dlv`. Development and verification use Go 1.26.5, gopls v0.23.0 and Delve 1.27.2.
+
+`<data>` is `%APPDATA%\adomnia` on Windows and `~/.config/adomnia` on macOS and Linux.
+
+**Fast, cached SDK detection (VPN and proxy friendly).** Go is usable as soon as its binary is found and its version is read from the SDK's `VERSION` file — no process, no network. `go version` (only if `VERSION` is missing) and `go env` run outside the project folder, so a `go.mod` asking for a newer toolchain can never trigger a download through a slow GOPROXY; `go env` runs in the background and a timeout keeps the SDK valid with the last known values. The last detection is saved: on the next start the same binary (same size and date) is loaded from the saved config in a few milliseconds and only re-validated in the background. *Go → Toolchains* shows each phase's time (also written to adOmnia's log as `goide.toolchain`). Processes started by Code Studio inherit `GOPROXY`, `GOPRIVATE`, `GONOPROXY`, `GONOSUMDB`, `HTTP(S)_PROXY` and `NO_PROXY` unchanged and run with `GOTOOLCHAIN=local` unless you chose a `GOTOOLCHAIN` yourself (environment, project variables or `go env -w`): Code Studio never downloads a Go toolchain on its own. Installing a tool (golangci-lint, staticcheck, gopls, dlv…) pins the newest version compatible with the selected SDK, or explains which Go it needs.
+
+**More Go tools.** *Go → Toolchains* also lists **govulncheck**, **goimports**, **mockgen** and **stringer**, plus any tool you add (binary name and, optionally, a `module@version` to install it). Each is found in adOmnia's tools folder, `GOBIN`, `GOPATH/bin` or the `PATH`; **Install…** runs `go install` with the project SDK after confirmation, **Run…** runs it with your arguments in a project folder (no shell), with the output in the Run console. Running needs a trusted project.
+
+**Dependency graph.** *Tools → Dependency Graph…* reads `go list -m -json all`, `go mod graph` and `go list -deps` offline: direct → transitive tree, duplicate versions with who requires each and the shortest chain from your module, license (from the module's LICENSE file), estimated weight on disk, package count, and **unused** / **indirect** badges. *Check updates* (`go list -m -u`) and *Scan vulnerabilities* (`govulncheck`) contact the network and run only when clicked. Needs a trusted project.
+
+## Makefiles and Dockerfiles
+
+Code Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.
+
+- **▶ in the gutter.** In a Makefile, every target gets *Run 'make target'*. Variables, special targets (`.PHONY`) and pattern rules (`%.o`) do not. In a Dockerfile, every named stage (`FROM … AS builder`) and the final `FROM` get *Build image* and *Build & Run container*. Both menus offer *Save as Run Configuration…*.
+- **docker compose.** In `docker-compose*.yml` and `compose*.yaml`, `services:` gets *Compose Up (all services)* and *Compose Down*, and every service gets *Compose Up 'service'*. `docker compose up` stays attached, so the logs stream to the Run console. *Stop* runs `docker compose stop` on the same services, because killing the client would leave the containers running. The run configuration type *Docker Compose* accepts only `up [services]` or `down`.
+- **Postman and other collections.** Right-click a `.json` or `.yaml` file in the project tree and choose *Send to API Workspace*. Postman, Insomnia, Bruno JSON, OpenAPI and Swagger 2 files are imported into adOmnia's API Workspace, including unsaved changes in the editor. You stay in Code Studio, and a notice offers *Open API Workspace*.
+- **Keys and certificates.** Right-click a `.pem`, `.key`, `.crt` or `.cer` file and choose *Open in Power Tools: Inspect / Encrypt Key*. The PEM / JKS tool opens with the file loaded and inspected. A private key can be encrypted there with a password, as standard encrypted PKCS#8 (PBKDF2-SHA256, 600,000 iterations, AES-256-CBC) that OpenSSL, Java and Go open. It can also be decrypted back. Certificates in the same file stay unchanged, and everything happens locally.
+- **Working directory.** Commands start in the folder that contains the file, so `make -f Makefile` and a Docker build context of `.` behave as they do in a terminal opened there.
+- **Build & Run.** `docker build` runs first. Only when it succeeds does `docker run --rm -i --name adomnia-…` start the container, with the ports the Dockerfile declares with `EXPOSE`. *Stop* runs `docker stop` on that container, because killing the client alone would leave it running. The same happens when trust is revoked, the project closes or adOmnia quits. *Rerun* runs the build and the container again.
+- **Run configurations.** Three types join the existing ones:
+  - *Make target*: the Makefile, targets and `VAR=value`, plus environment.
+  - *Docker build*: Dockerfile, context, tag (default `<project>:dev`), stage, `--no-cache` and build args.
+  - *Docker build & run*: the same, plus published ports, volumes, container command and container environment.
+
+  *Save as Run Configuration…* from a Dockerfile lists its `ARG`s as build args. Names that look sensitive (`password`, `token`, `secret`, `key`…) are marked secret: only the name is saved, and the value is asked once when you start. When an environment variable and a build arg share a name, one value serves both.
+- **Execution options.** Every run configuration also has: an *env file* (`.env` syntax, confined to the project; variables set in the configuration win), a *port* (exported as `PORT` and checked free before the start, so a busy port fails immediately instead of at bind time), and, for Go kinds, `GOOS`/`GOARCH`, the race detector (`-race`, with `CGO_ENABLED=1`) and coverage (`-cover`; for run and build the data goes to `.gocoverdata` through `GOCOVERDIR`). Test configurations add profiling (`cpu`, `mem`, `block`, `mutex` or `trace`, written next to the package). Package and build configurations add *debug build flags* passed to Delve, for example `-gcflags=all=-N`. The toolbar *Build* compiles a saved package/build configuration with all of these; secret variables are left out of builds.
+- **Before launch / after it finishes.** A configuration can run other configurations first (for example *Docker Compose up* or a *make* target) and afterwards (cleanup, reports). They run in order in the Run console. A failing task before launch stops the launch; tasks after it run whatever the exit code, unless you stopped the run; a failing task after it skips the rest. Only one level is followed: the tasks' own before/after lists are ignored.
+- **Command, Go tool and Compound.** *Command* runs any program on the PATH or a script inside the project (`./scripts/seed.sh`), with arguments passed as a list, never through a shell. *Go tool* runs `go <command>` with the project toolchain (`generate`, `vet`, `tool pprof -top cpu.pprof`…). *Compound* starts two to ten other configurations together, in parallel; a compound cannot contain another compound.
+- **Shared or private.** A configuration is private by default (stored on this machine). *Share with the project* also writes it to `.adomnia/run-configurations.json`, readable JSON meant to be committed: teammates who open the repository get the same configurations. Secret values, pins and restart-on-save are never written there; for shared configurations the file wins when it changes.
+- **Pin, history, hot restart.** Pinned configurations come first in the toolbar and in Search Everywhere. The editor shows the last runs of each configuration (time, exit code, duration), kept locally per project. *Restart on save* restarts a running execution when you save a Go file of the project (several saves restart it once).
+- **Run Current Context** (Ctrl+Shift+F10, as in GoLand) runs the test that contains the cursor, the `main` of a main package, or the tests of the current package otherwise.
+
+## Breakpoints
+
+A click on a line number toggles a breakpoint; a **right-click** opens its editor:
+
+- **Condition:** stops only when a Go expression is true (`len(items) > 10`). Delve evaluates it.
+- **Hit count:** `3` stops only on the third hit, `>= 5` from the fifth on, `% 10` every tenth.
+- **Log message (logpoint):** prints the message without stopping; `{expression}` is evaluated when the line runs and the text appears in the Debug console.
+- **Enabled:** a disabled breakpoint stays in place, grey, and is not sent to Delve.
+
+In the gutter a plain breakpoint is a red dot, one with a condition or hit count shows a `?`, a logpoint is a diamond, a disabled one is grey, and a hollow dot means Delve has not verified it yet (the tooltip says why). Options follow the line while you edit and are saved with the project; breakpoints saved by older versions (line numbers only) are read as plain breakpoints.
+
+**View Breakpoints (Ctrl+Shift+F8)** lists every breakpoint of the project: enable or disable each one (or all of them: *Run → Mute / Unmute Breakpoints*), edit its options, remove it, or double-click to open the line. The same dialog holds:
+
+- **Function breakpoints:** stop on entry to a function, e.g. `main.handler` or `(*Server).Serve`, with optional condition and hit count. Delve reports whether it found the function.
+- **Stop on every panic:** also stops on panics that are recovered later, by breaking in `runtime.gopanic`; the stack shows where the panic started. Unrecovered panics always stop the debugger.
+
+**Debug with AI** (debugger toolbar, while paused) prepares a chat draft from everything adOmnia knows at the stop: stack, locals of the selected frame, goroutines (blocked ones listed), the request being served and its trace, debug console and service logs, runtime metrics, uncommitted changed functions, the tests and callers/callees from the workspace graph, and for *Compare with previous working commit* the recent commits of the file with the function in HEAD and now. It recognizes the situation — panic, data race, deadlock, context deadline, database, Kafka or gRPC error, slow request — and asks the matching questions. Actions: *Open relevant code*, *Show likely cause*, *Explain why*, *Generate fix*, *Generate regression test*, *Reproduce*, *Compare with previous working commit*. The draft is redacted and bounded, files excluded from AI stop it, and nothing is sent until you press Enter.
+
+**Run to Cursor (Alt+F9)** resumes a paused program until the line with the caret, through a temporary breakpoint removed at the next stop, whatever the reason. On a line without code it says so and the program stays paused. *Set next statement* is not available: Delve does not support jumping over code through DAP.
+
+## Concurrency-first debugger
+
+The Debug tool window (Alt+5) is built around goroutines. Delve still does
+the debugging through DAP; Code Studio reads every goroutine stack once per
+pause and explains it.
+
+- **Session view.**
+  - Goroutines are grouped by package and by the function the `go`
+    statement started. Each goroutine shows its state (running, chan
+    receive/send, select, mutex, WaitGroup, cond, sleep, I/O wait, syscall)
+    and what it is blocked on, read from the source line (for example
+    `s.orderChannel`).
+  - Selecting a goroutine shows its detail card (state, blocked on,
+    started in, location and the source line) and its call stack. Runtime
+    and library frames are folded.
+  - Variables show package globals too, colour values by type, copy a value
+    with one click and load expensive scopes on request.
+  - While paused, variable values also appear at the end of the lines of
+    the current function, as in GoLand.
+- **Concurrency view.**
+  - A state summary and diagnostics: possible deadlock (every goroutine
+    waits on another one), blocked channels, mutex contention, possible
+    goroutine leaks (10 or more goroutines from the same function stuck at
+    the same line), saturated worker pools (every goroutine started by
+    the same function, at least 3, is busy while others wait to send on a
+    channel) and data races.
+  - A flow lays out, for every starting function, its goroutines and the
+    channels, mutexes and WaitGroups they wait on. A resource shared by
+    several functions is highlighted.
+- **Race detector.** *Run → Test Current Package with Race Detector* runs
+  `go test -race`. Reports from tests, runs (a `-race` flag in a run
+  configuration) and the debug console become cards with both conflicting
+  accesses and the goroutine creation stacks; every frame opens the
+  source.
+- **Filters and grouping.** Filter goroutines by All, Blocked or Running or
+  by text, and group them by starting function or by identical stack.
+  Relation chips show channels, locks, WaitGroups, contexts, network,
+  database and timers.
+- **Evidence.** Diagnostics are OBSERVED (paused snapshot) or CONFIRMED
+  (race detector). A timeline shows goroutines per state at each pause, and
+  *Copy snapshot* exports goroutines, diagnostics and races as JSON.
+- **Run with Race Detector** runs the active configuration with `-race`.
+  Races are compared across runs: new, recurring or gone. *Analyze with AI*
+  on a race card puts both accesses and the goroutine origins in a chat draft.
+- Goroutine states are inferred from the stack because DAP does not expose
+  Go's wait reason. The analysis covers the first 1000 goroutines of a
+  pause.
+
+## Flaky tests
+
+- **Run N times.** In the Tests panel, **↻ ×** with 10/20/50/100 reruns the current run with `-count=N -shuffle=on`; the ↻ on a test row runs that test 20 times. Repetitions are counted from the `go test -json` events, never from text.
+- **Analyze failure.** Select a failed test or package and use **Analyze failure** in its detail header. This prepares a draft in the currently selected milk/Copilot chat (milk by default), with recorded output, reported source location and the scoped reproduction command. Review before sending: preparing the draft never calls a provider or reruns a test. Project AI policy and source-location exclusions apply; recognized secrets are redacted and output is capped at 40 KiB with a visible truncation marker. Source files are not read by this action. Native desktop/provider smoke remains tracked in `mds/todo-ide.md`.
+- **Flaky badge and filter.** A test that both passed and failed shows *flaky failed/runs*; a test that always failed stays a plain failure. The *N flaky* toggle shows only flaky tests. One failed repetition keeps the test red even if the last one passed.
+- **Failure rate and durations.** The detail header shows the failure rate and min/avg/max duration across repetitions.
+- **Possible causes.** For a flaky test the detail lists hints read from the output of every repetition: data race, deadlock, timing, port conflict, unreachable service, channel or map misuse, or (with shuffling and no other hint) test-order dependency. *×N with -race* repeats it with the race detector. These are hints, not a diagnosis.
+- **Flaky history.** Tests found flaky in a repeated run are remembered per project in local storage (package, name, runs and failures, never output). Later runs mark them *was flaky*, the flaky filter includes them, and the trash button next to it forgets them.
+- **Reproducible scenario.** The copy button in a test's detail copies the `go test` command that reproduces it outside the IDE: working directory, `-run` filter, `-count`, the `-shuffle` seed the package printed, `-race` and build tags.
+- **Benchmark comparisons.** A benchmark's detail compares it with a chosen baseline: the previous run, measurements saved on main/master (default when you are on another branch), any earlier commit, or a run pinned with *Pin as baseline* (before a refactor). With `-count=N` every repetition is kept: medians are compared with a Mann-Whitney U test like benchstat (*significant* or *~ noise*, at least 4 runs per side). Slowdowns over the *Regression ≥ N%* threshold (default 5%, per project) are highlighted. Saved history stores branch and commit, never output.
+- **Seed replay.** Selecting a package shows the `-shuffle` seed it printed; clicking it reruns the package in the same order.
+
+## Linting
+
+- **Whole project or changed files.** *Code → Run Linter* runs golangci-lint or staticcheck on `./...`; *Run Linter on Changed Files* only on the packages of modified, staged or new Go files and keeps only those files' findings.
+- **Custom analyzers.** Set any analyzer binary in *Go Tool Paths → Linter*: it runs as `<binary> ./...` and every `file.go:line[:column]: message` line becomes a finding.
+- **Baseline.** *Save Lint Baseline* writes the current findings to `.adomnia/lint-baseline.json` (file, linter, code and message, no line numbers). Later runs hide those findings and show only new ones; the status bar shows how many are hidden. Commit the file to share the baseline; *Remove Lint Baseline* deletes it.
+- **Pre-commit check.** The commit dialog lints the changed files and stops on gopls errors or lint warnings in the checked files, with *Show Problems* or *Commit anyway*.
+
+## Performance Studio (pprof)
+
+- **Capture.** A test run configuration can profile the run: CPU (`-cpuprofile`), Memory (`-memprofile`), Blocking (`-blockprofile`), Mutex (`-mutexprofile`) or Execution trace (`-trace`), chosen in the configuration's *Profiling* menu. Go writes the file (`cpu.pprof`, `mem.pprof`, …) in the package directory of the test.
+- **Open it.** *View → Performance Studio* (Alt+0) or the status-bar *Profile* button lists every `*.pprof` under the project, newest first, and opens one. It is read locally with the same parser as `go tool pprof`; no process starts and no file leaves the machine.
+- **Top functions.** Flat or cumulative, one row per function, with a value bar, the percentage of the total, package grouping and a search box. *Hide runtime* drops `runtime.*` and Go SDK frames.
+- **Flame graph.** Real frame widths from the sample stacks; *Flame (root on bottom)* and *Icicle (root on top)*, each frame hoverable with its value and percentage.
+- **Sample type.** A CPU profile exposes `samples` and `cpu`; a memory profile exposes `alloc_objects`, `alloc_space`, `inuse_objects` and `inuse_space`. The selector switches every view, so allocations and in-use memory are separate reads of the same file.
+- **Callers.** Pick a function in Top or the flame graph to see its callers and callees with weights; without a selection the 200 heaviest edges are listed.
+- **Diff.** Compare the open profile with a second one: per-function base, target, delta and percentage, heaviest changes first. Useful for before/after a refactor. With a diff open, *Ask Copilot* asks the right question: for two heap profiles, in-use growth is analysed as a memory leak suspicion and allocation growth as an allocation regression.
+- **Go to source.** Every function that has a `.go` frame opens it, project files in the editor and standard-library files read-only.
+## Documentation
+
+- **Open it.** *View → Documentation*. It reads the doc comments of every Go package with `go/doc` and every `.proto` file with its comments — parsing only, no process, so it works before the project is trusted.
+- **Packages.** Each package rendered like `go doc`: overview, index, constants, variables, functions, types with their constructors and methods, and `BUG`/`TODO` notes. Every *source* link opens the declaration.
+- **Missing docs.** Optional hints: exported symbols without a doc comment, or whose comment does not start with their name. *Add doc comment* inserts `// Name ` above the declaration (in groups, above the single spec) for you to complete.
+- **Proto.** Services with their RPCs (streaming marked), messages with fields, numbers and comments, enums. A file that cannot be parsed is listed with the reason; imports do not need to resolve.
+- **Route lenses.** Above every HTTP route in the editor: *Open in API Client*, *Mock* (adds it to the Mock Server), *Copy cURL* (base URL from the environment's `baseUrl` or the address in the code) and *OpenAPI* (a description of that route in API Docs).
+- **Generate.** *API docs* (`docs/API.md`), *Architecture docs* (`docs/ARCHITECTURE.md`, with Mermaid diagrams of packages and modules, entry points, services and interfaces), *OpenAPI from the routes* (`docs/openapi.json` with request bodies, responses and `components.schemas` from the handlers' DTOs and their `json` tags, also opened in API Docs) and *Proto docs* (`docs/PROTO.md`). A new file is created and opened; an existing one is updated in the editor without saving, so the change can be reviewed and undone. Architecture and OpenAPI reuse the Architecture Explorer analysis (trusted project).
+- **Diagrams.** ` ```mermaid ` blocks render as diagrams in the Markdown preview of Code Studio and of the Markdown module. Source links such as `/pkg/file.go#L12` open that line (and work on GitHub too).
+
+## Architecture and Interface Explorer
+
+- **Open it.** *View → Architecture Explorer* (or *Interface Explorer* for the Interfaces tab), then **Analyze**. Every module is loaded with `go/packages` (trusted project only) and the model is built from the types; no code runs. Both windows share the last analysis.
+- **Package graph.** Pan and zoom with the wheel and drag; *fit* resets the view. Select a package to focus on it with *Depth* 1-4 hops; the counter shows how many packages are visible. *Reduce* hides an import already implied by another path, *Group* collapses packages that share a top-level folder (click a group to expand it), *Cycles* keeps only packages that import each other in a loop (drawn dashed in red), *Std* and *External* add the standard-library and external-module imports as leaf nodes. Test packages are never part of the report.
+- **Goroutines.** *View → Goroutines* (or the *Goroutines* tab) lists where the code starts concurrent work, grouped by package and function: `go`, `errgroup.Go`/`TryGo`, `sync.WaitGroup.Go`, `time.AfterFunc`, `context.AfterFunc` and package-level initializers. Badges show the launch kind and shape, loops (bounded by a constant, `SetLimit` or a semaphore, or not), context use, WaitGroup/errgroup tracking, channel use and `recover`. Risk chips are static hints, not proof: `unbounded-loop-spawn`, `loop-var-capture` (only for modules targeting Go < 1.22), `no-wait`, `fire-and-forget-in-handler`, `no-ctx-cancel`, `no-recover`. The "from" list names the entry points that reach the function via static calls (depth 8). In the Concurrency view, a "created at" frame of a race that matches a static launch offers *Static launch*. Needs a trusted project and the last Architecture analysis.
+- **Markdown and Mermaid.** `.md` files open in **Preview**; use the eye / split / editor switch at the top right, the choice is remembered per file (also in the split pane). `.mmd` and `.mermaid` files work the same way and render as a Mermaid diagram; a syntax error is shown under the diagram. Next to the mode switch, a **Markdown tools** button opens the side panels: the document outline (click a heading to jump to its line), the notes that link back to the file (found by project search, click to open) and a **local graph** of the note with its outgoing links and backlinks (unresolved links and orphan notes can be toggled, plus a folder filter).
+- **Packages.** The import graph, or the volume of calls between packages. Click a package to focus on it and its neighbours (its external imports are listed), double-click to open it; the filter jumps to a package by name.
+- **Call graph.** Find a function: its callers (two levels up) and callees (two levels down) as a graph. Calls through an interface point to the interface method. Click to move the focus, double-click to open the code.
+- **Interfaces.** Every interface with its methods (the ones never called through the interface are dimmed), its implementations, *almost* implementations with the missing methods, who uses it (parameters, fields, results, variables, assertions) and a graph of consumers above and implementations below. Non-invasive hints: interface too broad for its callers, implemented only once, declared next to its implementation but consumed elsewhere.
+- **Entry points and services.** `main` and `init`, HTTP routes (`net/http`, chi, gin, echo, gorilla/mux, fiber, httprouter — one adapter line per framework) with group prefixes (`Group`, chi `Route`, mux `PathPrefix().Subrouter()`), their handler (functions, methods, closures, `http.HandlerFunc(…)`, wrappers and handler factories), middleware (`Use`, per-route and wrapping) and the request/response DTOs the handler decodes and writes (`json.Decoder`/`Encoder`, `Bind`/`ShouldBindJSON`, `c.JSON`, `BodyParser`, JSON helpers), gRPC services (`Register…Server`), Kafka producers and consumers with their topics (sarama, kafka-go, confluent-kafka-go, franz-go), NATS publishers and subscribers with their subjects (nats.go), AMQP publishers and consumers with their exchange, routing key or queue (amqp091-go, streadway/amqp), WebSocket servers (the function that upgrades the connection) and clients (the `ws://` URL they dial; gorilla, nhooyr, coder, x/net), DB repositories (structs holding `database/sql`, sqlx, GORM, pgx, MongoDB or Redis handles), scheduled jobs (tickers, `time.AfterFunc`, cron, gocron) and CLI commands (cobra, urfave/cli, `flag`). Routes open in the API Client, gRPC services in the gRPC client, topics in Broker Studio, WebSocket client URLs in the WebSocket client, repositories in Database Studio. The workspace graph lists WebSocket servers among the routes a function serves and the URLs it dials among its calls.
+- **Data access.** Every call to database/sql, sqlx, pgx and GORM (one adapter line per library) with the SQL when it is a constant (`fmt.Sprintf` queries are marked *dynamic*), the tables it touches (GORM models by `TableName()` or GORM's naming), and whether it runs in a transaction (`Begin…`, `Transaction(func…)`, `BeginFunc`) or on a prepared statement. *By table* lists, for each table, the functions that read or write it; *Database Studio* opens a query on the table, *Open SQL* opens the statement (never runs it).
+- **Runtime SQL.** With SQL capture on (Live Session service tools), each statement of a request shows its time and the rows returned or affected, failed statements show the database error and code (with hints for deadlocks, lock waits and statement timeouts), and repeated statements are flagged as possible N+1. Transactions appear with how long they stayed open. *Code* jumps to the line that runs the statement when the Architecture Explorer analysis is available, otherwise it searches the project.
+- **Modules.** The project's modules, how they require each other and their external requirements.
+
+## Context propagation
+
+*View → Context Propagation Inspector* (Alt+9) checks how `context.Context` flows.
+
+- **File.** Offline, on the unsaved buffer, with editor markers: `Background()`/`TODO()` in call chains, missing or too-wide timeouts (limit configurable, default 30s), context in structs, leaked `cancel`, ignored cancellation, broken chains, trace-ID keys.
+- **Graph.** *Context graph* draws who passes a context to whom: red = drops the caller's context for `Background`/`TODO`, amber = creates a root, green = applies a timeout. *File* uses the buffer; *Project* uses the typed Architecture Explorer analysis (trusted project), so it follows calls across packages and lists every broken chain with its line. Double-click a node opens its code.
+- **Runtime.** In the debugger, the context inspector of a `context.WithValue` with a trace/request/correlation id key shows *Trace … in logs*, which opens the Log Inspector on that id.
+
+## Error Handling Intelligence
+
+- **Open it.** *View → Error Handling Intelligence*, then **Analyze**. Every module is loaded with `go/packages` (it runs `go list`, so the project must be trusted) and checked with full type information; nothing is sent anywhere.
+- **Problems, grouped by rule.** Returned error ignored; error discarded with `_` (not in tests); unhandled error (assigned, then overwritten or forgotten before any check — a rewrite in another `if`/`else` branch does not count); `:=` shadowing an outer `err` that is read after the block; errors formatted with `%v`/`%s` instead of wrapped with `%w`; `%w` with a non-error; `err.Error()` passed to a constructor; `==` with a sentinel instead of `errors.Is`; type assertions and type switches instead of `errors.As`; `errors.As` with a target that is not a pointer to an error type; errors from other packages returned without context; `panic` in library code; `recover()` that has no effect or swallows the panic; `return nil, nil`.
+- **One-click fixes.** *Wrap with %w*, *Use errors.Is* (adds the import) and *Wrap with context*, which generates `fmt.Errorf("read file: %w", err)` from the failing call. A fix is applied to the open buffer (unsaved, undoable) only if the code still matches the analysis.
+- **Sentinel errors.** Every package-level error variable with its message and its uses: `errors.Is` checks, `==` comparisons, `case` clauses, returns and wrapping. Each use opens the code.
+- **Error types.** Every type implementing `error`, whether it has `Unwrap`/`Is`/`As`, the errors it holds (with a warning when it holds one but has no `Unwrap`) and where it is created, matched with `errors.As` or asserted.
+- **Error paths.** For each function of the file in the editor (or any file), every `return` classified by where its error comes from: `nil`, a new error, a wrap with `%w`, a sentinel, a typed error or an error propagated from a named call.
+
+## Fuzzing Studio
+
+- **Open it.** *View → Fuzzing Studio* lists every `func FuzzXxx(f *testing.F)` of the project. Nothing runs until you press **Fuzz** or **Replay**, and both need a trusted project.
+- **Fuzz.** Pick the duration (`-fuzztime`, or *Until stopped*) and the workers (`-parallel`, *Auto* = GOMAXPROCS); the run appears in the Run console and can be stopped there.
+- **Corpus.** *Seeds and failures* are the files in `testdata/fuzz/FuzzXxx/` (run by every `go test`); *Generated* are the inputs Go keeps in `$GOCACHE/fuzz/<import path>/FuzzXxx/` (`GOCACHE` from the environment or Go's default). Selecting an input shows its typed values; identical inputs are marked *dup*.
+- **Crashes.** Every finished fuzz run is parsed: the failing input Go wrote (already minimized when the output says so), the failure message and the throughput. Crashes with the same normalized message are grouped with a ×N counter.
+- **Actions.** *Replay* reruns the target on one testdata input (`-run=^FuzzXxx$/^name$`) or the whole corpus; *Promote to test* copies a generated input into `testdata/fuzz`, so `go test` runs it as a regression case; *Copy f.Add* copies the values as a seed call; delete removes an input from the project or the cache.
+- **Sessions.** Duration, executions, executions per second, new interesting inputs, corpus size and workers of each run, stored per project in local storage (never the output).
+
+## Go trace
+
+- **Capture.** A test run configuration with the *Execution trace* (`-trace`) profiling option writes `trace.out` in the package directory.
+- **Open it.** *View → Go Trace* (or the **Trace** button in the status bar) lists every `trace.out` / `*.trace` under the project and opens one. It is read locally with Go's own trace parser (`golang.org/x/exp/trace`); no `go tool trace` and no external process.
+- **Goroutine timeline.** One track per goroutine with colored spans for `running`, `runnable`, `waiting` and `syscall`, plus the total busy time; filter by goroutine id or starting function.
+- **Scheduler.** One track per P with its running intervals.
+- **Blocking.** The longest waits by category — network, synchronization, GC, sleep — and the goroutines that are still live or ran longer than 5 ms.
+- **GC.** GC/STW ranges appear in the timeline header and their total is in the stats chips.
+- **Runtime events.** Logs, tasks and user regions with time and goroutine.
+- **Go to source.** Clicking a span, an event or a goroutine opens the corresponding frame — project files in the editor, standard-library files read-only.
+- **Stats.** Duration, goroutine count, running/waiting/syscall time, GC, network wait and synchronization wait.
+
+## Images and local Markdown assets
+
+- **Image tabs.** Clicking an image in the Project tree opens a read-only preview tab (zoom, fit-to-window, dimensions) instead of failing as a non-text file. Supported: png, jpg/jpeg, gif, webp, bmp, ico, avif, svg, up to 16 MB. Image tabs are never sent to gopls.
+- **Markdown.** Relative image links in the Markdown preview (`![](img/a.png)`) are read from the project as data URLs, because a `file://` URL is not readable inside the WebView.
+
+## Security
+
+*View → Security (Code and Dependencies)* or the **Security** button in the status bar. Two views share the panel and keep their results when you switch.
+
+### Code (offline static scan)
+
+- **What it checks.** *Scan code* reads the project files (no network, no processes; dependencies, `vendor/`, `node_modules/`, tests and fixtures are skipped):
+  - **Secrets** in any text file: AWS, GitHub, GitLab, Stripe, OpenAI/Anthropic, Slack and Google keys, JWTs, passwords in connection strings, private keys with a real PEM body, and random-looking strings assigned to credential names. Values are masked (first 4 characters only); dev defaults (`postgres`, `guest`), placeholders and label names such as `tokenKey` or `passwordField` are ignored.
+  - **Go rules** from the AST (aliases resolved, generated files skipped): `InsecureSkipVerify`, TLS 1.0/1.1, MD5/SHA-1/DES/RC4, RSA keys under 2048 bits, plain HTTP URLs and `http.ListenAndServe`, SQL built with `fmt.Sprintf` or concatenation, `sh -c`/`cmd /C`/`powershell -Command` with a runtime command line, file paths from request input, archive entry names joined to a destination (zip slip), `gob` decoding of request bodies or connections, request bodies decoded without `http.MaxBytesReader`, world-writable modes (`0666`, `0777`, `os.ModePerm`).
+- **Severity.** High (exploitable as written), Medium (risky in context), Low (hardening). Each finding shows why it matters and how to fix it, and opens its line in the editor.
+- **Suppress with a reason.** A suppression always needs a written reason. From the panel it is saved in `.adomnia/security.json`; in the code, put `// adomnia:security-ignore <rule>: <reason>` on the line or the line above (a comment without a reason is ignored). Findings are matched by rule, file and the code of the line, not the line number, so they survive code moving.
+- **Exposure.** In a trusted project each finding is checked against the workspace graph: one reachable from an HTTP route, a gRPC method or a consumed topic is marked *exposed*, listed first, and its detail names those entry points under *Reachable from*. Findings in code no entry point reaches say so.
+- **Baseline.** *Save baseline* accepts the current findings in `.adomnia/security.json` (commit it): later scans show only new ones. *Clear baseline* brings them back. Suppressed and baselined findings stay visible with the filters.
+- **Export for AI.** *Copy for AI*, *Save .md* and *Ask Copilot* export only the active findings with each rule's risk and fix. Secret values stay masked.
+
+### Dependencies (govulncheck)
+
+- **Scan.** *Scan with govulncheck* runs `govulncheck -json ./...` on the chosen Go module of a trusted project. It is on demand: govulncheck downloads the Go vulnerability database from vuln.go.dev (shown in *Settings → Network & Privacy* under **Vulnerability DB**; offline and air-gapped modes block it). Install govulncheck from *Go → Toolchains* if it is missing.
+- **Priority from reachability.** The Go database rarely publishes CVSS scores, so findings are ranked by what govulncheck proves: **High · Called** (your code calls the vulnerable symbol), **Medium · Imported** (the package is imported, no call found), **Low · Required only** (the module is only in the build). A CVSS vector is shown when the advisory has one. Priority always has an icon and a label, never colour alone.
+- **Detail.** Each finding shows ID and aliases (CVE, GHSA), summary and details, found → fixed version, vulnerable symbols, references and a link to the advisory.
+- **Call paths and dependency path.** Up to five call paths per finding, from your function to the vulnerable symbol. Every step opens its source: project files in the editor, dependencies and the standard library read-only (resolved from `GOMODCACHE` and `GOROOT`). The dependency path is the shortest module chain from your module, read offline from `go mod graph`.
+- **Upgrade preview.** The `go.mod` change (`require module old → fixed`, or the new indirect requirement) and the exact `go get module@fixed` command. *Upgrade…* asks for confirmation and runs it like the other dependency actions; standard library findings point to a Go toolchain upgrade instead.
+- **Export for AI.** *Copy for AI*, *Save .md* and *Ask Copilot* produce a Markdown report (context, glossary, summary table, per-finding fix, call paths, dependency path). Locations are project-relative or bare file names, never absolute machine paths.
+
+## SonarQube (optional)
+
+- **Opt-in.** *View → SonarQube* (or the **Sonar** button in the status bar) is off until you enable it for the project. The server URL is the SonarQube instance (for example `http://localhost:9000`), **not** the microservice's HTTP/API URL: the scanner analyzes the local project folder open in Code Studio. Configure its SonarQube project key, sources (default `.`) and exclusions; `sonar-scanner` must be installed and is detected on the managed tools folder or the PATH (a custom path is accepted). Nothing is installed or started by adOmnia on its own.
+- **Token.** The SonarQube token is kept in memory for the session only: it is never persisted and never sent back to the UI. Saving a scan without a token asks for it again after a restart.
+- **Network.** The scan uploads the analysis to your server; adOmnia's **Offline mode** blocks it and the corporate proxy/CA apply. Every connection is recorded in *Network activity*.
+- **Scan and import.** *Scan now* runs `sonar-scanner` on the trusted project and waits for the server's Compute Engine to finish processing the report (`.scannerwork/report-task.txt` → `/api/ce/task`, up to 3 minutes), then imports the open issues from `/api/issues/search` (at most 5,000, below the server's 10,000-result limit). Works with SonarQube 9.9 LTA, 10.x (including MQR severities HIGH/MEDIUM/LOW) and SonarCloud: the token is sent as Basic credentials, which every version accepts. If processing takes longer, use **Refresh** (which only reimports, without rescanning). Calls appear in *Settings → Network & Privacy* under **SonarQube**.
+- **Issues.** Listed by severity with file:line navigation, a text filter, a severity filter and a *Security only* toggle; the header shows totals, security count and how many are hidden by the baseline.
+- **Copy problems.** Copies every shown finding as `file:line [SEVERITY rule] message`, ordered from the most severe.
+- **Resolve with AI.** Sends the findings grouped per file to the AI configured in *Settings → AI*, through the same preview-before-apply flow as *Fix with AI*: nothing is written without confirmation and the change is undoable.
+- **Baseline.** *Save baseline* records the current findings in `.adomnia/sonar-baseline.json` (versionable with the project) so later scans show only new problems; *Clear baseline* removes it. Suppression keeps the file, rule and message, not the line, so it survives code moving.
+
+## Language server activity
+
+- **Always visible.** Starting, restarting, indexing or a gopls crash shows a small panel in the bottom-right of Code Studio with a spinner, elapsed time, the indexing message and percentage, and its own progress bar.
+- **Force reload.** The panel's reload button (and *Go → Restart Language Server*) restarts gopls from scratch; **Log** opens the language-server log. On a crash the panel stays with the error and the same reload action.
+
+## Crash recovery
+
+- **Unsaved buffers.** Every dirty buffer is snapshotted about 750 ms after the last keystroke, outside the file and on this machine only (bbolt, one atomic transaction per write). The last three versions of each file are kept with their SHA-256: if the newest is corrupt, the previous one is used. The original file is never touched until you save.
+- **Crash detection.** At start adOmnia writes `runtime.lock` (random instance id, PID, start time) and refreshes its heartbeat every 10 s; a clean shutdown removes it. A lock whose heartbeat stopped for more than 30 s means the previous run ended abnormally. The PID alone is never trusted, because the system can reuse it.
+- **Restore after a crash.** Code Studio opens *adOmnia closed unexpectedly* with every recovered file, its time, `+added/−removed` lines and a status: *Safe to restore* (disk unchanged since the snapshot), *Already on disk*, *Conflict* (the file changed after the snapshot) or *File no longer exists*. Each file offers **Use Recovered**, **Keep Disk** and **Open Diff** (Disk Version ↔ Recovered Version); **Restore All**, **Review** and **Discard** act on all of them. Restored text opens as unsaved changes: nothing is written to disk until you save.
+- **Session view.** Open tabs, the active file, the cursor position in each file, the editor split with its own tabs, layout, bookmarks and breakpoints are saved with the session (a couple of seconds after the cursor stops) and restored when the project reopens. Processes are never relaunched on their own; gopls alone restarts automatically after a crash (at most three times).
+- **Interrupted runs.** A process supervisor, independent of the UI, records every run started from a run configuration and clears the list on a clean shutdown. After a crash the recovery dialog lists the runs that were still going: **Relaunch** starts the configuration again through the normal Run flow (trust and secrets are asked again), **Dismiss** forgets it. Each configuration has an *After a crash* policy: ask (default), never (for migrations and scripts with side effects) or relaunch automatically (only if you choose it, and only for a trusted project).
+- **Storage and limits.** Snapshots stay in adOmnia's local store, isolated per project by a stable hash of its path, so they follow the project even when its Code Studio session is recreated. If the project folder is moved or renamed, opening it at the new location picks its snapshots up again: they are matched by the module path(s) in `go.mod`, and only when the old folder no longer exists. Snapshots older than 14 days are removed. If a snapshot cannot be written (disk full, permission denied, recovery space exhausted) a red bar warns that unsaved changes are not protected.
+
+## Persistence and migrations
+
+Code Studio stores metadata only. Source files stay where they are, and file contents are kept only in the recovery and local-history stores described below. All stores live in adOmnia's local bbolt database, in the `goide` bucket.
+
+| Key | Contents | Schema |
+| --- | --- | --- |
+| `state` | Open sessions (project path, authorization, Code Studio workspace), recent projects, run configurations (Go, Make and Docker) without secret values, per-session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints), Code Studio workspaces, per-project and global toolchain settings (Go binary and variables; values with credentials in URLs are never written) | `version` 4 |
+| `recovery` | Unsaved buffers, kept so that a crash or restart does not lose them. Up to 200 buffers of 4 MB each. | `version` 1 |
+| `localHistory` | Previous versions of saved files: at most 20 per file, 2 MB per version, 32 MB in total, kept 14 days. `.env`, keys and certificates are never recorded. | `version` 1 |
+
+Managed Go SDKs are stored under `<data>/goide/toolchains` and tools under `<data>/goide/tools`.
+
+**Migrations run in memory when the state is read, and are saved on the next write:**
+
+- **Version 1 → 2.** Recent projects are rebuilt from the open sessions.
+- **Version 3 → 4.** Sessions without a Code Studio workspace move into the default workspace, *Main*, without losing any session.
+- **Newer than supported.** A state saved by a newer adOmnia is refused rather than overwritten, so a downgrade cannot destroy it.
+- **Unreadable state.** Code Studio starts empty and rebuilds the state on the next save; this state holds only metadata. An unreadable recovery store is discarded in the same way.
+- **Transient read errors.** If the store is not ready yet, the load is retried on the next action instead of failing permanently.
+
+Ownership of projects by separate windows is not persisted: after a restart every project belongs to the main window.
+
+## Project settings and keymap (`.adomnia/settings.json`)
+
+Settings live in two layers: the **user** settings (the Settings window, stored as JSON on this machine and exportable) and the **project** file `.adomnia/settings.json`, which wins key by key and is meant to be committed to Git. The project file has a schema: opening it in the editor gives autocompletion for every key and value, and unknown keys or invalid values are underlined and skipped — the rest of the file keeps working.
+
+```json
+{
+  "format": "adomnia-settings",
+  "version": 1,
+  "editor": {
+    "tabSize": 4,
+    "softTabs": true,
+    "fontSize": 14,
+    "editorMode": "vim",
+    "wordWrap": "on",
+    "lineNumbers": "on",
+    "fontLigatures": true,
+    "stickyScroll": true
+  },
+  "keymap": {
+    "preset": "goland",
+    "bindings": {
+      "file.save": { "key": "s", "mod": true, "when": "!input" },
+      "code.rename": null
+    }
+  }
+}
+```
+
+- **`editor`** applies to the IDE editors of this project and wins over `.editorconfig` and over the user settings. Only keys with a real effect exist in the schema.
+- **`keymap`** layers over the user keymap: `preset` picks the base map (`goland`, `vscode`), `bindings` rebinds commands by id (autocompletion lists the real command ids) and `null` removes a shortcut.
+- **`when`** limits a shortcut to a context: `editor`, `input`, `terminal`, `vim`, `emacs`, `vim.normal`, `vim.insert`, `vim.visual`, combined with `&&`, `||` and `!` — for example `editor && vim.normal` or `!input`. When the condition does not match, the shortcut falls through to the next layer (project → user → preset → default).
+- The shortcuts dialog (`help.shortcuts`) edits the user layer; `.adomnia/settings.json` is the place for team-shared bindings and contexts. The old `adomnia.codestudio.keymap` browser key is migrated into the user settings once and kept up to date so a rollback loses nothing.
+
+## Keyboard shortcuts
+
+Code Studio follows the GoLand keymap. The table below is generated from the command registry that also drives the menus and the *Help → Keyboard Shortcuts* dialog. Editor-owned keys (for example Ctrl+Z and Ctrl+F) are handled by the editor. Ctrl+W closes the active editor tab, so *Extend Selection* is Shift+Alt+→.
+
+**Keymaps and custom shortcuts.** *Help → Keyboard Shortcuts* switches between the **GoLand** (default) and **VS Code** keymaps, searches actions by name or by key (`ctrl shift f`), and lets you click any shortcut to record a new one, remove it or reset it. Shortcuts shared by two actions are flagged; the first available action wins. Choices are stored on this machine. *View → Vim Mode* / *Emacs Mode* turn on keyboard emulation in the editor (monaco-vim / monaco-emacs, loaded only when enabled). The table below lists the GoLand defaults.
+
+**Settings** (*File → Settings…*, Ctrl+Alt+S) gathers every Code Studio preference in one searchable dialog: editor, save actions, gopls options, low-resource mode, plus links to keymap, toolchains, tool paths and Copilot.
+
+**Search Everywhere** (Shift Shift) also finds tests and benchmarks (Enter runs them in the Test Explorer), run configurations (Enter runs them), adOmnia settings (Enter opens the right Settings section) and actions by shortcut; with an empty query it shows the recently used actions. Matching is fuzzy and ranked: prefix beats word starts, word starts beat substrings, and loose matches (a subsequence like `bld` for *Build*) are scored by contiguity and word starts, so `bui` finds *Build* before *Rebuild*. Actions you ran recently — from a keybinding, the menu or the palette — rank higher among the matches.
+
+### File
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Settings… | Ctrl+Alt+S | ⌘⌥S |
+| Open Project | Ctrl+O | ⌘O |
+| Save | Ctrl+S | ⌘S |
+| Save All | Ctrl+Shift+S | ⌘⇧S |
+| Close Editor | Ctrl+W | ⌘W |
+| Reopen Closed Tab | Ctrl+Shift+T | ⌘⇧T |
+
+### Edit
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Undo | Ctrl+Z | ⌘Z |
+| Redo | Ctrl+Shift+Z | ⌘⇧Z |
+| Find | Ctrl+F | ⌘F |
+| Replace | Ctrl+H | ⌘H |
+| Go to Line | Ctrl+G | ⌘G |
+| Toggle Line Comment | Ctrl+/ | ⌘/ |
+| Duplicate Line or Selection | Ctrl+D | ⌘D |
+| Delete Line | Ctrl+Y | ⌘Y |
+| Move Line Up | Ctrl+Shift+ArrowUp | ⌘⇧ArrowUp |
+| Move Line Down | Ctrl+Shift+ArrowDown | ⌘⇧ArrowDown |
+| Add Caret at Next Occurrence | Alt+J | ⌥J |
+| Select All Occurrences | Ctrl+Alt+Shift+J | ⌘⌥⇧J |
+| Column Selection Mode | Alt+Shift+Insert | ⌥⇧Insert |
+| Inline Assistant (on the selection) | Ctrl+Enter | ⌘Enter |
+
+### View
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Go to File | Ctrl+P | ⌘P |
+| Zoom In / Out / Reset | Ctrl+= / Ctrl+- / Ctrl+0 | ⌘= / ⌘- / ⌘0 |
+| Zen Mode | Alt+Shift+Z | ⌥⇧Z |
+| Maximize Editor (Hide All Tool Windows) | Ctrl+Shift+F12 | ⌘⇧F12 |
+| Maximize Code Studio | Ctrl+Shift+F11 | ⌘⇧F11 |
+| Project Pane | Alt+1 | ⌥1 |
+| Project Overview Pane | Alt+7 | ⌥7 |
+| Run / Problems Pane | Alt+4 | ⌥4 |
+| Problems | Alt+6 | ⌥6 |
+| Terminal | Alt+F12 | ⌥F12 |
+| Tests | Alt+8 | ⌥8 |
+| Performance Studio | Alt+0 | ⌥0 |
+| Debug | Alt+5 | ⌥5 |
+| Split Right | Ctrl+\ | ⌘\ |
+
+### Navigate
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Search Everywhere | Shift Shift | Shift Shift |
+| Declaration | Ctrl+B | ⌘B |
+| Implementation(s) | Ctrl+Alt+B | ⌘⌥B |
+| Super Method | Ctrl+U | ⌘U |
+| Find Usages | Alt+F7 | ⌥F7 |
+| Show Usages | Ctrl+Alt+F7 | ⌘⌥F7 |
+| Quick Definition | Ctrl+Shift+I | ⌘⇧I |
+| File Structure | Ctrl+F12 | ⌘F12 |
+| Back | Ctrl+Alt+ArrowLeft | ⌘⌥ArrowLeft |
+| Forward | Ctrl+Alt+ArrowRight | ⌘⌥ArrowRight |
+| Toggle Bookmark | F11 | F11 |
+| Bookmarks | Shift+F11 | ⇧F11 |
+| Symbol in Workspace | Ctrl+T | ⌘T |
+| Find in Files | Ctrl+Shift+F | ⌘⇧F |
+
+### Code
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Code Completion | Ctrl+Space | ⌘Space |
+| Parameter Info | Ctrl+Shift+Space | ⌘⇧Space |
+| Quick Documentation | Ctrl+Q | ⌘Q |
+| Type Info | Ctrl+Shift+P | ⌘⇧P |
+| Show Context Actions | Alt+Enter | ⌥Enter |
+| Implement Interface | Ctrl+I | ⌘I |
+| Rename | Shift+F6 | ⇧F6 |
+| Refactor This | Ctrl+Alt+Shift+T | ⌘⌥⇧T |
+| Extract Variable | Ctrl+Alt+V | ⌘⌥V |
+| Extract Constant | Ctrl+Alt+C | ⌘⌥C |
+| Extract Function/Method | Ctrl+Alt+M | ⌘⌥M |
+| Inline | Ctrl+Alt+N | ⌘⌥N |
+| Move to New File | F6 | F6 |
+| Move Symbol to Package (another package of the module; references, imports and tests rewritten, build checked before the preview) | Code menu | Code menu |
+| Change Signature (reorder or remove parameters; gopls rewrites every call, preview first) | Ctrl+F6 | ⌘F6 |
+| Reformat Code | Ctrl+Alt+L | ⌘⌥L |
+| Optimize Imports | Ctrl+Alt+O | ⌘⌥O |
+| Run Linter | Ctrl+Alt+Shift+L | ⌘⌥⇧L |
+
+### Run
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Run | Ctrl+F5 | ⌘F5 |
+| Debug | Shift+F9 | ⇧F9 |
+| Build | Ctrl+Shift+B | ⌘⇧B |
+| Build Current Package | Ctrl+F9 | ⌘F9 |
+| Run Current Context | Ctrl+Shift+F10 | ⌘⇧F10 |
+| Rerun Failed Tests | Ctrl+Alt+Shift+F10 | ⌘⌥⇧F10 |
+| Build All (go build ./...) | Ctrl+Shift+F9 | ⌘⇧F9 |
+| Test All (go test ./...) | Ctrl+Alt+F10 | ⌘⌥F10 |
+| Stop | Shift+F5 | ⇧F5 |
+| Restart | Ctrl+Shift+F5 | ⌘⇧F5 |
+| Toggle Line Breakpoint | Ctrl+F8 | ⌘F8 |
+| View Breakpoints | Ctrl+Shift+F8 | ⌘⇧F8 |
+| Run to Cursor | Alt+F9 | ⌥F9 |
+| Resume Program | F9 (also F5 while paused) | F9 (also F5) |
+| Step Over | F8 (also F6, F10 while paused) | F8 (also F6, F10) |
+| Step Into | F7 | F7 |
+| Step Out | Shift+F8 | ⇧F8 |
+| Stop Debugging | Ctrl+F2 | ⌘F2 |
+
+### Git
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Commit | Ctrl+K | ⌘K |
+
+Other mouse gestures: Ctrl+click (Cmd+click on macOS) goes to the declaration, Alt+click adds a cursor, Shift+Alt+drag selects a column, a click on a line number toggles a breakpoint, and a right-click on a line number edits it (condition, hit count, logpoint).
+
+
+**Local replaces in go.mod.** Saving a go.mod with `replace example.com/lib => ../lib` comments out the other replace of the same module as `// adomnia-off: …` (Go accepts one replace per module) and restores it when the local replace is removed. Commits of a go.mod with a local replace show a warning, and pushes from adOmnia ask for confirmation while the pushed commits contain one.
+**Reading dependency code from go.mod.** On a `require` (or `replace`) line of go.mod, *View code* opens the source of that module and *Browse files* lists its files to open one. Ctrl+click (Cmd+click on macOS) on the module path does the same. The source is resolved from the local `replace` folder, from another module of the project (go.work) or of a project imported in adOmnia, or from the Go module cache. Code of the project and of imported projects opens in the editor; module cache sources and replacement folders outside the project open read-only. A module that is not in the cache yet offers `go mod download <module>` first, and opens the code right after the download.
+
+## Performance and low-resource mode
+
+- **Low-Resource Mode** (View menu) pauses semantic highlighting, inlay and type hints, sticky scroll and lint on save. Your preferences are kept; a **Low-resource** badge in the status bar turns it off. **Low-Resource Mode on Battery** does the same only while a laptop runs on battery (Battery Status API, available in WebView2 on Windows; elsewhere it stays normal).
+- gopls diagnostics are coalesced: at most one update per file every 150 ms, and at most 1000 diagnostics per file reach the UI (errors first).
+- Large repositories, measured on Windows (2026-10-02, gopls v0.23.0, `gopls stats`): adOmnia itself (96 workspace packages, 950 with dependencies) loads in 5.4 s with a 430 MB heap; the opentelemetry-go-contrib monorepo through `go.work` (69 modules, 232 workspace packages, 1585 in total) loads in 3.7 s with a 255 MB heap once modules are cached. The first load of that monorepo took 50 s, mostly module downloads. Code Studio's own index (`TestLargeMonorepoStaysResponsive`, 40 modules / 4000 files): open ~80 ms, Quick Open ~40 ms, Find in Files ~0.5 s.
+- The Run console draws the last 5000 lines; search and Copy console still use the full 4 MB buffer. Project folders with more than 500 entries show them in pages (**Show more**).
+
+## Platform verification
+
+| Platform | Status |
+| --- | --- |
+| **Windows** | All automated suites pass with `-race`, real gopls and Delve, including process-tree cleanup, the ConPTY terminal and debugger orphan checks. `build.ps1` builds the Wails 3 executable. Manual checks in the running app are still open (M1–M31 in `mds/todo-ide.md`). |
+| **Linux** | The automated suites run in CI (`go test -tags gtk3 ./...` on Ubuntu) and passed in the container used during development, including process-tree and PTY cleanup. Manual checks in a desktop session are still open. |
+| **macOS** | The package cross-builds. No runtime verification yet. |
+
+**Separate windows** (*File → Open Project in New Window*) are covered by automated tests only. They will be declared supported in the release notes once the manual check in a real window (M31) passes.
+
+## Dependency heatmap
+
+*Architecture Explorer → Heatmap* shows, for every package of the project, its coupling (importers × imports), fan-in and fan-out, blast radius (packages that depend on it, directly or not) and number of functions. With a CPU or memory profile loaded in Performance Studio, each package also gets its inclusive share of the profile (time spent in the standard library counts for the project code that called it), packages are ranked by it, and the imports between project packages that no profiled call crossed are listed: candidates for dead or optional dependencies.
+
+## API contract drift
+
+*Architecture Explorer → Contracts* finds the project's OpenAPI file (`openapi.yaml`, `swagger.json`, `api.yml`… up to three folders deep) and compares it with the routes and the JSON request/response types the code really uses: routes served but not documented, operations documented but not implemented, fields present only in the code or only in the contract, different types, and request fields whose *required* differs. *API changes since* a branch, tag or commit analyzes that revision in a temporary Git worktree and lists new and removed operations and field changes; breaking ones are marked: removed operations, removed response fields, changed field types, request fields that are new and required or became required.
+
+### Event contracts
+
+The same tab compares messages. For every Kafka, NATS or AMQP producer and consumer, adOmnia reads the Go type passed to `json.Marshal`/`proto.Marshal` or decoded with `json.Unmarshal`/`proto.Unmarshal` in that function, and per topic lists the fields a consumer reads that no producer sends and the fields whose type differs (decoding fails). Avro schemas (`.avsc`) and JSON Schemas (`*.schema.json`) whose name matches the struct or the topic are checked too: Go fields not in the schema, different types, required schema fields the struct lacks. *Diff* adds how the produced messages changed since the chosen revision; removed fields and type changes are marked breaking for consumers not yet updated.
+
+## Binary inspector
+
+*Architecture Explorer → Binary* builds a `main` package (the folders of the entry points are suggested) into a temporary file — nothing is written to the project — and shows what the executable is made of: total size, size by package and the largest symbols (from `go tool nm`, each byte counted once and only for sections stored in the file), the files included with `//go:embed`, and the metadata Go records in every binary: Go version, main module, module versions with replacements, and build settings such as GOOS/GOARCH, CGO, `-ldflags`, `-tags` and the VCS revision. *Compare size with* builds the same package at a branch, tag or commit in a temporary Git worktree and lists how much each package grew or shrank.
+
+## Why is this goroutine running?
+
+When the program is paused, select a goroutine: its inspector shows *Why is this running?* — the HTTP route (from the handler on its stack) or the message topic (from a consumer) it serves, how long it has been alive (a lower bound: from the first pause that saw it), and, on *Inspect its context*, the `context.Context` held by its project frames walked through its parents (`timerCtx → cancelCtx → valueCtx`, with deadlines) and how it can be cancelled.
+
+## Memory model helper
+
+*Architecture Explorer → Memory model → At cursor* takes the function under the cursor and lists the synchronization it shares with the rest of its package, grouped by object: channels (send, receive, range, close), mutexes and RW mutexes, WaitGroups, `sync.Once`, atomics and the goroutines it starts. For each one it states the happens-before edges the Go memory model guarantees (a send happens before the matching receive completes, an Unlock before the next Lock, Done before Wait returns…) and flags common mistakes: a lock without an unlock in the same function, a channel only sent to or only received from, a channel closed in several places, and what an atomic does not synchronize. Every operation opens its line; *Explain with AI* puts the whole picture in the chat.
+
+## Architecture rules and drift
+
+*Architecture Explorer → Rules & drift* checks the code against `.adomnia/architecture.json` (*Create architecture rules* writes a template; commit it to share the rules). Package patterns are relative to the module (`internal/domain/...` is the folder and everything below, `*` one segment):
+
+- `layers` and `allow`: which layer may import which (a layer missing from `allow` is unconstrained);
+- `forbidden`: imports a package or a whole layer (`"from": "layer:domain"`) must not use, standard library and external modules included, with a reason;
+- `domains` (with `shared`) and `services` (patterns on full package paths, e.g. modules): boundaries that must not be crossed;
+- `databaseLayers` and `brokerLayers`: the only layers allowed to query tables or produce/consume messages;
+- `noCycles`: import cycles between project packages (on by default).
+
+Every violation opens the package or function that causes it. *Compare with* a branch, tag or commit checks that revision out in a temporary Git worktree, analyzes it with today's rules and lists the violations it introduced or fixed and the package imports added or removed since then. The worktree is removed afterwards.
+
+## Workspace graph and change impact
+
+Code Studio keeps a **Semantic Workspace Graph** of a trusted project: modules, packages, files, functions, methods, tests, interfaces with their implementations, HTTP routes, gRPC services, Kafka topics (producers and consumers), SQL tables and entry points. It is built from the Architecture Explorer model (go/packages with types, no code is run), saved under the adOmnia data folder (`goide/graphs`, never in the project) and reused until a `.go`, `go.mod` or `go.work` file changes.
+
+**Code → Analyze Change Impact** opens the *Impact* tool window for the function under the cursor: direct and indirect callers (calls through an interface reach every implementation), the interface contracts it implements, the tests that reach it (**Run N tests** starts exactly those), routes, gRPC services, consumed topics and entry points that depend on it, what it calls, produces and queries, the modules involved, and a low/medium/high risk with its reasons. *impact* on a row moves the analysis there; **Ask AI** opens the chat with the analysis as a draft.
+
+The analysis also lists the environment variables (`os.Getenv`, `os.LookupEnv`) and configuration keys (viper, koanf getters) the function reads; *impact* on one of them shows every function that reads it, their callers and the tests that reach them.
+
+Compose services are part of the graph too: the analysis names the services whose build compiles an entry point that reaches the code (the build context or Dockerfile folder contains that `main`).
+
+When adOmnia has received OpenTelemetry spans (Observability → Traces, live or a loaded trace), the target, its callers and the routes show how they behaved at runtime: calls, p95 and errors.
+
+From the list you can verify the change at once: *Send* on a route opens its request in the API Workspace (reusing a saved one when it exists) and sends it, *Open all in API* puts every impacted route in an `Impact: …` collection, *Run* starts an impacted `main` and *Up* starts the compose service that runs it.
+
+*Used by other modules* lists callers from other modules of the workspace: the code is a public contract and the risk goes up. The *Risk* view scores every function of the project and ranks packages by their high-risk functions; click one to analyze it.
+
+*Map* draws the same analysis as a picture: what reaches the changed code above it, following the real call paths, and what it touches below. Click a box to open the code, Alt+click to analyze that element.
+
+Once the graph is built, **Search Everywhere** (Shift Shift) lists its routes, gRPC methods, topics, tables, env vars, config keys, compose services, dependencies and DTOs under *Project graph*; Enter opens the place and the Impact of that element.
+
+On a `require` line of go.mod the analysis is about the dependency: the packages that import it, their functions and tests, and the modules that require it. A *Why is it here?* box adds the import chain from `go mod why -m`, the module's inclusive share of the profile loaded in Performance Studio, its bytes in the binary last inspected in *Architecture → Binary*, and its vulnerabilities from the last scan. Local modules (go.work or a `replace` to a project folder) work the same way.
+
+With the cursor on a request or response type (a struct a route decodes or encodes as JSON), the analysis is about the contract: the types that contain it, the routes that read or return it, their handlers with every caller, and the tests that reach them.
+
+Every chat message (Claude Code, milk, Copilot) with the project switch on also carries this neighbourhood for the function under the cursor, redacted and bounded like the rest of the context; if the graph is not ready within 4 seconds the message goes without it. It also carries the runtime picture of the active file when adOmnia has observed it: the OpenTelemetry spans started there (calls, p50/p95, errors), the hot lines of the last CPU or allocation profile, and the recent logs of the running service with errors first.
+
+## Claude Code
+
+Claude Code is the third chat next to Copilot and milk (right tool stripe, **Tools → Open Claude Code**). It reuses milk's ACP client (`internal/milk`); `internal/claudecode` only says how to start it: `claude-agent-acp` from PATH, or `npx --yes @agentclientprotocol/claude-agent-acp@<pinned>` (Node.js 22+; the first start downloads it, later starts use npm's cache). It is off until enabled in its settings (`claude-code.json` in the adOmnia data folder). It uses the account of the `claude` CLI; **Use my Claude login, ignore ANTHROPIC_API_KEY** removes that variable from the adapter's environment so a Pro/Max plan is used instead of a key. Claude Code runs its own tools in the project folder and asks before writes and commands (Allow/Deny in the chat, denied after 90 s); **Approve every tool call** skips the question. Same context switches, detachment and AI policy as milk.
+
+**MCP servers for agents.** Claude Code (standard ACP) gets MCP servers in `session/new`; milk's own protocol does not take them yet. *Context servers (MCP)* in the milk settings keeps one list for all agents (`acp-mcp-servers.json` in the adOmnia data folder; stdio `command`/`args`/`env` or HTTP `url`/`headers`); a change applies to new chats. adOmnia also adds its own server, `adomnia mcp <project folder>` (the same executable, stdio), unless you define a server named `adomnia` or untick *Give the agent adOmnia's collections and mock server (MCP)* in that agent's settings (`disableBuiltinMcp`). Tools: `collection_list_requests` and `collection_run` (optional `collection`, `folder`, `env`, `vars`; the folder needs a `collection.json`, so export the collection first), and `mock_start` / `mock_status` / `mock_hits` / `mock_clear_hits` / `mock_stop`. The mock runs inside that MCP process, not in the open adOmnia window, so the agent can check what its code sent without touching your own mock.
+
+**Review agent changes.** Before each milk or Claude Code turn adOmnia keeps an in-memory copy of the project's text files; when the turn ends it compares the disk with that copy. Files the agent created, modified or deleted appear above the chat box (*N files changed by the agent · Review*) and in **Tools → Review Agent Changes…**. The review dialog lists the files with added/removed line counts and shows each change as a block: **Accept** keeps it, **Reject** puts those lines back as they were before the agent. **Accept file** / **Reject file** decide a whole file (rejecting a file the agent created deletes it; rejecting a deleted file recreates it), **Accept all** / **Reject all** the whole turn. Later turns add to the same review and keep the original version of files not reviewed yet. A rejected block is written only if the file is still the one shown: if it changed in the meantime the review refreshes instead of overwriting it, and editors with unsaved changes keep their buffer. Limits: folders such as `.git`, `node_modules`, `vendor`, `dist` and `target` are not tracked; binary files and files over 1 MB can only be accepted (undo them with Git or Local History); projects with more than 20,000 files or 64 MB of text show a notice instead of a review; edits you save yourself during a turn are counted as the agent's; the review lives in memory and is lost when adOmnia closes.
+
+**Company backends (Bedrock, Vertex AI, Azure AI Foundry, LLM gateways).** Configure them as for Claude Code itself: adOmnia does not duplicate that setup. The adapter loads `~/.claude/settings.json` (or `CLAUDE_CONFIG_DIR`), the project's `.claude/settings.json` and `.claude/settings.local.json`, and the IT-managed `managed-settings.json`, including their `env` blocks (`CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`, `AWS_PROFILE`, `ANTHROPIC_MODEL`…), `model`, `apiKeyHelper` and `awsAuthRefresh`. The adapter chooses the model from its own environment, so adOmnia copies `ANTHROPIC_MODEL` and `ANTHROPIC_CUSTOM_MODEL_OPTION` from those `env` blocks (managed > local > project > user) into it and relaunches Claude Code when the active project asks for a different one. The chat header shows the backend Claude Code reports and the model that answered; **Configuration** in the settings dialog shows provider, model, region, AWS profile, endpoint host, credential helpers, the files read and what is missing (for example Bedrock without `AWS_REGION`). Secret values are never shown, only that they are set.
+
+## GitHub Copilot
+
+**Editor context in milk, Claude Code and Copilot.** Sending an ordinary chat message attaches the active file path and its live buffer, including unsaved edits, when the file switch is enabled. Project context adds a bounded file index, not every file's contents. The question remains readable in the conversation and attachment labels identify what was included. milk has file/project switches; its slash commands remain commands. Detached milk follows active-file updates from its project window. Both chats prepare source context in that owner, apply `.adomnia/aiignore`, project AI policy and inline-secret redaction, and state explicitly when the current file is unavailable or excluded. Copilot source attachment does not depend on its language server already knowing the document. File/selection/project options are shared across detachment; selection capture is available in the editor's own window.
+
+Code Studio integrates GitHub Copilot through the official **GitHub Copilot Language Server** (`@github/copilot-language-server`). It is not the VS Code extension: the UI is adOmnia's, the language server is the engine. gopls stays the semantic engine (types, diagnostics, completion, navigation, refactoring); Copilot adds the generative layer on top.
+
+**Turn it on.** *Tools → GitHub Copilot…* or the Copilot item in the status bar. Copilot is off until you enable it, and nothing is downloaded on its own: *Install* downloads the native language server for your platform from the npm registry and refuses it unless its SHA-512 matches the integrity npm publishes. A custom binary path is also accepted.
+
+**Accounts: GitHub.com, Enterprise Cloud and Enterprise Server.** Nothing assumes `github.com`. Each account is a profile with a name and a host: `github.com`, `company.ghe.com` (Enterprise Cloud with data residency) or your own host (Enterprise Server). For enterprise hosts the language server is configured with `github-enterprise.uri` before sign-in. Sign-in uses GitHub's device flow on that host: adOmnia shows the code, copies it to the clipboard and opens the host's page. A project can be bound to an account (*Account for this project*), so company code never uses the personal account by mistake; switching to a project bound to another account restarts the language server on that account. The status bar always shows user **and host**.
+
+**Ghost text.** Suggestions appear as you type in any editable file: **Tab** accepts, **Esc** dismisses, **Ctrl+→** accepts word by word, **Alt+]** / **Alt+[** browse alternatives. Every keystroke cancels the previous request (`$/cancelRequest`), and a suggestion computed on an older buffer is discarded. *Tools → Toggle Copilot Inline Completions* turns them off without disabling Copilot.
+
+**Ask chat.** *Tools → Open Copilot Chat* (or the **AI Assistant** button on the right tool stripe) opens a per-project conversation. The message can include the current file, the live Monaco selection and a filtered workspace manifest. Only the active buffer and explicit selection include source text; workspace context is a bounded path manifest. Built-in secret exclusions and `.adomnia/aiignore` apply before context reaches the language server. Replies stream into the pane, **Stop** cancels the active JSON-RPC request, and **New Chat** destroys the server conversation. Chat history is session-only and never written to the project.
+
+**Context pane.** The *Context* tab of the right column (next to Structure, Alt+7) follows the cursor and shows what that code is in the running system: the HTTP/gRPC route it registers or serves with the last live requests to it, the SQL it runs with the statements the Live Session captured, the Kafka topics it produces or consumes with the messages seen, the test around the cursor and its last result, the interface declared on the line and its implementations (or the interfaces a type implements), the goroutines created on a `go` line while the debugger is paused, a `go.mod` dependency with the packages that import it, the problems of the line and its Runtime Lens numbers. It reuses the architecture analysis of the project, running it once (go/packages) only when the project is trusted for tooling.
+
+**Right assistant tool window.** One **AI Assistant** button on the right tool stripe (and *Tools → Open AI Assistant*, Alt+2) opens the AI hub in the same right column as Structure and Project: a tab per provider (Copilot, milk, Claude Code) with its own status dot — ready, starting, not responding or unavailable — and the classified startup diagnostic as the tooltip. The button reopens the provider you used last, remembered across restarts; *Tools → Open Copilot Chat / Open milk / Open Claude Code* still open that exact provider. The three per-provider chat panes, their detachable tool windows and their settings dialogs are unchanged. The chat headers keep their quick model switch: Copilot lists the models available to the signed-in account and starts a clean conversation after a change. **AI di a0** stays a separate choice in the same column; its header switches cached or custom model IDs after live verification, without opening Settings, and it keeps its API-workspace actions. The former global floating launcher and popup no longer exist.
+
+**Network.** A company proxy (with TLS verification on by default) and a company CA bundle (PEM, added to the system trust store through `NODE_EXTRA_CA_CERTS`) can be set in the dialog. TLS verification is never disabled.
+
+**Privacy and data.** Your workspace stays local. When Copilot is on, the open file and nearby code are sent to the GitHub host of the selected account. `.env`, `.env.*`, keys and certificates (`*.pem`, `*.key`, `*.p12`, `*.jks`…), SSH/AWS/GnuPG folders, `secrets/**` and every pattern in the project's `.adomnia/aiignore` (one glob per line, `dir/**` for folders) are never sent. adOmnia has no telemetry and asks the language server to turn its telemetry off. The GitHub token is kept by the language server in its own credential store; adOmnia's `copilot.json` holds only profiles, hosts, bindings and network settings.
+
+**Resilience.** If the language server crashes it restarts after 1, 2, 5 and 10 seconds; after that Copilot pauses with *Restart* and *Show logs*. gopls, the debugger, Git, the terminal and the rest of Code Studio keep working whether Copilot is on, off or failing.
+
+Edit and Agent modes with adOmnia tools (Go, debugger, API Workspace, databases, Kafka, Git) are the next phases; see `mds/todo-ide.md`. Ask chat is implemented and automatically tested, with its real-account manual check still open.
+
+## Web projects and Live Preview
+
+Code Studio also opens static sites, React/Vite apps and Node.js projects: JavaScript/TypeScript (JSX/TSX), HTML, CSS and JSON get their standard language servers, and **Go Live** (status bar, `Alt+L`, ▶ Run in a web-only project, *Open with Live Preview* on an HTML file) starts the right server and shows the real page in a Live Preview next to the editor (split, tab, panel or native window). Nothing runs in an untrusted project, installs always ask first, servers listen on `127.0.0.1` only, and stopping, closing the project or quitting frees every process. Go workflows are unchanged. Full reference: [LIVE-PREVIEW.md](LIVE-PREVIEW.md).
+
+## Known limits
+
+- Push, pull, merge, branches, stash and pull requests live in the **Git** tool window of the IDE (*Git → Open Project Git Tool Window*); rebase and drag-and-drop cherry-pick are not exposed in V1. Conflicts can be resolved in Code Studio too: *Git → Resolve Conflicts…* (or *conflict · resolve…* in the Commit dialog) opens the three-way editor — base, ours and theirs side by side, an editable result, and for each conflict block *Ours*, *Theirs*, *Both* or *Base*; saving writes and stages the file, then Continue, Skip or Abort finish the merge, rebase or cherry-pick. Other version control systems are not supported.
+- Plugins receive read-only Code Studio events (contract v1) and no commands.
+- HTTP route prefixes are resolved only within the same file for the *Open in API Client* CodeLens.
+- Remote debugging needs the same source paths on both sides for breakpoints to bind.
+- Set next statement is not available (Delve has no DAP `goto`); Run to Cursor covers moving forward.
+- Refactorings are the code actions gopls offers; nothing is simulated with text replacement.
+- Ctrl+click on an undefined symbol has no target; use *Fix with AI* or the gopls quick fixes.
+
+## Project tree, terminal and AI fixes
+
+- **Project tree context menu** (files, folders and the project root), in GoLand order: Open and Open in Split (right/down); New Go File / File / Folder; Cut (Ctrl+X), Copy (Ctrl+C) and Paste (Ctrl+V), which copy or move files and folders inside the project; Copy Path/Reference (absolute path Ctrl+Shift+C, path from project root Ctrl+Alt+Shift+C, file or folder name, Go import path); for Go files, Find Usages, Inspect Code, Refactor This, Move to New File, bookmarks, Reformat Code and Optimize Imports; Rename or move (Shift+F6 or F2; type a path with `/` to move), Duplicate, Delete (Delete key; always confirmed, and the text of deleted files is kept in Local History); **Reload from Disk** always re-reads a file and asks before discarding unsaved text, while **Refresh Folder / Project** re-reads the loaded tree branch and marks dirty tabs for Reload / Keep / Compare without discarding them; Find in Folder; Go Package (test, test with coverage, build, vet, go generate on the package of the folder or file), plus Run / Debug Current Configuration; Open In File Explorer or Terminal (a new terminal in that folder); Local History and Git (file history, blame) for files. Folder commands use `./folder/...` (or `./...` at the module root), so tests and coverage include descendant packages. The Test Explorer keeps the real exit code and up to 64 KB of compiler diagnostics; an empty project coverage profile is reported as an error instead of 0.0%. Paste never overwrites: when the name is taken it picks `name_copy`. A cut item is dimmed until pasted. Operations stay inside the project; files with unsaved changes must be saved or discarded before moving them. On macOS, Cmd replaces Ctrl.
+- **Terminal profiles**: the arrow next to `+` lists the shells found on the machine — PowerShell 7, Windows PowerShell, Command Prompt, Git Bash and every WSL distribution (e.g. Ubuntu) on Windows; `$SHELL`, bash, zsh and fish on Linux/macOS. The chosen shell becomes the default for `+`. The UI can only start detected profiles, never an arbitrary executable.
+- **Terminals come back**: reopening a project reopens its terminals with the same name, shell and folder. Only that metadata is kept (per project, in local storage); output and processes are not, and the shells start only on a trusted project when the Terminal tab opens.
+- **Connected workspaces come back**: Database Studio restores query tabs, the active query, row limit and timeout. Broker Studio restores the active protocol, saved profile and Kafka resource tab. Connections remain stopped until you explicitly connect; persisted broker profiles keep the existing session-only/Vault secret boundary.
+- **Terminal tools**: double-click a tab to rename it; **Split** shows two terminals side by side (clicking the right-hand tab swaps sides). **Ctrl+click** on `file.go:12:5` or on a stack-trace frame (`/path/main.go:12 +0x1d`) opens the file in the project, GOROOT or the module cache. **Ctrl+F** finds in the scrollback; **Copy output** copies the buffer as plain text, without colors or control codes. **History** lists the last 50 commands typed in this project (stored locally; commands that mention tokens, passwords or keys are never saved); picking one types it into the shell without pressing Enter. Typing `go test …` offers **Run in Test Explorer** with the same packages and `-run`/`-bench`/`-race`/`-cover`/`-tags`. Limits: commands edited with arrows or Tab completion are not recorded, a path split across wrapped lines is not clickable, and the Test Explorer uses the folder the terminal was opened in, not a later `cd`.
+- **Resolve all with AI** (Problems pane, with an AI provider enabled in Settings → AI): one request per file with errors or warnings (up to 10 files), then a single change preview; nothing is written until you apply it. The file contents are sent to the configured provider.
+- **Code → everything**: CodeLens above SQL tables, broker topics, gRPC service registrations and WebSocket endpoints open them in Database Studio, Broker Studio, the gRPC client (with reflection) and the WebSocket client.
+- **Layout**: Code Studio opens maximized; the adOmnia logo in the top-left corner returns to the hub. The button next to Save maximizes the editor alone (Ctrl+Shift+F12).
+
+
+Detached tool views reserve no space in the IDE: the code and remaining tools expand automatically; bringing a tool back restores its docked area.
+
+
+### Resource monitor and gopls lifecycle (2026-10-11)
+
+The bottom-left application status bar shows live RAM (resident memory) and CPU instead of the last API response while Code Studio is selected. Click it to inspect the application and its descendant processes, language-server PIDs and associated project paths. Samples refresh every two seconds while the window is visible; CPU is a delta normalized to logical CPU count, and the first sample is unknown. Resident memory sums may include shared pages; this is process memory, not only the Go heap. No measurements are persisted or transmitted. Closed projects disappear after their servers exit and the next sample arrives.
+
+The manager serializes concurrent starts and keeps one server per language/project session, including the same project's detached editor. Separate workspace sessions retain independent servers and buffers; this change does not merge potentially conflicting unsaved overlays across workspaces. Automatic language servers stop after a five-minute inactive grace period even with open or dirty tabs. Pending LSP requests defer suspension. Buffer contents and versions remain in the host and are replayed at initialization when any active window returns to that project. Active detached windows protect the project; explicit server starts remain pinned. Manual stop, project close, shutdown and revoked tooling authorization prevent automatic resurrection. Unrelated activity reports do not extend an inactive project's grace period.
+
+Hidden project editors also unmount after five minutes. Tabs, recovery and buffer state stay in their existing stores; each editor split keeps its selection and scroll for wake-up. Only clean, unattached Monaco models with no undo/redo history and text matching the store are released. Dirty models and undo history stay in memory deliberately. A visible idle editor remains painted, even when its automatic language server is suspended. Returning restores the editor and the project server; no workspace schema or settings migration is required.
+
+The first memory-reduction stage is implemented and covered by focused frontend/lifecycle/race tests. A real-gopls fixture test observed a 257.4 MiB resident process exit during hibernation and a new process restore the unsaved overlay. This is a fixture result, not an application-wide savings estimate. Native Wails checks remain pending: hide/return with dirty tabs, independent split selection/scroll, Undo after wake, active detached-window protection and project close during wake. The startup check currently flags the existing `settings.ts → lib/code-studio/legacyKeymap.ts` static import, already present in HEAD; the measured initial JavaScript is 607,943 bytes, below the 650,000-byte limit.
+
+### Global memory target (stage 2, 2026-10-17)
+
+The desktop uses one memory target for adOmnia and its descendant processes, including the WebView and language servers. The default is one eighth of physical RAM, clamped to 1–3 GiB (1.5 GiB if system memory cannot be read). `ADOMNIA_MEMORY_BUDGET_MIB` overrides it locally with an integer from 256 to 65536; invalid values are logged and fall back to 1536 MiB. No settings or workspace schema changes are required. The resource popover shows the target and current memory-pressure state.
+
+The controller reuses the process-tree sampler every ten seconds while at least one language server is running; it works even when the resource panel or the application window is hidden. With no running servers it waits for the next server start instead of polling. Accounting uses resident process memory and can count shared pages more than once. It is an advisory target, not an OS-enforced allocation limit, and does not alter `GOMEMLIMIT` or forcibly collect the application heap.
+
+Above the target, the controller selects one eligible automatic language server, preferring the longest-inactive project and then the larger measured process. Both inactivity and process residency must be at least 30 seconds. Active projects in any window, explicitly started servers, in-flight requests and starting/closing servers remain protected. Owners recheck lifecycle, activity and pending requests before suspension. Each attempt has a 30-second cooldown, and pressure clears at 80% of the target; wake-up remains driven by the user's return, not by crossing a memory threshold. Normal five-minute hibernation still works independently.
+
+Reclamation currently covers automatic language servers. Backend state, WebView memory, active runs/debuggers, terminals and other intentional operations are counted but never terminated by the budget controller. Byte-bounded caches are the next stage. Therefore protected work can exceed the target; the pressure indicator does not promise that memory can always be reclaimed.
+
+Validation covers selection order, hysteresis/cooldown, missing measurements, recent use, explicit/active/busy protection, background monitoring and monitor shutdown. A real-gopls fixture under budget pressure released a 138.8 MiB resident process and restored its unsaved overlay in a new process. This is a fixture observation, not an application-wide savings estimate. Native Wails acceptance remains pending for the resource popover, changing project visibility under pressure and detached-window interaction.
+
+Language server settings expose opt-in directory filters and module expansion, retaining gopls' default scope for existing installations. Deep diagnostics wait one second after typing; optional diagnostics on save retains completion, hover and navigation. Filters apply on blur and changing these settings restarts the active project's server. Settings are backward-compatible optional fields in the existing local settings record; no workspace-format migration is needed. Narrowing scope requires verifying workspace search, diagnostics and cross-package refactoring in the actual repository.
+
+For a large repository, directory filters can select modules explicitly: start with `-` (exclude everything), add `+path/to/module` for each desired module, and finish with `-**/node_modules`. The last matching rule wins. Disabling module expansion reduces workspace scope when the project is opened at a nested directory; disabling it at the module root does not select a subdirectory. Dependencies needed by selected packages may still consume memory. Crash retries now share the start/stop lifecycle lock and are invalidated by stop, close or a new start, preventing a delayed retry from reviving a closed server. See [the local measurements and validation](performance/gopls-memory-2026-10-16.md).
+
+La barra sinistra include Git e sostituisce il pannello precedente quando si seleziona Project, Service logs o una tool window. A destra, Structure contiene Structure, Context e Project; AI Assistant contiene soltanto l’hub AI. Ctrl+F apre la ricerca nel progetto in una finestra dedicata, con filtri e sostituzione espandibili; selezionare un risultato chiude la ricerca e apre la posizione nell’editor.
+
+### Inline diagnostics
+
+Code Studio shows errors, warnings and information beside the affected line, using Monaco markers from every connected language server, linter and plugin. The most severe message appears first; the line hover contains all messages. Hints keep their standard Monaco presentation. Long messages are shortened inline. In Settings (Ctrl+Alt+S), Editor, toggle Inline diagnostics, Inline warnings and Inline information independently. These additive preferences use the existing local preferences record and default to enabled when absent; existing settings and workspace files require no migration. Native desktop acceptance remains to be verified.

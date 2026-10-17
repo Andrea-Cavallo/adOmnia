@@ -18,14 +18,14 @@ export async function openFrameInCodeStudio(session: LiveSession, frame?: LiveFr
 /** Opens a file:line of a gO project (relative path, or an absolute one outside the project). */
 export async function openLocationInCodeStudio(goSessionId: string, target: LiveFrame | null, options: { switchRail?: boolean; label?: string } = {}): Promise<boolean> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
-  const goide = useCodeStudioStore.getState()
-  if (!goide.initialized) await goide.initialize()
+  const codeStudio = useCodeStudioStore.getState()
+  if (!codeStudio.initialized) await codeStudio.initialize()
   if (!useCodeStudioStore.getState().sessions.some((s) => s.id === goSessionId)) {
     showEntityNotice(`The ${options.label ?? 'service'} project is no longer open in Code Studio.`)
     return false
   }
-  if (options.switchRail !== false) useAppStore.getState().setActiveRail('goide')
-  else useAppStore.getState().keepPanel('goide')
+  if (options.switchRail !== false) useAppStore.getState().setActiveRail('codestudio')
+  else useAppStore.getState().keepPanel('codestudio')
   if (useCodeStudioStore.getState().activeSessionId !== goSessionId) await useCodeStudioStore.getState().selectSession(goSessionId)
   if (!target) return true
   if (target.relativePath && !target.relativePath.startsWith('..')) {
@@ -61,9 +61,9 @@ export async function openSplitDebugView(tabId: string, session: LiveSession | n
   }
   tabs.setActiveTab(tabId)
   const app = useAppStore.getState()
-  app.keepPanel('goide')
+  app.keepPanel('codestudio')
   app.keepPanel('collections')
-  if (app.activeRail !== 'collections' && app.activeRail !== 'goide') app.setActiveRail('collections')
+  if (app.activeRail !== 'collections' && app.activeRail !== 'codestudio') app.setActiveRail('collections')
   app.setSplitView(true)
   if (session) {
     await openFrameInCodeStudio(session, null, { switchRail: false })

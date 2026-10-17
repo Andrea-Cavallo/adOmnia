@@ -32,7 +32,7 @@ Three optional fields are added to `general`: `autoCheckUpdates`, `autoDownloadU
 
 ## Acceptance
 
-The Nothing-style update dialog follows the selected accent palette and shows download progress, verification, retry, postponement and **Save & restart**. Restart saves dirty main-editor documents and waits for serialized/debounced store writes; a save error blocks restart. Native `Window.Close` retains detached-window and running-task guards. Scheduled updates hide the destructive discard action for dirty Go Studio buffers.
+The Nothing-style update dialog follows the selected accent palette and shows download progress, verification, retry, postponement and **Save & restart**. Restart saves dirty main-editor documents and waits for serialized/debounced store writes; a save error blocks restart. Native `Window.Close` retains detached-window and running-task guards. Scheduled updates hide the destructive discard action for dirty Code Studio buffers.
 
 - [x] Save-before-restart ordering and refusal to close on editor/storage save failures (automated tests).
 - [x] Workspace, settings and request fixture files remain byte-identical after Windows executable replacement and rollback.

@@ -66,7 +66,7 @@ export function CodeStudioSonarPanel({ session }: CodeStudioSonarPanelProps) {
 
   useEffect(() => {
     if (!busy) return undefined
-    return visibleInterval(() => setNow(Date.now()), 500, { scope: `goide:${sessionId}`, kind: "decorative" })
+    return visibleInterval(() => setNow(Date.now()), 500, { scope: `code-studio:${sessionId}`, kind: "decorative" })
   }, [busy, sessionId])
 
   const issues = useMemo(() => (result ? sortSonarIssues(result.issues) : []), [result])

@@ -2,7 +2,7 @@ import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { useEffect, useState } from 'react'
 import { KeyRound, PlugZap } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { ModuleRegistryCheck, PrivateRepoCredential } from '../../../bindings/adomnia/internal/goide/models'
+import type { ModuleRegistryCheck, PrivateRepoCredential } from '../../../bindings/adomnia/internal/codestudio/models'
 import { CodeStudioButton, CodeStudioField } from './CodeStudioModal'
 import { privateHostsOf, usesGitCredentials, withGoAuth, type ToolchainForm } from './codeStudioToolchainEnv'
 

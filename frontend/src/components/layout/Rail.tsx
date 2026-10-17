@@ -82,7 +82,7 @@ export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   themes: Settings,
   templates: FileText,
   plugins: Puzzle,
-  goide: CodeXml,
+  codestudio: CodeXml,
   kube: Boxes,
 }
 

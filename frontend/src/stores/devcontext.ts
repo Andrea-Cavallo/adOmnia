@@ -48,7 +48,7 @@ export function startDevContextSync(): () => void {
     if (sessionId && useDevContextStore.getState().snapshots[sessionId]) void useDevContextStore.getState().load(sessionId)
   })
   const onFocus = () => {
-    if (currentActivityPhase('goide') !== 'Active') return
+    if (currentActivityPhase('codestudio') !== 'Active') return
     const sessionId = useCodeStudioStore.getState().activeSessionId
     if (sessionId) void useDevContextStore.getState().checkStale(sessionId)
   }

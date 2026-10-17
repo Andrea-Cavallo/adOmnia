@@ -37,7 +37,7 @@ const state = (
   activeDocumentBySession: Record<string, string | null> = {},
 ): GoIDEState => ({ documents, activeDocumentBySession, activeSessionId: 'session-one' }) as GoIDEState
 
-describe('goide document selectors', () => {
+describe('code studio document selectors', () => {
   it('returns the active document of a session only', () => {
     const first = doc('doc-1', 'session-one', 'main.go')
     const second = doc('doc-2', 'session-two', 'main.go')

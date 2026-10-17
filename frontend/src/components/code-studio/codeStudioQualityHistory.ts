@@ -1,7 +1,7 @@
 import type { GoIDEDiagnosticsReport } from '@/lib/code-studio-lsp-api'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
-const STORAGE_PREFIX = 'adomnia.goide.quality-history.v1.'
+const STORAGE_PREFIX = 'adomnia.codestudio.quality-history.v1.'
 const MAX_SAMPLES = 60
 
 /** Esito di una run completa del linter: la serie forma il trend del debito tecnico. */

@@ -201,7 +201,7 @@ async function runOwnerAction(message: Request, state: NonNullable<Snapshot>): P
 async function focusProject(session: string) {
   const owner = useCodeStudioWindowsStore.getState().ownerOf(session)
   if (useCodeStudioStore.getState().activeSessionId !== session) await useCodeStudioStore.getState().selectSession(session)
-  if (owner === 'main') { useAppStore.getState().setActiveRail('goide'); await AppBindings.FocusMainWindow() }
+  if (owner === 'main') { useAppStore.getState().setActiveRail('codestudio'); await AppBindings.FocusMainWindow() }
   else await focusGoIDESessionWindow(owner)
 }
 

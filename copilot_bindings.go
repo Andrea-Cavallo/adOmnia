@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"adomnia/internal/copilot"
-	"adomnia/internal/goide"
+	"adomnia/internal/codestudio"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -108,7 +108,7 @@ type copilotDocuments struct {
 	manager *copilot.Manager
 }
 
-func (d copilotDocuments) DocumentOpened(session goide.Session, document goide.Document, text string) {
+func (d copilotDocuments) DocumentOpened(session codestudio.Session, document codestudio.Document, text string) {
 	// SDK e module cache restano fuori: sono in sola lettura e fuori dal progetto.
 	if document.ReadOnly || document.External {
 		return
@@ -119,14 +119,14 @@ func (d copilotDocuments) DocumentOpened(session goide.Session, document goide.D
 	})
 }
 
-func (d copilotDocuments) DocumentChanged(documentID goide.DocumentID, version int, text string) {
+func (d copilotDocuments) DocumentChanged(documentID codestudio.DocumentID, version int, text string) {
 	d.manager.DocumentChanged(string(documentID), version, text)
 }
 
-func (d copilotDocuments) DocumentSaved(documentID goide.DocumentID) {
+func (d copilotDocuments) DocumentSaved(documentID codestudio.DocumentID) {
 	d.manager.DocumentSaved(string(documentID))
 }
 
-func (d copilotDocuments) DocumentClosed(documentID goide.DocumentID) {
+func (d copilotDocuments) DocumentClosed(documentID codestudio.DocumentID) {
 	d.manager.DocumentClosed(string(documentID))
 }

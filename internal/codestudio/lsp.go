@@ -1,0 +1,852 @@
+package codestudio
+
+import (
+	"bufio"
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"adomnia/internal/activity"
+	"adomnia/internal/ide/language"
+	"adomnia/internal/ide/lsp"
+	"adomnia/internal/procutil"
+)
+
+const (
+	MaxPendingLSPRequests   = 128
+	maxLanguageServerLog    = 500
+	maxCrashRestarts        = 3
+	crashWindow             = 2 * time.Minute
+	initializeTimeout       = 60 * time.Second
+	shutdownTimeout         = 2 * time.Second
+	defaultRequestTimeout   = 15 * time.Second
+	maxCodeActionCacheItems = 64
+	// diagnosticsThrottle raggruppa le raffiche di publishDiagnostics di gopls in un solo aggiornamento per file.
+	diagnosticsThrottle   = 150 * time.Millisecond
+	maxDiagnosticsPerFile = 1000
+)
+
+// LanguageServerOptions è la spec del server prodotta dal language adapter (per Go: gopls).
+type LanguageServerOptions = lsp.ServerSpec
+
+type lspEmitter func(eventType string, sessionID SessionID, resourceID string, payload any)
+
+type serverProcess struct {
+	syncKind int
+	command  *exec.Cmd
+	stdin    io.WriteCloser
+	conn     *lsp.Conn
+	exited   chan struct{}
+}
+
+type trackedDocument struct {
+	id         DocumentID
+	uri        string
+	path       string
+	languageID string
+	version    int
+	text       string
+	readOnly   bool
+}
+
+type lspSession struct {
+	// documentsMu orders didOpen/change/close without holding mu during pipe writes.
+	documentsMu   sync.Mutex
+	idleEpoch     uint64
+	lifecycle     sync.Mutex
+	idleTimer     *time.Timer
+	inactiveSince time.Time
+	startedAt     time.Time
+	suspended     bool
+	userInitiated bool
+	restartEpoch  uint64 // invalidates crash retries after an explicit lifecycle change
+
+	mu       sync.Mutex
+	id       SessionID
+	language string
+	root     string
+	rootURI  string
+	name     string
+	options  LanguageServerOptions
+	status   LanguageServerStatus
+	process  *serverProcess
+	// synced è il processo che ha completato initialize/initialized: solo lui riceve i documenti.
+	// Un didOpen durante l'handshake fa creare a gopls una vista prima dell'avvio
+	// ("addView called before server initialized").
+	synced      *serverProcess
+	stopping    bool
+	launching   bool
+	crashes     []time.Time
+	documents   map[DocumentID]*trackedDocument
+	byURI       map[string]DocumentID
+	log         []string
+	codeActions map[string]lsp.CodeAction
+	applyEdits  []lsp.WorkspaceEdit
+	diagnostics map[string][]lsp.Diagnostic
+	// Diagnostica in attesa di essere inviata alla UI: gopls ne pubblica a raffiche durante
+	// il type-check, si invia solo l'ultima per file dopo diagnosticsThrottle.
+	pendingDiagnostics map[string]DiagnosticsReport
+	// Only non-empty normalized reports are retained; empty reports evict their URI.
+	diagnosticSignatures map[string][sha256.Size]byte
+	diagnosticsTimer     *time.Timer
+	closed               bool
+}
+
+// lspKey identifica un language server: uno per linguaggio in ogni sessione.
+type lspKey struct {
+	session  SessionID
+	language string
+}
+
+type LSPManager struct {
+	memoryBudget        *lspMemoryBudget
+	unsubscribeActivity func()
+	activity            *activity.Manager
+	mu                  sync.Mutex
+	sessions            map[lspKey]*lspSession
+	emit                lspEmitter
+	languages           *language.Registry
+}
+
+func NewLSPManager(languages *language.Registry) *LSPManager {
+	m := &LSPManager{sessions: make(map[lspKey]*lspSession), languages: languages}
+	m.setActivityManager(activity.NewManager())
+	return m
+}
+
+// SetEmitter collega gli eventi LSP al proprietario applicativo.
+func (m *LSPManager) SetEmitter(emit lspEmitter) {
+	m.mu.Lock()
+	m.emit = emit
+	m.mu.Unlock()
+}
+
+func (m *LSPManager) publish(eventType string, sessionID SessionID, resourceID string, payload any) {
+	m.mu.Lock()
+	emit := m.emit
+	m.mu.Unlock()
+	if emit != nil {
+		emit(eventType, sessionID, resourceID, payload)
+	}
+}
+
+func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := lspKey{session: session.ID, language: languageID}
+	if existing, ok := m.sessions[key]; ok {
+		return existing
+	}
+	created := &lspSession{
+		id: session.ID, language: languageID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
+		status:    LanguageServerStatus{SessionID: session.ID, Language: languageID, State: LanguageServerStopped},
+		documents: make(map[DocumentID]*trackedDocument), byURI: make(map[string]DocumentID),
+		codeActions: make(map[string]lsp.CodeAction), diagnostics: make(map[string][]lsp.Diagnostic),
+	}
+	m.sessions[key] = created
+	return created
+}
+
+// server restituisce il language server del linguaggio nella sessione.
+func (m *LSPManager) server(sessionID SessionID, languageID string) (*lspSession, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, ok := m.sessions[lspKey{session: sessionID, language: languageID}]
+	return state, ok
+}
+
+// servers restituisce i language server della sessione, ordinati per linguaggio (risultati stabili).
+func (m *LSPManager) servers(sessionID SessionID) []*lspSession {
+	m.mu.Lock()
+	result := make([]*lspSession, 0, 1)
+	for key, state := range m.sessions {
+		if key.session == sessionID {
+			result = append(result, state)
+		}
+	}
+	m.mu.Unlock()
+	sort.Slice(result, func(i, j int) bool { return result[i].language < result[j].language })
+	return result
+}
+
+// forDocument restituisce il server che ha sincronizzato il documento.
+func (m *LSPManager) forDocument(sessionID SessionID, documentID DocumentID) (*lspSession, bool) {
+	for _, state := range m.servers(sessionID) {
+		state.mu.Lock()
+		_, tracked := state.documents[documentID]
+		state.mu.Unlock()
+		if tracked {
+			return state, true
+		}
+	}
+	return nil, false
+}
+
+// forPath restituisce il server del linguaggio che possiede il file, anche se non è aperto.
+func (m *LSPManager) forPath(sessionID SessionID, path string) (*lspSession, bool) {
+	owner, _, ok := m.languages.ForPath(path)
+	if !ok {
+		return nil, false
+	}
+	state, found := m.server(sessionID, owner.ID())
+	if found {
+		m.armIdle(state)
+	}
+	return state, found
+}
+
+// Status restituisce lo stato corrente del language server del linguaggio per la sessione.
+func (m *LSPManager) Status(sessionID SessionID, languageID string) LanguageServerStatus {
+	session, ok := m.server(sessionID, languageID)
+	if !ok {
+		return LanguageServerStatus{SessionID: sessionID, Language: languageID, State: LanguageServerStopped}
+	}
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.status
+}
+
+// Log restituisce le ultime righe di log del language server del linguaggio.
+func (m *LSPManager) Log(sessionID SessionID, languageID string) []string {
+	session, ok := m.server(sessionID, languageID)
+	if !ok {
+		return []string{}
+	}
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return append([]string(nil), session.log...)
+}
+
+// Start avvia il server di options.Language per la sessione se non è già attivo; i documenti
+// tracciati per quel linguaggio vengono riaperti.
+func (m *LSPManager) Start(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
+	if options.Language == "" {
+		return LanguageServerStatus{}, fmt.Errorf("language server language not specified")
+	}
+	state := m.ensure(session, options.Language)
+	state.lifecycle.Lock()
+	defer state.lifecycle.Unlock()
+	state.mu.Lock()
+	if state.closed {
+		state.mu.Unlock()
+		return LanguageServerStatus{}, fmt.Errorf("language server session is closed")
+	}
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+		state.idleTimer = nil
+	}
+	state.idleEpoch++
+	state.suspended = false
+	m.activity.Track(lspActivityID(state), "code-studio:"+string(session.ID))
+	if state.process != nil || state.launching {
+		status := state.status
+		state.mu.Unlock()
+		m.armIdle(state)
+		return status, nil
+	}
+	state.launching = true
+	state.restartEpoch++
+	state.options = options
+	state.stopping = false
+	state.status = LanguageServerStatus{SessionID: session.ID, Language: options.Language, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
+	state.mu.Unlock()
+	m.publishStatus(state)
+	if err := m.launch(state); err != nil {
+		m.setState(state, LanguageServerCrashed, err.Error())
+		return m.Status(session.ID, options.Language), err
+	}
+	m.armIdle(state)
+	return m.Status(session.ID, options.Language), nil
+}
+
+// launch avvia il processo; il chiamante deve aver impostato launching, che viene sempre azzerato.
+func (m *LSPManager) launch(state *lspSession) error {
+	defer func() {
+		state.mu.Lock()
+		state.launching = false
+		state.mu.Unlock()
+	}()
+	state.mu.Lock()
+	options := state.options
+	root := state.root
+	state.mu.Unlock()
+	name := options.DisplayName()
+
+	command := procutil.Command(options.Binary, options.Arguments...)
+	command.Dir = root
+	command.Env = options.Environment
+	configureProcess(command, false)
+	stdin, err := command.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("could not attach stdin of %s: %w", name, err)
+	}
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("could not attach stdout of %s: %w", name, err)
+	}
+	stderr, err := command.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("could not attach stderr of %s: %w", name, err)
+	}
+	if err := command.Start(); err != nil {
+		return fmt.Errorf("avvio %s fallito: %w", name, err)
+	}
+	process := &serverProcess{command: command, stdin: stdin, exited: make(chan struct{})}
+	process.conn = lsp.NewConn(stdout, stdin, &lspHandler{manager: m, session: state, process: process})
+	// Backpressure: oltre MaxPendingLSPRequests le nuove richieste falliscono
+	// subito invece di accumularsi ed esaurire i timeout.
+	process.conn.SetPendingLimit(MaxPendingLSPRequests)
+	go process.conn.Run()
+	go m.collectStderr(state, process, stderr)
+	go m.watch(state, process)
+
+	state.mu.Lock()
+	state.process = process
+	state.status.PID = command.Process.Pid
+	state.startedAt = time.Now()
+	state.mu.Unlock()
+	// Il server language è un figlio gestito: dopo un crash lo sweep dell'avvio
+	// successivo lo ritrova e lo termina (managedchildren.go).
+	registerManagedChild(command.Process.Pid, filepath.Base(options.Binary))
+
+	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
+	defer cancel()
+	var initialized initializeResult
+	if err := process.conn.Call(ctx, "initialize", initializeParams(state), &initialized); err != nil {
+		m.abandon(state, process)
+		return fmt.Errorf("inizializzazione %s fallita: %w", name, err)
+	}
+	features := initialized.Capabilities.features()
+	process.syncKind = initialized.Capabilities.syncKind()
+	state.mu.Lock()
+	state.status.Features = &features
+	state.mu.Unlock()
+	if err := process.conn.Notify("initialized", map[string]any{}); err != nil {
+		m.abandon(state, process)
+		return err
+	}
+	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
+	m.reopenDocuments(state, process)
+	m.setState(state, LanguageServerReady, "")
+	m.signalMemoryBudget()
+	return nil
+}
+
+func (m *LSPManager) reopenDocuments(state *lspSession, process *serverProcess) {
+	state.documentsMu.Lock()
+	defer state.documentsMu.Unlock()
+	state.mu.Lock()
+	documents := make([]trackedDocument, 0, len(state.documents))
+	for _, document := range state.documents {
+		documents = append(documents, *document)
+	}
+	state.synced = process
+	state.mu.Unlock()
+	for _, document := range documents {
+		_ = process.conn.Notify("textDocument/didOpen", map[string]any{"textDocument": lsp.TextDocumentItem{
+			URI: document.uri, LanguageID: document.languageID, Version: document.version, Text: document.text,
+		}})
+	}
+}
+
+func (m *LSPManager) collectStderr(state *lspSession, process *serverProcess, stderr io.Reader) {
+	scanner := bufio.NewScanner(stderr)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		if !m.isCurrent(state, process) {
+			continue
+		}
+		m.appendLog(state, "stderr: "+scanner.Text())
+	}
+}
+
+func (m *LSPManager) watch(state *lspSession, process *serverProcess) {
+	err := process.command.Wait()
+	// exited si chiude solo dopo l'aggiornamento di stato: chi attende Stop vede già lo stato finale.
+	defer close(process.exited)
+	// Il processo è morto: esce dal registro dei figli gestiti.
+	releaseManagedChild(process.command.Process.Pid)
+	state.mu.Lock()
+	if state.process != process {
+		state.mu.Unlock()
+		return
+	}
+	state.process = nil
+	state.synced = nil
+	stopping := state.stopping
+	state.status.PID = 0
+	state.mu.Unlock()
+	if stopping {
+		m.setState(state, LanguageServerStopped, "")
+		return
+	}
+	state.mu.Lock()
+	reason := state.options.DisplayName() + " terminato inaspettatamente"
+	state.mu.Unlock()
+	if err != nil {
+		reason = fmt.Sprintf("%s: %v", reason, err)
+	}
+	m.appendLog(state, reason)
+	m.handleCrash(state, reason)
+}
+
+func (m *LSPManager) handleCrash(state *lspSession, reason string) {
+	state.mu.Lock()
+	if state.closed || state.stopping {
+		state.mu.Unlock()
+		return
+	}
+	now := time.Now()
+	recent := state.crashes[:0]
+	for _, crash := range state.crashes {
+		if now.Sub(crash) < crashWindow {
+			recent = append(recent, crash)
+		}
+	}
+	state.crashes = append(recent, now)
+	epoch := state.restartEpoch
+	attempt := len(state.crashes)
+	state.status.Restarts++
+	state.mu.Unlock()
+	if attempt > maxCrashRestarts {
+		m.setState(state, LanguageServerCrashed, reason+"; riavvio automatico sospeso, usa Restart")
+		return
+	}
+	m.setState(state, LanguageServerStarting, reason+"; riavvio in corso")
+	go func() {
+		time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
+		state.lifecycle.Lock()
+		defer state.lifecycle.Unlock()
+		state.mu.Lock()
+		cancelled := state.restartEpoch != epoch || state.closed || state.stopping || state.process != nil || state.launching
+		if !cancelled {
+			state.launching = true
+		}
+		state.mu.Unlock()
+		if cancelled {
+			return
+		}
+		if err := m.launch(state); err != nil {
+			m.handleCrash(state, err.Error())
+		} else {
+			m.armIdle(state)
+		}
+	}()
+}
+
+// Stop chiude il language server del linguaggio con shutdown/exit e termina il process tree se non risponde.
+func (m *LSPManager) Stop(sessionID SessionID, languageID string) {
+	if state, ok := m.server(sessionID, languageID); ok {
+		m.stop(state)
+	}
+}
+
+func (m *LSPManager) stop(state *lspSession) {
+	m.stopState(state, false)
+}
+
+func (m *LSPManager) stopState(state *lspSession, closeSession bool) {
+	state.lifecycle.Lock()
+	defer state.lifecycle.Unlock()
+	state.mu.Lock()
+	state.closed = state.closed || closeSession
+	state.suspended = false
+	state.userInitiated = false
+	m.activity.Forget(lspActivityID(state))
+	state.idleEpoch++
+	state.mu.Unlock()
+	m.stopLocked(state)
+}
+func (m *LSPManager) stopLocked(state *lspSession) {
+	state.mu.Lock()
+	state.stopping = true
+	state.restartEpoch++
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+		state.idleTimer = nil
+	}
+	process := state.process
+	state.mu.Unlock()
+	if process == nil {
+		m.setState(state, LanguageServerStopped, "")
+		return
+	}
+	// A server that stops reading stdin can block even a notification write.
+	// Closing stdin below releases the protocol writer when the grace period ends.
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	graceful := make(chan struct{})
+	go func() {
+		defer close(graceful)
+		_ = process.conn.Call(ctx, "shutdown", nil, nil)
+		_ = process.conn.Notify("exit", nil)
+	}()
+	select {
+	case <-graceful:
+	case <-ctx.Done():
+	}
+	_ = process.stdin.Close()
+	select {
+	case <-process.exited:
+	case <-time.After(shutdownTimeout):
+		if err := terminateProcessTree(process.command); err != nil {
+			m.appendLog(state, fmt.Sprintf("process tree termination failed: %v", err))
+			if process.command.Process != nil {
+				if killErr := process.command.Process.Kill(); killErr != nil {
+					m.appendLog(state, fmt.Sprintf("direct process termination failed: %v", killErr))
+				}
+			}
+		}
+		select {
+		case <-process.exited:
+		case <-time.After(shutdownTimeout):
+			// Keep the process and registry entry until watch's Wait confirms exit.
+			message := "language server did not exit after forced termination"
+			m.appendLog(state, message)
+			m.setState(state, LanguageServerCrashed, message)
+		}
+	}
+}
+
+// Restart arresta e riavvia il server di options.Language azzerando il contatore dei crash.
+func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
+	explicit := false
+	if state, ok := m.server(session.ID, options.Language); ok {
+		state.mu.Lock()
+		explicit = state.userInitiated
+		state.mu.Unlock()
+	}
+	m.Stop(session.ID, options.Language)
+	if state, ok := m.server(session.ID, options.Language); ok {
+		state.mu.Lock()
+		state.userInitiated = explicit
+		state.mu.Unlock()
+		state.mu.Lock()
+		state.crashes = nil
+		state.mu.Unlock()
+	}
+	return m.Start(session, options)
+}
+
+// StopSession arresta tutti i language server della sessione.
+func (m *LSPManager) StopSession(sessionID SessionID) {
+	for _, state := range m.servers(sessionID) {
+		m.stop(state)
+	}
+}
+
+// CloseSession arresta i language server della sessione e ne dimentica documenti e diagnostica.
+func (m *LSPManager) CloseSession(sessionID SessionID) {
+	for _, state := range m.servers(sessionID) {
+		m.stopState(state, true)
+	}
+	m.mu.Lock()
+	for key, state := range m.sessions {
+		if key.session != sessionID {
+			continue
+		}
+		state.mu.Lock()
+		state.closed = true
+		if state.diagnosticsTimer != nil {
+			state.diagnosticsTimer.Stop()
+		}
+		state.pendingDiagnostics, state.diagnosticsTimer = nil, nil
+		state.mu.Unlock()
+		delete(m.sessions, key)
+	}
+	m.mu.Unlock()
+}
+
+// Shutdown arresta tutti i language server posseduti dal manager.
+func (m *LSPManager) Shutdown() {
+	m.stopMemoryBudget()
+	if m.unsubscribeActivity != nil {
+		m.unsubscribeActivity()
+	}
+	m.mu.Lock()
+	states := make([]*lspSession, 0, len(m.sessions))
+	for _, state := range m.sessions {
+		states = append(states, state)
+	}
+	m.mu.Unlock()
+	var group sync.WaitGroup
+	for _, state := range states {
+		group.Go(func() { m.stopState(state, true) })
+	}
+	group.Wait()
+}
+
+// abandon stacca il processo dalla sessione prima di terminarlo, così il watcher non lo tratta come crash.
+func (m *LSPManager) abandon(state *lspSession, process *serverProcess) {
+	state.mu.Lock()
+	if state.process == process {
+		state.process = nil
+		state.synced = nil
+		state.status.PID = 0
+	}
+	state.mu.Unlock()
+	_ = process.stdin.Close()
+	_ = terminateProcessTree(process.command)
+}
+
+func (m *LSPManager) isCurrent(state *lspSession, process *serverProcess) bool {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	return state.process == process
+}
+
+func (m *LSPManager) setState(state *lspSession, value LanguageServerState, message string) {
+	state.mu.Lock()
+	if value == LanguageServerStopped || value == LanguageServerCrashed {
+		state.diagnosticSignatures = nil
+	}
+	state.status.State = value
+	state.status.Error = message
+	state.mu.Unlock()
+	m.publishStatus(state)
+}
+
+func (m *LSPManager) publishStatus(state *lspSession) {
+	state.mu.Lock()
+	status := state.status
+	state.mu.Unlock()
+	m.publish("lsp.status", status.SessionID, string(status.SessionID), status)
+}
+
+func (m *LSPManager) appendLog(state *lspSession, line string) {
+	stamped := time.Now().Format("15:04:05.000") + " " + strings.TrimRight(line, "\r\n")
+	state.mu.Lock()
+	state.log = append(state.log, stamped)
+	if overflow := len(state.log) - maxLanguageServerLog; overflow > 0 {
+		state.log = append([]string(nil), state.log[overflow:]...)
+	}
+	state.mu.Unlock()
+}
+
+func initializeParams(state *lspSession) map[string]any {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	return map[string]any{
+		"processId":             nil,
+		"clientInfo":            map[string]any{"name": "adOmnia IDE"},
+		"rootUri":               state.rootURI,
+		"workspaceFolders":      []map[string]any{{"uri": state.rootURI, "name": state.name}},
+		"initializationOptions": state.options.InitializationOptions,
+		"capabilities": map[string]any{
+			"general": map[string]any{"positionEncodings": []string{"utf-16"}},
+			"workspace": map[string]any{
+				"applyEdit": true, "configuration": true, "workspaceFolders": true,
+				"workspaceEdit": map[string]any{"documentChanges": true, "resourceOperations": []string{}},
+				"symbol":        map[string]any{"dynamicRegistration": false},
+			},
+			"window": map[string]any{"workDoneProgress": true, "showMessage": map[string]any{}},
+			"textDocument": map[string]any{
+				"synchronization": map[string]any{"didSave": true, "willSave": false},
+				"completion": map[string]any{
+					"completionItem": map[string]any{
+						"snippetSupport": true, "documentationFormat": []string{"markdown", "plaintext"},
+						"deprecatedSupport": true, "preselectSupport": true, "tagSupport": map[string]any{"valueSet": []int{1}},
+					},
+					"contextSupport": true,
+				},
+				"hover":          map[string]any{"contentFormat": []string{"markdown", "plaintext"}},
+				"signatureHelp":  map[string]any{"signatureInformation": map[string]any{"documentationFormat": []string{"markdown", "plaintext"}, "parameterInformation": map[string]any{"labelOffsetSupport": true}}},
+				"definition":     map[string]any{"linkSupport": true},
+				"typeDefinition": map[string]any{"linkSupport": true},
+				"implementation": map[string]any{"linkSupport": true},
+				"references":     map[string]any{},
+				"documentSymbol": map[string]any{"hierarchicalDocumentSymbolSupport": true},
+				"formatting":     map[string]any{},
+				"rename":         map[string]any{"prepareSupport": true},
+				"codeAction": map[string]any{
+					"codeActionLiteralSupport": map[string]any{"codeActionKind": map[string]any{"valueSet": []string{
+						"", "quickfix", "refactor", "refactor.extract", "refactor.inline", "refactor.rewrite", "source", "source.organizeImports", "source.fixAll",
+					}}},
+					"resolveSupport": map[string]any{"properties": []string{"edit"}},
+					"dataSupport":    true, "isPreferredSupport": true, "disabledSupport": true,
+				},
+				"publishDiagnostics": map[string]any{"relatedInformation": false, "versionSupport": true},
+				"documentHighlight":  map[string]any{},
+				"callHierarchy":      map[string]any{},
+				"typeHierarchy":      map[string]any{},
+				"inlayHint":          map[string]any{},
+				"semanticTokens": map[string]any{
+					"requests":       map[string]any{"full": true, "range": false},
+					"tokenTypes":     semanticTokenTypes,
+					"tokenModifiers": semanticTokenModifiers,
+					"formats":        []string{"relative"},
+				},
+			},
+		},
+	}
+}
+
+type lspHandler struct {
+	manager *LSPManager
+	session *lspSession
+	process *serverProcess
+}
+
+// HandleNotification scarta i messaggi di processi del server non più correnti.
+func (h *lspHandler) HandleNotification(method string, params json.RawMessage) {
+	if !h.manager.isCurrent(h.session, h.process) {
+		return
+	}
+	switch method {
+	case "textDocument/publishDiagnostics":
+		var report lsp.PublishDiagnosticsParams
+		if json.Unmarshal(params, &report) == nil {
+			h.manager.publishDiagnostics(h.session, report)
+		}
+	case "window/logMessage", "window/showMessage":
+		var message LanguageServerMessage
+		if json.Unmarshal(params, &message) != nil {
+			return
+		}
+		h.manager.appendLog(h.session, message.Message)
+		if method == "window/showMessage" && message.Type <= 2 {
+			h.manager.publish("lsp.message", h.session.id, string(h.session.id), message)
+		}
+	case "$/progress":
+		h.manager.publishProgress(h.session, params)
+	}
+}
+
+// HandleRequest risponde alle richieste del server necessarie; workspace/applyEdit viene catturato per l'anteprima.
+func (h *lspHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+	switch method {
+	case "workspace/configuration":
+		var request struct {
+			Items []json.RawMessage `json:"items"`
+		}
+		_ = json.Unmarshal(params, &request)
+		h.session.mu.Lock()
+		configuration := h.session.options.Configuration
+		h.session.mu.Unlock()
+		var settings any
+		if configuration != nil {
+			settings = configuration()
+		}
+		result := make([]any, len(request.Items))
+		for index := range result {
+			result[index] = settings
+		}
+		return result, nil
+	case "window/workDoneProgress/create", "client/registerCapability", "client/unregisterCapability":
+		return nil, nil
+	case "workspace/workspaceFolders":
+		return []map[string]any{{"uri": h.session.rootURI, "name": h.session.name}}, nil
+	case "workspace/applyEdit":
+		var request lsp.ApplyWorkspaceEditParams
+		if err := json.Unmarshal(params, &request); err != nil {
+			return map[string]any{"applied": false, "failureReason": "edit non valido"}, nil
+		}
+		h.session.mu.Lock()
+		h.session.applyEdits = append(h.session.applyEdits, request.Edit)
+		h.session.mu.Unlock()
+		return map[string]any{"applied": true}, nil
+	case "window/showDocument":
+		return map[string]any{"success": false}, nil
+	}
+	return nil, lsp.ErrMethodNotFound
+}
+
+func (m *LSPManager) publishProgress(state *lspSession, params json.RawMessage) {
+	var envelope struct {
+		Token json.RawMessage `json:"token"`
+		Value struct {
+			Kind       string `json:"kind"`
+			Title      string `json:"title"`
+			Message    string `json:"message"`
+			Percentage *int   `json:"percentage"`
+		} `json:"value"`
+	}
+	if json.Unmarshal(params, &envelope) != nil || envelope.Value.Kind == "" {
+		return
+	}
+	m.publish("lsp.progress", state.id, string(state.id), LanguageServerProgress{
+		Token: strings.Trim(string(envelope.Token), `"`), Kind: envelope.Value.Kind, Title: envelope.Value.Title,
+		Message: envelope.Value.Message, Percentage: envelope.Value.Percentage,
+	})
+}
+
+func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDiagnosticsParams) {
+	path := pathFromURI(report.URI)
+	// Un file generato enorme può produrre migliaia di voci: la UI ne riceve al massimo maxDiagnosticsPerFile, errori prima.
+	shown := report.Diagnostics
+	if len(shown) > maxDiagnosticsPerFile {
+		shown = append([]lsp.Diagnostic(nil), shown...)
+		sort.SliceStable(shown, func(i, j int) bool { return max(1, shown[i].Severity) < max(1, shown[j].Severity) })
+		shown = shown[:maxDiagnosticsPerFile]
+	}
+	diagnostics := make([]EditorDiagnostic, 0, len(shown))
+	for _, diagnostic := range shown {
+		diagnostics = append(diagnostics, EditorDiagnostic{
+			Range: editorRange(diagnostic.Range), Severity: max(1, diagnostic.Severity), Message: diagnostic.Message,
+			Source: diagnostic.Source, Code: strings.Trim(string(diagnostic.Code), `"`),
+		})
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if len(report.Diagnostics) == 0 {
+		delete(state.diagnostics, report.URI)
+	} else {
+		state.diagnostics[report.URI] = report.Diagnostics
+	}
+	if state.closed {
+		return
+	}
+	next := DiagnosticsReport{
+		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.byURI[report.URI],
+		Diagnostics: diagnostics,
+	}
+	previous, exists := state.diagnosticSignatures[report.URI]
+	if len(diagnostics) == 0 {
+		if !exists {
+			return
+		}
+		delete(state.diagnosticSignatures, report.URI)
+	} else {
+		// Compare the visible, capped report, not raw diagnostics: invisible fields
+		// still refresh above for code actions. Metadata is part of the identity.
+		encoded, _ := json.Marshal(next) // report contains only JSON-safe value types
+		signature := sha256.Sum256(encoded)
+		if exists && previous == signature {
+			return
+		}
+		if state.diagnosticSignatures == nil {
+			state.diagnosticSignatures = make(map[string][sha256.Size]byte)
+		}
+		state.diagnosticSignatures[report.URI] = signature
+	}
+	if state.pendingDiagnostics == nil {
+		state.pendingDiagnostics = make(map[string]DiagnosticsReport)
+	}
+	state.pendingDiagnostics[report.URI] = next
+	if state.diagnosticsTimer == nil {
+		state.diagnosticsTimer = time.AfterFunc(diagnosticsThrottle, func() { m.flushDiagnostics(state) })
+	}
+}
+
+// flushDiagnostics invia alla UI l'ultima diagnostica di ogni file cambiato nella finestra di throttling.
+func (m *LSPManager) flushDiagnostics(state *lspSession) {
+	state.mu.Lock()
+	pending := state.pendingDiagnostics
+	state.pendingDiagnostics, state.diagnosticsTimer = nil, nil
+	closed := state.closed
+	state.mu.Unlock()
+	if closed {
+		return
+	}
+	for uri, report := range pending {
+		m.publish("lsp.diagnostics", state.id, uri, report)
+	}
+}

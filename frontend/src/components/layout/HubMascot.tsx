@@ -32,7 +32,7 @@ export function HubMascot() {
       const { useCodeStudioStore } = await import('@/stores/codeStudio')
       const layout = useCodeStudioStore.getState().layout
       useCodeStudioStore.getState().updateLayout({ structureOpen: true, structureWidth: Math.max(340, layout.structureWidth) })
-      setActiveRail('goide')
+      setActiveRail('codestudio')
       return
     }
     setShowConnectNotice(true)

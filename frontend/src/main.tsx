@@ -1,3 +1,4 @@
+import './lib/legacyStorageMigration'
 import { startActivityTracking } from './lib/activityTracking'
 import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'

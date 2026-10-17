@@ -8,7 +8,7 @@ export interface HubLayout {
 
 const KEY = 'adomnia.hubLayout'
 export const DEFAULT_HUB_LAYOUT: HubLayout = {
-  tiles: ['goide', 'collections', 'database', 'jsonviewer', 'powertools'],
+  tiles: ['codestudio', 'collections', 'database', 'jsonviewer', 'powertools'],
   todaySide: 'right',
 }
 /** Rails that make no sense as a Hub tile. */

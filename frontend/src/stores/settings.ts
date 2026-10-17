@@ -155,7 +155,7 @@ export interface AppSettings {
   /**
    * Scorciatoie Code Studio come JSON, allo stesso livello di `.adomnia/settings.json` del
    * progetto: preset base e personalizzazioni (con condizione `when`). Migrato dalla chiave
-   * localStorage `adomnia.goide.keymap` alla versione 15 delle impostazioni.
+   * localStorage `adomnia.codestudio.keymap` alla versione 15 delle impostazioni.
    */
   keymap: {
     preset: 'goland' | 'vscode'

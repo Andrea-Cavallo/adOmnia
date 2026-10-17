@@ -35,7 +35,7 @@ dei siti di marketing esterni.
 
 ## 1. Commento r/golang — Small Projects
 
-I'm building **adOmnia**, an MIT-licensed desktop app combining a Go IDE and an
+I'm building **adOmnia**, an MIT-licensed desktop app combining an IDE and an
 API toolbox. The goal is to keep editing, running a service, testing its API
 and inspecting logs in one workspace.
 
@@ -50,7 +50,7 @@ Source and downloads: https://github.com/Andrea-Cavallo/adOmnia
 
 ## 2. Topic Go Forum — Releases
 
-**Titolo:** adOmnia: an open-source Go IDE and API toolbox with detachable tool windows
+**Titolo:** adOmnia: an open-source Code Studio and API toolbox with detachable tool windows
 
 Hi everyone, I'm the author of **adOmnia**, a local-first desktop developer
 toolbox built with Go, Wails and React, released under the MIT license.
@@ -77,7 +77,7 @@ Downloads: https://github.com/Andrea-Cavallo/adOmnia/releases/latest
 
 ## 3. Show HN
 
-**Titolo:** Show HN: adOmnia – A local-first Go IDE and API toolbox
+**Titolo:** Show HN: adOmnia – A local-first Code Studio and API toolbox
 
 **URL da inviare:** https://github.com/Andrea-Cavallo/adOmnia
 

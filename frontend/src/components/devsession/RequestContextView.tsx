@@ -111,8 +111,8 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
       const [{ createGoIDEFiles }, { useCodeStudioStore }] = await Promise.all([import('@/lib/code-studio-api'), import('@/stores/codeStudio')])
       await createGoIDEFiles(session.goSessionId, result.files)
       setState({ busy: false, text: `Saved ${result.files.length} files in ${result.dir}${result.secretsStripped ? ` · ${result.secretsStripped} secrets stripped` : ''}` })
-      const goide = useCodeStudioStore.getState()
-      if (goide.activeSessionId !== session.goSessionId) await goide.selectSession(session.goSessionId)
+      const codeStudio = useCodeStudioStore.getState()
+      if (codeStudio.activeSessionId !== session.goSessionId) await codeStudio.selectSession(session.goSessionId)
       await useCodeStudioStore.getState().openLocation(`${result.dir}/README.md`, 1, 1)
     } catch (error) {
       setState({ busy: false, text: error instanceof Error ? error.message : String(error), error: true })

@@ -20,8 +20,8 @@ export function CodeStudioWarmup(): null {
     if (!usedBefore()) return undefined
     return scheduleStartupIdle(() => {
       void (async () => {
-        const goide = useCodeStudioStore.getState()
-        if (!goide.initialized) await goide.initialize()
+        const codeStudio = useCodeStudioStore.getState()
+        if (!codeStudio.initialized) await codeStudio.initialize()
         const { activeSessionId, sessions } = useCodeStudioStore.getState()
         const session = sessions.find((item) => item.id === activeSessionId)
         if (!session || session.project.authorization !== 'tooling-permitted') return

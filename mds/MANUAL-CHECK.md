@@ -638,3 +638,10 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 - [ ] ML-1.M2 Aprire un progetto: titolo finestra, menu, impostazioni, scorciatoie, stato vuoto e dialog di fiducia non citano più "Go Studio".
 - [ ] ML-1.M3 Finestra staccata e Split Debug View: titolo "… · Code Studio · adOmnia".
 - [ ] ML-1.M4 Tema chiaro e scuro, lingua IT ed EN (stringhe "Apri in Code Studio", "Compila. Esegui. Debug.").
+
+### ML-2 — Code Studio: rename interno e migrazioni (2026-10-17)
+
+- [ ] ML-2.M1 Con un profilo che ha già usato la versione precedente (chiavi `adomnia.goide.*` in localStorage, rail `goide` nel layout Hub): avviare l'app nuova — layout editor, terminali, cronologia run, keymap e Hub sono quelli di prima; l'Hub apre Code Studio.
+- [ ] ML-2.M2 Aprire un progetto Go fidato: indicizzazione gopls, Run, Debug con breakpoint, test, terminale — tutto come prima del rename.
+- [ ] ML-2.M3 Finestra staccata dell'IDE, finestra tool staccata e Split Debug View: si aprono, ricevono gli eventi (`code-studio:event`) e si chiudono senza chiedere conferme spurie.
+- [ ] ML-2.M4 Riavvio con progetti aperti: ripristino sessioni e recovery dopo chiusura forzata (bucket `goide` invariato).

@@ -69,7 +69,7 @@ import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/code-studio/
 import { scheduleAutoSave } from '@/lib/code-studio/codeStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/code-studio/codeStudioDiskChanges'
 
-const LAYOUT_KEY = 'adomnia.goide.layout.v1'
+const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */

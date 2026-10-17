@@ -1,7 +1,7 @@
-# gO Studio → adOmnia IDE Platform: refactor multi-language
+# Code Studio → adOmnia IDE Platform: refactor multi-language
 
-> Stato: **Fasi 1–12 completate** (sezione 23). Restano fuori, per scelta motivata, lo spostamento in massa di `components/goide` e la rimozione dei campi Go piatti dal DTO delle run config. Lo smoke manuale della build desktop e la build nativa macOS/Linux sono da fare a mano (checklist in sezione 23). Ultimo aggiornamento: 2026-10-03.
-> Obiettivo: trasformare gO Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
+> Stato: **Fasi 1–12 completate** (sezione 23). Restano fuori, per scelta motivata, lo spostamento in massa di `components/code-studio` e la rimozione dei campi Go piatti dal DTO delle run config. Lo smoke manuale della build desktop e la build nativa macOS/Linux sono da fare a mano (checklist in sezione 23). Ultimo aggiornamento: 2026-10-03.
+> Obiettivo: trasformare Code Studio da "IDE Go" a **IDE Platform + Go Language Adapter**, senza
 > riscritture e senza regressioni. Java/Rust/Python/TypeScript sono solo *scenari di validazione*:
 > **non** si implementano in questo refactor.
 
@@ -21,16 +21,16 @@ Indice: [1 Architettura attuale](#1-architettura-attuale) · [2 Problemi](#2-pro
 
 | Area | Dimensione | Note |
 |---|---|---|
-| Backend `internal/goide` | ~70 file non-test, ~23k righe, 1 package | + `lsp/` (JSON-RPC, tipi, UTF-16), `dap/` (client DAP), `projecttemplates/` (solo `.tmpl` Go) |
-| `internal/goidewindow` | 195 righe | finestre native per sessione (generico) |
-| Binding Wails | `goide_bindings.go` (1417 righe) + `goide_p0_bindings.go` | servizio `GoIDE`, **213 metodi** esposti al frontend |
+| Backend `internal/codestudio` | ~70 file non-test, ~23k righe, 1 package | + `lsp/` (JSON-RPC, tipi, UTF-16), `dap/` (client DAP), `projecttemplates/` (solo `.tmpl` Go) |
+| `internal/codestudiowindow` | 195 righe | finestre native per sessione (generico) |
+| Binding Wails | `code_studio_bindings.go` (1417 righe) + `code_studio_p0_bindings.go` | servizio `GoIDE`, **213 metodi** esposti al frontend |
 | Consumer esterni | `internal/copilot`, `copilot_bindings.go`, `devcontext_bindings.go`, `devsession_bindings.go` | usano `goide.Session`, `Document`, `DocumentID`, `EventEnvelope`, `Execution`, `Debug*` |
-| Frontend | 215 file non-test in `components/goide`, 8 store `stores/goide*.ts`, 7 moduli `lib/goide-*.ts` | caricato in lazy (`MainArea.tsx:74`, `main.tsx:10`), garantito da `scripts/check-startup-bundle.mjs:22` |
+| Frontend | 215 file non-test in `components/code-studio`, 8 store `stores/codeStudio*.ts`, 7 moduli `lib/code-studio-*.ts` | caricato in lazy (`MainArea.tsx:74`, `main.tsx:10`), garantito da `scripts/check-startup-bundle.mjs:22` |
 
 ### Forma attuale
 
 ```text
-React (components/goide, stores/goide*)
+React (components/code-studio, stores/codeStudio*)
         │  @wailsio/runtime + bindings/adomnia/goide.ts
         ▼
 GoIDE (root binding, 213 metodi)  ──►  goide.Service (facade unica, service.go)
@@ -53,8 +53,8 @@ Punti di forza già presenti (da **preservare**, non riscrivere):
 - Il lifecycle LSP in `lsp.go` (spawn, initialize/initialized, reopen, crash-restart con backoff, shutdown/exit, throttle diagnostics) è generico salvo configurazione gopls.
 - Il lifecycle DAP in `debug.go` (connect, handshake, breakpoints, configurationDone, step/threads/stack/scopes/variables/disassemble, terminate) è generico salvo argv e argomenti Delve.
 - Eventi: `EventEnvelope{Type, SessionID, ResourceID, Payload}` già esiste ed è instradato per sessione/risorsa.
-- `Capabilities` (types.go:343) esiste già ed è letto dal frontend (`stores/goide.ts:400`), ma **non è usato da nessun componente**: è l'aggancio naturale per le capability per linguaggio.
-- Il registry dei comandi frontend (`goStudioCommands.ts`) ha già un meccanismo di *availability con motivo* consumato da menu e Search Everywhere: basta un campo `requires`.
+- `Capabilities` (types.go:343) esiste già ed è letto dal frontend (`stores/codeStudio.ts:400`), ma **non è usato da nessun componente**: è l'aggancio naturale per le capability per linguaggio.
+- Il registry dei comandi frontend (`codeStudioCommands.ts`) ha già un meccanismo di *availability con motivo* consumato da menu e Search Everywhere: basta un campo `requires`.
 
 ---
 
@@ -73,10 +73,10 @@ Punti di forza già presenti (da **preservare**, non riscrivere):
 | P9 | Toolchain = Go SDK | toolchain.go:26 `ToolchainConfiguration{GoBinary}`, :31-63 `ToolchainInfo` = dump `go env`, :318 `GOTOOLCHAIN=local` | JDK/rustup non modellabili |
 | P10 | "Tool locator" duplicato 5 volte | gopls.go:32, service_debug.go:27, lint.go:107, buildtools.go:391, sonar.go:~205 | ogni linguaggio lo ricopierebbe |
 | P11 | Persistenza con schema Go | persistence.go:25-29 `Toolchains`, `GlobalToolchain`, `DetectedToolchains` | |
-| P12 | Frontend: provider Monaco registrati solo per `'go'` | `goStudioLanguageFeatures.ts:26`, `goStudioSemanticFeatures.ts:20`, `goStudioCodeLens.ts:14`, `goStudioCodeVision.ts:9`, `goStudioDebugEditor.ts:214` | nessun completamento/hover per altri linguaggi |
-| P13 | Frontend: registry comandi chiuso + menu "Go" fisso + switch `go.*` nel pannello | `goStudioCommands.ts:3-35,58-69,413-512`; `GoStudioPanel.tsx:444-491,538-618` | |
-| P14 | Frontend: filtri per estensione `.go` sparsi | `goStudioLspSync.ts:23`, `goStudioSaveActions.ts:41`, `goStudioRunOnSave.ts:20`, `goStudioRunTargets.ts:46`, `GoStudioInspectionWidget.tsx:25` | |
-| P15 | Frontend: tool window e status bar cablati | `GoStudioRunPanel.tsx:280-286`, `GoStudioToolStripes.tsx:42-49`, `GoStudioStatusBar.tsx:46-51,124,145` | |
+| P12 | Frontend: provider Monaco registrati solo per `'go'` | `codeStudioLanguageFeatures.ts:26`, `codeStudioSemanticFeatures.ts:20`, `codeStudioCodeLens.ts:14`, `codeStudioCodeVision.ts:9`, `codeStudioDebugEditor.ts:214` | nessun completamento/hover per altri linguaggi |
+| P13 | Frontend: registry comandi chiuso + menu "Go" fisso + switch `go.*` nel pannello | `codeStudioCommands.ts:3-35,58-69,413-512`; `CodeStudioPanel.tsx:444-491,538-618` | |
+| P14 | Frontend: filtri per estensione `.go` sparsi | `codeStudioLspSync.ts:23`, `codeStudioSaveActions.ts:41`, `codeStudioRunOnSave.ts:20`, `codeStudioRunTargets.ts:46`, `CodeStudioInspectionWidget.tsx:25` | |
+| P15 | Frontend: tool window e status bar cablati | `CodeStudioRunPanel.tsx:280-286`, `CodeStudioToolStripes.tsx:42-49`, `CodeStudioStatusBar.tsx:46-51,124,145` | |
 | P16 | Layering frontend invertito | store che importano da `components/` (`goide.ts:2-3,63-64`, `goideLsp.ts:1-3`) | rende difficile separare core e linguaggio |
 | P17 | Stato globale di package | toolversion.go:54 cache **non limitata e mai invalidata**; toolversion_cache.go:19 globale condivisa fra istanze `Service` | test e istanze multiple si influenzano |
 
@@ -90,7 +90,7 @@ Punti di forza già presenti (da **preservare**, non riscrivere):
 |---|---|---|
 | WorkspaceManager | parsing `go.mod`/`go.work`, ricerca `.go` | workspace.go:213-314 |
 | Project / RecentProject / Recovery | `Modules[].ModulePath` nel fingerprint | types.go:37-40, recovery.go:82-92 |
-| LSPManager | `goplsSettings`, stringhe "gopls", `clientInfo "adOmnia Go Studio"`, filtro linguaggio | lsp.go:201-230,455,458,509-531,573; lsp_documents.go:16 |
+| LSPManager | `goplsSettings`, stringhe "gopls", `clientInfo "adOmnia Code Studio"`, filtro linguaggio | lsp.go:201-230,455,458,509-531,573; lsp_documents.go:16 |
 | LSP features | comandi `gopls.change_signature`, `gopls.doc`; classificazione usi con `go/ast` | lsp_features.go:167,370,500 |
 | Quick definition | estrazione dichiarazione con `go/parser` | quick_definition.go:42-80 |
 | DebugManager | argv `dlv`, handshake stdout Delve, launch args, `__debug_bin`, retry `call ` | debug.go:38,217,299,333,518-590,691,764 |
@@ -111,14 +111,14 @@ Import Go-specifici (oggi tutti nello stesso package `goide`, quindi "visibili" 
 
 ## 4. Classificazione GENERIC / MIXED / GO_SPECIFIC
 
-### Backend (`internal/goide`)
+### Backend (`internal/codestudio`)
 
 **GENERIC** (~37 file): `processes.go`, `process_adapter_*.go`, `process_list.go`, `terminal.go`, `terminal_profiles*.go`,
 `watcher.go`, `search.go`, `quick_open.go`, `files.go`, `fileops.go`, `documents.go`¹, `document_observer.go`,
 `history.go`, `recovery.go`¹, `crashlock.go`, `supervisor.go`, `windows.go`, `studio_workspaces.go`,
 `service_session_state.go`, `vcs.go`, `vcs_working_diff.go`, `lint_baseline.go`, `sonar.go`, `sonar_baseline.go`,
 `buildtools.go` (make/docker/compose), `toolversion_cache.go`, `lsp_editor.go`, `lsp_hierarchy.go`, `lsp_markers.go`,
-`lsp/*`, `dap/*`, `internal/goidewindow`.
+`lsp/*`, `dap/*`, `internal/codestudiowindow`.
 ¹ con un dettaglio Go da estrarre (tabella estensioni / fingerprint moduli).
 
 **GO_SPECIFIC** (~31 file): `gopls.go`, `toolchain_detect.go`, `toolversion.go`, `dependencies.go`, `dependencygraph.go`,
@@ -152,15 +152,15 @@ Import Go-specifici (oggi tutti nello stesso package `goide`, quindi "visibili" 
 | `integrations.go` | `PluginEventFor` | `serviceSignatures` (module path Go) |
 | `persistence.go` | schema | blocchi toolchain Go → per linguaggio |
 | `service_terminal.go` | API terminale | PATH con bin Go → `EnvironmentContributor` |
-| `goide_bindings.go` | trasporto, stores, finestre | metodi Go (`DetectGopls`, `InstallDelve`, `StartGoTool`…) |
+| `code_studio_bindings.go` | trasporto, stores, finestre | metodi Go (`DetectGopls`, `InstallDelve`, `StartGoTool`…) |
 
-### Frontend (`components/goide`, `stores/goide*`, `lib/goide-*`)
+### Frontend (`components/code-studio`, `stores/codeStudio*`, `lib/code-studio-*`)
 
 ~95 GENERIC · ~60 GO_SPECIFIC · ~60 MIXED. Principali:
 
 - **GENERIC**: editor tabs/split/markdown/image, terminal (panel, view, bus, links base), quick open, find/replace, local history, bookmarks/navigation, VCS (gutter, branch, commit diff base, history), crash recovery, keymap/shortcuts, modal primitives, flame graph/timeline/vizkit, Sonar, Copilot, stores `goideNavigation/Vcs/Windows/Workspaces/Tests`.
-- **GO_SPECIFIC**: Performance Studio (pprof), Go trace, goroutine/concurrency/context inspector, go.mod/go.work/dependencies/dependency graph, toolchain (config, switcher, installer), private modules, extra Go tools, change signature, implement interface, move symbol, benchmarks, race, codegen, HTTP routes, `goStudioExtraLanguages` (gosum/goasm).
-- **MIXED (hotspot)**: `GoStudioPanel.tsx`, `goStudioCommands.ts`, `GoStudioCodeEditor.tsx` + provider Monaco, `stores/goide.ts`, `stores/goideLsp.ts`, `stores/goideDebug.ts`, `GoStudioRunPanel.tsx`, `GoStudioToolStripes.tsx`, `GoStudioStatusBar.tsx`, `GoStudioToolbar.tsx`, `GoStudioTestsPanel.tsx`, `goStudioTestTree.ts`, `GoStudioDebugSession.tsx`/`DebugVariables.tsx`, `GoStudioProjectTree.tsx`, `goStudioFileIcons.ts`, `GoStudioSettingsDialog.tsx`, `lib/goide-api.ts`.
+- **GO_SPECIFIC**: Performance Studio (pprof), Go trace, goroutine/concurrency/context inspector, go.mod/go.work/dependencies/dependency graph, toolchain (config, switcher, installer), private modules, extra Go tools, change signature, implement interface, move symbol, benchmarks, race, codegen, HTTP routes, `codeStudioExtraLanguages` (gosum/goasm).
+- **MIXED (hotspot)**: `CodeStudioPanel.tsx`, `codeStudioCommands.ts`, `CodeStudioCodeEditor.tsx` + provider Monaco, `stores/codeStudio.ts`, `stores/codeStudioLsp.ts`, `stores/codeStudioDebug.ts`, `CodeStudioRunPanel.tsx`, `CodeStudioToolStripes.tsx`, `CodeStudioStatusBar.tsx`, `CodeStudioToolbar.tsx`, `CodeStudioTestsPanel.tsx`, `codeStudioTestTree.ts`, `CodeStudioDebugSession.tsx`/`DebugVariables.tsx`, `CodeStudioProjectTree.tsx`, `codeStudioFileIcons.ts`, `CodeStudioSettingsDialog.tsx`, `lib/code-studio-api.ts`.
 
 ---
 
@@ -174,7 +174,7 @@ Decisioni chiave (motivate, non speculative):
 2. **Capability = interfacce piccole.** Un linguaggio implementa solo quelle che supporta; le capability esposte alla UI si *derivano* con type assertion (nessun flag manuale da tenere allineato).
 3. **Niente interfaccia `Formatter`/`Builder` separate.** Format passa già da LSP (`textDocument/formatting`); build è un *run kind*. Aggiungerle oggi sarebbe astrazione speculativa (KISS): si introducono quando un linguaggio le richiede fuori da LSP.
 4. **Il servizio Wails `GoIDE` resta la facciata stabile** durante tutta la migrazione: 213 metodi, nomi invariati. La UI non si rompe a ogni fase. Una facciata `IDE` generica arriva solo quando il frontend ne ha bisogno.
-5. **Composition root unica**: `internal/goide` diventa il punto in cui il core viene assemblato e l'adapter Go registrato. È l'unico package (oltre ai test) che importa sia core sia `languages/golang`.
+5. **Composition root unica**: `internal/codestudio` diventa il punto in cui il core viene assemblato e l'adapter Go registrato. È l'unico package (oltre ai test) che importa sia core sia `languages/golang`.
 
 ---
 
@@ -225,11 +225,11 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  host["internal/goide<br/>(composition root + facade)"] --> core["internal/ide/*"]
+  host["internal/codestudio<br/>(composition root + facade)"] --> core["internal/ide/*"]
   host --> golang["internal/languages/golang"]
   golang --> core
   core -. vietato .-> golang
-  bindings["goide_bindings.go (Wails)"] --> host
+  bindings["code_studio_bindings.go (Wails)"] --> host
 ```
 
 ### 6.3 Flusso Run
@@ -306,10 +306,10 @@ internal/
         ├── lint.go            # golangci-lint, staticcheck
         ├── coverage*.go race.go pprof.go trace.go codegen.go movesymbol*.go usage.go
         └── templates/         # projecttemplates
-internal/goide/                # composition root + facade Service (resta come nome per compatibilità)
+internal/codestudio/                # composition root + facade Service (resta come nome per compatibilità)
 ```
 
-Il package `internal/goide` alla fine contiene solo: costruzione del `Service`, registrazione dell'adapter Go, metodi-facciata per i binding, persistenza e migrazioni di schema.
+Il package `internal/codestudio` alla fine contiene solo: costruzione del `Service`, registrazione dell'adapter Go, metodi-facciata per i binding, persistenza e migrazioni di schema.
 
 ---
 
@@ -499,11 +499,11 @@ Monorepo `backend/go.mod + gateway/pom.xml + frontend/package.json` = **un Proje
 
 ## 16. Piano di migrazione
 
-Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vitest` + `check:startup` verdi, binding rigenerati con il `wails3` pinnato in `go.mod`, gO Studio usabile. Nessuna fase cambia l'API Wails se non dichiarato.
+Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vitest` + `check:startup` verdi, binding rigenerati con il `wails3` pinnato in `go.mod`, Code Studio usabile. Nessuna fase cambia l'API Wails se non dichiarato.
 
 - [x] **Fase 1 — Assessment.** Mappa GENERIC/MIXED/GO_SPECIFIC backend e frontend (questo documento).
 - [x] **Fase 2 — Astrazioni core.** `internal/ide/language` (`Language`, `ProjectDetector`, `CapabilitiesOf`) e `internal/ide/project` (`Unit`, `IgnoredDirectory`, `EnsureWithin`). Test architetturale di import (`internal/ide/architecture_test.go`) + linguaggi fittizi (`registry_test.go`). Le altre capability (§8) entrano nella fase che porta il loro primo consumer.
-- [x] **Fase 3 — Language Registry.** `language.Registry` (non globale, fail-fast su ID duplicati/non validi), composition root `internal/goide/languages.go`, iniettato nel `WorkspaceManager`. *L'estensione della facciata `Capabilities` con `languages` è spostata alla Fase 10, dove ha il primo consumer (UI).*
+- [x] **Fase 3 — Language Registry.** `language.Registry` (non globale, fail-fast su ID duplicati/non validi), composition root `internal/codestudio/languages.go`, iniettato nel `WorkspaceManager`. *L'estensione della facciata `Capabilities` con `languages` è spostata alla Fase 10, dove ha il primo consumer (UI).*
 - [x] **Fase 4 — Project detection Go.** Scansione `go.mod`/`go.work`/cartelle sciolte spostata in `internal/languages/golang/detector.go` (stessi limiti e ordinamento); `Project.Units` popolato; campi legacy (`GoModPath`, `GoWorkPath`, `Modules`, `LooseGoDirs`) derivati dalle Unit in `goide.applyGoUnits` e coperti da test di equivalenza (rimossi in Fase 11: ora `goLayoutOf`). Limite noto: una scansione del disco per linguaggio (walk condiviso quando i detector saranno più d'uno).
 - [x] **Fase 5 — SDK/Toolchain.**
   - [x] `internal/ide/process`: adattamento processi per piattaforma (process group, console nascosta, kill dell'albero, shell predefinita).
@@ -552,16 +552,16 @@ Regole per **ogni** fase: compila, `go test ./...` verde, `npm run build` + `vit
   - [x] Eventi `lsp.status` filtrati per `language`: lo stato gopls non viene sovrascritto da un altro server della stessa sessione.
   - [x] Icona del linguaggio nella status bar.
   - [x] Icone Simple Icons per Java/OpenJDK, Kotlin, PHP, Ruby, .NET, C/C++, Swift, Dart, Scala, Elixir, Haskell, Lua, Zig, Maven e Gradle (estensioni e file di build), con `scripts/generate-brand-icons.mjs`.
-  - [x] Regex di `scripts/check-startup-bundle.mjs` estesa a `components/ide/**` e `lib/goide/**`.
-  - Scelta: **nessuno spostamento in massa** dei ~300 file di `components/goide` in `components/ide`. Sarebbe solo churn, senza effetto per l'utente e con alto rischio di conflitti. Un componente si sposta quando un secondo linguaggio lo usa davvero.
+  - [x] Regex di `scripts/check-startup-bundle.mjs` estesa a `components/ide/**` e `lib/code-studio/**`.
+  - Scelta: **nessuno spostamento in massa** dei ~300 file di `components/code-studio` in `components/ide`. Sarebbe solo churn, senza effetto per l'utente e con alto rischio di conflitti. Un componente si sposta quando un secondo linguaggio lo usa davvero.
   - Scelta: **nessun registry di tool window** né interfaccia `LanguageServerProvider`, perché manca un secondo consumer. Il server di un nuovo linguaggio si descrive con una `lsp.ServerSpec` prodotta dal suo adapter, come `golang.GoplsServerSpec`.
 - [x] **Fase 11 — Accoppiamento residuo.**
-  - [x] Rimossi `Project.goModPath/goWorkPath/modules/looseGoDirs` da modello, JSON e binding. Backend: `goLayoutOf(project)` li deriva dalle unità. Frontend: `lib/goide/goProject.ts` (`goProjectLayout`, `goModules`).
+  - [x] Rimossi `Project.goModPath/goWorkPath/modules/looseGoDirs` da modello, JSON e binding. Backend: `goLayoutOf(project)` li deriva dalle unità. Frontend: `lib/code-studio/goProject.ts` (`goProjectLayout`, `goModules`).
   - [x] Migrazione: una sessione persistita senza `units` (salvata prima della Fase 4) viene ri-ispezionata al restore (`TestRestoreDetectsUnitsOfLegacySessions`).
-  - [x] Layering: gli helper puri importati dagli store (`RunHistory`, `CaretMemory`, `Recovery`, `DiskChanges`, `TestTree`, `LineDiff`) sono spostati da `components/goide` a `lib/goide`. Gli store importano da `components/` solo tipi, che spariscono in compilazione.
+  - [x] Layering: gli helper puri importati dagli store (`RunHistory`, `CaretMemory`, `Recovery`, `DiskChanges`, `TestTree`, `LineDiff`) sono spostati da `components/code-studio` a `lib/goide`. Gli store importano da `components/` solo tipi, che spariscono in compilazione.
   - Scelta: **i campi Go piatti delle run config restano nel DTO della facciata.** Il modello core `run.Configuration` ne è già privo (Fase 8). Il DTO è anche il formato di `.adomnia/run-configurations.json`, versionato nei repository: cambiarlo romperebbe chi apre lo stesso progetto con una versione precedente di adOmnia.
   - Scelta: **la cache delle versioni dei tool (`sdk.CachedVersion`) resta di processo.** Memorizza un fatto su un file (percorso + stamp), valido per ogni sessione e istanza. Per istanza rilancerebbe solo `<tool> version`.
-- [x] **Fase 12 — Validazione.** Test architetturali e suite completa verdi (sezione 23). Aggiornati `docs/GO-STUDIO.md`, `AGENTS.md`, `CLAUDE.md` ("Add a language/IDE feature") e CHANGELOG. Smoke manuale e build native macOS/Linux restano manuali (checklist in sezione 23).
+- [x] **Fase 12 — Validazione.** Test architetturali e suite completa verdi (sezione 23). Aggiornati `docs/CODE-STUDIO.md`, `AGENTS.md`, `CLAUDE.md` ("Add a language/IDE feature") e CHANGELOG. Smoke manuale e build native macOS/Linux restano manuali (checklist in sezione 23).
 
 Ordine scelto perché ogni fase sblocca la successiva con il minimo raggio d'azione: le Fasi 2-4 sono quasi solo additive; 5-9 spostano codice dietro interfacce già testate; 10 tocca la UI quando il backend espone già le capability.
 
@@ -571,7 +571,7 @@ Ordine scelto perché ogni fase sblocca la successiva con il minimo raggio d'azi
 
 | Rischio | Prob. | Impatto | Mitigazione |
 |---|---|---|---|
-| Spostare tipi esposti a Wails cambia namespace dei modelli in `frontend/bindings` | Alta | Medio | spostare i tipi in blocchi coerenti per fase; i wrapper `lib/goide-*.ts` assorbono i nuovi import; rigenerare binding e `tsc` a ogni fase |
+| Spostare tipi esposti a Wails cambia namespace dei modelli in `frontend/bindings` | Alta | Medio | spostare i tipi in blocchi coerenti per fase; i wrapper `lib/code-studio-*.ts` assorbono i nuovi import; rigenerare binding e `tsc` a ogni fase |
 | Regressioni silenziose su gopls/Delve | Media | Alto | test di integrazione esistenti (`lsp_integration_test.go`, debug) sono il gate; smoke manuale per fase |
 | Persistenza (bbolt `goide/state`) incompatibile | Media | Alto | loader con migrazione e test sul JSON reale della versione precedente; nessuna chiave rinominata |
 | Cicli di import durante gli spostamenti | Media | Medio | test architetturale da Fase 2; composition root unica |
@@ -619,7 +619,7 @@ Manuale (per fase): checklist di `mds/todo-ide.md` — apertura progetto, comple
 
 - [x] Il core (`internal/ide/...`) non importa `internal/languages/...` né librerie di tooling Go (test architetturale).
 - [x] `internal/languages/golang` dipende dal core, mai il contrario; nessun ciclo.
-- [x] gO Studio funziona come prima nei test automatici (Go con gopls/Delve reali, 1041 test frontend). Lo smoke manuale della build desktop è nella checklist della sezione 23.
+- [x] Code Studio funziona come prima nei test automatici (Go con gopls/Delve reali, 1041 test frontend). Lo smoke manuale della build desktop è nella checklist della sezione 23.
 - [x] `Project` è composto da `Unit` multi-linguaggio; nessun campo Go nel modello core.
 - [x] Lifecycle LSP generico, più server per sessione. gopls è descritto dall'adapter Go (`golang.GoplsServerSpec` → `lsp.ServerSpec`); nessuna interfaccia provider senza un secondo consumer (Fase 10).
 - [x] DebugManager parla solo DAP; Delve è un `DebugAdapterProvider` Go.
@@ -627,7 +627,7 @@ Manuale (per fase): checklist di `mds/todo-ide.md` — apertura progetto, comple
 - [x] SDK/toolchain astratti (`ide/sdk`); `GOROOT/GOPATH/GOPROXY/GOPRIVATE` solo in `languages/golang` (nel core compaiono solo nei commenti).
 - [x] Esiste `language.Registry`; nessuno switch globale per linguaggio nel core.
 - [x] Linguaggi fittizi registrabili e usati nei test senza modificare il core: registry/detection, LSP multi-server, Run/Test senza Go nel PATH, adapter DAP fittizio, `requires` dei comandi UI.
-- [x] Frontend: il layer comune `components/ide` è senza `'go'` letterali e le contribuzioni Go sono in `components/ide/languages/go/`. `components/goide` resta la UI di gO Studio (scelta della Fase 10).
+- [x] Frontend: il layer comune `components/ide` è senza `'go'` letterali e le contribuzioni Go sono in `components/ide/languages/go/`. `components/code-studio` resta la UI di Code Studio (scelta della Fase 10).
 - [x] Tutti i test esistenti verdi + test architetturali nuovi; build Windows verificata, `go vet` macOS/Linux sui package del refactor. La build nativa macOS/Linux è manuale (CI di release).
 - [x] Aggiungere `languages/java` richiede un nuovo package backend + una riga in `goide/languages.go`, e lato UI una cartella `components/ide/languages/java/` + una riga in `IDE_LANGUAGES` (icona `openjdk` già generata).
 
@@ -640,8 +640,8 @@ Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incr
 | Verifica eseguita | Esito / limite |
 |---|---|
 | `go build ./...` | PASS |
-| `go test ./... -count=1 -timeout=240s` | PASS; `internal/goide` 155.462 s. PATH include gli strumenti Go gestiti; integrazioni reali gopls e Delve disponibili. |
-| `go test ./... -short -count=1 -timeout=180s` | PASS; `internal/goide` 152.971 s. |
+| `go test ./... -count=1 -timeout=240s` | PASS; `internal/codestudio` 155.462 s. PATH include gli strumenti Go gestiti; integrazioni reali gopls e Delve disponibili. |
+| `go test ./... -short -count=1 -timeout=180s` | PASS; `internal/codestudio` 152.971 s. |
 | `go vet ./...` | PASS; anche il controllo mirato core/adapter/host è verde. |
 | Test architetturali core/adapter | PASS: core senza import dell'host, adapter o librerie di tooling Go; adapter senza import dell'host. |
 | Nuove regressioni | PASS: argv LSP, server lento/risultati sani, DAP TCP e stdio, spec invalide, migrazione configurazioni legacy/opache, segreti, target/flag Go opachi confinati. |
@@ -652,7 +652,7 @@ Le Fasi 1–7 sono già nei commit `37f1e3e`, `4d00dbf` e `f4fd67b`. Questo incr
 | `wails3 task dev` con CLI beta.26 | Compilazione frontend e binario Windows riuscite. Lo smoke della nuova build non è osservato: l'istanza già aperta ha intercettato l'avvio single-instance. |
 | Altre piattaforme | Build macOS/Linux e relativo smoke non eseguiti in questo ambiente Windows. |
 
-Dopo il completamento della Fase 8 (sezione 22), il prossimo lavoro è la Fase 10 (contribuzioni UI e capability per linguaggio), Fase 11 (alias/campi legacy/cache/store coupling) e Fase 12 (smoke completo e verifiche multipiattaforma). Il frontend corrente continua a essere Go Studio; non esiste ancora un workflow utente per un secondo linguaggio.
+Dopo il completamento della Fase 8 (sezione 22), il prossimo lavoro è la Fase 10 (contribuzioni UI e capability per linguaggio), Fase 11 (alias/campi legacy/cache/store coupling) e Fase 12 (smoke completo e verifiche multipiattaforma). Il frontend corrente continua a essere Code Studio; non esiste ancora un workflow utente per un secondo linguaggio.
 
 ## 22. Completamento della Fase 8 — 2026-10-03
 
@@ -665,7 +665,7 @@ Le nuove regressioni verificano il workflow con eseguibili reali, non solo la co
 | Verifica | Esito |
 |---|---|
 | `go build ./...` / `go vet ./...` | PASS; controllo vet mirato ripetuto dopo l’ultima correzione delle callback. |
-| `go test ./... -count=1 -timeout=240s` | PASS; host `internal/goide` 144.153 s, core testing 2.930 s; PATH include gopls e Delve gestiti. |
+| `go test ./... -count=1 -timeout=240s` | PASS; host `internal/codestudio` 144.153 s, core testing 2.930 s; PATH include gopls e Delve gestiti. |
 | Regressioni mirate `-race` | PASS: workflow senza Go, opzioni opache Go, storico/snapshot, catene e configurazioni, callback contemporanee build/container. Le ultime correzioni sono verificate anche dopo la suite generale. |
 | Make reale | PASS; Docker reale SKIP per daemon non attivo. |
 | Test architetturali core/adapter | PASS, compresi nella suite completa. |
@@ -680,7 +680,7 @@ Limiti osservati: Make end-to-end passa; Docker end-to-end è saltato perché il
 
 ## 22b. Secondo adapter: web frontend (2026-10-17)
 
-La piattaforma ha ora un secondo linguaggio registrato, senza toccare il core esistente. `internal/languages/web` registra quattro adapter (`typescript` per JS/TS/JSX/TSX, `html`, `css`, `json`), uno per language server standard (il registry ammette un server per linguaggio e sessione). Riconosce le unità `package.json` (monorepo, npm/pnpm/yarn/bun) e i siti statici, rileva Node e il package manager e costruisce i `lsp.ServerSpec`. Il Live Server è nel core, `internal/ide/preview` (server statico con live reload, proxy del dev server con bridge, scanner dell'URL, readiness, `Manager` per sessione), perché non sa nulla di `package.json`. L'host (`internal/goide/service_web.go`) aggiunge fiducia, percorsi autorizzati, configurazione salvata ed eventi `preview.status`. Dettagli, limiti e verifica: [`../LIVE-PREVIEW.md`](../LIVE-PREVIEW.md). Non-goal rispettati: nessuna interfaccia nuova nel core oltre a quelle già usate, nessun `switch language`.
+La piattaforma ha ora un secondo linguaggio registrato, senza toccare il core esistente. `internal/languages/web` registra quattro adapter (`typescript` per JS/TS/JSX/TSX, `html`, `css`, `json`), uno per language server standard (il registry ammette un server per linguaggio e sessione). Riconosce le unità `package.json` (monorepo, npm/pnpm/yarn/bun) e i siti statici, rileva Node e il package manager e costruisce i `lsp.ServerSpec`. Il Live Server è nel core, `internal/ide/preview` (server statico con live reload, proxy del dev server con bridge, scanner dell'URL, readiness, `Manager` per sessione), perché non sa nulla di `package.json`. L'host (`internal/codestudio/service_web.go`) aggiunge fiducia, percorsi autorizzati, configurazione salvata ed eventi `preview.status`. Dettagli, limiti e verifica: [`../LIVE-PREVIEW.md`](../LIVE-PREVIEW.md). Non-goal rispettati: nessuna interfaccia nuova nel core oltre a quelle già usate, nessun `switch language`.
 
 ## 23. Fasi 10–12 — 2026-10-03
 
@@ -689,7 +689,7 @@ Fase 10 porta la piattaforma nella UI senza riscriverla. Il backend dice quali l
 | Verifica | Esito |
 |---|---|
 | `go build ./...`, `go vet ./...`, build app (`go build -o NUL .`) | PASS |
-| `GOOS=linux/darwin go vet` su `internal/ide/...`, `internal/languages/...`, `internal/goide` | PASS (il resto dell'app importa Wails, che su Linux richiede cgo: non verificabile da Windows) |
+| `GOOS=linux/darwin go vet` su `internal/ide/...`, `internal/languages/...`, `internal/codestudio` | PASS (il resto dell'app importa Wails, che su Linux richiede cgo: non verificabile da Windows) |
 | `go test ./... -count=1` con gopls e Delve reali nel PATH | PASS |
 | Binding Wails `v3.0.0-beta.26` | PASS: 17 servizi, 588 metodi, 316 modelli |
 | `npx tsc --noEmit`, `npm run build` | PASS |

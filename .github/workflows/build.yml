@@ -83,7 +83,7 @@ jobs:
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
-        run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
+        run: go test ./internal/codestudio/ -run "Recover|Kill|Crash" -count=1
 
       - name: Updater on Windows
         # Swap reale dell'exe (rename sopra il file appena chiuso), rollback e conferma d'avvio su NTFS.
@@ -196,7 +196,7 @@ jobs:
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
-        run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
+        run: go test ./internal/codestudio/ -run "Recover|Kill|Crash" -count=1
 
       - name: Install packaging tools
         run: |

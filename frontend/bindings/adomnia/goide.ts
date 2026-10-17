@@ -7,13 +7,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as codestudio$0 from "./internal/codestudio/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as copilot$0 from "./internal/copilot/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as git$0 from "./internal/git/models.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as goide$0 from "./internal/goide/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as agentreview$0 from "./internal/ide/agentreview/models.js";
@@ -81,7 +81,7 @@ export function AIProjectRules(sessionID: string): $CancellablePromise<copilot$0
 /**
  * APIContractDrift confronta route e DTO del codice con il contratto OpenAPI del progetto.
  */
-export function APIContractDrift(sessionID: string): $CancellablePromise<goide$0.APIContractReport> {
+export function APIContractDrift(sessionID: string): $CancellablePromise<codestudio$0.APIContractReport> {
     return $Call.ByID(1781508911, sessionID).then(($result: any) => {
         return $$createType3($result);
     });
@@ -136,7 +136,7 @@ export function AgentReview(root: string): $CancellablePromise<agentreview$0.Rev
 /**
  * AnalyzeArchitecture costruisce package graph, call graph, moduli, interfacce ed entry point (progetto autorizzato).
  */
-export function AnalyzeArchitecture(sessionID: string): $CancellablePromise<goide$0.ArchitectureResult> {
+export function AnalyzeArchitecture(sessionID: string): $CancellablePromise<codestudio$0.ArchitectureResult> {
     return $Call.ByID(696266605, sessionID).then(($result: any) => {
         return $$createType5($result);
     });
@@ -145,7 +145,7 @@ export function AnalyzeArchitecture(sessionID: string): $CancellablePromise<goid
 /**
  * AnalyzeErrorHandling analizza la gestione degli errori del progetto (richiede un progetto autorizzato).
  */
-export function AnalyzeErrorHandling(sessionID: string): $CancellablePromise<goide$0.ErrorHandlingReport> {
+export function AnalyzeErrorHandling(sessionID: string): $CancellablePromise<codestudio$0.ErrorHandlingReport> {
     return $Call.ByID(2448475757, sessionID).then(($result: any) => {
         return $$createType6($result);
     });
@@ -163,7 +163,7 @@ export function ArchitectureDrift(sessionID: string): $CancellablePromise<graph$
 /**
  * BaseBranchCoverage misura la coverage degli stessi package sul merge-base con base, in un worktree temporaneo.
  */
-export function BaseBranchCoverage(sessionID: string, base: string, packageDirs: string[], buildTags: string[]): $CancellablePromise<goide$0.BaseCoverage> {
+export function BaseBranchCoverage(sessionID: string, base: string, packageDirs: string[], buildTags: string[]): $CancellablePromise<codestudio$0.BaseCoverage> {
     return $Call.ByID(3667514937, sessionID, base, packageDirs, buildTags).then(($result: any) => {
         return $$createType8($result);
     });
@@ -179,7 +179,7 @@ export function CancelToolchainInstall(installID: string): $CancellablePromise<v
 /**
  * CaptureLiveProfile salva nel progetto un profilo scaricato da /debug/pprof di un servizio locale.
  */
-export function CaptureLiveProfile(request: goide$0.LiveProfileRequest): $CancellablePromise<goide$0.ProfileFile> {
+export function CaptureLiveProfile(request: codestudio$0.LiveProfileRequest): $CancellablePromise<codestudio$0.ProfileFile> {
     return $Call.ByID(1797654015, request).then(($result: any) => {
         return $$createType9($result);
     });
@@ -188,7 +188,7 @@ export function CaptureLiveProfile(request: goide$0.LiveProfileRequest): $Cancel
 /**
  * CaptureLiveTrace salva nel progetto una trace di esecuzione registrata da /debug/pprof/trace.
  */
-export function CaptureLiveTrace(request: goide$0.LiveProfileRequest): $CancellablePromise<goide$0.ProfileFile> {
+export function CaptureLiveTrace(request: codestudio$0.LiveProfileRequest): $CancellablePromise<codestudio$0.ProfileFile> {
     return $Call.ByID(1298245663, request).then(($result: any) => {
         return $$createType9($result);
     });
@@ -198,7 +198,7 @@ export function CaptureLiveTrace(request: goide$0.LiveProfileRequest): $Cancella
  * ResolveCodeAction calcola l'anteprima delle modifiche dell'azione.
  * ChangeSignature riordina o rimuove parametri e risultati della funzione al cursore (anteprima).
  */
-export function ChangeSignature(sessionID: string, documentID: string, caret: goide$0.EditorRange, params: number[], results: number[]): $CancellablePromise<goide$0.WorkspaceChange> {
+export function ChangeSignature(sessionID: string, documentID: string, caret: codestudio$0.EditorRange, params: number[], results: number[]): $CancellablePromise<codestudio$0.WorkspaceChange> {
     return $Call.ByID(421509260, sessionID, documentID, caret, params, results).then(($result: any) => {
         return $$createType10($result);
     });
@@ -207,7 +207,7 @@ export function ChangeSignature(sessionID: string, documentID: string, caret: go
 /**
  * CheckDocument rileva cambiamenti su disco senza sovrascrivere il buffer.
  */
-export function CheckDocument(sessionID: string, documentID: string, diskToken: string): $CancellablePromise<goide$0.DocumentDiskState> {
+export function CheckDocument(sessionID: string, documentID: string, diskToken: string): $CancellablePromise<codestudio$0.DocumentDiskState> {
     return $Call.ByID(1396526895, sessionID, documentID, diskToken).then(($result: any) => {
         return $$createType11($result);
     });
@@ -216,7 +216,7 @@ export function CheckDocument(sessionID: string, documentID: string, diskToken: 
 /**
  * ClaimSessionWindow verifica o assegna la proprietà del progetto a una finestra.
  */
-export function ClaimSessionWindow(sessionID: string, windowID: string, force: boolean): $CancellablePromise<goide$0.SessionWindow> {
+export function ClaimSessionWindow(sessionID: string, windowID: string, force: boolean): $CancellablePromise<codestudio$0.SessionWindow> {
     return $Call.ByID(2048064798, sessionID, windowID, force).then(($result: any) => {
         return $$createType12($result);
     });
@@ -289,7 +289,7 @@ export function CloseTerminal(terminalID: string): $CancellablePromise<void> {
 /**
  * CodeActions elenca le azioni disponibili per la selezione.
  */
-export function CodeActions(sessionID: string, documentID: string, selection: goide$0.EditorRange, only: string[]): $CancellablePromise<goide$0.CodeActionEntry[]> {
+export function CodeActions(sessionID: string, documentID: string, selection: codestudio$0.EditorRange, only: string[]): $CancellablePromise<codestudio$0.CodeActionEntry[]> {
     return $Call.ByID(1196038274, sessionID, documentID, selection, only).then(($result: any) => {
         return $$createType14($result);
     });
@@ -307,7 +307,7 @@ export function CompareAPI(sessionID: string, ref: string): $CancellablePromise<
 /**
  * CompareArchitecture confronta l'architettura di oggi con un branch, tag o commit.
  */
-export function CompareArchitecture(sessionID: string, ref: string): $CancellablePromise<goide$0.ArchitectureDiff> {
+export function CompareArchitecture(sessionID: string, ref: string): $CancellablePromise<codestudio$0.ArchitectureDiff> {
     return $Call.ByID(4209952542, sessionID, ref).then(($result: any) => {
         return $$createType17($result);
     });
@@ -316,7 +316,7 @@ export function CompareArchitecture(sessionID: string, ref: string): $Cancellabl
 /**
  * CompareBinary confronta la dimensione del binario per package con un branch o commit.
  */
-export function CompareBinary(sessionID: string, target: string, ref: string): $CancellablePromise<goide$0.BinaryComparison> {
+export function CompareBinary(sessionID: string, target: string, ref: string): $CancellablePromise<codestudio$0.BinaryComparison> {
     return $Call.ByID(1332306760, sessionID, target, ref).then(($result: any) => {
         return $$createType18($result);
     });
@@ -334,7 +334,7 @@ export function CompareEvents(sessionID: string, ref: string): $CancellablePromi
 /**
  * ComparePaths confronta due file di testo o due cartelle del progetto.
  */
-export function ComparePaths(sessionID: string, leftRelativePath: string, rightRelativePath: string): $CancellablePromise<goide$0.PathComparison> {
+export function ComparePaths(sessionID: string, leftRelativePath: string, rightRelativePath: string): $CancellablePromise<codestudio$0.PathComparison> {
     return $Call.ByID(1410181267, sessionID, leftRelativePath, rightRelativePath).then(($result: any) => {
         return $$createType19($result);
     });
@@ -343,7 +343,7 @@ export function ComparePaths(sessionID: string, leftRelativePath: string, rightR
 /**
  * Completion restituisce i suggerimenti gopls; la richiesta si annulla con la promise frontend.
  */
-export function Completion(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.CompletionResult> {
+export function Completion(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.CompletionResult> {
     return $Call.ByID(2006528040, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType20($result);
     });
@@ -359,7 +359,7 @@ export function ConfigureDelve(sessionID: string, binary: string): $CancellableP
 /**
  * ConfigureGlobalToolchain imposta la toolchain predefinita dei progetti.
  */
-export function ConfigureGlobalToolchain(config: goide$0.ToolchainConfiguration): $CancellablePromise<void> {
+export function ConfigureGlobalToolchain(config: codestudio$0.ToolchainConfiguration): $CancellablePromise<void> {
     return $Call.ByID(3099500636, config);
 }
 
@@ -394,7 +394,7 @@ export function ConfigureSonarScanner(sessionID: string, binary: string): $Cance
 /**
  * ConfigureToolchain imposta binario e variabili della sessione dopo validazione.
  */
-export function ConfigureToolchain(sessionID: string, config: goide$0.ToolchainConfiguration): $CancellablePromise<void> {
+export function ConfigureToolchain(sessionID: string, config: codestudio$0.ToolchainConfiguration): $CancellablePromise<void> {
     return $Call.ByID(3312133885, sessionID, config);
 }
 
@@ -415,7 +415,7 @@ export function ConfirmSessionWindowClose(windowID: string): $CancellablePromise
 /**
  * CrashRecoveryStatus dice se l'avvio precedente si è chiuso in modo anomalo (heartbeat fermo).
  */
-export function CrashRecoveryStatus(): $CancellablePromise<goide$0.CrashStatus> {
+export function CrashRecoveryStatus(): $CancellablePromise<codestudio$0.CrashStatus> {
     return $Call.ByID(4294909416).then(($result: any) => {
         return $$createType21($result);
     });
@@ -438,7 +438,7 @@ export function CreateDirectory(sessionID: string, relativePath: string): $Cance
 /**
  * CreateFiles crea file nuovi nel progetto, tutti o nessuno.
  */
-export function CreateFiles(sessionID: string, files: goide$0.NewFile[]): $CancellablePromise<void> {
+export function CreateFiles(sessionID: string, files: codestudio$0.NewFile[]): $CancellablePromise<void> {
     return $Call.ByID(3570834985, sessionID, files);
 }
 
@@ -452,16 +452,16 @@ export function CreateGist(sessionID: string, relativePath: string, description:
 /**
  * CreateProject crea un modulo Go (opzionalmente da template) soltanto dopo la conferma esplicita inclusa nella richiesta.
  */
-export function CreateProject(request: goide$0.CreateProjectRequest): $CancellablePromise<goide$0.CreateProjectResult> {
+export function CreateProject(request: codestudio$0.CreateProjectRequest): $CancellablePromise<codestudio$0.CreateProjectResult> {
     return $Call.ByID(2720329719, request).then(($result: any) => {
         return $$createType22($result);
     });
 }
 
 /**
- * CreateStudioWorkspace crea un workspace Go Studio vuoto e lo rende attivo.
+ * CreateStudioWorkspace crea un workspace Code Studio vuoto e lo rende attivo.
  */
-export function CreateStudioWorkspace(name: string): $CancellablePromise<goide$0.StudioWorkspaces> {
+export function CreateStudioWorkspace(name: string): $CancellablePromise<codestudio$0.StudioWorkspaces> {
     return $Call.ByID(314582753, name).then(($result: any) => {
         return $$createType23($result);
     });
@@ -470,7 +470,7 @@ export function CreateStudioWorkspace(name: string): $CancellablePromise<goide$0
 /**
  * DebugDisassemble restituisce il codice macchina attorno all'istruzione corrente di un frame.
  */
-export function DebugDisassemble(debugID: string, address: string, before: number, after: number): $CancellablePromise<goide$0.DebugInstruction[]> {
+export function DebugDisassemble(debugID: string, address: string, before: number, after: number): $CancellablePromise<codestudio$0.DebugInstruction[]> {
     return $Call.ByID(3808282143, debugID, address, before, after).then(($result: any) => {
         return $$createType25($result);
     });
@@ -479,7 +479,7 @@ export function DebugDisassemble(debugID: string, address: string, before: numbe
 /**
  * DebugEvaluate valuta un'espressione nel frame indicato.
  */
-export function DebugEvaluate(debugID: string, expression: string, frameID: number, context: string): $CancellablePromise<goide$0.EvaluateResult> {
+export function DebugEvaluate(debugID: string, expression: string, frameID: number, context: string): $CancellablePromise<codestudio$0.EvaluateResult> {
     return $Call.ByID(197128762, debugID, expression, frameID, context).then(($result: any) => {
         return $$createType26($result);
     });
@@ -488,7 +488,7 @@ export function DebugEvaluate(debugID: string, expression: string, frameID: numb
 /**
  * DebugGoroutineCreation restituisce l'istruzione go che ha creato la goroutine del thread indicato.
  */
-export function DebugGoroutineCreation(debugID: string, threadID: number): $CancellablePromise<goide$0.GoroutineCreation> {
+export function DebugGoroutineCreation(debugID: string, threadID: number): $CancellablePromise<codestudio$0.GoroutineCreation> {
     return $Call.ByID(3205591816, debugID, threadID).then(($result: any) => {
         return $$createType27($result);
     });
@@ -497,7 +497,7 @@ export function DebugGoroutineCreation(debugID: string, threadID: number): $Canc
 /**
  * DebugGoroutines restituisce le goroutine della pausa corrente per la vista Concurrency.
  */
-export function DebugGoroutines(debugID: string): $CancellablePromise<goide$0.GoroutineOverview> {
+export function DebugGoroutines(debugID: string): $CancellablePromise<codestudio$0.GoroutineOverview> {
     return $Call.ByID(3386466830, debugID).then(($result: any) => {
         return $$createType28($result);
     });
@@ -506,7 +506,7 @@ export function DebugGoroutines(debugID: string): $CancellablePromise<goide$0.Go
 /**
  * DebugPendingDefers restituisce i defer registrati a runtime dalla goroutine, in ordine di esecuzione.
  */
-export function DebugPendingDefers(debugID: string, threadID: number): $CancellablePromise<goide$0.PendingDefer[]> {
+export function DebugPendingDefers(debugID: string, threadID: number): $CancellablePromise<codestudio$0.PendingDefer[]> {
     return $Call.ByID(1098904889, debugID, threadID).then(($result: any) => {
         return $$createType30($result);
     });
@@ -515,7 +515,7 @@ export function DebugPendingDefers(debugID: string, threadID: number): $Cancella
 /**
  * DebugReadMemory legge la memoria da un indirizzo o dall'indirizzo di un'espressione nel frame.
  */
-export function DebugReadMemory(debugID: string, location: string, length: number, frameID: number): $CancellablePromise<goide$0.DebugMemory> {
+export function DebugReadMemory(debugID: string, location: string, length: number, frameID: number): $CancellablePromise<codestudio$0.DebugMemory> {
     return $Call.ByID(205932350, debugID, location, length, frameID).then(($result: any) => {
         return $$createType31($result);
     });
@@ -531,7 +531,7 @@ export function DebugRunToCursor(debugID: string, relativePath: string, line: nu
 /**
  * DebugScopes restituisce gli scope di un frame.
  */
-export function DebugScopes(debugID: string, frameID: number): $CancellablePromise<goide$0.DebugScope[]> {
+export function DebugScopes(debugID: string, frameID: number): $CancellablePromise<codestudio$0.DebugScope[]> {
     return $Call.ByID(158838328, debugID, frameID).then(($result: any) => {
         return $$createType33($result);
     });
@@ -547,7 +547,7 @@ export function DebugShowRegisters(debugID: string, show: boolean): $Cancellable
 /**
  * DebugStackTrace restituisce i frame di una goroutine.
  */
-export function DebugStackTrace(debugID: string, threadID: number): $CancellablePromise<goide$0.DebugFrame[]> {
+export function DebugStackTrace(debugID: string, threadID: number): $CancellablePromise<codestudio$0.DebugFrame[]> {
     return $Call.ByID(783686220, debugID, threadID).then(($result: any) => {
         return $$createType35($result);
     });
@@ -563,7 +563,7 @@ export function DebugStep(debugID: string, action: string, threadID: number): $C
 /**
  * DebugThreads elenca le goroutine della sessione di debug.
  */
-export function DebugThreads(debugID: string): $CancellablePromise<goide$0.DebugThread[]> {
+export function DebugThreads(debugID: string): $CancellablePromise<codestudio$0.DebugThread[]> {
     return $Call.ByID(3763986678, debugID).then(($result: any) => {
         return $$createType37($result);
     });
@@ -572,7 +572,7 @@ export function DebugThreads(debugID: string): $CancellablePromise<goide$0.Debug
 /**
  * DebugVariables espande un riferimento a variabili.
  */
-export function DebugVariables(debugID: string, reference: number): $CancellablePromise<goide$0.DebugVariable[]> {
+export function DebugVariables(debugID: string, reference: number): $CancellablePromise<codestudio$0.DebugVariable[]> {
     return $Call.ByID(3256341458, debugID, reference).then(($result: any) => {
         return $$createType39($result);
     });
@@ -600,9 +600,9 @@ export function DeleteRunConfiguration(sessionID: string, configID: string): $Ca
 }
 
 /**
- * DeleteStudioWorkspace elimina un workspace Go Studio senza progetti aperti.
+ * DeleteStudioWorkspace elimina un workspace Code Studio senza progetti aperti.
  */
-export function DeleteStudioWorkspace(id: string): $CancellablePromise<goide$0.StudioWorkspaces> {
+export function DeleteStudioWorkspace(id: string): $CancellablePromise<codestudio$0.StudioWorkspaces> {
     return $Call.ByID(2569365760, id).then(($result: any) => {
         return $$createType23($result);
     });
@@ -611,7 +611,7 @@ export function DeleteStudioWorkspace(id: string): $CancellablePromise<goide$0.S
 /**
  * DependencyGraph costruisce il grafo delle dipendenze del modulo senza rete (albero, duplicati, licenze, peso).
  */
-export function DependencyGraph(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyGraphReport> {
+export function DependencyGraph(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.DependencyGraphReport> {
     return $Call.ByID(3514952437, sessionID, moduleDirectory).then(($result: any) => {
         return $$createType40($result);
     });
@@ -620,7 +620,7 @@ export function DependencyGraph(sessionID: string, moduleDirectory: string): $Ca
 /**
  * DependencyUpdates elenca le versioni più recenti disponibili per i moduli (richiede rete).
  */
-export function DependencyUpdates(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyUpdate[]> {
+export function DependencyUpdates(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.DependencyUpdate[]> {
     return $Call.ByID(2706812095, sessionID, moduleDirectory).then(($result: any) => {
         return $$createType42($result);
     });
@@ -629,7 +629,7 @@ export function DependencyUpdates(sessionID: string, moduleDirectory: string): $
 /**
  * DependencyVulnerabilities esegue govulncheck sul modulo (richiede rete e govulncheck installato).
  */
-export function DependencyVulnerabilities(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyVulnerability[]> {
+export function DependencyVulnerabilities(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.DependencyVulnerability[]> {
     return $Call.ByID(704365663, sessionID, moduleDirectory).then(($result: any) => {
         return $$createType44($result);
     });
@@ -638,7 +638,7 @@ export function DependencyVulnerabilities(sessionID: string, moduleDirectory: st
 /**
  * DependencyWhy spiega con `go mod why -m` perché il progetto dipende da un modulo.
  */
-export function DependencyWhy(sessionID: string, $module: string): $CancellablePromise<goide$0.DependencyWhy> {
+export function DependencyWhy(sessionID: string, $module: string): $CancellablePromise<codestudio$0.DependencyWhy> {
     return $Call.ByID(2434690691, sessionID, $module).then(($result: any) => {
         return $$createType45($result);
     });
@@ -647,7 +647,7 @@ export function DependencyWhy(sessionID: string, $module: string): $CancellableP
 /**
  * DetectDelve individua dlv e ne legge la versione.
  */
-export function DetectDelve(sessionID: string): $CancellablePromise<goide$0.DelveInfo> {
+export function DetectDelve(sessionID: string): $CancellablePromise<codestudio$0.DelveInfo> {
     return $Call.ByID(1393069235, sessionID).then(($result: any) => {
         return $$createType46($result);
     });
@@ -656,7 +656,7 @@ export function DetectDelve(sessionID: string): $CancellablePromise<goide$0.Delv
 /**
  * DetectGoTool cerca un tool Go (govulncheck, goimports, mockgen, stringer o personalizzato).
  */
-export function DetectGoTool(sessionID: string, binary: string): $CancellablePromise<goide$0.GoToolInfo> {
+export function DetectGoTool(sessionID: string, binary: string): $CancellablePromise<codestudio$0.GoToolInfo> {
     return $Call.ByID(1968356021, sessionID, binary).then(($result: any) => {
         return $$createType47($result);
     });
@@ -665,7 +665,7 @@ export function DetectGoTool(sessionID: string, binary: string): $CancellablePro
 /**
  * DetectGopls individua gopls e ne legge la versione.
  */
-export function DetectGopls(sessionID: string): $CancellablePromise<goide$0.GoplsInfo> {
+export function DetectGopls(sessionID: string): $CancellablePromise<codestudio$0.GoplsInfo> {
     return $Call.ByID(3730884956, sessionID).then(($result: any) => {
         return $$createType48($result);
     });
@@ -674,7 +674,7 @@ export function DetectGopls(sessionID: string): $CancellablePromise<goide$0.Gopl
 /**
  * DetectLinter individua golangci-lint o staticcheck e la configurazione di progetto.
  */
-export function DetectLinter(sessionID: string): $CancellablePromise<goide$0.LinterInfo> {
+export function DetectLinter(sessionID: string): $CancellablePromise<codestudio$0.LinterInfo> {
     return $Call.ByID(766054627, sessionID).then(($result: any) => {
         return $$createType49($result);
     });
@@ -683,7 +683,7 @@ export function DetectLinter(sessionID: string): $CancellablePromise<goide$0.Lin
 /**
  * DetectMake indica quale make userebbe la sessione per i Makefile del progetto.
  */
-export function DetectMake(sessionID: string): $CancellablePromise<goide$0.MakeInfo> {
+export function DetectMake(sessionID: string): $CancellablePromise<codestudio$0.MakeInfo> {
     return $Call.ByID(1963785503, sessionID).then(($result: any) => {
         return $$createType50($result);
     });
@@ -692,7 +692,7 @@ export function DetectMake(sessionID: string): $CancellablePromise<goide$0.MakeI
 /**
  * DetectSonarScanner cerca sonar-scanner per la sessione.
  */
-export function DetectSonarScanner(sessionID: string): $CancellablePromise<goide$0.SonarScannerInfo> {
+export function DetectSonarScanner(sessionID: string): $CancellablePromise<codestudio$0.SonarScannerInfo> {
     return $Call.ByID(3563278938, sessionID).then(($result: any) => {
         return $$createType51($result);
     });
@@ -701,7 +701,7 @@ export function DetectSonarScanner(sessionID: string): $CancellablePromise<goide
 /**
  * DetectToolchain rileva la toolchain Go su richiesta dell'utente.
  */
-export function DetectToolchain(sessionID: string): $CancellablePromise<goide$0.ToolchainInfo> {
+export function DetectToolchain(sessionID: string): $CancellablePromise<codestudio$0.ToolchainInfo> {
     return $Call.ByID(4216240268, sessionID).then(($result: any) => {
         return $$createType52($result);
     });
@@ -710,7 +710,7 @@ export function DetectToolchain(sessionID: string): $CancellablePromise<goide$0.
 /**
  * DetectWebProject riconosce progetti web, runtime Node.js e language server disponibili. Non esegue nulla.
  */
-export function DetectWebProject(sessionID: string): $CancellablePromise<goide$0.WebProjectReport> {
+export function DetectWebProject(sessionID: string): $CancellablePromise<codestudio$0.WebProjectReport> {
     return $Call.ByID(1750721418, sessionID).then(($result: any) => {
         return $$createType53($result);
     });
@@ -733,7 +733,7 @@ export function DismissPreviews(sessionID: string): $CancellablePromise<void> {
 /**
  * DocumentHighlights evidenzia occorrenze e punti di uscita al cursore.
  */
-export function DocumentHighlights(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.HighlightsResult> {
+export function DocumentHighlights(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.HighlightsResult> {
     return $Call.ByID(3761108026, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType54($result);
     });
@@ -742,7 +742,7 @@ export function DocumentHighlights(sessionID: string, documentID: string, line: 
 /**
  * DocumentSymbols restituisce la struttura del file.
  */
-export function DocumentSymbols(sessionID: string, documentID: string): $CancellablePromise<goide$0.DocumentSymbolsResult> {
+export function DocumentSymbols(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.DocumentSymbolsResult> {
     return $Call.ByID(2127272604, sessionID, documentID).then(($result: any) => {
         return $$createType55($result);
     });
@@ -751,7 +751,7 @@ export function DocumentSymbols(sessionID: string, documentID: string): $Cancell
 /**
  * Documentation legge la documentazione dei package Go e dei file .proto del progetto (solo parsing).
  */
-export function Documentation(sessionID: string): $CancellablePromise<goide$0.DocumentationReport> {
+export function Documentation(sessionID: string): $CancellablePromise<codestudio$0.DocumentationReport> {
     return $Call.ByID(3196489204, sessionID).then(($result: any) => {
         return $$createType56($result);
     });
@@ -767,7 +767,7 @@ export function DuplicatePath(sessionID: string, $from: string, to: string): $Ca
 /**
  * DuplicateRunConfiguration copia una configurazione esistente.
  */
-export function DuplicateRunConfiguration(sessionID: string, configID: string): $CancellablePromise<goide$0.RunConfiguration> {
+export function DuplicateRunConfiguration(sessionID: string, configID: string): $CancellablePromise<codestudio$0.RunConfiguration> {
     return $Call.ByID(2204031694, sessionID, configID).then(($result: any) => {
         return $$createType57($result);
     });
@@ -776,7 +776,7 @@ export function DuplicateRunConfiguration(sessionID: string, configID: string): 
 /**
  * EventContractDrift confronta producer, consumer e schemi dei messaggi.
  */
-export function EventContractDrift(sessionID: string): $CancellablePromise<goide$0.EventContractReport> {
+export function EventContractDrift(sessionID: string): $CancellablePromise<codestudio$0.EventContractReport> {
     return $Call.ByID(1224348583, sessionID).then(($result: any) => {
         return $$createType58($result);
     });
@@ -785,13 +785,13 @@ export function EventContractDrift(sessionID: string): $CancellablePromise<goide
 /**
  * ExpandHierarchy carica i figli di un nodo della gerarchia.
  */
-export function ExpandHierarchy(sessionID: string, direction: string, token: string): $CancellablePromise<goide$0.HierarchyItem[]> {
+export function ExpandHierarchy(sessionID: string, direction: string, token: string): $CancellablePromise<codestudio$0.HierarchyItem[]> {
     return $Call.ByID(2428419337, sessionID, direction, token).then(($result: any) => {
         return $$createType60($result);
     });
 }
 
-export function ExtensionLanguageStatus(sessionID: string, languageID: string): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function ExtensionLanguageStatus(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(817133727, sessionID, languageID).then(($result: any) => {
         return $$createType61($result);
     });
@@ -800,7 +800,7 @@ export function ExtensionLanguageStatus(sessionID: string, languageID: string): 
 /**
  * FetchSonarIssues importa gli issue già presenti sul server, senza rieseguire la scansione.
  */
-export function FetchSonarIssues(sessionID: string, token: string): $CancellablePromise<goide$0.SonarScanResult> {
+export function FetchSonarIssues(sessionID: string, token: string): $CancellablePromise<codestudio$0.SonarScanResult> {
     return $Call.ByID(3046232717, sessionID, token).then(($result: any) => {
         return $$createType62($result);
     });
@@ -815,7 +815,7 @@ export function FindRetryPolicies(sessionID: string, filename: string, source: s
 /**
  * FindSessionsForPath elenca le altre sessioni che contengono lo stesso file.
  */
-export function FindSessionsForPath(sessionID: string, relativePath: string): $CancellablePromise<goide$0.Session[]> {
+export function FindSessionsForPath(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.Session[]> {
     return $Call.ByID(2186358452, sessionID, relativePath).then(($result: any) => {
         return $$createType66($result);
     });
@@ -838,7 +838,7 @@ export function ForgetBuffer(sessionID: string, relativePath: string): $Cancella
 /**
  * FormatDocument restituisce gli edit di formattazione del buffer.
  */
-export function FormatDocument(sessionID: string, documentID: string): $CancellablePromise<goide$0.FormatResult> {
+export function FormatDocument(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.FormatResult> {
     return $Call.ByID(3626188168, sessionID, documentID).then(($result: any) => {
         return $$createType67($result);
     });
@@ -847,7 +847,7 @@ export function FormatDocument(sessionID: string, documentID: string): $Cancella
 /**
  * GenerateGoCode genera costruttore, getter/setter, interfaccia, benchmark o fuzz test sul testo indicato.
  */
-export function GenerateGoCode(request: goide$0.CodeGenRequest): $CancellablePromise<goide$0.CodeGenResult> {
+export function GenerateGoCode(request: codestudio$0.CodeGenRequest): $CancellablePromise<codestudio$0.CodeGenResult> {
     return $Call.ByID(3959093954, request).then(($result: any) => {
         return $$createType68($result);
     });
@@ -860,9 +860,9 @@ export function GenerateHandlerTest(sessionID: string, filename: string, source:
 }
 
 /**
- * GetCapabilities restituisce soltanto le capacità Go Studio realmente disponibili.
+ * GetCapabilities restituisce soltanto le capacità Code Studio realmente disponibili.
  */
-export function GetCapabilities(): $CancellablePromise<goide$0.Capabilities> {
+export function GetCapabilities(): $CancellablePromise<codestudio$0.Capabilities> {
     return $Call.ByID(1829330672).then(($result: any) => {
         return $$createType70($result);
     });
@@ -880,7 +880,7 @@ export function GetLanguageServerLog(sessionID: string): $CancellablePromise<str
 /**
  * GetLanguageServerStatus restituisce lo stato di gopls per la sessione.
  */
-export function GetLanguageServerStatus(sessionID: string): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function GetLanguageServerStatus(sessionID: string): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(2789580425, sessionID).then(($result: any) => {
         return $$createType61($result);
     });
@@ -889,7 +889,7 @@ export function GetLanguageServerStatus(sessionID: string): $CancellablePromise<
 /**
  * GetPreviewConfig restituisce l'ultima configurazione di anteprima del progetto.
  */
-export function GetPreviewConfig(sessionID: string): $CancellablePromise<goide$0.PreviewConfig | null> {
+export function GetPreviewConfig(sessionID: string): $CancellablePromise<codestudio$0.PreviewConfig | null> {
     return $Call.ByID(4252971836, sessionID).then(($result: any) => {
         return $$createType72($result);
     });
@@ -898,7 +898,7 @@ export function GetPreviewConfig(sessionID: string): $CancellablePromise<goide$0
 /**
  * GetSessionView restituisce layout e tab ripristinabili della sessione.
  */
-export function GetSessionView(sessionID: string): $CancellablePromise<goide$0.SessionView> {
+export function GetSessionView(sessionID: string): $CancellablePromise<codestudio$0.SessionView> {
     return $Call.ByID(487629595, sessionID).then(($result: any) => {
         return $$createType73($result);
     });
@@ -914,7 +914,7 @@ export function GetTestOutput(runID: string, nodeID: string): $CancellablePromis
 /**
  * GetTestRun restituisce un'esecuzione di test con l'output di ogni nodo.
  */
-export function GetTestRun(runID: string): $CancellablePromise<goide$0.TestRunSnapshot> {
+export function GetTestRun(runID: string): $CancellablePromise<codestudio$0.TestRunSnapshot> {
     return $Call.ByID(1756958655, runID).then(($result: any) => {
         return $$createType74($result);
     });
@@ -930,7 +930,7 @@ export function GoAuthWithGitCredentials(): $CancellablePromise<string> {
 /**
  * GoWorkState legge go.work e i moduli rilevati del progetto.
  */
-export function GoWorkState(sessionID: string): $CancellablePromise<goide$0.GoWorkState> {
+export function GoWorkState(sessionID: string): $CancellablePromise<codestudio$0.GoWorkState> {
     return $Call.ByID(89591822, sessionID).then(($result: any) => {
         return $$createType75($result);
     });
@@ -957,7 +957,7 @@ export function GraphImpactOf(sessionID: string, nodeID: string): $CancellablePr
 /**
  * GraphRiskMap è il rischio di modifica di ogni package del progetto.
  */
-export function GraphRiskMap(sessionID: string): $CancellablePromise<goide$0.GraphRiskMap> {
+export function GraphRiskMap(sessionID: string): $CancellablePromise<codestudio$0.GraphRiskMap> {
     return $Call.ByID(4225676237, sessionID).then(($result: any) => {
         return $$createType77($result);
     });
@@ -998,7 +998,7 @@ export function HasActiveTerminals(sessionID: string): $CancellablePromise<boole
 /**
  * Hover restituisce la documentazione del simbolo sotto il cursore.
  */
-export function Hover(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.HoverResult> {
+export function Hover(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.HoverResult> {
     return $Call.ByID(3429230612, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType80($result);
     });
@@ -1013,7 +1013,7 @@ export function IDEContributions(): $CancellablePromise<plugins$0.Contribution[]
 /**
  * ImplementationMarkers restituisce i marcatori del gutter per implementazioni e interfacce implementate.
  */
-export function ImplementationMarkers(sessionID: string, documentID: string): $CancellablePromise<goide$0.ImplementationMarker[]> {
+export function ImplementationMarkers(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.ImplementationMarker[]> {
     return $Call.ByID(3534814275, sessionID, documentID).then(($result: any) => {
         return $$createType84($result);
     });
@@ -1022,7 +1022,7 @@ export function ImplementationMarkers(sessionID: string, documentID: string): $C
 /**
  * InlayHints restituisce i suggerimenti in linea per l'intervallo visibile.
  */
-export function InlayHints(sessionID: string, documentID: string, visible: goide$0.EditorRange): $CancellablePromise<goide$0.InlayHintsResult> {
+export function InlayHints(sessionID: string, documentID: string, visible: codestudio$0.EditorRange): $CancellablePromise<codestudio$0.InlayHintsResult> {
     return $Call.ByID(75205433, sessionID, documentID, visible).then(($result: any) => {
         return $$createType85($result);
     });
@@ -1037,7 +1037,7 @@ export function InspectBinary(sessionID: string, target: string): $CancellablePr
     });
 }
 
-export function InspectContainer(sessionID: string, name: string): $CancellablePromise<goide$0.ContainerInfo> {
+export function InspectContainer(sessionID: string, name: string): $CancellablePromise<codestudio$0.ContainerInfo> {
     return $Call.ByID(3809581701, sessionID, name).then(($result: any) => {
         return $$createType87($result);
     });
@@ -1046,7 +1046,7 @@ export function InspectContainer(sessionID: string, name: string): $CancellableP
 /**
  * InstallDelve installa dlv nella cartella strumenti di adOmnia dopo conferma esplicita.
  */
-export function InstallDelve(sessionID: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallDelve(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(3713187823, sessionID, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1055,7 +1055,7 @@ export function InstallDelve(sessionID: string, confirmed: boolean): $Cancellabl
 /**
  * InstallGoModule esegue go install di un modulo@versione nella cartella strumenti, dopo conferma.
  */
-export function InstallGoModule(sessionID: string, $module: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallGoModule(sessionID: string, $module: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(136977155, sessionID, $module, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1064,7 +1064,7 @@ export function InstallGoModule(sessionID: string, $module: string, confirmed: b
 /**
  * InstallGopls installa gopls nella cartella strumenti di adOmnia dopo conferma esplicita.
  */
-export function InstallGopls(sessionID: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallGopls(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(950784120, sessionID, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1073,7 +1073,7 @@ export function InstallGopls(sessionID: string, confirmed: boolean): $Cancellabl
 /**
  * InstallLinter installa golangci-lint o staticcheck nella cartella strumenti dopo conferma esplicita.
  */
-export function InstallLinter(sessionID: string, kind: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallLinter(sessionID: string, kind: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(576546735, sessionID, kind, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1082,7 +1082,7 @@ export function InstallLinter(sessionID: string, kind: string, confirmed: boolea
 /**
  * InstallToolchain avvia download, checksum ed estrazione della versione scelta.
  */
-export function InstallToolchain(request: goide$0.InstallToolchainRequest): $CancellablePromise<goide$0.ToolchainInstallation> {
+export function InstallToolchain(request: codestudio$0.InstallToolchainRequest): $CancellablePromise<codestudio$0.ToolchainInstallation> {
     return $Call.ByID(1084560520, request).then(($result: any) => {
         return $$createType89($result);
     });
@@ -1091,7 +1091,7 @@ export function InstallToolchain(request: goide$0.InstallToolchainRequest): $Can
 /**
  * InstallWebDependencies installa le dipendenze di un progetto web dopo conferma esplicita.
  */
-export function InstallWebDependencies(sessionID: string, dir: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallWebDependencies(sessionID: string, dir: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(3718535264, sessionID, dir, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1100,7 +1100,7 @@ export function InstallWebDependencies(sessionID: string, dir: string, confirmed
 /**
  * InstallWebTools installa i language server web nella cartella strumenti di adOmnia.
  */
-export function InstallWebTools(sessionID: string, confirmed: boolean): $CancellablePromise<goide$0.Execution> {
+export function InstallWebTools(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(1656186460, sessionID, confirmed).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1109,13 +1109,13 @@ export function InstallWebTools(sessionID: string, confirmed: boolean): $Cancell
 /**
  * InterruptedProcesses elenca le esecuzioni interrotte dal crash dell'avvio precedente.
  */
-export function InterruptedProcesses(): $CancellablePromise<goide$0.ProcessDescriptor[]> {
+export function InterruptedProcesses(): $CancellablePromise<codestudio$0.ProcessDescriptor[]> {
     return $Call.ByID(2959813917).then(($result: any) => {
         return $$createType91($result);
     });
 }
 
-export function InvokeIDEExtension(request: goide$0.IDEExtensionRequest): $CancellablePromise<plugins$0.ExecResult> {
+export function InvokeIDEExtension(request: codestudio$0.IDEExtensionRequest): $CancellablePromise<plugins$0.ExecResult> {
     return $Call.ByID(2288139863, request).then(($result: any) => {
         return $$createType92($result);
     });
@@ -1131,7 +1131,7 @@ export function LinterConfigFile(sessionID: string, create: boolean): $Cancellab
 /**
  * ListBreakpoints restituisce i breakpoint salvati della sessione.
  */
-export function ListBreakpoints(sessionID: string): $CancellablePromise<goide$0.FileBreakpoints[]> {
+export function ListBreakpoints(sessionID: string): $CancellablePromise<codestudio$0.FileBreakpoints[]> {
     return $Call.ByID(31206758, sessionID).then(($result: any) => {
         return $$createType94($result);
     });
@@ -1140,7 +1140,7 @@ export function ListBreakpoints(sessionID: string): $CancellablePromise<goide$0.
 /**
  * ListDebugSessions elenca le sessioni di debug del progetto.
  */
-export function ListDebugSessions(sessionID: string): $CancellablePromise<goide$0.DebugSessionInfo[]> {
+export function ListDebugSessions(sessionID: string): $CancellablePromise<codestudio$0.DebugSessionInfo[]> {
     return $Call.ByID(21898424, sessionID).then(($result: any) => {
         return $$createType96($result);
     });
@@ -1149,7 +1149,7 @@ export function ListDebugSessions(sessionID: string): $CancellablePromise<goide$
 /**
  * ListDependencies legge le dipendenze del modulo senza eseguire comandi.
  */
-export function ListDependencies(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.DependencyState> {
+export function ListDependencies(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.DependencyState> {
     return $Call.ByID(2974208523, sessionID, moduleDirectory).then(($result: any) => {
         return $$createType97($result);
     });
@@ -1158,7 +1158,7 @@ export function ListDependencies(sessionID: string, moduleDirectory: string): $C
 /**
  * ListDirectory carica un singolo livello dell'albero file.
  */
-export function ListDirectory(sessionID: string, relativePath: string, includeIgnored: boolean): $CancellablePromise<goide$0.FileEntry[]> {
+export function ListDirectory(sessionID: string, relativePath: string, includeIgnored: boolean): $CancellablePromise<codestudio$0.FileEntry[]> {
     return $Call.ByID(837250229, sessionID, relativePath, includeIgnored).then(($result: any) => {
         return $$createType99($result);
     });
@@ -1167,7 +1167,7 @@ export function ListDirectory(sessionID: string, relativePath: string, includeIg
 /**
  * ListFunctionBreakpoints restituisce i breakpoint di funzione e il panic breakpoint del progetto.
  */
-export function ListFunctionBreakpoints(sessionID: string): $CancellablePromise<goide$0.FunctionBreakpointsView> {
+export function ListFunctionBreakpoints(sessionID: string): $CancellablePromise<codestudio$0.FunctionBreakpointsView> {
     return $Call.ByID(1495099682, sessionID).then(($result: any) => {
         return $$createType100($result);
     });
@@ -1176,7 +1176,7 @@ export function ListFunctionBreakpoints(sessionID: string): $CancellablePromise<
 /**
  * ListFuzzTargets elenca le funzioni Fuzz* con il corpus in testdata/fuzz e nella cache di Go.
  */
-export function ListFuzzTargets(sessionID: string): $CancellablePromise<goide$0.FuzzTarget[]> {
+export function ListFuzzTargets(sessionID: string): $CancellablePromise<codestudio$0.FuzzTarget[]> {
     return $Call.ByID(3704774411, sessionID).then(($result: any) => {
         return $$createType102($result);
     });
@@ -1185,7 +1185,7 @@ export function ListFuzzTargets(sessionID: string): $CancellablePromise<goide$0.
 /**
  * ListInstalledToolchains restituisce le versioni Go isolate disponibili localmente.
  */
-export function ListInstalledToolchains(sessionID: string): $CancellablePromise<goide$0.InstalledToolchain[]> {
+export function ListInstalledToolchains(sessionID: string): $CancellablePromise<codestudio$0.InstalledToolchain[]> {
     return $Call.ByID(2475261184, sessionID).then(($result: any) => {
         return $$createType104($result);
     });
@@ -1194,7 +1194,7 @@ export function ListInstalledToolchains(sessionID: string): $CancellablePromise<
 /**
  * ListLocalHistory elenca le versioni salvate di un file.
  */
-export function ListLocalHistory(sessionID: string, relativePath: string): $CancellablePromise<goide$0.HistoryRevision[]> {
+export function ListLocalHistory(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.HistoryRevision[]> {
     return $Call.ByID(2316806831, sessionID, relativePath).then(($result: any) => {
         return $$createType106($result);
     });
@@ -1212,7 +1212,7 @@ export function ListModuleVersions(sessionID: string, moduleDirectory: string, m
 /**
  * ListPreviews elenca le anteprime della sessione.
  */
-export function ListPreviews(sessionID: string): $CancellablePromise<goide$0.Preview[]> {
+export function ListPreviews(sessionID: string): $CancellablePromise<codestudio$0.Preview[]> {
     return $Call.ByID(500804099, sessionID).then(($result: any) => {
         return $$createType108($result);
     });
@@ -1221,7 +1221,7 @@ export function ListPreviews(sessionID: string): $CancellablePromise<goide$0.Pre
 /**
  * ListProcesses elenca i processi locali per Attach to Process.
  */
-export function ListProcesses(): $CancellablePromise<goide$0.ProcessInfo[]> {
+export function ListProcesses(): $CancellablePromise<codestudio$0.ProcessInfo[]> {
     return $Call.ByID(1033358035).then(($result: any) => {
         return $$createType110($result);
     });
@@ -1230,7 +1230,7 @@ export function ListProcesses(): $CancellablePromise<goide$0.ProcessInfo[]> {
 /**
  * ListProfileFiles elenca i profili pprof (*.pprof) trovati nel progetto, per il Performance Studio.
  */
-export function ListProfileFiles(sessionID: string): $CancellablePromise<goide$0.ProfileFile[]> {
+export function ListProfileFiles(sessionID: string): $CancellablePromise<codestudio$0.ProfileFile[]> {
     return $Call.ByID(3062046298, sessionID).then(($result: any) => {
         return $$createType111($result);
     });
@@ -1239,7 +1239,7 @@ export function ListProfileFiles(sessionID: string): $CancellablePromise<goide$0
 /**
  * ListProjectTemplates restituisce i template di progetto integrati e quelli dell'utente.
  */
-export function ListProjectTemplates(): $CancellablePromise<goide$0.ProjectTemplateList> {
+export function ListProjectTemplates(): $CancellablePromise<codestudio$0.ProjectTemplateList> {
     return $Call.ByID(2915770842).then(($result: any) => {
         return $$createType112($result);
     });
@@ -1248,7 +1248,7 @@ export function ListProjectTemplates(): $CancellablePromise<goide$0.ProjectTempl
 /**
  * ListRecentProjects restituisce i progetti locali aperti di recente.
  */
-export function ListRecentProjects(): $CancellablePromise<goide$0.RecentProject[]> {
+export function ListRecentProjects(): $CancellablePromise<codestudio$0.RecentProject[]> {
     return $Call.ByID(20282631).then(($result: any) => {
         return $$createType114($result);
     });
@@ -1257,7 +1257,7 @@ export function ListRecentProjects(): $CancellablePromise<goide$0.RecentProject[
 /**
  * ListRecoveredBuffers elenca i buffer non salvati ritrovati dopo un riavvio.
  */
-export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<goide$0.RecoveredBuffer[]> {
+export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<codestudio$0.RecoveredBuffer[]> {
     return $Call.ByID(1873457286, sessionID).then(($result: any) => {
         return $$createType116($result);
     });
@@ -1266,7 +1266,7 @@ export function ListRecoveredBuffers(sessionID: string): $CancellablePromise<goi
 /**
  * ListRemoteTargets elenca gli ambienti in cui eseguire run e test: distro WSL, host SSH, container.
  */
-export function ListRemoteTargets(): $CancellablePromise<goide$0.RemoteTarget[]> {
+export function ListRemoteTargets(): $CancellablePromise<codestudio$0.RemoteTarget[]> {
     return $Call.ByID(3383312002).then(($result: any) => {
         return $$createType118($result);
     });
@@ -1275,7 +1275,7 @@ export function ListRemoteTargets(): $CancellablePromise<goide$0.RemoteTarget[]>
 /**
  * ListRunConfigurations elenca le configurazioni Run salvate della sessione.
  */
-export function ListRunConfigurations(sessionID: string): $CancellablePromise<goide$0.RunConfiguration[]> {
+export function ListRunConfigurations(sessionID: string): $CancellablePromise<codestudio$0.RunConfiguration[]> {
     return $Call.ByID(2220453324, sessionID).then(($result: any) => {
         return $$createType119($result);
     });
@@ -1293,7 +1293,7 @@ export function ListRunTargets(sessionID: string): $CancellablePromise<run$0.Run
 /**
  * ListRuns restituisce le esecuzioni note per una sessione.
  */
-export function ListRuns(sessionID: string): $CancellablePromise<goide$0.Execution[]> {
+export function ListRuns(sessionID: string): $CancellablePromise<codestudio$0.Execution[]> {
     return $Call.ByID(1260420124, sessionID).then(($result: any) => {
         return $$createType122($result);
     });
@@ -1302,7 +1302,7 @@ export function ListRuns(sessionID: string): $CancellablePromise<goide$0.Executi
 /**
  * ListRuntimeSnapshots elenca le istantanee runtime del progetto.
  */
-export function ListRuntimeSnapshots(sessionID: string): $CancellablePromise<goide$0.RuntimeSnapshotFile[]> {
+export function ListRuntimeSnapshots(sessionID: string): $CancellablePromise<codestudio$0.RuntimeSnapshotFile[]> {
     return $Call.ByID(849752443, sessionID).then(($result: any) => {
         return $$createType124($result);
     });
@@ -1311,25 +1311,25 @@ export function ListRuntimeSnapshots(sessionID: string): $CancellablePromise<goi
 /**
  * ListSessionWindows elenca i progetti aperti in finestre separate.
  */
-export function ListSessionWindows(): $CancellablePromise<goide$0.SessionWindow[]> {
+export function ListSessionWindows(): $CancellablePromise<codestudio$0.SessionWindow[]> {
     return $Call.ByID(1623214695).then(($result: any) => {
         return $$createType125($result);
     });
 }
 
 /**
- * ListSessions restituisce le sessioni Go Studio correnti e ripristinate.
+ * ListSessions restituisce le sessioni Code Studio correnti e ripristinate.
  */
-export function ListSessions(): $CancellablePromise<goide$0.Session[]> {
+export function ListSessions(): $CancellablePromise<codestudio$0.Session[]> {
     return $Call.ByID(1758091587).then(($result: any) => {
         return $$createType66($result);
     });
 }
 
 /**
- * ListStudioWorkspaces elenca i workspace Go Studio, separati dai workspace API di adOmnia.
+ * ListStudioWorkspaces elenca i workspace Code Studio, separati dai workspace API di adOmnia.
  */
-export function ListStudioWorkspaces(): $CancellablePromise<goide$0.StudioWorkspaces> {
+export function ListStudioWorkspaces(): $CancellablePromise<codestudio$0.StudioWorkspaces> {
     return $Call.ByID(3174743582).then(($result: any) => {
         return $$createType23($result);
     });
@@ -1338,7 +1338,7 @@ export function ListStudioWorkspaces(): $CancellablePromise<goide$0.StudioWorksp
 /**
  * ListTerminalProfiles rileva le shell disponibili (PowerShell, cmd, Git Bash, distro WSL, zsh…).
  */
-export function ListTerminalProfiles(): $CancellablePromise<goide$0.TerminalProfile[]> {
+export function ListTerminalProfiles(): $CancellablePromise<codestudio$0.TerminalProfile[]> {
     return $Call.ByID(456418912).then(($result: any) => {
         return $$createType127($result);
     });
@@ -1347,7 +1347,7 @@ export function ListTerminalProfiles(): $CancellablePromise<goide$0.TerminalProf
 /**
  * ListTerminals elenca i terminali della sola sessione indicata.
  */
-export function ListTerminals(sessionID: string): $CancellablePromise<goide$0.TerminalSession[]> {
+export function ListTerminals(sessionID: string): $CancellablePromise<codestudio$0.TerminalSession[]> {
     return $Call.ByID(1696358663, sessionID).then(($result: any) => {
         return $$createType129($result);
     });
@@ -1356,7 +1356,7 @@ export function ListTerminals(sessionID: string): $CancellablePromise<goide$0.Te
 /**
  * ListTestRuns restituisce le esecuzioni di test della sessione, dalla più recente.
  */
-export function ListTestRuns(sessionID: string): $CancellablePromise<goide$0.TestRunSnapshot[]> {
+export function ListTestRuns(sessionID: string): $CancellablePromise<codestudio$0.TestRunSnapshot[]> {
     return $Call.ByID(2118292916, sessionID).then(($result: any) => {
         return $$createType130($result);
     });
@@ -1365,7 +1365,7 @@ export function ListTestRuns(sessionID: string): $CancellablePromise<goide$0.Tes
 /**
  * ListToolchainReleases restituisce il catalogo ufficiale compatibile su richiesta esplicita.
  */
-export function ListToolchainReleases(sessionID: string): $CancellablePromise<goide$0.ToolchainRelease[]> {
+export function ListToolchainReleases(sessionID: string): $CancellablePromise<codestudio$0.ToolchainRelease[]> {
     return $Call.ByID(2275849171, sessionID).then(($result: any) => {
         return $$createType132($result);
     });
@@ -1374,7 +1374,7 @@ export function ListToolchainReleases(sessionID: string): $CancellablePromise<go
 /**
  * ListTraceFiles elenca i file di esecuzione trace (`trace.out`, `*.trace`) del progetto.
  */
-export function ListTraceFiles(sessionID: string): $CancellablePromise<goide$0.ProfileFile[]> {
+export function ListTraceFiles(sessionID: string): $CancellablePromise<codestudio$0.ProfileFile[]> {
     return $Call.ByID(2286675290, sessionID).then(($result: any) => {
         return $$createType111($result);
     });
@@ -1383,7 +1383,7 @@ export function ListTraceFiles(sessionID: string): $CancellablePromise<goide$0.P
 /**
  * LoadProfile interpreta un profilo pprof del progetto in un report per il Performance Studio.
  */
-export function LoadProfile(sessionID: string, relativePath: string): $CancellablePromise<goide$0.ProfileReport> {
+export function LoadProfile(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.ProfileReport> {
     return $Call.ByID(2225739751, sessionID, relativePath).then(($result: any) => {
         return $$createType133($result);
     });
@@ -1399,7 +1399,7 @@ export function LoadRuntimeSnapshot(sessionID: string, name: string): $Cancellab
 /**
  * LoadTrace interpreta un file trace del progetto in una timeline per il viewer.
  */
-export function LoadTrace(sessionID: string, relativePath: string): $CancellablePromise<goide$0.TraceReport> {
+export function LoadTrace(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.TraceReport> {
     return $Call.ByID(1813296855, sessionID, relativePath).then(($result: any) => {
         return $$createType134($result);
     });
@@ -1415,7 +1415,7 @@ export function LocalHistoryContent(sessionID: string, relativePath: string, rev
 /**
  * Locations esegue definition, typeDefinition, implementation o references.
  */
-export function Locations(sessionID: string, documentID: string, kind: string, line: number, column: number): $CancellablePromise<goide$0.EditorLocation[]> {
+export function Locations(sessionID: string, documentID: string, kind: string, line: number, column: number): $CancellablePromise<codestudio$0.EditorLocation[]> {
     return $Call.ByID(326701862, sessionID, documentID, kind, line, column).then(($result: any) => {
         return $$createType136($result);
     });
@@ -1424,7 +1424,7 @@ export function Locations(sessionID: string, documentID: string, kind: string, l
 /**
  * MemoryModelAt spiega gli archi happens-before della funzione sotto il cursore.
  */
-export function MemoryModelAt(sessionID: string, relPath: string, line: number): $CancellablePromise<goide$0.MemoryModelReport> {
+export function MemoryModelAt(sessionID: string, relPath: string, line: number): $CancellablePromise<codestudio$0.MemoryModelReport> {
     return $Call.ByID(563081575, sessionID, relPath, line).then(($result: any) => {
         return $$createType137($result);
     });
@@ -1440,7 +1440,7 @@ export function MovePath(sessionID: string, $from: string, to: string): $Cancell
 /**
  * MoveSymbol sposta una dichiarazione in un altro package del modulo; restituisce l'anteprima delle modifiche.
  */
-export function MoveSymbol(sessionID: string, request: goide$0.MoveSymbolRequest): $CancellablePromise<goide$0.WorkspaceChange> {
+export function MoveSymbol(sessionID: string, request: codestudio$0.MoveSymbolRequest): $CancellablePromise<codestudio$0.WorkspaceChange> {
     return $Call.ByID(2769978375, sessionID, request).then(($result: any) => {
         return $$createType10($result);
     });
@@ -1449,7 +1449,7 @@ export function MoveSymbol(sessionID: string, request: goide$0.MoveSymbolRequest
 /**
  * OpenDocument apre un documento testuale o un'immagine confinato al progetto.
  */
-export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<goide$0.OpenDocument> {
+export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3794134535, sessionID, relativePath).then(($result: any) => {
         return $$createType138($result);
     });
@@ -1458,7 +1458,7 @@ export function OpenDocument(sessionID: string, relativePath: string): $Cancella
 /**
  * OpenExternalDocument apre in sola lettura un sorgente dell'SDK Go o della module cache.
  */
-export function OpenExternalDocument(sessionID: string, path: string): $CancellablePromise<goide$0.OpenDocument> {
+export function OpenExternalDocument(sessionID: string, path: string): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3817412392, sessionID, path).then(($result: any) => {
         return $$createType138($result);
     });
@@ -1474,14 +1474,14 @@ export function OpenPreviewWindow(sessionID: string, previewID: string, title: s
 /**
  * OpenProject registra una cartella locale senza avviarne codice o strumenti.
  */
-export function OpenProject(path: string): $CancellablePromise<goide$0.Session> {
+export function OpenProject(path: string): $CancellablePromise<codestudio$0.Session> {
     return $Call.ByID(1300673995, path).then(($result: any) => {
         return $$createType65($result);
     });
 }
 
 /**
- * OpenSessionWindow sposta il progetto in una finestra Go Studio separata, o
+ * OpenSessionWindow sposta il progetto in una finestra Code Studio separata, o
  * mette a fuoco quella già aperta. Il frontend chiamante deve aver salvato i
  * buffer del progetto: restano nella finestra che li possiede.
  */
@@ -1492,7 +1492,7 @@ export function OpenSessionWindow(sessionID: string): $CancellablePromise<string
 /**
  * OpenTerminal apre una shell interattiva reale nella working directory del progetto.
  */
-export function OpenTerminal(request: goide$0.TerminalRequest): $CancellablePromise<goide$0.TerminalSession> {
+export function OpenTerminal(request: codestudio$0.TerminalRequest): $CancellablePromise<codestudio$0.TerminalSession> {
     return $Call.ByID(4136168338, request).then(($result: any) => {
         return $$createType128($result);
     });
@@ -1501,7 +1501,7 @@ export function OpenTerminal(request: goide$0.TerminalRequest): $CancellableProm
 /**
  * OrganizeImports calcola la pulizia degli import del file.
  */
-export function OrganizeImports(sessionID: string, documentID: string): $CancellablePromise<goide$0.WorkspaceChange> {
+export function OrganizeImports(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.WorkspaceChange> {
     return $Call.ByID(1128610991, sessionID, documentID).then(($result: any) => {
         return $$createType10($result);
     });
@@ -1510,7 +1510,7 @@ export function OrganizeImports(sessionID: string, documentID: string): $Cancell
 /**
  * PackageHeatmap dà fan-in, fan-out e blast radius dei package e gli import del progetto.
  */
-export function PackageHeatmap(sessionID: string): $CancellablePromise<goide$0.PackageHeatmap> {
+export function PackageHeatmap(sessionID: string): $CancellablePromise<codestudio$0.PackageHeatmap> {
     return $Call.ByID(3066723674, sessionID).then(($result: any) => {
         return $$createType139($result);
     });
@@ -1519,7 +1519,7 @@ export function PackageHeatmap(sessionID: string): $CancellablePromise<goide$0.P
 /**
  * PrepareHierarchy apre Call Hierarchy o Type Hierarchy sul simbolo al cursore.
  */
-export function PrepareHierarchy(sessionID: string, documentID: string, kind: string, line: number, column: number): $CancellablePromise<goide$0.HierarchyItem[]> {
+export function PrepareHierarchy(sessionID: string, documentID: string, kind: string, line: number, column: number): $CancellablePromise<codestudio$0.HierarchyItem[]> {
     return $Call.ByID(4123984876, sessionID, documentID, kind, line, column).then(($result: any) => {
         return $$createType60($result);
     });
@@ -1528,7 +1528,7 @@ export function PrepareHierarchy(sessionID: string, documentID: string, kind: st
 /**
  * PrepareRename verifica il simbolo da rinominare.
  */
-export function PrepareRename(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.RenameTarget> {
+export function PrepareRename(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.RenameTarget> {
     return $Call.ByID(2777806199, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType140($result);
     });
@@ -1537,7 +1537,7 @@ export function PrepareRename(sessionID: string, documentID: string, line: numbe
 /**
  * PreviewGoTool mostra il comando Go Tools esatto prima dell'esecuzione.
  */
-export function PreviewGoTool(request: goide$0.GoToolRequest): $CancellablePromise<goide$0.GoToolPreview> {
+export function PreviewGoTool(request: codestudio$0.GoToolRequest): $CancellablePromise<codestudio$0.GoToolPreview> {
     return $Call.ByID(1722645302, request).then(($result: any) => {
         return $$createType141($result);
     });
@@ -1546,7 +1546,7 @@ export function PreviewGoTool(request: goide$0.GoToolRequest): $CancellablePromi
 /**
  * PrivateRepoCredentialStatus dice se il gestore credenziali di Git conosce l'host (mai il token).
  */
-export function PrivateRepoCredentialStatus(host: string): $CancellablePromise<goide$0.PrivateRepoCredential> {
+export function PrivateRepoCredentialStatus(host: string): $CancellablePromise<codestudio$0.PrivateRepoCredential> {
     return $Call.ByID(2894914022, host).then(($result: any) => {
         return $$createType142($result);
     });
@@ -1555,7 +1555,7 @@ export function PrivateRepoCredentialStatus(host: string): $CancellablePromise<g
 /**
  * ProjectServices elenca i servizi esterni (database, broker, osservabilità) usati dal progetto.
  */
-export function ProjectServices(sessionID: string): $CancellablePromise<goide$0.ProjectService[]> {
+export function ProjectServices(sessionID: string): $CancellablePromise<codestudio$0.ProjectService[]> {
     return $Call.ByID(297239615, sessionID).then(($result: any) => {
         return $$createType144($result);
     });
@@ -1571,7 +1571,7 @@ export function PromoteFuzzInput(sessionID: string, packageDir: string, target: 
 /**
  * PruneMissingSessions rimuove le sessioni la cui cartella non esiste più.
  */
-export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
+export function PruneMissingSessions(): $CancellablePromise<codestudio$0.Session[]> {
     return $Call.ByID(1286303007).then(($result: any) => {
         return $$createType66($result);
     });
@@ -1580,7 +1580,7 @@ export function PruneMissingSessions(): $CancellablePromise<goide$0.Session[]> {
 /**
  * QuickDefinition restituisce il sorgente della dichiarazione al cursore per il popup Quick Definition.
  */
-export function QuickDefinition(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.QuickDefinitionResult> {
+export function QuickDefinition(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.QuickDefinitionResult> {
     return $Call.ByID(3849385104, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType145($result);
     });
@@ -1589,7 +1589,7 @@ export function QuickDefinition(sessionID: string, documentID: string, line: num
 /**
  * QuickOpen cerca file del progetto con limite dei risultati.
  */
-export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<goide$0.QuickOpenResult[]> {
+export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<codestudio$0.QuickOpenResult[]> {
     return $Call.ByID(2164854073, sessionID, query, limit).then(($result: any) => {
         return $$createType147($result);
     });
@@ -1605,7 +1605,7 @@ export function ReadFileDataURL(sessionID: string, relativePath: string): $Cance
 /**
  * ReadFuzzInput interpreta un input del corpus fuzz.
  */
-export function ReadFuzzInput(sessionID: string, packageDir: string, target: string, source: string, name: string): $CancellablePromise<goide$0.FuzzInputContent> {
+export function ReadFuzzInput(sessionID: string, packageDir: string, target: string, source: string, name: string): $CancellablePromise<codestudio$0.FuzzInputContent> {
     return $Call.ByID(2681117665, sessionID, packageDir, target, source, name).then(($result: any) => {
         return $$createType148($result);
     });
@@ -1629,7 +1629,7 @@ export function ReadyPreviewURL(sessionID: string, previewID: string): $Cancella
 /**
  * RecursiveCalls restituisce le chiamate ricorsive dirette del file.
  */
-export function RecursiveCalls(sessionID: string, documentID: string): $CancellablePromise<goide$0.RecursiveCallsResult> {
+export function RecursiveCalls(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.RecursiveCallsResult> {
     return $Call.ByID(2923315195, sessionID, documentID).then(($result: any) => {
         return $$createType149($result);
     });
@@ -1693,7 +1693,7 @@ export function RemoveRecentProject(path: string): $CancellablePromise<void> {
 /**
  * Rename calcola l'anteprima del rename semantico.
  */
-export function Rename(sessionID: string, documentID: string, line: number, column: number, newName: string): $CancellablePromise<goide$0.WorkspaceChange> {
+export function Rename(sessionID: string, documentID: string, line: number, column: number, newName: string): $CancellablePromise<codestudio$0.WorkspaceChange> {
     return $Call.ByID(2412201980, sessionID, documentID, line, column, newName).then(($result: any) => {
         return $$createType10($result);
     });
@@ -1702,16 +1702,16 @@ export function Rename(sessionID: string, documentID: string, line: number, colu
 /**
  * RenameRunConfiguration rinomina una configurazione esistente.
  */
-export function RenameRunConfiguration(sessionID: string, configID: string, name: string): $CancellablePromise<goide$0.RunConfiguration> {
+export function RenameRunConfiguration(sessionID: string, configID: string, name: string): $CancellablePromise<codestudio$0.RunConfiguration> {
     return $Call.ByID(2219541861, sessionID, configID, name).then(($result: any) => {
         return $$createType57($result);
     });
 }
 
 /**
- * RenameStudioWorkspace rinomina un workspace Go Studio.
+ * RenameStudioWorkspace rinomina un workspace Code Studio.
  */
-export function RenameStudioWorkspace(id: string, name: string): $CancellablePromise<goide$0.StudioWorkspaces> {
+export function RenameStudioWorkspace(id: string, name: string): $CancellablePromise<codestudio$0.StudioWorkspaces> {
     return $Call.ByID(2788191155, id, name).then(($result: any) => {
         return $$createType23($result);
     });
@@ -1720,7 +1720,7 @@ export function RenameStudioWorkspace(id: string, name: string): $CancellablePro
 /**
  * RenameTerminal cambia il nome mostrato nel tab del terminale.
  */
-export function RenameTerminal(terminalID: string, name: string): $CancellablePromise<goide$0.TerminalSession> {
+export function RenameTerminal(terminalID: string, name: string): $CancellablePromise<codestudio$0.TerminalSession> {
     return $Call.ByID(3169343836, terminalID, name).then(($result: any) => {
         return $$createType128($result);
     });
@@ -1729,7 +1729,7 @@ export function RenameTerminal(terminalID: string, name: string): $CancellablePr
 /**
  * ReorderRunConfigurations applica l'ordine scelto dall'utente.
  */
-export function ReorderRunConfigurations(sessionID: string, configIDs: string[]): $CancellablePromise<goide$0.RunConfiguration[]> {
+export function ReorderRunConfigurations(sessionID: string, configIDs: string[]): $CancellablePromise<codestudio$0.RunConfiguration[]> {
     return $Call.ByID(2094160389, sessionID, configIDs).then(($result: any) => {
         return $$createType119($result);
     });
@@ -1742,7 +1742,7 @@ export function ResizeTerminal(terminalID: string, columns: number, rows: number
     return $Call.ByID(3179382934, terminalID, columns, rows);
 }
 
-export function ResolveCodeAction(sessionID: string, actionID: string): $CancellablePromise<goide$0.WorkspaceChange> {
+export function ResolveCodeAction(sessionID: string, actionID: string): $CancellablePromise<codestudio$0.WorkspaceChange> {
     return $Call.ByID(478250469, sessionID, actionID).then(($result: any) => {
         return $$createType10($result);
     });
@@ -1751,7 +1751,7 @@ export function ResolveCodeAction(sessionID: string, actionID: string): $Cancell
 /**
  * ResolveDependencySource localizza il codice sorgente di una dipendenza del go.mod.
  */
-export function ResolveDependencySource(sessionID: string, moduleDirectory: string, modulePath: string): $CancellablePromise<goide$0.DependencySource> {
+export function ResolveDependencySource(sessionID: string, moduleDirectory: string, modulePath: string): $CancellablePromise<codestudio$0.DependencySource> {
     return $Call.ByID(1778333746, sessionID, moduleDirectory, modulePath).then(($result: any) => {
         return $$createType150($result);
     });
@@ -1763,7 +1763,7 @@ export function ResourceUsage(): $CancellablePromise<resources$0.Snapshot> {
     });
 }
 
-export function RestartAutomaticLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function RestartAutomaticLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(1075626585, sessionID, settings).then(($result: any) => {
         return $$createType61($result);
     });
@@ -1772,7 +1772,7 @@ export function RestartAutomaticLanguageServer(sessionID: string, settings: goid
 /**
  * RestartLanguageServer riavvia gopls azzerando il contatore dei crash.
  */
-export function RestartLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function RestartLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(1171223752, sessionID, settings).then(($result: any) => {
         return $$createType61($result);
     });
@@ -1781,7 +1781,7 @@ export function RestartLanguageServer(sessionID: string, settings: goide$0.Langu
 /**
  * RestartRun riavvia la configurazione associata a un'esecuzione.
  */
-export function RestartRun(runID: string): $CancellablePromise<goide$0.Execution> {
+export function RestartRun(runID: string): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(41995706, runID).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1797,7 +1797,7 @@ export function RevealPath(sessionID: string, relativePath: string): $Cancellabl
 /**
  * RunGoTool esegue un tool Go rilevato con argomenti strutturati nella cartella indicata.
  */
-export function RunGoTool(sessionID: string, binary: string, $arguments: string[], workingDirectory: string): $CancellablePromise<goide$0.Execution> {
+export function RunGoTool(sessionID: string, binary: string, $arguments: string[], workingDirectory: string): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(727920603, sessionID, binary, $arguments, workingDirectory).then(($result: any) => {
         return $$createType88($result);
     });
@@ -1806,7 +1806,7 @@ export function RunGoTool(sessionID: string, binary: string, $arguments: string[
 /**
  * RunLint esegue il linter sul progetto; si annulla con la promise frontend.
  */
-export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResult> {
+export function RunLint(sessionID: string): $CancellablePromise<codestudio$0.LintResult> {
     return $Call.ByID(1402341846, sessionID).then(($result: any) => {
         return $$createType152($result);
     });
@@ -1815,7 +1815,7 @@ export function RunLint(sessionID: string): $CancellablePromise<goide$0.LintResu
 /**
  * RunLintChanged esegue il linter solo sui file Go modificati; si annulla con la promise frontend.
  */
-export function RunLintChanged(sessionID: string): $CancellablePromise<goide$0.LintResult> {
+export function RunLintChanged(sessionID: string): $CancellablePromise<codestudio$0.LintResult> {
     return $Call.ByID(3396593074, sessionID).then(($result: any) => {
         return $$createType152($result);
     });
@@ -1824,7 +1824,7 @@ export function RunLintChanged(sessionID: string): $CancellablePromise<goide$0.L
 /**
  * RunSonarScan esegue sonar-scanner e importa gli issue dalla Web API.
  */
-export function RunSonarScan(sessionID: string, token: string): $CancellablePromise<goide$0.SonarScanResult> {
+export function RunSonarScan(sessionID: string, token: string): $CancellablePromise<codestudio$0.SonarScanResult> {
     return $Call.ByID(2848034091, sessionID, token).then(($result: any) => {
         return $$createType62($result);
     });
@@ -1833,7 +1833,7 @@ export function RunSonarScan(sessionID: string, token: string): $CancellableProm
 /**
  * SaveDocument salva atomicamente il buffer con protezione dalle modifiche esterne.
  */
-export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<goide$0.OpenDocument> {
+export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3463741930, sessionID, documentID, content, diskToken, force).then(($result: any) => {
         return $$createType138($result);
     });
@@ -1849,14 +1849,14 @@ export function SaveLintBaseline(sessionID: string): $CancellablePromise<number>
 /**
  * SavePreviewConfig salva posizione, viewport e auto reload dell'anteprima.
  */
-export function SavePreviewConfig(sessionID: string, config: goide$0.PreviewConfig): $CancellablePromise<void> {
+export function SavePreviewConfig(sessionID: string, config: codestudio$0.PreviewConfig): $CancellablePromise<void> {
     return $Call.ByID(4151944763, sessionID, config);
 }
 
 /**
  * SavePrivateRepoCredential affida username e token di un host privato al gestore credenziali di Git.
  */
-export function SavePrivateRepoCredential(host: string, username: string, token: string): $CancellablePromise<goide$0.PrivateRepoCredential> {
+export function SavePrivateRepoCredential(host: string, username: string, token: string): $CancellablePromise<codestudio$0.PrivateRepoCredential> {
     return $Call.ByID(1996559851, host, username, token).then(($result: any) => {
         return $$createType142($result);
     });
@@ -1865,7 +1865,7 @@ export function SavePrivateRepoCredential(host: string, username: string, token:
 /**
  * SaveRunConfiguration crea o aggiorna una configurazione Run validata.
  */
-export function SaveRunConfiguration(sessionID: string, config: goide$0.RunConfiguration): $CancellablePromise<goide$0.RunConfiguration> {
+export function SaveRunConfiguration(sessionID: string, config: codestudio$0.RunConfiguration): $CancellablePromise<codestudio$0.RunConfiguration> {
     return $Call.ByID(2344626746, sessionID, config).then(($result: any) => {
         return $$createType57($result);
     });
@@ -1888,7 +1888,7 @@ export function SaveSecurityBaseline(sessionID: string): $CancellablePromise<num
 /**
  * SaveSessionView registra layout e tab della sessione, senza contenuti dei file.
  */
-export function SaveSessionView(sessionID: string, view: goide$0.SessionView): $CancellablePromise<void> {
+export function SaveSessionView(sessionID: string, view: codestudio$0.SessionView): $CancellablePromise<void> {
     return $Call.ByID(4208673812, sessionID, view);
 }
 
@@ -1902,7 +1902,7 @@ export function SaveSonarBaseline(sessionID: string, token: string): $Cancellabl
 /**
  * SaveSonarConfig salva server, chiave e percorsi; il token è separato e resta in memoria.
  */
-export function SaveSonarConfig(sessionID: string, config: goide$0.SonarConfig): $CancellablePromise<goide$0.SonarConfig> {
+export function SaveSonarConfig(sessionID: string, config: codestudio$0.SonarConfig): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(2689463436, sessionID, config).then(($result: any) => {
         return $$createType153($result);
     });
@@ -1911,7 +1911,7 @@ export function SaveSonarConfig(sessionID: string, config: goide$0.SonarConfig):
 /**
  * SearchProject cerca testo nel progetto; si annulla con la promise frontend.
  */
-export function SearchProject(query: goide$0.SearchQuery): $CancellablePromise<goide$0.SearchResult> {
+export function SearchProject(query: codestudio$0.SearchQuery): $CancellablePromise<codestudio$0.SearchResult> {
     return $Call.ByID(1135993643, query).then(($result: any) => {
         return $$createType154($result);
     });
@@ -1920,7 +1920,7 @@ export function SearchProject(query: goide$0.SearchQuery): $CancellablePromise<g
 /**
  * SecurityExposures dice da quali route, RPC e topic si raggiunge ogni finding di sicurezza.
  */
-export function SecurityExposures(sessionID: string, locations: goide$0.FindingLocation[]): $CancellablePromise<goide$0.SecurityExposure[]> {
+export function SecurityExposures(sessionID: string, locations: codestudio$0.FindingLocation[]): $CancellablePromise<codestudio$0.SecurityExposure[]> {
     return $Call.ByID(1294922534, sessionID, locations).then(($result: any) => {
         return $$createType156($result);
     });
@@ -1929,7 +1929,7 @@ export function SecurityExposures(sessionID: string, locations: goide$0.FindingL
 /**
  * SecurityScan analizza offline i file del progetto: segreti e regole statiche di sicurezza.
  */
-export function SecurityScan(sessionID: string): $CancellablePromise<goide$0.SecurityReport> {
+export function SecurityScan(sessionID: string): $CancellablePromise<codestudio$0.SecurityReport> {
     return $Call.ByID(1068563901, sessionID).then(($result: any) => {
         return $$createType157($result);
     });
@@ -1966,7 +1966,7 @@ export function SelectProjectParent(): $CancellablePromise<string> {
 /**
  * SemanticTokens restituisce i token semantici del buffer, da decodificare con la legenda di gopls.
  */
-export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<goide$0.SemanticTokensResult> {
+export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.SemanticTokensResult> {
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
         return $$createType158($result);
     });
@@ -1980,9 +1980,9 @@ export function SetAIProjectPolicy(sessionID: string, policy: string): $Cancella
 }
 
 /**
- * SetActiveStudioWorkspace cambia il workspace Go Studio mostrato.
+ * SetActiveStudioWorkspace cambia il workspace Code Studio mostrato.
  */
-export function SetActiveStudioWorkspace(id: string): $CancellablePromise<goide$0.StudioWorkspaces> {
+export function SetActiveStudioWorkspace(id: string): $CancellablePromise<codestudio$0.StudioWorkspaces> {
     return $Call.ByID(2133194987, id).then(($result: any) => {
         return $$createType23($result);
     });
@@ -1991,7 +1991,7 @@ export function SetActiveStudioWorkspace(id: string): $CancellablePromise<goide$
 /**
  * SetBreakpoints sostituisce i breakpoint di un file (con condizione, hit count o logpoint) e li applica alle sessioni attive.
  */
-export function SetBreakpoints(sessionID: string, relativePath: string, breakpoints: goide$0.Breakpoint[]): $CancellablePromise<goide$0.BreakpointState[]> {
+export function SetBreakpoints(sessionID: string, relativePath: string, breakpoints: codestudio$0.Breakpoint[]): $CancellablePromise<codestudio$0.BreakpointState[]> {
     return $Call.ByID(914916034, sessionID, relativePath, breakpoints).then(($result: any) => {
         return $$createType160($result);
     });
@@ -2007,7 +2007,7 @@ export function SetDirtyDocumentCount(count: number): $CancellablePromise<void> 
 /**
  * SetFunctionBreakpoints sostituisce i breakpoint di funzione e il panic breakpoint del progetto.
  */
-export function SetFunctionBreakpoints(sessionID: string, settings: goide$0.FunctionBreakpointSettings): $CancellablePromise<goide$0.FunctionBreakpointsView> {
+export function SetFunctionBreakpoints(sessionID: string, settings: codestudio$0.FunctionBreakpointSettings): $CancellablePromise<codestudio$0.FunctionBreakpointsView> {
     return $Call.ByID(2389738046, sessionID, settings).then(($result: any) => {
         return $$createType100($result);
     });
@@ -2030,7 +2030,7 @@ export function SetSonarToken(sessionID: string, token: string): $CancellablePro
 /**
  * SetToolAuthorization registra il consenso esplicito all'uso degli strumenti.
  */
-export function SetToolAuthorization(id: string, allowed: boolean): $CancellablePromise<goide$0.Session> {
+export function SetToolAuthorization(id: string, allowed: boolean): $CancellablePromise<codestudio$0.Session> {
     return $Call.ByID(2669830333, id, allowed).then(($result: any) => {
         return $$createType65($result);
     });
@@ -2046,7 +2046,7 @@ export function SetWindowDirtyDocumentCount(windowID: string, count: number): $C
 /**
  * ShutdownAnalysis avvia un package main, gli manda l'interrupt e osserva l'arresto.
  */
-export function ShutdownAnalysis(sessionID: string, target: string, health: string, graceSeconds: number): $CancellablePromise<goide$0.ShutdownReport> {
+export function ShutdownAnalysis(sessionID: string, target: string, health: string, graceSeconds: number): $CancellablePromise<codestudio$0.ShutdownReport> {
     return $Call.ByID(2737527334, sessionID, target, health, graceSeconds).then(($result: any) => {
         return $$createType161($result);
     });
@@ -2055,7 +2055,7 @@ export function ShutdownAnalysis(sessionID: string, target: string, health: stri
 /**
  * SignatureHelp restituisce la firma della chiamata in corso.
  */
-export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<goide$0.SignatureResult> {
+export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.SignatureResult> {
     return $Call.ByID(4264674347, sessionID, documentID, line, column).then(($result: any) => {
         return $$createType162($result);
     });
@@ -2064,7 +2064,7 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
 /**
  * SonarConfigFor restituisce la configurazione SonarQube (senza token) della sessione.
  */
-export function SonarConfigFor(sessionID: string): $CancellablePromise<goide$0.SonarConfig> {
+export function SonarConfigFor(sessionID: string): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(4113315866, sessionID).then(($result: any) => {
         return $$createType153($result);
     });
@@ -2073,7 +2073,7 @@ export function SonarConfigFor(sessionID: string): $CancellablePromise<goide$0.S
 /**
  * Automatic entry points keep the existing editor-driven suspension policy.
  */
-export function StartAutomaticLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function StartAutomaticLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(2833059104, sessionID, settings).then(($result: any) => {
         return $$createType61($result);
     });
@@ -2082,7 +2082,7 @@ export function StartAutomaticLanguageServer(sessionID: string, settings: goide$
 /**
  * StartConfiguredBuild compila una configurazione con tutti i suoi parametri.
  */
-export function StartConfiguredBuild(sessionID: string, configID: string): $CancellablePromise<goide$0.Execution> {
+export function StartConfiguredBuild(sessionID: string, configID: string): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(1484067834, sessionID, configID).then(($result: any) => {
         return $$createType88($result);
     });
@@ -2091,7 +2091,7 @@ export function StartConfiguredBuild(sessionID: string, configID: string): $Canc
 /**
  * StartConfiguredRun avvia una configurazione salvata con i soli segreti forniti a runtime.
  */
-export function StartConfiguredRun(sessionID: string, configID: string, secrets: { [_ in string]?: string }): $CancellablePromise<goide$0.Execution> {
+export function StartConfiguredRun(sessionID: string, configID: string, secrets: { [_ in string]?: string }): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(3106256291, sessionID, configID, secrets).then(($result: any) => {
         return $$createType88($result);
     });
@@ -2100,7 +2100,7 @@ export function StartConfiguredRun(sessionID: string, configID: string, secrets:
 /**
  * StartDebug avvia una sessione Delve per un programma o un singolo test.
  */
-export function StartDebug(request: goide$0.DebugRequest): $CancellablePromise<goide$0.DebugSessionInfo> {
+export function StartDebug(request: codestudio$0.DebugRequest): $CancellablePromise<codestudio$0.DebugSessionInfo> {
     return $Call.ByID(1614658301, request).then(($result: any) => {
         return $$createType95($result);
     });
@@ -2109,19 +2109,19 @@ export function StartDebug(request: goide$0.DebugRequest): $CancellablePromise<g
 /**
  * StartDependencyAction applica un go get strutturato dopo conferma esplicita.
  */
-export function StartDependencyAction(request: goide$0.DependencyActionRequest): $CancellablePromise<goide$0.Execution> {
+export function StartDependencyAction(request: codestudio$0.DependencyActionRequest): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(967215541, request).then(($result: any) => {
         return $$createType88($result);
     });
 }
 
-export function StartDevContainer(sessionID: string): $CancellablePromise<goide$0.Execution> {
+export function StartDevContainer(sessionID: string): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(2561820212, sessionID).then(($result: any) => {
         return $$createType88($result);
     });
 }
 
-export function StartExtensionLanguageServer(sessionID: string, languageID: string): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function StartExtensionLanguageServer(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(1499758522, sessionID, languageID).then(($result: any) => {
         return $$createType61($result);
     });
@@ -2130,7 +2130,7 @@ export function StartExtensionLanguageServer(sessionID: string, languageID: stri
 /**
  * StartGoTool esegue un comando Go Tools nella Run console.
  */
-export function StartGoTool(request: goide$0.GoToolRequest): $CancellablePromise<goide$0.Execution> {
+export function StartGoTool(request: codestudio$0.GoToolRequest): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(2792217714, request).then(($result: any) => {
         return $$createType88($result);
     });
@@ -2139,7 +2139,7 @@ export function StartGoTool(request: goide$0.GoToolRequest): $CancellablePromise
 /**
  * StartLanguageServer avvia gopls per un progetto autorizzato.
  */
-export function StartLanguageServer(sessionID: string, settings: goide$0.LanguageServerSettings): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function StartLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(4117124675, sessionID, settings).then(($result: any) => {
         return $$createType61($result);
     });
@@ -2148,7 +2148,7 @@ export function StartLanguageServer(sessionID: string, settings: goide$0.Languag
 /**
  * StartPreview avvia un'anteprima (server statico o dev server) per un progetto autorizzato.
  */
-export function StartPreview(sessionID: string, request: goide$0.PreviewRequest): $CancellablePromise<goide$0.Preview> {
+export function StartPreview(sessionID: string, request: codestudio$0.PreviewRequest): $CancellablePromise<codestudio$0.Preview> {
     return $Call.ByID(276702182, sessionID, request).then(($result: any) => {
         return $$createType107($result);
     });
@@ -2157,7 +2157,7 @@ export function StartPreview(sessionID: string, request: goide$0.PreviewRequest)
 /**
  * StartRun avvia una build, run o tidy con argomenti strutturati.
  */
-export function StartRun(request: goide$0.RunRequest): $CancellablePromise<goide$0.Execution> {
+export function StartRun(request: codestudio$0.RunRequest): $CancellablePromise<codestudio$0.Execution> {
     return $Call.ByID(39043755, request).then(($result: any) => {
         return $$createType88($result);
     });
@@ -2166,7 +2166,7 @@ export function StartRun(request: goide$0.RunRequest): $CancellablePromise<goide
 /**
  * StartTests avvia go test -json; l'albero dei risultati arriva con gli eventi tests.updated.
  */
-export function StartTests(request: goide$0.TestRunRequest): $CancellablePromise<goide$0.TestRunSnapshot> {
+export function StartTests(request: codestudio$0.TestRunRequest): $CancellablePromise<codestudio$0.TestRunSnapshot> {
     return $Call.ByID(224644795, request).then(($result: any) => {
         return $$createType74($result);
     });
@@ -2175,7 +2175,7 @@ export function StartTests(request: goide$0.TestRunRequest): $CancellablePromise
 /**
  * StartWebLanguageServer avvia il language server di un linguaggio web.
  */
-export function StartWebLanguageServer(sessionID: string, languageID: string): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function StartWebLanguageServer(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(3849149009, sessionID, languageID).then(($result: any) => {
         return $$createType61($result);
     });
@@ -2184,7 +2184,7 @@ export function StartWebLanguageServer(sessionID: string, languageID: string): $
 /**
  * StartupAnalysis misura l'avvio di un package main (init, connessioni, porta, health).
  */
-export function StartupAnalysis(sessionID: string, target: string, health: string, timeoutSeconds: number): $CancellablePromise<goide$0.StartupReport> {
+export function StartupAnalysis(sessionID: string, target: string, health: string, timeoutSeconds: number): $CancellablePromise<codestudio$0.StartupReport> {
     return $Call.ByID(1020562025, sessionID, target, health, timeoutSeconds).then(($result: any) => {
         return $$createType163($result);
     });
@@ -2232,14 +2232,14 @@ export function StopWebLanguageServer(sessionID: string, languageID: string): $C
 /**
  * SuppressSecurityFinding sopprime un finding con motivazione (salvata in .adomnia/security.json).
  */
-export function SuppressSecurityFinding(sessionID: string, finding: goide$0.SecurityFinding, reason: string): $CancellablePromise<void> {
+export function SuppressSecurityFinding(sessionID: string, finding: codestudio$0.SecurityFinding, reason: string): $CancellablePromise<void> {
     return $Call.ByID(648830544, sessionID, finding, reason);
 }
 
 /**
  * TestModuleRegistry prova il primo GOPROXY della sessione (registry interno) con proxy, CA e credenziali.
  */
-export function TestModuleRegistry(sessionID: string): $CancellablePromise<goide$0.ModuleRegistryCheck> {
+export function TestModuleRegistry(sessionID: string): $CancellablePromise<codestudio$0.ModuleRegistryCheck> {
     return $Call.ByID(2927291149, sessionID).then(($result: any) => {
         return $$createType164($result);
     });
@@ -2248,7 +2248,7 @@ export function TestModuleRegistry(sessionID: string): $CancellablePromise<goide
 /**
  * ToolchainSettings restituisce la toolchain del progetto e quella globale.
  */
-export function ToolchainSettings(sessionID: string): $CancellablePromise<goide$0.ToolchainSettings> {
+export function ToolchainSettings(sessionID: string): $CancellablePromise<codestudio$0.ToolchainSettings> {
     return $Call.ByID(1885808392, sessionID).then(($result: any) => {
         return $$createType165($result);
     });
@@ -2271,7 +2271,7 @@ export function UpdateDocumentBuffer(sessionID: string, documentID: string, vers
 /**
  * UpdateGoWork porta go.work all'insieme di moduli indicato con i comandi go work ufficiali.
  */
-export function UpdateGoWork(sessionID: string, directories: string[]): $CancellablePromise<goide$0.GoWorkState> {
+export function UpdateGoWork(sessionID: string, directories: string[]): $CancellablePromise<codestudio$0.GoWorkState> {
     return $Call.ByID(4284869580, sessionID, directories).then(($result: any) => {
         return $$createType75($result);
     });
@@ -2287,7 +2287,7 @@ export function UseGlobalToolchain(sessionID: string): $CancellablePromise<void>
 /**
  * VCSBlame restituisce autore e commit di ogni riga del file.
  */
-export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSBlameLine[]> {
+export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSBlameLine[]> {
     return $Call.ByID(3401291297, sessionID, relativePath).then(($result: any) => {
         return $$createType167($result);
     });
@@ -2296,7 +2296,7 @@ export function VCSBlame(sessionID: string, relativePath: string): $CancellableP
 /**
  * VCSChangedSymbols elenca le dichiarazioni Go aggiunte, modificate o rimosse rispetto a HEAD.
  */
-export function VCSChangedSymbols(sessionID: string): $CancellablePromise<goide$0.VCSChangedSymbol[]> {
+export function VCSChangedSymbols(sessionID: string): $CancellablePromise<codestudio$0.VCSChangedSymbol[]> {
     return $Call.ByID(2852524783, sessionID).then(($result: any) => {
         return $$createType169($result);
     });
@@ -2328,7 +2328,7 @@ export function VCSFileAtRevision(sessionID: string, relativePath: string, revis
 /**
  * VCSFileHistory elenca i commit che hanno toccato il file.
  */
-export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSCommit[]> {
+export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
         return $$createType172($result);
     });
@@ -2337,7 +2337,7 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
 /**
  * VCSLineHistory elenca i commit che hanno modificato le righe start..end del file.
  */
-export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<goide$0.VCSCommit[]> {
+export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(3679175152, sessionID, relativePath, start, end).then(($result: any) => {
         return $$createType172($result);
     });
@@ -2373,7 +2373,7 @@ export function VCSRevert(sessionID: string, relativePaths: string[]): $Cancella
     return $Call.ByID(3383709900, sessionID, relativePaths);
 }
 
-export function VCSSelectRepository(sessionID: string, root: string): $CancellablePromise<goide$0.VCSStatus> {
+export function VCSSelectRepository(sessionID: string, root: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(156071826, sessionID, root).then(($result: any) => {
         return $$createType176($result);
     });
@@ -2389,7 +2389,7 @@ export function VCSStage(sessionID: string, relativePaths: string[], staged: boo
 /**
  * VCSStatus legge branch e modifiche del repository Git del progetto, senza operazioni di rete.
  */
-export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSStatus> {
+export function VCSStatus(sessionID: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
         return $$createType176($result);
     });
@@ -2398,7 +2398,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<goide$0.VCSSta
 /**
  * VCSWorkingDiff restituisce un file in HEAD e su disco, per il diff nel dialog di commit.
  */
-export function VCSWorkingDiff(sessionID: string, relativePath: string): $CancellablePromise<goide$0.VCSWorkingDiff> {
+export function VCSWorkingDiff(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSWorkingDiff> {
     return $Call.ByID(4260236086, sessionID, relativePath).then(($result: any) => {
         return $$createType177($result);
     });
@@ -2407,7 +2407,7 @@ export function VCSWorkingDiff(sessionID: string, relativePath: string): $Cancel
 /**
  * VulnerabilityScan esegue govulncheck con percorsi di chiamata, versione corretta e catena di dipendenze.
  */
-export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $CancellablePromise<goide$0.VulnReport> {
+export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.VulnReport> {
     return $Call.ByID(416955177, sessionID, moduleDirectory).then(($result: any) => {
         return $$createType178($result);
     });
@@ -2416,7 +2416,7 @@ export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $
 /**
  * WatcherStatus indica se il progetto è osservato per intero o solo in parte.
  */
-export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.WatcherStatus> {
+export function WatcherStatus(sessionID: string): $CancellablePromise<codestudio$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
         return $$createType179($result);
     });
@@ -2425,7 +2425,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<goide$0.Wa
 /**
  * WebLanguageServerStatus restituisce lo stato del language server di un linguaggio web.
  */
-export function WebLanguageServerStatus(sessionID: string, languageID: string): $CancellablePromise<goide$0.LanguageServerStatus> {
+export function WebLanguageServerStatus(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.LanguageServerStatus> {
     return $Call.ByID(3779806923, sessionID, languageID).then(($result: any) => {
         return $$createType61($result);
     });
@@ -2434,7 +2434,7 @@ export function WebLanguageServerStatus(sessionID: string, languageID: string): 
 /**
  * WebLanguageServers restituisce la disponibilità dei language server web.
  */
-export function WebLanguageServers(sessionID: string): $CancellablePromise<goide$0.WebServerInfo[]> {
+export function WebLanguageServers(sessionID: string): $CancellablePromise<codestudio$0.WebServerInfo[]> {
     return $Call.ByID(2939906510, sessionID).then(($result: any) => {
         return $$createType181($result);
     });
@@ -2443,7 +2443,7 @@ export function WebLanguageServers(sessionID: string): $CancellablePromise<goide
 /**
  * WorkspaceGraphSummary costruisce (o riprende dal disco) il Semantic Workspace Graph e ne dà il riassunto.
  */
-export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $CancellablePromise<goide$0.GraphSummary> {
+export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $CancellablePromise<codestudio$0.GraphSummary> {
     return $Call.ByID(4166878463, sessionID, rebuild).then(($result: any) => {
         return $$createType182($result);
     });
@@ -2452,7 +2452,7 @@ export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $Can
 /**
  * WorkspaceModuleGraph restituisce le dipendenze tra i moduli del progetto, lette dai go.mod.
  */
-export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goide$0.WorkspaceModule[]> {
+export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<codestudio$0.WorkspaceModule[]> {
     return $Call.ByID(368877389, sessionID).then(($result: any) => {
         return $$createType184($result);
     });
@@ -2461,7 +2461,7 @@ export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<goi
 /**
  * WorkspaceSymbols cerca simboli nel workspace.
  */
-export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<goide$0.WorkspaceSymbol[]> {
+export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<codestudio$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
         return $$createType186($result);
     });
@@ -2485,27 +2485,27 @@ export function WriteTerminal(terminalID: string, data: string): $CancellablePro
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = copilot$0.ProjectRule.createFrom;
 const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = goide$0.APIContractReport.createFrom;
+const $$createType3 = codestudio$0.APIContractReport.createFrom;
 const $$createType4 = agentreview$0.Review.createFrom;
-const $$createType5 = goide$0.ArchitectureResult.createFrom;
-const $$createType6 = goide$0.ErrorHandlingReport.createFrom;
+const $$createType5 = codestudio$0.ArchitectureResult.createFrom;
+const $$createType6 = codestudio$0.ErrorHandlingReport.createFrom;
 const $$createType7 = graph$0.DriftReport.createFrom;
-const $$createType8 = goide$0.BaseCoverage.createFrom;
-const $$createType9 = goide$0.ProfileFile.createFrom;
-const $$createType10 = goide$0.WorkspaceChange.createFrom;
-const $$createType11 = goide$0.DocumentDiskState.createFrom;
-const $$createType12 = goide$0.SessionWindow.createFrom;
-const $$createType13 = goide$0.CodeActionEntry.createFrom;
+const $$createType8 = codestudio$0.BaseCoverage.createFrom;
+const $$createType9 = codestudio$0.ProfileFile.createFrom;
+const $$createType10 = codestudio$0.WorkspaceChange.createFrom;
+const $$createType11 = codestudio$0.DocumentDiskState.createFrom;
+const $$createType12 = codestudio$0.SessionWindow.createFrom;
+const $$createType13 = codestudio$0.CodeActionEntry.createFrom;
 const $$createType14 = $Create.Array($$createType13);
 const $$createType15 = apicontract$0.Issue.createFrom;
 const $$createType16 = $Create.Array($$createType15);
-const $$createType17 = goide$0.ArchitectureDiff.createFrom;
-const $$createType18 = goide$0.BinaryComparison.createFrom;
-const $$createType19 = goide$0.PathComparison.createFrom;
-const $$createType20 = goide$0.CompletionResult.createFrom;
-const $$createType21 = goide$0.CrashStatus.createFrom;
-const $$createType22 = goide$0.CreateProjectResult.createFrom;
-const $$createType23 = goide$0.StudioWorkspaces.createFrom;
+const $$createType17 = codestudio$0.ArchitectureDiff.createFrom;
+const $$createType18 = codestudio$0.BinaryComparison.createFrom;
+const $$createType19 = codestudio$0.PathComparison.createFrom;
+const $$createType20 = codestudio$0.CompletionResult.createFrom;
+const $$createType21 = codestudio$0.CrashStatus.createFrom;
+const $$createType22 = codestudio$0.CreateProjectResult.createFrom;
+const $$createType23 = codestudio$0.StudioWorkspaces.createFrom;
 const $$createType24 = dap$0.DebugInstruction.createFrom;
 const $$createType25 = $Create.Array($$createType24);
 const $$createType26 = dap$0.EvaluateResult.createFrom;
@@ -2522,82 +2522,82 @@ const $$createType36 = dap$0.DebugThread.createFrom;
 const $$createType37 = $Create.Array($$createType36);
 const $$createType38 = dap$0.DebugVariable.createFrom;
 const $$createType39 = $Create.Array($$createType38);
-const $$createType40 = goide$0.DependencyGraphReport.createFrom;
-const $$createType41 = goide$0.DependencyUpdate.createFrom;
+const $$createType40 = codestudio$0.DependencyGraphReport.createFrom;
+const $$createType41 = codestudio$0.DependencyUpdate.createFrom;
 const $$createType42 = $Create.Array($$createType41);
-const $$createType43 = goide$0.DependencyVulnerability.createFrom;
+const $$createType43 = codestudio$0.DependencyVulnerability.createFrom;
 const $$createType44 = $Create.Array($$createType43);
-const $$createType45 = goide$0.DependencyWhy.createFrom;
+const $$createType45 = codestudio$0.DependencyWhy.createFrom;
 const $$createType46 = golang$0.DelveInfo.createFrom;
-const $$createType47 = goide$0.GoToolInfo.createFrom;
+const $$createType47 = codestudio$0.GoToolInfo.createFrom;
 const $$createType48 = golang$0.GoplsInfo.createFrom;
-const $$createType49 = goide$0.LinterInfo.createFrom;
-const $$createType50 = goide$0.MakeInfo.createFrom;
-const $$createType51 = goide$0.SonarScannerInfo.createFrom;
+const $$createType49 = codestudio$0.LinterInfo.createFrom;
+const $$createType50 = codestudio$0.MakeInfo.createFrom;
+const $$createType51 = codestudio$0.SonarScannerInfo.createFrom;
 const $$createType52 = golang$0.ToolchainInfo.createFrom;
-const $$createType53 = goide$0.WebProjectReport.createFrom;
-const $$createType54 = goide$0.HighlightsResult.createFrom;
-const $$createType55 = goide$0.DocumentSymbolsResult.createFrom;
-const $$createType56 = goide$0.DocumentationReport.createFrom;
-const $$createType57 = goide$0.RunConfiguration.createFrom;
-const $$createType58 = goide$0.EventContractReport.createFrom;
-const $$createType59 = goide$0.HierarchyItem.createFrom;
+const $$createType53 = codestudio$0.WebProjectReport.createFrom;
+const $$createType54 = codestudio$0.HighlightsResult.createFrom;
+const $$createType55 = codestudio$0.DocumentSymbolsResult.createFrom;
+const $$createType56 = codestudio$0.DocumentationReport.createFrom;
+const $$createType57 = codestudio$0.RunConfiguration.createFrom;
+const $$createType58 = codestudio$0.EventContractReport.createFrom;
+const $$createType59 = codestudio$0.HierarchyItem.createFrom;
 const $$createType60 = $Create.Array($$createType59);
-const $$createType61 = goide$0.LanguageServerStatus.createFrom;
-const $$createType62 = goide$0.SonarScanResult.createFrom;
+const $$createType61 = codestudio$0.LanguageServerStatus.createFrom;
+const $$createType62 = codestudio$0.SonarScanResult.createFrom;
 const $$createType63 = golang$0.RetryPolicyCandidate.createFrom;
 const $$createType64 = $Create.Array($$createType63);
-const $$createType65 = goide$0.Session.createFrom;
+const $$createType65 = codestudio$0.Session.createFrom;
 const $$createType66 = $Create.Array($$createType65);
-const $$createType67 = goide$0.FormatResult.createFrom;
-const $$createType68 = goide$0.CodeGenResult.createFrom;
+const $$createType67 = codestudio$0.FormatResult.createFrom;
+const $$createType68 = codestudio$0.CodeGenResult.createFrom;
 const $$createType69 = golang$0.HandlerTestPreview.createFrom;
-const $$createType70 = goide$0.Capabilities.createFrom;
-const $$createType71 = goide$0.PreviewConfig.createFrom;
+const $$createType70 = codestudio$0.Capabilities.createFrom;
+const $$createType71 = codestudio$0.PreviewConfig.createFrom;
 const $$createType72 = $Create.Nullable($$createType71);
-const $$createType73 = goide$0.SessionView.createFrom;
-const $$createType74 = goide$0.TestRunSnapshot.createFrom;
-const $$createType75 = goide$0.GoWorkState.createFrom;
+const $$createType73 = codestudio$0.SessionView.createFrom;
+const $$createType74 = codestudio$0.TestRunSnapshot.createFrom;
+const $$createType75 = codestudio$0.GoWorkState.createFrom;
 const $$createType76 = graph$0.Impact.createFrom;
-const $$createType77 = goide$0.GraphRiskMap.createFrom;
+const $$createType77 = codestudio$0.GraphRiskMap.createFrom;
 const $$createType78 = graph$0.Node.createFrom;
 const $$createType79 = $Create.Array($$createType78);
-const $$createType80 = goide$0.HoverResult.createFrom;
+const $$createType80 = codestudio$0.HoverResult.createFrom;
 const $$createType81 = plugins$0.Contribution.createFrom;
 const $$createType82 = $Create.Array($$createType81);
-const $$createType83 = goide$0.ImplementationMarker.createFrom;
+const $$createType83 = codestudio$0.ImplementationMarker.createFrom;
 const $$createType84 = $Create.Array($$createType83);
-const $$createType85 = goide$0.InlayHintsResult.createFrom;
+const $$createType85 = codestudio$0.InlayHintsResult.createFrom;
 const $$createType86 = golang$0.BinaryReport.createFrom;
 const $$createType87 = remote$0.ContainerInfo.createFrom;
 const $$createType88 = run$0.Execution.createFrom;
 const $$createType89 = golang$0.ToolchainInstallation.createFrom;
-const $$createType90 = goide$0.ProcessDescriptor.createFrom;
+const $$createType90 = codestudio$0.ProcessDescriptor.createFrom;
 const $$createType91 = $Create.Array($$createType90);
 const $$createType92 = plugins$0.ExecResult.createFrom;
 const $$createType93 = dap$0.FileBreakpoints.createFrom;
 const $$createType94 = $Create.Array($$createType93);
 const $$createType95 = dap$0.DebugSessionInfo.createFrom;
 const $$createType96 = $Create.Array($$createType95);
-const $$createType97 = goide$0.DependencyState.createFrom;
-const $$createType98 = goide$0.FileEntry.createFrom;
+const $$createType97 = codestudio$0.DependencyState.createFrom;
+const $$createType98 = codestudio$0.FileEntry.createFrom;
 const $$createType99 = $Create.Array($$createType98);
 const $$createType100 = dap$0.FunctionBreakpointsView.createFrom;
-const $$createType101 = goide$0.FuzzTarget.createFrom;
+const $$createType101 = codestudio$0.FuzzTarget.createFrom;
 const $$createType102 = $Create.Array($$createType101);
 const $$createType103 = golang$0.InstalledToolchain.createFrom;
 const $$createType104 = $Create.Array($$createType103);
-const $$createType105 = goide$0.HistoryRevision.createFrom;
+const $$createType105 = codestudio$0.HistoryRevision.createFrom;
 const $$createType106 = $Create.Array($$createType105);
 const $$createType107 = preview$0.Preview.createFrom;
 const $$createType108 = $Create.Array($$createType107);
-const $$createType109 = goide$0.ProcessInfo.createFrom;
+const $$createType109 = codestudio$0.ProcessInfo.createFrom;
 const $$createType110 = $Create.Array($$createType109);
 const $$createType111 = $Create.Array($$createType9);
-const $$createType112 = goide$0.ProjectTemplateList.createFrom;
-const $$createType113 = goide$0.RecentProject.createFrom;
+const $$createType112 = codestudio$0.ProjectTemplateList.createFrom;
+const $$createType113 = codestudio$0.RecentProject.createFrom;
 const $$createType114 = $Create.Array($$createType113);
-const $$createType115 = goide$0.RecoveredBuffer.createFrom;
+const $$createType115 = codestudio$0.RecoveredBuffer.createFrom;
 const $$createType116 = $Create.Array($$createType115);
 const $$createType117 = remote$0.Target.createFrom;
 const $$createType118 = $Create.Array($$createType117);
@@ -2605,67 +2605,67 @@ const $$createType119 = $Create.Array($$createType57);
 const $$createType120 = run$0.RunTarget.createFrom;
 const $$createType121 = $Create.Array($$createType120);
 const $$createType122 = $Create.Array($$createType88);
-const $$createType123 = goide$0.RuntimeSnapshotFile.createFrom;
+const $$createType123 = codestudio$0.RuntimeSnapshotFile.createFrom;
 const $$createType124 = $Create.Array($$createType123);
 const $$createType125 = $Create.Array($$createType12);
-const $$createType126 = goide$0.TerminalProfile.createFrom;
+const $$createType126 = codestudio$0.TerminalProfile.createFrom;
 const $$createType127 = $Create.Array($$createType126);
-const $$createType128 = goide$0.TerminalSession.createFrom;
+const $$createType128 = codestudio$0.TerminalSession.createFrom;
 const $$createType129 = $Create.Array($$createType128);
 const $$createType130 = $Create.Array($$createType74);
 const $$createType131 = golang$0.ToolchainRelease.createFrom;
 const $$createType132 = $Create.Array($$createType131);
-const $$createType133 = goide$0.ProfileReport.createFrom;
-const $$createType134 = goide$0.TraceReport.createFrom;
-const $$createType135 = goide$0.EditorLocation.createFrom;
+const $$createType133 = codestudio$0.ProfileReport.createFrom;
+const $$createType134 = codestudio$0.TraceReport.createFrom;
+const $$createType135 = codestudio$0.EditorLocation.createFrom;
 const $$createType136 = $Create.Array($$createType135);
-const $$createType137 = goide$0.MemoryModelReport.createFrom;
-const $$createType138 = goide$0.OpenDocument.createFrom;
-const $$createType139 = goide$0.PackageHeatmap.createFrom;
-const $$createType140 = goide$0.RenameTarget.createFrom;
-const $$createType141 = goide$0.GoToolPreview.createFrom;
-const $$createType142 = goide$0.PrivateRepoCredential.createFrom;
-const $$createType143 = goide$0.ProjectService.createFrom;
+const $$createType137 = codestudio$0.MemoryModelReport.createFrom;
+const $$createType138 = codestudio$0.OpenDocument.createFrom;
+const $$createType139 = codestudio$0.PackageHeatmap.createFrom;
+const $$createType140 = codestudio$0.RenameTarget.createFrom;
+const $$createType141 = codestudio$0.GoToolPreview.createFrom;
+const $$createType142 = codestudio$0.PrivateRepoCredential.createFrom;
+const $$createType143 = codestudio$0.ProjectService.createFrom;
 const $$createType144 = $Create.Array($$createType143);
-const $$createType145 = goide$0.QuickDefinitionResult.createFrom;
-const $$createType146 = goide$0.QuickOpenResult.createFrom;
+const $$createType145 = codestudio$0.QuickDefinitionResult.createFrom;
+const $$createType146 = codestudio$0.QuickOpenResult.createFrom;
 const $$createType147 = $Create.Array($$createType146);
-const $$createType148 = goide$0.FuzzInputContent.createFrom;
-const $$createType149 = goide$0.RecursiveCallsResult.createFrom;
-const $$createType150 = goide$0.DependencySource.createFrom;
+const $$createType148 = codestudio$0.FuzzInputContent.createFrom;
+const $$createType149 = codestudio$0.RecursiveCallsResult.createFrom;
+const $$createType150 = codestudio$0.DependencySource.createFrom;
 const $$createType151 = resources$0.Snapshot.createFrom;
-const $$createType152 = goide$0.LintResult.createFrom;
-const $$createType153 = goide$0.SonarConfig.createFrom;
-const $$createType154 = goide$0.SearchResult.createFrom;
-const $$createType155 = goide$0.SecurityExposure.createFrom;
+const $$createType152 = codestudio$0.LintResult.createFrom;
+const $$createType153 = codestudio$0.SonarConfig.createFrom;
+const $$createType154 = codestudio$0.SearchResult.createFrom;
+const $$createType155 = codestudio$0.SecurityExposure.createFrom;
 const $$createType156 = $Create.Array($$createType155);
 const $$createType157 = security$0.Report.createFrom;
-const $$createType158 = goide$0.SemanticTokensResult.createFrom;
+const $$createType158 = codestudio$0.SemanticTokensResult.createFrom;
 const $$createType159 = dap$0.BreakpointState.createFrom;
 const $$createType160 = $Create.Array($$createType159);
-const $$createType161 = goide$0.ShutdownReport.createFrom;
-const $$createType162 = goide$0.SignatureResult.createFrom;
-const $$createType163 = goide$0.StartupReport.createFrom;
-const $$createType164 = goide$0.ModuleRegistryCheck.createFrom;
+const $$createType161 = codestudio$0.ShutdownReport.createFrom;
+const $$createType162 = codestudio$0.SignatureResult.createFrom;
+const $$createType163 = codestudio$0.StartupReport.createFrom;
+const $$createType164 = codestudio$0.ModuleRegistryCheck.createFrom;
 const $$createType165 = golang$0.ToolchainSettings.createFrom;
-const $$createType166 = goide$0.VCSBlameLine.createFrom;
+const $$createType166 = codestudio$0.VCSBlameLine.createFrom;
 const $$createType167 = $Create.Array($$createType166);
-const $$createType168 = goide$0.VCSChangedSymbol.createFrom;
+const $$createType168 = codestudio$0.VCSChangedSymbol.createFrom;
 const $$createType169 = $Create.Array($$createType168);
 const $$createType170 = git$0.CommitResult.createFrom;
-const $$createType171 = goide$0.VCSCommit.createFrom;
+const $$createType171 = codestudio$0.VCSCommit.createFrom;
 const $$createType172 = $Create.Array($$createType171);
 const $$createType173 = git$0.LineRange.createFrom;
 const $$createType174 = $Create.Array($$createType173);
 const $$createType175 = $Create.Map($Create.Any, $$createType174);
-const $$createType176 = goide$0.VCSStatus.createFrom;
-const $$createType177 = goide$0.VCSWorkingDiff.createFrom;
-const $$createType178 = goide$0.VulnReport.createFrom;
-const $$createType179 = goide$0.WatcherStatus.createFrom;
+const $$createType176 = codestudio$0.VCSStatus.createFrom;
+const $$createType177 = codestudio$0.VCSWorkingDiff.createFrom;
+const $$createType178 = codestudio$0.VulnReport.createFrom;
+const $$createType179 = codestudio$0.WatcherStatus.createFrom;
 const $$createType180 = web$0.ServerInfo.createFrom;
 const $$createType181 = $Create.Array($$createType180);
-const $$createType182 = goide$0.GraphSummary.createFrom;
-const $$createType183 = goide$0.WorkspaceModule.createFrom;
+const $$createType182 = codestudio$0.GraphSummary.createFrom;
+const $$createType183 = codestudio$0.WorkspaceModule.createFrom;
 const $$createType184 = $Create.Array($$createType183);
-const $$createType185 = goide$0.WorkspaceSymbol.createFrom;
+const $$createType185 = codestudio$0.WorkspaceSymbol.createFrom;
 const $$createType186 = $Create.Array($$createType185);

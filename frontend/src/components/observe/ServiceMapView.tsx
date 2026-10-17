@@ -22,11 +22,11 @@ function ms(value: number): string {
 async function openCodeArchitecture(): Promise<void> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
   if (!useCodeStudioStore.getState().activeSessionId) {
-    showModule('goide')
+    showModule('codestudio')
     return
   }
   const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
-  showModule('goide')
+  showModule('codestudio')
   useCodeStudioLspStore.getState().showToolWindow('architecture')
 }
 

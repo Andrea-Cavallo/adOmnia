@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Crosshair, Loader2, MessageSquare } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { MemoryModelReport } from '../../../bindings/adomnia/internal/goide/models'
+import type { MemoryModelReport } from '../../../bindings/adomnia/internal/codestudio/models'
 import { caretFor } from '@/lib/code-studio/codeStudioCaretMemory'
 import { activeGoIDEDocument, useCodeStudioStore } from '@/stores/codeStudio'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'

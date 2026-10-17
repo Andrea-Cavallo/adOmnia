@@ -47,7 +47,7 @@ describe('codeStudioKeymap', () => {
     useCodeStudioKeymap.getState().setKeymap('vscode')
     expect(effectiveBinding(command('code.rename'))).toEqual({ key: 'F2' })
     expect(commandShortcut(command('view.quickOpen'))).toBe('Ctrl+P')
-    expect(JSON.parse(values.get('adomnia.goide.keymap')!)).toMatchObject({ keymap: 'vscode' })
+    expect(JSON.parse(values.get('adomnia.codestudio.keymap')!)).toMatchObject({ keymap: 'vscode' })
   })
 
   it('lets the user rebind or unbind a command, and routes remapped editor keys', () => {

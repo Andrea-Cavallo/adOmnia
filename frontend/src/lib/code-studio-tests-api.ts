@@ -1,5 +1,5 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { CoverageReport, TestResult, TestRunRequest, TestRunSnapshot, TestSummary } from '../../bindings/adomnia/internal/goide/models'
+import type { CoverageReport, TestResult, TestRunRequest, TestRunSnapshot, TestSummary } from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDETestRunRequest = TestRunRequest
 export type GoIDETestRun = TestRunSnapshot

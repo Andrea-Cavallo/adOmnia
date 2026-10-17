@@ -130,7 +130,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         onDragStart={(event) => {
           event.stopPropagation()
           event.dataTransfer.effectAllowed = 'move'
-          event.dataTransfer.setData('application/x-adomnia-goide-path', entry.relativePath)
+          event.dataTransfer.setData('application/x-adomnia-code-studio-path', entry.relativePath)
           event.dataTransfer.setData('text/plain', entry.relativePath)
         }}
         onDragEnd={() => setDropTarget(null)}
@@ -138,7 +138,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         onDragLeave={entry.directory ? (event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) } : undefined}
         onDrop={entry.directory ? (event) => {
           event.preventDefault(); event.stopPropagation()
-          const source = event.dataTransfer.getData('application/x-adomnia-goide-path')
+          const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path')
           setDropTarget(null)
           if (source) onMove(source, entry.relativePath)
         } : undefined}
@@ -325,14 +325,14 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       <div role="tree" aria-label="Project files" onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-2 pb-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
         if (event.target !== event.currentTarget) return
         event.preventDefault()
-        const source = event.dataTransfer.getData('application/x-adomnia-goide-path')
+        const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path')
         setDropTarget(null)
         if (source) onMove(source, '')
       }}>
         <div role="treeitem" aria-level={1} aria-expanded="true" aria-selected={false} tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[12.5px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${dropTarget === '' ? 'bg-accent/15 outline outline-1 outline-accent' : ''}`} title={session.project.rootPath}
           onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget('') }}
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) }}
-          onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-goide-path'); setDropTarget(null); if (source) onMove(source, '') }}
+          onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path'); setDropTarget(null); if (source) onMove(source, '') }}
           onContextMenu={(event) => { event.preventDefault(); onContext(null, event.clientX, event.clientY) }}
           onKeyDown={(event) => {
             if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {

@@ -3,7 +3,7 @@ import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
   GoroutineOverview, ProcessInfo,
-} from '../../bindings/adomnia/internal/goide/models'
+} from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDEDebugRequest = DebugRequest
 export type GoIDEDebugSession = DebugSessionInfo

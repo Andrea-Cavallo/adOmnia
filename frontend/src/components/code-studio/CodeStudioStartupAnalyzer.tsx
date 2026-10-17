@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { create } from 'zustand'
 import { Loader2, Rocket, X } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { ShutdownReport, StartupReport } from '../../../bindings/adomnia/internal/goide/models'
+import type { ShutdownReport, StartupReport } from '../../../bindings/adomnia/internal/codestudio/models'
 import { shutdownChecks } from '@/lib/code-studio/shutdownChecks'
 
 export const useStartupDrawer = create<{ open: boolean; setOpen: (open: boolean) => void }>((set) => ({ open: false, setOpen: (open) => set({ open }) }))

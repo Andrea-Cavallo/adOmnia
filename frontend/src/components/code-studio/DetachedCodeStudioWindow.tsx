@@ -32,7 +32,7 @@ export function DetachedCodeStudioWindow() {
         <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-0">
           <div className={pdfOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}><PanelActiveContext value={!pdfOpen}><PanelVisibleContext value={!pdfOpen}><CodeStudioPanel /></PanelVisibleContext></PanelActiveContext></div>
           {(pdfOpen || pdfMounted) && <div className={pdfOpen ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-            <button type="button" className="shrink-0 self-start px-3 py-2 text-xs text-accent" onClick={() => useAppStore.getState().setActiveRail('goide')}>← Code Studio</button>
+            <button type="button" className="shrink-0 self-start px-3 py-2 text-xs text-accent" onClick={() => useAppStore.getState().setActiveRail('codestudio')}>← Code Studio</button>
             <div className="min-h-0 flex-1"><Suspense fallback={null}><PdfEditorPanel /></Suspense></div>
           </div>}
         </div>

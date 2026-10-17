@@ -5,7 +5,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('window', { setTimeout, clearTimeout })
   vi.stubGlobal('document', { hidden: false })
-  useActivityStore.setState({ phase: 'Active', scopes: ['goide'], retained: {} })
+  useActivityStore.setState({ phase: 'Active', scopes: ['codestudio'], retained: {} })
 })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 it('runs active cadence, slows status in Idle, stops in Background, refreshes on resume', () => {
@@ -32,10 +32,10 @@ it('stops decorative work in Idle but preserves intentional live status cadence'
 })
 it('does not poll a retained panel whose workspace is invisible', () => {
   const callback = vi.fn()
-  const stop = visibleInterval(callback, 1000, { scope: 'goide' })
+  const stop = visibleInterval(callback, 1000, { scope: 'codestudio' })
   useActivityStore.getState().setScopes(['collections'])
   vi.advanceTimersByTime(30_000); expect(callback).not.toHaveBeenCalled()
-  useActivityStore.getState().setScopes(['goide']); expect(callback).toHaveBeenCalledTimes(1)
+  useActivityStore.getState().setScopes(['codestudio']); expect(callback).toHaveBeenCalledTimes(1)
   stop()
 })
 it('cleanup removes timer and store subscription', () => {

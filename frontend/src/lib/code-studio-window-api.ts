@@ -1,6 +1,6 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
-import type { SessionWindow } from '../../bindings/adomnia/internal/goide/models'
+import type { SessionWindow } from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDESessionWindow = SessionWindow
 
@@ -56,5 +56,5 @@ export async function setGoIDEWindowDirtyDocumentCount(windowId: string, count: 
 }
 
 export function subscribeGoIDEWindowCloseRequests(callback: (request: GoIDEWindowCloseRequest) => void): () => void {
-  return Events.On('goide:window-close-requested', (event) => callback(event.data as GoIDEWindowCloseRequest))
+  return Events.On('code-studio:window-close-requested', (event) => callback(event.data as GoIDEWindowCloseRequest))
 }

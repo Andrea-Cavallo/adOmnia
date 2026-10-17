@@ -31,7 +31,7 @@ export function startCodeStudioHibernation(): void {
     const activity = useActivityStore.getState()
     const ids = [...new Set(useCodeStudioStore.getState().documents.map(doc => doc.document.sessionId))]
     // A visible, idle editor remains painted. Background projects/windows can unmount.
-    const awake = new Set(activity.phase === 'Background' ? [] : activity.scopes.filter(scope => scope.startsWith('goide:')).map(scope => scope.slice(6)))
+    const awake = new Set(activity.phase === 'Background' ? [] : activity.scopes.filter(scope => scope.startsWith('code-studio:')).map(scope => scope.slice('code-studio:'.length)))
     controller.reconcile(ids, awake)
   }
   useActivityStore.subscribe(reconcile)

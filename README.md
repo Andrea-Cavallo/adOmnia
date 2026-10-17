@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>API development, Go debugging and service inspection in one desktop application.</strong><br>
-  An API workbench and Go IDE with database, messaging, logs and profiling tools.
+  An API workbench and Code Studio with database, messaging, logs and profiling tools.
 </p>
 
 <p align="center">
@@ -18,18 +18,18 @@
 
 ### Workspace Hub
 
-Start from the main workspace, review recent activity and open the area you need: Go Studio, API and protocols, data and messaging, documentation, version control or power tools.
+Start from the main workspace, review recent activity and open the area you need: Code Studio, API and protocols, data and messaging, documentation, version control or power tools.
 
 <p align="center">
   <img src="assets/images/ado-hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
 </p>
 
-### Go Studio
+### Code Studio
 
 Edit and run a Go service with its project tree, source editor, terminal and contextual AI assistance visible in the same workspace.
 
 <p align="center">
-  <img src="assets/images/ado-ide.png" alt="Go Studio with a Go project, source editor, running service and Claude Code panel" width="100%">
+  <img src="assets/images/ado-ide.png" alt="Code Studio with a Go project, source editor, running service and Claude Code panel" width="100%">
 </p>
 
 ### API Workspace
@@ -66,11 +66,11 @@ Inspect branches and commit history, review changed files, stage selected work a
 
 adOmnia combines API testing and Go development. Requests can be linked to detected handlers, executed against a running service and inspected in the debugger. Database, messaging, log and trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request.
 
-A Go service started in **Go Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker captures are part of the same workflow.
+A Go service started in **Code Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker captures are part of the same workflow.
 
 ```text
 WRITE              RUN                CALL                 UNDERSTAND
-Go Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
+Code Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
                                                                 ↕
                                                     Variables · logs · SQL · messages
 ```
@@ -92,7 +92,7 @@ Go Studio    →    Live service    →    API Workspace    →    Handler / bre
 
 ### Projects and windows
 
-Keep a service in Go Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance.
+Keep a service in Code Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance.
 
 The workflow preserves links between the project, service session, API request and available diagnostic evidence.
 
@@ -117,7 +117,7 @@ You can use the API tools without opening a Go project.
 
 ## Follow a request into Go code
 
-1. Open the service in **Go Studio → File → Open Project**.
+1. Open the service in **Code Studio → File → Open Project**.
 2. Trust the folder to enable Go tools. Configure the SDK and Run/Debug configuration.
 3. Set a handler breakpoint and start debugging, or use **Debug Request** from the API request actions.
 4. Send the matching request. For a recognized route, the **HANDLER** strip links to its source with **OPEN IN GO IDE**.
@@ -125,11 +125,11 @@ You can use the API tools without opening a Go project.
 
 SQL, broker messages and logs enrich this workflow when capture/instrumentation is configured. They are not automatically available for every service. See [the walkthrough](docs/GETTING-STARTED.md) for a first setup.
 
-## Go Studio: the IDE inside the workflow
+## Code Studio: the IDE inside the workflow
 
-![Go Studio in the light appearance, paused at a breakpoint with goroutines and variables](docs/screenshots/go-debug-light.png)
+![Code Studio in the light appearance, paused at a breakpoint with goroutines and variables](docs/screenshots/go-debug-light.png)
 
-*Go Studio paused at a breakpoint, with source code, goroutines, variables and console output. Controls may differ between releases.*
+*Code Studio paused at a breakpoint, with source code, goroutines, variables and console output. Controls may differ between releases.*
 
 - **Edit and navigate:** gopls completion, diagnostics, references, rename, refactoring, project search and Git.
 - **Run, test and debug:** Go configurations, test explorer, coverage and Delve with conditional breakpoints and goroutine inspection.
@@ -140,7 +140,7 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 
 Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for surrounding tools and workspaces.
 
-[Read the Go Studio guide →](docs/GO-STUDIO.md) · [Technical reference: the IDE platform →](docs/GO-STUDIO-REFERENCE.md)
+[Read the Code Studio guide →](docs/CODE-STUDIO.md) · [Technical reference: the IDE platform →](docs/CODE-STUDIO-REFERENCE.md)
 
 ## Download and install
 
@@ -166,8 +166,8 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | --- | --- |
 | [Getting started](docs/GETTING-STARTED.md) · [Italian guide](docs/QUICKSTART.it.md) | Send requests, connect a Go project and debug a handler |
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
-| [Go Studio](docs/GO-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
-| [Go Studio technical reference](docs/GO-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
+| [Code Studio](docs/CODE-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
+| [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) · [FAQ](docs/FAQ.md) | Resolve setup and workflow problems |

@@ -2,8 +2,8 @@ import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { benchmarkMeasurementFor, parseBenchmarkMeasurement, type CodeStudioBenchmarkMeasurement } from './codeStudioBenchmarks'
 
-const STORAGE_PREFIX = 'adomnia.goide.benchmark-history.v1.'
-const SETTINGS_PREFIX = 'adomnia.goide.benchmark-compare.v1.'
+const STORAGE_PREFIX = 'adomnia.codestudio.benchmark-history.v1.'
+const SETTINGS_PREFIX = 'adomnia.codestudio.benchmark-compare.v1.'
 const MAX_MEASUREMENTS = 120
 const MAX_SAMPLES = 20
 

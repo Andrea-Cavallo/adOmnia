@@ -3,7 +3,7 @@ import { normalizeRailItem } from './navigation'
 
 describe('normalizeRailItem', () => {
   it('lands persisted Markdown, Mermaid and Git Sync rails on Code Studio', () => {
-    for (const legacy of ['markdown', 'mermaid', 'gitsync']) expect(normalizeRailItem(legacy)).toBe('goide')
+    for (const legacy of ['markdown', 'mermaid', 'gitsync']) expect(normalizeRailItem(legacy)).toBe('codestudio')
   })
 
   it('keeps older aliases and rejects unknown ids', () => {

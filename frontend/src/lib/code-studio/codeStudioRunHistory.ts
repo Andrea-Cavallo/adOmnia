@@ -9,7 +9,7 @@ export interface CodeStudioRunHistoryEntry {
   command: string
 }
 
-const KEY = 'adomnia.goide.runHistory:'
+const KEY = 'adomnia.codestudio.runHistory:'
 const LIMIT = 100
 
 export function readRunHistory(projectPath: string, configId?: string): CodeStudioRunHistoryEntry[] {

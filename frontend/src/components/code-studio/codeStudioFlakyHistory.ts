@@ -1,7 +1,7 @@
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
-const STORAGE_PREFIX = 'adomnia.goide.flaky-history.v1.'
+const STORAGE_PREFIX = 'adomnia.codestudio.flaky-history.v1.'
 const MAX_ENTRIES = 200
 
 /** Un test che in una run ripetuta ha sia passato sia fallito. */

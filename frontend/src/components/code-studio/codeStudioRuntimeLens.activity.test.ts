@@ -17,7 +17,7 @@ it('shares an in-flight poll across rapid idle/resume and parks the loop in back
   vi.stubGlobal('window', { setTimeout, clearTimeout })
   vi.stubGlobal('document', { hidden: false })
   vi.stubGlobal('localStorage', { getItem: () => null })
-  useActivityStore.setState({ phase: 'Active', scopes: ['goide'], retained: {} })
+  useActivityStore.setState({ phase: 'Active', scopes: ['codestudio'], retained: {} })
   let resolve!: (value: []) => void
   vi.mocked(getOtlpLens).mockImplementation(() => new Promise(done => { resolve = done }))
   registerCodeStudioRuntimeLens()

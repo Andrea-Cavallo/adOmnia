@@ -4,8 +4,8 @@ Data: 11 ottobre 2026. Stato: proposta; nessuna fase implementata da questo pian
 
 ## Punto di partenza verificato
 
-Il refactor della piattaforma è già presente: internal/ide contiene language, project, lsp, dap, run, testing, sdk e process. internal/goide è la facciata Wails/composition root; internal/languages/golang è l'unico adapter registrato. Anche IDE_LANGUAGES nel frontend contiene soltanto GO_LANGUAGE.
-Il lifecycle LSP multi-server risiede ancora nella facciata internal/goide/lsp.go: riutilizzarlo; estrarre solo i punti che impediscono concretamente il secondo adapter. Non ripetere il precedente refactor né rinominare in massa file, binding o chiavi goide.
+Il refactor della piattaforma è già presente: internal/ide contiene language, project, lsp, dap, run, testing, sdk e process. internal/codestudio è la facciata Wails/composition root; internal/languages/golang è l'unico adapter registrato. Anche IDE_LANGUAGES nel frontend contiene soltanto GO_LANGUAGE.
+Il lifecycle LSP multi-server risiede ancora nella facciata internal/codestudio/lsp.go: riutilizzarlo; estrarre solo i punti che impediscono concretamente il secondo adapter. Non ripetere il precedente refactor né rinominare in massa file, binding o chiavi goide.
 La checklist smoke desktop del precedente refactor rimane aperta. Presenza del codice e vecchi risultati automatici non attestano un nuovo collaudo.
 
 ## Decisioni
@@ -27,7 +27,7 @@ La checklist smoke desktop del precedente refactor rimane aperta. Presenza del c
 Uscita: baseline riproducibile e elenco circoscritto delle modifiche, senza riscrittura generale.
 
 ### 1 — Primo adapter JS/TS e runtime
-- [ ] Aggiungere internal/languages/typescript e registrarlo in internal/goide/languages.go.
+- [ ] Aggiungere internal/languages/typescript e registrarlo in internal/codestudio/languages.go.
 - [ ] Riconoscere package.json, tsconfig/jsconfig e lockfile senza processi; esclusione node_modules, dist, .next e directory generate; limiti di scansione.
 - [ ] Gestire unità annidate/monorepo e assegnare ogni documento alla radice corretta.
 - [ ] Rilevare Node, TypeScript e language server; mostrare versione, percorso, assenze e incompatibilità nella UI esistente del tooling.

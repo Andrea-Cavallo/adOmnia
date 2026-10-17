@@ -1,6 +1,6 @@
 ﻿# adOmnia — Feature Catalog
 
-**adOmnia** is a local-first desktop API Development Toolbox built with Go (Wails 3) + React 19 (TypeScript), with an integrated Go IDE (Go Studio).  
+**adOmnia** is a local-first desktop API Development Toolbox built with Go (Wails 3) + React 19 (TypeScript), with an integrated Code Studio (IDE).  
 All features are offline-first: no account, no telemetry, and no data sent outside the machine.
 
 ---
@@ -28,7 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
-| J | [Go Studio (Go IDE)](#j-go-studio-go-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~39 |
+| J | [Code Studio (IDE)](#j-code-studio-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~39 |
 
 ---
 
@@ -606,17 +606,17 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| D11.1 | **Live session** | A Go Studio Run or Debug becomes a session shared by every tool: service name, PID, port (run config, printed address, new listening socket or by hand), state, paused location. |
-| D11.2 | **Debug bar** | Bottom bar in every tool except Go Studio: state, paused `file:line`, Continue / Step Over / Into / Out / Stop (F9, F8, F7, Shift+F8, Ctrl+F2), request in flight, split view, service drawer. |
+| D11.1 | **Live session** | A Code Studio Run or Debug becomes a session shared by every tool: service name, PID, port (run config, printed address, new listening socket or by hand), state, paused location. |
+| D11.2 | **Debug bar** | Bottom bar in every tool except Code Studio: state, paused `file:line`, Continue / Step Over / Into / Out / Stop (F9, F8, F7, Shift+F8, Ctrl+F2), request in flight, split view, service drawer. |
 | D11.3 | **Debug Request** | Next to Send: starts or reuses the service under Delve, waits for its port or health path, sends and follows the request; PAUSED AT BREAKPOINT in the response area; Replay from a copy of the tab. |
 | D11.4 | **Linked requests** | `{{service:name}}` targets a service: Local run (follows the port), Docker Compose port or a remote URL. *Link to service* rewrites `localhost:PORT`. |
-| D11.5 | **API ↔ code** | Handler that serves a request (declaration, not the router line) with Open handler; contract drift warning against the service's OpenAPI; handler CodeLens in Go Studio (open, run, debug request, last response, history). |
-| D11.6 | **Request Context** | Go Studio debugger tab: method, path/query params, headers with credentials masked, body, request id; Open full request. |
+| D11.5 | **API ↔ code** | Handler that serves a request (declaration, not the router line) with Open handler; contract drift warning against the service's OpenAPI; handler CodeLens in Code Studio (open, run, debug request, last response, history). |
+| D11.6 | **Request Context** | Code Studio debugger tab: method, path/query params, headers with credentials masked, body, request id; Open full request. |
 | D11.7 | **Request views** | Logs, Debug, Timeline, DB and Kafka of each request plus a completion summary (status, time, code path, queries, events, logs, breakpoints) and *Mock this response*. |
 | D11.8 | **Correlation** | `X-AdOmnia-Request-ID` on API Workspace and Interceptor requests; logs, SQL and messages tied by id (certain) or by time (labelled). |
 | D11.9 | **SQL and Kafka** | SQL from the service's logs; opt-in loopback capture proxy for Postgres/MySQL; Kafka watch from the newest offset without consumer group. Open in Database / Broker Studio with the way back to the request. |
 | D11.10 | **Service drawer** | Logs (filters, Log Inspector live source) and service view: project, routes, runtime and target, databases, Kafka, logs, debugger, preferences, service name. |
-| D11.11 | **Context navigation** | Go Studio and API Workspace stay mounted; Split Debug View (auto on breakpoint); Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
+| D11.11 | **Context navigation** | Code Studio and API Workspace stay mounted; Split Debug View (auto on breakpoint); Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
 
 ---
 
@@ -1016,9 +1016,9 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 
 ---
 
-## J. GO STUDIO (GO IDE)
+## J. CODE STUDIO (IDE)
 
-A Go IDE inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/GO-STUDIO.md](GO-STUDIO.md).
+A Code Studio inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/CODE-STUDIO.md](CODE-STUDIO.md).
 
 ### J1. Projects, Sessions & Windows
 
@@ -1028,7 +1028,7 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J1.2 | **Project Trust** | An opened project only reads and saves files. *Trust Project Tools* allows gopls, linters, build, run, tests, debugging, terminal and installs; revoking trust stops the project's processes. |
 | J1.3 | **Isolated Sessions** | Several projects stay open together; output, diagnostics, run configurations, terminals, Git state and local history never mix. |
 | J1.4 | **Session Restore & Recovery** | Tabs, layout, bookmarks, navigation history and breakpoints are restored; unsaved buffers are recovered only on request. |
-| J1.5 | **Go Studio Workspaces** | Named groups of projects, separate from adOmnia API workspaces; the same project can live in several. |
+| J1.5 | **Code Studio Workspaces** | Named groups of projects, separate from adOmnia API workspaces; the same project can live in several. |
 | J1.6 | **Separate Project Windows** | *Open Project in New Window* gives a project its own native window; only one window edits a project at a time. Covered by automated tests; manual check pending. |
 | J1.7 | **External Change Handling** | A file watcher reloads clean buffers and offers Reload / Keep / Compare for modified ones; the same file open in two projects is detected. |
 
@@ -1091,13 +1091,13 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | J6.3 | **Go Optimization Workbench** | Go projects get a conditional Go tool window for pprof profiles, compiler escape/inlining reports, struct field-alignment analysis and project-scoped Go tools. It is absent when the project has no Go module. |
 | J6.4 | **Project Services** | Opens Docker Lab, Database Studio and Broker Studio preconfigured for services detected in `go.mod`. |
 | J6.5 | **Open in API Client** | CodeLens on HTTP route handlers (net/http, gorilla/mux, gin, echo, fiber, chi) opens a prefilled request. |
-| J6.6 | **Plugin Events** | Read-only Go Studio events for plugins (contract v1). |
+| J6.6 | **Plugin Events** | Read-only Code Studio events for plugins (contract v1). |
 | J6.7 | **SonarQube Integration** | Optional: runs `sonar-scanner` on the trusted project, waits for the server to process the report, and imports open issues (SonarQube 9.9 LTA, 10.x incl. MQR severities, SonarCloud). Severity/security filters, file:line navigation, *Copy problems*, *Resolve with AI* and a versionable `.adomnia/sonar-baseline.json`. Token in memory only; respects Offline mode, proxy and corporate CA. |
 | J6.8 | **Security panel: code scan** | Offline scan of the project files (no network, no processes): hardcoded secrets and committed private keys (masked), disabled TLS verification and obsolete TLS versions, weak crypto and small RSA keys, plain HTTP, SQL built from strings, shell commands built from data, path traversal and zip slip, gob decoding of untrusted input, unbounded request bodies, world-writable permissions. Suppression only with a written reason (panel or `// adomnia:security-ignore <rule>: <reason>`), versionable baseline in `.adomnia/security.json`, Markdown export for AI. |
 | J6.9 | **Security panel: dependencies (govulncheck)** | On-demand govulncheck scan ranked by reachability (called / imported / required only), advisory detail and aliases, found → fixed version, call paths from project code that open each source, module dependency path, upgrade preview with confirmed `go get`, Markdown export for AI. |
 | J6.10 | **AI commit message** | *Draft message with AI* in the Commit Dialog (Ctrl+K) summarises the diff and the changed symbols of the ticked files into a Conventional Commits message, editable before committing. Secrets in the diff are redacted and stay redacted in the draft, `.adomnia/aiignore` files are listed without their content, and the project AI policy (`off` / `local-only`) is enforced like the other AI features. |
 | J6.11 | **Partial staging** | Stage and unstage single change blocks from the editor gutter popup (*Stage* / *Unstage* next to *Revert*) and single lines from *Stage/Unstage single lines…* or the ✂ button on a change row of the project Git workbench. The buffer is saved first, only the chosen hunks move to or from the index, and the change list refreshes. |
-| J6.12 | **Project settings and keymap in JSON** | `.adomnia/settings.json` (schema, autocompletion in the editor, errors marked and skipped) layers the project over the user settings: editor behavior (tab size, soft tabs, wrap, line numbers, font, vim/emacs mode, sticky scroll — winning over `.editorconfig`) and the keymap (preset plus per-command bindings). Shortcuts accept `when` contexts (`editor && vim.normal`, `!input`, `vim.visual`, `terminal`, …) with fall-through across layers. The legacy `adomnia.goide.keymap` storage migrates into the settings JSON once. |
+| J6.12 | **Project settings and keymap in JSON** | `.adomnia/settings.json` (schema, autocompletion in the editor, errors marked and skipped) layers the project over the user settings: editor behavior (tab size, soft tabs, wrap, line numbers, font, vim/emacs mode, sticky scroll — winning over `.editorconfig`) and the keymap (preset plus per-command bindings). Shortcuts accept `when` contexts (`editor && vim.normal`, `!input`, `vim.visual`, `terminal`, …) with fall-through across layers. The legacy `adomnia.codestudio.keymap` storage migrates into the settings JSON once. |
 
 ---
 
@@ -1114,13 +1114,13 @@ A Go IDE inside adOmnia. Projects open without running anything; local tools run
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **J — Go Studio (Go IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
+| **J — Code Studio (IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
 | **Total** | 44 sections | **~573** |
 
 
 ### Hub dot-matrix arcade
 
-For the v1 release surface, the Home Hub no longer exposes Arcade. Its implementation is retained. LaTeX, standalone PDF, Kubernetes and Plugins remain implemented but are omitted from primary discovery; Live Collaboration is opt-in beta. PDF imports and opening a PDF from a Go Studio project retain the complete editor, forms, annotations and signing. See `mds/V1-RELEASE-SCOPE-TODO.md` for the stable scope and acceptance gates.
+For the v1 release surface, the Home Hub no longer exposes Arcade. Its implementation is retained. LaTeX, standalone PDF, Kubernetes and Plugins remain implemented but are omitted from primary discovery; Live Collaboration is opt-in beta. PDF imports and opening a PDF from a Code Studio project retain the complete editor, forms, annotations and signing. See `mds/V1-RELEASE-SCOPE-TODO.md` for the stable scope and acceptance gates.
 
 The arcade pauses on window blur, hidden documents and when scrolled out of view. Idle and paused games do not run a continuous animation loop. The background matrix is cached, real-time physics uses small substeps and resizing preserves the logical board. Best scores stay local; the former Snake best-score key remains readable.
 

@@ -40,7 +40,7 @@ describe('AI hub provider status', () => {
 })
 
 describe('AI hub last provider', () => {
-  const KEY = 'adomnia.goide.ai.lastProvider.v1'
+  const KEY = 'adomnia.codestudio.ai.lastProvider.v1'
 
   const withMemoryStorage = async (initial: Record<string, string> = {}) => {
     const memory = new Map<string, string>(Object.entries(initial))

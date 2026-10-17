@@ -29,7 +29,7 @@ export interface CodeStudioFuzzRunInfo {
   durationMillis: number
 }
 
-const STORAGE_PREFIX = 'adomnia.goide.fuzz-sessions.v1.'
+const STORAGE_PREFIX = 'adomnia.codestudio.fuzz-sessions.v1.'
 const MAX_SESSIONS = 60
 const FUZZ_FLAG = /(?:^|\s)-(?:test\.)?fuzz(?:=|\s+)\^?(Fuzz\w*)\$?(?=\s|$)/
 const PROGRESS = /fuzz: elapsed: [^,]+, execs: (\d+) \((\d+)\/sec\), new interesting: (\d+) \(total: (\d+)\)/g

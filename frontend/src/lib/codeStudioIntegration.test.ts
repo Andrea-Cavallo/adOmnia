@@ -6,11 +6,11 @@ import { normalizeRailItem } from './navigation'
 
 describe('Code Studio navigation integration', () => {
   it('registers one real panel across rail, palette and assistant navigation', () => {
-    expect(normalizeRailItem('goide')).toBe('goide')
-    expect(FEATURE_BY_ID.goide.title).toBe('Code Studio')
-    expect(RAIL_CATEGORIES.find((category) => category.directItem === 'goide')?.key).toBe('development')
-    expect(COMMAND_PALETTE_PANELS.some((panel) => panel.id === 'goide')).toBe(true)
-    expect(ADOMNIA_CAPABILITIES.some((capability) => capability.panel === 'goide')).toBe(true)
+    expect(normalizeRailItem('codestudio')).toBe('codestudio')
+    expect(FEATURE_BY_ID.codestudio.title).toBe('Code Studio')
+    expect(RAIL_CATEGORIES.find((category) => category.directItem === 'codestudio')?.key).toBe('development')
+    expect(COMMAND_PALETTE_PANELS.some((panel) => panel.id === 'codestudio')).toBe(true)
+    expect(ADOMNIA_CAPABILITIES.some((capability) => capability.panel === 'codestudio')).toBe(true)
   })
 
   it('keeps project Git inside Code Studio and leaves collaboration in Workspace', () => {

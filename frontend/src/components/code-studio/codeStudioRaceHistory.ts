@@ -1,7 +1,7 @@
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { RaceSource } from './codeStudioConcurrency'
 
-const STORAGE_PREFIX = 'adomnia.goide.race-history.v1.'
+const STORAGE_PREFIX = 'adomnia.codestudio.race-history.v1.'
 const MAX_SAVED_SESSIONS = 20
 const MAX_OUTPUT_LENGTH = 64 * 1024
 

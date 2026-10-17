@@ -49,16 +49,16 @@ export const useCodeStudioWindowsStore = create<GoIDEWindowsState>((set, get) =>
   ownsSession: (sessionId) => get().ownerOf(sessionId) === get().context.windowId,
 
   moveToNewWindow: async (sessionId) => {
-    const goide = useCodeStudioStore.getState()
+    const codeStudio = useCodeStudioStore.getState()
     // I buffer non salvati vivono nel frontend di questa finestra: spostarli li perderebbe.
-    const dirty = goide.documents.filter((item) => item.document.sessionId === sessionId && item.dirty)
+    const dirty = codeStudio.documents.filter((item) => item.document.sessionId === sessionId && item.dirty)
     if (dirty.length > 0) {
       set({ error: `Save or discard ${dirty.length} unsaved file${dirty.length === 1 ? '' : 's'} before moving the project to a new window.` })
       return false
     }
     try {
       // La nuova finestra ripristina i tab da questa vista: va salvata prima di cedere il progetto.
-      await goide.persistSessionView(sessionId)
+      await codeStudio.persistSessionView(sessionId)
       await openGoIDESessionWindow(sessionId)
       return true
     } catch (error) {

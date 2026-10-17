@@ -1,5 +1,5 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution, LanguageServerStatus } from '../../bindings/adomnia/internal/goide/models'
+import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution, LanguageServerStatus } from '../../bindings/adomnia/internal/codestudio/models'
 import type { Preview } from '../../bindings/adomnia/internal/ide/preview/models'
 import type { Info as WebProjectInfo, Runtime as WebRuntime, ServerInfo as WebServerInfo } from '../../bindings/adomnia/internal/languages/web/models'
 

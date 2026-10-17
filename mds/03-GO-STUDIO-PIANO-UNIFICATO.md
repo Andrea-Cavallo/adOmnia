@@ -39,7 +39,7 @@ Criterio d'ordine: **fiducia** (provare ciò che esiste) → **lacune reali** �
 - Un test automatico o una build **non** chiudono una prova desktop.
 - *Parziale:* dice cosa esiste e cosa manca; si riparte da lì.
 - Niente funzioni simulate. Dati sempre locali, niente telemetria, nessun processo avviato senza un'azione dell'utente.
-- Nuove funzioni: ricetta *Add a language/IDE feature* in `CLAUDE.md`; aggiornare `docs/GO-STUDIO.md`.
+- Nuove funzioni: ricetta *Add a language/IDE feature* in `CLAUDE.md`; aggiornare `docs/CODE-STUDIO.md`.
 - Gli obiettivi di riferimento e le idee Wow non bloccano il rilascio v1 né l'eventuale adapter JS/TS ([proposta separata](../../docs/architecture/ide-web-languages-action-plan.md)).
 
 ## 4. Documenti collegati
@@ -47,7 +47,7 @@ Criterio d'ordine: **fiducia** (provare ciò che esiste) → **lacune reali** �
 - [Audit di accettazione 2026-10-11](../../docs/GO-STUDIO-ACCEPTANCE-2026-10-11.md) — risultati automatici e limiti della baseline sintetica.
 - [Registro P2 2026-10-11](../../docs/GO-STUDIO-P2-PARTIALS-2026-10-11.md) — debug distribuito, confini OTLP, integrazioni enterprise.
 - [Perimetro v1](01-RILASCIO-V1.md) — gate di pubblicazione e piattaforme.
-- [`docs/GO-STUDIO.md`](../../docs/GO-STUDIO.md) — il prodotto com'è oggi.
+- [`docs/CODE-STUDIO.md`](../../docs/CODE-STUDIO.md) — il prodotto com'è oggi.
 
 ---
 
@@ -146,7 +146,7 @@ Misura l'uso reale per una giornata intera.
 
 ## Sessione 8 — GitHub Copilot
 
-Architettura: Copilot Language Server ufficiale per completamento, login ed enterprise; chat Ask presente. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`, tutto passa da `GitHubProfile`. **Fatto** (dettagli in git e `docs/GO-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, crash recovery, device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu, chat Ask con contesto e streaming (`internal/copilot/chat.go`).
+Architettura: Copilot Language Server ufficiale per completamento, login ed enterprise; chat Ask presente. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`, tutto passa da `GitHubProfile`. **Fatto** (dettagli in git e `docs/CODE-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, crash recovery, device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu, chat Ask con contesto e streaming (`internal/copilot/chat.go`).
 
 - [ ] **C1** — Install, enable, sign in su github.com, ghost text in un file Go, Tab/Esc.
 - [ ] **C2** — Profilo `company.ghe.com`, sign in enterprise, progetto legato al profilo Work.
@@ -167,9 +167,9 @@ Architettura: Copilot Language Server ufficiale per completamento, login ed ente
 
 ## Dopo le prove
 
-- [ ] **Dichiarare le finestre separate** nel prodotto e nelle note di rilascio dopo M31 (oggi `docs/GO-STUDIO.md` e `docs/ISSUES.md` le indicano come verificate solo in automatico).
+- [ ] **Dichiarare le finestre separate** nel prodotto e nelle note di rilascio dopo M31 (oggi `docs/CODE-STUDIO.md` e `docs/ISSUES.md` le indicano come verificate solo in automatico).
 - [ ] **Note di rilascio finali** con le piattaforme realmente verificate a mano e il supporto multiwindow reale.
-- [ ] **Aggiornare i riferimenti ai vecchi M1–M31** in `docs/ISSUES.md`, `docs/GO-STUDIO.md` e `CLAUDE.md` (ora M1–M34 in questo file).
+- [ ] **Aggiornare i riferimenti ai vecchi M1–M31** in `docs/ISSUES.md`, `docs/CODE-STUDIO.md` e `CLAUDE.md` (ora M1–M34 in questo file).
 
 ## Riferimenti grafici approvati (per M8)
 

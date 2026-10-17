@@ -10,7 +10,7 @@ describe('v1 release discovery', () => {
       expect(isFeatureVisible(id, stable)).toBe(false)
       expect(isFeatureVisible(id, experimental)).toBe(false)
     }
-    for (const id of ['database','broker','goide','collections','soap','grpc'] as const) expect(isFeatureVisible(id, stable)).toBe(true)
+    for (const id of ['database','broker','codestudio','collections','soap','grpc'] as const) expect(isFeatureVisible(id, stable)).toBe(true)
     expect(isFeatureVisible('collab', stable)).toBe(false)
     expect(isFeatureVisible('collab', experimental)).toBe(true)
   })

@@ -1,6 +1,6 @@
 # Web development in the IDE: Live Preview, web languages and Go Live
 
-Open a static site, a React/Vite app or a Node.js project in Go Studio, edit it, and see the real page next to the code, without VS Code, an external browser or extra tools. Everything Go Studio already does for Go (trust model, terminals, Run console, Git, gopls, Delve) is unchanged.
+Open a static site, a React/Vite app or a Node.js project in Code Studio, edit it, and see the real page next to the code, without VS Code, an external browser or extra tools. Everything Code Studio already does for Go (trust model, terminals, Run console, Git, gopls, Delve) is unchanged.
 
 This page is the technical reference. For the platform rules read [`architecture/ide-multilanguage-refactor.md`](architecture/ide-multilanguage-refactor.md) and [`internal/ide/CLAUDE.md`](../internal/ide/CLAUDE.md).
 
@@ -60,13 +60,13 @@ internal/languages/web/     Web ADAPTER: language adapters (typescript, html, cs
                             detection, Node runtime detection, language-server locator + ServerSpec
 internal/ide/preview/       Live Server CORE (language-agnostic): static server, dev-server proxy,
                             URL scanner, readiness probe, Manager (lifecycle, sessions, processes)
-internal/goide/service_web.go   HOST wiring: trust, authorized paths, saved configuration, events
-goide_web_bindings.go           Wails bindings (thin)
-internal/goidewindow/preview.go Native preview windows
+internal/codestudio/service_web.go   HOST wiring: trust, authorized paths, saved configuration, events
+code_studio_web_bindings.go           Wails bindings (thin)
+internal/codestudiowindow/preview.go Native preview windows
 
 frontend/src/components/ide/languages/web/   language contributions, Emmet, Monaco fallback
-frontend/src/components/goide/GoStudio*Preview*.tsx   Live Preview UI
-frontend/src/stores/livePreview.ts · ideWebServers.ts · lib/goide/livePreview.ts
+frontend/src/components/code-studio/CodeStudio*Preview*.tsx   Live Preview UI
+frontend/src/stores/livePreview.ts · ideWebServers.ts · lib/code-studio/livePreview.ts
 ```
 
 The dependency direction is the platform's: host → core ← adapter. The core never imports `internal/languages/web`; `internal/ide/architecture_test.go` enforces it.
@@ -112,7 +112,7 @@ The page is shown in an isolated iframe (`sandbox` without `allow-top-navigation
 
 ### Persistence
 
-`PreviewConfigs` in the Go Studio state (key: normalised real path of the project): mode, folder, script, entry page, SPA fallback, placement, device, viewport, auto reload. Optional field, no schema bump; nothing is written into the project.
+`PreviewConfigs` in the Code Studio state (key: normalised real path of the project): mode, folder, script, entry page, SPA fallback, placement, device, viewport, auto reload. Optional field, no schema bump; nothing is written into the project.
 
 ---
 
@@ -122,12 +122,12 @@ New:
 
 * `internal/languages/web/` — `language.go`, `detect.go`, `projectinfo.go`, `runtime.go`, `servers.go`, `schemas/package.schema.json`, tests
 * `internal/ide/preview/` — `hub.go`, `static.go`, `proxy.go`, `net.go`, `output.go`, `manager.go`, `live.js`, tests
-* `internal/goide/service_web.go` (+ test), `internal/goidewindow/preview.go`, `goide_web_bindings.go`
-* `frontend/src/components/goide/GoStudioLivePreview.tsx`, `GoStudioPreviewFrame.tsx`, `GoStudioPreviewSetup.tsx`, `GoStudioPreviewDrawer.tsx`, `GoStudioPreviewSplit.tsx`, `GoStudioPreviewStatus.tsx`, `GoStudioWebServerNotice.tsx`, `goStudioPreviewCommands.ts`
+* `internal/codestudio/service_web.go` (+ test), `internal/codestudiowindow/preview.go`, `code_studio_web_bindings.go`
+* `frontend/src/components/code-studio/CodeStudioLivePreview.tsx`, `CodeStudioPreviewFrame.tsx`, `CodeStudioPreviewSetup.tsx`, `CodeStudioPreviewDrawer.tsx`, `CodeStudioPreviewSplit.tsx`, `CodeStudioPreviewStatus.tsx`, `CodeStudioWebServerNotice.tsx`, `codeStudioPreviewCommands.ts`
 * `frontend/src/components/ide/languages/web/` — `index.ts`, `commands.ts`, `emmet.ts`, `useWebMonaco.ts`
-* `frontend/src/stores/livePreview.ts`, `ideWebServers.ts`; `frontend/src/lib/livepreview-api.ts`, `lib/goide/livePreview.ts`
+* `frontend/src/stores/livePreview.ts`, `ideWebServers.ts`; `frontend/src/lib/livepreview-api.ts`, `lib/code-studio/livePreview.ts`
 
-Changed (small, surgical): `internal/goide/{languages,service,persistence,extensions}.go`, `goide_bindings.go`, the editor / tabs / tool stripes / run panel / status bar / project tree menu / command registry / LSP sync and language-feature providers in `frontend/src/components/goide/`, `components/ide/languages.ts`, `stores/goideLsp.ts` (`'preview'` tool window), `lib/monacoSetup.ts` (CSS and HTML workers), `tsconfig.json` (types path for `emmet`), generated bindings.
+Changed (small, surgical): `internal/codestudio/{languages,service,persistence,extensions}.go`, `code_studio_bindings.go`, the editor / tabs / tool stripes / run panel / status bar / project tree menu / command registry / LSP sync and language-feature providers in `frontend/src/components/code-studio/`, `components/ide/languages.ts`, `stores/codeStudioLsp.ts` (`'preview'` tool window), `lib/monacoSetup.ts` (CSS and HTML workers), `tsconfig.json` (types path for `emmet`), generated bindings.
 
 ---
 
@@ -136,11 +136,11 @@ Changed (small, surgical): `internal/goide/{languages,service,persistence,extens
 Automated:
 
 ```bash
-go test ./internal/ide/... ./internal/languages/... ./internal/goide/ ./internal/goidewindow/
+go test ./internal/ide/... ./internal/languages/... ./internal/codestudio/ ./internal/codestudiowindow/
 go test ./internal/ide/ -run 'Architecture|CoreDoesNot|AdaptersDo|BackgroundProcesses'
 # frontend (from frontend/)
 npx tsc --noEmit
-npx vitest run src/lib/goide/livePreview.test.ts src/components/ide src/components/goide src/stores
+npx vitest run src/lib/code-studio/livePreview.test.ts src/components/ide src/components/code-studio src/stores
 ```
 
 The Go tests start real servers and a real `npm run dev` process tree (skipped without npm) and check that ports and children are gone after Stop, session close, trust revocation and shutdown.

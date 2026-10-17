@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { GraphRiskMap } from '../../../bindings/adomnia/internal/goide/models'
+import type { GraphRiskMap } from '../../../bindings/adomnia/internal/codestudio/models'
 import type { GraphRef } from '@/lib/code-studio/workspaceGraph'
 
 /** Risk map: how risky a change is, function by function, summed per package (riskiest first). */

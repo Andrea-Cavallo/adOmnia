@@ -42,7 +42,7 @@ export function DebugBar() {
   const state = useDevSessionStore.getState()
   const session = primarySession(state, distributed.sessionIds.find(id => state.sessions[id]?.state === 'paused') ?? state.focusedSessionId)
   const live = liveSessions(state)
-  const hidden = !session || activeRail === 'goide'
+  const hidden = !session || activeRail === 'codestudio'
 
   useEffect(() => {
     if (hidden || session?.kind !== 'debug') return

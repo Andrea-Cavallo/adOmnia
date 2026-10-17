@@ -1,6 +1,6 @@
 import type { GoIDEGoroutine } from '@/lib/code-studio-debug-api'
 
-/** Stati prodotti da internal/goide/debug_goroutines.go. */
+/** Stati prodotti da internal/codestudio/debug_goroutines.go. */
 export type GoroutineState =
   | 'running' | 'chan receive' | 'chan send' | 'select' | 'mutex' | 'waitgroup' | 'cond'
   | 'sleep' | 'io wait' | 'syscall' | 'waiting'

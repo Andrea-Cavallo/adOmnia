@@ -34,7 +34,7 @@ import type {
   TerminalSession,
   TerminalRequest,
   TerminalProfile,
-} from '../../bindings/adomnia/internal/goide/models'
+} from '../../bindings/adomnia/internal/codestudio/models'
 import type { RunTarget } from '../../bindings/adomnia/internal/ide/run/models'
 
 export type GoIDECapabilities = Capabilities
@@ -56,7 +56,7 @@ export type GoIDEToolchainRelease = ToolchainRelease
 export type GoIDEInstalledToolchain = InstalledToolchain
 export type GoIDERunConfiguration = RunConfiguration
 export type GoIDERunTarget = RunTarget
-export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/adomnia/internal/goide/models'
+export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/adomnia/internal/codestudio/models'
 export type GoIDEEnvironmentEntry = EnvironmentEntry
 export type GoIDESessionView = SessionView
 export type GoIDERecoveredBuffer = RecoveredBuffer
@@ -71,7 +71,7 @@ export interface GoIDEPathComparison {
   rightContent?: string
   differences: GoIDEPathDifference[]
 }
-/** Payload dell'evento `terminal.output` (goide.TerminalOutput), non generato da Wails perché solo evento. */
+/** Payload dell'evento `terminal.output` (codeStudio.TerminalOutput), non generato da Wails perché solo evento. */
 export interface GoIDETerminalOutput {
   terminalId: string
   data: string
@@ -382,11 +382,11 @@ export async function confirmGoIDEAppClose(): Promise<void> {
 }
 
 export function subscribeGoIDEEvents(callback: (event: GoIDEEvent) => void): () => void {
-  return Events.On('goide:event', (event) => callback(event.data as GoIDEEvent))
+  return Events.On('code-studio:event', (event) => callback(event.data as GoIDEEvent))
 }
 
 export function subscribeGoIDEAppCloseRequests(callback: (request: GoIDEAppCloseRequest) => void): () => void {
-  return Events.On('goide:close-requested', (event) => callback(event.data as GoIDEAppCloseRequest))
+  return Events.On('code-studio:close-requested', (event) => callback(event.data as GoIDEAppCloseRequest))
 }
 
 // --- Configurazioni Run persistenti -----------------------------------------

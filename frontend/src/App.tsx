@@ -48,7 +48,7 @@ function App() {
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
   const splitView = useAppStore((s) => s.splitView)
-  const codeStudioMaximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'goide' && !splitView
+  const codeStudioMaximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'codestudio' && !splitView
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
   const addDevLog = useDevLogsStore((s) => s.addEntry)

@@ -1,6 +1,6 @@
 /** Additive local preference: existing workspace/session files stay unchanged. */
 export function studioSessionMemoryKey(workspaceId: string): string {
-  return `adomnia.goide.activeSession.${workspaceId}`
+  return `adomnia.codestudio.activeSession.${workspaceId}`
 }
 
 export function rememberedStudioSession(sessions: readonly { id: string }[], workspaceId: string): string | null {

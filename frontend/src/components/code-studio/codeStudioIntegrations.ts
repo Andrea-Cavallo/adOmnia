@@ -1,5 +1,5 @@
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { ProjectService } from '../../../bindings/adomnia/internal/goide/models'
+import type { ProjectService } from '../../../bindings/adomnia/internal/codestudio/models'
 import { BROKER_PENDING_KEY, DATABASE_PENDING_CONNECTION_KEY, DOCKER_LAB_PENDING_KEY, type DockerLabHandoff } from '@/lib/moduleHandoff'
 import { showModule } from '@/lib/moduleRouting'
 import { useEnvironmentsStore } from '@/stores/environments'

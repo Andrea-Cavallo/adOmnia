@@ -1,4 +1,4 @@
-/** Payload dell'evento `files.changed` (goide.FilesChanged). */
+/** Payload dell'evento `files.changed` (codeStudio.FilesChanged). */
 export interface GoIDEDiskChange {
   path: string
   relativePath: string

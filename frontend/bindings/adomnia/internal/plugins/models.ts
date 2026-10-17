@@ -528,7 +528,7 @@ export class PluginAction {
  */
 export class PluginContributes {
     /**
-     * Commands appear in the Go Studio command palette and Plugins menu.
+     * Commands appear in the Code Studio command palette and Plugins menu.
      */
     "commands"?: ContributedCommand[];
 

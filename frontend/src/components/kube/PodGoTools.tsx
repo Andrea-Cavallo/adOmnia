@@ -40,7 +40,7 @@ export function PodGoTools({ context, namespace, pod }: { context: string; names
         : action === 'trace'
           ? { action, url: `http://${address}`, seconds: Math.min(30, Number(seconds) || 5), label }
           : { action, url: `http://${address}`, kind: profileKind, seconds: Number(seconds) || 10, label }
-      routeToModule('goide', { kind: 'dispatch', eventName: GO_REMOTE_EVENT, detail: request }, {
+      routeToModule('codestudio', { kind: 'dispatch', eventName: GO_REMOTE_EVENT, detail: request }, {
         onTimeout: () => setError('Code Studio did not answer: open the service project there and try again.'),
       })
       setNotice(`Forwarded ${address} → ${remotePort}. It stays open in Port forwards; stop it there when done.`)

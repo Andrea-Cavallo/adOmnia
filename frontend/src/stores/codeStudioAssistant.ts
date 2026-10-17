@@ -6,7 +6,7 @@ export type CodeStudioChatPane = 'copilot' | 'milk' | 'claude' | 'opencode'
 export const isChatPane = (pane: string | null): pane is CodeStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude' || pane === 'opencode'
 
 /** Ultimo provider aperto dal bottone AI unico: riapre dove si era rimasti, anche dopo il riavvio. */
-export const LAST_PROVIDER_KEY = 'adomnia.goide.ai.lastProvider.v1'
+export const LAST_PROVIDER_KEY = 'adomnia.codestudio.ai.lastProvider.v1'
 export const DEFAULT_PROVIDER: CodeStudioChatPane = 'copilot'
 
 function loadLastProvider(): CodeStudioChatPane {

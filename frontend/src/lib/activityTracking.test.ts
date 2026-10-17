@@ -46,12 +46,12 @@ it('reports background visibility and restores immediately on return', () => {
 })
 it('keeps exact workspace scopes reference-counted and supports split navigation', () => {
   stop = startActivityTracking()
-  const releaseA = useActivityStore.getState().retain('goide:a')
-  const releaseB = useActivityStore.getState().retain('goide:a')
-  useAppStore.setState({ splitView: true, activeRail: 'goide' })
-  expect(useActivityStore.getState().scopes).toEqual(['collections', 'goide', 'goide:a'])
-  releaseA(); expect(useActivityStore.getState().scopes).toContain('goide:a')
-  releaseB(); expect(useActivityStore.getState().scopes).not.toContain('goide:a')
+  const releaseA = useActivityStore.getState().retain('code-studio:a')
+  const releaseB = useActivityStore.getState().retain('code-studio:a')
+  useAppStore.setState({ splitView: true, activeRail: 'codestudio' })
+  expect(useActivityStore.getState().scopes).toEqual(['code-studio:a', 'codestudio', 'collections'])
+  releaseA(); expect(useActivityStore.getState().scopes).toContain('code-studio:a')
+  releaseB(); expect(useActivityStore.getState().scopes).not.toContain('code-studio:a')
 })
 it('unsubscribes inputs, deadlines and store listeners when tracking stops', () => {
   stop = startActivityTracking(); stop(); stop = undefined

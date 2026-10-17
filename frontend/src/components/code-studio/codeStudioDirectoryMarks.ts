@@ -1,6 +1,6 @@
 export type CodeStudioDirectoryMark = 'sources' | 'tests' | 'resources' | 'excluded'
 
-const PREFIX = 'adomnia.goide.directory-marks.v1.'
+const PREFIX = 'adomnia.codestudio.directory-marks.v1.'
 
 function key(rootPath: string): string {
   return `${PREFIX}${rootPath.replace(/\\/g, '/').toLowerCase()}`

@@ -24,9 +24,9 @@ describe('terminal restore', () => {
   })
 
   it('ignores corrupt storage', () => {
-    localStorage.setItem('adomnia.goide.terminals:/bad', '{nope')
+    localStorage.setItem('adomnia.codestudio.terminals:/bad', '{nope')
     expect(readSavedTerminals('/bad')).toEqual([])
-    localStorage.setItem('adomnia.goide.terminals:/bad', JSON.stringify([{ name: 1 }, null]))
+    localStorage.setItem('adomnia.codestudio.terminals:/bad', JSON.stringify([{ name: 1 }, null]))
     expect(readSavedTerminals('/bad')).toEqual([])
   })
 })

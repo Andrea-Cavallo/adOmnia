@@ -6,7 +6,7 @@ import { useCodeStudioBreakpointUi, breakpointSummary } from './codeStudioBreakp
 import { useKnownUiTranslation } from '@/lib/uiI18n'
 import { Eye, EyeOff, GitFork, MapPin, OctagonAlert, Rocket } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { GoroutineCreation, PendingDefer } from '../../../bindings/adomnia/internal/goide/models'
+import type { GoroutineCreation, PendingDefer } from '../../../bindings/adomnia/internal/codestudio/models'
 import { getGoIDEDebugDisassembly, getGoIDEDebugScopes, getGoIDEDebugVariables, readGoIDEDebugMemory, type GoIDEDebugFrame, type GoIDEDebugInstruction, type GoIDEDebugMemory, type GoIDEDebugVariable, type GoIDEGoroutine } from '@/lib/code-studio-debug-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioDebugStore, type GoIDEDebugView } from '@/stores/codeStudioDebug'

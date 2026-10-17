@@ -21,6 +21,6 @@ describe('panel windows', () => {
   it('keeps the Hub, settings and Code Studio in the main window', () => {
     expect(canDetachPanel('broker')).toBe(true)
     expect(canDetachPanel('welcome')).toBe(false)
-    expect(canDetachPanel('goide')).toBe(false)
+    expect(canDetachPanel('codestudio')).toBe(false)
   })
 })

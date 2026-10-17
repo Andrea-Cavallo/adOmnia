@@ -65,7 +65,7 @@ function schedule(provider: monaco.languages.CodeLensProvider): void {
       if (state.phase !== previous.phase || state.scopes !== previous.scopes) schedule(provider)
     })
   }
-  const delay = () => pollingDelay(lensPollDelayMs(emptyPolls), currentActivityPhase('goide'))
+  const delay = () => pollingDelay(lensPollDelayMs(emptyPolls), currentActivityPhase('codestudio'))
   const run = async (): Promise<void> => {
     if (epoch !== generation || delay() === null) return
     inFlight ??= poll().catch(() => [] as OtlpLensStat[]).finally(() => { inFlight = null })

@@ -4,7 +4,7 @@
 // Ogni linguaggio ha il proprio language server standard (typescript-language-server,
 // vscode-html-language-server, …): il registry dell'IDE ne ammette uno per linguaggio e sessione,
 // quindi qui ci sono quattro adapter piccoli che condividono tabella delle estensioni e detection.
-// Dipende dal core (internal/ide/...) e mai dall'host internal/goide.
+// Dipende dal core (internal/ide/...) e mai dall'host internal/codestudio.
 package web
 
 import (

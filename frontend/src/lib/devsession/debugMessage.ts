@@ -26,8 +26,8 @@ export function kafkaBreakSite(entry: GoIDEArchEntry): { relativePath: string; l
 /** The first trusted open Go project (active one first) whose code consumes or produces the topic. */
 export async function findKafkaFunction(topic: string, role: KafkaRole): Promise<KafkaDebugTarget | null> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
-  const goide = useCodeStudioStore.getState()
-  if (!goide.initialized) await goide.initialize()
+  const codeStudio = useCodeStudioStore.getState()
+  if (!codeStudio.initialized) await codeStudio.initialize()
   const { sessions, activeSessionId } = useCodeStudioStore.getState()
   const ordered = [...sessions].sort((a, b) => Number(b.id === activeSessionId) - Number(a.id === activeSessionId))
   for (const session of ordered) {

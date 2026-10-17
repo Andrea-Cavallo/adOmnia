@@ -201,7 +201,7 @@ export function CodeStudioPanel() {
   // Kept mounted while hidden: its shortcuts must not fire from other tools.
   const panelActive = usePanelActiveRef()
   const store = useCodeStudioStore(useShallow(selectPanelState))
-  useActivityScope(store.activeSessionId ? `goide:${store.activeSessionId}` : null, usePanelVisible())
+  useActivityScope(store.activeSessionId ? `code-studio:${store.activeSessionId}` : null, usePanelVisible())
   const summary = useCodeStudioStore(useShallow(selectDocumentSummary))
   const setCursor = useCodeStudioCursorStore((state) => state.setCursor)
   const [createOpen, setCreateOpen] = useState(false)

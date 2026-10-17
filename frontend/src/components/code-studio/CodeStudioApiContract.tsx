@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { APIContractReport, EventContractReport } from '../../../bindings/adomnia/internal/goide/models'
+import type { APIContractReport, EventContractReport } from '../../../bindings/adomnia/internal/codestudio/models'
 import type { Issue } from '../../../bindings/adomnia/internal/ide/apicontract/models'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 

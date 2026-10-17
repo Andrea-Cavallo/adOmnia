@@ -55,20 +55,20 @@ Obiettivo: l'utente non vede più "Go Studio" da nessuna parte. Nessun rename di
 
 Obiettivo: nel codice non resta "Go Studio" come nome del prodotto. **Resta "Go" dove è davvero Go** (gopls, Delve, pprof, `internal/languages/golang`, flame graph/race/goroutine view, ecc.).
 
-Decisioni (da confermare, default sotto):
+Decisioni (applicate, 2026-10-17):
 - Rail id `goide` → `code-studio`. Il valore persistito è **migrato in lettura** (loader che accetta `goide` e riscrive `code-studio`).
 - Chiavi storage `adomnia.goide.*` → `adomnia.codestudio.*` con **migrazione one-shot** (copia + non cancellare subito la vecchia per un rilascio, per poter tornare indietro).
 - Service Wails `GoIDE`: **resta il nome del binding** finché non c'è motivo forte di rompere i call-site; si aggiunge l'alias/nuovo nome `CodeStudio` e si migra i call-site in modo graduale. _Se_ si rinomina, si rigenerano i binding con `go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28 generate bindings`.
 - File `.adomnia/run-configurations.json` (formato condiviso via Git): **invariato**, solo caricato con migrazione.
 
 Sotto-fasi (un commit ciascuna, in quest'ordine):
-- [ ] 2.1 Classificare i 188 file `GoStudio*` in tre liste: **GENERICO** (→ `CodeStudio*`), **GO-SPECIFICO** (→ `Go*` senza "Studio", es. `GoFlameGraph`), **da dividere**. Salvare la lista in questo file (tabella sotto) prima di toccare nulla.
-- [ ] 2.2 Script di rename mirato (`git mv` + sostituzione simboli/import), un file di mappa `old→new`, eseguito in modo deterministico; **mai** sed globale cieco (cfr. `reference_inline_script_backslashes`). Lo script resta in `scripts/` solo se riusabile, altrimenti nello scratchpad.
-- [ ] 2.3 Cartelle frontend: `components/goide/` → `components/code-studio/`; `lib/goide/` → `lib/code-studio/`; `stores/goide*.ts` → `stores/codeStudio*.ts`; `lib/goide-api.ts` → `lib/code-studio-api.ts`. Lasciare re-export temporanei solo se serve per non rompere branch aperti.
-- [ ] 2.4 Backend: package host `internal/goide` → `internal/codestudio`; `goide_bindings.go` → `code_studio_bindings.go`; `internal/goidewindow` → `internal/codestudiowindow`. Aggiornare `architecture_test.go` (la regola "il core non importa adapter" deve restare verde) e import in `main.go`.
-- [ ] 2.5 Chiavi di storage + rail id + eventi Wails: introdurre i nuovi nomi, loader di migrazione, test di migrazione (stato vecchio → stato nuovo, idempotente).
-- [ ] 2.6 `docs/`: `GO-STUDIO.md` → `CODE-STUDIO.md` (con sezione "Go" per le parti Go); aggiornare `CLAUDE.md`, `AGENTS.md`, `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/architecture/ide-multilanguage-refactor.md`, `docs/ISSUES.md`, `internal/**/CLAUDE.md`, `frontend/src/components/**/CLAUDE.md`. Non toccare `CHANGELOG.md` e `docs/releases/*` (storia).
-- [ ] 2.7 `npm run check:startup`: Code Studio resta **lazy**, mai importato da `App.tsx`/startup.
+- [ ] 2.1 (fatto per regola di prefisso, ma la tabella file→nuovo nome non è stata salvata qui: da scrivere o da dichiarare superflua) Classificare i 188 file `GoStudio*` in tre liste: **GENERICO** (→ `CodeStudio*`), **GO-SPECIFICO** (→ `Go*` senza "Studio", es. `GoFlameGraph`), **da dividere**. Salvare la lista in questo file (tabella sotto) prima di toccare nulla.
+- [x] 2.2 Script di rename mirato (`git mv` + sostituzione simboli/import), un file di mappa `old→new`, eseguito in modo deterministico; **mai** sed globale cieco (cfr. `reference_inline_script_backslashes`). Lo script resta in `scripts/` solo se riusabile, altrimenti nello scratchpad.
+- [x] 2.3 Cartelle frontend: `components/goide/` → `components/code-studio/`; `lib/goide/` → `lib/code-studio/`; `stores/goide*.ts` → `stores/codeStudio*.ts`; `lib/goide-api.ts` → `lib/code-studio-api.ts`. Lasciare re-export temporanei solo se serve per non rompere branch aperti.
+- [x] 2.4 (go vet ./... pulito; go test codestudio 427s, copilot, root verdi) Backend: package host `internal/goide` → `internal/codestudio`; `goide_bindings.go` → `code_studio_bindings.go`; `internal/goidewindow` → `internal/codestudiowindow`. Aggiornare `architecture_test.go` (la regola "il core non importa adapter" deve restare verde) e import in `main.go`.
+- [x] 2.5 Chiavi di storage + rail id + eventi Wails: introdurre i nuovi nomi, loader di migrazione, test di migrazione (stato vecchio → stato nuovo, idempotente).
+- [x] 2.6 (link ai doc rinominati e frasi goffe corrette; i nomi legacy restano dove documentato in CLAUDE.md) `docs/`: `GO-STUDIO.md` → `CODE-STUDIO.md` (con sezione "Go" per le parti Go); aggiornare `CLAUDE.md`, `AGENTS.md`, `README.md`, `docs/adomnia-feature-catalog.en.md`, `docs/architecture/ide-multilanguage-refactor.md`, `docs/ISSUES.md`, `internal/**/CLAUDE.md`, `frontend/src/components/**/CLAUDE.md`. Non toccare `CHANGELOG.md` e `docs/releases/*` (storia).
+- [x] 2.7 `npm run check:startup`: Code Studio resta **lazy**, mai importato da `App.tsx`/startup.
 - [ ] 2.8 Verifica: `go vet ./...` (mai `go build .` nella root: sovrascrive `adomnia.exe`, usare `-o NUL`), `go test ./internal/ide/... ./internal/codestudio/... ./internal/languages/...`, `npx tsc --noEmit`, Vitest dell'area, `npm run build`, avvio `wails3 task dev` e giro completo (apri progetto, run, debug, finestra staccata, riavvio con stato vecchio per testare la migrazione).
 
 **Gate Fase 2:** `git grep -nIi "go studio\|gostudio\|goide" -- . ":!CHANGELOG.md" ":!docs/releases" ":!mds/archivio" ":!mds/03-*"` restituisce solo: chiavi/alias di migrazione dichiarati, e occorrenze volute in file storici.
@@ -285,4 +285,5 @@ Le Fasi 7 e 8 possono procedere in parallelo dopo la 4–5; la 9 non parte prima
 | Data | Fase | Nota |
 | --- | --- | --- |
 | 2026-10-17 | — | Piano creato, nessun task iniziato |
+| 2026-10-17 | 2 | 2.1–2.7 fatti: regola unica prefisso `GoStudio`→`CodeStudio` (i file davvero Go restano `CodeStudioGo*`); `components/goide`→`components/code-studio`, `lib/goide`→`lib/code-studio`, `stores/goide*`→`stores/codeStudio*`; `internal/goide`→`internal/codestudio`, `goidewindow`→`codestudiowindow`, `goide_*_bindings.go`→`code_studio_*_bindings.go`; rail id `goide`→`codestudio` con alias in `normalizeRailItem`; localStorage `adomnia.goide.*` migrato in `adomnia.codestudio.*` (`lib/legacyStorageMigration.ts`, vecchie chiavi conservate); eventi `goide:*`→`code-studio:*`; binding rigenerati; docs/GO-STUDIO*.md→CODE-STUDIO*.md. **Tenuti di proposito** (contratti persistiti): service Wails `GoIDE`, bucket e data dir `goide`, label Docker `adomnia.goide.session`. Resta 2.8 (prova in app + gate grep). |
 | 2026-10-17 | 1 | 1.1–1.7 fatti: ~200 file (frontend/src, internal, root *.go) "Go Studio/gO Studio/Go IDE" → "Code Studio"; hub "Build. Run. Debug." + glifo `</>`; tsc, go vet, Vitest 600/600, go test goide/copilot/milk/goidewindow verdi. Aperta solo 1.8 (prova in app). `frontend/bindings` non toccati: i commenti si rigenerano con i binding |

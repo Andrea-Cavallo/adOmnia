@@ -16,7 +16,7 @@ export async function openSpanSource(file: string, line: number): Promise<void> 
   const [{ useCodeStudioStore }, { useAppStore }] = await Promise.all([import('@/stores/codeStudio'), import('@/stores/app')])
   const store = useCodeStudioStore.getState()
   const match = projectFile(file, store.sessions, store.activeSessionId)
-  useAppStore.getState().setActiveRail('goide')
+  useAppStore.getState().setActiveRail('codestudio')
   if (match) {
     if (store.activeSessionId !== match.sessionId) await store.selectSession(match.sessionId)
     await useCodeStudioStore.getState().openLocation(match.relativePath, line, 1)

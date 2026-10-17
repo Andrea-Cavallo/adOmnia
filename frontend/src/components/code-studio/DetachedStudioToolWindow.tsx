@@ -28,7 +28,7 @@ export function DetachedStudioToolWindow() {
   const titlebar = useWindowTitlebar()
   const [ready, setReady] = useState(false)
   const session = useCodeStudioStore((state) => state.sessions[0])
-  useActivityScope(session?.id ? `goide:${session.id}` : null, true)
+  useActivityScope(session?.id ? `code-studio:${session.id}` : null, true)
   const document = useCodeStudioStore((state) => state.documents[0] ?? null)
   const error = useStudioTools((state) => state.error)
   useEffect(() => {

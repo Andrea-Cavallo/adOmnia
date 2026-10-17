@@ -31,7 +31,7 @@ import type {
   HighlightsResult,
   RecursiveCallsResult,
   LanguageServerFeatures,
-  QuickDefinitionResult, HierarchyItem } from '../../bindings/adomnia/internal/goide/models'
+  QuickDefinitionResult, HierarchyItem } from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
 export type GoIDELanguageServerFeatures = LanguageServerFeatures
@@ -54,7 +54,7 @@ export type GoIDELintResult = LintResult
 export type GoIDELinterKind = 'golangci-lint' | 'staticcheck'
 export type GoIDESearchMatch = SearchMatch
 export type GoIDESearchResult = SearchResult
-/** Payload dell'evento `lsp.diagnostics` (goide.DiagnosticsReport). */
+/** Payload dell'evento `lsp.diagnostics` (codeStudio.DiagnosticsReport). */
 export interface GoIDEDiagnostic {
   range: EditorRange
   severity: number
@@ -75,7 +75,7 @@ export interface GoIDEDiagnosticsReport {
   diagnostics: GoIDEDiagnostic[]
 }
 
-/** Payload dell'evento `lsp.progress` (goide.LanguageServerProgress). */
+/** Payload dell'evento `lsp.progress` (codeStudio.LanguageServerProgress). */
 export interface GoIDELanguageServerProgress {
   token: string
   kind: 'begin' | 'report' | 'end'

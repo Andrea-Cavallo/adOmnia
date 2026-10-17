@@ -57,7 +57,7 @@ export function CodeStudioContextPanel({ sessionId }: CodeStudioContextPanelProp
   // Solo il documento attivo della sessione: le battute sugli altri documenti
   // non devono ridisegnare il pannello.
   const document = useCodeStudioStore((state) => sessionGoIDEDocument(state, sessionId))
-  const activityPhase = useActivityPhase(`goide:${sessionId}`)
+  const activityPhase = useActivityPhase(`code-studio:${sessionId}`)
   const buffer = document?.buffer ?? ''
   const documentId = document?.document.id ?? null
   const isGo = !!document && document.document.relativePath.endsWith('.go') && !document.document.external

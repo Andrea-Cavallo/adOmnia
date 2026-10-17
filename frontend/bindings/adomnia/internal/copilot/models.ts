@@ -238,7 +238,7 @@ export class InlineCompletionItem {
 }
 
 /**
- * InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di gO Studio.
+ * InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di Code Studio.
  */
 export class InlineCompletionRequest {
     "documentId": string;

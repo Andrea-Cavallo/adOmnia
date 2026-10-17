@@ -53,7 +53,7 @@ export const SETTINGS_INDEX: readonly CodeStudioSettingEntry[] = [
   { label: 'Plugins', section: 'plugins', keywords: 'plugins extensions install permissions' },
 ]
 
-const RECENT_KEY = 'adomnia.goide.recentCommands'
+const RECENT_KEY = 'adomnia.codestudio.recentCommands'
 const RECENT_LIMIT = 8
 
 export function readRecentCommands(): string[] {

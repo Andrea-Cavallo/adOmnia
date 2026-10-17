@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="#descarga">Descarga</a> ·
-  <a href="#go-studio">gO Studio</a> ·
+  <a href="#code-studio">Code Studio</a> ·
   <a href="#herramientas-de-api-y-runtime">Herramientas API</a> ·
   <a href="#entiende-tu-código">Análisis de código</a> ·
   <a href="#línea-de-comandos-y-ci">CLI</a> ·
@@ -32,7 +32,7 @@
 
 ## Por qué adOmnia
 
-La mayoría de los desarrolladores alternan entre un IDE, un cliente API, una interfaz para bases de datos, una herramienta para Kafka, un visor de logs y una terminal. adOmnia los reúne en una sola aplicación donde comparten contexto: un servicio Go iniciado en **gO Studio** se convierte en una **sesión en vivo** que el cliente API, el depurador, el explorador de bases de datos y el inspector de logs ven a la vez.
+La mayoría de los desarrolladores alternan entre un IDE, un cliente API, una interfaz para bases de datos, una herramienta para Kafka, un visor de logs y una terminal. adOmnia los reúne en una sola aplicación donde comparten contexto: un servicio Go iniciado en **Code Studio** se convierte en una **sesión en vivo** que el cliente API, el depurador, el explorador de bases de datos y el inspector de logs ven a la vez.
 
 - **Local-first.** Sin cuenta, sin telemetría, sin sincronización en la nube. Tus datos se quedan en tu máquina.
 - **Un solo flujo.** `código → servicio en ejecución → solicitud API → breakpoint → código → respuesta`.
@@ -56,15 +56,15 @@ Cada versión incluye `SHA256SUMS.txt`. Consulta la [guía de instalación](docs
 
 ### Primeros pasos
 
-1. **Abre un proyecto Go:** en **gO Studio**, elige *Open Folder* sobre una carpeta con `go.mod` y márcala como confiable para activar gopls, Run, Debug y los tests.
+1. **Abre un proyecto Go:** en **Code Studio**, elige *Open Folder* sobre una carpeta con `go.mod` y márcala como confiable para activar gopls, Run, Debug y los tests.
 2. **Envía una solicitud:** en **API Workspace**, crea una **New Request**, define método, URL, cabeceras, autenticación y cuerpo, y envíala.
-3. **Conéctalos:** ejecuta el servicio desde gO Studio y usa **Debug Request** para detenerte en el breakpoint de tu handler.
+3. **Conéctalos:** ejecuta el servicio desde Code Studio y usa **Debug Request** para detenerte en el breakpoint de tu handler.
 
-## gO Studio
+## Code Studio
 
-gO Studio es el IDE de Go integrado en adOmnia, pensado para el trabajo diario con Go en máquinas reales.
+Code Studio es el IDE de Go integrado en adOmnia, pensado para el trabajo diario con Go en máquinas reales.
 
-![gO Studio](docs/screenshots/ide-dark.png)
+![Code Studio](docs/screenshots/ide-dark.png)
 
 | Área | Qué obtienes |
 | --- | --- |
@@ -77,7 +77,7 @@ gO Studio es el IDE de Go integrado en adOmnia, pensado para el trabajo diario c
 | **Remoto y nube** | Las configuraciones de ejecución apuntan a distribuciones WSL, hosts SSH o contenedores en marcha. Kubernetes Studio cubre pods, deployments, services, config maps y secrets (solo nombres de claves), con Delve y pprof redirigidos desde un pod. |
 | **Toolchain** | Usa el SDK de Go del proyecto, `GOPROXY`, `GOPRIVATE`, `CGO_ENABLED`, `GOOS`/`GOARCH` y build tags por proyecto; cambiar de SDK reinicia gopls; sin descargas silenciosas de toolchains. |
 
-**Modelo de confianza.** Un proyecto recién abierto se puede explorar y editar, pero ninguna herramienta de Go, compilación ni proceso se ejecuta sobre él hasta que lo marques como confiable. Consulta la [guía de gO Studio](docs/GO-STUDIO.md).
+**Modelo de confianza.** Un proyecto recién abierto se puede explorar y editar, pero ninguna herramienta de Go, compilación ni proceso se ejecuta sobre él hasta que lo marques como confiable. Consulta la [guía de Code Studio](docs/CODE-STUDIO.md).
 
 ### Entiende tu código
 
@@ -108,7 +108,7 @@ Inicia un servicio con Run o Debug y se convierte en una [Live Development Sessi
 - **Debug Request** inicia el servicio con Delve si hace falta, espera a su puerto, envía la solicitud y se detiene en tu breakpoint, con el código y la solicitud uno al lado del otro.
 - **Solicitud ↔ handler:** el API Workspace muestra el handler de Go que atiende una solicitud; un CodeLens sobre el handler lo abre, lo ejecuta o lo depura.
 - **Todo lo que tocó una solicitud:** las consultas SQL (con tiempos, número de filas, sentencias lentas y avisos de N+1), los mensajes Kafka y las líneas de log que provocó una solicitud aparecen junto a su respuesta.
-- **Enriquecimiento en runtime:** gO Studio superpone lo que realmente se ejecutó — rutas, fuentes de datos, topics, latencia, errores — sobre el mapa estático de dependencias.
+- **Enriquecimiento en runtime:** Code Studio superpone lo que realmente se ejecutó — rutas, fuentes de datos, topics, latencia, errores — sobre el mapa estático de dependencias.
 
 ## Herramientas de API y runtime
 
@@ -123,7 +123,7 @@ Inicia un servicio con Run o Debug y se convierte en una [Live Development Sessi
 | **Depuración** | Depuración de navegador mediante Chrome DevTools Protocol, inspector de logs de aplicación, visor HAR, diagnóstico de red y exportación de evidencias con datos ocultos. |
 | **Datos y documentos** | Exploradores de SQLite, PostgreSQL, MySQL y MongoDB; Markdown, Mermaid y LaTeX; anotación de PDF, formularios y firmas digitales. |
 | **Git** | Clonado, staging, commits, grafo del historial, ramas, merge, push/pull, resolución de conflictos y colecciones exportadas a una estructura de carpetas revisable. |
-| **IA y MCP** | Modelos en la nube o locales opcionales, el asistente a0, GitHub Copilot y milk en gO Studio, un gateway local para agentes, un cliente MCP y un generador de servidores MCP. |
+| **IA y MCP** | Modelos en la nube o locales opcionales, el asistente a0, GitHub Copilot y milk en Code Studio, un gateway local para agentes, un cliente MCP y un generador de servidores MCP. |
 | **Seguridad y personalización** | Bóveda cifrada, entornos privados, herramientas de certificados, plugins JavaScript y WASI en sandbox (opcionalmente firmados), plantillas, temas y un color de acento personal. |
 
 El [catálogo de funciones](docs/adomnia-feature-catalog.en.md) describe cada módulo.
@@ -220,7 +220,7 @@ La documentación detallada está en inglés.
 | [Instalación](docs/INSTALL.md) | Descargas y configuración por plataforma |
 | [Compilación](docs/BUILD.md) | Toolchain, dependencias nativas, empaquetado |
 | [Catálogo de funciones](docs/adomnia-feature-catalog.en.md) | Referencia módulo por módulo |
-| [gO Studio](docs/GO-STUDIO.md) | Uso del IDE de Go, modelo de confianza, herramientas, atajos |
+| [Code Studio](docs/CODE-STUDIO.md) | Uso del IDE de Go, modelo de confianza, herramientas, atajos |
 | [Live Development Session](docs/LIVE-SESSION.md) | Código ↔ servicio en ejecución ↔ solicitud API |
 | [Arquitectura](docs/ARCHITECTURE.md) | Estructura de la aplicación |
 | [FAQ](docs/FAQ.md) · [Solución de problemas](docs/TROUBLESHOOTING.md) | Preguntas frecuentes y recuperación |

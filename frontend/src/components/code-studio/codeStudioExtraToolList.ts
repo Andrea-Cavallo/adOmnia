@@ -15,7 +15,7 @@ export const BUILTIN_EXTRA_TOOLS: readonly CodeStudioExtraTool[] = [
   { binary: 'stringer', module: 'golang.org/x/tools/cmd/stringer@latest', purpose: 'String() for enum constants', defaultArgs: '-type=Color' },
 ]
 
-const KEY = 'adomnia.goide.customTools'
+const KEY = 'adomnia.codestudio.customTools'
 const BINARY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const MODULE = /^[A-Za-z0-9][A-Za-z0-9._~/-]{2,199}@[A-Za-z0-9._+-]{1,64}$/
 

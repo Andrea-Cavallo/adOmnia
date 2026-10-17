@@ -17,5 +17,5 @@ Tutto il lavoro ancora da fare, in un solo posto e in ordine di esecuzione. **Op
 
 - Un'idea o un bug nuovo va nel file della sua area; non creare nuovi file `TODO-*.md` sparsi.
 - Una voce si spunta solo con la **prova** (sessione desktop registrata o test indicato), non perché "il codice c'è".
-- Quando cambia un comportamento, aggiornare anche i documenti elencati in CLAUDE.md (`docs/GO-STUDIO.md`, `docs/ISSUES.md`).
+- Quando cambia un comportamento, aggiornare anche i documenti elencati in CLAUDE.md (`docs/CODE-STUDIO.md`, `docs/ISSUES.md`).
 - Gli stati documentati qui rispecchiano il codice alla data in testa a ciascun file; riverificare prima di agire.

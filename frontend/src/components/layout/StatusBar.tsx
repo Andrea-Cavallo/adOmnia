@@ -20,7 +20,7 @@ export function StatusBar() {
   const activeTabId = useTabsStore((s) => s.activeTabId)
   const mockRunning = useAppStore((s) => s.mockRunning)
   const proxyRunning = useAppStore((s) => s.proxyRunning)
-  const inIDE = useAppStore((s) => s.activeRail === 'goide')
+  const inIDE = useAppStore((s) => s.activeRail === 'codestudio')
   const setActiveRail = useAppStore((s) => s.setActiveRail)
   const themes = useThemesStore((s) => s.themes)
   const activeThemeId = useThemesStore((s) => s.activeThemeId)

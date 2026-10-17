@@ -33,7 +33,7 @@ export const RAIL_ITEMS = [
   'collab',
   'mcp',
   'apidocs',
-  'goide',
+  'codestudio',
   'kube',
 ] as const
 
@@ -47,9 +47,11 @@ const LEGACY_RAIL_ALIASES: Record<string, RailItem> = {
   nettools: 'browser',
   utils: 'powertools',
   // Folded into Code Studio: Markdown/Mermaid preview in the editor, Git as a tool window.
-  markdown: 'goide',
-  mermaid: 'goide',
-  gitsync: 'goide',
+  markdown: 'codestudio',
+  mermaid: 'codestudio',
+  gitsync: 'codestudio',
+  // Renamed from the Go-only name; persisted rails and hub layouts still carry it.
+  goide: 'codestudio',
 }
 
 export function normalizeRailItem(value: unknown): RailItem | null {

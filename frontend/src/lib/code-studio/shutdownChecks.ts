@@ -1,4 +1,4 @@
-import type { ShutdownReport } from '../../../bindings/adomnia/internal/goide/models'
+import type { ShutdownReport } from '../../../bindings/adomnia/internal/codestudio/models'
 
 export interface ShutdownCheck { label: string; status: 'ok' | 'warn' | 'bad' | 'unknown'; detail: string }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FilePlus2, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
 import type { DriftReport } from '../../../bindings/adomnia/internal/ide/graph/models'
-import type { ArchitectureDiff } from '../../../bindings/adomnia/internal/goide/models'
+import type { ArchitectureDiff } from '../../../bindings/adomnia/internal/codestudio/models'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 
 const RULE_LABEL: Record<string, string> = {

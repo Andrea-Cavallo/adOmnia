@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"adomnia/internal/devsession"
-	"adomnia/internal/goide"
+	"adomnia/internal/codestudio"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -51,31 +51,31 @@ func NewDevSession(goIDE *GoIDE) *DevSession {
 
 func (d *DevSession) attachDesktop(desktop *application.App) { d.desktop = desktop }
 
-func (d *DevSession) handleGoIDEEvent(event goide.EventEnvelope) {
+func (d *DevSession) handleGoIDEEvent(event codestudio.EventEnvelope) {
 	goSession := string(event.SessionID)
 	switch event.Type {
 	case "run.started":
-		if execution, ok := event.Payload.(goide.Execution); ok {
+		if execution, ok := event.Payload.(codestudio.Execution); ok {
 			d.manager.RunStarted(goSession, string(execution.ID), execution.Kind, execution.Command, execution.PID)
 		}
 	case "run.output":
-		if output, ok := event.Payload.(goide.ProcessOutput); ok {
+		if output, ok := event.Payload.(codestudio.ProcessOutput); ok {
 			d.manager.Output("run", string(output.RunID), output.Stream, output.Text)
 		}
 	case "run.finished":
-		if execution, ok := event.Payload.(goide.Execution); ok {
+		if execution, ok := event.Payload.(codestudio.Execution); ok {
 			d.manager.RunFinished(string(execution.ID), execution.Error)
 			d.tools.StopAll("run:" + string(execution.ID))
 		}
 	case "debug.state":
-		if info, ok := event.Payload.(goide.DebugSessionInfo); ok {
+		if info, ok := event.Payload.(codestudio.DebugSessionInfo); ok {
 			d.manager.DebugState(goSession, string(info.ID), info.State, info.Title, info.StopReason, info.ThreadID, info.Error)
-			if info.State == goide.DebugTerminated {
+			if info.State == codestudio.DebugTerminated {
 				d.tools.StopAll("debug:" + string(info.ID))
 			}
 		}
 	case "debug.output":
-		if output, ok := event.Payload.(goide.DebugOutput); ok {
+		if output, ok := event.Payload.(codestudio.DebugOutput); ok {
 			d.manager.DebugOutput(string(output.DebugID), output.Category, output.Text)
 		}
 	case "session.closed":

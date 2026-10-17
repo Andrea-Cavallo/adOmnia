@@ -8,7 +8,7 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 ## Unreleased (develop)
 
-[Notes of 2026-10-16](releases/unreleased-2026-10-16.md): toolbar and Run window of Go Studio, gopls warm-up, TODO export, milk fix for Claude Code on Windows.
+[Notes of 2026-10-16](releases/unreleased-2026-10-16.md): toolbar and Run window of Code Studio, gopls warm-up, TODO export, milk fix for Claude Code on Windows.
 
 ## v1.0.2 — correzioni IDE e connessioni database
 
@@ -93,7 +93,7 @@ windows, with visible attachment choices and project AI rules respected.
 
 ## v0.9.67 release notes: modular workspace and stable Git Sync navigation
 
-See [the full v0.9.67 notes](releases/v0.9.67.md): modular Go Studio tools detach
+See [the full v0.9.67 notes](releases/v0.9.67.md): modular Code Studio tools detach
 into native windows and automatically free space in the main IDE. Git Sync opens safely from
 the sidebar when there is no active request or collection, including a closed
 active tab. This fixes the reported `request` exception.
@@ -101,13 +101,13 @@ active tab. This fixes the reported `request` exception.
 ## v0.9.66 release notes: flexible tools, remote execution and extensions
 
 See [the full v0.9.66 notes](releases/v0.9.66.md): movable, maximizable and
-native detached Go Studio tool views; Kafka producer/consumer roles; WSL/SSH/container
+native detached Code Studio tool views; Kafka producer/consumer roles; WSL/SSH/container
 execution; pod debug/profile/trace; WASI, signed plugins and developer hot reload;
 and package-manager templates with explicit publication requirements.
 
 ## v0.9.64 release notes: AI that knows your workspace
 
-See [the full v0.9.64 notes](releases/v0.9.64.md): 18 AI actions in the gO Studio
+See [the full v0.9.64 notes](releases/v0.9.64.md): 18 AI actions in the Code Studio
 editor build prompts from the real workspace (problems, references, Git diff,
 failing tests, coverage, architecture analysis). milk settings add agents for
 API keys already in your environment, without writing the key to disk.
@@ -119,13 +119,13 @@ Geist prose with real Markdown, aligned slash-command output, a chip for the
 agent that answered, foldable reasoning and tool calls. Project tree folders
 always show their icon.
 
-## v0.9.62 release notes: install and update milk from gO Studio
+## v0.9.62 release notes: install and update milk from Code Studio
 
 See [the full v0.9.62 notes](releases/v0.9.62.md): *milk settings* installs or
 updates [milk](https://github.com/scoutme/milk) from its official releases with
 SHA-256 verification, and an old milk is reported as too old instead of failing.
 
-## v0.9.61 release notes: milk in gO Studio and a fuller Kubernetes Studio
+## v0.9.61 release notes: milk in Code Studio and a fuller Kubernetes Studio
 
 See [the full v0.9.61 notes](releases/v0.9.61.md): [milk](https://github.com/scoutme/milk)
 as an AI chat beside the editor (cheap/deep agent routing over ACP, always the
@@ -145,21 +145,21 @@ Workspace window with its collections, and native Linux sessions.
 
 See [the full v0.9.59 notes](releases/v0.9.59.md): open any module in its own
 window from the rail (right-click or Shift+click) or from the new Studios
-launcher in Go Studio, links from the code reach the window where the module
+launcher in Code Studio, links from the code reach the window where the module
 lives, and module windows save before closing and never overwrite each other.
 
 ## v0.9.58 release notes: modules in their own windows, Security Studio and live profiles
 
 See [the full v0.9.58 notes](releases/v0.9.58.md): any module (API workspace,
 Database, Broker, Mock and more) opens in its own window next to the code,
-Go Studio gets a Security panel with govulncheck reachability and an offline
+Code Studio gets a Security panel with govulncheck reachability and an offline
 code scan, Start/Stop Workspace for the whole local environment, profiles from
 a running service with a call graph and line cost in the editor, colour-coded
 comment tags and a cleaner one-screen Hub.
 
 ## v0.9.57 release notes: the IDE Platform, SonarQube and one-click profiles
 
-See [the full v0.9.57 notes](releases/v0.9.57.md): Go Studio runs on a
+See [the full v0.9.57 notes](releases/v0.9.57.md): Code Studio runs on a
 language-neutral IDE core with Go as its first adapter, the UI learns languages
 from the backend (icons for Java, Kotlin, PHP, Ruby, .NET, C/C++ and more),
 optional SonarQube analysis with baseline and AI fixes, one-click CPU/memory
@@ -169,7 +169,7 @@ performance reports.
 ## v0.9.56 release notes: Performance Studio, Go trace and the end of the foundations
 
 See [the full v0.9.56 notes](releases/v0.9.56.md): pprof profiles and execution
-traces read inside Go Studio, the debugger shows where goroutines were created
+traces read inside Code Studio, the debugger shows where goroutines were created
 and the real pending defers, Move Symbol to Package with a build check before
 the preview, total coverage against the base branch, a commit dialog with real
 per-file diffs, protection against pushing local go.mod replaces, image preview,
@@ -180,9 +180,9 @@ visible gopls activity and the shell picker beside the terminal tabs.
 See [the full v0.9.55 notes](releases/v0.9.55.md): an app-wide offline mode, one
 corporate proxy and CA bundle for every connection, an in-memory network activity
 log, private Go module credentials through the Git credential manager with a
-registry test, and the Go Studio minimap removed.
+registry test, and the Code Studio minimap removed.
 
-## v0.9.54 release notes: Go Studio for teams and enterprise networks
+## v0.9.54 release notes: Code Studio for teams and enterprise networks
 
 See [the full v0.9.54 notes](releases/v0.9.54.md): Flaky Test Detector, patch and
 per-function coverage, lint on changed files with a shared baseline, a smarter
@@ -193,8 +193,8 @@ folders, a grouped Structure panel and a full-height minimap.
 ## v0.9.53 release notes: cleaner window, one-screen Hub and Context Inspector
 
 See [the full v0.9.53 notes](releases/v0.9.53.md): the system title bar is hidden
-by default again, detached Go Studio windows share the app chrome, the Hub fits on
-one screen, Go Studio adds a Context Propagation Inspector, and a gopls startup
+by default again, detached Code Studio windows share the app chrome, the Hub fits on
+one screen, Code Studio adds a Context Propagation Inspector, and a gopls startup
 error ("addView called before server initialized") is fixed.
 
 ## v0.9.52 release notes: readable logs, AI privacy and a visual go.mod editor
@@ -204,9 +204,9 @@ Log Inspector, `.adomnia/aiignore` and reversible secret redaction for Fix with 
 partial apply in the change preview, a visual go.mod editor with version
 downgrade, and per-workspace crash recovery.
 
-## v0.9.51 release notes: faster Go Studio, Apple-light IDE and deeper runtime context
+## v0.9.51 release notes: faster Code Studio, Apple-light IDE and deeper runtime context
 
-See [the full v0.9.51 notes](releases/v0.9.51.md): Go Studio adds one-click
+See [the full v0.9.51 notes](releases/v0.9.51.md): Code Studio adds one-click
 Light/Dark controls and an Apple-inspired light skin, restores the Hub's light
 a0 illustration, detects local Go toolchains instantly on restricted networks,
 restores project terminals, adds dependency/runtime views, Change Signature,
@@ -215,28 +215,28 @@ conflict resolution and stronger crash recovery.
 ## v0.9.49 release notes: Live Development Session, terminal toolbox and no title bar
 
 See [the full v0.9.49 notes](releases/v0.9.49.md): a Go service started from
-Go Studio is shared by every tool (Debug Request, request ↔ code, what a
-request caused), GitHub Copilot arrives in Go Studio (enterprise-aware ghost
-text), the Go Studio terminal gains rename, split, clickable paths
+Code Studio is shared by every tool (Debug Request, request ↔ code, what a
+request caused), GitHub Copilot arrives in Code Studio (enterprise-aware ghost
+text), the Code Studio terminal gains rename, split, clickable paths
 and stack traces, search, clean copy, history and `go test` detection, the
 panel header replaces the separate title bar (app titlebar by default), and
-Go Studio adds Low-Resource Mode, diagnostics throttling and large-output
+Code Studio adds Low-Resource Mode, diagnostics throttling and large-output
 limits, plus runtime value inspectors and Benchmark Studio.
 
 ## v0.9.48 release notes: a cleaner gO rail and Project refresh controls
 
-See [the full v0.9.48 notes](releases/v0.9.48.md): Go Studio's Project view
+See [the full v0.9.48 notes](releases/v0.9.48.md): Code Studio's Project view
 gets context-sensitive IntelliJ-style code actions, explicit Reload from Disk
 and Refresh Folder / Project controls that protect dirty buffers. The compact
 left rail now uses the transparent cyan gO mark, the README shows the current
-Go Studio workspace, and the Brick Workshop skin has been removed completely.
+Code Studio workspace, and the Brick Workshop skin has been removed completely.
 
 ## v0.9.42 release notes: Concurrency View, race comparison and an IDE-grade editor
 
 See [the full v0.9.42 notes](releases/v0.9.42.md): the Concurrency View
 completes the goroutine debugger (filters, stack grouping, relations, new
 diagnostics, evidence badges, timeline, snapshot export), races are compared
-across runs, and Go Studio gains editor core features, hierarchies, code
+across runs, and Code Studio gains editor core features, hierarchies, code
 generation, vulnerability diagnostics, project tree decorations, go.work
 management and Clone Repository.
 
@@ -257,7 +257,7 @@ PKCS#8, verified with OpenSSL), and recent projects in the toolbar. Menus
 and confirmation dialogs are redesigned, Jenkinsfiles and keys get their
 own icons, the a0 launcher stays out of the way, and gopls runs lighter.
 
-## v0.9.39 release notes: Go Studio runs Makefiles and Dockerfiles
+## v0.9.39 release notes: Code Studio runs Makefiles and Dockerfiles
 
 See [the full v0.9.39 notes](releases/v0.9.39.md): the gutter ▶ runs
 Makefile targets and builds or runs Dockerfiles with the real `make` and
@@ -267,32 +267,32 @@ Context turns the project's routes, services, datasources, contracts,
 tables and topics into palette actions, and the Hub introduces the aO → gO
 ecosystem.
 
-## v0.9.38 release notes: Go Studio Fix with AI and real file icons
+## v0.9.38 release notes: Code Studio Fix with AI and real file icons
 
 See [the full v0.9.38 notes](releases/v0.9.38.md): errors and warnings can
 be fixed with the AI provider configured in adOmnia, always through a
 reviewed preview, and every file list shows real technology icons.
 
-## v0.9.37 release notes: Go Studio terminal, tests, debugger and GoLand parity
+## v0.9.37 release notes: Code Studio terminal, tests, debugger and GoLand parity
 
-See [the full v0.9.37 notes](releases/v0.9.37.md): Go Studio adds a real
+See [the full v0.9.37 notes](releases/v0.9.37.md): Code Studio adds a real
 terminal, a structured test runner with coverage, the Delve debugger,
 gopls refactoring and navigation, Git in the editor linked to Git Studio,
 Project Services, separate project windows and a JetBrains-style chrome.
 
-## v0.9.36 release notes: Go Studio becomes a real Go IDE
+## v0.9.36 release notes: Code Studio becomes a real Code Studio
 
-See [the full v0.9.36 notes](releases/v0.9.36.md): Go Studio now opens, edits,
+See [the full v0.9.36 notes](releases/v0.9.36.md): Code Studio now opens, edits,
 understands, lints, runs and tests real Go projects. It adds gopls completion,
 navigation, previewed rename and code actions; golangci-lint or staticcheck
 findings; gutter ▶ actions for `func main` and tests; split editor, pinned
 tabs and a symbolic breadcrumb; and a full GoLand-style menu bar. Debugger,
 terminal and test runner tree come in later phases.
 
-## v0.9.35 release notes: Go Studio foundation
+## v0.9.35 release notes: Code Studio foundation
 
 See [the full v0.9.35 notes](releases/v0.9.35.md): adOmnia gains the
-local-first Go Studio architecture, safe project sessions, a compact `gO`
+local-first Code Studio architecture, safe project sessions, a compact `gO`
 entry in the existing rail and the first integrated desktop shell. Execution,
 editing, gopls, terminal and debugger controls remain intentionally absent
 until their gated implementation phases are complete.

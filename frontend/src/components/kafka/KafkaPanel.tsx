@@ -1090,7 +1090,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
         return
       }
       setReplayState({ busy: false, text: `Replayed under the debugger: Code Studio stops in ${where}.` })
-      showModule('goide')
+      showModule('codestudio')
     } catch (error) {
       setReplayState({ busy: false, text: `Debug failed: ${error instanceof Error ? error.message : String(error)}` })
     }

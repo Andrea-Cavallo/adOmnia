@@ -23,8 +23,8 @@ export class DebugRequestError extends Error {}
 /** The gO project behind a service name, or the active project when the request is not linked. */
 async function findGoSession(service: string | null): Promise<string | null> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
-  const goide = useCodeStudioStore.getState()
-  if (!goide.initialized) await goide.initialize()
+  const codeStudio = useCodeStudioStore.getState()
+  if (!codeStudio.initialized) await codeStudio.initialize()
   const sessions = useCodeStudioStore.getState().sessions
   if (service) {
     for (const session of sessions) {
@@ -43,7 +43,7 @@ export function startGoDebug(goSessionId: string): Promise<void> {
 /** Runs a start command of the project's active configuration in Code Studio (Debug, Run with Race Detector). */
 export async function startGoCommand(goSessionId: string, command: NonNullable<GoDebugStartDetail['command']>): Promise<void> {
   const deadline = Date.now() + 15_000
-  useAppStore.getState().keepPanel('goide')
+  useAppStore.getState().keepPanel('codestudio')
   while (Date.now() < deadline) {
     const outcome = await new Promise<string | null | undefined>((resolve) => {
       const detail: GoDebugStartDetail = { goSessionId, command, handled: false, done: (error) => resolve(error ?? null) }

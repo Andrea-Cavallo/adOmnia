@@ -3,7 +3,7 @@ import { Fragment, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
 import type { BinaryReport } from '../../../bindings/adomnia/internal/languages/golang/models'
-import type { BinaryComparison } from '../../../bindings/adomnia/internal/goide/models'
+import type { BinaryComparison } from '../../../bindings/adomnia/internal/codestudio/models'
 
 export function formatBytes(bytes: number): string {
   const sign = bytes < 0 ? '-' : ''

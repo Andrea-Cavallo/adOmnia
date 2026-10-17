@@ -7,7 +7,7 @@ import { spanSource } from '@/components/observe/traceStudioModel'
 import type { OtlpSpan } from '@/lib/otlp-api'
 
 export function useCodeStudioRuntimeContextHandoff(): void {
-  useEntityHandoff('goide', (ref, intent) => {
+  useEntityHandoff('codestudio', (ref, intent) => {
     if (intent !== 'runtime') return false
     const store = useCodeStudioStore.getState()
     if (!store.initialized) return false

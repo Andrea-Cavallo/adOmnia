@@ -28,8 +28,8 @@ interface CodeStudioTerminalPanelProps {
   visible: boolean
 }
 
-const PROFILE_KEY = 'adomnia.goide.terminalProfile'
-const HISTORY_KEY = 'adomnia.goide.terminalHistory:'
+const PROFILE_KEY = 'adomnia.codestudio.terminalProfile'
+const HISTORY_KEY = 'adomnia.codestudio.terminalHistory:'
 
 function readPreferredProfile(): string {
   try { return localStorage.getItem(PROFILE_KEY) ?? '' } catch { return '' }

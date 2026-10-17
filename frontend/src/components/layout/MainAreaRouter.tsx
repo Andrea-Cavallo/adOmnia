@@ -104,7 +104,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
 export type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
 
 /** Panels that stay mounted once visited: the developer moves between code and API without losing either. */
-export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'goide']
+export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'codestudio']
 
 export function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
@@ -141,7 +141,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'collab': return { component: <CollabPanel />, titleKey: 'Live Collaboration', overflow: true }
     case 'mcp': return { component: <McpPanel />, titleKey: 'MCP Client', overflow: true }
-    case 'goide': return { component: <CodeStudioPanel />, titleKey: 'goide', overflow: true }
+    case 'codestudio': return { component: <CodeStudioPanel />, titleKey: 'codestudio', overflow: true }
     case 'kube': return { component: <KubePanel />, titleKey: 'Kubernetes', overflow: true }
     case 'settings': return { component: <SettingsPanel />, titleKey: 'settings' }
     default: return { component: <WelcomePanel /> }
@@ -150,7 +150,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
 
 export function MainAreaRouter() {
   const activeRail = useAppStore((s) => s.activeRail)
-  const maximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'goide'
+  const maximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'codestudio'
   const goBack = useAppStore((s) => s.goBack)
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
@@ -173,7 +173,7 @@ export function MainAreaRouter() {
   // Split Debug View: Code Studio and the API workspace visible together. The
   // pane that last received focus owns the keyboard shortcuts.
   const splitView = useAppStore((s) => s.splitView)
-  const split = splitView && (activeRail === 'collections' || activeRail === 'goide') && workspaceShellPhase === 'ready' && !detachedPanels.includes('collections')
+  const split = splitView && (activeRail === 'collections' || activeRail === 'codestudio') && workspaceShellPhase === 'ready' && !detachedPanels.includes('collections')
   const [focusedPane, setFocusedPane] = useState<RailItem>('collections')
   const [splitRatio, setSplitRatio] = useState(0.55)
   const splitRef = useRef<HTMLDivElement>(null)
@@ -233,20 +233,20 @@ export function MainAreaRouter() {
         </div>
       )}
       <div ref={splitRef} className={split ? 'flex flex-1 min-h-0 min-w-0' : 'contents'}>
-        {keptRails(split ? [...keptPanels, 'goide', 'collections'] : keptPanels, activeRail).filter((rail) => !detachedPanels.includes(rail)).map((rail) => {
-          const shown = split ? (rail === 'goide' || rail === 'collections') : rail === activeRail && !workspaceHydrating
+        {keptRails(split ? [...keptPanels, 'codestudio', 'collections'] : keptPanels, activeRail).filter((rail) => !detachedPanels.includes(rail)).map((rail) => {
+          const shown = split ? (rail === 'codestudio' || rail === 'collections') : rail === activeRail && !workspaceHydrating
           // The API workspace needs hydrated collections before it mounts.
           if (rail === 'collections' && workspaceShellPhase !== 'ready') return null
           const active = shown && (!split || focusedPane === rail)
           const className = !shown ? 'hidden'
-            : split ? `flex flex-col min-w-0 overflow-hidden ${rail === 'goide' ? 'order-0 border-r border-border-1' : 'order-2 flex-1'}`
+            : split ? `flex flex-col min-w-0 overflow-hidden ${rail === 'codestudio' ? 'order-0 border-r border-border-1' : 'order-2 flex-1'}`
               : 'flex-1 flex flex-col min-w-0 overflow-hidden panel-enter'
           return (
             <PanelActiveContext.Provider key={rail} value={active}>
               <PanelVisibleContext.Provider value={shown}>
               <div
                 className={className}
-                style={split && rail === 'goide' ? { flexBasis: `${splitRatio * 100}%` } : undefined}
+                style={split && rail === 'codestudio' ? { flexBasis: `${splitRatio * 100}%` } : undefined}
                 inert={!shown}
                 aria-hidden={!shown}
                 onFocusCapture={split ? () => setFocusedPane(rail) : undefined}

@@ -28,7 +28,7 @@ const T = {
       settings: 'Settings',
       observe: 'Observability',
       secretscanner: 'Secret Scanner',
-      goide: 'Code Studio',
+      codestudio: 'Code Studio',
     },
     settings: {
       sections: {
@@ -316,7 +316,7 @@ const T = {
       settings: 'Impostazioni',
       observe: 'Osservabilità',
       secretscanner: 'Scanner Segreti',
-      goide: 'Code Studio',
+      codestudio: 'Code Studio',
     },
     settings: {
       sections: {

@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const ai = vi.hoisted(() => ({ complete: vi.fn(), configure: vi.fn(() => Promise.resolve()), available: true }))
-const goide = vi.hoisted(() => ({ diff: vi.fn(), policy: 'allowed' as string, excluded: [] as string[] }))
+const codeStudio = vi.hoisted(() => ({ diff: vi.fn(), policy: 'allowed' as string, excluded: [] as string[] }))
 
 vi.mock('../../../bindings/adomnia/aiengine', () => ({ Complete: ai.complete }))
-vi.mock('../../../bindings/adomnia/goide', () => ({ VCSWorkingDiff: goide.diff }))
+vi.mock('../../../bindings/adomnia/goide', () => ({ VCSWorkingDiff: codeStudio.diff }))
 vi.mock('@/lib/aiEngine', () => ({ ensureAIConfigured: ai.configure }))
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => ai.available }))
 vi.mock('@/lib/code-studio-api', () => ({
-  getGoIDEAIPolicy: vi.fn(async () => goide.policy),
+  getGoIDEAIPolicy: vi.fn(async () => codeStudio.policy),
   isLocalAIProvider: () => false,
-  listGoIDEAIExcludedPaths: vi.fn(async () => goide.excluded),
+  listGoIDEAIExcludedPaths: vi.fn(async () => codeStudio.excluded),
 }))
 vi.mock('@/stores/settings', () => ({ useSettingsStore: { getState: () => ({ settings: { ai: { provider: 'openai' } } }) } }))
 
@@ -62,9 +62,9 @@ describe('commit message draft', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ai.available = true
-    goide.policy = 'allowed'
-    goide.excluded = []
-    goide.diff.mockResolvedValue({ original: 'package x\n\nfunc a() {}\n', modified: 'package x\n\nfunc a() error { return nil }\n', binary: false, tooLarge: false })
+    codeStudio.policy = 'allowed'
+    codeStudio.excluded = []
+    codeStudio.diff.mockResolvedValue({ original: 'package x\n\nfunc a() {}\n', modified: 'package x\n\nfunc a() error { return nil }\n', binary: false, tooLarge: false })
     ai.complete.mockResolvedValue('feat: handle errors in a')
   })
 
@@ -79,26 +79,26 @@ describe('commit message draft', () => {
   })
 
   it('refuses under the off policy and never calls the provider', async () => {
-    goide.policy = 'off'
+    codeStudio.policy = 'off'
     await expect(draftCodeStudioCommitMessage('s1', ['svc/a.go'])).rejects.toThrow('AI is turned off')
     expect(ai.complete).not.toHaveBeenCalled()
   })
 
   it('never sends the content of files excluded by .adomnia/aiignore', async () => {
-    goide.excluded = ['svc/secret.go']
-    goide.diff.mockImplementation(async (_sessionId: string, path: string) => path === 'svc/secret.go'
+    codeStudio.excluded = ['svc/secret.go']
+    codeStudio.diff.mockImplementation(async (_sessionId: string, path: string) => path === 'svc/secret.go'
       ? { original: 'package x\n', modified: 'package x\nfunc hidden() { println("MARKER-EXCLUDED-CONTENT") }\n', binary: false, tooLarge: false }
       : { original: 'package x\n\nfunc a() {}\n', modified: 'package x\n\nfunc a() error { return nil }\n', binary: false, tooLarge: false })
     await draftCodeStudioCommitMessage('s1', ['svc/secret.go', 'svc/a.go'])
     const [, user] = ai.complete.mock.calls[0]
     expect(user).toContain('- svc/secret.go (content excluded by project AI rules)')
     expect(user).not.toContain('MARKER-EXCLUDED-CONTENT')
-    expect(goide.diff).toHaveBeenCalledTimes(1)
-    expect(goide.diff).toHaveBeenCalledWith('s1', 'svc/a.go')
+    expect(codeStudio.diff).toHaveBeenCalledTimes(1)
+    expect(codeStudio.diff).toHaveBeenCalledWith('s1', 'svc/a.go')
   })
 
   it('fails when no selected file has a textual change', async () => {
-    goide.diff.mockResolvedValue({ original: 'a\n', modified: 'a\n', binary: false, tooLarge: false })
+    codeStudio.diff.mockResolvedValue({ original: 'a\n', modified: 'a\n', binary: false, tooLarge: false })
     await expect(draftCodeStudioCommitMessage('s1', ['svc/a.go'])).rejects.toThrow('textual change')
   })
 })

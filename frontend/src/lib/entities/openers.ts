@@ -34,12 +34,12 @@ const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc'
 
 async function openInGo(file: string, line: number, sessionId?: string): Promise<void> {
   // From a module window, the code opens in the main window's Code Studio.
-  if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line, sessionId })
+  if (detachedPanelOfThisWindow() !== null) return showModule('codestudio', { kind: 'open-location', file, line, sessionId })
   if (sessionId) {
     if (!useCodeStudioStore.getState().sessions.some(session => session.id === sessionId)) throw new Error('The source project is no longer open')
     await useCodeStudioStore.getState().selectSession(sessionId)
   }
-  useAppStore.getState().setActiveRail('goide')
+  useAppStore.getState().setActiveRail('codestudio')
   await useCodeStudioStore.getState().openLocation(file, line, 1)
 }
 
@@ -97,7 +97,7 @@ export function registerDefaultOpeners(): () => void {
       intent, title: { soap: 'Open in SOAP Studio', security: 'Configure WS-Security', xml: 'Open in XML Tools', mtls: 'Configure mTLS' }[intent],
       run: async ref => { const { openProjectArtifact } = await import('@/lib/code-studio/projectArtifacts'); await openProjectArtifact(ref, intent) },
     })),
-    registerOpener('service', { intent: 'runtime', title: 'Inspect runtime in gO', available: ref => !!ref.attrs.runtimeSpan, run: ref => handoffToPanel('goide', ref, 'runtime') }),
+    registerOpener('service', { intent: 'runtime', title: 'Inspect runtime in gO', available: ref => !!ref.attrs.runtimeSpan, run: ref => handoffToPanel('codestudio', ref, 'runtime') }),
     registerOpener('*', {
       intent: 'source', title: 'Open source in gO',
       available: (ref) => ref.kind !== 'symbol' && !!ref.source,

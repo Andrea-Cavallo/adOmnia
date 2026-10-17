@@ -36,7 +36,7 @@ import {
 import { autoSaveDelayValue } from '@/lib/code-studio/codeStudioAutoSave'
 import { useCodeStudioStore } from './codeStudio'
 
-const SETTINGS_KEY = 'adomnia.goide.lsp.v1'
+const SETTINGS_KEY = 'adomnia.codestudio.lsp.v1'
 
 export type GoIDEToolWindow = 'run' | 'problems' | 'references' | 'find' | 'terminal' | 'tests' | 'debug' | 'todo' | 'context' | 'profile' | 'trace' | 'sonar' | 'vulns' | 'fuzz' | 'errors' | 'architecture' | 'interfaces' | 'goroutines' | 'docs' | 'config' | 'impact' | 'git' | 'go' | 'preview'
 

@@ -72,7 +72,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
   { id: 'collab', title: 'Live Collaboration', group: 'Workspace', keywords: 'collaboration share invite lan team pair live session collection request environment', maturity: 'advanced' },
-  { id: 'goide', title: 'Code Studio', group: 'Workspace', keywords: 'code studio ide editor project module workspace development run debug test go golang java python rust node typescript', maturity: 'core', railLabel: 'Code Studio' },
+  { id: 'codestudio', title: 'Code Studio', group: 'Workspace', keywords: 'code studio ide editor project module workspace development run debug test go golang java python rust node typescript', maturity: 'core', railLabel: 'Code Studio' },
   { id: 'workspace', title: 'Workspace Settings', group: 'Workspace', keywords: 'workspace import export settings local file', maturity: 'advanced' },
   { id: 'themes', title: 'Themes', group: 'Workspace', keywords: 'theme skin appearance colors design', maturity: 'advanced' },
   { id: 'templates', title: 'Templates', group: 'Workspace', keywords: 'templates snippets reusable workspace', maturity: 'advanced' },
@@ -87,8 +87,8 @@ export const FEATURE_BY_ID = Object.fromEntries(
 export const RAIL_CATEGORIES: FeatureRailCategory[] = [
   {
     key: 'development', label: 'Code Studio', code: 'IDE',
-    directItem: 'goide',
-    groups: [{ title: 'Development', items: [{ id: 'goide' }] }],
+    directItem: 'codestudio',
+    groups: [{ title: 'Development', items: [{ id: 'codestudio' }] }],
   },
   {
     key: 'api', label: 'API Core', code: 'API',

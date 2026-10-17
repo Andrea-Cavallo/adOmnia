@@ -18,7 +18,7 @@ const TileIcon = lazy(() => import('./HubStudioIcon').then(module => ({ default:
 
 // Curated copy for the default studios; any other rail falls back to the feature registry.
 const CARD_COPY: Partial<Record<RailItem, { title: string; description: string }>> = {
-  goide: { title: 'Code Studio', description: 'Build. Run. Debug.' },
+  codestudio: { title: 'Code Studio', description: 'Build. Run. Debug.' },
   collections: { title: 'API & Protocols', description: 'Requests and flows' },
   database: { title: 'Data & Messaging', description: 'Connections and streams' },
   jsonviewer: { title: 'Docs & Payloads', description: 'Schemas and specifications' },
@@ -55,7 +55,7 @@ function TodayPanel() {
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = now.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '').toUpperCase()
   const actions: { title: string; detail: string; run: () => void }[] = [
-    { title: 'Open project', detail: 'Open a project from your machine', run: () => open('goide') },
+    { title: 'Open project', detail: 'Open a project from your machine', run: () => open('codestudio') },
     { title: 'New request', detail: 'Create and send an API request', run: () => { newTab(); open('collections') } },
     { title: 'Add connection', detail: 'Open Database Studio', run: () => open('database') },
     { title: 'Manage environments', detail: 'Variables for every module, per stage', run: openEnvironmentManager },

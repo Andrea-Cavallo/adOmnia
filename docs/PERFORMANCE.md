@@ -218,7 +218,7 @@ separately and state dataset sizes in `--conditions`.
 | --- | --- | --- | --- |
 | `cold-start` / `warm-start` | Launch the release build (cold: reboot or cleared caches; warm: relaunch) with an empty Hub | until interactive | backend-go RAM/CPU, webview2 count, startup marks |
 | `hub-empty` | Leave the Hub open with no workspace | 5 min | idle CPU per component |
-| `gostudio-small` / `gostudio-large` | Open a small / large Go project in Go Studio, let gopls settle | 5 min each | gopls RAM/CPU, backend-go heap |
+| `gostudio-small` / `gostudio-large` | Open a small / large Go project in Code Studio, let gopls settle | 5 min each | gopls RAM/CPU, backend-go heap |
 | `workspaces-3-5` | Keep 3–5 workspaces open across tabs/windows | 10 min | per-component RAM growth |
 | `typing-continuous` | Type continuously in a large file with completion and diagnostics on | 10 min | input p95, gopls CPU, heap |
 | `large-files-json` | Open very large files / complex JSON payloads, scroll and edit | 10 min | heap max, webview2 RAM |
@@ -284,7 +284,7 @@ Measure multi-session memory/CPU savings before adding this lifecycle.
 
 An opt-in test uses an already installed binary, without downloading tools:
 set `ADOMNIA_TEST_GOPLS` to its absolute path and run
-`go test -race ./internal/goide -run TestIncrementalWithInstalledGopls -count=1`.
+`go test -race ./internal/codestudio -run TestIncrementalWithInstalledGopls -count=1`.
 It validates delta/reverse delta, restart replay and independent overlays on
 the same workspace root. Desktop editing acceptance remains REF-2.M1 in
 `mds/MANUAL-CHECK.md`.

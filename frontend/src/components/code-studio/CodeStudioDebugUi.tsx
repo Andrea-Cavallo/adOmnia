@@ -9,7 +9,7 @@ export interface StateMeta {
   dot: string
 }
 
-/** Presentazione degli stati prodotti dal backend (internal/goide/debug_goroutines.go). */
+/** Presentazione degli stati prodotti dal backend (internal/codestudio/debug_goroutines.go). */
 export const GOROUTINE_STATES: Record<string, StateMeta> = {
   running: { label: 'Running', icon: Play, tone: 'text-success', dot: 'bg-success' },
   'chan receive': { label: 'Chan receive', icon: ArrowLeftRight, tone: 'text-warning', dot: 'bg-warning' },

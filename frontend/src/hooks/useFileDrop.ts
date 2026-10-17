@@ -150,7 +150,7 @@ export function useFileDrop(): FileDropResult {
         if (routed.kind !== 'collection') {
           if (routedTool || totalImported > 0) { errors.push(`${file.name}: drop tool files one at a time.`); continue }
           useAppStore.getState().queueFileImport(routed)
-          const target = routed.kind === 'har' ? 'har' : routed.kind === 'wsdl' ? 'soap' : routed.kind === 'mermaid' ? 'goide' : routed.kind === 'latex' ? 'latex' : routed.kind === 'pdf' ? 'pdfeditor' : routed.kind === 'proto' ? 'grpc' : routed.kind === 'sql' ? 'database' : 'powertools'
+          const target = routed.kind === 'har' ? 'har' : routed.kind === 'wsdl' ? 'soap' : routed.kind === 'mermaid' ? 'codestudio' : routed.kind === 'latex' ? 'latex' : routed.kind === 'pdf' ? 'pdfeditor' : routed.kind === 'proto' ? 'grpc' : routed.kind === 'sql' ? 'database' : 'powertools'
           const label = routed.kind === 'har' ? 'HAR Viewer' : routed.kind === 'wsdl' ? 'SOAP Studio' : routed.kind === 'mermaid' ? 'Code Studio (use File → Open to edit it)' : routed.kind === 'latex' ? 'LaTeX Studio' : routed.kind === 'pdf' ? 'PDF Editor' : routed.kind === 'proto' ? 'gRPC Client' : routed.kind === 'sql' ? 'Database Studio' : 'Class File Inspector'
           setActiveRail(target)
           showFeedback(`${file.name} opened in ${label}.`, true)

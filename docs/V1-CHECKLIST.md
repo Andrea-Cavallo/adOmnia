@@ -6,13 +6,13 @@ Automated checks do not replace desktop acceptance. Release tags identify review
 
 ## Scope
 
-The v1 baseline is the existing local-first API workbench and Go Studio, with the shipped supporting studios. LAN collaboration remains explicitly beta until its two-machine gates pass; advanced P1/P2 collaboration is future work and does not block v1 if clearly labeled unavailable.
+The v1 baseline is the existing local-first API workbench and Code Studio, with the shipped supporting studios. LAN collaboration remains explicitly beta until its two-machine gates pass; advanced P1/P2 collaboration is future work and does not block v1 if clearly labeled unavailable.
 
 ## Automated validation
 
 - [x] Frontend suite: 1,311 tests in 296 files passed on 2026-10-10, before release metadata changes.
 - [x] Beta release tree passes TypeScript, frontend build and startup budget (592,827 initial JavaScript bytes), 2026-10-10. Commit/tag verification is recorded after publication.
-- [x] Go build and affected packages (`devcontext`, `goide`, `ide/run`, `collab`, `collectionfs`) pass on 2026-10-10; Go Studio suite takes 121.6 seconds on this host.
+- [x] Go build and affected packages (`devcontext`, `goide`, `ide/run`, `collab`, `collectionfs`) pass on 2026-10-10; Code Studio suite takes 121.6 seconds on this host.
 - [x] Full Go suite passed on Windows, 2026-10-11: go test -count=1 -timeout=10m ./..., including git, goide and update. Evidence: .artifacts/v1-go-tests.log.
 - [ ] CI produces Windows, Linux and macOS artifacts for the exact release tag with checksums.
 
@@ -27,7 +27,7 @@ The v1 baseline is the existing local-first API workbench and Go Studio, with th
 - [ ] Environments: selection, substitution, private variables and vault secrets; exports redact secrets by default.
 - [ ] API tabs: switch, rename, overflow, reorder/detach, shortcuts and unsaved-change handling.
 - [ ] Dark/White and custom palettes: labels, Nothing error states, editor and terminal remain readable.
-- [ ] Go Studio: open project, edit/save, diagnostics, run/test/debug and terminal; start workspace tasks in order and stop safely on failure.
+- [ ] Code Studio: open project, edit/save, diagnostics, run/test/debug and terminal; start workspace tasks in order and stop safely on failure.
 - [ ] Supporting studios: smoke test each module exposed in navigation; mark experimental features explicitly.
 - [ ] Recovery: restart after interrupted work, preserve saved data and show actionable errors without silent overwrites.
 - [ ] Privacy: no unexpected network calls, logging/export do not disclose credentials; execution and sharing require the intended permissions.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { WorkspaceModule } from '../../../bindings/adomnia/internal/goide/models'
+import type { WorkspaceModule } from '../../../bindings/adomnia/internal/codestudio/models'
 import { workspaceDependents } from './CodeStudioWorkspaceModules'
 
 describe('workspaceDependents', () => {

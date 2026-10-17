@@ -1,6 +1,6 @@
 # Live Development Session
 
-A Go service started from Go Studio (Run or Debug) becomes a **live
+A Go service started from Code Studio (Run or Debug) becomes a **live
 session** that every adOmnia tool sees: the API Workspace, the Log
 Inspector, Database Studio, Broker Studio, the Interceptor and Browser
 Debug. The developer works on `users-service`, not on "the IDE" and "the
@@ -14,20 +14,20 @@ code → running service → API request → breakpoint → code → response
 
 | Where | What |
 |---|---|
-| **Debug bar** (bottom, every tool except Go Studio) | Service, port, state, paused `file:line`, Continue / Step Over / Step Into / Step Out / Stop, the request in flight, split view, service drawer. Keys: F9 continue, F8 step over, F7 step into, Shift+F8 step out, Ctrl+F2 stop. |
-| **Debug Request** (next to Send) | One click: finds the service or starts the active Debug configuration of its Go Studio project, waits until its port (and optional health path) answers, sends the request and follows it. Progress is shown in the response area. |
-| **PAUSED AT BREAKPOINT** (response area) | Location, a request ──●── response line, Open in Go Studio, Continue, Step Over, Step Into, Split view, Replay, Stop. The response waits for the debugger; the request timeout is lifted to 30 minutes under Delve. |
+| **Debug bar** (bottom, every tool except Code Studio) | Service, port, state, paused `file:line`, Continue / Step Over / Step Into / Step Out / Stop, the request in flight, split view, service drawer. Keys: F9 continue, F8 step over, F7 step into, Shift+F8 step out, Ctrl+F2 stop. |
+| **Debug Request** (next to Send) | One click: finds the service or starts the active Debug configuration of its Code Studio project, waits until its port (and optional health path) answers, sends the request and follows it. Progress is shown in the response area. |
+| **PAUSED AT BREAKPOINT** (response area) | Location, a request ──●── response line, Open in Code Studio, Continue, Step Over, Step Into, Split view, Replay, Stop. The response waits for the debugger; the request timeout is lifted to 30 minutes under Delve. |
 | **Response tabs** | Response · Logs · Debug · Timeline · DB · Kafka, and a completion summary: status, time, code path, queries, events, log lines, breakpoints hit, *Mock this response*. |
 | **Request strip** (under the URL bar) | Target of a linked request (Local run / Docker / remote), the Go handler that serves it with *Open handler*, and a warning when the route is missing from the service's OpenAPI. |
-| **Go Studio debugger → Request tab** | Method, path and query parameters, headers (credentials masked), body, request id; *Open full request*. |
-| **Handler CodeLens** (Go Studio) | On `func UpdateUser(...)`: open the linked request, Run, Debug request, Last response, History. |
-| **Split Debug View** | Go Studio and the API request side by side. Opens by itself when a request sent from the API Workspace stops at a breakpoint (can be turned off); the pane you click owns the keyboard. |
+| **Code Studio debugger → Request tab** | Method, path and query parameters, headers (credentials masked), body, request id; *Open full request*. |
+| **Handler CodeLens** (Code Studio) | On `func UpdateUser(...)`: open the linked request, Run, Debug request, Last response, History. |
+| **Split Debug View** | Code Studio and the API request side by side. Opens by itself when a request sent from the API Workspace stops at a breakpoint (can be turned off); the pane you click owns the keyboard. |
 | **Context switcher** (Ctrl+Tab) | Hold Ctrl, Tab through the elements of the current flow: code at the breakpoint, the request, its SQL, its Kafka message, the logs. Release to jump. |
-| **Tool keys** | Alt+Shift+1 Go Studio · 2 API Workspace · 3 Database · 4 Broker Studio · 5 service logs (Log Inspector without a live service). Alt+digit stays with Go Studio's panes. |
+| **Tool keys** | Alt+Shift+1 Code Studio · 2 API Workspace · 3 Database · 4 Broker Studio · 5 service logs (Log Inspector without a live service). Alt+digit stays with Code Studio's panes. |
 | **Service drawer** | Logs (filter, "only lines tied to requests", open in the Log Inspector as a live source) and the service view: Go project, REST routes, runtime and target, databases (SQL capture), Kafka (watch), logs, debugger, preferences. |
 | **Command palette** | Debug this request, Go to handler / current request / current breakpoint / service / logs, Open Split Debug View, Continue, Step…, Stop. |
 
-Go Studio and the API Workspace stay mounted once opened: switching tools
+Code Studio and the API Workspace stay mounted once opened: switching tools
 keeps open files, cursor, expanded variables, tabs and scroll.
 
 ## Linked requests
@@ -93,7 +93,7 @@ topic in Broker Studio; both keep an *Open request* way back.
 ## Architecture
 
 ```text
-Go Studio (internal/goide) ── events ──┐
+Code Studio (internal/codestudio) ── events ──┐
 Interceptor (internal/proxy) ─ observer ┤
 Browser Debug (internal/browser) ───────┤
                                         ▼
@@ -102,10 +102,10 @@ Browser Debug (internal/browser) ───────┤
                                         │  "devsession:event"
                                         ▼
                      stores/devSession (Zustand, loaded after first frame)
-          Debug bar · API Workspace · Go Studio Request tab · drawers
+          Debug bar · API Workspace · Code Studio Request tab · drawers
 ```
 
-* `internal/devsession` has no dependency on Go Studio: the root binding
+* `internal/devsession` has no dependency on Code Studio: the root binding
   (`devsession_bindings.go`) translates gO events and passes debugger
   operations as plain functions.
 * Events: `service.started|updated|stopped`, `debug.started|paused|resumed|stopped`,
@@ -115,7 +115,7 @@ Browser Debug (internal/browser) ───────┤
   services, toggles in `localStorage` `adomnia.devsession`) and declared
   service names (bbolt `devsession/services`). Logs are a 5000-line ring per
   session.
-* The API Workspace never imports Go Studio statically; Go Studio is mounted
+* The API Workspace never imports Code Studio statically; Code Studio is mounted
   hidden only when Debug Request has to start a service.
 
 ## Limits

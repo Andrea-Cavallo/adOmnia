@@ -137,6 +137,6 @@ function latestRun(state: ReturnType<typeof useDevSessionStore.getState>, sessio
 /** Where the developer is now, so the first Tab moves to the next element. */
 function currentItem(items: FlowItem[]): number {
   const rail = useAppStore.getState().activeRail
-  const id = rail === 'goide' ? 'code' : rail === 'collections' ? 'request' : rail === 'database' ? 'db' : rail === 'broker' ? 'kafka' : ''
+  const id = rail === 'codestudio' ? 'code' : rail === 'collections' ? 'request' : rail === 'database' ? 'db' : rail === 'broker' ? 'kafka' : ''
   return Math.max(0, items.findIndex((item) => item.id === id))
 }

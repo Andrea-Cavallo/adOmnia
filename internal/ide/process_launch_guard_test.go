@@ -17,7 +17,7 @@ var visibleProcessLaunchers = map[string]bool{
 	"internal/browser/browser.go":     true,
 	"internal/browser/discover.go":    true,
 	"internal/devlog/files.go":        true,
-	"internal/goide/fileops.go":       true,
+	"internal/codestudio/fileops.go":       true,
 	"internal/sourcemap/sourcemap.go": true,
 	"internal/update/apply.go":        true,
 }

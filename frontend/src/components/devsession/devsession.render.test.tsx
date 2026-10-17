@@ -58,7 +58,7 @@ describe('live session UI', () => {
 
   it('hides the global bar inside Code Studio, which has its own debugger toolbar', () => {
     seed()
-    useAppStore.setState({ activeRail: 'goide' })
+    useAppStore.setState({ activeRail: 'codestudio' })
     expect(renderToStaticMarkup(<DebugBar />)).toBe('')
   })
 

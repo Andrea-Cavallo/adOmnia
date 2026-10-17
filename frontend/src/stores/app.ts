@@ -19,7 +19,7 @@ export const RAIL_QUICK_NAV: RailItem[] = [
   'powertools',  // 4 - Power Tools · Utilities
   'browser',     // 5 - Browser Debug   (advanced)
   'database',    // 6 - Local Data      (advanced)
-  'goide',       // 7 - Project tools
+  'codestudio',       // 7 - Project tools
 ]
 
 interface AppState {

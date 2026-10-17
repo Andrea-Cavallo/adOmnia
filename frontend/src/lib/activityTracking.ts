@@ -47,11 +47,11 @@ export function startActivityTracking(): () => void {
     const kind = params.get('window')
     let scopes: string[]
     if (kind === 'panel') scopes = [params.get('panel') ?? '']
-    else if (kind === 'code-studio') scopes = [app.activeRail === 'pdfeditor' ? 'pdfeditor' : 'goide']
-    else if (kind === 'studio-tool') scopes = ['goide', ...(params.get('session') ? ['goide:' + params.get('session')] : [])]
+    else if (kind === 'code-studio') scopes = [app.activeRail === 'pdfeditor' ? 'pdfeditor' : 'codestudio']
+    else if (kind === 'studio-tool') scopes = ['codestudio', ...(params.get('session') ? ['code-studio:' + params.get('session')] : [])]
     else if (kind === 'api-request') scopes = ['collections']
     else if (kind === 'swagger-editor') scopes = ['apidocs']
-    else scopes = app.splitView && ['goide', 'collections'].includes(app.activeRail) ? ['goide', 'collections'] : [app.activeRail]
+    else scopes = app.splitView && ['codestudio', 'collections'].includes(app.activeRail) ? ['codestudio', 'collections'] : [app.activeRail]
     useActivityStore.getState().setScopes([...scopes.filter(Boolean), ...Object.keys(useActivityStore.getState().retained)])
   }
   const unsubscribe = useActivityStore.subscribe((state, previous) => {

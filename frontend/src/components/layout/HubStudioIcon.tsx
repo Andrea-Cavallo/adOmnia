@@ -3,7 +3,7 @@ import { FEATURE_ICONS } from './Rail'
 import type { RailItem } from '@/stores/app'
 
 export function TileIcon({ target }: { target: RailItem }) {
-  if (['goide', 'collections', 'database', 'jsonviewer', 'powertools'].includes(target)) return <StudioIcon target={target}/>
+  if (['codestudio', 'collections', 'database', 'jsonviewer', 'powertools'].includes(target)) return <StudioIcon target={target}/>
   const Icon = FEATURE_ICONS[target] ?? CircleDot
   return <Icon size={40} strokeWidth={1.2}/>
 }
@@ -11,7 +11,7 @@ export function TileIcon({ target }: { target: RailItem }) {
 function StudioIcon({ target }: { target: string }) {
   return <svg className="hub-glyph" viewBox="0 0 64 64" width="58" height="58" aria-hidden="true" focusable="false">
     <g fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-      {target === 'goide' && <>
+      {target === 'codestudio' && <>
         <path d="M22 18L8 32l14 14M42 18l14 14-14 14"/>
         <path d="M37 12L27 52" strokeDasharray=".1 5" strokeWidth="3.5"/>
       </>}

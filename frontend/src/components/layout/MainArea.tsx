@@ -1280,7 +1280,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'plugins':     return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
-    case 'goide':       return { component: <CodeStudioPanel />,        titleKey: 'goide', overflow: true }
+    case 'codestudio':       return { component: <CodeStudioPanel />,        titleKey: 'codestudio', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }
     default:            return { component: <WelcomePanel /> }
   }

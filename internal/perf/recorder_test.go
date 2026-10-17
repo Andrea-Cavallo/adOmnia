@@ -106,7 +106,7 @@ func TestRecorderWritesRealSamplesWithChildProcess(t *testing.T) {
 }
 
 func TestRecorderIncludesFrontendMetrics(t *testing.T) {
-	if _, err := activity.Default.Report("perf-test", activity.Idle, []string{"goide:perf-test"}); err != nil {
+	if _, err := activity.Default.Report("perf-test", activity.Idle, []string{"code-studio:perf-test"}); err != nil {
 		t.Fatal(err)
 	}
 	defer activity.Default.RemoveWindow("perf-test")
@@ -127,7 +127,7 @@ func TestRecorderIncludesFrontendMetrics(t *testing.T) {
 	if samples[0].Frontend["inputP95Ms"] != 12.5 {
 		t.Fatalf("frontend metrics missing: %+v", samples[0].Frontend)
 	}
-	if samples[0].Activity.Scopes["goide:perf-test"] != activity.Idle {
+	if samples[0].Activity.Scopes["code-studio:perf-test"] != activity.Idle {
 		t.Fatalf("activity scope missing from sample: %+v", samples[0].Activity)
 	}
 }

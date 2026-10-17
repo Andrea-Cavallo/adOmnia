@@ -10,7 +10,7 @@ import (
 // è la regola che rende possibile aggiungere un linguaggio senza toccare il core.
 var forbiddenCoreImports = []string{
 	"adomnia/internal/languages/",
-	"adomnia/internal/goide",
+	"adomnia/internal/codestudio",
 	"golang.org/x/mod",
 	"golang.org/x/tools",
 	"golang.org/x/exp/trace",
@@ -21,9 +21,9 @@ func TestCoreDoesNotImportLanguageAdapters(t *testing.T) {
 	assertNoForbiddenDeps(t, "adomnia/internal/ide/...", forbiddenCoreImports)
 }
 
-// L'adapter dipende dal core, mai dall'host: niente cicli con internal/goide.
+// L'adapter dipende dal core, mai dall'host: niente cicli con internal/codestudio.
 func TestLanguageAdaptersDoNotImportHost(t *testing.T) {
-	assertNoForbiddenDeps(t, "adomnia/internal/languages/...", []string{"adomnia/internal/goide"})
+	assertNoForbiddenDeps(t, "adomnia/internal/languages/...", []string{"adomnia/internal/codestudio"})
 }
 
 func assertNoForbiddenDeps(t *testing.T, pattern string, forbidden []string) {

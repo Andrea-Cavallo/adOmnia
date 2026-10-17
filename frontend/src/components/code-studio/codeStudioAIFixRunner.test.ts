@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const ai = vi.hoisted(() => ({ complete: vi.fn(), configure: vi.fn(() => Promise.resolve()), available: true }))
 const api = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(), close: vi.fn(() => Promise.resolve()), excluded: vi.fn(() => Promise.resolve([] as string[])) }))
-const goide = vi.hoisted(() => ({
+const codeStudio = vi.hoisted(() => ({
   state: {
     activeSessionId: 's1',
     sessions: [{ id: 's1', project: { units: [{ language: 'go', kind: 'module', root: '.', name: 'Example' }] } }],
@@ -19,7 +19,7 @@ vi.mock('@/stores/settings', () => ({ useSettingsStore: { getState: () => ({ set
 vi.mock('@/lib/code-studio-api', () => ({ listGoIDEDirectory: api.list, openGoIDEDocument: api.open, closeGoIDEDocument: api.close, listGoIDEAIExcludedPaths: api.excluded, getGoIDEAIPolicy: async () => 'allowed', isLocalAIProvider: () => false }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({}))
 vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
-vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => goide.state } }))
+vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => codeStudio.state } }))
 vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: { setState: lsp.setState } }))
 
 import { fixCodeStudioProblemWithAI, resolveAllCodeStudioProblemsWithAI } from './codeStudioAIFixRunner'
@@ -36,7 +36,7 @@ describe('Fix with AI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ai.available = true
-    goide.state.ensureDocumentLoaded.mockResolvedValue({ buffer: callerSource, document: { id: 'd1', uri: 'file:///p/files/a.go', path: '/p/files/a.go', relativePath: 'files/a.go' } })
+    codeStudio.state.ensureDocumentLoaded.mockResolvedValue({ buffer: callerSource, document: { id: 'd1', uri: 'file:///p/files/a.go', path: '/p/files/a.go', relativePath: 'files/a.go' } })
     api.list.mockResolvedValue([
       { name: 'Logger.go', relativePath: 'logger/Logger.go', directory: false },
       { name: 'Logger_test.go', relativePath: 'logger/Logger_test.go', directory: false },
@@ -121,7 +121,7 @@ describe('Resolve all with AI', () => {
     vi.clearAllMocks()
     ai.available = true
     api.list.mockResolvedValue([])
-    goide.state.ensureDocumentLoaded.mockImplementation(async (relativePath: string) => ({ buffer: 'package x\n\nvar a = 1\n', document: { id: relativePath, uri: `file:///p/${relativePath}`, path: `/p/${relativePath}`, relativePath } }))
+    codeStudio.state.ensureDocumentLoaded.mockImplementation(async (relativePath: string) => ({ buffer: 'package x\n\nvar a = 1\n', document: { id: relativePath, uri: `file:///p/${relativePath}`, path: `/p/${relativePath}`, relativePath } }))
   })
 
   it('asks once per file and shows every proposed change in a single preview', async () => {

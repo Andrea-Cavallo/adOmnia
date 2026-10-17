@@ -9,7 +9,7 @@ export interface CodeStudioSavedTerminal {
   workingDirectory: string
 }
 
-const SAVED_KEY = 'adomnia.goide.terminals:'
+const SAVED_KEY = 'adomnia.codestudio.terminals:'
 const MAX_SAVED = 8
 
 export function readSavedTerminals(projectPath: string): CodeStudioSavedTerminal[] {
