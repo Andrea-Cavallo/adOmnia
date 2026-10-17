@@ -78,10 +78,10 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
           <span className="truncate font-mono text-text-2">{route.name}</span>
           <span className="shrink-0 font-mono text-text-4">{basename(route.file)}:{route.line}</span>
           <button type="button" onClick={() => void openLocationInGoStudio(route.goSessionId, { function: route.name, relativePath: route.file, line: route.line })}
-            title={tr('Open in Go IDE')}
-            aria-label={tr('Open in Go IDE')}
+            title={tr('Open in Code Studio')}
+            aria-label={tr('Open in Code Studio')}
             className="api-handler-open flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">
-            <Code2 size={12} aria-hidden="true" />OPEN IN GO IDE
+            <Code2 size={12} aria-hidden="true" />OPEN IN CODE STUDIO
           </button>
           {drift && (
             <span title={`${route.route.label} is served by the code but missing from ${drift}`} className="flex shrink-0 items-center gap-1 text-warning">

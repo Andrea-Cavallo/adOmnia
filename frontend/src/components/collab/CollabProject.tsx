@@ -48,10 +48,10 @@ export default function CollabProject() {
     <h3 className="text-sm font-semibold">Progetto condiviso</h3>
     {!status?.project && status?.mode==='host' && <div className="space-y-2">
       <select aria-label="Progetto da condividere" value={session} onChange={e=>setSession(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 text-sm">
-        <option value="">Scegli un progetto aperto in Go Studio</option>
+        <option value="">Scegli un progetto aperto in Code Studio</option>
         {sessions.map(s=><option key={s.id} value={s.id}>{s.project.name}</option>)}
       </select>
-      <p className="text-xs text-text-3">Condivide l’albero e i file di testo consentiti. La modifica live si abilita per singolo file in Go Studio. Segreti e file privati vengono esclusi.</p>
+      <p className="text-xs text-text-3">Condivide l’albero e i file di testo consentiti. La modifica live si abilita per singolo file in Code Studio. Segreti e file privati vengono esclusi.</p>
       <button type="button" disabled={busy || !session} onClick={()=>void share()} className="rounded border border-border-2 px-3 py-1.5 text-xs text-accent disabled:opacity-50">Condividi progetto</button>
     </div>}
     {!status?.project && status?.mode==='guest' && <p className="text-xs text-text-3">L’host non ha ancora condiviso un progetto.</p>}

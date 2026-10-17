@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// DefaultStudioWorkspaceID identifica il workspace Go Studio sempre presente, che accoglie le sessioni degli schemi precedenti.
+// DefaultStudioWorkspaceID identifica il workspace Code Studio sempre presente, che accoglie le sessioni degli schemi precedenti.
 const DefaultStudioWorkspaceID = "default"
 
 const (
@@ -17,7 +17,7 @@ const (
 	maxStudioWorkspaceName     = 40
 )
 
-// StudioWorkspace è un insieme con nome di progetti aperti in Go Studio.
+// StudioWorkspace è un insieme con nome di progetti aperti in Code Studio.
 // È separato dai workspace API di adOmnia: cambiarlo non tocca collezioni né ambienti.
 type StudioWorkspace struct {
 	ID        string    `json:"id"`
@@ -25,7 +25,7 @@ type StudioWorkspace struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// StudioWorkspaces descrive i workspace Go Studio e quello attivo.
+// StudioWorkspaces descrive i workspace Code Studio e quello attivo.
 type StudioWorkspaces struct {
 	Workspaces []StudioWorkspace `json:"workspaces"`
 	ActiveID   string            `json:"activeId"`
@@ -124,7 +124,7 @@ func (r *studioWorkspaceRegistry) create(name string) (StudioWorkspace, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.items) >= maxStudioWorkspaces {
-		return StudioWorkspace{}, fmt.Errorf("massimo %d workspace Go Studio", maxStudioWorkspaces)
+		return StudioWorkspace{}, fmt.Errorf("massimo %d workspace Code Studio", maxStudioWorkspaces)
 	}
 	trimmed, err := r.validateNameLocked(name, "")
 	if err != nil {
@@ -140,7 +140,7 @@ func (r *studioWorkspaceRegistry) rename(id, name string) error {
 	defer r.mu.Unlock()
 	index := r.indexLocked(id)
 	if index < 0 {
-		return fmt.Errorf("Go Studio workspace not found")
+		return fmt.Errorf("Code Studio workspace not found")
 	}
 	trimmed, err := r.validateNameLocked(name, id)
 	if err != nil {
@@ -158,7 +158,7 @@ func (r *studioWorkspaceRegistry) remove(id string) error {
 	}
 	index := r.indexLocked(id)
 	if index < 0 {
-		return fmt.Errorf("Go Studio workspace not found")
+		return fmt.Errorf("Code Studio workspace not found")
 	}
 	r.items = append(r.items[:index], r.items[index+1:]...)
 	if r.active == id {
@@ -171,13 +171,13 @@ func (r *studioWorkspaceRegistry) activate(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.indexLocked(id) < 0 {
-		return fmt.Errorf("Go Studio workspace not found")
+		return fmt.Errorf("Code Studio workspace not found")
 	}
 	r.active = id
 	return nil
 }
 
-// ListStudioWorkspaces restituisce i workspace Go Studio e quello attivo.
+// ListStudioWorkspaces restituisce i workspace Code Studio e quello attivo.
 func (s *Service) ListStudioWorkspaces() (StudioWorkspaces, error) {
 	if err := s.restore(); err != nil {
 		return StudioWorkspaces{}, err
@@ -185,7 +185,7 @@ func (s *Service) ListStudioWorkspaces() (StudioWorkspaces, error) {
 	return s.studioWorkspaces.state(), nil
 }
 
-// CreateStudioWorkspace crea un workspace Go Studio vuoto e lo rende attivo.
+// CreateStudioWorkspace crea un workspace Code Studio vuoto e lo rende attivo.
 func (s *Service) CreateStudioWorkspace(name string) (StudioWorkspaces, error) {
 	return s.changeStudioWorkspaces(func() error {
 		workspace, err := s.studioWorkspaces.create(name)
@@ -196,7 +196,7 @@ func (s *Service) CreateStudioWorkspace(name string) (StudioWorkspaces, error) {
 	})
 }
 
-// RenameStudioWorkspace rinomina un workspace Go Studio; i nomi sono unici senza distinzione di maiuscole.
+// RenameStudioWorkspace rinomina un workspace Code Studio; i nomi sono unici senza distinzione di maiuscole.
 func (s *Service) RenameStudioWorkspace(id, name string) (StudioWorkspaces, error) {
 	return s.changeStudioWorkspaces(func() error { return s.studioWorkspaces.rename(id, name) })
 }

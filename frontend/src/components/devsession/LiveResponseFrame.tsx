@@ -153,7 +153,7 @@ function mergeBy<T>(first: T[], second: T[], key: (item: T) => string): T[] {
 function HitList({ run, session }: { run: RequestRun; session: LiveSession | null }) {
   const sessions = useDevSessionStore(state => state.sessions)
   if (run.hits.length === 0) {
-    return <p className="px-6 py-8 text-center text-[12px] text-text-3">No breakpoint was hit. Set one in Go Studio and use Debug Request to stop inside the handler.</p>
+    return <p className="px-6 py-8 text-center text-[12px] text-text-3">No breakpoint was hit. Set one in Code Studio and use Debug Request to stop inside the handler.</p>
   }
   return (
     <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
@@ -164,7 +164,7 @@ function HitList({ run, session }: { run: RequestRun; session: LiveSession | nul
             <span className="block truncate font-mono text-text-1">{basename(hit.relativePath || hit.file || '')}:{hit.line} <span className="text-text-3">{hit.function}() · goroutine {hit.threadId ?? "?"} · {sessions[hit.sessionId ?? run.sessionId]?.service}</span></span>
             {hit.confidence === 'probable' && <span className="text-[10.5px] text-text-4">Time correlation: probably this request.</span>}
           </span>
-          {session && <button type="button" onClick={() => void openFrameInGoStudio(sessions[hit.sessionId ?? run.sessionId] ?? session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Go Studio</button>}
+          {session && <button type="button" onClick={() => void openFrameInGoStudio(sessions[hit.sessionId ?? run.sessionId] ?? session, hit)} className="shrink-0 rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Open in Code Studio</button>}
         </li>
       ))}
     </ul>
@@ -213,7 +213,7 @@ function PausedCard({ run, session }: { run: RequestRun; session: LiveSession })
         <span>Response</span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <ActionButton tone="primary" onClick={() => void openFrameInGoStudio(session, where)}><Bug size={13} />Open in Go Studio</ActionButton>
+        <ActionButton tone="primary" onClick={() => void openFrameInGoStudio(session, where)}><Bug size={13} />Open in Code Studio</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'continue')} title="F9"><Play size={12} fill="currentColor" />Continue</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'next')} title="F8"><Redo2 size={13} />Step Over</ActionButton>
         <ActionButton onClick={() => void step(session.id, 'stepIn')} title="F7"><ArrowDownToLine size={13} />Step Into</ActionButton>

@@ -9,7 +9,7 @@ import (
 
 const boltBucket = "goide"
 
-// BoltStore persists one Go Studio blob under a key of the shared bbolt DB.
+// BoltStore persists one Code Studio blob under a key of the shared bbolt DB.
 // Session state, local history and supervisor state each use their own key so
 // one cannot grow the others.
 type BoltStore struct {

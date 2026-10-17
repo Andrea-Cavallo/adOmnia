@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// PluginContractVersion è la versione del contratto degli eventi Go Studio esposti ai plugin.
+// PluginContractVersion è la versione del contratto degli eventi Code Studio esposti ai plugin.
 // Si incrementa solo con modifiche incompatibili ai nomi degli eventi o ai campi del payload.
 const PluginContractVersion = 1
 
-// Eventi Go Studio osservabili dai plugin: sola lettura, consegna asincrona, mai contenuto dei file.
+// Eventi Code Studio osservabili dai plugin: sola lettura, consegna asincrona, mai contenuto dei file.
 const (
 	PluginEventProjectOpen  = "onGoStudioProjectOpen"
 	PluginEventProjectClose = "onGoStudioProjectClose"
@@ -105,7 +105,7 @@ func (s *Service) ProjectServices(sessionID string) ([]ProjectService, error) {
 	return detectProjectServices(dependencies), nil
 }
 
-// PluginEventFor traduce un evento interno di Go Studio nell'evento del contratto plugin.
+// PluginEventFor traduce un evento interno di Code Studio nell'evento del contratto plugin.
 // Restituisce false per gli eventi non esposti; i payload non contengono mai il testo dei file.
 func PluginEventFor(event EventEnvelope) (string, map[string]any, bool) {
 	payload := map[string]any{"contract": PluginContractVersion, "sessionId": string(event.SessionID)}

@@ -3,7 +3,7 @@ import { scheduleStartupIdle } from '@/lib/startupIdle'
 import { useGoIDEStore } from '@/stores/goide'
 import { useGoIDELspStore } from '@/stores/goideLsp'
 
-/** Settata da Go Studio al primo uso: chi non lo usa mai non paga nessun warm-up. */
+/** Settata da Code Studio al primo uso: chi non lo usa mai non paga nessun warm-up. */
 export const GO_STUDIO_USED_KEY = 'adomnia.goStudio.used'
 
 function usedBefore(): boolean {
@@ -12,7 +12,7 @@ function usedBefore(): boolean {
 
 /**
  * Scalda gopls dell'ultimo progetto autorizzato mentre l'app sta ancora partendo, così
- * "Setting up workspace" è già finito quando si apre Go Studio. Non rende nulla.
+ * "Setting up workspace" è già finito quando si apre Code Studio. Non rende nulla.
  * gopls senza editor si sospende da solo (lsp_idle.go), quindi un warm-up inutile costa poco.
  */
 export function GoStudioWarmup(): null {

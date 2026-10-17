@@ -53,7 +53,7 @@ func (p *Persistence) LoadState() (persistedState, error) {
 	}
 	data, err := p.store.Load()
 	if err != nil {
-		return persistedState{}, fmt.Errorf("lettura stato Go Studio fallita: %w", err)
+		return persistedState{}, fmt.Errorf("lettura stato Code Studio fallita: %w", err)
 	}
 	empty := persistedState{Version: PersistenceSchemaVersion, SessionUI: make(map[SessionID]SessionView)}
 	if len(data) == 0 {
@@ -62,12 +62,12 @@ func (p *Persistence) LoadState() (persistedState, error) {
 	var state persistedState
 	if err := json.Unmarshal(data, &state); err != nil {
 		// Lo stato contiene solo metadati (sessioni, recenti, layout): uno
-		// store illeggibile non deve rendere Go Studio inutilizzabile per
+		// store illeggibile non deve rendere Code Studio inutilizzabile per
 		// sempre. Si riparte vuoti e il primo salvataggio lo ricostruisce.
 		return empty, nil
 	}
 	if state.Version > PersistenceSchemaVersion {
-		return persistedState{}, fmt.Errorf("unsupported Go Studio schema %d", state.Version)
+		return persistedState{}, fmt.Errorf("unsupported Code Studio schema %d", state.Version)
 	}
 	if state.Version < 2 && len(state.Recent) == 0 {
 		for _, session := range state.Sessions {
@@ -93,7 +93,7 @@ func (p *Persistence) SaveState(snapshot persistedState) error {
 	snapshot.Version = PersistenceSchemaVersion
 	data, err := json.Marshal(snapshot)
 	if err != nil {
-		return fmt.Errorf("serializzazione stato Go Studio fallita: %w", err)
+		return fmt.Errorf("serializzazione stato Code Studio fallita: %w", err)
 	}
 	return p.store.Save(data)
 }

@@ -11,10 +11,10 @@ const panel = readFileSync(resolve(process.cwd(), 'src/components/goide/GoStudio
 /**
  * GS-5: with the black skin the pane dividers were invisible, because every
  * hairline fell back to --color-border-1 (nearly the island background) and the
- * Go Studio splitters drew no line at rest at all. These are source contracts:
+ * Code Studio splitters drew no line at rest at all. These are source contracts:
  * the visual regression cannot be asserted from a jsdom test.
  */
-describe('Go Studio pane splitters (GS-5)', () => {
+describe('Code Studio pane splitters (GS-5)', () => {
   it('uses a theme-derived divider token instead of a border color that vanishes in dark skins', () => {
     expect(globals).toContain('--color-divider:')
     expect(globals).toContain('--color-divider-hover:')

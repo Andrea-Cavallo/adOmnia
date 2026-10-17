@@ -37,7 +37,7 @@ const config = (partial: Partial<GoIDERunConfiguration>): GoIDERunConfiguration 
   ...partial,
 } as GoIDERunConfiguration)
 
-describe('Go Studio workspace start helpers', () => {
+describe('Code Studio workspace start helpers', () => {
   it('selects an explicit compound workspace configuration first', () => {
     const generic = config({ id: 'stack', name: 'Dev stack', kind: GoIDERunConfigurationKind.RunKindCompound, order: 1 })
     const exact = config({ id: 'workspace', name: 'Start workspace', kind: GoIDERunConfigurationKind.RunKindCompound, order: 99 })

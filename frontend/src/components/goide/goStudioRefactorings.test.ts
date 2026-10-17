@@ -9,7 +9,7 @@ import { refactoringCandidates } from './goStudioRefactorings'
 
 const action = (kind: string, disabled = '') => ({ id: kind, title: kind, kind, disabled })
 
-describe('Go Studio refactorings', () => {
+describe('Code Studio refactorings', () => {
   const offered = [action('refactor.extract.function'), action('refactor.extract.method'), action('refactor.extract.variable'), action('refactor.extract.toNewFile'), action('refactor.inline.call', 'not a call')]
 
   it('keeps only the gopls actions that implement the requested refactoring', () => {

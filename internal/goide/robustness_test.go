@@ -127,7 +127,7 @@ func TestRecoveryKeyCaseSensitivityFollowsPlatform(t *testing.T) {
 func TestCorruptStateDoesNotBrickService(t *testing.T) {
 	service := NewService(&memoryStore{data: []byte("{non json")}, nil)
 	if _, err := service.ListSessions(); err != nil {
-		t.Fatalf("uno stato corrotto non deve bloccare Go Studio: %v", err)
+		t.Fatalf("uno stato corrotto non deve bloccare Code Studio: %v", err)
 	}
 }
 

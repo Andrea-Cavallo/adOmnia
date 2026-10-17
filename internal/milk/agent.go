@@ -33,7 +33,7 @@ type Launch struct {
 	Key string
 }
 
-// ErrOutdated indica un agente installato ma troppo vecchio per gO Studio.
+// ErrOutdated indica un agente installato ma troppo vecchio per Code Studio.
 var ErrOutdated = errors.New("agent is outdated")
 
 // userError porta un messaggio per l'utente e risponde a errors.Is con il sentinel.
@@ -66,7 +66,7 @@ func resolveMilk(settings Settings, _ string) (Launch, error) {
 	if err == nil {
 		launch.Version = version
 		if !versionAtLeast(version, MinVersion) {
-			return launch, Outdated(fmt.Sprintf("milk %s is too old: gO Studio needs v%s or later (milk serve --acp). Update it from milk settings", version, MinVersion))
+			return launch, Outdated(fmt.Sprintf("milk %s is too old: Code Studio needs v%s or later (milk serve --acp). Update it from milk settings", version, MinVersion))
 		}
 	}
 	return launch, nil

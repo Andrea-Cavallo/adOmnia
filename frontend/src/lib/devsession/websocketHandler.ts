@@ -95,7 +95,7 @@ export async function openWebSocketLogs(run: LiveWebSocketRun): Promise<void> {
 
 /**
  * Connection → goroutine: pause the service under Delve, list its goroutines and select the ones
- * running the WebSocket handler (one per open connection) in Go Studio's debugger.
+ * running the WebSocket handler (one per open connection) in Code Studio's debugger.
  */
 export async function showConnectionGoroutines(target: WebSocketHandler): Promise<string> {
   const session = useDevSessionStore.getState().sessions[target.session.id] ?? target.session

@@ -631,3 +631,10 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 - [ ] Provare temi chiaro/scuro e pannelli sotto 740 px: dettagli sotto la cronologia, scroll indipendente, nomi/ref lunghi troncati con tooltip e nessuna sovrapposizione. Riprovare checkout, creazione branch, merge e cancellazione con le conferme esistenti.
 
 Anteprima browser della sola cronologia verificata con 45 commit reali; non sostituisce la prova nativa del pannello completo. Test Git mirati: 14 verdi; TypeScript e build verdi. Guardia startup sul checkout concorrente: 607489 B / 650000, fallisce per `lib/goide/legacyKeymap.ts` importato dalle impostazioni globali (modifiche parallele).
+
+### ML-1 — Code Studio: nome visibile (2026-10-17)
+
+- [ ] ML-1.M1 Avviare l'app (`wails3 task dev`): nell'Hub la card dice **Code Studio** / "Build. Run. Debug." con glifo `</>`; rail, tooltip e palette comandi dicono Code Studio; icona rail `</>`.
+- [ ] ML-1.M2 Aprire un progetto: titolo finestra, menu, impostazioni, scorciatoie, stato vuoto e dialog di fiducia non citano più "Go Studio".
+- [ ] ML-1.M3 Finestra staccata e Split Debug View: titolo "… · Code Studio · adOmnia".
+- [ ] ML-1.M4 Tema chiaro e scuro, lingua IT ed EN (stringhe "Apri in Code Studio", "Compila. Esegui. Debug.").

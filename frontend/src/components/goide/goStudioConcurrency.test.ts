@@ -12,7 +12,7 @@ function goroutine(id: number, state: string, origin: string, extra: Partial<GoI
   } as GoIDEGoroutine
 }
 
-describe('Go Studio concurrency view', () => {
+describe('Code Studio concurrency view', () => {
   it('splits package and function names, including import paths', () => {
     expect(splitFunctionName('main.(*Service).Start.func1')).toEqual({ pkg: 'main', name: '(*Service).Start.func1' })
     expect(splitFunctionName('github.com/acme/kafka.Consumer')).toEqual({ pkg: 'github.com/acme/kafka', name: 'Consumer' })
@@ -83,7 +83,7 @@ Found 1 data race(s)`
   })
 })
 
-describe('Go Studio concurrency view, P1 additions', () => {
+describe('Code Studio concurrency view, P1 additions', () => {
   const frame = (name: string, line = 0) => ({ id: 0, name, line, column: 0 })
 
   it('groups goroutines with an identical stack', () => {
@@ -130,7 +130,7 @@ describe('Go Studio concurrency view, P1 additions', () => {
   })
 })
 
-describe('Go Studio inline debug values', () => {
+describe('Code Studio inline debug values', () => {
   const source = [
     'package main',
     '',

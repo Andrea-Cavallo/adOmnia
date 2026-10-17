@@ -34,7 +34,7 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   // The API Workspace is collections + request/response: its sidebar lives outside the panel, as in the main window.
   const showSidebar = rail === 'collections' && hydrated && !sidebarCollapsed
-  // Links from the code (Go Studio, other windows) reach this module here.
+  // Links from the code (Code Studio, other windows) reach this module here.
   useEffect(() => { startModuleActionListener() }, [])
   // Closing (X, Bring back, or quitting adOmnia) first writes the edits still queued here.
   useEffect(() => closeAfterSavingOnRequest(rail), [rail])

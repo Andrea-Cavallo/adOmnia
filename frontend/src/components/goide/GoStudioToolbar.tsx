@@ -21,7 +21,7 @@ interface GoStudioToolbarProps {
   mainMenu: React.ReactNode
   /** Controlli aggiuntivi mostrati accanto al progetto (es. branch Git). */
   extra?: React.ReactNode
-  /** Selettore del workspace Go Studio, a destra. */
+  /** Selettore del workspace Code Studio, a destra. */
   trailing?: React.ReactNode
   activeExecution: GoIDEExecution | null
   toolchain: GoIDEToolchainInfo | null
@@ -44,7 +44,7 @@ interface GoStudioToolbarProps {
   onTidy: () => void
   onStop: () => void
   onClose: () => void
-  /** Solo nella finestra principale: Go Studio a tutta finestra senza rail né intestazione di adOmnia. */
+  /** Solo nella finestra principale: Code Studio a tutta finestra senza rail né intestazione di adOmnia. */
   maximized?: boolean
   onToggleMaximize?: () => void
 }
@@ -78,7 +78,7 @@ function goVersion(toolchain: GoIDEToolchainInfo | null): string {
   return (toolchain.version ?? 'Go ready').replace(/^go version\s+/, '')
 }
 
-/** Toolbar unica di Go Studio: menu, progetto, branch, ricerca e gruppo Run su una sola riga. */
+/** Toolbar unica di Code Studio: menu, progetto, branch, ricerca e gruppo Run su una sola riga. */
 export function GoStudioToolbar(props: GoStudioToolbarProps) {
   const { sessions, activeSession, mainMenu, extra, trailing, activeExecution, toolchain, loading, runConfigurations, activeConfigId } = props
   const [menu, setMenu] = useState<OpenMenu | null>(null)
@@ -165,7 +165,7 @@ export function GoStudioToolbar(props: GoStudioToolbarProps) {
 
   const titlebar = useGoStudioTitlebar()
   return (
-    <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`go-studio-toolbar flex h-12 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
+    <div role="toolbar" aria-label="Code Studio toolbar" {...titlebar.props} className={`go-studio-toolbar flex h-12 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>
       {mainMenu}
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`go-studio-widget max-w-60 pl-1.5 ${menu?.kind === 'project' ? 'is-active' : ''}`}>

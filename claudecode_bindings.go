@@ -9,7 +9,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// ClaudeCode espone a React Claude Code come agente ACP di Go Studio. Il client è
+// ClaudeCode espone a React Claude Code come agente ACP di Code Studio. Il client è
 // quello di milk (internal/milk); internal/claudecode dice solo come avviarlo.
 type ClaudeCode struct {
 	manager *milk.Manager
@@ -55,7 +55,7 @@ func (c *ClaudeCode) Restart() error { return c.manager.Restart() }
 // Log restituisce le ultime righe di log dell'adapter.
 func (c *ClaudeCode) Log() []string { return c.manager.Log() }
 
-// SetActiveWorkspace comunica il progetto attivo in Go Studio.
+// SetActiveWorkspace comunica il progetto attivo in Code Studio.
 func (c *ClaudeCode) SetActiveWorkspace(root string) { c.manager.SetActiveWorkspace(root) }
 
 // Prompt invia un turno di chat. I delta arrivano come evento claude.chat.

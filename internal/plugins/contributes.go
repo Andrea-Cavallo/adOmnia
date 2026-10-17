@@ -12,7 +12,7 @@ import (
 // actions. Everything that runs code points at an action of the same manifest, so it goes through the
 // sandbox, permissions and limits like any other action.
 type PluginContributes struct {
-	// Commands appear in the Go Studio command palette and Plugins menu.
+	// Commands appear in the Code Studio command palette and Plugins menu.
 	Commands []ContributedCommand `json:"commands,omitempty"`
 	// CodeActions appear in the editor lightbulb / context menu and may rewrite the selection or the file.
 	CodeActions []ContributedCodeAction `json:"codeActions,omitempty"`

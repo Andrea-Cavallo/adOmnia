@@ -123,12 +123,12 @@ export function requestFromRoute(route: GoStudioHttpRoute, baseUrl: string, orig
   const anyMethodNote = route.anyMethod ? ' The handler accepts any method: GET is only the default.' : ''
   return {
     ...requestWithUrlInput(request, `${baseUrl}${route.path}`),
-    description: `Opened from Go Studio: ${origin}.${anyMethodNote}`,
+    description: `Opened from Code Studio: ${origin}.${anyMethodNote}`,
   }
 }
 
 /** cURL con l'indirizzo reale: la variabile baseUrl dell'ambiente se c'è, altrimenti quello trovato nel codice. */
 export function routeCurl(route: GoStudioHttpRoute, source: string, variables: Record<string, string>): string {
   const baseUrl = (variables[BASE_URL_VARIABLE] || findServerBaseUrl(source) || DEFAULT_GO_BASE_URL).replace(/\/+$/, '')
-  return generateCode(requestFromRoute(route, baseUrl, 'Go Studio'), 'curl')
+  return generateCode(requestFromRoute(route, baseUrl, 'Code Studio'), 'curl')
 }

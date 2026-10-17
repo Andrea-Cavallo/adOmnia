@@ -66,7 +66,7 @@ startGoStudioHibernation()
 
 /**
  * Centers a position and keeps it centered while the editor settles: a jump from another panel shows
- * Go Studio in the same tick, when the editor is still a few pixels tall, and grows right after.
+ * Code Studio in the same tick, when the editor is still a few pixels tall, and grows right after.
  * ponytail: a fixed 1 s settle window; tie it to the panel transition end if a slower one appears.
  */
 function revealWhenSized(editor: monaco.editor.IStandaloneCodeEditor, position: { lineNumber: number; column: number }): void {
@@ -99,7 +99,7 @@ interface GoStudioCodeEditorProps {
 }
 
 /**
- * Editor Monaco di Go Studio. Pannello principale e split condividono il modello del file
+ * Editor Monaco di Code Studio. Pannello principale e split condividono il modello del file
  * (stesso URI) ma mantengono cursore, scroll e selezione indipendenti.
  */
 export function GoStudioCodeEditor(props: GoStudioCodeEditorProps) {

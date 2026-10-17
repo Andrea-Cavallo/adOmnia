@@ -46,7 +46,7 @@ const LEGACY_RAIL_ALIASES: Record<string, RailItem> = {
   jsontools: 'jsonviewer',
   nettools: 'browser',
   utils: 'powertools',
-  // Folded into Go Studio: Markdown/Mermaid preview in the editor, Git as a tool window.
+  // Folded into Code Studio: Markdown/Mermaid preview in the editor, Git as a tool window.
   markdown: 'goide',
   mermaid: 'goide',
   gitsync: 'goide',

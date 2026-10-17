@@ -4,7 +4,7 @@ import type { StudioWorkspace, StudioWorkspaces } from '../../bindings/adomnia/i
 export type GoIDEStudioWorkspace = StudioWorkspace
 export type GoIDEStudioWorkspaces = StudioWorkspaces
 
-/** Id del workspace Go Studio sempre presente (stesso valore del backend). */
+/** Id del workspace Code Studio sempre presente (stesso valore del backend). */
 export const DEFAULT_STUDIO_WORKSPACE_ID = 'default'
 
 export function listGoIDEStudioWorkspaces(): Promise<StudioWorkspaces> {

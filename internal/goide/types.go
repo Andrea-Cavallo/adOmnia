@@ -52,7 +52,7 @@ type Project struct {
 type Session struct {
 	ID      SessionID `json:"id"`
 	Project Project   `json:"project"`
-	// WorkspaceID è il workspace Go Studio che contiene la sessione, indipendente dai workspace API di adOmnia.
+	// WorkspaceID è il workspace Code Studio che contiene la sessione, indipendente dai workspace API di adOmnia.
 	WorkspaceID string    `json:"workspaceId,omitempty"`
 	OpenedAt    time.Time `json:"openedAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`

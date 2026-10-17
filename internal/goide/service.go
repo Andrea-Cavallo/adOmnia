@@ -33,7 +33,7 @@ type Service struct {
 	vcsSelected map[SessionID]string
 	extensions  extensionHost
 	workspace   *WorkspaceManager
-	// studioWorkspaces raggruppa le sessioni in workspace Go Studio, separati da quelli di adOmnia.
+	// studioWorkspaces raggruppa le sessioni in workspace Code Studio, separati da quelli di adOmnia.
 	studioWorkspaces *studioWorkspaceRegistry
 	documents        *DocumentManager
 	toolchain        *ToolchainManager
@@ -938,7 +938,7 @@ func (s *Service) session(id string) (Session, error) {
 
 // restore carica lo stato persistito alla prima chiamata. A differenza di
 // sync.Once un errore non è definitivo (es. store non ancora pronto): la
-// chiamata successiva riprova invece di lasciare Go Studio inutilizzabile.
+// chiamata successiva riprova invece di lasciare Code Studio inutilizzabile.
 func (s *Service) restore() error {
 	if s.restored.Load() {
 		return nil

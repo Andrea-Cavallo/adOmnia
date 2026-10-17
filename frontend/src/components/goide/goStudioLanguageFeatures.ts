@@ -65,7 +65,7 @@ export function toMonacoEdits(edits: GoIDEEditorTextEdit[]): monaco.editor.IIden
   return edits.map((edit) => ({ range: toMonacoRange(edit.range), text: edit.text, forceMoveMarkers: true }))
 }
 
-/** Trova il documento Go Studio associato a un modello Monaco. */
+/** Trova il documento Code Studio associato a un modello Monaco. */
 export function documentForModel(model: monaco.editor.ITextModel): GoIDEEditorDocument | null {
   const target = model.uri.toString()
   return useGoIDEStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? null
@@ -344,7 +344,7 @@ function registerProviders(): void {
       .catch((error: unknown) => useGoIDEStore.setState({ error: error instanceof Error ? error.message : String(error) }))
   })
 
-  // Monaco standalone non sa aprire altri file: la navigazione passa dallo store di Go Studio.
+  // Monaco standalone non sa aprire altri file: la navigazione passa dallo store di Code Studio.
   monaco.editor.registerEditorOpener({
     openCodeEditor(_source, resource, selectionOrPosition) {
       const cached = locationCache.get(resource.toString())

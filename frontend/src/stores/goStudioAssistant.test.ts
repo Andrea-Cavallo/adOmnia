@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGoStudioAssistantStore } from './goStudioAssistant'
 
-describe('Go Studio assistant pane', () => {
+describe('Code Studio assistant pane', () => {
   beforeEach(() => useGoStudioAssistantStore.setState({ pane: null }))
 
   it('keeps Copilot and milk mutually exclusive in the right column', () => {

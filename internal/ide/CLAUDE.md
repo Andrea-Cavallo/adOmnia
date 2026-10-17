@@ -1,4 +1,4 @@
-# CLAUDE.md — adOmnia IDE (Go Studio / IDE Platform)
+# CLAUDE.md — adOmnia IDE (Code Studio / IDE Platform)
 
 Guidance for Claude Code when touching **any part of the IDE**. It adds to the root `CLAUDE.md` (product-first, local-first, reuse, small surgical edits) and does not replace it. This file is loaded when you work under `internal/ide`, `internal/goide`, `internal/languages`, `frontend/src/components/goide` and `frontend/src/components/ide` (the last four hold a one-line pointer to it).
 
@@ -8,7 +8,7 @@ The IDE is a flagship area: it must feel like a real IDE (fast, stable, never lo
 
 ## What it is
 
-**adOmnia IDE Platform + language adapters.** Go Studio is the Go adapter on top of a language-agnostic core. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON in `internal/languages/web`) are the second adapter, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features.
+**adOmnia IDE Platform + language adapters.** Code Studio is the Go adapter on top of a language-agnostic core. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON in `internal/languages/web`) are the second adapter, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features.
 
 Read before non-trivial work:
 
@@ -36,7 +36,7 @@ internal/goide/             HOST: composition root + `Service` facade for Wails;
 internal/goidewindow/       native per-session windows
 goide_bindings.go (root)    thin Wails service `GoIDE` — the STABLE facade
 frontend/src/components/ide/languages/<id>/   language contributions (IdeLanguageContribution)
-frontend/src/components/goide/                Go Studio UI (GoStudioPanel.tsx etc.)
+frontend/src/components/goide/                Code Studio UI (GoStudioPanel.tsx etc.)
 frontend/src/lib/goide/                       pure helpers used by stores
 frontend/src/stores/goide*.ts                 stores (one per concern)
 ```
@@ -82,7 +82,7 @@ frontend/src/stores/goide*.ts                 stores (one per concern)
 2. Add the command to `components/goide/goStudioCommands.ts` (menu, label, binding, availability reason when disabled), or to the language's `commands.ts` with `requires: { language }`; handle it in `GoStudioPanel.tsx`. Menus, shortcuts and help read that registry.
 3. Route backend events by `sessionId`/`resourceId` (+ `language` for language servers) in the matching `stores/goide*.ts`. **State never crosses sessions.**
 4. Stores import pure helpers from `lib/goide/`, never from `components/`.
-5. **Keep Go Studio lazy:** never import its modules from `App.tsx` or startup code (`npm run check:startup` enforces it).
+5. **Keep Code Studio lazy:** never import its modules from `App.tsx` or startup code (`npm run check:startup` enforces it).
 6. Update `docs/GO-STUDIO.md` (+ the active mds plan) when behaviour, storage or shortcuts change.
 
 ---

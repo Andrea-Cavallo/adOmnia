@@ -18,7 +18,7 @@ const report = (uri: string, severity: number) => ({
 
 const event = (sessionId: string, type: string, payload: unknown) => ({ version: 1, type, sessionId, sequence: 1, timestamp: '', payload })
 
-describe('Go Studio language server store', () => {
+describe('Code Studio language server store', () => {
   beforeEach(() => useGoIDELspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
 
   it('shows activity while gopls restarts and clears it when ready', async () => {

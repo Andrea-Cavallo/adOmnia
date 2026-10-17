@@ -18,7 +18,7 @@ function ms(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(1)} s` : value >= 10 ? `${Math.round(value)} ms` : `${value.toFixed(1)} ms`
 }
 
-/** The code side of the map: Go Studio's Architecture Explorer (entry points, packages, topics, stores). */
+/** The code side of the map: Code Studio's Architecture Explorer (entry points, packages, topics, stores). */
 async function openCodeArchitecture(): Promise<void> {
   const { useGoIDEStore } = await import('@/stores/goide')
   if (!useGoIDEStore.getState().activeSessionId) {
@@ -190,7 +190,7 @@ export function ServiceMapView({ map, onOpenTrace }: { map: OtlpServiceMap | nul
           <div className="space-y-1 text-[11px] text-text-3">
             <p className="font-semibold text-text-1">{map.nodes.filter((node) => node.kind === 'service').length} services · {map.edges.length} connections</p>
             <p>Click a connection for its rate, latency and failures, the calling code and the topic or database behind it.</p>
-            <button type="button" onClick={() => void openCodeArchitecture()} title="Go Studio Architecture Explorer: entry points, packages, topics and stores of the open project" className="mt-2 flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent"><Code2 size={11} /> Code architecture</button>
+            <button type="button" onClick={() => void openCodeArchitecture()} title="Code Studio Architecture Explorer: entry points, packages, topics and stores of the open project" className="mt-2 flex items-center gap-1 rounded border border-border-2 px-2 py-1 text-text-2 hover:border-accent hover:text-accent"><Code2 size={11} /> Code architecture</button>
             <p className="text-text-4">Rates over the last {Math.max(1, Math.round(map.windowMs / 60000))} min of received spans.</p>
           </div>
         )}

@@ -44,7 +44,7 @@ var AvailableHookEvents = []string{
 	"onTabClose",
 }
 
-// RegisterHookEvents adds events published by other modules (e.g. Go Studio) to the hookable list.
+// RegisterHookEvents adds events published by other modules (e.g. Code Studio) to the hookable list.
 // It must run at startup, before plugins are loaded; duplicates are ignored.
 func RegisterHookEvents(events ...string) {
 	for _, event := range events {

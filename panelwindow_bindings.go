@@ -51,7 +51,7 @@ func (a *App) ConfirmPanelWindowClose(panel string) {
 
 // attachPanelWindowsToMain closes the module windows, each saving first, before
 // the main window: adOmnia never keeps running with only a module window left.
-// Registered after Go Studio's hook, which may cancel the close for unsaved files.
+// Registered after Code Studio's hook, which may cancel the close for unsaved files.
 func (a *App) attachPanelWindowsToMain(window *application.WebviewWindow) {
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		if a.panelWindows != nil && a.panelWindows.CloseAllThen(window.Close) {

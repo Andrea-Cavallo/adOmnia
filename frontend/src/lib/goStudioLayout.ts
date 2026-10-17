@@ -1,5 +1,5 @@
 /**
- * Dimensioni e clamp dei pannelli di Go Studio, in un solo posto.
+ * Dimensioni e clamp dei pannelli di Code Studio, in un solo posto.
  *
  * Prima erano duplicati: `stores/goide.ts` (clamp al caricamento) e
  * `GoStudioPanel.tsx` (clamp durante il trascinamento) usavano gli stessi numeri

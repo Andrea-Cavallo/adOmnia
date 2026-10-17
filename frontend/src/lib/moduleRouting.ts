@@ -28,11 +28,11 @@ export type ModuleAction =
   | { kind: 'event'; name: string }
   /** An event re-sent every frame until the mounted panel marks detail.handled (entity handoffs). */
   | { kind: 'dispatch'; eventName: string; detail: Record<string, unknown> }
-  /** A source location in Go Studio. */
+  /** A source location in Code Studio. */
   | { kind: 'open-location'; file: string; line: number; sessionId?: string }
 
 export interface RouteOptions {
-  /** false: change the module's data without switching to it (e.g. "imported, stay in Go Studio"). */
+  /** false: change the module's data without switching to it (e.g. "imported, stay in Code Studio"). */
   reveal?: boolean
   /** Only when the action runs in this window: the panel never accepted a dispatch. */
   onTimeout?: () => void
@@ -99,7 +99,7 @@ function runLocally(rail: RailItem, action: ModuleAction | null, reveal: boolean
     case 'tool-file': useAppStore.getState().queueFileImport(action.file); remount(); break
     case 'event': document.dispatchEvent(new CustomEvent(action.name)); break
     case 'dispatch': deliverWhenMounted(rail, action.eventName, action.detail, onTimeout); break
-    // Go Studio stays out of the startup bundle: loaded only when a link really opens code.
+    // Code Studio stays out of the startup bundle: loaded only when a link really opens code.
     case 'open-location': void import('@/stores/goide').then(async ({ useGoIDEStore }) => { if (action.sessionId) { if (!useGoIDEStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useGoIDEStore.getState().selectSession(action.sessionId) }; await useGoIDEStore.getState().openLocation(action.file, action.line, 1) }); break
   }
 }
@@ -114,7 +114,7 @@ function ownsHere(rail: RailItem): boolean {
 
 /**
  * Runs the action where the module lives: here, in its own window, or in the main window when the
- * link comes from a detached window (e.g. a Go Studio project window). With reveal the module is
+ * link comes from a detached window (e.g. a Code Studio project window). With reveal the module is
  * shown and its window brought forward.
  */
 export function routeToModule(rail: RailItem, action: ModuleAction | null, { reveal = true, onTimeout }: RouteOptions = {}): void {

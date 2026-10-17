@@ -142,7 +142,7 @@ export function ServiceView({ session }: { session: LiveSession }) {
           <KafkaWatch tools={tools} sources={kafkaSources} topics={topics} onStart={(brokers, list) => void run(() => watchLiveKafka(session.id, brokers, list))} />
         </Node>
         <Node icon={<ScrollText size={13} />} title="Logs" detail="stdout and stderr, tied to requests by id or time" />
-        <Node icon={<Bug size={13} />} title="Debugger" detail={session.kind === 'debug' ? (session.pause ? `paused at ${basename(session.pause.relativePath || '')}:${session.pause.line}` : 'Delve attached') : 'not attached — use Debug Request or Debug in Go Studio'} />
+        <Node icon={<Bug size={13} />} title="Debugger" detail={session.kind === 'debug' ? (session.pause ? `paused at ${basename(session.pause.relativePath || '')}:${session.pause.line}` : 'Delve attached') : 'not attached — use Debug Request or Debug in Code Studio'} />
       </ul>
       {error && <p role="alert" className="mt-2 text-[11.5px] text-error">{error}</p>}
       <div className="mt-4 space-y-1.5 border-t border-border-1 pt-3 text-[11.5px] text-text-2">

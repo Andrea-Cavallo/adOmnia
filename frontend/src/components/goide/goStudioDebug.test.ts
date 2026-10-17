@@ -23,7 +23,7 @@ function view(state: string, frames: GoIDEDebugView['frames'], frameId: number |
   }
 }
 
-describe('Go Studio debugger helpers', () => {
+describe('Code Studio debugger helpers', () => {
   it('evaluates the identifier under the mouse together with its selector chain', () => {
     const line = '\tfmt.Println(p.Name, total)'
     expect(expressionAt(line, line.indexOf('Name') + 2)).toBe('p.Name')

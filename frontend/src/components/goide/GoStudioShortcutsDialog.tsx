@@ -10,7 +10,7 @@ interface GoStudioShortcutsDialogProps {
   onClose: () => void
 }
 
-/** Keymap di Go Studio: GoLand o VS Code, scorciatoie personalizzate, conflitti e ricerca per nome o per tasto. */
+/** Keymap di Code Studio: GoLand o VS Code, scorciatoie personalizzate, conflitti e ricerca per nome o per tasto. */
 export function GoStudioShortcutsDialog({ open, onClose }: GoStudioShortcutsDialogProps) {
   const keymap = useGoStudioKeymap((state) => state.keymap)
   const custom = useGoStudioKeymap((state) => state.custom)
@@ -46,7 +46,7 @@ export function GoStudioShortcutsDialog({ open, onClose }: GoStudioShortcutsDial
       flush
       icon={Keyboard}
       title="Keyboard shortcuts"
-      subtitle="Click a shortcut to change it. Shortcuts apply while Go Studio is open and are stored on this machine."
+      subtitle="Click a shortcut to change it. Shortcuts apply while Code Studio is open and are stored on this machine."
       footerStart="Ctrl/Cmd+K still opens the adOmnia command palette."
       footer={<GoStudioButton variant="ghost" onClick={onClose}>Close</GoStudioButton>}
     >

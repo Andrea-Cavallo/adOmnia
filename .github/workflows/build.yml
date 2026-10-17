@@ -81,7 +81,7 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
-      - name: Go Studio disaster recovery
+      - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
         run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
 
@@ -194,7 +194,7 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
-      - name: Go Studio disaster recovery
+      - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
         run: go test ./internal/goide/ -run "Recover|Kill|Crash" -count=1
 

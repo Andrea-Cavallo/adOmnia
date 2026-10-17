@@ -100,7 +100,7 @@ function ConfigurationSection({ config }: { config: ClaudeCodeConfig }) {
   )
 }
 
-/** Claude Code settings in gO Studio: enable, adapter path, login vs API key, permissions, logs. */
+/** Claude Code settings in Code Studio: enable, adapter path, login vs API key, permissions, logs. */
 export function GoStudioClaudeDialog() {
   const open = useClaudeCodeStore((state) => state.dialogOpen)
   const settings = useClaudeCodeStore((state) => state.settings)

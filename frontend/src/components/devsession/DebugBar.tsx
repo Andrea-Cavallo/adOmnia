@@ -19,7 +19,7 @@ function BarButton({ label, shortcut, disabled, onClick, children, tone }: { lab
   )
 }
 
-/** JetBrains debugger keys, active outside Go Studio (which has its own) while a service is debugged. */
+/** JetBrains debugger keys, active outside Code Studio (which has its own) while a service is debugged. */
 function debugKey(event: KeyboardEvent): DebugAction | 'stop' | null {
   if (event.ctrlKey && event.key === 'F2') return 'stop'
   if (event.ctrlKey || event.altKey || event.metaKey) return null
@@ -31,9 +31,9 @@ function debugKey(event: KeyboardEvent): DebugAction | 'stop' | null {
 
 /**
  * Persistent bar shown in every adOmnia tool while a Go service started from
- * Go Studio is live: state, paused location, debugger controls and the
+ * Code Studio is live: state, paused location, debugger controls and the
  * request that is in flight. The debug session belongs to adOmnia, not only
- * to the Go Studio page.
+ * to the Code Studio page.
  */
 export function DebugBar() {
   const distributed = useDistributedDebugStore()
@@ -73,7 +73,7 @@ export function DebugBar() {
         {stateLabel(session)}
       </span>
       {paused && session.pause && (
-        <button type="button" onClick={() => void openFrameInGoStudio(session)} title="Open in Go Studio"
+        <button type="button" onClick={() => void openFrameInGoStudio(session)} title="Open in Code Studio"
           className="min-w-0 truncate font-mono text-text-2 hover:text-accent hover:underline">
           {basename(session.pause.relativePath || session.pause.file || '')}:{session.pause.line}
           <span className="ml-1.5 text-text-4">{session.pause.function}()</span>
@@ -104,7 +104,7 @@ export function DebugBar() {
           <BarButton label="Split Debug View" onClick={() => state.openSplit(run.tabId ?? null)}><Columns2 size={12} /></BarButton>
         )}
         <BarButton label="Service logs" onClick={() => openServiceLogs(session)}><ScrollText size={12} /></BarButton>
-        {debug && <BarButton label="Open in Go Studio" onClick={() => void openFrameInGoStudio(session)}><Bug size={12} /></BarButton>}
+        {debug && <BarButton label="Open in Code Studio" onClick={() => void openFrameInGoStudio(session)}><Bug size={12} /></BarButton>}
       </span>
       {state.error && <ErrorFlash message={state.error} onDone={state.clearError} />}
     </div>

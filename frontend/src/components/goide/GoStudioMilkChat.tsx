@@ -13,7 +13,7 @@ const MILK: ChatAgent = {
   intro: 'A cheap agent answers first; milk hands the hard questions to the deep one. Both work in this folder.',
   setupHint: 'Enable milk in its settings to chat with your agents about this project.',
   setupTitle: (status) => status?.state === 'installing' ? 'Installing milk…'
-    : status?.state === 'outdated' ? 'This milk is too old for gO Studio'
+    : status?.state === 'outdated' ? 'This milk is too old for Code Studio'
       : status?.state === 'not-installed' ? 'milk is not installed yet'
         : 'milk is not running',
   setupAction: (status) => status?.state === 'not-installed' ? 'Install milk' : status?.state === 'outdated' ? 'Update milk' : 'Open milk settings',

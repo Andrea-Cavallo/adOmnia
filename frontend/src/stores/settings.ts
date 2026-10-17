@@ -153,7 +153,7 @@ export interface AppSettings {
     templatesFolder: string
   }
   /**
-   * Scorciatoie Go Studio come JSON, allo stesso livello di `.adomnia/settings.json` del
+   * Scorciatoie Code Studio come JSON, allo stesso livello di `.adomnia/settings.json` del
    * progetto: preset base e personalizzazioni (con condizione `when`). Migrato dalla chiave
    * localStorage `adomnia.goide.keymap` alla versione 15 delle impostazioni.
    */
@@ -386,7 +386,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedSettingsVersion = (parsed.version ?? 0) < defaultSettings.version
       const general = mergeBlock(defaultSettings.general, parsed.general)
       general.startupBehavior = general.startupBehavior === 'fixed' ? 'fixed' : 'resume'
-      // v15: le scorciatoie Go Studio passano dalla chiave localStorage alla sezione JSON
+      // v15: le scorciatoie Code Studio passano dalla chiave localStorage alla sezione JSON
       // `keymap`; la vecchia chiave resta scritta per il rollback, ma non è più la fonte.
       const keymap = mergeBlock(defaultSettings.keymap, parsed.keymap)
       let migratedKeymap = false

@@ -143,7 +143,7 @@ function McpServersSection() {
   )
 }
 
-/** milk settings in gO Studio: enable, binary path, permissions, process status and logs. */
+/** milk settings in Code Studio: enable, binary path, permissions, process status and logs. */
 export function GoStudioMilkDialog() {
   const open = useMilkStore((state) => state.dialogOpen)
   const settings = useMilkStore((state) => state.settings)

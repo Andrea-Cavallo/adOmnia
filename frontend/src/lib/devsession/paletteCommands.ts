@@ -43,7 +43,7 @@ export function devSessionCommands(state: State): DevSessionCommand[] {
   if (run) {
     commands.push({ id: 'live:request', title: 'Go to current request', subtitle: `${run.method} ${run.url}`, keywords: 'request api tab current live', run: () => openRequestTab(run.tabId) })
     if (session.kind === 'debug') {
-      commands.push({ id: 'live:split', title: 'Open Split Debug View', subtitle: 'Go Studio and the API request side by side', keywords: 'split view debug side by side', run: () => state.openSplit(run.tabId ?? null) })
+      commands.push({ id: 'live:split', title: 'Open Split Debug View', subtitle: 'Code Studio and the API request side by side', keywords: 'split view debug side by side', run: () => state.openSplit(run.tabId ?? null) })
     }
   }
   if (session.kind !== 'debug') return commands

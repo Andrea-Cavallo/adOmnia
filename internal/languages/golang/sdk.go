@@ -233,7 +233,7 @@ func toolchainWarning(local, goDirective, toolchainDirective, gotoolchain string
 		return ""
 	}
 	if gotoolchain == "" || gotoolchain == "auto" || strings.HasPrefix(gotoolchain, "local") {
-		return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: gO Studio usa GOTOOLCHAIN=local e non scarica toolchain da solo, quindi build e test falliranno. Seleziona o installa %s o successivo (Go → Toolchains), oppure imposta GOTOOLCHAIN=auto nelle variabili del progetto per lasciarla scaricare a go.", required, local, required)
+		return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: Code Studio usa GOTOOLCHAIN=local e non scarica toolchain da solo, quindi build e test falliranno. Seleziona o installa %s o successivo (Go → Toolchains), oppure imposta GOTOOLCHAIN=auto nelle variabili del progetto per lasciarla scaricare a go.", required, local, required)
 	}
 	return fmt.Sprintf("go.mod richiede %s ma l'SDK selezionato è %s: con GOTOOLCHAIN=%s il comando go scaricherà %s in automatico. Selezionalo qui per lavorare offline.", required, local, gotoolchain, required)
 }
@@ -261,7 +261,7 @@ func (m *ToolchainManager[K]) Environment(sessionID K, overrides map[string]stri
 	if err != nil {
 		return nil, err
 	}
-	// gO Studio non scarica toolchain Go da solo: senza una scelta esplicita (variabile d'ambiente,
+	// Code Studio non scarica toolchain Go da solo: senza una scelta esplicita (variabile d'ambiente,
 	// configurazione del progetto o go env -w) i processi avviati usano l'SDK selezionato.
 	if _, explicit := base["GOTOOLCHAIN"]; !explicit && !m.userChoseToolchain(sessionID) {
 		base["GOTOOLCHAIN"] = "local"

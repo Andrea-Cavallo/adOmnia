@@ -131,7 +131,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
         ))}
         {tasks.length > 2 && <span className="shrink-0 text-text-4">+{tasks.length - 2}</span>}
         {watcher?.limited && (
-          <button type="button" onClick={() => void useGoIDEStore.getState().refreshProject()} title={`Watching ${watcher.directories} of ${watcher.limit}+ folders: changes made outside Go Studio in the others are not detected automatically. Click to re-read the project from disk.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning hover:underline">
+          <button type="button" onClick={() => void useGoIDEStore.getState().refreshProject()} title={`Watching ${watcher.directories} of ${watcher.limit}+ folders: changes made outside Code Studio in the others are not detected automatically. Click to re-read the project from disk.`} className="flex shrink-0 items-center gap-1 whitespace-nowrap px-1.5 text-warning hover:underline">
             <EyeOff size={12} /> Partially watched · {watcher.directories}/{watcher.limit} · Refresh
           </button>
         )}
@@ -185,7 +185,7 @@ export function GoStudioStatusBar({ session, toolchain, documentInfo, execution,
       <GoStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />
       <GoStudioCopilotStatus className={ITEM} />
       </div>
-      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Go Studio appearance">
+      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Code Studio appearance">
         <button type="button" onClick={() => applyThemeMode('light')} aria-label="Light theme" aria-pressed={themeMode === 'light'} title="Light theme" className={`${ITEM} h-5 px-1 ${themeMode === 'light' ? 'bg-surface-3 text-accent' : ''}`}><Sun size={11} /></button>
         <button type="button" onClick={() => applyThemeMode('dark')} aria-label="Dark theme" aria-pressed={themeMode === 'dark'} title="Dark theme" className={`${ITEM} h-5 px-1 ${themeMode === 'dark' ? 'bg-surface-3 text-accent' : ''}`}><Moon size={11} /></button>
       </div>

@@ -20,7 +20,7 @@ function status(changes: Array<{ relativePath: string; untracked?: boolean }>): 
   } as unknown as GoIDEVCSStatus
 }
 
-describe('Go Studio VCS gutter baseline', () => {
+describe('Code Studio VCS gutter baseline', () => {
   beforeEach(() => {
     fileAtRevision.mockReset()
     useGoIDEVCSStore.setState({ status: {}, head: {}, blame: {}, hunkPopup: null, error: null })

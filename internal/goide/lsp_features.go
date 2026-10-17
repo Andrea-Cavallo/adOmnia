@@ -398,7 +398,7 @@ func (m *LSPManager) Format(ctx context.Context, sessionID SessionID, documentID
 
 // CodeActions elenca quick fix, refactoring e azioni sorgente disponibili per l'intervallo.
 // webViewActionKinds sono azioni gopls che aprono la sua interfaccia web via window/showDocument:
-// Go Studio non apre pagine esterne, quindi non vengono proposte invece di mostrare pulsanti inerti.
+// Code Studio non apre pagine esterne, quindi non vengono proposte invece di mostrare pulsanti inerti.
 var webViewActionKinds = []string{"source.doc", golang.GoplsDocCommand, "source.splitPackage", "source.assembly", "source.freesymbols"}
 
 func opensGoplsWebView(kind string) bool {

@@ -12,7 +12,7 @@ const GENERIC_ICONS = {
   license: Scale, readme: BookOpen, code: FileCode2, key: Key, sql: Database, terminal: SquareTerminal, schema: Workflow, file: File,
 } as const
 
-/** Icona di un file in tutto Go Studio: gopher per i sorgenti Go, loghi reali, icone generiche. */
+/** Icona di un file in tutto Code Studio: gopher per i sorgenti Go, loghi reali, icone generiche. */
 export const GoStudioFileIcon = memo(function GoStudioFileIcon({ name, relativePath, size = 14 }: { name: string; relativePath?: string; size?: number }) {
   const resolved = resolveGoStudioFileIcon(name, relativePath)
   switch (resolved.kind) {

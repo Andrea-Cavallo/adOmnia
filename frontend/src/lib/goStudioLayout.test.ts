@@ -10,7 +10,7 @@ import {
 
 const bounds = { width: 1200, height: 800 }
 
-describe('Go Studio pane sizes', () => {
+describe('Code Studio pane sizes', () => {
   it('clamps side panes to the minimum width', () => {
     expect(clampPaneSize('projectWidth', 0, bounds)).toBe(MIN_PANE_WIDTH)
     expect(clampPaneSize('structureWidth', 40, bounds)).toBe(MIN_PANE_WIDTH)

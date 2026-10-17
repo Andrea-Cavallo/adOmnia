@@ -91,7 +91,7 @@ function requestRename(editor: monaco.editor.ICodeEditor): void {
   })
 }
 
-/** Registra sull'editor le azioni semantiche Go Studio; le keybinding aggiunte hanno precedenza su quelle native. */
+/** Registra sull'editor le azioni semantiche Code Studio; le keybinding aggiunte hanno precedenza su quelle native. */
 export function installGoStudioEditorActions(editor: monaco.editor.IStandaloneCodeEditor): void {
   const semantic = (id: string, label: string, keybindings: number[], run: (target: monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })

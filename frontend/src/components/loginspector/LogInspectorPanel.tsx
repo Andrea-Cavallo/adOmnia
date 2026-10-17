@@ -105,7 +105,7 @@ export function LogInspectorPanel() {
     (sourceId, label, lines) => appendLiveLines(sourceId, label, lines),
     [appendLiveLines],
   ))
-  // A Go service started from Go Studio streams its output here as a live source.
+  // A Go service started from Code Studio streams its output here as a live source.
   useEffect(() => attachLiveSessionSource(appendLiveLines), [appendLiveLines])
 
   const sessionMetadata = useCallback((savedAt = Date.now()): InvestigationMetadata => ({

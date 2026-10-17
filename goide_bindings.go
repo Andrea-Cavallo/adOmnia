@@ -31,7 +31,7 @@ type GoIDE struct {
 	mainWindow         *application.WebviewWindow
 	dirtyDocumentCount atomic.Int64
 	allowAppClose      atomic.Bool
-	// windows possiede le finestre Go Studio separate (una per progetto).
+	// windows possiede le finestre Code Studio separate (una per progetto).
 	windows *goidewindow.Manager
 	// previewWindows possiede le finestre native delle Live Preview.
 	previewWindows *goidewindow.PreviewWindows
@@ -85,7 +85,7 @@ func init() {
 	plugins.RegisterHookEvents(goide.PluginEvents...)
 }
 
-// forwardGoIDEPluginEvent consegna ai plugin, in modo asincrono e in sola lettura, gli eventi del contratto Go Studio.
+// forwardGoIDEPluginEvent consegna ai plugin, in modo asincrono e in sola lettura, gli eventi del contratto Code Studio.
 func forwardGoIDEPluginEvent(event goide.EventEnvelope) {
 	if globalPluginManager == nil {
 		return
@@ -115,7 +115,7 @@ func (g *GoIDE) attachMainWindow(window *application.WebviewWindow) {
 		if !g.allowAppClose.Swap(false) && g.cancelMainClose(event) {
 			return
 		}
-		// La finestra principale si chiude davvero: le finestre Go Studio, già
+		// La finestra principale si chiude davvero: le finestre Code Studio, già
 		// verificate senza buffer non salvati, si chiudono con lei.
 		if g.windows != nil {
 			g.windows.CloseAll()
@@ -231,7 +231,7 @@ func (g *GoIDE) cancelMainClose(event *application.WindowEvent) bool {
 	return true
 }
 
-// OpenSessionWindow sposta il progetto in una finestra Go Studio separata, o
+// OpenSessionWindow sposta il progetto in una finestra Code Studio separata, o
 // mette a fuoco quella già aperta. Il frontend chiamante deve aver salvato i
 // buffer del progetto: restano nella finestra che li possiede.
 func (g *GoIDE) OpenSessionWindow(sessionID string) (string, error) {
@@ -307,7 +307,7 @@ func (g *GoIDE) SetWindowDirtyDocumentCount(windowID string, count int) {
 	}
 }
 
-// GetCapabilities restituisce soltanto le capacità Go Studio realmente disponibili.
+// GetCapabilities restituisce soltanto le capacità Code Studio realmente disponibili.
 func (g *GoIDE) GetCapabilities() goide.Capabilities {
 	return g.service.GetCapabilities()
 }
@@ -327,7 +327,7 @@ func (g *GoIDE) ListProjectTemplates() (goide.ProjectTemplateList, error) {
 	return g.service.ListProjectTemplates()
 }
 
-// ListSessions restituisce le sessioni Go Studio correnti e ripristinate.
+// ListSessions restituisce le sessioni Code Studio correnti e ripristinate.
 func (g *GoIDE) ListSessions() ([]goide.Session, error) {
 	return g.service.ListSessions()
 }
@@ -1410,27 +1410,27 @@ func (g *GoIDE) AcknowledgeCrash() {
 	g.service.AcknowledgeCrash()
 }
 
-// ListStudioWorkspaces elenca i workspace Go Studio, separati dai workspace API di adOmnia.
+// ListStudioWorkspaces elenca i workspace Code Studio, separati dai workspace API di adOmnia.
 func (g *GoIDE) ListStudioWorkspaces() (goide.StudioWorkspaces, error) {
 	return g.service.ListStudioWorkspaces()
 }
 
-// CreateStudioWorkspace crea un workspace Go Studio vuoto e lo rende attivo.
+// CreateStudioWorkspace crea un workspace Code Studio vuoto e lo rende attivo.
 func (g *GoIDE) CreateStudioWorkspace(name string) (goide.StudioWorkspaces, error) {
 	return g.service.CreateStudioWorkspace(name)
 }
 
-// RenameStudioWorkspace rinomina un workspace Go Studio.
+// RenameStudioWorkspace rinomina un workspace Code Studio.
 func (g *GoIDE) RenameStudioWorkspace(id, name string) (goide.StudioWorkspaces, error) {
 	return g.service.RenameStudioWorkspace(id, name)
 }
 
-// DeleteStudioWorkspace elimina un workspace Go Studio senza progetti aperti.
+// DeleteStudioWorkspace elimina un workspace Code Studio senza progetti aperti.
 func (g *GoIDE) DeleteStudioWorkspace(id string) (goide.StudioWorkspaces, error) {
 	return g.service.DeleteStudioWorkspace(id)
 }
 
-// SetActiveStudioWorkspace cambia il workspace Go Studio mostrato.
+// SetActiveStudioWorkspace cambia il workspace Code Studio mostrato.
 func (g *GoIDE) SetActiveStudioWorkspace(id string) (goide.StudioWorkspaces, error) {
 	return g.service.SetActiveStudioWorkspace(id)
 }

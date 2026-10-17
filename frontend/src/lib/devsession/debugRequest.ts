@@ -10,7 +10,7 @@ import { liveVars } from './liveRequest'
 const START_TIMEOUT_MS = 120_000
 const READY_TIMEOUT_MS = 60_000
 
-/** Detail of the `adomnia:go-debug-start` event Go Studio answers: runs `command` (default Debug) in the project. */
+/** Detail of the `adomnia:go-debug-start` event Code Studio answers: runs `command` (default Debug) in the project. */
 export interface GoDebugStartDetail {
   goSessionId: string
   command?: 'debug.debug' | 'run.runRace'
@@ -35,12 +35,12 @@ async function findGoSession(service: string | null): Promise<string | null> {
   return useGoIDEStore.getState().activeSessionId ?? (sessions.length === 1 ? sessions[0].id : null)
 }
 
-/** Asks Go Studio to start its active Debug configuration, mounting it (hidden) when never opened. */
+/** Asks Code Studio to start its active Debug configuration, mounting it (hidden) when never opened. */
 export function startGoDebug(goSessionId: string): Promise<void> {
   return startGoCommand(goSessionId, 'debug.debug')
 }
 
-/** Runs a start command of the project's active configuration in Go Studio (Debug, Run with Race Detector). */
+/** Runs a start command of the project's active configuration in Code Studio (Debug, Run with Race Detector). */
 export async function startGoCommand(goSessionId: string, command: NonNullable<GoDebugStartDetail['command']>): Promise<void> {
   const deadline = Date.now() + 15_000
   useAppStore.getState().keepPanel('goide')
@@ -52,9 +52,9 @@ export async function startGoCommand(goSessionId: string, command: NonNullable<G
     })
     if (outcome === null) return
     if (typeof outcome === 'string') throw new DebugRequestError(outcome)
-    await new Promise((resolve) => setTimeout(resolve, 150)) // Go Studio is still mounting
+    await new Promise((resolve) => setTimeout(resolve, 150)) // Code Studio is still mounting
   }
-  throw new DebugRequestError('Go Studio did not start: open the project there and press Debug.')
+  throw new DebugRequestError('Code Studio did not start: open the project there and press Debug.')
 }
 
 /** Resolves once a live debug session of the project exists, or fails if it errors out. */
@@ -104,8 +104,8 @@ export async function ensureDebugSession(session: LiveSession | null, service: s
   const goSessionId = session?.goSessionId ?? await findGoSession(service)
   if (!goSessionId) {
     throw new DebugRequestError(service
-      ? `Open the ${service} project in Go Studio to debug it.`
-      : 'Open the Go project in Go Studio (or link the request with {{service:name}}) to debug it.')
+      ? `Open the ${service} project in Code Studio to debug it.`
+      : 'Open the Go project in Code Studio (or link the request with {{service:name}}) to debug it.')
   }
   if (session) {
     const restart = await confirm({

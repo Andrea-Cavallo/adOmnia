@@ -75,7 +75,7 @@ interface GoStudioMarkdownViewProps {
   editor: ReactNode
 }
 
-/** Editor Markdown di Go Studio: lo stesso rendering del modulo Markdown di adOmnia, aggiornato mentre scrivi. */
+/** Editor Markdown di Code Studio: lo stesso rendering del modulo Markdown di adOmnia, aggiornato mentre scrivi. */
 export function GoStudioMarkdownView({ document, mode, onModeChange, editor }: GoStudioMarkdownViewProps) {
   const openDocument = useGoIDEStore((state) => state.openDocument)
   const path = document.document.relativePath

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { goStudioCollectionExpressions } from './goStudioCollectionInspector'
 
-describe('Go Studio collection inspector', () => {
+describe('Code Studio collection inspector', () => {
   it('uses only side-effect-free Go builtins for selected collections', () => {
     expect(goStudioCollectionExpressions('slice', 'items')).toEqual([{ label: 'Len', expression: 'len(items)' }, { label: 'Cap', expression: 'cap(items)' }])
     expect(goStudioCollectionExpressions('map', 'labels')).toEqual([{ label: 'Len', expression: 'len(labels)' }])

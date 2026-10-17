@@ -11,7 +11,7 @@ import (
 	"adomnia/internal/procutil"
 )
 
-// StartupReport è l'avvio di un servizio misurato da Go Studio.
+// StartupReport è l'avvio di un servizio misurato da Code Studio.
 type StartupReport struct {
 	Target  string            `json:"target"`
 	Ready   bool              `json:"ready"`

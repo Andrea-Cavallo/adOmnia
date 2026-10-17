@@ -18,7 +18,7 @@ export function autoSaveDelayValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 0), 60000) : 0
 }
 
-/** Imposta chi esegue il salvataggio (Go Studio salva con le sue save actions). */
+/** Imposta chi esegue il salvataggio (Code Studio salva con le sue save actions). */
 export function setAutoSaveHandler(next: AutoSaveHandler | null): void {
   handler = next
 }

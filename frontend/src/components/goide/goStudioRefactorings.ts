@@ -11,7 +11,7 @@ interface RefactoringSpec {
   label: string
   /** Famiglia di code action chiesta a gopls. */
   only: string
-  /** Kind accettati: gopls decide cosa è possibile, Go Studio non simula nulla. */
+  /** Kind accettati: gopls decide cosa è possibile, Code Studio non simula nulla. */
   kinds: string[]
   hint: string
 }

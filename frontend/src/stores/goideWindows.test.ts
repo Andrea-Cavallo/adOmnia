@@ -35,7 +35,7 @@ const windowChanged = (sessionId: string, windowId: string, previousWindowId: st
   version: 1, type: 'session.window-changed', sessionId, sequence: 1, timestamp: '', payload: { sessionId, windowId, previousWindowId },
 })
 
-describe('Go Studio window context', () => {
+describe('Code Studio window context', () => {
   it('recognises a detached window only with window, session and windowId', () => {
     expect(goStudioWindowContext('')).toEqual({ windowId: 'main', pinnedSessionId: null })
     expect(goStudioWindowContext('?window=go-studio&session=s1&windowId=go-studio-s1')).toEqual({ windowId: 'go-studio-s1', pinnedSessionId: 's1' })
@@ -44,7 +44,7 @@ describe('Go Studio window context', () => {
   })
 })
 
-describe('Go Studio window ownership (main window)', () => {
+describe('Code Studio window ownership (main window)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useGoIDEWindowsStore.setState({ context: { windowId: 'main', pinnedSessionId: null }, owners: {}, error: null })

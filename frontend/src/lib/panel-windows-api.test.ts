@@ -18,7 +18,7 @@ describe('panel windows', () => {
     expect(detachedPanelOfThisWindow('?window=panel&panel=settings')).toBeNull()
   })
 
-  it('keeps the Hub, settings and Go Studio in the main window', () => {
+  it('keeps the Hub, settings and Code Studio in the main window', () => {
     expect(canDetachPanel('broker')).toBe(true)
     expect(canDetachPanel('welcome')).toBe(false)
     expect(canDetachPanel('goide')).toBe(false)

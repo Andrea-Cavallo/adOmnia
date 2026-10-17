@@ -5,7 +5,7 @@ import { useUiTranslation } from '@/lib/uiI18n'
 import { useAppStore } from '@/stores/app'
 import { Window } from '@wailsio/runtime'
 
-/** Riduci / ingrandisci / chiudi della finestra frameless: usati dalla barra di adOmnia e dalla toolbar di gO Studio. */
+/** Riduci / ingrandisci / chiudi della finestra frameless: usati dalla barra di adOmnia e dalla toolbar di Code Studio. */
 export function WindowControls({ height = 'h-8' }: { height?: string }) {
   const tr = useUiTranslation()
   const port = useServerPort()

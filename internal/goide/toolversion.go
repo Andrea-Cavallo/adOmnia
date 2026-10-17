@@ -249,7 +249,7 @@ func (r *toolResolver) resolve(packagePath, localGo string) (toolResolution, err
 	}
 	if best == "" {
 		return toolResolution{}, &toolIncompatibleError{message: fmt.Sprintf(
-			"%s requires go >= %s; the selected SDK is %s. Select a newer Go SDK (Go → Toolchains) — Go Studio does not download Go toolchains automatically",
+			"%s requires go >= %s; the selected SDK is %s. Select a newer Go SDK (Go → Toolchains) — Code Studio does not download Go toolchains automatically",
 			name, minimumGo, localGo)}
 	}
 	note := fmt.Sprintf("%s %s needs %s; installing %s, the newest compatible with %s", name, latest.Version, latestGo, best, localGo)

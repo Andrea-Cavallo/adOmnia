@@ -3,7 +3,7 @@ import type { Config, Diagnosis } from '../../bindings/adomnia/internal/claudeco
 import { subscribeAgentEvents } from '@/lib/milk-api'
 import { createAgentChatStore } from './agentChat'
 
-/** Claude Code in gO Studio: same ACP client as milk, launched through its official adapter. */
+/** Claude Code in Code Studio: same ACP client as milk, launched through its official adapter. */
 export const useClaudeCodeStore = createAgentChatStore({
   status: () => ClaudeCode.Status(),
   settings: () => ClaudeCode.Settings(),

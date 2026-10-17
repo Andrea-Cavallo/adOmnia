@@ -42,7 +42,7 @@ function toolchainSection(config: GoIDEToolchainSettings['global'] | null | unde
 }
 
 /**
- * Rapporto leggibile (JSON con chiavi stabili) di cosa Go Studio può contattare e con quali impostazioni,
+ * Rapporto leggibile (JSON con chiavi stabili) di cosa Code Studio può contattare e con quali impostazioni,
  * per privacy review e audit. Non contiene chiavi, token, password né percorsi della home.
  */
 export function goStudioSettingsReport(input: GoStudioSettingsReportInput): string {

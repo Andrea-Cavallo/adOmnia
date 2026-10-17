@@ -1,5 +1,5 @@
 // Pannelli laterali Markdown per l'IDE (FIX.md GS-7.4): outline, backlinks e grafo locale.
-// I dati arrivano da Go Studio (ricerca nel progetto e buffer aperti): nessuno stato Hub
+// I dati arrivano da Code Studio (ricerca nel progetto e buffer aperti): nessuno stato Hub
 // (`adomnia.markdown.*`) e nessun backend `internal/markdown`, che restano del rail rimosso.
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import { buildFileLookup, extractMarkdownEdges, noteKey, type MarkdownEdge } from '@/lib/markdownDoc'

@@ -1,5 +1,5 @@
 /**
- * Vecchia persistenza delle scorciatoie Go Studio (`adomnia.goide.keymap` in localStorage,
+ * Vecchia persistenza delle scorciatoie Code Studio (`adomnia.goide.keymap` in localStorage,
  * forma `{keymap, custom}`). Letta una sola volta dalla migrazione v15 delle impostazioni e
  * ancora scritta in doppio per il rollback: la fonte resta la sezione `keymap` delle impostazioni.
  */

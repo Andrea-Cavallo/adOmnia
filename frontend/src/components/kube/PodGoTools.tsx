@@ -13,7 +13,7 @@ const PROFILES = { profile: 'CPU', heap: 'Heap', goroutine: 'Goroutines', allocs
 type Busy = 'debug' | 'profile' | 'trace' | null
 
 /**
- * Go service in a pod: forwards Delve or pprof to a free 127.0.0.1 port and hands it to Go Studio,
+ * Go service in a pod: forwards Delve or pprof to a free 127.0.0.1 port and hands it to Code Studio,
  * which debugs, profiles or traces it against the source of the open project.
  */
 export function PodGoTools({ context, namespace, pod }: { context: string; namespace: string; pod: string }) {
@@ -41,7 +41,7 @@ export function PodGoTools({ context, namespace, pod }: { context: string; names
           ? { action, url: `http://${address}`, seconds: Math.min(30, Number(seconds) || 5), label }
           : { action, url: `http://${address}`, kind: profileKind, seconds: Number(seconds) || 10, label }
       routeToModule('goide', { kind: 'dispatch', eventName: GO_REMOTE_EVENT, detail: request }, {
-        onTimeout: () => setError('Go Studio did not answer: open the service project there and try again.'),
+        onTimeout: () => setError('Code Studio did not answer: open the service project there and try again.'),
       })
       setNotice(`Forwarded ${address} → ${remotePort}. It stays open in Port forwards; stop it there when done.`)
     } catch (problem) {
@@ -60,7 +60,7 @@ export function PodGoTools({ context, namespace, pod }: { context: string; names
             <input value={delvePort} onChange={(e) => setDelvePort(e.target.value.replace(/\D/g, ''))} className={INPUT} inputMode="numeric" />
           </label>
           <button onClick={() => void run('debug')} disabled={busy !== null || !delvePort} className={BUTTON}>
-            {busy === 'debug' ? <Loader2 size={11} className="animate-spin" /> : <Bug size={11} />} Debug in Go Studio
+            {busy === 'debug' ? <Loader2 size={11} className="animate-spin" /> : <Bug size={11} />} Debug in Code Studio
           </button>
         </div>
         <p className="text-[10px] text-text-4">The container runs <span className="font-mono">dlv exec --headless --listen=:{delvePort || '2345'} --accept-multiclient ./app</span>. Stop detaches and leaves the pod running.</p>
@@ -87,7 +87,7 @@ export function PodGoTools({ context, namespace, pod }: { context: string; names
             {busy === 'trace' ? <Loader2 size={11} className="animate-spin" /> : <Activity size={11} />} Capture trace
           </button>
         </div>
-        <p className="text-[10px] text-text-4">Saved in the open Go Studio project and shown in Profile or Trace. Seconds apply to CPU and trace.</p>
+        <p className="text-[10px] text-text-4">Saved in the open Code Studio project and shown in Profile or Trace. Seconds apply to CPU and trace.</p>
       </section>
 
       {error && <p className="break-words text-[10px] text-error">{error}</p>}

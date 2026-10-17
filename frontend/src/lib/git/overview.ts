@@ -1,5 +1,5 @@
 // Shared parsing of the `GitSync.Overview` payload. Used by the Hub Git Sync panel
-// and by the Go Studio Git tool window so both read the repository the same way.
+// and by the Code Studio Git tool window so both read the repository the same way.
 import type { CommitInfo, FileChange } from './types'
 
 export interface GitStatus {

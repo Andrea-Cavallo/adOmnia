@@ -90,7 +90,7 @@ function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSes
   return (
     <span className="flex shrink-0 items-center gap-1 font-sans">
       {location && goSessionId && (
-        <button type="button" title={`Open ${location[1]}:${location[2]} in Go Studio`} onClick={() => void openLocationInGoStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
+        <button type="button" title={`Open ${location[1]}:${location[2]} in Code Studio`} onClick={() => void openLocationInGoStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
           className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">code</button>
       )}
       {tabId && <button type="button" title="Open the request that logged this line" onClick={() => openRequestTab(tabId)} className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">request</button>}
@@ -190,7 +190,7 @@ type KafkaRole = 'kafka-producer' | 'kafka-consumer'
 
 /**
  * Producer or consumer code of a topic: this service's project first, then the other services
- * open in Go Studio (the consumer often lives elsewhere). Analyzes a project only if needed.
+ * open in Code Studio (the consumer often lives elsewhere). Analyzes a project only if needed.
  */
 async function openKafkaCode(topic: string, role: KafkaRole, goSessionIds: string[]): Promise<void> {
   for (const goSessionId of goSessionIds) {
@@ -206,7 +206,7 @@ async function openKafkaCode(topic: string, role: KafkaRole, goSessionIds: strin
     await openLocationInGoStudio(goSessionId, { function: entry.name, relativePath: site.relativePath, line: site.line } satisfies LiveFrame)
     return
   }
-  showEntityNotice(`No ${role === 'kafka-producer' ? 'producer' : 'consumer'} of ${topic} found in the projects open in Go Studio.`)
+  showEntityNotice(`No ${role === 'kafka-producer' ? 'producer' : 'consumer'} of ${topic} found in the projects open in Code Studio.`)
 }
 
 export function LiveMessageList({ messages, run }: { messages: LiveMessage[]; run?: RequestRun | null }) {

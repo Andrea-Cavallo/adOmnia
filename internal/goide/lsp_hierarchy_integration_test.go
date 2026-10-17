@@ -91,7 +91,7 @@ func lineOf(t *testing.T, content, prefix string) int {
 	return 0
 }
 
-// gopls reale: le impostazioni di Go Studio (vulncheck incluso) non producono avvisi di opzioni sconosciute.
+// gopls reale: le impostazioni di Code Studio (vulncheck incluso) non producono avvisi di opzioni sconosciute.
 func TestGoplsAcceptsGoStudioSettings(t *testing.T) {
 	gopls := findGoplsForTest(t)
 	recorder := &eventRecorder{}
@@ -115,7 +115,7 @@ func TestGoplsAcceptsGoStudioSettings(t *testing.T) {
 	for _, line := range lines {
 		lower := strings.ToLower(line)
 		if strings.Contains(lower, "unknown setting") || strings.Contains(lower, "invalid") && strings.Contains(lower, "setting") || strings.Contains(lower, "vulncheck") && strings.Contains(lower, "error") {
-			t.Fatalf("gopls rejected a Go Studio setting: %s", line)
+			t.Fatalf("gopls rejected a Code Studio setting: %s", line)
 		}
 	}
 }

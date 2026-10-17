@@ -7,7 +7,7 @@ import { recentLocations, recordNavigation, stepNavigation, toggleBookmarkIn } f
 
 const at = (relativePath: string, line: number, column = 1) => ({ relativePath, line, column })
 
-describe('Go Studio navigation history', () => {
+describe('Code Studio navigation history', () => {
   it('merges small moves in the same file and records real jumps', () => {
     let history = recordNavigation({ entries: [], index: -1 }, at('main.go', 10))
     history = recordNavigation(history, at('main.go', 14))

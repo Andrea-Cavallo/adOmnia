@@ -10,12 +10,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// Copilot espone a React l'integrazione GitHub Copilot di gO Studio. La logica vive in internal/copilot.
+// Copilot espone a React l'integrazione GitHub Copilot di Code Studio. La logica vive in internal/copilot.
 type Copilot struct {
 	manager *copilot.Manager
 }
 
-// NewCopilot crea il servizio e lo collega ai documenti di Go Studio: lo stesso ciclo di vita di gopls.
+// NewCopilot crea il servizio e lo collega ai documenti di Code Studio: lo stesso ciclo di vita di gopls.
 func NewCopilot(goIDE *GoIDE) *Copilot {
 	directory := dataDir()
 	manager := copilot.NewManager(copilot.NewSettingsStore(directory), copilot.NewInstaller(directory))

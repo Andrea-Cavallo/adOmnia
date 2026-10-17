@@ -1,7 +1,7 @@
 import type { GoStudioChatPane } from '@/stores/goStudioAssistant'
 
 /**
- * Hub AI di Go Studio: un solo bottone, tre provider (Copilot, milk, Claude Code).
+ * Hub AI di Code Studio: un solo bottone, tre provider (Copilot, milk, Claude Code).
  * Qui stanno i mapping puri tra lo stato dei provider e i pallini della UI;
  * i dati vivono negli store `copilot`, `milk` e `claudeCode`.
  */

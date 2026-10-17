@@ -173,7 +173,7 @@ func TestProcessEnvironmentInheritsCorporateVariablesWithoutOverriding(t *testin
 		}
 	}
 	if values["GOTOOLCHAIN"] != "local" {
-		t.Fatalf("senza scelta esplicita gO Studio non deve scaricare toolchain: GOTOOLCHAIN=%q", values["GOTOOLCHAIN"])
+		t.Fatalf("senza scelta esplicita Code Studio non deve scaricare toolchain: GOTOOLCHAIN=%q", values["GOTOOLCHAIN"])
 	}
 	t.Setenv("GOTOOLCHAIN", "auto")
 	environment, _ = manager.Environment("s", nil)

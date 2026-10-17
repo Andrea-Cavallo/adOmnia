@@ -89,7 +89,7 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
     const store = useDevSessionStore.getState()
     const session = store.sessions[run.sessionId]
     const tab = useTabsStore.getState().tabs.find((item) => item.id === run.tabId)
-    if (!session?.goSessionId) return setState({ busy: false, text: 'The service is not a Go Studio project: open it there to save a reproduction.', error: true })
+    if (!session?.goSessionId) return setState({ busy: false, text: 'The service is not a Code Studio project: open it there to save a reproduction.', error: true })
     setState({ busy: true, text: '' })
     try {
       const request = tab

@@ -58,7 +58,7 @@ const MAKEFILE: monaco.languages.IMonarchLanguage = {
   },
 }
 
-/** Registra una sola volta i linguaggi di supporto di Go Studio. */
+/** Registra una sola volta i linguaggi di supporto di Code Studio. */
 export function registerGoStudioExtraLanguages(): void {
   if (registered) return
   registered = true

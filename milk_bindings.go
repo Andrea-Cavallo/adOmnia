@@ -8,7 +8,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// Milk espone a React l'integrazione milk di Go Studio. La logica vive in internal/milk.
+// Milk espone a React l'integrazione milk di Code Studio. La logica vive in internal/milk.
 type Milk struct {
 	manager    *milk.Manager
 	mcpServers *milk.MCPServerStore
@@ -66,7 +66,7 @@ func (m *Milk) Restart() error { return m.manager.Restart() }
 // Log restituisce le ultime righe di log del processo.
 func (m *Milk) Log() []string { return m.manager.Log() }
 
-// SetActiveWorkspace comunica il progetto attivo in Go Studio.
+// SetActiveWorkspace comunica il progetto attivo in Code Studio.
 func (m *Milk) SetActiveWorkspace(root string) { m.manager.SetActiveWorkspace(root) }
 
 // Prompt invia un turno di chat. I delta arrivano come evento milk.chat.

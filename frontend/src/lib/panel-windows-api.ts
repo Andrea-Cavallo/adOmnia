@@ -10,7 +10,7 @@ const PANEL_WINDOW_CLOSE_REQUESTED = 'panelwindow:close-requested'
 
 /**
  * Modules that cannot live in their own window: the Hub, the settings pages (one shared settings
- * model) and Go Studio, whose projects already move to their own windows (File → Open Project in New Window).
+ * model) and Code Studio, whose projects already move to their own windows (File → Open Project in New Window).
  */
 const NOT_DETACHABLE: ReadonlySet<RailItem> = new Set<RailItem>(['welcome', 'settings', 'workspace', 'themes', 'templates', 'plugins', 'goide'])
 

@@ -51,7 +51,7 @@ const config: Config = {
         success: 'var(--color-success)',
         warning: 'var(--color-warning)',
         error: 'var(--color-error)',
-        // Alias usato da Go Studio e da altri pannelli: stesso token di error.
+        // Alias usato da Code Studio e da altri pannelli: stesso token di error.
         danger: 'var(--color-error)',
         'on-accent': 'var(--color-on-accent, #ffffff)',
         info: 'var(--color-info)',

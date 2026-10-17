@@ -3,7 +3,7 @@ import * as GoIDEBindings from '../../../bindings/adomnia/goide'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { isVaultRef, resolveVaultReferences } from '@/lib/vaultRefs'
 
-// Keeps Go Studio runs in sync with the active adOmnia environment: its enabled
+// Keeps Code Studio runs in sync with the active adOmnia environment: its enabled
 // variables become process environment for every run (run entries still win).
 let started = false
 

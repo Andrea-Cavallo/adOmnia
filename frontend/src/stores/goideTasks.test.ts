@@ -3,7 +3,7 @@ import { runningGoIDETasks, useGoIDETasksStore, withGoIDETask } from './goideTas
 
 beforeEach(() => useGoIDETasksStore.setState({ tasks: {} }))
 
-describe('Go IDE background tasks', () => {
+describe('Code Studio background tasks', () => {
   it('publishes a running task and completes it in the owning session', async () => {
     let release!: () => void
     const pending = new Promise<void>((resolve) => { release = resolve })

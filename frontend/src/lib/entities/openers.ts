@@ -33,7 +33,7 @@ export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): st
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }
 
 async function openInGo(file: string, line: number, sessionId?: string): Promise<void> {
-  // From a module window, the code opens in the main window's Go Studio.
+  // From a module window, the code opens in the main window's Code Studio.
   if (detachedPanelOfThisWindow() !== null) return showModule('goide', { kind: 'open-location', file, line, sessionId })
   if (sessionId) {
     if (!useGoIDEStore.getState().sessions.some(session => session.id === sessionId)) throw new Error('The source project is no longer open')

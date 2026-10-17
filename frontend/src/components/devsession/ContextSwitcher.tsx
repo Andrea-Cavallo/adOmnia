@@ -21,7 +21,7 @@ export function flowItems(session: LiveSession | null, run: RequestRun | null, o
     items.push({
       id: 'code', icon: where ? <Bug size={14} className="text-warning" /> : <Code2 size={14} />,
       title: session.service,
-      detail: where ? `${basename(where.relativePath || where.file || '')}:${where.line} · ${where.function}()` : `Go Studio · ${session.kind === 'debug' ? 'debugging' : 'running'}${session.port ? ` · :${session.port}` : ''}`,
+      detail: where ? `${basename(where.relativePath || where.file || '')}:${where.line} · ${where.function}()` : `Code Studio · ${session.kind === 'debug' ? 'debugging' : 'running'}${session.port ? ` · :${session.port}` : ''}`,
       open: () => void openFrameInGoStudio(session),
     })
   }

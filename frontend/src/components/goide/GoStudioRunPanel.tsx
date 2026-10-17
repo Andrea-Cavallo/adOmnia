@@ -263,7 +263,7 @@ export const GoStudioRunPanel = memo(function GoStudioRunPanel({ session, fixedV
   const hide = () => logsOnly ? useStudioTools.setState((state) => ({ views: { ...state.views, [toolKey(sessionId, 'logs')]: { ...state.views[toolKey(sessionId, 'logs')], open: false } } })) : useGoIDEStore.getState().updateLayout({ bottomOpen: false })
 
   return (
-    <section aria-label="Go Studio tool window" className="flex h-full min-h-0 flex-col">
+    <section aria-label="Code Studio tool window" className="flex h-full min-h-0 flex-col">
       <div className="go-studio-tool-header">
         <span className="go-studio-tool-title pr-2">{logsOnly ? 'Service logs' : TOOL_WINDOW_TITLES[view]}</span>
         {view === 'problems' && <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${counts.errors || buildProblems.length ? 'bg-danger/15 text-danger' : counts.warnings ? 'bg-warning/15 text-warning' : 'bg-surface-3 text-text-3'}`}>{problemCount}</span>}

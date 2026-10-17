@@ -70,7 +70,7 @@ export function GoStudioRuntimeEnrichment({ open, session, onClose }: GoStudioRu
           {!report && !loading && (
             <div className="rounded border border-border-1 bg-surface-0 p-4 text-[11px] leading-5 text-text-3">
               <Activity size={14} className="mb-2 text-text-4" />
-              <p className="m-0">Run or debug the service from Go Studio, then send it requests. The runtime view shows which components actually ran, how often, how slow, with what errors, the dynamic edges (request → file / query / topic) and the dependencies that never appeared.</p>
+              <p className="m-0">Run or debug the service from Code Studio, then send it requests. The runtime view shows which components actually ran, how often, how slow, with what errors, the dynamic edges (request → file / query / topic) and the dependencies that never appeared.</p>
             </div>
           )}
 

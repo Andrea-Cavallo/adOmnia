@@ -73,7 +73,7 @@ func (l *liveEvents) wait(t *testing.T, eventType string) devsession.Event {
 
 // The Phase 1 loop end to end with a real Go service under a real Delve:
 // Run with Debug → the API request reaches the breakpoint → the manager ties
-// the pause to the request → Continue from outside Go Studio → HTTP 200, with
+// the pause to the request → Continue from outside Code Studio → HTTP 200, with
 // the service's log line tied to the request by its correlation id.
 func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
 	delve := findDelveForTest(t)

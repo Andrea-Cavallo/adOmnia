@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/app'
 import { MAIN_GO_STUDIO_WINDOW, goStudioWindowContext } from '@/lib/goide-window-api'
 
 interface GoStudioTitlebar {
-  /** Vero se la toolbar di gO Studio fa da barra della finestra (finestra frameless e gO massimizzato o separato). */
+  /** Vero se la toolbar di Code Studio fa da barra della finestra (finestra frameless e gO massimizzato o separato). */
   active: boolean
   props: { style?: CSSProperties; onDoubleClick?: (event: React.MouseEvent) => void }
 }
@@ -14,7 +14,7 @@ async function toggleMaximise(): Promise<void> {
   WindowToggleMaximise()
 }
 
-/** Come JetBrains: con gO Studio massimizzato la toolbar prende il posto della barra del titolo. */
+/** Come JetBrains: con Code Studio massimizzato la toolbar prende il posto della barra del titolo. */
 const IS_DETACHED_WINDOW = goStudioWindowContext().windowId !== MAIN_GO_STUDIO_WINDOW
 
 export function useGoStudioTitlebar(): GoStudioTitlebar {

@@ -111,7 +111,7 @@ export function saveLastRepo(path: string): void {
   }
 }
 
-/** Evento con cui altri moduli (es. Go Studio) chiedono a Git Studio di mostrare un repository. */
+/** Evento con cui altri moduli (es. Code Studio) chiedono a Git Studio di mostrare un repository. */
 export const GIT_FOCUS_REPO_EVENT = 'adomnia:git-focus-repo'
 
 function sameRepoPath(left: string, right: string): boolean {

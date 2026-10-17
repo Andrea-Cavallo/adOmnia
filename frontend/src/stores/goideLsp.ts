@@ -517,7 +517,7 @@ export function diagnosticCounts(reports: Record<string, GoIDEDiagnosticsReport>
   return { errors, warnings }
 }
 
-/** Sezione Go Studio di adomnia-settings.json: solo preferenze globali, mai stato dei progetti. */
+/** Sezione Code Studio di adomnia-settings.json: solo preferenze globali, mai stato dei progetti. */
 export interface GoStudioSettingsExport {
   settings: GoIDELanguageServerSettings
   preferences: GoIDEEditorPreferences
@@ -538,7 +538,7 @@ function knownValues<T extends object>(defaults: T, value: unknown): Partial<T> 
   }).map((key) => [key, source[key]])) as Partial<T>
 }
 
-/** Applica la sezione Go Studio importata; restituisce false se il file non ne contiene una valida. */
+/** Applica la sezione Code Studio importata; restituisce false se il file non ne contiene una valida. */
 export function importGoStudioSettings(value: unknown, activeSessionId: string | null): boolean {
   if (!value || typeof value !== 'object') return false
   const section = value as Partial<Record<keyof GoStudioSettingsExport, unknown>>

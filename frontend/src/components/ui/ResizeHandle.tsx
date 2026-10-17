@@ -16,7 +16,7 @@ export interface ResizeHandleProps {
   orientation?: 'vertical' | 'horizontal'
   className?: string
   /**
-   * `splitter` is the divider between Go Studio islands: 10px hit area straddling
+   * `splitter` is the divider between Code Studio islands: 10px hit area straddling
    * the island border and a 2px line that stays visible at rest in every skin.
    * `default` keeps the classic centered hairline with the hover grip.
    */

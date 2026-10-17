@@ -3,7 +3,7 @@ import { closeGoIDEDocument, openGoIDEDocument } from '@/lib/goide-api'
 import { useGoIDEStore } from '@/stores/goide'
 
 /**
- * EditorConfig (https://editorconfig.org) per Go Studio: indentazione, spazi in coda e
+ * EditorConfig (https://editorconfig.org) per Code Studio: indentazione, spazi in coda e
  * newline finale. ponytail: vale il solo `.editorconfig` nella radice del progetto; quelli
  * annidati nelle sottocartelle vanno aggiunti quando servono (serve risalire l'albero per file).
  */

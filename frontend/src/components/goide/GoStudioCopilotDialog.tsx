@@ -61,7 +61,7 @@ function ServerSection() {
   )
 }
 
-/** Impostazioni di GitHub Copilot in gO Studio: account (anche Enterprise), progetto, rete, server. */
+/** Impostazioni di GitHub Copilot in Code Studio: account (anche Enterprise), progetto, rete, server. */
 export function GoStudioCopilotDialog({ projectRoot, projectName }: GoStudioCopilotDialogProps) {
   const open = useCopilotStore((state) => state.dialogOpen)
   const settings = useCopilotStore((state) => state.settings)

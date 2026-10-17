@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { goStudioUnwrapCandidates, goStudioUnwrapExpression, isNilGoStudioDebugValue } from './goStudioErrorChain'
 
-describe('Go Studio error chain inspector', () => {
+describe('Code Studio error chain inspector', () => {
   it('uses an explicit interface assertion for one Unwrap level', () => {
     expect(goStudioUnwrapExpression('requestErr')).toBe('(requestErr).(interface{ Unwrap() error }).Unwrap()')
   })

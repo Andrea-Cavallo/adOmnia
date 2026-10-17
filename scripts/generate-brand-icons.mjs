@@ -16,7 +16,7 @@ const SLUGS = [
   // Linguaggi dell'IDE Platform: ogni language contribution sceglie qui la propria icona.
   'openjdk', 'kotlin', 'php', 'ruby', 'dotnet', 'cplusplus', 'c', 'swift', 'dart', 'scala', 'elixir',
   'haskell', 'lua', 'zig', 'gradle', 'apachemaven',
-  // Agenti AI di gO Studio.
+  // Agenti AI di Code Studio.
   'claude',
 ]
 

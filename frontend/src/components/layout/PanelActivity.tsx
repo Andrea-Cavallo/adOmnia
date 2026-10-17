@@ -1,7 +1,7 @@
 import { createContext, useContext, useRef } from 'react'
 
 /**
- * Kept-alive panels (API Workspace, Go Studio) stay mounted while hidden so
+ * Kept-alive panels (API Workspace, Code Studio) stay mounted while hidden so
  * switching tools never loses state. Their window-level shortcuts must only
  * fire while visible: they read this context.
  */

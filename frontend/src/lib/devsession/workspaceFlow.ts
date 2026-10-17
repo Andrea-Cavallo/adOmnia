@@ -9,7 +9,7 @@ import { useDevSessionStore } from '@/stores/devSession'
 import { linkedUrlForRoute } from './codeToApi'
 import { streamSessionToLogInspector } from './logInspectorSource'
 
-/** Live services (run or debug, not ended) started from one Go Studio project. */
+/** Live services (run or debug, not ended) started from one Code Studio project. */
 export function workspaceServices(sessions: Record<string, LiveSession>, goSessionId: string): LiveSession[] {
   return Object.values(sessions)
     .filter((session) => session.goSessionId === goSessionId && !session.endedAt)

@@ -38,7 +38,7 @@ async function run(action: () => Promise<GoIDEStudioWorkspaces>, afterApply = sh
   }
 }
 
-/** Cambia workspace Go Studio: i progetti degli altri restano aperti, con i loro processi. */
+/** Cambia workspace Code Studio: i progetti degli altri restano aperti, con i loro processi. */
 export function switchGoStudioWorkspace(id: string): Promise<boolean> {
   if (id === useGoIDEStore.getState().activeWorkspaceId) return Promise.resolve(true)
   return run(() => activateGoIDEStudioWorkspace(id))

@@ -34,7 +34,7 @@ const (
 )
 
 // WorkspaceID è un hash stabile del percorso reale del progetto: il recupero resta del progetto
-// anche se la sessione Go Studio viene chiusa e riaperta con un altro ID.
+// anche se la sessione Code Studio viene chiusa e riaperta con un altro ID.
 func WorkspaceID(realPath string) string {
 	path := filepath.ToSlash(filepath.Clean(realPath))
 	if caseInsensitivePaths {

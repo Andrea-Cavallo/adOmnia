@@ -11,7 +11,7 @@ function projectFile(file: string, sessions: Sessions, activeSessionId: string |
   return relative && sessionId ? { sessionId, relativePath: file.replace(/\\/g, '/').replace(/^\.\//, '') } : null
 }
 
-/** Open the span's code in Go Studio: inside an open project when possible, else as an external file. */
+/** Open the span's code in Code Studio: inside an open project when possible, else as an external file. */
 export async function openSpanSource(file: string, line: number): Promise<void> {
   const [{ useGoIDEStore }, { useAppStore }] = await Promise.all([import('@/stores/goide'), import('@/stores/app')])
   const store = useGoIDEStore.getState()
@@ -36,7 +36,7 @@ export async function breakAtSpanSource(file: string, line: number): Promise<str
   if (!store.initialized) await store.initialize()
   const current = useGoIDEStore.getState()
   const match = projectFile(file, current.sessions, current.activeSessionId)
-  if (!match) return 'Open the project of this service in Go Studio to set a breakpoint in it.'
+  if (!match) return 'Open the project of this service in Code Studio to set a breakpoint in it.'
   const debug = useGoIDEDebugStore.getState()
   const already = (debug.breakpoints[match.sessionId]?.[match.relativePath] ?? []).some((item) => item.line === line)
   if (!already) await debug.toggleBreakpoint(match.sessionId, match.relativePath, line)

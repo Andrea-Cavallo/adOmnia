@@ -22,7 +22,7 @@ function KindIcon({ kind }: { kind: string }) {
 
 /**
  * Servizi usati dal progetto (da go.mod) e scorciatoie verso i moduli adOmnia che li gestiscono.
- * Integrazione a senso unico: Go Studio apre i moduli con il contesto, nulla viene avviato da solo.
+ * Integrazione a senso unico: Code Studio apre i moduli con il contesto, nulla viene avviato da solo.
  */
 export function GoStudioProjectServicesDialog({ sessionId, projectName, open, onClose }: GoStudioProjectServicesDialogProps) {
   const [services, setServices] = useState<GoStudioProjectService[] | null>(null)

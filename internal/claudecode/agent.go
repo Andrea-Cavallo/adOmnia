@@ -1,4 +1,4 @@
-// Package claudecode collega Claude Code a gO Studio come agente ACP. Il client
+// Package claudecode collega Claude Code a Code Studio come agente ACP. Il client
 // (processo, sessioni, chat, permessi) è quello di milk: qui c'è solo come avviarlo.
 package claudecode
 

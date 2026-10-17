@@ -14,7 +14,7 @@ beforeEach(() => {
   })
 })
 
-describe('Go Studio race history', () => {
+describe('Code Studio race history', () => {
   it('keeps race sessions local to their project and refreshes a live source', () => {
     saveRaceHistory(project, [{ id: 'run-1', label: 'test run-1', text: race, at: 10 }])
     saveRaceHistory(project, [{ id: 'run-1', label: 'test run-1', text: `${race}\nmore output`, at: 20 }])

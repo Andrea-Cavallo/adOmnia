@@ -12,9 +12,8 @@ function StudioIcon({ target }: { target: string }) {
   return <svg className="hub-glyph" viewBox="0 0 64 64" width="58" height="58" aria-hidden="true" focusable="false">
     <g fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
       {target === 'goide' && <>
-        <path d="M24 20v25c0 8-6 12-14 8M8 49l-2-3" strokeDasharray=".1 5" strokeWidth="3.5"/>
-        <circle cx="15" cy="29" r="10" strokeDasharray=".1 5" strokeWidth="3.5"/>
-        <path d="M46 12a20 20 0 0 0-15 29M35 47a20 20 0 0 0 14 3M56 44l3-5M61 29a20 20 0 0 0-10-15"/>
+        <path d="M22 18L8 32l14 14M42 18l14 14-14 14"/>
+        <path d="M37 12L27 52" strokeDasharray=".1 5" strokeWidth="3.5"/>
       </>}
       {target === 'collections' && <>
         <path d="M8 23a17 17 0 0 1 25-12M36 17v18M38 45a17 17 0 0 0 21-4"/>

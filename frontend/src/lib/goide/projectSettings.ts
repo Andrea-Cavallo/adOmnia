@@ -4,7 +4,7 @@ import type { EditorConfigProperties } from '@/components/goide/goStudioEditorCo
  * `.adomnia/settings.json`: impostazioni di progetto in JSON con schema, da committare.
  * Livelli: utente (le impostazioni dell'app, salvate come oggi) poi questo file, che vince.
  * Solo chiavi con effetto reale: ogni sezione qui sotto è agganciata a un consumer vero
- * (editor di Go Studio, indentazione, scorciatoie).
+ * (editor di Code Studio, indentazione, scorciatoie).
  */
 
 export const PROJECT_SETTINGS_PATH = '.adomnia/settings.json'
@@ -75,7 +75,7 @@ const BINDING_KEYS = new Set(['key', 'mod', 'shift', 'alt', 'when'])
 export const PROJECT_SETTINGS_JSON_SCHEMA = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   title: 'adOmnia project settings',
-  description: 'Project settings for adOmnia Go Studio, layered over the user settings. Commit this file to share the setup with the team.',
+  description: 'Project settings for adOmnia Code Studio, layered over the user settings. Commit this file to share the setup with the team.',
   type: 'object',
   additionalProperties: false,
   required: ['format', 'version'],

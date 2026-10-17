@@ -1,5 +1,5 @@
 // Line context: what the code under the cursor is in the running system. Pure, from the project's
-// architecture report; the Go Studio "Context" pane adds the runtime facts (live requests, SQL,
+// architecture report; the Code Studio "Context" pane adds the runtime facts (live requests, SQL,
 // messages, tests, diagnostics, Runtime Lens) for the items found here.
 import type { GoIDEArchitecture, GoIDEArchEntry } from '@/lib/goide-api'
 

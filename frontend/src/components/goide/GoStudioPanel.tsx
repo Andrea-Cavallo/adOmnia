@@ -35,11 +35,11 @@ import { closeGoIDESessionWindow } from '@/lib/goide-window-api'
 import { GoStudioWorkspace } from './GoStudioWorkspace'
 import { GoStudioMenuBar, type GoStudioCommandState } from './GoStudioMenuBar'
 import { GoStudioWorkspaceSwitcher } from './GoStudioWorkspaceSwitcher'
-// Font sans della UI di Go Studio, locale via @fontsource: il codice resta sul font mono dell'utente.
+// Font sans della UI di Code Studio, locale via @fontsource: il codice resta sul font mono dell'utente.
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
-// Font mono di codice, console e terminale (primo in --font-mono): locale e caricato solo con Go Studio.
+// Font mono di codice, console e terminale (primo in --font-mono): locale e caricato solo con Code Studio.
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 import './goStudioChrome.css'
@@ -213,7 +213,7 @@ export function GoStudioPanel() {
   const toggleGoStudioMaximized = useAppStore((state) => state.toggleGoStudioMaximized)
   const zen = useAppStore((state) => state.goStudioZen)
   const setZen = useAppStore((state) => state.setGoStudioZen)
-  // Zen Mode: nasconde la chrome di Go Studio e chiude i pannelli; all'uscita li ripristina com'erano.
+  // Zen Mode: nasconde la chrome di Code Studio e chiude i pannelli; all'uscita li ripristina com'erano.
   const toggleZen = () => {
     const { projectOpen, structureOpen, bottomOpen } = store.layout
     const anyOpen = projectOpen || structureOpen || bottomOpen
@@ -359,7 +359,7 @@ export function GoStudioPanel() {
       void (async () => {
         try {
           const store = useGoIDEStore.getState()
-          if (!store.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Go Studio.')
+          if (!store.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Code Studio.')
           if (store.activeSessionId !== detail.goSessionId) await store.selectSession(detail.goSessionId)
           await new Promise((resolve) => setTimeout(resolve, 60)) // i comandi leggono la sessione appena selezionata
           const command = detail.command ?? 'debug.debug'
@@ -699,7 +699,7 @@ export function GoStudioPanel() {
       title: 'Trust this folder?',
       message: `${activeSession.project.rootPath}
 
-Trusting lets Go Studio run gopls, go build, tests, the debugger and the terminal for this project. Only trust code you know. You can still browse and edit files without trusting it.`,
+Trusting lets Code Studio run gopls, go build, tests, the debugger and the terminal for this project. Only trust code you know. You can still browse and edit files without trusting it.`,
       confirmLabel: 'Trust Folder',
       cancelLabel: 'Browse Only',
     }).then((approved) => { if (approved) void authorize(true) })
@@ -924,7 +924,7 @@ Trusting lets Go Studio run gopls, go build, tests, the debugger and the termina
   const openRealPaths = new Set(store.sessions.map((session) => session.project.realPath))
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))
   const mainMenu = <GoStudioMenuBar state={commandState} recentProjects={store.recentProjects} openProjectPaths={workspaceSessions.map((session) => session.project.realPath)} onCommand={runCommand} onOpenRecent={(path) => void store.openProject(path)} />
-  const menuBar = <div role="toolbar" aria-label="Go Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /><GoStudioWindowControls /></div>
+  const menuBar = <div role="toolbar" aria-label="Code Studio toolbar" {...titlebar.props} className={`flex h-12 shrink-0 items-center gap-1 pl-2 ${titlebar.active ? 'go-studio-titlebar' : 'pr-2'}`}>{mainMenu}<span className="flex-1" /><GoStudioWorkspaceSwitcher /><GoStudioWindowControls /></div>
   const sharedDialogs = <><CreateProjectDialog open={createOpen} onClose={() => setCreateOpen(false)} /><GoStudioCloneDialog open={cloneOpen} onClose={() => setCloneOpen(false)} /><GoStudioShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} /><GoStudioSettingsDialog open={settingsOpen} sessionId={store.activeSessionId} onCommand={runCommandStable} onClose={() => setSettingsOpen(false)} /></>
 
   const windowError = windows.error && <ErrorBanner message={windows.error} onClose={windows.clearError} />

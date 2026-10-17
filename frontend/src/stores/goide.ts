@@ -173,17 +173,17 @@ function loadLayout(): GoIDELayout {
   }
 }
 
-/** Sessioni del workspace Go Studio indicato; quelle senza workspace appartengono al predefinito. */
+/** Sessioni del workspace Code Studio indicato; quelle senza workspace appartengono al predefinito. */
 export function sessionsInWorkspace(sessions: readonly GoIDESession[], workspaceId: string): GoIDESession[] {
   return sessions.filter((session) => (session.workspaceId || DEFAULT_STUDIO_WORKSPACE_ID) === workspaceId)
 }
 
 export interface GoIDEState {
-  /** Tutte le sessioni aperte, di ogni workspace Go Studio: l'interfaccia mostra solo quelle del workspace attivo. */
+  /** Tutte le sessioni aperte, di ogni workspace Code Studio: l'interfaccia mostra solo quelle del workspace attivo. */
   sessions: GoIDESession[]
   recentProjects: GoIDERecentProject[]
   activeSessionId: string | null
-  /** Workspace Go Studio, indipendenti dai workspace API di adOmnia. */
+  /** Workspace Code Studio, indipendenti dai workspace API di adOmnia. */
   studioWorkspaces: GoIDEStudioWorkspace[]
   activeWorkspaceId: string
   capabilities: GoIDECapabilities | null

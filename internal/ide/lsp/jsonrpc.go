@@ -1,4 +1,4 @@
-// Package lsp implementa il sottoinsieme del Language Server Protocol usato da Go Studio:
+// Package lsp implementa il sottoinsieme del Language Server Protocol usato da Code Studio:
 // framing JSON-RPC su stdio, tipi del protocollo e conversioni di posizione UTF-16.
 package lsp
 

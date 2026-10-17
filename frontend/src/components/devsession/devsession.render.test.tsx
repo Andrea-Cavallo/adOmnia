@@ -56,7 +56,7 @@ describe('live session UI', () => {
     expect(html).toContain('at breakpoint')
   })
 
-  it('hides the global bar inside Go Studio, which has its own debugger toolbar', () => {
+  it('hides the global bar inside Code Studio, which has its own debugger toolbar', () => {
     seed()
     useAppStore.setState({ activeRail: 'goide' })
     expect(renderToStaticMarkup(<DebugBar />)).toBe('')
@@ -66,7 +66,7 @@ describe('live session UI', () => {
     seed()
     const html = renderToStaticMarkup(<LiveResponseFrame tabId="tab-1" loading><p>response</p></LiveResponseFrame>)
     expect(html).toContain('Paused at breakpoint')
-    expect(html).toContain('Open in Go Studio')
+    expect(html).toContain('Open in Code Studio')
     expect(html).toContain('Waiting for debugger')
     expect(html).not.toContain('<p>response</p>')
   })

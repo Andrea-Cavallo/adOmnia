@@ -1,5 +1,5 @@
 // Absolute paths reported by running code (stack frames, OpenTelemetry code.filepath) mapped
-// back to a file of an open Go Studio project.
+// back to a file of an open Code Studio project.
 
 /** Project-relative path when the file lives under one of the open project roots. */
 export function relativeToRoots(file: string, roots: readonly { id: string; root: string }[]): { sessionId: string; relativePath: string } | null {

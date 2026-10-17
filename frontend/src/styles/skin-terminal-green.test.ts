@@ -23,7 +23,7 @@ describe('Terminal Green skin and hub', () => {
   it('uses the editorial hub without the decorative mascot or Bug Hunt replay action', () => {
     expect(welcomeSource).not.toContain('<HubMascot />')
     expect(welcomeSource).toContain('hub-studio')
-    expect(welcomeSource).toContain('gO Studio')
+    expect(welcomeSource).toContain('Code Studio')
     expect(welcomeSource).not.toContain('data-hub-polaroid')
     expect(welcomeSource).not.toContain("tr('your local toolbox' as UiMessage)")
     expect(welcomeSource).not.toContain("tr('Replay Bug Hunt')")

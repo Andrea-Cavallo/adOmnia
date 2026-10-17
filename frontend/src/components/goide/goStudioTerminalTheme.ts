@@ -3,7 +3,7 @@ import type { ITheme } from '@xterm/xterm'
 
 /**
  * Temi xterm allineati ai token di `styles/globals.css` e al tema Monaco, così
- * il terminale non sembra un widget incollato dentro Go Studio. Lo sfondo è quello delle isole.
+ * il terminale non sembra un widget incollato dentro Code Studio. Lo sfondo è quello delle isole.
  */
 const darkTheme: ITheme = {
   background: '#11171D',

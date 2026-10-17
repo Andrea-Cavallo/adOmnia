@@ -1,4 +1,4 @@
-// Package goidewindow possiede le finestre native separate di Go Studio.
+// Package goidewindow possiede le finestre native separate di Code Studio.
 //
 // Ogni finestra mostra un solo progetto (sessione). Il backend resta unico e
 // condiviso: la finestra ospita soltanto un frontend con i propri buffer, per
@@ -30,7 +30,7 @@ type entry struct {
 	allowClose bool
 }
 
-// Manager crea, mette a fuoco e chiude le finestre Go Studio separate.
+// Manager crea, mette a fuoco e chiude le finestre Code Studio separate.
 type Manager struct {
 	app       *application.App
 	onClosed  func(windowID string)
@@ -42,7 +42,7 @@ type Manager struct {
 
 // New crea il manager. onClosed viene chiamata a finestra chiusa, per restituire
 // le sue sessioni alla finestra principale. Con frameless le finestre nascono senza
-// barra di sistema: la toolbar di gO Studio fa da barra del titolo.
+// barra di sistema: la toolbar di Code Studio fa da barra del titolo.
 func New(app *application.App, frameless bool, onClosed func(windowID string)) *Manager {
 	return &Manager{app: app, onClosed: onClosed, frameless: frameless, windows: make(map[string]*entry)}
 }
@@ -77,7 +77,7 @@ func (m *Manager) Open(sessionID, projectName string) (string, error) {
 	query := url.Values{"window": {"go-studio"}, "session": {sessionID}, "windowId": {windowID}}
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      windowID,
-		Title:     strings.TrimSpace(projectName + " · Go Studio · adOmnia"),
+		Title:     strings.TrimSpace(projectName + " · Code Studio · adOmnia"),
 		Width:     1400,
 		Height:    900,
 		MinWidth:  900,

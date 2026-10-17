@@ -19,7 +19,7 @@ async function fileText(sessionId: string, relativePath: string): Promise<string
   return document.content
 }
 
-/** Importa una collection del progetto nell'API Workspace di adOmnia e resta in Go Studio. */
+/** Importa una collection del progetto nell'API Workspace di adOmnia e resta in Code Studio. */
 export async function sendFileToApiWorkspace(sessionId: string, relativePath: string): Promise<void> {
   const name = relativePath.slice(relativePath.lastIndexOf('/') + 1)
   try {

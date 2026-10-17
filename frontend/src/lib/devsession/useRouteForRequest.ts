@@ -4,7 +4,7 @@ import { findRoute, type RouteMatch } from './routeMatch'
 
 /**
  * The Go handler that serves a request, from the Developer Context of the
- * open gO projects. Loaded lazily: the API workspace never pulls Go Studio
+ * open gO projects. Loaded lazily: the API workspace never pulls Code Studio
  * into its own bundle.
  */
 export function useRouteForRequest(method: string, resolvedUrl: string, preferGoSessionId?: string): RouteMatch | null {

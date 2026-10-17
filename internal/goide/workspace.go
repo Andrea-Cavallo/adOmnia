@@ -30,7 +30,7 @@ func NewWorkspaceManager(languages *language.Registry) *WorkspaceManager {
 	return &WorkspaceManager{sessions: make(map[SessionID]Session), languages: languages}
 }
 
-// OpenProject registra una cartella locale nel workspace Go Studio indicato, senza eseguire comandi.
+// OpenProject registra una cartella locale nel workspace Code Studio indicato, senza eseguire comandi.
 // Lo stesso progetto può essere aperto in workspace diversi: ciascuno ha la propria sessione.
 func (m *WorkspaceManager) OpenProject(path, workspaceID string) (Session, error) {
 	root, realRoot, err := resolveProjectRoot(path)
@@ -82,7 +82,7 @@ func (m *WorkspaceManager) GetSession(id SessionID) (Session, error) {
 	session, ok := m.sessions[id]
 	m.mu.RUnlock()
 	if !ok {
-		return Session{}, fmt.Errorf("Go Studio session not found")
+		return Session{}, fmt.Errorf("Code Studio session not found")
 	}
 	return session, nil
 }
@@ -118,7 +118,7 @@ func (m *WorkspaceManager) SetToolAuthorization(id SessionID, allowed bool) (Ses
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return Session{}, fmt.Errorf("Go Studio session not found")
+		return Session{}, fmt.Errorf("Code Studio session not found")
 	}
 	state := AuthorizationOpened
 	if allowed {
@@ -136,7 +136,7 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return Session{}, fmt.Errorf("Go Studio session not found")
+		return Session{}, fmt.Errorf("Code Studio session not found")
 	}
 	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath)
 	session.Project.Units = fresh.Units

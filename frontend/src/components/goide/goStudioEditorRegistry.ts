@@ -84,7 +84,7 @@ export function runGoStudioEditorCommand(command: GoStudioEditorCommand): boolea
   if (!activeEditor) return false
   activeEditor.focus()
   const id = MONACO_ACTIONS[command]
-  // Le azioni Go Studio sono registrate sull'editor; quelle native passano dal registro comandi,
+  // Le azioni Code Studio sono registrate sull'editor; quelle native passano dal registro comandi,
   // perché in Monaco 0.56 getAction(...).run() su alcune (es. quickFix) non apre nulla.
   const action = id.startsWith('goStudio.') ? activeEditor.getAction(id) : null
   if (action) void action.run()

@@ -17,7 +17,7 @@ func waitServiceEvent(t *testing.T, events <-chan EventEnvelope, predicate func(
 				return event
 			}
 		case <-deadline:
-			t.Fatal("timeout in attesa dell'evento Go Studio")
+			t.Fatal("timeout in attesa dell'evento Code Studio")
 		}
 	}
 }

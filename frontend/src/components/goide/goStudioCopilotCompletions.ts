@@ -71,7 +71,7 @@ async function provide(model: monaco.editor.ITextModel, position: monaco.Positio
   }
 }
 
-/** Ghost text di GitHub Copilot per ogni linguaggio aperto in gO Studio. gopls resta il motore semantico. */
+/** Ghost text di GitHub Copilot per ogni linguaggio aperto in Code Studio. gopls resta il motore semantico. */
 export function registerGoStudioCopilotCompletions(): void {
   if (registered) return
   registered = true

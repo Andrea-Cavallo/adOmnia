@@ -164,7 +164,7 @@ export function GoStudioCopilotChat({ session, document }: GoStudioCopilotChatPr
           <div className="mt-6 rounded-xl border border-border-1 bg-surface-0 p-3 text-center">
             <GitHubMark size={22} className="mx-auto mb-2 text-text-4" />
             <p className="text-[13px] font-medium text-text-2">Copilot Chat needs an active Copilot account.</p>
-            <p className="mt-1 text-[12px] leading-4 text-text-4">Enable Copilot, install its language server, then sign in. gopls and Go Studio keep working independently.</p>
+            <p className="mt-1 text-[12px] leading-4 text-text-4">Enable Copilot, install its language server, then sign in. gopls and Code Studio keep working independently.</p>
             <button type="button" onClick={() => useCopilotStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent"><Settings2 size={11} />Open settings</button>
           </div>
         ) : !thread?.messages.length ? (

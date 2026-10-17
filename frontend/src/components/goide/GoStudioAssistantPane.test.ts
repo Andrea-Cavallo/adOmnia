@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
 
-describe('Go Studio right assistant column', () => {
+describe('Code Studio right assistant column', () => {
   it('hosts Copilot, milk and Claude as one AI hub with per-provider status', () => {
     const pane = source('src/components/goide/GoStudioSidePane.tsx')
     const stripe = source('src/components/goide/GoStudioToolStripes.tsx')

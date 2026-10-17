@@ -4,7 +4,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { showEntityNotice } from '@/lib/entities/notice'
 
 /**
- * Opens a frame of a live session in Go Studio: the right project, file,
+ * Opens a frame of a live session in Code Studio: the right project, file,
  * line and debugger, without closing the API tab the developer came from.
  */
 export async function openFrameInGoStudio(session: LiveSession, frame?: LiveFrame | null, options: { switchRail?: boolean } = {}): Promise<void> {
@@ -21,7 +21,7 @@ export async function openLocationInGoStudio(goSessionId: string, target: LiveFr
   const goide = useGoIDEStore.getState()
   if (!goide.initialized) await goide.initialize()
   if (!useGoIDEStore.getState().sessions.some((s) => s.id === goSessionId)) {
-    showEntityNotice(`The ${options.label ?? 'service'} project is no longer open in Go Studio.`)
+    showEntityNotice(`The ${options.label ?? 'service'} project is no longer open in Code Studio.`)
     return false
   }
   if (options.switchRail !== false) useAppStore.getState().setActiveRail('goide')
@@ -49,7 +49,7 @@ export function openRequestTab(tabId: string | undefined): void {
 }
 
 /**
- * Split Debug View: Go Studio (paused code, variables) next to the API
+ * Split Debug View: Code Studio (paused code, variables) next to the API
  * request that stopped there. Opens on demand or when a request hits a
  * breakpoint while the developer is in the API workspace.
  */

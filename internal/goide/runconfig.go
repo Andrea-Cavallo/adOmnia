@@ -123,7 +123,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 
 // redactConfiguration azzera i valori segreti mantenendo le chiavi dichiarate.
 // ponytail: i segreti restano richiesti a runtime; il passaggio a riferimenti
-// vault veri va fatto quando Go Studio sarà collegato a internal/vault.
+// vault veri va fatto quando Code Studio sarà collegato a internal/vault.
 func redactConfiguration(config RunConfiguration) RunConfiguration {
 	clone := cloneConfiguration(config)
 	for index, entry := range clone.Environment {

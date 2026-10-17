@@ -144,7 +144,7 @@ func (m *DocumentManager) SaveDocument(session Session, documentID DocumentID, c
 	record, ok := m.documents[documentID]
 	m.mu.RUnlock()
 	if !ok || record.document.SessionID != session.ID {
-		return OpenDocument{}, fmt.Errorf("Go Studio document not found")
+		return OpenDocument{}, fmt.Errorf("Code Studio document not found")
 	}
 	if record.document.ReadOnly {
 		return OpenDocument{}, fmt.Errorf("SDK and module cache sources are read-only")
@@ -182,7 +182,7 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 	record, ok := m.documents[documentID]
 	m.mu.RUnlock()
 	if !ok || record.document.SessionID != session.ID {
-		return DocumentDiskState{}, fmt.Errorf("Go Studio document not found")
+		return DocumentDiskState{}, fmt.Errorf("Code Studio document not found")
 	}
 	if record.document.ReadOnly {
 		return DocumentDiskState{DocumentID: documentID, DiskToken: expectedDiskToken}, nil

@@ -13,7 +13,7 @@ function run(id: string, startedAt: string, benchmark = 'BenchmarkParse') {
   return { runId: id, status: 'finished', startedAt, finishedAt: startedAt, results: [{ id: benchmark, package: 'example.com/acme', name: benchmark, status: 'bench', benchmark: '100 12 ns/op 4 B/op' }] } as any
 }
 
-describe('Go Studio benchmark history', () => {
+describe('Code Studio benchmark history', () => {
   it('persists compact metrics per project and finds the previous matching measurement', () => {
     saveBenchmarkHistory(project, [run('old', '2026-09-30T10:00:00Z'), run('new', '2026-09-30T11:00:00Z')])
     const history = loadBenchmarkHistory(project)

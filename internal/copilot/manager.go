@@ -37,7 +37,7 @@ const (
 
 const (
 	editorName          = "adOmnia"
-	pluginName          = "gO Studio Copilot"
+	pluginName          = "Code Studio Copilot"
 	pluginVersion       = "0.1.0"
 	initializeTimeout   = 60 * time.Second
 	requestTimeout      = 20 * time.Second
@@ -108,7 +108,7 @@ type document struct {
 }
 
 // Manager possiede il processo del Copilot Language Server: avvio, configurazione enterprise,
-// login, sincronizzazione documenti, completamento e riavvio con backoff. gO Studio funziona
+// login, sincronizzazione documenti, completamento e riavvio con backoff. Code Studio funziona
 // normalmente anche se Copilot è spento o in errore.
 type Manager struct {
 	mu                sync.Mutex
@@ -210,7 +210,7 @@ func (m *Manager) SaveSettings(next Settings) (Settings, error) {
 	return saved, nil
 }
 
-// SetActiveWorkspace indica il progetto attivo in Go Studio: se è legato a un altro profilo GitHub il
+// SetActiveWorkspace indica il progetto attivo in Code Studio: se è legato a un altro profilo GitHub il
 // server riparte su quell'account, così il codice aziendale non usa l'account personale.
 func (m *Manager) SetActiveWorkspace(root string) {
 	m.mu.Lock()

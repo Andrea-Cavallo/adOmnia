@@ -23,7 +23,7 @@ function setBuffer(id: string, buffer: string): void {
   useGoIDEStore.setState((state) => ({ documents: state.documents.map((item) => item.document.id === id ? { ...item, buffer, dirty: true } : item) }))
 }
 
-describe('Go Studio LSP buffer sync', () => {
+describe('Code Studio LSP buffer sync', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mocks.updateDocumentBuffer.mockReset().mockResolvedValue(undefined)

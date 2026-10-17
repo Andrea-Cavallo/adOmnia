@@ -42,7 +42,7 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
       top
       size="sm"
       icon={Layers}
-      title={creating ? 'New Go Studio workspace' : 'Rename workspace'}
+      title={creating ? 'New Code Studio workspace' : 'Rename workspace'}
       subtitle="A workspace groups open projects. It is separate from adOmnia API workspaces, and a project can be open in several."
       footer={<>
         <GoStudioButton variant="ghost" onClick={onClose}>Cancel</GoStudioButton>
@@ -58,7 +58,7 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
   )
 }
 
-/** Selettore del workspace Go Studio nella menu bar: sempre visibile, anche quando il workspace è vuoto. */
+/** Selettore del workspace Code Studio nella menu bar: sempre visibile, anche quando il workspace è vuoto. */
 export function GoStudioWorkspaceSwitcher() {
   // Una finestra separata mostra un solo progetto: i workspace si gestiscono dalla finestra principale.
   if (goStudioWindowContext().pinnedSessionId) return null
@@ -107,7 +107,7 @@ function WorkspaceSwitcher() {
 
   return (
     <>
-      <button type="button" aria-haspopup="menu" title={`Go Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
+      <button type="button" aria-haspopup="menu" title={`Code Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 2 }) }}
         className={`go-studio-widget max-w-48 ${menu ? 'is-active' : ''}`}>
         <Layers size={15} className="shrink-0 text-text-2" />

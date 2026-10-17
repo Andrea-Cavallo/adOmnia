@@ -79,7 +79,7 @@ beforeEach(() => {
   })
 })
 
-describe('Go Studio editor state', () => {
+describe('Code Studio editor state', () => {
   it('keeps the dirty buffer when an atomic save fails', async () => {
     mocks.saveDocument.mockRejectedValue(new Error('disk full'))
     useGoIDEStore.getState().updateDocument('document-one', 'package main\n\nfunc main() {}\n')

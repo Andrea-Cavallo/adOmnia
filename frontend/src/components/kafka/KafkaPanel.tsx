@@ -1078,7 +1078,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
       const { findKafkaFunction, debugGoAt } = await import('@/lib/devsession/debugMessage')
       const target = await findKafkaFunction(topic, 'kafka-consumer')
       if (!target) {
-        setReplayState({ busy: false, text: `No trusted project open in Go Studio consumes ${topic}. Open it there (Architecture Explorer finds consumers) and try again.` })
+        setReplayState({ busy: false, text: `No trusted project open in Code Studio consumes ${topic}. Open it there (Architecture Explorer finds consumers) and try again.` })
         return
       }
       const where = `${target.entry.name} (${target.relativePath}:${target.line})`
@@ -1089,7 +1089,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
         setReplayState({ busy: false, text: 'Replay failed: see the error above.' })
         return
       }
-      setReplayState({ busy: false, text: `Replayed under the debugger: Go Studio stops in ${where}.` })
+      setReplayState({ busy: false, text: `Replayed under the debugger: Code Studio stops in ${where}.` })
       showModule('goide')
     } catch (error) {
       setReplayState({ busy: false, text: `Debug failed: ${error instanceof Error ? error.message : String(error)}` })

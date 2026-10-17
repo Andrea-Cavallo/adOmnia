@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { panicSnapshot, panicValueFromVariables } from './goStudioPanicInspector'
 
-describe('Go Studio panic inspector', () => {
+describe('Code Studio panic inspector', () => {
   it('finds the project origin after runtime.gopanic', () => {
     const snapshot = panicSnapshot('exception', [
       { id: 1, name: 'runtime.gopanic', path: '', relativePath: '', line: 0, column: 0 },

@@ -12,7 +12,7 @@ import (
 	"unicode"
 )
 
-// Generatori di codice di Go Studio: costruttore, getter/setter, interfaccia estratta,
+// Generatori di codice di Code Studio: costruttore, getter/setter, interfaccia estratta,
 // benchmark e fuzz test. Lavorano sul testo dell'editor (anche non salvato) con go/ast;
 // solo lo snippet generato passa da go/format, il resto del file resta identico.
 

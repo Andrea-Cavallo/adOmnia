@@ -14,7 +14,7 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
-// go.work di Go Studio: stato letto con x/mod, modifiche solo con i comandi ufficiali
+// go.work di Code Studio: stato letto con x/mod, modifiche solo con i comandi ufficiali
 // `go work init`, `go work use` e `go work edit -dropuse`.
 
 const goWorkCommandTimeout = 30 * time.Second

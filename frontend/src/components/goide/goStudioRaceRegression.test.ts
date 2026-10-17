@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { raceRegressionTestStarter } from './goStudioRaceRegression'
 
-describe('Go Studio race regression test starter', () => {
+describe('Code Studio race regression test starter', () => {
   it('creates an editable Go test scaffold with both race locations and a -race command', () => {
     const source = raceRegressionTestStarter({
       id: 'race-1', occurrences: 1, sources: [], raw: '', goroutines: [],

@@ -1299,7 +1299,7 @@ export function MainArea() {
     const target = e.target as HTMLElement
     const tag = target.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-    // Un pannello che ha già gestito il tasto (es. Back di Go Studio) o un editor di codice hanno la precedenza.
+    // Un pannello che ha già gestito il tasto (es. Back di Code Studio) o un editor di codice hanno la precedenza.
     if (e.defaultPrevented || target.isContentEditable || target.closest?.('.monaco-editor')) return
     if (e.altKey && e.key === 'ArrowLeft') {
       e.preventDefault()

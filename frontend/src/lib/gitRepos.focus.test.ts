@@ -14,7 +14,7 @@ beforeEach(() => {
   vi.stubGlobal('window', events)
 })
 
-describe('focusRepo (Go Studio → Git Studio)', () => {
+describe('focusRepo (Code Studio → Git Studio)', () => {
   it('adds the repository, makes it the last one and notifies an open Git Studio', () => {
     const seen: string[] = []
     const listener = (event: Event) => seen.push((event as CustomEvent<string>).detail)

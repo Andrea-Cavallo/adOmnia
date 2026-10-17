@@ -142,7 +142,7 @@ func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bo
 		}
 		store = graphs.store
 	}) {
-		return nil, false, errors.New("Go Studio session not found")
+		return nil, false, errors.New("Code Studio session not found")
 	}
 	lock.Lock()
 	defer lock.Unlock()

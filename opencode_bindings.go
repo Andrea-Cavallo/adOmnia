@@ -9,7 +9,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// OpenCode espone a React OpenCode come agente ACP di Go Studio. Il client è
+// OpenCode espone a React OpenCode come agente ACP di Code Studio. Il client è
 // quello di milk (internal/milk); internal/opencode dice solo come avviarlo.
 type OpenCode struct {
 	manager *milk.Manager
@@ -58,7 +58,7 @@ func (c *OpenCode) Restart() error { return c.manager.Restart() }
 // Log restituisce le ultime righe di log dell'adapter.
 func (c *OpenCode) Log() []string { return c.manager.Log() }
 
-// SetActiveWorkspace comunica il progetto attivo in Go Studio.
+// SetActiveWorkspace comunica il progetto attivo in Code Studio.
 func (c *OpenCode) SetActiveWorkspace(root string) { c.manager.SetActiveWorkspace(root) }
 
 // Prompt invia un turno di chat. I delta arrivano come evento opencode.chat.

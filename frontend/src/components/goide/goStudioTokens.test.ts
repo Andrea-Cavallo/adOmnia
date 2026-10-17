@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), 'src', path),
 const globals = read('styles/globals.css')
 const goide = (name: string) => read(`components/goide/${name}`)
 
-describe('design tokens used by Go Studio', () => {
+describe('design tokens used by Code Studio', () => {
   it('defines --color-danger in both theme blocks, as an alias of --color-error', () => {
     expect(globals.match(/--color-danger:\s*var\(--color-error\)/g)).toHaveLength(2)
   })

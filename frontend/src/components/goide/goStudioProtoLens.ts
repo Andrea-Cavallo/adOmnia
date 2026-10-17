@@ -12,7 +12,7 @@ import { openArchSite } from './GoStudioInterfaceExplorer'
 
 // .proto → Go: on every rpc, the Go method that serves it, Debug and a call in the gRPC client.
 const LANGUAGE = 'proto'
-// Go Studio shows action errors in its own banner.
+// Code Studio shows action errors in its own banner.
 const notify = (message: string) => useGoIDEStore.setState({ error: message })
 const HANDLER_COMMAND = 'goStudio.protoHandler'
 const CALL_COMMAND = 'goStudio.protoCall'

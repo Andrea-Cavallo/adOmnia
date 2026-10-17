@@ -74,7 +74,7 @@ interface GoStudioSettingsDialogProps {
   onClose: () => void
 }
 
-/** Settings di Go Studio in un unico posto (Ctrl+Alt+S, come GoLand), con ricerca. */
+/** Settings di Code Studio in un unico posto (Ctrl+Alt+S, come GoLand), con ricerca. */
 export function GoStudioSettingsDialog({ open, sessionId, onCommand, onClose }: GoStudioSettingsDialogProps) {
   const preferences = useGoIDELspStore((state) => state.preferences)
   const settings = useGoIDELspStore((state) => state.settings)
@@ -119,7 +119,7 @@ export function GoStudioSettingsDialog({ open, sessionId, onCommand, onClose }: 
       divided
       flush
       icon={Settings2}
-      title="Go Studio settings"
+      title="Code Studio settings"
       subtitle="Editor, save actions, language server and tools. Changes apply right away."
     >
       <div className="flex min-h-0 flex-1">

@@ -60,5 +60,5 @@ export async function raceRequest(run: RequestRun, session: LiveSession): Promis
   await new Promise((resolve) => window.setTimeout(resolve, SETTLE_MS))
   const races = raceReports(useDevSessionStore.getState().logs[raced.id] ?? [], sentAt)
   if (races > 0) await openLocationInGoStudio(raced.goSessionId, null)
-  return races ? `${races} data race${races === 1 ? '' : 's'} reported: see the Run console in Go Studio.` : `No data race on this request (HTTP ${response.status}).`
+  return races ? `${races} data race${races === 1 ? '' : 's'} reported: see the Run console in Code Studio.` : `No data race on this request (HTTP ${response.status}).`
 }

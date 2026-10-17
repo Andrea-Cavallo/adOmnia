@@ -20,7 +20,7 @@ export async function armDistributedDebug(spans: readonly OtlpSpan[]): Promise<s
  // Resolve every service first: don't partially arm a trace with missing or ambiguous projects.
  const plan = services.map(service => {
    const matches = named.filter(item => item.name === service)
-   if (matches.length !== 1) throw new Error(`Open one project named ${service} in Go Studio before distributed debug`)
+   if (matches.length !== 1) throw new Error(`Open one project named ${service} in Code Studio before distributed debug`)
    const session = matches[0].session
    const points = spans.filter(span => span.service === service).flatMap(span => {
      const source = spanSource(span); if (!source) return []

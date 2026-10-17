@@ -8,7 +8,7 @@ const MAX_OUTPUT_LENGTH = 64 * 1024
 export interface RaceHistorySource extends RaceSource {
   /** Timestamp of the original run, used to keep the newest session first. */
   at: number
-  /** Timestamp when Go Studio persisted this source locally. */
+  /** Timestamp when Code Studio persisted this source locally. */
   savedAt: number
 }
 

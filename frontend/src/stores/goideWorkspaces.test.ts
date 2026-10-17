@@ -7,7 +7,7 @@ function session(id: string, workspaceId?: string): GoIDESession {
 }
 
 describe('sessionsInWorkspace', () => {
-  it('keeps Go Studio workspaces apart and puts legacy sessions in the default one', () => {
+  it('keeps Code Studio workspaces apart and puts legacy sessions in the default one', () => {
     const sessions = [session('a'), session('b', 'default'), session('c', 'workspace-1')]
     expect(sessionsInWorkspace(sessions, 'default').map((item) => item.id)).toEqual(['a', 'b'])
     expect(sessionsInWorkspace(sessions, 'workspace-1').map((item) => item.id)).toEqual(['c'])

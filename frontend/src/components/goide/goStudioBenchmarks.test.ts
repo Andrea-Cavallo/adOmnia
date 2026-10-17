@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { benchmarkRunDurationMillis, compareBenchmarkMetrics, parseBenchmarkMeasurement, previousBenchmarkRun } from './goStudioBenchmarks'
 
-describe('Go Studio benchmark measurements', () => {
+describe('Code Studio benchmark measurements', () => {
   it('keeps standard and custom ReportMetric measurements', () => {
     expect(parseBenchmarkMeasurement('100 12.5 ns/op 24 B/op 2 allocs/op 8.2 widgets/op')).toEqual({
       iterations: 100,

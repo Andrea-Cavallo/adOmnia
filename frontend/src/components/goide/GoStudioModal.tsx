@@ -39,9 +39,9 @@ interface GoStudioModalProps {
 }
 
 /**
- * Guscio unico dei modali di gO Studio: velo con blur, superficie, header con icona e tono,
+ * Guscio unico dei modali di Code Studio: velo con blur, superficie, header con icona e tono,
  * corpo scorrevole e footer con azioni. Montato in un portale con font proprio, così è identico
- * ovunque venga aperto (anche fuori dalla radice di Go Studio).
+ * ovunque venga aperto (anche fuori dalla radice di Code Studio).
  */
 export function GoStudioModal({
   open, onClose, title, subtitle, icon: Icon, tone = 'accent', size = 'md', tall, divided, flush, top, elevated, persistent,
@@ -96,7 +96,7 @@ interface GoStudioButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
   icon?: ComponentType<{ size?: number; className?: string }>
 }
 
-/** Pulsante unico di gO Studio: stessa altezza, raggio, peso e feedback in tutti i modali. */
+/** Pulsante unico di Code Studio: stessa altezza, raggio, peso e feedback in tutti i modali. */
 export function GoStudioButton({ variant = 'secondary', small, loading, icon: Icon, className = '', children, disabled, type = 'button', ...rest }: GoStudioButtonProps) {
   const size = small ? 13 : 14
   return (

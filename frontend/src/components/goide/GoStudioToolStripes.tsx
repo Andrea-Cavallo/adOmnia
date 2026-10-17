@@ -109,7 +109,7 @@ export function GoStudioLeftStripe({ session, onCommit, onBookmarks }: GoStudioL
   }
 
   return (
-    <nav aria-label="Go Studio tool windows" className="go-studio-stripe">
+    <nav aria-label="Code Studio tool windows" className="go-studio-stripe">
       <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { restoreLayout(); updateLayout({ projectOpen: !projectOpen }) }} />
       <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { restoreLayout(); onCommit() }} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { restoreLayout(); onBookmarks() }} />
@@ -143,7 +143,7 @@ export function GoStudioRightStripe({ onDependencies }: GoStudioRightStripeProps
     updateLayout({ structureOpen: true, structureWidth: Math.max(340, structureWidth) })
   }
   return (
-    <nav aria-label="Go Studio side tool windows" className="go-studio-stripe">
+    <nav aria-label="Code Studio side tool windows" className="go-studio-stripe">
       <StripeButton label="Structure · Alt+7" icon={Braces} pressed={structureOpen && !assistantPane} onClick={() => { useGoStudioAssistantStore.getState().close(); updateLayout({ structureOpen: !!assistantPane || !structureOpen }) }} />
       <StripeButton
         label={`AI Assistant · ${providerLabel(lastProvider)} · Alt+2`}

@@ -30,7 +30,7 @@ import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 if (initialRailFromMemento() === 'collections') void loadSidebarModule().catch(() => undefined)
 import { EntityNotice } from '@/components/layout/EntityNotice'
 const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalette').then((module) => ({ default: module.CommandPalette })))
-// Go Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
+// Code Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
 const GoStudioCloseGuard = React.lazy(() => import('@/components/goide/GoStudioCloseGuard').then((module) => ({ default: module.GoStudioCloseGuard })))
 const GoStudioWarmup = React.lazy(() => import('@/components/goide/GoStudioWarmup').then((module) => ({ default: module.GoStudioWarmup })))
@@ -134,7 +134,7 @@ function App() {
           data-file-drop-target
           {...handlers}
         >
-          {/* Nessuna barra del titolo separata: con "Titlebar app" l'header del pannello (o la toolbar di gO Studio massimizzato) fa da barra della finestra. */}
+          {/* Nessuna barra del titolo separata: con "Titlebar app" l'header del pannello (o la toolbar di Code Studio massimizzato) fa da barra della finestra. */}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
             {!goStudioMaximized && <Rail />}

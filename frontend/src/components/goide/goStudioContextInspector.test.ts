@@ -3,7 +3,7 @@ import { goStudioContextFields, goStudioContextTraceId } from './goStudioContext
 
 const field = (name: string, value: string) => ({ name, value, type: 'any', variablesReference: 0 })
 
-describe('Go Studio context inspector', () => {
+describe('Code Studio context inspector', () => {
   it('keeps the context data exposed by Delve and hides unrelated runtime fields', () => {
     const fields = goStudioContextFields([
       field('key', 'string "request-id"'),

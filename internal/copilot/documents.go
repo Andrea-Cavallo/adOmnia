@@ -13,7 +13,7 @@ import (
 // ErrExcluded indica un file escluso dal contesto AI (segreti o .adomnia/aiignore).
 var ErrExcluded = errors.New("this file is excluded from AI context")
 
-// OpenedDocument descrive un documento aperto in gO Studio.
+// OpenedDocument descrive un documento aperto in Code Studio.
 type OpenedDocument struct {
 	ID           string
 	URI          string
@@ -160,7 +160,7 @@ func (m *Manager) workspaceFoldersLocked() []map[string]string {
 	return []map[string]string{{"uri": fileURI(m.root), "name": name}}
 }
 
-// InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di gO Studio.
+// InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di Code Studio.
 type InlineCompletionRequest struct {
 	DocumentID   string `json:"documentId"`
 	Version      int    `json:"version"`

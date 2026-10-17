@@ -205,7 +205,7 @@ func equalSettingsEnvironment(left, right Settings) bool {
 	return true
 }
 
-// SetActiveWorkspace indica il progetto attivo in Go Studio.
+// SetActiveWorkspace indica il progetto attivo in Code Studio.
 func (m *Manager) SetActiveWorkspace(root string) {
 	m.mu.Lock()
 	m.root = root

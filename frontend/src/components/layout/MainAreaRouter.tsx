@@ -170,7 +170,7 @@ export function MainAreaRouter() {
     if (activeKept) keepPanel(activeRail)
   }, [activeKept, activeRail, keepPanel])
 
-  // Split Debug View: Go Studio and the API workspace visible together. The
+  // Split Debug View: Code Studio and the API workspace visible together. The
   // pane that last received focus owns the keyboard shortcuts.
   const splitView = useAppStore((s) => s.splitView)
   const split = splitView && (activeRail === 'collections' || activeRail === 'goide') && workspaceShellPhase === 'ready' && !detachedPanels.includes('collections')
@@ -196,7 +196,7 @@ export function MainAreaRouter() {
     const target = event.target as HTMLElement
     const tag = target.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-    // Un pannello che ha già gestito il tasto (es. Back di Go Studio) o un editor di codice hanno la precedenza.
+    // Un pannello che ha già gestito il tasto (es. Back di Code Studio) o un editor di codice hanno la precedenza.
     if (event.defaultPrevented || target.isContentEditable || target.closest?.('.monaco-editor')) return
     if (event.altKey && event.key === 'ArrowLeft') {
       event.preventDefault()
@@ -275,7 +275,7 @@ function SplitHeader() {
   return (
     <div {...titlebar.props} className={`h-10 flex items-center gap-2 pl-3 border-b border-border-1 bg-surface-1 flex-shrink-0 ${titlebar.active ? 'app-titlebar' : 'pr-3'}`}>
       <Columns2 size={13} className="text-accent" aria-hidden="true" />
-      <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">Split Debug View · Go Studio ↔ API request</span>
+      <span className="flex-1 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">Split Debug View · Code Studio ↔ API request</span>
       <button onClick={() => setSplitView(false)} title="Close split view" aria-label="Close split view"
         className="h-6 w-6 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-3 transition-colors">
         <X size={12} />

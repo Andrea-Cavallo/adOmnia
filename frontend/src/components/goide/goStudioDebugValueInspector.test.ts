@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { summarizeGoStudioDebugValue } from './goStudioDebugValueInspector'
 
-describe('Go Studio runtime value inspector', () => {
+describe('Code Studio runtime value inspector', () => {
   it('reads slice len and cap only from the Delve value', () => {
     expect(summarizeGoStudioDebugValue({ type: '[]int', value: '[]int len: 3, cap: 8, [1,2,3]' }))
       .toEqual({ kind: 'slice', label: 'Slice', length: 3, capacity: 8 })

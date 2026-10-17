@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { staticConcurrencyDiagnostics } from './goStudioLifecycleInspector'
 
-describe('Go Studio static lifecycle inspector', () => {
+describe('Code Studio static lifecycle inspector', () => {
   it('finds a context cancellation missing from the function that created it', () => {
     const diagnostics = staticConcurrencyDiagnostics(`package service
 import "context"

@@ -8,7 +8,7 @@ import { documentsToClose, orderTabs, tabQualifiers } from './GoStudioEditorTabs
 
 const doc = (id: string) => ({ document: { id } } as unknown as GoIDEEditorDocument)
 
-describe('Go Studio editor tabs', () => {
+describe('Code Studio editor tabs', () => {
   const documents = [doc('a'), doc('b'), doc('c'), doc('d')]
   const pinned = { c: true }
 

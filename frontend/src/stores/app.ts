@@ -32,20 +32,20 @@ interface AppState {
   sseRunning: boolean
   browserRunning: boolean
   pendingFileImport: RoutedToolFile | null
-  /** Go Studio a tutta finestra: nasconde rail, intestazione e status bar di adOmnia (solo mentre Go Studio è attivo). */
+  /** Code Studio a tutta finestra: nasconde rail, intestazione e status bar di adOmnia (solo mentre Code Studio è attivo). */
   goStudioMaximized: boolean
-  /** Finestra principale senza barra di sistema: gO Studio massimizzato usa la sua toolbar come barra del titolo. */
+  /** Finestra principale senza barra di sistema: Code Studio massimizzato usa la sua toolbar come barra del titolo. */
   appWindowChrome: boolean
   setAppWindowChrome: (enabled: boolean) => void
   toggleGoStudioMaximized: () => void
-  /** Zen Mode: solo il codice. Implica Go Studio a tutta finestra; vale solo mentre Go Studio è attivo. */
+  /** Zen Mode: solo il codice. Implica Code Studio a tutta finestra; vale solo mentre Code Studio è attivo. */
   goStudioZen: boolean
   setGoStudioZen: (zen: boolean) => void
   setActiveRail: (rail: RailItem) => void
   /** Panels kept mounted (hidden) once visited, so switching tools never loses their state. */
   keptPanels: RailItem[]
   keepPanel: (rail: RailItem) => void
-  /** Split Debug View: Go Studio and the API workspace side by side. */
+  /** Split Debug View: Code Studio and the API workspace side by side. */
   splitView: boolean
   setSplitView: (split: boolean) => void
   queueFileImport: (file: RoutedToolFile) => void
@@ -84,7 +84,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sseRunning: false,
   browserRunning: false,
   pendingFileImport: null,
-  // gO Studio si apre a tutto schermo come un IDE; il logo aO o il tasto restore riportano la rail.
+  // Code Studio si apre a tutto schermo come un IDE; il logo aO o il tasto restore riportano la rail.
   goStudioMaximized: true,
   appWindowChrome: false,
   setAppWindowChrome: (enabled) => set({ appWindowChrome: enabled }),

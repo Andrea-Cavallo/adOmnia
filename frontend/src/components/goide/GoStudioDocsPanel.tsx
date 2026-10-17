@@ -119,7 +119,7 @@ export function GoStudioDocsPanel({ session }: { session: GoIDESession }) {
                         </button>
                       </div>
                     ))}
-                    <p className="text-text-4">An existing file is updated in the editor without saving, so you can review the change and undo it. Mermaid diagrams render in Go Studio's Markdown preview.</p>
+                    <p className="text-text-4">An existing file is updated in the editor without saving, so you can review the change and undo it. Mermaid diagrams render in Code Studio's Markdown preview.</p>
                   </div>
                 )}
       </div>

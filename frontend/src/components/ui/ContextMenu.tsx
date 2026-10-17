@@ -20,7 +20,7 @@ export interface ContextMenuItem {
   checked?: boolean
 }
 
-/** `studio`: menu arrotondato con icone e scorciatoie a tasto, usato da Go Studio. */
+/** `studio`: menu arrotondato con icone e scorciatoie a tasto, usato da Code Studio. */
 export type ContextMenuAppearance = 'default' | 'studio'
 
 interface ContextMenuProps {

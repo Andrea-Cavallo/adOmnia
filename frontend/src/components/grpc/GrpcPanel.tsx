@@ -1654,7 +1654,7 @@ export function GrpcPanel() {
     }
   }
 
-  /** preferred: the method to select (a .proto opened from Go Studio on a given rpc). */
+  /** preferred: the method to select (a .proto opened from Code Studio on a given rpc). */
   const handleProtoFile = async (file: File | undefined, preferred?: { service: string; method: string }) => {
     if (!file) return
     setLoading(true)
@@ -1712,7 +1712,7 @@ export function GrpcPanel() {
     }
     const preferred = payload.method ? { service: String(payload.service ?? ''), method: String(payload.method) } : undefined
     void handleProtoFile(new File([String(payload.text ?? '')], String(payload.name ?? 'contract.proto')), preferred).then(() => {
-      // From a Debug in Go Studio: the service is running, connect to it keeping the rpc selected.
+      // From a Debug in Code Studio: the service is running, connect to it keeping the rpc selected.
       if (!payload.address) return
       setAddress(String(payload.address))
       // The call will stop on a breakpoint: give the developer time before the deadline cancels it.

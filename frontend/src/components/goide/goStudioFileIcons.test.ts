@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 import { brandColors, contrastRatio, resolveGoStudioFileIcon, resolveGoStudioFolderBrand } from './goStudioFileIcons'
 
-describe('Go Studio file icons', () => {
+describe('Code Studio file icons', () => {
   it('uses the gopher for Go sources and marks tests', () => {
     expect(resolveGoStudioFileIcon('main.go')).toEqual({ kind: 'gopher', test: false })
     expect(resolveGoStudioFileIcon('main_stress_test.go')).toEqual({ kind: 'gopher', test: true })

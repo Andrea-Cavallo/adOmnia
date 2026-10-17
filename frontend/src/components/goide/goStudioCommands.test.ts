@@ -5,7 +5,7 @@ const key = (partial: Partial<Parameters<typeof commandForKey>[0]>) => ({
   key: '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...partial,
 })
 
-describe('Go Studio commands', () => {
+describe('Code Studio commands', () => {
   it('distinguishes save from save all and build from sidebar toggle', () => {
     expect(commandForKey(key({ key: 's', ctrlKey: true }))?.id).toBe('file.save')
     expect(commandForKey(key({ key: 'S', ctrlKey: true, shiftKey: true }))?.id).toBe('file.saveAll')
@@ -60,7 +60,7 @@ describe('Go Studio commands', () => {
   })
 })
 
-describe('Go Studio command availability', () => {
+describe('Code Studio command availability', () => {
   const ready: GoStudioCommandContext = {
     hasSession: true, maximized: false, projectOpen: true, documentCount: 2, hasClosedDocuments: false, split: false, authorized: true, toolchainReady: true, running: false, restartable: true,
     hasEditor: true, activeDocumentDirty: true, sessionDirty: true, structureOpen: true, bottomOpen: false, showIgnored: false,

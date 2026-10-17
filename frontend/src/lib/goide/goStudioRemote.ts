@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 /**
- * Richieste che arrivano a Go Studio da altri moduli (es. Kubernetes Studio) per agganciarsi a un
+ * Richieste che arrivano a Code Studio da altri moduli (es. Kubernetes Studio) per agganciarsi a un
  * servizio remoto già raggiunto con un port forward su 127.0.0.1. Sono dati semplici: viaggiano anche
  * fra finestre con routeToModule('goide', { kind: 'dispatch', … }).
  */

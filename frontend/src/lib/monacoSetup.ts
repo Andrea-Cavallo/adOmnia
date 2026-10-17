@@ -119,7 +119,7 @@ function editorAccent(mode: 'dark' | 'light'): monaco.editor.IColors {
 }
 
 export function applyAdomniaMonacoTheme(m: typeof monaco): void {
-  // Monaco ha un solo tema per pagina: se un editor dell'API Studio lo imposta mentre Go Studio è aperto,
+  // Monaco ha un solo tema per pagina: se un editor dell'API Studio lo imposta mentre Code Studio è aperto,
   // i semantic tokens di gopls devono restare colorati. Gli altri linguaggi non hanno semantic tokens.
   m.editor.defineTheme('adomnia-dark', {
     base: 'vs-dark',
@@ -137,7 +137,7 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
 
 /**
  * Monaco has one theme for the whole page: every editor must follow the app
- * mode, or a single hardcoded dark editor turns Go Studio dark in White.
+ * mode, or a single hardcoded dark editor turns Code Studio dark in White.
  */
 export function useAdomniaEditorTheme(): 'adomnia-light' | 'adomnia-dark' {
   return useSettingsStore((state) => state.settings.appearance.theme === 'light' ? 'adomnia-light' : 'adomnia-dark')
@@ -166,14 +166,14 @@ const GO_SEMANTIC_RULES_LIGHT: monaco.editor.ITokenThemeRule[] = [
   { token: 'property', foreground: '7E22CE' },
 ]
 
-/** `type` è anche un token sintattico (chiavi YAML, tipi JS) già colorato dal tema base: fuori da Go Studio resta quello. */
+/** `type` è anche un token sintattico (chiavi YAML, tipi JS) già colorato dal tema base: fuori da Code Studio resta quello. */
 function withoutSyntaxTokens(rules: monaco.editor.ITokenThemeRule[]): monaco.editor.ITokenThemeRule[] {
   return rules.filter((rule) => rule.token !== 'type')
 }
 
 export const GO_STUDIO_THEMES = { dark: 'adomnia-go-dark', light: 'adomnia-go-light' } as const
 
-/** Sfondo dell'editor uguale alle isole di Go Studio (--gs-island in goStudioChrome.css). */
+/** Sfondo dell'editor uguale alle isole di Code Studio (--gs-island in goStudioChrome.css). */
 const GO_STUDIO_DARK_COLORS: monaco.editor.IColors = {
   ...DARK_COLORS,
   'editor.background': '#11171D',
@@ -191,7 +191,7 @@ const GO_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
   'editor.lineHighlightBorder': '#00000000',
 }
 
-/** Temi di Go Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
+/** Temi di Code Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyGoStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
   m.editor.defineTheme(GO_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...GO_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark') } })

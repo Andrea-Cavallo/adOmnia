@@ -118,7 +118,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'view.emacsMode', menu: 'view', label: 'Emacs Mode' },
   { id: 'view.zenMode', menu: 'view', label: 'Zen Mode', binding: { key: 'z', alt: true, shift: true }, separatorBefore: true },
   { id: 'view.maximizeEditor', menu: 'view', label: 'Maximize Editor (Hide All Tool Windows)', binding: { key: 'F12', mod: true, shift: true }, separatorBefore: true },
-  { id: 'view.maximize', menu: 'view', label: 'Maximize Go Studio', binding: { key: 'F11', mod: true, shift: true } },
+  { id: 'view.maximize', menu: 'view', label: 'Maximize Code Studio', binding: { key: 'F11', mod: true, shift: true } },
   { id: 'view.toggleProject', menu: 'view', label: 'Project Pane', binding: { key: '1', alt: true }, separatorBefore: true },
   { id: 'view.toggleStructure', menu: 'view', label: 'Project Overview Pane', binding: { key: '7', alt: true } },
   { id: 'view.toggleBottom', menu: 'view', label: 'Run / Problems Pane', binding: { key: '4', alt: true } },
@@ -249,7 +249,7 @@ export const GO_STUDIO_COMMANDS: ReadonlyArray<GoStudioCommand> = [
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
   { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
-  { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Go Studio Events', separatorBefore: true },
+  { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Code Studio Events', separatorBefore: true },
   { id: 'tools.extensions', menu: 'tools', label: 'IDE Extensions…' },
   { id: 'tools.aiHub', menu: 'tools', label: 'Open AI Assistant', binding: { key: '2', alt: true }, separatorBefore: true },
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…' },
@@ -310,7 +310,7 @@ function keyMatches(binding: GoStudioKeyBinding, event: KeyLike): boolean {
 }
 
 /**
- * Comandi Go Studio intercettabili per un evento tastiera, nell'ordine del registro, con la keymap
+ * Comandi Code Studio intercettabili per un evento tastiera, nell'ordine del registro, con la keymap
  * corrente. I comandi gestiti da Monaco si intercettano solo se l'utente o la keymap ne hanno
  * cambiato il tasto. Il contesto `when` (editor, input, vim.normal…) filtra i binding condizionati.
  */
@@ -381,7 +381,7 @@ export interface GoStudioCommandContext {
   /** Preferenze dell'editor mostrate con spunta nei menu. */
   editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; stickyScroll: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
   zen?: boolean
-  /** Finestra Go Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
+  /** Finestra Code Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
   /** Il progetto attivo è modificabile in un'altra finestra: i suoi buffer vivono là. */
   ownedElsewhere?: boolean

@@ -297,7 +297,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
 
   if (!authorized) {
     return (
-      <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col items-start gap-2 p-4">
+      <section aria-label="Code Studio terminals" className="flex h-full min-h-0 flex-col items-start gap-2 p-4">
         <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-text-3">
           <TerminalSquare size={11} /> Terminal
         </div>
@@ -315,7 +315,7 @@ export function GoStudioTerminalPanel({ session, visible }: GoStudioTerminalPane
   }
 
   return (
-    <section aria-label="Go Studio terminals" className="flex h-full min-h-0 flex-col">
+    <section aria-label="Code Studio terminals" className="flex h-full min-h-0 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-1 px-2">
         <TerminalSquare size={14} className="shrink-0 text-text-3" aria-hidden="true" />
         {(() => {

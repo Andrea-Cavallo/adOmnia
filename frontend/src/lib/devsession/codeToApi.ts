@@ -71,7 +71,7 @@ function dispatchToWorkspace(eventName: string): void {
   window.requestAnimationFrame(attempt)
 }
 
-/** Code → API: the actions offered next to a handler declaration in Go Studio. */
+/** Code → API: the actions offered next to a handler declaration in Code Studio. */
 export async function runHandlerAction(goSessionId: string, route: DevEntity, action: HandlerAction): Promise<void> {
   if (action === 'history') {
     useAppStore.getState().setActiveRail('history')

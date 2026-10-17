@@ -1,4 +1,4 @@
-// Package copilot integra GitHub Copilot in Go Studio tramite il Copilot Language Server ufficiale.
+// Package copilot integra GitHub Copilot in Code Studio tramite il Copilot Language Server ufficiale.
 //
 // Regola non negoziabile: nessun componente assume che l'host sia github.com. Ogni operazione
 // riceve un GitHubProfile, dal quale ricava host, URL e configurazione enterprise.

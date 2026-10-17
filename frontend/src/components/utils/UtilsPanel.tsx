@@ -1532,7 +1532,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
     return true
   })
 
-  // PEM aperti da Go Studio (tasto destro → Open in Power Tools): tool PEM già caricato e ispezionato.
+  // PEM aperti da Code Studio (tasto destro → Open in Power Tools): tool PEM già caricato e ispezionato.
   useEffect(() => {
     const routed = useAppStore.getState().consumeFileImport('pem')
     if (routed?.kind !== 'pem') return

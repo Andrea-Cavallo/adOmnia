@@ -89,7 +89,7 @@ html.light .go-studio-root .go-studio-run-group,
 }
 
 /*
- * Cornice di Go Studio in stile JetBrains New UI: una sola toolbar, barre laterali degli strumenti,
+ * Cornice di Code Studio in stile JetBrains New UI: una sola toolbar, barre laterali degli strumenti,
  * intestazioni delle tool window in title case. Solo token del tema, così skin e tema chiaro seguono.
  */
 
@@ -253,7 +253,7 @@ html.light .go-studio-root .go-studio-run-group,
   opacity: 1;
   visibility: visible;
 }
-.go-studio-stripe[aria-label='Go Studio side tool windows'] .go-studio-stripe-tooltip {
+.go-studio-stripe[aria-label='Code Studio side tool windows'] .go-studio-stripe-tooltip {
   left: auto;
   right: calc(100% + 8px);
 }
@@ -368,7 +368,7 @@ html.dark .go-studio-root {
 .go-studio-folder-front { fill: var(--gs-folder-front); }
 .go-studio-folder-shine { fill: none; stroke: var(--gs-folder-shine); stroke-width: 0.7; stroke-linecap: round; }
 
-/* Barra di gO Studio: logo pieno e progetto con la stessa cartella dell'albero, su un tassello morbido. */
+/* Barra di Code Studio: logo pieno e progetto con la stessa cartella dell'albero, su un tassello morbido. */
 .go-studio-brand-button { border-radius: 10px; }
 .go-studio-brand-button img { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18)); transition: transform 160ms ease; }
 .go-studio-brand-button:hover img { transform: scale(1.06); }

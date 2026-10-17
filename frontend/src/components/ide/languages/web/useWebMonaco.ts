@@ -9,7 +9,7 @@ import { useIdeWebServersStore, webLanguageForEditor, webServerEntry } from '@/s
  * Monaco si spengono per quel linguaggio, così completamenti, hover e diagnostica non compaiono due volte.
  *
  * Le impostazioni di Monaco sono globali, e altre parti di adOmnia usano lo stesso Monaco (l'editor
- * degli script API): per questo si spengono solo finché c'è un editor di Go Studio con un file di
+ * degli script API): per questo si spengono solo finché c'è un editor di Code Studio con un file di
  * quel linguaggio e il suo server pronto, e si riaccendono quando l'ultimo si chiude.
  */
 

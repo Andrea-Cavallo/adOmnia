@@ -2,7 +2,7 @@ package golang
 
 import "testing"
 
-// Due moduli analizzati separatamente (come fa gO Studio con go.work): Merge collega app → lib.
+// Due moduli analizzati separatamente (come fa Code Studio con go.work): Merge collega app → lib.
 func TestMergeLinksCallsAcrossWorkspaceModules(t *testing.T) {
 	lib, _ := loadFixture(t, map[string]string{
 		"go.mod": "module example.com/lib\n\ngo 1.22\n",

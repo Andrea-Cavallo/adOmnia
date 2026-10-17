@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { sourceDeferredCallsBefore } from './goStudioDeferredCalls'
 
-describe('Go Studio deferred call source inspector', () => {
+describe('Code Studio deferred call source inspector', () => {
   it('lists earlier defer statements in the current function', () => {
     const source = `package main
 

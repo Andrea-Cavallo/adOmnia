@@ -14,7 +14,7 @@ import (
 const previewWindowPrefix = "go-studio-preview-"
 
 // PreviewWindows possiede le finestre native che mostrano una Live Preview. Sono finestre del
-// browser integrato, non di Go Studio: caricano soltanto l'URL locale di un'anteprima in esecuzione.
+// browser integrato, non di Code Studio: caricano soltanto l'URL locale di un'anteprima in esecuzione.
 type PreviewWindows struct {
 	app *application.App
 

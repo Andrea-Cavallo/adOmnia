@@ -6,9 +6,9 @@ import { openSplitDebugView } from '@/lib/devsession/navigation'
 import { ContextSwitcher } from './ContextSwitcher'
 import { ServiceLogsDrawer } from './ServiceLogsDrawer'
 
-/** Alt+Shift+1…5: move between the tools of one development flow (Go Studio keeps Alt+digit for its panes). */
+/** Alt+Shift+1…5: move between the tools of one development flow (Code Studio keeps Alt+digit for its panes). */
 export const TOOL_SHORTCUTS: Array<{ code: string; rail: RailItem; label: string }> = [
-  { code: 'Digit1', rail: 'goide', label: 'Go Studio' },
+  { code: 'Digit1', rail: 'goide', label: 'Code Studio' },
   { code: 'Digit2', rail: 'collections', label: 'API Workspace' },
   { code: 'Digit3', rail: 'database', label: 'Database' },
   { code: 'Digit4', rail: 'broker', label: 'Kafka / Broker Studio' },
