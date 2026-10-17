@@ -94,6 +94,8 @@ Task:
 - [ ] 3.6 *(parziale: `GetRunSchema` + `getRunSchema()` in `code-studio-api.ts`, binding rigenerati; manca `GetRunSuggestions`)* Binding: `GetRunSuggestions(sessionId, unitId)`, `GetRunSchema(language, kind)`, invariato il resto. Rigenerare i binding. Wrapper in `lib/code-studio-api.ts`.
 - [ ] 3.7 Test mirati: `go test ./internal/ide/run/... ./internal/languages/golang/... ./internal/codestudio/...`.
 
+*Stato 2026-10-17:* schema web e `Suggest` rimandati di proposito: l'adapter web non ha ancora un runner (arriva con la Fase 9, JS/TS), quindi oggi non avrebbero un consumatore reale. Grep del gate su `internal/ide` (`GOOS|GOARCH|go-tool|gopls|.go"`): restano solo commenti e una lista generica di estensioni; `architecture_test.go` verde. Mancano il test sul file reale di un workspace e 3.5.
+
 **Gate Fase 3:** una configurazione Go esistente (file reale di un workspace) si carica, si esegue e si salva identica a prima; il core non contiene stringhe `go`/`.go`/`GOOS` (verifica con grep + `architecture_test.go`).
 
 ---
