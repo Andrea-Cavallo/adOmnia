@@ -47,7 +47,7 @@ func TestApplyRunParameters(t *testing.T) {
 	if err := applyRunParameters(root, root, escape, &RunRequest{Environment: map[string]string{}}); err == nil {
 		t.Error("an env file outside the project must be rejected")
 	}
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestConfiguredRunChain(t *testing.T) {
 
 func freePort(t *testing.T) int {
 	t.Helper()
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,9 +13,10 @@ import (
 
 const maxEnvFileSize = 256 * 1024
 
+// Sonda su loopback: un listener su 0.0.0.0 la occupa comunque, e Windows Firewall non chiede il permesso.
 // PortAvailable fallisce subito se la porta è già occupata, invece di lasciare che il programma crolli al bind.
 func PortAvailable(port int) error {
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	listener, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
 		return fmt.Errorf("port %d is already in use: close the process using it or choose another", port)
 	}

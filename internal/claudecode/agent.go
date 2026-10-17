@@ -59,11 +59,14 @@ func resolve(settings milk.Settings, root string) (milk.Launch, error) {
 
 var offlineAdapterProbe = probeOfflineAdapter
 
+// adapterDirs è sostituibile nei test: un adapter installato sulla macchina non deve falsarli.
+var adapterDirs = adapterDirectories
+
 // command sceglie, in ordine: percorso dalle impostazioni, adapter nel PATH,
 // installazioni npm globali, cartella gestita/cache e infine la cache offline di npx.
 func command(settings milk.Settings, lookPath func(string) (string, error)) (milk.Launch, error) {
 	candidates := sdk.ToolSearch{Names: []string{"claude-agent-acp"}, Custom: settings.BinaryPath, LookPath: lookPath}.Candidates()
-	for _, directory := range adapterDirectories() {
+	for _, directory := range adapterDirs() {
 		candidates = append(candidates, sdk.ToolCandidate{Name: "claude-agent-acp", Binary: filepath.Join(directory, sdk.ExecutableName("claude-agent-acp")), Source: directory})
 		if runtime.GOOS == "windows" {
 			candidates = append(candidates, sdk.ToolCandidate{Name: "claude-agent-acp", Binary: filepath.Join(directory, "claude-agent-acp.cmd"), Source: directory})

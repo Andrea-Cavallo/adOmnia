@@ -14,6 +14,9 @@ func TestCommandPrefersAdapterThenNpx(t *testing.T) {
 	previousProbe := offlineAdapterProbe
 	offlineAdapterProbe = func(string) bool { return true }
 	t.Cleanup(func() { offlineAdapterProbe = previousProbe })
+	previousDirs := adapterDirs
+	adapterDirs = func() []string { return nil }
+	t.Cleanup(func() { adapterDirs = previousDirs })
 	adapter := filepath.Join(t.TempDir(), "claude-agent-acp")
 	if err := os.WriteFile(adapter, []byte("test"), 0o700); err != nil {
 		t.Fatal(err)
@@ -42,6 +45,9 @@ func TestCommandDoesNotDownloadMissingAdapter(t *testing.T) {
 	previousProbe := offlineAdapterProbe
 	offlineAdapterProbe = func(string) bool { return false }
 	t.Cleanup(func() { offlineAdapterProbe = previousProbe })
+	previousDirs := adapterDirs
+	adapterDirs = func() []string { return nil }
+	t.Cleanup(func() { adapterDirs = previousDirs })
 	look := func(name string) (string, error) {
 		if name == "npx" {
 			return "/bin/npx", nil
