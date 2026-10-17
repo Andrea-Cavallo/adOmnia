@@ -31,6 +31,9 @@ func TestBuiltinTemplatesBuildAndTest(t *testing.T) {
 	}
 	stubCustomTemplatesRoot(t, t.TempDir())
 	for _, template := range builtinTemplates {
+		if template.Language != "" {
+			continue // template non Go: vedi TestNonGoTemplatesCreateFilesWithoutGo
+		}
 		t.Run(template.ID, func(t *testing.T) {
 			parent := t.TempDir()
 			result, err := NewService(&memoryStore{}, nil).CreateProject(CreateProjectRequest{ParentPath: parent, Name: "demo-" + template.ID, ModulePath: "example.com/demo-" + template.ID, Template: template.ID, Confirmed: true})
@@ -103,5 +106,40 @@ func TestCustomTemplateReplacesPlaceholdersAndSkipsGit(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(parent, "bad")); !os.IsNotExist(err) {
 		t.Fatal("cartella creata nonostante il template non valido")
+	}
+}
+
+func TestNonGoTemplatesCreateFilesWithoutGo(t *testing.T) {
+	stubCustomTemplatesRoot(t, t.TempDir())
+	t.Setenv("PATH", t.TempDir()) // nessun go: un template non Go non deve cercarlo
+	expected := map[string][]string{
+		"web-static":  {"index.html", "styles.css", "script.js", "README.md"},
+		"node-script": {"package.json", "index.js", "greet.js", "greet.test.js", "README.md"},
+	}
+	for id, files := range expected {
+		t.Run(id, func(t *testing.T) {
+			parent := t.TempDir()
+			// Nessuna conferma e nessun module path: non parte alcun comando.
+			result, err := NewService(&memoryStore{}, nil).CreateProject(CreateProjectRequest{ParentPath: parent, Name: "demo-" + id, Template: id})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Warning != "" {
+				t.Fatalf("warning inatteso: %s", result.Warning)
+			}
+			dir := filepath.Join(parent, "demo-"+id)
+			for _, name := range files {
+				if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+					t.Errorf("%s mancante: %v", name, err)
+				}
+			}
+			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+				t.Error("un template non Go non deve creare go.mod")
+			}
+			readme, _ := os.ReadFile(filepath.Join(dir, "README.md"))
+			if !strings.Contains(string(readme), "demo-"+id) || strings.Contains(string(readme), "__NAME__") {
+				t.Errorf("segnaposto __NAME__ non sostituito: %s", readme)
+			}
+		})
 	}
 }

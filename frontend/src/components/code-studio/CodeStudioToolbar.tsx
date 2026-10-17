@@ -115,7 +115,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
       ...sessions.map((session) => ({ id: `${SESSION_PREFIX}${session.id}`, label: session.project.name, icon: FolderGit2, checked: session.id === activeSession.id || undefined, disabled: session.id === activeSession.id })),
       ...recentItems(),
       { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', icon: FolderOpen, separatorBefore: true },
-      { id: 'new', label: 'New Go Project…', icon: FolderPlus },
+      { id: 'new', label: 'New Project…', icon: FolderPlus },
       { id: 'project-window', label: 'Open Project in New Window', icon: Maximize2 },
       { id: 'clone', label: 'Clone Repository…', icon: GitBranch },
       { id: 'close', label: `Close “${activeSession.project.name}”`, icon: FolderX, separatorBefore: true },

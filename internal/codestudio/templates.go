@@ -39,6 +39,9 @@ type ProjectTemplate struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Custom      bool   `json:"custom,omitempty"`
+	// Language è l'ID del linguaggio del progetto creato; vuoto = Go (go mod init + go.mod). I template
+	// con un linguaggio diverso non eseguono alcun comando: scrivono solo i loro file.
+	Language string `json:"language,omitempty"`
 	// Requires elenca i moduli aggiunti a go.mod: la creazione esegue go mod tidy.
 	Requires []string `json:"requires,omitempty"`
 }
@@ -65,6 +68,8 @@ var builtinTemplates = []ProjectTemplate{
 	{ID: "worker", Name: "Worker", Description: "Background job loop with graceful shutdown."},
 	{ID: "kafka", Name: "Kafka producer/consumer", Description: "Producer and consumer group on IBM/sarama.", Requires: []string{"github.com/IBM/sarama@v1.61.0"}},
 	{ID: "library", Name: "Library", Description: "Importable package with a test and an Example."},
+	{ID: "web-static", Name: "Static website", Language: "html", Description: "index.html, CSS and JavaScript, ready for Live Preview."},
+	{ID: "node-script", Name: "Node.js script", Language: "typescript", Description: "package.json with start and test scripts (node --test), no dependencies."},
 }
 
 var customTemplatesRoot = func() (string, error) {
@@ -132,8 +137,11 @@ func resolveProjectTemplate(id string) ([]fs.FS, ProjectTemplate, error) {
 		if id == emptyProjectTemplate {
 			return nil, template, nil
 		}
-		common, _ := fs.Sub(builtinTemplateFS, "projecttemplates/_common")
 		own, _ := fs.Sub(builtinTemplateFS, "projecttemplates/"+id)
+		if template.Language != "" {
+			return []fs.FS{own}, template, nil
+		}
+		common, _ := fs.Sub(builtinTemplateFS, "projecttemplates/_common")
 		return []fs.FS{common, own}, template, nil
 	}
 	return nil, ProjectTemplate{}, fmt.Errorf("template %q sconosciuto", id)

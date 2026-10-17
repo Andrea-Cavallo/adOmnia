@@ -1024,7 +1024,7 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| J1.1 | **Open / Create Project** | Opens a module, a `go.work` workspace or a folder inside a repository; *New Go Project* runs `go mod init` after confirmation. |
+| J1.1 | **Open / Create Project** | Opens a module, a `go.work` workspace or a folder inside a repository; *New Project* offers Go templates (`go mod init` after confirmation) plus Static website and Node.js script templates that only write files; *Tools → Install All Language Servers…* installs gopls and the web language servers in one explicit step. |
 | J1.2 | **Project Trust** | An opened project only reads and saves files. *Trust Project Tools* allows gopls, linters, build, run, tests, debugging, terminal and installs; revoking trust stops the project's processes. |
 | J1.3 | **Isolated Sessions** | Several projects stay open together; output, diagnostics, run configurations, terminals, Git state and local history never mix. |
 | J1.4 | **Session Restore & Recovery** | Tabs, layout, bookmarks, navigation history and breakpoints are restored; unsaved buffers are recovered only on request. |

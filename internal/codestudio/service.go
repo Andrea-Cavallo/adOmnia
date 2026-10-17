@@ -220,16 +220,31 @@ func (s *Service) OpenProject(path string) (Session, error) {
 // CreateProject crea una cartella, inizializza il modulo e applica il template scelto
 // soltanto dopo conferma esplicita. Se un passo fallisce la cartella appena creata viene rimossa.
 func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResult, error) {
+	sources, template, err := s.resolveProjectTemplate(request.Template)
+	if err != nil {
+		return CreateProjectResult{}, err
+	}
+	var warning string
+	if template.Language != "" {
+		// Progetti non Go: nessun comando da confermare, solo i file del template.
+		target, err := s.workspace.CreateProjectDirectory(request.ParentPath, request.Name)
+		if err != nil {
+			return CreateProjectResult{}, err
+		}
+		name := strings.TrimSpace(request.Name)
+		if _, err := applyResolvedProjectTemplate("", target, name, name, sources, template); err != nil {
+			_ = os.RemoveAll(target)
+			return CreateProjectResult{}, err
+		}
+		session, err := s.OpenProject(target)
+		return CreateProjectResult{Session: session}, err
+	}
 	if !request.Confirmed {
 		return CreateProjectResult{}, fmt.Errorf("explicit confirmation required before running go mod init")
 	}
 	modulePath := strings.TrimSpace(request.ModulePath)
 	if !modulePathPattern.MatchString(modulePath) || strings.Contains(modulePath, "//") {
 		return CreateProjectResult{}, fmt.Errorf("invalid module path")
-	}
-	sources, template, err := s.resolveProjectTemplate(request.Template)
-	if err != nil {
-		return CreateProjectResult{}, err
 	}
 	target, err := s.workspace.CreateProjectDirectory(request.ParentPath, request.Name)
 	if err != nil {
@@ -244,7 +259,7 @@ func (s *Service) CreateProject(request CreateProjectRequest) (CreateProjectResu
 		_ = os.RemoveAll(target)
 		return CreateProjectResult{}, fmt.Errorf("go mod init fallito: %w", err)
 	}
-	warning, err := applyResolvedProjectTemplate(binary, target, modulePath, strings.TrimSpace(request.Name), sources, template)
+	warning, err = applyResolvedProjectTemplate(binary, target, modulePath, strings.TrimSpace(request.Name), sources, template)
 	if err != nil {
 		_ = os.RemoveAll(target)
 		return CreateProjectResult{}, err

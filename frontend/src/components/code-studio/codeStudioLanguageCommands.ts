@@ -8,6 +8,7 @@ import type { CodeStudioCommandId } from './codeStudioCommands'
 import { activeCodeStudioEditor } from './codeStudioEditorRegistry'
 import { runtimeLensEnabled, setRuntimeLensEnabled } from './codeStudioRuntimeLens'
 import { requestImpactAtCursor } from './CodeStudioImpactPanel'
+import { useIdeWebServersStore } from '@/stores/ideWebServers'
 
 /** Testo selezionato nell'editor attivo, usato per precompilare Find in Files. */
 function selectedText(): string {
@@ -36,6 +37,24 @@ async function confirmInstall(sessionId: string, tool: keyof typeof INSTALLABLE_
   })
   if (!approved) return
   const started = tool === 'gopls' ? await lsp.install(sessionId) : await lsp.installLinter(sessionId, tool)
+  if (started) lsp.showToolWindow('run')
+}
+
+/** Un solo passo per avere i language server di tutti i linguaggi registrati; ogni installazione resta esplicita. */
+async function installAllLanguageServers(sessionId: string): Promise<void> {
+  const approved = await confirm({
+    title: 'Install all language servers?',
+    message: `Commands:
+• go install ${INSTALLABLE_TOOLS.gopls.module}  (Go)
+• npm install --prefix <adOmnia tools folder> typescript-language-server typescript vscode-langservers-extracted  (TypeScript, JavaScript, HTML, CSS, JSON)
+
+Both download from the Go proxy and the npm registry into adOmnia's own tools folder, never into your project. Packages may run their install scripts. Output appears in the Run console.`,
+    confirmLabel: 'Install all',
+  })
+  if (!approved) return
+  const lsp = useCodeStudioLspStore.getState()
+  await useIdeWebServersStore.getState().install(sessionId)
+  const started = await lsp.install(sessionId)
   if (started) lsp.showToolWindow('run')
 }
 
@@ -102,6 +121,7 @@ export function runLanguageCommand(id: CodeStudioCommandId, sessionId: string | 
     case 'tools.aiPolicyAllowed': void applyAIPolicy(sessionId, 'allowed'); return true
     case 'tools.aiPolicyLocal': void applyAIPolicy(sessionId, 'local-only'); return true
     case 'tools.aiPolicyOff': void applyAIPolicy(sessionId, 'off'); return true
+    case 'tools.installLanguageServers': if (sessionId) void installAllLanguageServers(sessionId); return true
     case 'tools.exportSettings': void exportCodeStudioSettingsReport(sessionId); return true
     case 'code.lintBaseline': void updateLintBaseline(sessionId, true); return true
     case 'code.lintBaselineClear': void updateLintBaseline(sessionId, false); return true

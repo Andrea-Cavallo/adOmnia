@@ -42,6 +42,8 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
   if (!open) return null
 
   const selected = templates?.templates.find((template) => template.id === templateId)
+  // Un template con un linguaggio (sito statico, Node…) non esegue comandi: niente module path.
+  const goTemplate = !selected?.language
   const chooseParent = async () => {
     const path = await chooseGoIDEProjectParent()
     if (path) setParentPath(path)
@@ -60,11 +62,11 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
       size="lg"
       divided
       icon={FolderPlus}
-      title="Create Go project"
-      subtitle="A new folder with go.mod, ready to build and run."
+      title="Create project"
+      subtitle={goTemplate ? 'A new folder with go.mod, ready to build and run.' : `A new folder with ${selected?.name.toLowerCase()} files, ready to open.`}
       footer={<>
         <CodeStudioButton variant="ghost" onClick={onClose}>Cancel</CodeStudioButton>
-        <CodeStudioButton variant="primary" loading={submitting} disabled={!parentPath || !name || !modulePath} onClick={() => void submit()}>Create & initialize</CodeStudioButton>
+        <CodeStudioButton variant="primary" loading={submitting} disabled={!parentPath || !name || (goTemplate && !modulePath)} onClick={() => void submit()}>Create & initialize</CodeStudioButton>
       </>}
     >
       <section className="flex flex-col gap-2">
@@ -92,12 +94,13 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
       </CodeStudioField>
       <div className="grid grid-cols-2 gap-3">
         <CodeStudioField label="Project name"><input value={name} onChange={(event) => setName(event.target.value)} placeholder="hello-service" className="gs-input" /></CodeStudioField>
-        <CodeStudioField label="Module path"><input value={modulePath} onChange={(event) => setModulePath(event.target.value)} placeholder={`example.com/${name || 'hello-service'}`} className="gs-input gs-mono" /></CodeStudioField>
+        {goTemplate && <CodeStudioField label="Module path"><input value={modulePath} onChange={(event) => setModulePath(event.target.value)} placeholder={`example.com/${name || 'hello-service'}`} className="gs-input gs-mono" /></CodeStudioField>}
       </div>
-      <CodeStudioAlert tone="warning" icon={ShieldAlert}>
+      {!goTemplate && <CodeStudioAlert icon={ShieldAlert}>Writes the template files into a new folder. No command runs and nothing is downloaded.</CodeStudioAlert>}
+      {goTemplate && <CodeStudioAlert tone="warning" icon={ShieldAlert}>
         Runs <code className="gs-mono text-text-1">go mod init {modulePath || '<module-path>'}</code> in the new empty folder{selected && selected.id !== 'empty' && ' and writes the template files'}.
         {selected?.requires?.length ? <> Then <code className="gs-mono text-text-1">go mod tidy</code> for {selected.requires.join(', ')}, which may download modules missing from the local cache.</> : ' No dependencies are downloaded and no project code runs.'}
-      </CodeStudioAlert>
+      </CodeStudioAlert>}
     </CodeStudioModal>
   )
 }

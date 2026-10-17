@@ -1,0 +1,35 @@
+:root {
+  --surface: #0f1115;
+  --text: #e8eaf0;
+  --accent: #5b8def;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--text);
+  font: 16px/1.5 system-ui, sans-serif;
+}
+
+main {
+  max-width: 36rem;
+  padding: 2rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent);
+  color: var(--surface);
+}

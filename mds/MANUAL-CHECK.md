@@ -667,3 +667,9 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 ### ML-8 — Auto restart in workspace misto (2026-10-17)
 
 - [ ] ML-8.M1 Con una configurazione Go (cartella `orders`) e una Node (cartella `web`, comando `pnpm run dev`), entrambe con "Restart on save" e in esecuzione: salvare un `.go` in `orders` riavvia solo la Go; salvare un `.ts` in `web` riavvia solo la Node; salvare un `.md` o un file in un’altra cartella non riavvia nulla.
+
+### ML-9 — New Project e language server (2026-10-17)
+
+- [ ] ML-9.M1 File > New Project…: il dialog elenca i template Go più **Static website** e **Node.js script**. Scegliendo uno dei due scompare "Module path", il pulsante si abilita con cartella + nome, e il progetto si apre con i suoi file (nessun go.mod). Per un template Go nulla cambia (module path richiesto, `go mod init`).
+- [ ] ML-9.M2 Progetto creato da "Node.js script": in Run configurations la sezione **Detected** propone `npm run start` e `npm run test` (package manager reale); da "Static website" il Run apre la Live Preview.
+- [ ] ML-9.M3 Tools > **Install All Language Servers…** (progetto fidato): un solo dialog elenca `go install …gopls` e `npm install --prefix …`; confermando partono entrambe le installazioni e l'output compare nella console Run; senza fiducia la voce è disabilitata con il motivo.

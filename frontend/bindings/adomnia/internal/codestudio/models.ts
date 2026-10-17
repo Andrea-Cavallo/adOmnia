@@ -4870,6 +4870,12 @@ export class ProjectTemplate {
     "custom"?: boolean;
 
     /**
+     * Language è l'ID del linguaggio del progetto creato; vuoto = Go (go mod init + go.mod). I template
+     * con un linguaggio diverso non eseguono alcun comando: scrivono solo i loro file.
+     */
+    "language"?: string;
+
+    /**
      * Requires elenca i moduli aggiunti a go.mod: la creazione esegue go mod tidy.
      */
     "requires"?: string[];
@@ -4893,10 +4899,10 @@ export class ProjectTemplate {
      * Creates a new ProjectTemplate instance from a string or object.
      */
     static createFrom($$source: any = {}): ProjectTemplate {
-        const $$createField4_0 = $$createType4;
+        const $$createField5_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("requires" in $$parsedSource) {
-            $$parsedSource["requires"] = $$createField4_0($$parsedSource["requires"]);
+            $$parsedSource["requires"] = $$createField5_0($$parsedSource["requires"]);
         }
         return new ProjectTemplate($$parsedSource as Partial<ProjectTemplate>);
     }
@@ -5273,7 +5279,7 @@ export class RunConfiguration {
     "pinned"?: boolean;
 
     /**
-     * RestartOnSave: un'esecuzione in corso riparte quando si salva un file Go del progetto.
+     * RestartOnSave: un'esecuzione in corso riparte quando si salva un sorgente del suo linguaggio dentro la sua working directory.
      */
     "restartOnSave"?: boolean;
 
