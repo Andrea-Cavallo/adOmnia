@@ -650,3 +650,8 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 
 - [ ] ML-4.M1 Aprire Run configurations di un progetto Go: sotto "Execution options" compare **Advanced** (collassata) con Race, Coverage, GOOS, GOARCH, Build tags, Go tool flags e, per package/build, Debug build flags; per un test anche Profile. Per un comando generico, Make o Docker la sezione Advanced non compare. Verificare tema scuro e controlli `select`/`input` su Windows (e WebKitGTK se disponibile).
 - [ ] ML-4.M2 Salvare una configurazione con GOOS/race/tags, riaprirla e controllare che i valori restino; il file `.adomnia/run-configurations.json` condiviso mantiene i campi piatti.
+
+### ML-5 — Run: proposte rilevate (2026-10-17)
+
+- [ ] ML-5.M1 Aprire un progetto con `go.mod` e senza configurazioni: in "Run configurations", sopra "New configuration", compare **Detected** con Run/Test/Build del modulo; un click crea e seleziona la configurazione e la proposta sparisce. Avviarla con ▶.
+- [ ] ML-5.M2 Aprire una cartella con `package.json` (script dev/build) e un lockfile pnpm/yarn/npm: le proposte usano il package manager del lockfile (es. `Vite · pnpm run dev`) e si avviano come comando; in un workspace con Go + Node compaiono entrambe, ciascuna con la propria working directory.

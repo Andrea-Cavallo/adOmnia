@@ -8,6 +8,7 @@ import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { CodeStudioEntryList } from './CodeStudioEntryList'
 import { CodeStudioRunParameters, RunTaskList } from './CodeStudioRunParameters'
 import { CodeStudioRunTarget, supportsRemoteTarget } from './CodeStudioRunTarget'
+import { CodeStudioRunSuggestions } from './CodeStudioRunSuggestions'
 import { readRunHistory } from '@/lib/code-studio/codeStudioRunHistory'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
@@ -109,6 +110,11 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
     if (saved) setSelectedId(saved.id)
   }
 
+  const addSuggestion = async (suggested: Partial<GoIDERunConfiguration>) => {
+    const saved = await saveRunConfiguration({ ...emptyConfiguration(sessionId), ...suggested, sessionId })
+    if (saved) setSelectedId(saved.id)
+  }
+
   const remove = async (configId: string) => {
     const target = configs.find((config) => config.id === configId)
     const approved = await confirm({
@@ -178,6 +184,7 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
                 </div>
               ))}
             </div>
+            <CodeStudioRunSuggestions sessionId={sessionId} savedCount={configs.length} onAdd={addSuggestion} />
             <button
               type="button"
               onClick={() => { setSelectedId(null); setDraft(emptyConfiguration(sessionId)) }}
