@@ -5,6 +5,116 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as json$0 from "../../../../encoding/json/models.js";
+
+export class Configuration {
+    "language"?: string;
+    "languageOptions"?: json$0.RawMessage;
+    "id": string;
+    "sessionId": SessionID;
+    "name": string;
+    "kind": Kind;
+    "target": string;
+    "files"?: string[];
+    "binaryPath"?: string;
+    "workingDirectory": string;
+    "programArguments": string[];
+    "environment": EnvironmentEntry[];
+    "docker": DockerOptions;
+    "envFile"?: string;
+    "port"?: number;
+    "preRun"?: string[];
+    "postRun"?: string[];
+    "compound"?: string[];
+    "shared"?: boolean;
+    "pinned"?: boolean;
+    "restartOnSave"?: boolean;
+    "restartPolicy"?: string;
+    "order": number;
+    "createdAt": string;
+    "updatedAt": string;
+
+    /** Creates a new Configuration instance. */
+    constructor($$source: Partial<Configuration> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = Kind.$zero;
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+        if (!("workingDirectory" in $$source)) {
+            this["workingDirectory"] = "";
+        }
+        if (!("programArguments" in $$source)) {
+            this["programArguments"] = [];
+        }
+        if (!("environment" in $$source)) {
+            this["environment"] = [];
+        }
+        if (!("docker" in $$source)) {
+            this["docker"] = (new DockerOptions());
+        }
+        if (!("order" in $$source)) {
+            this["order"] = 0;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Configuration instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Configuration {
+        const $$createField7_0 = $$createType0;
+        const $$createField10_0 = $$createType0;
+        const $$createField11_0 = $$createType2;
+        const $$createField12_0 = $$createType3;
+        const $$createField15_0 = $$createType0;
+        const $$createField16_0 = $$createType0;
+        const $$createField17_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField7_0($$parsedSource["files"]);
+        }
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField10_0($$parsedSource["programArguments"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField11_0($$parsedSource["environment"]);
+        }
+        if ("docker" in $$parsedSource) {
+            $$parsedSource["docker"] = $$createField12_0($$parsedSource["docker"]);
+        }
+        if ("preRun" in $$parsedSource) {
+            $$parsedSource["preRun"] = $$createField15_0($$parsedSource["preRun"]);
+        }
+        if ("postRun" in $$parsedSource) {
+            $$parsedSource["postRun"] = $$createField16_0($$parsedSource["postRun"]);
+        }
+        if ("compound" in $$parsedSource) {
+            $$parsedSource["compound"] = $$createField17_0($$parsedSource["compound"]);
+        }
+        return new Configuration($$parsedSource as Partial<Configuration>);
+    }
+}
+
 export class DockerOptions {
     /**
      * Context è la cartella di build, relativa alla working directory ("." se vuoto).
@@ -43,9 +153,9 @@ export class DockerOptions {
      * Creates a new DockerOptions instance from a string or object.
      */
     static createFrom($$source: any = {}): DockerOptions {
-        const $$createField3_0 = $$createType1;
-        const $$createField5_0 = $$createType2;
-        const $$createField6_0 = $$createType2;
+        const $$createField3_0 = $$createType2;
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("buildArgs" in $$parsedSource) {
             $$parsedSource["buildArgs"] = $$createField3_0($$parsedSource["buildArgs"]);
@@ -172,8 +282,8 @@ export class Field {
      * Creates a new Field instance from a string or object.
      */
     static createFrom($$source: any = {}): Field {
-        const $$createField7_0 = $$createType4;
-        const $$createField8_0 = $$createType6;
+        const $$createField7_0 = $$createType5;
+        const $$createField8_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField7_0($$parsedSource["options"]);
@@ -208,7 +318,7 @@ export class FieldCondition {
      * Creates a new FieldCondition instance from a string or object.
      */
     static createFrom($$source: any = {}): FieldCondition {
-        const $$createField1_0 = $$createType2;
+        const $$createField1_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("equals" in $$parsedSource) {
             $$parsedSource["equals"] = $$createField1_0($$parsedSource["equals"]);
@@ -272,7 +382,7 @@ export class FieldSchema {
      * Creates a new FieldSchema instance from a string or object.
      */
     static createFrom($$source: any = {}): FieldSchema {
-        const $$createField2_0 = $$createType8;
+        const $$createField2_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("fields" in $$parsedSource) {
             $$parsedSource["fields"] = $$createField2_0($$parsedSource["fields"]);
@@ -296,6 +406,18 @@ export enum FieldType {
     FieldList = "list",
     FieldKeyValue = "keyvalue",
     FieldToggle = "toggle",
+};
+
+export enum Kind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    RunKindMake = "make",
+    RunKindDockerBuild = "docker-build",
+    RunKindDockerRun = "docker-run",
+    RunKindDockerCompose = "docker-compose",
 };
 
 export type RunID = string;
@@ -340,13 +462,83 @@ export class RunTarget {
 
 export type SessionID = string;
 
+/**
+ * Suggestion è una configurazione pronta da salvare, proposta per un'unità di build rilevata.
+ * Il provider lascia Configuration.WorkingDirectory vuoto: lo imposta l'host relativo al progetto.
+ */
+export class Suggestion {
+    /**
+     * ID è stabile (lingua|unità|azione): serve a deduplicare e a ricordare cosa è già salvato.
+     */
+    "id": string;
+    "language": string;
+
+    /**
+     * Title è il testo della card, es. "Vite · pnpm run dev".
+     */
+    "title": string;
+
+    /**
+     * Action è run, test o build.
+     */
+    "action": string;
+    "unitRoot": string;
+
+    /**
+     * Saved è vero se esiste già una configurazione equivalente nella sessione.
+     */
+    "saved": boolean;
+    "configuration": Configuration;
+
+    /** Creates a new Suggestion instance. */
+    constructor($$source: Partial<Suggestion> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("action" in $$source)) {
+            this["action"] = "";
+        }
+        if (!("unitRoot" in $$source)) {
+            this["unitRoot"] = "";
+        }
+        if (!("saved" in $$source)) {
+            this["saved"] = false;
+        }
+        if (!("configuration" in $$source)) {
+            this["configuration"] = (new Configuration());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Suggestion instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Suggestion {
+        const $$createField6_0 = $$createType10;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("configuration" in $$parsedSource) {
+            $$parsedSource["configuration"] = $$createField6_0($$parsedSource["configuration"]);
+        }
+        return new Suggestion($$parsedSource as Partial<Suggestion>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = EnvironmentEntry.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = FieldOption.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = FieldCondition.createFrom;
-const $$createType6 = $Create.Nullable($$createType5);
-const $$createType7 = Field.createFrom;
-const $$createType8 = $Create.Array($$createType7);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = EnvironmentEntry.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = DockerOptions.createFrom;
+const $$createType4 = FieldOption.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = FieldCondition.createFrom;
+const $$createType7 = $Create.Nullable($$createType6);
+const $$createType8 = Field.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = Configuration.createFrom;

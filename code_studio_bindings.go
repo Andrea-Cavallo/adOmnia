@@ -317,6 +317,11 @@ func (g *GoIDE) GetRunSchema(languageID, kind string) run.FieldSchema {
 	return g.service.GetRunSchema(languageID, kind)
 }
 
+// GetRunSuggestions propone configurazioni Run per ogni unità di build del progetto.
+func (g *GoIDE) GetRunSuggestions(sessionID string) ([]run.Suggestion, error) {
+	return g.service.GetRunSuggestions(sessionID)
+}
+
 // OpenProject registra una cartella locale senza avviarne codice o strumenti.
 func (g *GoIDE) OpenProject(path string) (codestudio.Session, error) {
 	return g.service.OpenProject(path)
