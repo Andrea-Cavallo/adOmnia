@@ -5,6 +5,7 @@ import { useProjectSettings } from '@/stores/goideProjectSettings'
 import { useGoStudioWhenStore } from '@/stores/goStudioWhenContext'
 import { caretFor, rememberCaret } from '@/lib/goide/goStudioCaretMemory'
 import { heavyFeatureEnabled } from './goStudioResourceMode'
+import { releaseSleepingSessionModels, startGoStudioHibernation, useGoStudioHibernation } from './goStudioHibernation'
 import { useGoIDENavigationStore } from '@/stores/goideNavigation'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
@@ -59,6 +60,7 @@ registerGoStudioSettingsJson()
 const RUN_TARGET_DEBOUNCE_MS = 250
 
 void releaseModelsOfClosedDocuments()
+startGoStudioHibernation()
 
 /**
  * Centers a position and keeps it centered while the editor settles: a jump from another panel shows
@@ -98,7 +100,20 @@ interface GoStudioCodeEditorProps {
  * Editor Monaco di Go Studio. Pannello principale e split condividono il modello del file
  * (stesso URI) ma mantengono cursore, scroll e selezione indipendenti.
  */
-export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTarget }: GoStudioCodeEditorProps) {
+export function GoStudioCodeEditor(props: GoStudioCodeEditorProps) {
+  const sleeping = useGoStudioHibernation(state => !!state.sleeping[props.document.document.sessionId])
+  // Each split keeps its own selection/scroll instead of sharing Monaco React's URI cache.
+  const view = useRef<{ documentId: string; state: monaco.editor.ICodeEditorViewState | null } | null>(null)
+  const sessionId = props.document.document.sessionId
+  useEffect(() => {
+    if (sleeping) releaseSleepingSessionModels(sessionId)
+  }, [sleeping, sessionId])
+  return sleeping ? null : <MountedGoStudioCodeEditor {...props} hibernationView={view} />
+}
+
+function MountedGoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTarget, hibernationView }: GoStudioCodeEditorProps & {
+  hibernationView: { current: { documentId: string; state: monaco.editor.ICodeEditorViewState | null } | null }
+}) {
   const theme = useGoStudioEditorTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
@@ -139,6 +154,9 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
+    if (hibernationView.current?.documentId === document.document.id) {
+      editor.restoreViewState(hibernationView.current.state)
+    }
     const unregister = registerGoStudioEditor(editor)
     editor.onDidDispose(unregister)
     editor.onDidFocusEditorWidget(() => {
@@ -193,6 +211,13 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
       if (value !== changed.buffer) updateDocument(changed.document.id, value)
     })
   }
+
+  useEffect(() => () => {
+    const editor = editorRef.current
+    const model = editor?.getModel()
+    const current = model ? documentForModel(model) : null
+    if (editor && current) hibernationView.current = { documentId: current.document.id, state: editor.saveViewState() }
+  }, [hibernationView])
 
   useEffect(() => {
     if (!handlesReveal || revealLocation?.documentId !== document.document.id || !editorRef.current) return
@@ -277,6 +302,7 @@ export function GoStudioCodeEditor({ document, handlesReveal, onCursor, onRunTar
     <Editor
       path={editorModelUri(document.document)}
       keepCurrentModel
+      saveViewState
       language={extensionLanguage?.monaco || extensionLanguage?.id || document.document.language}
       value={document.buffer}
       theme={theme}

@@ -2,6 +2,23 @@ package activity
 
 import "testing"
 
+func TestActivitySubscribersCanQueryAndUnsubscribe(t *testing.T) {
+	m := NewManager()
+	calls := 0
+	off := m.Subscribe(func() { calls++; _ = m.State("goide:s") })
+	m.Report("main", Active, []string{"goide:s"})
+	m.RemoveWindow("main")
+	if calls != 2 {
+		t.Fatalf("notifications = %d", calls)
+	}
+	off()
+	off()
+	m.Report("main", Background, nil)
+	if calls != 2 {
+		t.Fatal("subscriber retained after unsubscribe")
+	}
+}
+
 func TestStatesAcrossWindowsAndRealResourceRelease(t *testing.T) {
 	m := NewManager()
 	if m.State("goide:s") != Background {

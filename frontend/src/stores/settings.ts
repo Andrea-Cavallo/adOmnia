@@ -169,7 +169,7 @@ function mergeBlock<T extends Record<string, unknown>>(defaults: T, saved: Parti
   return merged
 }
 
-import { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap } from '@/lib/goide/legacyKeymap'
+import { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap } from '@/lib/legacyKeymap'
 
 export { LEGACY_KEYMAP_STORAGE_KEY, legacyGoStudioKeymap }
 

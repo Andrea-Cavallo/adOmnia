@@ -8,16 +8,19 @@ import (
 
 const languageServerIdleTimeout = activity.IdleAfter
 
-// Only suspend servers with no tracked editors. Hidden/dirty editors and background
-// editor services keep their server; reopening replays the tracked buffers.
+// Buffers and versions survive suspension and are replayed on resume. Open tabs
+// therefore do not pin an inactive project's language server.
 func (m *LSPManager) armIdle(state *lspSession) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if state.idleTimer != nil {
-		state.idleTimer.Stop()
-	}
-	if state.userInitiated || len(state.documents) != 0 || state.process == nil || state.closed || state.stopping {
+	if state.idleTimer != nil || state.userInitiated || state.process == nil || state.closed || state.stopping {
 		return
+	}
+	if !m.activity.CanSuspend("goide:"+string(state.id), activity.Resource{Kind: "language-server", Restorable: true, UserInitiated: state.userInitiated}, true) {
+		return
+	}
+	if state.inactiveSince.IsZero() {
+		state.inactiveSince = time.Now()
 	}
 	state.idleEpoch++
 	epoch := state.idleEpoch
@@ -28,7 +31,15 @@ func (m *LSPManager) suspendIdle(state *lspSession, epoch uint64) {
 	state.lifecycle.Lock()
 	defer state.lifecycle.Unlock()
 	state.mu.Lock()
-	idle := state.idleEpoch == epoch && len(state.documents) == 0 && state.process != nil && !state.closed && !state.stopping
+	if state.idleEpoch != epoch {
+		state.mu.Unlock()
+		return
+	}
+	if state.idleTimer != nil {
+		state.idleTimer.Stop()
+	}
+	state.idleTimer = nil
+	idle := state.process != nil && !state.closed && !state.stopping
 	if idle && state.process.conn.PendingRequests() > 0 {
 		state.mu.Unlock()
 		m.armIdle(state)
@@ -45,7 +56,16 @@ func (m *LSPManager) suspendIdle(state *lspSession, epoch uint64) {
 	state.mu.Unlock()
 	if idle {
 		m.stopLocked(state)
-		m.activity.Released(lspActivityID(state))
+		state.mu.Lock()
+		exited := state.process == nil
+		state.mu.Unlock()
+		if exited {
+			m.activity.Released(lspActivityID(state))
+			// Visibility may have returned while stopLocked was waiting for exit.
+			if m.activity.State("goide:"+string(state.id)) == activity.Active {
+				go m.resumeIdle(state)
+			}
+		}
 	}
 }
 
@@ -53,10 +73,70 @@ func lspActivityID(state *lspSession) string {
 	return "lsp:" + string(state.id) + ":" + state.language
 }
 
+func (m *LSPManager) setActivityManager(manager *activity.Manager) {
+	if m.unsubscribeActivity != nil {
+		m.unsubscribeActivity()
+	}
+	m.activity = manager
+	m.unsubscribeActivity = manager.Subscribe(m.reconcileActivity)
+}
+
+func (m *LSPManager) reconcileActivity() {
+	m.mu.Lock()
+	states := make([]*lspSession, 0, len(m.sessions))
+	for _, state := range m.sessions {
+		states = append(states, state)
+	}
+	m.mu.Unlock()
+	for _, state := range states {
+		if m.activity.State("goide:"+string(state.id)) == activity.Active {
+			state.mu.Lock()
+			state.inactiveSince = time.Time{}
+			if state.idleTimer != nil {
+				state.idleTimer.Stop()
+				state.idleTimer = nil
+			}
+			state.idleEpoch++
+			resume := state.suspended && !state.closed && state.process == nil
+			state.mu.Unlock()
+			if resume {
+				go m.resumeIdle(state)
+			}
+		} else {
+			m.armIdle(state)
+		}
+	}
+}
+
+func (m *LSPManager) resumeIdle(state *lspSession) {
+	m.resumeSuspended(state, false)
+}
+
+func (m *LSPManager) resumeSuspended(state *lspSession, documentOpened bool) {
+	state.lifecycle.Lock()
+	defer state.lifecycle.Unlock()
+	state.mu.Lock()
+	if !state.suspended || state.closed || state.process != nil || state.launching || (!documentOpened && m.activity.State("goide:"+string(state.id)) != activity.Active) {
+		state.mu.Unlock()
+		return
+	}
+	state.suspended, state.stopping, state.launching = false, false, true
+	state.restartEpoch++
+	state.status.State = LanguageServerStarting
+	state.status.Error = ""
+	state.mu.Unlock()
+	m.activity.Track(lspActivityID(state), "goide:"+string(state.id))
+	m.publishStatus(state)
+	if err := m.launch(state); err != nil {
+		m.setState(state, LanguageServerCrashed, err.Error())
+	}
+	m.armIdle(state)
+}
+
 // SetActivityManager is called by the desktop composition root before starting sessions.
 func (s *Service) SetActivityManager(manager *activity.Manager) {
 	if manager != nil {
-		s.lsp.activity = manager
+		s.lsp.setActivityManager(manager)
 	}
 }
 

@@ -17,10 +17,6 @@ Go Studio toolbar and Run window, faster IDE startup, TODO export, and a Windows
 
 Work in progress from the IDE settings and Git areas that was already in the tree: project settings JSON with completion, `when` contexts for keybindings, legacy keymap import, and Git log/graph updates (`goStudioGitLog.css`, `GitCommitGraph`).
 
-## Known issue
-
-`npm run check:startup` reports `lib/goide/legacyKeymap.ts` in the startup graph because `stores/settings.ts` imports it statically. Make that import lazy before tagging a release.
-
 ## Verification
 
 `tsc --noEmit` clean; 1796 frontend tests pass; `go vet ./internal/milk` clean. Not exercised in the running desktop app yet: gopls warm-up, TODO export save dialog, the new toolbar and the Run service tabs.

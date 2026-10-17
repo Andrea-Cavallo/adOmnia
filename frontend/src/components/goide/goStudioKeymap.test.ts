@@ -30,7 +30,7 @@ vi.mock('@/stores/settings', () => ({
 
 const { GO_STUDIO_COMMANDS, commandsForKey, commandShortcut, isStaleEditorKey } = await import('./goStudioCommands')
 const { bindingConflicts, bindingFromEvent, effectiveBinding, useGoStudioKeymap } = await import('./goStudioKeymap')
-const { legacyGoStudioKeymap } = await import('@/lib/goide/legacyKeymap')
+const { legacyGoStudioKeymap } = await import('@/lib/legacyKeymap')
 
 const command = (id: string) => GO_STUDIO_COMMANDS.find((item) => item.id === id)!
 const key = (k: string, mods: { ctrl?: boolean; shift?: boolean; alt?: boolean } = {}) => ({ key: k, ctrlKey: !!mods.ctrl, metaKey: false, shiftKey: !!mods.shift, altKey: !!mods.alt })

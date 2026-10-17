@@ -1,12 +1,102 @@
 package goide
 
 import (
+	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
+	"adomnia/internal/ide/lsp"
 	"adomnia/internal/languages/golang"
 )
+
+func TestStopLanguageServerWhenTreeKillFails(t *testing.T) {
+	manager := NewLSPManager(newLanguageRegistry())
+	command := exec.Command(os.Args[0], "-test.run=^TestGoIDEManagedChildrenHelper$")
+	command.Env = append(os.Environ(), "ADOMNIA_GOIDE_MANAGED_HELPER=1")
+	configureProcess(command, false)
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	exited := make(chan struct{})
+	go func() { _ = command.Wait(); close(exited) }()
+	t.Cleanup(func() { _ = command.Process.Kill(); <-exited })
+	original := terminateProcessTree
+	terminateProcessTree = func(*exec.Cmd) error { return fmt.Errorf("injected tree kill failure") }
+	t.Cleanup(func() { terminateProcessTree = original })
+	conn := lsp.NewConn(strings.NewReader(""), io.Discard, nil)
+	conn.Run() // Closed transport: shutdown cannot stop the sleeping child.
+	state := &lspSession{process: &serverProcess{command: command, stdin: nopWriteCloser{io.Discard}, conn: conn, exited: exited}}
+	done := make(chan struct{})
+	go func() { manager.stopLocked(state); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(3 * shutdownTimeout):
+		_ = command.Process.Kill()
+		<-done
+		t.Fatal("stop hung after tree termination failed")
+	}
+	select {
+	case <-exited:
+	default:
+		t.Fatal("direct child survived fallback")
+	}
+	if !strings.Contains(strings.Join(state.log, "\n"), "injected tree kill failure") {
+		t.Fatal("termination error was lost")
+	}
+}
+
+type nopWriteCloser struct{ io.Writer }
+
+func (nopWriteCloser) Close() error { return nil }
+
+func TestStopLanguageServerBoundsFinalWait(t *testing.T) {
+	manager := NewLSPManager(newLanguageRegistry())
+	original := terminateProcessTree
+	terminateProcessTree = func(*exec.Cmd) error { return nil }
+	t.Cleanup(func() { terminateProcessTree = original })
+	exited := make(chan struct{})
+	conn := lsp.NewConn(strings.NewReader(""), io.Discard, nil)
+	conn.Run()
+	state := &lspSession{process: &serverProcess{command: &exec.Cmd{}, stdin: nopWriteCloser{io.Discard}, conn: conn, exited: exited}}
+	done := make(chan struct{})
+	go func() { manager.stopLocked(state); close(done) }()
+	select {
+	case <-done:
+		close(exited)
+	case <-time.After(3 * shutdownTimeout):
+		close(exited)
+		<-done
+		t.Fatal("stop waited indefinitely for process exit")
+	}
+	if state.status.State != LanguageServerCrashed {
+		t.Fatalf("unconfirmed exit reported as %s", state.status.State)
+	}
+}
+
+func TestStopLanguageServerWhenProtocolWriteBlocks(t *testing.T) {
+	manager := NewLSPManager(newLanguageRegistry())
+	reader, writer := io.Pipe()
+	defer reader.Close()
+	defer writer.Close()
+	exited := make(chan struct{})
+	close(exited)
+	// No reader consumes shutdown: the protocol write must be interrupted by closing stdin.
+	conn := lsp.NewConn(strings.NewReader(""), writer, nil)
+	state := &lspSession{process: &serverProcess{command: &exec.Cmd{}, stdin: writer, conn: conn, exited: exited}}
+	done := make(chan struct{})
+	go func() { manager.stopLocked(state); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(3 * shutdownTimeout):
+		_ = writer.Close()
+		<-done
+		t.Fatal("shutdown blocked on an unread protocol pipe")
+	}
+}
 
 func TestCloseLanguageServerDuringCrashBackoff(t *testing.T) {
 	manager := NewLSPManager(newLanguageRegistry())

@@ -43,10 +43,12 @@ type Snapshot struct {
 	Scopes map[string]State `json:"scopes"`
 }
 type Manager struct {
-	mu        sync.Mutex
-	windows   map[string]windowReport
-	resources map[string]trackedResource
-	alive     func(string) bool
+	mu           sync.Mutex
+	windows      map[string]windowReport
+	resources    map[string]trackedResource
+	alive        func(string) bool
+	listeners    map[uint64]func()
+	nextListener uint64
 }
 
 var Default = NewManager()
@@ -63,6 +65,7 @@ func (m *Manager) SetWindowAlive(alive func(string) bool) {
 	m.alive = alive
 }
 func (m *Manager) Report(window string, state State, scopes []string) (Snapshot, error) {
+	defer m.notify()
 	if window == "" || len(window) > 128 || len(scopes) > 128 || (state != Active && state != Background && state != Idle) {
 		return Snapshot{}, fmt.Errorf("invalid activity report")
 	}
@@ -81,6 +84,7 @@ func (m *Manager) Report(window string, state State, scopes []string) (Snapshot,
 	return m.snapshotLocked(), nil
 }
 func (m *Manager) RemoveWindow(window string) {
+	defer m.notify()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.windows, window)
@@ -92,6 +96,31 @@ func (m *Manager) pruneLocked() {
 				delete(m.windows, id)
 			}
 		}
+	}
+}
+
+// Subscribe observes window activity outside the manager lock. Owners unsubscribe on shutdown.
+func (m *Manager) Subscribe(listener func()) func() {
+	m.mu.Lock()
+	if m.listeners == nil {
+		m.listeners = make(map[uint64]func())
+	}
+	m.nextListener++
+	id := m.nextListener
+	m.listeners[id] = listener
+	m.mu.Unlock()
+	return func() { m.mu.Lock(); delete(m.listeners, id); m.mu.Unlock() }
+}
+
+func (m *Manager) notify() {
+	m.mu.Lock()
+	listeners := make([]func(), 0, len(m.listeners))
+	for _, listener := range m.listeners {
+		listeners = append(listeners, listener)
+	}
+	m.mu.Unlock()
+	for _, listener := range listeners {
+		listener()
 	}
 }
 func (m *Manager) baseStateLocked(scope string) State {

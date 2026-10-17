@@ -12,6 +12,7 @@ import (
 	"adomnia/internal/ide/run"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/plugins"
+	"adomnia/internal/resources"
 	"context"
 	"fmt"
 	"log"
@@ -54,6 +55,12 @@ func NewGoIDE() *GoIDE {
 		}
 	})
 	service.SetActivityManager(activity.Default)
+	budget, budgetErr := resources.DefaultMemoryBudget()
+	if budgetErr != nil {
+		log.Printf("[resources] %v; using 1536 MiB target", budgetErr)
+		budget = 1536 * resources.MiB
+	}
+	service.EnableMemoryBudget(budget)
 	_ = service.ConfigureToolchainStorage(filepath.Join(dataDir(), "goide", "toolchains"))
 	service.ConfigureGraphStore(filepath.Join(dataDir(), "goide", "graphs"))
 	_ = service.ConfigureRecoveryStore(goide.RecoveryBoltStore)

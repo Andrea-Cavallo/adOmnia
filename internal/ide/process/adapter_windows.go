@@ -3,11 +3,13 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"syscall"
+	"time"
 
 	"adomnia/internal/procutil"
 )
@@ -46,8 +48,15 @@ func TerminateTreeByPID(pid int) error {
 	if pid <= 0 {
 		return nil
 	}
-	kill := procutil.Command("taskkill.exe", "/PID", strconv.Itoa(pid), "/T", "/F")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	kill := procutil.CommandContext(ctx, "taskkill.exe", "/PID", strconv.Itoa(pid), "/T", "/F")
+	// Bound pipe draining too, in case a descendant retains an output handle.
+	kill.WaitDelay = time.Second
 	if output, err := kill.CombinedOutput(); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("arresto albero processi: %w", ctx.Err())
+		}
 		return fmt.Errorf("arresto albero processi fallito: %w (%s)", err, string(output))
 	}
 	return nil

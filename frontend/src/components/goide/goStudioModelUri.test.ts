@@ -4,7 +4,7 @@ type ModelState = { documents: ModelDocuments }
 const mock = vi.hoisted(() => ({
   documents: [] as ModelDocuments,
   listener: null as null | ((state: ModelState, previous: ModelState) => void),
-  models: new Map<string, { dispose: () => void }>(),
+  models: new Map<string, { dispose: () => void; isAttachedToEditor?: () => boolean; canUndo?: () => boolean; canRedo?: () => boolean; getValue?: () => string }>(),
   subscribe: vi.fn(),
 }))
 vi.mock('@/lib/monacoSetup', () => ({ monaco: {
@@ -70,4 +70,18 @@ it('reuses the models when switching tabs: reordering open documents disposes no
   vi.runAllTimers()
   expect(disposeA).not.toHaveBeenCalled()
   expect(disposeB).not.toHaveBeenCalled()
+})
+
+it('hibernates reconstructible models but protects dirty text, undo, redo and attached editors', async () => {
+  const { editorModelUri, releaseDormantModels } = await import('./goStudioModelUri')
+  for (const protection of ['none', 'dirty', 'attached', 'undo', 'redo', 'unsynced']) {
+    const dispose = vi.fn()
+    mock.models.set(editorModelUri(doc.document), {
+      dispose, isAttachedToEditor: () => protection === 'attached',
+      canUndo: () => protection === 'undo', canRedo: () => protection === 'redo',
+      getValue: () => protection === 'unsynced' ? 'new edit' : 'saved',
+    })
+    releaseDormantModels([{ ...doc, dirty: protection === 'dirty', buffer: 'saved' }])
+    expect(dispose).toHaveBeenCalledTimes(protection === 'none' ? 1 : 0)
+  }
 })

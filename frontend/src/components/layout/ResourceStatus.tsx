@@ -34,6 +34,13 @@ export function ResourceStatus() {
       <h3 className="api-dot-label mb-2">{tr('Application resources')}</h3>
       <p className="mb-2 text-text-4">{tr('Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.')}</p>
       {failed && <p className="text-warning">{tr('Resources unavailable')}</p>}
+      {sample?.budget && <div className="mb-2 rounded border border-border-1 px-2 py-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span>{tr('Memory target')} <span className="font-mono">{mib(sample.budget.target)}</span></span>
+          {sample.budget.pressure && <span className="text-warning">{tr('Memory pressure')}</span>}
+        </div>
+        <p className="mt-1 text-text-4">{tr('Soft target for the application and child processes. Active work stays protected; shared pages may be counted more than once.')}</p>
+      </div>}
       <div className="max-h-60 overflow-auto">
         {sample?.processes.map(p => <div key={p.pid} className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-border-1 py-1.5 font-mono tabular-nums">
           <span className="min-w-0 truncate" title={p.workspace}>{p.name} <span className="text-text-4">#{p.pid}</span>{p.workspace && <span className="block truncate text-text-4">{p.workspace}</span>}</span>

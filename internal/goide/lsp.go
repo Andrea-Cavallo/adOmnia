@@ -63,6 +63,8 @@ type lspSession struct {
 	idleEpoch     uint64
 	lifecycle     sync.Mutex
 	idleTimer     *time.Timer
+	inactiveSince time.Time
+	startedAt     time.Time
 	suspended     bool
 	userInitiated bool
 	restartEpoch  uint64 // invalidates crash retries after an explicit lifecycle change
@@ -105,15 +107,19 @@ type lspKey struct {
 }
 
 type LSPManager struct {
-	activity  *activity.Manager
-	mu        sync.Mutex
-	sessions  map[lspKey]*lspSession
-	emit      lspEmitter
-	languages *language.Registry
+	memoryBudget        *lspMemoryBudget
+	unsubscribeActivity func()
+	activity            *activity.Manager
+	mu                  sync.Mutex
+	sessions            map[lspKey]*lspSession
+	emit                lspEmitter
+	languages           *language.Registry
 }
 
 func NewLSPManager(languages *language.Registry) *LSPManager {
-	return &LSPManager{activity: activity.NewManager(), sessions: make(map[lspKey]*lspSession), languages: languages}
+	m := &LSPManager{sessions: make(map[lspKey]*lspSession), languages: languages}
+	m.setActivityManager(activity.NewManager())
+	return m
 }
 
 // SetEmitter collega gli eventi LSP al proprietario applicativo.
@@ -235,6 +241,7 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	}
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
+		state.idleTimer = nil
 	}
 	state.idleEpoch++
 	state.suspended = false
@@ -304,6 +311,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	state.mu.Lock()
 	state.process = process
 	state.status.PID = command.Process.Pid
+	state.startedAt = time.Now()
 	state.mu.Unlock()
 	// Il server language è un figlio gestito: dopo un crash lo sweep dell'avvio
 	// successivo lo ritrova e lo termina (managedchildren.go).
@@ -328,6 +336,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
 	m.reopenDocuments(state, process)
 	m.setState(state, LanguageServerReady, "")
+	m.signalMemoryBudget()
 	return nil
 }
 
@@ -462,6 +471,7 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 	state.restartEpoch++
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
+		state.idleTimer = nil
 	}
 	process := state.process
 	state.mu.Unlock()
@@ -469,16 +479,40 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 		m.setState(state, LanguageServerStopped, "")
 		return
 	}
+	// A server that stops reading stdin can block even a notification write.
+	// Closing stdin below releases the protocol writer when the grace period ends.
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	_ = process.conn.Call(ctx, "shutdown", nil, nil)
-	cancel()
-	_ = process.conn.Notify("exit", nil)
+	defer cancel()
+	graceful := make(chan struct{})
+	go func() {
+		defer close(graceful)
+		_ = process.conn.Call(ctx, "shutdown", nil, nil)
+		_ = process.conn.Notify("exit", nil)
+	}()
+	select {
+	case <-graceful:
+	case <-ctx.Done():
+	}
 	_ = process.stdin.Close()
 	select {
 	case <-process.exited:
 	case <-time.After(shutdownTimeout):
-		_ = terminateProcessTree(process.command)
-		<-process.exited
+		if err := terminateProcessTree(process.command); err != nil {
+			m.appendLog(state, fmt.Sprintf("process tree termination failed: %v", err))
+			if process.command.Process != nil {
+				if killErr := process.command.Process.Kill(); killErr != nil {
+					m.appendLog(state, fmt.Sprintf("direct process termination failed: %v", killErr))
+				}
+			}
+		}
+		select {
+		case <-process.exited:
+		case <-time.After(shutdownTimeout):
+			// Keep the process and registry entry until watch's Wait confirms exit.
+			message := "language server did not exit after forced termination"
+			m.appendLog(state, message)
+			m.setState(state, LanguageServerCrashed, message)
+		}
 	}
 }
 
@@ -533,6 +567,10 @@ func (m *LSPManager) CloseSession(sessionID SessionID) {
 
 // Shutdown arresta tutti i language server posseduti dal manager.
 func (m *LSPManager) Shutdown() {
+	m.stopMemoryBudget()
+	if m.unsubscribeActivity != nil {
+		m.unsubscribeActivity()
+	}
 	m.mu.Lock()
 	states := make([]*lspSession, 0, len(m.sessions))
 	for _, state := range m.sessions {
@@ -541,7 +579,7 @@ func (m *LSPManager) Shutdown() {
 	m.mu.Unlock()
 	var group sync.WaitGroup
 	for _, state := range states {
-		group.Go(func() { m.stop(state) })
+		group.Go(func() { m.stopState(state, true) })
 	}
 	group.Wait()
 }

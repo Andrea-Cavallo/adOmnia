@@ -22,11 +22,12 @@ type Usage struct {
 	Error string   `json:"error,omitempty"`
 }
 type Snapshot struct {
-	At        time.Time `json:"at"`
-	Processes []Usage   `json:"processes"`
-	RAM       uint64    `json:"ram"`
-	CPU       float64   `json:"cpu"`
-	Instances int       `json:"instances"`
+	Budget    *BudgetStatus `json:"budget,omitempty"`
+	At        time.Time     `json:"at"`
+	Processes []Usage       `json:"processes"`
+	RAM       uint64        `json:"ram"`
+	CPU       float64       `json:"cpu"`
+	Instances int           `json:"instances"`
 }
 
 // processInfo è una riga della tabella dei processi: padre e nome dell'eseguibile.

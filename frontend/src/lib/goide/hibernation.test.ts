@@ -1,0 +1,35 @@
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { createHibernationController } from './hibernation'
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
+
+it('hibernates inactive projects once without extending grace on unrelated events', () => {
+  const sleep = vi.fn(), wake = vi.fn()
+  const controller = createHibernationController(sleep, wake, 1000)
+  controller.reconcile(['a', 'b'], new Set(['a']))
+  vi.advanceTimersByTime(900)
+  controller.reconcile(['a', 'b'], new Set(['a']))
+  vi.advanceTimersByTime(100)
+  expect(sleep.mock.calls).toEqual([['b']])
+  vi.advanceTimersByTime(10_000)
+  expect(sleep).toHaveBeenCalledTimes(1)
+  controller.reconcile(['a', 'b'], new Set(['b']))
+  expect(wake).toHaveBeenCalledWith('b')
+  controller.dispose()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('cancels pending sleep on return and forgets closed projects', () => {
+  const sleep = vi.fn(), wake = vi.fn()
+  const controller = createHibernationController(sleep, wake, 1000)
+  controller.reconcile(['a', 'b'], new Set())
+  vi.advanceTimersByTime(900)
+  controller.reconcile(['a'], new Set(['a']))
+  vi.advanceTimersByTime(1000)
+  expect(sleep).not.toHaveBeenCalled()
+  controller.reconcile(['a'], new Set())
+  vi.advanceTimersByTime(1000)
+  controller.reconcile([], new Set())
+  expect(wake).toHaveBeenCalledWith('a')
+  controller.dispose()
+})

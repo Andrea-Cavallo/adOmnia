@@ -41,11 +41,16 @@ func (f *fakeGopls) HandleNotification(method string, params json.RawMessage) {
 		} else if method == "textDocument/didOpen" {
 			var opened struct {
 				TextDocument struct {
-					URI string `json:"uri"`
+					URI     string `json:"uri"`
+					Text    string `json:"text"`
+					Version int    `json:"version"`
 				} `json:"textDocument"`
 			}
 			_ = json.Unmarshal(params, &opened)
 			fmt.Fprintln(os.Stderr, "OPENED "+opened.TextDocument.URI)
+			if os.Getenv("ADOMNIA_FAKE_LSP_LOG_BUFFERS") != "" {
+				fmt.Fprintf(os.Stderr, "BUFFER %d %s\n", opened.TextDocument.Version, opened.TextDocument.Text)
+			}
 		}
 	}
 }

@@ -5,7 +5,41 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class BudgetStatus {
+    "target": number;
+    "recoveryTarget": number;
+    "pressure": boolean;
+    "released": number;
+
+    /** Creates a new BudgetStatus instance. */
+    constructor($$source: Partial<BudgetStatus> = {}) {
+        if (!("target" in $$source)) {
+            this["target"] = 0;
+        }
+        if (!("recoveryTarget" in $$source)) {
+            this["recoveryTarget"] = 0;
+        }
+        if (!("pressure" in $$source)) {
+            this["pressure"] = false;
+        }
+        if (!("released" in $$source)) {
+            this["released"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BudgetStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BudgetStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BudgetStatus($$parsedSource as Partial<BudgetStatus>);
+    }
+}
+
 export class Snapshot {
+    "budget"?: BudgetStatus | null;
     "at": string;
     "processes": Usage[];
     "ram": number;
@@ -37,10 +71,14 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField1_0 = $$createType1;
+        const $$createField0_0 = $$createType1;
+        const $$createField2_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("budget" in $$parsedSource) {
+            $$parsedSource["budget"] = $$createField0_0($$parsedSource["budget"]);
+        }
         if ("processes" in $$parsedSource) {
-            $$parsedSource["processes"] = $$createField1_0($$parsedSource["processes"]);
+            $$parsedSource["processes"] = $$createField2_0($$parsedSource["processes"]);
         }
         return new Snapshot($$parsedSource as Partial<Snapshot>);
     }
@@ -85,5 +123,7 @@ export class Usage {
 }
 
 // Private type creation functions
-const $$createType0 = Usage.createFrom;
-const $$createType1 = $Create.Array($$createType0);
+const $$createType0 = BudgetStatus.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = Usage.createFrom;
+const $$createType3 = $Create.Array($$createType2);

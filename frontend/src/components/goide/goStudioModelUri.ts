@@ -15,6 +15,16 @@ export function fileUri(uri: string): string {
 
 let cleanupInstalled = false
 
+/** Release only reconstructible models. Monaco owns undo history: never discard it. */
+export function releaseDormantModels(documents: readonly { document: { uri: string; sessionId: string }; dirty: boolean; buffer: string }[]): void {
+  for (const document of documents) {
+    const model = monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
+    if (!model || document.dirty || model.isAttachedToEditor() || model.canUndo() || model.canRedo()) continue
+    // A concurrent edit not yet reflected by the store must also survive.
+    if (model.getValue() === document.buffer) model.dispose()
+  }
+}
+
 /**
  * The editors keep their models (`keepCurrentModel`): an editor unmounting (Markdown preview, a closed
  * split) must not dispose a model another editor or Monaco feature still uses. Models are released

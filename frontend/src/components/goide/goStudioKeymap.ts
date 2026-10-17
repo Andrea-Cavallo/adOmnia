@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { GoStudioCommand, GoStudioCommandId, GoStudioKeyBinding } from './goStudioCommands'
 import { evaluateWhen, type GoStudioWhenContext } from '@/lib/goide/when'
 import type { ProjectKeymapOverride } from '@/lib/goide/projectSettings'
-import { LEGACY_KEYMAP_STORAGE_KEY } from '@/lib/goide/legacyKeymap'
+import { LEGACY_KEYMAP_STORAGE_KEY } from '@/lib/legacyKeymap'
 import { useSettingsStore } from '@/stores/settings'
 
 /** goland: la keymap predefinita (JetBrains). vscode: le scorciatoie di VS Code per chi arriva da lì. */

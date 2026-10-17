@@ -13,5 +13,13 @@ func (s *Service) ResourceUsage() resources.Snapshot {
 			state.mu.Unlock()
 		}
 	}
-	return resources.Sample(targets)
+	snapshot := resources.Sample(targets)
+	if b := s.lsp.memoryBudget; b != nil {
+		if len(snapshot.Processes) > 0 && snapshot.Processes[0].RAM > 0 {
+			b.policy.Observe(snapshot.RAM)
+		}
+		status := b.policy.Status()
+		snapshot.Budget = &status
+	}
+	return snapshot
 }

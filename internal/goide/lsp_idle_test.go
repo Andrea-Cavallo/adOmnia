@@ -6,7 +6,9 @@ import (
 	"adomnia/internal/languages/golang"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
@@ -65,6 +67,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 	state.mu.Unlock()
 
 	document := Document{ID: "main", Path: filepath.Join(root, "main.go"), URI: fileURI(filepath.Join(root, "main.go"))}
+	manager.activity.Report("main", activity.Active, []string{"goide:" + string(session.ID)})
 	manager.TrackDocument(session, document, "package main", false)
 	state.mu.Lock()
 	epoch := state.idleEpoch
@@ -74,6 +77,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 		t.Fatal("open editor was suspended")
 	}
 	manager.UntrackDocument(session.ID, document.ID)
+	manager.activity.Report("main", activity.Background, nil)
 	state.mu.Lock()
 	epoch = state.idleEpoch
 	state.mu.Unlock()
@@ -100,6 +104,97 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 		t.Fatal("manual stop resumed automatically")
 	}
 
+}
+
+func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) {
+	manager := NewLSPManager(newLanguageRegistry())
+	t.Cleanup(manager.Shutdown)
+	root := t.TempDir()
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := Session{ID: "hibernate", Project: Project{Name: "hibernate", RootPath: root, RealPath: root}}
+	options := LanguageServerOptions{Language: golang.ID, Binary: binary, Environment: append(os.Environ(), fakeGoplsEnv+"=1", "ADOMNIA_FAKE_LSP_LOG_BUFFERS=1")}
+	manager.activity.Report("main", activity.Active, []string{"goide:hibernate"})
+	first, err := manager.Start(session, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := Document{ID: "dirty", Path: filepath.Join(root, "main.go"), URI: fileURI(filepath.Join(root, "main.go"))}
+	manager.TrackDocument(session, doc, "package main", false)
+	if err := manager.UpdateDocument(session.ID, doc.ID, 7, "package main // unsaved"); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := manager.server(session.ID, golang.ID)
+	manager.activity.Report("main", activity.Background, nil)
+	state.mu.Lock()
+	epoch := state.idleEpoch
+	timer := state.idleTimer
+	state.mu.Unlock()
+	if timer == nil {
+		t.Fatal("open buffer prevented idle timer")
+	}
+	// Unrelated window reports must not postpone this project's grace period.
+	manager.activity.Report("other", activity.Active, []string{"collections"})
+	state.mu.Lock()
+	same := state.idleEpoch == epoch && state.idleTimer == timer
+	state.mu.Unlock()
+	if !same {
+		t.Fatal("unrelated activity reset idle timer")
+	}
+	manager.suspendIdle(state, epoch)
+	if status := manager.Status(session.ID, golang.ID); status.PID != 0 {
+		t.Fatalf("server survived hibernation: %+v", status)
+	}
+	// Background buffer updates are retained without waking a process.
+	if err := manager.UpdateDocument(session.ID, doc.ID, 8, "package main // latest"); err != nil {
+		t.Fatal(err)
+	}
+	if manager.Status(session.ID, golang.ID).PID != 0 {
+		t.Fatal("background edit woke server")
+	}
+	manager.activity.Report("detached", activity.Active, []string{"goide:hibernate"})
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		status := manager.Status(session.ID, golang.ID)
+		log := strings.Join(manager.Log(session.ID, golang.ID), "\n")
+		if status.State == LanguageServerReady && status.PID != first.PID && strings.Contains(log, "BUFFER 8 package main // latest") {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if log := strings.Join(manager.Log(session.ID, golang.ID), "\n"); !strings.Contains(log, "BUFFER 8 package main // latest") {
+		t.Fatalf("dirty buffer not replayed: %s", log)
+	}
+	manager.Stop(session.ID, golang.ID)
+	manager.activity.Report("detached", activity.Active, []string{"goide:hibernate"})
+	state.lifecycle.Lock()
+	state.lifecycle.Unlock()
+	if manager.Status(session.ID, golang.ID).PID != 0 {
+		t.Fatal("activity overrode manual stop")
+	}
+	// Close may race an already queued wake; it must still reap the process and
+	// remove the state, and later window reports cannot recreate it.
+	if _, err := manager.Start(session, options); err != nil {
+		t.Fatal(err)
+	}
+	manager.activity.Report("detached", activity.Background, nil)
+	state.mu.Lock()
+	epoch = state.idleEpoch
+	state.mu.Unlock()
+	manager.suspendIdle(state, epoch)
+	manager.activity.Report("detached", activity.Active, []string{"goide:hibernate"})
+	manager.CloseSession(session.ID)
+	manager.activity.Report("detached", activity.Active, []string{"goide:hibernate"})
+	state.lifecycle.Lock()
+	state.mu.Lock()
+	closed := state.closed && state.process == nil
+	state.mu.Unlock()
+	state.lifecycle.Unlock()
+	if !closed {
+		t.Fatal("queued wake revived a closed session")
+	}
 }
 
 func TestUserLanguageServerEntryPointsPinBeforeLaunch(t *testing.T) {

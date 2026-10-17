@@ -24,15 +24,20 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	state.mu.Lock()
 	if state.idleTimer != nil {
 		state.idleTimer.Stop()
+		state.idleTimer = nil
 	}
 	state.idleEpoch++
 	resume := state.suspended
-	options := state.options
 
 	if _, exists := state.documents[document.ID]; exists {
 		state.mu.Unlock()
 		state.documentsMu.Unlock()
 		state.lifecycle.Unlock()
+		if resume {
+			m.resumeSuspended(state, true)
+		} else {
+			m.armIdle(state)
+		}
 		return
 	}
 	tracked := &trackedDocument{id: document.ID, uri: document.URI, path: document.Path, languageID: languageID, version: 1, text: text, readOnly: readOnly}
@@ -46,9 +51,10 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	state.documentsMu.Unlock()
 	state.lifecycle.Unlock()
 	if resume {
-		_, _ = m.Start(session, options)
+		m.resumeSuspended(state, true)
 		return
 	}
+	m.armIdle(state)
 }
 
 // UpdateDocument sincronizza il buffer non salvato; versioni non crescenti vengono rifiutate come obsolete.
