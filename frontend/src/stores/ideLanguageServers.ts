@@ -159,11 +159,12 @@ ${plan.note}`, confirmLabel: 'Install' })
         const names = run.languages.map((id) => ideLanguage(id)?.name ?? id).join(', ')
         if (succeeded) {
           studioToast(`Language server installed (${names})`, 'success')
-          // I server mancanti ora esistono: i file aperti di quei linguaggi li avviano da soli.
-          set((state) => ({ servers: { ...state.servers, [sessionId]: Object.fromEntries(Object.entries(state.servers[sessionId] ?? {}).map(([id, entry]) => [id, entry.state === 'missing' && run.languages.includes(id) ? { ...entry, state: 'stopped' as const, error: undefined } : entry])) } }))
+          // Gli strumenti stanno nella cartella di adOmnia, condivisa da tutte le sessioni: i server mancanti
+          // ora esistono ovunque, e i file aperti di quei linguaggi li avviano da soli.
+          set((state) => ({ servers: Object.fromEntries(Object.entries(state.servers).map(([session, entries]) => [session, Object.fromEntries(Object.entries(entries).map(([id, entry]) => [id, entry.state === 'missing' && run.languages.includes(id) ? { ...entry, state: 'stopped' as const, error: undefined } : entry]))])) }))
           for (const document of useCodeStudioStore.getState().documents) {
-            const languageId = document.document.sessionId === sessionId ? serverLanguageForEditor(document.document.language) : undefined
-            if (languageId && run.languages.includes(languageId)) void get().ensureStarted(sessionId, languageId)
+            const languageId = serverLanguageForEditor(document.document.language)
+            if (languageId && run.languages.includes(languageId)) void get().ensureStarted(document.document.sessionId, languageId)
           }
         } else {
           studioToast(`Installing the language server failed (${names}): see the Run console`, 'info')

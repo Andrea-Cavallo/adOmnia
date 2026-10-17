@@ -122,6 +122,15 @@ describe('web language servers', () => {
     expect(mocks.endToolInstall).toHaveBeenCalledWith('s1', 'install-web-language-servers', true)
   })
 
+  it('unblocks the same missing server in the other sessions too: the tools folder is shared', async () => {
+    useIdeLanguageServersStore.setState({ servers: { s1: { html: { state: 'missing' } }, s2: { html: { state: 'missing' }, css: { state: 'missing' } } }, installing: { s1: { html: RUN } } })
+    mocks.state.documents = []
+    useIdeLanguageServersStore.getState().handleEvent({ version: 1, type: 'run.finished', sessionId: 's1', sequence: 7, timestamp: '', payload: { id: 'run-9', status: 'exited', exitCode: 0 } })
+    const servers = useIdeLanguageServersStore.getState().servers
+    expect(servers.s2.html.state).toBe('stopped')
+    expect(servers.s2.css.state).toBe('missing')
+  })
+
   it('reports a failed install so the Run console comes back with the error', () => {
     useIdeLanguageServersStore.setState({ installing: { s1: { html: RUN } } })
     useIdeLanguageServersStore.getState().handleEvent({ version: 1, type: 'run.finished', sessionId: 's1', sequence: 6, timestamp: '', payload: { id: 'run-9', status: 'failed', exitCode: 1 } })
