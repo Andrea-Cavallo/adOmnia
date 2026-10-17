@@ -19,7 +19,7 @@ func TestRunSchemaOnlyExposesGoFieldsForBuildKinds(t *testing.T) {
 		}
 		return result
 	}
-	if got := len(keys("run")); got != 6 {
+	if got := len(keys("run")); got != 7 {
 		t.Fatalf("run fields = %d", got)
 	}
 	if got := keys("test"); got[len(got)-1] != "profile" {

@@ -645,3 +645,8 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 - [ ] ML-2.M2 Aprire un progetto Go fidato: indicizzazione gopls, Run, Debug con breakpoint, test, terminale — tutto come prima del rename.
 - [ ] ML-2.M3 Finestra staccata dell'IDE, finestra tool staccata e Split Debug View: si aprono, ricevono gli eventi (`code-studio:event`) e si chiudono senza chiedere conferme spurie.
 - [ ] ML-2.M4 Riavvio con progetti aperti: ripristino sessioni e recovery dopo chiusura forzata (bucket `goide` invariato).
+
+### ML-4 — Run: campi generati dallo schema (2026-10-17)
+
+- [ ] ML-4.M1 Aprire Run configurations di un progetto Go: sotto "Execution options" compare **Advanced** (collassata) con Race, Coverage, GOOS, GOARCH, Build tags, Go tool flags e, per package/build, Debug build flags; per un test anche Profile. Per un comando generico, Make o Docker la sezione Advanced non compare. Verificare tema scuro e controlli `select`/`input` su Windows (e WebKitGTK se disponibile).
+- [ ] ML-4.M2 Salvare una configurazione con GOOS/race/tags, riaprirla e controllare che i valori restino; il file `.adomnia/run-configurations.json` condiviso mantiene i campi piatti.

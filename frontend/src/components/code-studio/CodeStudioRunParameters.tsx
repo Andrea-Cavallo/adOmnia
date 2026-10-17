@@ -1,5 +1,6 @@
 import { ArrowRight, Plus, X } from 'lucide-react'
 import { GoIDERunConfigurationKind, type GoIDERunConfiguration } from '@/lib/code-studio-api'
+import { CodeStudioRunSchemaFields } from './CodeStudioRunSchemaFields'
 
 interface Props {
   draft: GoIDERunConfiguration
@@ -7,17 +8,12 @@ interface Props {
   patch: (change: Partial<GoIDERunConfiguration>) => void
 }
 
-const GO_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindPackage, GoIDERunConfigurationKind.RunKindFiles, GoIDERunConfigurationKind.RunKindBuild, GoIDERunConfigurationKind.RunKindTest])
-const DEBUG_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindPackage, GoIDERunConfigurationKind.RunKindBuild])
-const PROFILES = [['', 'None'], ['cpu', 'CPU (cpu.pprof)'], ['mem', 'Memory (mem.pprof)'], ['block', 'Blocking (block.pprof)'], ['mutex', 'Mutex (mutex.pprof)'], ['trace', 'Execution trace (trace.out)']] as const
 
 const input = 'gs-input gs-mono'
 const label = 'gs-field-label'
 
-/** Parametri di esecuzione: env file, porta, piattaforma, race, coverage, profiling, flag Delve, task prima/dopo. */
+/** Parametri di esecuzione: env file, porta, campi del linguaggio (da schema), task prima/dopo. */
 export function CodeStudioRunParameters({ draft, configs, patch }: Props) {
-  const goKind = GO_KINDS.has(draft.kind)
-  const isTest = draft.kind === GoIDERunConfigurationKind.RunKindTest
   const tasks = (field: 'preRun' | 'postRun', title: string, hint: string) => (
     <RunTaskList draft={draft} configs={configs} patch={patch} field={field} title={title} hint={hint} />
   )
@@ -30,25 +26,8 @@ export function CodeStudioRunParameters({ draft, configs, patch }: Props) {
         <label className={label}>Port (sets PORT, checked free before start)
           <input type="number" min={0} max={65535} value={draft.port || ''} onChange={(event) => patch({ port: Number(event.target.value) || 0 })} placeholder="8080" className={input} />
         </label>
-        {goKind && <>
-          <label className={label}>GOOS<input value={draft.goos ?? ''} onChange={(event) => patch({ goos: event.target.value.trim() })} placeholder="Host OS · linux, windows, darwin" className={input} /></label>
-          <label className={label}>GOARCH<input value={draft.goarch ?? ''} onChange={(event) => patch({ goarch: event.target.value.trim() })} placeholder="Host arch · amd64, arm64" className={input} /></label>
-          <div className="col-span-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-text-2">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={!!draft.race} onChange={(event) => patch({ race: event.target.checked })} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />Race detector (-race)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={!!draft.coverage} onChange={(event) => patch({ coverage: event.target.checked })} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />Coverage (-cover{isTest ? '' : ', data in .gocoverdata'})</label>
-          </div>
-        </>}
-        {isTest && (
-          <label className={label}>Profiling
-            <select value={draft.profile ?? ''} onChange={(event) => patch({ profile: event.target.value })} className={input}>
-              {PROFILES.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-            </select>
-          </label>
-        )}
-        {DEBUG_KINDS.has(draft.kind) && (
-          <label className={label}>Debug build flags (Delve)<input value={(draft.debugFlags ?? []).join(' ')} onChange={(event) => patch({ debugFlags: event.target.value.split(/\s+/).filter(Boolean) })} placeholder="-gcflags=all=-N" className={input} /></label>
-        )}
       </div>
+      <CodeStudioRunSchemaFields draft={draft} patch={patch} />
       <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-start gap-2">
         {tasks('preRun', 'Before launch', 'Run other configurations first, e.g. docker compose up or a make target. A failure stops the launch.')}
         <ArrowRight size={14} className="mt-8 text-text-4" />

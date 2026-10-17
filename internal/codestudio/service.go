@@ -173,6 +173,9 @@ func (s *Service) GetCapabilities() Capabilities {
 // GetRunSchema descrive i campi specifici del linguaggio per un kind di configurazione;
 // uno schema vuoto significa che il linguaggio non aggiunge campi (o non esiste).
 func (s *Service) GetRunSchema(languageID, kind string) run.FieldSchema {
+	if languageID == "" {
+		languageID = golang.ID // come normalizeConfiguration: una configurazione senza linguaggio è Go
+	}
 	if adapter, ok := s.workspace.languages.Get(languageID); ok {
 		if provider, ok := adapter.(run.SchemaProvider); ok {
 			return provider.RunSchema(kind)

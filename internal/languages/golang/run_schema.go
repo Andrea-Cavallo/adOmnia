@@ -28,6 +28,9 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 		advanced("buildTags", "Build tags", run.Field{Type: run.FieldList}),
 		advanced("goArguments", "Go tool flags", run.Field{Type: run.FieldList, Help: "Flag passati a go run/build/test"}),
 	}
+	if kind == "package" || kind == "run" || kind == "build" {
+		schema.Fields = append(schema.Fields, advanced("debugFlags", "Debug build flags (Delve)", run.Field{Type: run.FieldList, Help: "Es. -gcflags=all=-N"}))
+	}
 	if kind == "test" {
 		schema.Fields = append(schema.Fields, advanced("profile", "Profile", run.Field{
 			Type: run.FieldSelect, Help: "Profilo di test",
