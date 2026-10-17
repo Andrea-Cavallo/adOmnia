@@ -75,6 +75,11 @@ export class Info {
      */
     "nodeEngine"?: string;
 
+    /**
+     * TestFramework è il test runner con report JSON dichiarato nelle dipendenze (vitest o jest); vuoto se nessuno.
+     */
+    "testFramework"?: string;
+
     /** Creates a new Info instance. */
     constructor($$source: Partial<Info> = {}) {
         if (!("dir" in $$source)) {

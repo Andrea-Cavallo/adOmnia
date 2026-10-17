@@ -1,3 +1,4 @@
+import { testTargets } from '@/lib/code-studio/testTargets'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Filter, Gauge, Loader2, MinusCircle, Play, Repeat, RotateCcw, Search, Shuffle, ShieldCheck, Square, Trash2, XCircle } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
@@ -352,12 +353,16 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
     })
   }, [records, run?.results, search, showOnlyFailed, showOnlyFlaky, showOnlySlow])
   const selected = run?.results.find((result) => result.id === selectedId) ?? null
+  const runnable = useMemo(() => testTargets(session.project), [session.project])
+  const only = runnable.length === 1 ? runnable[0] : null
 
   if (!run) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-[13px] text-text-4">
         <p>Run tests from the ▶ next to a test, the “▶ Test” lens on a package, or Run → Test All.</p>
-        <button type="button" onClick={() => void start({ sessionId, workingDirectory: '', packages: ['./...'] })} className="flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[13px] font-semibold text-on-accent"><Play size={11} fill="currentColor" aria-hidden="true" /> Run all tests</button>
+        {(runnable.length > 1 ? runnable : [null]).map((target) => (
+          <button key={target?.key ?? 'all'} type="button" onClick={() => void start(target ? { sessionId, language: target.language, workingDirectory: target.workingDirectory, packages: target.packages } : only ? { sessionId, language: only.language, workingDirectory: only.workingDirectory, packages: only.packages } : { sessionId, workingDirectory: '', packages: ['./...'] })} className="flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[13px] font-semibold text-on-accent"><Play size={11} fill="currentColor" aria-hidden="true" /> {target ? `Run all tests · ${target.label}` : 'Run all tests'}</button>
+        ))}
       </div>
     )
   }

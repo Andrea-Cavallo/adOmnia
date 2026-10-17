@@ -1,3 +1,4 @@
+import { nonGoTestTarget } from '@/lib/code-studio/testTargets'
 import { goModules } from '@/lib/code-studio/goProject'
 import { selectGoIDEFolder, startGoIDEDependencyAction, type GoIDESession } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'
@@ -132,6 +133,12 @@ export async function runCodeStudioQuickCommand(kind: GoIDEQuickRunKind, scope: 
   const request = quickRunFor(kind, scope, moduleScopeFor(session, editableRelativePath(source)))
   // I test passano dal runner strutturato (albero, rerun, coverage), non dalla console grezza.
   if (kind === 'test') {
+    // Senza moduli Go, "Test All" gira sul runner dell'unità JS/TS invece di un `go test` che non ha nulla da testare.
+    const fallback = scope === 'module' ? nonGoTestTarget(session.project) : null
+    if (fallback) {
+      await useCodeStudioTestsStore.getState().start({ sessionId: session.id, language: fallback.language, workingDirectory: fallback.workingDirectory, packages: fallback.packages })
+      return
+    }
     await useCodeStudioTestsStore.getState().start({ sessionId: session.id, workingDirectory: request.workingDirectory, packages: [request.target], coverage: options.coverage ?? false, race: options.race ?? false })
     return
   }
