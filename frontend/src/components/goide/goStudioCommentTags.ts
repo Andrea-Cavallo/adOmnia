@@ -37,7 +37,7 @@ export function lineCommentToken(relativePath: string): '//' | '#' {
  * Inizio del commento di riga, ignorando il marcatore dentro le stringhe ("http://…", `…`, '…').
  * Le raw string Go su più righe non sono tracciate: al peggio un tag resta senza colore.
  */
-function lineCommentStart(line: string, token: '//' | '#'): number {
+export function lineCommentStart(line: string, token: string): number {
   let quote = ''
   for (let index = 0; index < line.length; index++) {
     const char = line[index]

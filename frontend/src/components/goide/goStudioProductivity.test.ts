@@ -27,6 +27,10 @@ describe('TODO view', () => {
     expect(pattern.test('todoList := []string{"TODO"}')).toBe(false)
     expect(todoItemFor(match('\t// TODO: handle errors'))).toMatchObject({ keyword: 'TODO', text: 'handle errors' })
     expect(todoItemFor(match('/* FIXME */'))).toMatchObject({ keyword: 'FIXME', text: '(no description)' })
+    expect(todoItemFor(match('out := "\t// TODO: in a string"'))).toBeNull()
+    expect(todoItemFor({ ...match('# TODO — title'), relativePath: 'notes.md' })).toBeNull()
+    expect(todoItemFor({ ...match('# TODO: tune'), relativePath: 'ci.yaml' })).toMatchObject({ keyword: 'TODO', text: 'tune' })
+    expect(todoItemFor(match('x := 1 // see TODO list'))).toBeNull()
   })
 })
 

@@ -4,6 +4,7 @@ import { saveBase64File } from '@/lib/fileUtils'
 import { todosToMarkdown } from '@/lib/goide/todoExport'
 import { requestProjectSearch, type GoIDESearchMatch } from '@/lib/goide-lsp-api'
 import { useGoIDEStore } from '@/stores/goide'
+import { lineCommentStart, lineCommentToken } from './goStudioCommentTags'
 
 /** Commenti TODO/FIXME/XXX/BUG in Go, YAML, shell e affini: solo dopo un marcatore di commento. */
 export const TODO_PATTERN = String.raw`(?://|/\*|#)\s*(TODO|FIXME|XXX|BUG)\b`
@@ -17,9 +18,19 @@ export interface GoStudioTodoItem {
   match: GoIDESearchMatch
 }
 
+/** Testo dopo il marcatore di commento, ignorando quelli dentro le stringhe ("// TODO" in una fixture non è un TODO). */
+function commentBody(preview: string, relativePath: string): string | null {
+  const token = lineCommentToken(relativePath)
+  const start = [token, ...(token === '//' ? ['/*'] : [])].map((marker) => ({ marker, at: lineCommentStart(preview, marker) })).filter((hit) => hit.at >= 0).sort((a, b) => a.at - b.at)[0]
+  if (!start) return null
+  const body = preview.slice(start.at + start.marker.length)
+  return /^[\s*/!-]*(?:TODO|FIXME|XXX|BUG)\b/.test(body) ? body : null
+}
+
 /** Estrae parola chiave e testo del commento da un risultato di ricerca. */
 export function todoItemFor(match: GoIDESearchMatch): GoStudioTodoItem | null {
-  const found = TODO_KEYWORD.exec(match.preview)
+  const body = commentBody(match.preview, match.relativePath ?? '')
+  const found = body === null ? null : TODO_KEYWORD.exec(body)
   if (!found) return null
   const text = found[2].replace(/\*\/\s*$/, '').trim()
   return { keyword: found[1] as TodoKeyword, text: text || '(no description)', match }
