@@ -335,7 +335,8 @@ func (m *Manager) processExited(state *entry, execution run.Execution) {
 	wasStopping, previous := state.stopping, state.preview.State
 	m.mu.Unlock()
 	switch {
-	case wasStopping && previous != StateFailed:
+	case (wasStopping || execution.Status == "stopped") && previous != StateFailed:
+		// Anche l'arresto fatto dalla console Run (non dal pannello preview) è voluto: niente errore.
 		m.finish(state, StateStopped, "", "")
 	case previous == StateFailed:
 		// già spiegato da fail()

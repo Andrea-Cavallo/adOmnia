@@ -154,3 +154,26 @@ func TestStopSessionReleasesEverything(t *testing.T) {
 		t.Fatal("stopping one session must not touch another")
 	}
 }
+
+func TestStoppingFromTheRunConsoleIsNotAnError(t *testing.T) {
+	processes := run.NewProcessManager()
+	defer processes.Shutdown()
+	manager := NewManager(processes, nil)
+	spec := nodeCommand(t, t.TempDir())
+	port, err := FreePort(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec.Environment = append(os.Environ(), "PORT="+strconv.Itoa(port))
+	if _, err := manager.StartDevServer(DevServerRequest{ID: "web", SessionID: "s1", Spec: spec}); err != nil {
+		t.Fatal(err)
+	}
+	ready := waitState(t, manager, "web", StateReady)
+	if err := processes.Stop(run.RunID(ready.RunID)); err != nil {
+		t.Fatal(err)
+	}
+	stopped := waitState(t, manager, "web", StateStopped)
+	if stopped.Error != "" || stopped.FailureKind != "" {
+		t.Fatalf("a deliberate stop must not look like a crash: %+v", stopped)
+	}
+}

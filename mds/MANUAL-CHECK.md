@@ -669,7 +669,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 - [ ] ML-8.M1 Con una configurazione Go (cartella `orders`) e una Node (cartella `web`, comando `pnpm run dev`), entrambe con "Restart on save" e in esecuzione: salvare un `.go` in `orders` riavvia solo la Go; salvare un `.ts` in `web` riavvia solo la Node; salvare un `.md` o un file in un’altra cartella non riavvia nulla.
 
 - [x] ML-8.M2 *(2026-10-17, app e2e isolata)* Progetto Node con script `dev`: aggiunta la proposta `npm run dev` e premuto ▶ — si apre la Live Preview (pagina "Hello from dev server" servita sul proxy :5675, server vero :5199), la console Run mostra `npm run dev` e `Local: http://localhost:5199/`. **Difetto trovato:** dopo ■ Stop la preview mostra "The preview could not start — The dev server stopped (exit code 1)" invece di uno stato fermo.
-- [ ] ML-8.M3 Dopo ■ Stop di un dev server avviato da ▶, la Live Preview mostra "Stopped" senza messaggio d'errore (oggi: "could not start", exit code 1).
+- [ ] ML-8.M3 *(fix 2026-10-17 con test automatico `TestStoppingFromTheRunConsoleIsNotAnError`; da riprovare in app)* Dopo ■ Stop di un dev server avviato da ▶, la Live Preview mostra "Stopped" senza messaggio d'errore (oggi: "could not start", exit code 1).
 
 ### ML-9 — New Project e language server (2026-10-17)
 
