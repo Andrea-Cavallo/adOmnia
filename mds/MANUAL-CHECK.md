@@ -655,3 +655,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 
 - [ ] ML-5.M1 Aprire un progetto con `go.mod` e senza configurazioni: in "Run configurations", sopra "New configuration", compare **Detected** con Run/Test/Build del modulo; un click crea e seleziona la configurazione e la proposta sparisce. Avviarla con ▶.
 - [ ] ML-5.M2 Aprire una cartella con `package.json` (script dev/build) e un lockfile pnpm/yarn/npm: le proposte usano il package manager del lockfile (es. `Vite · pnpm run dev`) e si avviano come comando; in un workspace con Go + Node compaiono entrambe, ciascuna con la propria working directory.
+
+### ML-6 — Run: configurazioni raggruppate per unità (2026-10-17)
+
+- [ ] ML-6.M1 In un workspace con almeno due unità di linguaggi diversi (es. cartella Go + cartella Node) e configurazioni salvate in ciascuna, la lista di "Run configurations" mostra intestazioni `nome-cartella · Linguaggio`; con una sola unità non compaiono intestazioni. Le frecce su/giù, duplica ed elimina funzionano come prima.

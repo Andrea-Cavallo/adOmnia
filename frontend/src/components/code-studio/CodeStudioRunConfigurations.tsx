@@ -10,6 +10,7 @@ import { CodeStudioRunParameters, RunTaskList } from './CodeStudioRunParameters'
 import { CodeStudioRunTarget, supportsRemoteTarget } from './CodeStudioRunTarget'
 import { CodeStudioRunSuggestions } from './CodeStudioRunSuggestions'
 import { readRunHistory } from '@/lib/code-studio/codeStudioRunHistory'
+import { groupConfigurationsByUnit } from '@/lib/code-studio/runUnits'
 
 /** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
 const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []
@@ -100,6 +101,9 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
   const isTool = TOOL_KINDS.has(draft.kind)
   const isCompound = draft.kind === GoIDERunConfigurationKind.RunKindCompound
   const projectPath = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)?.project.realPath ?? ''
+  const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
+  const languageNames = Object.fromEntries((useCodeStudioStore.getState().capabilities?.languages ?? []).map((info) => [info.id, info.name]))
+  const groups = session ? groupConfigurationsByUnit(configs, session.project, languageNames) : [{ label: '', language: '', items: configs }]
   const history = selectedId ? readRunHistory(projectPath, selectedId).slice(0, 8) : []
   const compoundCandidates = configs.filter((config) => config.id !== draft.id && config.kind !== GoIDERunConfigurationKind.RunKindCompound)
 
@@ -164,23 +168,28 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
           <aside className="flex w-60 shrink-0 flex-col border-r border-border-1 bg-surface-0/40">
             <div className="min-h-0 flex-1 overflow-auto p-1.5">
               {configs.length === 0 && <p className="gs-list-empty">No configuration yet.</p>}
-              {configs.map((config) => (
-                <div
-                  key={config.id}
-                  className={`group flex h-9 items-center gap-0.5 rounded-lg px-2.5 text-[12.5px] ${
-                    config.id === selectedId ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'
-                  }`}
-                >
-                  <button type="button" onClick={() => setSelectedId(config.id)} className="min-w-0 flex-1 truncate text-left">
-                    {config.pinned && <Pin size={12} className="mr-1.5 inline text-accent" aria-label="Pinned" />}
-                    {config.name}
-                    <span className="ml-1.5 text-[11px] text-text-4">{config.kind}</span>
-                    {config.shared && <Share2 size={12} className="ml-1.5 inline text-text-4" aria-label="Shared with the project" />}
-                  </button>
-                  <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronUp size={13} /></button>
-                  <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronDown size={13} /></button>
-                  <button type="button" onClick={() => void duplicateRunConfiguration(config.id)} title="Duplicate" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Copy size={13} /></button>
-                  <button type="button" onClick={() => void remove(config.id)} title="Delete" className="gs-btn gs-btn-danger-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+              {groups.map((group) => (
+                <div key={group.label || 'all'}>
+                  {group.label && <div className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-text-4">{group.label}</div>}
+                  {group.items.map((config) => (
+                  <div
+                    key={config.id}
+                    className={`group flex h-9 items-center gap-0.5 rounded-lg px-2.5 text-[12.5px] ${
+                      config.id === selectedId ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'
+                    }`}
+                  >
+                    <button type="button" onClick={() => setSelectedId(config.id)} className="min-w-0 flex-1 truncate text-left">
+                      {config.pinned && <Pin size={12} className="mr-1.5 inline text-accent" aria-label="Pinned" />}
+                      {config.name}
+                      <span className="ml-1.5 text-[11px] text-text-4">{config.kind}</span>
+                      {config.shared && <Share2 size={12} className="ml-1.5 inline text-text-4" aria-label="Shared with the project" />}
+                    </button>
+                    <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronUp size={13} /></button>
+                    <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronDown size={13} /></button>
+                    <button type="button" onClick={() => void duplicateRunConfiguration(config.id)} title="Duplicate" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Copy size={13} /></button>
+                    <button type="button" onClick={() => void remove(config.id)} title="Delete" className="gs-btn gs-btn-danger-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+                  </div>
+                ))}
                 </div>
               ))}
             </div>
