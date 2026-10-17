@@ -2,6 +2,7 @@ package java
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ func fakeJava(t *testing.T, version string) {
 func installFakeJdtls(t *testing.T, tools string) {
 	t.Helper()
 	write(t, filepath.Join(tools, jdtlsDir, "plugins", "org.eclipse.equinox.launcher_1.7.0.jar"), "x")
+	write(t, filepath.Join(tools, jdtlsDir, "bundles", debugPluginName), "x")
 }
 
 func TestLocateServerAsksForInstallWhenJdtlsIsMissing(t *testing.T) {
@@ -81,5 +83,32 @@ func TestInstallPlanIsOneVisibleCommandAndNeedsAJdk(t *testing.T) {
 	lookPath = func(string) (string, error) { return "", errors.New("no java") }
 	if _, err := New().InstallPlan(tools); err == nil {
 		t.Error("without a JDK the install must be refused with the reason")
+	}
+}
+
+func TestAnInstallWithoutTheDebugBundleAsksForAnUpdate(t *testing.T) {
+	fakeJava(t, "21.0.4")
+	tools := t.TempDir()
+	installFakeJdtls(t, tools)
+	if err := os.Remove(filepath.Join(tools, jdtlsDir, "bundles", debugPluginName)); err != nil {
+		t.Fatal(err)
+	}
+	if info := New().LocateServer("", tools); info.Available || !strings.Contains(info.Error, "debug") {
+		t.Fatalf("an install without the debug bundle must ask to install again: %+v", info)
+	}
+}
+
+func TestServerSpecLoadsTheDebugBundleIntoJdtls(t *testing.T) {
+	fakeJava(t, "21.0.4")
+	tools := t.TempDir()
+	installFakeJdtls(t, tools)
+	spec, err := New().ServerSpec(t.TempDir(), tools)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, _ := spec.InitializationOptions.(map[string]any)
+	bundles, _ := options["bundles"].([]string)
+	if len(bundles) != 1 || !strings.HasSuffix(bundles[0], debugPluginName) {
+		t.Fatalf("bundles = %v", options)
 	}
 }

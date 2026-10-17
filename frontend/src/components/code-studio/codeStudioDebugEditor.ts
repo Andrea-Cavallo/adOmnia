@@ -19,9 +19,9 @@ const INLINE_VALUE_GAP = '    '
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/
 const SELECTOR_BEFORE = /(?:[A-Za-z_][A-Za-z0-9_]*\.)+$/
 
-/** Solo i file Go del progetto accettano breakpoint: fuori dal progetto Delve non li risolverebbe. */
+/** Solo i file Go e Java del progetto accettano breakpoint: fuori dal progetto il debugger non li risolverebbe. */
 export function canHoldBreakpoints(document: GoIDEEditorDocument | null): document is GoIDEEditorDocument {
-  return !!document && !document.document.external && document.document.relativePath.endsWith('.go')
+  return !!document && !document.document.external && /\.(go|java)$/.test(document.document.relativePath)
 }
 
 /** Classi del glifo: pallino, "?" per condizione e hit count, rombo per i logpoint, grigio se disattivato. */

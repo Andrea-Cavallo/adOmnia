@@ -4,9 +4,9 @@ import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
   listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
-  setGoIDEFunctionBreakpoints, startGoIDEDebug, stepGoIDEDebug, stopGoIDEDebug,
+  setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, stepGoIDEDebug, stopGoIDEDebug,
   type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
-  type GoIDEDebugSession, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
+  type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/code-studio-debug-api'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
@@ -58,6 +58,8 @@ export interface GoIDEDebugView {
   firstSeen?: Record<number, { at: number; pauses: number }>
   /** Richiesta originale, per Rerun. */
   request: GoIDEDebugRequest | null
+  /** Richiesta di una sessione Java: serve al riavvio, che per Java non passa da Delve. */
+  javaRequest?: GoIDEJavaDebugRequest | null
 }
 
 export interface GoIDEGoroutineSample {
@@ -93,6 +95,7 @@ interface GoIDEDebugState {
   delve: Record<string, GoIDEDelveInfo>
   error: string | null
   start: (request: GoIDEDebugRequest) => Promise<void>
+  startJava: (request: GoIDEJavaDebugRequest) => Promise<void>
   stop: (debugId: string) => Promise<void>
   restart: (debugId: string) => Promise<void>
   step: (debugId: string, action: GoIDEDebugStepAction) => Promise<void>
@@ -369,15 +372,35 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       }
     },
 
+    startJava: async (request) => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      set({ error: null })
+      const sessionId = request.sessionId
+      try {
+        if (!await useCodeStudioStore.getState().saveAllDocuments(sessionId)) return
+        const info = await startGoIDEJavaDebug(request)
+        set((state) => ({
+          debuggers: { ...pruneFinished(state.debuggers, sessionId), [info.id]: { ...(state.debuggers[info.id] ?? emptyView(info)), javaRequest: request } },
+          activeBySession: { ...state.activeBySession, [sessionId]: info.id },
+        }))
+        useCodeStudioStore.getState().updateLayout({ bottomOpen: true })
+        useCodeStudioLspStore.getState().showToolWindow('debug')
+      } catch (error) {
+        set({ error: errorMessage(error) })
+        useCodeStudioStore.setState({ error: errorMessage(error) })
+      }
+    },
+
     stop: async (debugId) => {
       try { await stopGoIDEDebug(debugId) } catch (error) { set({ error: errorMessage(error) }) }
     },
 
     restart: async (debugId) => {
       const view = get().debuggers[debugId]
-      if (!view?.request) return
+      if (!view?.request && !view?.javaRequest) return
       if (view.info.state !== 'terminated') await get().stop(debugId)
-      await get().start(view.request)
+      if (view.javaRequest) await get().startJava(view.javaRequest)
+      else if (view.request) await get().start(view.request)
     },
 
     step: async (debugId, action) => {

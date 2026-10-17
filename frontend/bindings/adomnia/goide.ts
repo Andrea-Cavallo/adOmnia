@@ -2182,6 +2182,15 @@ export function StartGoTool(request: codestudio$0.GoToolRequest): $CancellablePr
 }
 
 /**
+ * StartJavaDebug avvia il debug di una classe Java con `main` tramite il Java Debug Server di JDT LS.
+ */
+export function StartJavaDebug(request: codestudio$0.JavaDebugRequest): $CancellablePromise<codestudio$0.DebugSessionInfo> {
+    return $Call.ByID(3237383117, request).then(($result: any) => {
+        return $$createType98($result);
+    });
+}
+
+/**
  * StartLanguageServer avvia gopls per un progetto autorizzato.
  */
 export function StartLanguageServer(sessionID: string, settings: codestudio$0.LanguageServerSettings): $CancellablePromise<codestudio$0.LanguageServerStatus> {

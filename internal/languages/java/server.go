@@ -22,10 +22,22 @@ const (
 	// ricontrolla jdtlsMinJava.
 	jdtlsURL = "https://download.eclipse.org/jdtls/milestones/1.60.0/jdt-language-server-1.60.0-202606262232.tar.gz"
 	jdtlsDir = "jdtls"
+	// debugPluginURL è il Java Debug Server (plugin di JDT LS, Microsoft): senza, JDT LS funziona ma non si debugga.
+	debugPluginName = "com.microsoft.java.debug.plugin-0.53.1.jar"
+	debugPluginURL  = "https://repo1.maven.org/maven2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/" + debugPluginName
 )
 
 // jdtlsHome è la cartella in cui si estrae JDT LS.
 func jdtlsHome(toolsRoot string) string { return filepath.Join(toolsRoot, jdtlsDir) }
+
+// debugBundle è il percorso del plugin di debug installato accanto a JDT LS ("" se manca).
+func debugBundle(home string) string {
+	matches, _ := filepath.Glob(filepath.Join(home, "bundles", "com.microsoft.java.debug.plugin-*.jar"))
+	if len(matches) == 0 {
+		return ""
+	}
+	return matches[0]
+}
 
 // launcherJar trova org.eclipse.equinox.launcher_*.jar: il nome porta la versione di Equinox.
 func launcherJar(home string) string {
@@ -61,6 +73,8 @@ func (*Language) LocateServer(_, toolsRoot string) lsp.ServerInfo {
 	}
 	jdk := DetectJDK()
 	switch {
+	case debugBundle(jdtlsHome(toolsRoot)) == "":
+		info.Error = "Eclipse JDT LS needs to be updated to add Java debugging: install it again from the editor notice"
 	case !jdk.Available:
 		info.Error = jdk.Problem + ": Eclipse JDT LS needs a JDK to run"
 	case jdk.Major < jdtlsMinJava:
@@ -91,8 +105,10 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 			"--add-modules=ALL-SYSTEM", "--add-opens", "java.base/java.util=ALL-UNNAMED", "--add-opens", "java.base/java.lang=ALL-UNNAMED",
 			"-jar", launcherJar(home), "-configuration", configDirectory(home), "-data", data,
 		},
-		Configuration: func() any { return map[string]any{} },
-		WatchesFile:   watchesFile,
+		// Il Java Debug Server entra in JDT LS come bundle: così "vscode.java.startDebugSession" esiste.
+		InitializationOptions: map[string]any{"bundles": []string{debugBundle(home)}},
+		Configuration:         func() any { return map[string]any{} },
+		WatchesFile:           watchesFile,
 	}, nil
 }
 
@@ -126,11 +142,11 @@ func (*Language) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		return lsp.InstallPlan{}, fmt.Errorf("%s: install a JDK (%d+) first, then Eclipse JDT LS", jdk.Problem, jdtlsMinJava)
 	}
 	home := jdtlsHome(toolsRoot)
-	chain := fmt.Sprintf("curl -fL --retry 2 -o jdtls.tar.gz %s && tar -xzf jdtls.tar.gz && %s", jdtlsURL, removeCommand("jdtls.tar.gz"))
+	chain := fmt.Sprintf("curl -fL --retry 2 -o jdtls.tar.gz %s && tar -xzf jdtls.tar.gz && %s && curl -fL --retry 2 --create-dirs -o bundles/%s %s", jdtlsURL, removeCommand("jdtls.tar.gz"), debugPluginName, debugPluginURL)
 	executable, arguments := shellCommand(chain)
 	return lsp.InstallPlan{
 		Task: installTask, Title: "Install Eclipse JDT LS?", Label: "Installing JDT LS…",
-		Note:       "Downloads Eclipse JDT LS 1.60.0 (about 50 MB) from download.eclipse.org into adOmnia's own tools folder, never into your project. The output appears in the Run console.",
+		Note:       "Downloads Eclipse JDT LS 1.60.0 (about 50 MB) from download.eclipse.org and the Java Debug Server (3 MB) from Maven Central into adOmnia's own tools folder, never into your project. The output appears in the Run console.",
 		Command:    chain,
 		Executable: executable, Arguments: arguments, Directory: home,
 		// Un'installazione interrotta lascia file a metà: si riparte sempre da una cartella vuota.

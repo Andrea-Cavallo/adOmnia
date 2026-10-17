@@ -138,7 +138,8 @@ import { CodeStudioStartupAnalyzer, useStartupDrawer } from './CodeStudioStartup
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
 import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/codeStudioLayout'
 import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
-import type { GoIDEDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest } from '@/lib/code-studio-debug-api'
+import { javaMainClassOf } from '@/lib/code-studio/javaDebug'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useCodeStudioStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/codeStudio'
@@ -821,6 +822,14 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return { sessionId: activeSession.id, mode: 'debug', target: request.target, workingDirectory: request.workingDirectory, programArguments: request.programArguments, buildTags: request.buildTags, environment, envFile: debugConfig?.envFile ?? '', buildFlags: debugConfig?.debugFlags ?? [] }
   }
 
+  // Debug di una configurazione Java: la classe è quella di `-Dexec.mainClass=` (proposta Main Class).
+  const configuredJavaDebugRequest = (): GoIDEJavaDebugRequest | null => {
+    if (!activeSession || activeConfig?.language !== 'java') return null
+    const mainClass = javaMainClassOf(activeConfig.programArguments ?? [])
+    if (!mainClass) return null
+    return { sessionId: activeSession.id, mainClass, workingDirectory: activeConfig.workingDirectory ?? '' }
+  }
+
   const openLanguageServerMenu = () => {
     if (!activeSession) return
     if (lspStatus?.state === 'ready' || lspStatus?.state === 'starting') return setLspLogOpen(true)
@@ -845,7 +854,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (isCodeStudioEditorCommand(id)) { runCodeStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return

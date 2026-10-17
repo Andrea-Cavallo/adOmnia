@@ -112,6 +112,7 @@ export {
     InlayHintsResult,
     InstallToolchainRequest,
     InstalledToolchain,
+    JavaDebugRequest,
     LanguageServerFeatures,
     LanguageServerInfo,
     LanguageServerSettings,

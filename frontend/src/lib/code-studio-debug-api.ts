@@ -2,11 +2,12 @@ import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
-  GoroutineOverview, ProcessInfo,
+  GoroutineOverview, JavaDebugRequest, ProcessInfo,
 } from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDEDebugRequest = DebugRequest
 export type GoIDEDebugSession = DebugSessionInfo
+export type GoIDEJavaDebugRequest = JavaDebugRequest
 /** Payload dell'evento debug.output (non esposto dai binding perché viaggia solo come evento). */
 export interface GoIDEDebugOutput {
   debugId: string
@@ -45,6 +46,11 @@ export function installGoIDEDelve(sessionId: string): Promise<Execution> {
 
 export function startGoIDEDebug(request: DebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartDebug(request)
+}
+
+/** Debug di una classe Java con `main` (Java Debug Server dentro JDT LS); nessun Delve. */
+export function startGoIDEJavaDebug(request: JavaDebugRequest): Promise<DebugSessionInfo> {
+  return GoIDEBindings.StartJavaDebug(request)
 }
 
 export function stopGoIDEDebug(debugId: string): Promise<void> {

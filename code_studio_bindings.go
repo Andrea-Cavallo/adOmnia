@@ -662,6 +662,11 @@ func (g *GoIDE) InstallDelve(sessionID string, confirmed bool) (codestudio.Execu
 	return g.service.InstallDelve(sessionID, confirmed)
 }
 
+// StartJavaDebug avvia il debug di una classe Java con `main` tramite il Java Debug Server di JDT LS.
+func (g *GoIDE) StartJavaDebug(request codestudio.JavaDebugRequest) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartJavaDebug(request)
+}
+
 // StartDebug avvia una sessione Delve per un programma o un singolo test.
 func (g *GoIDE) StartDebug(request codestudio.DebugRequest) (codestudio.DebugSessionInfo, error) {
 	return g.service.StartDebug(request)
