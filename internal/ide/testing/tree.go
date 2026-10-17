@@ -87,6 +87,10 @@ type Event struct {
 }
 type EventParser interface{ Parse([]byte) (Event, bool) }
 
+// BatchParser è una capability opzionale del parser: un runner che emette un solo report a fine esecuzione
+// (Vitest, Jest) restituisce tutti gli eventi insieme invece di uno per riga. Ha la precedenza su Parse.
+type BatchParser interface{ ParseAll([]byte) []Event }
+
 // Tree aggrega gli eventi correlandoli per Package e Test, mai dal solo testo.
 type Tree struct {
 	nodes      map[string]*TestResult

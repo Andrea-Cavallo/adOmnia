@@ -159,7 +159,12 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 	return initial, nil
 }
 func (r *testRun) line(line []byte) {
-	if event, ok := r.parser.Parse(line); ok {
+	if batch, ok := r.parser.(BatchParser); ok {
+		for _, event := range batch.ParseAll(line) {
+			r.tree.Apply(event)
+			r.dirty = true
+		}
+	} else if event, ok := r.parser.Parse(line); ok {
 		r.tree.Apply(event)
 		r.dirty = true
 	}

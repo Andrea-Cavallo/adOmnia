@@ -67,6 +67,8 @@ type Info struct {
 	InstallCommand []string `json:"installCommand,omitempty"`
 	// NodeEngine è l'intervallo engines.node dichiarato, solo informativo.
 	NodeEngine string `json:"nodeEngine,omitempty"`
+	// TestFramework è il test runner con report JSON dichiarato nelle dipendenze (vitest o jest); vuoto se nessuno.
+	TestFramework string `json:"testFramework,omitempty"`
 }
 
 type packageManifest struct {
@@ -116,6 +118,7 @@ func Inspect(root, dir string) (Info, error) {
 	info.DevScript = pickDevScript(manifest.Scripts)
 	info.Tool = detectTool(manifest, manifest.Scripts[info.DevScript])
 	info.Framework = detectFramework(manifest)
+	info.TestFramework = detectTestFramework(manifest)
 	return info, nil
 }
 
@@ -333,4 +336,15 @@ func SortInfos(infos []Info) {
 		}
 		return infos[i].Relative < infos[j].Relative
 	})
+}
+
+// detectTestFramework riconosce i runner che producono un report JSON strutturato; vitest ha la precedenza
+// perché i progetti Vite che lo usano tengono spesso anche jest-dom o tipi di jest.
+func detectTestFramework(manifest packageManifest) string {
+	for _, name := range []string{"vitest", "jest"} {
+		if manifest.has(name) {
+			return name
+		}
+	}
+	return ""
 }
