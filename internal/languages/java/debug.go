@@ -38,6 +38,36 @@ type DebugOptions struct {
 	ProgramArguments []string          `json:"programArguments,omitempty"`
 	VMArguments      []string          `json:"vmArguments,omitempty"`
 	Environment      map[string]string `json:"environment,omitempty"`
+	// StepFilters sostituisce i filtri di stepping predefiniti; nil usa DefaultStepFilters.
+	StepFilters *StepFilters `json:"stepFilters,omitempty"`
+}
+
+// StepFilters sono i filtri di stepping del Java Debug Server (`stepFilters` di launch/attach): classi in cui
+// Step Into non entra. "$JDK" e "$Libraries" sono nomi speciali del server.
+type StepFilters struct {
+	SkipClasses            []string `json:"skipClasses"`
+	SkipSynthetics         bool     `json:"skipSynthetics"`
+	SkipStaticInitializers bool     `json:"skipStaticInitializers"`
+	SkipConstructors       bool     `json:"skipConstructors"`
+}
+
+// DefaultStepFilters è l'insieme di IntelliJ IDEA: niente JDK, librerie e proxy generati (CGLIB, ByteBuddy, JDK
+// proxy, AOP di Spring, Mockito, JUnit), così in un'app Spring Step Into resta nel codice dell'utente.
+func DefaultStepFilters() StepFilters {
+	return StepFilters{
+		SkipClasses: []string{
+			"$JDK", "$Libraries", "com.sun.proxy.*", "jdk.proxy*", "net.bytebuddy.*", "net.sf.cglib.*",
+			"org.springframework.cglib.*", "org.springframework.aop.framework.*", "org.mockito.*", "junit.*", "org.junit.*",
+		},
+		SkipSynthetics: true, SkipStaticInitializers: true,
+	}
+}
+
+func (o DebugOptions) stepFilters() StepFilters {
+	if o.StepFilters != nil {
+		return *o.StepFilters
+	}
+	return DefaultStepFilters()
 }
 
 // DebugAdapter implementa dap.DebugAdapterProvider: nessun processo da avviare (il server vive dentro
@@ -64,6 +94,7 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 				"request": "launch", "mainClass": options.MainClass, "classPaths": options.ClassPaths,
 				"console": "internalConsole", "cwd": filepath.Clean(request.WorkingDirectory),
 				"args": joinArguments(options.ProgramArguments), "vmArgs": joinArguments(options.VMArguments),
+				"stepFilters": options.stepFilters(), "hotCodeReplace": hotCodeReplace,
 			}
 			if options.ProjectName != "" {
 				arguments["projectName"] = options.ProjectName
@@ -95,6 +126,10 @@ func joinArguments(arguments []string) string {
 	return strings.Join(quoted, " ")
 }
 
+// hotCodeReplace: dopo una compilazione il Java Debug Server sostituisce le classi modificate nella JVM in
+// debug (nessun riavvio). Con modifiche non sostituibili (campi, firme) la JVM resta com'è e il server lo segnala.
+const hotCodeReplace = "auto"
+
 // attachTimeoutMillis è quanto il Java Debug Server riprova a collegarsi alla JVM: Maven e Gradle possono
 // compilare per minuti prima di aprire la porta JDWP.
 const attachTimeoutMillis = 180_000
@@ -111,7 +146,7 @@ func attachSpec(options DebugOptions) (dap.AdapterSpec, error) {
 		AdapterID: debugAdapterID, Address: options.Address, Transport: dap.TCPListen, Detach: true,
 		Title: fmt.Sprintf("Attach %s:%d", host, options.AttachPort),
 		Launch: func(string) (string, map[string]any) {
-			arguments := map[string]any{"request": "attach", "hostName": host, "port": options.AttachPort, "timeout": attachTimeoutMillis}
+			arguments := map[string]any{"request": "attach", "hostName": host, "port": options.AttachPort, "timeout": attachTimeoutMillis, "stepFilters": options.stepFilters(), "hotCodeReplace": hotCodeReplace}
 			if options.ProjectName != "" {
 				arguments["projectName"] = options.ProjectName
 			}

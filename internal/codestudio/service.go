@@ -22,6 +22,7 @@ import (
 
 	"adomnia/internal/ide/sdk"
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/languages/java"
 )
 
 const maxRecentProjects = 20
@@ -734,7 +735,12 @@ func (s *Service) executionEnvironment(id SessionID, languageID string, override
 	if languageID == golang.ID || languageID == "" {
 		return s.toolchain.Environment(id, overrides)
 	}
-	return run.Environment(overrides)
+	environment, err := run.Environment(overrides)
+	if err != nil || languageID != java.ID {
+		return environment, err
+	}
+	// Run, Debug e Test dello stesso progetto usano lo stesso JDK.
+	return append(environment, java.JavaEnvironment(s.projectJavaHome(id))...), nil
 }
 
 // Language kinds are declared by adapters.

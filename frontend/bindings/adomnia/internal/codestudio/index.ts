@@ -113,6 +113,7 @@ export {
     InstallToolchainRequest,
     InstalledToolchain,
     JavaDebugRequest,
+    JavaJDKReport,
     LanguageServerFeatures,
     LanguageServerInfo,
     LanguageServerSettings,

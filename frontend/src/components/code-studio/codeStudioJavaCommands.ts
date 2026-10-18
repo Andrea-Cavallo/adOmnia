@@ -7,6 +7,7 @@ import { studioToast } from '@/stores/codeStudioToast'
 import { isPomFile } from '@/lib/code-studio/pomInsights'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
+import { openJavaJdkDialog } from './CodeStudioJavaJdk'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
@@ -60,6 +61,7 @@ export function runJavaCommand(
   if (goals) { void runGoal(sessionId, activePath, [goals]); return true }
   switch (id) {
     case 'java.springBootRun': void runGoal(sessionId, activePath, SPRING_GOALS); return true
+    case 'java.selectJdk': openJavaJdkDialog(sessionId); return true
     case 'java.optimizeImports': runCodeStudioEditorCommand('code.organizeImports'); return true
     case 'java.generate': runCodeStudioEditorCommand('code.generate'); return true
     case 'java.goToTest': if (document) void openCounterpart(sessionId, document); return true

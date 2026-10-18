@@ -84,6 +84,7 @@ import { CodeStudioImplementInterfaceDialog } from './CodeStudioImplementInterfa
 import { CodeStudioChangeSignatureDialog } from './CodeStudioChangeSignatureDialog'
 import { CodeStudioMoveSymbolDialog } from './CodeStudioMoveSymbolDialog'
 import { CodeStudioSpringEndpoints } from './CodeStudioSpringEndpoints'
+import { CodeStudioJavaJdk } from './CodeStudioJavaJdk'
 import { CodeStudioSearchEverywhere } from './CodeStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './codeStudioSearchRanking'
 import { rememberCommand } from './codeStudioSearchExtras'
@@ -1053,6 +1054,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioChangeSignatureDialog />
       <CodeStudioMoveSymbolDialog />
       <CodeStudioSpringEndpoints />
+      <CodeStudioJavaJdk />
       {sharedDialogs}
       {store.activeSessionId && <CodeStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <CodeStudioSecretsPrompt

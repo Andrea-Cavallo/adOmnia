@@ -3,6 +3,7 @@ package java
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"adomnia/internal/ide/dap"
@@ -31,5 +32,31 @@ func TestDebugAdapterConnectsToTheServerInsideJdtls(t *testing.T) {
 	}
 	if _, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: []byte(`{"mainClass":"x"}`)}); err == nil {
 		t.Error("without an adapter address there is nothing to connect to")
+	}
+}
+
+func TestDebugRequestsCarryStepFilters(t *testing.T) {
+	launch := func(options string) map[string]any {
+		spec, err := (&Language{}).DebugAdapter(dap.LaunchRequest{WorkingDirectory: "/p", LanguageOptions: json.RawMessage(options)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, arguments := spec.Launch("")
+		return arguments
+	}
+	filters, ok := launch(`{"address":"127.0.0.1:1","mainClass":"a.App","classPaths":[]}`)["stepFilters"].(StepFilters)
+	if !ok || !filters.SkipSynthetics || !strings.Contains(strings.Join(filters.SkipClasses, " "), "net.bytebuddy.*") || filters.SkipClasses[0] != "$JDK" {
+		t.Fatalf("default filters missing: %+v", filters)
+	}
+	custom, _ := launch(`{"address":"127.0.0.1:1","mainClass":"a.App","classPaths":[],"stepFilters":{"skipClasses":["x.*"]}}`)["stepFilters"].(StepFilters)
+	if len(custom.SkipClasses) != 1 || custom.SkipSynthetics {
+		t.Fatalf("custom filters must replace the defaults: %+v", custom)
+	}
+	if launch(`{"address":"127.0.0.1:1","mainClass":"a.App","classPaths":[]}`)["hotCodeReplace"] != "auto" {
+		t.Fatal("hot code replace should be automatic while debugging")
+	}
+	attach := launch(`{"address":"127.0.0.1:1","attachPort":5005}`)
+	if _, ok := attach["stepFilters"].(StepFilters); !ok {
+		t.Fatal("attach must carry the step filters too")
 	}
 }

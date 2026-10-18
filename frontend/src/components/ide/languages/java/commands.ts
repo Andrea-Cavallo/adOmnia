@@ -5,7 +5,7 @@ export type JavaLanguageCommandId =
   | 'java.runMain' | 'java.debugMain' | 'java.runTest' | 'java.debugTest' | 'java.springBootRun'
   | 'java.mvnCompile' | 'java.mvnTest' | 'java.mvnPackage' | 'java.mvnCleanInstall'
   | 'java.optimizeImports' | 'java.goToTest' | 'java.generate'
-  | 'java.checkUpdates' | 'java.scanVulnerabilities'
+  | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk'
 
 const requires = { language: JAVA_LANGUAGE_ID }
 
@@ -23,6 +23,7 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.optimizeImports', menu: 'java', label: 'Optimize Imports', separatorBefore: true },
   { id: 'java.generate', menu: 'java', label: 'Generate…' },
   { id: 'java.goToTest', menu: 'java', label: 'Go to Test / Source' },
+  { id: 'java.selectJdk', menu: 'java', label: 'Select JDK…', separatorBefore: true },
   { id: 'java.checkUpdates', menu: 'java', label: 'Check for Updates (pom.xml)', separatorBefore: true },
   { id: 'java.scanVulnerabilities', menu: 'java', label: 'Scan Vulnerabilities (pom.xml)' },
 ] satisfies ReadonlyArray<Omit<CodeStudioCommand, 'requires'>>).map((command) => ({ ...command, requires }))

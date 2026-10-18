@@ -57,7 +57,7 @@ func TestMainRunnerBuildsACommandInTheModule(t *testing.T) {
 	if _, err := New().CommandSpec(run.Request{Kind: KindMain, WorkingDirectory: root}); err == nil {
 		t.Error("a configuration without options must fail with a clear error")
 	}
-	if fields := New().RunSchema(KindMain).Fields; len(fields) != 2 || fields[0].Key != "mainClass" || !fields[0].Required {
+	if fields := New().RunSchema(KindMain).Fields; len(fields) != 3 || fields[0].Key != "mainClass" || !fields[0].Required {
 		t.Errorf("schema = %+v", fields)
 	}
 	if _, err := New().CommandSpec(run.Request{Kind: KindAttach}); err == nil {

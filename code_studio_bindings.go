@@ -1609,6 +1609,16 @@ func (g *GoIDE) PomVersions(sessionID string, current map[string]string) ([]java
 	return g.service.PomVersions(sessionID, current)
 }
 
+// JavaJDKs elenca i JDK installati, quello del progetto e la versione che il progetto richiede.
+func (g *GoIDE) JavaJDKs(sessionID string) (codestudio.JavaJDKReport, error) {
+	return g.service.JavaJDKs(sessionID)
+}
+
+// SetJavaJDK sceglie il JDK del progetto (stesso per Run, Debug e Test); "" torna al JDK di sistema.
+func (g *GoIDE) SetJavaJDK(sessionID, home string) error {
+	return g.service.SetJavaJDK(sessionID, home)
+}
+
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione
 // note, valori con il loro profilo, bean, iniezioni ed endpoint. Solo filesystem, senza rete.
 func (g *GoIDE) SpringIndex(sessionID string) (java.SpringIndex, error) {

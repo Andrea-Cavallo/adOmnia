@@ -389,3 +389,27 @@ func (w *listenWatcher) wait(port int, timeout time.Duration) error {
 		}
 	}
 }
+
+// JavaMainClasses elenca le classi lanciabili del progetto. Con JDT LS pronto decide lui (resolveMainClass:
+// copre i `main` senza `public`, di istanza e i compact source file di Java 25); senza server restano le regex
+// dei sorgenti, e ogni voce dice quale delle due l'ha trovata.
+func (s *Service) JavaMainClasses(sessionID string) ([]java.MainClassInfo, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
+	defer cancel()
+	if raw, err := s.lsp.ExecuteCommand(ctx, session.ID, java.ID, java.CommandResolveMainClass); err == nil {
+		if found := java.ParseResolveMainClass(raw); len(found) > 0 {
+			return found, nil
+		}
+	}
+	var found []java.MainClassInfo
+	for _, unit := range session.Project.Units {
+		if unit.Language == java.ID {
+			found = append(found, java.ScanMainClasses(unit.Root)...)
+		}
+	}
+	return found, nil
+}

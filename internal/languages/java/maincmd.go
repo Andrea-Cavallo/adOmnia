@@ -15,6 +15,8 @@ import (
 type MainOptions struct {
 	MainClass string   `json:"mainClass"`
 	VMOptions []string `json:"vmOptions,omitempty"`
+	// JavaHome sceglie il JDK di questa configurazione; vuoto = quello del progetto, poi JAVA_HOME/PATH.
+	JavaHome string `json:"javaHome,omitempty"`
 }
 
 const (
@@ -48,6 +50,9 @@ func (o MainOptions) validate() error {
 	}
 	if len(o.VMOptions) > maxMainArguments {
 		return fmt.Errorf("too many VM options: at most %d", maxMainArguments)
+	}
+	if o.JavaHome != "" && !ValidJavaHome(o.JavaHome) {
+		return fmt.Errorf("%q is not a JDK folder: it must contain bin/java", o.JavaHome)
 	}
 	for _, option := range o.VMOptions {
 		if !strings.HasPrefix(option, "-") || strings.ContainsAny(option, "\r\n\x00") {
@@ -94,6 +99,7 @@ func MainCommandWith(module string, options MainOptions, programArguments []stri
 			environment = []string{"MAVEN_OPTS=" + strings.TrimSpace(os.Getenv("MAVEN_OPTS")+" "+strings.Join(options.VMOptions, " "))}
 		}
 	}
+	environment = append(environment, JavaEnvironment(options.JavaHome)...)
 	executable = tool.resolve(unit)
 	if err := run.CheckBatchSafe(executable, arguments); err != nil {
 		return "", nil, "", nil, err

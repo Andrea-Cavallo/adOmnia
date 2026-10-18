@@ -1,3 +1,4 @@
+import type { JavaJDKReport } from '../../bindings/adomnia/internal/codestudio/models'
 import type { PomDependency, SpringEndpoint, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
@@ -791,6 +792,16 @@ export async function getPomVersions(sessionId: string, current: Record<string, 
  */
 export async function getSpringIndex(sessionId: string): Promise<SpringIndex> {
   return GoIDEBindings.SpringIndex(sessionId)
+}
+
+/** JDK installati, scelta del progetto e versione richiesta dal build. */
+export async function getJavaJdks(sessionId: string): Promise<JavaJDKReport> {
+  return GoIDEBindings.JavaJDKs(sessionId)
+}
+
+/** Sceglie il JDK del progetto (Run, Debug e Test lo usano allo stesso modo); '' torna al JDK di sistema. */
+export async function setJavaJdk(sessionId: string, home: string): Promise<void> {
+  return GoIDEBindings.SetJavaJDK(sessionId, home)
 }
 
 /** Endpoint HTTP MVC del progetto (route, metodo, posizione navigabile). */

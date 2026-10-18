@@ -6,6 +6,49 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * JDK descrive il JDK trovato. Un JDK mancante non è fatale: l'editor funziona, ma build e run no.
+ */
+export class JDK {
+    "available": boolean;
+    "binary"?: string;
+    "home"?: string;
+
+    /**
+     * Source è "JAVA_HOME" o "PATH".
+     */
+    "source"?: string;
+    "version"?: string;
+
+    /**
+     * Major è la versione maggiore (8, 17, 21…); 0 se non leggibile.
+     */
+    "major"?: number;
+    "problem"?: string;
+    "remedies"?: string[];
+
+    /** Creates a new JDK instance. */
+    constructor($$source: Partial<JDK> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new JDK instance from a string or object.
+     */
+    static createFrom($$source: any = {}): JDK {
+        const $$createField7_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("remedies" in $$parsedSource) {
+            $$parsedSource["remedies"] = $$createField7_0($$parsedSource["remedies"]);
+        }
+        return new JDK($$parsedSource as Partial<JDK>);
+    }
+}
+
+/**
  * PomDependency è una coordinata dichiarata in un pom.xml con la posizione esatta della versione, così
  * l'editor può segnare la riga e sostituire solo `<version>` (o la property a cui punta).
  */

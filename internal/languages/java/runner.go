@@ -74,6 +74,7 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 		schema.Fields = []run.Field{
 			{Key: "mainClass", Label: "Main class", Type: run.FieldText, Section: run.SectionBasic, Required: true, Help: "Qualified name, e.g. it.acme.App. Working directory = the Maven/Gradle module that contains it."},
 			{Key: "vmOptions", Label: "VM options", Type: run.FieldList, Section: run.SectionBasic, Help: "-Xmx512m -Dspring.profiles.active=dev"},
+			{Key: "javaHome", Label: "JDK home", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "Empty = the project JDK (Java menu > Select JDK), then JAVA_HOME / PATH. Debug uses the same JDK."},
 		}
 	case KindAttach:
 		schema.Fields = []run.Field{
