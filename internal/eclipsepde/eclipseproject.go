@@ -211,7 +211,7 @@ func (p *EclipseProject) reportLocalProblems() {
 	for _, e := range p.ClasspathEntries {
 		switch e.Kind {
 		case "lib":
-			if filepath.IsAbs(e.Path) {
+			if isAbsoluteOnAnyOS(e.Path) {
 				p.Problems = append(p.Problems, Problem{
 					Severity: "warning", Project: p.Name, File: ".classpath",
 					Message: fmt.Sprintf("library %q uses an absolute path: it will not resolve on other machines", e.Path),
@@ -344,4 +344,13 @@ func (p *EclipseProject) HasNature(nature string) bool {
 		}
 	}
 	return false
+}
+
+// isAbsoluteOnAnyOS: a .classpath written on Windows keeps `C:/dev/lib.jar` when opened on Linux or macOS,
+// where filepath.IsAbs says no, yet the path still will not resolve on other machines.
+func isAbsoluteOnAnyOS(p string) bool {
+	if filepath.IsAbs(p) || strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) {
+		return true
+	}
+	return len(p) >= 3 && p[1] == ':' && (p[2] == '/' || p[2] == '\\') && (p[0]|0x20 >= 'a' && p[0]|0x20 <= 'z')
 }

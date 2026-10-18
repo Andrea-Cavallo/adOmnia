@@ -37,7 +37,7 @@ func ParseResolveMainClass(raw json.RawMessage) []MainClassInfo {
 	found := make([]MainClassInfo, 0, len(items))
 	for _, item := range items {
 		if ValidClassName(item.MainClass) {
-			found = append(found, MainClassInfo{Class: item.MainClass, ProjectName: item.ProjectName, File: filepath.ToSlash(item.FilePath), Source: MainSourceJDT})
+			found = append(found, MainClassInfo{Class: item.MainClass, ProjectName: item.ProjectName, File: strings.ReplaceAll(item.FilePath, `\`, "/"), Source: MainSourceJDT})
 		}
 	}
 	sort.SliceStable(found, func(i, j int) bool { return found[i].Class < found[j].Class })
