@@ -89,6 +89,7 @@ func TestSuggestUsesTheWrapperAndAddsSpringBootRun(t *testing.T) {
 	}
 	write(t, filepath.Join(root, "pom.xml"), springPom)
 	write(t, filepath.Join(root, wrapper), "")
+	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	unit := project.Unit{Language: ID, Kind: UnitMaven, Root: root, Manifest: filepath.Join(root, "pom.xml")}
 
 	suggestions := (&Language{}).Suggest(context.Background(), root, unit)
@@ -163,6 +164,7 @@ func TestSuggestFindsMainClassesInModulesAndStartsSpringBootAppsThere(t *testing
 	root := t.TempDir()
 	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>shop</artifactId><packaging>pom</packaging></project>`)
 	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "mvnw.cmd"), "")
 	write(t, filepath.Join(root, "api", "pom.xml"), `<project><parent><artifactId>spring-boot-starter-parent</artifactId></parent><artifactId>api</artifactId></project>`)
 	write(t, filepath.Join(root, "api", "src", "main", "java", "it", "acme", "ApiApp.java"),
@@ -200,6 +202,7 @@ func TestGradleApplicationPluginProposesRun(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "build.gradle.kts"), "plugins { application }\napplication { mainClass.set(\"x.Main\") }")
 	write(t, filepath.Join(root, "gradlew"), "")
+	write(t, filepath.Join(root, "gradle", "wrapper", "gradle-wrapper.properties"), "")
 	write(t, filepath.Join(root, "gradlew.bat"), "")
 	units, _ := New().DetectUnits(context.Background(), root)
 	for _, suggestion := range New().Suggest(context.Background(), root, units[0]) {
@@ -215,6 +218,7 @@ func TestMainCommandRunsTheClassInItsMavenModule(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>shop</artifactId></project>`)
 	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "mvnw.cmd"), "")
 	source := filepath.Join(root, "src", "main", "java", "a", "App.java")
 	write(t, source, "package a;")
@@ -228,5 +232,19 @@ func TestMainCommandRunsTheClassInItsMavenModule(t *testing.T) {
 	}
 	if _, _, _, err := MainCommand(t.TempDir(), "a.App"); err == nil {
 		t.Error("a folder without a build file cannot run a class")
+	}
+}
+
+func TestIncompleteWrapperFallsBackToTheSystemTool(t *testing.T) {
+	stubTools(t, "mvn")
+	root := t.TempDir()
+	write(t, filepath.Join(root, "pom.xml"), springPom)
+	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, "mvnw.cmd"), "")
+	unit := project.Unit{Language: ID, Kind: UnitMaven, Root: root, Manifest: filepath.Join(root, "pom.xml")}
+
+	tool, ok := resolveBuildTool(unit)
+	if !ok || tool.Target != "mvn" {
+		t.Fatalf("a mvnw without .mvn/wrapper must not be used, got %+v ok=%v", tool, ok)
 	}
 }

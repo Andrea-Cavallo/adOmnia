@@ -20,6 +20,12 @@ describe('remapSemanticTokens', () => {
     expect(Array.from(remapSemanticTokens(data, server, []))).toEqual([1, 10, 1, type('variable'), 0, 2, 4, 1, type('variable'), 0])
   })
 
+  it('keeps Java annotations (@RestController) and maps record/annotation members to near types', () => {
+    const server = ['class', 'decorator', 'annotationMember', 'record']
+    const data = [0, 1, 14, 1, 0, 0, 20, 5, 2, 0, 1, 0, 6, 3, 0]
+    expect(Array.from(remapSemanticTokens(data, server, []))).toEqual([0, 1, 14, type('annotation'), 0, 0, 20, 5, type('property'), 0, 1, 0, 6, type('class'), 0])
+  })
+
   it('ignores modifiers the client does not know', () => {
     const data = [0, 0, 3, 0, 0b11]
     expect(Array.from(remapSemanticTokens(data, ['variable'], ['pointer', 'readonly']))).toEqual([0, 0, 3, type('variable'), modifier('readonly')])

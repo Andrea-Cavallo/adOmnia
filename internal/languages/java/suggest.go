@@ -34,13 +34,22 @@ func resolveBuildTool(unit project.Unit) (buildTool, bool) {
 			script = wrapper + ".bat"
 		}
 	}
-	if isFile(filepath.Join(unit.Root, script)) {
+	if isFile(filepath.Join(unit.Root, script)) && isFile(filepath.Join(unit.Root, wrapperSupport(unit.Kind))) {
 		return buildTool{Target: "./" + script, Label: "./" + wrapper}, true
 	}
 	if _, err := lookPath(system); err == nil {
 		return buildTool{Target: system, Label: system}, true
 	}
 	return buildTool{}, false
+}
+
+// wrapperSupport è il file senza cui lo script del wrapper non parte (un `mvnw` copiato senza `.mvn/` fallisce
+// con "No such file or directory"): in quel caso si usa lo strumento di sistema.
+func wrapperSupport(kind string) string {
+	if kind == UnitGradle {
+		return filepath.Join("gradle", "wrapper", "gradle-wrapper.properties")
+	}
+	return filepath.Join(".mvn", "wrapper", "maven-wrapper.properties")
 }
 
 // resolve è il percorso dell'eseguibile: il wrapper dentro l'unità o lo strumento trovato nel PATH.

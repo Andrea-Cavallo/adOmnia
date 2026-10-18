@@ -75,6 +75,38 @@ export function isGoTestRun(run: GoIDETestRun): boolean {
   return !run.request.language || run.request.language === 'go'
 }
 
+/** Il run è dell'adapter Java (Maven/Gradle): filtri e comandi hanno la forma di Surefire e Gradle. */
+export function isJavaTestRun(run: GoIDETestRun): boolean {
+  return run.request.language === 'java'
+}
+
+/** File di test Java relativo all'unità: il "package" del report è il sorgente relativo al progetto. */
+function javaTestFile(run: GoIDETestRun, result: GoIDETestResult): string {
+  const prefix = run.request.workingDirectory ? `${run.request.workingDirectory}/` : ''
+  return result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
+}
+
+/**
+ * Filtro metodo per Surefire e Gradle: un identificatore, mai una regex. Il nome display di JUnit
+ * (`test[0]`, `a > b`) non è un metodo: senza filtro si riesegue la classe.
+ */
+export function javaMethodFilter(name: string): string {
+  const method = name.split('[')[0]
+  return /^[A-Za-z0-9_$]+$/.test(method) ? method : ''
+}
+
+const JAVA_TEST_ROOTS = ['/src/test/java/', '/src/test/kotlin/', '/src/test/groovy/', '/src/test/scala/']
+
+/** Classe dal sorgente di test, come il backend: `src/test/java/it/x/FooTest.java` → `it.x.FooTest`. */
+export function javaClassName(file: string): string {
+  const stem = `/${file.replace(/\\/g, '/')}`.replace(/\.[^./]+$/, '')
+  for (const root of JAVA_TEST_ROOTS) {
+    const index = stem.indexOf(root)
+    if (index >= 0) return stem.slice(index + root.length).replace(/\//g, '.')
+  }
+  return `*.${stem.slice(stem.lastIndexOf('/') + 1)}`
+}
+
 /** Un carattere come regex letterale usando solo [A-Za-z0-9\]: niente spazi né simboli che `cmd.exe` interpreta (`&`, `|`, `^`, `%`). */
 function safeRegexChar(char: string): string {
   if (/[A-Za-z0-9_]/.test(char)) return char
@@ -94,6 +126,11 @@ export function namePatternFor(name: string): string {
 /** Riesegue un singolo test o sottotest dello stesso run, nel suo package (per JS/TS: il file di test). */
 export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDETestRunRequest {
   const moduleDirectory = run.request.workingDirectory
+  if (isJavaTestRun(run)) {
+    const file = javaTestFile(run, result)
+    // Un nodo che non è un sorgente di test (il build fallito) si riesegue per intero.
+    return { ...run.request, packages: file.endsWith('.java') ? [file] : [], run: result.name ? javaMethodFilter(result.name) : '', coverage: false }
+  }
   if (!isGoTestRun(run)) {
     const prefix = moduleDirectory ? `${moduleDirectory}/` : ''
     const file = result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
@@ -112,7 +149,8 @@ export function benchmarkDebugArguments(pattern: string): string[] {
 
 /** Debug di un singolo test (o benchmark) del run, con gli stessi tag e variabili; null per i package. */
 export function debugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDEDebugRequest | null {
-  if (!result.name) return null
+  // Solo Go: il debug dei test passa da Delve. Il Java Debug Server debugga le classi con `main`.
+  if (!isGoTestRun(run) || !result.name) return null
   const request = requestForNode(run, result)
   const base = { sessionId: request.sessionId, mode: 'test', workingDirectory: request.workingDirectory, target: request.packages[0], buildTags: request.buildTags, environment: request.environment }
   return request.bench ? { ...base, testName: '^$', programArguments: benchmarkDebugArguments(request.bench) } : { ...base, testName: request.run }
@@ -123,6 +161,7 @@ export function debugRequestForNode(run: GoIDETestRun, result: GoIDETestResult):
  * Un package che non compila si riesegue per intero; null se non c'è nulla da rieseguire.
  */
 export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  if (isJavaTestRun(run)) return javaRerunFailedRequest(run)
   const directories = packageDirectories(run)
   const packages = new Set<string>()
   const tests = new Set<string>()
@@ -140,6 +179,31 @@ export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | nul
   if (packages.size === 0) return null
   const run_ = wholePackage || tests.size === 0 ? '' : `^(${[...tests].map(escapeRegex).join('|')})$`
   return { ...run.request, packages: [...packages].sort(), run: run_, bench: '', coverage: false }
+}
+
+/**
+ * Rerun failed Java: solo i file di test con fallimenti. Il filtro metodo non è una regex e non ammette
+ * più metodi insieme: con più classi o con nomi display si rieseguono le classi fallite per intero.
+ */
+function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  const files = new Set<string>()
+  const methods = new Set<string>()
+  let wholeUnit = false
+  for (const result of run.results) {
+    if (!isFailed(result)) continue
+    const file = javaTestFile(run, result)
+    if (!file.endsWith('.java')) {
+      // Un nodo che non è un sorgente di test è il build fallito: l'unità si riesegue per intero.
+      wholeUnit = true
+      continue
+    }
+    files.add(file)
+    const method = result.name ? javaMethodFilter(result.name) : ''
+    if (method) methods.add(method)
+  }
+  if (wholeUnit) return { ...run.request, packages: [], run: '', coverage: false }
+  if (files.size === 0) return null
+  return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size === 1 ? [...methods][0] : '', coverage: false }
 }
 
 export function formatDuration(milliseconds: number): string {

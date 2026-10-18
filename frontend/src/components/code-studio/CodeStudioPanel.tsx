@@ -69,6 +69,7 @@ import { runLanguageCommand } from './codeStudioLanguageCommands'
 import { runPreviewCommand } from './codeStudioPreviewCommands'
 import { isWebOnlyProject } from '@/lib/code-studio/livePreview'
 import { runSaveActions } from './codeStudioSaveActions'
+import { mouseNavigationCommand } from './codeStudioMouseNavigation'
 import { contextRunTarget, runCommandFor, type CodeStudioGoRunTarget, type CodeStudioRunTarget } from './codeStudioRunTargets'
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './codeStudioToolTargets'
 import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
@@ -338,6 +339,21 @@ export function CodeStudioPanel() {
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  // Tasti laterali del mouse: Back/Forward della cronologia di posizioni, come Alt+Sinistra/Destra.
+  // Anche `auxclick` va fermato, altrimenti la WebView naviga la sua cronologia di pagine.
+  useEffect(() => {
+    const onMouse = (event: MouseEvent) => {
+      const command = mouseNavigationCommand(event.button)
+      if (!command || !panelActive.current) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.type === 'mouseup' && availabilityRef.current(command) === true) runCommandRef.current(command)
+    }
+    window.addEventListener('mouseup', onMouse, true)
+    window.addEventListener('auxclick', onMouse, true)
+    return () => { window.removeEventListener('mouseup', onMouse, true); window.removeEventListener('auxclick', onMouse, true) }
   }, [])
 
   // Impostazioni di progetto (`.adomnia/settings.json`): caricate per la sessione attiva; il

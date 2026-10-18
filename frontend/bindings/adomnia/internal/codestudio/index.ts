@@ -212,8 +212,6 @@ export {
     VCSFileChange,
     VCSStatus,
     VCSWorkingDiff,
-    VulnFinding,
-    VulnFrame,
     VulnReport,
     WatcherStatus,
     WebProjectReport,

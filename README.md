@@ -14,6 +14,10 @@
   <a href="docs/QUICKSTART.it.md">Guida in italiano</a>
 </p>
 
+<p align="center">
+  <strong>English</strong> · <a href="README.es-ES.md">Español</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
 ## Screenshots
 
 ### Workspace Hub
@@ -84,6 +88,7 @@ Code Studio    →    Live service    →    API Workspace    →    Handler / b
 | **Data and events beside the request** | Database, Broker, Log and Trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request. |
 | **Go development and profiling** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
 | **Enterprise protocols in the same workflow** | HTTP, SOAP/WSDL, WS-Security, gRPC, WebSocket/SSE, mTLS and certificate tools support both modern APIs and existing systems. |
+| **Dependency security with reviewed fixes** | Security Center scans `pom.xml` and `go.mod`, separates severity from exploitation signals, and previews the security impact of an upgrade before it happens. Safe remediation shows the diff, runs the checks and applies only after your review. |
 | **Local storage and multiple windows** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across windows. |
 
 ### Storage and external services
@@ -133,6 +138,7 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 
 - **Edit and navigate:** gopls completion, diagnostics, references, rename, refactoring, project search and Git.
 - **Run, test and debug:** Go configurations, test explorer, coverage and Delve with conditional breakpoints and goroutine inspection.
+- **More than Go:** TypeScript/JavaScript and web projects (Vite/npm scripts, Vitest/Jest results, Live Preview) and Java (Maven/Gradle, JUnit, Spring Boot, breakpoints and remote attach) use the same run, test and debug interface. In `pom.xml`, check for newer versions on Maven Central and scan dependencies for known vulnerabilities, with a one-click version update. Language servers and debuggers are installed only after you confirm the exact command.
 - **Understand the project:** routes, dependencies, interfaces, architecture and change-impact views.
 - **Measure behavior:** pprof profiles, execution traces, benchmarks and concurrency tools.
 - **Keep work together:** terminal, local history, recovery snapshots and multiple projects/windows within one adOmnia instance.

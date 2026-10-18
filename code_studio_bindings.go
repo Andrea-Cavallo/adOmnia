@@ -11,6 +11,7 @@ import (
 	"adomnia/internal/ide/graph"
 	"adomnia/internal/ide/run"
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/languages/java"
 	"adomnia/internal/plugins"
 	"adomnia/internal/resources"
 	"context"
@@ -1596,4 +1597,14 @@ func (g *GoIDE) StartAutomaticLanguageServer(sessionID string, settings codestud
 }
 func (g *GoIDE) RestartAutomaticLanguageServer(sessionID string, settings codestudio.LanguageServerSettings) (codestudio.LanguageServerStatus, error) {
 	return g.service.RestartLanguageServer(sessionID, settings)
+}
+
+// PomDependencies elenca le coordinate del pom.xml aperto con le posizioni delle versioni (testo dell'editor).
+func (g *GoIDE) PomDependencies(sessionID, content string) ([]java.PomDependency, error) {
+	return g.service.PomDependencies(sessionID, content)
+}
+
+// PomVersions cerca su Maven Central le versioni stabili delle coordinate indicate (azione esplicita dell'utente).
+func (g *GoIDE) PomVersions(sessionID string, current map[string]string) ([]java.VersionInfo, error) {
+	return g.service.PomVersions(sessionID, current)
 }

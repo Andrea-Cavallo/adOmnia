@@ -18,6 +18,7 @@ import { installCodeStudioEditorActions } from './codeStudioEditorActions'
 import { installCodeStudioAIActions } from './codeStudioAIActionsRunner'
 import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStudioLanguageFeatures'
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
+import { registerCodeStudioPom } from './codeStudioPom'
 import { registerCodeStudioProtoLens } from './codeStudioProtoLens'
 import { registerCodeStudioRuntimeLens } from './codeStudioRuntimeLens'
 import { registerCodeStudioCodeVision } from './codeStudioCodeVision'
@@ -49,6 +50,7 @@ const CodeStudioCollabBar = lazy(() => import('./CodeStudioCollabBar'))
 configureMonacoLoader()
 registerCodeStudioLanguageFeatures()
 registerCodeStudioCodeLens()
+registerCodeStudioPom()
 registerCodeStudioProtoLens()
 registerCodeStudioRuntimeLens()
 registerCodeStudioCodeVision()

@@ -1,3 +1,4 @@
+import type { PomDependency, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -772,4 +773,14 @@ export const rejectAgentHunks = (root: string, path: string, content: string, ex
 
 export function subscribeAgentReviewChanges(handler: (root: string) => void): () => void {
   return Events.On(AGENT_REVIEW_CHANGED_EVENT, (event) => handler((event.data as { root: string }).root))
+}
+
+/** Coordinate del pom.xml (anche non salvato) con le posizioni delle versioni: nessun file, nessuna rete. */
+export async function getPomDependencies(sessionId: string, content: string): Promise<PomDependency[]> {
+  return GoIDEBindings.PomDependencies(sessionId, content)
+}
+
+/** Versioni stabili su Maven Central per `group:artifact` → versione corrente. Solo su azione esplicita. */
+export async function getPomVersions(sessionId: string, current: Record<string, string>): Promise<VersionInfo[]> {
+  return GoIDEBindings.PomVersions(sessionId, current)
 }

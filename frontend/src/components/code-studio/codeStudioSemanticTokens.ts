@@ -2,7 +2,12 @@
 export const CLIENT_TOKEN_TYPES = [
   'namespace', 'type', 'class', 'enum', 'interface', 'struct', 'typeParameter', 'parameter', 'variable', 'property',
   'enumMember', 'event', 'function', 'method', 'macro', 'keyword', 'modifier', 'comment', 'string', 'number', 'regexp', 'operator', 'label',
+  // In coda: gli indici esistenti non si spostano.
+  'annotation',
 ] as const
+
+/** Tipi di un server che il client mostra come un tipo vicino: JDT LS chiama `decorator` le @Annotation, i record Java sono classi, i membri di annotazione proprietà. */
+const TYPE_ALIASES: Readonly<Record<string, string>> = { decorator: 'annotation', annotationMember: 'property', record: 'class', recordComponent: 'property' }
 
 export const CLIENT_TOKEN_MODIFIERS = [
   'declaration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'defaultLibrary',
@@ -59,7 +64,7 @@ function indexByName(names: readonly string[]): Map<string, number> {
 export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readonly string[], serverModifiers: readonly string[]): Uint32Array {
   const clientTypes = indexByName(CLIENT_TOKEN_TYPES)
   const clientModifiers = indexByName(CLIENT_TOKEN_MODIFIERS)
-  const typeMap = serverTypes.map((name) => clientTypes.get(name) ?? -1)
+  const typeMap = serverTypes.map((name) => clientTypes.get(name) ?? clientTypes.get(TYPE_ALIASES[name] ?? '') ?? -1)
   const modifierMap = serverModifiers.map((name) => clientModifiers.get(name) ?? -1)
   const mapped: AbsoluteToken[] = []
   for (const token of decode(data)) {

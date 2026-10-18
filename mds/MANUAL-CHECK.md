@@ -64,7 +64,8 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
-| **TOTALE** | **194** | **0** |
+| SEC-1 | 9 | 0 |
+| **TOTALE** | **203** | **0** |
 
 ---
 
@@ -609,6 +610,27 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 - [ ] **Z1.4.M1** Copilot, milk e Claude: progetto con i quattro file root, inviare un messaggio e controllare i nomi nei chip del contesto; disattivare Project rules e verificare che il turno successivo le escluda. Modificare un file e inviare di nuovo; verificare aggiornamento, marker per file oltre 8 KiB e rispetto di `.adomnia/aiignore`. Slash command milk invariati. Provare finestra staccata, tema chiaro e scuro. I test automatici non chiudono questa verifica.
 
+## SEC-1 — Security Center: impatto e remediation guidata
+
+**Prerequisito:** `wails3 task dev`; progetto con `go.mod` e/o `pom.xml` che ha almeno una dipendenza con advisory noto (oppure database locale degli advisory presente). Deep analysis serve solo per SEC-1.M1. Skin scuro e chiaro.
+
+**Implementate, da verificare**
+- [ ] **SEC-1.1** *Security Impact Before Update*: dal finding, "Preview impact" mostra per la versione target (modificabile) gli advisory chiusi, quelli ancora aperti e quelli introdotti, con classe di compatibilità e consiglio. Il CVE compare anche quando la fonte usa il proprio ID.
+- [ ] **SEC-1.2** *Safe Remediation*: "Prepare the change" mostra il diff del manifest e l'elenco dei passi di verifica. A questo punto **nessun file è stato scritto**.
+- [ ] **SEC-1.3** "Run checks" esegue i passi uno alla volta, ognuno con stato (idle / running / ok / failed / skipped) e output leggibile. Il primo passo scrive la modifica in via provvisoria e crea il backup `*.adomnia-restore`.
+- [ ] **SEC-1.4** Con **Deep analysis disattivo**, i passi che avviano processi risultano `skipped — external tools are not authorized` e nessun processo parte (verificabile dal Task Manager); con Deep analysis attivo compilazione e test girano e il loro output è leggibile nel passo.
+- [ ] **SEC-1.5** "Apply change" è attivo solo con tutti i passi ok/skipped: rende definitiva la modifica e il backup resta accanto al manifest. "Discard change" ripristina il manifest com'era e rimuove il backup. Con un passo fallito Apply resta disattivato.
+
+**Verifiche manuali**
+- [ ] **SEC-1.M1** Percorso felice: dipendenza Go con correzione patch → Preview impact → Prepare → Run checks con Deep analysis attivo → Apply. `go.mod` cambia solo sulla riga della versione; una nuova scansione non riporta più il finding chiuso e gli advisory risultati "introdotti" dal preview compaiono davvero.
+- [ ] **SEC-1.M2** Casi limite: versione target uguale all'attuale (rifiuto con messaggio); dipendenza transitive Maven non dichiarata nel `pom.xml` (finding bloccato col motivo, nessun comando proposto); versione gestita da parent/BOM/`dependencyManagement` (bloccata col motivo); modulo Go con `replace` (bloccato); passo di test fallito (Apply disattivato, il diff resta disponibile per correggere a mano); Discard dopo i controlli (manifest ripristinato).
+- [ ] **SEC-1.M3** Privacy: con modalità Offline attiva i passi non scaricano nulla (`GOPROXY=off` per Go, `mvn -o` per Maven) e non compaiono richieste verso l'esterno; nessun sorgente o nome di file lascia la macchina in nessun passo.
+- [ ] **SEC-1.M4** Skin scuro e chiaro: diff (righe `+`/`-`/`@@`), stati dei passi e badge d'impatto leggibili in entrambi.
+
+**Gate manuale SEC-1:** [ ]
+
+---
+
 ## Verifica globale di rilascio
 
 - [ ] `wails3 task dev` con progetto reale, skin scuro e chiaro: **GS-1, GS-2, GS-4, GS-5, GS-7**.
@@ -689,5 +711,6 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 - [x] ML-9.M15 *(2026-10-17, app e2e, `pluginsystem` + mini progetto Maven/JUnit)* Navigazione e colori Java: Ctrl+click / F12 su `Field` apre `Field.java` del JDK in sola lettura (sorgente reale di `java.base`, salvato sotto la cache utente); da lì F12 su `AccessibleObject` apre la classe successiva (catena di jdt://). I colori semantici (funzioni, tipi, parametri) ci sono anche alla prima apertura del file: un `.java` aperto mentre JDT LS importa il progetto riprova invece di restare bianco. **Ctrl+Shift+O** = Optimize Imports (come Ctrl+Alt+O).
 - [x] ML-9.M16 *(2026-10-17, app e2e)* Gestore Run → Detected: **Java · main <Classe>** crea una configurazione "Java main class" con il form *Main class* + *VM options* (Kind "Java main class", working directory = modulo); ▶ stampa l'output del programma. Kind **Java remote JVM** (host/porta): il pulsante Debug si collega a una JVM già in ascolto; ▶ spiega che serve Debug.
 - [x] ML-9.M17 *(2026-10-17, app e2e)* Debug di un test JUnit dal ▶ del gutter: menu `Debug 'adds'` → la console Run mostra `mvn -B test -Dtest=… -Dmaven.surefire.debug=-agentlib:jdwp=…address=127.0.0.1:<porta>`, la sessione si collega a quella porta e si ferma sul breakpoint nel metodo (thread, call stack e variabili). Lo stesso meccanismo (`DebugArguments`) vale per `spring-boot:run` di una configurazione Maven e per `test`/`bootRun`/`run` Gradle (porta fissa 5005): provato solo il caso Maven + JUnit.
+- [ ] ML-9.M18 pom.xml intelligente: apri `C:\Users\Andrea\Desktop\spring-openai-master\pom.xml` in Code Studio: in cima i lens **Check for updates** e **Scan vulnerabilities**. Check → sulle dipendenze compaiono `↑ x.y.z (same major)` / `(latest)` e un'info sulla versione; cliccando un lens la `<version>` (o la property `${…}`, es. `spring.boot.version`, che aggiorna tutte le dipendenze che la usano) cambia come edit annullabile con Ctrl+Z. Scan → warning/errore sulla riga con CVE, gravità e `fixed in …`; il lens o il quick fix (Ctrl+.) aggiorna alla versione che chiude i CVE. Le versioni gestite dal parent (`starter-validation`, `lombok`) non hanno lens. Nessuna richiesta di rete finché non si preme uno dei due lens. *(backend provato su questo pom e su Maven Central; UI non ancora provata in app)*
 - [x] ML-9.M9 *(2026-10-17, app e2e dal branch `feat/multilang-run-test-routing`, JDK 21 + Maven 3.9.6)* Progetto Maven (`pom.xml`, `App.java`): barra Run "Add configuration"; ▶ apre il gestore con **Detected** `Maven · mvn test` e `Maven · mvn package`; aggiunta `Maven test` e ▶: la console Run mostra `$ mvn test` e il build termina con exit 0; status bar "Java" senza gopls/golangci-lint/go1.x. **Non ancora (→ ML-9.M10):** language server (completamento/errori nei `.java`), test strutturati JUnit, debug, Spring Boot `run` (serve un progetto Spring), wrapper `mvnw` e Gradle provati solo a livello di test automatici.
 

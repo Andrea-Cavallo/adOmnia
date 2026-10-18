@@ -153,6 +153,10 @@ const GO_SEMANTIC_RULES_DARK: monaco.editor.ITokenThemeRule[] = [
   { token: 'typeParameter', foreground: '5EEAD4', fontStyle: 'italic' },
   { token: 'namespace', foreground: 'A5B4FC' },
   { token: 'property', foreground: 'D8B4FE' },
+  { token: 'annotation', foreground: 'FCD34D' },
+  // static final (Java): `readonly` da solo sono i campi final d'istanza, che restano del colore delle proprietà.
+  { token: 'property.readonly.static', foreground: 'F9A8D4' },
+  { token: 'enumMember', foreground: 'F9A8D4' },
 ]
 
 const GO_SEMANTIC_RULES_LIGHT: monaco.editor.ITokenThemeRule[] = [
@@ -164,6 +168,9 @@ const GO_SEMANTIC_RULES_LIGHT: monaco.editor.ITokenThemeRule[] = [
   { token: 'typeParameter', foreground: '0F766E', fontStyle: 'italic' },
   { token: 'namespace', foreground: '4338CA' },
   { token: 'property', foreground: '7E22CE' },
+  { token: 'annotation', foreground: 'A16207' },
+  { token: 'property.readonly.static', foreground: 'BE185D' },
+  { token: 'enumMember', foreground: 'BE185D' },
 ]
 
 /** `type` è anche un token sintattico (chiavi YAML, tipi JS) già colorato dal tema base: fuori da Code Studio resta quello. */

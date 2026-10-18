@@ -47,6 +47,7 @@ func TestMainRunnerBuildsACommandInTheModule(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>shop</artifactId></project>`)
 	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "mvnw.cmd"), "")
 	options, _ := json.Marshal(MainOptions{MainClass: "a.App", VMOptions: []string{"-Xmx1g"}})
 	spec, err := New().CommandSpec(run.Request{Kind: KindMain, WorkingDirectory: root, LanguageOptions: options, ProgramArguments: []string{"go"}})

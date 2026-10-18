@@ -132,6 +132,7 @@ func TestTestCommandRunsTheUnitAndRejectsUnsafeFilters(t *testing.T) {
 	write(t, filepath.Join(root, "pom.xml"), `<project><artifactId>a</artifactId></project>`)
 	write(t, filepath.Join(root, "mvnw.cmd"), "")
 	write(t, filepath.Join(root, "mvnw"), "")
+	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "src", "test", "java", "FooTest.java"), "class FooTest {}")
 	options, _ := json.Marshal(TestOptions{Packages: []string{"src/test/java/FooTest.java"}, Run: "works"})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: options})
