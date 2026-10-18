@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
-import { brandColors, contrastRatio, resolveCodeStudioFileIcon, resolveCodeStudioFolderBrand } from './codeStudioFileIcons'
+import { brandColors, contrastRatio, resolveCodeStudioFileIcon } from './codeStudioFileIcons'
 
 describe('Code Studio file icons', () => {
   it('uses the gopher for Go sources and marks tests', () => {
@@ -57,8 +57,6 @@ describe('Code Studio file icons', () => {
     expect(resolveCodeStudioFileIcon('LICENSE')).toEqual({ kind: 'generic', icon: 'license' })
     expect(resolveCodeStudioFileIcon('schema.proto')).toEqual({ kind: 'generic', icon: 'schema' })
     expect(resolveCodeStudioFileIcon('generic')).toEqual({ kind: 'generic', icon: 'file' })
-    expect(resolveCodeStudioFolderBrand('.github')).toBe('github')
-    expect(resolveCodeStudioFolderBrand('internal')).toBeNull()
   })
 
   it('keeps every brand icon readable on both themes', () => {

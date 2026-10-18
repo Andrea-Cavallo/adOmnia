@@ -217,7 +217,6 @@ export const ITALIAN_UI_MESSAGES = {
   'Collapse project': 'Comprimi progetto',
   'Expand project': 'Espandi progetto',
   'Create files and folders': 'Crea file e cartelle',
-  'Quick file templates': 'Modelli rapidi per i file',
   'New Markdown File': 'Nuovo file Markdown',
   'New Text File': 'Nuovo file di testo',
   'Java Class': 'Classe Java',

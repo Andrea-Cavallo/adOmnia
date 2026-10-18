@@ -85,13 +85,4 @@ export function resolveCodeStudioFileIcon(name: string, relativePath = ''): Code
   return { kind: 'generic', icon: GENERIC_EXTENSIONS[extension] ?? 'file' }
 }
 
-/** Icona di una cartella con un'identità precisa (.github, .git), altrimenti null. */
-export function resolveCodeStudioFolderBrand(name: string): BrandIconSlug | null {
-  const lower = name.toLowerCase()
-  if (lower === '.github') return 'github'
-  if (lower === '.git') return 'git'
-  if (lower === '.gitlab') return 'gitlab'
-  return null
-}
-
 export { brandColors, contrastRatio } from '@/lib/brandColors'
