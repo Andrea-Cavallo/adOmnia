@@ -5,7 +5,7 @@ export type JavaLanguageCommandId =
   | 'java.runMain' | 'java.debugMain' | 'java.runTest' | 'java.debugTest' | 'java.springBootRun'
   | 'java.mvnCompile' | 'java.mvnTest' | 'java.mvnPackage' | 'java.mvnCleanInstall'
   | 'java.optimizeImports' | 'java.goToTest' | 'java.generate'
-  | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk' | 'java.dependencyTree' | 'java.jvmMonitor'
+  | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk' | 'java.dependencyTree' | 'java.jvmMonitor' | 'java.springEndpoints' | 'java.springBeanGraph'
 
 const requires = { language: JAVA_LANGUAGE_ID }
 
@@ -16,6 +16,8 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.runTest', menu: 'java', label: 'Run Test at Cursor' },
   { id: 'java.debugTest', menu: 'java', label: 'Debug Test at Cursor' },
   { id: 'java.springBootRun', menu: 'java', label: 'Run Application (Spring Boot, Quarkus, Micronaut)' },
+  { id: 'java.springEndpoints', menu: 'java', label: 'Spring Endpoints…', separatorBefore: true },
+  { id: 'java.springBeanGraph', menu: 'java', label: 'Spring Bean Graph…' },
   { id: 'java.mvnCompile', menu: 'java', label: 'Build (compile)', separatorBefore: true },
   { id: 'java.mvnTest', menu: 'java', label: 'Maven / Gradle: test' },
   { id: 'java.mvnPackage', menu: 'java', label: 'Maven / Gradle: package' },

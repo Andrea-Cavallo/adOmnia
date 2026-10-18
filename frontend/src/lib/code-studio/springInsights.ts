@@ -157,7 +157,10 @@ export function beanForInjection(index: SpringIndex, injection: SpringInjection)
     const named = beans.find((bean) => bean.name === injection.qualifier || bean.qualifiers?.includes(injection.qualifier ?? ''))
     if (named) return named
   }
-  return beans.find((bean) => bean.type === injection.type || bean.type?.endsWith(`.${injection.type ?? ''}`)) ?? null
+  const type = injection.type ?? ''
+  const same = (candidate: string) => candidate === type || candidate.endsWith(`.${type}`) || type.endsWith(`.${candidate}`)
+  // Prima il tipo esatto, poi un bean che implementa o estende il tipo iniettato (`IOpenAiService` → OpenAiService).
+  return beans.find((bean) => same(bean.type ?? '')) ?? beans.find((bean) => (bean.supertypes ?? []).some(same)) ?? null
 }
 
 export function locationOfBean(bean: SpringBean | null): SpringLocation | null {

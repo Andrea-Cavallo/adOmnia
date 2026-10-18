@@ -14,7 +14,20 @@ vi.mock('@/stores/codeStudioAssistant', async (original) => {
 })
 import { CodeStudioSidePane } from './CodeStudioSidePane'
 import { useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
-const session = { id: 'navigation' } as GoIDESession
+
+function sessionWith(units: Array<{ language: string; kind: string; manifest: string }>): GoIDESession {
+  const rootPath = 'C:/work/app'
+  return {
+    id: 'navigation',
+    project: {
+      rootPath,
+      realPath: rootPath,
+      units: units.map((unit) => ({ ...unit, root: rootPath, name: unit.manifest.slice(unit.manifest.lastIndexOf('/') + 1) })),
+    },
+  } as unknown as GoIDESession
+}
+
+const session = sessionWith([{ language: 'go', kind: 'module', manifest: 'C:/work/app/go.mod' }])
 
 describe('separate Structure and AI navigation', () => {
   it('shows only Structure, Context and Project in the Structure pane', () => {
@@ -37,5 +50,14 @@ describe('separate Structure and AI navigation', () => {
     } finally {
       useCodeStudioAssistantStore.getState().close()
     }
+  })
+  it('hides Context in a Java project: it explains Go context.Context', () => {
+    useCodeStudioAssistantStore.getState().close()
+    const java = sessionWith([{ language: 'java', kind: 'maven', manifest: 'C:/work/app/pom.xml' }])
+    const html = renderToStaticMarkup(<CodeStudioSidePane session={java} document={null} />)
+    expect(html.match(/role="tab"/g)).toHaveLength(2)
+    expect(html).toContain('Structure')
+    expect(html).toContain('Project')
+    expect(html).not.toContain('Context')
   })
 })

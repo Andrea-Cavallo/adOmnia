@@ -33,10 +33,10 @@ type SpringProperty struct {
 	// Origin è il jar o la classe che la dichiara (per il tooltip).
 	Origin string `json:"origin,omitempty"`
 	// Posizione della dichiarazione Java, navigabile solo per Source == project.
-	File            string `json:"file,omitempty"`
-	Line            int    `json:"line,omitempty"`
-	StartColumn     int    `json:"startColumn,omitempty"`
-	EndColumn       int    `json:"endColumn,omitempty"`
+	File        string `json:"file,omitempty"`
+	Line        int    `json:"line,omitempty"`
+	StartColumn int    `json:"startColumn,omitempty"`
+	EndColumn   int    `json:"endColumn,omitempty"`
 }
 
 // SpringValue è un valore scritto in application.properties/.yml, con il profilo a cui appartiene.
@@ -55,15 +55,15 @@ type SpringValue struct {
 
 // SpringPropertyReference è un `@Value("${…}")` nel codice Java.
 type SpringPropertyReference struct {
-	Expression      string `json:"expression"`
-	Key             string `json:"key"`
-	Default         string `json:"default,omitempty"`
-	Class           string `json:"class,omitempty"`
-	Member          string `json:"member,omitempty"`
-	File            string `json:"file,omitempty"`
-	Line            int    `json:"line,omitempty"`
-	StartColumn     int    `json:"startColumn,omitempty"`
-	EndColumn       int    `json:"endColumn,omitempty"`
+	Expression  string `json:"expression"`
+	Key         string `json:"key"`
+	Default     string `json:"default,omitempty"`
+	Class       string `json:"class,omitempty"`
+	Member      string `json:"member,omitempty"`
+	File        string `json:"file,omitempty"`
+	Line        int    `json:"line,omitempty"`
+	StartColumn int    `json:"startColumn,omitempty"`
+	EndColumn   int    `json:"endColumn,omitempty"`
 }
 
 // SpringDiagnostic è un problema di configurazione trovato senza eseguire il progetto.
@@ -79,12 +79,14 @@ type SpringDiagnostic struct {
 
 // SpringBean è un bean dichiarato nel progetto (stereotype o metodo @Bean).
 type SpringBean struct {
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Kind        string   `json:"kind"` // "component" | "service" | "repository" | "controller" | "configuration" | "bean"
-	Scope       string   `json:"scope,omitempty"`
-	Qualifiers  []string `json:"qualifiers,omitempty"`
-	Class       string   `json:"class,omitempty"`
+	Name       string   `json:"name"`
+	Type       string   `json:"type"`
+	Kind       string   `json:"kind"` // "component" | "service" | "repository" | "controller" | "configuration" | "bean"
+	Scope      string   `json:"scope,omitempty"`
+	Qualifiers []string `json:"qualifiers,omitempty"`
+	Class      string   `json:"class,omitempty"`
+	// Supertypes: interfacce e superclasse del bean, per risolvere le iniezioni per interfaccia.
+	Supertypes  []string `json:"supertypes,omitempty"`
 	Member      string   `json:"member,omitempty"`
 	File        string   `json:"file,omitempty"`
 	Line        int      `json:"line,omitempty"`
@@ -124,14 +126,14 @@ type SpringEndpoint struct {
 type SpringIndex struct {
 	// Stato dell'indice: "ready" quando la scansione del progetto è completa; "partial" quando i
 	// limiti hanno interrotto la lettura; "stale" quando la cache dei metadata non è aggiornata.
-	Status            string                     `json:"status"`
-	Properties        []SpringProperty           `json:"properties"`
-	Values            []SpringValue              `json:"values"`
+	Status             string                    `json:"status"`
+	Properties         []SpringProperty          `json:"properties"`
+	Values             []SpringValue             `json:"values"`
 	PropertyReferences []SpringPropertyReference `json:"propertyReferences"`
-	Diagnostics       []SpringDiagnostic         `json:"diagnostics"`
-	Beans             []SpringBean               `json:"beans"`
-	Injections        []SpringInjection          `json:"injections"`
-	Endpoints         []SpringEndpoint           `json:"endpoints"`
+	Diagnostics        []SpringDiagnostic        `json:"diagnostics"`
+	Beans              []SpringBean              `json:"beans"`
+	Injections         []SpringInjection         `json:"injections"`
+	Endpoints          []SpringEndpoint          `json:"endpoints"`
 	// ServerPort è `server.port` effettivo (profilo più specifico che vince).
 	ServerPort string `json:"serverPort,omitempty"`
 	// MetadataState descrive lo scan degli jar: "ready", "idle", "scanning".
@@ -172,7 +174,7 @@ func BuildSpringIndex(projectRoot string) SpringIndex {
 
 	index.PropertyReferences = propertyReferencesOf(parsed)
 	index.Beans = beansOf(parsed)
-	index.Injections = injectionsOf(parsed)
+	index.Injections = injectionsOf(parsed, index.Beans)
 	index.Endpoints = endpointsOf(parsed)
 	index.Values = valuesOf(configFiles)
 	index.ServerPort = serverPortOf(index.Values)

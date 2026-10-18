@@ -625,6 +625,16 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 **Prerequisito:** `wails3 task dev`; progetto con `go.mod` e/o `pom.xml` che ha almeno una dipendenza con advisory noto (oppure database locale degli advisory presente). Deep analysis serve solo per SEC-1.M1. Skin scuro e chiaro.
 
+> **Evidenza di logica (2026-10-18):** il flusso completo `SEC-1.1`→`SEC-1.5` è provato end-to-end su
+> manifest **reali** dal test `internal/securityintel/e2e` —
+> `SECURITY_SAMPLE_DIR=<progetto> go test ./internal/securityintel/e2e/ -run TestSafeRemediationOnARealManifest -v`.
+> Eseguito su `go.mod` reale (`filippo.io/age v1.3.2`, `resolve` → **skipped** "external tools are not
+> authorized") e su `pom.xml` reale (`io.micrometer:micrometer-registry-prometheus 1.10.0`, `resolve`
+> → **ok** con risoluzione statica). Entrambi: preview "major upgrade — closes 1 advisory", piano con
+> diff e nessuna scrittura, write provvisorio con backup `*.adomnia-restore`, discard che ripristina
+> e rimuove il backup, apply che rende la modifica definitiva (stato `committed`).
+> **Resta da verificare qui solo che la UI mostri queste cose come un utente le vede.**
+
 **Implementate, da verificare**
 - [ ] **SEC-1.1** *Security Impact Before Update*: dal finding, "Preview impact" mostra per la versione target (modificabile) gli advisory chiusi, quelli ancora aperti e quelli introdotti, con classe di compatibilità e consiglio. Il CVE compare anche quando la fonte usa il proprio ID.
 - [ ] **SEC-1.2** *Safe Remediation*: "Prepare the change" mostra il diff del manifest e l'elenco dei passi di verifica. A questo punto **nessun file è stato scritto**.

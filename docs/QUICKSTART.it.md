@@ -52,4 +52,4 @@ Il progetto selezionato nella finestra principale viene ricordato per workspace 
 | SQL o messaggi assenti | Capture/watch configurati e trasporto supportato |
 | Tool non disponibili | Fiducia del progetto, SDK, gopls e Delve |
 
-[Guarda la demo da 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s) · [Guida completa Code Studio](CODE-STUDIO.md) · [Installazione](INSTALL.md)
+[Guarda la demo](https://www.youtube.com/watch?v=tefwLUadRr8) · [Guida completa Code Studio](CODE-STUDIO.md) · [Installazione](INSTALL.md)

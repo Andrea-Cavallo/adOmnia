@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { languageServerEditorLanguages } from '@/components/ide/languages'
 import { requestDocumentSymbols, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -11,11 +12,13 @@ const EMPTY: GoIDESymbolNode[] = []
 export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | null): void {
   const sessionId = document?.document.sessionId ?? ''
   const documentId = document?.document.id ?? null
-  const isGo = !!document?.document.name.endsWith('.go')
+  // I simboli arrivano dal language server: ci sono per ogni linguaggio che ne ha uno (Go, Java, web),
+  // non solo per Go. Stesso elenco dei provider LSP generici di codeStudioLanguageFeatures.
+  const hasSymbols = languageServerEditorLanguages().includes(document?.document.language ?? '')
   const lspReady = useCodeStudioLspStore((state) => state.status[sessionId]?.state === 'ready')
 
   useEffect(() => {
-    if (!documentId || !isGo || !lspReady) return
+    if (!documentId || !hasSymbols || !lspReady) return
     let cancel: (() => void) | null = null
     const timer = window.setTimeout(() => {
       void flushCodeStudioDocument(documentId).then(() => {
@@ -29,7 +32,7 @@ export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | nul
       })
     }, REFRESH_DEBOUNCE_MS)
     return () => { window.clearTimeout(timer); cancel?.() }
-  }, [document?.buffer, documentId, isGo, lspReady, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [document?.buffer, documentId, hasSymbols, lspReady, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export function useCodeStudioSymbolsFor(documentId: string | null): GoIDESymbolNode[] {

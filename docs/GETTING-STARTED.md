@@ -52,4 +52,4 @@ The main IDE remembers its last selected project per workspace after you select 
 | No SQL/messages | Capture/watch enabled, supported connection, service emits the required evidence |
 | Tools unavailable | Project trust, SDK and optional gopls/Delve installation |
 
-[Watch the demo from 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s) · [Code Studio reference](CODE-STUDIO.md) · [Troubleshooting](TROUBLESHOOTING.md)
+[Watch the demo](https://www.youtube.com/watch?v=tefwLUadRr8) · [Code Studio reference](CODE-STUDIO.md) · [Troubleshooting](TROUBLESHOOTING.md)

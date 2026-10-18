@@ -113,8 +113,11 @@ func TestNonGoTemplatesCreateFilesWithoutGo(t *testing.T) {
 	stubCustomTemplatesRoot(t, t.TempDir())
 	t.Setenv("PATH", t.TempDir()) // nessun go: un template non Go non deve cercarlo
 	expected := map[string][]string{
-		"web-static":  {"index.html", "styles.css", "script.js", "README.md"},
-		"node-script": {"package.json", "index.js", "greet.js", "greet.test.js", "README.md"},
+		"web-static":         {"index.html", "styles.css", "script.js", "README.md"},
+		"node-script":        {"package.json", "index.js", "greet.js", "greet.test.js", "README.md"},
+		"spring-boot-maven":  {"pom.xml", "README.md", ".gitignore", "src/main/resources/application.properties"},
+		"spring-boot-gradle": {"build.gradle", "settings.gradle", "README.md", ".gitignore", "src/main/resources/application.properties"},
+		"java-maven":         {"pom.xml", "README.md", ".gitignore"},
 	}
 	for id, files := range expected {
 		t.Run(id, func(t *testing.T) {

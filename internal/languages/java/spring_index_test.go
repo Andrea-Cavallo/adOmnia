@@ -126,7 +126,7 @@ func TestBeansInjectionsAndEndpoints(t *testing.T) {
 		t.Fatalf("service bean: %+v", beans[1])
 	}
 
-	injections := injectionsOf(sources)
+	injections := injectionsOf(sources, beans)
 	if len(injections) != 3 {
 		t.Fatalf("injections: %+v", injections)
 	}
@@ -248,12 +248,12 @@ func writeProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
-		"src/main/java/com/acme/demo/MailProperties.java":   mailPropertiesJava,
+		"src/main/java/com/acme/demo/MailProperties.java":  mailPropertiesJava,
 		"src/main/java/com/acme/demo/OrderController.java": orderControllerJava,
 		"src/main/java/com/acme/demo/OrderService.java":    orderServiceJava,
-		"src/main/resources/application.properties":         "server.port=8080\nacme.mail.host=smtp.acme.io\n",
-		"src/main/resources/application-prod.properties":    "server.port=80\nacme.mail.host=smtp-prod.acme.io\n",
-		"src/main/resources/application.yml":                "spring:\n  application:\n    name: orders\n",
+		"src/main/resources/application.properties":        "server.port=8080\nacme.mail.host=smtp.acme.io\n",
+		"src/main/resources/application-prod.properties":   "server.port=80\nacme.mail.host=smtp-prod.acme.io\n",
+		"src/main/resources/application.yml":               "spring:\n  application:\n    name: orders\n",
 	}
 	for relative, content := range files {
 		path := filepath.Join(root, filepath.FromSlash(relative))
@@ -331,5 +331,70 @@ func TestDiagnosticsFlagUnknownKeysOnlyWhenMetadataIsKnown(t *testing.T) {
 	// Senza nessuna proprietà nota non si accusa nulla: non sarebbe onesto.
 	if empty := diagnosticsOf(references, values, map[string]SpringProperty{}); len(empty) != 0 {
 		t.Fatalf("no metadata, no diagnostics: %+v", empty)
+	}
+}
+
+func TestLombokAndImplicitConstructorInjections(t *testing.T) {
+	sources := []javaSource{
+		parseJavaSource([]byte(`package com.acme;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RestController;
+@RestController
+@RequiredArgsConstructor
+public class AiController {
+    private final AiService service;
+    private final MeterRegistry meterRegistry;
+    private final String label = "fixed";
+    private static final Object LOCK = new Object();
+    private int counter;
+}`)),
+		parseJavaSource([]byte(`package com.acme;
+import org.springframework.stereotype.Service;
+@Service
+public class AiService {
+    private final Cache cache;
+    public AiService(Cache cache) { this.cache = cache; }
+}`)),
+		parseJavaSource([]byte(`package com.acme;
+import org.springframework.stereotype.Service;
+@Service
+public class Multi {
+    public Multi() {}
+    public Multi(Alpha alpha) {}
+    @org.springframework.beans.factory.annotation.Autowired
+    public Multi(Beta beta) {}
+}`)),
+		parseJavaSource([]byte(`package com.acme;
+public class AiException extends RuntimeException {
+    public AiException(String message) { super(message); }
+}`)),
+	}
+	injections := injectionsOf(sources, beansOf(sources))
+	by := map[string][]string{}
+	for _, injection := range injections {
+		by[injection.Class] = append(by[injection.Class], injection.Type)
+	}
+	if got := strings.Join(by["com.acme.AiController"], ","); got != "AiService,MeterRegistry" {
+		t.Fatalf("Lombok constructor injects only the final fields without a value: %s", got)
+	}
+	if got := strings.Join(by["com.acme.AiService"], ","); got != "Cache" {
+		t.Fatalf("single constructor: %s", got)
+	}
+	if got := strings.Join(by["com.acme.Multi"], ","); got != "Beta" {
+		t.Fatalf("with several constructors only the @Autowired one injects: %s", got)
+	}
+	if _, found := by["com.acme.AiException"]; found {
+		t.Fatal("a class that is not a bean has no injection points")
+	}
+}
+
+func TestBeanSupertypesAreRecorded(t *testing.T) {
+	sources := []javaSource{parseJavaSource([]byte(`package com.acme;
+import org.springframework.stereotype.Service;
+@Service
+public class OpenAiService extends BaseService<String> implements IOpenAiService, Cacheable { }`))}
+	beans := beansOf(sources)
+	if len(beans) != 1 || strings.Join(beans[0].Supertypes, ",") != "BaseService,IOpenAiService,Cacheable" {
+		t.Fatalf("beans = %+v", beans)
 	}
 }

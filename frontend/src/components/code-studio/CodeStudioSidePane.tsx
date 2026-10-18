@@ -7,6 +7,8 @@ import { CodeStudioProjectOverview } from './CodeStudioProjectOverview'
 import { CodeStudioStructure } from './CodeStudioStructure'
 import { CodeStudioLineContext } from './CodeStudioLineContext'
 import { CodeStudioAiHubPanel } from './CodeStudioAiHubPanel'
+import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
+import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
 import { StudioToolControls } from './StudioToolControls'
 import { toolKey, useStudioTools } from './studioToolState'
@@ -32,11 +34,14 @@ const TABS: ReadonlyArray<{ id: SidePaneTab; label: string; icon: ComponentType<
 export function CodeStudioSidePane({ session, document }: CodeStudioSidePaneProps) {
   const [tab, setTab] = useState<SidePaneTab>('structure')
   const selectedRuntime = useCodeStudioRuntimeContext(state => state.selected)
-  useEffect(() => { if (selectedRuntime?.sessionId === session.id) setTab('context') }, [selectedRuntime, session.id])
+  // Context parla di Go (route, SQL, goroutine, go.mod): senza unità Go la scheda non viene mostrata.
+  const hasGo = projectProfile(session.project, IDE_LANGUAGE_NAMES).hasGo
+  useEffect(() => { if (hasGo && selectedRuntime?.sessionId === session.id) setTab('context') }, [hasGo, selectedRuntime, session.id])
   const pane = useCodeStudioAssistantStore((state) => state.pane)
   const detached = useStudioTools((state) => isChatPane(pane) && state.detached.includes(toolKey(session.id, pane)))
   const assistantOpen = isChatPane(pane)
-  const visibleTab: SidePaneTab = assistantOpen ? 'ai' : tab === 'ai' ? 'structure' : tab
+  const tabs = TABS.filter(({ id }) => (assistantOpen ? id === 'ai' : id !== 'ai') && (id !== 'context' || hasGo))
+  const visibleTab: SidePaneTab = assistantOpen ? 'ai' : tab === 'ai' || (tab === 'context' && !hasGo) ? 'structure' : tab
   const selectTab = (next: SidePaneTab) => {
     const assistant = useCodeStudioAssistantStore.getState()
     if (next === 'ai') assistant.open(assistant.lastProvider)
@@ -55,7 +60,7 @@ export function CodeStudioSidePane({ session, document }: CodeStudioSidePaneProp
   return (
     <aside aria-label={assistantOpen ? 'AI Assistant' : 'Structure and project overview'} className="flex h-full min-h-0 min-w-0 flex-col">
       <div role="tablist" className="code-studio-tool-header min-w-0 shrink-0 gap-1 overflow-x-auto pl-2">
-        {TABS.filter(({ id }) => assistantOpen ? id === 'ai' : id !== 'ai').map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" role="tab" aria-selected={visibleTab === id} onClick={() => selectTab(id)} className={`relative flex h-9 shrink-0 items-center gap-1.5 px-2 text-[12px] ${visibleTab === id ? 'font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>
             <Icon size={13} /> {label}
             {visibleTab === id && <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-accent" aria-hidden="true" />}

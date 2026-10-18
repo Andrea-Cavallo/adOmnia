@@ -43,47 +43,53 @@ internal/securityintel/            core del motore (NON importa adapter — arch
 
 ## Perché `frontend/bindings/adomnia/securityintel.ts` è scritto a mano
 
-La CLI `wails3` **non è installata** in questa macchina, quindi `wails3 generate bindings`
-non è stato eseguito. Il file è stato scritto a mano replicando la forma generata, con ID
-di metodo corretti. La formula è:
+**SUPERATO (2026-10-18).** La CLI `wails3` non era installata e il binding era stato scritto a mano
+replicando la forma generata, con ID di metodo calcolati a mano come
+`methodID = FNV-1a 32-bit di "main.<TypeName>.<MethodName>"` (verificato: `main.OASLint.Lint` = 325496117).
+Oggi la CLI si lancia senza installarla e i bindings sono **generati**:
 
 ```
-methodID = FNV-1a 32-bit di "main.<TypeName>.<MethodName>"
+go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28 generate bindings -clean=true -ts ./...
 ```
 
-Verificata: `main.OASLint.Lint` = 325496117, identico al file generato.
-Quando aggiungi o rinomini un metodo del servizio `SecurityIntel` devi ricalcolare l'ID
-nello stesso modo, oppure far rigenerare il file appena la CLI è disponibile.
+(attenzione: il progetto usa `wails/v3 v3.0.0-beta.28` in `go.mod`, `@latest` prende beta.31). I metodi
+`PreviewUpgrade`, `PlanUpgrade`, `RunUpgradeStep`, `FinishUpgrade` sono nel file generato con ID corretti:
+non serve più ricalcolare nulla a mano.
 
 ## Cosa manca — i quattro punti aperti
 
-### 1. CVSS 4.0 base score — `internal/securityintel/cvss4.go`
-Oggi il punteggio 4.0 viene **preso dalla fonte** (NVD/GHSA), non calcolato. Va implementato
-l'algoritmo delle macrovector del FIRST "CVSS v4.0 Specification Document".
-- Calcolare solo quando la fonte non fornisce il punteggio; il punteggio di fonte resta
-  autorevole e non va mai sovrascritto.
-- Poi `Severity.NormalizeSeverity()` deve poter riempire `CVSS40Score` con `ScoreSource: "computed"`.
-- **Attenzione**: un punteggio sbagliato qui è peggio che non averlo. La suite di test va
-  costruita sui reference vector ufficiali di FIRST (https://www.first.org/cvss/calculator/4.0
-  e https://www.first.org/cvss/examples), non su valori ricavati dalla stessa implementazione.
+**Stato al 2026-10-18: tutti e quattro implementati, test verdi, catalogo K aggiornato, flusso di
+remediation provato end-to-end su manifest reali.** Resta solo la **verifica che la UI mostri il
+flusso come un utente lo vede**: `MANUAL-CHECK.md` → **SEC-1** (9 voci + gate). Quella richiede
+`wails3 task dev` e un occhio umano sul pannello; la logica sotto è provata dal test
+`internal/securityintel/e2e`.
 
-Vettori di riferimento da verificare contro i documenti FIRST (non darli per buoni a priori):
-- `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` → 10.0
-- `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` → 9.3
-- `CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N` → 8.2
-- `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:L` → 8.7
+### 1. CVSS 4.0 base score — `internal/securityintel/cvss4.go`
+**IMPLEMENTATO (2026-10-18).** Punteggio base con l'algoritmo delle macrovector del documento FIRST
+(§3.1 lookup + §3.2 interpolazione), tabella `cvss40Lookup` dai valori di `cvss_lookup.js` del
+calcolatore di riferimento. Calcolato **solo** quando la fonte non fornisce il punteggio: quello di
+fonte resta autorevole e `NormalizeSeverity()` non lo sovrascrive mai (`ScoreSource: "computed"` solo
+sul calcolato). Test `cvss4_test.go` costruiti sui vettori di riferimento FIRST, non su valori
+dell'implementazione stessa. **Da fare:** nessuno.
+
+> **Nota importante sui vettori di riferimento di questo documento:** due dei quattro valori
+> ipotizzati qui erano **sbagliati** e il test li ha corretti verificando il validation reference set
+> FIRST (`FIRSTdotorg/cvss-resources`, `base-threat-vectors` / `base-threat-scores`) e gli esempi
+> ufficiali:
+> - `…/UI:P/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` → **9.4** (non 9.3: è uno dei vettori peggiori del proprio
+>   macrovector, e la differenza di gravità dentro un macrovector si recupera solo interpolando);
+> - `…/AV:N/AC:H/AT:P/…/SC:N/SI:N/SA:N` → **9.2** (non 8.2: quel valore appartiene alla stessa serie
+>   con la metrica Threat `E:P`).
+> È la prova che il vincolo "un punteggio sbagliato è peggio che non averlo" è stato rispettato.
 
 ### 2. Raggiungibilità Maven via bytecode — `internal/securityintel/maven/bytecode.go`
-`internal/securityintel/maven` non implementa ancora `ReachabilityAnalyzer`.
-Va creata l'implementazione che cerca riferimenti a classi/metodi vulnerabili nelle classi
-compilate (`target/classes`, `target/*.jar`) e produce `Evidence` con `Method: "bytecode-reference"`.
-Il punto di prodotto è la **distinzione onesta** richiesta per Java:
-- **confermata** → `Conflicted: true`, `ReachabilityCalled` (solo con una chiamata provata)
-- **potenzialmente raggiungibile** → `ReachabilityPotentiallyReachable` (riferimento trovato,
-  chiamata non provabile: riflessione, class loading, framework, OSGi)
-- **inconcludente** → `ReachabilityUnknown` con `Note` che lo dice
-Mai promuovere un'ipotesi a conferma. L'assenza di riferimenti **non** diventa `notReachable`
-senza un'analisi che lo dimostri.
+**IMPLEMENTATO (2026-10-18).** Analisi delle classi compilate (`target/classes/**/*.class` e i jar in
+`target/`), `Evidence` con `Method: EvidenceMethodBytecodeReference` (`"bytecode-reference"`).
+Distinzione onesta rispettata e verificata in `reachability_test.go`:
+- invocazione reale sull'istruzione verso il simbolo vulnerabile → `Confirmed: true` → `ReachabilityCalled`
+- riferimento senza chiamata provabile (riflessione, class loading, framework, OSGi) → `ReachabilityPotentiallyReachable`
+- niente trovato → `ReachabilityUnknown` con `Note` che lo dice
+L'assenza di riferimenti **non** diventa mai `notReachable`. **Da fare:** nessuno.
 
 ### 3. Security Impact Before Update — `internal/securityintel/remediation.go`
 **IMPLEMENTATO (2026-10-18).** `PreviewUpgrade(ctx, sources, report, component, targetVersion)` confronta per
@@ -107,8 +113,17 @@ dell'utente; con `apply=false` il manifest torna esattamente com'era. Ogni passo
 controlla `ResolveOptions.AllowProcesses` (lo schema già in uso per `mvn`/`govulncheck`): senza
 autorizzazione il passo risulta `skipped`, mai eseguito. Offline: `GOPROXY=off` (Go) e `mvn -o` (Maven).
 Frontend: flusso *Preview diff → Run checks → Apply* con stato per passo in
-`components/security/SecurityUpgradeFlow.tsx`, montato in `SecurityFindingInspector`. Verifica manuale:
-`mds/MANUAL-CHECK.md` → **SEC-1** (non eseguita qui: la CLI `wails3` non è installata).
+`components/security/SecurityUpgradeFlow.tsx`, montato in `SecurityFindingInspector`.
+**Bug trovato e corretto il 2026-10-18:** il passo `resolve` ignorava `AllowProcesses` e, quando la
+risoluzione falliva per mancanza di autorizzazione, risultava `failed` invece di `skipped` —
+violava SEC-1.4. Ora: senza autorizzazione il passo non è mai `ok` per supposizione; se la verifica
+non è possibile resta `skipped — external tools are not authorized`, se invece è possibile senza
+strumenti esterni (Maven legge il pom) è davvero `ok`.
+**Prova end-to-end su manifest reali**: `internal/securityintel/e2e/e2e_test.go` esegue l'intero
+flusso su `go.mod` o `pom.xml` reali (copiati in temp, il progetto non si tocca):
+`SECURITY_SAMPLE_DIR=<progetto> go test ./internal/securityintel/e2e/ -run TestSafeRemediationOnARealManifest -v`.
+Copre SEC-1.1—SEC-1.5 a livello di logica; resta la verifica che la UI le mostri.
+Verifica manuale: `mds/MANUAL-CHECK.md` → **SEC-1**.
 
 ## Vincoli da non violare
 
@@ -129,12 +144,19 @@ go vet ./internal/securityintel/...
 gofmt -l internal/securityintel                  # deve essere vuoto
 go test ./internal/securityintel/... -count=1
 go test ./internal/codestudio/ -run "Vuln|Govuln" -count=1   # il refactor non deve rompersi
+# flusso di remediation end-to-end su un manifest reale (go.mod o pom.xml):
+SECURITY_SAMPLE_DIR=<progetto> go test ./internal/securityintel/e2e/ -run TestSafeRemediationOnARealManifest -v
 
 cd frontend
-npx tsc --noEmit          # 1 errore PREESISTENTE non collegato: src/lib/code-studio/codeStudioTestTree.ts (javaFilters inutilizzato)
+npx tsc --noEmit          # pulito (prima c'era un errore preesistente in codeStudioTestTree.ts: risolto)
 npm run check:startup     # budget 650 kB, il pannello Security Center deve restare lazy
 npx vitest run src/lib/uiI18n.test.ts
 ```
+
+**Esecuzione del 2026-10-18:** tutti verdi — `go build`, `go vet`, `gofmt` (vuoto),
+`go test ./internal/securityintel/...` (core + gomod + maven `ok`), `go test ./internal/codestudio/
+-run "Vuln|Govuln"` (`ok`), `tsc --noEmit` pulito, `check:startup` con
+`deferredModulesStillOnStartup: []`, `uiI18n` + `SecurityUpgradeFlow` 9 verdi.
 
 Verifica manuale obbligatoria (questo è un prodotto, non una libreria):
 `wails3 task dev` → apri il pannello **Security Center**, scansiona un progetto reale con un

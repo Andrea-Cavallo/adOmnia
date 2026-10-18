@@ -113,7 +113,7 @@ func beansOf(sources []javaSource) []SpringBean {
 			beans = append(beans, SpringBean{
 				Name: name, Type: decl.Name, Kind: stereotypeAnnotations[annotation.Name],
 				Scope: annotationString(annotation.Args, "scope"), Qualifiers: qualifiersOf(decl.Annotations),
-				Class: decl.Name, File: source.File, Line: decl.Line, StartColumn: decl.StartColumn, EndColumn: decl.EndColumn,
+				Class: decl.Name, Supertypes: decl.Supertypes, File: source.File, Line: decl.Line, StartColumn: decl.StartColumn, EndColumn: decl.EndColumn,
 			})
 			for _, member := range source.Members {
 				if member.Class != decl.Name || member.Kind != "method" {
@@ -136,9 +136,16 @@ func beansOf(sources []javaSource) []SpringBean {
 }
 
 // injectionsOf sono i punti di iniezione: campi annotati, parametri dei costruttori e setter.
-func injectionsOf(sources []javaSource) []SpringInjection {
+func injectionsOf(sources []javaSource, beans []SpringBean) []SpringInjection {
+	beanClasses := map[string]bool{}
+	for _, bean := range beans {
+		if bean.Member == "" {
+			beanClasses[bean.Type] = true
+		}
+	}
 	var injections []SpringInjection
 	for _, source := range sources {
+		constructors := constructorCounts(source)
 		for _, member := range source.Members {
 			annotation := findInject(member.Annotations)
 			switch {
@@ -156,7 +163,8 @@ func injectionsOf(sources []javaSource) []SpringInjection {
 					Class: member.Class, File: source.File,
 					Line: member.Line, StartColumn: member.StartColumn, EndColumn: member.EndColumn,
 				})
-			case member.Kind == "constructor":
+			case member.Kind == "constructor" && beanClasses[member.Class] && (constructors[member.Class] == 1 || annotation != nil):
+				// Spring: con un solo costruttore si inietta da solo; con più costruttori vale quello con @Autowired.
 				for _, param := range member.Params {
 					injections = append(injections, SpringInjection{
 						Kind: "parameter", Type: cleanType(param.Type), Name: param.Name,
@@ -166,6 +174,54 @@ func injectionsOf(sources []javaSource) []SpringInjection {
 					})
 				}
 			}
+		}
+	}
+	for _, source := range sources {
+		injections = append(injections, lombokInjections(source, beanClasses)...)
+	}
+	return injections
+}
+
+// constructorCounts conta i costruttori espliciti di ogni classe del sorgente.
+func constructorCounts(source javaSource) map[string]int {
+	counts := map[string]int{}
+	for _, member := range source.Members {
+		if member.Kind == "constructor" {
+			counts[member.Class]++
+		}
+	}
+	return counts
+}
+
+// lombokInjections: `@RequiredArgsConstructor` inietta i campi `final` senza valore (e quelli `@NonNull`),
+// `@AllArgsConstructor` tutti i campi non statici. Vale solo senza un costruttore scritto a mano.
+func lombokInjections(source javaSource, beanClasses map[string]bool) []SpringInjection {
+	var injections []SpringInjection
+	constructors := constructorCounts(source)
+	for _, decl := range source.Types {
+		if !beanClasses[decl.Name] || constructors[decl.Name] > 0 {
+			continue
+		}
+		required := findAnnotation(decl.Annotations, "RequiredArgsConstructor") != nil
+		all := findAnnotation(decl.Annotations, "AllArgsConstructor") != nil
+		if !required && !all {
+			continue
+		}
+		for _, member := range source.Members {
+			if member.Class != decl.Name || member.Kind != "field" || member.Static {
+				continue
+			}
+			pending := member.Final && !member.Initialized
+			nonNull := findAnnotation(member.Annotations, "NonNull") != nil && !member.Initialized
+			if !(all && !(member.Final && member.Initialized)) && !(required && (pending || nonNull)) {
+				continue
+			}
+			injections = append(injections, SpringInjection{
+				Kind: "constructor", Type: cleanType(member.Type), Name: member.Name,
+				Qualifier: qualifierOf(member.Annotations), Required: true,
+				Class: member.Class, File: source.File,
+				Line: member.Line, StartColumn: member.StartColumn, EndColumn: member.EndColumn,
+			})
 		}
 	}
 	return injections

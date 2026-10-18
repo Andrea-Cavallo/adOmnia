@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest">下载</a> ·
-  <a href="https://www.youtube.com/watch?v=tefwLUadRr8&amp;t=38s">观看演示</a> ·
+  <a href="https://www.youtube.com/watch?v=tefwLUadRr8">观看演示</a> ·
   <a href="docs/GETTING-STARTED.md">快速入门</a> ·
   <a href="docs/QUICKSTART.it.md">意大利语指南</a>
 </p>
@@ -62,7 +62,7 @@
 
 ## 演示
 
-**[▶ 在 YouTube 上观看演示 — 从 0:38 开始](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)**
+**[▶ 在 YouTube 上观看演示](https://www.youtube.com/watch?v=tefwLUadRr8)**
 
 *API Workspace 展示一个请求、它的响应以及关联的 Go 处理函数。点击图片即可观看演示。*
 

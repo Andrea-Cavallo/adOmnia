@@ -31,9 +31,13 @@ type javaMember struct {
 	Kind        string           `json:"kind"` // "field" | "method" | "constructor"
 	Annotations []javaAnnotation `json:"annotations,omitempty"`
 	Params      []javaParam      `json:"params,omitempty"`
-	Line        int              `json:"line,omitempty"`
-	StartColumn int              `json:"startColumn,omitempty"`
-	EndColumn   int              `json:"endColumn,omitempty"`
+	// Final, Static e Initialized servono alle iniezioni che Lombok genera (@RequiredArgsConstructor): solo i campi.
+	Final       bool `json:"final,omitempty"`
+	Static      bool `json:"static,omitempty"`
+	Initialized bool `json:"initialized,omitempty"`
+	Line        int  `json:"line,omitempty"`
+	StartColumn int  `json:"startColumn,omitempty"`
+	EndColumn   int  `json:"endColumn,omitempty"`
 }
 
 // javaTypeDecl è una classe, interfaccia, enum o record con le sue annotation.
@@ -42,15 +46,18 @@ type javaTypeDecl struct {
 	Short       string           `json:"short"`
 	Kind        string           `json:"kind"` // "class" | "interface" | "enum" | "record"
 	Annotations []javaAnnotation `json:"annotations,omitempty"`
+	// Supertypes sono i tipi dopo `extends` e `implements` (nomi come scritti, senza generici): un'iniezione per
+	// interfaccia si risolve nel bean che la implementa.
+	Supertypes []string `json:"supertypes,omitempty"`
 	// Componenti del record (`record Props(String nome)`): per Spring sono proprietà.
 	Components []javaParam `json:"components,omitempty"`
 	// Intervallo del corpo: serve per sapere a quale classe appartiene un membro.
 	bodyStart, bodyEnd int
 	// declEnd è l'offset di byte a cui finisce la dichiarazione del tipo.
-	declEnd            int
-	Line               int `json:"line,omitempty"`
-	StartColumn        int `json:"startColumn,omitempty"`
-	EndColumn          int `json:"endColumn,omitempty"`
+	declEnd     int
+	Line        int `json:"line,omitempty"`
+	StartColumn int `json:"startColumn,omitempty"`
+	EndColumn   int `json:"endColumn,omitempty"`
 }
 
 // javaSource è il risultato del parsing leggero di un file .java.
@@ -141,9 +148,40 @@ func parseJavaType(data []byte, token javaToken, annotations []javaAnnotation, p
 	return javaTypeDecl{
 		Name: name, Short: short, Kind: kind, Annotations: annotations,
 		Components: recordComponents(token.text, match[5], kind),
-		bodyStart: -1, bodyEnd: -1, declEnd: token.end,
+		Supertypes: supertypesOf(token.text[match[5]:]),
+		bodyStart:  -1, bodyEnd: -1, declEnd: token.end,
 		Line: line, StartColumn: startColumn, EndColumn: endColumn,
 	}, true
+}
+
+// supertypesOf legge `extends A implements B, C<D>` dalla coda della dichiarazione (dopo il nome del tipo).
+func supertypesOf(rest string) []string {
+	if cut := strings.IndexByte(rest, '{'); cut >= 0 {
+		rest = rest[:cut]
+	}
+	var found []string
+	for _, keyword := range []string{"extends", "implements"} {
+		at := strings.Index(" "+rest+" ", " "+keyword+" ")
+		if at < 0 {
+			continue
+		}
+		list := (" " + rest + " ")[at+len(keyword)+2:]
+		for _, other := range []string{" extends ", " implements ", " permits "} {
+			if cut := strings.Index(list, other); cut >= 0 {
+				list = list[:cut]
+			}
+		}
+		for _, item := range splitTopLevel(list, ',') {
+			name := strings.TrimSpace(item)
+			if cut := strings.IndexByte(name, '<'); cut >= 0 {
+				name = name[:cut]
+			}
+			if name = strings.TrimSpace(name); name != "" {
+				found = append(found, name)
+			}
+		}
+	}
+	return found
 }
 
 // recordComponents sono i componenti di un record: per Spring sono proprietà di configurazione.
@@ -250,6 +288,9 @@ func parseJavaMembers(data []byte, token javaToken, annotations []javaAnnotation
 		Annotations: annotations, Params: params,
 		Line: line, StartColumn: startColumn, EndColumn: endColumn,
 	}
+	if kind == "field" {
+		member.Final, member.Static, member.Initialized = fieldFlags(text)
+	}
 	return []javaMember{member}
 }
 
@@ -281,6 +322,24 @@ func splitDeclaration(text, ownerShort string) (name, typ string, params []javaP
 	typ = strings.Join(stripModifiers(fields[:len(fields)-1]), " ")
 	params = parseJavaParams(text[open+1 : close])
 	return name, typ, params, true
+}
+
+// fieldFlags dice se un campo è `final`, `static` e se ha un inizializzatore (`= …`).
+func fieldFlags(text string) (final, static, initialized bool) {
+	head := text
+	if cut := strings.IndexAny(head, "=;"); cut >= 0 {
+		initialized = head[cut] == '='
+		head = head[:cut]
+	}
+	for _, word := range strings.Fields(head) {
+		switch word {
+		case "final":
+			final = true
+		case "static":
+			static = true
+		}
+	}
+	return final, static, initialized
 }
 
 // javaModifiers sono i modificatori Java: non fanno parte del tipo.

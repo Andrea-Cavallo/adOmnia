@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest">Download</a> ·
-  <a href="https://www.youtube.com/watch?v=tefwLUadRr8&amp;t=38s">Watch the demo</a> ·
+  <a href="https://www.youtube.com/watch?v=tefwLUadRr8">Watch the demo</a> ·
   <a href="docs/GETTING-STARTED.md">Getting started</a> ·
   <a href="docs/QUICKSTART.it.md">Guida in italiano</a>
 </p>
@@ -62,7 +62,7 @@ Inspect branches and commit history, review changed files, stage selected work a
 
 ## Demo
 
-**[▶ Watch the demo on YouTube — starting at 0:38](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)**
+**[▶ Watch the demo on YouTube](https://www.youtube.com/watch?v=tefwLUadRr8)**
 
 *API Workspace showing a request, its response and the associated Go handler. Select the image to watch the demonstration.*
 

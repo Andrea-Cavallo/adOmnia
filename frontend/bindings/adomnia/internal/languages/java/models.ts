@@ -349,6 +349,11 @@ export class SpringBean {
     "scope"?: string;
     "qualifiers"?: string[];
     "class"?: string;
+
+    /**
+     * Supertypes: interfacce e superclasse del bean, per risolvere le iniezioni per interfaccia.
+     */
+    "supertypes"?: string[];
     "member"?: string;
     "file"?: string;
     "line"?: number;
@@ -375,9 +380,13 @@ export class SpringBean {
      */
     static createFrom($$source: any = {}): SpringBean {
         const $$createField4_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("qualifiers" in $$parsedSource) {
             $$parsedSource["qualifiers"] = $$createField4_0($$parsedSource["qualifiers"]);
+        }
+        if ("supertypes" in $$parsedSource) {
+            $$parsedSource["supertypes"] = $$createField6_0($$parsedSource["supertypes"]);
         }
         return new SpringBean($$parsedSource as Partial<SpringBean>);
     }

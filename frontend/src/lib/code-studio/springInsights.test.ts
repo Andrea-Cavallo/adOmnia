@@ -124,6 +124,13 @@ describe('navigation', () => {
     expect(beanForInjection(index, { ...plain, type: 'com.acme.demo.Missing' })).toBeNull()
   })
 
+  it('resolves an injection declared with an interface to the bean that implements it', () => {
+    const impl = { ...service, name: 'openAiService', type: 'com.acme.demo.OpenAiService', supertypes: ['IOpenAiService'] } as SpringBean
+    const index = indexWith({ beans: [cache, impl] })
+    expect(beanForInjection(index, { ...plain, type: 'IOpenAiService' })?.name).toBe('openAiService')
+    expect(beanForInjection(index, { ...plain, type: 'com.acme.demo.IOpenAiService' })?.name).toBe('openAiService')
+  })
+
   it('resolves the property declared in the project', () => {
     expect(propertyForValue(indexWith({ properties: [mailHost] }), 'acme.mail.host')).toBe(mailHost)
     expect(propertyForValue(indexWith({ properties: [mailHost] }), 'acme.unknown')).toBeNull()

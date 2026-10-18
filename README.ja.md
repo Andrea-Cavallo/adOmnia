@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest">ダウンロード</a> ·
-  <a href="https://www.youtube.com/watch?v=tefwLUadRr8&amp;t=38s">デモを見る</a> ·
+  <a href="https://www.youtube.com/watch?v=tefwLUadRr8">デモを見る</a> ·
   <a href="docs/GETTING-STARTED.md">はじめに</a> ·
   <a href="docs/QUICKSTART.it.md">イタリア語ガイド</a>
 </p>
@@ -62,7 +62,7 @@ SQLite、PostgreSQL、MySQL、MongoDB、Redis に接続し、クエリの作成�
 
 ## デモ
 
-**[▶ YouTube でデモを見る — 0:38 から再生](https://www.youtube.com/watch?v=tefwLUadRr8&t=38s)**
+**[▶ YouTube でデモを見る](https://www.youtube.com/watch?v=tefwLUadRr8)**
 
 *リクエスト、そのレスポンス、関連する Go ハンドラを表示した API Workspace。画像を選択するとデモを再生できます。*
 
