@@ -78,12 +78,15 @@ func unitIn(directory string) (project.Unit, bool) {
 type pomInfo struct {
 	ArtifactID string `xml:"artifactId"`
 	Parent     struct {
+		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
 	} `xml:"parent"`
 	Dependencies []struct {
+		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
 	} `xml:"dependencies>dependency"`
 	Plugins []struct {
+		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
 	} `xml:"build>plugins>plugin"`
 }
@@ -131,6 +134,31 @@ func gradleName(directory string) string {
 		}
 	}
 	return filepath.Base(directory)
+}
+
+// usesGroup è vero se il pom ha il parent, una dipendenza o un plugin del groupId indicato (`io.quarkus`,
+// `io.micronaut`): è il riconoscimento dei framework oltre Spring Boot.
+func (p pomInfo) usesGroup(prefix string) bool {
+	if strings.HasPrefix(p.Parent.GroupID, prefix) {
+		return true
+	}
+	for _, dependency := range p.Dependencies {
+		if strings.HasPrefix(dependency.GroupID, prefix) {
+			return true
+		}
+	}
+	for _, plugin := range p.Plugins {
+		if strings.HasPrefix(plugin.GroupID, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// gradleMentions è vero se il build file nomina il testo indicato (plugin id o coordinata).
+func gradleMentions(manifest, text string) bool {
+	data, err := readLimited(manifest)
+	return err == nil && strings.Contains(string(data), text)
 }
 
 // gradleUsesSpringBoot cerca il plugin di Spring Boot nel build file.

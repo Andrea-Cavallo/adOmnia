@@ -18,7 +18,7 @@ const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
   'java.mvnPackage': ['package'],
   'java.mvnCleanInstall': ['clean', 'install'],
 }
-const SPRING_GOALS = [['spring-boot:run'], ['bootRun']]
+const SPRING_GOALS = [['spring-boot:run'], ['bootRun'], ['quarkus:dev'], ['quarkusDev'], ['mn:run']]
 
 /** Avvia un goal Maven/Gradle con il wrapper scelto dal backend, nell'unità che contiene il file attivo. */
 async function runGoal(sessionId: string, activePath: string, goalSets: string[][]): Promise<void> {

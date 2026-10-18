@@ -25,7 +25,7 @@ interface CodeStudioTestsHeaderProps {
 
 const RUN_ALL_ITEMS = (hasGo: boolean) => [
   { id: 'all', label: 'Run all suites', icon: Play, iconClassName: 'text-success' },
-  { id: 'coverage', label: 'Run all with coverage', disabled: !hasGo, disabledReason: 'Coverage is available for Go suites', icon: Play },
+  { id: 'coverage', label: 'Run all with coverage', disabled: !hasGo, disabledReason: 'Coverage is available for Go and Java suites', icon: Play },
 ]
 
 /** Titolo, ricerca, filtri per stato e le azioni globali: Run All (con varianti), Re-run Failed e Stop. */

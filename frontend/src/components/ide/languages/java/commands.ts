@@ -15,7 +15,7 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.debugMain', menu: 'java', label: 'Debug Main Class' },
   { id: 'java.runTest', menu: 'java', label: 'Run Test at Cursor' },
   { id: 'java.debugTest', menu: 'java', label: 'Debug Test at Cursor' },
-  { id: 'java.springBootRun', menu: 'java', label: 'Spring Boot Run' },
+  { id: 'java.springBootRun', menu: 'java', label: 'Run Application (Spring Boot, Quarkus, Micronaut)' },
   { id: 'java.mvnCompile', menu: 'java', label: 'Build (compile)', separatorBefore: true },
   { id: 'java.mvnTest', menu: 'java', label: 'Maven / Gradle: test' },
   { id: 'java.mvnPackage', menu: 'java', label: 'Maven / Gradle: package' },

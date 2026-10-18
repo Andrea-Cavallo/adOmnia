@@ -43,10 +43,10 @@ interface CodeStudioTestsOverviewProps {
   onTab: (tab: 'output' | 'more') => void
 }
 
-const RUN_ITEMS = (go: boolean, hasFailed: boolean) => [
+const RUN_ITEMS = (go: boolean, coverage: boolean, hasFailed: boolean) => [
   { id: 'run', label: 'Run', icon: Play, iconClassName: 'text-success' },
   { id: 'failed', label: 'Run failed tests only', disabled: !hasFailed, disabledReason: 'No failed tests in the last run', icon: XCircle },
-  { id: 'coverage', label: 'Run with coverage', disabled: !go, disabledReason: 'Coverage is available for Go suites', icon: ShieldCheck },
+  { id: 'coverage', label: 'Run with coverage', disabled: !coverage, disabledReason: 'Coverage is available for Go and Java suites', icon: ShieldCheck },
   { id: 'repeat', label: 'Repeat ×20 in random order', disabled: !go, disabledReason: 'Repetition with -shuffle is available for Go suites', icon: Clock3 },
 ]
 
@@ -74,7 +74,7 @@ export function CodeStudioTestsOverview({ suite, output, actions, now, onTab }: 
         </div>
       </div>
       <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_auto] gap-3">
-        <SplitButton label="Run" icon={Play} variant="primary" disabled={busy} onMain={() => actions.runSuite(suite)} items={RUN_ITEMS(go, suite.failed > 0)} onItem={runVariant} menuLabel="More ways to run this suite" />
+        <SplitButton label="Run" icon={Play} variant="primary" disabled={busy} onMain={() => actions.runSuite(suite)} items={RUN_ITEMS(go, suite.language === 'go' || suite.language === 'java', suite.failed > 0)} onItem={runVariant} menuLabel="More ways to run this suite" />
         <SplitButton label="Debug" icon={Bug} variant="secondary" disabled={!actions.canDebug(suite)} mainTitle="Debug the first failed test" onMain={() => actions.debugSuite(suite)} items={[{ id: 'failed', label: 'Debug first failed test', icon: Bug, iconClassName: 'text-warning' }]} onItem={() => actions.debugSuite(suite)} menuLabel="More ways to debug this suite" />
         <button type="button" aria-label="More tools" title="Repetition, benchmarks, coverage overlay and history" onClick={() => onTab('more')} className="grid h-10 w-14 place-items-center rounded-lg border border-border-2 bg-surface-2 text-text-2 transition-colors hover:border-accent hover:bg-surface-3 hover:text-text-1"><MoreHorizontal size={18} /></button>
       </div>

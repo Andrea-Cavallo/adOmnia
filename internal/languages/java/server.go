@@ -131,7 +131,7 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 			"bundles":                    []string{debugBundle(home)},
 			"extendedClientCapabilities": map[string]any{"classFileContentsSupport": true},
 		},
-		Configuration:    func() any { return map[string]any{} },
+		Configuration:    func() any { return jdtSettings(DiscoverJDKs(), mavenUserSettings()) },
 		WatchesFile:      watchesFile,
 		VirtualDocuments: &lsp.VirtualDocuments{Method: "java/classFileContents", RelativePath: classFilePath},
 	}, nil

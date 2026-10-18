@@ -92,8 +92,14 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 			{action: "build", name: "clean install", arguments: []string{"clean", "install"}, id: ":clean-install"},
 			{action: "build", name: "clean", arguments: []string{"clean"}, id: ":clean"},
 		}
-		if readPom(unit.Manifest).usesSpringBoot() {
+		pom := readPom(unit.Manifest)
+		switch {
+		case pom.usesSpringBoot():
 			entries = append([]suggestEntry{{action: "run", name: "Spring Boot", arguments: []string{"spring-boot:run"}}}, entries...)
+		case pom.usesGroup("io.quarkus"):
+			entries = append([]suggestEntry{{action: "run", name: "Quarkus dev", arguments: []string{"quarkus:dev"}}}, entries...)
+		case pom.usesGroup("io.micronaut"):
+			entries = append([]suggestEntry{{action: "run", name: "Micronaut", arguments: []string{"mn:run"}}}, entries...)
 		}
 		entries = append(entries, mainEntries(unit)...)
 	} else {
@@ -105,6 +111,10 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 		}
 		if gradleUsesSpringBoot(unit.Manifest) {
 			entries = append([]suggestEntry{{action: "run", name: "Spring Boot", arguments: []string{"bootRun"}}}, entries...)
+		} else if gradleMentions(unit.Manifest, "io.quarkus") {
+			entries = append([]suggestEntry{{action: "run", name: "Quarkus dev", arguments: []string{"quarkusDev"}}}, entries...)
+		} else if gradleMentions(unit.Manifest, "io.micronaut") {
+			entries = append([]suggestEntry{{action: "run", name: "Micronaut", arguments: []string{"run"}}}, entries...)
 		} else if gradleUsesApplication(unit.Manifest) {
 			entries = append([]suggestEntry{{action: "run", name: "application", arguments: []string{"run"}}}, entries...)
 		}

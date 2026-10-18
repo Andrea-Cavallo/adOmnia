@@ -102,3 +102,23 @@ func TestSuggestNothingWithoutAnyBuildTool(t *testing.T) {
 		t.Fatalf("a card that cannot start must not be proposed: %s", titles(got))
 	}
 }
+
+func TestSuggestRecognizesQuarkusAndMicronaut(t *testing.T) {
+	withSystemTools(t, "mvn", "gradle")
+	quarkus := writeFixture(t, map[string]string{"pom.xml": "<project><artifactId>q</artifactId><dependencies><dependency><groupId>io.quarkus</groupId><artifactId>quarkus-resteasy</artifactId></dependency></dependencies></project>"})
+	if got := titles(suggestFor(quarkus, UnitMaven, "pom.xml")); !strings.HasPrefix(got, "Maven · mvn quarkus:dev|") {
+		t.Fatalf("quarkus: %s", got)
+	}
+	micronaut := writeFixture(t, map[string]string{"pom.xml": "<project><artifactId>m</artifactId><build><plugins><plugin><groupId>io.micronaut.maven</groupId><artifactId>micronaut-maven-plugin</artifactId></plugin></plugins></build></project>"})
+	if got := titles(suggestFor(micronaut, UnitMaven, "pom.xml")); !strings.HasPrefix(got, "Maven · mvn mn:run|") {
+		t.Fatalf("micronaut: %s", got)
+	}
+	gradleQuarkus := writeFixture(t, map[string]string{"build.gradle": "plugins { id 'io.quarkus' }"})
+	if got := titles(suggestFor(gradleQuarkus, UnitGradle, "build.gradle")); !strings.HasPrefix(got, "Gradle · gradle quarkusDev|") {
+		t.Fatalf("gradle quarkus: %s", got)
+	}
+	plain := writeFixture(t, map[string]string{"pom.xml": "<project><artifactId>p</artifactId></project>"})
+	if got := titles(suggestFor(plain, UnitMaven, "pom.xml")); strings.Contains(got, "quarkus") || strings.Contains(got, "mn:run") {
+		t.Fatalf("a plain project must not get a framework run: %s", got)
+	}
+}

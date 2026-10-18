@@ -16,6 +16,8 @@ import (
 type TestOptions struct {
 	Packages []string `json:"packages"`
 	Run      string   `json:"run"`
+	// Coverage esegue i test con l'agente JaCoCo; il report si legge a fine run (JaCoCoReports).
+	Coverage bool `json:"coverage"`
 }
 
 const maxTestClasses = 64
@@ -54,6 +56,12 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	}
 	executable := tool.resolve(unit)
 	arguments := testArguments(unit.Kind, classes, options.Run)
+	if options.Coverage {
+		var coverageErr error
+		if arguments, coverageErr = withCoverage(unit.Kind, arguments); coverageErr != nil {
+			return run.CommandSpec{}, nil, coverageErr
+		}
+	}
 	if err := run.CheckBatchSafe(executable, arguments); err != nil {
 		return run.CommandSpec{}, nil, err
 	}
@@ -121,4 +129,16 @@ func testArguments(kind string, classes []string, method string) []string {
 		filter += "#" + method
 	}
 	return append(arguments, "-Dtest="+filter, "-Dsurefire.failIfNoSpecifiedTests=false", "-DfailIfNoTests=false")
+}
+
+// withCoverage aggiunge l'agente JaCoCo agli argomenti di test: obiettivi del plugin per Maven, init script per Gradle.
+func withCoverage(kind string, arguments []string) ([]string, error) {
+	if kind == UnitGradle {
+		script, err := jacocoInitScript()
+		if err != nil {
+			return nil, err
+		}
+		return append([]string{"-I", script}, arguments...), nil
+	}
+	return jacocoMavenArguments(arguments), nil
 }

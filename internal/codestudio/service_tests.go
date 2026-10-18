@@ -9,8 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"adomnia/internal/languages/golang"
+	"adomnia/internal/languages/java"
 )
 
 // StartTests avvia `go test -json` sul perimetro richiesto; l'albero dei risultati arriva con gli eventi tests.updated.
@@ -129,6 +131,16 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		Publish: func(snapshot idetesting.Snapshot) {
 			s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), hostTestSnapshot(snapshot))
 		},
+	}
+	if id == java.ID && request.Coverage {
+		started := time.Now().Add(-2 * time.Second)
+		hooks.Finish = func(_ Execution) {
+			report, coverageErr := javaCoverageReport(session.Project.RealPath, moduleDir, started)
+			coverage = report
+			if coverageErr != nil {
+				coverageError = coverageErr.Error()
+			}
+		}
 	}
 	if id == golang.ID {
 		hooks.Line = races.ConsumeJSON
