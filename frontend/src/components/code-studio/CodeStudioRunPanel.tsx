@@ -13,6 +13,7 @@ import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
 import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
 import { resolveConsolePath } from './codeStudioConsolePaths'
+import { parseConsoleLocation } from '@/lib/code-studio/consoleLocation'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
@@ -57,7 +58,6 @@ interface ParsedLine {
 }
 
 const ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]/g
-const locationPattern = /((?:[A-Za-z]:[\\/])?[^\s:]+\.go):(\d+)(?::(\d+))?/
 
 function parseLines(chunks: GoIDEConsoleChunk[]): ParsedLine[] {
   const lines: ParsedLine[] = []
@@ -65,16 +65,8 @@ function parseLines(chunks: GoIDEConsoleChunk[]): ParsedLine[] {
     for (const raw of chunk.text.split(/\r?\n/)) {
       if (!raw && chunk.text.endsWith('\n')) continue
       const text = raw.replace(ansiPattern, '')
-      const match = text.match(locationPattern)
-      lines.push({
-        text,
-        raw,
-        stream: chunk.stream,
-        sequence: chunk.sequence,
-        path: match?.[1]?.replace(/\\/g, '/'),
-        line: match ? Number(match[2]) : undefined,
-        column: match?.[3] ? Number(match[3]) : 1,
-      })
+      const location = parseConsoleLocation(text)
+      lines.push({ text, raw, stream: chunk.stream, sequence: chunk.sequence, path: location?.path, line: location?.line, column: location?.column ?? 1 })
     }
   }
   return lines

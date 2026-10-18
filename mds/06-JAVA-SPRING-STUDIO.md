@@ -1,6 +1,6 @@
 # 06 — Java/Spring Studio (profondità JVM)
 
-Aggiornato: 2026-10-18 (piano creato da analisi comparata con **Lithe-IDEA**; nessuna voce iniziata). Indice: [README.md](README.md).
+Aggiornato: 2026-10-18 (piano creato da analisi comparata con **Lithe-IDEA**; JS-1 e JS-2 fatti in codice, prove in app aperte). Indice: [README.md](README.md).
 
 > **Continua, non duplica.** [MULTILANGUAGE-IDE](MULTILANGUAGE-IDE.md) Fase 9.4 porta Java al *contratto minimo* (adapter, JDT LS, run, test, debug) ed è quasi chiusa: restano 9.4.8 (debug di `spring-boot:run` e dei task Gradle) e le mancanze del pom intelligente (parent/BOM, Gradle, Security Center). Questo piano prende **da dove 9.4 finisce**: la profondità "da IntelliJ" su Java/Spring/JVM. Le voci 9.4.8 e 9.4.9 restano in `MULTILANGUAGE-IDE.md`, non vengono ricopiate qui; qui se ne indicano solo i collegamenti.
 >
@@ -28,15 +28,13 @@ Nel codice di adOmnia (percorsi letti, non eseguiti):
 | pom.xml intelligente | CodeLens update/CVE, marker OSV, quick fix su `<version>`/property | `pomdeps.go`, `mavencentral.go`, `frontend/src/components/code-studio/codeStudioPom.ts` |
 | Frontend Java | Icona `openjdk`, semantic tokens, ▶ gutter su `main`/`@Test` | `frontend/src/components/ide/languages/java/index.ts`, `codeStudioJavaTargets.ts` |
 
-Mancano del tutto (verificato con ricerca nel repo: nessun riferimento a `hotswap`, `redefineClasses`, `configuration-metadata`, `ConfigurationProperties`, `actuator`, `initializr`):
+Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arrivati con JS-1/JS-2; verificato con ricerca nel repo: nessun riferimento a `hotswap`, `redefineClasses`, `configuration-metadata`, `ConfigurationProperties`, `actuator`, `initializr`):
 
-- **Spring tooling**: autocomplete `application.properties`/`.yml`, navigazione `@Value`/`@Autowired`, elenco endpoint, diagnostica configurazione.
 - **Hot reload / hot swap** dei servizi in esecuzione.
 - **Stepping filters** stile IntelliJ (si entra in CGLIB, ByteBuddy, Mockito, proxy JDK).
 - **Error navigation** dal log di build Maven/Gradle (il parsing si ferma ai marker `BUILD SUCCESS/FAILURE`).
 - **Esiti test per metodo** con roll-up a classe (l'albero c'è, l'iconografia per metodo e il roll-up no).
 - **JDK di progetto**, scelta esplicita della toolchain.
-- **Menu/comandi Java** (`frontend/src/components/ide/languages/java/` non ha `commands.ts`; Go ne ha 25).
 - **Inlay hints e Code Vision**: `heavyFeatures: false` in `java/index.ts`, dichiarato non verificato con JDT LS.
 - **Dependency tree / classpath browser**, equivalente Gradle del pom intelligente.
 - **Performance JVM** (adOmnia ha PPROF/trace, Go-only).
@@ -107,13 +105,14 @@ Mancano del tutto (verificato con ricerca nel repo: nessun riferimento a `hotswa
 **Obiettivo:** che Java abbia la stessa presenza di Go nell'interfaccia.
 
 - [x] **`ide/languages/java/commands.ts`** (2026-10-18): 13 comandi `java.*` con `requires: { language: 'java' }` (Run/Debug Main, Run/Debug Test at cursor, Spring Boot Run, Maven test/package/clean install, Optimize Imports, Generate, Go to Test/Source, Check updates, Scan vulnerabilities), registrati in `CODE_STUDIO_COMMANDS` come Go e web. Gestore `codeStudioJavaCommands.ts`: i goal passano da `getRunSuggestions` (wrapper scelto dal backend, unità più interna del file), main/test riusano `runTarget` del gutter, Optimize Imports/Generate riusano i comandi editor, pom → store `usePomStore`. Helper puri in `lib/code-studio/javaCommands.ts`.
+- [x] **Menu "Java"** (2026-10-18): voce di menu accanto a "Go" con tutti i comandi `java.*` (più Build/compile); il tasto Build e Ctrl+Shift+B nei progetti senza Go lanciano `mvnw compile`; i comandi Run Go-only (Build/Test/Vet Package/All…) si spengono con il motivo se il progetto non ha moduli Go.
 - [x] **Menu contestuale** (2026-10-18): New → Java Class/Interface/Enum/Record/Package (solo se il progetto ha un'unità Java), package dedotto da `src/main|test/java/...`, validazione nomi (maiuscola, keyword, package minuscolo) nel dialog.
 - [ ] **Inlay hints e Code Vision**: serve JDT LS reale; `heavyFeatures` resta `false`. Da chiudere con `JS-2.M2`.
 - [ ] **Marker gutter override/implements** con contatore: non iniziato (richiede candidati verificati via JDT LS).
 
 **Test automatici:** `frontend/src/components/ide/languages/java/commands.test.ts` (ogni comando ha `requires` e id univoco); estendere `codeStudioJavaTargets.test.ts` ai nuovi marker.
 **Verifica comandi:** `npx vitest run commands.test.ts` · `npx tsc --noEmit`
-**Prova in app:** `JS-2.M1`–`JS-2.M4`
+**Prova in app:** `JS-2.M1`–`JS-2.M5`
 
 ---
 
@@ -122,9 +121,10 @@ Mancano del tutto (verificato con ricerca nel repo: nessun riferimento a `hotswa
 **Obiettivo:** il pannello test Java come IntelliJ, non come "log colorato".
 
 - **Esiti per metodo con roll-up a classe**: `junit.go` già converte i report Surefire/Gradle XML negli eventi dell'albero; manca la proiezione su icone passed/failed per metodo **con roll-up alla classe** e i contatori per classe. Riferimento: `java_run_markers.rs` + `maven_test_reports.rs` di Lithe.
-- **Debug dal pannello Tests** (oggi Go-only: `debugRequestForNode` in `codeStudioTestTree.ts` commenta "Solo Go"): instradare i nodi Java a `TestDebugArguments` (`debugcmd.go`), come già fa il ▶ del gutter.
+- [x] **Debug dal pannello Tests** (2026-10-18): `javaDebugRequestForNode` (`codeStudioTestTree.ts`) instrada il nodo Java alla stessa richiesta del ▶ del gutter (`startJava`); bottone Bug sulla riga e Debug della suite, test in `codeStudioDebug.test.ts`.
 - **Rerun failed** esteso ai metodi selezionati (oggi file/metodo).
-- **Timeout e test ignorati** con motivo, come dal report XML.
+- [x] **Test ignorati con motivo** (2026-10-18): `<skipped message=…>` diventa l'output "Skipped: …" del test (`junit.go`, `TestSkippedTestKeepsItsReason`). Il timeout resta da fare.
+- [ ] Roll-up per classe e rerun failed multi-metodo: non iniziati.
 
 **Test automatici:** `junit_test.go` (roll-up, skip con motivo, classi multi-modulo); `codeStudioTestTree.test.ts` (`isJavaTestRun`, debug request dal nodo, rerun failed multi-metodo).
 **Verifica comandi:** `go test ./internal/languages/java/...` · `npx vitest run codeStudioTestTree.test.ts`
@@ -137,6 +137,7 @@ Mancano del tutto (verificato con ricerca nel repo: nessun riferimento a `hotswa
 
 **Obiettivo:** che un errore di compilazione sia cliccabile, e che la toolchain sia scelta e visibile.
 
+- [x] **Errori cliccabili nella console Run e nel terminale** (2026-10-18): `lib/code-studio/consoleLocation.ts` riconosce `Foo.java:[12,34]` (Maven), `Foo.java:12:` (javac/Gradle) e `.kt/.groovy`, oltre a Go; stesso schema nel terminale (`codeStudioTerminalLinks.ts`). Restano da fare i problemi nel pannello Problems (`buildlog.go`).
 - **Error navigation dal log**: `internal/languages/java/buildlog.go` — da output Maven/Gradle a problemi navigabili (`[ERROR] /path/Foo.java:[12,34]`, `error: cannot find symbol` con contesto). Oggi il parsing si ferma ai marker `BUILD SUCCESS/FAILURE` usati dal test runner. Riferimento: `project/maven.rs::maven.diagnostics` di Lithe. Da agganciare alla console Run (click → editor) e al pannello problemi.
 - **JDK di progetto**: `jdk.go` oggi parte solo da `JAVA_HOME`/PATH. Aggiungere la **selezione esplicita per unità** (JDK home, versione richiesta dal progetto), persistita nelle run configuration, con la stessa toolchain usata da Run **e** Debug. Riferimento: `execution/java_selection.rs` di Lithe; il bug che Lithe ha registrato (`java-debug-uses-the-run-jdk`) è la prova che i due devono coincidere.
 - **Finestra "project preparation"**: stato `starting → importing → building → ready` durante l'import di JDT LS (Lithe: `project_preparation.rs`). Senza questo l'utente pensa che il server sia rotto.
@@ -261,6 +262,14 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 
 ---
 
+## Valutazione language server alternativi (2026-10-18)
+
+- **Eclipse JDT LS 1.60 resta il server principale**: è l'unico maturo (Lombok agent, Java Debug Server, Maven/Gradle import, semantic tokens). Pin già su una milestone recente; non c'è un sostituto più moderno.
+- **Apache NetBeans LS**: attivo, ma più debole su Lombok/debug e import Maven pesante: non conviene come sostituto.
+- **java-language-server (georgewfraser)**: abbandonato, scartato.
+- **Spring Tools 4 Language Server (`spring-boot-language-server`)**: *complementare*, non sostitutivo. Dà bean navigation, `@Value`/`application.properties`, completamento delle proprietà, live hover dei bean. Il nostro `springInsights` ne copre già parte, in modo leggero.
+- [ ] Adottarlo = secondo processo LSP sullo stesso workspace Java (serve multiplexing delle richieste nel core `ide/lsp`) + download fissato + `InstallPlan` visibile. Decidere dopo JS-2/JS-3 solo se `springInsights` non basta: per ora non c'è un secondo consumatore reale.
+
 ## Rischi
 
 | Rischio | Livello | Mitigazione |
@@ -295,3 +304,5 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 | --- | --- | --- |
 | 2026-10-18 | — | Piano creato da analisi comparata con Lithe-IDEA. Nessuna voce iniziata. |
 | 2026-10-18 | JS-1 | **Spring Index implementato**: parser Java + `.properties`/`.yml` con profili, scan JAR della repository Maven locale con cache, binding `SpringIndex`/`SpringEndpoints`/`SpringMetadataRefresh` rigenerati, store + provider Monaco + pannello endpoint collegati. Test Go e vitest verdi, `tsc --noEmit` pulito (prova del collegamento tipizzato), smoke test su `spring-openai-master` e su 500 JAR reali. **Restano aperte le prove in app `JS-1.M1`–`JS-1.M4`** su `MANUAL-CHECK.md`. |
+| 2026-10-18 | JS-2 | **Comandi e menu Java**: menu "Java", 14 comandi con `requires`, New Java Class/Package, Build Maven dal martello, comandi Go-only spenti nei progetti Java. tsc e vitest verdi; prove `JS-2.M1`–`M5` aperte. |
+| 2026-10-18 | JS-3 / JS-4 | Debug dei test JUnit dal pannello Tests, motivo dei test ignorati, errori Maven/Gradle cliccabili in console e terminale. Vitest (51 file) e `go test ./internal/languages/java/` verdi, tsc pulito. Restano roll-up per classe, JDK per unità, problemi nel pannello Problems, stato di preparazione JDT LS. |

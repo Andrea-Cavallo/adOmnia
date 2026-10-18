@@ -466,6 +466,11 @@ export function CodeStudioPanel() {
       await store.startConfiguredBuild(activeConfig.id)
       return
     }
+    // Progetto Java senza Go: Build è la compilazione Maven/Gradle (wrapper incluso), mai `go build`.
+    if (kind === 'build' && activeSession && !projectProfile(activeSession.project).hasGo && (activeSession.project.units ?? []).some((unit) => unit.language === 'java')) {
+      runJavaCommand('java.mvnCompile', activeSession.id, activeGoIDEDocument(useCodeStudioStore.getState()) ?? null, 1, () => undefined)
+      return
+    }
     // Senza moduli Go non c'è un "main package" da cercare: si apre il gestore, dove compaiono le proposte rilevate.
     if (!activeConfig && activeSession && !projectProfile(activeSession.project).hasGo) {
       setConfigureOpen(true)
@@ -763,6 +768,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
   const commandContext: CodeStudioCommandContext = {
     hasSession: !!activeSession,
     webOnly: !!activeSession && isWebOnlyProject(activeSession.project),
+    // Solo con unità non-Go: una cartella libera (nessuna unità) può ancora ospitare sorgenti Go sparsi.
+    hasGo: activeSession ? projectProfile(activeSession.project).hasGo || (activeSession.project.units ?? []).length === 0 : undefined,
     languages: store.capabilities?.languages,
     documentCount: summary.documentCount,
     hasClosedDocuments: !!activeSession && (store.closedDocuments[activeSession.id]?.length ?? 0) > 0,

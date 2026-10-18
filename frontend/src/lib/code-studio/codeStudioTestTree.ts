@@ -1,4 +1,4 @@
-import type { GoIDEDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest } from '@/lib/code-studio-debug-api'
 import type { GoIDETestResult, GoIDETestRun, GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
 
 export interface CodeStudioTestNode {
@@ -154,6 +154,12 @@ export function debugRequestForNode(run: GoIDETestRun, result: GoIDETestResult):
   const request = requestForNode(run, result)
   const base = { sessionId: request.sessionId, mode: 'test', workingDirectory: request.workingDirectory, target: request.packages[0], buildTags: request.buildTags, environment: request.environment }
   return request.bench ? { ...base, testName: '^$', programArguments: benchmarkDebugArguments(request.bench) } : { ...base, testName: request.run }
+}
+
+/** Debug di un test JUnit (o della sua classe se il nome non è un metodo): stessa richiesta del ▶ nel gutter. */
+export function javaDebugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDEJavaDebugRequest | null {
+  if (!isJavaTestRun(run) || !result.name || !result.package.endsWith('.java')) return null
+  return { sessionId: run.request.sessionId, testFile: result.package, testMethod: javaMethodFilter(result.name), workingDirectory: '' }
 }
 
 /**

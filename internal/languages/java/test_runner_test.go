@@ -2,6 +2,7 @@ package java
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -158,4 +159,25 @@ func contains(list []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestSkippedTestKeepsItsReason(t *testing.T) {
+	var suite junitSuite
+	report := `<testsuite name="a.FooTest"><testcase name="later" classname="a.FooTest"><skipped message="not ready yet"/></testcase><testcase name="plain" classname="a.FooTest"><skipped/></testcase></testsuite>`
+	if err := xml.Unmarshal([]byte(report), &suite); err != nil {
+		t.Fatal(err)
+	}
+	var outputs []string
+	var skips int
+	for _, event := range suiteEvents("", "a.FooTest", "", suite) {
+		if event.Action == "output" {
+			outputs = append(outputs, event.Output)
+		}
+		if event.Action == "skip" {
+			skips++
+		}
+	}
+	if skips != 2 || len(outputs) != 1 || outputs[0] != "Skipped: not ready yet\n" {
+		t.Fatalf("skips=%d outputs=%q", skips, outputs)
+	}
 }

@@ -21,4 +21,5 @@ export const JAVA_LANGUAGE: IdeLanguageContribution = {
   heavyFeatures: false,
   semanticTokens: true,
   providedServer: true,
+  menu: { id: 'java', label: 'Java' },
 }

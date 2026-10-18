@@ -10,6 +10,7 @@ import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
+  'java.mvnCompile': ['compile'],
   'java.mvnTest': ['test'],
   'java.mvnPackage': ['package'],
   'java.mvnCleanInstall': ['clean', 'install'],

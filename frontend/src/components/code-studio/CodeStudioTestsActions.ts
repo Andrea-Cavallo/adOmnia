@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
-import { debugRequestForNode, isFailed, rerunFailedRequest } from '@/lib/code-studio/codeStudioTestTree'
+import { debugRequestForNode, isFailed, javaDebugRequestForNode, rerunFailedRequest } from '@/lib/code-studio/codeStudioTestTree'
 import type { TestSuite } from '@/lib/code-studio/testSuites'
 import type { TestTarget } from '@/lib/code-studio/testTargets'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -44,10 +44,15 @@ export function useTestActions(session: GoIDESession): TestActions {
       },
       debugSuite: (suite) => {
         const failed = firstFailed(suite)
+        if (suite.run && failed && suite.language === 'java') {
+          const java = javaDebugRequestForNode(suite.run, failed)
+          if (java) void useCodeStudioDebugStore.getState().startJava(java)
+          return
+        }
         const request = suite.run && failed ? debugRequestForNode(suite.run, failed) : null
         if (request) void useCodeStudioDebugStore.getState().start(request)
       },
-      canDebug: (suite) => suite.language === 'go' && firstFailed(suite) !== null,
+      canDebug: (suite) => (suite.language === 'go' || suite.language === 'java') && firstFailed(suite) !== null,
       stop: () => {
         store().clearQueue(sessionId)
         const running = (store().runs[sessionId] ?? []).find((run) => run.status === 'running')

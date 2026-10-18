@@ -33,7 +33,12 @@ type junitCase struct {
 	Time      float64       `xml:"time,attr"`
 	Failure   *junitProblem `xml:"failure"`
 	Error     *junitProblem `xml:"error"`
-	Skipped   *struct{}     `xml:"skipped"`
+	Skipped   *junitSkip    `xml:"skipped"`
+}
+
+// junitSkip: JUnit scrive il motivo di @Disabled/assumption nell'attributo message.
+type junitSkip struct {
+	Message string `xml:"message,attr"`
 }
 
 type junitProblem struct {
@@ -159,6 +164,9 @@ func suiteEvents(root, pkg, source string, suite junitSuite) []idetesting.Event 
 			events = append(events, event)
 		} else if test.Skipped != nil {
 			action = "skip"
+			if reason := strings.TrimSpace(test.Skipped.Message); reason != "" {
+				events = append(events, idetesting.Event{Action: "output", Package: pkg, Test: name, Output: "Skipped: " + reason + "\n"})
+			}
 		}
 		events = append(events, idetesting.Event{Action: action, Package: pkg, Test: name, Elapsed: test.Time})
 	}

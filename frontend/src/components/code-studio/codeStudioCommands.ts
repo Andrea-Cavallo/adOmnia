@@ -35,7 +35,7 @@ export type CodeStudioCommandId =
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.opencodeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
-export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'run' | 'tools' | 'git' | 'help'
+export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'run' | 'tools' | 'git' | 'help'
 
 export interface CodeStudioKeyBinding {
   key: string
@@ -393,7 +393,15 @@ export interface CodeStudioCommandContext {
   languages?: readonly IdeRegisteredLanguage[]
   /** Il progetto ha solo unità web (nessun modulo Go): ▶ Run avvia la Live Preview. */
   webOnly?: boolean
+  /** Il progetto ha almeno un modulo Go; false = i comandi `go build/test/vet` non hanno nulla da fare. */
+  hasGo?: boolean
 }
+
+/** Comandi Run che lanciano il toolchain Go: in un progetto senza Go restano spenti, con il motivo. */
+const GO_ONLY_RUN_COMMANDS = new Set<CodeStudioCommandId>([
+  'run.buildPackage', 'run.testPackage', 'run.vetPackage', 'run.buildAll', 'run.testAll', 'run.vetAll', 'run.generateAll', 'run.install',
+  'run.benchPackage', 'run.testCoverage', 'run.testRace', 'run.runRace', 'run.testChanged',
+])
 
 const NO_PROJECT = 'Open a Go project first'
 const NOT_TRUSTED = 'Trust this project to allow local Go tools'
@@ -440,6 +448,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id === 'view.zenMode') return context.detached ? 'Available in the main window' : true
   if (id === 'file.openProject' || id === 'file.newProject' || id === 'file.clone' || id === 'help.shortcuts') return true
   if (!context.hasSession) return NO_PROJECT
+  if (GO_ONLY_RUN_COMMANDS.has(id) && context.hasGo === false) return 'This command runs the Go toolchain; the project has no Go module (Java menu has Maven/Gradle builds)'
   if (id === 'run.run' && context.webOnly) return context.authorized ? true : NOT_TRUSTED
   if (id === 'tools.installLanguageServers') return context.authorized ? true : NOT_TRUSTED
   if (id.startsWith('preview.') || id === 'web.installTools') {

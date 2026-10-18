@@ -87,7 +87,7 @@ export function CodeStudioTestsTable({ suites, selectedKey, expanded, ascending,
                 <span className="text-text-3">{suite.lastRunAt ? (running ? 'now' : relativeTime(suite.lastRunAt, now)) : '—'}</span>
                 <span className="flex justify-end gap-1.5">
                   <button type="button" disabled={running} aria-label={`Run ${suite.name}`} title={`Run ${suite.name}`} onClick={(event) => { event.stopPropagation(); onRun(suite) }} className={iconButton}><Play size={13} fill="currentColor" /></button>
-                  <button type="button" disabled={!canDebug(suite)} aria-label={`Debug ${suite.name}`} title={canDebug(suite) ? 'Debug the first failed test' : 'Debugging starts from a failed Go test'} onClick={(event) => { event.stopPropagation(); onDebug(suite) }} className={iconButton}><Bug size={14} /></button>
+                  <button type="button" disabled={!canDebug(suite)} aria-label={`Debug ${suite.name}`} title={canDebug(suite) ? 'Debug the first failed test' : 'Debugging starts from a failed Go or Java test'} onClick={(event) => { event.stopPropagation(); onDebug(suite) }} className={iconButton}><Bug size={14} /></button>
                   <button type="button" aria-label={`More actions for ${suite.name}`} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setMenu({ suite, x: rect.right - 232, y: rect.bottom + 4 }) }} className={iconButton}><MoreHorizontal size={15} /></button>
                 </span>
               </div>

@@ -94,7 +94,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
       <button
         type="button"
         aria-label="Main menu"
-        title="Main menu: File, Edit, View, Navigate, Code, Go, Run, Tools, Git, Help"
+        title="Main menu: File, Edit, View, Navigate, Code, Go, Java, Run, Tools, Git, Help"
         aria-haspopup="menu"
         aria-expanded={!!open}
         onClick={(event) => {

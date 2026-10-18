@@ -743,6 +743,9 @@ Piano: 06 JS-2. **Prerequisito:** come JS-1, più un progetto Go di controllo pe
 - [ ] JS-2.M2 Inlay hints e Code Vision: sui metodi compaiono i **nomi parametro** a inlay e, sopra la dichiarazione, il **conteggio usi**; se non compaiono con JDT LS attivo, registrare l'esito qui e lasciare `heavyFeatures: false` con la nota aggiornata.
 - [ ] JS-2.M3 Marker gutter override/implements: la freccia compare sulla riga del metodo che sovrascrive/implementa, con il contatore; il click porta al metodo padre. Non compare su un metodo che non sovrascrive nulla.
 - [ ] JS-2.M4 New Java Class / New Package dal menu della cartella: template compilato, nomi non validi rifiutati con il motivo, il file si apre già compilato.
+- [ ] JS-2.M5 Menu **Java** accanto a "Go" (☰): contiene Run/Debug Main e Test, Spring Boot Run, Build (compile), test/package/clean install, Optimize Imports, Generate, Go to Test, Check Updates, Scan Vulnerabilities. In un progetto Maven il martello Build / Ctrl+Shift+B lancia `mvnw compile` (mai `go build .`) e in Run le voci "Build Current Package / Build All / Test All / Vet…" sono disattivate con il motivo.
+- [ ] JS-3.M4 Pannello Tests su un progetto Maven con un test rosso: il bottone Bug sulla riga del test e il Debug della suite aprono una sessione Java ferma sul breakpoint nel test; un test `@Disabled("motivo")` mostra "Skipped: motivo" nell'output.
+- [ ] JS-4.M4 Errore di compilazione in un `.java` (`mvnw compile`): nella console Run e nel terminale la riga `[ERROR] …Foo.java:[12,34]` è cliccabile e apre il file a riga e colonna.
 
 ### JS-3 — Test JUnit completi (2026-10-18)
 

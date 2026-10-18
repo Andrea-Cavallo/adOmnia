@@ -35,6 +35,7 @@ export const CODE_STUDIO_MENU_ICONS: Record<CodeStudioMenuId, CodeStudioCommandI
   navigate: icon(Compass),
   code: icon(Code2),
   go: { icon: GoGopherIcon },
+  java: icon(Boxes),
   run: icon(Play, RUN),
   tools: icon(Wrench),
   git: icon(GitBranch),

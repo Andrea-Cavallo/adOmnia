@@ -9,7 +9,7 @@ vi.mock('@/lib/code-studio-lsp-api', () => ({}))
 
 import { breakpointDecorations, executionDecorations, expressionAt } from './codeStudioDebugEditor'
 import { debugRequestForTarget } from './codeStudioQuickActions'
-import { debugRequestForNode } from '@/lib/code-studio/codeStudioTestTree'
+import { debugRequestForNode, javaDebugRequestForNode } from '@/lib/code-studio/codeStudioTestTree'
 import { executionPoint, hasLiveDebugger, type GoIDEDebugView } from '@/stores/codeStudioDebug'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
@@ -54,6 +54,16 @@ describe('Code Studio debugger helpers', () => {
     } as unknown as GoIDETestRun
     expect(debugRequestForNode(run, run.results[1])).toMatchObject({ mode: 'test', target: './calc', testName: '^TestAdd$/^negative$', buildTags: ['integration'] })
     expect(debugRequestForNode(run, run.results[0])).toBeNull()
+  })
+
+  it('debugs a failed JUnit method like the gutter does, and nothing for build nodes', () => {
+    const run = {
+      request: { sessionId: 's1', language: 'java', workingDirectory: '' },
+      results: [{ id: 'b', package: 'build', status: 'fail' }, { id: 'c', package: 'src/test/java/a/FooTest.java', name: 'adds', status: 'fail' }, { id: 'd', package: 'src/test/java/a/FooTest.java', name: 'adds[1] 3 > 2', status: 'fail' }],
+    } as unknown as GoIDETestRun
+    expect(javaDebugRequestForNode(run, run.results[1])).toEqual({ sessionId: 's1', testFile: 'src/test/java/a/FooTest.java', testMethod: 'adds', workingDirectory: '' })
+    expect(javaDebugRequestForNode(run, run.results[2])?.testMethod).toBe('adds')
+    expect(javaDebugRequestForNode(run, run.results[0])).toBeNull()
   })
 
   it('exposes the execution point only while paused and prefers the selected frame', () => {
