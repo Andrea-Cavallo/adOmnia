@@ -16,7 +16,6 @@ import (
 const (
 	maxMyBatisFiles    = 6_000
 	maxMyBatisFileKB   = 512
-	myBatisStatement   = "statement"
 	myBatisJavaOnly    = "javaOnly"
 	myBatisXMLOnly     = "xmlOnly"
 	myBatisBothSides   = "linked"

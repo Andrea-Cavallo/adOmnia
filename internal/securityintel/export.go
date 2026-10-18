@@ -16,10 +16,11 @@ const (
 	FormatHTML    = "html"
 	FormatCyclone = "cyclonedx"
 	FormatSPDX    = "spdx"
+	FormatVEX     = "vex"
 )
 
 // SupportedFormats è l'elenco dei formati che l'utente può esportare.
-var SupportedFormats = []string{FormatJSON, FormatSARIF, FormatHTML, FormatCyclone, FormatSPDX}
+var SupportedFormats = []string{FormatJSON, FormatSARIF, FormatHTML, FormatCyclone, FormatSPDX, FormatVEX}
 
 // FileExtension è l'estensione del file per un formato.
 func FileExtension(format string) string {
@@ -32,6 +33,8 @@ func FileExtension(format string) string {
 		return ".cdx.json"
 	case FormatSPDX:
 		return ".spdx.json"
+	case FormatVEX:
+		return ".vex.json"
 	default:
 		return ".json"
 	}
@@ -48,6 +51,8 @@ func Export(report ScanReport, format string) ([]byte, error) {
 		return marshalIndent(CycloneDXOf(report))
 	case FormatSPDX:
 		return marshalIndent(SPDXOf(report))
+	case FormatVEX:
+		return marshalIndent(VEXOf(report))
 	case FormatHTML:
 		return []byte(HTMLReport(report)), nil
 	default:
@@ -233,6 +238,7 @@ type cycloneVulnerability struct {
 	Ratings     []cycloneRating    `json:"ratings,omitempty"`
 	Affects     []cycloneAffects   `json:"affects,omitempty"`
 	References  []cycloneReference `json:"references,omitempty"`
+	Analysis    *cycloneAnalysis   `json:"analysis,omitempty"`
 }
 
 type cycloneSource struct {

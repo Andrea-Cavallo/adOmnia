@@ -1,3 +1,5 @@
+import { completeLocalJava } from '@/components/ide/languages/java/javaLocalCompletion'
+import { analyzeJavaFile } from '@/components/ide/languages/java/javaLocalAnalysis'
 import { languageServerEditorLanguages } from '@/components/ide/languages'
 import { isServerReady, serverLanguageForEditor } from '@/stores/ideLanguageServers'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
@@ -199,6 +201,18 @@ function registerProviders(): void {
   monaco.languages.registerCompletionItemProvider(LANGUAGE, {
     triggerCharacters: ['.'],
     async provideCompletionItems(model, position, _context, token) {
+      if (model.getLanguageId() === 'java') {
+        const owner = documentForModel(model)
+        if (!owner || !isServerReady(owner.document.sessionId, 'java')) {
+          const word = model.getWordUntilPosition(position)
+          const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn }
+          return { suggestions: completeLocalJava(model.getValue(), model.getOffsetAt(position)).map(item => ({
+            label: item.label, detail: item.detail, insertText: item.insertText,
+            kind: monaco.languages.CompletionItemKind[item.kind], range,
+            insertTextRules: item.snippet ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+          })) }
+        }
+      }
       const prepared = await prepareDocument(model)
       if (!prepared) return { suggestions: [] }
       const result = await cancellable(requestCompletion(prepared.sessionId, prepared.documentId, position.lineNumber, position.column), token)
@@ -266,6 +280,10 @@ function registerProviders(): void {
 
   monaco.languages.registerDocumentSymbolProvider(LANGUAGE, {
     async provideDocumentSymbols(model, token) {
+      if (model.getLanguageId() === 'java') {
+        const owner = documentForModel(model)
+        if (!owner || !isServerReady(owner.document.sessionId, 'java')) return symbolTree(analyzeJavaFile(model.getValue()).symbols)
+      }
       const prepared = await prepareDocument(model)
       if (!prepared) return []
       const result = await cancellable(requestDocumentSymbols(prepared.sessionId, prepared.documentId), token)

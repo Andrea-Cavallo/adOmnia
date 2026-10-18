@@ -1,4 +1,7 @@
 import { monaco } from '@/lib/monacoSetup'
+import { DATABASE_PENDING_QUERY_KEY, handOff } from '@/lib/moduleHandoff'
+import { showModule } from '@/lib/moduleRouting'
+import { sqlStatementAt } from '@/lib/code-studio/sqlStatement'
 import { requestLocations, requestOrganizeImports, type GoIDELocationKind } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { navigateToLocation, prepareDocument } from './codeStudioLanguageFeatures'
@@ -116,6 +119,19 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
   })
   semantic(CODE_STUDIO_ACTIONS.callHierarchy, 'Call Hierarchy', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyH], (target) => showHierarchy(target, 'call'))
   semantic(CODE_STUDIO_ACTIONS.typeHierarchy, 'Type Hierarchy', [], (target) => showHierarchy(target, 'type'))
+  // SQL: la selezione (o l'istruzione sotto il cursore) passa al modulo Database, che ha già connessioni e credenziali sigillate.
+  editor.addAction({
+    id: 'codeStudio.runSql', label: 'Run SQL in Database', precondition: "editorLangId == 'sql'", keybindings: [KeyMod.CtrlCmd | KeyCode.Enter], contextMenuGroupId: 'navigation',
+    run: (target) => {
+      const model = target.getModel()
+      const selection = target.getSelection()
+      if (!model || !selection) return
+      const text = selection.isEmpty() ? sqlStatementAt(model.getValue(), model.getOffsetAt(selection.getPosition())) : model.getValueInRange(selection).trim()
+      if (!text) return
+      handOff(DATABASE_PENDING_QUERY_KEY, text)
+      showModule('database')
+    },
+  })
   // Keymap di GoLand per le azioni di editing di Monaco: stesse azioni native, tasti che lo sviluppatore già conosce.
   const native = (id: string, label: string, keybindings: number[], nativeId: string) => {
     editor.addAction({ id, label, keybindings, run: (target) => { target.trigger('code-studio', nativeId, null) } })

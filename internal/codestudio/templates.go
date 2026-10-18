@@ -233,16 +233,6 @@ func runGoCommand(binary, dir string, timeout time.Duration, args ...string) err
 	return nil
 }
 
-// applyProjectTemplate scrive i file del template e risolve le dipendenze dichiarate.
-// Restituisce un avviso (non un errore) se go mod tidy non riesce, es. offline.
-func applyProjectTemplate(binary, target, modulePath, name, templateID string) (string, error) {
-	sources, template, err := resolveProjectTemplate(templateID)
-	if err != nil {
-		return "", err
-	}
-	return applyResolvedProjectTemplate(binary, target, modulePath, name, sources, template)
-}
-
 func applyResolvedProjectTemplate(binary, target, modulePath, name string, sources []fs.FS, template ProjectTemplate) (string, error) {
 	replacer := strings.NewReplacer(templateModuleToken, modulePath, templateNameToken, name, templatePackageToken, packageNameFor(modulePath))
 	if err := renderProjectTemplate(sources, target, replacer); err != nil {

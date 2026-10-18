@@ -31,12 +31,6 @@ func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
 	}
 	return m.DebugManager.Start(dap.Launch{SessionID: launch.session.ID, Root: launch.session.Project.RealPath, Spec: spec})
 }
-func (m *DebugManager) stackTrace(id DebugSessionID, threadID, levels int) ([]DebugFrame, error) {
-	return m.StackTraceLimit(id, threadID, levels)
-}
-func (m *DebugManager) call(id DebugSessionID, command string, arguments, result any) error {
-	return m.Call(id, command, arguments, result)
-}
 func (m *DebugManager) ShowRegisters(id DebugSessionID, show bool) error {
 	return (&golang.DebugExtensions{Session: m.DebugManager}).ShowRegisters(id, show)
 }

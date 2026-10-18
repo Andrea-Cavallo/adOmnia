@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertCircle, AlertTriangle, Info, Loader2, Sparkles } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Download, Info, Loader2, Sparkles } from 'lucide-react'
 import type { GoIDEDiagnostic, GoIDEDiagnosticsReport } from '@/lib/code-studio-lsp-api'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import { mergedReports, useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -8,6 +8,8 @@ import { MAX_RESOLVE_ALL_FILES, fixCodeStudioProblemWithAI, resolveAllCodeStudio
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useSettingsStore } from '@/stores/settings'
 import { useIDEExtensionsStore } from '@/stores/ideExtensions'
+import { downloadText } from '@/lib/fileUtils'
+import { problemsToMarkdown } from '@/lib/code-studio/problemsMarkdown'
 
 export interface CodeStudioBuildProblem {
   path: string
@@ -57,6 +59,8 @@ export function CodeStudioProblems({ sessionId, buildProblems, onOpenBuildProble
     void fixCodeStudioProblemWithAI(report.relativePath ?? '', problem(diagnostic), others)
   }
 
+  const exportMarkdown = () => downloadText('problems.md', problemsToMarkdown(sorted, buildProblems), 'text/markdown')
+
   const open = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => navigateToLocation({
     uri: report.uri, path: report.path, relativePath: report.relativePath, external: !report.relativePath, range: diagnostic.range,
   })
@@ -66,14 +70,17 @@ export function CodeStudioProblems({ sessionId, buildProblems, onOpenBuildProble
   }
   return (
     <div role="tree" aria-label="Problems" className="py-1 text-[13px]">
-      {aiAvailable && fixTargets.length > 0 && (
-        <div className="flex h-7 items-center gap-2 border-b border-border-1 px-2 pb-1">
-          <span className="text-[12px] text-text-4">{fixTargets.reduce((total, target) => total + target.problems.length, 0)} errors and warnings in {fixTargets.length} file{fixTargets.length === 1 ? '' : 's'}</span>
+      <div className="flex h-7 items-center gap-2 border-b border-border-1 px-2 pb-1">
+        {aiAvailable && fixTargets.length > 0 && <span className="text-[12px] text-text-4">{fixTargets.reduce((total, target) => total + target.problems.length, 0)} errors and warnings in {fixTargets.length} file{fixTargets.length === 1 ? '' : 's'}</span>}
+        <button type="button" onClick={exportMarkdown} title="Export every problem as a Markdown checklist (problems.md)" className={`${aiAvailable && fixTargets.length > 0 ? '' : 'ml-auto '}flex h-6 items-center gap-1.5 rounded border border-border-1 px-2 text-[12px] font-medium text-text-2 hover:bg-surface-3`}>
+          <Download size={11} aria-hidden="true" /> Export as MD
+        </button>
+        {aiAvailable && fixTargets.length > 0 && (
           <button type="button" disabled={resolving} onClick={() => void resolveAll()} title={`Asks the AI for a fix per file (up to ${MAX_RESOLVE_ALL_FILES} files), then shows every change for you to review and confirm. Nothing is written before you apply it.`} className="ml-auto flex h-6 items-center gap-1.5 rounded border border-accent/40 bg-accent/10 px-2 text-[12px] font-semibold text-accent hover:bg-accent/20 disabled:opacity-50">
             {resolving ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} aria-hidden="true" />} Resolve all with AI
           </button>
-        </div>
-      )}
+        )}
+      </div>
       {sorted.map((report) => (
         <div key={report.uri} role="treeitem" aria-expanded="true">
           <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2"><CodeStudioFileIcon name={(report.relativePath || report.path).split(/[\\/]/).pop() ?? (report.relativePath || report.path)} relativePath={report.relativePath} size={12} />{report.relativePath || report.path}<span className="text-[11px] text-text-4">{report.diagnostics.length}</span></div>

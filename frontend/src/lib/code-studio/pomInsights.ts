@@ -9,6 +9,8 @@ export interface PomVulnerability {
   band: SecurityBand
   fixedVersion: string
   summary: string
+  /** Solo per le transitive: la libreria vulnerabile che questa dipendenza porta con sé ("group:artifact version"). */
+  component?: string
 }
 
 export interface PomDependencyStatus {
@@ -16,6 +18,8 @@ export interface PomDependencyStatus {
   key: string
   vulnerabilities: PomVulnerability[]
   worst: SecurityBand | null
+  /** Vulnerabilità delle sue dipendenze transitive: si risolvono aggiornando questa dipendenza. */
+  viaThis: PomVulnerability[]
   /** Versione che chiude i CVE senza saltare più del necessario ("" se nessuna correzione nota). */
   fixVersion: string
   version: VersionInfo | null
@@ -85,7 +89,11 @@ export function dependencyStatuses(dependencies: PomDependency[], versions: Vers
     const vulnerabilities = matching
       .map((finding) => ({ id: finding.advisory.id, band: finding.risk.band, fixedVersion: finding.remediation.fixedVersion ?? '', summary: finding.advisory.summary ?? '' }))
       .sort((left, right) => BAND_RANK[right.band] - BAND_RANK[left.band])
-    return { dependency, key, vulnerabilities, worst: vulnerabilities[0]?.band ?? null, fixVersion: pickFix(matching), version: byKey.get(key) ?? null }
+    const viaThis = findings
+      .filter((finding) => !finding.ignored && !finding.component.direct && finding.component.dependencyPath?.[1] === key)
+      .map((finding) => ({ id: finding.advisory.id, band: finding.risk.band, fixedVersion: finding.remediation.fixedVersion ?? '', summary: finding.advisory.summary ?? '', component: `${finding.component.name} ${finding.component.version}` }))
+      .sort((left, right) => BAND_RANK[right.band] - BAND_RANK[left.band])
+    return { dependency, key, vulnerabilities, viaThis, worst: vulnerabilities[0]?.band ?? null, fixVersion: pickFix(matching), version: byKey.get(key) ?? null }
   })
 }
 

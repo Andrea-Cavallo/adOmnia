@@ -117,15 +117,6 @@ func (s *Service) tools(request RunRequest) *run.Tools {
 func (s *Service) startToolRun(session Session, kind, wd string, request RunRequest) (Execution, error) {
 	return s.tools(request).StartToolRun(toolSession(session), kind, wd, toolRequest(request))
 }
-func (s *Service) toolCommandSpec(session Session, kind, wd, target string, request RunRequest) (CommandSpec, error) {
-	return s.tools(request).ToolCommandSpec(toolSession(session), kind, wd, target, toolRequest(request))
-}
-func (s *Service) dockerRunSpec(session Session, wd string, request RunRequest) (CommandSpec, string, error) {
-	return s.tools(request).DockerRunSpec(toolSession(session), wd, toolRequest(request))
-}
-func imageTag(session Session, options DockerOptions) string {
-	return run.ImageTag(toolSession(session), options)
-}
 func normalizeToolConfiguration(config RunConfiguration) (RunConfiguration, error) {
 	n, err := run.NormalizeToolConfiguration(toCoreConfiguration(config))
 	config.Target, config.Files, config.BinaryPath, config.GoArguments, config.BuildTags, config.Docker, config.ProgramArguments = n.Target, nil, "", nil, nil, n.Docker, n.ProgramArguments
@@ -136,18 +127,12 @@ func toolEnvironment(kind string, r RunRequest) map[string]string {
 }
 
 var isToolRunKind = run.IsToolRunKind
-var normalizeMakeArguments = run.NormalizeMakeArguments
 var normalizeComposeArguments = run.NormalizeComposeArguments
-var normalizeDockerOptions = run.NormalizeDockerOptions
-var normalizeEntries = run.NormalizeEntries
-var splitVolume = run.SplitVolume
 
 func validateToolPaths(root, wd string, kind RunConfigurationKind, target string, docker DockerOptions) error {
 	return run.ValidateToolPaths(root, wd, run.Kind(kind), target, docker)
 }
 
 var dockerBuildArguments = run.DockerBuildArguments
-var composeCommandSpec = run.ComposeCommandSpec
-var keyValueArgument = run.KeyValueArgument
 var secretSet = run.SecretSet
 var resolveDocker = run.ResolveDocker

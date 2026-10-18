@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DATABASE_PENDING_CONNECTION_KEY } from '@/lib/moduleHandoff'
+import { DATABASE_PENDING_CONNECTION_KEY, takeDatabaseQueryHandoff } from '@/lib/moduleHandoff'
 import { Braces, CheckCircle2, Database, LayoutList, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { visibleInterval } from '@/lib/visiblePolling'
@@ -225,6 +225,13 @@ export function DatabasePanel() {
       }
       if (!restored && first?.driver === 'mongodb') setTabs([blankTab('Mongo JSON Runner', MONGO_DEFAULT_QUERY)])
       if (!restored && first?.driver === 'redis') setTabs([blankTab('Redis Commands', REDIS_DEFAULT_QUERY)])
+      // Una query inviata da Code Studio si apre in una nuova scheda, mai al posto del lavoro in corso.
+      const handedQuery = takeDatabaseQueryHandoff()
+      if (handedQuery) {
+        const tab = blankTab('Code Studio', handedQuery)
+        setTabs((current) => [...current, tab])
+        setActiveTabId(tab.id)
+      }
       setHydrated(true)
     }
     void load()

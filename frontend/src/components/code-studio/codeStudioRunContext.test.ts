@@ -48,4 +48,18 @@ describe('run context, pins and restart on save', () => {
     expect(runsToRestart(state, 's', { relativePath: 'orders-legacy/main.go', editorLanguage: 'go' })).toEqual([])
     expect(runsToRestart(state, 's', { relativePath: 'docs/readme.md', editorLanguage: 'markdown' })).toEqual([])
   })
+
+  it('skips generated files and commands that reload by themselves', () => {
+    const state = {
+      executions: [{ id: 'api', sessionId: 's', status: 'running' }, { id: 'ui', sessionId: 's', status: 'running' }],
+      configByRun: { api: 'api', ui: 'ui' },
+      runConfigsBySession: { s: [
+        { id: 'api', restartOnSave: true },
+        { id: 'ui', restartOnSave: true, target: 'pnpm', programArguments: ['run', 'dev'] },
+      ] },
+    } as unknown as Parameters<typeof runsToRestart>[0]
+    expect(runsToRestart(state, 's')).toEqual(['api'])
+    expect(runsToRestart(state, 's', { relativePath: 'web/node_modules/x/main.go', editorLanguage: 'go' })).toEqual([])
+    expect(runsToRestart(state, 's', { relativePath: 'cmd/main.go', editorLanguage: 'go' })).toEqual(['api'])
+  })
 })

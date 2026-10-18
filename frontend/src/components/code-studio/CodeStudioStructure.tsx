@@ -4,7 +4,7 @@ import type { GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioSymbolIcon } from './CodeStudioSymbolIcon'
-import { SYMBOL_KIND, groupStructure, splitSignature, symbolKey, symbolPathAt, useCodeStudioSymbolsFor, useCodeStudioSymbolServer, type StructureSection } from './codeStudioSymbols'
+import { SYMBOL_KIND, groupStructure, splitSignature, symbolKey, symbolPathAt, useCodeStudioSymbolSnapshot, useCodeStudioSymbolServer, type StructureSection } from './codeStudioSymbols'
 import { useCodeStudioCursorStore } from './codeStudioCursor'
 
 
@@ -99,7 +99,9 @@ const NO_PATH: string[] = []
 /** Struttura del file attivo dal suo language server; i simboli arrivano dallo store condiviso con il breadcrumb. */
 export function CodeStudioStructure({ sessionId, document }: CodeStudioStructureProps) {
   const server = useCodeStudioSymbolServer(sessionId, document?.document.language ?? '')
-  const symbols = useCodeStudioSymbolsFor(document?.document.id ?? null)
+  const snapshot = useCodeStudioSymbolSnapshot(document?.document.id ?? null, document)
+  const { symbols } = snapshot
+  const local = snapshot.source === 'local'
   const loaded = useCodeStudioLspStore((state) => !!document && state.symbols[document.document.id] !== undefined)
   // Solo la chiave cambia quando il cursore passa a un altro simbolo: niente ridisegni a ogni tasto.
   const caretKey = useCodeStudioCursorStore((state) => symbolPathAt(symbols, state.line, state.column).map(symbolKey).join('|'))
@@ -108,11 +110,14 @@ export function CodeStudioStructure({ sessionId, document }: CodeStudioStructure
 
   if (!document) return <Hint text="Open a source file to see its structure." />
   if (!server.supported) return <Hint text="Structure is available for languages with a language server." />
-  if (server.state !== 'ready') return <Hint text={server.error || (server.state === 'starting' ? `${server.name} language server is loading the workspace…` : `Start the ${server.name} language server to see types, functions and methods.`)} />
+  if (!local && server.state !== 'ready') return <Hint text={server.error || (server.state === 'starting' ? `${server.name} language server is loading the workspace…` : `Start the ${server.name} language server to see types, functions and methods.`)} />
   return (
     <div className="min-h-0 flex-1 overflow-auto px-1.5 py-1.5">
+      {document.document.language === 'java' && <div role="status" className="mb-1 border-b border-border-1 px-2 py-1 text-[10px] text-text-4">{local ? (snapshot.pending ? 'Local Java · updating…' : server.state === 'starting' ? 'Local Java · language server loading the workspace…' : 'Local Java · current file') : 'Java language server'}</div>}
+      {local && server.error && <Hint text={server.error} />}
+      {snapshot.limited && <Hint text="Local Java analysis is limited to 256,000 characters and 50,000 tokens. Use the language server for this file." />}
       {sections.map((section) => <StructureGroup key={section.id} section={section} documentId={document.document.id} caretPath={caretPath} />)}
-      {symbols.length === 0 && <Hint text={loaded ? 'No top-level symbols.' : 'Reading the file structure…'} />}
+      {symbols.length === 0 && <Hint text={loaded || local ? 'No top-level symbols.' : 'Reading the file structure…'} />}
     </div>
   )
 }

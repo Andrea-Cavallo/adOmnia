@@ -12,12 +12,24 @@ export interface SavedFile {
 }
 
 type RestartState = Pick<ReturnType<typeof useCodeStudioStore.getState>, 'executions' | 'configByRun' | 'runConfigsBySession'>
-type RestartConfig = { language?: string; workingDirectory?: string }
+type RestartConfig = { language?: string; workingDirectory?: string; target?: string; programArguments?: string[] }
 
 const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/\/+$/, '')
 
+// Cartelle di output e dipendenze: salvarvi un file non è una modifica al sorgente e farebbe ripartire il servizio in loop.
+const GENERATED_PATH = /(^|\/)(node_modules|target|build|dist|out|vendor|\.git|\.gradle|\.next|\.idea)(\/|$)/
+const NATIVE_WATCHERS = new Set(['air', 'nodemon', 'vite', 'next', 'nuxt', 'ng', 'webpack-dev-server', 'ts-node-dev', 'tsx', 'reflex'])
+const NATIVE_SCRIPTS = new Set(['dev', 'serve', 'watch'])
+
+/** Il comando ricarica già da solo (Vite, air, nodemon, `npm run dev`…): riavviarlo dal processo sarebbe un doppio riavvio. */
+export function reloadsByItself(config: RestartConfig): boolean {
+  const tool = (config.target ?? '').split(/[\/]/).pop()?.replace(/\.(cmd|exe)$/i, '') ?? ''
+  return NATIVE_WATCHERS.has(tool) || (config.programArguments ?? []).some((argument) => NATIVE_SCRIPTS.has(argument))
+}
+
 /** Il file salvato appartiene al linguaggio della configurazione ed è dentro la sua working directory. */
 function affectsConfiguration(config: RestartConfig, saved: SavedFile): boolean {
+  if (GENERATED_PATH.test(slash(saved.relativePath))) return false
   // Come il backend: una configurazione senza linguaggio è Go.
   const configLanguage = config.language || GO_LANGUAGE_ID
   if (ideLanguageForEditor(saved.editorLanguage)?.id !== configLanguage) return false
@@ -35,7 +47,7 @@ export function runsToRestart(state: RestartState, sessionId: string, saved?: Sa
   const configs = state.runConfigsBySession[sessionId] ?? []
   return state.executions
     .filter((execution) => execution.sessionId === sessionId && execution.status === 'running')
-    .filter((execution) => configs.some((config) => config.id === state.configByRun[execution.id] && config.restartOnSave && (!saved || affectsConfiguration(config, saved))))
+    .filter((execution) => configs.some((config) => config.id === state.configByRun[execution.id] && config.restartOnSave && !reloadsByItself(config) && (!saved || affectsConfiguration(config, saved))))
     .map((execution) => execution.id)
 }
 

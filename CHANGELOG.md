@@ -4,7 +4,17 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [1.0.5] — 2026-10-18
+
+### Added
+
+- **Security Intelligence in the editor for `go.mod` and `pom.xml`.** `go.mod` gets a scan lens, per-requirement markers and a one-click fixed-version edit (plus a guided `govulncheck` install); `pom.xml` also covers transitive dependencies resolved offline from the local Maven repository. New CycloneDX VEX export and a `cmd/secscan` command for CI (`-fail-on`, SARIF).
+- **Problems → Export as MD.** The Problems panel exports every error and warning, grouped by file, as a Markdown checklist.
+- **Compound run configurations wait for readiness** (port) before starting the next member; scripts in the project become run suggestions; language servers receive every project unit as a workspace folder.
+
+### Changed
+
+- Static-analysis cleanup in Code Studio and the Java adapter: unused code removed, `bufio.Scanner` errors checked, string building without temporary concatenations.
 
 ### Fixed
 
@@ -15,8 +25,6 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
   - the status bar resource indicator enumerated every process on the system once per process in adOmnia's tree (on Linux and macOS it spawned `pgrep` each time); it now reads the process table once per sample, every 5 s instead of 2 s;
   - a late or foreign gopls progress report could leave the Go Studio spinner on forever, with a 500 ms timer behind it; error toasts kept that timer running too;
   - every open terminal woke the backend 40 times per second even with no output.
-
-## [1.0.5] — 2026-10-16
 
 Includes the changes tagged as 1.0.2–1.0.4, which had no separate section. Release notes: [docs/releases/v1.0.5.md](docs/releases/v1.0.5.md).
 

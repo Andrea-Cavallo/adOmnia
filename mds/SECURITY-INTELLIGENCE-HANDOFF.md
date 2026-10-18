@@ -167,3 +167,18 @@ Verifica manuale obbligatoria (questo è un prodotto, non una libreria):
 Il working tree contiene lavoro preesistente non mio (adapter Java/IDE, `codeStudioTestTree.ts`,
 `internal/codestudio/lsp*.go`, `internal/languages/java/*`). Non è parte di questo task: non
 riformattarlo, non "sistemarlo".
+
+## Aggiornamento 2026-10-18 (sessione successiva) — lacune chiuse e lacune dichiarate
+
+**Chiuso (codice + test automatici, prove in app aperte):**
+- `go.mod` nell'editor: `codeStudioGoVuln.ts` + `stores/codeStudioGoVuln.ts` + `lib/code-studio/goModSecurity.ts` (lens, marker, quick fix undoable, lens "Install govulncheck…" con conferma). Test `goModSecurity.test.ts`.
+- Maven transitive offline: `maven/transitive.go` (visita in ampiezza dei POM di `~/.m2`, mediazione, scope, esclusioni, management del progetto) e ricerca dei parent nella repository locale in `loadModel`. Test `maven/transitive_test.go`. Nel `pom.xml` la dipendenza diretta che porta una transitiva vulnerabile ha marker e lens (`viaThis` in `pomInsights.ts`).
+- VEX (`export_vex.go`, formato `vex`), gate per la CI (`cmd/secscan`, `GateFailures`), composizione del motore condivisa (`securityintel/standard`).
+
+**Dichiarato, non fatto di proposito:**
+- *Rivalutazione automatica in background*: contraddice la regola local-first (nessuna chiamata di rete senza azione dell'utente). La alternativa è `secscan` in CI.
+- *Altre fonti di advisory*: OSV aggrega già GitHub Advisory (alias GHSA) e il database Go; NVD diretto non aggiunge copertura per Maven/Go.
+- *Licenze, typosquatting/malware*: nessun consumatore reale; OSV segnala i `MAL-` solo per npm/PyPI.
+- *Gradle transitive* e *bytecode senza compilazione*: richiedono di lanciare Gradle/Maven (autorizzazione esplicita).
+- Prove in app: `MANUAL-CHECK.md` SEC-2.
+

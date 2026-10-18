@@ -151,14 +151,6 @@ func cloneConfiguration(config RunConfiguration) RunConfiguration {
 	return clone
 }
 
-func cloneConfigurations(configs []RunConfiguration) []RunConfiguration {
-	clones := make([]RunConfiguration, 0, len(configs))
-	for _, config := range configs {
-		clones = append(clones, cloneConfiguration(config))
-	}
-	return clones
-}
-
 func trimArguments(values []string) []string {
 	trimmed := make([]string, 0, len(values))
 	for _, value := range values {
@@ -169,19 +161,3 @@ func trimArguments(values []string) []string {
 	return trimmed
 }
 
-func uniqueName(existing []RunConfiguration, candidate string) string {
-	taken := make(map[string]struct{}, len(existing))
-	for _, config := range existing {
-		taken[config.Name] = struct{}{}
-	}
-	if _, clash := taken[candidate]; !clash {
-		return candidate
-	}
-	for suffix := 2; suffix < 100; suffix++ {
-		name := fmt.Sprintf("%s %d", candidate, suffix)
-		if _, clash := taken[name]; !clash {
-			return name
-		}
-	}
-	return candidate
-}

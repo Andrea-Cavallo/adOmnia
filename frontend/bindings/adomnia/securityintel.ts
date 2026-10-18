@@ -29,7 +29,7 @@ export function ExportFormats(): $CancellablePromise<string> {
 
 /**
  * ExportReport serializza un report già ottenuto nel formato richiesto.
- * I formati sono json, sarif, html, cyclonedx e spdx.
+ * I formati sono json, sarif, html, cyclonedx, spdx e vex.
  */
 export function ExportReport(reportJSON: string, format: string): $CancellablePromise<string> {
     return $Call.ByID(3605658502, reportJSON, format);

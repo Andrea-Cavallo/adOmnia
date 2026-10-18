@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	maxCompoundConfigurations = 10
 	sharedRunConfigFile       = ".adomnia/run-configurations.json"
 	maxSharedRunConfigBytes   = 1 << 20
 )
@@ -27,15 +26,6 @@ func normalizeCommandConfiguration(config RunConfiguration) (RunConfiguration, e
 	normalized, err := run.NormalizeCommandConfiguration(toCoreConfiguration(config))
 	config.Target, config.Files, config.BinaryPath, config.Compound, config.PreRun, config.PostRun = normalized.Target, normalized.Files, normalized.BinaryPath, normalized.Compound, normalized.PreRun, normalized.PostRun
 	return config, err
-}
-
-func contains(values []string, value string) bool {
-	for _, item := range values {
-		if item == value {
-			return true
-		}
-	}
-	return false
 }
 
 // startCommandRun avvia un comando qualsiasi o un sottocomando go, senza shell, nella working directory.
@@ -83,8 +73,6 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 	return execution, nil
 }
 
-// resolveCommandExecutable: un percorso (./scripts/x.sh) resta confinato al progetto, un nome si cerca nel PATH.
-var resolveCommandExecutable = run.ResolveCommandExecutable
 
 // validateCompound accetta solo configurazioni esistenti della sessione e non a loro volta compound.
 func (s *Service) validateCompound(session Session, config RunConfiguration) error {
@@ -176,8 +164,3 @@ func (m *RunConfigManager) Import(sessionID SessionID, config RunConfiguration) 
 	return m.core.Import(sessionID, toCoreConfiguration(normalized))
 }
 
-func sameSharedContent(left, right RunConfiguration) bool {
-	a, _ := json.Marshal(redactConfiguration(left))
-	b, _ := json.Marshal(redactConfiguration(right))
-	return string(a) == string(b)
-}

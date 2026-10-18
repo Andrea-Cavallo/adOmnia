@@ -2,7 +2,7 @@
 
 Aggiornato: 2026-10-18 (piano creato da analisi comparata con **Lithe-IDEA**; JS-1 e JS-2 fatti in codice, prove in app aperte). Indice: [README.md](README.md).
 
-> **Continua, non duplica.** [MULTILANGUAGE-IDE](MULTILANGUAGE-IDE.md) Fase 9.4 porta Java al *contratto minimo* (adapter, JDT LS, run, test, debug) ed è quasi chiusa: restano 9.4.8 (debug di `spring-boot:run` e dei task Gradle) e le mancanze del pom intelligente (parent/BOM, Gradle, Security Center). Questo piano prende **da dove 9.4 finisce**: la profondità "da IntelliJ" su Java/Spring/JVM. Le voci 9.4.8 e 9.4.9 restano in `MULTILANGUAGE-IDE.md`, non vengono ricopiate qui; qui se ne indicano solo i collegamenti.
+> **Continua, non duplica.** [MULTILANGUAGE-IDE](MULTILANGUAGE-IDE.md) Fase 9.4 porta Java al *contratto minimo* (adapter, JDT LS, run, test, debug) ed è quasi chiusa: restano 9.4.8 (debug di `spring-boot:run` e dei task Gradle) e il collegamento completo al Security Center; parent/BOM e scansione Gradle sono già implementati (JS-8/JS-12). Questo piano prende **da dove 9.4 finisce**: la profondità "da IntelliJ" su Java/Spring/JVM. Le voci 9.4.8 e 9.4.9 restano in `MULTILANGUAGE-IDE.md`, non vengono ricopiate qui; qui se ne indicano solo i collegamenti.
 >
 > **Le verifiche che richiedono l'app in esecuzione stanno solo in [MANUAL-CHECK.md](MANUAL-CHECK.md)** (sezioni `JS-1`…`JS-8`). In questo file: codice, test automatici, evidenze di build e riferimenti `JS-n.M*`.
 
@@ -44,11 +44,40 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 
 ## Principi da non scordare (da Lithe)
 
-1. **La semantica Java la decide JDT, non noi.** Niente regex locali come fonte di verità su "cos'è una main" o "cos'è un test": si interroga JDT LS (`vscode.java.resolveMainClass`, `vscode.java.resolveMainMethod`, `vscode.java.test.findTestTypesAndMethods`) e le regex di `mains.go` diventano **fallback quando il server non c'è**. Lithe fa rispettare questo con un check di CI (`scripts/verify-java-semantic-ownership.mjs`): ne riprendiamo l'idea in JS-6.
+1. **La semantica Java la decide JDT, non noi.** JS-14 aggiunge solo il supporto sintattico locale al buffer corrente quando JDT non è pronto: non risolve tipi, overload o simboli di dipendenze e non sostituisce i risultati semantici del server. Niente regex locali come fonte di verità su "cos'è una main" o "cos'è un test": si interroga JDT LS (`vscode.java.resolveMainClass`, `vscode.java.resolveMainMethod`, `vscode.java.test.findTestTypesAndMethods`) e le regex di `mains.go` diventano **fallback quando il server non c'è**. Lithe fa rispettare questo con un check di CI (`scripts/verify-java-semantic-ownership.mjs`): ne riprendiamo l'idea in JS-6.
 2. **Una sola verità per ogni fatto**, e stato esplicito quando non è pronto (`idle/loading/ready/stale/failed`, "mostra ultimo risultato + refreshing"). Mai inventare un risultato.
 3. **Gli esiti si distinguono**: "compilato / classi sostituite / contesto riavviato", non un generico "fatto".
 4. **Cache content-addressed** quando un tooling JVM ignora le modifiche (lo stesso trucco dei `settings.xml` di Lithe: un cambio di contenuto diventa un cambio di path).
 5. **Niente doppie architetture**: tutto dentro il modello capability già usato da Java (`internal/ide/language`), una riga in `languages.go`, contribuzione UI in `components/ide/languages/java/`. Se serve toccare il core per una feature Java, il contratto è sbagliato: si corregge il contratto.
+
+---
+
+## Priorità corrente — completamento e outline prima di tutto
+
+Richiesta utente del 2026-10-18: **JS-14 è il prossimo blocco P0**, prima delle altre estensioni Java e dei nuovi linguaggi. Le funzioni già presenti (Git/diff, ricerca, cronologia, progetti/file multipli, monitor RAM, controlli LSP) non vanno ricostruite.
+
+## JS-14 — Java locale: completamento e outline senza JDT LS (P0, prossimo)
+
+**Obiettivo:** aprire e modificare un `.java` con completamento di base e Structure immediati, anche senza JDK/JDT installato o con il server spento. Nessun processo, rete o download per questa modalità.
+
+- [ ] **JS-14.1 Analisi condivisa del buffer corrente.** Riusare dove applicabile il lettore/tokenizzatore Java esistente; distinguere codice, commenti, stringhe e text block. Estrarre package/import, classi/interfacce/enum/record annidati, costruttori, metodi anche sovraccarichi, campi/costanti, parametri e variabili locali con scope e range UTF-16. Gestire codice incompleto durante la digitazione. Nessuna scansione dell'intero progetto per ogni tasto.
+- [ ] **JS-14.2 Completamento locale Monaco.** Keyword/snippet Java e nomi dichiarati nel file, rispettando scope e ordine delle dichiarazioni; distinguere variabili, costanti, parametri, metodi e tipi. Sostituire solo la parola digitata, deduplicare e non suggerire simboli dentro commenti/stringhe. Non inventare membri di tipi esterni, overload risolti o import automatici senza una fonte verificata.
+- [ ] **JS-14.3 Outline locale.** Alimentare la Structure e la navigazione del file/breadcrumb con lo stesso risultato: gerarchia dei tipi annidati, campi, costruttori e metodi con firme distinguibili; clic → dichiarazione corretta, simbolo sotto il cursore evidenziato, aggiornamento su buffer non salvato e cambio file. Funzionamento con JDT assente, spento o in avvio.
+- [ ] **JS-14.4 Passaggio locale ↔ JDT.** Stato esplicito della fonte: analisi locale oppure server Java. Quando JDT è pronto prevalgono i suoi risultati; niente provider concorrenti con suggerimenti duplicati, né outline cancellato durante l'import. Se il server si ferma, ripristinare il risultato locale del buffer corrente; scartare risposte obsolete per documento/versione/sessione. JDT resta responsabile di semantica, hover risolto e navigazione tra file/dipendenze.
+- [ ] **JS-14.5 Prestazioni e regressioni.** Cache per versione del buffer, debounce delle analisi, limiti dichiarati sui file grandi. Test su scope omonimi, costanti, classi anonime/annidate, record, generics, lambda, overload, commenti/stringhe con parentesi, Unicode UTF-16 e codice incompleto. Test di collegamento dei provider e della Structure nelle transizioni JDT off/starting/ready/stopped e tra due progetti. Verificare che non si avvii alcun processo e che Code Studio resti lazy.
+- [ ] **JS-14.6 Documentazione.** Aggiornare `docs/CODE-STUDIO.md`, catalogo e issue con il perimetro del supporto locale e i limiti rispetto a JDT. Controlli: Vitest mirati, TypeScript, build e startup; Go mirati solo se viene toccato il parser backend.
+
+**Accettazione desktop:** `JS-14.M1`–`JS-14.M3` in `MANUAL-CHECK.md`. Nessuna voce manuale si chiude con la sola build.
+
+## JS-15 — Datasource Spring verso Database Studio (P1)
+
+**Obiettivo:** riusare il workspace database esistente a partire dalla configurazione Spring, senza creare un secondo client SQL.
+
+- [ ] **JS-15.1 Rilevamento locale.** Estendere l'integrazione Project services oltre `go.mod`, riusando Spring Index per `spring.datasource.*` e i profili in properties/YAML. Distinguere valori effettivi, placeholder non risolti e profilo selezionato; nessuna connessione automatica.
+- [ ] **JS-15.2 Apertura guidata.** Azione verso Database Studio tramite entity router; compilare solo dati conosciuti e chiedere quelli mancanti. Riutilizzare connessioni, driver, storico SQL, browser tabelle e operazioni già presenti.
+- [ ] **JS-15.3 Segreti e compatibilità.** Credenziali tramite Vault/riferimenti esistenti, mai plaintext nel renderer persistito, log o file condivisi. Test di redazione e di profili con variabili mancanti; nessun processo o collegamento al DB all'apertura del progetto.
+
+**Accettazione desktop:** `JS-15.M1` in `MANUAL-CHECK.md`. L'ORM/JPA avanzato resta fuori perimetro.
 
 ---
 
@@ -137,10 +166,10 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 
 **Obiettivo:** che un errore di compilazione sia cliccabile, e che la toolchain sia scelta e visibile.
 
-- [x] **Errori cliccabili nella console Run e nel terminale** (2026-10-18): `lib/code-studio/consoleLocation.ts` riconosce `Foo.java:[12,34]` (Maven), `Foo.java:12:` (javac/Gradle) e `.kt/.groovy`, oltre a Go; stesso schema nel terminale (`codeStudioTerminalLinks.ts`). Restano da fare i problemi nel pannello Problems (`buildlog.go`).
+- [x] **Errori cliccabili nella console Run e nel terminale** (2026-10-18): `lib/code-studio/consoleLocation.ts` riconosce `Foo.java:[12,34]` (Maven), `Foo.java:12:` (javac/Gradle) e `.kt/.groovy`, oltre a Go; stesso schema nel terminale (`codeStudioTerminalLinks.ts`). I problemi nel pannello Problems arrivano dalle stesse righe di console (`buildProblems` in `CodeStudioRunPanel.tsx`, "Last build output"), quindi `buildlog.go` non serve: nessun secondo parser.
 - **Error navigation dal log**: `internal/languages/java/buildlog.go` — da output Maven/Gradle a problemi navigabili (`[ERROR] /path/Foo.java:[12,34]`, `error: cannot find symbol` con contesto). Oggi il parsing si ferma ai marker `BUILD SUCCESS/FAILURE` usati dal test runner. Riferimento: `project/maven.rs::maven.diagnostics` di Lithe. Da agganciare alla console Run (click → editor) e al pannello problemi.
 - **JDK di progetto**: `jdk.go` oggi parte solo da `JAVA_HOME`/PATH. Aggiungere la **selezione esplicita per unità** (JDK home, versione richiesta dal progetto), persistita nelle run configuration, con la stessa toolchain usata da Run **e** Debug. Riferimento: `execution/java_selection.rs` di Lithe; il bug che Lithe ha registrato (`java-debug-uses-the-run-jdk`) è la prova che i due devono coincidere.
-- **Finestra "project preparation"**: stato `starting → importing → building → ready` durante l'import di JDT LS (Lithe: `project_preparation.rs`). Senza questo l'utente pensa che il server sia rotto.
+- [x] **Finestra "project preparation"** (2026-10-18: il `$/progress` di JDT LS ("Importing Maven project(s)") era già pubblicato come `lsp.progress` ma la status bar lo nascondeva per i server provided; ora lo mostra anche per Java, con il nome del server come titolo di ripiego; tsc e Vitest `code-studio` verdi, prova in app = JS-4.M3): stato `starting → importing → building → ready` durante l'import di JDT LS (Lithe: `project_preparation.rs`). Senza questo l'utente pensa che il server sia rotto.
 
 **Test automatici:** `buildlog_test.go` (casi Maven/Gradle/multi-modulo/UTF-8/Windows); `jdk_test.go` (selezione, versione, fallback); stato di preparazione esposto e testato.
 **Verifica comandi:** `go test ./internal/languages/java/...`
@@ -291,12 +320,14 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 - **Kotlin** oltre l'LSP: nessun tooling proprio (Lithe non ne ha).
 - **Jakarta EE / application server (Tomcat)**: nessuno dei due lo copre; non è il perimetro Spring Boot.
 - **Plugin dichiarativi con bundle firmato** (modello di distribuzione di Lithe): adOmnia ha già `InstallPlan` esplicito, coerente col local-first. Non sostituire.
-- **Database/JPA tooling**: il pannello Database c'è già e non è specifico Java; nessuna integrazione JPA in questo piano.
+- **Database/JPA tooling**: il client Database esistente si riusa con JS-15; ORM/JPA avanzato resta fuori perimetro.
 - **Agenti AI / AI commit / MCP**: fuori dal perimetro Java/Spring richiesto.
 
 ## Ordine di esecuzione consigliato
 
-`JS-1` → `JS-2` → `JS-3` → `JS-4` (P0, rilasciabili da soli) → `JS-5` → `JS-6` → `JS-7` → `JS-8` (P1) → `JS-9` → `JS-10` → `JS-11` → `JS-12` (P2).
+**Priorità aggiornata:** `JS-14` (completamento + outline locali) → chiusura dei gap P0 e collaudi Java già aperti → `JS-15` e backlog condiviso di `MULTILANGUAGE-IDE.md`. La numerazione storica non determina la priorità.
+
+Ordine storico delle sezioni: `JS-1` → `JS-2` → `JS-3` → `JS-4` (P0, rilasciabili da soli) → `JS-5` → `JS-6` → `JS-7` → `JS-8` (P1) → `JS-9` → `JS-10` → `JS-11` → `JS-12` (P2).
 `JS-2` e `JS-3` sono indipendenti da `JS-1` e possono procedere in parallelo; `JS-6` è il prerequisito di `JS-7`.
 
 **Gate del piano:** un progetto Spring Boot reale (multi-modulo Maven, poi Gradle) si apre, si indica con le proprietà note e gli endpoint elencati, si esegue, si testa, si debugga con gli stepping filters attivi, si aggiorna a caldo, e gli errori di build sono cliccabili — **senza modifiche al core** (`internal/ide/architecture_test.go` resta verde).
@@ -311,3 +342,5 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 | 2026-10-18 | JS-3 / JS-4 | Debug dei test JUnit dal pannello Tests, motivo dei test ignorati, errori Maven/Gradle cliccabili in console e terminale. Vitest (51 file) e `go test ./internal/languages/java/` verdi, tsc pulito. Restano roll-up per classe, JDK per unità, problemi nel pannello Problems, stato di preparazione JDT LS. |
 | 2026-10-18 | JS-5…JS-12 | Codice e test: stepping filters e hot code replace (JS-5), main class decise da JDT con fallback marcato (JS-6, backend), helper per command line lunghe (JS-7, non ancora collegato al Run), lens sulle dipendenze Gradle e albero Maven provato su spring-openai-master (JS-8), monitor JVM con heap/GC/JFR provato su una JVM reale (JS-9), navigazione MyBatis (JS-10), goal Quarkus/Micronaut e JDK/settings.xml a JDT LS (JS-11), coverage JaCoCo provata su un progetto Spring generato, template Spring Boot Maven/Gradle e Java Maven, grafo dei bean, iniezioni Lombok e per interfaccia (JS-12). Aperti: roll-up per classe e rerun multi-metodo (JS-3), JDT-owned nel frontend e launch diretto (JS-6/7), run config a livelli (JS-11), Gradle security (JS-12, securityintel), parent/BOM, template Gradle da compilare. Tutte le prove in app restano aperte. |
 | 2026-10-18 | JS-3/6/7/8/12 | Chiusi: roll-up per classe e rerun multi-metodo (JS-3), main class JDT nel gutter (JS-6), launch diretto collegato a Run e ▶ (JS-7), parent/BOM del pom e CVE su Gradle (JS-8/JS-12). JS-11 resta aperto solo per l'override personale di una configurazione condivisa. In più: le `@RestController` Spring diventano route del Developer Context (`devcontext/javaroutes.go`), quindi API Workspace, Mock, cURL, OpenAPI, Open API e Live Session valgono come per Go; lens sul sorgente Java e bottone "Open API" negli endpoint. Go test (java, devcontext, securityintel, ide) e vitest (177 file) verdi, tsc pulito. Prove in app aperte: `MANUAL-CHECK.md`. |
+
+| 2026-10-18 | JS-14/JS-15 | Aggiunti i TODO dal confronto funzionale: completamento e outline Java senza processi hanno priorità P0 assoluta; integrazione datasource Spring verso Database Studio P1. Nessuna implementazione dichiarata; prove native in MANUAL-CHECK. |

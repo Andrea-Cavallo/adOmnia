@@ -4,7 +4,6 @@ import "adomnia/internal/languages/golang"
 
 type GoroutineSummary = golang.GoroutineSummary
 type GoroutineOverview = golang.GoroutineOverview
-type sourceLineCache = golang.SourceLineCache
 
 const (
 	GoroutineRunning   = golang.GoroutineRunning

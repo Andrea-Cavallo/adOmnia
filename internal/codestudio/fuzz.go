@@ -88,7 +88,7 @@ func (s *Service) ListFuzzTargets(sessionID string) ([]FuzzTarget, error) {
 				target.CacheDir = dir
 				target.Cached, target.CachedTotal = listFuzzInputs(dir, fuzzSourceCache)
 			}
-			markDuplicateFuzzInputs(&target, directory, cache)
+			markDuplicateFuzzInputs(&target, directory)
 			targets = append(targets, target)
 		}
 		return nil
@@ -223,7 +223,7 @@ func listFuzzInputs(directory, source string) ([]FuzzInput, int) {
 }
 
 // markDuplicateFuzzInputs segnala input con contenuto identico (es. un crash già promosso in testdata).
-func markDuplicateFuzzInputs(target *FuzzTarget, packageDir, cache string) {
+func markDuplicateFuzzInputs(target *FuzzTarget, packageDir string) {
 	seen := make(map[string]string)
 	mark := func(inputs []FuzzInput, directory string) {
 		for index := range inputs {

@@ -159,3 +159,42 @@ func TestMixedWorkspaceWithAJavaServiceKeepsItsSuggestionsInItsFolder(t *testing
 		t.Fatalf("A.java must be a java document, got %q %v", id, ok)
 	}
 }
+
+// A real monorepo: go.work with two modules, an npm workspaces app, a Maven service and a Python service
+// (no adapter yet). Each detector must keep its own units and none may swallow the others' folders.
+func TestMonorepoWithGoWorkNpmWorkspacesAndJava(t *testing.T) {
+	root := t.TempDir()
+	writeFixtureFiles(t, root, map[string]string{
+		"go.work":                       "go 1.22\n\nuse (\n\t./orders\n\t./payments\n)\n",
+		"orders/go.mod":                 "module example.com/orders\n\ngo 1.22\n",
+		"payments/go.mod":               "module example.com/payments\n\ngo 1.22\n",
+		"web/package.json":              `{"name":"web","workspaces":["packages/*"],"scripts":{"dev":"vite"}}`,
+		"web/packages/ui/package.json":  `{"name":"ui"}`,
+		"web/packages/app/package.json": `{"name":"app"}`,
+		"billing/pom.xml":               "<project><modelVersion>4.0.0</modelVersion><groupId>x</groupId><artifactId>billing</artifactId><version>1</version></project>",
+		"ml/pyproject.toml":             "[project]\nname = \"ml\"\n",
+	})
+	units, err := newLanguageRegistry().DetectUnits(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	languageOf := map[string]string{}
+	for _, unit := range units {
+		rel, _ := filepath.Rel(root, unit.Root)
+		languageOf[filepath.ToSlash(rel)] = unit.Language
+	}
+	for directory, language := range map[string]string{"orders": "go", "payments": "go", "web": "typescript", "web/packages/ui": "typescript", "web/packages/app": "typescript", "billing": "java"} {
+		if languageOf[directory] != language {
+			t.Errorf("%s: want a %s unit, got %q (all: %v)", directory, language, languageOf[directory], languageOf)
+		}
+	}
+	if language, ok := languageOf["ml"]; ok {
+		t.Errorf("Python has no adapter, ml must not become a %s unit", language)
+	}
+	// go.work is the Go workspace unit of the root, not a module: it must not shadow the other languages' units.
+	for _, unit := range units {
+		if unit.Root == root && unit.Kind != "workspace" {
+			t.Errorf("the root unit must be the go.work workspace, got %s/%s", unit.Language, unit.Kind)
+		}
+	}
+}

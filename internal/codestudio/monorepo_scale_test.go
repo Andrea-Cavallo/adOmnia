@@ -29,7 +29,7 @@ func writeScaleMonorepo(t *testing.T) string {
 	work.WriteString("go 1.22\n\nuse (\n")
 	for module := 0; module < scaleModules; module++ {
 		name := fmt.Sprintf("svc%02d", module)
-		work.WriteString("\t./" + name + "\n")
+		fmt.Fprintf(&work, "\t./%s\n", name)
 		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
 			t.Fatal(err)
 		}

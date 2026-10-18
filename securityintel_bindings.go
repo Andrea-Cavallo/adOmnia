@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/gomod"
-	"adomnia/internal/securityintel/maven"
+	"adomnia/internal/securityintel/standard"
 )
 
 // SecurityIntel espone adOmnia Security Intelligence al frontend: scansione delle
@@ -95,7 +94,7 @@ func (s *SecurityIntel) ScanWorkspace(root string, optionsJSON string) (string, 
 const securityScanTimeout = 10 * time.Minute
 
 // ExportReport serializza un report già ottenuto nel formato richiesto.
-// I formati sono json, sarif, html, cyclonedx e spdx.
+// I formati sono json, sarif, html, cyclonedx, spdx e vex.
 func (s *SecurityIntel) ExportReport(reportJSON string, format string) (string, error) {
 	report := securityintel.ScanReport{}
 	if err := json.Unmarshal([]byte(reportJSON), &report); err != nil {
@@ -121,6 +120,7 @@ func (s *SecurityIntel) ExportFormats() (string, error) {
 		securityintel.FormatHTML:    "HTML report",
 		securityintel.FormatCyclone: "CycloneDX SBOM",
 		securityintel.FormatSPDX:    "SPDX SBOM",
+		securityintel.FormatVEX:     "CycloneDX VEX",
 	}
 	entries := []entry{}
 	for _, format := range securityintel.SupportedFormats {
@@ -357,7 +357,6 @@ func resolveOptionsFrom(options ScanOptionsJSON, settings securityintel.Workspac
 // Un solo motore, adapter per ecosistema: aggiungere package.json o Cargo.toml
 // significa aggiungere una riga qui, non una seconda logica CVE.
 func buildSecurityEngine(options ScanOptionsJSON, settings securityintel.WorkspaceSettings) (*securityintel.Engine, *securityintel.AdvisoryCache) {
-	cache := securityintel.NewAdvisoryCache(securityintelCacheDirectory())
 	overrides := map[string]string{}
 	for key, value := range settings.SourceEndpoints {
 		overrides[key] = value
@@ -365,14 +364,7 @@ func buildSecurityEngine(options ScanOptionsJSON, settings securityintel.Workspa
 	for key, value := range options.SourceEndpoints {
 		overrides[key] = value
 	}
-	osv := &securityintel.OSVSource{Endpoint: overrides["osv"], Cache: cache}
-	sources := []securityintel.Source{osv}
-	enrichers := []securityintel.Enricher{
-		&securityintel.EPSSSource{Endpoint: overrides["epss"]},
-		&securityintel.KEVSource{Endpoint: overrides["kev"]},
-	}
-	adapters := []securityintel.EcosystemAdapter{maven.New(), gomod.New()}
-	return securityintel.New(adapters, sources, enrichers, cache), cache
+	return standard.Engine(securityintelCacheDirectory(), overrides)
 }
 
 // selectedEcosystems unisce i filtri delle opzioni e della configurazione.

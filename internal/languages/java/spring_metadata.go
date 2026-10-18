@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Limiti dello scan della repository Maven locale: senza freni è un lavoro da minuti.
@@ -321,11 +320,3 @@ func jsonScalar(raw json.RawMessage) string {
 	return value
 }
 
-// metadataFreshFor è il timestamp dell'ultima scansione utile (per mostrare "aggiornato alle …").
-func metadataFreshFor() time.Time {
-	info, err := os.Stat(springMetadataCacheFile())
-	if err != nil {
-		return time.Time{}
-	}
-	return info.ModTime()
-}

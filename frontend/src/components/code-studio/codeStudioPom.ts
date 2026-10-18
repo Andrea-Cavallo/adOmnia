@@ -60,7 +60,7 @@ function summaryLens(documentId: string, state: PomState): string {
   if (state.error) return `⚠ ${state.error}`
   const statuses = statusesOf(documentId)
   const outdated = statuses.filter((item) => item.version?.newer).length
-  const vulnerable = statuses.filter((item) => item.worst).length
+  const vulnerable = statuses.filter((item) => item.worst || item.viaThis.length).length
   const parts: string[] = []
   if (state.updatesCheckedAt) parts.push(`${outdated} outdated`)
   if (state.scannedAt) parts.push(`${vulnerable} vulnerable`)
@@ -84,6 +84,10 @@ function dependencyLenses(documentId: string, status: PomDependencyStatus): mona
     const first = status.vulnerabilities[0]
     const more = status.vulnerabilities.length > 1 ? ` +${status.vulnerabilities.length - 1}` : ''
     lenses.push({ range: lensRange(line), command: { id: NEXT_PROBLEM_COMMAND, title: `⚠ ${first.id}${more} · ${status.worst.toUpperCase()}${status.fixVersion ? ` · fixed in ${status.fixVersion}` : ''}`, tooltip: first.summary || 'Vulnerability found by OSV' } })
+  }
+  if (!status.worst && status.viaThis.length) {
+    const first = status.viaThis[0]
+    lenses.push({ range: lensRange(line), command: { id: NEXT_PROBLEM_COMMAND, title: `⚠ via ${first.component} · ${first.id} · ${first.band.toUpperCase()}${status.viaThis.length > 1 ? ` +${status.viaThis.length - 1}` : ''}`, tooltip: first.summary || 'Vulnerability in a transitive dependency' } })
   }
   for (const target of updateTargets(status)) {
     if (!updateEdit(status.dependency, target.version)) continue
@@ -117,6 +121,10 @@ function markersFor(documentId: string): monaco.editor.IMarkerData[] {
     if (status.worst) {
       const ids = status.vulnerabilities.slice(0, 3).map((item) => `${item.id} (${item.band})`).join(', ')
       markers.push({ ...range, severity: markerSeverity(status), source: 'OSV', message: `${status.key} ${dependency.resolved}${managedNote(dependency)}: ${ids}${status.fixVersion ? `. Fixed in ${status.fixVersion}.` : '. No fixed version published.'}` })
+    } else if (status.viaThis.length) {
+      const first = status.viaThis[0]
+      const more = status.viaThis.length > 1 ? ` and ${status.viaThis.length - 1} more` : ''
+      markers.push({ ...range, severity: first.band === 'critical' || first.band === 'high' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning, source: 'OSV', message: `${status.key} brings in ${first.component}: ${first.id} (${first.band})${more}. Update this dependency, or manage the transitive version in dependencyManagement.` })
     } else if (status.version?.newer) {
       markers.push({ ...range, severity: monaco.MarkerSeverity.Info, source: 'Maven Central', message: `${status.key}: ${dependency.resolved} → ${status.version.latest} available` })
     }

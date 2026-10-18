@@ -13,7 +13,7 @@ import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { ideLanguage, IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { unitOfConfiguration } from '@/lib/code-studio/runUnits'
+import { groupConfigurationsByUnit, unitOfConfiguration } from '@/lib/code-studio/runUnits'
 import { useDetectedRunItems } from './useDetectedRunItems'
 import { useCodeStudioTitlebar, CodeStudioWindowControls } from './CodeStudioTitlebar'
 
@@ -145,7 +145,11 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
       checked: detachedStudios.includes(studio.rail) || undefined,
     }))
     if (kind === 'config') return [
-      ...runConfigurations.map((config) => ({ id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined })),
+      // Monorepo: le configurazioni sono raggruppate per unità ("orders · Go") e l'unità è scritta a destra della voce.
+      ...groupConfigurationsByUnit(runConfigurations, activeSession.project, IDE_LANGUAGE_NAMES).flatMap((group, groupIndex) => group.items.map((config, index) => ({
+        id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined,
+        shortcut: group.label || undefined, separatorBefore: index === 0 && groupIndex > 0 && group.label !== '' || undefined,
+      }))),
       ...(profile.hasGo ? [{ id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 }] : []),
       ...detected.suggestions.map((item, index) => ({ id: `${DETECTED_PREFIX}${item.id}`, label: `Add ${item.title}`, icon: Plus, iconClassName: 'text-accent', separatorBefore: index === 0 })),
       { id: 'configure', label: 'Edit Configurations…', icon: Settings2, separatorBefore: true },

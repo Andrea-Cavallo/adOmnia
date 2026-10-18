@@ -119,7 +119,7 @@ func scanJavaTypes(data []byte, tokens []javaToken, pkg string) (declared javaDe
 	}
 	// I limiti del corpo: la prima graffa dopo la dichiarazione, chiusa dalla sua pari.
 	for position := range declared.types {
-		declared.types[position].bodyStart, declared.types[position].bodyEnd = bodyRange(data, tokens, declared.types[position])
+		declared.types[position].bodyStart, declared.types[position].bodyEnd = bodyRange(tokens, declared.types[position])
 	}
 	return declared
 }
@@ -231,7 +231,7 @@ func ownerOf(types []javaTypeDecl, offset int) javaTypeDecl {
 }
 
 // bodyRange trova l'intervallo del corpo di un tipo: la prima graffa dopo la dichiarazione.
-func bodyRange(data []byte, tokens []javaToken, decl javaTypeDecl) (int, int) {
+func bodyRange(tokens []javaToken, decl javaTypeDecl) (int, int) {
 	depth := 0
 	started := false
 	for _, token := range tokens {
@@ -268,7 +268,7 @@ func parseJavaMembers(data []byte, token javaToken, annotations []javaAnnotation
 		return nil
 	}
 	line, startColumn, endColumn := locate(data, pomText{start: token.start, end: token.end})
-	name, typ, params, isMethod := splitDeclaration(text, owner.Short)
+	name, typ, params, isMethod := splitDeclaration(text)
 	if name == "" {
 		return nil
 	}
@@ -295,7 +295,7 @@ func parseJavaMembers(data []byte, token javaToken, annotations []javaAnnotation
 }
 
 // splitDeclaration separa nome, tipo e parametri di una dichiarazione.
-func splitDeclaration(text, ownerShort string) (name, typ string, params []javaParam, isMethod bool) {
+func splitDeclaration(text string) (name, typ string, params []javaParam, isMethod bool) {
 	open := indexTopLevel(text, '(')
 	if open < 0 {
 		// Campo: `private String nome;` (o `String nome = …`).

@@ -290,11 +290,6 @@ func typeName(expression ast.Expr) string {
 	return "?"
 }
 
-// loadCoverage legge il profilo scritto da go test e lo rimuove: il report resta solo in memoria.
-func loadCoverage(projectRoot, moduleDir, modulePath, profilePath string) (*CoverageReport, error) {
-	return loadCoverageForModules(projectRoot, []coverageModule{{directory: moduleDir, path: modulePath}}, profilePath)
-}
-
 func loadCoverageForModules(projectRoot string, modules []coverageModule, profilePath string) (*CoverageReport, error) {
 	data, err := os.ReadFile(profilePath)
 	_ = os.Remove(profilePath)

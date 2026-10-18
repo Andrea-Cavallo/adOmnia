@@ -388,7 +388,7 @@ func (a *App) OnShutdown(ctx context.Context) {
 	a.shutdownOnce.Do(func() { a.shutdown(ctx) })
 }
 
-func (a *App) shutdown(ctx context.Context) {
+func (a *App) shutdown(_ context.Context) {
 	devlog.Info("OnShutdown", "arresto applicazione", nil)
 	if recorder := perf.Current(); recorder != nil {
 		if err := recorder.Stop(); err != nil {

@@ -28,7 +28,6 @@ func NewToolchainManager() *ToolchainManager { return golang.NewToolchainManager
 
 var (
 	NewToolchainInstaller  = golang.NewToolchainInstaller
-	binaryStamp            = sdk.BinaryStamp
 	samePath               = project.SamePath
 	executableName         = sdk.ExecutableName
 	withDefaultEnvironment = sdk.WithDefaultEnvironment
@@ -36,5 +35,3 @@ var (
 
 func goplsExecutableName() string { return sdk.ExecutableName("gopls") }
 
-// validEnvironmentName è condiviso da run configuration e strumenti di build.
-var validEnvironmentName = sdk.ValidEnvironmentName

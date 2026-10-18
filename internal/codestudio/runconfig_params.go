@@ -49,8 +49,6 @@ func applyRunParameters(root, wd string, config RunConfiguration, request *RunRe
 	return nil
 }
 
-var normalizeTaskIDs = run.NormalizeTaskIDs
-var portAvailable = run.PortAvailable
 var loadEnvFile = run.LoadEnvFile
 var parseEnvFile = run.ParseEnvFile
 

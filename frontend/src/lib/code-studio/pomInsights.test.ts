@@ -66,3 +66,13 @@ describe('mergeManagedVersions', () => {
     expect(kept.resolved).toBe('1.0')
   })
 })
+
+describe('dependencyStatuses, transitive vulnerabilities', () => {
+  it('attaches a vulnerable transitive dependency to the direct dependency that brings it in', () => {
+    const transitive = { ...finding('org.yaml:snakeyaml', '1.30', 'CVE-T', 'high', '2.0'), component: { name: 'org.yaml:snakeyaml', version: '1.30', direct: false, dependencyPath: ['app', 'a:b', 'org.yaml:snakeyaml'] } } as unknown as SecurityFinding
+    const [status] = dependencyStatuses([literal], [], [transitive])
+    expect(status.worst).toBeNull()
+    expect(status.viaThis).toHaveLength(1)
+    expect(status.viaThis[0]).toMatchObject({ id: 'CVE-T', component: 'org.yaml:snakeyaml 1.30' })
+  })
+})

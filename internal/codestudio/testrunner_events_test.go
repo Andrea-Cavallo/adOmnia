@@ -19,6 +19,9 @@ func treeFromFile(t *testing.T, name string) *testTree {
 	for scanner.Scan() {
 		tree.apply(scanner.Bytes())
 	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
 	return tree
 }
 

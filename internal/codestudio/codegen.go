@@ -313,7 +313,7 @@ func testCode(kind string, function *ast.FuncDecl) (string, string, error) {
 		name := "Benchmark" + suffix
 		fmt.Fprintf(&code, "func %s(b *testing.B) {\n", name)
 		if receiverDecl != "" {
-			code.WriteString("\t" + receiverDecl + "\n")
+			fmt.Fprintf(&code, "\t%s\n", receiverDecl)
 		}
 		for _, param := range params {
 			fmt.Fprintf(&code, "\tvar %s %s // TODO: realistic input\n", param.name, param.typeText)
@@ -335,7 +335,7 @@ func testCode(kind string, function *ast.FuncDecl) (string, string, error) {
 	}
 	fmt.Fprintf(&code, "func %s(f *testing.F) {\n\tf.Add(%s) // TODO: add seed inputs\n\tf.Fuzz(func(t *testing.T, %s) {\n", name, strings.Join(seeds, ", "), strings.Join(fuzzParams, ", "))
 	if receiverDecl != "" {
-		code.WriteString("\t\t" + receiverDecl + "\n")
+		fmt.Fprintf(&code, "\t\t%s\n", receiverDecl)
 	}
 	fmt.Fprintf(&code, "\t\t%s\n\t})\n}\n", callText)
 	return code.String(), name, nil

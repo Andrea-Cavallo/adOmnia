@@ -12,6 +12,8 @@ Tutto il lavoro ancora da fare, in un solo posto e in ordine di esecuzione. **Op
 | 05 | [COLLABORAZIONE-REALTIME](05-COLLABORAZIONE-REALTIME.md) | Collaborazione LAN su due computer, runbook A1—A6, P1/P2 (beta opt-in in v1) | **Ultimo** |
 | 06 | [JAVA-SPRING-STUDIO](06-JAVA-SPRING-STUDIO.md) | Profondità JVM su Code Studio (Java/Spring/Maven/Gradle/JUnit): Spring Index, comandi Java, test per metodo, error navigation, debug con stepping filters, hot update, dipendenze, JFR | Dopo la Fase 9.4 di `MULTILANGUAGE-IDE` (Java al contratto minimo) |
 
+**Priorità corrente (2026-10-18):** prima **JS-14 — completamento Java e outline locali senza JDT LS**, nel piano 06. Seguono i gap Java aperti e i nuovi TODO condivisi di `MULTILANGUAGE-IDE.md`; i collaudi restano in `MANUAL-CHECK.md`.
+
 `archivio/` contiene l'originale di `todo-ide.md`, già fuso in 03: solo consultazione, non aggiornarlo.
 
 ## Regole

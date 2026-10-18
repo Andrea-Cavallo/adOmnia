@@ -90,6 +90,7 @@ const EXPORTS: Array<{ id: SecurityExportFormatId; label: string; mime: string }
   { id: 'sarif', label: 'SARIF 2.1.0', mime: 'application/json' },
   { id: 'cyclonedx', label: 'CycloneDX SBOM', mime: 'application/json' },
   { id: 'spdx', label: 'SPDX SBOM', mime: 'application/json' },
+  { id: 'vex', label: 'CycloneDX VEX', mime: 'application/json' },
 ]
 
 const BAND_ORDER: SecurityBand[] = ['critical', 'high', 'medium', 'low', 'informational']

@@ -82,6 +82,7 @@ func (r *Resolver) resolveLocal(pomPath string, options securityintel.ResolveOpt
 
 	// Dipendenze dichiarate: versione dal pom o dal management, origine dalla catena.
 	seen := map[string]bool{}
+	var seeds []transitiveSeed
 	for index := range root.Dependencies {
 		dependency := root.Dependencies[index]
 		coordinate := DependencyCoordinate(dependency, properties)
@@ -128,6 +129,7 @@ func (r *Resolver) resolveLocal(pomPath string, options securityintel.ResolveOpt
 		}
 		seen[component.Key()] = true
 		result.Components = append(result.Components, component)
+		seeds = append(seeds, transitiveSeed{Component: component, Exclusions: exclusionsOf(dependency)})
 	}
 
 	// Dipendenze dei plugin di build: non finiscono nell'artefatto, ma eseguono
@@ -167,8 +169,14 @@ func (r *Resolver) resolveLocal(pomPath string, options securityintel.ResolveOpt
 		}
 	}
 
-	if !result.Transitive {
-		result.Warnings = append(result.Warnings, "transitive dependencies were not resolved: Maven was not available or the scan ran offline. Findings cover the dependencies declared in the POM chain only.")
+	// Transitive: visita dei POM della repository locale, senza Maven. Completa solo se nessun POM manca.
+	if repository != "" {
+		walked := r.walkTransitive(seeds, managed, repository, pomPath)
+		result.Components = append(result.Components, walked.Components...)
+		result.Warnings = append(result.Warnings, transitiveWarnings(walked)...)
+		result.Transitive = walked.Missing == 0 && !walked.Truncated
+	} else {
+		result.Warnings = append(result.Warnings, "transitive dependencies were not resolved: no local Maven repository was found and Maven was not available. Findings cover the dependencies declared in the POM chain only.")
 	}
 	sort.SliceStable(result.Components, func(left, right int) bool { return result.Components[left].Name < result.Components[right].Name })
 	return result, nil
@@ -230,6 +238,10 @@ func (r *Resolver) loadModel(pomPath, repository string) ([]POM, map[string]stri
 			break
 		}
 		next := parentPath(pom, parent, current)
+		if next == "" || !isFile(next) {
+			// Un POM della repository locale non ha un parent a ../pom.xml: sta anch'esso nella repository.
+			next = PomPath(repository, parent)
+		}
 		if next == "" || !isFile(next) {
 			warnings = append(warnings, fmt.Sprintf("parent POM %s is not available locally: inherited dependencies and managed versions are unknown", parent.String()))
 			break

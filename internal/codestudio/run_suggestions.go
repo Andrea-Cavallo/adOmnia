@@ -30,6 +30,7 @@ func (s *Service) GetRunSuggestions(sessionID string) ([]run.Suggestion, error) 
 			suggestions = append(suggestions, provider.Suggest(ctx, session.Project.RealPath, unit)...)
 		}
 	}
+	suggestions = append(suggestions, scriptSuggestions(session.Project.RealPath)...)
 	return finalizeSuggestions(session.Project.RealPath, suggestions, s.runConfigs.List(SessionID(sessionID))), nil
 }
 

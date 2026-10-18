@@ -75,6 +75,8 @@ type lspSession struct {
 	root     string
 	rootURI  string
 	name     string
+	// folders are the unit roots given to the server instead of the project root (see workspaceFolderRoots).
+	folders []string
 	options  LanguageServerOptions
 	status   LanguageServerStatus
 	process  *serverProcess
@@ -149,6 +151,7 @@ func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
 	}
 	created := &lspSession{
 		id: session.ID, language: languageID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
+		folders: workspaceFolderRoots(session.Project.RealPath, session.Project.Units, languageID),
 		status:    LanguageServerStatus{SessionID: session.ID, Language: languageID, State: LanguageServerStopped},
 		documents: make(map[DocumentID]*trackedDocument), byURI: make(map[string]DocumentID),
 		codeActions: make(map[string]lsp.CodeAction), diagnostics: make(map[string][]lsp.Diagnostic),
@@ -367,6 +370,9 @@ func (m *LSPManager) collectStderr(state *lspSession, process *serverProcess, st
 			continue
 		}
 		m.appendLog(state, "stderr: "+scanner.Text())
+	}
+	if err := scanner.Err(); err != nil && m.isCurrent(state, process) {
+		m.appendLog(state, "stderr: "+err.Error())
 	}
 }
 
@@ -640,7 +646,7 @@ func initializeParams(state *lspSession) map[string]any {
 		"processId":             nil,
 		"clientInfo":            map[string]any{"name": "adOmnia IDE"},
 		"rootUri":               state.rootURI,
-		"workspaceFolders":      []map[string]any{{"uri": state.rootURI, "name": state.name}},
+		"workspaceFolders":      state.workspaceFolders(),
 		"initializationOptions": state.options.InitializationOptions,
 		"capabilities": map[string]any{
 			"general": map[string]any{"positionEncodings": []string{"utf-16"}},
@@ -745,7 +751,7 @@ func (h *lspHandler) HandleRequest(_ context.Context, method string, params json
 	case "window/workDoneProgress/create", "client/registerCapability", "client/unregisterCapability":
 		return nil, nil
 	case "workspace/workspaceFolders":
-		return []map[string]any{{"uri": h.session.rootURI, "name": h.session.name}}, nil
+		return h.session.workspaceFolders(), nil
 	case "workspace/applyEdit":
 		var request lsp.ApplyWorkspaceEditParams
 		if err := json.Unmarshal(params, &request); err != nil {

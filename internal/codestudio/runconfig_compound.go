@@ -11,6 +11,9 @@ import (
 // composeReadyTimeout bounds the wait for containers before tasks and services start.
 const composeReadyTimeout = 3 * time.Minute
 
+// compoundPortTimeout bounds the wait for a member's Port before the members after it start.
+const compoundPortTimeout = 90 * time.Second
+
 // composeMember is a `docker compose up` member whose readiness gates the rest of the compound.
 type composeMember struct {
 	id       string
@@ -25,7 +28,8 @@ type composeMember struct {
 //  3. its tasks (PreRun: migrations, seed data…), one after the other;
 //  4. its other members (the services).
 //
-// Without Compose members and tasks every member starts at once, as before.
+// Without Compose members and tasks the members start in order; one with a Port holds back the following ones
+// until that port accepts connections (a frontend listed after its backend).
 func (s *Service) startCompound(session Session, config RunConfiguration, secrets map[string]string) (Execution, error) {
 	if err := s.validateCompound(session, config); err != nil {
 		return Execution{}, err
@@ -36,6 +40,9 @@ func (s *Service) startCompound(session Session, config RunConfiguration, secret
 	for _, id := range config.Compound {
 		member, _ := s.runConfigs.Get(session.ID, id)
 		step := run.Step{Name: member.Name, Start: func() (Execution, error) { return s.StartConfiguredRun(string(session.ID), id, secrets) }}
+		if port := member.Port; port > 0 && port <= 65535 {
+			step.Ready = func(alive func() bool) error { return run.WaitPort(port, compoundPortTimeout, alive) }
+		}
 		if file, services, ok := s.composeUpTarget(session, member); ok {
 			composes = append(composes, composeMember{id: id, name: member.Name, file: file, services: services})
 			composeSteps = append(composeSteps, step)

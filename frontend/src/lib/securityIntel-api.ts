@@ -216,7 +216,7 @@ export interface SecurityExportFormat {
   extension: string
 }
 
-export type SecurityExportFormatId = 'json' | 'sarif' | 'html' | 'cyclonedx' | 'spdx'
+export type SecurityExportFormatId = 'json' | 'sarif' | 'html' | 'cyclonedx' | 'spdx' | 'vex'
 
 /** Riga d'impatto di un advisory nell'anteprima di un aggiornamento. */
 export interface SecurityAdvisoryImpact {

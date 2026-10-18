@@ -1,13 +1,15 @@
-import { useEffect } from 'react'
+import { useDeferredValue, useEffect, useMemo } from 'react'
 import { ideLanguageForEditor, languageServerEditorLanguages } from '@/components/ide/languages'
 import { requestDocumentSymbols, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
-import type { GoIDEEditorDocument } from '@/stores/codeStudio'
+import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
+import { javaOutline } from '@/components/ide/languages/java/javaLocalOutline'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { serverEntry, useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { currentCodeStudioDocumentVersion, flushCodeStudioDocument } from './codeStudioLspSync'
 
 const REFRESH_DEBOUNCE_MS = 400
 const EMPTY: GoIDESymbolNode[] = []
+const symbolBuffers = new WeakMap<GoIDESymbolNode[], string>()
 
 /** Stato del server che serve il documento, indipendente dagli altri linguaggi del workspace. */
 export function useCodeStudioSymbolServer(sessionId: string, editorLanguage: string) {
@@ -35,23 +37,46 @@ export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | nul
   useEffect(() => {
     if (!documentId || !hasSymbols || !lspReady) return
     let cancel: (() => void) | null = null
+    let disposed = false
     const timer = window.setTimeout(() => {
       void flushCodeStudioDocument(documentId).then(() => {
+        if (disposed) return
         const request = requestDocumentSymbols(sessionId, documentId)
         cancel = () => { void request.cancel() }
         request.then((result) => {
+          if (disposed) return
+          const latest = useCodeStudioStore.getState().documents.find(item => item.document.id === documentId && item.document.sessionId === sessionId)
+          if (!latest || latest.buffer !== document?.buffer) return
           const current = currentCodeStudioDocumentVersion(documentId)
           if (current !== null && current !== result.version && !document?.document.readOnly) return
+          symbolBuffers.set(result.symbols, latest.buffer)
           useCodeStudioLspStore.setState((state) => ({ symbols: { ...state.symbols, [documentId]: result.symbols } }))
         }).catch(() => undefined)
-      })
+      }).catch(() => undefined)
     }, REFRESH_DEBOUNCE_MS)
-    return () => { window.clearTimeout(timer); cancel?.() }
+    return () => { disposed = true; window.clearTimeout(timer); cancel?.() }
   }, [document?.buffer, documentId, hasSymbols, lspReady, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+/** Same snapshot for Structure and breadcrumbs; local syntax remains available during JDT import. */
+export function useCodeStudioSymbolSnapshot(documentId: string | null, fallbackDocument?: GoIDEEditorDocument | null) {
+  const storedDocument = useCodeStudioStore(state => state.documents.find(item => item.document.id === documentId))
+  const document = fallbackDocument ?? storedDocument
+  const server = useCodeStudioSymbolServer(document?.document.sessionId ?? '', document?.document.language ?? '')
+  const symbols = useCodeStudioLspStore(state => documentId ? state.symbols[documentId] : undefined)
+  const buffer = document?.buffer ?? ''
+  const java = document?.document.language === 'java'
+  const input = useMemo(() => ({ id: documentId, buffer }), [documentId, buffer])
+  const deferred = useDeferredValue(input)
+  const text = deferred.id === documentId ? deferred.buffer : buffer
+  const pending = text !== buffer
+  return useMemo(() => java
+    ? { ...javaOutline(text, pending ? 'starting' : server.state, symbols, symbols ? symbolBuffers.get(symbols) : undefined), pending }
+    : { symbols: symbols ?? EMPTY, source: 'server' as const, limited: false, pending: false }, [text, pending, java, server.state, symbols])
+}
+
 export function useCodeStudioSymbolsFor(documentId: string | null): GoIDESymbolNode[] {
-  return useCodeStudioLspStore((state) => (documentId ? state.symbols[documentId] ?? EMPTY : EMPTY))
+  return useCodeStudioSymbolSnapshot(documentId).symbols
 }
 
 /** Catena dei simboli che contengono la posizione, dal più esterno al più interno. */
@@ -84,11 +109,11 @@ export function symbolSiblings(symbols: GoIDESymbolNode[], chain: GoIDESymbolNod
 
 /** SymbolKind LSP usati da gopls. */
 export const SYMBOL_KIND = {
-  class: 5, method: 6, property: 7, field: 8, constructor: 9, interface: 11, function: 12,
+  class: 5, enum: 10, method: 6, property: 7, field: 8, constructor: 9, interface: 11, function: 12,
   variable: 13, constant: 14, struct: 23, typeParameter: 26,
 } as const
 
-const TYPE_KINDS = new Set<number>([SYMBOL_KIND.class, SYMBOL_KIND.interface, SYMBOL_KIND.struct, SYMBOL_KIND.typeParameter])
+const TYPE_KINDS = new Set<number>([SYMBOL_KIND.class, SYMBOL_KIND.enum, SYMBOL_KIND.interface, SYMBOL_KIND.struct, SYMBOL_KIND.typeParameter])
 const FUNCTION_KINDS = new Set<number>([SYMBOL_KIND.function, SYMBOL_KIND.constructor])
 const METHOD_NAME = /^\(\*?([A-Za-z_]\w*)(?:\[[^\]]*\])?\)\.([A-Za-z_]\w*)$/
 
