@@ -3,12 +3,8 @@ package codestudio
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -17,241 +13,35 @@ import (
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/netpolicy"
 	"adomnia/internal/procutil"
+	"adomnia/internal/securityintel/govuln"
 )
 
-// Livelli di raggiungibilità di govulncheck: il codice del progetto chiama il simbolo vulnerabile,
-// importa solo il package, oppure il modulo è soltanto nel build.
+// Il modello e il parser dello stream govulncheck vivono in internal/securityintel/govuln:
+// lo usano sia il pannello vulnerabilità di Code Studio sia l'adapter Go del Security
+// Engine. Qui restano i nomi pubblici già esposti ai binding Wails e la parte che
+// dipende dalla sessione: risoluzione dei percorsi, grafo dei moduli, avvio del tool.
+
+// Livelli di raggiungibilità di govulncheck.
 const (
-	VulnLevelCalled   = "called"
-	VulnLevelImported = "imported"
-	VulnLevelRequired = "required"
+	VulnLevelCalled   = govuln.LevelCalled
+	VulnLevelImported = govuln.LevelImported
+	VulnLevelRequired = govuln.LevelRequired
 
-	maxVulnCallPaths   = 5
-	maxVulnFrames      = 40
-	vulnAdvisoryURL    = "https://pkg.go.dev/vuln/"
-	stdlibModulePath   = "stdlib"
-	toolchainModuleVer = "toolchain"
+	stdlibModulePath   = govuln.StdlibModulePath
+	toolchainModuleVer = govuln.ToolchainModuleVer
 )
 
-// VulnFrame è un passo di un percorso di chiamata: dal codice del progetto al simbolo vulnerabile.
-type VulnFrame struct {
-	Module    string `json:"module,omitempty"`
-	Version   string `json:"version,omitempty"`
-	Package   string `json:"package,omitempty"`
-	Function  string `json:"function,omitempty"`
-	Receiver  string `json:"receiver,omitempty"`
-	File      string `json:"file,omitempty"`
-	Relative  string `json:"relative,omitempty"`
-	Line      int    `json:"line,omitempty"`
-	Column    int    `json:"column,omitempty"`
-	InProject bool   `json:"inProject"`
-}
-
-// VulnFinding riassume un advisory OSV per il modulo analizzato.
-type VulnFinding struct {
-	ID           string   `json:"id"`
-	Aliases      []string `json:"aliases,omitempty"`
-	Summary      string   `json:"summary,omitempty"`
-	Details      string   `json:"details,omitempty"`
-	Published    string   `json:"published,omitempty"`
-	Modified     string   `json:"modified,omitempty"`
-	URL          string   `json:"url"`
-	References   []string `json:"references,omitempty"`
-	CVSS         []string `json:"cvss,omitempty"`
-	Module       string   `json:"module"`
-	FoundVersion string   `json:"foundVersion,omitempty"`
-	FixedVersion string   `json:"fixedVersion,omitempty"`
-	Level        string   `json:"level"`
-	Packages     []string `json:"packages,omitempty"`
-	Symbols      []string `json:"symbols,omitempty"`
-	// CallPaths partono dal codice del progetto (primo elemento) e arrivano al simbolo vulnerabile (ultimo).
-	CallPaths [][]VulnFrame `json:"callPaths,omitempty"`
-	// DependencyPath è la catena di moduli dal modulo principale a quello vulnerabile (go mod graph).
-	DependencyPath []string `json:"dependencyPath,omitempty"`
-	// GoModVersion è la versione richiesta nel go.mod del progetto, se il modulo è un requirement diretto o indiretto.
-	GoModVersion string `json:"goModVersion,omitempty"`
-}
-
-// VulnReport è il risultato di una scansione govulncheck.
-type VulnReport struct {
-	ModulePath      string        `json:"modulePath"`
-	ModuleDirectory string        `json:"moduleDirectory"`
-	ScannedAt       string        `json:"scannedAt"`
-	ScannerVersion  string        `json:"scannerVersion,omitempty"`
-	DatabaseUpdated string        `json:"databaseUpdated,omitempty"`
-	GoVersion       string        `json:"goVersion,omitempty"`
-	Findings        []VulnFinding `json:"findings"`
-}
-
-// Messaggi dello stream JSON di govulncheck (protocollo v1): un oggetto per riga, uno solo dei campi valorizzato.
-type govulnMessage struct {
-	Config *struct {
-		ScannerVersion string `json:"scanner_version"`
-		DB             string `json:"db"`
-		DBLastModified string `json:"db_last_modified"`
-		GoVersion      string `json:"go_version"`
-	} `json:"config"`
-	OSV     *govulnOSV     `json:"osv"`
-	Finding *govulnFinding `json:"finding"`
-}
-
-type govulnOSV struct {
-	ID        string   `json:"id"`
-	Aliases   []string `json:"aliases"`
-	Summary   string   `json:"summary"`
-	Details   string   `json:"details"`
-	Published string   `json:"published"`
-	Modified  string   `json:"modified"`
-	Severity  []struct {
-		Type  string `json:"type"`
-		Score string `json:"score"`
-	} `json:"severity"`
-	References []struct {
-		Type string `json:"type"`
-		URL  string `json:"url"`
-	} `json:"references"`
-	DatabaseSpecific struct {
-		URL string `json:"url"`
-	} `json:"database_specific"`
-}
-
-type govulnFinding struct {
-	OSV          string        `json:"osv"`
-	FixedVersion string        `json:"fixed_version"`
-	Trace        []govulnFrame `json:"trace"`
-}
-
-type govulnFrame struct {
-	Module   string `json:"module"`
-	Version  string `json:"version"`
-	Package  string `json:"package"`
-	Function string `json:"function"`
-	Receiver string `json:"receiver"`
-	Position *struct {
-		Filename string `json:"filename"`
-		Line     int    `json:"line"`
-		Column   int    `json:"column"`
-	} `json:"position"`
-}
+// VulnFrame, VulnFinding e VulnReport sono alias del modello condiviso: i nomi e i tag
+// JSON esposti ai binding Wails restano identici.
+type (
+	VulnFrame   = govuln.Frame
+	VulnFinding = govuln.Finding
+	VulnReport  = govuln.Report
+)
 
 // parseGovulncheckStream legge lo stream JSON di govulncheck e aggrega i finding per advisory.
 func parseGovulncheckStream(output []byte) (VulnReport, error) {
-	report := VulnReport{Findings: []VulnFinding{}}
-	advisories := map[string]govulnOSV{}
-	byID := map[string]*VulnFinding{}
-	order := []string{}
-	decoder := json.NewDecoder(bytes.NewReader(output))
-	parsed := 0
-	for {
-		var message govulnMessage
-		err := decoder.Decode(&message)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			if parsed == 0 {
-				return VulnReport{}, fmt.Errorf("unrecognized govulncheck output: %w", err)
-			}
-			break // output troncato: si tiene quanto letto
-		}
-		parsed++
-		switch {
-		case message.Config != nil:
-			report.ScannerVersion = message.Config.ScannerVersion
-			report.DatabaseUpdated = message.Config.DBLastModified
-			report.GoVersion = message.Config.GoVersion
-		case message.OSV != nil:
-			advisories[message.OSV.ID] = *message.OSV
-		case message.Finding != nil:
-			finding := byID[message.Finding.OSV]
-			if finding == nil {
-				finding = &VulnFinding{ID: message.Finding.OSV, Level: VulnLevelRequired}
-				byID[finding.ID] = finding
-				order = append(order, finding.ID)
-			}
-			mergeVulnFinding(finding, *message.Finding)
-		}
-	}
-	for _, id := range order {
-		finding := byID[id]
-		applyAdvisory(finding, advisories[id])
-		report.Findings = append(report.Findings, *finding)
-	}
-	sortVulnFindings(report.Findings)
-	return report, nil
-}
-
-func mergeVulnFinding(target *VulnFinding, source govulnFinding) {
-	if source.FixedVersion != "" {
-		target.FixedVersion = source.FixedVersion
-	}
-	if len(source.Trace) == 0 {
-		return
-	}
-	vulnerable := source.Trace[0]
-	if target.Module == "" {
-		target.Module = vulnerable.Module
-		target.FoundVersion = vulnerable.Version
-	}
-	level := vulnLevelOf(vulnerable)
-	if vulnLevelRank(level) > vulnLevelRank(target.Level) {
-		target.Level = level
-	}
-	target.Packages = appendDistinct(target.Packages, vulnerable.Package)
-	if vulnerable.Function != "" {
-		target.Symbols = appendDistinct(target.Symbols, qualifiedSymbol(vulnerable))
-	}
-	if level != VulnLevelCalled || len(target.CallPaths) >= maxVulnCallPaths {
-		return
-	}
-	path := make([]VulnFrame, 0, len(source.Trace))
-	// govulncheck ordina la traccia dal simbolo vulnerabile verso il codice del progetto: la si gira.
-	for index := len(source.Trace) - 1; index >= 0 && len(path) < maxVulnFrames; index-- {
-		path = append(path, vulnFrameOf(source.Trace[index]))
-	}
-	if !containsCallPath(target.CallPaths, path) {
-		target.CallPaths = append(target.CallPaths, path)
-	}
-}
-
-func vulnLevelOf(frame govulnFrame) string {
-	switch {
-	case frame.Function != "":
-		return VulnLevelCalled
-	case frame.Package != "":
-		return VulnLevelImported
-	default:
-		return VulnLevelRequired
-	}
-}
-
-func vulnLevelRank(level string) int {
-	switch level {
-	case VulnLevelCalled:
-		return 3
-	case VulnLevelImported:
-		return 2
-	default:
-		return 1
-	}
-}
-
-func qualifiedSymbol(frame govulnFrame) string {
-	if frame.Receiver != "" {
-		return strings.TrimPrefix(frame.Receiver, "*") + "." + frame.Function
-	}
-	return frame.Function
-}
-
-func vulnFrameOf(frame govulnFrame) VulnFrame {
-	result := VulnFrame{Module: frame.Module, Version: frame.Version, Package: frame.Package, Function: frame.Function, Receiver: frame.Receiver}
-	if frame.Position != nil {
-		// govulncheck scrive il file relativo alla radice del suo modulo: si risolve dopo (resolveVulnFrames).
-		result.File = filepath.ToSlash(frame.Position.Filename)
-		result.Line = frame.Position.Line
-		result.Column = frame.Position.Column
-	}
-	return result
+	return govuln.ParseStream(output)
 }
 
 // vulnSourceRoots dice dove stanno i sorgenti: il modulo analizzato, la cache dei moduli e GOROOT.
@@ -288,7 +78,8 @@ func resolveVulnFrame(frame *VulnFrame, roots vulnSourceRoots) {
 		file = filepath.Join(base, file)
 	}
 	frame.File = file
-	// Solo il modulo analizzato è "codice del progetto": una dipendenza resta tale anche se vendorizzata nel repository.
+	// Solo il modulo analizzato è "codice del progetto": una dipendenza resta tale
+	// anche se vendorizzata nel repository.
 	if roots.ProjectRoot == "" || frame.Module != roots.ModulePath {
 		return
 	}
@@ -322,72 +113,9 @@ func vulnFrameBase(frame VulnFrame, roots vulnSourceRoots) string {
 	return ""
 }
 
-func containsCallPath(paths [][]VulnFrame, candidate []VulnFrame) bool {
-	for _, path := range paths {
-		if len(path) != len(candidate) {
-			continue
-		}
-		same := true
-		for index := range path {
-			if path[index].Function != candidate[index].Function || path[index].Package != candidate[index].Package || path[index].Line != candidate[index].Line {
-				same = false
-				break
-			}
-		}
-		if same {
-			return true
-		}
-	}
-	return false
-}
-
-func applyAdvisory(finding *VulnFinding, advisory govulnOSV) {
-	finding.Aliases = advisory.Aliases
-	finding.Summary = advisory.Summary
-	finding.Details = advisory.Details
-	finding.Published = advisory.Published
-	finding.Modified = advisory.Modified
-	finding.URL = vulnAdvisoryURL + finding.ID
-	if advisory.DatabaseSpecific.URL != "" {
-		finding.URL = advisory.DatabaseSpecific.URL
-	}
-	for _, severity := range advisory.Severity {
-		if severity.Score != "" {
-			finding.CVSS = append(finding.CVSS, severity.Score)
-		}
-	}
-	for _, reference := range advisory.References {
-		if reference.URL != "" {
-			finding.References = appendDistinct(finding.References, reference.URL)
-		}
-	}
-}
-
-// sortVulnFindings mette prima ciò che il codice chiama davvero, poi per modulo e ID.
-func sortVulnFindings(findings []VulnFinding) {
-	sort.SliceStable(findings, func(left, right int) bool {
-		a, b := findings[left], findings[right]
-		if vulnLevelRank(a.Level) != vulnLevelRank(b.Level) {
-			return vulnLevelRank(a.Level) > vulnLevelRank(b.Level)
-		}
-		if a.Module != b.Module {
-			return a.Module < b.Module
-		}
-		return a.ID < b.ID
-	})
-}
-
-// appendDistinct aggiunge value se non vuoto e non già presente.
-func appendDistinct(values []string, value string) []string {
-	if value == "" {
-		return values
-	}
-	return appendUnique(values, value)
-}
-
 // dependencyPathTo trova la catena di moduli più corta dal modulo principale a target nel `go mod graph`.
 func dependencyPathTo(graphOutput, mainModule, target string) []string {
-	if target == "" || target == mainModule || target == stdlibModulePath || target == toolchainModuleVer {
+	if target == "" || target == mainModule || target == govuln.StdlibModulePath || target == govuln.ToolchainModuleVer {
 		return nil
 	}
 	edges := map[string][]string{}

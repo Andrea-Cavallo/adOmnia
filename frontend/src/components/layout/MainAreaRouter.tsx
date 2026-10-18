@@ -17,7 +17,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -130,6 +130,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'database': return { component: <DatabasePanel />, titleKey: 'Database Studio', overflow: true }
     case 'jsonviewer': return { component: <JsonViewerPanel />, titleKey: 'JSON Studio', overflow: true }
     case 'loginspector': return { component: <LogInspectorPanel />, titleKey: 'Log Inspector', overflow: true }
+    case 'security': return { component: <SecurityCenterPanel />, titleKey: 'Security Center', overflow: true }
     case 'xmltools': return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
     case 'welcome': return { component: <WelcomePanel /> }
     case 'vault': return { component: <VaultPanel />, titleKey: 'vault', overflow: true }

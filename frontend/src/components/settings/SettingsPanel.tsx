@@ -412,6 +412,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                     { value: 'browser', label: 'Browser Debug' },
                     { value: 'observe', label: s.general.railOptions.observe },
                     { value: 'secretscanner', label: 'Secret Scanner' },
+                    { value: 'security', label: 'Security Center' },
                   ]}
                   onChange={(v) => updateGeneral({ defaultStartupRail: v })}
                 />

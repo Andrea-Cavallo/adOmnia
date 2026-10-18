@@ -68,6 +68,8 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'powertools', title: 'Power Tools', group: 'Power Tools', keywords: 'encode decode jwt uuid toolbox hash hmac regex yaml pem folder diff', maturity: 'core', railLabel: 'Tool Launcher' },
   { id: 'secretscanner', title: 'Secret Scanner', group: 'Power Tools', keywords: 'credential scan security token api key private key', maturity: 'advanced' },
 
+  { id: 'security', title: 'Security Center', group: 'Security', keywords: 'security vulnerability cve ghsa osv epss kev sbom cyclonedx spdx sarif dependency dependencies maven pom.xml go.mod reachability remediation upgrade', maturity: 'core' },
+
   { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
   { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
@@ -122,6 +124,12 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     groups: [
       { title: 'Focused Tools', items: ['jsonviewer', 'loginspector', 'powertools'].map((id) => ({ id: id as RailItem })) },
       { title: 'Debugging', items: [{ id: 'browser' }] },
+    ],
+  },
+  {
+    key: 'security', label: 'Security', code: 'SEC',
+    groups: [
+      { title: 'Security', items: ['security'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {

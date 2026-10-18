@@ -986,6 +986,8 @@ export const ITALIAN_NAVIGATION_MESSAGES: Record<string, string> = {
   'XML Tools': 'Strumenti XML',
   'Tool Launcher': 'Avvio strumenti',
   'Secret Scanner': 'Scanner segreti',
+  'Security Center': 'Centro sicurezza',
+  'Security': 'Sicurezza',
   'Markdown Notes': 'Note Markdown',
   'Mermaid Diagrams': 'Diagrammi Mermaid',
   'LaTeX Studio': 'Studio LaTeX',

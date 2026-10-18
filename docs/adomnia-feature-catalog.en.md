@@ -29,6 +29,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
 | J | [Code Studio (IDE)](#j-code-studio-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~39 |
+| K | [Security Intelligence](#k-security-intelligence) | CVE Intelligence Engine, Risk-based prioritisation, Reachability, Maven & Go Analyzers, Remediation, SBOM & Export, Security Center | ~13 |
 
 ---
 
@@ -1101,6 +1102,32 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 
 ---
 
+## K. SECURITY INTELLIGENCE
+
+One security engine with per-ecosystem adapters. CVE matching, normalisation, risk
+modelling and remediation live once in `internal/securityintel`; Maven and Go are
+adapters. Backend: `internal/securityintel` (core), `…/maven`, `…/gomod`, `…/govuln`.
+Wails service `SecurityIntel` (`securityintel_bindings.go`). UI: **Security Center**
+rail panel.
+
+| # | Feature | Description |
+|---|-------------|-------------|
+| K1.1 | **CVE Intelligence Engine** | Automatic scan of `pom.xml`, `go.mod` and `go.work`. Direct and transitive dependencies, actually resolved (Maven effective graph / Go minimal version selection). Advisories from OSV (batch API), GitHub Advisory Database and the Go Vulnerability Database, deduplicated by alias. |
+| K1.2 | **Severity and exploitation signals kept separate** | CVSS 3.1 and CVSS 4.0 base scores. When the advisory source (NVD, GHSA) publishes a score it stays authoritative; when it does not, the score is computed from the vector and labelled `computed` (CVSS 3.1 formula, CVSS 4.0 macrovector algorithm from the FIRST specification, verified against the official FIRST validation reference vectors). FIRST EPSS (30-day exploitation probability) and the CISA KEV catalog add signals no advisory source has. EPSS is a probability, not a severity: the signals are shown separately and combined only through explicit prioritisation rules. |
+| K1.3 | **Risk-based prioritisation** | Every finding carries a priority (P0-P3) and the list of the rules that produced it. Signals: CVSS, EPSS, CISA KEV, reachability, component exposure, fix availability. A KEV finding is never demoted by test/build-only exposure. No fix published changes the action, never the risk. |
+| K1.4 | **Reachability analysis** | Go: `govulncheck` symbol-level analysis with the call paths from project code to the vulnerable symbol, stdlib and toolchain included. Maven: bytecode-level analysis of the compiled classes (`target/classes/**/*.class` and the JARs in `target/`), with the distinction Java requires: *confirmed* only when a real invocation instruction targets the vulnerable symbol, *potentially reachable* when the vulnerable class/method is referenced without a provable call (reflection, dynamic class loading, frameworks, OSGi) or the vulnerable library's classes are used, *inconclusive* when nothing is found but reachability cannot be excluded. Absence of a call path is an analysis result, never a safety guarantee, and an inconclusive analysis never becomes "not reachable". |
+| K1.5 | **Dependency graph** | Involved-dependency path from the manifest root to the vulnerable component, with origin (declared, inherited from parent/BOM, managed, transitive, plugin, toolchain) and Maven scope / Go `replace` shown. |
+| K1.6 | **Maven Security Analyzer** | Effective dependency scan (parent POM chain, `dependencyManagement`, imported BOMs, property interpolation), scope analysis, plugin dependency scanning, optional `mvn dependency:tree` for the real resolved graph. Falls back to local analysis with explicit warnings when Maven is unavailable or the scan runs offline. |
+| K1.7 | **Go Module Security Analyzer** | `go.mod` / `go.work` resolution, `replace` and `exclude` inspection, stdlib and toolchain advisories, build-context awareness (build tags, GOOS/GOARCH) for reachability. |
+| K1.8 | **Explain My Vulnerability** | Clicking a finding shows the responsible dependency, its transitive origin, call paths when available, severity, exploitability, exposure and the possible fix - each signal with its own meaning. The same inspector carries the Security Impact Before Update preview: which advisories the upgrade closes, which remain open and which new ones the target version brings in, compared per component by advisory identity. |
+| K1.9 | **Remediation** | Upgrade suggestion with the fixed version, compatibility class (patch / minor / major), what the same change also closes and what the upgrade brings in. One-click Safe Remediation prepares the manifest change, shows the exact diff, then runs dependency resolution, compile, tests and a rescan compared against the impact preview - every step with its own state and output. The change stays provisional with a backup and becomes definitive only after user review (or is discarded and restored); any step that launches an external tool requires explicit authorization and is otherwise reported as skipped. Fixes that cannot be applied automatically (no published fix, version managed by a parent POM/BOM, transitive dependency) are marked blocked with the reason instead of proposing a command that would fail. |
+| K1.10 | **Accept the risk with a reason** | Suppressions require a written reason and an expiry, and are stored versionable in `.adomnia/dependency-security.json`. An expired suppression reactivates the finding. |
+| K1.11 | **Privacy by design and offline** | Only package coordinates leave the machine, never sources or file names. Local advisory database for offline scans, corporate mirror endpoints for every source, network policy and Offline mode respected. |
+| K1.12 | **Export and SBOM** | JSON, SARIF 2.1.0 (code-review importable), standalone HTML report, CycloneDX 1.5 and SPDX 2.3 SBOMs with the purl of each component. |
+| K1.13 | **Security Center dashboard** | Workspace-wide view across ecosystems: findings by priority, exploited-in-the-wild and reachable counters, per-ecosystem cards (Java/Maven, Go Modules), filters by band and ecosystem, data-source freshness. |
+
+---
+
 ## SUMMARY
 
 | Category | Sections | Features |
@@ -1114,8 +1141,9 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
 | **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
-| **J — Code Studio (IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
-| **Total** | 44 sections | **~573** |
+| **J - Code Studio (IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
+| **K - Security Intelligence** | CVE Intelligence Engine, Risk-based prioritisation, Reachability, Maven & Go Analyzers, Remediation, SBOM & Export, Security Center | 13 |
+| **Total** | 45 sections | **~586** |
 
 
 ### Hub dot-matrix arcade

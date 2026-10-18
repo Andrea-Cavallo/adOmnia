@@ -166,6 +166,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
       permissions: [],
 
       ensure: async () => {
+        set({ error: null })
         if (!subscribed) {
           subscribed = true
           api.subscribe({
@@ -177,7 +178,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
         }
         try {
           const [status, settings] = await Promise.all([api.status(), api.settings()])
-          set({ status, settings })
+          set({ status, settings, error: null })
         } catch (error) {
           set({ error: messageOf(error) })
         }

@@ -14,7 +14,7 @@ import { canDetachPanel } from '@/lib/panel-windows-api'
 import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
 import './Rail.css'
 import {
-  Send, LayoutList, Shield, Server, Radio, Bug, Container, Network,
+  Send, LayoutList, Shield, ShieldAlert, Server, Radio, Bug, Container, Network,
   Wrench, FileText, FileCode, FileBox, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
@@ -46,6 +46,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   data: Database,
   tools: Wrench,
   docs: FileText,
+  security: ShieldAlert,
   workspace: GitBranch,
   development: CodeXml,
 }
@@ -76,6 +77,7 @@ export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   xmltools: FileCode,
   powertools: Wrench,
   secretscanner: Shield,
+  security: ShieldAlert,
   latex: FileCode,
   pdfeditor: FileText,
   collab: Users,

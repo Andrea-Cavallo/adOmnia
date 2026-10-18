@@ -79,6 +79,7 @@ func main() {
 	mcpServerGenerator := NewMCPServerGenerator()
 	collectionFS := NewCollectionFS()
 	oasLint := NewOASLint()
+	securityIntel := NewSecurityIntel()
 	goIDE := NewGoIDE()
 	devContext := NewDevContext(goIDE)
 	goIDE.service.SetExtensionManager(pluginManager.PluginManager)
@@ -112,6 +113,7 @@ func main() {
 			application.NewService(mcpServerGenerator),
 			application.NewService(collectionFS),
 			application.NewService(oasLint),
+			application.NewService(securityIntel),
 			application.NewService(goIDE),
 			application.NewService(devContext),
 			application.NewService(devSession),

@@ -47,7 +47,7 @@ import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
+import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -1270,6 +1270,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
     case 'jsonviewer':  return { component: <JsonViewerPanel />,      titleKey: 'JSON Studio', overflow: true }
     case 'loginspector': return { component: <LogInspectorPanel />,   titleKey: 'Log Inspector', overflow: true }
+    case 'security': return { component: <SecurityCenterPanel />,   titleKey: 'Security Center', overflow: true }
     case 'xmltools':    return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
     case 'welcome':     return { component: <WelcomePanel /> }
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }

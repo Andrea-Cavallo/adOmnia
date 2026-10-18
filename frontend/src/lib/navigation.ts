@@ -28,6 +28,7 @@ export const RAIL_ITEMS = [
   'har',
   'observe',
   'secretscanner',
+  'security',
   'settings',
   'welcome',
   'collab',

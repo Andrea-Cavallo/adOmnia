@@ -36,8 +36,17 @@ export function CodeStudioOpenCodeDialog() {
     if (open) { void useOpenCodeStore.getState().ensure(); setError(null); setChecked(false); setModels([]) }
   }, [open])
   useEffect(() => { if (open && settings) setDraft({ ...settings, env: { ...settings.env } }) }, [open, settings])
-  if (!open || !draft) return null
+  if (!open) return null
   const close = () => useOpenCodeStore.getState().setDialogOpen(false)
+  // Opening settings must not depend on a successful backend call. Otherwise
+  // the very error needed to diagnose an unavailable service is hidden too.
+  if (!settings || !draft) return <CodeStudioModal open title="OpenCode + Ollama" onClose={close}
+    footer={<CodeStudioButton onClick={close}>Close</CodeStudioButton>}>
+    {storeError
+      ? <><CodeStudioAlert>{storeError}</CodeStudioAlert><p className="text-xs text-text-2">OpenCode settings could not be loaded. If adOmnia was updated while running, restart it to load the current backend.</p></>
+      : <p role="status" className="text-xs text-text-2">Loading OpenCode settings…</p>}
+    <CodeStudioButton onClick={() => void useOpenCodeStore.getState().ensure()}>Retry</CodeStudioButton>
+  </CodeStudioModal>
   const env = draft.env ?? {}
   const endpoint = env.ADOMNIA_OLLAMA_URL || 'http://127.0.0.1:11434'
   const model = env.ADOMNIA_OLLAMA_MODEL || ''

@@ -28,6 +28,7 @@ const T = {
       settings: 'Settings',
       observe: 'Observability',
       secretscanner: 'Secret Scanner',
+      security: 'Security Center',
       codestudio: 'Code Studio',
     },
     settings: {
@@ -316,6 +317,7 @@ const T = {
       settings: 'Impostazioni',
       observe: 'Osservabilità',
       secretscanner: 'Scanner Segreti',
+      security: 'Centro Sicurezza',
       codestudio: 'Code Studio',
     },
     settings: {
