@@ -3,6 +3,7 @@ package codestudio
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"adomnia/internal/languages/java"
@@ -11,11 +12,15 @@ import (
 // pomVersionsTimeout è il tempo massimo di una ricerca delle versioni su Maven Central.
 const pomVersionsTimeout = 30 * time.Second
 
-// PomDependencies elenca le coordinate di un pom.xml con la posizione di riga e colonna delle versioni.
+// PomDependencies elenca le coordinate di un pom.xml o di un build.gradle(.kts) con la posizione di riga e colonna delle versioni.
 // Lavora sul testo dell'editor (anche non salvato): niente file, niente rete.
 func (s *Service) PomDependencies(sessionID, content string) ([]java.PomDependency, error) {
 	if _, err := s.session(sessionID); err != nil {
 		return nil, err
+	}
+	// Un pom è XML; un build.gradle(.kts) no: lo stesso metodo serve l'editor di entrambi.
+	if !strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(content, string(rune(0xFEFF)))), "<") {
+		return java.ParseGradleDependencies([]byte(content))
 	}
 	return java.ParsePomDependencies([]byte(content))
 }

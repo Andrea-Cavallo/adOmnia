@@ -456,6 +456,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
   }
   if (id === 'java.selectJdk') return true
+  if (id === 'java.dependencyTree') return context.authorized ? true : NOT_TRUSTED
   if (id.startsWith('java.')) {
     if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
     return context.hasEditor ? true : 'Open a Java file first'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { javaCounterpartPaths, javaGoalSuggestion, javaNameError, javaPackageOfDirectory, javaSourceTemplate, javaTargetAtLine } from './javaCommands'
+import { javaCounterpartPaths, javaGoalSuggestion, javaNameError, javaPackageOfDirectory, javaSourceTemplate, javaTargetAtLine, mavenModuleFor } from './javaCommands'
 
 const suggestion = (workingDirectory: string, programArguments: string[]) => ({ language: 'java', configuration: { kind: 'command', target: 'mvn', workingDirectory, programArguments } })
 
@@ -46,5 +46,22 @@ describe('new Java entries', () => {
     expect(javaPackageOfDirectory('src/main/java')).toBe('')
     expect(javaSourceTemplate('class', 'A', 'com.acme')).toBe('package com.acme;\n\npublic class A {\n}\n')
     expect(javaSourceTemplate('record', 'P', '')).toBe('public record P() {\n}\n')
+  })
+})
+
+describe('mavenModuleFor', () => {
+  const units = [
+    { language: 'java', kind: 'maven', root: 'C:/p' },
+    { language: 'java', kind: 'maven', root: 'C:\\p\\services\\api' },
+    { language: 'java', kind: 'gradle', root: 'C:/p/tools' },
+    { language: 'go', kind: 'module', root: 'C:/p/go' },
+  ]
+  it('picks the innermost Maven module that contains the file', () => {
+    expect(mavenModuleFor(units, 'C:/p', 'services/api/src/main/java/A.java')).toBe('services/api')
+    expect(mavenModuleFor(units, 'C:/p', 'other/B.java')).toBe('')
+  })
+  it('falls back to the first Maven module and returns null without one', () => {
+    expect(mavenModuleFor(units, 'C:/p', '')).toBe('')
+    expect(mavenModuleFor([units[2], units[3]], 'C:/p', 'x')).toBeNull()
   })
 })

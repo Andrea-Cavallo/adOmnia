@@ -347,8 +347,14 @@ func runUpgradeStep(ctx context.Context, engine *Engine, state *upgradePlanState
 		return fmt.Sprintf("change written to %s (provisional). The previous content is kept at %s until you confirm.",
 			filepath.ToSlash(state.plan.Manifest), filepath.ToSlash(backup)), StepOK
 	case StepResolve:
+		// La risoluzione delle dipendenze può richiedere strumenti esterni (go, mvn). Senza
+		// autorizzazione esplicita il passo non è mai "ok" per supposizione: se la verifica non
+		// è possibile resta "skipped" e lo dice, come per ogni altro passo che avvia processi.
 		resolution, err := state.adapter.Resolve(ctx, state.plan.Target, options)
 		if err != nil {
+			if !options.AllowProcesses {
+				return "external tools are not authorized for this project: dependency resolution is skipped, not executed", StepSkipped
+			}
 			return firstMessage(err.Error()), StepFailed
 		}
 		for _, resolved := range resolution.Components {

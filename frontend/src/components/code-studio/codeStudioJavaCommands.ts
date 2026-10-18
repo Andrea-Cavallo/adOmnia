@@ -1,13 +1,14 @@
 import { getRunSuggestions } from '@/lib/code-studio-api'
-import { javaCounterpartPaths, javaGoalSuggestion, javaTargetAtLine } from '@/lib/code-studio/javaCommands'
+import { javaCounterpartPaths, javaGoalSuggestion, javaTargetAtLine, mavenModuleFor } from '@/lib/code-studio/javaCommands'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { usePomStore } from '@/stores/codeStudioPom'
 import { studioToast } from '@/stores/codeStudioToast'
-import { isPomFile } from '@/lib/code-studio/pomInsights'
+import { isBuildFile, isPomFile } from '@/lib/code-studio/pomInsights'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { openJavaJdkDialog } from './CodeStudioJavaJdk'
+import { openJavaDependencyTree } from './CodeStudioJavaTree'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
@@ -62,6 +63,13 @@ export function runJavaCommand(
   switch (id) {
     case 'java.springBootRun': void runGoal(sessionId, activePath, SPRING_GOALS); return true
     case 'java.selectJdk': openJavaJdkDialog(sessionId); return true
+    case 'java.dependencyTree': {
+      const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
+      const module = session ? mavenModuleFor(session.project.units ?? [], session.project.realPath, activePath) : null
+      if (module === null) studioToast('The dependency tree needs a Maven module (pom.xml)', 'info')
+      else openJavaDependencyTree(sessionId, module)
+      return true
+    }
     case 'java.optimizeImports': runCodeStudioEditorCommand('code.organizeImports'); return true
     case 'java.generate': runCodeStudioEditorCommand('code.generate'); return true
     case 'java.goToTest': if (document) void openCounterpart(sessionId, document); return true
@@ -77,7 +85,8 @@ export function runJavaCommand(
     }
     case 'java.checkUpdates':
     case 'java.scanVulnerabilities': {
-      if (!document || !isPomFile(activePath)) { studioToast('Open a pom.xml first', 'info'); return true }
+      if (!document || !isBuildFile(activePath)) { studioToast('Open a pom.xml or build.gradle first', 'info'); return true }
+      if (id === 'java.scanVulnerabilities' && !isPomFile(activePath)) { studioToast('Vulnerability scanning works on pom.xml; Gradle scripts only offer version updates for now', 'info'); return true }
       const pom = usePomStore.getState()
       if (id === 'java.checkUpdates') void pom.checkUpdates(document.document.id, sessionId, document.buffer)
       else void pom.scanVulnerabilities(document.document.id, sessionId, document.document.path, activePath)

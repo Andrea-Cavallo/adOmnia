@@ -1614,6 +1614,16 @@ func (g *GoIDE) JavaJDKs(sessionID string) (codestudio.JavaJDKReport, error) {
 	return g.service.JavaJDKs(sessionID)
 }
 
+// JavaDependencyTree è l'albero delle dipendenze Maven di un modulo (mvn dependency:tree): lancia Maven.
+func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, error) {
+	return g.service.JavaDependencyTree(sessionID, module)
+}
+
+// JavaMainClasses elenca le classi lanciabili: JDT LS se pronto, altrimenti la scansione dei sorgenti.
+func (g *GoIDE) JavaMainClasses(sessionID string) ([]java.MainClassInfo, error) {
+	return g.service.JavaMainClasses(sessionID)
+}
+
 // SetJavaJDK sceglie il JDK del progetto (stesso per Run, Debug e Test); "" torna al JDK di sistema.
 func (g *GoIDE) SetJavaJDK(sessionID, home string) error {
 	return g.service.SetJavaJDK(sessionID, home)

@@ -33,6 +33,25 @@ export function javaTargetAtLine(targets: readonly CodeStudioJavaRunTarget[], ki
   return above[above.length - 1] ?? ofKind[0] ?? null
 }
 
+/**
+ * Il modulo Maven (cartella relativa al progetto, "" = radice) da usare per un comando di build: l'unità più
+ * interna che contiene il file attivo, altrimenti la prima. null se il progetto non ha unità Maven.
+ */
+export function mavenModuleFor(units: ReadonlyArray<{ language: string; kind: string; root: string }>, projectRoot: string, activeRelativePath: string): string | null {
+  const base = slash(projectRoot).replace(/\/+$/, '')
+  const relativeRoots = units
+    .filter((unit) => unit.language === 'java' && unit.kind === 'maven')
+    .map((unit) => {
+      const root = slash(unit.root).replace(/\/+$/, '')
+      return root === base ? '' : root.startsWith(`${base}/`) ? root.slice(base.length + 1) : null
+    })
+    .filter((root): root is string => root !== null)
+  if (relativeRoots.length === 0) return null
+  const file = slash(activeRelativePath)
+  const containing = relativeRoots.filter((root) => root === '' || file.startsWith(`${root}/`))
+  return containing.sort((a, b) => b.length - a.length)[0] ?? relativeRoots[0]
+}
+
 /** Percorsi candidati del sorgente collegato: `src/main/java/a/Foo.java` ↔ `src/test/java/a/FooTest.java`. */
 export function javaCounterpartPaths(relativePath: string): string[] {
   const path = slash(relativePath)

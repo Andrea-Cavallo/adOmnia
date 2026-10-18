@@ -1,5 +1,5 @@
 import type { JavaJDKReport } from '../../bindings/adomnia/internal/codestudio/models'
-import type { PomDependency, SpringEndpoint, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { MainClassInfo, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -802,6 +802,16 @@ export async function getJavaJdks(sessionId: string): Promise<JavaJDKReport> {
 /** Sceglie il JDK del progetto (Run, Debug e Test lo usano allo stesso modo); '' torna al JDK di sistema. */
 export async function setJavaJdk(sessionId: string, home: string): Promise<void> {
   return GoIDEBindings.SetJavaJDK(sessionId, home)
+}
+
+/** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */
+export async function getJavaDependencyTree(sessionId: string, module: string): Promise<TreeNode[]> {
+  return GoIDEBindings.JavaDependencyTree(sessionId, module)
+}
+
+/** Classi lanciabili: decise da JDT LS quando è pronto, altrimenti dalla scansione dei sorgenti. */
+export async function getJavaMainClasses(sessionId: string): Promise<MainClassInfo[]> {
+  return GoIDEBindings.JavaMainClasses(sessionId)
 }
 
 /** Endpoint HTTP MVC del progetto (route, metodo, posizione navigabile). */

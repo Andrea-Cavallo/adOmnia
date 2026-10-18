@@ -49,6 +49,37 @@ export class JDK {
 }
 
 /**
+ * MainClassInfo è una classe lanciabile con chi l'ha decisa.
+ */
+export class MainClassInfo {
+    "class": string;
+    "projectName"?: string;
+    "file"?: string;
+    "spring"?: boolean;
+    "source": string;
+
+    /** Creates a new MainClassInfo instance. */
+    constructor($$source: Partial<MainClassInfo> = {}) {
+        if (!("class" in $$source)) {
+            this["class"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MainClassInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MainClassInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MainClassInfo($$parsedSource as Partial<MainClassInfo>);
+    }
+}
+
+/**
  * PomDependency è una coordinata dichiarata in un pom.xml con la posizione esatta della versione, così
  * l'editor può segnare la riga e sostituire solo `<version>` (o la property a cui punta).
  */
@@ -579,6 +610,59 @@ export class SpringValue {
     static createFrom($$source: any = {}): SpringValue {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new SpringValue($$parsedSource as Partial<SpringValue>);
+    }
+}
+
+/**
+ * TreeNode è una riga dell'albero, in ordine di apparizione: Depth 0 è il modulo stesso.
+ */
+export class TreeNode {
+    "depth": number;
+    "groupId": string;
+    "artifactId": string;
+    "version": string;
+    "scope"?: string;
+    "type"?: string;
+    "classifier"?: string;
+    "status": string;
+
+    /**
+     * ConflictWith è la versione che ha vinto sul nodo scartato per conflitto.
+     */
+    "conflictWith"?: string;
+
+    /**
+     * ManagedFrom è la versione dichiarata prima che dependencyManagement la cambiasse.
+     */
+    "managedFrom"?: string;
+
+    /** Creates a new TreeNode instance. */
+    constructor($$source: Partial<TreeNode> = {}) {
+        if (!("depth" in $$source)) {
+            this["depth"] = 0;
+        }
+        if (!("groupId" in $$source)) {
+            this["groupId"] = "";
+        }
+        if (!("artifactId" in $$source)) {
+            this["artifactId"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TreeNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TreeNode {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TreeNode($$parsedSource as Partial<TreeNode>);
     }
 }
 

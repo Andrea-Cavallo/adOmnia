@@ -1,12 +1,12 @@
 import { monaco } from '@/lib/monacoSetup'
-import { dependencyStatuses, isPomFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
+import { dependencyStatuses, isBuildFile, isPomFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
 import { usePomStore, type PomState } from '@/stores/codeStudioPom'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { documentForModel } from './codeStudioLanguageFeatures'
 import { editorModelUri } from './codeStudioModelUri'
 
-const LANGUAGE = 'xml'
+const LANGUAGES = ['xml', 'kotlin'] // pom.xml, build.gradle(.kts): gli altri file di questi linguaggi non hanno lens
 const MARKER_OWNER = 'adomnia-pom'
 const CHECK_COMMAND = 'codeStudio.pomCheckUpdates'
 const SCAN_COMMAND = 'codeStudio.pomScan'
@@ -38,7 +38,7 @@ function modelOf(document: GoIDEEditorDocument): monaco.editor.ITextModel | null
 
 function documentById(documentId: string): GoIDEEditorDocument | null {
   const document = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)
-  return document && isPomFile(document.document.relativePath) ? document : null
+  return document && isBuildFile(document.document.relativePath) ? document : null
 }
 
 /** Gli aggiornamenti proponibili: prima la correzione dei CVE, poi l'ultima dello stesso major, poi l'ultima in assoluto. */
@@ -67,11 +67,11 @@ function summaryLens(documentId: string, state: PomState): string {
   return parts.join(' · ')
 }
 
-function toolbarLenses(documentId: string, state: PomState): monaco.languages.CodeLens[] {
+function toolbarLenses(documentId: string, state: PomState, scannable: boolean): monaco.languages.CodeLens[] {
   const lenses: monaco.languages.CodeLens[] = [
     { range: lensRange(1), command: { id: CHECK_COMMAND, title: state.checkingUpdates ? '… Checking Maven Central' : '↻ Check for updates', tooltip: 'Look up the latest stable versions on Maven Central (only group:artifact leaves your machine)', arguments: [documentId] } },
-    { range: lensRange(1), command: { id: SCAN_COMMAND, title: state.scanning ? '… Scanning' : '⛨ Scan vulnerabilities', tooltip: 'Match the dependencies against OSV (only coordinates leave your machine)', arguments: [documentId] } },
   ]
+  if (scannable) lenses.push({ range: lensRange(1), command: { id: SCAN_COMMAND, title: state.scanning ? '… Scanning' : '⛨ Scan vulnerabilities', tooltip: 'Match the dependencies against OSV (only coordinates leave your machine)', arguments: [documentId] } })
   const summary = summaryLens(documentId, state)
   if (summary) lenses.push({ range: lensRange(1), command: { id: NEXT_PROBLEM_COMMAND, title: summary, tooltip: 'Go to the next problem' } })
   return lenses
@@ -123,7 +123,7 @@ function markersFor(documentId: string): monaco.editor.IMarkerData[] {
 
 function refreshMarkers(): void {
   for (const document of useCodeStudioStore.getState().documents) {
-    if (!isPomFile(document.document.relativePath)) continue
+    if (!isBuildFile(document.document.relativePath)) continue
     const model = modelOf(document)
     if (model) monaco.editor.setModelMarkers(model, MARKER_OWNER, markersFor(document.document.id))
   }
@@ -131,7 +131,7 @@ function refreshMarkers(): void {
 
 function quickFixes(model: monaco.editor.ITextModel, range: monaco.Range): monaco.languages.CodeAction[] {
   const document = documentForModel(model)
-  if (!document || !isPomFile(document.document.relativePath)) return []
+  if (!document || !isBuildFile(document.document.relativePath)) return []
   const actions: monaco.languages.CodeAction[] = []
   for (const status of statusesOf(document.document.id)) {
     if (status.dependency.line < range.startLineNumber || status.dependency.line > range.endLineNumber) continue
@@ -168,19 +168,19 @@ export function registerCodeStudioPom(): void {
     onDidChange: changed.event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
-      if (!document || document.document.readOnly || !isPomFile(document.document.relativePath)) return { lenses: [], dispose: () => undefined }
+      if (!document || document.document.readOnly || !isBuildFile(document.document.relativePath)) return { lenses: [], dispose: () => undefined }
       const documentId = document.document.id
       const text = model.getValue()
       if (parsedContent.get(documentId) !== text) {
         parsedContent.set(documentId, text)
         void usePomStore.getState().refreshDependencies(documentId, document.document.sessionId, text)
       }
-      const lenses = [...toolbarLenses(documentId, stateOf(documentId)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
+      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isPomFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
       return { lenses, dispose: () => undefined }
     },
   }
-  monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
-  monaco.languages.registerCodeActionProvider(LANGUAGE, {
+  monaco.languages.registerCodeLensProvider(LANGUAGES, provider)
+  monaco.languages.registerCodeActionProvider(LANGUAGES, {
     provideCodeActions: (model, range) => ({ actions: quickFixes(model, monaco.Range.lift(range)), dispose: () => undefined }),
   }, { providedCodeActionKinds: ['quickfix'] })
   usePomStore.subscribe((state, previous) => {

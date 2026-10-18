@@ -3,6 +3,7 @@
 
 export {
     JDK,
+    MainClassInfo,
     PomDependency,
     SpringBean,
     SpringDiagnostic,
@@ -13,5 +14,6 @@ export {
     SpringProperty,
     SpringPropertyReference,
     SpringValue,
+    TreeNode,
     VersionInfo
 } from "./models.js";

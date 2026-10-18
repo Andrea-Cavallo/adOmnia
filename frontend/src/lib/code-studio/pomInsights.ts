@@ -85,7 +85,8 @@ export function dependencyStatuses(dependencies: PomDependency[], versions: Vers
 export function versionRequest(dependencies: PomDependency[]): Record<string, string> {
   const request: Record<string, string> = {}
   for (const dependency of dependencies) {
-    if (dependency.resolved) request[`${dependency.groupId}:${dependency.artifactId}`] = dependency.resolved
+    // I plugin Gradle (`….gradle.plugin`) stanno sul Plugin Portal, non su Maven Central.
+    if (dependency.resolved && dependency.section !== 'plugins') request[`${dependency.groupId}:${dependency.artifactId}`] = dependency.resolved
   }
   return request
 }
@@ -99,4 +100,14 @@ export function projectRootOf(absolutePath: string, relativePath: string): strin
 
 export function isPomFile(relativePath: string): boolean {
   return relativePath.replace(/\\/g, '/').split('/').pop() === 'pom.xml'
+}
+
+/** build.gradle / build.gradle.kts: stesse lens e aggiornamenti del pom (le CVE restano del solo pom). */
+export function isGradleFile(relativePath: string): boolean {
+  const name = relativePath.replace(/\\/g, '/').split('/').pop()
+  return name === 'build.gradle' || name === 'build.gradle.kts'
+}
+
+export function isBuildFile(relativePath: string): boolean {
+  return isPomFile(relativePath) || isGradleFile(relativePath)
 }
