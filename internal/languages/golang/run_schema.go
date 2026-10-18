@@ -12,6 +12,10 @@ import (
 // Le opzioni avanzate (GOOS, tag, flag) non esistono per i kind che non le usano.
 func (*Language) RunSchema(kind string) run.FieldSchema {
 	schema := run.FieldSchema{Language: ID, Kind: kind}
+	if kind == "go-tool" {
+		schema.Fields = []run.Field{{Key: "target", Label: "Go command", Type: run.FieldText, Section: run.SectionBasic, Required: true, Help: "Sottocomando di go: generate, vet, tool…"}}
+		return schema
+	}
 	buildKind := kind == "package" || kind == "files" || kind == "run" || kind == "build" || kind == "test"
 	if !buildKind {
 		return schema
@@ -42,6 +46,9 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 
 // ValidateRunConfiguration valida i campi propri di Go: sorgenti .go per il kind files e LanguageOptions.
 func (*Language) ValidateRunConfiguration(config run.Configuration) error {
+	if config.Kind == "go-tool" && !ValidSubcommand(strings.TrimSpace(config.Target)) {
+		return fmt.Errorf("specify the go command (e.g. generate, vet, tool)")
+	}
 	if config.Kind == "files" {
 		if len(config.Files) == 0 {
 			return fmt.Errorf("indica almeno un file Go da eseguire")

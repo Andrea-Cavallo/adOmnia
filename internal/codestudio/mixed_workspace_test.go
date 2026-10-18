@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"adomnia/internal/ide/language"
@@ -123,8 +125,33 @@ func TestMixedWorkspaceWithAJavaServiceKeepsItsSuggestionsInItsFolder(t *testing
 	for _, suggestion := range finalizeSuggestions(root, suggestions, nil) {
 		byDirectory[suggestion.Configuration.WorkingDirectory] = append(byDirectory[suggestion.Configuration.WorkingDirectory], suggestion.Language+"/"+suggestion.Action)
 	}
-	if len(byDirectory["billing"]) != 3 || len(byDirectory["orders"]) != 3 {
-		t.Fatalf("Spring Boot run, test and build belong to billing, Go's to orders: %v", byDirectory)
+	// L'invariante è la proprietà, non il conteggio: ogni unità riceve solo le proposte del
+	// proprio linguaggio, nella propria cartella. Quante siano non fa parte del contratto —
+	// Maven ne propone più di build (package, compile, clean install, clean), come attestato
+	// da TestSuggestUsesTheWrapperAndAddsSpringBootRun in languages/java — quindi fissarle
+	// qui renderebbe il test sensibile a una scelta di prodotto legittima e non al difetto
+	// che questo test esiste per cogliere.
+	if len(byDirectory) != 2 {
+		t.Fatalf("every suggestion must land in its own unit, got %d folders: %v", len(byDirectory), byDirectory)
+	}
+	for _, entry := range byDirectory["billing"] {
+		if !strings.HasPrefix(entry, "java/") {
+			t.Errorf("billing got a non-Java suggestion: %s", entry)
+		}
+	}
+	for _, entry := range byDirectory["orders"] {
+		if !strings.HasPrefix(entry, "go/") {
+			t.Errorf("orders got a non-Go suggestion: %s", entry)
+		}
+	}
+	// La Spring Boot app deve avere run, test e build: è ciò che il nome del test promette.
+	for _, wanted := range []string{"java/run", "java/test", "java/build"} {
+		if !slices.Contains(byDirectory["billing"], wanted) {
+			t.Errorf("billing is missing %s: %v", wanted, byDirectory["billing"])
+		}
+	}
+	if !slices.Contains(byDirectory["orders"], "go/run") || !slices.Contains(byDirectory["orders"], "go/build") {
+		t.Errorf("orders lost its Go suggestions: %v", byDirectory["orders"])
 	}
 	if adapter, _ := registry.Get("java"); adapter == nil {
 		t.Fatal("java must be registered")

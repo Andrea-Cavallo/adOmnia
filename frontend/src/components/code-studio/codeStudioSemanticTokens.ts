@@ -4,6 +4,8 @@ export const CLIENT_TOKEN_TYPES = [
   'enumMember', 'event', 'function', 'method', 'macro', 'keyword', 'modifier', 'comment', 'string', 'number', 'regexp', 'operator', 'label',
   // In coda: gli indici esistenti non si spostano.
   'annotation',
+  // Variabili locali di Java: tipo proprio per poterle colorare senza toccare le variabili di Go.
+  'javaVariable',
 ] as const
 
 /** Tipi di un server che il client mostra come un tipo vicino: JDT LS chiama `decorator` le @Annotation, i record Java sono classi, i membri di annotazione proprietà. */
@@ -61,14 +63,24 @@ function indexByName(names: readonly string[]): Map<string, number> {
  * Converte i token di gopls nella legenda del client. I tipi sconosciuti vengono scartati
  * (le posizioni relative dei successivi restano corrette), i modificatori sconosciuti ignorati.
  */
-export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readonly string[], serverModifiers: readonly string[]): Uint32Array {
+/** Cosa il chiamante sa di un linguaggio e il server no: usato per Java, dove il tipo del token non basta. */
+export interface SemanticRemapContext {
+  /** Il token che inizia qui (riga e colonna 0-based) è preceduto da `@`: è un'annotazione, qualunque tipo dica il server. */
+  isAnnotationAt?: (line: number, start: number) => boolean
+  /** Ritipa le variabili del server (`variable`) con questo tipo del client. */
+  variableType?: string
+}
+
+export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readonly string[], serverModifiers: readonly string[], context: SemanticRemapContext = {}): Uint32Array {
   const clientTypes = indexByName(CLIENT_TOKEN_TYPES)
   const clientModifiers = indexByName(CLIENT_TOKEN_MODIFIERS)
   const typeMap = serverTypes.map((name) => clientTypes.get(name) ?? clientTypes.get(TYPE_ALIASES[name] ?? '') ?? -1)
   const modifierMap = serverModifiers.map((name) => clientModifiers.get(name) ?? -1)
   const mapped: AbsoluteToken[] = []
   for (const token of decode(data)) {
-    const type = typeMap[token.type] ?? -1
+    let type = typeMap[token.type] ?? -1
+    if (context.isAnnotationAt?.(token.line, token.start)) type = clientTypes.get('annotation') ?? type
+    else if (context.variableType && serverTypes[token.type] === 'variable') type = clientTypes.get(context.variableType) ?? type
     if (type < 0) continue
     let modifiers = 0
     modifierMap.forEach((target, bit) => {

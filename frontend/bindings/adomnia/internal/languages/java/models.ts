@@ -84,6 +84,462 @@ export class PomDependency {
 }
 
 /**
+ * SpringBean è un bean dichiarato nel progetto (stereotype o metodo @Bean).
+ */
+export class SpringBean {
+    "name": string;
+    "type": string;
+
+    /**
+     * "component" | "service" | "repository" | "controller" | "configuration" | "bean"
+     */
+    "kind": string;
+    "scope"?: string;
+    "qualifiers"?: string[];
+    "class"?: string;
+    "member"?: string;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringBean instance. */
+    constructor($$source: Partial<SpringBean> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringBean instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringBean {
+        const $$createField4_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("qualifiers" in $$parsedSource) {
+            $$parsedSource["qualifiers"] = $$createField4_0($$parsedSource["qualifiers"]);
+        }
+        return new SpringBean($$parsedSource as Partial<SpringBean>);
+    }
+}
+
+/**
+ * SpringDiagnostic è un problema di configurazione trovato senza eseguire il progetto.
+ */
+export class SpringDiagnostic {
+    /**
+     * "error" | "warning" | "info"
+     */
+    "severity": string;
+    "message": string;
+    "key"?: string;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringDiagnostic instance. */
+    constructor($$source: Partial<SpringDiagnostic> = {}) {
+        if (!("severity" in $$source)) {
+            this["severity"] = "";
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringDiagnostic instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringDiagnostic {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringDiagnostic($$parsedSource as Partial<SpringDiagnostic>);
+    }
+}
+
+/**
+ * SpringEndpoint è un endpoint HTTP MVC (classe + metodo).
+ */
+export class SpringEndpoint {
+    /**
+     * "GET", "POST", …
+     */
+    "method": string;
+    "path": string;
+    "class": string;
+    "member": string;
+    "produces"?: string;
+    "consumes"?: string;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringEndpoint instance. */
+    constructor($$source: Partial<SpringEndpoint> = {}) {
+        if (!("method" in $$source)) {
+            this["method"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("class" in $$source)) {
+            this["class"] = "";
+        }
+        if (!("member" in $$source)) {
+            this["member"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringEndpoint instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringEndpoint {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringEndpoint($$parsedSource as Partial<SpringEndpoint>);
+    }
+}
+
+/**
+ * SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo.
+ */
+export class SpringIndex {
+    /**
+     * Stato dell'indice: "ready" quando la scansione del progetto è completa; "partial" quando i
+     * limiti hanno interrotto la lettura; "stale" quando la cache dei metadata non è aggiornata.
+     */
+    "status": string;
+    "properties": SpringProperty[];
+    "values": SpringValue[];
+    "propertyReferences": SpringPropertyReference[];
+    "diagnostics": SpringDiagnostic[];
+    "beans": SpringBean[];
+    "injections": SpringInjection[];
+    "endpoints": SpringEndpoint[];
+
+    /**
+     * ServerPort è `server.port` effettivo (profilo più specifico che vince).
+     */
+    "serverPort"?: string;
+
+    /**
+     * MetadataState descrive lo scan degli jar: "ready", "idle", "scanning".
+     */
+    "metadataState": string;
+
+    /**
+     * Skipped è il numero di file saltati per dimensione o per limite.
+     */
+    "skipped"?: number;
+
+    /** Creates a new SpringIndex instance. */
+    constructor($$source: Partial<SpringIndex> = {}) {
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("properties" in $$source)) {
+            this["properties"] = [];
+        }
+        if (!("values" in $$source)) {
+            this["values"] = [];
+        }
+        if (!("propertyReferences" in $$source)) {
+            this["propertyReferences"] = [];
+        }
+        if (!("diagnostics" in $$source)) {
+            this["diagnostics"] = [];
+        }
+        if (!("beans" in $$source)) {
+            this["beans"] = [];
+        }
+        if (!("injections" in $$source)) {
+            this["injections"] = [];
+        }
+        if (!("endpoints" in $$source)) {
+            this["endpoints"] = [];
+        }
+        if (!("metadataState" in $$source)) {
+            this["metadataState"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringIndex instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringIndex {
+        const $$createField1_0 = $$createType2;
+        const $$createField2_0 = $$createType4;
+        const $$createField3_0 = $$createType6;
+        const $$createField4_0 = $$createType8;
+        const $$createField5_0 = $$createType10;
+        const $$createField6_0 = $$createType12;
+        const $$createField7_0 = $$createType14;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("properties" in $$parsedSource) {
+            $$parsedSource["properties"] = $$createField1_0($$parsedSource["properties"]);
+        }
+        if ("values" in $$parsedSource) {
+            $$parsedSource["values"] = $$createField2_0($$parsedSource["values"]);
+        }
+        if ("propertyReferences" in $$parsedSource) {
+            $$parsedSource["propertyReferences"] = $$createField3_0($$parsedSource["propertyReferences"]);
+        }
+        if ("diagnostics" in $$parsedSource) {
+            $$parsedSource["diagnostics"] = $$createField4_0($$parsedSource["diagnostics"]);
+        }
+        if ("beans" in $$parsedSource) {
+            $$parsedSource["beans"] = $$createField5_0($$parsedSource["beans"]);
+        }
+        if ("injections" in $$parsedSource) {
+            $$parsedSource["injections"] = $$createField6_0($$parsedSource["injections"]);
+        }
+        if ("endpoints" in $$parsedSource) {
+            $$parsedSource["endpoints"] = $$createField7_0($$parsedSource["endpoints"]);
+        }
+        return new SpringIndex($$parsedSource as Partial<SpringIndex>);
+    }
+}
+
+/**
+ * SpringInjection è un punto di iniezione (`@Autowired`/`@Inject`, campo, costruttore o setter).
+ */
+export class SpringInjection {
+    /**
+     * "field" | "constructor" | "setter" | "parameter"
+     */
+    "kind": string;
+    "type": string;
+    "name"?: string;
+    "qualifier"?: string;
+    "required": boolean;
+    "class"?: string;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringInjection instance. */
+    constructor($$source: Partial<SpringInjection> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("required" in $$source)) {
+            this["required"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringInjection instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringInjection {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringInjection($$parsedSource as Partial<SpringInjection>);
+    }
+}
+
+/**
+ * SpringMetadataReport è l'esito dello scan della repository Maven locale.
+ */
+export class SpringMetadataReport {
+    /**
+     * Artifacts è il numero di jar esaminati, Cached quelli già in cache.
+     */
+    "artifacts": number;
+    "cached": number;
+
+    /**
+     * Properties è il numero di proprietà note aggiunte alla cache.
+     */
+    "properties": number;
+
+    /**
+     * State è "ready" (completo) o "partial" (fermato al limite).
+     */
+    "state": string;
+
+    /**
+     * Repository è la cartella scansionata.
+     */
+    "repository": string;
+
+    /** Creates a new SpringMetadataReport instance. */
+    constructor($$source: Partial<SpringMetadataReport> = {}) {
+        if (!("artifacts" in $$source)) {
+            this["artifacts"] = 0;
+        }
+        if (!("cached" in $$source)) {
+            this["cached"] = 0;
+        }
+        if (!("properties" in $$source)) {
+            this["properties"] = 0;
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("repository" in $$source)) {
+            this["repository"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringMetadataReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringMetadataReport {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringMetadataReport($$parsedSource as Partial<SpringMetadataReport>);
+    }
+}
+
+/**
+ * SpringProperty è una chiave di configurazione nota con tipo, descrizione e default.
+ */
+export class SpringProperty {
+    "name": string;
+    "type": string;
+    "description": string;
+    "default"?: string;
+    "deprecated"?: boolean;
+    "source": string;
+
+    /**
+     * Origin è il jar o la classe che la dichiara (per il tooltip).
+     */
+    "origin"?: string;
+
+    /**
+     * Posizione della dichiarazione Java, navigabile solo per Source == project.
+     */
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringProperty instance. */
+    constructor($$source: Partial<SpringProperty> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringProperty instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringProperty {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringProperty($$parsedSource as Partial<SpringProperty>);
+    }
+}
+
+/**
+ * SpringPropertyReference è un `@Value("${…}")` nel codice Java.
+ */
+export class SpringPropertyReference {
+    "expression": string;
+    "key": string;
+    "default"?: string;
+    "class"?: string;
+    "member"?: string;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringPropertyReference instance. */
+    constructor($$source: Partial<SpringPropertyReference> = {}) {
+        if (!("expression" in $$source)) {
+            this["expression"] = "";
+        }
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringPropertyReference instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringPropertyReference {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringPropertyReference($$parsedSource as Partial<SpringPropertyReference>);
+    }
+}
+
+/**
+ * SpringValue è un valore scritto in application.properties/.yml, con il profilo a cui appartiene.
+ */
+export class SpringValue {
+    "key": string;
+    "value": string;
+
+    /**
+     * Profile è il profilo del file (`application-prod.properties` → "prod"); vuoto per la base.
+     */
+    "profile"?: string;
+
+    /**
+     * OverridesBase è vero quando il profolo ridefinisce la stessa chiave della configurazione base.
+     */
+    "overridesBase"?: boolean;
+    "file"?: string;
+    "line"?: number;
+    "startColumn"?: number;
+    "endColumn"?: number;
+
+    /** Creates a new SpringValue instance. */
+    constructor($$source: Partial<SpringValue> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringValue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringValue {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringValue($$parsedSource as Partial<SpringValue>);
+    }
+}
+
+/**
  * VersionInfo dice a che punto è una dipendenza rispetto alle versioni stabili pubblicate.
  */
 export class VersionInfo {
@@ -132,3 +588,20 @@ export class VersionInfo {
         return new VersionInfo($$parsedSource as Partial<VersionInfo>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = SpringProperty.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = SpringValue.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = SpringPropertyReference.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = SpringDiagnostic.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = SpringBean.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = SpringInjection.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = SpringEndpoint.createFrom;
+const $$createType14 = $Create.Array($$createType13);

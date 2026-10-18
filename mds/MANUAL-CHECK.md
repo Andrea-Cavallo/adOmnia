@@ -65,7 +65,18 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
 | SEC-1 | 9 | 0 |
-| **TOTALE** | **203** | **0** |
+| JS-1 | 4 | 0 |
+| JS-2 | 4 | 0 |
+| JS-3 | 3 | 0 |
+| JS-4 | 3 | 0 |
+| JS-5 | 4 | 0 |
+| JS-6 | 2 | 0 |
+| JS-7 | 2 | 0 |
+| JS-8 | 3 | 0 |
+| JS-9 | 2 | 0 |
+| JS-10 | 1 | 0 |
+| JS-11 | 2 | 0 |
+| **TOTALE** | **233** | **0** |
 
 ---
 
@@ -677,6 +688,7 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 
 - [ ] ML-5.M1 Aprire un progetto con `go.mod` e senza configurazioni: in "Run configurations", sopra "New configuration", compare **Detected** con Run/Test/Build del modulo; un click crea e seleziona la configurazione e la proposta sparisce. Avviarla con ▶.
 - [x] ML-5.M2 *(2026-10-17, parziale: progetto Node con `package.json` senza lockfile → Detected propone `Node · npm run dev` e `npm run test`; non provati pnpm/yarn né workspace Go+Node)* Aprire una cartella con `package.json` (script dev/build) e un lockfile pnpm/yarn/npm: le proposte usano il package manager del lockfile (es. `Vite · pnpm run dev`) e si avviano come comando; in un workspace con Go + Node compaiono entrambe, ciascuna con la propria working directory.
+- [ ] ML-5.M3 Barra Run vuota: in un progetto senza configurazioni, aprire il menu della configurazione attiva → compaiono voci "Add …" (fino a 4); un click salva la configurazione, la rende attiva e Run la avvia. Provare con Maven (wrapper `mvnw` e senza) e con Spring Boot (`spring-boot:run` per primo).
 
 ### ML-6 — Run: configurazioni raggruppate per unità (2026-10-17)
 
@@ -713,4 +725,89 @@ Anteprima browser della sola cronologia verificata con 45 commit reali; non sost
 - [x] ML-9.M17 *(2026-10-17, app e2e)* Debug di un test JUnit dal ▶ del gutter: menu `Debug 'adds'` → la console Run mostra `mvn -B test -Dtest=… -Dmaven.surefire.debug=-agentlib:jdwp=…address=127.0.0.1:<porta>`, la sessione si collega a quella porta e si ferma sul breakpoint nel metodo (thread, call stack e variabili). Lo stesso meccanismo (`DebugArguments`) vale per `spring-boot:run` di una configurazione Maven e per `test`/`bootRun`/`run` Gradle (porta fissa 5005): provato solo il caso Maven + JUnit.
 - [ ] ML-9.M18 pom.xml intelligente: apri `C:\Users\Andrea\Desktop\spring-openai-master\pom.xml` in Code Studio: in cima i lens **Check for updates** e **Scan vulnerabilities**. Check → sulle dipendenze compaiono `↑ x.y.z (same major)` / `(latest)` e un'info sulla versione; cliccando un lens la `<version>` (o la property `${…}`, es. `spring.boot.version`, che aggiorna tutte le dipendenze che la usano) cambia come edit annullabile con Ctrl+Z. Scan → warning/errore sulla riga con CVE, gravità e `fixed in …`; il lens o il quick fix (Ctrl+.) aggiorna alla versione che chiude i CVE. Le versioni gestite dal parent (`starter-validation`, `lombok`) non hanno lens. Nessuna richiesta di rete finché non si preme uno dei due lens. *(backend provato su questo pom e su Maven Central; UI non ancora provata in app)*
 - [x] ML-9.M9 *(2026-10-17, app e2e dal branch `feat/multilang-run-test-routing`, JDK 21 + Maven 3.9.6)* Progetto Maven (`pom.xml`, `App.java`): barra Run "Add configuration"; ▶ apre il gestore con **Detected** `Maven · mvn test` e `Maven · mvn package`; aggiunta `Maven test` e ▶: la console Run mostra `$ mvn test` e il build termina con exit 0; status bar "Java" senza gopls/golangci-lint/go1.x. **Non ancora (→ ML-9.M10):** language server (completamento/errori nei `.java`), test strutturati JUnit, debug, Spring Boot `run` (serve un progetto Spring), wrapper `mvnw` e Gradle provati solo a livello di test automatici.
+
+### JS-1 — Spring Index (2026-10-18)
+
+Piano: [06-JAVA-SPRING-STUDIO.md](06-JAVA-SPRING-STUDIO.md) JS-1. **Prerequisito:** progetto Spring Boot reale con `application.properties` e un `application-prod.properties` (o `.yml` con profilo), una classe `@ConfigurationProperties`, un `@Value` e un `@RestController`; JDK 21, JDT LS installato, repository Maven locale con qualche starter già scaricato.
+
+- [ ] JS-1.M1 Apri `application.properties`: il completamento sulle chiavi Spring propone le proprietà note con **tipo, descrizione e default** (dal `spring-configuration-metadata.json` degli JAR e dalle `@ConfigurationProperties` del progetto); la proprietà definita nel progetto compare con la posizione della dichiarazione Java e Ctrl+click ci porta.
+- [ ] JS-1.M2 Profili: in `application-prod.properties` il completamento è lo stesso e il valore del profilo è segnato come **override** del valore base; il `server.port` effettivo (base o profilo) è quello mostrato.
+- [ ] JS-1.M3 Navigazione bean: su un `@Autowired` (campo o costruttore) Ctrl+click apre il bean che lo soddisfa; con due bean e un `@Qualifier` porta a quello giusto; su `@Value("${…}")` apre la property.
+- [ ] JS-1.M4 Pannello endpoint: elenco degli endpoint MVC (metodo, route, controller → metodo), filtro per testo; un click apre il metodo. Una property obbligatoria mancante dà un warning con gravità e posizione.
+
+### JS-2 — Editor e comandi Java (2026-10-18)
+
+Piano: 06 JS-2. **Prerequisito:** come JS-1, più un progetto Go di controllo per verificare che nulla cambi lì.
+
+- [ ] JS-2.M1 Menu/palette: su un `.java` compaiono i comandi Java (Run/Debug Main Class, Run/Debug Test, Spring Boot Run, Maven goals, Optimize Imports, Go to Test, Check for updates, Scan vulnerabilities); su un `.go` nessuno di questi compare. Ogni comando ha la sua icona e il suo shortcut mostrato.
+- [ ] JS-2.M2 Inlay hints e Code Vision: sui metodi compaiono i **nomi parametro** a inlay e, sopra la dichiarazione, il **conteggio usi**; se non compaiono con JDT LS attivo, registrare l'esito qui e lasciare `heavyFeatures: false` con la nota aggiornata.
+- [ ] JS-2.M3 Marker gutter override/implements: la freccia compare sulla riga del metodo che sovrascrive/implementa, con il contatore; il click porta al metodo padre. Non compare su un metodo che non sovrascrive nulla.
+- [ ] JS-2.M4 New Java Class / New Package dal menu della cartella: template compilato, nomi non validi rifiutati con il motivo, il file si apre già compilato.
+
+### JS-3 — Test JUnit completi (2026-10-18)
+
+Piano: 06 JS-3. **Prerequisito:** progetto con una classe di test JUnit che passa, una che fallisce e una ignorata (`@Disabled`), anche in un modulo.
+
+- [ ] JS-3.M1 Albero test: ogni metodo ha la sua icona passato/fallito/ignorato con il motivo e la durata; la classe mostra il **roll-up** dei metodi e i contatori; il fallimento apre la riga dell'asserzione.
+- [ ] JS-3.M2 Dal pannello Tests il ▶ e il **Debug** funzionano anche sui nodi Java (classe e metodo), non solo dal ▶ del gutter: la console mostra il comando Maven/Gradle e il debug si ferma sul breakpoint.
+- [ ] JS-3.M3 Rerun failed: riesegue solo i metodi falliti (più di uno, stessa classe e classi diverse), gli altri risultano saltati.
+
+### JS-4 — Build: error navigation e JDK di progetto (2026-10-18)
+
+Piano: 06 JS-4. **Prerequisito:** progetto che non compila (un errore di sintassi e un simbolo mancante) e più JDK installati.
+
+- [ ] JS-4.M1 Build con errori: nella console Run gli `[ERROR] …/Foo.java:[12,34]` sono cliccabili e aprono la riga; gli stessi errori compaiono nel pannello problemi con gravità. Multi-modulo: l'errore è attribuito al modulo giusto.
+- [ ] JS-4.M2 JDK di progetto: nelle run configuration la toolchain è selezionabile (JDK home + versione), resta salvata, e lo **stesso JDK** serve a Run e Debug (verificare dal comando mostrato in console che il percorso del `java` sia quello scelto).
+- [ ] JS-4.M3 Preparazione progetto: aprendo un `.java` in un progetto non ancora importato compare lo stato `starting → importing → building → ready` (o l'equivalente mostrato), senza che la finestra sembri bloccata; a `ready` arrivano diagnostica e completamento.
+
+### JS-5 — Debug profondo (2026-10-18)
+
+Piano: 06 JS-5. **Prerequisito:** app Spring Boot con DevTools tra le dipendenze, un controller che chiama un servizio via proxy/CGLIB (o Mockito in un test), breakpoint sul metodo del servizio.
+
+- [ ] JS-5.M1 Stepping filters: con i filtri di default attivi, lo Step Into dal controller non entra in CGLIB/ByteBuddy/proxy JDK/JUnit; il call stack non mostra i frame filtrati. Disattivandoli dai settings si vede tutto. Verificare anche in un test Mockito.
+- [ ] JS-5.M2 Breakpoint relocation: metti un breakpoint con **condizione** e uno **logpoint**, poi modifica il file sopra la riga in modo che il breakpoint si sposti: condizione e logpoint restano associati al breakpoint spostato.
+- [ ] JS-5.M3 Hot update in Run: con il servizio in esecuzione modifica una classe e usa "Compile changes": l'esito è esplicito e distinto (*compilato* / *classi sostituite* / *contesto riavviato*) e corrisponde a ciò che accade davvero; il servizio risponde senza restart completo.
+- [ ] JS-5.M4 Hot swap in Debug: in sessione di debug modifica il corpo di un metodo: le classi vengono sostituite senza perdere la sessione (DevTools restart disattivato in debug, come da comando mostrato); se il cambio non è sostituibile, il messaggio lo dice senza crash.
+
+### JS-6 — Semantica Java owned by JDT (2026-10-18)
+
+Piano: 06 JS-6. **Prerequisito:** progetto con una `static void main()` senza `public` (Java 25), una classe di test con annotation custom e JDT LS attivo.
+
+- [ ] JS-6.M1 Con JDT LS `ready` le proposte di Run/Test sono quelle di JDT: compaiono la main non-public e i test con annotation custom; spegnendo il server (o prima dell'installazione) le stesse proposte arrivano dal fallback regex e sono marcate come tali, senza inventare risultati.
+- [ ] JS-6.M2 Contratto di possesso: il test che vieta nuove regole locali di semantica Java è presente e fa rumore se si prova ad aggiungerne una non marcata come fallback.
+
+### JS-7 — Launch diretto e command-line lunghe (2026-10-18)
+
+Piano: 06 JS-7. **Prerequisito:** progetto con molti jar (o uno di test con classpath lungo), JDK 21 e un JDK 8 se disponibile.
+
+- [ ] JS-7.M1 Con JDT LS `ready` la Run di una main lancia `java` **diretto** (comando visibile in console con `mainClass`, classpath, `-m` per i moduli), dopo il pre-step `resources:resources`; senza JDT LS resta il comando `exec:java`. Le VM options finiscono sul processo Java, non in `MAVEN_OPTS`.
+- [ ] JS-7.M2 Classpath lunghissimo: il comando usato è un argfile `java @file` (o il JAR-manifest per JDK 8), l'app parte comunque e il file temporaneo non resta in giro.
+
+### JS-8 — Dipendenze JVM: tree, classpath browser, Gradle (2026-10-18)
+
+Piano: 06 JS-8. **Prerequisito:** progetto Maven multi-modulo con una dipendenza in conflitto di versione, e un progetto Gradle Spring Boot.
+
+- [ ] JS-8.M1 Dependency tree Maven: albero delle dipendenze risolte con evidenza di **duplicati e conflitti** (versione omessa vs risolta), click sulla dipendenza → apertura; multi-modulo con un albero per modulo.
+- [ ] JS-8.M2 Classpath browser: elenco dei jar e delle cartelle del classpath di ogni modulo, con apertura del sorgente/virtuale `jdt://`; corrisponde al classpath reale usato dalla Run.
+- [ ] JS-8.M3 Gradle: `build.gradle` ha le stesse lenti del pom (Check for updates, Scan vulnerabilities, aggiorna versione/property) e il parent/BOM non dà lens dove la versione non è definita; il progetto Gradle viene riconosciuto come Spring Boot e propone `bootRun` senza eseguire Gradle.
+
+### JS-9 — Performance JVM (2026-10-18)
+
+Piano: 06 JS-9 (P2). **Prerequisito:** app Spring Boot in Run/Debug e una suite di test.
+
+- [ ] JS-9.M1 Durante Run/Debug/Test il pannello performance mostra heap reale (young/old, senza metaspace) e CPU della **JVM giusta** (non del wrapper Maven/Gradle); i numeri sono credibili confrontati con VisualVM o `jstat` a mano.
+- [ ] JS-9.M2 Registrazione JFR: si avvia e si ferma esplicitamente, il file si apre con gli strumenti JDK, e la registrazione non parte mai da sola.
+
+### JS-10 — MyBatis: mapper ↔ XML (2026-10-18)
+
+Piano: 06 JS-10 (P2). **Prerequisito:** progetto con MyBatis (interfaccia mapper + XML).
+
+- [ ] JS-10.M1 Dal metodo del mapper si va allo statement XML e viceversa, con la riga giusta su entrambi i lati; uno statement senza metodo (o il contrario) è segnalato, non taciuto.
+
+### JS-11 — Run config a livelli e altri framework (2026-10-18)
+
+Piano: 06 JS-11 (P2). **Prerequisito:** progetto Spring Boot + uno Quarkus o Micronaut; `.adomnia/run-configurations.json` già condiviso via Git.
+
+- [ ] JS-11.M1 Run config generate e override: le configurazioni generate si rigenerano senza perdere gli override locali, e il file condiviso non cambia formato per chi usa la versione precedente.
+- [ ] JS-11.M2 Framework: progetti Quarkus/Micronaut riconosciuti con il task giusto (`quarkusDev`, ecc.); con un `settings.xml` Maven privato (mirror/localRepository) le dipendenze risolvono e il cambio di `settings.xml` viene preso **senza** riavviare JDT LS.
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Copy, FileCode2, FilePlus, FolderPlus, Pencil, type LucideIcon } from 'lucide-react'
 import { CodeStudioButton, CodeStudioField, CodeStudioModal } from './CodeStudioModal'
-import { baseName, duplicateName, runPathAction, type CodeStudioPathAction } from './codeStudioFileActions'
+import { baseName, duplicateName, javaEntryNameError, runPathAction, type CodeStudioPathAction } from './codeStudioFileActions'
 
 export interface CodeStudioPathRequest {
   action: CodeStudioPathAction
@@ -11,9 +11,11 @@ export interface CodeStudioPathRequest {
 
 const TITLES: Record<CodeStudioPathAction, string> = {
   newGoFile: 'New Go File', newFile: 'New File', newFolder: 'New Folder', rename: 'Rename', duplicate: 'Duplicate',
+  newJavaClass: 'New Java Class', newJavaInterface: 'New Java Interface', newJavaEnum: 'New Java Enum', newJavaRecord: 'New Java Record', newJavaPackage: 'New Java Package',
 }
 const ICONS: Record<CodeStudioPathAction, LucideIcon> = {
   newGoFile: FileCode2, newFile: FilePlus, newFolder: FolderPlus, rename: Pencil, duplicate: Copy,
+  newJavaClass: FileCode2, newJavaInterface: FileCode2, newJavaEnum: FileCode2, newJavaRecord: FileCode2, newJavaPackage: FolderPlus,
 }
 const HINTS: Record<CodeStudioPathAction, string> = {
   newGoFile: 'The .go extension and the package clause are added for you. Use / for subfolders.',
@@ -21,6 +23,11 @@ const HINTS: Record<CodeStudioPathAction, string> = {
   newFolder: 'Nested folders like internal/store are created in one step.',
   rename: 'Type a path with / to move it to another folder. Open tabs are reopened at the new path.',
   duplicate: 'Folders are copied with their contents.',
+  newJavaClass: 'The .java file gets the package of this folder. Name it like UserService.',
+  newJavaInterface: 'The .java file gets the package of this folder. Name it like Repository.',
+  newJavaEnum: 'The .java file gets the package of this folder. Name it like Status.',
+  newJavaRecord: 'The .java file gets the package of this folder. Name it like Point.',
+  newJavaPackage: 'Dots create nested folders: com.acme.app.',
 }
 
 function initialName(request: CodeStudioPathRequest): string {
@@ -57,6 +64,7 @@ export function CodeStudioPathDialog({ sessionId, request, onClose }: { sessionI
     if (ok) onClose()
   }
 
+  const nameError = name.trim() ? javaEntryNameError(request.action, name) : ''
   const verb = request.action === 'rename' ? 'Rename' : request.action === 'duplicate' ? 'Duplicate' : 'Create'
   return (
     <CodeStudioModal
@@ -68,11 +76,11 @@ export function CodeStudioPathDialog({ sessionId, request, onClose }: { sessionI
       subtitle={<span className="gs-mono block truncate text-[11.5px]" title={location}>{location}</span>}
       footer={<>
         <CodeStudioButton variant="ghost" onClick={onClose}>Cancel</CodeStudioButton>
-        <CodeStudioButton variant="primary" type="submit" form="code-studio-path-form" loading={busy} disabled={!name.trim()}>{verb}</CodeStudioButton>
+        <CodeStudioButton variant="primary" type="submit" form="code-studio-path-form" loading={busy} disabled={!name.trim() || !!nameError}>{verb}</CodeStudioButton>
       </>}
     >
       <form id="code-studio-path-form" onSubmit={(event) => { event.preventDefault(); void submit() }}>
-        <CodeStudioField label="Name" hint={HINTS[request.action]}>
+        <CodeStudioField label="Name" hint={nameError || HINTS[request.action]}>
           <input ref={inputRef} value={name} onChange={(event) => setName(event.target.value)} spellCheck={false} className="gs-input gs-mono" />
         </CodeStudioField>
       </form>

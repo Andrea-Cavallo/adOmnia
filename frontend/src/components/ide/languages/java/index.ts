@@ -1,3 +1,5 @@
+import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
+import { javaRunTemplates } from './runTemplates'
 import type { IdeLanguageContribution } from '../../languages'
 
 /** ID del language adapter backend (`internal/languages/java`). */
@@ -12,6 +14,8 @@ export const JAVA_LANGUAGE: IdeLanguageContribution = {
   id: JAVA_LANGUAGE_ID,
   name: 'Java',
   icon: 'openjdk',
+  runTemplates: javaRunTemplates,
+  canDebugRun: config => javaDebugTargetOf(config) !== null,
   editorLanguages: ['java'],
   languageServer: 'Eclipse JDT LS',
   heavyFeatures: false,

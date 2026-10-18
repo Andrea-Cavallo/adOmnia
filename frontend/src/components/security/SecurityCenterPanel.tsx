@@ -547,7 +547,11 @@ function FindingRow({
   const severity = finding.advisory.severity
   return (
     <tr
+      role="row"
+      tabIndex={0}
+      aria-selected={active}
       onClick={onSelect}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }}
       className={cn(
         'cursor-pointer border-b border-border-1 transition-colors last:border-b-0',
         active ? 'bg-accent/[0.08]' : 'hover:bg-surface-1',

@@ -19,6 +19,7 @@ import { installCodeStudioAIActions } from './codeStudioAIActionsRunner'
 import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStudioLanguageFeatures'
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
 import { registerCodeStudioPom } from './codeStudioPom'
+import { registerCodeStudioSpring } from './codeStudioSpring'
 import { registerCodeStudioProtoLens } from './codeStudioProtoLens'
 import { registerCodeStudioRuntimeLens } from './codeStudioRuntimeLens'
 import { registerCodeStudioCodeVision } from './codeStudioCodeVision'
@@ -51,6 +52,7 @@ configureMonacoLoader()
 registerCodeStudioLanguageFeatures()
 registerCodeStudioCodeLens()
 registerCodeStudioPom()
+registerCodeStudioSpring()
 registerCodeStudioProtoLens()
 registerCodeStudioRuntimeLens()
 registerCodeStudioCodeVision()

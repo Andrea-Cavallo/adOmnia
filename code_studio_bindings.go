@@ -1608,3 +1608,20 @@ func (g *GoIDE) PomDependencies(sessionID, content string) ([]java.PomDependency
 func (g *GoIDE) PomVersions(sessionID string, current map[string]string) ([]java.VersionInfo, error) {
 	return g.service.PomVersions(sessionID, current)
 }
+
+// SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione
+// note, valori con il loro profilo, bean, iniezioni ed endpoint. Solo filesystem, senza rete.
+func (g *GoIDE) SpringIndex(sessionID string) (java.SpringIndex, error) {
+	return g.service.SpringIndex(sessionID)
+}
+
+// SpringEndpoints elenca gli endpoint HTTP MVC del progetto (route, metodo, posizione).
+func (g *GoIDE) SpringEndpoints(sessionID string) ([]java.SpringEndpoint, error) {
+	return g.service.SpringEndpoints(sessionID)
+}
+
+// SpringMetadataRefresh indicizza i metadata di configurazione degli jar già scaricati nella repository
+// Maven locale. Lavoro pesante, solo su azione esplicita: riprende dalla cache.
+func (g *GoIDE) SpringMetadataRefresh(sessionID string, limit int) (java.SpringMetadataReport, error) {
+	return g.service.SpringMetadataRefresh(sessionID, limit)
+}

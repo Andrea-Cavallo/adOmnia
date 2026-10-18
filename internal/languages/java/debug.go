@@ -14,6 +14,7 @@ const (
 	CommandResolveMainClass   = "vscode.java.resolveMainClass"
 	CommandResolveClasspath   = "vscode.java.resolveClasspath"
 	CommandResolveJavaExec    = "vscode.java.resolveJavaExecutable"
+	CommandBuildWorkspace     = "vscode.java.buildWorkspace"
 	CommandStartDebugSession  = "vscode.java.startDebugSession"
 	debugAdapterID            = "java"
 	maxDebugArgumentsPerField = 256

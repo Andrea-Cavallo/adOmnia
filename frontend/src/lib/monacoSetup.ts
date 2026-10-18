@@ -154,6 +154,12 @@ const GO_SEMANTIC_RULES_DARK: monaco.editor.ITokenThemeRule[] = [
   { token: 'namespace', foreground: 'A5B4FC' },
   { token: 'property', foreground: 'D8B4FE' },
   { token: 'annotation', foreground: 'FCD34D' },
+  // Java: JDT LS usa class/interface/enum/record al posto di type; le variabili sono viola.
+  { token: 'class', foreground: '5EEAD4' },
+  { token: 'interface', foreground: '5EEAD4' },
+  { token: 'enum', foreground: '5EEAD4' },
+  { token: 'javaVariable', foreground: 'B794F4' },
+  { token: 'javaVariable.readonly', foreground: 'C4A7FF' },
   // static final (Java): `readonly` da solo sono i campi final d'istanza, che restano del colore delle proprietà.
   { token: 'property.readonly.static', foreground: 'F9A8D4' },
   { token: 'enumMember', foreground: 'F9A8D4' },
@@ -169,6 +175,11 @@ const GO_SEMANTIC_RULES_LIGHT: monaco.editor.ITokenThemeRule[] = [
   { token: 'namespace', foreground: '4338CA' },
   { token: 'property', foreground: '7E22CE' },
   { token: 'annotation', foreground: 'A16207' },
+  { token: 'class', foreground: '0F766E' },
+  { token: 'interface', foreground: '0F766E' },
+  { token: 'enum', foreground: '0F766E' },
+  { token: 'javaVariable', foreground: '7C3AED' },
+  { token: 'javaVariable.readonly', foreground: '6D28D9' },
   { token: 'property.readonly.static', foreground: 'BE185D' },
   { token: 'enumMember', foreground: 'BE185D' },
 ]

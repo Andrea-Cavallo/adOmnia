@@ -176,3 +176,11 @@ describe('treeDropDestination', () => {
     expect(refreshProject).toHaveBeenCalled()
   })
 })
+
+describe('Java entries in the New submenu', () => {
+  const newItems = (hasJava: boolean) => (buildTreeMenu(null, { ...context, hasJava }).find((item) => item.id === 'new')?.submenu ?? []).map((item) => item.id)
+  it('appear only for projects with a Java unit', () => {
+    expect(newItems(true)).toEqual(expect.arrayContaining(['newJavaClass', 'newJavaPackage']))
+    expect(newItems(false)).not.toContain('newJavaClass')
+  })
+})

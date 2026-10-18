@@ -1,379 +1,122 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Copy, Pin, Play, Plus, Share2, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, Copy, Trash2, Pin, Share2, Play, ChevronUp, ChevronDown } from 'lucide-react'
 import { CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
+import { RunConfigForm } from './RunConfigForm'
+import { CodeStudioRunWizard } from './CodeStudioRunWizard'
 import { confirm } from '@/lib/confirmDialog'
-import { useCodeStudioStore, type GoIDEState } from '@/stores/codeStudio'
-import { GoIDERunConfigurationKind } from '@/lib/code-studio-api'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
-import { CodeStudioEntryList } from './CodeStudioEntryList'
-import { CodeStudioRunParameters, RunTaskList } from './CodeStudioRunParameters'
-import { CodeStudioRunTarget, supportsRemoteTarget } from './CodeStudioRunTarget'
-import { CodeStudioRunSuggestions } from './CodeStudioRunSuggestions'
-import { readRunHistory } from '@/lib/code-studio/codeStudioRunHistory'
+import { cleanRunConfiguration, emptyRunConfiguration } from '@/lib/code-studio/runFormTypes'
 import { groupConfigurationsByUnit } from '@/lib/code-studio/runUnits'
 
-/** Riferimento stabile: un array nuovo nel selettore Zustand fa ridisegnare all'infinito. */
-const EMPTY_CONFIGS: GoIDEState['runConfigsBySession'][string] = []
-
-interface CodeStudioRunConfigurationsProps {
-  open: boolean
-  sessionId: string
-  /** Bozza precompilata (es. "Save as configuration" dal ▶ di un Makefile o Dockerfile). */
-  initialDraft?: GoIDERunConfiguration | null
-  onClose: () => void
-}
-
-const KINDS: Array<{ value: GoIDERunConfiguration['kind']; label: string; hint: string; available: boolean }> = [
-  { value: GoIDERunConfigurationKind.RunKindPackage, label: 'Package', hint: 'go run on a package path', available: true },
-  { value: GoIDERunConfigurationKind.RunKindBuild, label: 'Build', hint: 'go build on a package path', available: true },
-  { value: GoIDERunConfigurationKind.RunKindFiles, label: 'File list', hint: 'go run on explicit Go files', available: true },
-  { value: GoIDERunConfigurationKind.RunKindTest, label: 'Test', hint: 'go test on a package path', available: true },
-  { value: GoIDERunConfigurationKind.RunKindBinary, label: 'Compiled binary', hint: 'runs a binary built inside the project', available: true },
-  { value: GoIDERunConfigurationKind.RunKindMake, label: 'Make target', hint: 'make -f <Makefile> <targets>; options such as -j4 go in MAKEFLAGS', available: true },
-  { value: GoIDERunConfigurationKind.RunKindDockerBuild, label: 'Docker build', hint: 'docker build of a Dockerfile, with stage, tag and build args', available: true },
-  { value: GoIDERunConfigurationKind.RunKindDockerCompose, label: 'Docker Compose', hint: 'docker compose -f <file> up [services] or down; Stop runs docker compose stop', available: true },
-  { value: GoIDERunConfigurationKind.RunKindDockerRun, label: 'Docker build & run', hint: 'docker build, then docker run --rm of the image; Stop really stops the container', available: true },
-  { value: GoIDERunConfigurationKind.RunKindCommand, label: 'Command', hint: 'any program on the PATH or a script inside the project, run without a shell', available: true },
-  { value: GoIDERunConfigurationKind.RunKindGoTool, label: 'Go tool', hint: 'go <command> with the project toolchain: generate, vet, tool pprof, list…', available: true },
-  { value: 'main' as GoIDERunConfiguration['kind'], label: 'Java main class', hint: 'runs a class with a main method through Maven or Gradle, with VM options', available: true },
-  { value: 'attach' as GoIDERunConfiguration['kind'], label: 'Java remote JVM', hint: 'attaches the debugger to a JVM already listening on a JDWP port (press Debug)', available: true },
-  { value: GoIDERunConfigurationKind.RunKindCompound, label: 'Compound', hint: 'starts Compose stacks first, waits until their containers are ready, runs the tasks in order, then starts the other configurations', available: true },
-]
-
-const COMMAND_KINDS = new Set<string>([GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool])
-/** Kind Java: la working directory è il modulo, i campi stanno nello schema dell'adapter (languageOptions). */
-const JAVA_KINDS = new Set<string>(['main', 'attach'])
-const TOOL_KINDS = new Set<string>(['main', 'attach', GoIDERunConfigurationKind.RunKindCommand, GoIDERunConfigurationKind.RunKindGoTool, GoIDERunConfigurationKind.RunKindMake, GoIDERunConfigurationKind.RunKindDockerBuild, GoIDERunConfigurationKind.RunKindDockerRun, GoIDERunConfigurationKind.RunKindDockerCompose])
-const isDockerKind = (kind: string) => kind === GoIDERunConfigurationKind.RunKindDockerBuild || kind === GoIDERunConfigurationKind.RunKindDockerRun
-
-function emptyConfiguration(sessionId: string): GoIDERunConfiguration {
-  return {
-    id: '', sessionId, name: 'New configuration', kind: GoIDERunConfigurationKind.RunKindPackage, target: '.',
-    files: [], binaryPath: '', workingDirectory: '', goArguments: [], programArguments: [],
-    buildTags: [], environment: [], docker: {}, order: 0, createdAt: '', updatedAt: '',
-  } as GoIDERunConfiguration
-}
-
-function splitList(value: string, separator: RegExp): string[] {
-  return value.split(separator).map((item) => item.trim()).filter(Boolean)
-}
-
-/**
- * Gestore delle configurazioni Run persistenti: elenco a sinistra, editor a
- * destra. I valori marcati come segreti non vengono salvati: resta la chiave e
- * il valore viene richiesto all'avvio.
- */
-export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onClose }: CodeStudioRunConfigurationsProps) {
-  const configs = useCodeStudioStore((state) => state.runConfigsBySession[sessionId] ?? EMPTY_CONFIGS)
-  const loadRunConfigurations = useCodeStudioStore((state) => state.loadRunConfigurations)
-  const saveRunConfiguration = useCodeStudioStore((state) => state.saveRunConfiguration)
-  const duplicateRunConfiguration = useCodeStudioStore((state) => state.duplicateRunConfiguration)
-  const reorderRunConfigurations = useCodeStudioStore((state) => state.reorderRunConfigurations)
-  const deleteRunConfiguration = useCodeStudioStore((state) => state.deleteRunConfiguration)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [draft, setDraft] = useState<GoIDERunConfiguration>(() => emptyConfiguration(sessionId))
-  const [saving, setSaving] = useState(false)
-
+const EMPTY_CONFIGS: GoIDERunConfiguration[] = []
+interface Props { open: boolean; sessionId: string; initialDraft?: GoIDERunConfiguration | null; onClose: () => void }
+export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onClose }: Props) {
+  const configs = useCodeStudioStore(state => state.runConfigsBySession[sessionId] ?? EMPTY_CONFIGS)
+  const session = useCodeStudioStore(state => state.sessions.find(item => item.id === sessionId))
+  const languages = useCodeStudioStore(state => state.capabilities?.languages)
+  const [draft, setDraft] = useState(() => emptyRunConfiguration(sessionId))
+  const [wizard, setWizard] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [feedback, setFeedback] = useState<{ error: boolean; message: string } | null>(null)
   useEffect(() => {
-    if (open) void loadRunConfigurations(sessionId)
-  }, [loadRunConfigurations, open, sessionId])
-
-  useEffect(() => {
-    if (!open || !initialDraft) return
-    setSelectedId(null)
-    setDraft(initialDraft)
-  }, [initialDraft, open])
-
-  useEffect(() => {
-    if (!open || (initialDraft && !selectedId)) return
-    const current = configs.find((config) => config.id === selectedId) ?? configs[0] ?? null
-    setSelectedId(current?.id ?? null)
-    setDraft(current ? { ...current } : emptyConfiguration(sessionId))
-    // Ricaricare l'elenco non deve sovrascrivere le modifiche in corso su un
-    // nuovo elemento non ancora salvato.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configs.length, open, selectedId, sessionId])
-
-  const kindInfo = useMemo(() => KINDS.find((kind) => kind.value === draft.kind) ?? KINDS[0], [draft.kind])
-
-  if (!open) return null
-
-  const patch = (change: Partial<GoIDERunConfiguration>) => setDraft((current) => ({ ...current, ...change }))
-
-  const docker = draft.docker ?? {}
-  const patchDocker = (change: Partial<NonNullable<GoIDERunConfiguration['docker']>>) => patch({ docker: { ...docker, ...change } })
-  const isTool = TOOL_KINDS.has(draft.kind)
-  const isCompound = draft.kind === GoIDERunConfigurationKind.RunKindCompound
-  const projectPath = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)?.project.realPath ?? ''
-  const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
-  const languageNames = Object.fromEntries((useCodeStudioStore.getState().capabilities?.languages ?? []).map((info) => [info.id, info.name]))
-  const groups = session ? groupConfigurationsByUnit(configs, session.project, languageNames) : [{ label: '', language: '', items: configs }]
-  const history = selectedId ? readRunHistory(projectPath, selectedId).slice(0, 8) : []
-  const compoundCandidates = configs.filter((config) => config.id !== draft.id && config.kind !== GoIDERunConfigurationKind.RunKindCompound)
-
-  const save = async () => {
-    setSaving(true)
-    const saved = await saveRunConfiguration(draft)
-    setSaving(false)
-    if (saved) setSelectedId(saved.id)
-  }
-
-  const addSuggestion = async (suggested: Partial<GoIDERunConfiguration>) => {
-    const saved = await saveRunConfiguration({ ...emptyConfiguration(sessionId), ...suggested, sessionId })
-    if (saved) setSelectedId(saved.id)
-  }
-
-  const remove = async (configId: string) => {
-    const target = configs.find((config) => config.id === configId)
-    const approved = await confirm({
-      title: `Delete "${target?.name ?? 'configuration'}"?`,
-      message: 'The configuration is removed from this project. Files and code are untouched.',
-      confirmLabel: 'Delete', variant: 'danger',
+    if (!open) return
+    let live = true
+    setLoading(true); setFeedback(null); useCodeStudioStore.setState({ error: null })
+    const store = useCodeStudioStore.getState()
+    void store.loadRunConfigurations(sessionId).then(() => {
+      if (!live) return
+      const state = useCodeStudioStore.getState()
+      if (state.error) setFeedback({ error: true, message: state.error })
+      const saved = state.runConfigsBySession[sessionId] ?? []
+      const selected = saved.find(config => config.id === state.activeConfigBySession[sessionId]) ?? saved[0]
+      setDraft(initialDraft ?? selected ?? emptyRunConfiguration(sessionId))
+      setWizard(!initialDraft && !selected); setLoading(false)
     })
-    if (!approved) return
-    await deleteRunConfiguration(configId)
-    setSelectedId(null)
+    return () => { live = false }
+  }, [open, sessionId, initialDraft])
+  if (!open) return null
+  const patch = (change: Partial<GoIDERunConfiguration>) => { setDraft(current => ({ ...current, ...change })); setFeedback(null) }
+  const select = (config: GoIDERunConfiguration) => { setDraft({ ...config }); setWizard(false); setFeedback(null) }
+  const groups = session ? groupConfigurationsByUnit(configs, session.project, Object.fromEntries((languages ?? []).map(info => [info.id, info.name]))) : [{ label: '', items: configs }]
+  const act = async (action: () => Promise<unknown>, success: string) => {
+    setBusy(true); setFeedback(null); useCodeStudioStore.setState({ error: null })
+    try {
+      await action()
+      const error = useCodeStudioStore.getState().error
+      setFeedback({ error: !!error, message: error || success })
+    } catch (error) { setFeedback({ error: true, message: error instanceof Error ? error.message : String(error) }) }
+    finally { setBusy(false) }
   }
-
-  const move = async (configId: string, delta: number) => {
-    const order = configs.map((config) => config.id)
-    const index = order.indexOf(configId)
-    const next = index + delta
-    if (index < 0 || next < 0 || next >= order.length) return
-    order.splice(next, 0, ...order.splice(index, 1))
-    await reorderRunConfigurations(order)
+  const save = async (candidate = draft) => {
+    await act(async () => {
+      const saved = await useCodeStudioStore.getState().saveRunConfiguration(cleanRunConfiguration(candidate))
+      if (saved) { setDraft(saved); setWizard(false) }
+    }, 'Configuration saved.')
   }
-
-  const textField = (label: string, value: string, onChange: (next: string) => void, placeholder: string) => (
-    <label className="gs-field-label">
-      {label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="gs-input gs-mono" />
-    </label>
-  )
-
-  return (
-    <CodeStudioModal
-      open={open}
-      onClose={onClose}
-      size="xl"
-      tall
-      divided
-      flush
-      icon={Play}
-      tone="success"
-      title="Run configurations"
-      subtitle="Saved ways to build, run, test and containerize this project."
-      footer={<>
-        <CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>
-        <CodeStudioButton variant="primary" loading={saving} disabled={!draft.name.trim()} onClick={() => void save()}>{selectedId ? 'Save configuration' : 'Create configuration'}</CodeStudioButton>
-      </>}
-    >
-        <div className="flex min-h-0 flex-1">
-          <aside className="flex w-60 shrink-0 flex-col border-r border-border-1 bg-surface-0/40">
-            <div className="min-h-0 flex-1 overflow-auto p-1.5">
-              {configs.length === 0 && <p className="gs-list-empty">No configuration yet.</p>}
-              {groups.map((group) => (
-                <div key={group.label || 'all'}>
-                  {group.label && <div className="px-2.5 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-text-4">{group.label}</div>}
-                  {group.items.map((config) => (
-                  <div
-                    key={config.id}
-                    className={`group flex h-9 items-center gap-0.5 rounded-lg px-2.5 text-[12.5px] ${
-                      config.id === selectedId ? 'bg-accent/15 text-text-1' : 'text-text-2 hover:bg-surface-2/60'
-                    }`}
-                  >
-                    <button type="button" onClick={() => setSelectedId(config.id)} className="min-w-0 flex-1 truncate text-left">
-                      {config.pinned && <Pin size={12} className="mr-1.5 inline text-accent" aria-label="Pinned" />}
-                      {config.name}
-                      <span className="ml-1.5 text-[11px] text-text-4">{config.kind}</span>
-                      {config.shared && <Share2 size={12} className="ml-1.5 inline text-text-4" aria-label="Shared with the project" />}
-                    </button>
-                    <button type="button" onClick={() => void move(config.id, -1)} title="Move up" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronUp size={13} /></button>
-                    <button type="button" onClick={() => void move(config.id, 1)} title="Move down" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><ChevronDown size={13} /></button>
-                    <button type="button" onClick={() => void duplicateRunConfiguration(config.id)} title="Duplicate" className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Copy size={13} /></button>
-                    <button type="button" onClick={() => void remove(config.id)} title="Delete" className="gs-btn gs-btn-danger-ghost gs-btn-sm gs-btn-icon h-6 w-6 opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
-                  </div>
-                ))}
-                </div>
-              ))}
-            </div>
-            <CodeStudioRunSuggestions sessionId={sessionId} savedCount={configs.length} onAdd={addSuggestion} />
-            <button
-              type="button"
-              onClick={() => { setSelectedId(null); setDraft(emptyConfiguration(sessionId)) }}
-              className="flex h-10 shrink-0 items-center gap-2 border-t border-border-1 px-4 text-[12.5px] font-medium text-text-2 hover:bg-surface-2/60 hover:text-text-1"
-            >
-              <Plus size={14} /> New configuration
-            </button>
-          </aside>
-
-          <div className="min-w-0 flex-1 overflow-auto p-5">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-              <label className="gs-field-label">
-                Name
-                <input value={draft.name} onChange={(event) => patch({ name: event.target.value })} className="gs-input" />
-              </label>
-              <label className="gs-field-label">
-                Kind
-                <select
-                  value={draft.kind}
-                  onChange={(event) => {
-                    const kind = event.target.value as GoIDERunConfiguration['kind']
-                    const fileDefault = kind === GoIDERunConfigurationKind.RunKindMake ? 'Makefile' : kind === GoIDERunConfigurationKind.RunKindDockerCompose ? 'docker-compose.yml' : isDockerKind(kind) ? 'Dockerfile' : kind === GoIDERunConfigurationKind.RunKindGoTool ? 'generate' : COMMAND_KINDS.has(kind) || kind === GoIDERunConfigurationKind.RunKindCompound ? '' : '.'
-                    const javaKind = JAVA_KINDS.has(kind)
-                    patch({ kind, target: TOOL_KINDS.has(kind) !== isTool || !draft.target ? fileDefault : draft.target, language: javaKind ? 'java' : JAVA_KINDS.has(draft.kind) ? '' : draft.language, languageOptions: javaKind ? (JAVA_KINDS.has(draft.kind) && draft.language === 'java' ? draft.languageOptions : {}) : undefined })
-                  }}
-                  className="gs-input"
-                >
-                  {KINDS.map((kind) => (
-                    <option key={kind.value} value={kind.value} disabled={!kind.available}>
-                      {kind.label}{kind.available ? '' : ' — not available yet'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {isCompound ? (
-                <fieldset className="gs-field-label col-span-2">
-                  <legend className="mb-1.5">Configurations started together</legend>
-                  <div className="gs-surface max-h-40 overflow-auto p-1.5">
-                    {compoundCandidates.map((config) => (
-                      <label key={config.id} className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[12.5px] font-normal text-text-2 hover:bg-surface-2/60">
-                        <input
-                          type="checkbox"
-                          checked={(draft.compound ?? []).includes(config.id)}
-                          onChange={(event) => patch({ compound: event.target.checked ? [...(draft.compound ?? []), config.id] : (draft.compound ?? []).filter((id) => id !== config.id) })}
-                        />
-                        {config.name} <span className="text-[11px] text-text-4">{config.kind}</span>
-                      </label>
-                    ))}
-                    {compoundCandidates.length < 2 && <p className="gs-hint px-2 py-1.5">Create at least two other configurations first.</p>}
-                  </div>
-                  <div className="mt-3 font-normal">
-                    <RunTaskList draft={draft} configs={configs} patch={patch} field="preRun" exclude={draft.compound ?? []}
-                      title="Tasks after the containers are ready"
-                      hint="Migrations, seed data… run one after the other once Compose containers are healthy; a failure keeps the services stopped." />
-                  </div>
-                </fieldset>
-              ) : JAVA_KINDS.has(draft.kind) ? null : draft.kind === GoIDERunConfigurationKind.RunKindCommand ? (
-                textField('Command', draft.target, (next) => patch({ target: next }), 'npm  ·  ./scripts/seed.sh')
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindGoTool ? (
-                textField('Go command', draft.target, (next) => patch({ target: next }), 'generate  ·  tool  ·  list')
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindFiles ? (
-                <label className="gs-field-label col-span-2">
-                  Go files (one per line)
-                  <textarea
-                    value={(draft.files ?? []).join('\n')}
-                    onChange={(event) => patch({ files: splitList(event.target.value, /\r?\n/) })}
-                    placeholder={'main.go\nhelper.go'}
-                    className="gs-input gs-mono"
-                  />
-                </label>
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindBinary ? (
-                textField('Binary path', draft.binaryPath ?? '', (next) => patch({ binaryPath: next }), 'bin/app')
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose ? (
-                textField('Compose file', draft.target, (next) => patch({ target: next }), 'docker-compose.yml')
-              ) : draft.kind === GoIDERunConfigurationKind.RunKindMake ? (
-                textField('Makefile', draft.target, (next) => patch({ target: next }), 'Makefile')
-              ) : isDockerKind(draft.kind) ? (
-                textField('Dockerfile', draft.target, (next) => patch({ target: next }), 'Dockerfile')
-              ) : (
-                textField('Target package', draft.target, (next) => patch({ target: next }), '.')
-              )}
-
-              {!isCompound && textField('Working directory', draft.workingDirectory, (next) => patch({ workingDirectory: next }), 'Project root')}
-              {supportsRemoteTarget(draft.kind) && <CodeStudioRunTarget draft={draft} patch={patch} />}
-              {!isTool && textField('Go tool flags', (draft.goArguments ?? []).join(' '), (next) => patch({ goArguments: splitList(next, /\s+/) }), '-v -trimpath')}
-              {draft.kind === GoIDERunConfigurationKind.RunKindDockerCompose
-                ? textField('Command and services', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'up api db  ·  down')
-                : draft.kind === GoIDERunConfigurationKind.RunKindMake
-                ? textField('Targets and variables', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), 'build test VERSION=1.2.3')
-                : COMMAND_KINDS.has(draft.kind)
-                ? textField('Arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindGoTool ? './...  ·  pprof -top cpu.pprof' : 'run dev')
-                : draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && !isCompound && textField(draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container command' : 'Program arguments', (draft.programArguments ?? []).join(' '), (next) => patch({ programArguments: splitList(next, /\s+/) }), draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Image default' : '--port 8080')}
-              {!isTool && textField('Build tags', (draft.buildTags ?? []).join(','), (next) => patch({ buildTags: splitList(next, /,/) }), 'integration,sqlite')}
-              {isDockerKind(draft.kind) && (
-                <>
-                  {textField('Build context', docker.context ?? '', (next) => patchDocker({ context: next }), '. (Dockerfile folder)')}
-                  {textField('Image tag', docker.tag ?? '', (next) => patchDocker({ tag: next }), '<project>:dev')}
-                  {textField('Stage (--target)', docker.stage ?? '', (next) => patchDocker({ stage: next }), 'Last stage')}
-                  <label className="gs-check self-end pb-2">
-                    <input type="checkbox" checked={!!docker.noCache} onChange={(event) => patchDocker({ noCache: event.target.checked })} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
-                    Build without cache (--no-cache)
-                  </label>
-                </>
-              )}
-              {draft.kind === GoIDERunConfigurationKind.RunKindDockerRun && (
-                <>
-                  {textField('Published ports', (docker.ports ?? []).join(' '), (next) => patchDocker({ ports: splitList(next, /[\s,]+/) }), '8080:8080 9090')}
-                  {textField('Volumes', (docker.volumes ?? []).join(' '), (next) => patchDocker({ volumes: splitList(next, /\s+/) }), 'data:/data:ro')}
-                </>
-              )}
-            </div>
-
-            {isDockerKind(draft.kind) && (
-              <CodeStudioEntryList label="Build args" empty="No build arg." entries={docker.buildArgs ?? []} onChange={(buildArgs) => patchDocker({ buildArgs })} />
-            )}
-
-            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2.5">
-              <label className="gs-check" title="Also stored in .adomnia/run-configurations.json: commit it to share the configuration with the team. Secret values are never written.">
-                <input type="checkbox" checked={!!draft.shared} onChange={(event) => patch({ shared: event.target.checked })} />
-                Share with the project (.adomnia)
-              </label>
-              <label className="gs-check" title="Pinned configurations come first in the Run menu and in Search Everywhere.">
-                <input type="checkbox" checked={!!draft.pinned} onChange={(event) => patch({ pinned: event.target.checked })} />
-                Pin
-              </label>
-              <label className="gs-check" title="What happens to this run if adOmnia closes unexpectedly while it is running.">
-                After a crash
-                <select value={draft.restartPolicy ?? ''} onChange={(event) => patch({ restartPolicy: event.target.value })} className="gs-input h-8 w-auto">
-                  <option value="">Ask before relaunching</option>
-                  <option value="never">Never relaunch (migrations, scripts)</option>
-                  <option value="always">Relaunch automatically</option>
-                </select>
-              </label>
-              {!isCompound && (
-                <label className="gs-check" title="A running execution restarts when you save a Go file of the project.">
-                  <input type="checkbox" checked={!!draft.restartOnSave} onChange={(event) => patch({ restartOnSave: event.target.checked })} />
-                  Restart on save
-                </label>
-              )}
-            </div>
-
-            {draft.kind !== GoIDERunConfigurationKind.RunKindDockerBuild && !isCompound && (
-              <CodeStudioEntryList
-                label={draft.kind === GoIDERunConfigurationKind.RunKindDockerRun ? 'Container environment' : 'Environment'}
-                empty="No environment override."
-                entries={draft.environment ?? []}
-                onChange={(environment) => patch({ environment })}
-              />
-            )}
-
-            {!isCompound && <CodeStudioRunParameters draft={draft} configs={configs} patch={patch} />}
-
-            {history.length > 0 && (
-              <section className="mt-5">
-                <h3 className="gs-section-title mb-2">Recent runs</h3>
-                <ul className="gs-list text-[12px]">
-                  {history.map((entry) => (
-                    <li key={`${entry.startedAt}-${entry.command}`} className="gs-list-row min-h-[34px] py-1.5" title={entry.command}>
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${entry.exitCode === 0 ? 'bg-success' : entry.status === 'exited' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />
-                      <span className="text-text-2">{new Date(entry.startedAt).toLocaleString()}</span>
-                      <span className="text-text-4">{entry.exitCode === null ? entry.status : `exit ${entry.exitCode}`}</span>
-                      <span className="ml-auto tabular-nums text-text-4">{(entry.durationMillis / 1000).toFixed(1)} s</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <p className="gs-hint mt-4">
-              {kindInfo.hint}. {isTool ? 'Arguments are passed as a list, never through a shell.' : 'Tool flags and program arguments stay separate and reach Go without shell concatenation.'}
-              Secret values are never written to disk: only the variable name is stored and the value is requested at launch.
-            </p>
-          </div>
+  const duplicate = () => act(async () => {
+    await useCodeStudioStore.getState().duplicateRunConfiguration(draft.id)
+    const state = useCodeStudioStore.getState()
+    const copy = state.runConfigsBySession[sessionId]?.find(config => config.id === state.activeConfigBySession[sessionId])
+    if (copy) select(copy)
+  }, 'Configuration duplicated.')
+  const remove = async () => {
+    if (!await confirm({ title: `Delete "${draft.name}"?`, message: 'Remove this configuration from the project.', confirmLabel: 'Delete', variant: 'danger' })) return
+    await act(async () => {
+      await useCodeStudioStore.getState().deleteRunConfiguration(draft.id)
+      const state = useCodeStudioStore.getState()
+      if (state.error) return
+      const next = state.runConfigsBySession[sessionId]?.[0]
+      if (next) select(next)
+      else { setDraft(emptyRunConfiguration(sessionId)); setWizard(true) }
+    }, 'Configuration deleted.')
+  }
+  const move = (delta: number) => act(async () => {
+    const ids = configs.map(config => config.id)
+    const index = ids.indexOf(draft.id)
+    if (index + delta < 0 || index + delta >= ids.length) return
+    ids.splice(index + delta, 0, ...ids.splice(index, 1))
+    await useCodeStudioStore.getState().reorderRunConfigurations(ids)
+  }, 'Order updated.')
+  return <CodeStudioModal open={open} onClose={onClose} size="xl" tall divided flush icon={Play} title="Run configurations" subtitle="Choose a saved configuration, or create one from your project." footer={<>
+    <span role={feedback?.error ? 'alert' : 'status'} aria-live="polite" className={`mr-auto min-w-0 text-[12px] ${feedback?.error ? 'text-danger' : 'text-success'}`}>{feedback?.message}</span>
+    <CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>
+    {!wizard && <CodeStudioButton variant="primary" loading={busy} disabled={loading || !ready || !draft.name.trim()} onClick={() => {
+      const form = document.getElementById('code-studio-run-config-form') as HTMLFormElement | null
+      form?.requestSubmit()
+    }}>{draft.id ? 'Save configuration' : 'Create configuration'}</CodeStudioButton>}
+  </>}>
+    <div className="flex min-h-0 flex-1">
+      <aside className="flex w-52 shrink-0 flex-col border-r border-border-1 bg-surface-0/40">
+        <div className="min-h-0 flex-1 overflow-auto p-2">
+          {configs.length === 0 && <p className="gs-list-empty">No saved configurations.</p>}
+          {groups.map(group => <div key={group.label || 'all'}>
+            {group.label && <h3 className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-text-4">{group.label}</h3>}
+            {group.items.map(config => <button key={config.id} type="button" disabled={busy} aria-current={!wizard && config.id === draft.id ? 'true' : undefined} onClick={() => select(config)} className={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[12px] hover:bg-surface-2 focus-visible:outline focus-visible:outline-accent ${!wizard && config.id === draft.id ? 'bg-accent/10 text-text-1' : 'text-text-3'}`}>
+              {config.pinned && <Pin size={12} />}<span className="min-w-0 flex-1 truncate">{config.name}</span>{config.shared && <Share2 size={12} />}
+            </button>)}
+          </div>)}
         </div>
-
-    </CodeStudioModal>
-  )
+        <button type="button" disabled={busy} onClick={() => { setWizard(true); setFeedback(null) }} className="gs-btn gs-btn-ghost m-2"><Plus size={14} />New configuration</button>
+      </aside>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {loading ? <p role="status" className="gs-hint p-5">Loading configurations…</p>
+        : wizard ? <CodeStudioRunWizard sessionId={sessionId} busy={busy} onChoose={candidate => { setDraft(candidate); setWizard(false); setFeedback(null) }} onCreate={candidate => save(candidate)} />
+        : <>
+          <div className="flex items-center gap-1 border-b border-border-1 px-4 py-2">
+            <span className="gs-label mr-auto">Edit configuration</span>
+            <CodeStudioButton variant="ghost" disabled={!draft.id || busy} onClick={() => void duplicate()}><Copy size={13} />Duplicate</CodeStudioButton>
+            <CodeStudioButton variant="ghost" disabled={!draft.id || busy || configs[0]?.id === draft.id} title="Move up" onClick={() => void move(-1)}><ChevronUp size={13} /></CodeStudioButton>
+            <CodeStudioButton variant="ghost" disabled={!draft.id || busy || configs[configs.length - 1]?.id === draft.id} title="Move down" onClick={() => void move(1)}><ChevronDown size={13} /></CodeStudioButton>
+            <CodeStudioButton variant="ghost" disabled={!draft.id || busy} onClick={() => void remove()}><Trash2 size={13} />Delete</CodeStudioButton>
+          </div>
+          <form id="code-studio-run-config-form" className={`flex min-h-0 flex-1 flex-col ${busy ? 'pointer-events-none opacity-60' : ''}`} onSubmit={event => { event.preventDefault(); if (ready && !busy) void save() }}>
+            <fieldset disabled={busy} className="flex min-h-0 flex-1 flex-col"><RunConfigForm key={draft.id || 'new'} draft={draft} configs={configs} patch={patch} onReady={setReady} /></fieldset>
+          </form>
+        </>}
+      </div>
+    </div>
+  </CodeStudioModal>
 }

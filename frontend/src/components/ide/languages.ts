@@ -1,3 +1,5 @@
+import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
+import type { RunTemplate } from '@/lib/code-studio/runFormTypes'
 import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import { GO_LANGUAGE } from './languages/go'
 import { JAVA_LANGUAGE } from './languages/java'
@@ -10,6 +12,8 @@ import { WEB_LANGUAGES } from './languages/web'
  * `languages/<id>/` più una riga in IDE_LANGUAGES (docs/architecture/ide-multilanguage-refactor.md).
  */
 export interface IdeLanguageContribution {
+  runTemplates?: readonly RunTemplate[]
+  canDebugRun?: (config: GoIDERunConfiguration) => boolean
   /** Uguale all'ID del language adapter backend (es. "go"). */
   id: string
   name: string

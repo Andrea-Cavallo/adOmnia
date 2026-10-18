@@ -13,13 +13,24 @@ export interface TreeMenuContext {
   vcsAvailable: boolean
   /** Il progetto ha almeno un go.mod: l'import path ha senso. */
   hasGoModule: boolean
+  /** Il progetto ha un'unità Java: compaiono New Java Class/Package. */
+  hasJava?: boolean
   /** Percorsi modificati rispetto a HEAD, relativi alla radice del progetto. */
   changedPaths: string[]
 }
 
+const JAVA_NEW_ITEMS: ContextMenuItem[] = [
+  { id: 'newJavaClass', label: 'Java Class…', icon: FileCode2 },
+  { id: 'newJavaInterface', label: 'Java Interface…', icon: FileCode2 },
+  { id: 'newJavaEnum', label: 'Java Enum…', icon: FileCode2 },
+  { id: 'newJavaRecord', label: 'Java Record…', icon: FileCode2 },
+  { id: 'newJavaPackage', label: 'Java Package…', icon: FolderPlus, separatorBefore: false },
+]
+
 const NEW_ITEMS: ContextMenuItem[] = [
   { id: 'newGoFile', label: 'Go File…', icon: FileCode2 },
   { id: 'newFile', label: 'File…', icon: FilePlus },
+
   { id: 'newFolder', label: 'Folder…', icon: FolderPlus },
   { id: 'newGitignore', label: '.gitignore', icon: GitBranch, submenu: [
     { id: 'newGitignoreGo', label: 'Go + Common Tools' },
@@ -174,7 +185,7 @@ export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuCon
         { id: 'splitDown', label: 'Split Down', icon: Rows2 },
       ] },
     ] : []),
-    { id: 'new', label: 'New', icon: FilePlus, separatorBefore: isFile, submenu: NEW_ITEMS },
+    { id: 'new', label: 'New', icon: FilePlus, separatorBefore: isFile, submenu: context.hasJava ? [...JAVA_NEW_ITEMS, ...NEW_ITEMS] : NEW_ITEMS },
     ...clipboardItems(entry, context),
     ...ideItems(entry),
     ...(entry ? [

@@ -62,7 +62,8 @@ export function CodeStudioRunTarget({ draft, patch }: CodeStudioRunTargetProps) 
 
   const refresh = () => {
     setLoading(true)
-    listGoIDERemoteTargets().then(setTargets, () => setTargets([])).finally(() => setLoading(false))
+    setContainerError('')
+    listGoIDERemoteTargets().then(setTargets, () => { setContainerError('Run targets could not be loaded. Use Refresh to try again.') }).finally(() => setLoading(false))
   }
   useEffect(refresh, [])
 
@@ -133,7 +134,7 @@ export function CodeStudioRunTarget({ draft, patch }: CodeStudioRunTargetProps) 
       {remote?.devContainerConfig && <p className="gs-hint col-span-2">Dev Container CLI exec applies remoteUser, remoteEnv and userEnvProbe from the project configuration. Custom run environment overrides are passed to the CLI; values are omitted from the displayed command.</p>}
       {remote && (
         <p className="gs-hint col-span-2 -mt-2">
-          {remote.kind === 'wsl' && 'Runs with the Go toolchain installed in the distro. Paths are translated automatically.'}
+          {remote.kind === 'wsl' && 'Runs with the configured executable installed in the distro. Paths are translated automatically.'}
           {remote.kind === 'ssh' && 'Runs over ssh with your keys or agent (no password prompts). The folder must hold the same checkout. Environment values travel in the remote command.'}
           {remote.kind === 'container' && 'Runs with docker exec. The folder is where the project is mounted in the container. Environment values are passed with -e, never on the command line.'}
           {' '}Stop ends the remote process; console input is not forwarded.

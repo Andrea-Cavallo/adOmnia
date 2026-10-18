@@ -3,10 +3,12 @@ import type { CodeStudioWhenContext } from '@/lib/code-studio/when'
 import { IDE_LANGUAGES, languageRequirement, type IdeRegisteredLanguage } from '@/components/ide/languages'
 import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide/languages/go/commands'
 import { WEB_LANGUAGE_COMMANDS, type WebLanguageCommandId } from '@/components/ide/languages/web/commands'
+import { JAVA_LANGUAGE_COMMANDS, type JavaLanguageCommandId } from '@/components/ide/languages/java/commands'
 
 export type CodeStudioCommandId =
   | GoLanguageCommandId
   | WebLanguageCommandId
+  | JavaLanguageCommandId
   | 'file.openProject' | 'file.newProject' | 'file.clone' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
@@ -270,6 +272,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'vcs.resolveConflicts', menu: 'git', label: 'Resolve Conflicts…' },
   { id: 'vcs.gitStudio', menu: 'git', label: 'Open Project Git Tool Window', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
+  ...JAVA_LANGUAGE_COMMANDS,
 ]
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -442,6 +445,10 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id.startsWith('preview.') || id === 'web.installTools') {
     if (id !== 'preview.show' && !id.startsWith('preview.place') && !context.authorized) return NOT_TRUSTED
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
+  }
+  if (id.startsWith('java.')) {
+    if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
+    return context.hasEditor ? true : 'Open a Java file first'
   }
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {

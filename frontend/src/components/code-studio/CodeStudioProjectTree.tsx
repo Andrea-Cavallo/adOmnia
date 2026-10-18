@@ -224,7 +224,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       case 'open': void openDocument(path); break
       case 'splitRight': void openInSplit(session.id, path, 'right'); break
       case 'splitDown': void openInSplit(session.id, path, 'down'); break
-      case 'newGoFile': case 'newFile': case 'newFolder': setPathRequest({ action: id, target: folder }); break
+      case 'newGoFile': case 'newFile': case 'newFolder': case 'newJavaClass': case 'newJavaInterface': case 'newJavaEnum': case 'newJavaRecord': case 'newJavaPackage': setPathRequest({ action: id, target: folder }); break
       case 'newGitignoreGo': case 'newGitignoreNode': case 'newGitignorePython': case 'newGitignoreJava': case 'newGitignoreCommon':
         void createGitignore(session.id, folder, id.slice('newGitignore'.length).toLowerCase() as GitignoreTemplate); break
       case 'cut': case 'copy': if (entry) useCodeStudioTreeClipboard.getState().setClipboard({ sessionId: session.id, relativePath: path, mode: id }); break
@@ -303,7 +303,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
     setMenu(null)
     runTreeAction(id, entry)
   }
-  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
+  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava: (session.project.units ?? []).some((unit) => unit.language === 'java'), changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
 
   return (
     <aside aria-label="Project files" className="flex h-full min-w-0 flex-col">

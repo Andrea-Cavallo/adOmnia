@@ -3,5 +3,14 @@
 
 export {
     PomDependency,
+    SpringBean,
+    SpringDiagnostic,
+    SpringEndpoint,
+    SpringIndex,
+    SpringInjection,
+    SpringMetadataReport,
+    SpringProperty,
+    SpringPropertyReference,
+    SpringValue,
     VersionInfo
 } from "./models.js";

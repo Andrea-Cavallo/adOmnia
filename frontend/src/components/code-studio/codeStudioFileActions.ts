@@ -1,8 +1,11 @@
 import { createGoIDEDirectory, createGoIDEFiles, deleteGoIDEPath, duplicateGoIDEPath, moveGoIDEPath, revealGoIDEPath } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { javaNameError, javaPackageOfDirectory, javaSourceTemplate, type JavaEntryKind } from '@/lib/code-studio/javaCommands'
 
-export type CodeStudioPathAction = 'newGoFile' | 'newFile' | 'newFolder' | 'rename' | 'duplicate'
+export type CodeStudioJavaEntryAction = 'newJavaClass' | 'newJavaInterface' | 'newJavaEnum' | 'newJavaRecord' | 'newJavaPackage'
+
+export type CodeStudioPathAction = 'newGoFile' | 'newFile' | 'newFolder' | 'rename' | 'duplicate' | CodeStudioJavaEntryAction
 
 export type GitignoreTemplate = 'common' | 'go' | 'node' | 'python' | 'java'
 
@@ -82,11 +85,44 @@ async function guarded(action: () => Promise<void>): Promise<boolean> {
   }
 }
 
+const JAVA_ENTRY_KIND: Record<Exclude<CodeStudioJavaEntryAction, 'newJavaPackage'>, JavaEntryKind> = {
+  newJavaClass: 'class', newJavaInterface: 'interface', newJavaEnum: 'enum', newJavaRecord: 'record',
+}
+
+export function isJavaEntryAction(action: CodeStudioPathAction): action is CodeStudioJavaEntryAction {
+  return action in JAVA_ENTRY_KIND || action === 'newJavaPackage'
+}
+
+/** Errore di validazione del nome per le azioni Java, vuoto per ogni altra azione. */
+export function javaEntryNameError(action: CodeStudioPathAction, name: string): string {
+  if (!isJavaEntryAction(action)) return ''
+  return javaNameError(action === 'newJavaPackage' ? 'package' : JAVA_ENTRY_KIND[action], name)
+}
+
+/** Crea una classe/interfaccia/enum/record con il package della cartella, o un package (cartelle annidate). */
+async function createJavaEntry(sessionId: string, action: CodeStudioJavaEntryAction, target: string, name: string): Promise<boolean> {
+  const store = useCodeStudioStore.getState()
+  if (javaEntryNameError(action, name)) return false
+  if (action === 'newJavaPackage') {
+    const path = joinRelative(target, name.trim().split('.').join('/'))
+    const ok = await guarded(() => createGoIDEDirectory(sessionId, path))
+    if (ok) await refresh(target)
+    return ok
+  }
+  const kind = JAVA_ENTRY_KIND[action]
+  const className = name.trim()
+  const path = joinRelative(target, `${className}.java`)
+  const ok = await guarded(() => createGoIDEFiles(sessionId, [{ relativePath: path, content: javaSourceTemplate(kind, className, javaPackageOfDirectory(target)) }]))
+  if (ok) { await refresh(target); await store.openDocument(path) }
+  return ok
+}
+
 /** Esegue l'azione del dialog: target è la cartella (new*) o l'elemento (rename/duplicate). */
 export async function runPathAction(sessionId: string, action: CodeStudioPathAction, target: string, name: string): Promise<boolean> {
   const trimmed = name.trim().replace(/\\/g, '/')
   if (!trimmed) return false
   const store = useCodeStudioStore.getState()
+  if (isJavaEntryAction(action)) return createJavaEntry(sessionId, action, target, trimmed)
   switch (action) {
     case 'newGoFile':
     case 'newFile': {

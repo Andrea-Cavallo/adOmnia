@@ -61,3 +61,17 @@ describe('semantic token retries', () => {
     expect(semanticRetryDelay(-1)).toBeNull()
   })
 })
+
+describe('Java remap context', () => {
+  const types = ['interface', 'variable']
+  // riga 0: token "interface" a colonna 1 (dopo '@'), token "variable" a colonna 10
+  const data = [0, 1, 4, 0, 0, 0, 9, 3, 1, 0]
+  it('retypes @Name as annotation and variables as javaVariable', () => {
+    const out = remapSemanticTokens(data, types, [], { isAnnotationAt: (line, start) => line === 0 && start === 1, variableType: 'javaVariable' })
+    expect(out[3]).toBe(CLIENT_TOKEN_TYPES.indexOf('annotation'))
+    expect(out[8]).toBe(CLIENT_TOKEN_TYPES.indexOf('javaVariable'))
+  })
+  it('leaves Go variables alone without a context', () => {
+    expect(remapSemanticTokens(data, types, [])[8]).toBe(CLIENT_TOKEN_TYPES.indexOf('variable'))
+  })
+})

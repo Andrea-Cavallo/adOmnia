@@ -1,6 +1,7 @@
 package codestudio
 
 import (
+	"adomnia/internal/ide/run"
 	"fmt"
 	"strings"
 )
@@ -30,6 +31,17 @@ func (s *Service) SaveRunConfiguration(sessionID string, config RunConfiguration
 	}
 	if err := s.validateConfigurationPaths(session, config); err != nil {
 		return RunConfiguration{}, err
+	}
+	languageID := config.Language
+	if languageID == "" {
+		languageID = "go" // Compatibility with configurations saved before language IDs.
+	}
+	if adapter, ok := s.workspace.languages.Get(languageID); ok {
+		if validator, ok := adapter.(run.ConfigValidator); ok {
+			if err := validator.ValidateRunConfiguration(toCoreConfiguration(config)); err != nil {
+				return RunConfiguration{}, err
+			}
+		}
 	}
 	saved, err := s.runConfigs.Save(session.ID, config)
 	if err != nil {

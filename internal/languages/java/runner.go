@@ -3,6 +3,8 @@ package java
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"adomnia/internal/ide/run"
 )
@@ -34,6 +36,34 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		Executable: executable, Arguments: arguments, WorkingDirectory: request.WorkingDirectory,
 		Environment: append(append([]string(nil), request.Environment...), extra...), DisplayCommand: display,
 	}, nil
+}
+
+// ValidateRunConfiguration checks provider options before persistence, without running tools.
+func (*Language) ValidateRunConfiguration(config run.Configuration) error {
+	switch string(config.Kind) {
+	case KindMain:
+		var options MainOptions
+		if err := json.Unmarshal(config.LanguageOptions, &options); err != nil {
+			return fmt.Errorf("enter a main class and valid VM options")
+		}
+		return options.validate()
+	case KindAttach:
+		var options struct {
+			Host string `json:"host"`
+			Port string `json:"port"`
+		}
+		if err := json.Unmarshal(config.LanguageOptions, &options); err != nil {
+			return fmt.Errorf("enter a host and a JVM debug port")
+		}
+		port, err := strconv.Atoi(options.Port)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("JVM debug port must be between 1 and 65535")
+		}
+		if strings.ContainsAny(options.Host, "\r\n\x00") {
+			return fmt.Errorf("enter a valid JVM host")
+		}
+	}
+	return nil
 }
 
 // RunSchema implementa run.SchemaProvider: i campi dei form "Java main class" e "Remote JVM".

@@ -1,4 +1,4 @@
-import type { PomDependency, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { PomDependency, SpringEndpoint, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -783,4 +783,26 @@ export async function getPomDependencies(sessionId: string, content: string): Pr
 /** Versioni stabili su Maven Central per `group:artifact` → versione corrente. Solo su azione esplicita. */
 export async function getPomVersions(sessionId: string, current: Record<string, string>): Promise<VersionInfo[]> {
   return GoIDEBindings.PomVersions(sessionId, current)
+}
+
+/**
+ * Indice Spring del progetto: proprietà note, valori con il loro profilo, bean, iniezioni ed endpoint.
+ * Solo filesystem — nessun server, nessuna rete.
+ */
+export async function getSpringIndex(sessionId: string): Promise<SpringIndex> {
+  return GoIDEBindings.SpringIndex(sessionId)
+}
+
+/** Endpoint HTTP MVC del progetto (route, metodo, posizione navigabile). */
+export async function getSpringEndpoints(sessionId: string): Promise<SpringEndpoint[]> {
+  return GoIDEBindings.SpringEndpoints(sessionId)
+}
+
+/**
+ * Indicizza i `spring-configuration-metadata.json` degli jar già scaricati nella repository Maven
+ * locale: porta i default e le descrizioni delle liberie nel completamento. Lavoro pesante, solo su
+ * azione esplicita dell'utente; riprende dalla cache.
+ */
+export async function refreshSpringMetadata(sessionId: string, limit = 20000): Promise<SpringMetadataReport> {
+  return GoIDEBindings.SpringMetadataRefresh(sessionId, limit)
 }

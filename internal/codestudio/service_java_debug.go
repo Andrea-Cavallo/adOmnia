@@ -238,52 +238,30 @@ func (s *Service) requestJavaDebugAddress(ctx context.Context, session Session) 
 
 // resolveJavaDebug interroga JDT LS: progetto della classe, classpath, JDK e porta del debug adapter.
 func (s *Service) resolveJavaDebug(session Session, request JavaDebugRequest) (java.DebugOptions, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
-	defer cancel()
 	options := java.DebugOptions{MainClass: request.MainClass}
-	err := retryJavaCommand(ctx, request.MainClass, func() error { return s.tryResolveJavaDebug(ctx, session, &options) })
-	return options, err
-}
-
-func (s *Service) tryResolveJavaDebug(ctx context.Context, session Session, options *java.DebugOptions) error {
-	call := func(command string, arguments ...any) (json.RawMessage, error) {
-		return s.lsp.ExecuteCommand(ctx, session.ID, java.ID, command, arguments...)
+	discoveryCtx, cancelDiscovery := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
+	discoveryErr := retryJavaCommand(discoveryCtx, request.MainClass, func() error {
+		return java.ResolveDebugProject(fileURI(session.Project.RealPath), &options, func(command string, arguments ...any) (json.RawMessage, error) {
+			return s.lsp.ExecuteCommand(discoveryCtx, session.ID, java.ID, command, arguments...)
+		})
+	})
+	cancelDiscovery()
+	if discoveryErr != nil {
+		return options, discoveryErr
 	}
-	var mains []struct {
-		MainClass   string `json:"mainClass"`
-		ProjectName string `json:"projectName"`
-	}
-	raw, err := call(java.CommandResolveMainClass, fileURI(session.Project.RealPath))
+	// A source discovered by JDT LS is not necessarily compiled yet. Wait for the
+	// explicit build before resolving runtime paths or opening a debug adapter.
+	// Build errors are final for this action, not repeated by the import retry loop.
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), javaDebugBuildTimeout)
+	defer cancelBuild()
+	err := java.PrepareDebugRuntime(&options, func(command string, arguments ...any) (json.RawMessage, error) {
+		return s.lsp.ExecuteCommand(buildCtx, session.ID, java.ID, command, arguments...)
+	})
 	if err != nil {
-		return err
+		return options, err
 	}
-	if json.Unmarshal(raw, &mains) != nil {
-		return fmt.Errorf("unexpected answer from the Java language server")
-	}
-	options.ProjectName = ""
-	for _, main := range mains {
-		if main.MainClass == options.MainClass {
-			options.ProjectName = main.ProjectName
-			break
-		}
-	}
-	if options.ProjectName == "" {
-		return fmt.Errorf("%s is not a main class of this project", options.MainClass)
-	}
-	var classpath [][]string
-	if raw, err = call(java.CommandResolveClasspath, options.MainClass, options.ProjectName); err != nil {
-		return err
-	}
-	if json.Unmarshal(raw, &classpath) != nil || len(classpath) != 2 {
-		return fmt.Errorf("unexpected classpath answer from the Java language server")
-	}
-	options.ModulePaths, options.ClassPaths = classpath[0], classpath[1]
-	if raw, err = call(java.CommandResolveJavaExec, options.MainClass, options.ProjectName); err != nil {
-		return err
-	}
-	_ = json.Unmarshal(raw, &options.JavaExec)
-	options.Address, err = s.requestJavaDebugAddress(ctx, session)
-	return err
+	options.Address, err = s.startJavaDebugServer(buildCtx, session)
+	return options, err
 }
 
 // validJavaClassName: vedi java.ValidClassName.

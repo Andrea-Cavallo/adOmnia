@@ -5,7 +5,14 @@ import { requestForNode, rerunFailedRequest } from '@/lib/code-studio/codeStudio
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
 
-const MAX_RUNS_PER_SESSION = 10
+// Una run per suite: con 12+ moduli in "Run All" le meno recenti non devono sparire dalla dashboard.
+const MAX_RUNS_PER_SESSION = 60
+
+/** Una suite in attesa nella coda di "Run All": `key` è quella del target (`TestTarget.key`). */
+export interface QueuedTestRun {
+  key: string
+  request: GoIDETestRunRequest
+}
 
 interface GoIDETestsState {
   runs: Record<string, GoIDETestRun[]>
@@ -15,7 +22,11 @@ interface GoIDETestsState {
   /** Overlay di coverage nell'editor: si spegne senza toccare i file. */
   coverageVisible: boolean
   error: string | null
+  /** Suite ancora da eseguire per sessione: "Run All" le avvia una alla volta. */
+  queue: Record<string, QueuedTestRun[]>
   start: (request: GoIDETestRunRequest) => Promise<void>
+  runAll: (sessionId: string, items: QueuedTestRun[]) => Promise<void>
+  clearQueue: (sessionId: string) => void
   rerunFailed: (sessionId: string) => Promise<void>
   rerunAll: (sessionId: string) => Promise<void>
   rerunNode: (sessionId: string, result: GoIDETestResult) => Promise<void>
@@ -51,6 +62,8 @@ export function visibleCoverage(state: Pick<GoIDETestsState, 'runs' | 'coverageV
 
 let unsubscribe: (() => void) | null = null
 
+const isRunning = (runs: GoIDETestRun[] | undefined) => (runs ?? []).some((run) => run.status === 'running')
+
 export const useCodeStudioTestsStore = create<GoIDETestsState>((set, get) => ({
   runs: {},
   selectedRun: {},
@@ -58,6 +71,7 @@ export const useCodeStudioTestsStore = create<GoIDETestsState>((set, get) => ({
   onlyFailed: false,
   coverageVisible: true,
   error: null,
+  queue: {},
 
   start: async (request) => {
     if (!unsubscribe) unsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
@@ -75,6 +89,13 @@ export const useCodeStudioTestsStore = create<GoIDETestsState>((set, get) => ({
       set({ error: errorMessage(error) })
     }
   },
+
+  runAll: async (sessionId, items) => {
+    set((state) => ({ queue: { ...state.queue, [sessionId]: items } }))
+    await pump(sessionId)
+  },
+
+  clearQueue: (sessionId) => set((state) => ({ queue: { ...state.queue, [sessionId]: [] } })),
 
   rerunFailed: async (sessionId) => {
     const run = selectedTestRun(get(), sessionId)
@@ -113,5 +134,17 @@ export const useCodeStudioTestsStore = create<GoIDETestsState>((set, get) => ({
     const run = event.payload as GoIDETestRun
     if (!run?.runId) return
     set((state) => ({ runs: { ...state.runs, [run.sessionId]: upsert(state.runs[run.sessionId] ?? [], run) } }))
+    if (run.status !== 'running') void pump(run.sessionId)
   },
 }))
+
+/** Avvia la prossima suite in coda quando nessuna run della sessione è in corso; si richiama a ogni fine run. */
+async function pump(sessionId: string): Promise<void> {
+  const state = useCodeStudioTestsStore.getState()
+  const [next, ...rest] = state.queue[sessionId] ?? []
+  if (!next || isRunning(state.runs[sessionId])) return
+  useCodeStudioTestsStore.setState({ queue: { ...state.queue, [sessionId]: rest } })
+  await state.start(next.request)
+  // Una run che finisce subito (build fallita, nessun test) non produce un evento: si passa alla successiva da qui.
+  await pump(sessionId)
+}

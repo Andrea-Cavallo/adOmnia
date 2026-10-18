@@ -1,3 +1,4 @@
+import { configurationTestTarget } from '@/lib/code-studio/runToolbarActions'
 import { useActivityScope } from '@/hooks/useActivity'
 import { CODE_STUDIO_USED_KEY } from './CodeStudioWarmup'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
@@ -67,6 +68,7 @@ import { CodeStudioActivityBar } from './CodeStudioActivityBar'
 import { CodeStudioToolPathsDialog } from './CodeStudioToolPathsDialog'
 import { runLanguageCommand } from './codeStudioLanguageCommands'
 import { runPreviewCommand } from './codeStudioPreviewCommands'
+import { runJavaCommand } from './codeStudioJavaCommands'
 import { isWebOnlyProject } from '@/lib/code-studio/livePreview'
 import { runSaveActions } from './codeStudioSaveActions'
 import { mouseNavigationCommand } from './codeStudioMouseNavigation'
@@ -81,6 +83,7 @@ import { CodeStudioInlineAssistantPopup } from './CodeStudioInlineAssistantPopup
 import { CodeStudioImplementInterfaceDialog } from './CodeStudioImplementInterfaceDialog'
 import { CodeStudioChangeSignatureDialog } from './CodeStudioChangeSignatureDialog'
 import { CodeStudioMoveSymbolDialog } from './CodeStudioMoveSymbolDialog'
+import { CodeStudioSpringEndpoints } from './CodeStudioSpringEndpoints'
 import { CodeStudioSearchEverywhere } from './CodeStudioSearchEverywhere'
 import { createDoubleShiftDetector } from './codeStudioSearchRanking'
 import { rememberCommand } from './codeStudioSearchExtras'
@@ -879,6 +882,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (isCodeStudioEditorCommand(id)) { runCodeStudioEditorCommand(id); return }
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
+    if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
@@ -994,7 +998,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
   if (activeSession && (windows.owners[activeSession.id] ?? 'main') !== windows.context.windowId) {
     return (
       <div className="code-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-        <CodeStudioToolbar mainMenu={mainMenu} trailing={<CodeStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useCodeStudioWindowsStore.getState().bringBack(activeSession.id)} />
+        <CodeStudioToolbar mainMenu={mainMenu} trailing={<CodeStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} onTest={() => { const target = configurationTestTarget(activeSession.project, activeConfig); if (target) void useCodeStudioTestsStore.getState().start({ sessionId: activeSession.id, language: target.language, workingDirectory: target.workingDirectory, packages: target.packages }) }} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void useCodeStudioWindowsStore.getState().bringBack(activeSession.id)} />
         {windowError}
         <CodeStudioElsewhere mode="elsewhere" projectName={activeSession.project.name} onFocus={() => void useCodeStudioWindowsStore.getState().focusOwner(activeSession.id)} onBringBack={() => void useCodeStudioWindowsStore.getState().bringBack(activeSession.id)} />
         {sharedDialogs}
@@ -1008,7 +1012,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
 
   return (
     <div className="code-studio-root flex min-h-0 flex-1 flex-col text-text-1">
-      {!zen && <CodeStudioToolbar mainMenu={mainMenu} trailing={<CodeStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} extra={<CodeStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={codeStudioMaximized} onToggleMaximize={toggleCodeStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />}
+      {!zen && <CodeStudioToolbar mainMenu={mainMenu} trailing={<CodeStudioWorkspaceSwitcher />} onSearchEverywhere={() => runCommand('nav.searchEverywhere')} onDebug={() => runCommand('debug.debug')} onTest={() => { const target = configurationTestTarget(activeSession.project, activeConfig); if (target) void useCodeStudioTestsStore.getState().start({ sessionId: activeSession.id, language: target.language, workingDirectory: target.workingDirectory, packages: target.packages }) }} extra={<CodeStudioBranchWidget sessionId={activeSession.id} onCommit={() => setVcsDialog('commit')} />} maximized={codeStudioMaximized} onToggleMaximize={toggleCodeStudioMaximized} recentProjects={recentNotOpen} onOpenRecent={(path) => void store.openProject(path)} runConfigurations={runConfigurations} activeConfigId={activeConfigId} onSelectConfiguration={(id) => store.selectRunConfiguration(id)} sessions={workspaceSessions} activeSession={activeSession} activeExecution={activeExecution} toolchain={toolchain} loading={store.loading} onSelect={(id) => void store.selectSession(id)} onOpenProject={() => void store.openProject()} onCreateProject={() => setCreateOpen(true)} onClone={() => setCloneOpen(true)} onDetectToolchain={() => void store.detectToolchain()} onToolchainSettings={() => setToolchainOpen(true)} onDependencies={() => setDependenciesOpen(true)} onConfigure={() => setConfigureOpen(true)} onBuild={() => startConfigured('build')} onRun={() => runCommand('run.run')} onTidy={() => void tidy()} onStop={() => void store.stopRun()} onClose={() => void closeFlow.requestCloseSession()} />}
       {store.error && <ErrorBanner message={store.error} onClose={store.clearError} />}
       {windowError}
       {lsp.message && <NoticeBanner message={lsp.message} onClose={lsp.clearMessage} />}
@@ -1041,6 +1045,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioImplementInterfaceDialog />
       <CodeStudioChangeSignatureDialog />
       <CodeStudioMoveSymbolDialog />
+      <CodeStudioSpringEndpoints />
       {sharedDialogs}
       {store.activeSessionId && <CodeStudioRunConfigurations open={configureOpen} sessionId={store.activeSessionId} initialDraft={configDraft} onClose={() => { setConfigureOpen(false); setConfigDraft(null) }} />}
       <CodeStudioSecretsPrompt

@@ -60,3 +60,16 @@ func TestNewFormatWithOnlyLanguageOptionsFillsFlatFields(t *testing.T) {
 		t.Fatalf("flat fields not derived from languageOptions: %v", out)
 	}
 }
+
+// TestRealWorkspaceGoConfigSurvives is the phase-3 gate: a config written by an older build
+// (flat Go fields, go-tool kind) loads, validates and is re-saved without losing any field.
+func TestRealWorkspaceGoConfigSurvives(t *testing.T) {
+	out := roundTrip(t, `{"format":"adomnia-run-configurations","version":1,"configurations":[
+ {"id":"t1","name":"Vet","kind":"go-tool","target":"vet","workingDirectory":".","programArguments":["./..."],"environment":[],"docker":{},"shared":true}]}`)
+	if out["kind"] != "go-tool" || out["target"] != "vet" {
+		t.Fatalf("go-tool changed: %v", out)
+	}
+	if args, _ := out["programArguments"].([]any); len(args) != 1 || args[0] != "./..." {
+		t.Fatalf("arguments lost: %v", out["programArguments"])
+	}
+}

@@ -22,10 +22,7 @@ func normalizeCommandConfiguration(config RunConfiguration) (RunConfiguration, e
 	if config.Kind == RunKindGoTool {
 		config.Target = strings.TrimSpace(config.Target)
 		config.Files, config.BinaryPath, config.Compound = nil, "", nil
-		if !golang.ValidSubcommand(config.Target) {
-			return config, fmt.Errorf("specify the go command (e.g. generate, vet, tool)")
-		}
-		return config, nil
+		return config, golang.New().ValidateRunConfiguration(toCoreConfiguration(config))
 	}
 	normalized, err := run.NormalizeCommandConfiguration(toCoreConfiguration(config))
 	config.Target, config.Files, config.BinaryPath, config.Compound, config.PreRun, config.PostRun = normalized.Target, normalized.Files, normalized.BinaryPath, normalized.Compound, normalized.PreRun, normalized.PostRun

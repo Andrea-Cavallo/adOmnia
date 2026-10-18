@@ -1,4 +1,4 @@
-import { ArrowRight, Plus, X } from 'lucide-react'
+import { ArrowRight, ArrowUp, ArrowDown, Plus, X } from 'lucide-react'
 import { GoIDERunConfigurationKind, type GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { CodeStudioRunSchemaFields } from './CodeStudioRunSchemaFields'
 
@@ -60,6 +60,8 @@ export function RunTaskList({ draft, configs, patch, field, title, hint, exclude
           return (
             <div key={id} className="flex h-8 items-center gap-2 rounded-md px-1.5 text-[12.5px] text-text-2 hover:bg-surface-2/60">
               <span className="w-4 text-[11px] text-text-4">{index + 1}</span>{name}
+              <button type="button" title="Move task up" disabled={index === 0} onClick={() => { const ordered = [...ids]; [ordered[index - 1], ordered[index]] = [ordered[index], ordered[index - 1]]; patch({ [field]: ordered }) }} className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon ml-auto"><ArrowUp size={11} /></button>
+              <button type="button" title="Move task down" disabled={index === ids.length - 1} onClick={() => { const ordered = [...ids]; [ordered[index + 1], ordered[index]] = [ordered[index], ordered[index + 1]]; patch({ [field]: ordered }) }} className="gs-btn gs-btn-ghost gs-btn-sm gs-btn-icon"><ArrowDown size={11} /></button>
               <button type="button" title="Remove" onClick={() => patch({ [field]: ids.filter((item) => item !== id) })} className="ml-auto grid h-5 w-5 place-items-center rounded text-text-4 hover:text-danger"><X size={10} /></button>
             </div>
           )
@@ -67,7 +69,7 @@ export function RunTaskList({ draft, configs, patch, field, title, hint, exclude
         {available.length > 0 && (
           <label className="flex h-8 items-center gap-1.5 px-1.5 text-[12px] text-accent">
             <Plus size={10} />
-            <select value="" onChange={(event) => event.target.value && patch({ [field]: [...ids, event.target.value] })} className="h-7 flex-1 cursor-pointer bg-transparent text-[12px] text-accent outline-none">
+            <select value="" onChange={(event) => event.target.value && patch({ [field]: [...ids, event.target.value] })} className="gs-input h-7 flex-1">
               <option value="">Add configuration…</option>
               {available.map((config) => <option key={config.id} value={config.id}>{config.name}</option>)}
             </select>

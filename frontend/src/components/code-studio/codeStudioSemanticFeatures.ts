@@ -16,7 +16,7 @@ import {
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { currentCodeStudioDocumentVersion } from './codeStudioLspSync'
 import { prepareDocument, toEditorRange, toMonacoRange } from './codeStudioLanguageFeatures'
-import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, semanticRetryDelay, typeInfoFromHover } from './codeStudioSemanticTokens'
+import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, type SemanticRemapContext, semanticRetryDelay, typeInfoFromHover } from './codeStudioSemanticTokens'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
 const LANGUAGE = heavyFeatureEditorLanguages()
@@ -79,6 +79,15 @@ function scheduleSemanticRetry(documentId: string): void {
   }, delay)
 }
 
+/** Java: `@Nome` è sempre un'annotazione (JDT LS la tipa a volte come interfaccia) e le variabili hanno il loro colore. */
+function semanticContextFor(model: monaco.editor.ITextModel): SemanticRemapContext {
+  if (model.getLanguageId() !== 'java') return {}
+  return {
+    isAnnotationAt: (line, start) => start > 0 && line < model.getLineCount() && model.getLineContent(line + 1).charAt(start - 1) === '@',
+    variableType: 'javaVariable',
+  }
+}
+
 function registerSemanticTokens(): void {
   monaco.languages.registerDocumentSemanticTokensProvider(semanticTokenEditorLanguages(), {
     onDidChange: semanticChanged.event,
@@ -96,7 +105,7 @@ function registerSemanticTokens(): void {
       // Un server che sta ancora importando il progetto (JDT LS) risponde senza token: si riprova invece di lasciare il file bianco.
       if (result.data.length === 0 && model.getLineCount() > 3) scheduleSemanticRetry(prepared.documentId)
       else semanticFailures.delete(prepared.documentId)
-      return { data: remapSemanticTokens(result.data, features.tokenTypes, features.tokenModifiers) }
+      return { data: remapSemanticTokens(result.data, features.tokenTypes, features.tokenModifiers, semanticContextFor(model)) }
     },
     releaseDocumentSemanticTokens: () => undefined,
   })
