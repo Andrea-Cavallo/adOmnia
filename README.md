@@ -173,6 +173,8 @@ SQL, broker messages and logs enrich this workflow when capture/instrumentation 
 - **Keep work together:** terminal, local history, recovery snapshots and multiple projects/windows within one adOmnia instance.
 - **AI assistance:** contextual assistance with configured providers and project policies; review changes before applying them.
 
+> **Upgrading to Go 1.27?** Reinstall the Go tools you already have: golangci-lint, staticcheck, gopls and Delve. Tools built with an older Go cannot read Go 1.27 packages. For example, golangci-lint 2.5.0 built with Go 1.25 reports `export data version 5 is greater than maximum supported version 2` on a Go 1.27 project, while the same binary works on a Go 1.26.5 project. Rebuild each tool with Go 1.27 (`go install <tool>@latest`); Code Studio's own installs already use `@latest`.
+
 Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for surrounding tools and workspaces.
 
 [Read the Code Studio guide →](docs/CODE-STUDIO.md) · [Technical reference: the IDE platform →](docs/CODE-STUDIO-REFERENCE.md)
