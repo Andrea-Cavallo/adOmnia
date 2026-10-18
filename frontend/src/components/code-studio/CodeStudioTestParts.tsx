@@ -5,7 +5,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
-import { cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, isJavaTestRun, javaDebugRequestForNode, failureRateByCPU, flakyCauses, formatDuration, isFailed, isFlaky, isGoTestRun, raceRepeatRequestForNode, reproduceCommandFor, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
+import { cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, isJavaTestRun, javaDebugRequestForNode, failureRateByCPU, flakyCauses, formatDuration, isFailed, isFlaky, isGoTestRun, raceRepeatRequestForNode, rollupOf, reproduceCommandFor, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { functionsByCoverage, untakenBranches } from './codeStudioCoverage'
 import { CodeStudioPatchCoverage } from './CodeStudioPatchCoverage'
@@ -83,6 +83,7 @@ export function TestRow({ node, depth, selected, run, sessionId, records, entry 
           : <span className="w-4" />}
         <StatusIcon status={result.status} />
         <span className={`truncate ${result.name ? 'font-mono' : 'font-medium'}`}>{node.label}</span>
+        {!result.name && node.children.length > 0 && <RollupBadge node={node} />}
         {result.buildFailed && <span className="shrink-0 rounded bg-danger/15 px-1 text-[11px] text-danger">build failed</span>}
         {isFlaky(result) && <span title={`Failed ${result.failures} of ${result.runs} runs`} className="shrink-0 rounded bg-warning/15 px-1 text-[11px] font-semibold text-warning">flaky {result.failures}/{result.runs}</span>}
         {record && <span title={`Flaky in ${record.occurrences} earlier repeated run${record.occurrences === 1 ? '' : 's'}: failed ${record.failures} of ${record.runs} repetitions, last on ${new Date(record.lastSeen).toLocaleString()}`} className="shrink-0 rounded border border-warning/40 px-1 text-[11px] text-warning">was flaky</span>}
@@ -293,5 +294,17 @@ export function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun
         {result.truncated && <div className="mt-1 text-text-4">Output truncated at 64 KB.</div>}
       </div>
     </div>
+  )
+}
+
+/** Contatori della classe: passati / falliti / ignorati, sommati sui suoi test. */
+function RollupBadge({ node }: { node: CodeStudioTestNode }) {
+  const { passed, failed, skipped } = rollupOf(node)
+  return (
+    <span title={`${passed} passed, ${failed} failed, ${skipped} skipped`} className="shrink-0 font-mono text-[11px] text-text-4">
+      <span className="text-success">{passed}</span>
+      {failed > 0 && <> · <span className="text-danger">{failed}</span></>}
+      {skipped > 0 && <> · <span className="text-warning">{skipped}</span></>}
+    </span>
   )
 }

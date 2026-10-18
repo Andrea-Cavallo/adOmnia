@@ -4,7 +4,7 @@ import type { GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioSymbolIcon } from './CodeStudioSymbolIcon'
-import { SYMBOL_KIND, groupStructure, splitSignature, symbolKey, symbolPathAt, useCodeStudioSymbolsFor, type StructureSection } from './codeStudioSymbols'
+import { SYMBOL_KIND, groupStructure, splitSignature, symbolKey, symbolPathAt, useCodeStudioSymbolsFor, useCodeStudioSymbolServer, type StructureSection } from './codeStudioSymbols'
 import { useCodeStudioCursorStore } from './codeStudioCursor'
 
 
@@ -96,20 +96,19 @@ function StructureGroup({ section, documentId, caretPath }: { section: Structure
 
 const NO_PATH: string[] = []
 
-/** Struttura del file attivo da gopls; i simboli arrivano dallo store condiviso con il breadcrumb. */
+/** Struttura del file attivo dal suo language server; i simboli arrivano dallo store condiviso con il breadcrumb. */
 export function CodeStudioStructure({ sessionId, document }: CodeStudioStructureProps) {
-  const lspState = useCodeStudioLspStore((state) => state.status[sessionId]?.state ?? 'stopped')
+  const server = useCodeStudioSymbolServer(sessionId, document?.document.language ?? '')
   const symbols = useCodeStudioSymbolsFor(document?.document.id ?? null)
   const loaded = useCodeStudioLspStore((state) => !!document && state.symbols[document.document.id] !== undefined)
-  const isGo = !!document?.document.name.endsWith('.go')
   // Solo la chiave cambia quando il cursore passa a un altro simbolo: niente ridisegni a ogni tasto.
   const caretKey = useCodeStudioCursorStore((state) => symbolPathAt(symbols, state.line, state.column).map(symbolKey).join('|'))
   const caretPath = caretKey ? caretKey.split('|') : NO_PATH
   const sections = useMemo(() => groupStructure(symbols), [symbols])
 
-  if (!document) return <Hint text="Open a Go file to see its structure." />
-  if (!isGo) return <Hint text="Structure is available for .go files." />
-  if (lspState !== 'ready') return <Hint text={lspState === 'starting' ? 'gopls is loading the workspace…' : 'Start gopls (Go → Start Language Server) to see types, functions and methods.'} />
+  if (!document) return <Hint text="Open a source file to see its structure." />
+  if (!server.supported) return <Hint text="Structure is available for languages with a language server." />
+  if (server.state !== 'ready') return <Hint text={server.error || (server.state === 'starting' ? `${server.name} language server is loading the workspace…` : `Start the ${server.name} language server to see types, functions and methods.`)} />
   return (
     <div className="min-h-0 flex-1 overflow-auto px-1.5 py-1.5">
       {sections.map((section) => <StructureGroup key={section.id} section={section} documentId={document.document.id} caretPath={caretPath} />)}

@@ -4,7 +4,7 @@ import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { usePomStore } from '@/stores/codeStudioPom'
 import { studioToast } from '@/stores/codeStudioToast'
-import { isBuildFile, isPomFile } from '@/lib/code-studio/pomInsights'
+import { isBuildFile } from '@/lib/code-studio/pomInsights'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { openJavaJdkDialog } from './CodeStudioJavaJdk'
@@ -13,6 +13,7 @@ import { openJavaJvmMonitor } from './CodeStudioJavaJvm'
 import { openSpringBeanGraph } from './CodeStudioSpringGraph'
 import { openSpringEndpoints } from './CodeStudioSpringEndpoints'
 import { useSpringStore } from '@/stores/codeStudioSpring'
+import { jdtMainClasses } from '@/stores/codeStudioJavaMains'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
@@ -85,7 +86,7 @@ export function runJavaCommand(
     case 'java.runTest':
     case 'java.debugTest': {
       const kind = id.endsWith('Main') ? 'java-main' : 'java-test'
-      const target = document ? javaTargetAtLine(findJavaTargets(activePath, document.buffer), kind, line) : null
+      const target = document ? javaTargetAtLine(findJavaTargets(activePath, document.buffer, jdtMainClasses(sessionId)), kind, line) : null
       if (!target) studioToast(kind === 'java-main' ? 'No main method in this file' : 'No test method in this file', 'info')
       else runTarget(target, id.startsWith('java.debug') ? 'debug' : 'run')
       return true
@@ -93,7 +94,6 @@ export function runJavaCommand(
     case 'java.checkUpdates':
     case 'java.scanVulnerabilities': {
       if (!document || !isBuildFile(activePath)) { studioToast('Open a pom.xml or build.gradle first', 'info'); return true }
-      if (id === 'java.scanVulnerabilities' && !isPomFile(activePath)) { studioToast('Vulnerability scanning works on pom.xml; Gradle scripts only offer version updates for now', 'info'); return true }
       const pom = usePomStore.getState()
       if (id === 'java.checkUpdates') void pom.checkUpdates(document.document.id, sessionId, document.buffer)
       else void pom.scanVulnerabilities(document.document.id, sessionId, document.document.path, activePath)

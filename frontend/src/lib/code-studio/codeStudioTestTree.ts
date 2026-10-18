@@ -30,6 +30,25 @@ export function buildTestTree(results: GoIDETestResult[]): CodeStudioTestNode[] 
   return roots
 }
 
+export interface CodeStudioTestRollup {
+  passed: number
+  failed: number
+  skipped: number
+}
+
+/** Contatori di una classe/package: contano le foglie (i test), non i nodi intermedi, in ogni stato. */
+export function rollupOf(node: CodeStudioTestNode): CodeStudioTestRollup {
+  if (node.children.length === 0) {
+    return node.result.name
+      ? { passed: node.result.status === 'pass' ? 1 : 0, failed: isFailed(node.result) ? 1 : 0, skipped: node.result.status === 'skip' ? 1 : 0 }
+      : { passed: 0, failed: 0, skipped: 0 }
+  }
+  return node.children.reduce((total, child) => {
+    const part = rollupOf(child)
+    return { passed: total.passed + part.passed, failed: total.failed + part.failed, skipped: total.skipped + part.skipped }
+  }, { passed: 0, failed: 0, skipped: 0 })
+}
+
 /** Solo i rami che contengono un fallimento: la vista "solo falliti" non perde il contesto del package. */
 export function onlyFailed(nodes: CodeStudioTestNode[]): CodeStudioTestNode[] {
   return nodes
@@ -188,13 +207,14 @@ export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | nul
 }
 
 /**
- * Rerun failed Java: solo i file di test con fallimenti. Il filtro metodo non è una regex e non ammette
- * più metodi insieme: con più classi o con nomi display si rieseguono le classi fallite per intero.
+ * Rerun failed Java: solo i file di test con fallimenti. Il filtro metodo non è una regex e ammette
+ * più metodi (separati da virgola) solo in una classe: con più classi o con nomi display si rieseguono le classi per intero.
  */
 function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   const files = new Set<string>()
   const methods = new Set<string>()
   let wholeUnit = false
+  let anonymous = false
   for (const result of run.results) {
     if (!isFailed(result)) continue
     const file = javaTestFile(run, result)
@@ -206,10 +226,11 @@ function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
     files.add(file)
     const method = result.name ? javaMethodFilter(result.name) : ''
     if (method) methods.add(method)
+    else if (result.name) anonymous = true // nome display (`test[0]`): non è un metodo, serve la classe intera
   }
   if (wholeUnit) return { ...run.request, packages: [], run: '', coverage: false }
   if (files.size === 0) return null
-  return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size === 1 ? [...methods][0] : '', coverage: false }
+  return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort().join(',') : '', coverage: false }
 }
 
 export function formatDuration(milliseconds: number): string {

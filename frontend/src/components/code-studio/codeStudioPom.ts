@@ -1,5 +1,5 @@
 import { monaco } from '@/lib/monacoSetup'
-import { dependencyStatuses, isBuildFile, isPomFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
+import { dependencyStatuses, isBuildFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
 import { usePomStore, type PomState } from '@/stores/codeStudioPom'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -102,6 +102,9 @@ function applyUpdate(documentId: string, line: number, version: string): void {
   model.pushEditOperations([], [{ range: { startLineNumber: edit.line, startColumn: edit.startColumn, endLineNumber: edit.line, endColumn: edit.endColumn }, text: edit.text }], () => null)
 }
 
+/** Nota sul marker quando la versione non è scritta nel pom ma ereditata. */
+const managedNote = (dependency: object) => ('managedBy' in dependency && dependency.managedBy ? ' (version from a parent or BOM: update it where it is defined)' : '')
+
 function markerSeverity(status: PomDependencyStatus): monaco.MarkerSeverity {
   return status.worst === 'critical' || status.worst === 'high' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning
 }
@@ -113,7 +116,7 @@ function markersFor(documentId: string): monaco.editor.IMarkerData[] {
     const range = { startLineNumber: dependency.line, startColumn: dependency.startColumn, endLineNumber: dependency.line, endColumn: dependency.endColumn }
     if (status.worst) {
       const ids = status.vulnerabilities.slice(0, 3).map((item) => `${item.id} (${item.band})`).join(', ')
-      markers.push({ ...range, severity: markerSeverity(status), source: 'OSV', message: `${status.key} ${dependency.resolved}: ${ids}${status.fixVersion ? `. Fixed in ${status.fixVersion}.` : '. No fixed version published.'}` })
+      markers.push({ ...range, severity: markerSeverity(status), source: 'OSV', message: `${status.key} ${dependency.resolved}${managedNote(dependency)}: ${ids}${status.fixVersion ? `. Fixed in ${status.fixVersion}.` : '. No fixed version published.'}` })
     } else if (status.version?.newer) {
       markers.push({ ...range, severity: monaco.MarkerSeverity.Info, source: 'Maven Central', message: `${status.key}: ${dependency.resolved} → ${status.version.latest} available` })
     }
@@ -175,7 +178,7 @@ export function registerCodeStudioPom(): void {
         parsedContent.set(documentId, text)
         void usePomStore.getState().refreshDependencies(documentId, document.document.sessionId, text)
       }
-      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isPomFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
+      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isBuildFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
       return { lenses, dispose: () => undefined }
     },
   }

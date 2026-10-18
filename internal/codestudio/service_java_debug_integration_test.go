@@ -71,7 +71,7 @@ func TestJavaDebugBuildsFreshMainAndStopsAtBreakpoint(t *testing.T) {
 	}
 }
 
-func startJavaDebugTestProject(t *testing.T, root, tools string) (*Service, *eventRecorder, Session) {
+func startJavaDebugTestProject(t *testing.T, root, tools string, settingsOverride ...map[string]any) (*Service, *eventRecorder, Session) {
 	t.Helper()
 	recorder := &eventRecorder{}
 	service := NewService(&memoryStore{}, recorder.record)
@@ -96,6 +96,9 @@ func startJavaDebugTestProject(t *testing.T, root, tools string) (*Service, *eve
 		}
 	}
 	settings := map[string]any{"java": map[string]any{"autobuild": map[string]any{"enabled": false}}}
+	if len(settingsOverride) > 0 {
+		settings = settingsOverride[0]
+	}
 	spec.InitializationOptions.(map[string]any)["settings"] = settings
 	spec.Configuration = func() any { return settings }
 	if _, err = service.lsp.Start(session, spec); err != nil {

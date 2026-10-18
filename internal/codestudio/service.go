@@ -801,6 +801,11 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 	if err != nil {
 		return CommandSpec{}, err
 	}
+	if request.Language == java.ID && kind == java.KindMain {
+		if spec, ok := s.javaDirectLaunch(session, workingDirectory, request, environment); ok {
+			return spec, nil
+		}
+	}
 	return s.runConfigs.core.CommandSpec(runner, run.Request{Environment: environment, Kind: kind, Root: session.Project.RealPath, WorkingDirectory: workingDirectory, Target: target, Executable: binary, ProgramArguments: request.ProgramArguments, LanguageOptions: options})
 }
 

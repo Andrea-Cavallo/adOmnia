@@ -33,6 +33,7 @@ import { coverageForDocument, coverageLineStates } from './codeStudioCoverage'
 import { useCodeStudioProfileHeatDecorations } from './codeStudioProfileHeat'
 import { startCodeStudioLspSync } from './codeStudioLspSync'
 import { useWebMonaco } from '@/components/ide/languages/web/useWebMonaco'
+import { useJavaMainsStore } from '@/stores/codeStudioJavaMains'
 import { findRunTargets, runCommandFor, type CodeStudioRunTarget, type CodeStudioRunTargetHandler } from './codeStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './codeStudioToolTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
@@ -280,10 +281,17 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
     coverageDecorationsRef.current?.set(decorations)
   }, [coverage, document.diskToken, document.dirty, document.document.relativePath, mountCount])
 
+  // Le `main` le decide JDT LS quando è pronto; il gutter si rilegge quando la risposta arriva.
+  const isJava = document.document.relativePath.endsWith('.java')
+  const jdtMains = useJavaMainsStore((state) => (isJava ? state.bySession[document.document.sessionId] : undefined))
+  useEffect(() => {
+    if (isJava) void useJavaMainsStore.getState().refresh(document.document.sessionId)
+  }, [isJava, document.document.sessionId, document.diskToken])
+
   // ▶ nel gutter accanto a func main e ai test: ricalcolato con debounce mentre si scrive.
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const targets = document.document.readOnly ? [] : findRunTargets(document.document.relativePath, document.buffer)
+      const targets = document.document.readOnly ? [] : findRunTargets(document.document.relativePath, document.buffer, jdtMains?.source === 'jdt' ? jdtMains.classes : null)
       runTargetsRef.current = targets
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
@@ -298,7 +306,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       })))
     }, RUN_TARGET_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [document.buffer, document.document.id, document.document.readOnly, document.document.relativePath, mountCount])
+  }, [document.buffer, document.document.id, document.document.readOnly, document.document.relativePath, jdtMains, mountCount])
 
   // Vim / Emacs opzionali: si agganciano all'editor montato e si staccano quando si torna al default.
   useEffect(() => {

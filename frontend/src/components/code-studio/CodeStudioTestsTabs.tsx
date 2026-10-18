@@ -13,10 +13,10 @@ import { REPEAT_OPTIONS, type TestActions } from './CodeStudioTestsActions'
 import type { TestHistories } from './CodeStudioTestsHistory'
 import { OutputLines, type RunOutput } from './CodeStudioTestsOutput'
 
-const chip = (active: boolean, tone = 'bg-accent/15 text-accent') => `flex h-7 items-center gap-1 rounded-md px-2 text-[12.5px] ${active ? tone : 'text-text-3 hover:bg-surface-3 hover:text-text-1'}`
+const chip = (active: boolean, tone = 'bg-accent/15 text-accent') => `flex h-7 items-center gap-1 rounded-md px-2 text-[12px] ${active ? tone : 'text-text-3 hover:bg-surface-3 hover:text-text-1'}`
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-border-2 px-4 py-8 text-center text-[13px] text-text-4">{children}</p>
+  return <p className="rounded-md border border-dashed border-border-2 px-2 py-8 text-center text-[12px] text-text-4">{children}</p>
 }
 
 interface TestsTabProps {
@@ -49,7 +49,7 @@ export function TestsTab({ suite, session, histories }: TestsTabProps) {
   const selected = run.results.find((result) => result.id === selectedId) ?? null
   const failedCount = run.results.filter((result) => result.name && isFailed(result)).length
   return (
-    <div className="flex h-[min(620px,70vh)] min-h-72 flex-col overflow-hidden rounded-xl border border-border-1">
+    <div className="flex h-[min(620px,70vh)] min-h-72 flex-col overflow-hidden rounded-md border border-border-1">
       <div role="toolbar" aria-label="Test filters" className="flex shrink-0 flex-wrap items-center gap-1 border-b border-border-1 bg-surface-2/50 px-2 py-1.5">
         <button type="button" aria-pressed={failedOnly} onClick={() => setFailedOnly((value) => !value)} className={chip(failedOnly, 'bg-danger/15 text-danger')}>Failed {failedCount}</button>
         <button type="button" aria-pressed={flakyOnly} onClick={() => setFlakyOnly((value) => !value)} className={chip(flakyOnly, 'bg-warning/15 text-warning')}><Shuffle size={12} aria-hidden="true" /> Flaky</button>
@@ -63,10 +63,10 @@ export function TestsTab({ suite, session, histories }: TestsTabProps) {
       <div className="flex min-h-0 flex-1 flex-col">
         <div role="tree" aria-label="Test results" className="max-h-[45%] min-h-24 shrink-0 overflow-auto border-b border-border-1 py-1">
           {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} records={records} entry={index === 0} />)}
-          {tree.length === 0 && <p className="p-3 text-[13px] text-text-4">{run.status === 'running' ? 'Building and starting tests…' : run.diagnostics ? 'The test command failed before producing results. See the Output tab.' : 'No test matches the filters.'}</p>}
+          {tree.length === 0 && <p className="p-3 text-[12px] text-text-4">{run.status === 'running' ? 'Building and starting tests…' : run.diagnostics ? 'The test command failed before producing results. See the Output tab.' : 'No test matches the filters.'}</p>}
           {run.overflow && <p className="p-2 text-[12px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
-        {selected ? <TestDetail key={`${run.runId}:${selected.id}`} run={run} result={selected} runs={history} benchmark={histories.benchmarkContext} /> : <p className="p-3 text-[13px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
+        {selected ? <TestDetail key={`${run.runId}:${selected.id}`} run={run} result={selected} runs={history} benchmark={histories.benchmarkContext} /> : <p className="p-3 text-[12px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
       </div>
     </div>
   )
@@ -75,12 +75,12 @@ export function TestsTab({ suite, session, histories }: TestsTabProps) {
 export function OutputTab({ suite, output }: { suite: TestSuite; output: RunOutput }) {
   if (!suite.run) return <Empty>No output yet: this suite has not run.</Empty>
   return (
-    <section aria-label="Full output" className="overflow-hidden rounded-xl border border-border-1 bg-surface-2/40">
-      <div className="flex items-center gap-2 border-b border-border-1 px-4 py-2 font-mono text-[12.5px] text-text-3">
+    <section aria-label="Full output" className="overflow-hidden rounded-md border border-border-1 bg-surface-2/40">
+      <div className="flex items-center gap-2 border-b border-border-1 px-2 py-2 font-mono text-[12px] text-text-3">
         <span className="truncate">{suite.run.command || `Ran ${suite.name}`}</span>
         <button type="button" aria-label="Copy output" onClick={() => void WailsClipboard.SetText(output.text)} className="ml-auto grid h-6 w-6 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><Copy size={13} /></button>
       </div>
-      <div className="max-h-[60vh] overflow-auto px-4 py-3 font-mono text-[12.5px] leading-5">
+      <div className="max-h-[60vh] overflow-auto px-2 py-2 font-mono text-[12px] leading-5">
         {output.text ? <OutputLines text={output.text} baseDirectory={suite.target.workingDirectory} /> : <span className="text-text-4">{output.loading ? 'Loading output…' : 'No output.'}</span>}
       </div>
     </section>
@@ -89,25 +89,25 @@ export function OutputTab({ suite, output }: { suite: TestSuite; output: RunOutp
 
 export function CoverageTab({ suite, sessionId, actions }: { suite: TestSuite; sessionId: string; actions: TestActions }) {
   const report = suite.run?.coverage
-  if (report) return <div className="overflow-hidden rounded-xl border border-border-1"><CoverageSummary report={report} sessionId={sessionId} /></div>
+  if (report) return <div className="overflow-hidden rounded-md border border-border-1"><CoverageSummary report={report} sessionId={sessionId} /></div>
   return (
     <Empty>
       <span className="block">{suite.language === 'go' ? 'The last run has no coverage.' : 'Coverage is available for Go suites.'}</span>
-      {suite.language === 'go' && <button type="button" onClick={() => actions.runSuite(suite, { coverage: true })} className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-[13px] font-semibold text-on-accent hover:bg-accent-hover"><ShieldCheck size={14} aria-hidden="true" /> Run with coverage</button>}
+      {suite.language === 'go' && <button type="button" onClick={() => actions.runSuite(suite, { coverage: true })} className="mt-3 inline-flex h-9 items-center gap-2 rounded bg-accent px-2 text-[12px] font-semibold text-on-accent hover:bg-accent-hover"><ShieldCheck size={14} aria-hidden="true" /> Run with coverage</button>}
     </Empty>
   )
 }
 
 function ToolRow({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-1 bg-surface-2/40 px-4 py-3">
-      <div className="min-w-0 flex-1"><div className="text-[14px] font-medium text-text-1">{title}</div><div className="text-[12.5px] text-text-3">{hint}</div></div>
+    <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-1 bg-surface-2/40 px-2 py-2">
+      <div className="min-w-0 flex-1"><div className="text-[12px] font-medium text-text-1">{title}</div><div className="text-[12px] text-text-3">{hint}</div></div>
       {children}
     </div>
   )
 }
 
-const toolButton = 'flex h-9 items-center gap-2 rounded-lg border border-border-2 bg-surface-2 px-3 text-[13px] font-medium text-text-1 transition-colors hover:border-accent hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40'
+const toolButton = 'flex h-9 items-center gap-2 rounded border border-border-2 bg-surface-2 px-3 text-[12px] font-medium text-text-1 transition-colors hover:border-accent hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-40'
 
 /** Strumenti meno frequenti: ripetizioni per i test instabili, benchmark, overlay di coverage e storico locale. */
 export function MoreTab({ suite, actions, histories }: { suite: TestSuite; actions: TestActions; histories: TestHistories }) {
@@ -118,7 +118,7 @@ export function MoreTab({ suite, actions, histories }: { suite: TestSuite; actio
   return (
     <div className="flex flex-col gap-3">
       <ToolRow title="Find flaky tests" hint="Run the suite several times in random order and compare the outcomes.">
-        <select aria-label="Repetitions" value={repeat} onChange={(event) => setRepeat(Number(event.target.value))} disabled={!go} className="h-9 rounded-lg border border-border-1 bg-surface-2 px-2 text-[13px] text-text-2 disabled:opacity-40">{REPEAT_OPTIONS.map((value) => <option key={value} value={value}>×{value}</option>)}</select>
+        <select aria-label="Repetitions" value={repeat} onChange={(event) => setRepeat(Number(event.target.value))} disabled={!go} className="h-9 rounded border border-border-1 bg-surface-2 px-2 text-[12px] text-text-2 disabled:opacity-40">{REPEAT_OPTIONS.map((value) => <option key={value} value={value}>×{value}</option>)}</select>
         <button type="button" disabled={!go || busy} onClick={() => actions.runSuite(suite, { repeat, shuffle: 'on', bench: '', coverage: false })} className={toolButton}><Repeat size={14} aria-hidden="true" /> Repeat</button>
       </ToolRow>
       <ToolRow title="Benchmarks" hint="Run the benchmarks of the package open in the editor, with memory statistics.">

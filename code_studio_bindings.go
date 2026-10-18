@@ -1619,6 +1619,11 @@ func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, e
 	return g.service.JavaDependencyTree(sessionID, module)
 }
 
+// PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.
+func (g *GoIDE) PomManagedVersions(sessionID, relativePath string) (map[string]codestudio.PomManagedVersion, error) {
+	return g.service.PomManagedVersions(sessionID, relativePath)
+}
+
 // JavaMainClasses elenca le classi lanciabili: JDT LS se pronto, altrimenti la scansione dei sorgenti.
 func (g *GoIDE) JavaMainClasses(sessionID string) ([]java.MainClassInfo, error) {
 	return g.service.JavaMainClasses(sessionID)

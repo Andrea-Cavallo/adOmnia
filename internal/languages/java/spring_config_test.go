@@ -107,10 +107,10 @@ server:
 
 func TestProfileOfFollowsTheFileName(t *testing.T) {
 	cases := map[string]string{
-		"application.properties":        "",
-		"application-dev.properties":    "dev",
-		"application-prod.yaml":         "prod",
-		"application-PROD.properties":   "prod",
+		"application.properties":      "",
+		"application-dev.properties":  "dev",
+		"application-prod.yaml":       "prod",
+		"application-PROD.properties": "prod",
 	}
 	for name, want := range cases {
 		if got := profileOf(name); got != want {

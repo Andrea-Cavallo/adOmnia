@@ -43,8 +43,8 @@ function kindFor(prefix: string): CodeStudioRunTargetKind {
 }
 
 /** Trova le righe eseguibili dal gutter: func main nei package main e le funzioni di test nei file _test.go. */
-export function findRunTargets(relativePath: string, text: string): CodeStudioRunTarget[] {
-  if (relativePath.endsWith('.java')) return findJavaTargets(relativePath, text)
+export function findRunTargets(relativePath: string, text: string, jdtMains?: ReadonlySet<string> | null): CodeStudioRunTarget[] {
+  if (relativePath.endsWith('.java')) return findJavaTargets(relativePath, text, jdtMains)
   if (!relativePath.endsWith('.go')) return findToolTargets(relativePath, text)
   const packagePath = packagePathFor(relativePath)
   const isTestFile = relativePath.endsWith('_test.go')

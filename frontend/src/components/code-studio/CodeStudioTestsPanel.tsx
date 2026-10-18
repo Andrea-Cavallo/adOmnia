@@ -86,8 +86,8 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
     return <div className="flex h-full items-center justify-center p-6 text-[13px] text-text-4">No test runner was found in this project.</div>
   }
   return (
-    <div className="h-full min-h-0 overflow-auto bg-surface-0 p-4">
-      <div className="mx-auto flex w-full max-w-[1560px] flex-col gap-4">
+    <div className="h-full min-h-0 overflow-auto bg-surface-0 p-2">
+      <div className="flex w-full min-w-0 flex-col gap-2">
         {testError && <CodeStudioAlert>{testError}</CodeStudioAlert>}
         <CodeStudioTestsHeader
           stats={stats} filter={filter} onFilter={setFilter} query={query} onQuery={setQuery} busy={busy}
@@ -96,7 +96,7 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
           onRerunFailed={() => actions.rerunFailed(suites)} onStop={actions.stop}
         />
         <CodeStudioTestsStats stats={stats} now={now} />
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(400px,1fr)]">
+        <div className="grid items-start gap-2 min-[1400px]:grid-cols-[minmax(620px,1.5fr)_minmax(320px,1fr)]">
           <CodeStudioTestsTable
             suites={visible} selectedKey={selected.key} expanded={expanded} ascending={ascending} now={now}
             onSort={() => setAscending((value) => !value)} onSelect={setSelectedKey} onToggle={toggle}

@@ -48,11 +48,23 @@ func (*Adapter) Discover(ctx context.Context, root string) ([]securityintel.Targ
 			Name:      name,
 		})
 	}
+	builds, _ := FindGradleBuilds(root)
+	for _, script := range builds {
+		targets = append(targets, securityintel.Target{
+			Ecosystem: securityintel.EcosystemMaven,
+			Root:      filepath.Dir(script),
+			Manifest:  script,
+			Name:      filepath.Base(filepath.Dir(script)),
+		})
+	}
 	return targets, nil
 }
 
 // Resolve implementa securityintel.EcosystemAdapter.
 func (a *Adapter) Resolve(ctx context.Context, target securityintel.Target, options securityintel.ResolveOptions) (securityintel.Resolution, error) {
+	if isGradleManifest(target.Manifest) {
+		return resolveGradle(ctx, target.Manifest)
+	}
 	result, err := a.Resolver.Resolve(ctx, target.Manifest, options)
 	if err != nil {
 		return securityintel.Resolution{}, err

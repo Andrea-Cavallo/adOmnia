@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import type { PomDependency, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
-import { getPomDependencies, getPomVersions } from '@/lib/code-studio-api'
-import { projectRootOf, versionRequest } from '@/lib/code-studio/pomInsights'
+import { getPomDependencies, getPomManagedVersions, getPomVersions } from '@/lib/code-studio-api'
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { isPomFile, mergeManagedVersions, projectRootOf, versionRequest } from '@/lib/code-studio/pomInsights'
 import { scanWorkspaceSecurity, type SecurityFinding } from '@/lib/securityIntel-api'
 
 /** Stato di un pom.xml aperto: versioni pubblicate e CVE arrivano solo da azioni esplicite dell'utente. */
@@ -30,6 +31,18 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+/** Coordinate del pom; quelle senza `<version>` ricevono la versione ereditata da parent/BOM (sola lettura). */
+async function loadDependencies(documentId: string, sessionId: string, content: string): Promise<PomDependency[]> {
+  const dependencies = await getPomDependencies(sessionId, content)
+  const relativePath = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)?.document.relativePath ?? ''
+  if (!isPomFile(relativePath) || !dependencies.some((item) => !item.resolved && !item.version)) return dependencies
+  try {
+    return mergeManagedVersions(dependencies, await getPomManagedVersions(sessionId, relativePath))
+  } catch {
+    return dependencies // parent/BOM illeggibili: le coordinate locali bastano
+  }
+}
+
 export const usePomStore = create<PomStore>((set, get) => {
   const patch = (documentId: string, change: Partial<PomState>) =>
     set((state) => ({ byDocument: { ...state.byDocument, [documentId]: { ...(state.byDocument[documentId] ?? EMPTY), ...change } } }))
@@ -37,7 +50,7 @@ export const usePomStore = create<PomStore>((set, get) => {
     byDocument: {},
     refreshDependencies: async (documentId, sessionId, content) => {
       try {
-        patch(documentId, { dependencies: await getPomDependencies(sessionId, content), error: '' })
+        patch(documentId, { dependencies: await loadDependencies(documentId, sessionId, content), error: '' })
       } catch (error) {
         // Un pom a metà digitazione non è ben formato: si tengono le ultime coordinate buone.
         patch(documentId, { error: message(error) })
@@ -47,7 +60,7 @@ export const usePomStore = create<PomStore>((set, get) => {
       if (get().byDocument[documentId]?.checkingUpdates) return
       patch(documentId, { checkingUpdates: true, error: '' })
       try {
-        const dependencies = await getPomDependencies(sessionId, content)
+        const dependencies = await loadDependencies(documentId, sessionId, content)
         const request = versionRequest(dependencies)
         const versions = Object.keys(request).length ? await getPomVersions(sessionId, request) : []
         patch(documentId, { dependencies, versions, updatesCheckedAt: new Date().toISOString(), checkingUpdates: false })

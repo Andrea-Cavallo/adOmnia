@@ -114,7 +114,13 @@ func (s *Service) openJavaAttach(session Session, host string, port int, working
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	return s.openJavaDebugAdapter(session, java.DebugOptions{Address: address, AttachHost: host, AttachPort: port}, workingDirectory)
+	projectName, err := java.ResolveAttachProject(fileURI(workingDirectory), func(command string, arguments ...any) (json.RawMessage, error) {
+		return s.lsp.ExecuteCommand(ctx, session.ID, java.ID, command, arguments...)
+	})
+	if err != nil {
+		return DebugSessionInfo{}, fmt.Errorf("could not resolve the Java project for attach: %w", err)
+	}
+	return s.openJavaDebugAdapter(session, java.DebugOptions{Address: address, AttachHost: host, AttachPort: port, ProjectName: projectName}, workingDirectory)
 }
 
 // debugJavaBuild esegue test o Spring Boot con Maven/Gradle nella console Run, con la porta JDWP aperta, e vi
@@ -158,20 +164,27 @@ func (s *Service) debugJavaBuild(session Session, request JavaDebugRequest, work
 	if arguments, port, err = java.DebugArguments(kind, arguments, port); err != nil {
 		return DebugSessionInfo{}, err
 	}
-	if err := run.CheckBatchSafe(executable, arguments); err != nil {
+	arguments, cleanup, err := java.PrepareDebugBuild(executable, arguments)
+	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
+	if err := run.CheckBatchSafe(executable, arguments); err != nil {
+		cleanup()
+		return DebugSessionInfo{}, err
+	}
+	environment, err := s.executionEnvironment(session.ID, java.ID, request.Environment)
 	if err != nil {
+		cleanup()
 		return DebugSessionInfo{}, err
 	}
 	listening := newListenWatcher()
 	execution, err := s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: "run", Executable: executable, Arguments: arguments,
 		WorkingDirectory: module, Environment: environment, DisplayCommand: label + " " + strings.Join(arguments, " "),
-		OutputTap: listening.tap, OnExit: func(Execution) { listening.finish() },
+		OutputTap: listening.tap, OnExit: func(Execution) { cleanup(); listening.finish() },
 	})
 	if err != nil {
+		cleanup()
 		return DebugSessionInfo{}, err
 	}
 	// Collegarsi prima che la JVM apra la porta fallirebbe (il Java Debug Server non riprova).
@@ -238,14 +251,33 @@ func (s *Service) requestJavaDebugAddress(ctx context.Context, session Session) 
 
 // resolveJavaDebug interroga JDT LS: progetto della classe, classpath, JDK e porta del debug adapter.
 func (s *Service) resolveJavaDebug(session Session, request JavaDebugRequest) (java.DebugOptions, error) {
-	options := java.DebugOptions{MainClass: request.MainClass}
+	options, err := s.resolveJavaRuntime(session, request.MainClass, true)
+	if err != nil {
+		return options, err
+	}
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), javaDebugBuildTimeout)
+	defer cancelBuild()
+	options.Address, err = s.startJavaDebugServer(buildCtx, session)
+	return options, err
+}
+
+// resolveJavaRuntime è la parte comune a Debug e Run diretto: progetto della classe, build e classpath.
+// `wait` attende l'import di JDT LS (Debug); senza, un server non pronto fallisce subito e il Run torna al build tool.
+func (s *Service) resolveJavaRuntime(session Session, mainClass string, wait bool) (java.DebugOptions, error) {
+	options := java.DebugOptions{MainClass: mainClass}
 	discoveryCtx, cancelDiscovery := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
-	discoveryErr := retryJavaCommand(discoveryCtx, request.MainClass, func() error {
+	defer cancelDiscovery()
+	discover := func() error {
 		return java.ResolveDebugProject(fileURI(session.Project.RealPath), &options, func(command string, arguments ...any) (json.RawMessage, error) {
 			return s.lsp.ExecuteCommand(discoveryCtx, session.ID, java.ID, command, arguments...)
 		})
-	})
-	cancelDiscovery()
+	}
+	var discoveryErr error
+	if wait {
+		discoveryErr = retryJavaCommand(discoveryCtx, mainClass, discover)
+	} else {
+		discoveryErr = discover()
+	}
 	if discoveryErr != nil {
 		return options, discoveryErr
 	}
@@ -257,10 +289,6 @@ func (s *Service) resolveJavaDebug(session Session, request JavaDebugRequest) (j
 	err := java.PrepareDebugRuntime(&options, func(command string, arguments ...any) (json.RawMessage, error) {
 		return s.lsp.ExecuteCommand(buildCtx, session.ID, java.ID, command, arguments...)
 	})
-	if err != nil {
-		return options, err
-	}
-	options.Address, err = s.startJavaDebugServer(buildCtx, session)
 	return options, err
 }
 
@@ -320,11 +348,16 @@ func (s *Service) StartJavaMain(sessionID, relativeFile, mainClass string) (Exec
 	if !ok {
 		return Execution{}, fmt.Errorf("no pom.xml or build.gradle contains %s", relativeFile)
 	}
-	executable, arguments, display, extra, err := java.MainCommandWith(module, java.MainOptions{MainClass: mainClass}, nil)
+	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
 	if err != nil {
 		return Execution{}, err
 	}
-	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
+	options, _ := json.Marshal(java.MainOptions{MainClass: mainClass})
+	if direct, ok := s.javaDirectLaunch(session, module, RunRequest{Language: java.ID, LanguageOptions: options}, environment); ok {
+		direct.SessionID, direct.Kind = session.ID, "run"
+		return s.processes.Start(direct)
+	}
+	executable, arguments, display, extra, err := java.MainCommandWith(module, java.MainOptions{MainClass: mainClass}, nil)
 	if err != nil {
 		return Execution{}, err
 	}

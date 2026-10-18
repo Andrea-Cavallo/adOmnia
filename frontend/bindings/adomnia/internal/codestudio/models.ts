@@ -4350,6 +4350,35 @@ export const PendingDefer = golang$0.PendingDefer;
 export type PendingDefer = golang$0.PendingDefer;
 
 /**
+ * PomManagedVersion è la versione che il pom non scrive ma eredita; Owner dice da dove arriva ("inherited"
+ * da un parent o da un BOM importato, "managed" dal dependencyManagement del pom stesso).
+ */
+export class PomManagedVersion {
+    "version": string;
+    "owner": string;
+
+    /** Creates a new PomManagedVersion instance. */
+    constructor($$source: Partial<PomManagedVersion> = {}) {
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("owner" in $$source)) {
+            this["owner"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PomManagedVersion instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PomManagedVersion {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PomManagedVersion($$parsedSource as Partial<PomManagedVersion>);
+    }
+}
+
+/**
  * Alias dei tipi esposti ai binding: la UI importa tutto da goide.
  */
 export const Preview = preview$0.Preview;

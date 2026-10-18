@@ -49,6 +49,7 @@ interface PreparedDocument {
 }
 
 const locationCache = new Map<string, StudioLocation>()
+const previewDocuments = new Map<string, GoIDEEditorDocument>()
 let registered = false
 let commandsRegistered = false
 const registeredLanguages = new Set<string>()
@@ -68,7 +69,7 @@ export function toMonacoEdits(edits: GoIDEEditorTextEdit[]): monaco.editor.IIden
 /** Trova il documento Code Studio associato a un modello Monaco. */
 export function documentForModel(model: monaco.editor.ITextModel): GoIDEEditorDocument | null {
   const target = model.uri.toString()
-  return useCodeStudioStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? null
+  return useCodeStudioStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? previewDocuments.get(target) ?? null
 }
 
 /** Il go.mod del progetto: le sue dipendenze si aprono come sorgenti, non come simboli. */
@@ -123,31 +124,42 @@ const previewModels: string[] = []
  * session in the fragment and stdlib/module files have none, so Monaco failed with "Model not found":
  * read the target once (read-only, GOROOT/module cache allowed) and keep a small LRU of previews.
  */
-async function ensurePreviewModel(sessionId: string, location: GoIDEEditorLocation): Promise<void> {
-  const uri = monaco.Uri.parse(location.uri)
+export async function ensurePreviewModel(sessionId: string, location: GoIDEEditorLocation): Promise<void> {
+  const uri = monaco.Uri.parse(editorModelUri({ uri: location.uri, sessionId }))
   if (monaco.editor.getModel(uri)) return
   try {
-    const open = useCodeStudioStore.getState().documents.find((item) => item.document.sessionId === sessionId && item.document.relativePath === location.relativePath && !location.external)
-    let content = open?.buffer
-    if (content === undefined) {
-      const { openGoIDEDocument, closeGoIDEDocument } = await import('@/lib/code-studio-api')
+    const open = useCodeStudioStore.getState().documents.find((item) => item.document.sessionId === sessionId && (item.document.uri === location.uri || (item.document.relativePath === location.relativePath && !location.external)))
+    let owner = open
+    if (!owner) {
+      const { openGoIDEDocument } = await import('@/lib/code-studio-api')
       const { openExternalDocument } = await import('@/lib/code-studio-lsp-api')
       const read = location.external || !location.relativePath ? await openExternalDocument(sessionId, location.path) : await openGoIDEDocument(sessionId, location.relativePath)
-      content = read.content
-      if (!useCodeStudioStore.getState().documents.some((item) => item.document.id === read.document.id)) void closeGoIDEDocument(sessionId, read.document.id).catch(() => undefined)
+      owner = { ...read, buffer: read.content, savedContent: read.content, dirty: false, saving: false, saveError: null, externalState: null }
     }
     if (monaco.editor.getModel(uri)) return
-    monaco.editor.createModel(content, location.path.endsWith('.go') ? 'go' : undefined, uri)
+    // Keep the tracked document alive: hover and definition inside a peek need its LSP identity too.
+    previewDocuments.set(uri.toString(), owner)
+    const model = monaco.editor.createModel(owner.buffer, owner.document.language, uri)
+    const documentId = owner.document.id
+    model.onWillDispose(() => {
+      previewDocuments.delete(uri.toString())
+      if (!useCodeStudioStore.getState().documents.some((item) => item.document.id === documentId)) {
+        void import('@/lib/code-studio-api').then(({ closeGoIDEDocument }) => closeGoIDEDocument(sessionId, documentId)).catch(() => undefined)
+      }
+    })
     previewModels.push(uri.toString())
-    while (previewModels.length > MAX_PREVIEW_MODELS) monaco.editor.getModel(monaco.Uri.parse(previewModels.shift()!))?.dispose()
+    while (previewModels.length > MAX_PREVIEW_MODELS) {
+      const oldest = previewModels.shift()!
+      if (!useCodeStudioStore.getState().documents.some((item) => editorModelUri(item.document) === oldest)) monaco.editor.getModel(monaco.Uri.parse(oldest))?.dispose()
+    }
   } catch {
-    // No preview: navigation (F12, Ctrl+click) opens the file through the store anyway.
+    // Navigation can still open the source even if no preview is available.
   }
 }
 
-export function rememberLocations(locations: readonly StudioLocation[]): monaco.languages.Location[] {
+export function rememberLocations(locations: readonly StudioLocation[], sessionId?: string): monaco.languages.Location[] {
   return locations.map((location) => {
-    const uri = monaco.Uri.parse(location.uri)
+    const uri = monaco.Uri.parse(sessionId ? editorModelUri({ uri: location.uri, sessionId }) : location.uri)
     locationCache.set(uri.toString(), location)
     return { uri, range: toMonacoRange(location.range) }
   })
@@ -244,7 +256,7 @@ function registerProviders(): void {
       if (!prepared) return null
       const locations = await cancellable(requestLocations(prepared.sessionId, prepared.documentId, kind, position.lineNumber, position.column), token)
       if (locations?.[0]) await ensurePreviewModel(prepared.sessionId, locations[0])
-      return locations ? rememberLocations(locations) : null
+      return locations ? rememberLocations(locations, prepared.sessionId) : null
     },
   })
   const definition = locationProvider('definition')

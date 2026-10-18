@@ -181,3 +181,14 @@ func TestSkippedTestKeepsItsReason(t *testing.T) {
 		t.Fatalf("skips=%d outputs=%q", skips, outputs)
 	}
 }
+
+func TestMultiMethodFilter(t *testing.T) {
+	maven := strings.Join(testArguments(UnitMaven, []string{"a.FooTest"}, "one,two"), " ")
+	if !strings.Contains(maven, "-Dtest=a.FooTest#one+two") {
+		t.Fatalf("maven: %s", maven)
+	}
+	gradle := strings.Join(testArguments(UnitGradle, []string{"a.FooTest"}, "one,two"), " ")
+	if !strings.Contains(gradle, "--tests a.FooTest.one --tests a.FooTest.two") {
+		t.Fatalf("gradle: %s", gradle)
+	}
+}

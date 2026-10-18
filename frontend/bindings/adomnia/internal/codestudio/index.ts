@@ -134,6 +134,7 @@ export {
     PathComparison,
     PathDifference,
     PendingDefer,
+    PomManagedVersion,
     Preview,
     PreviewConfig,
     PreviewRequest,

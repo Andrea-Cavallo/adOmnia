@@ -1,12 +1,26 @@
 import { useEffect } from 'react'
-import { languageServerEditorLanguages } from '@/components/ide/languages'
+import { ideLanguageForEditor, languageServerEditorLanguages } from '@/components/ide/languages'
 import { requestDocumentSymbols, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { serverEntry, useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { currentCodeStudioDocumentVersion, flushCodeStudioDocument } from './codeStudioLspSync'
 
 const REFRESH_DEBOUNCE_MS = 400
 const EMPTY: GoIDESymbolNode[] = []
+
+/** Stato del server che serve il documento, indipendente dagli altri linguaggi del workspace. */
+export function useCodeStudioSymbolServer(sessionId: string, editorLanguage: string) {
+  const language = ideLanguageForEditor(editorLanguage)
+  const provided = useIdeLanguageServersStore((state) => serverEntry(state, sessionId, language?.id ?? ''))
+  const coreState = useCodeStudioLspStore((state) => state.status[sessionId]?.state ?? 'stopped')
+  return {
+    supported: languageServerEditorLanguages().includes(editorLanguage),
+    name: language?.name ?? 'Language server',
+    state: language?.providedServer ? provided.state : coreState,
+    error: language?.providedServer ? provided.error : undefined,
+  }
+}
 
 /** Mantiene aggiornati i simboli del documento attivo nello store: una sola richiesta per Structure e breadcrumb. */
 export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | null): void {
@@ -14,8 +28,9 @@ export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | nul
   const documentId = document?.document.id ?? null
   // I simboli arrivano dal language server: ci sono per ogni linguaggio che ne ha uno (Go, Java, web),
   // non solo per Go. Stesso elenco dei provider LSP generici di codeStudioLanguageFeatures.
-  const hasSymbols = languageServerEditorLanguages().includes(document?.document.language ?? '')
-  const lspReady = useCodeStudioLspStore((state) => state.status[sessionId]?.state === 'ready')
+  const server = useCodeStudioSymbolServer(sessionId, document?.document.language ?? '')
+  const hasSymbols = server.supported
+  const lspReady = server.state === 'ready'
 
   useEffect(() => {
     if (!documentId || !hasSymbols || !lspReady) return

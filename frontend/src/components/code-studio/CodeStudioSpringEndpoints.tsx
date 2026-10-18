@@ -66,6 +66,16 @@ export function CodeStudioSpringEndpoints() {
       flush
       top
       actions={
+        <>
+        <button
+          type="button"
+          onClick={() => request && void import('@/lib/devsession/workspaceFlow').then(({ openWorkspaceApi }) => openWorkspaceApi(request.sessionId)).then(close)}
+          disabled={!request || (index?.endpoints ?? []).length === 0}
+          className="gs-badge cursor-pointer disabled:cursor-default"
+          title="Create an API Workspace collection with one request per endpoint, linked to the running service"
+        >
+          Open API
+        </button>
         <button
           type="button"
           onClick={() => request && void useSpringStore.getState().refreshMetadata(request.sessionId)}
@@ -76,6 +86,7 @@ export function CodeStudioSpringEndpoints() {
           {indexing ? <Loader2 size={12} className="animate-spin" /> : null}
           {indexing ? ' Indexing libraries…' : ' Index Maven libraries'}
         </button>
+        </>
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">

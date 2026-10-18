@@ -230,8 +230,6 @@ La documentación detallada está en inglés.
 
 Informa de errores y propón cambios en [GitHub Issues](https://github.com/Andrea-Cavallo/adOmnia/issues), indicando la versión de la aplicación, el sistema operativo y los pasos para reproducirlo. Elimina credenciales y datos privados de los ejemplos. Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de enviar código, e informa de vulnerabilidades de forma privada como se describe en la [política de seguridad](.github/SECURITY.md).
 
-Gracias a [albertize](https://github.com/albertize) y [plunix](https://github.com/plunix) por sus contribuciones.
-
 ## Licencia
 
 [MIT](LICENSE.md) · Copyright © 2027 Andrea Cavallo

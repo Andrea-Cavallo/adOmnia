@@ -16,6 +16,8 @@ export interface CodeStudioJavaRunTarget {
 
 const PACKAGE = /^\s*package\s+([\w.]+)\s*;/m
 const MAIN_METHOD = /public\s+static\s+void\s+main\s*\(\s*(?:final\s+)?String\s*(?:\[\s*\]|\.\.\.)/
+/** Java 25: `main` senza `public`/`static`, con o senza argomenti: la riga del nome, quando JDT ha già deciso. */
+const ANY_MAIN_METHOD = /\bvoid\s+main\s*\(/
 const TEST_ANNOTATION = /^\s*@(?:Test|ParameterizedTest|RepeatedTest|TestFactory)\b/
 const METHOD_NAME = /\bvoid\s+([A-Za-z_$][\w$]*)\s*\(/
 
@@ -23,7 +25,11 @@ export function isJavaTarget(target: { kind: string }): target is CodeStudioJava
   return target.kind === 'java-main' || target.kind === 'java-test'
 }
 
-export function findJavaTargets(relativePath: string, text: string): CodeStudioJavaRunTarget[] {
+/**
+ * `jdtMains` sono le classi che JDT LS dice lanciabili: quando c'è decide lui (anche i `main` che la regex non
+ * vede), altrimenti vale la regex. // fallback: JDT decide quando è ready
+ */
+export function findJavaTargets(relativePath: string, text: string, jdtMains?: ReadonlySet<string> | null): CodeStudioJavaRunTarget[] {
   if (!relativePath.endsWith('.java')) return []
   const base = relativePath.slice(relativePath.lastIndexOf('/') + 1).replace(/\.java$/, '')
   const pkg = PACKAGE.exec(text)?.[1]
@@ -31,7 +37,7 @@ export function findJavaTargets(relativePath: string, text: string): CodeStudioJ
   const targets: CodeStudioJavaRunTarget[] = []
   const lines = text.split(/\r?\n/)
   lines.forEach((line, index) => {
-    if (MAIN_METHOD.test(line)) {
+    if (jdtMains ? jdtMains.has(className) && ANY_MAIN_METHOD.test(line) : MAIN_METHOD.test(line)) {
       targets.push({ line: index + 1, kind: 'java-main', name: '', className, relativePath })
       return
     }

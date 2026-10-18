@@ -29,7 +29,7 @@ export interface JavaDebugTarget {
   environment?: Record<string, string>
 }
 
-const BUILD_DEBUGGABLE = /^(spring-boot:run|test|verify|integration-test|bootRun|run)$/
+const BUILD_DEBUGGABLE = /^(spring-boot:run|test|verify|integration-test|:?(?:[\w.-]+:)*(?:bootRun|run|test|adomniaRun))$/
 
 const optionsOf = (config: JavaDebugConfiguration): Record<string, unknown> =>
   config.languageOptions && typeof config.languageOptions === 'object' ? (config.languageOptions as Record<string, unknown>) : {}
@@ -48,15 +48,16 @@ export function javaDebugTargetOf(config: JavaDebugConfiguration): JavaDebugTarg
     return { attachHost: String(options.host ?? '127.0.0.1').trim() || '127.0.0.1', attachPort, workingDirectory }
   }
   const programArguments = [...(config.programArguments ?? [])]
+  const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
+  const environmentOverride = Object.keys(environment).length ? { environment } : {}
   if (config.kind === 'main') {
     const mainClass = String(options.mainClass ?? '').trim()
     if (!mainClass) return null
-    const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
     const vmArguments = Array.isArray(options.vmOptions) ? options.vmOptions.map(String) : []
     return { mainClass, workingDirectory, programArguments, vmArguments, environment }
   }
   const legacyClass = javaMainClassOf(programArguments)
   if (legacyClass) return { mainClass: legacyClass, workingDirectory }
-  if (programArguments.some((argument) => BUILD_DEBUGGABLE.test(argument))) return { buildArguments: programArguments, workingDirectory }
+  if (programArguments.some((argument) => BUILD_DEBUGGABLE.test(argument))) return { buildArguments: programArguments, workingDirectory, ...environmentOverride }
   return null
 }

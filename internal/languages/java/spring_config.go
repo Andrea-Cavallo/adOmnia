@@ -163,7 +163,7 @@ func yamlProfileOf(lines []string) string {
 func parseYamlDocument(lines []string, file, profile string) []SpringValue {
 	var values []SpringValue
 	type level struct {
-		key string
+		key    string
 		indent int
 	}
 	var stack []level

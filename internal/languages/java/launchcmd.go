@@ -165,3 +165,29 @@ func writeClasspathJar(classPaths []string, directory string) (string, error) {
 	}
 	return file.Name(), nil
 }
+
+// DirectLaunch prepara l'avvio di `java` senza passare da Maven/Gradle, con classpath e JDK già risolti da JDT LS.
+// Un'app modulare (module path) resta sul build tool: il nome del modulo non è nella risposta di JDT.
+func DirectLaunch(options MainOptions, programArguments []string, runtime DebugOptions) (LaunchSpec, error) {
+	if err := options.validate(); err != nil {
+		return LaunchSpec{}, err
+	}
+	if runtime.JavaExec == "" || len(runtime.ClassPaths) == 0 {
+		return LaunchSpec{}, fmt.Errorf("JDT LS did not resolve a JDK and a classpath")
+	}
+	if len(runtime.ModulePaths) > 0 {
+		return LaunchSpec{}, fmt.Errorf("a modular application runs through the build tool")
+	}
+	version, _ := readJavaVersion(runtime.JavaExec)
+	return LaunchSpec{
+		JavaExec: runtime.JavaExec, MainClass: options.MainClass, ClassPaths: runtime.ClassPaths,
+		VMArgs: options.VMOptions, Args: programArguments, Major: Major(version),
+	}, nil
+}
+
+// LaunchDisplay è la riga mostrata nella console Run: il classpath, anche di centinaia di jar, resta riassunto.
+func LaunchDisplay(spec LaunchSpec) string {
+	parts := append([]string{spec.JavaExec}, spec.VMArgs...)
+	parts = append(parts, fmt.Sprintf("-cp <%d entries>", len(spec.ClassPaths)), spec.MainClass)
+	return strings.Join(append(parts, spec.Args...), " ")
+}

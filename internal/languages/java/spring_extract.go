@@ -484,3 +484,11 @@ func namedArgPattern(name string) *regexp.Regexp {
 	namedArgsCache[name] = pattern
 	return pattern
 }
+
+// EndpointsInFile sono gli endpoint MVC di un solo sorgente, con il percorso relativo come File: serve a chi
+// scansiona i file uno alla volta (il contesto di sviluppo) senza costruire l'intero indice Spring.
+func EndpointsInFile(relativePath string, data []byte) []SpringEndpoint {
+	source := parseJavaSource(data)
+	source.File = relativePath
+	return endpointsOf([]javaSource{source})
+}

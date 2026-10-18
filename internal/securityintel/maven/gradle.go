@@ -1,0 +1,114 @@
+package maven
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"adomnia/internal/ide/project"
+	"adomnia/internal/languages/java"
+	"adomnia/internal/securityintel"
+)
+
+// Gradle usa le coordinate Maven (OSV: ecosistema "Maven"), quindi i build.gradle(.kts) passano da questo adapter:
+// stesso motore CVE, stessa UI. La risoluzione è statica — le dipendenze con versione scritta (o in una variabile
+// dello stesso script) — perché eseguire Gradle significherebbe eseguire il build dell'utente.
+
+func isGradleManifest(path string) bool {
+	name := filepath.Base(path)
+	return name == "build.gradle" || name == "build.gradle.kts"
+}
+
+// FindGradleBuilds trova i build script sotto root, anche dei sottomoduli (ognuno dichiara le sue dipendenze).
+// Una cartella con pom.xml è Maven: il suo pom è già un target.
+func FindGradleBuilds(root string) ([]string, error) {
+	var manifests []string
+	visited := 0
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			if entry != nil && entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !entry.IsDir() {
+			return nil
+		}
+		if path != root && (project.IgnoredDirectory(entry.Name()) || strings.EqualFold(entry.Name(), "build") || depthOf(root, path) > 5) {
+			return filepath.SkipDir
+		}
+		if visited++; visited > 4_000 || len(manifests) >= 50 {
+			return filepath.SkipAll
+		}
+		if isFile(filepath.Join(path, "pom.xml")) {
+			return nil
+		}
+		for _, name := range []string{"build.gradle", "build.gradle.kts"} {
+			if script := filepath.Join(path, name); isFile(script) {
+				manifests = append(manifests, script)
+				break
+			}
+		}
+		return nil
+	})
+	sort.Strings(manifests)
+	return manifests, err
+}
+
+// gradleScope traduce la configurazione Gradle nello scope Maven che il motore sa leggere.
+func gradleScope(configuration string) securityintel.Scope {
+	switch {
+	case strings.HasPrefix(configuration, "test"):
+		return securityintel.ScopeTest
+	case strings.HasPrefix(configuration, "compileOnly"), strings.HasPrefix(configuration, "provided"):
+		return securityintel.ScopeProvided
+	case strings.HasPrefix(configuration, "runtime"), configuration == "developmentOnly":
+		return securityintel.ScopeRuntime
+	case configuration == "annotationProcessor", configuration == "kapt", configuration == "ksp", configuration == "classpath":
+		return securityintel.ScopeBuild
+	}
+	return securityintel.ScopeCompile
+}
+
+// resolveGradle legge le dipendenze dichiarate nel build script.
+func resolveGradle(_ context.Context, path string) (securityintel.Resolution, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return securityintel.Resolution{}, fmt.Errorf("read %s: %w", filepath.ToSlash(path), err)
+	}
+	declared, err := java.ParseGradleDependencies(data)
+	if err != nil {
+		return securityintel.Resolution{}, err
+	}
+	resolution := securityintel.Resolution{}
+	seen := map[string]bool{}
+	unversioned := 0
+	for _, dependency := range declared {
+		if dependency.Section != java.SectionDependency {
+			continue // piattaforme/BOM e plugin non sono artefatti con CVE propri qui
+		}
+		if dependency.Resolved == "" {
+			unversioned++
+			continue
+		}
+		scope := gradleScope(dependency.Scope)
+		component := securityintel.Component{
+			Ecosystem: securityintel.EcosystemMaven, Name: dependency.Key(), Version: dependency.Resolved, Scope: scope,
+			Origin: securityintel.OriginDeclared, Exposure: securityintel.ExposureOf(scope, securityintel.OriginDeclared),
+			Manifest: path, Direct: true, DependencyPath: []string{filepath.Base(filepath.Dir(path)), dependency.Key()},
+		}
+		if !seen[component.Key()] {
+			seen[component.Key()] = true
+			resolution.Components = append(resolution.Components, component)
+		}
+	}
+	sort.SliceStable(resolution.Components, func(i, j int) bool { return resolution.Components[i].Name < resolution.Components[j].Name })
+	resolution.Warnings = append(resolution.Warnings, "Gradle is read statically: only dependencies declared with a version in this script are checked, transitive ones are not.")
+	if unversioned > 0 {
+		resolution.Warnings = append(resolution.Warnings, fmt.Sprintf("%d dependencies have no version in this script (managed by a plugin or a platform): they are not checked.", unversioned))
+	}
+	return resolution, nil
+}

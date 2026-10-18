@@ -194,6 +194,15 @@ Language-server shutdown bounds protocol writes and the final wait for process e
 
 **Dependency graph.** *Tools → Dependency Graph…* reads `go list -m -json all`, `go mod graph` and `go list -deps` offline: direct → transitive tree, duplicate versions with who requires each and the shortest chain from your module, license (from the module's LICENSE file), estimated weight on disk, package count, and **unused** / **indirect** badges. *Check updates* (`go list -m -u`) and *Scan vulnerabilities* (`govulncheck`) contact the network and run only when clicked. Needs a trusted project.
 
+## Java and Spring in the same product
+
+Java follows the same rules as Go: whatever works for a Go project works for a Spring one.
+
+- **Run.** A `main` class runs with `java` directly when JDT LS is ready (classpath and JDK resolved by the server, the same as Debug; very long classpaths go through an argfile). Otherwise it falls back to Maven `exec:java` / the Gradle run task. The ▶ in the gutter appears on the classes JDT LS lists as launchable; without the server a source regex decides.
+- **Tests.** The Tests panel shows passed/failed/skipped counters on each class. *Rerun failed* reruns only the failed methods of a class (several at once).
+- **API.** Spring MVC endpoints (`@RestController`, `@RequestMapping`, `@GetMapping`…) are routes of the Developer Context, so the same actions as Go routes are available above the handler: *Open in API client* (`⇄`), *Run*, *Last response*, *History*, *Mock*, *Copy cURL*, *OpenAPI*. *Open API* in the endpoint list creates the `<service> API` collection linked to the running service.
+- **pom.xml / build.gradle.** Dependencies without a `<version>` show the version inherited from a parent or imported BOM (read offline from the local Maven repository); it is updated where it is defined. *Scan vulnerabilities* works on Gradle scripts too (static read: only dependencies with a written version, no transitive ones).
+
 ## Makefiles and Dockerfiles
 
 Code Studio runs Makefiles and Dockerfiles with the real `make` and `docker`, and streams their output to the Run console like `go run`. Any file type opened in the editor is highlighted: HTML, CSS, JavaScript/TypeScript, SQL, XML/WSDL, Protobuf, shell, PowerShell, Dockerfile, Makefile, `.env`, TOML/INI and more.

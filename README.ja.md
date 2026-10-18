@@ -183,6 +183,4 @@ LAN コラボレーションは **ベータ版で、オプトイン** です。�
 
 バージョン、オペレーティングシステム、再現手順を添えて[問題を報告](https://github.com/Andrea-Cavallo/adOmnia/issues)してください。スクリーンショットやエクスポートからは、認証情報と個人データを取り除いてください。プルリクエストを開く前に、リポジトリのコントリビューションガイドラインに従ってください。
 
-[albertize](https://github.com/albertize) さんと [plunix](https://github.com/plunix) さんのコントリビューションに感謝します。
-
 [MIT ライセンス](LICENSE.md)

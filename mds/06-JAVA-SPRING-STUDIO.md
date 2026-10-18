@@ -124,7 +124,7 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 - [x] **Debug dal pannello Tests** (2026-10-18): `javaDebugRequestForNode` (`codeStudioTestTree.ts`) instrada il nodo Java alla stessa richiesta del ▶ del gutter (`startJava`); bottone Bug sulla riga e Debug della suite, test in `codeStudioDebug.test.ts`.
 - **Rerun failed** esteso ai metodi selezionati (oggi file/metodo).
 - [x] **Test ignorati con motivo** (2026-10-18): `<skipped message=…>` diventa l'output "Skipped: …" del test (`junit.go`, `TestSkippedTestKeepsItsReason`). Il timeout resta da fare.
-- [ ] Roll-up per classe e rerun failed multi-metodo: non iniziati.
+- [x] **Roll-up per classe e rerun multi-metodo** (2026-10-18): `rollupOf` (`codeStudioTestTree.ts`) conta passati/falliti/ignorati sulle foglie e li mostra sulla riga della classe; il rerun failed di una classe con più metodi falliti passa `Run: "a,b"` (Maven `-Dtest=Classe#a+b`, Gradle un `--tests` per metodo; `methodsOf` in `test_runner.go`). Nomi display (`test[0]`) → classe intera. Test: `codeStudioTestTree.test.ts`, `TestMultiMethodFilter`.
 
 **Test automatici:** `junit_test.go` (roll-up, skip con motivo, classi multi-modulo); `codeStudioTestTree.test.ts` (`isJavaTestRun`, debug request dal nodo, rerun failed multi-metodo).
 **Verifica comandi:** `go test ./internal/languages/java/...` · `npx vitest run codeStudioTestTree.test.ts`
@@ -175,6 +175,7 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
   - `vscode.java.resolveMainMethod` → main per file + range del nome (per i marker del gutter);
   - `vscode.java.test.findTestTypesAndMethods` → test JUnit/TestNG **con annotation definite dall'utente** (serve il bundle **java-test**, oggi non incluso: solo java-debug è in `server.go`).
 - Le regex di `mains.go` (`findMainClasses`, 3000 file) e la discovery dei test restano **fallback quando il server non è installato/avviato**, con stato esplicito.
+- [x] **Frontend** (2026-10-18): `stores/codeStudioJavaMains.ts` chiede `JavaMainClasses` (TTL 30 s); `findJavaTargets(…, jdtMains)` mette il ▶ sulle classi che JDT elenca (anche `void main()` di Java 25) e ignora la regex quando JDT ha risposto; senza risposta vale la regex marcata `// fallback`. Test: `codeStudioJavaTargets.test.ts`.
 - **Contratto di possesso**: estendere `internal/ide/architecture_test.go` (o un test dedicato in `internal/languages/java`) affinché le regole locali di semantica Java siano marcate `// fallback: JDT decide quando è ready`, come fa il check di CI di Lithe (`scripts/verify-java-semantic-ownership.mjs`).
 
 **Test automatici:** `mains_test.go` (stesso risultato tra JDT e fallback sulle fixture), `java_test.go` (annotation custom), test del contratto di possesso.
@@ -189,6 +190,7 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 **Obiettivo:** lanciare Java senza dipendere da `exec-maven-plugin` e senza morire sul limite di Windows.
 
 - **Launch diretto** (Lithe: `2026-09-18-java-project-build-and-launch-boundary.md`): `resolveMainClass` → build → `vscode.java.resolveClasspath` (**l'argomento deve essere testo JSON** `{"scope":"runtime"}`, altrimenti il server fallisce) → `java` diretto con `mainClass`, `classPaths`, `modulePaths` (`modulo/nome.Tipo` → `-m modulo/nome.Tipo`). Pre-step Maven `resources:resources` (`resources:testResources` per il test), con `mvnw` risolto dal reactor. Oggi adOmnia usa `exec-maven-plugin:3.5.0:java` (`maincmd.go`) e un init script Gradle: restano come fallback quando JDT LS non c'è.
+- [x] **Collegato al Run** (2026-10-18): `runCommandSpec` e il ▶ del gutter provano `javaDirectLaunch` (`service_java_launch.go`): `resolveJavaRuntime` (build + classpath + JDK di JDT, stesso del Debug) → `java.DirectLaunch` → `BuildLaunch` (argfile/jar oltre i 30 000 caratteri, pulizia a fine processo). JDT non pronto, errore di build o app modulare → fallback a Maven/Gradle. Le VM options diventano `-Xmx` veri. Non fatto: pre-step `resources:resources` (le risorse le copia il builder di JDT). Test: `TestDirectLaunchNeedsResolvedRuntime`.
 - **Command-line oltre 32.767 caratteri** (problema reale su Windows con centinaia di jar): argfile `java @file` (JDK 9+) con testo Unicode, e per JDK 8 un **JAR con solo `META-INF/MANIFEST.MF`** e header `Class-Path` (URL `file:` percent-encoded, wrap a 72 byte). Riferimento: `execution/launch_command.rs` e `classpath_jar.rs` di Lithe.
 - **Spremitura `MAVEN_OPTS`** per le VM options: oggi le VM options finiscono in `MAVEN_OPTS` (`maincmd.go`) — con il launch diretto diventano `-Xmx` veri del processo Java.
 
@@ -206,7 +208,8 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 - **Dependency browser del workspace** (Lithe: `DependencySidebarView.swift`): jar e cartelle del classpath di ogni modulo, da `vscode.java.project.getAll` / `java.project.getClasspaths` (sempre come **testo JSON**), con apertura del sorgente/virtuale `jdt://`.
 - **Gradle allo stesso livello del pom**: parsing di `build.gradle`/`.kts` per dipendenze con versioni e property, **CVE** tramite `internal/securityintel` (come già per il pom), lens "Check for updates"/"Scan vulnerabilities". Oggi `build.gradle` non ha nessun equivalente di `pomInsights`.
 - **Riconoscimento framework dai plugin del build script** senza eseguire Gradle (Lithe: `execution/detectors/gradle.rs` → `bootRun`, `quarkusDev`, `run`, task path `:modulo:bootRun`) e dal plugin Maven applicato (`spring-boot-maven-plugin` di `org.springframework.boot`, con il groupId come parte dell'identità) — oggi `usesSpringBoot()` è più grossolano.
-- **Versioni gestite da parent/BOM** (l'altra mancanza di 9.4.9): il lens "aggiorna" si attiva dove la versione è **davvero definita**.
+- [x] **Versioni gestite da parent/BOM** (2026-10-18): `PomManagedVersions` riusa il resolver di Security Intelligence (offline, parent per `relativePath` e dal repository Maven locale, BOM importati); la dipendenza senza `<version>` mostra la versione reale e il marker dice che va aggiornata dove è definita (nessuna modifica proposta nel file).
+- [x] **CVE su Gradle** (2026-10-18): l'adapter Maven di `securityintel` scopre e legge staticamente i `build.gradle(.kts)` (`maven/gradle.go`, stesse coordinate OSV); "Scan vulnerabilities" funziona anche sugli script Gradle. Solo dipendenze con versione scritta, niente transitive (warning esplicito).
 
 **Test automatici:** `dependencytree_test.go` (nodi, conflitti, multi-modulo), `gradledeps_test.go` (dipendenze, property, plugin framework), `pomdeps_test.go` (parent/BOM), test di `securityintel` estesi a Gradle.
 **Verifica comandi:** `go test ./internal/languages/java/... ./internal/securityintel/...`
@@ -240,7 +243,7 @@ Mancavano del tutto all'inizio (Spring tooling e menu/comandi Java sono poi arri
 
 ## JS-11 — Run configuration a livelli e altri framework (P2)
 
-- **Configurazioni generate + override a livelli** (Lithe: `execution/configuration.rs`): `generated` → `project` → `local`, con rigenerazione automatica e revisione versionata. Oggi `.adomnia/run-configurations.json` è un unico livello; **non rompere il formato condiviso via Git** (visto già in `MULTILANGUAGE-IDE.md` 3.4).
+- **Configurazioni generate + override a livelli** (Lithe: `execution/configuration.rs`): `generated` → `project` → `local`, con rigenerazione automatica e revisione versionata. **Stato 2026-10-18:** i tre livelli esistono già di fatto — le proposte (`run_suggestions.go`) sono `generated`, le configurazioni con *Share (Git)* vivono in `.adomnia/run-configurations.json` (`project`), le altre nel bbolt locale (`local`). **Aperto di proposito:** l'override personale di una configurazione condivisa senza toccare il file (servirebbe un file `.local` o un campo nel formato condiviso): non c'è un consumatore reale, quindi non si costruisce; **non rompere il formato condiviso via Git** (visto già in `MULTILANGUAGE-IDE.md` 3.4).
 - **Framework oltre Spring**: Quarkus e Micronaut (Lithe li riconosce e propone `quarkusDev`/`micronaut` run). Oggi adOmnia riconosce solo Spring Boot.
 - **Maven settings per JDT LS**: passare all'utente e al server lo stesso `settings.xml` (localRepository, mirrors) — il trucco content-addressed di Lithe (`jdt_maven_settings.rs`) per forzare il reload senza restart. Oggi adOmnia non lo fa: un progetto con repository privata non risolve le dipendenze.
 
@@ -256,7 +259,7 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 - **Test coverage Java (JaCoCo)** — Lithe non ha coverage per nessun linguaggio; adOmnia ha già `coverage_base.go` + `coverage_branches.go` da usare come modello per la copertura Java.
 - **Spring Initializr** — assente in entrambi; il launcher che già riconosce Spring Boot può creare il progetto.
 - **Actuator e grafo dei bean** — Lithe ha solo liste (beans/injections). Un grafo visuale costruito sullo stesso schema di JS-1 è un salto di qualità.
-- **Security su Gradle** — `internal/securityintel` esteso a `build.gradle` (Lithe non ha nulla di security).
+- [x] **Security su Gradle** — fatto, vedi JS-8 (`securityintel/maven/gradle.go`).
 
 *Voci aperte a richiesta: qui si scrive solo quando una di queste diventa lavoro concreto.*
 
@@ -307,3 +310,4 @@ Cose che Lithe **non** ha e che adOmnia può avere per primo, sfruttando ciò ch
 | 2026-10-18 | JS-2 | **Comandi e menu Java**: menu "Java", 14 comandi con `requires`, New Java Class/Package, Build Maven dal martello, comandi Go-only spenti nei progetti Java. tsc e vitest verdi; prove `JS-2.M1`–`M5` aperte. |
 | 2026-10-18 | JS-3 / JS-4 | Debug dei test JUnit dal pannello Tests, motivo dei test ignorati, errori Maven/Gradle cliccabili in console e terminale. Vitest (51 file) e `go test ./internal/languages/java/` verdi, tsc pulito. Restano roll-up per classe, JDK per unità, problemi nel pannello Problems, stato di preparazione JDT LS. |
 | 2026-10-18 | JS-5…JS-12 | Codice e test: stepping filters e hot code replace (JS-5), main class decise da JDT con fallback marcato (JS-6, backend), helper per command line lunghe (JS-7, non ancora collegato al Run), lens sulle dipendenze Gradle e albero Maven provato su spring-openai-master (JS-8), monitor JVM con heap/GC/JFR provato su una JVM reale (JS-9), navigazione MyBatis (JS-10), goal Quarkus/Micronaut e JDK/settings.xml a JDT LS (JS-11), coverage JaCoCo provata su un progetto Spring generato, template Spring Boot Maven/Gradle e Java Maven, grafo dei bean, iniezioni Lombok e per interfaccia (JS-12). Aperti: roll-up per classe e rerun multi-metodo (JS-3), JDT-owned nel frontend e launch diretto (JS-6/7), run config a livelli (JS-11), Gradle security (JS-12, securityintel), parent/BOM, template Gradle da compilare. Tutte le prove in app restano aperte. |
+| 2026-10-18 | JS-3/6/7/8/12 | Chiusi: roll-up per classe e rerun multi-metodo (JS-3), main class JDT nel gutter (JS-6), launch diretto collegato a Run e ▶ (JS-7), parent/BOM del pom e CVE su Gradle (JS-8/JS-12). JS-11 resta aperto solo per l'override personale di una configurazione condivisa. In più: le `@RestController` Spring diventano route del Developer Context (`devcontext/javaroutes.go`), quindi API Workspace, Mock, cURL, OpenAPI, Open API e Live Session valgono come per Go; lens sul sorgente Java e bottone "Open API" negli endpoint. Go test (java, devcontext, securityintel, ide) e vitest (177 file) verdi, tsc pulito. Prove in app aperte: `MANUAL-CHECK.md`. |

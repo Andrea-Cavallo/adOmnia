@@ -10,11 +10,11 @@ interface StatusStyle {
 }
 
 const STATUS_STYLES: Record<SuiteStatus, StatusStyle> = {
-  passed: { label: 'Passed', className: 'bg-success/12 text-success', icon: CheckCircle2 },
-  failed: { label: 'Failed', className: 'bg-danger/12 text-danger', icon: XCircle },
-  running: { label: 'Running', className: 'bg-accent/12 text-accent', icon: Loader2 },
+  passed: { label: 'Passed', className: 'text-success', icon: CheckCircle2 },
+  failed: { label: 'Failed', className: 'text-danger', icon: XCircle },
+  running: { label: 'Running', className: 'text-text-2', icon: Loader2 },
   queued: { label: 'Queued', className: 'bg-surface-3 text-text-3', icon: Clock3 },
-  stopped: { label: 'Stopped', className: 'bg-warning/12 text-warning', icon: MinusCircle },
+  stopped: { label: 'Stopped', className: 'text-warning', icon: MinusCircle },
   notrun: { label: 'Not run', className: 'bg-surface-3 text-text-4', icon: CircleDashed },
 }
 
@@ -27,7 +27,7 @@ export function StatusPill({ status }: { status: SuiteStatus }) {
   const style = STATUS_STYLES[status]
   const Icon = style.icon
   return (
-    <span className={`inline-flex h-[22px] items-center gap-1.5 rounded-md px-2 text-[12px] font-medium ${style.className}`}>
+    <span className={`inline-flex h-5 items-center gap-1.5 px-1 text-[12px] font-medium ${style.className}`}>
       <Icon size={12} className={status === 'running' ? 'animate-spin' : ''} />
       {style.label}
     </span>
@@ -35,7 +35,7 @@ export function StatusPill({ status }: { status: SuiteStatus }) {
 }
 
 export function LanguageChip({ label }: { label: string }) {
-  return <span className="inline-flex h-[22px] items-center rounded-md border border-border-1 bg-surface-2 px-2 text-[12px] font-medium text-text-2">{label}</span>
+  return <span className="inline-flex h-5 items-center rounded-md px-1 text-[12px] font-medium text-text-2">{label}</span>
 }
 
 interface SplitButtonProps {
@@ -56,16 +56,16 @@ export function SplitButton({ label, icon: Icon, variant, onMain, items, onItem,
   const anchor = useRef<HTMLButtonElement>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const tone = variant === 'primary'
-    ? 'bg-accent text-on-accent hover:bg-accent-hover'
+    ? 'bg-text-1 text-surface-0 hover:opacity-85'
     : 'border border-border-2 bg-surface-2 text-text-1 hover:border-accent hover:bg-surface-3'
-  const divider = variant === 'primary' ? 'border-l border-on-accent/25' : 'border-l border-border-2'
+  const divider = variant === 'primary' ? 'border-l border-surface-0/25' : 'border-l border-border-2'
   const open = () => {
     const rect = anchor.current?.getBoundingClientRect()
     if (rect) setMenu({ x: rect.left, y: rect.bottom + 4 })
   }
   return (
-    <div className={`flex h-10 overflow-hidden rounded-lg text-[14px] font-semibold ${disabled ? 'opacity-40' : ''} ${className}`}>
-      <button type="button" disabled={disabled} onClick={onMain} title={mainTitle} className={`flex min-w-0 flex-1 items-center justify-center gap-2 px-4 transition-colors disabled:cursor-not-allowed ${tone}`}>
+    <div className={`flex h-7 overflow-hidden rounded text-[12px] font-semibold ${disabled ? 'opacity-40' : ''} ${className}`}>
+      <button type="button" disabled={disabled} onClick={onMain} title={mainTitle} className={`flex min-w-0 flex-1 items-center justify-center gap-2 px-2 transition-colors disabled:cursor-not-allowed ${tone}`}>
         <Icon size={15} />
         <span className="truncate">{label}</span>
       </button>
@@ -101,6 +101,6 @@ export function SuiteDonut({ passed, failed, running, total }: { passed: number;
   )
 }
 
-export function Tile({ children, tone = 'bg-accent/12 text-accent' }: { children: ReactNode; tone?: string }) {
-  return <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}>{children}</span>
+export function Tile({ children, tone = 'text-text-2' }: { children: ReactNode; tone?: string }) {
+  return <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md ${tone}`}>{children}</span>
 }

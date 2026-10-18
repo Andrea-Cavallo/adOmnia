@@ -28,3 +28,7 @@ describe('javaDebugTargetOf', () => {
     expect(javaDebugTargetOf({ kind: 'main', language: 'go', languageOptions: { mainClass: 'a.B' } })).toBeNull()
   })
 })
+
+it('debugs qualified Gradle tasks and forwards non-secret environment overrides', () => {
+  expect(javaDebugTargetOf({ kind: 'command', language: 'java', programArguments: [':api:bootRun'], environment: [{ key: 'SPRING_PROFILES_ACTIVE', value: 'local' }, { key: 'TOKEN', value: 'vault:secret', secret: true }] })).toEqual({ buildArguments: [':api:bootRun'], workingDirectory: '', environment: { SPRING_PROFILES_ACTIVE: 'local' } })
+})

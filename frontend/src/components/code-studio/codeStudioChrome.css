@@ -440,3 +440,19 @@ html.dark .code-studio-root {
   --vscode-diffEditorGutter-insertedLineBackground: color-mix(in srgb, var(--color-success) 14%, transparent);
   --vscode-diffEditorGutter-removedLineBackground: color-mix(in srgb, var(--color-danger) 14%, transparent);
 }
+
+/* Explorer: guide sottili, visibili anche con più cartelle aperte. */
+.code-studio-tree-branch { position: relative; }
+.code-studio-tree-branch::before {
+  content: ''; position: absolute; z-index: 1;
+  left: var(--tree-guide-x); top: 0; bottom: 0;
+  width: 1px; background: var(--color-border-1); pointer-events: none;
+}
+.code-studio-tree-row:focus-visible {
+  outline: 1px solid var(--color-accent); outline-offset: -1px;
+}
+
+.code-studio-explorer .code-studio-tree-row-selected {
+  background: var(--color-surface-3);
+  box-shadow: inset 2px 0 0 var(--color-text-3);
+}

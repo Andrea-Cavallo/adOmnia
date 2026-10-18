@@ -1,3 +1,5 @@
+import { featuresForEditor } from './codeStudioServerFeatures'
+import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { heavyFeatureEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -11,7 +13,6 @@ import {
   requestPrepareHierarchy,
   requestRecursiveCalls,
   requestSemanticTokens,
-  type GoIDELanguageServerFeatures,
 } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { currentCodeStudioDocumentVersion } from './codeStudioLspSync'
@@ -32,11 +33,6 @@ function cancelled(): Error {
   const error = new Error('Canceled')
   error.name = 'Canceled'
   return error
-}
-
-function featuresFor(sessionId: string): GoIDELanguageServerFeatures | null {
-  const status = useCodeStudioLspStore.getState().status[sessionId]
-  return status?.state === 'ready' ? status.features ?? null : null
 }
 
 function isCurrent(documentId: string, version: number): boolean {
@@ -95,7 +91,7 @@ function registerSemanticTokens(): void {
     async provideDocumentSemanticTokens(model, _lastResultId, token) {
       if (!heavyFeatureEnabled(useCodeStudioLspStore.getState(), 'semanticHighlighting')) return null
       const prepared = await prepareDocument(model)
-      const features = prepared ? featuresFor(prepared.sessionId) : null
+      const features = prepared ? featuresForEditor(prepared.sessionId, prepared.document.document.language) : null
       if (!prepared || !features?.semanticTokens) return null
       const result = await settle(requestSemanticTokens(prepared.sessionId, prepared.documentId), token).catch(() => {
         if (!token.isCancellationRequested) scheduleSemanticRetry(prepared.documentId)
@@ -118,7 +114,7 @@ function registerInlayHints(): void {
       const empty = { hints: [], dispose: () => undefined }
       if (!heavyFeatureEnabled(useCodeStudioLspStore.getState(), 'inlayHints')) return empty
       const prepared = await prepareDocument(model)
-      if (!prepared || !featuresFor(prepared.sessionId)?.inlayHints) return empty
+      if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.inlayHints) return empty
       const result = await settle(requestInlayHints(prepared.sessionId, prepared.documentId, toEditorRange(range)), token).catch(() => { throw cancelled() })
       if (!isCurrent(prepared.documentId, result.version)) throw cancelled()
       const hints = result.hints
@@ -146,7 +142,7 @@ function registerDocumentHighlights(): void {
   monaco.languages.registerDocumentHighlightProvider(LANGUAGE, {
     async provideDocumentHighlights(model, position, token) {
       const prepared = await prepareDocument(model)
-      if (!prepared || !featuresFor(prepared.sessionId)?.documentHighlight) return null
+      if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.documentHighlight) return null
       const result = await settle(requestDocumentHighlights(prepared.sessionId, prepared.documentId, position.lineNumber, position.column), token).catch(() => null)
       if (!result || !isCurrent(prepared.documentId, result.version)) return null
       return result.highlights.map((highlight) => ({ range: toMonacoRange(highlight.range), kind: HIGHLIGHT_KINDS[highlight.kind] ?? HIGHLIGHT_KINDS.text }))
@@ -170,6 +166,9 @@ export function registerCodeStudioSemanticFeatures(): void {
   registerSemanticTokens()
   registerInlayHints()
   registerDocumentHighlights()
+  useIdeLanguageServersStore.subscribe((state, previous) => {
+    if (state.servers !== previous.servers) { semanticFailures.clear(); semanticChanged.fire(); inlayChanged.fire() }
+  })
   useCodeStudioLspStore.subscribe((state, previous) => {
     const preferencesChanged = state.preferences.semanticHighlighting !== previous.preferences.semanticHighlighting || state.preferences.inlayHints !== previous.preferences.inlayHints
       || state.preferences.typeHints !== previous.preferences.typeHints
@@ -202,7 +201,7 @@ export function installRecursiveCallMarkers(editor: monaco.editor.IStandaloneCod
     inFlight?.cancel()
     const model = editor.getModel()
     const prepared = model ? await prepareDocument(model) : null
-    if (!prepared || !featuresFor(prepared.sessionId)?.callHierarchy || prepared.document.document.readOnly) return decorations.clear()
+    if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.callHierarchy || prepared.document.document.readOnly) return decorations.clear()
     const request = requestRecursiveCalls(prepared.sessionId, prepared.documentId)
     inFlight = request
     const result = await request.catch(() => null)

@@ -78,3 +78,20 @@ func TestManifestLineWrapsAt72Bytes(t *testing.T) {
 		t.Fatal("unwrapping must give back the original text")
 	}
 }
+
+func TestDirectLaunchNeedsResolvedRuntime(t *testing.T) {
+	options := MainOptions{MainClass: "a.App", VMOptions: []string{"-Xmx1g"}}
+	if _, err := DirectLaunch(options, nil, DebugOptions{}); err == nil {
+		t.Fatal("without a JDK and a classpath the build tool must be used")
+	}
+	if _, err := DirectLaunch(options, nil, DebugOptions{JavaExec: "java", ClassPaths: []string{"c"}, ModulePaths: []string{"m"}}); err == nil {
+		t.Fatal("a modular app must stay on the build tool")
+	}
+	spec, err := DirectLaunch(options, []string{"--x"}, DebugOptions{JavaExec: "java", ClassPaths: []string{"c"}})
+	if err != nil || spec.MainClass != "a.App" || spec.VMArgs[0] != "-Xmx1g" || spec.Args[0] != "--x" {
+		t.Fatalf("spec %+v err %v", spec, err)
+	}
+	if display := LaunchDisplay(spec); display != "java -Xmx1g -cp <1 entries> a.App --x" {
+		t.Fatalf("display %q", display)
+	}
+}

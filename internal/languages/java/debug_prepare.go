@@ -74,3 +74,29 @@ func PrepareDebugRuntime(options *DebugOptions, execute DebugCommand) error {
 	_ = json.Unmarshal(raw, &options.JavaExec)
 	return nil
 }
+
+// ResolveAttachProject keeps expression evaluation scoped to the selected build unit.
+// Several main classes may belong to one project; several projects require a narrower working directory.
+func ResolveAttachProject(rootURI string, execute DebugCommand) (string, error) {
+	raw, err := execute(CommandResolveMainClass, rootURI)
+	if err != nil {
+		return "", err
+	}
+	var mains []struct {
+		ProjectName string `json:"projectName"`
+	}
+	if err := json.Unmarshal(raw, &mains); err != nil {
+		return "", err
+	}
+	name := ""
+	for _, main := range mains {
+		if main.ProjectName == "" {
+			continue
+		}
+		if name != "" && main.ProjectName != name {
+			return "", fmt.Errorf("select a single Java module as the debug working directory")
+		}
+		name = main.ProjectName
+	}
+	return name, nil
+}

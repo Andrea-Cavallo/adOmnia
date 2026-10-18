@@ -21,7 +21,11 @@ func jdwpAgent(port int) string {
 func DebugArguments(unitKind string, arguments []string, port int) ([]string, int, error) {
 	if unitKind == UnitGradle {
 		for index, argument := range arguments {
-			if argument == "test" || argument == "bootRun" || argument == "run" || argument == "adomniaRun" {
+			task := argument[strings.LastIndex(argument, ":")+1:]
+			if !strings.HasPrefix(argument, "-") && (task == "test" || task == "bootRun" || task == "run" || task == "adomniaRun") {
+				if slices.Contains(arguments, "--debug-jvm") {
+					return slices.Clone(arguments), GradleDebugPort, nil
+				}
 				out := slices.Insert(slices.Clone(arguments), index+1, "--debug-jvm")
 				return out, GradleDebugPort, nil
 			}
@@ -30,7 +34,21 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 	}
 	switch {
 	case slices.Contains(arguments, "spring-boot:run"):
-		return append(slices.Clone(arguments), "-Dspring-boot.run.jvmArguments="+jdwpAgent(port)), port, nil
+		const prefix = "-Dspring-boot.run.jvmArguments="
+		out := make([]string, 0, len(arguments)+1)
+		vm := ""
+		for _, argument := range arguments {
+			if strings.HasPrefix(argument, prefix) {
+				vm = strings.TrimPrefix(argument, prefix)
+			} else {
+				out = append(out, argument)
+			}
+		}
+		if strings.Contains(vm, "-agentlib:jdwp") || strings.Contains(vm, "-Xrunjdwp") {
+			return nil, 0, fmt.Errorf("remove the existing JDWP agent from Spring Boot VM options before starting Debug")
+		}
+		vm = strings.TrimSpace(jdwpAgent(port) + " " + vm + " -Dspring.devtools.restart.enabled=false")
+		return append(out, prefix+vm), port, nil
 	case hasGoal(arguments, "test", "verify", "integration-test"):
 		agent := jdwpAgent(port)
 		return append(slices.Clone(arguments), "-Dmaven.surefire.debug="+agent, "-Dmaven.failsafe.debug="+agent), port, nil

@@ -22,7 +22,7 @@ type TestOptions struct {
 
 const maxTestClasses = 64
 
-// methodName: un solo identificatore (con `*` come jolly), mai un'espressione regolare né testo libero che
+// methodName: un identificatore (con `*` come jolly), mai un'espressione regolare né testo libero che
 // finirebbe nella riga di comando del build.
 var methodName = regexp.MustCompile(`^[A-Za-z0-9_$*]+$`)
 
@@ -77,8 +77,10 @@ func testClasses(request idetesting.Request, options TestOptions) ([]string, err
 	if len(options.Packages) > maxTestClasses {
 		return nil, fmt.Errorf("too many test files: at most %d", maxTestClasses)
 	}
-	if options.Run != "" && !methodName.MatchString(options.Run) {
-		return nil, fmt.Errorf("invalid test method filter %q: use a method name", options.Run)
+	for _, method := range methodsOf(options.Run) {
+		if !methodName.MatchString(method) {
+			return nil, fmt.Errorf("invalid test method filter %q: use method names separated by commas", options.Run)
+		}
 	}
 	if options.Run != "" && len(options.Packages) != 1 {
 		return nil, fmt.Errorf("a method filter needs exactly one test file")
@@ -91,6 +93,14 @@ func testClasses(request idetesting.Request, options TestOptions) ([]string, err
 		classes = append(classes, className(file))
 	}
 	return classes, nil
+}
+
+// methodsOf separa il filtro `Run` in metodi: "a,b" riesegue due metodi della stessa classe.
+func methodsOf(filter string) []string {
+	if filter == "" {
+		return nil
+	}
+	return strings.Split(filter, ",")
 }
 
 // className ricava la classe dal percorso del sorgente: `src/test/java/it/x/FooTest.java` → `it.x.FooTest`.
@@ -108,15 +118,17 @@ func className(file string) string {
 
 // testArguments: senza filtri esegue tutti i test dell'unità; con i filtri solo quelli scelti, senza fallire
 // nei moduli che non li contengono. Gradle riesegue sempre (`cleanTest`): un test "up to date" non scriverebbe report.
-func testArguments(kind string, classes []string, method string) []string {
+func testArguments(kind string, classes []string, filter string) []string {
+	methods := methodsOf(filter)
 	if kind == UnitGradle {
 		arguments := []string{"--console=plain", "cleanTest", "test"}
 		for _, class := range classes {
-			filter := class
-			if method != "" {
-				filter += "." + method
+			if len(methods) == 0 {
+				arguments = append(arguments, "--tests", class)
 			}
-			arguments = append(arguments, "--tests", filter)
+			for _, method := range methods {
+				arguments = append(arguments, "--tests", class+"."+method)
+			}
 		}
 		return arguments
 	}
@@ -124,11 +136,11 @@ func testArguments(kind string, classes []string, method string) []string {
 	if len(classes) == 0 {
 		return arguments
 	}
-	filter := strings.Join(classes, ",")
-	if method != "" {
-		filter += "#" + method
+	selection := strings.Join(classes, ",")
+	if len(methods) > 0 {
+		selection += "#" + strings.Join(methods, "+")
 	}
-	return append(arguments, "-Dtest="+filter, "-Dsurefire.failIfNoSpecifiedTests=false", "-DfailIfNoTests=false")
+	return append(arguments, "-Dtest="+selection, "-Dsurefire.failIfNoSpecifiedTests=false", "-DfailIfNoTests=false")
 }
 
 // withCoverage aggiunge l'agente JaCoCo agli argomenti di test: obiettivi del plugin per Maven, init script per Gradle.

@@ -126,3 +126,4 @@ npm run check:startup     # whenever imports around the entrypoint change
 - Don't duplicate tool-locator / process-spec / event-routing logic.
 - Don't store per-session state in module-level globals.
 - Don't touch persisted formats (`.adomnia/run-configurations.json`, bbolt schema, localStorage keys) without a loader migration and a note in `docs/CODE-STUDIO.md`.
+- Don't ship a language that works only inside the editor: its HTTP routes, datasources, topics must reach the shared Developer Context entities so API Workspace, Mock and Live Session work like for Go (see "Language parity" in the root `CLAUDE.md`).

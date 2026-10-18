@@ -11,9 +11,12 @@ import { useDevContextStore } from '@/stores/devcontext'
 import { entityRefFrom, type DevEntity } from '@/lib/devcontext-api'
 import { actionsFor, openEntity } from '@/lib/entities/router'
 import { runHandlerAction, type HandlerAction } from '@/lib/devsession/codeToApi'
-import { ROUTE_INLINE_ACTIONS, runRouteInlineAction, type RouteInlineAction } from './codeStudioRouteActions'
+import { ROUTE_INLINE_ACTIONS, runRouteEntityAction, runRouteInlineAction, type RouteInlineAction } from './codeStudioRouteActions'
 
 const LANGUAGE = 'go'
+/** Linguaggi i cui handler HTTP arrivano dal Developer Context (non da regex sul buffer). */
+const CONTEXT_ROUTE_LANGUAGES = ['java']
+const ENTITY_ROUTE_ACTION_COMMAND = 'codeStudio.entityRouteAction'
 const GO_MOD_COMMAND = 'codeStudio.goModAction'
 const PACKAGE_COMMAND = 'codeStudio.packageCommand'
 const HTTP_ROUTE_COMMAND = 'codeStudio.openHttpRoute'
@@ -87,11 +90,14 @@ function entityLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[
   return lenses
 }
 
-/** Code → API: sulla dichiarazione di un handler, le azioni sulla request che lo esercita. */
-function handlerLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[] {
+/** Code → API: sulla dichiarazione di un handler, le azioni sulla request che lo esercita. `debug` è solo Go (Delve). */
+function handlerLenses(document: GoIDEEditorDocument, withInline = false): monaco.languages.CodeLens[] {
   const { sessionId, relativePath } = document.document
   const snapshot = useDevContextStore.getState().snapshots[sessionId]
-  if (!snapshot) return []
+  if (!snapshot) {
+    if (withInline) void useDevContextStore.getState().ensure(sessionId)
+    return []
+  }
   const lenses: monaco.languages.CodeLens[] = []
   for (const route of snapshot.entities ?? []) {
     if (route.kind !== 'route' || route.attrs.declFile !== relativePath) continue
@@ -99,7 +105,11 @@ function handlerLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens
     if (!line) continue
     lensEntities.set(route.id, route)
     for (const item of HANDLER_ACTIONS) {
+      if (withInline && item.action === 'debug') continue
       lenses.push({ range: lensRange(line), command: { id: HANDLER_COMMAND, title: item.title(route), tooltip: item.tooltip, arguments: [sessionId, route.id, item.action] } })
+    }
+    if (withInline) {
+      for (const item of ROUTE_INLINE_ACTIONS) lenses.push({ range: lensRange(line), command: { id: ENTITY_ROUTE_ACTION_COMMAND, title: item.title, tooltip: item.tooltip, arguments: [sessionId, route.id, item.action] } })
     }
   }
   return lenses
@@ -147,6 +157,10 @@ export function registerCodeStudioCodeLens(): void {
     const ref = entityRefFrom(entity, sessionId)
     void openEntity({ ...ref, source: ref.source && { ...ref.source, line } })
   })
+  monaco.editor.registerCommand(ENTITY_ROUTE_ACTION_COMMAND, (_accessor, sessionId: string, routeId: string, action: RouteInlineAction) => {
+    const route = lensEntities.get(routeId)
+    if (route) void runRouteEntityAction(sessionId, route, action)
+  })
   monaco.editor.registerCommand(HANDLER_COMMAND, (_accessor, sessionId: string, routeId: string, action: HandlerAction) => {
     const route = lensEntities.get(routeId)
     if (route) void runHandlerAction(sessionId, route, action)
@@ -163,4 +177,12 @@ export function registerCodeStudioCodeLens(): void {
     },
   }
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
+  monaco.languages.registerCodeLensProvider(CONTEXT_ROUTE_LANGUAGES, {
+    onDidChange: changed.event,
+    provideCodeLenses: (model) => {
+      const document = documentForModel(model)
+      if (!document || document.document.readOnly || document.document.external) return { lenses: [], dispose: () => undefined }
+      return { lenses: handlerLenses(document, true), dispose: () => undefined }
+    },
+  })
 }

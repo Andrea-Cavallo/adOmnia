@@ -28,8 +28,8 @@ const (
 
 // metadataEntry è ciò che la cache ricorda di un jar già letto.
 type metadataEntry struct {
-	Size       int64           `json:"size"`
-	ModTime    int64           `json:"modTime"`
+	Size       int64            `json:"size"`
+	ModTime    int64            `json:"modTime"`
 	Properties []SpringProperty `json:"properties"`
 }
 

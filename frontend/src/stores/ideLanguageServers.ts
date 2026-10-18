@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { languageServers, startLanguageServer, stopLanguageServer, previewServerInstall, installLanguageServer, type LanguageServerRunStatus } from '@/lib/ide-servers-api'
+import type { GoIDELanguageServerFeatures } from '@/lib/code-studio-lsp-api'
 import { ideLanguage, ideLanguageForEditor } from '@/components/ide/languages'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { confirm } from '@/lib/confirmDialog'
@@ -15,6 +16,7 @@ export interface ServerEntry {
   /** Il server non c'è o non parte: il messaggio spiega come ottenerlo; l'editor usa le funzioni di Monaco. */
   error?: string
   version?: string
+  features?: GoIDELanguageServerFeatures
   /** adOmnia può installarlo (dopo conferma): l'avviso offre "Install…". */
   installable?: boolean
   /** L'utente l'ha fermato: non riparte da solo. */
@@ -74,6 +76,7 @@ export const useIdeLanguageServersStore = create<ServersState>((set, get) => {
   const fromStatus = (status: LanguageServerRunStatus): Partial<ServerEntry> => ({
     state: status.state === 'ready' || status.state === 'starting' || status.state === 'crashed' ? status.state : 'stopped',
     version: status.version || undefined,
+    features: status.state === 'ready' ? status.features ?? undefined : undefined,
     error: status.state === 'crashed' ? status.error || 'The language server stopped unexpectedly' : undefined,
   })
   const ensureSubscribed = () => {

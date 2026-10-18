@@ -7,12 +7,12 @@ import { OutputLines, type RunOutput } from './CodeStudioTestsOutput'
 import { SplitButton } from './CodeStudioTestsUi'
 
 const HEADLINES: Record<SuiteStatus, { title: string; tone: string; icon: ReactNode }> = {
-  passed: { title: 'Passed', tone: 'text-success', icon: <CheckCircle2 size={30} className="text-success" /> },
-  failed: { title: 'Failed', tone: 'text-danger', icon: <XCircle size={30} className="text-danger" /> },
-  running: { title: 'Running', tone: 'text-accent', icon: <Loader2 size={28} className="animate-spin text-accent" /> },
-  queued: { title: 'Queued', tone: 'text-text-2', icon: <Hourglass size={28} className="text-text-3" /> },
-  stopped: { title: 'Stopped', tone: 'text-warning', icon: <CircleDashed size={28} className="text-warning" /> },
-  notrun: { title: 'Not run yet', tone: 'text-text-2', icon: <CircleDashed size={28} className="text-text-4" /> },
+  passed: { title: 'Passed', tone: 'text-success', icon: <CheckCircle2 size={16} className="text-success" /> },
+  failed: { title: 'Failed', tone: 'text-danger', icon: <XCircle size={16} className="text-danger" /> },
+  running: { title: 'Running', tone: 'text-accent', icon: <Loader2 size={16} className="animate-spin text-accent" /> },
+  queued: { title: 'Queued', tone: 'text-text-2', icon: <Hourglass size={16} className="text-text-3" /> },
+  stopped: { title: 'Stopped', tone: 'text-warning', icon: <CircleDashed size={16} className="text-warning" /> },
+  notrun: { title: 'Not run yet', tone: 'text-text-2', icon: <CircleDashed size={16} className="text-text-4" /> },
 }
 
 function subtitle(suite: TestSuite): string {
@@ -30,7 +30,7 @@ function Fact({ icon, value, label }: { icon: ReactNode; value: string; label: s
   return (
     <div className="flex items-center gap-2.5 border-l border-border-1 pl-4">
       <span className="text-text-3">{icon}</span>
-      <div><div className="text-[15px] font-semibold tabular-nums text-text-1">{value}</div><div className="text-[12px] text-text-3">{label}</div></div>
+      <div><div className="text-[12px] font-semibold tabular-nums text-text-1">{value}</div><div className="text-[12px] text-text-3">{label}</div></div>
     </div>
   )
 }
@@ -62,28 +62,28 @@ export function CodeStudioTestsOverview({ suite, output, actions, now, onTab }: 
     else actions.runSuite(suite)
   }
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border-1 bg-surface-2/60 px-4 py-3.5">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-border-1 bg-surface-2/60 px-2 py-1.5">
         <div className="flex min-w-0 items-center gap-3">
           {headline.icon}
-          <div className="min-w-0"><div className={`text-[20px] font-semibold leading-tight ${headline.tone}`}>{headline.title}</div><div className="text-[13px] text-text-3">{subtitle(suite)}</div></div>
+          <div className="min-w-0"><div className={`text-[13px] font-semibold leading-tight ${headline.tone}`}>{headline.title}</div><div className="text-[12px] text-text-3">{subtitle(suite)}</div></div>
         </div>
-        <div className="ml-auto flex gap-4">
-          <Fact icon={<Clock3 size={18} />} value={suite.run ? formatDuration(suite.durationMs) : '—'} label="Duration" />
-          <Fact icon={<CalendarClock size={18} />} value={suite.lastRunAt ? relativeTime(suite.lastRunAt, now) : '—'} label="Last run" />
+        <div className="ml-auto flex gap-2">
+          <Fact icon={<Clock3 size={14} />} value={suite.run ? formatDuration(suite.durationMs) : '—'} label="Duration" />
+          <Fact icon={<CalendarClock size={14} />} value={suite.lastRunAt ? relativeTime(suite.lastRunAt, now) : '—'} label="Last run" />
         </div>
       </div>
-      <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_auto] gap-3">
+      <div className="grid grid-cols-[112px_112px_28px] gap-2">
         <SplitButton label="Run" icon={Play} variant="primary" disabled={busy} onMain={() => actions.runSuite(suite)} items={RUN_ITEMS(go, suite.language === 'go' || suite.language === 'java', suite.failed > 0)} onItem={runVariant} menuLabel="More ways to run this suite" />
         <SplitButton label="Debug" icon={Bug} variant="secondary" disabled={!actions.canDebug(suite)} mainTitle="Debug the first failed test" onMain={() => actions.debugSuite(suite)} items={[{ id: 'failed', label: 'Debug first failed test', icon: Bug, iconClassName: 'text-warning' }]} onItem={() => actions.debugSuite(suite)} menuLabel="More ways to debug this suite" />
-        <button type="button" aria-label="More tools" title="Repetition, benchmarks, coverage overlay and history" onClick={() => onTab('more')} className="grid h-10 w-14 place-items-center rounded-lg border border-border-2 bg-surface-2 text-text-2 transition-colors hover:border-accent hover:bg-surface-3 hover:text-text-1"><MoreHorizontal size={18} /></button>
+        <button type="button" aria-label="More tools" title="Repetition, benchmarks, coverage overlay and history" onClick={() => onTab('more')} className="grid h-7 w-7 place-items-center rounded border border-border-2 bg-surface-2 text-text-2 transition-colors hover:border-accent hover:bg-surface-3 hover:text-text-1"><MoreHorizontal size={14} /></button>
       </div>
-      <section aria-label="Recent output" className="rounded-xl border border-border-1 bg-surface-2/40">
-        <div className="flex items-center gap-2 border-b border-border-1 px-4 py-2.5 text-[14px] font-medium text-text-1">
+      <section aria-label="Recent output" className="rounded-md border border-border-1 bg-surface-2/40">
+        <div className="flex items-center gap-2 border-b border-border-1 px-2 py-1.5 text-[12px] font-medium text-text-1">
           <SquareTerminal size={16} className="text-text-3" aria-hidden="true" /> Recent Output
-          <button type="button" onClick={() => onTab('output')} className="ml-auto text-[13px] font-medium text-accent hover:underline">View Full Output ↗</button>
+          <button type="button" onClick={() => onTab('output')} className="ml-auto text-[12px] font-medium text-accent hover:underline">View Full Output ↗</button>
         </div>
-        <div className="max-h-64 overflow-auto px-4 py-3 font-mono text-[12.5px] leading-5">
+        <div className="max-h-64 overflow-auto px-2 py-2 font-mono text-[12px] leading-5">
           {output.text ? <OutputLines text={output.text} baseDirectory={suite.target.workingDirectory} tail={14} /> : <span className="text-text-4">{output.loading ? 'Loading output…' : suite.run ? 'No output.' : 'Nothing has run yet.'}</span>}
         </div>
       </section>

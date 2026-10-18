@@ -10,14 +10,16 @@ export interface CodeStudioPathRequest {
 }
 
 const TITLES: Record<CodeStudioPathAction, string> = {
-  newGoFile: 'New Go File', newFile: 'New File', newFolder: 'New Folder', rename: 'Rename', duplicate: 'Duplicate',
+  newMarkdownFile: 'New Markdown File', newTextFile: 'New Text File', newGoFile: 'New Go File', newFile: 'New File', newFolder: 'New Folder', rename: 'Rename', duplicate: 'Duplicate',
   newJavaClass: 'New Java Class', newJavaInterface: 'New Java Interface', newJavaEnum: 'New Java Enum', newJavaRecord: 'New Java Record', newJavaPackage: 'New Java Package',
 }
 const ICONS: Record<CodeStudioPathAction, LucideIcon> = {
-  newGoFile: FileCode2, newFile: FilePlus, newFolder: FolderPlus, rename: Pencil, duplicate: Copy,
+  newMarkdownFile: FilePlus, newTextFile: FilePlus, newGoFile: FileCode2, newFile: FilePlus, newFolder: FolderPlus, rename: Pencil, duplicate: Copy,
   newJavaClass: FileCode2, newJavaInterface: FileCode2, newJavaEnum: FileCode2, newJavaRecord: FileCode2, newJavaPackage: FolderPlus,
 }
 const HINTS: Record<CodeStudioPathAction, string> = {
+  newMarkdownFile: 'The .md extension is added for you. Use / for subfolders.',
+  newTextFile: 'The .txt extension is added for you. Use / for subfolders.',
   newGoFile: 'The .go extension and the package clause are added for you. Use / for subfolders.',
   newFile: 'Use / to create it inside new subfolders.',
   newFolder: 'Nested folders like internal/store are created in one step.',

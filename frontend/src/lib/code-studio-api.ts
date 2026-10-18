@@ -833,6 +833,11 @@ export async function stopJavaJfr(sessionId: string, pid: number, name: string):
   return GoIDEBindings.JavaStopJFR(sessionId, pid, name)
 }
 
+/** Versioni che il pom eredita da parent e BOM (già sul disco), per `group:artifact`. */
+export async function getPomManagedVersions(sessionId: string, relativePath: string): Promise<Record<string, { version: string; owner: string } | undefined>> {
+  return (await GoIDEBindings.PomManagedVersions(sessionId, relativePath)) ?? {}
+}
+
 /** Classi lanciabili: decise da JDT LS quando è pronto, altrimenti dalla scansione dei sorgenti. */
 export async function getJavaMainClasses(sessionId: string): Promise<MainClassInfo[]> {
   return GoIDEBindings.JavaMainClasses(sessionId)

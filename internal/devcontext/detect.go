@@ -30,7 +30,7 @@ func interesting(rel string) bool {
 		return false
 	}
 	switch path.Ext(base) {
-	case ".go", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
+	case ".go", ".java", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
 		return true
 	}
 	return false
@@ -60,6 +60,8 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		add(detectGoMod(rel, data))
 	case strings.HasSuffix(base, ".go"):
 		add(detectGoFile(rel, data, hints))
+	case strings.HasSuffix(base, ".java"):
+		out = append(out, detectJavaFile(rel, data)...)
 	case isDotenv(base):
 		add(detectDotenv(rel, data))
 	case isCompose(base):

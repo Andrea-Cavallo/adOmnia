@@ -21,6 +21,14 @@ export interface PomDependencyStatus {
   version: VersionInfo | null
 }
 
+/** Versione di una dipendenza senza `<version>`: gestita da un parent o da un BOM, non modificabile da questo file. */
+export function mergeManagedVersions(dependencies: PomDependency[], managed: Record<string, { version: string; owner: string } | undefined>): PomDependency[] {
+  return dependencies.map((dependency) => {
+    const entry = dependency.resolved || dependency.version ? undefined : managed[`${dependency.groupId}:${dependency.artifactId}`]
+    return entry ? { ...dependency, resolved: entry.version, managedBy: entry.owner } as PomDependency : dependency
+  })
+}
+
 export interface PomTextEdit {
   line: number
   startColumn: number
@@ -102,7 +110,7 @@ export function isPomFile(relativePath: string): boolean {
   return relativePath.replace(/\\/g, '/').split('/').pop() === 'pom.xml'
 }
 
-/** build.gradle / build.gradle.kts: stesse lens e aggiornamenti del pom (le CVE restano del solo pom). */
+/** build.gradle / build.gradle.kts: stesse lens, aggiornamenti e scansione CVE del pom (lettura statica delle dipendenze con versione). */
 export function isGradleFile(relativePath: string): boolean {
   const name = relativePath.replace(/\\/g, '/').split('/').pop()
   return name === 'build.gradle' || name === 'build.gradle.kts'

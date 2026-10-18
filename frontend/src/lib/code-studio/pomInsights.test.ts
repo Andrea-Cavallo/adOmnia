@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PomDependency, VersionInfo } from '../../../bindings/adomnia/internal/languages/java/models'
 import type { SecurityFinding } from '../securityIntel-api'
-import { compareVersions, dependencyStatuses, projectRootOf, updateEdit, versionRequest } from './pomInsights'
+import { compareVersions, dependencyStatuses, mergeManagedVersions, projectRootOf, updateEdit, versionRequest } from './pomInsights'
 
 const jackson = { groupId: 'com.fasterxml.jackson.core', artifactId: 'jackson-databind', version: '${jackson.version}', section: 'dependencies', resolved: '2.15.0', property: 'jackson.version', line: 14, startColumn: 16, endColumn: 34, propertyLine: 8, propertyStartColumn: 22, propertyEndColumn: 28 } as PomDependency
 const web = { groupId: 'org.springframework.boot', artifactId: 'spring-boot-starter-web', version: '', section: 'dependencies', resolved: '', line: 19, startColumn: 19, endColumn: 42 } as PomDependency
@@ -51,5 +51,18 @@ describe('helpers', () => {
   })
   it('derives the project root from absolute and relative paths', () => {
     expect(projectRootOf('C:\\work\\app\\billing\\pom.xml', 'billing/pom.xml')).toBe('C:/work/app')
+  })
+})
+
+describe('mergeManagedVersions', () => {
+  const dep = (over: Record<string, unknown>) => ({ groupId: 'g', artifactId: 'a', version: '', resolved: '', section: 'dependencies', line: 3, startColumn: 1, endColumn: 2, ...over }) as never
+  it('fills the version a parent manages, and cannot be edited here', () => {
+    const [merged] = mergeManagedVersions([dep({})], { 'g:a': { version: '2.1', owner: 'x:parent:1' } })
+    expect(merged.resolved).toBe('2.1')
+    expect(updateEdit(merged, '2.2')).toBeNull()
+  })
+  it('keeps versions written in the pom', () => {
+    const [kept] = mergeManagedVersions([dep({ version: '1.0', resolved: '1.0' })], { 'g:a': { version: '2.1', owner: 'x' } })
+    expect(kept.resolved).toBe('1.0')
   })
 })

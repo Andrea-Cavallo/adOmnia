@@ -5,7 +5,7 @@ import { javaNameError, javaPackageOfDirectory, javaSourceTemplate, type JavaEnt
 
 export type CodeStudioJavaEntryAction = 'newJavaClass' | 'newJavaInterface' | 'newJavaEnum' | 'newJavaRecord' | 'newJavaPackage'
 
-export type CodeStudioPathAction = 'newGoFile' | 'newFile' | 'newFolder' | 'rename' | 'duplicate' | CodeStudioJavaEntryAction
+export type CodeStudioPathAction = 'newGoFile' | 'newMarkdownFile' | 'newTextFile' | 'newFile' | 'newFolder' | 'rename' | 'duplicate' | CodeStudioJavaEntryAction
 
 export type GitignoreTemplate = 'common' | 'go' | 'node' | 'python' | 'java'
 
@@ -125,8 +125,11 @@ export async function runPathAction(sessionId: string, action: CodeStudioPathAct
   if (isJavaEntryAction(action)) return createJavaEntry(sessionId, action, target, trimmed)
   switch (action) {
     case 'newGoFile':
+    case 'newMarkdownFile':
+    case 'newTextFile':
     case 'newFile': {
-      const file = action === 'newGoFile' && !trimmed.endsWith('.go') ? `${trimmed}.go` : trimmed
+      const extension = action === 'newGoFile' ? '.go' : action === 'newMarkdownFile' ? '.md' : action === 'newTextFile' ? '.txt' : ''
+      const file = extension && !trimmed.toLowerCase().endsWith(extension) ? `${trimmed}${extension}` : trimmed
       const path = joinRelative(target, file)
       const content = path.endsWith('.go') ? `package ${packageNameForDirectory(parentOf(path))}\n` : ''
       const ok = await guarded(() => createGoIDEFiles(sessionId, [{ relativePath: path, content }]))

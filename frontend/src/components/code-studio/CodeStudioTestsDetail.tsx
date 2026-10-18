@@ -31,15 +31,15 @@ export function CodeStudioTestsDetail({ suite, session, actions, histories, tab,
     { id: 'more', label: 'More' },
   ]
   return (
-    <aside aria-label={`${suite.name} details`} className="flex min-w-0 flex-col gap-4 rounded-xl border border-border-1 bg-surface-1 p-4">
+    <aside aria-label={`${suite.name} details`} className="flex min-w-0 flex-col gap-2 border border-border-1 bg-surface-0 p-2">
       <div className="flex items-center gap-3">
-        <Tile tone="bg-surface-3 text-text-2"><Folder size={20} /></Tile>
-        <div className="min-w-0"><h3 className="truncate text-[18px] font-semibold leading-tight text-text-1">{suite.name}</h3><p className="truncate font-mono text-[12.5px] text-text-3">{suite.path}</p></div>
+        <Tile tone="bg-surface-3 text-text-2"><Folder size={14} /></Tile>
+        <div className="min-w-0"><h3 className="truncate text-[12px] font-semibold leading-tight text-text-1">{suite.name}</h3><p className="truncate font-mono text-[12px] text-text-3">{suite.path}</p></div>
         <span className="ml-auto"><LanguageChip label={suite.languageLabel} /></span>
       </div>
-      <div role="tablist" aria-label="Suite details" className="-mx-4 flex gap-5 overflow-x-auto border-b border-border-1 px-4">
+      <div role="tablist" aria-label="Suite details" className="-mx-2 flex gap-3 overflow-x-auto border-b border-border-1 px-2">
         {tabs.map((item) => (
-          <button key={item.id} type="button" role="tab" id={`tests-tab-${item.id}`} aria-selected={tab === item.id} aria-controls="tests-tabpanel" onClick={() => onTab(item.id)} className={`-mb-px whitespace-nowrap border-b-2 pb-2.5 text-[14px] transition-colors ${tab === item.id ? 'border-accent font-medium text-accent' : 'border-transparent text-text-3 hover:text-text-1'}`}>{item.label}</button>
+          <button key={item.id} type="button" role="tab" id={`tests-tab-${item.id}`} aria-selected={tab === item.id} aria-controls="tests-tabpanel" onClick={() => onTab(item.id)} className={`-mb-px whitespace-nowrap border-b-2 pb-2.5 text-[12px] transition-colors ${tab === item.id ? 'border-text-2 font-medium text-text-1' : 'border-transparent text-text-3 hover:text-text-1'}`}>{item.label}</button>
         ))}
       </div>
       <div id="tests-tabpanel" role="tabpanel" aria-labelledby={`tests-tab-${tab}`} className="min-w-0">

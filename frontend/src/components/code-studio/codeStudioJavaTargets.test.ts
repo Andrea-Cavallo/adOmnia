@@ -24,3 +24,16 @@ describe('javaTestRequest', () => {
     expect(javaTestRequest('s1', project, target)).toEqual({ sessionId: 's1', language: 'java', workingDirectory: 'billing', packages: ['src/test/java/a/MathTest.java'], run: 'adds' })
   })
 })
+
+describe('findJavaTargets with JDT', () => {
+  it('lets JDT decide which classes are launchable (Java 25 main without public static)', () => {
+    const text = 'package a;\nclass Tiny {\n  void main() {}\n}\n'
+    expect(findJavaTargets('Tiny.java', text)).toEqual([])
+    expect(findJavaTargets('Tiny.java', text, new Set(['a.Tiny'])).map((t) => [t.line, t.kind])).toEqual([[3, 'java-main']])
+  })
+
+  it('ignores a regex match that JDT does not list', () => {
+    const text = 'package a;\npublic class Fake {\n  public static void main(String[] args) {}\n}\n'
+    expect(findJavaTargets('Fake.java', text, new Set())).toEqual([])
+  })
+})

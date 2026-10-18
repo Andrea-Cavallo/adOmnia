@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
-import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, namePatternFor } from './codeStudioTestTree'
+import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, namePatternFor, rollupOf } from './codeStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -149,5 +149,23 @@ describe('JS/TS test runs', () => {
     expect(namePatternFor('a(b)')).toBe(String.raw`a\x28b\x29$`)
     // Nessuno spazio né simbolo di cmd.exe nell'argomento: `npm.cmd` passa da cmd e `&`, `|`, `^`, `%` verrebbero interpretati.
     expect(namePatternFor('x & y | z ^ 100% "q" é')).toMatch(/^[A-Za-z0-9_\\$]+$/)
+  })
+})
+
+describe('Java roll-up and multi-method rerun', () => {
+  const javaRun = (results: GoIDETestResult[]): GoIDETestRun => ({ ...run(results), request: { ...run(results).request, language: 'java', workingDirectory: '' } } as GoIDETestRun)
+  const file = 'src/test/java/a/FooTest.java'
+  const results = [node(file, '', 'fail'), node(file, 'one', 'fail'), node(file, 'two', 'fail'), node(file, 'three', 'pass'), node(file, 'four', 'skip')]
+
+  it('counts the leaves of a class', () => {
+    expect(rollupOf(buildTestTree(results)[0])).toEqual({ passed: 1, failed: 2, skipped: 1 })
+  })
+
+  it('reruns several failed methods of one class together', () => {
+    expect(rerunFailedRequest(javaRun(results))).toMatchObject({ packages: [file], run: 'one,two' })
+  })
+
+  it('falls back to the whole class when a failed test has a display name', () => {
+    expect(rerunFailedRequest(javaRun([node(file, '', 'fail'), node(file, 'one', 'fail'), node(file, 'a > b', 'fail')]))).toMatchObject({ run: '' })
   })
 })

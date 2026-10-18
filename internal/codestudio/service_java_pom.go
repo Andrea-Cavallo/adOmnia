@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"adomnia/internal/languages/java"
+	"adomnia/internal/securityintel"
+	mavensecurity "adomnia/internal/securityintel/maven"
 )
 
 // pomVersionsTimeout è il tempo massimo di una ricerca delle versioni su Maven Central.
@@ -37,4 +39,37 @@ func (s *Service) PomVersions(sessionID string, current map[string]string) ([]ja
 	ctx, cancel := context.WithTimeout(context.Background(), pomVersionsTimeout)
 	defer cancel()
 	return java.LookupVersions(ctx, current), nil
+}
+
+// PomManagedVersion è la versione che il pom non scrive ma eredita; Owner dice da dove arriva ("inherited"
+// da un parent o da un BOM importato, "managed" dal dependencyManagement del pom stesso).
+type PomManagedVersion struct {
+	Version string `json:"version"`
+	Owner   string `json:"owner"`
+}
+
+// PomManagedVersions risolve parent e BOM con lo stesso resolver di Security Intelligence (offline: usa solo i
+// pom nel repository Maven locale): la dipendenza senza `<version>` mostra la versione reale.
+func (s *Service) PomManagedVersions(sessionID, relativePath string) (map[string]PomManagedVersion, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	path, err := s.documents.ResolveProjectPath(session.Project, relativePath)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	result, err := mavensecurity.New().Resolver.Resolve(ctx, path, securityintel.ResolveOptions{Offline: true, MaxComponents: 2000})
+	if err != nil {
+		return nil, err
+	}
+	managed := map[string]PomManagedVersion{}
+	for _, component := range result.Components {
+		if component.Direct && (component.Origin == securityintel.OriginManaged || component.Origin == securityintel.OriginInherited) {
+			managed[component.Name] = PomManagedVersion{Version: component.Version, Owner: string(component.Origin)}
+		}
+	}
+	return managed, nil
 }

@@ -823,4 +823,9 @@ Piano: 06 JS-11 (P2). **Prerequisito:** progetto Spring Boot + uno Quarkus o Mic
 
 - [ ] JS-11.M1 Run config generate e override: le configurazioni generate si rigenerano senza perdere gli override locali, e il file condiviso non cambia formato per chi usa la versione precedente.
 - [ ] JS-11.M2 Framework: progetti Quarkus/Micronaut riconosciuti con il task giusto (`quarkusDev`, ecc.); con un `settings.xml` Maven privato (mirror/localRepository) le dipendenze risolvono e il cambio di `settings.xml` viene preso **senza** riavviare JDT LS.
+- [ ] JS-13.M1 Parità API (Spring): in un `@RestController` ogni metodo con `@GetMapping`/`@PostMapping`… mostra sopra la riga `⇄ METHOD /path`, Run, Last response, History, Mock, Copy cURL, OpenAPI; `⇄` apre la richiesta nell'API Workspace (collegata al servizio in esecuzione con `{{service:NAME}}`, altrimenti `{{baseUrl}}`), Run la invia. Mock aggiunge la route al Mock Server; cURL usa `server.port` (o `{{baseUrl}}`); OpenAPI apre la route in API Docs.
+- [ ] JS-13.M2 Con l'app Spring avviata dal Run, "Open API" (Tools → endpoint Spring) crea la collezione `<servizio> API` con una richiesta per endpoint e le risposte live compaiono in Last response; Debug request non è offerto per Java.
+- [ ] JS-3.M4 Rerun failed con due metodi falliti della stessa classe riesegue solo quei due (comando `-Dtest=Classe#a+b` / due `--tests` visibili in console); con un nome display (`test[0]`) riesegue la classe.
+- [ ] JS-6.M3 Un file con `void main()` senza `public static` (Java 25) mostra il ▶ solo quando JDT LS è `ready`; con JDT LS fermo resta la regola della regex e una classe non lanciabile non ha il ▶.
+- [ ] JS-8.M4 Dipendenza senza `<version>` in un pom con parent Spring Boot: il marker/CVE mostra la versione ereditata e non propone modifiche in quel file; "Scan vulnerabilities" su un `build.gradle` segnala i CVE delle dipendenze con versione scritta (e avvisa che le transitive non sono lette).
 
