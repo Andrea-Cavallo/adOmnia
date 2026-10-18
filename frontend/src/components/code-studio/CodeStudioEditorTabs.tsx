@@ -48,6 +48,16 @@ export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument
   }
 }
 
+/** Slot di chiusura a larghezza fissa: a riposo mostra il punto di modifica, al passaggio del mouse la X. */
+function TabCloseButton({ label, dirty = false, onClose }: { label: string; dirty?: boolean; onClose: () => void }) {
+  return (
+    <span role="button" tabIndex={-1} aria-label={label} onClick={(event) => { event.stopPropagation(); onClose() }} className="code-studio-tab-close">
+      {dirty && <span className="code-studio-tab-dirty" title="Unsaved changes" />}
+      <X size={12} className="code-studio-tab-x" />
+    </span>
+  )
+}
+
 export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, actions, previewTab, onSelectDocument }: CodeStudioEditorTabsProps) {
   const pinned = useCodeStudioStore((state) => state.pinnedDocuments)
   const hasClosed = useCodeStudioStore((state) => (state.activeSessionId ? (state.closedDocuments[state.activeSessionId]?.length ?? 0) > 0 : false))
@@ -100,8 +110,8 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
   }
 
   return (
-    <div className="flex h-10 shrink-0 items-stretch border-b border-border-1">
-    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
+    <div className="flex h-[34px] shrink-0 items-stretch border-b border-border-1">
+    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId && !previewTab?.active
         const isPinned = !!pinned[item.document.id]
@@ -124,18 +134,17 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
             <span className={`truncate ${item.document.id === previewId ? 'italic' : ''}`} title={item.document.id === previewId ? 'Preview tab: edit it or double-click the file to keep it open' : undefined}>{item.document.name}</span>
             {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}
-            {item.dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" title="Unsaved changes" />}
             {isPinned
-              ? <Pin size={11} className="shrink-0 rotate-45 text-accent" aria-label="Pinned" />
-              : <span role="button" tabIndex={-1} aria-label={`Close ${item.document.name}`} onClick={(event) => { event.stopPropagation(); onRequestClose([item]) }} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded hover:bg-surface-3 hover:text-text-1 ${active ? 'opacity-80' : 'opacity-0 group-hover:opacity-100'}`}><X size={12} /></span>}
+              ? <span className="code-studio-tab-close" aria-label="Pinned">{item.dirty ? <span className="code-studio-tab-dirty" title="Unsaved changes" /> : <Pin size={11} className="rotate-45 text-text-3" />}</span>
+              : <TabCloseButton label={`Close ${item.document.name}`} dirty={item.dirty} onClose={() => onRequestClose([item])} />}
           </button>
         )
       })}
       {previewTab && (
         <button type="button" role="tab" aria-selected={previewTab.active} onClick={previewTab.onSelect} className="code-studio-tab group" title="Live Preview">
-          <Globe size={13} className="shrink-0 text-accent" aria-hidden="true" />
+          <Globe size={13} className="shrink-0 text-text-3" aria-hidden="true" />
           <span className="truncate">{previewTab.label}</span>
-          <span role="button" tabIndex={-1} aria-label="Close Live Preview" onClick={(event) => { event.stopPropagation(); previewTab.onClose() }} className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded hover:bg-surface-3 hover:text-text-1 ${previewTab.active ? 'opacity-80' : 'opacity-0 group-hover:opacity-100'}`}><X size={12} /></span>
+          <TabCloseButton label="Close Live Preview" onClose={previewTab.onClose} />
         </button>
       )}
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}

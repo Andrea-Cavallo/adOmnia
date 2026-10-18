@@ -1,6 +1,5 @@
 import {
-  Bookmark, Bug, ChartNetwork, ClipboardPaste, Columns2, Copy, CopyPlus, FileCode2, FilePlus, FlaskConical, FolderCog, FolderOpen, FolderPlus, FolderSearch, GitBranch,
-  GitCommitHorizontal, GitCompare, GitPullRequestArrow, Globe, Hammer, History, KeyRound, Pencil, Play, Radio, RefreshCw, Rows2, ScanSearch, Scissors, Search, Send, SquareTerminal, Trash2, Undo2, Upload, Wand2, Wrench,
+  Bug, ClipboardPaste, Copy, CopyPlus, Ellipsis, FileCode2, FilePlus, FolderOpen, GitBranch, GitCompare, KeyRound, Pencil, Play, Radio, Scissors, Search, Send, Trash2, Undo2, Wand2,
 } from 'lucide-react'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEFileEntry } from '@/lib/code-studio-api'
@@ -19,20 +18,26 @@ export interface TreeMenuContext {
   changedPaths: string[]
 }
 
+type Entry = GoIDEFileEntry | null
+
+/*
+ * Menu pulito: al primo livello solo le azioni frequenti, una icona distinta per gruppo,
+ * il resto in sottomenu senza icone ripetute. Gli id non cambiano: scorciatoie e azioni restano le stesse.
+ */
+
 const JAVA_NEW_ITEMS: ContextMenuItem[] = [
-  { id: 'newJavaClass', label: 'Java Class…', icon: FileCode2 },
-  { id: 'newJavaInterface', label: 'Java Interface…', icon: FileCode2 },
-  { id: 'newJavaEnum', label: 'Java Enum…', icon: FileCode2 },
-  { id: 'newJavaRecord', label: 'Java Record…', icon: FileCode2 },
-  { id: 'newJavaPackage', label: 'Java Package…', icon: FolderPlus, separatorBefore: false },
+  { id: 'newJavaClass', label: 'Java Class…' },
+  { id: 'newJavaInterface', label: 'Java Interface…' },
+  { id: 'newJavaEnum', label: 'Java Enum…' },
+  { id: 'newJavaRecord', label: 'Java Record…' },
+  { id: 'newJavaPackage', label: 'Java Package…' },
 ]
 
 const NEW_ITEMS: ContextMenuItem[] = [
-  { id: 'newGoFile', label: 'Go File…', icon: FileCode2 },
-  { id: 'newFile', label: 'File…', icon: FilePlus },
-
-  { id: 'newFolder', label: 'Folder…', icon: FolderPlus },
-  { id: 'newGitignore', label: '.gitignore', icon: GitBranch, submenu: [
+  { id: 'newFile', label: 'File…' },
+  { id: 'newFolder', label: 'Folder…' },
+  { id: 'newGoFile', label: 'Go File…', separatorBefore: true },
+  { id: 'newGitignore', label: '.gitignore', submenu: [
     { id: 'newGitignoreGo', label: 'Go + Common Tools' },
     { id: 'newGitignoreNode', label: 'Node.js + Common Tools' },
     { id: 'newGitignorePython', label: 'Python + Common Tools' },
@@ -41,7 +46,26 @@ const NEW_ITEMS: ContextMenuItem[] = [
   ] },
 ]
 
-function copyReferenceItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
+const isGoFile = (entry: Entry): entry is GoIDEFileEntry => !!entry && !entry.directory && entry.name.endsWith('.go')
+
+/** I file HTML si aprono nella preview integrata (browser), quindi "Open In → Browser" vale solo per loro. */
+function isHtmlFile(entry: Entry): boolean {
+  return !!entry && !entry.directory && /\.html?$/i.test(entry.relativePath)
+}
+
+function openItems(entry: Entry): ContextMenuItem[] {
+  if (!entry || entry.directory) return []
+  return [
+    { id: 'open', label: 'Open', icon: FileCode2 },
+    ...(isHtmlFile(entry) ? [{ id: 'openWithLivePreview', label: 'Open with Live Preview', icon: Radio }] : []),
+  ]
+}
+
+function newItem(entry: Entry, context: TreeMenuContext): ContextMenuItem {
+  return { id: 'new', label: 'New', icon: FilePlus, separatorBefore: !!entry && !entry.directory, submenu: context.hasJava ? [...NEW_ITEMS, { ...JAVA_NEW_ITEMS[0], separatorBefore: true }, ...JAVA_NEW_ITEMS.slice(1)] : NEW_ITEMS }
+}
+
+function copyReferenceItems(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
   const isGoPackage = !entry || entry.directory || entry.name.endsWith('.go')
   return [
     { id: 'copyAbsolutePath', label: 'Absolute Path', shortcut: 'Ctrl+Shift+C' },
@@ -51,112 +75,143 @@ function copyReferenceItems(entry: GoIDEFileEntry | null, context: TreeMenuConte
   ]
 }
 
-function clipboardItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
+function clipboardItems(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
   return [
     ...(entry ? [
       { id: 'cut', label: 'Cut', icon: Scissors, shortcut: 'Ctrl+X', separatorBefore: true },
       { id: 'copy', label: 'Copy', icon: Copy, shortcut: 'Ctrl+C' },
     ] : []),
-    { id: 'copyReference', label: 'Copy Path/Reference…', icon: Copy, separatorBefore: !entry, submenu: copyReferenceItems(entry, context) },
-    { id: 'paste', label: 'Paste', icon: ClipboardPaste, shortcut: 'Ctrl+V', disabled: !context.canPaste, disabledReason: 'Copy or cut a file or folder first' },
+    { id: 'paste', label: 'Paste', icon: ClipboardPaste, shortcut: 'Ctrl+V', separatorBefore: !entry, disabled: !context.canPaste, disabledReason: 'Copy or cut a file or folder first' },
+    { id: 'copyReference', label: 'Copy Path', submenu: copyReferenceItems(entry, context) },
   ]
 }
 
-function goItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
-  if (entry && !entry.directory && !entry.name.endsWith('.go')) return []
-  return [{
-    id: 'goPackage', label: 'Go Package', icon: Play, iconClassName: 'text-success', separatorBefore: true,
-    submenu: [
-      { id: 'testPackage', label: 'Test Package', icon: FlaskConical },
-      { id: 'testPackageCoverage', label: 'Test Package with Coverage', icon: FlaskConical },
-      { id: 'buildPackage', label: 'Build Package', icon: Hammer, separatorBefore: true },
-      { id: 'vetPackage', label: 'Vet Package', icon: ScanSearch },
-      { id: 'generatePackage', label: 'Go Generate', icon: Wand2 },
-    ],
-  },
-  { id: 'runCurrent', label: 'Run Current Configuration', icon: Play, iconClassName: 'text-success', separatorBefore: true },
-  { id: 'debugCurrent', label: 'Debug Current Configuration', icon: Bug, iconClassName: 'text-danger' }]
+function refactorItem(entry: GoIDEFileEntry): ContextMenuItem | null {
+  if (entry.directory) return { id: 'refactor', label: 'Refactor', icon: Wand2, submenu: [
+    { id: 'rename', label: 'Rename…', shortcut: 'Shift+F6' },
+    { id: 'moveDirectory', label: 'Move Directory…', shortcut: 'F6' },
+    { id: 'copyClasses', label: 'Copy Files…', shortcut: 'F5' },
+    { id: 'safeDelete', label: 'Safe Delete…', shortcut: 'Alt+Delete', disabled: true, disabledReason: 'Package-safe delete analysis is not available for directories yet' },
+    { id: 'migratePackages', label: 'Migrate Packages and Classes', disabled: true, disabledReason: 'No migration target is configured' },
+  ] }
+  if (!isGoFile(entry)) return null
+  return { id: 'refactor', label: 'Refactor', icon: Wand2, submenu: [
+    { id: 'semanticRename', label: 'Rename Symbol…', shortcut: 'Shift+F6' },
+    { id: 'refactorThis', label: 'Refactor This…' },
+    { id: 'moveToNewFile', label: 'Move to New File' },
+    { id: 'moveSymbol', label: 'Move Symbol to Package…' },
+    { id: 'copyClasses', label: 'Copy File…', shortcut: 'F5' },
+    { id: 'safeDelete', label: 'Safe Delete…', shortcut: 'Alt+Delete', disabled: true, disabledReason: 'Use Find Usages before deleting a symbol' },
+    { id: 'migratePackages', label: 'Migrate Packages and Classes', disabled: true, disabledReason: 'No migration target is configured' },
+    { id: 'reformat', label: 'Reformat Code', shortcut: 'Ctrl+Alt+L', separatorBefore: true },
+    { id: 'optimizeImports', label: 'Optimize Imports', shortcut: 'Ctrl+Alt+O' },
+  ] }
 }
 
-/** Azioni semantiche già offerte dall'editor, rese raggiungibili anche dal Project view. */
-function ideItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
-  if (!entry || entry.directory || !entry.name.endsWith('.go')) return []
-  return [
-    { id: 'findUsages', label: 'Find Usages', icon: Search, shortcut: 'Alt+F7', separatorBefore: true },
-    { id: 'analyze', label: 'Analyze', icon: ScanSearch, submenu: [
-      { id: 'inspectCode', label: 'Inspect Code…', icon: ScanSearch },
-    ] },
-  ]
-}
-
-/** Gruppo code nello stesso punto del menu di IntelliJ: dopo Rename, prima di Delete. */
-function codeItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
+function editItems(entry: Entry): ContextMenuItem[] {
   if (!entry) return []
-  if (entry.directory) return [
-    { id: 'refactor', label: 'Refactor', icon: Wand2, submenu: [
-      { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6' },
-      { id: 'moveDirectory', label: 'Move Directory…', icon: FolderOpen, shortcut: 'F6' },
-      { id: 'copyClasses', label: 'Copy Files…', icon: CopyPlus, shortcut: 'F5' },
-      { id: 'safeDelete', label: 'Safe Delete…', icon: Trash2, shortcut: 'Alt+Delete', disabled: true, disabledReason: 'Package-safe delete analysis is not available for directories yet' },
-      { id: 'migratePackages', label: 'Migrate Packages and Classes', disabled: true, disabledReason: 'No migration target is configured' },
-    ] },
-  ]
-  if (!entry.name.endsWith('.go')) return []
+  const refactor = refactorItem(entry)
   return [
-    { id: 'refactor', label: 'Refactor', icon: Wand2, submenu: [
-      { id: 'semanticRename', label: 'Rename Symbol…', icon: Pencil, shortcut: 'Shift+F6' },
-      { id: 'refactorThis', label: 'Refactor This…', icon: Wand2 },
-      { id: 'moveToNewFile', label: 'Move to New File', icon: FilePlus },
-      { id: 'moveSymbol', label: 'Move Symbol to Package…', icon: FolderOpen },
-      { id: 'copyClasses', label: 'Copy File…', icon: CopyPlus, shortcut: 'F5' },
-      { id: 'safeDelete', label: 'Safe Delete…', icon: Trash2, shortcut: 'Alt+Delete', disabled: true, disabledReason: 'Use Find Usages before deleting a symbol' },
-      { id: 'migratePackages', label: 'Migrate Packages and Classes', disabled: true, disabledReason: 'No migration target is configured' },
-    ] },
-    { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark, submenu: [
-      { id: 'toggleBookmark', label: 'Toggle Bookmark', icon: Bookmark, shortcut: 'F11' },
-      { id: 'showBookmarks', label: 'Show Bookmarks…', icon: Bookmark, shortcut: 'Shift+F11' },
-    ] },
-    { id: 'reformat', label: 'Reformat Code', icon: Wand2, shortcut: 'Ctrl+Alt+L', separatorBefore: true },
-    { id: 'optimizeImports', label: 'Optimize Imports', icon: Wand2, shortcut: 'Ctrl+Alt+O' },
+    { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6', separatorBefore: true },
+    { id: 'duplicate', label: 'Duplicate…', icon: CopyPlus },
+    ...(refactor ? [refactor] : []),
+    { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true },
   ]
 }
 
-function historyItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
-  const local = entry && !entry.directory ? [{ id: 'localHistory', label: 'Local History…', icon: History, separatorBefore: true }] : []
-  if (!context.vcsAvailable) return local
-  return [...local, {
-    id: 'git', label: 'Git', icon: GitBranch, separatorBefore: local.length === 0,
-    submenu: [
-      { id: 'gitCommit', label: 'Commit…', icon: GitCommitHorizontal },
-      { id: 'gitPull', label: 'Pull', icon: GitPullRequestArrow },
-      { id: 'gitPush', label: 'Push…', icon: Upload },
-      ...(entry ? [
-        { id: 'gitStage', label: 'Add / Stage', separatorBefore: true },
-        { id: 'gitUnstage', label: 'Unstage' },
-        { id: 'gitRevert', label: 'Revert Local Changes…', icon: Undo2, danger: true },
-      ] : []),
-      ...(!entry || entry.directory ? [] : [
-        { id: 'gitDiff', label: 'Show Diff', separatorBefore: true },
-        { id: 'gitHistory', label: 'Show File History…', icon: History },
-        { id: 'gitAnnotate', label: 'Annotate with Git Blame' },
-      ]),
-      { id: 'gitStudio', label: 'Open Project Git', icon: GitBranch, separatorBefore: true },
-    ],
-  }]
+function findItem(entry: Entry): ContextMenuItem {
+  const goFile = isGoFile(entry)
+  return { id: 'find', label: 'Find', icon: Search, separatorBefore: true, submenu: [
+    ...(goFile ? [{ id: 'findUsages', label: 'Find Usages', shortcut: 'Alt+F7' }] : []),
+    ...(entry && !entry.directory ? [] : [{ id: 'findInFolder', label: 'Find in Folder…' }]),
+    { id: 'findInFiles', label: 'Find in Files…', shortcut: 'Ctrl+Shift+F' },
+    { id: 'replaceInFiles', label: 'Replace in Files…', shortcut: 'Ctrl+Shift+R' },
+    ...(goFile ? [{ id: 'inspectCode', label: 'Inspect Code…', separatorBefore: true }] : []),
+  ] }
 }
 
-function quickGitItems(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
-  if (!context.vcsAvailable) return []
+function goItems(entry: Entry): ContextMenuItem[] {
+  if (entry && !entry.directory && !entry.name.endsWith('.go')) return []
+  return [
+    { id: 'goPackage', label: 'Go Package', icon: Play, submenu: [
+      { id: 'testPackage', label: 'Test Package' },
+      { id: 'testPackageCoverage', label: 'Test Package with Coverage' },
+      { id: 'buildPackage', label: 'Build Package', separatorBefore: true },
+      { id: 'vetPackage', label: 'Vet Package' },
+      { id: 'generatePackage', label: 'Go Generate' },
+    ] },
+    { id: 'runCurrent', label: 'Run Current Configuration', icon: Play, iconClassName: 'text-success' },
+    { id: 'debugCurrent', label: 'Debug Current Configuration', icon: Bug },
+  ]
+}
+
+function gitItems(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
+  const compare: ContextMenuItem[] = entry ? [{ id: 'compareWith', label: 'Compare With…', icon: GitCompare, shortcut: 'Ctrl+D', separatorBefore: !context.vcsAvailable }] : []
+  if (!context.vcsAvailable) return compare
   const selectedPath = entry?.relativePath ?? ''
   const prefix = selectedPath ? `${selectedPath}/` : ''
   const hasChanges = context.changedPaths.some((path) => !selectedPath || path === selectedPath || (!!entry?.directory && path.startsWith(prefix)))
-  return [
-    { id: 'gitPullQuick', label: 'Git Pull', icon: GitPullRequestArrow, separatorBefore: true },
-    ...(hasChanges ? [{ id: 'gitResetHead', label: 'Reset to HEAD…', icon: Undo2, danger: true }] : []),
-  ]
+  const isFile = !!entry && !entry.directory
+  return [{
+    id: 'git', label: 'Git', icon: GitBranch, separatorBefore: true,
+    submenu: [
+      { id: 'gitCommit', label: 'Commit…' },
+      { id: 'gitPull', label: 'Pull' },
+      { id: 'gitPush', label: 'Push…' },
+      ...(entry ? [
+        { id: 'gitStage', label: 'Add / Stage', separatorBefore: true },
+        { id: 'gitUnstage', label: 'Unstage' },
+        { id: 'gitRevert', label: 'Revert Local Changes…', danger: true },
+      ] : []),
+      ...(hasChanges ? [{ id: 'gitResetHead', label: 'Reset to HEAD…', icon: Undo2, danger: true, separatorBefore: !entry }] : []),
+      ...(isFile ? [
+        { id: 'gitDiff', label: 'Show Diff', separatorBefore: true },
+        { id: 'gitHistory', label: 'Show File History…' },
+        { id: 'gitAnnotate', label: 'Annotate with Git Blame' },
+      ] : []),
+      { id: 'gitStudio', label: 'Open Project Git', separatorBefore: true },
+    ],
+  }, ...compare]
 }
 
-function handoffItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
+function openInItem(entry: Entry): ContextMenuItem {
+  const isFile = !!entry && !entry.directory
+  return { id: 'openInGroup', label: 'Open In', icon: FolderOpen, separatorBefore: true, submenu: [
+    ...(isFile ? [{ id: 'splitRight', label: 'Split Right' }, { id: 'splitDown', label: 'Split Down' }] : []),
+    ...(isHtmlFile(entry) ? [{ id: 'openInBrowser', label: 'Browser', separatorBefore: true }] : []),
+    { id: 'reveal', label: 'File Explorer', separatorBefore: isFile && !isHtmlFile(entry) },
+    { id: 'terminal', label: 'Terminal' },
+  ] }
+}
+
+/** Azioni rare raccolte in un solo punto: non affollano il primo livello. */
+function moreItem(entry: Entry): ContextMenuItem {
+  const isFile = !!entry && !entry.directory
+  return { id: 'more', label: 'More', icon: Ellipsis, submenu: [
+    isFile ? { id: 'reloadFromDisk', label: 'Reload from Disk' } : { id: 'refreshProject', label: entry ? 'Refresh Folder' : 'Refresh Project' },
+    { id: 'repairIde', label: 'Repair IDE on File' },
+    ...(isFile ? [{ id: 'localHistory', label: 'Local History…', separatorBefore: true }] : []),
+    ...(isGoFile(entry) ? [
+      { id: 'toggleBookmark', label: 'Toggle Bookmark', shortcut: 'F11', separatorBefore: !isFile },
+      { id: 'showBookmarks', label: 'Show Bookmarks…', shortcut: 'Shift+F11' },
+    ] : []),
+    ...(entry?.directory ? [{ id: 'markDirectory', label: 'Mark Directory As', separatorBefore: true, submenu: [
+      { id: 'markSources', label: 'Sources Root' },
+      { id: 'markTests', label: 'Test Sources Root' },
+      { id: 'markResources', label: 'Resources Root' },
+      { id: 'markExcluded', label: 'Excluded' },
+      { id: 'unmarkDirectory', label: 'Cancel Marking', separatorBefore: true },
+    ] }] : []),
+    ...(isFile ? [{ id: 'createGist', label: 'Create Gist…' }] : []),
+    { id: 'diagrams', label: 'Diagrams', separatorBefore: true, submenu: [
+      { id: 'diagramDependencies', label: 'Package & Dependency Graph' },
+      { id: 'diagramCalls', label: 'Call Graph' },
+      { id: 'diagramInterfaces', label: 'Interface Diagram' },
+    ] },
+  ] }
+}
+
+function handoffItems(entry: Entry): ContextMenuItem[] {
   if (!entry || entry.directory) return []
   return [
     ...(isApiCollectionCandidate(entry.relativePath) ? [{ id: 'sendToApi', label: 'Send to API Workspace', icon: Send, separatorBefore: true }] : []),
@@ -167,62 +222,18 @@ function handoffItems(entry: GoIDEFileEntry | null): ContextMenuItem[] {
   ]
 }
 
-/** I file HTML si aprono nella preview integrata (browser), quindi "Open In → Browser" vale solo per loro. */
-function isHtmlFile(entry: GoIDEFileEntry | null): boolean {
-  return !!entry && !entry.directory && /\.html?$/i.test(entry.relativePath)
-}
-
-/** Menu contestuale del Project view, nell'ordine di GoLand. entry null = radice del progetto. */
-export function buildTreeMenu(entry: GoIDEFileEntry | null, context: TreeMenuContext): ContextMenuItem[] {
-  const isFile = !!entry && !entry.directory
-  const code = codeItems(entry)
+/** Menu contestuale del Project view. entry null = radice del progetto. */
+export function buildTreeMenu(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
   return [
-    ...(isFile ? [
-      { id: 'open', label: 'Open', icon: FileCode2 },
-      ...(isHtmlFile(entry) ? [{ id: 'openWithLivePreview', label: 'Open with Live Preview', icon: Radio }] : []),
-      { id: 'openIn', label: 'Open in Split', icon: Columns2, submenu: [
-        { id: 'splitRight', label: 'Split Right', icon: Columns2 },
-        { id: 'splitDown', label: 'Split Down', icon: Rows2 },
-      ] },
-    ] : []),
-    { id: 'new', label: 'New', icon: FilePlus, separatorBefore: isFile, submenu: context.hasJava ? [...JAVA_NEW_ITEMS, ...NEW_ITEMS] : NEW_ITEMS },
+    ...openItems(entry),
+    newItem(entry, context),
     ...clipboardItems(entry, context),
-    ...ideItems(entry),
-    ...(entry ? [
-      { id: 'rename', label: 'Rename…', icon: Pencil, shortcut: 'Shift+F6', separatorBefore: true },
-      { id: 'duplicate', label: 'Duplicate…', icon: CopyPlus },
-      ...code,
-      { id: 'delete', label: 'Delete…', icon: Trash2, shortcut: 'Delete', danger: true, separatorBefore: code.length > 0 },
-    ] : []),
-    ...(isFile
-      ? [{ id: 'reloadFromDisk', label: 'Reload from Disk', icon: RefreshCw, separatorBefore: true }]
-      : [{ id: 'refreshProject', label: entry ? 'Refresh Folder' : 'Refresh Project', icon: RefreshCw, separatorBefore: true }]),
-    { id: 'repairIde', label: 'Repair IDE on File', icon: Wrench },
-    { id: 'findInFiles', label: 'Find in Files…', icon: Search, shortcut: 'Ctrl+Shift+F' },
-    { id: 'replaceInFiles', label: 'Replace in Files…', icon: Search, shortcut: 'Ctrl+Shift+R' },
-    ...(isFile ? [] : [{ id: 'findInFolder', label: 'Find in Folder…', icon: Search }]),
+    ...editItems(entry),
+    findItem(entry),
     ...goItems(entry),
-    { id: 'openInGroup', label: 'Open In', icon: FolderOpen, separatorBefore: true, submenu: [
-      ...(isHtmlFile(entry) ? [{ id: 'openInBrowser', label: 'Browser', icon: Globe }] : []),
-      { id: 'reveal', label: 'File Explorer', icon: FolderSearch },
-      { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
-    ] },
-    ...quickGitItems(entry, context),
-    ...historyItems(entry, context),
-    ...(entry ? [{ id: 'compareWith', label: 'Compare With…', icon: GitCompare, shortcut: 'Ctrl+D', separatorBefore: true }] : []),
-    ...(entry?.directory ? [{ id: 'markDirectory', label: 'Mark Directory As', icon: FolderCog, submenu: [
-      { id: 'markSources', label: 'Sources Root' },
-      { id: 'markTests', label: 'Test Sources Root' },
-      { id: 'markResources', label: 'Resources Root' },
-      { id: 'markExcluded', label: 'Excluded' },
-      { id: 'unmarkDirectory', label: 'Cancel Marking', separatorBefore: true },
-    ] }] : []),
-    ...(entry && !entry.directory ? [{ id: 'createGist', label: 'Create Gist…', icon: GitBranch }] : []),
-    { id: 'diagrams', label: 'Diagrams', icon: ChartNetwork, submenu: [
-      { id: 'diagramDependencies', label: 'Package & Dependency Graph' },
-      { id: 'diagramCalls', label: 'Call Graph' },
-      { id: 'diagramInterfaces', label: 'Interface Diagram' },
-    ] },
+    ...gitItems(entry, context),
+    openInItem(entry),
+    moreItem(entry),
     ...handoffItems(entry),
   ]
 }

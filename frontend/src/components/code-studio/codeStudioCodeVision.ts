@@ -6,6 +6,7 @@ import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { prepareDocument } from './codeStudioLanguageFeatures'
+import { heavyFeatureEnabled } from './codeStudioResourceMode'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
 const LANGUAGE = heavyFeatureEditorLanguages()
@@ -70,6 +71,7 @@ function visionLens(symbol: GoIDESymbolNode, author: string): VisionLens {
 
 async function provideVisionLenses(model: monaco.editor.ITextModel, token: monaco.CancellationToken): Promise<monaco.languages.CodeLensList> {
   const empty = { lenses: [], dispose: () => undefined }
+  if (!heavyFeatureEnabled(useCodeStudioLspStore.getState(), 'codeVision')) return empty
   const prepared = await prepareDocument(model)
   if (!prepared || prepared.document.document.readOnly || token.isCancellationRequested) return empty
   try {
@@ -132,8 +134,10 @@ export function registerCodeStudioCodeVision(): void {
     resolveCodeLens: (model, lens, token) => resolveVisionLens(model, lens as VisionLens, token),
   }
   // gopls pronto o repository rilevato: i lens calcolati prima erano vuoti o senza autore.
+  // Anche quando l'utente accende o spegne Code Vision, o cambia la modalità a basso consumo.
   useCodeStudioLspStore.subscribe((state, previous) => {
-    if (readySessions(state.status, (status) => status.state === 'ready') !== readySessions(previous.status, (status) => status.state === 'ready')) changed.fire(provider)
+    const readyChanged = readySessions(state.status, (status) => status.state === 'ready') !== readySessions(previous.status, (status) => status.state === 'ready')
+    if (readyChanged || heavyFeatureEnabled(state, 'codeVision') !== heavyFeatureEnabled(previous, 'codeVision')) changed.fire(provider)
   })
   useCodeStudioVCSStore.subscribe((state, previous) => {
     if (readySessions(state.status, (status) => !!status?.available) !== readySessions(previous.status, (status) => !!status?.available)) changed.fire(provider)

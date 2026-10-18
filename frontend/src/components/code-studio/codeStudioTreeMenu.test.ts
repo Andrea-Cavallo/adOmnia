@@ -42,7 +42,7 @@ describe('treeKeyAction', () => {
 describe('buildTreeMenu', () => {
   it('offers the full IDE menu on a Go file', () => {
     const menu = ids(buildTreeMenu(file('internal/api/server.go'), context))
-    for (const id of ['open', 'splitRight', 'newGitignoreGo', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'findUsages', 'inspectCode', 'rename', 'semanticRename', 'refactorThis', 'moveToNewFile', 'moveSymbol', 'copyClasses', 'safeDelete', 'migratePackages', 'toggleBookmark', 'showBookmarks', 'reformat', 'optimizeImports', 'delete', 'reloadFromDisk', 'testPackage', 'runCurrent', 'debugCurrent', 'terminal', 'reveal', 'localHistory', 'gitPullQuick', 'gitResetHead', 'gitCommit', 'gitPull', 'gitPush', 'gitStage', 'gitUnstage', 'gitRevert', 'gitDiff', 'gitHistory', 'gitAnnotate', 'gitStudio', 'compareWith', 'createGist', 'diagramDependencies', 'diagramCalls', 'diagramInterfaces']) {
+    for (const id of ['open', 'splitRight', 'newGitignoreGo', 'cut', 'copy', 'paste', 'copyAbsolutePath', 'copyRelativePath', 'copyFileName', 'copyImportPath', 'findUsages', 'inspectCode', 'rename', 'semanticRename', 'refactorThis', 'moveToNewFile', 'moveSymbol', 'copyClasses', 'safeDelete', 'migratePackages', 'toggleBookmark', 'showBookmarks', 'reformat', 'optimizeImports', 'delete', 'reloadFromDisk', 'testPackage', 'runCurrent', 'debugCurrent', 'terminal', 'reveal', 'localHistory', 'gitResetHead', 'gitCommit', 'gitPull', 'gitPush', 'gitStage', 'gitUnstage', 'gitRevert', 'gitDiff', 'gitHistory', 'gitAnnotate', 'gitStudio', 'compareWith', 'createGist', 'diagramDependencies', 'diagramCalls', 'diagramInterfaces']) {
       expect(menu).toContain(id)
     }
     expect(menu).not.toContain('findInFolder')
@@ -91,17 +91,17 @@ describe('buildTreeMenu', () => {
     expect(menu).toContain('markExcluded')
     expect(menu).toContain('unmarkDirectory')
     expect(menu).toContain('compareWith')
-    expect(menu).toContain('gitPullQuick')
+    expect(menu).toContain('gitPull')
     expect(menu).toContain('gitResetHead')
     expect(menu).not.toContain('createGist')
   })
 
-  it('offers quick pull at project root and reset only where changes exist', () => {
+  it('offers pull at project root and reset only where changes exist', () => {
     const root = ids(buildTreeMenu(null, context))
     const cleanFile = ids(buildTreeMenu(file('README.md'), context))
-    expect(root).toContain('gitPullQuick')
+    expect(root).toContain('gitPull')
     expect(root).toContain('gitResetHead')
-    expect(cleanFile).toContain('gitPullQuick')
+    expect(cleanFile).toContain('gitPull')
     expect(cleanFile).not.toContain('gitResetHead')
   })
 

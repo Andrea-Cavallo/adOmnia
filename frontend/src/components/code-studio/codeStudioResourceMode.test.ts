@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { heavyFeatureEnabled, isLowResource, watchBattery } from './codeStudioResourceMode'
 
-const prefs = { semanticHighlighting: true, inlayHints: true, typeHints: false, stickyScroll: true, lintOnSave: true }
+const prefs = { semanticHighlighting: true, inlayHints: true, typeHints: false, stickyScroll: true, lintOnSave: true, codeVision: true }
 
 describe('codeStudioResourceMode', () => {
   afterEach(() => vi.unstubAllGlobals())

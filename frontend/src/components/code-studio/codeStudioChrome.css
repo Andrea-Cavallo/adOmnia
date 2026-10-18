@@ -290,36 +290,58 @@ html.light .code-studio-root .code-studio-run-group,
   color: var(--color-text-1);
 }
 
-/* Tab dell'editor come in IntelliJ: piatte, nome intero, sottolineatura accent sulla tab attiva. */
+/* Tab dell'editor compatte: una sola linea accent sotto la tab attiva, le altre attenuate. */
 .code-studio-tab {
   position: relative;
   display: flex;
   align-self: stretch;
   min-width: 0;
-  max-width: 280px;
+  max-width: 220px;
   flex-shrink: 0;
   align-items: center;
-  gap: 7px;
-  padding: 0 8px 0 12px;
-  border-radius: 6px 6px 0 0;
-  font-size: 12.5px;
-  color: var(--color-text-3);
+  gap: 6px;
+  padding: 0 4px 0 10px;
+  font-size: 12px;
+  color: var(--color-text-4);
   transition: background-color 120ms ease, color 120ms ease;
 }
-.code-studio-tab:hover { background: var(--color-surface-2); color: var(--color-text-2); }
-.code-studio-tab[aria-selected='true'] { color: var(--color-text-1); }
+.code-studio-tab:hover { background: color-mix(in srgb, var(--color-surface-2) 60%, transparent); color: var(--color-text-2); }
+.code-studio-tab[aria-selected='true'] { color: var(--color-text-1); font-weight: 500; }
 .code-studio-tab::after {
   content: '';
   position: absolute;
-  left: 6px;
-  right: 6px;
-  bottom: 0;
+  left: 0;
+  right: 0;
+  bottom: -1px;
   height: 2px;
-  border-radius: 2px 2px 0 0;
   background: transparent;
   transition: background-color 120ms ease;
 }
 .code-studio-tab[aria-selected='true']::after { background: var(--color-accent); }
+/* Le icone delle tab inattive restano più tenui: il colore guida l'occhio verso il file attivo. */
+.code-studio-tab:not([aria-selected='true']) > :first-child { opacity: 0.7; }
+/* Slot di chiusura: X solo al passaggio del mouse o col focus; il punto di modifica ne prende il posto a riposo. */
+.code-studio-tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: var(--color-text-3);
+}
+.code-studio-tab-close:hover { background: var(--color-surface-3); color: var(--color-text-1); }
+.code-studio-tab-close > .code-studio-tab-x { display: none; }
+.code-studio-tab:hover .code-studio-tab-close > .code-studio-tab-x,
+.code-studio-tab:focus-visible .code-studio-tab-close > .code-studio-tab-x { display: block; }
+.code-studio-tab:hover .code-studio-tab-close > .code-studio-tab-dirty,
+.code-studio-tab:focus-visible .code-studio-tab-close > .code-studio-tab-dirty { display: none; }
+.code-studio-tab-dirty { width: 7px; height: 7px; border-radius: 999px; background: var(--color-text-2); }
+
+/* Code Vision (usi, autore): piccolo e neutro, non deve competere con il codice. */
+.code-studio-root .monaco-editor .codelens-decoration,
+.code-studio-root .monaco-editor .codelens-decoration a { color: var(--color-text-4) !important; }
+.code-studio-root .monaco-editor .codelens-decoration a:hover { color: var(--color-accent) !important; text-decoration: none; }
 
 /* Widget ispezioni in alto a destra dell'editor, sopra il codice ma lontano dalla scrollbar. */
 .code-studio-inspection {
@@ -426,16 +448,16 @@ html.dark .code-studio-root {
   --vscode-diffEditorGutter-removedLineBackground: color-mix(in srgb, var(--color-danger) 14%, transparent);
 }
 
-/* Explorer: guide appena accennate, più leggibili al passaggio del mouse sull'albero. */
+/* Explorer: guide verticali sempre visibili, un po' più marcate al passaggio del mouse sull'albero. */
 .code-studio-tree-branch { position: relative; }
 .code-studio-tree-branch::before {
   content: ''; position: absolute; z-index: 1;
   left: var(--tree-guide-x); top: 0; bottom: 0;
   width: 1px; pointer-events: none;
-  background: color-mix(in srgb, var(--color-border-1) 55%, transparent);
+  background: var(--color-border-1);
   transition: background-color 120ms ease;
 }
-.code-studio-explorer [role="tree"]:hover .code-studio-tree-branch::before { background: var(--color-border-1); }
+.code-studio-explorer [role="tree"]:hover .code-studio-tree-branch::before { background: var(--color-border-2); }
 .code-studio-tree-row:focus-visible {
   outline: 1px solid var(--color-accent); outline-offset: -1px;
 }
@@ -444,5 +466,6 @@ html.dark .code-studio-root {
 .code-studio-explorer .code-studio-tree-row-selected {
   background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   box-shadow: inset 2px 0 0 var(--color-accent);
+  border-radius: 0 4px 4px 0;
   color: var(--color-text-1);
 }

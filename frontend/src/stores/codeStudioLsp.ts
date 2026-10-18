@@ -56,6 +56,8 @@ export interface GoIDEEditorPreferences {
   inlayHints: boolean
   /** Tipi dedotti di := e range, tipi dei composite literal, valori delle costanti (richiede inlayHints). */
   typeHints: boolean
+  /** Code Vision sopra le dichiarazioni: numero di usi e ultimo autore Git. */
+  codeVision: boolean
   /** Intestazioni di funzioni e blocchi fissate in alto mentre si scorre. */
   stickyScroll: boolean
   inlineDiagnostics: boolean
@@ -193,7 +195,7 @@ const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticch
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   inlineDiagnostics: true, inlineDiagnosticWarnings: true, inlineDiagnosticInfo: true,
-  typeHints: false, stickyScroll: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
+  typeHints: false, codeVision: true, stickyScroll: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
   autoSave: false, autoSaveDelayMs: 0, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }

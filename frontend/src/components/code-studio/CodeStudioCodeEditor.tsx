@@ -378,7 +378,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         occurrencesHighlight: 'singleFile',
         // Ghost text di Copilot: Tab accetta, Esc rifiuta, Alt+] / Alt+[ scorrono le alternative.
         inlineSuggest: { enabled: true, showToolbar: 'onHover', mode: 'subword' },
-        codeLensFontSize: 11,
+        codeLensFontSize: 10,
         codeLensFontFamily: 'var(--font-sans)',
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
         // Per gli altri file vale .editorconfig, e `.adomnia/settings.json` è il livello più esplicito.

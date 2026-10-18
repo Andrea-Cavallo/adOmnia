@@ -46,6 +46,7 @@ const SETTINGS: Setting[] = [
   { section: 'Editor', label: 'Keyboard emulation', hint: 'Vim or Emacs keys in the editor.', kind: 'select', pref: 'editorMode', options: [{ value: 'default', label: 'Default' }, { value: 'vim', label: 'Vim' }, { value: 'emacs', label: 'Emacs' }] },
   { section: 'Editor', label: 'Semantic highlighting', hint: 'Colors from gopls for parameters, variables and types.', kind: 'toggle', pref: 'semanticHighlighting' },
   { section: 'Editor', label: 'Inlay hints', hint: 'Parameter names for literals and inferred type parameters.', kind: 'toggle', pref: 'inlayHints' },
+  { section: 'Editor', label: 'Code Vision', hint: 'Usage count and last Git author above declarations.', kind: 'toggle', pref: 'codeVision' },
   { section: 'Editor', label: 'Type hints', hint: 'Inferred types of := and range, composite literal types, constant values.', kind: 'toggle', pref: 'typeHints' },
   { section: 'Save actions', label: 'Format on save', hint: 'gofmt (or gofumpt) through gopls.', kind: 'toggle', pref: 'formatOnSave' },
   { section: 'Save actions', label: 'Optimize imports on save', hint: 'Add missing and remove unused imports.', kind: 'toggle', pref: 'organizeImportsOnSave' },

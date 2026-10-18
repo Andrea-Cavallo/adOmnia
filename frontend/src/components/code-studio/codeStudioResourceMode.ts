@@ -2,7 +2,7 @@
 export type CodeStudioResourceMode = 'normal' | 'low' | 'auto'
 
 /** Funzioni dell'editor che la modalità a basso consumo spegne; le preferenze dell'utente restano salvate com'erano. */
-export const HEAVY_EDITOR_FEATURES = ['semanticHighlighting', 'inlayHints', 'typeHints', 'stickyScroll', 'lintOnSave'] as const
+export const HEAVY_EDITOR_FEATURES = ['semanticHighlighting', 'inlayHints', 'typeHints', 'stickyScroll', 'lintOnSave', 'codeVision'] as const
 export type CodeStudioHeavyFeature = (typeof HEAVY_EDITOR_FEATURES)[number]
 
 export function isLowResource(mode: CodeStudioResourceMode | undefined, onBattery: boolean): boolean {
