@@ -48,7 +48,7 @@ async function indexFor(document: GoIDEEditorDocument): Promise<ReturnType<typeo
 }
 
 /** Converte una posizione dell'indice in una posizione Monaco del documento indicato. */
-async function toMonacoLocation(target: SpringLocation | null, from: GoIDEEditorDocument): Promise<monaco.languages.Location | null> {
+export async function toMonacoLocation(target: SpringLocation | null, from: GoIDEEditorDocument): Promise<monaco.languages.Location | null> {
   if (!target) return null
   const absolute = absolutePathOf(from, target.file)
   const range = {

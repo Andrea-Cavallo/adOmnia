@@ -42,3 +42,16 @@ func (s *Service) SpringEndpoints(sessionID string) ([]java.SpringEndpoint, erro
 	}
 	return index.Endpoints, nil
 }
+
+// MyBatisIndex collega i metodi delle interfacce mapper agli statement dei loro XML (e viceversa): solo
+// filesystem, senza server né rete.
+func (s *Service) MyBatisIndex(sessionID string) (java.MyBatisIndex, error) {
+	root, err := s.SessionRoot(sessionID)
+	if err != nil {
+		return java.MyBatisIndex{}, err
+	}
+	if root == "" {
+		return java.MyBatisIndex{}, fmt.Errorf("session has no project folder")
+	}
+	return java.BuildMyBatisIndex(root), nil
+}

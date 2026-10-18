@@ -49,6 +49,102 @@ export class JDK {
 }
 
 /**
+ * JVMHeapSample è un campionamento di `jstat -gc`: memoria in KB e conteggi/tempi del GC.
+ */
+export class JVMHeapSample {
+    /**
+     * HeapUsedKB e HeapCapacityKB sommano giovane (survivor + eden) e vecchia generazione; il metaspace è escluso.
+     */
+    "heapUsedKb": number;
+    "heapCapacityKb": number;
+    "youngUsedKb": number;
+    "oldUsedKb": number;
+    "youngGcs": number;
+    "youngGcSeconds": number;
+    "fullGcs": number;
+    "fullGcSeconds": number;
+
+    /**
+     * UptimeSeconds è il Timestamp di jstat: da quanto tempo gira la JVM.
+     */
+    "uptimeSeconds": number;
+
+    /** Creates a new JVMHeapSample instance. */
+    constructor($$source: Partial<JVMHeapSample> = {}) {
+        if (!("heapUsedKb" in $$source)) {
+            this["heapUsedKb"] = 0;
+        }
+        if (!("heapCapacityKb" in $$source)) {
+            this["heapCapacityKb"] = 0;
+        }
+        if (!("youngUsedKb" in $$source)) {
+            this["youngUsedKb"] = 0;
+        }
+        if (!("oldUsedKb" in $$source)) {
+            this["oldUsedKb"] = 0;
+        }
+        if (!("youngGcs" in $$source)) {
+            this["youngGcs"] = 0;
+        }
+        if (!("youngGcSeconds" in $$source)) {
+            this["youngGcSeconds"] = 0;
+        }
+        if (!("fullGcs" in $$source)) {
+            this["fullGcs"] = 0;
+        }
+        if (!("fullGcSeconds" in $$source)) {
+            this["fullGcSeconds"] = 0;
+        }
+        if (!("uptimeSeconds" in $$source)) {
+            this["uptimeSeconds"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new JVMHeapSample instance from a string or object.
+     */
+    static createFrom($$source: any = {}): JVMHeapSample {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new JVMHeapSample($$parsedSource as Partial<JVMHeapSample>);
+    }
+}
+
+/**
+ * JVMProcess è una JVM locale trovata da `jcmd -l`.
+ */
+export class JVMProcess {
+    "pid": number;
+    "mainClass": string;
+
+    /**
+     * Args sono gli argomenti dopo la classe (spesso il goal Maven o il jar).
+     */
+    "args"?: string;
+
+    /** Creates a new JVMProcess instance. */
+    constructor($$source: Partial<JVMProcess> = {}) {
+        if (!("pid" in $$source)) {
+            this["pid"] = 0;
+        }
+        if (!("mainClass" in $$source)) {
+            this["mainClass"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new JVMProcess instance from a string or object.
+     */
+    static createFrom($$source: any = {}): JVMProcess {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new JVMProcess($$parsedSource as Partial<JVMProcess>);
+    }
+}
+
+/**
  * MainClassInfo è una classe lanciabile con chi l'ha decisa.
  */
 export class MainClassInfo {
@@ -76,6 +172,88 @@ export class MainClassInfo {
     static createFrom($$source: any = {}): MainClassInfo {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new MainClassInfo($$parsedSource as Partial<MainClassInfo>);
+    }
+}
+
+/**
+ * MyBatisIndex è l'elenco dei collegamenti trovati, ordinato per namespace e id.
+ */
+export class MyBatisIndex {
+    "links": MyBatisLink[];
+
+    /**
+     * Skipped sono i file non letti per i limiti della scansione.
+     */
+    "skipped"?: number;
+
+    /** Creates a new MyBatisIndex instance. */
+    constructor($$source: Partial<MyBatisIndex> = {}) {
+        if (!("links" in $$source)) {
+            this["links"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MyBatisIndex instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MyBatisIndex {
+        const $$createField0_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("links" in $$parsedSource) {
+            $$parsedSource["links"] = $$createField0_0($$parsedSource["links"]);
+        }
+        return new MyBatisIndex($$parsedSource as Partial<MyBatisIndex>);
+    }
+}
+
+/**
+ * MyBatisLink è uno statement con le sue due metà: il metodo dell'interfaccia e il nodo XML.
+ */
+export class MyBatisLink {
+    "namespace": string;
+    "id": string;
+
+    /**
+     * Kind è select, insert, update o delete (dal tag XML; "" se esiste solo il metodo).
+     */
+    "kind"?: string;
+
+    /**
+     * State: linked (metodo e XML), xmlOnly (nessun metodo con quel nome), javaOnly (metodo senza statement).
+     */
+    "state": string;
+    "xmlFile"?: string;
+    "xmlLine"?: number;
+    "xmlStartColumn"?: number;
+    "xmlEndColumn"?: number;
+    "javaFile"?: string;
+    "javaLine"?: number;
+    "javaStartColumn"?: number;
+    "javaEndColumn"?: number;
+
+    /** Creates a new MyBatisLink instance. */
+    constructor($$source: Partial<MyBatisLink> = {}) {
+        if (!("namespace" in $$source)) {
+            this["namespace"] = "";
+        }
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MyBatisLink instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MyBatisLink {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MyBatisLink($$parsedSource as Partial<MyBatisLink>);
     }
 }
 
@@ -355,13 +533,13 @@ export class SpringIndex {
      * Creates a new SpringIndex instance from a string or object.
      */
     static createFrom($$source: any = {}): SpringIndex {
-        const $$createField1_0 = $$createType2;
-        const $$createField2_0 = $$createType4;
-        const $$createField3_0 = $$createType6;
-        const $$createField4_0 = $$createType8;
-        const $$createField5_0 = $$createType10;
-        const $$createField6_0 = $$createType12;
-        const $$createField7_0 = $$createType14;
+        const $$createField1_0 = $$createType4;
+        const $$createField2_0 = $$createType6;
+        const $$createField3_0 = $$createType8;
+        const $$createField4_0 = $$createType10;
+        const $$createField5_0 = $$createType12;
+        const $$createField6_0 = $$createType14;
+        const $$createField7_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("properties" in $$parsedSource) {
             $$parsedSource["properties"] = $$createField1_0($$parsedSource["properties"]);
@@ -718,17 +896,19 @@ export class VersionInfo {
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = SpringProperty.createFrom;
+const $$createType1 = MyBatisLink.createFrom;
 const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = SpringValue.createFrom;
+const $$createType3 = SpringProperty.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = SpringPropertyReference.createFrom;
+const $$createType5 = SpringValue.createFrom;
 const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = SpringDiagnostic.createFrom;
+const $$createType7 = SpringPropertyReference.createFrom;
 const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = SpringBean.createFrom;
+const $$createType9 = SpringDiagnostic.createFrom;
 const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = SpringInjection.createFrom;
+const $$createType11 = SpringBean.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = SpringEndpoint.createFrom;
+const $$createType13 = SpringInjection.createFrom;
 const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = SpringEndpoint.createFrom;
+const $$createType16 = $Create.Array($$createType15);

@@ -9,6 +9,7 @@ import type { CodeStudioCommandId } from './codeStudioCommands'
 import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { openJavaJdkDialog } from './CodeStudioJavaJdk'
 import { openJavaDependencyTree } from './CodeStudioJavaTree'
+import { openJavaJvmMonitor } from './CodeStudioJavaJvm'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
@@ -63,6 +64,7 @@ export function runJavaCommand(
   switch (id) {
     case 'java.springBootRun': void runGoal(sessionId, activePath, SPRING_GOALS); return true
     case 'java.selectJdk': openJavaJdkDialog(sessionId); return true
+    case 'java.jvmMonitor': openJavaJvmMonitor(sessionId); return true
     case 'java.dependencyTree': {
       const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
       const module = session ? mavenModuleFor(session.project.units ?? [], session.project.realPath, activePath) : null

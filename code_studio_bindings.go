@@ -1635,6 +1635,31 @@ func (g *GoIDE) SpringIndex(sessionID string) (java.SpringIndex, error) {
 	return g.service.SpringIndex(sessionID)
 }
 
+// MyBatisIndex collega i metodi dei mapper agli statement XML (solo analisi dei sorgenti).
+func (g *GoIDE) MyBatisIndex(sessionID string) (java.MyBatisIndex, error) {
+	return g.service.MyBatisIndex(sessionID)
+}
+
+// JavaJVMs elenca le JVM locali (jcmd -l); JavaJVMSample le campiona (jstat -gc).
+func (g *GoIDE) JavaJVMs(sessionID string) ([]java.JVMProcess, error) {
+	return g.service.JavaJVMs(sessionID)
+}
+
+// JavaJVMSample campiona memoria e GC di una JVM locale.
+func (g *GoIDE) JavaJVMSample(sessionID string, pid int) (java.JVMHeapSample, error) {
+	return g.service.JavaJVMSample(sessionID, pid)
+}
+
+// JavaStartJFR avvia una registrazione Java Flight Recorder su una JVM locale.
+func (g *GoIDE) JavaStartJFR(sessionID string, pid int) (codestudio.JavaJFRRecording, error) {
+	return g.service.JavaStartJFR(sessionID, pid)
+}
+
+// JavaStopJFR ferma la registrazione avviata da JavaStartJFR.
+func (g *GoIDE) JavaStopJFR(sessionID string, pid int, name string) error {
+	return g.service.JavaStopJFR(sessionID, pid, name)
+}
+
 // SpringEndpoints elenca gli endpoint HTTP MVC del progetto (route, metodo, posizione).
 func (g *GoIDE) SpringEndpoints(sessionID string) ([]java.SpringEndpoint, error) {
 	return g.service.SpringEndpoints(sessionID)

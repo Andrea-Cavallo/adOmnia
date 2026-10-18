@@ -3721,6 +3721,34 @@ export class JavaJDKReport {
 }
 
 /**
+ * JavaJFRRecording è una registrazione avviata da adOmnia: il nome serve a fermarla, il file è dove finisce.
+ */
+export class JavaJFRRecording {
+    "name": string;
+    "file": string;
+
+    /** Creates a new JavaJFRRecording instance. */
+    constructor($$source: Partial<JavaJFRRecording> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new JavaJFRRecording instance from a string or object.
+     */
+    static createFrom($$source: any = {}): JavaJFRRecording {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new JavaJFRRecording($$parsedSource as Partial<JavaJFRRecording>);
+    }
+}
+
+/**
  * LanguageServerFeatures descrive le funzioni opzionali annunciate da gopls all'avvio.
  */
 export class LanguageServerFeatures {

@@ -3,7 +3,11 @@
 
 export {
     JDK,
+    JVMHeapSample,
+    JVMProcess,
     MainClassInfo,
+    MyBatisIndex,
+    MyBatisLink,
     PomDependency,
     SpringBean,
     SpringDiagnostic,

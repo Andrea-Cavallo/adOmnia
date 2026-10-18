@@ -20,6 +20,7 @@ import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStud
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
 import { registerCodeStudioPom } from './codeStudioPom'
 import { registerCodeStudioSpring } from './codeStudioSpring'
+import { registerCodeStudioMyBatis } from './codeStudioMyBatis'
 import { registerCodeStudioProtoLens } from './codeStudioProtoLens'
 import { registerCodeStudioRuntimeLens } from './codeStudioRuntimeLens'
 import { registerCodeStudioCodeVision } from './codeStudioCodeVision'
@@ -53,6 +54,7 @@ registerCodeStudioLanguageFeatures()
 registerCodeStudioCodeLens()
 registerCodeStudioPom()
 registerCodeStudioSpring()
+registerCodeStudioMyBatis()
 registerCodeStudioProtoLens()
 registerCodeStudioRuntimeLens()
 registerCodeStudioCodeVision()

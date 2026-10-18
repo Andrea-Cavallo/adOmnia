@@ -1,5 +1,5 @@
-import type { JavaJDKReport } from '../../bindings/adomnia/internal/codestudio/models'
-import type { MainClassInfo, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { JavaJDKReport, JavaJFRRecording } from '../../bindings/adomnia/internal/codestudio/models'
+import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -807,6 +807,30 @@ export async function setJavaJdk(sessionId: string, home: string): Promise<void>
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */
 export async function getJavaDependencyTree(sessionId: string, module: string): Promise<TreeNode[]> {
   return GoIDEBindings.JavaDependencyTree(sessionId, module)
+}
+
+/** Collegamenti mapper MyBatis ↔ statement XML del progetto (analisi dei sorgenti, nessun server). */
+export async function getMyBatisIndex(sessionId: string): Promise<MyBatisIndex> {
+  return GoIDEBindings.MyBatisIndex(sessionId)
+}
+
+/** JVM locali dell'utente (jcmd -l). */
+export async function getJavaJvms(sessionId: string): Promise<JVMProcess[]> {
+  return GoIDEBindings.JavaJVMs(sessionId)
+}
+
+/** Memoria e GC di una JVM locale (jstat -gc). */
+export async function getJavaJvmSample(sessionId: string, pid: number): Promise<JVMHeapSample> {
+  return GoIDEBindings.JavaJVMSample(sessionId, pid)
+}
+
+/** Avvia una registrazione JFR; il file è completo dopo `stopJavaJfr`. */
+export async function startJavaJfr(sessionId: string, pid: number): Promise<JavaJFRRecording> {
+  return GoIDEBindings.JavaStartJFR(sessionId, pid)
+}
+
+export async function stopJavaJfr(sessionId: string, pid: number, name: string): Promise<void> {
+  return GoIDEBindings.JavaStopJFR(sessionId, pid, name)
 }
 
 /** Classi lanciabili: decise da JDT LS quando è pronto, altrimenti dalla scansione dei sorgenti. */

@@ -114,6 +114,7 @@ export {
     InstalledToolchain,
     JavaDebugRequest,
     JavaJDKReport,
+    JavaJFRRecording,
     LanguageServerFeatures,
     LanguageServerInfo,
     LanguageServerSettings,
