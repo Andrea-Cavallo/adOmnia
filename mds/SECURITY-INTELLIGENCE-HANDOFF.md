@@ -49,10 +49,10 @@ replicando la forma generata, con ID di metodo calcolati a mano come
 Oggi la CLI si lancia senza installarla e i bindings sono **generati**:
 
 ```
-go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28 generate bindings -clean=true -ts ./...
+go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32 generate bindings -clean=true -ts ./...
 ```
 
-(attenzione: il progetto usa `wails/v3 v3.0.0-beta.28` in `go.mod`, `@latest` prende beta.31). I metodi
+(attenzione: usare la stessa versione di `wails/v3` dichiarata in `go.mod`, oggi `v3.0.0-beta.32`). I metodi
 `PreviewUpgrade`, `PlanUpgrade`, `RunUpgradeStep`, `FinishUpgrade` sono nel file generato con ID corretti:
 non serve più ricalcolare nulla a mano.
 

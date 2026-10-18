@@ -68,7 +68,7 @@ Obiettivo: nel codice non resta "Go Studio" come nome del prodotto. **Resta "Go"
 Decisioni (applicate, 2026-10-17):
 - Rail id `goide` → `code-studio`. Il valore persistito è **migrato in lettura** (loader che accetta `goide` e riscrive `code-studio`).
 - Chiavi storage `adomnia.goide.*` → `adomnia.codestudio.*` con **migrazione one-shot** (copia + non cancellare subito la vecchia per un rilascio, per poter tornare indietro).
-- Service Wails `GoIDE`: **resta il nome del binding** finché non c'è motivo forte di rompere i call-site; si aggiunge l'alias/nuovo nome `CodeStudio` e si migra i call-site in modo graduale. _Se_ si rinomina, si rigenerano i binding con `go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28 generate bindings`.
+- Service Wails `GoIDE`: **resta il nome del binding** finché non c'è motivo forte di rompere i call-site; si aggiunge l'alias/nuovo nome `CodeStudio` e si migra i call-site in modo graduale. _Se_ si rinomina, si rigenerano i binding con `go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32 generate bindings`.
 - File `.adomnia/run-configurations.json` (formato condiviso via Git): **invariato**, solo caricato con migrazione.
 
 Sotto-fasi (un commit ciascuna, in quest'ordine):

@@ -4,7 +4,7 @@
 # other shared library dependencies. Users need nothing installed.
 #
 
-FROM golang:1.26.5-bookworm AS builder
+FROM golang:1.27.2-bookworm AS builder
 
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown

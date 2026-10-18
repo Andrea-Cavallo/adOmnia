@@ -78,7 +78,7 @@ frontend/src/stores/codeStudio*.ts                 stores (one per concern)
 **A language:** package `internal/languages/<lang>` implementing `language.Language` + the capabilities it really supports; one line in `internal/codestudio/languages.go`; `lsp.ServerSpec` builder if it has a server; frontend folder `components/ide/languages/<lang>/` with its contribution (icon: add the Simple Icons slug to `scripts/generate-brand-icons.mjs`, regenerate) and one line in `IDE_LANGUAGES`.
 
 **A feature:**
-1. Place it (see above), expose in `code_studio_bindings.go`, regenerate bindings with the `wails3` pinned in `go.mod` (`go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28 generate bindings …` if the CLI is absent).
+1. Place it (see above), expose in `code_studio_bindings.go`, regenerate bindings with the `wails3` pinned in `go.mod` (`go run github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32 generate bindings …` if the CLI is absent).
 2. Add the command to `components/code-studio/codeStudioCommands.ts` (menu, label, binding, availability reason when disabled), or to the language's `commands.ts` with `requires: { language }`; handle it in `CodeStudioPanel.tsx`. Menus, shortcuts and help read that registry.
 3. Route backend events by `sessionId`/`resourceId` (+ `language` for language servers) in the matching `stores/codeStudio*.ts`. **State never crosses sessions.**
 4. Stores import pure helpers from `lib/code-studio/`, never from `components/`.

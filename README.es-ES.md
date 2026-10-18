@@ -182,12 +182,12 @@ Las solicitudes, aserciones o umbrales fallidos devuelven un código de salida d
 
 ## Compilar desde el código fuente
 
-Requisitos: Go 1.26.5, Node.js 22.13.0 o posterior, la CLI de Wails 3 y los paquetes de desarrollo WebView de la plataforma.
+Requisitos: Go 1.27.2, Node.js 22.13.0 o posterior, la CLI de Wails 3 y los paquetes de desarrollo WebView de la plataforma.
 
 ```bash
 git clone https://github.com/Andrea-Cavallo/adOmnia.git
 cd adOmnia
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32
 npm --prefix frontend ci
 wails3 task dev
 ```

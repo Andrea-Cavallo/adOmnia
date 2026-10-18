@@ -14,10 +14,10 @@ Read:
 
 ## Development Setup
 
-Requires Go 1.26.5+, Node.js 20+, and the Wails 3 CLI.
+Requires Go 1.27.2+, Node.js 22.13.0+, and the Wails 3 CLI.
 
 ```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32
 
 cd frontend
 npm install
