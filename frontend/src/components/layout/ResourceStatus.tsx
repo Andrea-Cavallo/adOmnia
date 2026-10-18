@@ -25,10 +25,12 @@ export function ResourceStatus() {
     return () => { disposed = true; stop() }
   }, [])
   const cpuReady = sample?.processes.some(p => p.cpu != null)
+  const servers = sample?.instances ?? 0
+  const pressure = sample?.budget?.pressure === true
   return <details className="relative">
-    <summary className="flex cursor-pointer list-none items-center gap-2 rounded px-1 text-text-3 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" aria-label={tr('Application resources')}>
-      <Activity size={12} className="text-accent" aria-hidden="true" />
-      <span className="font-mono tabular-nums">{failed ? tr('Resources unavailable') : sample ? `RAM ${mib(sample.ram)} · CPU ${cpuReady ? `${sample.cpu.toFixed(1)}%` : '…'} · gopls ${sample.processes.filter(p => p.name === 'gopls').length}` : tr('Measuring resources…')}</span>
+    <summary className={`flex cursor-pointer list-none items-center gap-2 rounded px-1 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent ${pressure ? 'text-warning' : 'text-text-3'}`} aria-label={tr('Application resources')}>
+      <Activity size={12} className={pressure ? 'text-warning' : 'text-accent'} aria-hidden="true" />
+      <span className="font-mono tabular-nums">{failed ? tr('Resources unavailable') : sample ? `RAM ${mib(sample.ram)} · CPU ${cpuReady ? `${sample.cpu.toFixed(1)}%` : '…'}${servers > 0 ? ` · ${tr('Servers')} ${servers}` : ''}` : tr('Measuring resources…')}</span>
     </summary>
     <div className="absolute bottom-full left-0 z-50 mb-2 w-[min(520px,90vw)] rounded-lg border border-border-2 bg-surface-1 p-3 text-text-2 shadow-xl">
       <h3 className="api-dot-label mb-2">{tr('Application resources')}</h3>

@@ -60,6 +60,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Beta': 'Beta',
   'Open Project in New Window': 'Apri progetto in una nuova finestra',
   'Application resources': 'Consumi applicazione',
+  'Servers': 'Server',
   'Memory target': 'Obiettivo memoria',
   'Memory pressure': 'Pressione sulla memoria',
   'Soft target for the application and child processes. Active work stays protected; shared pages may be counted more than once.': 'Obiettivo indicativo per applicazione e processi figli. Il lavoro attivo resta protetto; le pagine condivise possono essere conteggiate più volte.',

@@ -91,7 +91,7 @@ export function StatusBar() {
   return (
     <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
       <div className="flex items-center gap-3">
-        {inIDE && <ResourceStatus />}
+        <ResourceStatus />
         {!inIDE && response && !response.error && (
           <>
             <span className={response.status >= 400 ? 'text-error' : response.status >= 200 ? 'text-success' : 'text-text-3'}>
