@@ -562,3 +562,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/TROUBLESHOOTING.md` | Common problems and fixes |
 | `docs/ARCHITECTURE.md` | High-level architecture overview |
 | `.github/SECURITY.md` | Security policy (picked up by GitHub's Security tab) |
+
+### Website sync on every release tag (mandatory)
+
+Whenever the release tag on `main` is bumped, update the website repo in the same session: `C:\Users\Andrea\Desktop\adomniaWeb\adOmniaWeb` (GitHub `Andrea-Cavallo/adOmniaWeb`, deployed on Vercel from `master`). The download cards and version badge read the latest GitHub release at load time, so they need no edit, but check them anyway. Then update `index.html` for anything that changed: feature/module copy, screenshots in `assets/shots/`, platform requirements, asset names (the card regexes in the page script). Commit and push to `master`; Vercel redeploys on push.

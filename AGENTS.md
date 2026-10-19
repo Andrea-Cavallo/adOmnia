@@ -76,3 +76,7 @@ wails3 task dev                                  # Manual UI/product check
 ```
 
 The last one matters most. This is a product, not a library: open the panel and use it as a real user would before calling a change done.
+
+## Website sync on every release tag
+
+Bumping the release tag on `main` also requires updating the website repo (`Andrea-Cavallo/adOmniaWeb`, local `C:\Users\Andrea\Desktop\adomniaWeb\adOmniaWeb`, Vercel deploys from `master`). Download links and version badge follow the latest GitHub release automatically; still verify them, and update `index.html` copy, `assets/shots/` screenshots, platform requirements and asset-name patterns when the release changes them. Push to `master`.

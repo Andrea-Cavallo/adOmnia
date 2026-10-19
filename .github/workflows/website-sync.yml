@@ -1,0 +1,30 @@
+name: Website sync
+
+# Opens an issue on the website repo whenever a release is published,
+# so the site gets reviewed for the new tag.
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify-website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open website issue
+        env:
+          # fine-grained PAT with "Issues: write" on Andrea-Cavallo/adOmniaWeb
+          GH_TOKEN: ${{ secrets.WEBSITE_REPO_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          URL: ${{ github.event.release.html_url }}
+        run: |
+          gh issue create --repo Andrea-Cavallo/adOmniaWeb \
+            --title "Sync website with release $TAG" \
+            --body "Release $TAG is published: $URL
+
+          Download cards and version badge follow the latest release automatically; verify them. Then review:
+          - [ ] module/feature copy in index.html
+          - [ ] screenshots in assets/shots/
+          - [ ] platform requirements and asset-name patterns
+          - [ ] push to master (Vercel redeploys)"
