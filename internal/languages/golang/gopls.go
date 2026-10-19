@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"adomnia/internal/ide/lsp"
@@ -28,6 +29,7 @@ type GoplsInfo struct {
 
 // GoplsSettings sono le preferenze dell'utente tradotte nella configurazione di gopls.
 type GoplsSettings struct {
+	MemoryLimitMiB          int      `json:"memoryLimitMiB,omitempty"`
 	DirectoryFilters        []string `json:"directoryFilters,omitempty"`
 	ExpandWorkspaceToModule *bool    `json:"expandWorkspaceToModule,omitempty"`
 	DiagnosticsOnSave       bool     `json:"diagnosticsOnSave,omitempty"`
@@ -109,6 +111,15 @@ var goplsEnvironmentDefaults = map[string]string{"GO_TELEMETRY_CHILD": "2", "GOM
 // GoplsServerSpec descrive gopls al manager LSP generico: avvio, configurazione e file osservati.
 // environment è quello dell'SDK della sessione (con il suo `go` per primo nel PATH).
 func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSettings) lsp.ServerSpec {
+	if settings.MemoryLimitMiB >= 128 && settings.MemoryLimitMiB <= 65536 {
+		filtered := make([]string, 0, len(environment)+1)
+		for _, entry := range environment {
+			if !strings.HasPrefix(strings.ToUpper(entry), "GOMEMLIMIT=") {
+				filtered = append(filtered, entry)
+			}
+		}
+		environment = append(filtered, "GOMEMLIMIT="+strconv.Itoa(settings.MemoryLimitMiB)+"MiB")
+	}
 	return lsp.ServerSpec{
 		Language: ID, Name: "gopls", Binary: info.Binary, Version: info.Version,
 		Environment:           sdk.WithDefaultEnvironment(environment, goplsEnvironmentDefaults),

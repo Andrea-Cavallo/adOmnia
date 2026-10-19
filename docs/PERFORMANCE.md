@@ -347,3 +347,8 @@ time, retaining mixed states such as Active/Idle at the five-minute transition.
 Incomplete checkpoints are marked incomplete in JSON and omitted from the
 Markdown table. Recordings made before activity instrumentation show Unknown;
 low CPU alone never supplies an inferred idle state.
+
+
+## Interactive resource diagnostics (2026-10-19)
+
+The resource monitor now controls the backend Go GC budget live and saves/restarts gopls per selected Go project. It records CPU/RSS over time, shows observed parent PIDs and registered ownership, and exports JSON, per-process CSV, Markdown or standalone HTML with charts. Backend default: 512 MiB unless an explicit startup GOMEMLIMIT exists; gopls retains 768 MiB or its inherited value. These are soft GC budgets, not process RSS caps. Methodology, measured results and persistence compatibility: [resource diagnostics report](performance/resources-2026-10-19.md).

@@ -155,3 +155,8 @@ collection, fetch from URL via the Go request engine, or paste/open a JSON/YAML 
 Grouped by tag with params, request/response schemas (recursive `$ref` resolution),
 examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
 `lib/apidocs/parseSpec.ts`, `components/apidocs/*`. Pending: manual `wails3 task dev` smoke.
+
+
+### Resource diagnostics — 2026-10-19
+
+Implemented: live persistent backend GC limit, selectable gopls limit with project restart, timed CPU/RSS recording, per-process charts and parent/owner provenance, JSON/CSV/MD/HTML export. The reported 50% CPU spike did not reproduce in the 32-second baseline; no root cause is claimed. Evidence and limits: [report](performance/resources-2026-10-19.md). Native acceptance remains RES-1.M1–M3 in mds/MANUAL-CHECK.md.

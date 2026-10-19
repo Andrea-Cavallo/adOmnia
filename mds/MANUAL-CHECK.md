@@ -868,3 +868,10 @@ Piano: 06 JS-16 (P0). **Prerequisito:** un progetto Quarkus reale (`mvn quarkus:
 - [ ] ML-10.M1 Commit AI da diff Java e misto: Conventional, libero e template personale; anteprima modificabile e redatta, nessun commit automatico, preferenza ripristinata dopo riavvio.
 - [ ] ML-10.M2 Tab una riga/più righe con molti file e split: tastiera, pin, preview, riordino, chiusura e cambio documento; limite di altezza e ripristino preferenza, chiaro/scuro.
 - [ ] ML-10.M3 macOS, tap Homebrew pubblicato: installazione e upgrade da release precedente, checksum/asset corretti e avvio. La presenza dei template nel repo non chiude il collaudo.
+
+
+## RES-1 — CPU/RAM e GOMEMLIMIT (2026-10-19)
+
+- [ ] **RES-1.M1** Nella nuova build desktop: aprire monitor, cambiare limite backend, verificare valore effettivo senza perdere tab; chiudere/riaprire app e verificare persistenza. Provare limite invalido e errore di scrittura: pannello aperto con errore e possibilità di riprovare.
+- [ ] **RES-1.M2** Due progetti Go con buffer sporchi: cambiare limite e riavviare quello selezionato, verificare nuovo PID e vecchio processo assente, hover e navigazione sui buffer conservati; altro progetto invariato. Java e WebView non si riavviano.
+- [ ] **RES-1.M3** Registrare idle, editing e build/test separatamente; verificare grafici aggregati/per-processo, tema chiaro/scuro, processi entrati/usciti e salti temporali quando la finestra è nascosta. Esportare JSON/CSV/MD/HTML e confrontare PID, intervalli, limiti, errori, contatori GC e CPU mancante con il monitor. Verificare annullamento/salvataggio non riuscito e apertura HTML offline. I test backend e le prove browser non chiudono questo gate nativo.

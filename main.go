@@ -2,6 +2,7 @@ package main
 
 import (
 	"adomnia/internal/netpolicy"
+	"adomnia/internal/resources"
 	"adomnia/internal/update"
 
 	"adomnia/internal/adomniacli"
@@ -60,6 +61,9 @@ func main() {
 	}
 
 	netpolicy.Configure(dataDir())
+	if err := resources.ConfigureRuntime(filepath.Join(dataDir(), "resource-settings.json")); err != nil {
+		log.Printf("[resources] memory settings: %v", err)
+	}
 	windowchrome.ConfigureBackend(startupWindowChrome)
 
 	app := NewApp()

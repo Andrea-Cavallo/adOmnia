@@ -3,6 +3,7 @@
 
 export {
     BudgetStatus,
+    GoRuntime,
     Snapshot,
     Usage
 } from "./models.js";

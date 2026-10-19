@@ -817,3 +817,8 @@ Code Studio shows errors, warnings and information beside the affected line, usi
 ## Hub — edizione Halloween temporanea
 
 La Hub mantiene layout, moduli e azioni esistenti con un accento ambra locale e una zucca Glyph SVG statica, compatibile con tema chiaro e scuro. Non cambia le preferenze o la palette globale. Per ripristinare la Hub standard impostare `HALLOWEEN_HUB_ENABLED = false` in `frontend/src/components/layout/HubHalloween.tsx`; nessuna migrazione dei dati richiesta. La decorazione è esclusa dall'albero accessibile e non avvia timer, processi o richieste di rete.
+
+
+## CPU/RAM diagnostics and GOMEMLIMIT
+
+Open Application resources from the status bar or Code Studio stripe. Apply the backend Go memory limit live, or save a gopls limit and restart the selected Go project without closing its buffers. Record 30/60/120 seconds, choose an individual process in the CPU/RAM charts, and export JSON/CSV for complete historical data or HTML with embedded charts. Parent PID, executable, role, session ownership, current limit and backend heap/GC are included; missing/partial measurements stay explicit. New backend budget defaults to 512 MiB unless GOMEMLIMIT was set at startup; gopls keeps its existing default. Smaller GC limits can increase CPU. Details and evidence: [resource diagnostics](performance/resources-2026-10-19.md).

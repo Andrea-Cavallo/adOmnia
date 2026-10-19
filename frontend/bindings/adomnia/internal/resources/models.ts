@@ -38,13 +38,60 @@ export class BudgetStatus {
     }
 }
 
+export class GoRuntime {
+    "memoryLimit": number;
+    "heapAlloc": number;
+    "heapSys": number;
+    "numGC": number;
+    "gcCpuFraction": number;
+    "goroutines": number;
+
+    /** Creates a new GoRuntime instance. */
+    constructor($$source: Partial<GoRuntime> = {}) {
+        if (!("memoryLimit" in $$source)) {
+            this["memoryLimit"] = 0;
+        }
+        if (!("heapAlloc" in $$source)) {
+            this["heapAlloc"] = 0;
+        }
+        if (!("heapSys" in $$source)) {
+            this["heapSys"] = 0;
+        }
+        if (!("numGC" in $$source)) {
+            this["numGC"] = 0;
+        }
+        if (!("gcCpuFraction" in $$source)) {
+            this["gcCpuFraction"] = 0;
+        }
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GoRuntime instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GoRuntime {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GoRuntime($$parsedSource as Partial<GoRuntime>);
+    }
+}
+
 export class Snapshot {
     "budget"?: BudgetStatus | null;
     "at": string;
     "processes": Usage[];
     "ram": number;
     "cpu": number;
+    "cpuComplete": boolean;
     "instances": number;
+    "logicalCores": number;
+    "rootPid": number;
+    "runtime": GoRuntime;
+    "incomplete": boolean;
+    "warnings"?: string[];
 
     /** Creates a new Snapshot instance. */
     constructor($$source: Partial<Snapshot> = {}) {
@@ -60,8 +107,23 @@ export class Snapshot {
         if (!("cpu" in $$source)) {
             this["cpu"] = 0;
         }
+        if (!("cpuComplete" in $$source)) {
+            this["cpuComplete"] = false;
+        }
         if (!("instances" in $$source)) {
             this["instances"] = 0;
+        }
+        if (!("logicalCores" in $$source)) {
+            this["logicalCores"] = 0;
+        }
+        if (!("rootPid" in $$source)) {
+            this["rootPid"] = 0;
+        }
+        if (!("runtime" in $$source)) {
+            this["runtime"] = (new GoRuntime());
+        }
+        if (!("incomplete" in $$source)) {
+            this["incomplete"] = false;
         }
 
         Object.assign(this, $$source);
@@ -73,12 +135,20 @@ export class Snapshot {
     static createFrom($$source: any = {}): Snapshot {
         const $$createField0_0 = $$createType1;
         const $$createField2_0 = $$createType3;
+        const $$createField9_0 = $$createType4;
+        const $$createField11_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("budget" in $$parsedSource) {
             $$parsedSource["budget"] = $$createField0_0($$parsedSource["budget"]);
         }
         if ("processes" in $$parsedSource) {
             $$parsedSource["processes"] = $$createField2_0($$parsedSource["processes"]);
+        }
+        if ("runtime" in $$parsedSource) {
+            $$parsedSource["runtime"] = $$createField9_0($$parsedSource["runtime"]);
+        }
+        if ("warnings" in $$parsedSource) {
+            $$parsedSource["warnings"] = $$createField11_0($$parsedSource["warnings"]);
         }
         return new Snapshot($$parsedSource as Partial<Snapshot>);
     }
@@ -88,9 +158,20 @@ export class Usage {
     "pid": number;
     "name": string;
     "workspace": string;
+    "sessionId"?: string;
+    "role"?: string;
+    "owner"?: string;
+    "memoryLimit"?: string;
     "ram": number;
     "cpu": number | null;
     "error"?: string;
+    "parentPid": number;
+    "parentName"?: string;
+    "createdAt": number;
+    "executable"?: string;
+    "attribution": string;
+    "cpuSeconds": number;
+    "cpuIntervalSeconds": number;
 
     /** Creates a new Usage instance. */
     constructor($$source: Partial<Usage> = {}) {
@@ -108,6 +189,21 @@ export class Usage {
         }
         if (!("cpu" in $$source)) {
             this["cpu"] = null;
+        }
+        if (!("parentPid" in $$source)) {
+            this["parentPid"] = 0;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = 0;
+        }
+        if (!("attribution" in $$source)) {
+            this["attribution"] = "";
+        }
+        if (!("cpuSeconds" in $$source)) {
+            this["cpuSeconds"] = 0;
+        }
+        if (!("cpuIntervalSeconds" in $$source)) {
+            this["cpuIntervalSeconds"] = 0;
         }
 
         Object.assign(this, $$source);
@@ -127,3 +223,5 @@ const $$createType0 = BudgetStatus.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = Usage.createFrom;
 const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = GoRuntime.createFrom;
+const $$createType5 = $Create.Array($Create.Any);

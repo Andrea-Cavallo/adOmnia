@@ -376,6 +376,7 @@ File: `internal/goide/lsp_idle.go`, `internal/goide/lsp.go`, `internal/languages
 
 ### 15. Performance budget — `P3` · Stato: Parziale · Fattibilità: **Alta** (dipende da voce 1)
 
+- [ ] **RES-1 — Priorità richiesta P0, implementato; gate desktop aperto (2026-10-19).** GOMEMLIMIT backend modificabile a caldo e persistito (default morbido 512 MiB, ambiente esplicito preservato), gopls configurabile con riavvio del progetto selezionato, registrazione temporizzata CPU/RSS, grafici per processo, provenienza PID padre/owner e export JSON/CSV/MD/HTML. Test `internal/resources` anche con race detector, riavvio gopls reale con overlay conservato, confronto 1 GiB/768/512 MiB e dati OS: [report e grafico](../docs/performance/resources-2026-10-19.md). Il picco CPU del 50% non si è riprodotto nella baseline; nessuna causa dichiarata risolta. Verifiche native soltanto `RES-1.M1`–`RES-1.M3` in `MANUAL-CHECK.md`.
 - [x] Budget esistente per il bundle di startup (650 kB, bloccante in CI) — voce 12.
 - [ ] Definire la baseline con build release, hardware e condizioni controllate (voce 1) **prima** di fissare i target.
 - [x] Target iniziali registrati in `docs/PERFORMANCE.md` come **proposti, non validati**. Report iniziale microbenchmark con hardware/toolchain/condizioni in `.artifacts/performance/phase-c16-initial/`; non sostituisce la baseline release nativa della voce 1:

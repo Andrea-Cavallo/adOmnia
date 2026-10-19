@@ -1,0 +1,1525 @@
+{
+  "schemaVersion": 1,
+  "logicalCores": 28,
+  "rootPids": [
+    113136
+  ],
+  "cpuDefinition": "Percent of total logical CPU capacity; first sample null",
+  "samples": [
+    {
+      "at": "2026-10-19T06:38:38.4519890+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135491584,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 43020288,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": null,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:40.8009085+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135491584,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42913792,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:43.1450822+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135491584,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42913792,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:45.4371938+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135491584,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42913792,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:47.8200486+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135471104,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42897408,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260513792,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:50.1087407+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:52.3829205+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:54.6679488+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:56.9373589+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:38:59.2601463+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:39:01.5708494+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:39:03.9562205+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:39:06.2149393+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182616064,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135487488,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 707227648,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:39:08.4962362+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 182624256,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135495680,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42917888,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 260530176,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 708055040,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-19T06:39:10.7918561+00:00",
+      "processes": [
+        {
+          "pid": 113136,
+          "parentPid": 9096,
+          "name": "adomnia.exe",
+          "ramBytes": 185319424,
+          "cpuPercent": 1,
+          "createdAt": "2026-10-19T04:39:45.8494390Z"
+        },
+        {
+          "pid": 135240,
+          "parentPid": 113136,
+          "name": "conhost.exe",
+          "ramBytes": 16973824,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.8977640Z"
+        },
+        {
+          "pid": 133820,
+          "parentPid": 113136,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 135495680,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:45.9767360Z"
+        },
+        {
+          "pid": 124804,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 14499840,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0066330Z"
+        },
+        {
+          "pid": 63188,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 120967168,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0871400Z"
+        },
+        {
+          "pid": 132920,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 42926080,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.0878760Z"
+        },
+        {
+          "pid": 132992,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 21561344,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1076040Z"
+        },
+        {
+          "pid": 136332,
+          "parentPid": 133820,
+          "name": "msedgewebview2.exe",
+          "ramBytes": 252882944,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:39:46.1515650Z"
+        },
+        {
+          "pid": 135232,
+          "parentPid": 113136,
+          "name": "copilot-language-server.exe",
+          "ramBytes": 242683904,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6764740Z"
+        },
+        {
+          "pid": 131632,
+          "parentPid": 135232,
+          "name": "conhost.exe",
+          "ramBytes": 8089600,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:43:03.6920220Z"
+        },
+        {
+          "pid": 136060,
+          "parentPid": 113136,
+          "name": "gopls.exe",
+          "ramBytes": 696770560,
+          "cpuPercent": 3,
+          "createdAt": "2026-10-19T04:49:41.8828160Z"
+        },
+        {
+          "pid": 133444,
+          "parentPid": 136060,
+          "name": "conhost.exe",
+          "ramBytes": 7933952,
+          "cpuPercent": 0,
+          "createdAt": "2026-10-19T04:49:41.9788010Z"
+        }
+      ]
+    }
+  ]
+}

@@ -54,6 +54,9 @@ func (s *Service) LanguageServerLog(sessionID string) ([]string, error) {
 }
 
 func (s *Service) languageServerOptions(sessionID string, settings LanguageServerSettings) (Session, LanguageServerOptions, error) {
+	if settings.MemoryLimitMiB != 0 && (settings.MemoryLimitMiB < 128 || settings.MemoryLimitMiB > 65536) {
+		return Session{}, LanguageServerOptions{}, fmt.Errorf("gopls memory limit must be 0 (default) or 128–65536 MiB")
+	}
 	session, err := s.session(sessionID)
 	if err != nil {
 		return Session{}, LanguageServerOptions{}, err

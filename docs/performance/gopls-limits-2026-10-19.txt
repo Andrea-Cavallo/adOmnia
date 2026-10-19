@@ -1,0 +1,13 @@
+=== RUN   TestMeasureLanguageServerMemory
+=== RUN   TestMeasureLanguageServerMemory/1GiB/full
+    lsp_memory_measure_test.go:101: limit=1GiB narrow=false resident_MiB=1047.6 load_ms=7870 hover_ms=3960 warm_symbol_ms=106.5 cpu_seconds=103.47 symbols=100
+=== RUN   TestMeasureLanguageServerMemory/768MiB/full
+    lsp_memory_measure_test.go:101: limit=768MiB narrow=false resident_MiB=678.1 load_ms=6384 hover_ms=162 warm_symbol_ms=183.3 cpu_seconds=32.42 symbols=100
+=== RUN   TestMeasureLanguageServerMemory/512MiB/full
+    lsp_memory_measure_test.go:101: limit=512MiB narrow=false resident_MiB=617.6 load_ms=7933 hover_ms=121 warm_symbol_ms=89.9 cpu_seconds=27.03 symbols=100
+--- PASS: TestMeasureLanguageServerMemory (36.38s)
+    --- PASS: TestMeasureLanguageServerMemory/1GiB/full (14.85s)
+    --- PASS: TestMeasureLanguageServerMemory/768MiB/full (9.97s)
+    --- PASS: TestMeasureLanguageServerMemory/512MiB/full (11.56s)
+PASS
+ok  	adomnia/internal/codestudio	38.956s

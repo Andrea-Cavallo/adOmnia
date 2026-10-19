@@ -14,7 +14,7 @@ const snapshot = (ram: number, at = '2026-10-19T10:00:00Z'): Snapshot => ({
 describe('resourcesToMarkdown', () => {
   it('lists totals, budget and processes by RAM', () => {
     const md = resourcesToMarkdown(snapshot(400 * 1048576))
-    expect(md).toContain('- **RAM:** 400.0 MB')
+    expect(md).toContain('- **RAM:** 400.0 MiB')
     expect(md).toContain('(memory pressure)')
     expect(md.indexOf('gopls')).toBeLessThan(md.indexOf('adomnia |'))
     expect(md).toContain('C:\\a\\|b')

@@ -22,13 +22,13 @@ func TestMeasureLanguageServerMemory(t *testing.T) {
 		t.Skip("set ADOMNIA_MEASURE_LSP_ROOT and ADOMNIA_MEASURE_LSP_BINARY")
 	}
 	for _, limit := range []string{"1GiB", "768MiB", "512MiB"} {
-		for _, scope := range []string{"full", "goide-subdirectory", "selected-directories"} {
+		for _, scope := range []string{"full", "codestudio-subdirectory", "selected-directories"} {
 			name := limit + "/" + scope
 			narrow := scope != "full"
 			workspace := root
 			settings := LanguageServerSettings{}
-			if scope == "goide-subdirectory" {
-				workspace = filepath.Join(root, "internal", "goide")
+			if scope == "codestudio-subdirectory" {
+				workspace = filepath.Join(root, "internal", "codestudio")
 				expand := false
 				settings.ExpandWorkspaceToModule = &expand
 			}
@@ -70,7 +70,7 @@ func TestMeasureLanguageServerMemory(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				path := filepath.Join(root, "internal", "goide", "lsp.go")
+				path := filepath.Join(root, "internal", "codestudio", "lsp.go")
 				content, err := os.ReadFile(path)
 				if err != nil {
 					t.Fatal(err)

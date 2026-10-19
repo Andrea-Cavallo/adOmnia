@@ -124,8 +124,8 @@ export function CodeStudioLeftStripe({ session, onCommit, onBookmarks }: CodeStu
 
 /** Risorse dell'app sotto la stripe destra: campiona solo mentre il pannello è aperto. */
 function ResourcesPanel() {
-  const { sample, failed, history } = useResourceSample()
-  return <ResourceDetails sample={sample} failed={failed} history={history} className="fixed bottom-9 right-10 z-50 w-[min(520px,90vw)]" />
+  const monitor = useResourceSample()
+  return <ResourceDetails {...monitor} className="fixed bottom-9 right-10 z-50 w-[min(720px,95vw)]" />
 }
 
 interface CodeStudioRightStripeProps {

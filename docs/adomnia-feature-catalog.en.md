@@ -1196,3 +1196,8 @@ The existing AI policy, ignore list, secret redactor and 64 KiB prompt budget
 apply; each rule file is capped at 8 KiB with an explicit truncation marker.
 Files are never executed, referenced paths are not followed, and slash commands
 retain their original meaning. Native UI acceptance remains Z1.4.M1.
+
+
+### Application resource diagnostics
+
+The status bar and Code Studio resource monitor provide live backend GOMEMLIMIT changes, gopls limit/restart for a selected Go project, timed CPU/RSS recordings, per-process charts, observed OS parent PIDs and registered Code Studio ownership. Export full history as JSON/CSV, a Markdown summary or standalone HTML with charts. Backend heap/GC, logical-core normalization, unavailable CPU and incomplete observations are explicit. No remote telemetry. [Measurement and compatibility details](performance/resources-2026-10-19.md).

@@ -38,6 +38,9 @@ func TestSampleIncludesChildProcesses(t *testing.T) {
 	snapshot := Sample([]Target{{PID: child.Process.Pid, Name: "fixture"}})
 	for _, usage := range snapshot.Processes {
 		if usage.PID == child.Process.Pid {
+			if usage.ParentPID != os.Getpid() || usage.ParentName == "" || usage.CreatedAt == 0 || usage.Executable == "" || usage.Role == "" {
+				t.Errorf("missing process provenance: %+v", usage)
+			}
 			if usage.Name != "fixture" {
 				t.Errorf("explicit target name lost: %+v", usage)
 			}
