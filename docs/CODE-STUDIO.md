@@ -812,3 +812,8 @@ La barra sinistra include Git e sostituisce il pannello precedente quando si sel
 ### Inline diagnostics
 
 Code Studio shows errors, warnings and information beside the affected line, using Monaco markers from every connected language server, linter and plugin. The most severe message appears first; the line hover contains all messages. Hints keep their standard Monaco presentation. Long messages are shortened inline. In Settings (Ctrl+Alt+S), Editor, toggle Inline diagnostics, Inline warnings and Inline information independently. These additive preferences use the existing local preferences record and default to enabled when absent; existing settings and workspace files require no migration. Native desktop acceptance remains to be verified.
+
+
+## Hub — edizione Halloween temporanea
+
+La Hub mantiene layout, moduli e azioni esistenti con un accento ambra locale e una zucca Glyph SVG statica, compatibile con tema chiaro e scuro. Non cambia le preferenze o la palette globale. Per ripristinare la Hub standard impostare `HALLOWEEN_HUB_ENABLED = false` in `frontend/src/components/layout/HubHalloween.tsx`; nessuna migrazione dei dati richiesta. La decorazione è esclusa dall'albero accessibile e non avvia timer, processi o richieste di rete.

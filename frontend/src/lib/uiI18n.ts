@@ -9,6 +9,8 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  'Halloween': 'Halloween',
+  'Special edition': 'Edizione speciale',
   'JSON colors': 'Colori JSON',
   'JSON keys': 'Chiavi',
   'JSON strings': 'Stringhe',

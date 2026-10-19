@@ -6,6 +6,7 @@ import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayou
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { HubLogo } from './HubLogo'
+import { HALLOWEEN_HUB_ENABLED, HubHalloween } from './HubHalloween'
 import { openEnvironmentManager } from '@/components/environment/EnvironmentManagerHost'
 import { useSettingsStore } from '@/stores/settings'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
@@ -62,7 +63,7 @@ function TodayPanel() {
   ]
   return <aside className="hub-today">
     <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
-    <div className="hub-clock-wrap"><HubLogo /></div>
+    <div className="hub-clock-wrap">{HALLOWEEN_HUB_ENABLED && <HubHalloween />}<HubLogo /></div>
     <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
     <p className="hub-zone">{timeZoneLabel(now)}</p>
     <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>
@@ -97,7 +98,7 @@ export function WelcomePanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  return <div data-hub-page>
+  return <div data-hub-page data-halloween={HALLOWEEN_HUB_ENABLED || undefined}>
     <main className="hub-content" data-today-side={layout.todaySide}>
       <section className="hub-left">
         <div className="hub-studios">
@@ -109,6 +110,7 @@ export function WelcomePanel() {
               <button type="button" aria-pressed={editing} onClick={() => setEditing(v => !v)}>{editing ? <><Check size={13}/>{t('Done')}</> : <><SlidersHorizontal size={13}/>{t('Customize')}</>}</button>
             </div>
           </div>
+          {HALLOWEEN_HUB_ENABLED && <p className="hub-season-label">{t('Halloween')} <span>/ 31.10 — {t('Special edition')}</span></p>}
           <h1>{t('Make your next move.')}</h1>
           <p className="hub-lede">{t('Code. Connect. Build.')}</p>
           <div className="hub-grid" data-editing={editing || undefined}>{layout.tiles.map((target, index) => {
