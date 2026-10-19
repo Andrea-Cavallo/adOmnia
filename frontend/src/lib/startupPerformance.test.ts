@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { markStartup, reportStartupPerformance, startupDurationsFromMarks } from './startupPerformance'
+import {
+  getStartupDurations,
+  getStudioSwitchDurations,
+  markStartup,
+  recordStudioSwitch,
+  reportStartupPerformance,
+  startupDurationsFromMarks,
+} from './startupPerformance'
 
 afterEach(() => {
   performance.clearMarks()
@@ -16,6 +23,17 @@ describe('startup performance metrics', () => {
       { name: 'startup:studio-first-tree', startTime: 120 },
       { name: 'startup:studio-tabs-restored', startTime: 145 },
     ])).toMatchObject({ studioFirstTreeMs: 20, studioTabsRestoredMs: 45 })
+  })
+
+  it('keeps every session switch, not only the first restore', () => {
+    recordStudioSwitch(12.34)
+    recordStudioSwitch(8)
+    const durations = getStartupDurations()
+    expect(durations).toMatchObject({ studioSwitchCount: 2, studioSwitchLastMs: 8, studioSwitchMaxMs: 12.3 })
+    expect(getStudioSwitchDurations()).toEqual([12.3, 8])
+    // The sample list stays bounded across long sessions.
+    for (let index = 0; index < 40; index++) recordStudioSwitch(index)
+    expect(getStudioSwitchDurations()).toHaveLength(20)
   })
 
   it('calculates renderer and serial settings-to-tabs durations', () => {

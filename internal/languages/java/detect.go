@@ -28,37 +28,94 @@ var gradleBuildFiles = []string{"build.gradle.kts", "build.gradle"}
 
 // DetectUnits trova i progetti Maven (pom.xml) e Gradle (build.gradle[.kts]) più esterni: i moduli di un
 // progetto multi-modulo appartengono al progetto che li contiene e si eseguono da lì. Non esegue nulla.
-func (*Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
-	var units []project.Unit
-	visited := 0
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
+// La scansione del disco è la stessa condivisa con gli altri linguaggi.
+func (l *Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
+	visitor := l.NewUnitsVisitor(root)
+	walkErr := project.WalkDirectories(ctx, root, project.MaxScanDirectories, visitor)
+	units, err := visitor.Units()
+	if err != nil {
+		return units, err
+	}
+	return units, walkErr
+}
+
+// NewUnitsVisitor raccoglie i progetti Maven/Gradle da una scansione condivisa.
+func (*Language) NewUnitsVisitor(root string) project.UnitsVisitor {
+	return &unitsVisitor{}
+}
+
+// unitsVisitor è il visitor project detection di Java: riconosce il progetto più
+// esterno per cartella e non scende nei suoi sottoprogetti (che ne sono moduli).
+type unitsVisitor struct {
+	units     []project.Unit
+	skipRoots []string
+	visited   int
+	done      bool
+}
+
+func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
+	if v.done || v.skipped(visit.Path) {
+		return false
+	}
+	if visit.Name != "" && ignoredDirectory(visit.Name) {
+		// Cartelle di output di Maven: non fanno parte della detection.
+		v.skipRoots = append(v.skipRoots, visit.Path)
+		return false
+	}
+	if visit.Depth > maxScanDepth {
+		return false
+	}
+	v.visited++
+	if v.visited > maxScanDirectories {
+		v.done = true
+		return false
+	}
+	if unit, ok := unitInCandidate(visit); ok {
+		v.units = append(v.units, unit)
+		// I sottoprogetti sono moduli di questo.
+		v.skipRoots = append(v.skipRoots, visit.Path)
+		if len(v.units) >= maxUnits {
+			v.done = true
 		}
-		if walkErr != nil {
-			if entry != nil && entry.IsDir() {
-				return filepath.SkipDir
+		return false
+	}
+	return true
+}
+
+func (v *unitsVisitor) skipped(path string) bool {
+	for _, root := range v.skipRoots {
+		if path == root || strings.HasPrefix(path, root+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (v *unitsVisitor) Units() ([]project.Unit, error) {
+	sort.SliceStable(v.units, func(i, j int) bool { return v.units[i].Root < v.units[j].Root })
+	return append([]project.Unit(nil), v.units...), nil
+}
+
+// unitInCandidate riconosce un progetto dalla lista di file già letta dalla
+// scansione condivisa; i nomi candidati evitano ogni stat superfluo.
+func unitInCandidate(visit project.DirectoryVisit) (project.Unit, bool) {
+	candidate := false
+	for _, name := range visit.Files {
+		if name == "pom.xml" {
+			candidate = true
+			break
+		}
+		for _, build := range gradleBuildFiles {
+			if name == build {
+				candidate = true
+				break
 			}
-			return nil
 		}
-		if !entry.IsDir() {
-			return nil
-		}
-		if path != root && (ignoredDirectory(entry.Name()) || depth(root, path) > maxScanDepth) {
-			return filepath.SkipDir
-		}
-		visited++
-		if visited > maxScanDirectories || len(units) >= maxUnits {
-			return filepath.SkipAll
-		}
-		if unit, ok := unitIn(path); ok {
-			units = append(units, unit)
-			return filepath.SkipDir // i sottoprogetti sono moduli di questo
-		}
-		return nil
-	})
-	sort.SliceStable(units, func(i, j int) bool { return units[i].Root < units[j].Root })
-	return units, err
+	}
+	if !candidate {
+		return project.Unit{}, false
+	}
+	return unitIn(visit.Path)
 }
 
 // unitIn riconosce un progetto nella cartella. Maven vince se ci sono entrambi i build file.

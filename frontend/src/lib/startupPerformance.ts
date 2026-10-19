@@ -29,6 +29,10 @@ export interface StartupMarkEntry {
 export interface StartupDurations {
   studioFirstTreeMs?: number
   studioTabsRestoredMs?: number
+  /** Numeric summaries of every session switch, not only the first restore. */
+  studioSwitchCount?: number
+  studioSwitchLastMs?: number
+  studioSwitchMaxMs?: number
   rendererToReactMounted?: number
   rendererToBackendReady?: number
   rendererToSettingsLoaded?: number
@@ -72,6 +76,25 @@ export interface StartupBootstrapPayload {
 const recordedMarks = new Set<StartupMarkName>()
 const recordedMeasures = new Set<string>()
 let bootstrapPayload: StartupBootstrapPayload | null = null
+
+/** Bounded sample list: long sessions must not grow the diagnostics forever. */
+const MAX_STUDIO_SWITCH_SAMPLES = 20
+const studioSwitchSamples: number[] = []
+
+/**
+ * Records one Code Studio session switch. The first-session marks describe the
+ * startup restore only; this measures every switch, so repeated switching stays
+ * comparable after the first session.
+ */
+export function recordStudioSwitch(durationMs: number): void {
+  studioSwitchSamples.push(roundedDuration(durationMs))
+  if (studioSwitchSamples.length > MAX_STUDIO_SWITCH_SAMPLES) studioSwitchSamples.shift()
+}
+
+/** The recorded session-switch durations, oldest first. */
+export function getStudioSwitchDurations(): number[] {
+  return [...studioSwitchSamples]
+}
 
 export function recordStartupBootstrap(payload: StartupBootstrapPayload): void {
   bootstrapPayload = payload
@@ -147,9 +170,17 @@ export function getStartupDurations(): StartupDurations {
   const durations = startupDurationsFromMarks(
     performance.getEntriesByType('mark').map((entry) => ({ name: entry.name, startTime: entry.startTime })),
   )
-  if (!bootstrapPayload) return durations
+  // Repeated session switches: numeric summaries only; the bounded sample list
+  // stays available through getStudioSwitchDurations().
+  const switches: Partial<StartupDurations> = studioSwitchSamples.length === 0 ? {} : {
+    studioSwitchCount: studioSwitchSamples.length,
+    studioSwitchLastMs: studioSwitchSamples[studioSwitchSamples.length - 1],
+    studioSwitchMaxMs: Math.max(...studioSwitchSamples),
+  }
+  if (!bootstrapPayload) return { ...durations, ...switches }
   return {
     ...durations,
+    ...switches,
     bootstrapVersion: bootstrapPayload.version,
     bootstrapPayloadBytes: bootstrapPayload.total,
     bootstrapSettingsBytes: bootstrapPayload.settings,

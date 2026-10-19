@@ -86,20 +86,53 @@ func (r *Registry) ForPath(path string) (Language, string, bool) {
 
 // DetectUnits chiede a ogni ProjectDetector le unità sotto root. Un detector che fallisce non
 // nasconde quelle degli altri: le unità trovate tornano comunque, gli errori sono uniti.
+// I linguaggi che implementano UnitScanner condividono una sola scansione del
+// disco invece di camminare l'albero una volta ciascuno; l'ordine delle unità
+// resta quello di registrazione dei linguaggi.
 func (r *Registry) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
-	units := make([]project.Unit, 0, 4)
-	var failures []error
-	// ponytail: una scansione del disco per linguaggio; condividere un solo walk quando i detector saranno più d'uno.
+	type detection struct {
+		id    string
+		units []project.Unit
+		err   error
+	}
+	detections := make([]detection, 0, 4)
+	scannerSlots := make([]int, 0, 2)
+	scannerIDs := make([]string, 0, 2)
+	visitors := make([]project.UnitsVisitor, 0, 2)
 	for _, l := range r.All() {
-		detector, ok := l.(ProjectDetector)
-		if !ok {
+		if scanner, ok := l.(UnitScanner); ok {
+			visitors = append(visitors, scanner.NewUnitsVisitor(root))
+			scannerSlots = append(scannerSlots, len(detections))
+			scannerIDs = append(scannerIDs, l.ID())
+			detections = append(detections, detection{id: l.ID()})
 			continue
 		}
-		found, err := detector.DetectUnits(ctx, root)
-		if err != nil {
-			failures = append(failures, fmt.Errorf("%s: %w", l.ID(), err))
+		if detector, ok := l.(ProjectDetector); ok {
+			found, err := detector.DetectUnits(ctx, root)
+			detections = append(detections, detection{id: l.ID(), units: found, err: err})
 		}
-		units = append(units, found...)
+	}
+	if len(visitors) > 0 {
+		shared := make([]project.DirectoryVisitor, len(visitors))
+		for index, visitor := range visitors {
+			shared[index] = visitor
+		}
+		walkErr := project.WalkDirectories(ctx, root, project.MaxScanDirectories, shared...)
+		for index, visitor := range visitors {
+			found, err := visitor.Units()
+			detections[scannerSlots[index]] = detection{id: scannerIDs[index], units: found, err: err}
+		}
+		if walkErr != nil {
+			detections = append(detections, detection{id: "walk", err: walkErr})
+		}
+	}
+	units := make([]project.Unit, 0, 4)
+	var failures []error
+	for _, found := range detections {
+		if found.err != nil {
+			failures = append(failures, fmt.Errorf("%s: %w", found.id, found.err))
+		}
+		units = append(units, found.units...)
 	}
 	return units, errors.Join(failures...)
 }

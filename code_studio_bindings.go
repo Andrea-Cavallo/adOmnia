@@ -44,6 +44,12 @@ type GoIDE struct {
 	agentReview *agentreview.Tracker
 }
 
+// GetWorkspaceLoadPerformance exposes local, timing-only load diagnostics:
+// per-stage count, latest and maximum duration. No paths or contents.
+func (g *GoIDE) GetWorkspaceLoadPerformance() map[string]float64 {
+	return g.service.GetWorkspaceLoadPerformance()
+}
+
 func NewGoIDE() *GoIDE {
 	var binding *GoIDE
 	service := codestudio.NewService(codestudio.StateBoltStore, func(event codestudio.EventEnvelope) {

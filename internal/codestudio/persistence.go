@@ -14,6 +14,15 @@ type Store interface {
 	Save([]byte) error
 }
 
+// SessionViewStore persiste il layout di una sessione sotto la propria chiave:
+// salvare un tab non deve riscrivere tutte le sessioni. Gli store che non lo
+// implementano continuano a usare lo snapshot di stato completo.
+type SessionViewStore interface {
+	LoadSessionViews() (map[SessionID][]byte, error)
+	SaveSessionView(sessionID SessionID, data []byte) error
+	DeleteSessionView(sessionID SessionID) error
+}
+
 type persistedState struct {
 	Version    int                       `json:"version"`
 	Sessions   []Session                 `json:"sessions"`
@@ -44,6 +53,35 @@ type Persistence struct {
 
 func NewPersistence(store Store) *Persistence {
 	return &Persistence{store: store}
+}
+
+// SessionViews restituisce lo store per sessione quando lo storage lo supporta.
+func (p *Persistence) SessionViews() (SessionViewStore, bool) {
+	if p == nil || p.store == nil {
+		return nil, false
+	}
+	views, ok := p.store.(SessionViewStore)
+	return views, ok
+}
+
+// SaveSessionView persiste il layout di una sessione senza toccare le altre.
+func (p *Persistence) SaveSessionView(sessionID SessionID, view SessionView) error {
+	views, ok := p.SessionViews()
+	if !ok {
+		return fmt.Errorf("per-session view persistence is unavailable")
+	}
+	data, err := json.Marshal(view)
+	if err != nil {
+		return fmt.Errorf("serializzazione layout sessione fallita: %w", err)
+	}
+	return views.SaveSessionView(sessionID, data)
+}
+
+// DeleteSessionView rimuove il layout persistito di una sessione chiusa.
+func (p *Persistence) DeleteSessionView(sessionID SessionID) {
+	if views, ok := p.SessionViews(); ok {
+		_ = views.DeleteSessionView(sessionID)
+	}
 }
 
 // LoadState carica lo schema persistito e migra in memoria le versioni precedenti.
@@ -79,6 +117,19 @@ func (p *Persistence) LoadState() (persistedState, error) {
 	}
 	if state.SessionUI == nil {
 		state.SessionUI = make(map[SessionID]SessionView)
+	}
+	// I layout salvati per sessione hanno la precedenza sullo snapshot: sono
+	// scritti a ogni salvataggio tab, mentre lo snapshot li rispecchia solo ai
+	// salvataggi completi (e resta la fonte per gli store senza chiavi).
+	if views, ok := p.SessionViews(); ok {
+		if perSession, err := views.LoadSessionViews(); err == nil {
+			for id, raw := range perSession {
+				var view SessionView
+				if json.Unmarshal(raw, &view) == nil {
+					state.SessionUI[id] = view
+				}
+			}
+		}
 	}
 	state.Version = PersistenceSchemaVersion
 	return state, nil

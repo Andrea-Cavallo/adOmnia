@@ -121,6 +121,8 @@ type LSPManager struct {
 	sessions            map[lspKey]*lspSession
 	emit                lspEmitter
 	languages           *language.Registry
+	// readyObserver misura il tempo da avvio a pronto del language server.
+	readyObserver func(elapsed time.Duration)
 }
 
 func NewLSPManager(languages *language.Registry) *LSPManager {
@@ -134,6 +136,24 @@ func (m *LSPManager) SetEmitter(emit lspEmitter) {
 	m.mu.Lock()
 	m.emit = emit
 	m.mu.Unlock()
+}
+
+// SetReadyObserver misura il tempo che un language server mette da avvio a
+// pronto, per ogni avvio (inclusi i riavvii automatici).
+func (m *LSPManager) SetReadyObserver(observer func(elapsed time.Duration)) {
+	m.mu.Lock()
+	m.readyObserver = observer
+	m.mu.Unlock()
+}
+
+// noteReady notifica l'osservatore di load performance senza mai rallentare il server.
+func (m *LSPManager) noteReady(elapsed time.Duration) {
+	m.mu.Lock()
+	observer := m.readyObserver
+	m.mu.Unlock()
+	if observer != nil {
+		observer(elapsed)
+	}
 }
 
 func (m *LSPManager) publish(eventType string, sessionID SessionID, resourceID string, payload any) {
@@ -355,6 +375,7 @@ func (m *LSPManager) launch(state *lspSession, reason string) error {
 	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
 	m.reopenDocuments(state, process)
 	m.trace(state, "ready in %s; the server now loads the workspace in the background (phases below)", round(time.Since(launchedAt)))
+	m.noteReady(time.Since(launchedAt))
 	m.setState(state, LanguageServerReady, "")
 	m.signalMemoryBudget()
 	return nil

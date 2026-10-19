@@ -30,6 +30,7 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
+	loadPerf    loadPerformance
 	vcsMu       sync.Mutex
 	vcsSelected map[SessionID]string
 	extensions  extensionHost
@@ -59,20 +60,22 @@ type Service struct {
 	recentMu         sync.RWMutex
 	recent           []RecentProject
 	trusted          []string // protetto da recentMu
-	runMu            sync.RWMutex
-	runRequests      map[RunID]RunRequest
-	sharedEnv        sharedEnvironment
-	eventMu          sync.RWMutex
-	eventSink        func(EventEnvelope)
-	sequence         atomic.Uint64
-	toolsRoot        string
-	goplsMu          sync.RWMutex
-	goplsBinaries    map[SessionID]string
-	delveBinaries    map[SessionID]string
-	makeBinaries     map[SessionID]string
-	lint             lintRegistry
-	sonar            sonarRegistry
-	watcher          *WatchManager
+	// recentChecks limita i controlli di esistenza dei progetti recenti.
+	recentChecks  recentAvailabilityCache
+	runMu         sync.RWMutex
+	runRequests   map[RunID]RunRequest
+	sharedEnv     sharedEnvironment
+	eventMu       sync.RWMutex
+	eventSink     func(EventEnvelope)
+	sequence      atomic.Uint64
+	toolsRoot     string
+	goplsMu       sync.RWMutex
+	goplsBinaries map[SessionID]string
+	delveBinaries map[SessionID]string
+	makeBinaries  map[SessionID]string
+	lint          lintRegistry
+	sonar         sonarRegistry
+	watcher       *WatchManager
 	// previews è il Live Server: server statici e dev server dei progetti web, uno per anteprima e sessione.
 	previews       *preview.Manager
 	previewConfigs previewConfigStore
@@ -115,6 +118,9 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		depGraph:         newDependencyGraphCache(),
 	}
 	service.recovery = NewRecoveryManager(nil)
+	service.workspace.onDetected = func(started time.Time) { service.noteLoad("detectUnits", started) }
+	// Language-server readiness: from process start to the ready state, for every start.
+	service.lsp.SetReadyObserver(func(elapsed time.Duration) { service.noteLoadElapsed("lspReady", elapsed) })
 	service.supervisor = NewProcessSupervisor()
 	service.history = NewLocalHistory(nil)
 	service.watcher = NewWatchManager(service.filesChanged)
@@ -305,27 +311,17 @@ func (s *Service) ListRecentProjects() ([]RecentProject, error) {
 	s.recentMu.RLock()
 	items := slices.Clone(s.recent)
 	s.recentMu.RUnlock()
-	// os.Stat fuori dal lock: su un disco di rete irraggiungibile può durare
-	// secondi e non deve bloccare le altre operazioni sui recenti. Il chiamante
+	// La disponibilità è dato derivato: ogni percorso è controllato al più ogni
+	// recentCheckTTL e la sua variazione non riscrive lo stato. Il chiamante
 	// riceve una copia, mai lo slice interno.
-	available := make(map[string]bool, len(items))
 	for index := range items {
-		info, err := os.Stat(items[index].RealPath)
-		items[index].Available = err == nil && info.IsDir()
-		available[items[index].RealPath] = items[index].Available
+		items[index].Available = s.recentAvailability(items[index].RealPath)
 	}
-	changed := false
 	s.recentMu.Lock()
 	for index := range s.recent {
-		if value, known := available[s.recent[index].RealPath]; known && s.recent[index].Available != value {
-			s.recent[index].Available = value
-			changed = true
-		}
+		s.recent[index].Available = items[index].Available
 	}
 	s.recentMu.Unlock()
-	if changed {
-		_ = s.saveState()
-	}
 	return items, nil
 }
 
@@ -343,6 +339,7 @@ func (s *Service) RemoveRecentProject(path string) error {
 	}
 	s.recent = append([]RecentProject(nil), filtered...)
 	s.recentMu.Unlock()
+	s.forgetRecentAvailability(path)
 	return s.saveState()
 }
 
@@ -427,6 +424,7 @@ func (s *Service) CloseSession(id string) error {
 	s.viewMu.Lock()
 	delete(s.views, sessionID)
 	s.viewMu.Unlock()
+	s.persistence.DeleteSessionView(sessionID)
 	if err := s.saveState(); err != nil {
 		return err
 	}
@@ -983,6 +981,7 @@ func (s *Service) restore() error {
 	if s.restored.Load() {
 		return nil
 	}
+	started := time.Now()
 	s.restoreMu.Lock()
 	defer s.restoreMu.Unlock()
 	if s.restored.Load() {
@@ -1020,6 +1019,7 @@ func (s *Service) restore() error {
 	s.views = views
 	s.viewMu.Unlock()
 	s.restored.Store(true)
+	s.noteLoad("restore", started)
 	return nil
 }
 
@@ -1134,7 +1134,11 @@ func (s *Service) pruneRunRequestsLocked() {
 // Se il progetto viene chiuso mentre il watcher parte, il controllo finale lo ferma.
 func (s *Service) watchSession(session Session) {
 	go func() {
-		_ = s.watcher.Watch(session.ID, session.Project.RealPath)
+		started := time.Now()
+		alreadyWatching := s.watcher.Watching(session.ID)
+		if err := s.watcher.Watch(session.ID, session.Project.RealPath); err == nil && !alreadyWatching && s.watcher.Watching(session.ID) {
+			s.noteLoad("watcherReady", started)
+		}
 		if _, err := s.workspace.GetSession(session.ID); err != nil {
 			s.watcher.Stop(session.ID)
 		}

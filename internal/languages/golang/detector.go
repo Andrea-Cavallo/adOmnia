@@ -12,74 +12,67 @@ import (
 )
 
 const (
-	maxModuleScanDirectories = 4_000
-	maxLooseGoDirectories    = 50
+	maxLooseGoDirectories = 50
 )
 
 // DetectUnits trova i go.mod del progetto, il go.work in radice e le cartelle con file .go non
 // coperte da alcun modulo. Ordine: moduli (per percorso), workspace, cartelle sciolte (per percorso).
-func (*Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
-	modules, goDirectories, err := scanModules(ctx, root)
-	if err != nil {
+// La scansione del disco è la stessa condivisa con gli altri linguaggi.
+func (l *Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
+	visitor := l.NewUnitsVisitor(root)
+	if err := project.WalkDirectories(ctx, root, project.MaxScanDirectories, visitor); err != nil {
 		return nil, err
 	}
+	return visitor.Units()
+}
+
+// NewUnitsVisitor raccoglie moduli e cartelle .go da una scansione condivisa.
+func (*Language) NewUnitsVisitor(root string) project.UnitsVisitor {
+	return &unitsVisitor{root: root, goDirectories: make(map[string]struct{})}
+}
+
+// unitsVisitor è il visitor project detection del Go: un solo walk raccoglie i
+// go.mod (per cartella) e le cartelle che contengono file .go.
+type unitsVisitor struct {
+	root          string
+	modules       []string
+	goDirectories map[string]struct{}
+	rootGoWork    bool
+}
+
+func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
+	for _, name := range visit.Files {
+		if strings.EqualFold(name, "go.mod") {
+			v.modules = append(v.modules, filepath.Join(visit.Path, name))
+			continue
+		}
+		if visit.Depth == 0 && name == "go.work" {
+			v.rootGoWork = true
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(name), ".go") {
+			v.goDirectories[visit.Path] = struct{}{}
+		}
+	}
+	// Il Go vive a ogni profondità: la discesa continua finché il walk ha budget.
+	return true
+}
+
+func (v *unitsVisitor) Units() ([]project.Unit, error) {
+	modules := append([]string(nil), v.modules...)
+	sort.Slice(modules, func(i, j int) bool { return filepath.Dir(modules[i]) < filepath.Dir(modules[j]) })
 	units := make([]project.Unit, 0, len(modules)+1)
 	for _, module := range modules {
 		units = append(units, project.Unit{Language: ID, Kind: UnitModule, Root: filepath.Dir(module), Name: ReadModulePath(module), Manifest: module})
 	}
-	goWork := filepath.Join(root, "go.work")
-	if info, statErr := os.Stat(goWork); statErr == nil && !info.IsDir() {
-		units = append(units, project.Unit{Language: ID, Kind: UnitWorkspace, Root: root, Manifest: goWork})
+	if v.rootGoWork {
+		goWork := filepath.Join(v.root, "go.work")
+		units = append(units, project.Unit{Language: ID, Kind: UnitWorkspace, Root: v.root, Manifest: goWork})
 	}
-	for _, directory := range looseDirectories(root, modules, goDirectories) {
+	for _, directory := range looseDirectories(v.root, modules, v.goDirectories) {
 		units = append(units, project.Unit{Language: ID, Kind: UnitLoose, Root: directory})
 	}
 	return units, nil
-}
-
-// scanModules restituisce i go.mod (ordinati per cartella) e le cartelle che contengono file .go.
-func scanModules(ctx context.Context, root string) ([]string, map[string]struct{}, error) {
-	modules := make([]string, 0, 4)
-	goDirectories := make(map[string]struct{})
-	visited := 0
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if walkErr != nil {
-			if entry != nil && entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if entry.IsDir() {
-			if path != root && project.IgnoredDirectory(entry.Name()) {
-				return filepath.SkipDir
-			}
-			visited++
-			if visited > maxModuleScanDirectories {
-				return filepath.SkipAll
-			}
-			return nil
-		}
-		name := entry.Name()
-		if strings.EqualFold(name, "go.mod") {
-			modules = append(modules, path)
-			return nil
-		}
-		if strings.EqualFold(filepath.Ext(name), ".go") {
-			goDirectories[filepath.Dir(path)] = struct{}{}
-		}
-		return nil
-	})
-	if ctx.Err() != nil {
-		return nil, nil, ctx.Err()
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	sort.Slice(modules, func(i, j int) bool { return filepath.Dir(modules[i]) < filepath.Dir(modules[j]) })
-	return modules, goDirectories, nil
 }
 
 // looseDirectories restituisce le cartelle .go fuori dai moduli, ordinate per percorso relativo e limitate.

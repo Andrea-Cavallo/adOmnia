@@ -36,6 +36,15 @@ type ProjectDetector interface {
 	DetectUnits(ctx context.Context, root string) ([]project.Unit, error)
 }
 
+// UnitScanner estende ProjectDetector con la possibilità di condividere una
+// sola scansione del disco tra più linguaggi: il registry cammina l'albero una
+// volta e passa ogni cartella al visitor di ogni linguaggio.
+type UnitScanner interface {
+	ProjectDetector
+	// NewUnitsVisitor restituisce il visitor che raccoglie le unità sotto root.
+	NewUnitsVisitor(root string) project.UnitsVisitor
+}
+
 // DocumentSelector dice quali file appartengono al linguaggio e con quale languageId LSP
 // vanno inviati al suo language server (es. "go", "go.mod").
 type DocumentSelector interface {

@@ -286,7 +286,7 @@ func (s *Service) SetFunctionBreakpoints(sessionID string, settings FunctionBrea
 	saved.FunctionBreakpoints, saved.StopOnPanic = normalized.Functions, normalized.StopOnPanic
 	s.views[session.ID] = saved
 	s.viewMu.Unlock()
-	return view, s.saveState()
+	return view, s.persistSessionView(session.ID, saved)
 }
 
 // DebugRunToCursor riprende il programma in pausa fino alla riga indicata di un file del progetto.
@@ -325,7 +325,7 @@ func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, l
 	view.Breakpoints = breakpoints
 	s.views[sessionID] = view
 	s.viewMu.Unlock()
-	return s.saveState()
+	return s.persistSessionView(sessionID, view)
 }
 
 // seedBreakpoints porta nel debugger i breakpoint salvati, risolti su percorsi assoluti del progetto.

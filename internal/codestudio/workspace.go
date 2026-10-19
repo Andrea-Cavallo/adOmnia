@@ -21,9 +21,10 @@ import (
 var projectNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$`)
 
 type WorkspaceManager struct {
-	mu        sync.RWMutex
-	sessions  map[SessionID]Session
-	languages *language.Registry
+	onDetected func(time.Time)
+	mu         sync.RWMutex
+	sessions   map[SessionID]Session
+	languages  *language.Registry
 }
 
 func NewWorkspaceManager(languages *language.Registry) *WorkspaceManager {
@@ -39,7 +40,7 @@ func (m *WorkspaceManager) OpenProject(path, workspaceID string) (Session, error
 	}
 
 	now := time.Now().UTC()
-	project := inspectProject(m.languages, root, realRoot)
+	project := inspectProject(m.languages, root, realRoot, m.onDetected)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, existing := range m.sessions {
@@ -138,7 +139,7 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 	if !ok {
 		return Session{}, fmt.Errorf("Code Studio session not found")
 	}
-	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath)
+	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath, m.onDetected)
 	session.Project.Units = fresh.Units
 	session.UpdatedAt = time.Now().UTC()
 	m.sessions[id] = session
@@ -171,7 +172,7 @@ func (m *WorkspaceManager) ReplaceSessions(sessions []Session) {
 		}
 		if session.Project.Units == nil {
 			// Sessione salvata prima delle unità (campi goModPath/modules ora rimossi): rileggi il progetto.
-			session.Project.Units = inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath).Units
+			session.Project.Units = inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath, m.onDetected).Units
 		}
 		m.sessions[session.ID] = session
 	}
@@ -230,7 +231,7 @@ func fileExists(path string) bool {
 }
 
 // inspectProject chiede ai language adapter le unità del progetto, senza eseguire comandi.
-func inspectProject(languages *language.Registry, root, realRoot string) Project {
+func inspectProject(languages *language.Registry, root, realRoot string, observers ...func(time.Time)) Project {
 	result := Project{
 		ID:            newID("project"),
 		Name:          filepath.Base(root),
@@ -240,7 +241,13 @@ func inspectProject(languages *language.Registry, root, realRoot string) Project
 	}
 	// La detection di un linguaggio non blocca l'apertura: un detector in errore restituisce
 	// comunque le unità trovate (come prima, quando gli errori del walk venivano ignorati).
+	started := time.Now()
 	result.Units, _ = languages.DetectUnits(context.Background(), root)
+	for _, observe := range observers {
+		if observe != nil {
+			observe(started)
+		}
+	}
 	if result.Units == nil {
 		result.Units = []project.Unit{}
 	}

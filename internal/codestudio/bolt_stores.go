@@ -26,6 +26,44 @@ var (
 	RecoveryBoltStore = BoltRecoveryStore{BoltStore{Key: "recovery", DeleteEmpty: true}}
 )
 
+// SessionViewPrefix keeps one session layout per key so saving tabs never
+// rewrites every session. The state blob keeps mirroring them: a build without
+// per-session persistence still restores the last mirrored layouts.
+const SessionViewPrefix = "session-view:"
+
+// LoadSessionViews reads every persisted session layout.
+func (BoltStore) LoadSessionViews() (map[SessionID][]byte, error) {
+	if storage.DB() == nil {
+		return nil, nil
+	}
+	keys, err := storage.List(boltBucket, SessionViewPrefix)
+	if err != nil {
+		return nil, err
+	}
+	views := make(map[SessionID][]byte, len(keys))
+	for _, key := range keys {
+		data, err := storage.Get(boltBucket, key)
+		if err != nil {
+			return nil, err
+		}
+		views[SessionID(strings.TrimPrefix(key, SessionViewPrefix))] = data
+	}
+	return views, nil
+}
+
+// SaveSessionView persists one session layout under its own key.
+func (BoltStore) SaveSessionView(sessionID SessionID, data []byte) error {
+	return saveBolt(SessionViewPrefix+string(sessionID), data, true)
+}
+
+// DeleteSessionView removes the persisted layout of a closed session.
+func (BoltStore) DeleteSessionView(sessionID SessionID) error {
+	if storage.DB() == nil {
+		return nil
+	}
+	return storage.Delete(boltBucket, SessionViewPrefix+string(sessionID))
+}
+
 func (s BoltStore) Load() ([]byte, error) {
 	if storage.DB() == nil {
 		return nil, nil

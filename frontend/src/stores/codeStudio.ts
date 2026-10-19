@@ -6,7 +6,7 @@ import { caretsFor, restoreCarets } from '@/lib/code-studio/codeStudioCaretMemor
 import { create } from 'zustand'
 import { startSharedEnvironmentSync } from '@/lib/code-studio/sharedEnvironment'
 import { safeSetItem } from '@/lib/safeLocalStorage'
-import { markStartup } from '@/lib/startupPerformance'
+import { markStartup, recordStudioSwitch } from '@/lib/startupPerformance'
 import { rememberedStudioSession, studioSessionMemoryKey } from '@/lib/code-studio/studioSessionMemory'
 import {
   checkGoIDEDocument,
@@ -482,6 +482,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
 
   selectSession: async (activeSessionId) => {
     markStartup('startup:studio-session-requested')
+    const switchStartedAt = typeof performance !== 'undefined' ? performance.now() : 0
     set({ activeSessionId, error: null })
     if (!codeStudioWindowContext().pinnedSessionId) {
       const session = get().sessions.find((item) => item.id === activeSessionId)
@@ -506,6 +507,9 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
       ])
     } catch (error) {
       set({ error: errorMessage(error) })
+    } finally {
+      // Every switch is measured, not only the first session restore.
+      if (typeof performance !== 'undefined') recordStudioSwitch(performance.now() - switchStartedAt)
     }
   },
 

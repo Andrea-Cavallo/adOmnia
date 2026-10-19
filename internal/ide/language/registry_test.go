@@ -3,6 +3,8 @@ package language
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -90,6 +92,88 @@ func TestDetectUnitsMergesLanguagesAndKeepsPartialResults(t *testing.T) {
 	}
 	if strings.Join(languages, ",") != "java,broken,ts" {
 		t.Fatalf("units lost or reordered: %v", languages)
+	}
+}
+
+// fakeScanner implementa UnitScanner: la detection passa dalla walk condivisa
+// e DetectUnits non deve più essere chiamato dal registry.
+type fakeScanner struct {
+	fakeLanguage
+	visitor *scanRecorder
+}
+
+func (f fakeScanner) DetectUnits(context.Context, string) ([]project.Unit, error) {
+	return nil, errors.New("DetectUnits must not run when the walk is shared")
+}
+
+func (f fakeScanner) NewUnitsVisitor(string) project.UnitsVisitor { return f.visitor }
+
+// scanRecorder raccoglie le visite della walk condivisa come unità.
+type scanRecorder struct {
+	language string
+	visits   []project.DirectoryVisit
+	err      error
+}
+
+func (s *scanRecorder) VisitDirectory(visit project.DirectoryVisit) bool {
+	s.visits = append(s.visits, visit)
+	return true
+}
+
+func (s *scanRecorder) Units() ([]project.Unit, error) {
+	units := make([]project.Unit, 0, len(s.visits))
+	for _, visit := range s.visits {
+		units = append(units, project.Unit{Language: s.language, Kind: "seen", Root: visit.Path})
+	}
+	return units, s.err
+}
+
+func TestDetectUnitsSharesOneWalkAcrossScanners(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	first := &scanRecorder{language: "one"}
+	second := &scanRecorder{language: "two"}
+	registry := NewRegistry()
+	_ = registry.Register(fakeScanner{fakeLanguage: fakeLanguage{id: "one"}, visitor: first})
+	_ = registry.Register(fakeScanner{fakeLanguage: fakeLanguage{id: "two"}, visitor: second})
+	_ = registry.Register(fakeDetector{fakeLanguage: fakeLanguage{id: "plain"}, units: []project.Unit{{Language: "plain", Kind: "x", Root: "r"}}})
+
+	units, err := registry.DetectUnits(context.Background(), root)
+	// A per-language DetectUnits would report the fakeScanner error.
+	if err != nil {
+		t.Fatalf("shared walk not used: %v", err)
+	}
+	if len(first.visits) == 0 || len(first.visits) != len(second.visits) {
+		t.Fatalf("visits = %d / %d", len(first.visits), len(second.visits))
+	}
+	for index := range first.visits {
+		if first.visits[index].Path != second.visits[index].Path {
+			t.Fatalf("visit %d differs: %s / %s", index, first.visits[index].Path, second.visits[index].Path)
+		}
+	}
+	languages := []string{}
+	for _, unit := range units {
+		languages = append(languages, unit.Language)
+	}
+	if strings.Join(languages, ",") != "one,one,two,two,plain" {
+		t.Fatalf("units lost or reordered: %v", languages)
+	}
+}
+
+func TestDetectUnitsKeepsPartialResultsWhenAScannerFails(t *testing.T) {
+	root := t.TempDir()
+	broken := &scanRecorder{language: "broken", err: errors.New("boom")}
+	registry := NewRegistry()
+	_ = registry.Register(fakeScanner{fakeLanguage: fakeLanguage{id: "broken"}, visitor: broken})
+
+	units, err := registry.DetectUnits(context.Background(), root)
+	if err == nil || !strings.Contains(err.Error(), "broken: boom") {
+		t.Fatalf("scanner error not reported: %v", err)
+	}
+	if len(units) != 1 {
+		t.Fatalf("partial results lost: %v", units)
 	}
 }
 

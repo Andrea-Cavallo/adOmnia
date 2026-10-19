@@ -56,6 +56,16 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 	view.Breakpoints, view.FunctionBreakpoints, view.StopOnPanic = saved.Breakpoints, saved.FunctionBreakpoints, saved.StopOnPanic
 	s.views[session.ID] = view
 	s.viewMu.Unlock()
+	return s.persistSessionView(session.ID, view)
+}
+
+// persistSessionView salva il layout di una sessione sotto la sua chiave:
+// salvare un tab non riscrive tutte le altre. Gli store senza chiavi per
+// sessione restano sullo snapshot completo di stato.
+func (s *Service) persistSessionView(sessionID SessionID, view SessionView) error {
+	if err := s.persistence.SaveSessionView(sessionID, view); err == nil {
+		return nil
+	}
 	return s.saveState()
 }
 
@@ -187,6 +197,7 @@ func (s *Service) PruneMissingSessions() ([]Session, error) {
 		s.viewMu.Lock()
 		delete(s.views, session.ID)
 		s.viewMu.Unlock()
+		s.persistence.DeleteSessionView(session.ID)
 		removed = true
 		s.emit("session.unavailable", session.ID, string(session.ID), session.Project.RootPath)
 	}
