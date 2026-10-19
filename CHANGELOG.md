@@ -4,6 +4,22 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.7] — 2026-10-19
+
+Release notes: [docs/releases/v1.0.7.md](docs/releases/v1.0.7.md).
+
+### Added
+
+- **Live Go memory controls.** Change and persist the backend GOMEMLIMIT without restarting the application; save a gopls limit and restart the selected Go project with unsaved buffers retained. The backend uses a 512 MiB soft GC budget unless an explicit startup GOMEMLIMIT is set; gopls retains its existing default.
+- **CPU/RAM recordings and process provenance.** Record 30/60/120-second scenarios, inspect aggregate or per-process charts, parent PIDs, WebView roles and registered Code Studio ownership. Export full history as JSON/CSV, Markdown or standalone HTML with charts, backend heap/GC counters and explicit missing/partial samples.
+- **Measured resource report.** Repository gopls comparisons at 1 GiB/768/512 MiB, OS baseline, raw data and charts in `docs/performance/resources-2026-10-19.md`. The previously reported 50% CPU spike was not reproduced in that observation window.
+
+### Notes
+
+- GOMEMLIMIT is a soft GC budget, not an RSS or CPU cap; smaller limits may increase GC CPU. WebView and Java use separate memory.
+- Native acceptance of the new monitor remains open as RES-1.M1–M3 in `mds/MANUAL-CHECK.md`.
+- The temporary Halloween Hub edition from 1.0.6 remains enabled.
+
 ## [1.0.6] — 2026-10-19
 
 Release notes: [docs/releases/v1.0.6.md](docs/releases/v1.0.6.md).
