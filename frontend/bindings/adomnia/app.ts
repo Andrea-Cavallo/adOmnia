@@ -13,6 +13,9 @@ import * as activity$0 from "./internal/activity/models.js";
 import * as bootstrap$0 from "./internal/bootstrap/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as collectionsstore$0 from "./internal/collectionsstore/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as devlog$0 from "./internal/devlog/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -307,6 +310,17 @@ export function LoadCollectionWorkspace(workspaceID: string): $CancellablePromis
     return $Call.ByID(245840982, workspaceID);
 }
 
+/**
+ * LoadCollectionWorkspaceV2 returns the structured workspace payload: tree
+ * metadata is parsed for the first render while request contents stay JSON text
+ * until the renderer hydrates them.
+ */
+export function LoadCollectionWorkspaceV2(workspaceID: string): $CancellablePromise<collectionsstore$0.WorkspacePayload> {
+    return $Call.ByID(1596975798, workspaceID).then(($result: any) => {
+        return $$createType15($result);
+    });
+}
+
 export function LoadSettings(): $CancellablePromise<string> {
     return $Call.ByID(3551729052);
 }
@@ -432,8 +446,8 @@ export function SaveBinaryFileBase64(defaultName: string, dataBase64: string): $
 }
 
 /**
- * SaveCollectionWorkspaces atomically updates the v3 shards and the complete
- * v2 compatibility snapshot outside the startup critical path.
+ * SaveCollectionWorkspaces atomically updates the v3 shards and schedules the
+ * complete v2 compatibility snapshot outside the save path.
  */
 export function SaveCollectionWorkspaces(indexJSON: string, workspaceJSON: string[]): $CancellablePromise<void> {
     return $Call.ByID(710926, indexJSON, workspaceJSON);
@@ -521,7 +535,7 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType17($result);
     });
 }
 
@@ -567,5 +581,6 @@ const $$createType11 = $Create.Array($$createType3);
 const $$createType12 = $Create.Array($Create.Any);
 const $$createType13 = bootstrap$0.State.createFrom;
 const $$createType14 = bootstrap$0.StateV2.createFrom;
-const $$createType15 = $models.StorageEntry.createFrom;
-const $$createType16 = $Create.Array($$createType15);
+const $$createType15 = collectionsstore$0.WorkspacePayload.createFrom;
+const $$createType16 = $models.StorageEntry.createFrom;
+const $$createType17 = $Create.Array($$createType16);

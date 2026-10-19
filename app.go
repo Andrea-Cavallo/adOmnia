@@ -419,6 +419,11 @@ func (a *App) shutdown(_ context.Context) {
 			log.Printf("[update] %v", err)
 		}
 	}
+	// The deferred v2 downgrade snapshot is rebuilt before the store closes so a
+	// downgraded build still finds complete collections.
+	if err := collectionsstore.FlushLegacySnapshot(); err != nil {
+		log.Printf("[app] collections legacy snapshot flush error: %v", err)
+	}
 	storage.Close()
 	log.Println("[app] shutdown complete")
 }
@@ -455,8 +460,15 @@ func (a *App) LoadCollectionWorkspace(workspaceID string) (string, error) {
 	return collectionsstore.LoadWorkspace(workspaceID)
 }
 
-// SaveCollectionWorkspaces atomically updates the v3 shards and the complete
-// v2 compatibility snapshot outside the startup critical path.
+// LoadCollectionWorkspaceV2 returns the structured workspace payload: tree
+// metadata is parsed for the first render while request contents stay JSON text
+// until the renderer hydrates them.
+func (a *App) LoadCollectionWorkspaceV2(workspaceID string) (collectionsstore.WorkspacePayload, error) {
+	return collectionsstore.LoadWorkspacePayload(workspaceID)
+}
+
+// SaveCollectionWorkspaces atomically updates the v3 shards and schedules the
+// complete v2 compatibility snapshot outside the save path.
 func (a *App) SaveCollectionWorkspaces(indexJSON string, workspaceJSON []string) error {
 	return collectionsstore.Save(indexJSON, workspaceJSON)
 }

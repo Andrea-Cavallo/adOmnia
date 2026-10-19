@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"adomnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
@@ -40,6 +42,21 @@ type Index struct {
 }
 
 type workspace struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Tree holds only the metadata the collection tree renders (ids, names,
+	// methods, urls). It is an optional projection: shards written before the
+	// split stay valid and receive it on their next save.
+	Tree        json.RawMessage `json:"tree,omitempty"`
+	Collections json.RawMessage `json:"collections"`
+	CreatedAt   string          `json:"createdAt"`
+	UpdatedAt   string          `json:"updatedAt"`
+}
+
+// legacyWorkspace is the version-2 workspace shape written to collections/all:
+// complete inline collections and no tree projection, so a downgraded build
+// still reads every request body.
+type legacyWorkspace struct {
 	ID          string          `json:"id"`
 	Name        string          `json:"name"`
 	Collections json.RawMessage `json:"collections"`
@@ -48,9 +65,18 @@ type workspace struct {
 }
 
 type legacySnapshot struct {
-	Version           int         `json:"version"`
-	ActiveWorkspaceID string      `json:"activeWorkspaceId"`
-	Workspaces        []workspace `json:"workspaces"`
+	Version           int               `json:"version"`
+	ActiveWorkspaceID string            `json:"activeWorkspaceId"`
+	Workspaces        []legacyWorkspace `json:"workspaces"`
+}
+
+// WorkspacePayload is the structured workspace IPC response: tree metadata and
+// request contents travel as separate values so the renderer can show the tree
+// before parsing request contents. CollectionsJSON is JSON text rather than an
+// embedded value so its parse can be deferred past the first tree render.
+type WorkspacePayload struct {
+	Workspace       json.RawMessage `json:"workspace"`
+	CollectionsJSON string          `json:"collectionsJson"`
 }
 
 // Critical contains either a v3 index and active workspace, or the untouched
@@ -113,6 +139,9 @@ func decodeWorkspace(data []byte) (workspace, error) {
 	if !bytes.Equal(collections, []byte("null")) && collections[0] != '[' {
 		return workspace{}, fmt.Errorf("workspace %q collections must be an array", value.ID)
 	}
+	if tree := bytes.TrimSpace(value.Tree); len(tree) > 0 && !bytes.Equal(tree, []byte("null")) && tree[0] != '[' {
+		return workspace{}, fmt.Errorf("workspace %q tree must be an array", value.ID)
+	}
 	return value, nil
 }
 
@@ -125,12 +154,14 @@ func metadataFor(index Index, id string) (WorkspaceMeta, bool) {
 	return WorkspaceMeta{}, false
 }
 
-func applyMetadata(value workspace, meta WorkspaceMeta) workspace {
-	value.ID = meta.ID
-	value.Name = meta.Name
-	value.CreatedAt = meta.CreatedAt
-	value.UpdatedAt = meta.UpdatedAt
-	return value
+func applyMetadata(value workspace, meta WorkspaceMeta) legacyWorkspace {
+	return legacyWorkspace{
+		ID:          meta.ID,
+		Name:        meta.Name,
+		Collections: value.Collections,
+		CreatedAt:   meta.CreatedAt,
+		UpdatedAt:   meta.UpdatedAt,
+	}
 }
 
 func marshalWorkspace(value workspace, meta WorkspaceMeta) ([]byte, error) {
@@ -140,11 +171,33 @@ func marshalWorkspace(value workspace, meta WorkspaceMeta) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := make([]byte, 0, len(header)+len(value.Collections)+16)
+	result := make([]byte, 0, len(header)+len(value.Tree)+len(value.Collections)+24)
 	result = append(result, header[:len(header)-1]...)
+	if tree := bytes.TrimSpace(value.Tree); len(tree) > 0 && !bytes.Equal(tree, []byte("null")) {
+		result = append(result, `,"tree":`...)
+		result = append(result, value.Tree...)
+	}
 	result = append(result, `,"collections":`...)
 	result = append(result, value.Collections...)
 	return append(result, '}'), nil
+}
+
+// marshalWorkspacePayload splits one shard into the structured IPC response:
+// the metadata and tree projection parse immediately, the complete collections
+// JSON text is parsed later by the renderer.
+func marshalWorkspacePayload(value workspace, meta WorkspaceMeta) (WorkspacePayload, error) {
+	header, err := json.Marshal(meta)
+	if err != nil {
+		return WorkspacePayload{}, err
+	}
+	result := make([]byte, 0, len(header)+len(value.Tree)+16)
+	result = append(result, header[:len(header)-1]...)
+	if tree := bytes.TrimSpace(value.Tree); len(tree) > 0 && !bytes.Equal(tree, []byte("null")) {
+		result = append(result, `,"tree":`...)
+		result = append(result, value.Tree...)
+	}
+	result = append(result, '}')
+	return WorkspacePayload{Workspace: result, CollectionsJSON: string(value.Collections)}, nil
 }
 
 func criticalFromV3(bucket *bolt.Bucket, indexData []byte) (Critical, error) {
@@ -264,8 +317,41 @@ func LoadWorkspace(id string) (string, error) {
 	return string(result), nil
 }
 
+// LoadWorkspacePayload returns one workspace as the structured IPC response:
+// tree metadata is available to the renderer without parsing request contents.
+func LoadWorkspacePayload(id string) (WorkspacePayload, error) {
+	if storage.DB() == nil {
+		return WorkspacePayload{}, fmt.Errorf("storage not initialized")
+	}
+	var payload WorkspacePayload
+	err := storage.DB().View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(Bucket))
+		index, err := decodeIndex(bucket.Get([]byte(IndexKey)))
+		if err != nil {
+			return err
+		}
+		meta, ok := metadataFor(index, id)
+		if !ok {
+			return fmt.Errorf("workspace %q not found", id)
+		}
+		value, err := decodeWorkspace(bucket.Get(workspaceKey(id)))
+		if err != nil || value.ID != id {
+			return fmt.Errorf("workspace %q payload unavailable", id)
+		}
+		payload, err = marshalWorkspacePayload(value, meta)
+		return err
+	})
+	if err != nil {
+		return WorkspacePayload{}, fmt.Errorf("load collection workspace: %w", err)
+	}
+	return payload, nil
+}
+
 // Save writes the index and changed workspace payloads atomically, removes
-// stale shards, and rebuilds collections/all as a complete v2 snapshot.
+// stale shards, and schedules the rebuild of collections/all as a complete v2
+// snapshot. The rebuild runs outside the save transaction: the hot save path
+// never re-encodes every workspace, and FlushLegacySnapshot forces it when the
+// snapshot must be current (tests, shutdown).
 func Save(indexJSON string, workspaceJSON []string) error {
 	if storage.DB() == nil {
 		return fmt.Errorf("storage not initialized")
@@ -323,7 +409,84 @@ func Save(indexJSON string, workspaceJSON []string) error {
 				}
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("save collection workspaces: %w", err)
+	}
+	scheduleLegacyRebuild(storage.DB())
+	return nil
+}
 
+// legacyRebuildDelay coalesces bursts of saves into one snapshot rebuild.
+const legacyRebuildDelay = 250 * time.Millisecond
+
+var (
+	// legacyRebuildTargets carries the database handle of each queued rebuild so
+	// a rebuild queued by one database can never write into a later one (tests
+	// open and close storage repeatedly).
+	legacyRebuildTargets = make(chan *bolt.DB, 8)
+	legacyWorker         sync.Once
+)
+
+// scheduleLegacyRebuild requests a deferred rebuild on the given database.
+func scheduleLegacyRebuild(db *bolt.DB) {
+	if db == nil {
+		return
+	}
+	legacyWorker.Do(func() { go legacyRebuildLoop() })
+	select {
+	case legacyRebuildTargets <- db:
+	default:
+		// The queue is full of pending rebuilds; the newest one reads the
+		// committed shards anyway.
+	}
+}
+
+func legacyRebuildLoop() {
+	for db := range legacyRebuildTargets {
+		time.Sleep(legacyRebuildDelay)
+		// Coalesce everything queued during the delay into this rebuild.
+		for {
+			select {
+			case db = <-legacyRebuildTargets:
+				continue
+			default:
+			}
+			break
+		}
+		_ = rebuildLegacySnapshot(db)
+	}
+}
+
+// FlushLegacySnapshot rebuilds collections/all immediately from the committed
+// shards. It is the synchronous escape hatch for shutdown and tests.
+func FlushLegacySnapshot() error {
+	return rebuildLegacySnapshot(storage.DB())
+}
+
+// rebuildLegacySnapshot rewrites collections/all as a complete v2 snapshot with
+// inline request contents. A missing or unreadable shard aborts the rebuild so
+// the previous complete snapshot survives; the tree projection never leaks into
+// the version-2 payload.
+func rebuildLegacySnapshot(db *bolt.DB) error {
+	if db == nil {
+		return fmt.Errorf("storage not initialized")
+	}
+	err := db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(Bucket))
+		if bucket == nil {
+			return fmt.Errorf("collections bucket not found")
+		}
+		if len(bucket.Get([]byte(IndexKey))) == 0 {
+			// No v3 shards were ever written: collections/all already is the
+			// complete legacy payload (or the store is still empty).
+			return nil
+		}
+		index, err := decodeIndex(bucket.Get([]byte(IndexKey)))
+		if err != nil {
+			return err
+		}
 		legacy := legacySnapshot{Version: 2, ActiveWorkspaceID: index.ActiveWorkspaceID}
 		for _, meta := range index.Workspaces {
 			value, err := decodeWorkspace(bucket.Get(workspaceKey(meta.ID)))
@@ -339,7 +502,7 @@ func Save(indexJSON string, workspaceJSON []string) error {
 		return bucket.Put([]byte(LegacyKey), legacyData)
 	})
 	if err != nil {
-		return fmt.Errorf("save collection workspaces: %w", err)
+		return fmt.Errorf("rebuild collections legacy snapshot: %w", err)
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package collectionsstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -27,10 +28,44 @@ func TestWorkspaceNormalizationPreservesRawCollections(t *testing.T) {
 	if string(result.Collections) != raw || result.Name != "renamed \"workspace\"" {
 		t.Fatalf("unexpected normalized workspace: %s", encoded)
 	}
-	for _, invalid := range []string{`{"id":"a","collections":{}}`, `{"id":"a","collections":[invalid]}`} {
+	for _, invalid := range []string{`{"id":"a","collections":{}}`, `{"id":"a","collections":[invalid]}`, `{"id":"a","collections":[],"tree":{}}`, `{"id":"a","collections":[],"tree":"x"}`} {
 		if _, err := decodeWorkspace([]byte(invalid)); err == nil {
 			t.Fatalf("accepted invalid workspace: %s", invalid)
 		}
+	}
+}
+
+func TestWorkspaceTreeProjectionIsSeparateFromRequestContents(t *testing.T) {
+	tree := `[{"id":"col","name":"API","children":[{"id":"req","name":"Get","type":"request","method":"GET","url":"https://example.test"}]}]`
+	collections := `[{"id":"col","name":"API","children":[{"id":"req","name":"Get","type":"request","method":"GET","url":"https://example.test","headers":[],"bodies":[{"raw":"{\"large\":1}"}]}]}]`
+	value, err := decodeWorkspace([]byte(`{"id":"a","tree":` + tree + `,"collections":` + collections + `}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := marshalWorkspace(value, WorkspaceMeta{ID: "a", Name: "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result workspace
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Tree) != tree || string(result.Collections) != collections {
+		t.Fatalf("tree projection and request contents were not preserved: %s", encoded)
+	}
+	payload, err := marshalWorkspacePayload(value, WorkspaceMeta{ID: "a", Name: "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shell map[string]json.RawMessage
+	if err := json.Unmarshal(payload.Workspace, &shell); err != nil {
+		t.Fatal(err)
+	}
+	if _, hasCollections := shell["collections"]; hasCollections {
+		t.Fatalf("structured payload leaked request contents into the tree shell: %s", payload.Workspace)
+	}
+	if string(shell["tree"]) != tree || payload.CollectionsJSON != collections {
+		t.Fatalf("unexpected structured payload: %s / %s", payload.Workspace, payload.CollectionsJSON)
 	}
 }
 
@@ -96,12 +131,17 @@ func TestSaveRebuildsLegacySnapshotAndDeletesStaleShard(t *testing.T) {
 	}
 
 	index := `{"version":3,"activeWorkspaceId":"ws-a","workspaces":[{"id":"ws-a","name":"Renamed A","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-03-01T00:00:00Z"}]}`
-	workspaceA := `{"id":"ws-a","name":"A","collections":[{"id":"new","name":"New API","children":[]}],"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"}`
+	workspaceA := `{"id":"ws-a","name":"A","tree":[{"id":"new","name":"New API","children":[]}],"collections":[{"id":"new","name":"New API","children":[]}],"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"}`
 	if err := Save(index, []string{workspaceA}); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	if stale, _ := storage.Get(Bucket, WorkspacePrefix+"ws-b"); len(stale) != 0 {
 		t.Fatal("deleted workspace shard still exists")
+	}
+	// The snapshot rebuild is deferred: the save path itself never re-encodes
+	// every workspace. The flush is the synchronous escape hatch.
+	if err := FlushLegacySnapshot(); err != nil {
+		t.Fatalf("flush legacy snapshot: %v", err)
 	}
 	legacyData, _ := storage.Get(Bucket, LegacyKey)
 	var legacy legacySnapshot
@@ -113,6 +153,57 @@ func TestSaveRebuildsLegacySnapshotAndDeletesStaleShard(t *testing.T) {
 	}
 	if legacy.Workspaces[0].Name != "Renamed A" || string(legacy.Workspaces[0].Collections) != `[{"id":"new","name":"New API","children":[]}]` {
 		t.Fatalf("legacy workspace not updated: %#v", legacy.Workspaces[0])
+	}
+	if bytes.Contains(legacyData, []byte(`"tree"`)) {
+		t.Fatalf("tree projection leaked into the v2 downgrade snapshot: %s", legacyData)
+	}
+}
+
+func TestDeferredLegacyRebuildStaysCompleteAcrossSaves(t *testing.T) {
+	openTestStore(t)
+	index := `{"version":3,"activeWorkspaceId":"ws-a","workspaces":[{"id":"ws-a","name":"A","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-03-01T00:00:00Z"},{"id":"ws-b","name":"B","createdAt":"2026-02-01T00:00:00Z","updatedAt":"2026-03-01T00:00:00Z"}]}`
+	workspaceA := `{"id":"ws-a","name":"A","tree":[{"id":"a","name":"A API","children":[]}],"collections":[{"id":"a","name":"A API","children":[]}],"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"}`
+	workspaceB := `{"id":"ws-b","name":"B","tree":[{"id":"b","name":"B API","children":[]}],"collections":[{"id":"b","name":"B API","children":[]}],"createdAt":"2026-02-01T00:00:00Z","updatedAt":"2026-02-02T00:00:00Z"}`
+	if err := Save(index, []string{workspaceA, workspaceB}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if err := Save(index, []string{workspaceA}); err != nil {
+		t.Fatalf("second save: %v", err)
+	}
+	if err := FlushLegacySnapshot(); err != nil {
+		t.Fatalf("flush: %v", err)
+	}
+	legacyData, _ := storage.Get(Bucket, LegacyKey)
+	var legacy legacySnapshot
+	if err := json.Unmarshal(legacyData, &legacy); err != nil {
+		t.Fatalf("decode legacy: %v", err)
+	}
+	if len(legacy.Workspaces) != 2 {
+		t.Fatalf("deferred snapshot is not complete: %#v", legacy.Workspaces)
+	}
+}
+
+func TestLoadWorkspacePayloadSplitsTreeFromRequestContents(t *testing.T) {
+	openTestStore(t)
+	index := `{"version":3,"activeWorkspaceId":"ws-a","workspaces":[{"id":"ws-a","name":"A","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-03-01T00:00:00Z"}]}`
+	tree := `[{"id":"req","name":"Get","type":"request","method":"GET","url":"https://example.test"}]`
+	collections := `[{"id":"req","name":"Get","type":"request","method":"GET","url":"https://example.test","bodies":[{"raw":"payload"}]}]`
+	if err := Save(index, []string{`{"id":"ws-a","name":"A","tree":` + tree + `,"collections":` + collections + `,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"}`}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	payload, err := LoadWorkspacePayload("ws-a")
+	if err != nil {
+		t.Fatalf("load payload: %v", err)
+	}
+	if payload.CollectionsJSON != collections {
+		t.Fatalf("request contents = %s", payload.CollectionsJSON)
+	}
+	var shell workspace
+	if err := json.Unmarshal(payload.Workspace, &shell); err != nil {
+		t.Fatal(err)
+	}
+	if string(shell.Tree) != tree || len(shell.Collections) != 0 {
+		t.Fatalf("structured shell = %s", payload.Workspace)
 	}
 }
 
