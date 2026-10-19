@@ -1136,7 +1136,11 @@ func (s *Service) watchSession(session Session) {
 	go func() {
 		started := time.Now()
 		alreadyWatching := s.watcher.Watching(session.ID)
-		if err := s.watcher.Watch(session.ID, session.Project.RealPath); err == nil && !alreadyWatching && s.watcher.Watching(session.ID) {
+		stillOpen := func() bool {
+			_, err := s.workspace.GetSession(session.ID)
+			return err == nil
+		}
+		if err := s.watcher.Watch(session.ID, session.Project.RealPath, stillOpen); err == nil && !alreadyWatching && s.watcher.Watching(session.ID) {
 			s.noteLoad("watcherReady", started)
 		}
 		if _, err := s.workspace.GetSession(session.ID); err != nil {

@@ -58,7 +58,7 @@ func TestWatcherBatchesChangesAndFollowsNewFolders(t *testing.T) {
 	recorder := &batchRecorder{}
 	manager := NewWatchManager(recorder.record)
 	t.Cleanup(manager.Shutdown)
-	if err := manager.Watch("s", root); err != nil {
+	if err := manager.Watch("s", root, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"a.go", "b.go", "c.go"} {
@@ -99,7 +99,7 @@ func TestWatcherReportsOverflowInsteadOfFloodingAndStopsCleanly(t *testing.T) {
 	root := t.TempDir()
 	recorder := &batchRecorder{}
 	manager := NewWatchManager(recorder.record)
-	if err := manager.Watch("s", root); err != nil {
+	if err := manager.Watch("s", root, nil); err != nil {
 		t.Fatal(err)
 	}
 	for index := 0; index < maxBatchPaths+100; index++ {
@@ -202,7 +202,7 @@ func TestWatcherHidesTemporaryFilesOfAtomicSaves(t *testing.T) {
 	recorder := &batchRecorder{}
 	manager := NewWatchManager(recorder.record)
 	t.Cleanup(manager.Shutdown)
-	if err := manager.Watch("s", root); err != nil {
+	if err := manager.Watch("s", root, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := atomicWriteFile(target, []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
@@ -226,10 +226,10 @@ func TestWatcherStatusReportsPartialObservation(t *testing.T) {
 	}
 	manager := NewWatchManager(func(SessionID, FilesChanged) {})
 	t.Cleanup(func() { manager.Stop("small"); manager.Stop("large") })
-	if err := manager.Watch("small", small); err != nil {
+	if err := manager.Watch("small", small, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.Watch("large", large); err != nil {
+	if err := manager.Watch("large", large, nil); err != nil {
 		t.Fatal(err)
 	}
 	if status := manager.Status("small"); !status.Watching || status.Limited || status.Directories < 1 {
@@ -259,7 +259,7 @@ func TestWatcherSkipsGitignoredFoldersAndReportsRenames(t *testing.T) {
 	recorder := &batchRecorder{}
 	manager := NewWatchManager(recorder.record)
 	t.Cleanup(manager.Shutdown)
-	if err := manager.Watch("s", root); err != nil {
+	if err := manager.Watch("s", root, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "generated", "x.go"), []byte("x"), 0o644); err != nil {

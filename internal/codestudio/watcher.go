@@ -77,13 +77,21 @@ func NewWatchManager(sink func(SessionID, FilesChanged)) *WatchManager {
 }
 
 // Watch avvia l'osservazione del progetto se non è già attiva; è idempotente.
-func (m *WatchManager) Watch(sessionID SessionID, root string) error {
+// stillNeeded viene controllato prima di registrare: una sessione chiusa mentre
+// l'avvio era in corso non deve lasciare un watcher attivo, perché la Stop che
+// ha chiuso la sessione non avrebbe più nulla da fermare.
+func (m *WatchManager) Watch(sessionID SessionID, root string, stillNeeded func() bool) error {
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
+		// Shutdown prevents late registrations.
 		return nil
 	}
 	if _, exists := m.sessions[sessionID]; exists {
+		m.mu.Unlock()
+		return nil
+	}
+	if stillNeeded != nil && !stillNeeded() {
 		m.mu.Unlock()
 		return nil
 	}
