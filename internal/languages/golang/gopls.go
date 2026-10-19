@@ -129,6 +129,9 @@ func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSetting
 		WatchesFile:   goplsWatchesFile,
 		// Le variabili che decidono quanto dura il caricamento: moduli da scaricare, workspace, cache.
 		TraceEnvironment: []string{"GOFLAGS", "GOWORK", "GOPROXY", "GOPRIVATE", "GONOSUMDB", "GOTOOLCHAIN", "GOMEMLIMIT", "GOCACHE", "GOMODCACHE"},
+		// Con 12 moduli annidati e una cartella per modulo gopls creava 12 view e le caricava tutte
+		// all'avvio (minuti); dalla radice carica solo i moduli dei file aperti.
+		DiscoversNestedUnits: true,
 	}
 }
 

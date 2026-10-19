@@ -24,6 +24,10 @@ type ServerSpec struct {
 	// TraceEnvironment elenca le variabili d'ambiente che spiegano tempi e comportamento del server
 	// (es. GOFLAGS, GOPROXY): l'host le scrive nel log di avvio, con le credenziali negli URL oscurate.
 	TraceEnvironment []string
+	// DiscoversNestedUnits: il server, ricevuta la sola radice del progetto, trova da sé le unità annidate
+	// dei file aperti (gopls: una view per il modulo di ogni file aperto). L'host gli passa quindi solo la
+	// radice: dargli ogni unità come workspace folder gli farebbe caricare subito tutti i moduli.
+	DiscoversNestedUnits bool
 }
 
 // VirtualDocuments dice come leggere un documento con URI non-file: l'host lo salva in un file di sola

@@ -21,12 +21,14 @@ import (
 )
 
 const (
-	MaxPendingLSPRequests   = 128
-	maxLanguageServerLog    = 500
-	maxCrashRestarts        = 3
-	crashWindow             = 2 * time.Minute
-	initializeTimeout       = 60 * time.Second
-	shutdownTimeout         = 2 * time.Second
+	MaxPendingLSPRequests = 128
+	maxLanguageServerLog  = 500
+	maxCrashRestarts      = 3
+	crashWindow           = 2 * time.Minute
+	initializeTimeout     = 60 * time.Second
+	shutdownTimeout       = 2 * time.Second
+	// exitNoticeDelay: tempo concesso a Wait per registrare un'uscita avvenuta durante la terminazione.
+	exitNoticeDelay         = 250 * time.Millisecond
 	defaultRequestTimeout   = 15 * time.Second
 	maxCodeActionCacheItems = 64
 	// diagnosticsThrottle raggruppa le raffiche di publishDiagnostics di gopls in un solo aggiornamento per file.
@@ -76,9 +78,9 @@ type lspSession struct {
 	name     string
 	// folders are the unit roots given to the server instead of the project root (see workspaceFolderRoots).
 	folders []string
-	options  LanguageServerOptions
-	status   LanguageServerStatus
-	process  *serverProcess
+	options LanguageServerOptions
+	status  LanguageServerStatus
+	process *serverProcess
 	// synced è il processo che ha completato initialize/initialized: solo lui riceve i documenti.
 	// Un didOpen durante l'handshake fa creare a gopls una vista prima dell'avvio
 	// ("addView called before server initialized").
@@ -152,7 +154,7 @@ func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
 	}
 	created := &lspSession{
 		id: session.ID, language: languageID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
-		folders: workspaceFolderRoots(session.Project.RealPath, session.Project.Units, languageID),
+		folders:   workspaceFolderRoots(session.Project.RealPath, session.Project.Units, languageID),
 		status:    LanguageServerStatus{SessionID: session.ID, Language: languageID, State: LanguageServerStopped},
 		documents: make(map[DocumentID]*trackedDocument), byURI: make(map[string]DocumentID),
 		codeActions: make(map[string]lsp.CodeAction), diagnostics: make(map[string][]lsp.Diagnostic),
@@ -262,6 +264,9 @@ func (m *LSPManager) start(session Session, options LanguageServerOptions, reaso
 	state.launching = true
 	state.restartEpoch++
 	state.options = options
+	if options.DiscoversNestedUnits {
+		state.folders = nil
+	}
 	state.stopping = false
 	state.status = LanguageServerStatus{SessionID: session.ID, Language: options.Language, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
 	state.mu.Unlock()
@@ -487,12 +492,21 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 	state.mu.Lock()
 	state.stopping = true
 	state.restartEpoch++
-	process := state.process
+	process, pid := state.process, state.status.PID
 	state.mu.Unlock()
 	if process == nil {
 		m.setState(state, LanguageServerStopped, "")
 		return
 	}
+	stoppingAt := time.Now()
+	m.trace(state, "stopping PID %d", pid)
+	defer func() {
+		select {
+		case <-process.exited:
+			m.trace(state, "stopped in %s", round(time.Since(stoppingAt)))
+		default:
+		}
+	}()
 	// A server that stops reading stdin can block even a notification write.
 	// Closing stdin below releases the protocol writer when the grace period ends.
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -511,7 +525,9 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 	select {
 	case <-process.exited:
 	case <-time.After(shutdownTimeout):
-		if err := terminateProcessTree(process.command); err != nil {
+		m.trace(state, "no exit %s after shutdown (server busy): forcing termination", shutdownTimeout)
+		// Il server può uscire da solo mentre lo si termina: "processo non trovato" non è un errore.
+		if err := terminateProcessTree(process.command); err != nil && !processExited(process) {
 			m.appendLog(state, fmt.Sprintf("process tree termination failed: %v", err))
 			if process.command.Process != nil {
 				if killErr := process.command.Process.Kill(); killErr != nil {
@@ -527,6 +543,16 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 			m.appendLog(state, message)
 			m.setState(state, LanguageServerCrashed, message)
 		}
+	}
+}
+
+// processExited dice se il processo è già uscito, lasciando a Wait un attimo per accorgersene.
+func processExited(process *serverProcess) bool {
+	select {
+	case <-process.exited:
+		return true
+	case <-time.After(exitNoticeDelay):
+		return false
 	}
 }
 

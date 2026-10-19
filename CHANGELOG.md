@@ -49,6 +49,8 @@ Release notes: [docs/releases/v1.0.6.md](docs/releases/v1.0.6.md).
 - **Security Center redesigned** in the quiet dot-matrix style of the rest of the app: hairlines instead of cards, big mono numbers, a dot per severity, switches as a dot and a word. The Strix tab and the project picker follow it.
 - **Built with Go 1.27.2.** `go.mod` now declares `go 1.27.2`; CI, Dockerfiles and build docs follow. Contributors need Go 1.27.2+ (the Go toolchain downloads it automatically) and the `wails3` CLI `v3.0.0-beta.32`.
 - **Dependencies updated.** Wails `v3.0.0-beta.32` with the matching `@wailsio/runtime`, plus the latest compatible Go modules and npm packages. `github.com/digitorus/pdf` stays on `v0.1.2` because newer releases break PDF signing (`pdfsign v0.9.0`).
+- **Language servers stay running when you go idle.** A five-minute idle timer stopped gopls, so every return repeated *Setting up workspace*. Servers now stop only under memory pressure, and the Language Server Log records why each server starts, its environment and how long every loading phase takes.
+- **Faster gopls start in multi-module folders.** Since 1.0.5 gopls received one workspace folder per module and loaded every module at startup (minutes with a dozen modules). It now receives the project root again and loads only the modules of the files you open; Java and TypeScript servers still get one folder per unit.
 - **Code Studio users on Go 1.27:** linters, gopls and Delve installed with an older Go cannot read Go 1.27 packages. Reinstall them (Code Studio installs `@latest`).
 
 ## [1.0.5] — 2026-10-18
