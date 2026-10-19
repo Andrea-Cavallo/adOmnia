@@ -6,6 +6,7 @@ import { caretsFor, restoreCarets } from '@/lib/code-studio/codeStudioCaretMemor
 import { create } from 'zustand'
 import { startSharedEnvironmentSync } from '@/lib/code-studio/sharedEnvironment'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { markStartup } from '@/lib/startupPerformance'
 import { rememberedStudioSession, studioSessionMemoryKey } from '@/lib/code-studio/studioSessionMemory'
 import {
   checkGoIDEDocument,
@@ -480,22 +481,29 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
   },
 
   selectSession: async (activeSessionId) => {
+    markStartup('startup:studio-session-requested')
     set({ activeSessionId, error: null })
     if (!codeStudioWindowContext().pinnedSessionId) {
       const session = get().sessions.find((item) => item.id === activeSessionId)
       if (session) safeSetItem(studioSessionMemoryKey(session.workspaceId || DEFAULT_STUDIO_WORKSPACE_ID), activeSessionId)
     }
     try {
-      const [entries, executions] = await Promise.all([
-        listGoIDEDirectory(activeSessionId), listGoIDERuns(activeSessionId),
+      await Promise.all([
+        listGoIDEDirectory(activeSessionId).then((entries) => {
+          set((state) => ({
+            directoryEntries: { ...state.directoryEntries, [activeSessionId]: { ...(state.directoryEntries[activeSessionId] ?? {}), '': entries } },
+          }))
+          markStartup('startup:studio-first-tree')
+        }),
+        listGoIDERuns(activeSessionId).then((executions) => {
+          const running = executions.find((execution) => execution.status === 'running')?.id ?? null
+          set((state) => ({
+            executions: [...state.executions.filter((execution) => execution.sessionId !== activeSessionId), ...executions],
+            activeRunBySession: { ...state.activeRunBySession, [activeSessionId]: running ?? state.activeRunBySession[activeSessionId] ?? executions[executions.length - 1]?.id ?? null },
+          }))
+        }),
+        get().restoreSessionView(activeSessionId),
       ])
-      const running = executions.find((execution) => execution.status === 'running')?.id ?? null
-      set((state) => ({
-        directoryEntries: { ...state.directoryEntries, [activeSessionId]: { ...(state.directoryEntries[activeSessionId] ?? {}), '': entries } },
-        executions: [...state.executions.filter((execution) => execution.sessionId !== activeSessionId), ...executions],
-        activeRunBySession: { ...state.activeRunBySession, [activeSessionId]: running ?? state.activeRunBySession[activeSessionId] ?? executions[executions.length - 1]?.id ?? null },
-      }))
-      await get().restoreSessionView(activeSessionId)
     } catch (error) {
       set({ error: errorMessage(error) })
     }
@@ -507,17 +515,23 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     try {
       const [view, recovered] = await Promise.all([
         getGoIDESessionView(sessionId), listGoIDERecoveredBuffers(sessionId),
+        get().loadRunConfigurations(sessionId),
       ])
-      await get().loadRunConfigurations(sessionId)
       if (view.activeConfigId) {
         set((state) => ({ activeConfigBySession: { ...state.activeConfigBySession, [sessionId]: view.activeConfigId ?? null } }))
       }
       set((state) => ({ recoveredBySession: { ...state.recoveredBySession, [sessionId]: recovered } }))
       restoreCarets(sessionId, view.cursors)
-      for (const path of view.openPaths ?? []) {
-        // Riaprire un tab legge il file senza eseguire nulla; un file sparito si salta in silenzio.
-        await get().ensureDocumentLoaded(path).catch(() => null)
-      }
+      // Capture the session explicitly: switching workspaces while IPC is pending
+      // must never open the old session's paths in the newly selected project.
+      const restoredDocuments = await Promise.all((view.openPaths ?? []).map(async (path) => {
+        if (findSessionDocument(get().documents, sessionId, path)) return null
+        try { return toEditorDocument(await openGoIDEDocument(sessionId, path)) }
+        catch { return null } // A removed file does not prevent restoring other tabs.
+      }))
+      set((state) => ({ documents: [...state.documents, ...restoredDocuments.filter(
+        (item): item is GoIDEEditorDocument => item !== null && !findSessionDocument(state.documents, sessionId, item.document.relativePath),
+      )] }))
       const split = splitFromView(view.split, get().documents.filter((item) => item.document.sessionId === sessionId))
       if (split) set((state) => ({ splitBySession: { ...state.splitBySession, [sessionId]: split } }))
       if (view.activePath) {
@@ -530,7 +544,9 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
       if (view.showIgnoredEntries) {
         set((state) => ({ showIgnoredBySession: { ...state.showIgnoredBySession, [sessionId]: true } }))
       }
+      markStartup('startup:studio-tabs-restored')
     } catch (error) {
+      set((state) => ({ restoredSessions: { ...state.restoredSessions, [sessionId]: false } }))
       set({ error: errorMessage(error) })
     }
   },

@@ -1,4 +1,7 @@
 export type StartupMarkName =
+  | 'startup:studio-session-requested'
+  | 'startup:studio-first-tree'
+  | 'startup:studio-tabs-restored'
   | 'startup:renderer-entry'
   | 'startup:react-mounted'
   | 'startup:memento-restored'
@@ -24,6 +27,8 @@ export interface StartupMarkEntry {
 }
 
 export interface StartupDurations {
+  studioFirstTreeMs?: number
+  studioTabsRestoredMs?: number
   rendererToReactMounted?: number
   rendererToBackendReady?: number
   rendererToSettingsLoaded?: number
@@ -104,8 +109,15 @@ export function startupDurationsFromMarks(entries: StartupMarkEntry[]): StartupD
   const bootstrapApplied = marks.get('startup:bootstrap-v2-applied')
   const workspaceBundleRequested = marks.get('startup:workspace-bundle-requested')
   const workspaceBundleLoaded = marks.get('startup:workspace-bundle-loaded')
+  const studioRequested = marks.get('startup:studio-session-requested')
+  const studioDuration = (name: StartupMarkName) => {
+    const end = marks.get(name)
+    return studioRequested === undefined || end === undefined ? undefined : roundedDuration(end - studioRequested)
+  }
 
   return {
+    studioFirstTreeMs: studioDuration('startup:studio-first-tree'),
+    studioTabsRestoredMs: studioDuration('startup:studio-tabs-restored'),
     rendererToReactMounted: fromRenderer('startup:react-mounted'),
     rendererToBackendReady: fromRenderer('startup:backend-ready'),
     rendererToSettingsLoaded: fromRenderer('startup:settings-loaded'),

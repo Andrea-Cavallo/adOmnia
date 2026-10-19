@@ -165,6 +165,34 @@ func TestServiceWatchesOpenProjectsAndStopsOnClose(t *testing.T) {
 	}
 }
 
+func TestRestoredProjectsStartWatchingOnlyWhenTheirViewIsRequested(t *testing.T) {
+	store := &memoryStore{}
+	first := NewService(store, nil)
+	session, err := first.OpenProject(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Shutdown()
+	restored := NewService(store, nil)
+	t.Cleanup(restored.Shutdown)
+	if err := restored.restore(); err != nil {
+		t.Fatal(err)
+	}
+	if restored.watcher.Watching(session.ID) {
+		t.Fatal("inactive restored project already watching")
+	}
+	if _, err := restored.GetSessionView(string(session.ID)); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for !restored.watcher.Watching(session.ID) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !restored.watcher.Watching(session.ID) {
+		t.Fatal("selected restored project did not start watching")
+	}
+}
+
 func TestWatcherHidesTemporaryFilesOfAtomicSaves(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "main.go")

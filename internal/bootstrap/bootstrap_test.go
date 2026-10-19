@@ -4,8 +4,38 @@ import (
 	"adomnia/internal/collectionsstore"
 	"adomnia/internal/storage"
 	"encoding/json"
+	bolt "go.etcd.io/bbolt"
 	"testing"
 )
+
+func TestLoadMigratesOnceThenUsesReadOnlyTransactions(t *testing.T) {
+	if err := storage.Open(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(storage.Close)
+	legacy := `{"version":2,"activeWorkspaceId":"a","workspaces":[{"id":"a","name":"A","collections":[]}]}`
+	if err := storage.Put(collectionsstore.Bucket, collectionsstore.LegacyKey, []byte(legacy)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadV2(); err != nil {
+		t.Fatal(err)
+	}
+	var before, after int
+	readID := func(target *int) {
+		t.Helper()
+		if err := storage.DB().View(func(tx *bolt.Tx) error { *target = tx.ID(); return nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	readID(&before)
+	if _, err := LoadV2(); err != nil {
+		t.Fatal(err)
+	}
+	readID(&after)
+	if before != after {
+		t.Fatalf("bootstrap committed a write transaction: %d -> %d", before, after)
+	}
+}
 
 func TestVersionIsPositive(t *testing.T) {
 	if Version < 1 {

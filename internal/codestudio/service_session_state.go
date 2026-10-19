@@ -13,6 +13,7 @@ func (s *Service) GetSessionView(sessionID string) (SessionView, error) {
 	if err != nil {
 		return SessionView{}, err
 	}
+	s.watchSession(session)
 	s.viewMu.RLock()
 	view := s.views[session.ID]
 	s.viewMu.RUnlock()

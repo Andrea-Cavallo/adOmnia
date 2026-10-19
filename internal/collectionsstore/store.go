@@ -5,13 +5,18 @@
 package collectionsstore
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"adomnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
 )
+
+// ErrMigrationRequired asks a read-only caller to retry in a write transaction.
+var ErrMigrationRequired = errors.New("collections migration requires a write transaction")
 
 const (
 	SchemaVersion   = 3
@@ -103,9 +108,10 @@ func decodeWorkspace(data []byte) (workspace, error) {
 	if len(value.Collections) == 0 {
 		value.Collections = json.RawMessage("[]")
 	}
-	var collections []json.RawMessage
-	if err := json.Unmarshal(value.Collections, &collections); err != nil {
-		return workspace{}, fmt.Errorf("workspace %q collections must be an array: %w", value.ID, err)
+	// Unmarshal above already validated the complete JSON, including RawMessage.
+	collections := bytes.TrimSpace(value.Collections)
+	if !bytes.Equal(collections, []byte("null")) && collections[0] != '[' {
+		return workspace{}, fmt.Errorf("workspace %q collections must be an array", value.ID)
 	}
 	return value, nil
 }
@@ -128,7 +134,17 @@ func applyMetadata(value workspace, meta WorkspaceMeta) workspace {
 }
 
 func marshalWorkspace(value workspace, meta WorkspaceMeta) ([]byte, error) {
-	return json.Marshal(applyMetadata(value, meta))
+	// Encode only the small metadata object; preserve the validated collection
+	// bytes without sending every request body through the JSON encoder again.
+	header, err := json.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]byte, 0, len(header)+len(value.Collections)+16)
+	result = append(result, header[:len(header)-1]...)
+	result = append(result, `,"collections":`...)
+	result = append(result, value.Collections...)
+	return append(result, '}'), nil
 }
 
 func criticalFromV3(bucket *bolt.Bucket, indexData []byte) (Critical, error) {
@@ -187,6 +203,9 @@ func migrateLegacy(bucket *bolt.Bucket, legacyData []byte) (Critical, error) {
 	indexData, err := json.Marshal(index)
 	if err != nil {
 		return Critical{}, err
+	}
+	if !bucket.Tx().Writable() {
+		return Critical{}, ErrMigrationRequired
 	}
 	for id, data := range workspaceData {
 		if err := bucket.Put(workspaceKey(id), data); err != nil {

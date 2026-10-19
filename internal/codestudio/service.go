@@ -998,9 +998,6 @@ func (s *Service) restore() error {
 	s.studioWorkspaces.replace(state.Workspaces, state.ActiveWorkspace)
 	sessions := s.studioWorkspaces.assignSessions(state.Sessions)
 	s.workspace.ReplaceSessions(sessions)
-	for _, session := range s.workspace.ListSessions() {
-		s.watchSession(session)
-	}
 	s.recentMu.Lock()
 	s.recent = slices.Clone(state.Recent)
 	s.trusted = slices.Clone(state.TrustedPaths)

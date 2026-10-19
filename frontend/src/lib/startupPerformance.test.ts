@@ -9,6 +9,15 @@ afterEach(() => {
 })
 
 describe('startup performance metrics', () => {
+  it('records Studio tree and tab latency relative to the first session request', () => {
+    expect(startupDurationsFromMarks([
+      { name: 'startup:renderer-entry', startTime: 0 },
+      { name: 'startup:studio-session-requested', startTime: 100 },
+      { name: 'startup:studio-first-tree', startTime: 120 },
+      { name: 'startup:studio-tabs-restored', startTime: 145 },
+    ])).toMatchObject({ studioFirstTreeMs: 20, studioTabsRestoredMs: 45 })
+  })
+
   it('calculates renderer and serial settings-to-tabs durations', () => {
     expect(startupDurationsFromMarks([
       { name: 'startup:renderer-entry', startTime: 10 },

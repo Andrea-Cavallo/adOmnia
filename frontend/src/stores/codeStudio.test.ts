@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   closeDocument: vi.fn(),
   listDirectory: vi.fn(),
   confirm: vi.fn(),
+  getView: vi.fn(),
+  openDocument: vi.fn(),
 }))
 
 vi.mock('@/lib/code-studio-api', () => ({
@@ -19,10 +21,13 @@ vi.mock('@/lib/code-studio-api', () => ({
   getGoIDECapabilities: vi.fn(),
   hasActiveGoIDERuns: vi.fn(),
   listGoIDEDirectory: mocks.listDirectory,
-  listGoIDERuns: vi.fn(),
+  listGoIDERuns: vi.fn(async () => []),
   listGoIDESessions: vi.fn(),
   listRecentGoIDEProjects: vi.fn(),
-  openGoIDEDocument: vi.fn(),
+  openGoIDEDocument: mocks.openDocument,
+  getGoIDESessionView: mocks.getView,
+  listGoIDERecoveredBuffers: vi.fn(async () => []),
+  listGoIDERunConfigurations: vi.fn(async () => []),
   openGoIDEProject: vi.fn(),
   quickOpenGoIDEFiles: vi.fn(),
   removeRecentGoIDEProject: vi.fn(),
@@ -80,6 +85,36 @@ beforeEach(() => {
 })
 
 describe('Code Studio editor state', () => {
+  it('publishes the tree while the session view is still loading', async () => {
+    useCodeStudioStore.setState({ restoredSessions: {}, directoryEntries: {} })
+    let resolveView!: (value: object) => void
+    mocks.getView.mockReturnValue(new Promise((resolve) => { resolveView = resolve }))
+    const selecting = useCodeStudioStore.getState().selectSession('session-one')
+    await vi.waitFor(() => expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']).toEqual([]))
+    resolveView({ openPaths: [], cursors: [] })
+    await selecting
+    expect(useCodeStudioStore.getState().error).toBeNull()
+  })
+
+  it('restores tabs concurrently in saved order and keeps their original session during a switch', async () => {
+    useCodeStudioStore.setState({ documents: [], restoredSessions: {} })
+    mocks.getView.mockResolvedValue({ openPaths: ['one.go', 'two.go'], activePath: 'one.go', cursors: [] })
+    const resolvers: Array<() => void> = []
+    mocks.openDocument.mockImplementation((sessionId: string, path: string) => new Promise((resolve) => {
+      resolvers.push(() => resolve({ ...document, document: { ...document.document, id: path, sessionId, relativePath: path } }))
+    }))
+    const restoring = useCodeStudioStore.getState().restoreSessionView('session-one')
+    await vi.waitFor(() => expect(mocks.openDocument).toHaveBeenCalledTimes(2))
+    useCodeStudioStore.setState({ activeSessionId: 'session-two' })
+    resolvers[1]()
+    resolvers[0]()
+    await restoring
+    expect(mocks.openDocument.mock.calls.map((call) => call[0])).toEqual(['session-one', 'session-one'])
+    expect(useCodeStudioStore.getState().documents.map((item) => item.document.relativePath)).toEqual(['one.go', 'two.go'])
+    expect(useCodeStudioStore.getState().activeSessionId).toBe('session-two')
+    expect(useCodeStudioStore.getState().error).toBeNull()
+  })
+
   it('keeps the dirty buffer when an atomic save fails', async () => {
     mocks.saveDocument.mockRejectedValue(new Error('disk full'))
     useCodeStudioStore.getState().updateDocument('document-one', 'package main\n\nfunc main() {}\n')

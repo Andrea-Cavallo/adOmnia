@@ -4,6 +4,7 @@ package bootstrap
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"adomnia/internal/collectionsstore"
@@ -66,7 +67,7 @@ func Load() (State, error) {
 	}
 
 	var state State
-	err := storage.DB().Update(func(tx *bolt.Tx) error {
+	load := func(tx *bolt.Tx) error {
 		read := func(key storage.Key) (string, error) {
 			bucket := tx.Bucket([]byte(key.Bucket))
 			if bucket == nil {
@@ -117,7 +118,13 @@ func Load() (State, error) {
 			Tabs:                      tabs,
 		}
 		return nil
-	})
+	}
+	err := storage.DB().View(load)
+	if errors.Is(err, collectionsstore.ErrMigrationRequired) {
+		// Re-read everything in the write transaction: another caller may have
+		// migrated or saved collections since the read transaction completed.
+		err = storage.DB().Update(load)
+	}
 	if err != nil {
 		return State{}, fmt.Errorf("load bootstrap state: %w", err)
 	}
@@ -149,9 +156,10 @@ func LoadV2() (StateV2, error) {
 	if err != nil {
 		return StateV2{}, err
 	}
-	active, err := rawJSON(legacy.ActiveCollectionWorkspace, "null")
-	if err != nil {
-		return StateV2{}, err
+	// LoadCriticalTx already validated and normalized the active workspace.
+	active := json.RawMessage(legacy.ActiveCollectionWorkspace)
+	if len(active) == 0 {
+		active = json.RawMessage("null")
 	}
 	environments, err := rawJSON(legacy.Environments, "null")
 	if err != nil {

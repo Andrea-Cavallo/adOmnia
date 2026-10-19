@@ -10,6 +10,30 @@ import (
 
 const legacyFixture = `{"version":2,"activeWorkspaceId":"ws-b","workspaces":[{"id":"ws-a","name":"A","collections":[{"id":"a","name":"A API","children":[]}],"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"},{"id":"ws-b","name":"B","collections":[{"id":"b","name":"B API","children":[]}],"createdAt":"2026-02-01T00:00:00Z","updatedAt":"2026-02-02T00:00:00Z"}]}`
 
+func TestWorkspaceNormalizationPreservesRawCollections(t *testing.T) {
+	raw := `[{ "body": "<script> & ", "number": 12345678901234567890 }]`
+	value, err := decodeWorkspace([]byte(`{"id":"a","collections":` + raw + `}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := marshalWorkspace(value, WorkspaceMeta{ID: "a", Name: "renamed \"workspace\""})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result workspace
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Collections) != raw || result.Name != "renamed \"workspace\"" {
+		t.Fatalf("unexpected normalized workspace: %s", encoded)
+	}
+	for _, invalid := range []string{`{"id":"a","collections":{}}`, `{"id":"a","collections":[invalid]}`} {
+		if _, err := decodeWorkspace([]byte(invalid)); err == nil {
+			t.Fatalf("accepted invalid workspace: %s", invalid)
+		}
+	}
+}
+
 func openTestStore(t *testing.T) {
 	t.Helper()
 	if err := storage.Open(t.TempDir()); err != nil {

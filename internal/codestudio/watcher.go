@@ -56,6 +56,7 @@ type WatchManager struct {
 	mu       sync.Mutex
 	sessions map[SessionID]*sessionWatch
 	sink     func(SessionID, FilesChanged)
+	closed   bool
 }
 
 type sessionWatch struct {
@@ -66,6 +67,7 @@ type sessionWatch struct {
 	stopped  chan struct{}
 	watched  atomic.Int64
 	limited  atomic.Bool
+	ready    atomic.Bool
 	pending  map[string]DiskChangeKind
 	overflow bool
 }
@@ -77,17 +79,25 @@ func NewWatchManager(sink func(SessionID, FilesChanged)) *WatchManager {
 // Watch avvia l'osservazione del progetto se non è già attiva; è idempotente.
 func (m *WatchManager) Watch(sessionID SessionID, root string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	if m.closed {
+		m.mu.Unlock()
+		return nil
+	}
 	if _, exists := m.sessions[sessionID]; exists {
+		m.mu.Unlock()
 		return nil
 	}
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
+		m.mu.Unlock()
 		return err
 	}
-	state := &sessionWatch{root: root, ignore: project.LoadGitIgnore(root), watcher: watcher, done: make(chan struct{}), stopped: make(chan struct{}), pending: map[string]DiskChangeKind{}}
-	state.addTree(root)
+	state := &sessionWatch{root: root, watcher: watcher, done: make(chan struct{}), stopped: make(chan struct{}), pending: map[string]DiskChangeKind{}}
 	m.sessions[sessionID] = state
+	m.mu.Unlock()
+	state.ignore = project.LoadGitIgnore(root)
+	state.addTree(root)
+	state.ready.Store(true)
 	go m.run(sessionID, state)
 	return nil
 }
@@ -108,6 +118,7 @@ func (m *WatchManager) Stop(sessionID SessionID) {
 // Shutdown ferma tutti i watcher.
 func (m *WatchManager) Shutdown() {
 	m.mu.Lock()
+	m.closed = true
 	ids := make([]SessionID, 0, len(m.sessions))
 	for id := range m.sessions {
 		ids = append(ids, id)
@@ -122,8 +133,8 @@ func (m *WatchManager) Shutdown() {
 func (m *WatchManager) Watching(sessionID SessionID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	_, ok := m.sessions[sessionID]
-	return ok
+	state, ok := m.sessions[sessionID]
+	return ok && state.ready.Load()
 }
 
 // gitIgnored applica il .gitignore della radice a un percorso assoluto sotto di essa.
@@ -138,6 +149,11 @@ func gitIgnored(ignore *project.GitIgnore, root, path string, isDir bool) bool {
 // addTree aggiunge la cartella e le sottocartelle non ignorate, fino al limite.
 func (w *sessionWatch) addTree(root string) {
 	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		select {
+		case <-w.done:
+			return filepath.SkipAll
+		default:
+		}
 		if err != nil || !entry.IsDir() {
 			return nil
 		}
