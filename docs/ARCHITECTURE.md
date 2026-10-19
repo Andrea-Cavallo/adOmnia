@@ -66,8 +66,8 @@ Storage changes should preserve backward compatibility.
 Collection workspaces use an additive bbolt schema:
 
 - `collections/index-v3` stores the active workspace id and lightweight workspace metadata.
-- `collections/workspace:<id>` stores one collection tree per workspace; only the active shard is read during bootstrap and other shards load on first access.
-- `collections/all` remains a complete version-2 snapshot. Migration to v3 never removes it, and every v3 write rebuilds it atomically for downgrade, snapshot, and storage-inspector compatibility.
+- `collections/workspace:<id>` stores one collection tree per workspace; only the active shard is read during bootstrap and other shards load on first access. Each shard carries a `tree` projection (ids, names, methods, urls) next to the complete `collections` payload: the renderer shows the tree before hydrating request contents, shards written before the projection keep loading and receive one on their next save, and the complete payload keeps every request body readable by older builds.
+- `collections/all` remains a complete version-2 snapshot. Migration to v3 never removes it, and a deferred coalesced rebuild (flushed at shutdown) keeps it complete for downgrade, snapshot, and storage-inspector compatibility. The rebuild runs outside the save transaction and never contains the tree projection.
 
 If the v3 index or active shard is invalid, startup falls back to `collections/all`. Migration and writes are local, idempotent, and do not change the portable `.adomnia` format.
 

@@ -452,7 +452,8 @@ Code Studio stores metadata only. Source files stay where they are, and file con
 
 | Key | Contents | Schema |
 | --- | --- | --- |
-| `state` | Open sessions (project path, authorization, Code Studio workspace), recent projects, run configurations (Go, Make and Docker) without secret values, per-session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints), Code Studio workspaces, per-project and global toolchain settings (Go binary and variables; values with credentials in URLs are never written) | `version` 4 |
+| `state` | Open sessions (project path, authorization, Code Studio workspace), recent projects, run configurations (Go, Make and Docker) without secret values, mirrored per-session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints), Code Studio workspaces, per-project and global toolchain settings (Go binary and variables; values with credentials in URLs are never written) | `version` 4 |
+| `session-view:<id>` | One session layout (open tabs, active file, panes, navigation history, bookmarks, breakpoints) per session, written on every layout change: saving tabs or breakpoints never rewrites the other sessions. The `state` snapshot keeps mirroring the same layouts for stores without per-session keys and for downgrade. | — |
 | `recovery` | Unsaved buffers, kept so that a crash or restart does not lose them. Up to 200 buffers of 4 MB each. | `version` 1 |
 | `localHistory` | Previous versions of saved files: at most 20 per file, 2 MB per version, 32 MB in total, kept 14 days. `.env`, keys and certificates are never recorded. | `version` 1 |
 
