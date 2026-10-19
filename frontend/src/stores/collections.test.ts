@@ -4,6 +4,7 @@ const storage = vi.hoisted(() => ({
   get: vi.fn<(bucket: string, key: string) => Promise<string>>(),
   put: vi.fn<(bucket: string, key: string, value: string) => Promise<void>>(),
   loadWorkspace: vi.fn<(id: string) => Promise<string>>(),
+  loadWorkspaceV2: vi.fn<(id: string) => Promise<unknown>>(),
   saveWorkspaces: vi.fn<(index: string, workspaces: string[]) => Promise<void>>(),
 }))
 
@@ -11,6 +12,7 @@ vi.mock('@/wailsjs/go/main/App', () => ({
   StorageGet: storage.get,
   StoragePut: storage.put,
   LoadCollectionWorkspace: storage.loadWorkspace,
+  LoadCollectionWorkspaceV2: storage.loadWorkspaceV2,
   SaveCollectionWorkspaces: storage.saveWorkspaces,
 }))
 
@@ -44,14 +46,41 @@ const workspaceB = JSON.stringify({
   createdAt: '2026-02-01T00:00:00.000Z', updatedAt: '2026-02-02T00:00:00.000Z',
 })
 
+// Structured workspace payload: the tree projection renders first, request
+// contents stay JSON text until the renderer hydrates them.
+const workspaceBContents = [{
+  id: 'col-b', name: 'B API', children: [{
+    id: 'req-b', name: 'Get B', type: 'request', method: 'GET', url: 'https://b.test',
+    headers: [{ id: 'h1', key: 'X-Test', value: '1', enabled: true }],
+    bodies: [{ id: 'body1', name: 'Body 1', type: 'raw', raw: '{"big":true}', lang: 'json', form: [] }],
+  }],
+}]
+const workspaceBPayload = {
+  workspace: {
+    id: 'ws-b', name: 'B',
+    createdAt: '2026-02-01T00:00:00.000Z', updatedAt: '2026-02-02T00:00:00.000Z',
+    tree: [{ id: 'col-b', name: 'B API', children: [{ id: 'req-b', name: 'Get B', type: 'request', method: 'GET', url: 'https://b.test' }] }],
+  },
+  collectionsJson: JSON.stringify(workspaceBContents),
+}
+// Shards written before the tree split carry no projection: they hydrate in one
+// step and receive the projection on their next save.
+const workspaceBLegacyPayload = {
+  workspace: { id: 'ws-b', name: 'B', createdAt: '2026-02-01T00:00:00.000Z', updatedAt: '2026-02-02T00:00:00.000Z' },
+  collectionsJson: JSON.stringify(workspaceBContents),
+}
+
 describe('collections workspaces', () => {
   beforeEach(() => {
     storage.get.mockReset()
     storage.put.mockReset()
     storage.put.mockResolvedValue()
     storage.loadWorkspace.mockReset()
+    storage.loadWorkspaceV2.mockReset()
     storage.saveWorkspaces.mockReset()
     storage.saveWorkspaces.mockResolvedValue()
+    // Close any pending hydration left by the previous test before resetting.
+    useCollectionsStore.getState().hydrateNow()
     useCollectionsStore.setState({
       collections: [],
       workspaces: [],
@@ -60,6 +89,7 @@ describe('collections workspaces', () => {
       shardsInitialized: false,
       loaded: false,
       loadError: false,
+      treePreview: null,
     })
   })
 
@@ -123,20 +153,70 @@ describe('collections workspaces', () => {
   })
 
   it('loads a non-active workspace on first switch and reuses it afterwards', async () => {
-    storage.loadWorkspace.mockResolvedValue(workspaceB)
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBPayload)
     await useCollectionsStore.getState().load('', indexV3, workspaceA)
 
     expect(await useCollectionsStore.getState().setActiveWorkspace('ws-b')).toBe(true)
+    // Tree metadata renders first; request contents hydrate right after.
+    expect(useCollectionsStore.getState().treePreview?.[0]?.id).toBe('col-b')
+    expect(useCollectionsStore.getState().collections).toEqual([])
+    useCollectionsStore.getState().hydrateNow()
+    expect(useCollectionsStore.getState().treePreview).toBeNull()
     expect(useCollectionsStore.getState().collections[0].id).toBe('col-b')
-    expect(storage.loadWorkspace).toHaveBeenCalledOnce()
+    expect(storage.loadWorkspaceV2).toHaveBeenCalledOnce()
 
     expect(await useCollectionsStore.getState().setActiveWorkspace('ws-a')).toBe(true)
     expect(await useCollectionsStore.getState().setActiveWorkspace('ws-b')).toBe(true)
-    expect(storage.loadWorkspace).toHaveBeenCalledOnce()
+    expect(storage.loadWorkspaceV2).toHaveBeenCalledOnce()
+    expect(useCollectionsStore.getState().collections[0].id).toBe('col-b')
+  })
+
+  it('hydrates a shard without a tree projection in one step', async () => {
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBLegacyPayload)
+    await useCollectionsStore.getState().load('', indexV3, workspaceA)
+
+    expect(await useCollectionsStore.getState().setActiveWorkspace('ws-b')).toBe(true)
+    expect(useCollectionsStore.getState().treePreview).toBeNull()
+    expect(useCollectionsStore.getState().collections[0].id).toBe('col-b')
+  })
+
+  it('hydrates request contents before mutating or saving', async () => {
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBPayload)
+    await useCollectionsStore.getState().load('', indexV3, workspaceA)
+    await useCollectionsStore.getState().setActiveWorkspace('ws-b')
+
+    // A mutation during the pending window hydrates first, so nothing is lost.
+    useCollectionsStore.getState().addCollection('Payments')
+
+    const state = useCollectionsStore.getState()
+    expect(state.collections.map((collection) => collection.name)).toEqual(['B API', 'Payments'])
+    expect(state.treePreview).toBeNull()
+    await vi.waitFor(() => expect(storage.saveWorkspaces).toHaveBeenCalled())
+    const saved = storage.saveWorkspaces.mock.calls[storage.saveWorkspaces.mock.calls.length - 1]?.[1] ?? []
+    const payload = JSON.parse(saved[0] ?? '{}')
+    expect(payload.tree.map((collection: { name: string }) => collection.name)).toEqual(['B API', 'Payments'])
+    expect(payload.collections[0].children[0].bodies[0].raw).toBe('{"big":true}')
+  })
+
+  it('never serializes a workspace whose request contents are still pending', async () => {
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBPayload)
+    await useCollectionsStore.getState().load('', indexV3, workspaceA)
+    await useCollectionsStore.getState().setActiveWorkspace('ws-b')
+
+    // A rename touches only workspace metadata and saves the pending workspace.
+    useCollectionsStore.getState().renameWorkspace('ws-b', 'Renamed B')
+    // The stored contents are untouched until hydration completes.
+    expect(useCollectionsStore.getState().collections).toEqual([])
+
+    await vi.waitFor(() => expect(storage.saveWorkspaces).toHaveBeenCalled())
+    const saved = storage.saveWorkspaces.mock.calls[storage.saveWorkspaces.mock.calls.length - 1]?.[1] ?? []
+    expect(saved).toEqual([])
+    useCollectionsStore.getState().hydrateNow()
+    expect(useCollectionsStore.getState().collections[0].children).toHaveLength(1)
   })
 
   it('does not delete the active workspace if its lazy successor cannot load', async () => {
-    storage.loadWorkspace.mockRejectedValue(new Error('unavailable'))
+    storage.loadWorkspaceV2.mockRejectedValue(new Error('unavailable'))
     await useCollectionsStore.getState().load('', indexV3, workspaceA)
 
     expect(await useCollectionsStore.getState().deleteWorkspace('ws-a')).toBeNull()
@@ -145,7 +225,7 @@ describe('collections workspaces', () => {
   })
 
   it('loads a lazy target before moving a collection across workspaces', async () => {
-    storage.loadWorkspace.mockResolvedValue(workspaceB)
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBPayload)
     await useCollectionsStore.getState().load('', indexV3, workspaceA)
 
     expect(await useCollectionsStore.getState().moveCollectionToWorkspace('col-a', 'ws-b')).toBe(true)
@@ -159,7 +239,7 @@ describe('collections workspaces', () => {
   })
 
   it('loads the successor before deleting the active workspace', async () => {
-    storage.loadWorkspace.mockResolvedValue(workspaceB)
+    storage.loadWorkspaceV2.mockResolvedValue(workspaceBPayload)
     await useCollectionsStore.getState().load('', indexV3, workspaceA)
 
     expect(await useCollectionsStore.getState().deleteWorkspace('ws-a')).toBe('ws-b')

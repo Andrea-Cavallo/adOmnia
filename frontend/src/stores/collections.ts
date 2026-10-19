@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import type { Collection, CollectionWorkspace, TreeNode, RequestItem, FolderItem, RequestBody } from '@/lib/types'
 import { uid, blankBody, blankKVRow, blankAuth } from '@/lib/types'
 import {
-  LoadCollectionWorkspace,
   SaveCollectionWorkspaces,
   StorageGet,
   StoragePut,
@@ -10,6 +9,17 @@ import {
 import { debouncedSave } from '@/lib/storeSave'
 import { storageSchema } from '@/lib/storageSchemas'
 import { decodePersistedJSON } from '@/lib/persistedJson'
+import {
+  findRequestNode,
+  parseWorkspaceContents,
+  scheduleWorkspaceIdle,
+  splitWorkspace,
+} from '@/lib/workspaceSplit'
+import {
+  invalidatePrefetchedWorkspaces,
+  loadWorkspacePayload,
+  scheduleIdleWorkspacePrefetch,
+} from '@/lib/workspacePrefetch'
 
 const COLLECTIONS_SCHEMA = storageSchema('collections')
 const BUCKET = COLLECTIONS_SCHEMA.bucket
@@ -42,8 +52,22 @@ interface CollectionsState {
   shardsInitialized: boolean
   loaded: boolean
   loadError: boolean
+  /**
+   * Tree metadata projection of a workspace whose request contents are still
+   * being parsed. The sidebar renders it immediately; every consumer that needs
+   * request data calls `hydrateNow()` first and reads the hydrated model.
+   */
+  treePreview: Collection[] | null
   load: (rawOverride?: unknown, indexOverride?: unknown, activeWorkspaceOverride?: unknown) => Promise<void>
   save: (workspaceIds?: string[]) => void
+  /** Parses pending request contents right now instead of waiting for idle. */
+  hydrateNow: () => void
+  /**
+   * Hydrates pending request contents and returns the full request node. The
+   * tree may render preview stubs; anything opening, duplicating or exporting a
+   * request goes through here so a stub is never copied into a tab or a file.
+   */
+  hydratedRequest: (requestId: string) => RequestItem | null
   ensureWorkspaceLoaded: (id: string) => Promise<CollectionWorkspace | null>
   replaceCollections: (collections: Collection[]) => void
   addWorkspace: (name: string) => CollectionWorkspace
@@ -76,6 +100,57 @@ const QUICK_REQUESTS_COLLECTION_NAME = 'Quick Requests'
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
 const COLLECTIONS_INDEX_VERSION = 3
 const pendingWorkspaceSaves = new Set<string>()
+
+/**
+ * Request contents still waiting to be parsed, keyed by workspace id. The tree
+ * projection renders first; hydration merges the contents into the model. A
+ * workspace with pending contents is never serialized: persisting it would
+ * write less than its shard already holds.
+ */
+interface PendingContents {
+  tree: Collection[]
+  collectionsJSON: string
+}
+const pendingContents = new Map<string, PendingContents>()
+
+type CollectionsWrite = (
+  partial: Partial<CollectionsState> | ((state: CollectionsState) => Partial<CollectionsState>),
+  replace?: false,
+) => void
+
+/**
+ * Parses pending request contents and merges them into the model. A payload
+ * that cannot be parsed keeps its pending entry: the workspace stays excluded
+ * from saves so the complete stored shard is never overwritten with less.
+ */
+function hydratePendingInto(write: CollectionsWrite, ids?: string[]): void {
+  const targets = ids ? ids.filter((id) => pendingContents.has(id)) : [...pendingContents.keys()]
+  for (const id of targets) {
+    const pending = pendingContents.get(id)
+    if (!pending) continue
+    let collections: Collection[]
+    try {
+      collections = migrateCollections(parseWorkspaceContents(pending.collectionsJSON))
+    } catch {
+      continue
+    }
+    pendingContents.delete(id)
+    write((state) => ({
+      workspaces: state.workspaces.map((workspace) => (
+        workspace.id === id ? { ...workspace, collections } : workspace
+      )),
+      collections: state.activeWorkspaceId === id ? collections : state.collections,
+      treePreview: state.activeWorkspaceId === id ? null : state.treePreview,
+    }))
+  }
+}
+
+/** Runs deferred request-content hydration after the tree has rendered. */
+function scheduleContentsHydration(): void {
+  scheduleWorkspaceIdle(() => {
+    useCollectionsStore.getState().hydrateNow()
+  })
+}
 
 function makeWorkspace(name: string, collections: Collection[] = [], id = uid()): CollectionWorkspace {
   const now = new Date().toISOString()
@@ -282,17 +357,26 @@ function insertIntoTree(nodes: TreeNode[], parentId: string | null, item: TreeNo
   })
 }
 
-export const useCollectionsStore = create<CollectionsState>((set, get) => ({
-  collections: [],
-  workspaces: [],
-  activeWorkspaceId: DEFAULT_WORKSPACE_ID,
-  loadedWorkspaceIds: [],
-  shardsInitialized: false,
-  loaded: false,
-  loadError: false,
+export const useCollectionsStore = create<CollectionsState>((set, get) => {
+  const hydratePending = (ids?: string[]) => hydratePendingInto(set, ids)
+  return {
+    collections: [],
+    workspaces: [],
+    activeWorkspaceId: DEFAULT_WORKSPACE_ID,
+    loadedWorkspaceIds: [],
+    shardsInitialized: false,
+    loaded: false,
+    loadError: false,
+    treePreview: null,
+    hydrateNow: () => hydratePending(),
+    hydratedRequest: (requestId) => {
+      hydratePending()
+      return findRequestNode(get().collections, requestId)
+    },
 
   load: async (rawOverride, indexOverride, activeWorkspaceOverride) => {
     try {
+      pendingContents.clear()
       if (indexOverride && activeWorkspaceOverride) {
         try {
           const v3 = parseCollectionsV3(indexOverride, activeWorkspaceOverride)
@@ -302,7 +386,11 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
             shardsInitialized: true,
             loaded: true,
             loadError: false,
+            treePreview: null,
           })
+          scheduleIdleWorkspacePrefetch(
+            v3.workspaces.filter((workspace) => workspace.id !== v3.activeWorkspaceId).map((workspace) => workspace.id),
+          )
           return
         } catch {
           // A corrupt/incomplete v3 payload falls back to the complete v2
@@ -369,6 +457,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
           shardsInitialized: false,
           loaded: true,
           loadError: false,
+          treePreview: null,
         })
       } else {
         const workspace = makeWorkspace(DEFAULT_WORKSPACE_NAME, [], DEFAULT_WORKSPACE_ID)
@@ -380,6 +469,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
           shardsInitialized: false,
           loaded: true,
           loadError: false,
+          treePreview: null,
         })
       }
     } catch {
@@ -392,6 +482,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
         shardsInitialized: false,
         loaded: true,
         loadError: true,
+        treePreview: null,
       })
     }
   },
@@ -410,23 +501,26 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     debouncedSave('collections', async () => {
       const latest = get()
       if (!latest.loaded || latest.loadError) return
+      // A workspace whose request contents are still pending is never
+      // serialized: its shard already holds complete contents.
+      const savingIds = [...pendingWorkspaceSaves].filter((id) => !pendingContents.has(id))
+      savingIds.forEach((id) => pendingWorkspaceSaves.delete(id))
       const latestWorkspaces = syncActiveWorkspace(
         latest.workspaces,
         latest.activeWorkspaceId,
         latest.collections,
       )
       set({ workspaces: latestWorkspaces })
-      const savingIds = [...pendingWorkspaceSaves]
-      savingIds.forEach((id) => pendingWorkspaceSaves.delete(id))
       const payloads = savingIds.flatMap((id) => {
         const workspace = latestWorkspaces.find((item) => item.id === id)
-        return workspace ? [JSON.stringify(workspace)] : []
+        return workspace ? [JSON.stringify(splitWorkspace(workspace))] : []
       })
       try {
         await SaveCollectionWorkspaces(
           JSON.stringify(collectionsIndex(latestWorkspaces, latest.activeWorkspaceId)),
           payloads,
         )
+        invalidatePrefetchedWorkspaces()
         set({ shardsInitialized: true })
       } catch (error) {
         savingIds.forEach((id) => pendingWorkspaceSaves.add(id))
@@ -441,22 +535,40 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (!existing) return null
     if (current.loadedWorkspaceIds.includes(id)) return existing
     try {
-      const raw = await LoadCollectionWorkspace(id)
-      const loaded = migrateWorkspaces([JSON.parse(raw) as CollectionWorkspace])[0]
-      if (!loaded || loaded.id !== id) return null
+      const payload = await loadWorkspacePayload(id)
+      if (payload.workspace.id !== id) return null
       const latest = get()
       const meta = latest.workspaces.find((workspace) => workspace.id === id)
       if (!meta) return null
+      // Old shards carry no tree projection: their contents are the only
+      // source, so they are parsed now instead of at idle.
+      const projected = Array.isArray(payload.workspace.tree)
+      let collections: Collection[]
+      if (projected) {
+        collections = []
+        pendingContents.set(id, {
+          tree: payload.workspace.tree as Collection[],
+          collectionsJSON: payload.collectionsJson,
+        })
+      } else {
+        collections = migrateCollections(parseWorkspaceContents(payload.collectionsJson))
+        pendingContents.delete(id)
+      }
       const workspace = {
-        ...loaded,
+        id,
         name: meta.name,
+        collections,
         createdAt: meta.createdAt,
         updatedAt: meta.updatedAt,
       }
       set({
         workspaces: latest.workspaces.map((item) => item.id === id ? workspace : item),
         loadedWorkspaceIds: [...new Set([...latest.loadedWorkspaceIds, id])],
+        treePreview: latest.activeWorkspaceId === id
+          ? (projected ? (payload.workspace.tree as Collection[]) : null)
+          : latest.treePreview,
       })
+      if (projected) scheduleContentsHydration()
       return workspace
     } catch {
       return null
@@ -464,6 +576,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   replaceCollections: (collections) => {
+    get().hydrateNow()
     const migrated = migrateCollections(collections)
     set((s) => ({
       collections: migrated,
@@ -500,15 +613,19 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (initial.activeWorkspaceId === id && candidate && !initial.loadedWorkspaceIds.includes(candidate.id)) {
       if (!await get().ensureWorkspaceLoaded(candidate.id)) return null
     }
+    // The successor's collections become the model: hydrate them first.
+    get().hydrateNow()
     const state = get()
     const remaining = state.workspaces.filter((workspace) => workspace.id !== id)
     const nextActiveId = state.activeWorkspaceId === id ? remaining[0].id : state.activeWorkspaceId
     const nextCollections = remaining.find((workspace) => workspace.id === nextActiveId)?.collections ?? []
+    pendingContents.delete(id)
     set({
       workspaces: remaining,
       activeWorkspaceId: nextActiveId,
       collections: nextCollections,
       loadedWorkspaceIds: state.loadedWorkspaceIds.filter((workspaceId) => workspaceId !== id),
+      treePreview: null,
     })
     get().save([])
     return nextActiveId
@@ -524,7 +641,14 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (!target) return false
     const previousID = state.activeWorkspaceId
     const synced = syncActiveWorkspace(state.workspaces, previousID, state.collections)
-    set({ workspaces: synced, activeWorkspaceId: id, collections: target.collections })
+    // Tree metadata renders immediately; request contents hydrate on idle or on
+    // the first interaction that needs them.
+    set({
+      workspaces: synced,
+      activeWorkspaceId: id,
+      collections: target.collections,
+      treePreview: pendingContents.get(id)?.tree ?? null,
+    })
     get().save([previousID])
     return true
   },
@@ -536,6 +660,8 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     if (!initial.loadedWorkspaceIds.includes(targetWorkspaceId) && !await get().ensureWorkspaceLoaded(targetWorkspaceId)) {
       return false
     }
+    // Both sides of the move need complete collections: hydrate before moving.
+    get().hydrateNow()
     const state = get()
     const collection = state.collections.find((item) => item.id === collectionId)
     if (!collection) return false
@@ -558,6 +684,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   addCollection: (name) => {
+    get().hydrateNow()
     const col: Collection = { id: uid(), name, children: [] }
     set((s) => ({ collections: [...s.collections, col] }))
     get().save()
@@ -565,11 +692,13 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   deleteCollection: (id) => {
+    get().hydrateNow()
     set((s) => ({ collections: s.collections.filter((c) => c.id !== id) }))
     get().save()
   },
 
   renameCollection: (id, name) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) => (c.id === id ? { ...c, name } : c)),
     }))
@@ -577,6 +706,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   updateCollection: (id, patch) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) => (c.id === id ? { ...c, ...patch, id: c.id } : c)),
     }))
@@ -584,6 +714,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   addFolder: (collectionId, parentId, name) => {
+    get().hydrateNow()
     const folder: FolderItem = { id: uid(), name, type: 'folder', children: [] }
     set((s) => ({
       collections: s.collections.map((c) =>
@@ -594,6 +725,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   addRequest: (collectionId, parentId, request) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) =>
         c.id === collectionId ? { ...c, children: insertIntoTree(c.children, parentId, request) } : c
@@ -603,6 +735,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   addQuickRequest: (request) => {
+    get().hydrateNow()
     set((s) => {
       const quickCollection = s.collections.find((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID)
       if (quickCollection) {
@@ -624,6 +757,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   deleteNode: (collectionId, nodeId) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) =>
         c.id === collectionId ? { ...c, children: removeFromTree(c.children, nodeId) } : c
@@ -633,6 +767,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   renameNode: (collectionId, nodeId, name) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) =>
         c.id === collectionId ? { ...c, children: updateInTree(c.children, nodeId, (n) => ({ ...n, name })) } : c
@@ -642,6 +777,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   updateRequest: (collectionId, request) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) =>
         c.id === collectionId ? { ...c, children: updateInTree(c.children, request.id, () => request) } : c
@@ -651,12 +787,14 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   importCollection: (collection) => {
+    get().hydrateNow()
     const migrated = migrateCollections([collection])[0]
     set((s) => ({ collections: [...s.collections, migrated] }))
     get().save()
   },
 
   moveNode: (collectionId, nodeId, targetCollectionId, targetParentId, targetIndex) => {
+    get().hydrateNow()
     const state = get()
     let node: TreeNode | null = null
     let sourceParentInfo: { parentId: string | null; index: number } | null = null
@@ -691,6 +829,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   deleteNodes: (collectionId, nodeIds) => {
+    get().hydrateNow()
     set((s) => ({
       collections: s.collections.map((c) =>
         c.id === collectionId
@@ -702,6 +841,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   reorderCollections: (fromId, toId) => {
+    get().hydrateNow()
     set((s) => {
       const from = s.collections.findIndex((c) => c.id === fromId)
       const to = s.collections.findIndex((c) => c.id === toId)
@@ -715,6 +855,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   },
 
   duplicateNode: (collectionId, nodeId) => {
+    get().hydrateNow()
     const state = get()
     const col = state.collections.find((c) => c.id === collectionId)
     if (!col) return null
@@ -741,4 +882,5 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     get().save()
     return clone
   },
-}))
+  }
+})

@@ -11,6 +11,7 @@ import { Prompt } from '@/components/ui/prompt'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { prefetchWorkspace } from '@/lib/workspacePrefetch'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 
@@ -21,6 +22,7 @@ export function Sidebar() {
   const activeRail = useAppStore((s) => s.activeRail)
   const collapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   const collections = useCollectionsStore((s) => s.collections)
+  const treePreview = useCollectionsStore((s) => s.treePreview)
   const workspaces = useCollectionsStore((s) => s.workspaces)
   const activeWorkspaceId = useCollectionsStore((s) => s.activeWorkspaceId)
   const addWorkspace = useCollectionsStore((s) => s.addWorkspace)
@@ -72,10 +74,13 @@ export function Sidebar() {
   const activeRequestId = tabs.find((t) => t.id === activeTabId && (t.workspaceId ?? activeWorkspaceId) === activeWorkspaceId)?.request.id ?? null
 
   const handleDuplicateRequest = (collectionId: string, request: RequestItem) => {
-    const col = collections.find((c) => c.id === collectionId)
-    const parentInfo = col ? findParentInfo(col.children, request.id) : null
+    // Preview tree stubs carry no request contents: duplicate the hydrated node.
+    const state = useCollectionsStore.getState()
+    const source = state.hydratedRequest(request.id) ?? request
+    const col = state.collections.find((c) => c.id === collectionId)
+    const parentInfo = col ? findParentInfo(col.children, source.id) : null
     const parentId = parentInfo?.parentId ?? null
-    const dupe: RequestItem = { ...request, id: uid(), name: `${request.name} (copy)` }
+    const dupe: RequestItem = { ...source, id: uid(), name: `${source.name} (copy)` }
     addRequest(collectionId, parentId, dupe)
   }
 
@@ -115,6 +120,7 @@ export function Sidebar() {
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
           onSwitch={handleSwitchWorkspace}
+          onHoverWorkspace={prefetchWorkspace}
           onAdd={() => setShowAddWorkspace(true)}
           onRename={() => setShowRenameWorkspace(true)}
           onDelete={() => setShowDeleteWorkspace(true)}
@@ -123,9 +129,13 @@ export function Sidebar() {
 
       <CollectionTree
         key={activeWorkspaceId}
-        collections={collections}
+        collections={treePreview ?? collections}
         activeRequestId={activeRequestId}
-        onOpenRequest={(request: RequestItem, collectionId: string, preview?: boolean) => openTab(request, collectionId, preview)}
+        onOpenRequest={(request: RequestItem, collectionId: string, preview?: boolean) => {
+          // Preview tree stubs carry no request contents: open the hydrated node.
+          const full = useCollectionsStore.getState().hydratedRequest(request.id) ?? request
+          openTab(full, collectionId, preview)
+        }}
         onNewRequest={handleNewRequest}
         onDeleteCollection={deleteCollection}
         onDeleteNode={handleDeleteNode}
@@ -207,6 +217,7 @@ interface WorkspaceContextButtonProps {
   workspaces: Array<{ id: string; name: string }>
   activeWorkspaceId: string
   onSwitch: (workspaceId: string) => void
+  onHoverWorkspace: (workspaceId: string) => void
   onAdd: () => void
   onRename: () => void
   onDelete: () => void
@@ -216,6 +227,7 @@ function WorkspaceContextButton({
   workspaces,
   activeWorkspaceId,
   onSwitch,
+  onHoverWorkspace,
   onAdd,
   onRename,
   onDelete,
@@ -262,6 +274,7 @@ function WorkspaceContextButton({
                 key={workspace.id}
                 type="button"
                 role="menuitem"
+                onMouseEnter={() => onHoverWorkspace(workspace.id)}
                 onClick={() => { onSwitch(workspace.id); setOpen(false) }}
                 className={cn(
                   'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',

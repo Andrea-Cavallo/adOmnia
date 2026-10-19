@@ -84,6 +84,7 @@ export function useTreeInteraction(collections: Collection[], treeRef: React.Ref
     }
   }
   const move = (collectionId: string, parentId: string | null, index: number) => {
+    useCollectionsStore.getState().hydrateNow()
     const store = useCollectionsStore.getState()
     const before = store.collections, workspaceId = store.activeWorkspaceId
     const moved = [...sources.current]
@@ -115,6 +116,8 @@ export function useTreeInteraction(collections: Collection[], treeRef: React.Ref
 export function openDroppedRequests(data: string, targetId?: string, position: 'before' | 'after' = 'after') {
   let sources: NodeLocation[]
   try { const value: unknown = JSON.parse(data); if (!Array.isArray(value)) return; sources = value.filter((s): s is NodeLocation => !!s && typeof s.nodeId === 'string' && typeof s.collectionId === 'string') } catch { return }
+  // Preview tree stubs never become tabs: hydrate and resolve the full node.
+  useCollectionsStore.getState().hydrateNow()
   for (const source of position === 'after' && targetId ? [...sources].reverse() : sources) {
     const located = locateNode(useCollectionsStore.getState().collections, source.nodeId)
     if (!located || located.collectionId !== source.collectionId || located.node.type !== 'request') continue

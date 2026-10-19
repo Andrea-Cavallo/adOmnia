@@ -9,6 +9,8 @@ export function stopCollectionSync() { const previous=active;active=null;previou
 
 /** Explicit sender opt-in. Receiver always gets a snapshot for manual merge. */
 export function startCollectionSync(id:string, reviewed:Collection) {
+  // Sharing reads the model: hydrate so a preview window never stops the sync.
+  useCollectionsStore.getState().hydrateNow()
   stopCollectionSync()
   const sessionId=useCollabStore.getState().status?.sessionId
   if(!sessionId)return

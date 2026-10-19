@@ -28,6 +28,7 @@ import { CollectionFolderDialog } from './CollectionFolderDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DialogOverlay, DialogContent, DialogHeader, DialogBody } from '@/components/ui/dialog'
 import { copyToClipboard, generateCode } from '@/lib/codegen'
+import { findTreeNode } from '@/lib/workspaceSplit'
 import {
   cloneCollection,
   importCollectionsFromText,
@@ -752,22 +753,33 @@ export function CollectionTree({
     }
   }
 
+  // Export paths always read the hydrated model: preview tree stubs carry no
+  // request contents and must never be written to a file.
+  const exportSource = (): Collection[] => {
+    useCollectionsStore.getState().hydrateNow()
+    return useCollectionsStore.getState().collections
+  }
+
   const exportCollection = (collection: Collection, format: ExportFormat) => {
-    void runExport(`${slug(collection.name)}.${format}.json`, { kind: 'collection', collection, format })
+    const full = exportSource().find((item) => item.id === collection.id) ?? collection
+    void runExport(`${slug(full.name)}.${format}.json`, { kind: 'collection', collection: full, format })
   }
 
   const exportCollectionOASYaml = (collection: Collection) => {
-    void runExport(`${slug(collection.name)}.openapi.yaml`, { kind: 'oas-yaml', collection }, 'text/yaml')
+    const full = exportSource().find((item) => item.id === collection.id) ?? collection
+    void runExport(`${slug(full.name)}.openapi.yaml`, { kind: 'oas-yaml', collection: full }, 'text/yaml')
   }
 
   const exportNode = (collectionId: string, node: TreeNode, format: ExportFormat) => {
-    const collection = collections.find((item) => item.id === collectionId)
+    const hydrated = exportSource()
+    const collection = hydrated.find((item) => item.id === collectionId)
     if (!collection) return
-    void runExport(`${slug(node.name)}.${format}.json`, { kind: 'node', collection, node, format })
+    const full = findTreeNode(hydrated, node.id) ?? node
+    void runExport(`${slug(full.name)}.${format}.json`, { kind: 'node', collection, node: full, format })
   }
 
   const exportAll = (format: ExportFormat) => {
-    void runExport(`adomnia-collections.${format}.json`, { kind: 'all', collections, format })
+    void runExport(`adomnia-collections.${format}.json`, { kind: 'all', collections: exportSource(), format })
   }
 
   const openMoveDialog = (collectionId: string, requestId: string) => {
@@ -1148,7 +1160,7 @@ export function CollectionTree({
               <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
               <MenuButton onClick={() => { onDuplicateRequest(context.collectionId, context.node); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
               <MenuButton onClick={() => openMoveDialog(context.collectionId, context.node.id)}><FolderPlus size={12} /> {tr('Move to Folder')}</MenuButton>
-              <MenuButton onClick={() => { void copyToClipboard(generateCode(context.node, 'curl')); setContext(null) }}><Code size={12} /> {tr('Copy as cURL')}</MenuButton>
+              <MenuButton onClick={() => { const full = useCollectionsStore.getState().hydratedRequest(context.node.id) ?? context.node; void copyToClipboard(generateCode(full, 'curl')); setContext(null) }}><Code size={12} /> {tr('Copy as cURL')}</MenuButton>
               <MenuButton onClick={() => { void copyToClipboard(context.node.url); setContext(null) }}><Link size={12} /> {tr('Copy URL')}</MenuButton>
               <MenuButton onClick={() => { onOpenRequest(context.node, context.collectionId); setContext(null) }}><Plus size={12} /> {tr('Open in New Tab')}</MenuButton>
               {contextExportMenu(context)}

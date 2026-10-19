@@ -8,7 +8,7 @@ const mock=vi.hoisted(()=>({
   collectionListeners:new Set<()=>void>(),sessionListeners:new Set<(state:unknown)=>void>(),
 }))
 vi.mock('@/lib/collab-api',()=>({collabApi:{syncCollection:mock.send}}))
-vi.mock('@/stores/collections',()=>({useCollectionsStore:{getState:()=>({collections:mock.collections}),subscribe:(handler:()=>void)=>{mock.collectionListeners.add(handler);return()=>mock.collectionListeners.delete(handler)}}}))
+vi.mock('@/stores/collections',()=>({useCollectionsStore:{getState:()=>({collections:mock.collections,hydrateNow:()=>{}}),subscribe:(handler:()=>void)=>{mock.collectionListeners.add(handler);return()=>mock.collectionListeners.delete(handler)}}}))
 vi.mock('@/stores/collab',()=>({useCollabStore:{getState:()=>({status:mock.status}),setState:()=>{},subscribe:(handler:(state:unknown)=>void)=>{mock.sessionListeners.add(handler);return()=>mock.sessionListeners.delete(handler)}}}))
 import { startCollectionSync, stopCollectionSync } from './collectionSync'
 

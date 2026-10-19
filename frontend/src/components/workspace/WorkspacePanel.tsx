@@ -33,6 +33,9 @@ export function WorkspacePanel() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const makeState = (includePrivateEnvironments = true) => {
+    // Export and save paths always read the hydrated model: a workspace whose
+    // request contents are still pending must never leave this file.
+    useCollectionsStore.getState().hydrateNow()
     const collectionState = useCollectionsStore.getState()
     const environmentState = useEnvironmentsStore.getState()
     const exportedEnvironments = environmentState.environments.filter((environment) => includePrivateEnvironments || !environment.private)
