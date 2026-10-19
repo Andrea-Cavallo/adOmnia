@@ -7,7 +7,7 @@ interface CodeStudioEditorTabActionsProps {
   onSave: () => void
 }
 
-/** Azioni dell'editor a destra delle tab, come in IntelliJ: nessuna riga in più sopra il codice. */
+/** Azioni dell'editor a destra delle tab: nessuna riga in più sopra il codice. */
 export function CodeStudioEditorTabActions({ document, onSave }: CodeStudioEditorTabActionsProps) {
   const toggleEditorMaximized = useCodeStudioStore((state) => state.toggleEditorMaximized)
   const editorMaximized = useCodeStudioStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)

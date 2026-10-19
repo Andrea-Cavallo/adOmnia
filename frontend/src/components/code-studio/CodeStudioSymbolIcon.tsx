@@ -13,7 +13,7 @@ interface SymbolBadge {
 
 const PACKAGE_KINDS = new Set([2, 4])
 
-/** Lettera e colore del simbolo, come i badge di GoLand: C costante, S struct, I interface, f funzione, m metodo… */
+/** Lettera e colore del simbolo: C costante, S struct, I interface, f funzione, m metodo… */
 function badgeFor(kind: number): SymbolBadge {
   switch (kind) {
     case SYMBOL_KIND.constant: return { letter: 'C', tone: 'bg-accent/15 text-accent ring-accent/40' }

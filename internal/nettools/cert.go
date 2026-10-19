@@ -251,7 +251,7 @@ func writeTempPassword(dir, password string) (string, error) {
 		return "", err
 	}
 	if _, err := f.WriteString(password); err != nil {
-		f.Close()
+		_ = f.Close()
 		return "", err
 	}
 	f.Close()
@@ -309,11 +309,11 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := io.Copy(out, io.LimitReader(file, 32<<20)); err != nil {
-		out.Close()
+		_ = out.Close()
 		http.Error(w, "failed to save upload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	out.Close()
+	_ = out.Close()
 
 	srcPassFile, err := writeTempPassword(dir, password)
 	if err != nil {

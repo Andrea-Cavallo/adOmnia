@@ -26,7 +26,7 @@ func newManagedJob() (windows.Handle, error) {
 	info := windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION{}
 	info.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
 	if _, err = windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))); err != nil {
-		windows.CloseHandle(job)
+		_ = windows.CloseHandle(job)
 		return 0, err
 	}
 	return job, nil
@@ -37,7 +37,7 @@ func assignManagedJob(job windows.Handle, pid int) error {
 	if err != nil {
 		return err
 	}
-	defer windows.CloseHandle(child)
+	defer func() { _ = windows.CloseHandle(child) }()
 	return windows.AssignProcessToJobObject(job, child)
 }
 

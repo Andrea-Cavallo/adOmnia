@@ -7,15 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"golang.org/x/mod/modfile"
 
 	"adomnia/internal/ide/project"
 	"adomnia/internal/ide/sdk"
 )
-
-const toolchainTimeout = 8 * time.Second
 
 type ToolchainConfiguration struct {
 	GoBinary    string            `json:"goBinary"`

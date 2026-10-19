@@ -93,7 +93,7 @@ export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readon
 
 const LITERAL_ARGUMENT = /^\s*(?:-?\.?\d|"|`|'|nil\b|true\b|false\b)/
 
-/** Come GoLand: il nome del parametro si mostra solo quando l'argomento è un literal o nil. */
+/** Il nome del parametro si mostra solo quando l'argomento è un literal o nil. */
 export function isLiteralArgument(lineText: string, column: number): boolean {
   return LITERAL_ARGUMENT.test(lineText.slice(Math.max(0, column - 1)))
 }

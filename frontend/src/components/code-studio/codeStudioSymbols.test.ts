@@ -22,7 +22,7 @@ describe('symbolPathAt', () => {
 describe('groupStructure', () => {
   const node = (name: string, kind: number, line: number, children?: unknown[]) => ({ name, kind, range: range(line, line), selectionRange: range(line, line), ...(children ? { children } : {}) })
 
-  it('groups top-level symbols by section in GoLand order', () => {
+  it('groups top-level symbols by section', () => {
     const sections = groupStructure([node('NewLogger', 12, 9), node('LOGFILE', 14, 1), node('Logger', 23, 4), node('level', 13, 2)] as never)
     expect(sections.map((section) => [section.id, section.nodes.map((item) => item.name)])).toEqual([
       ['constants', ['LOGFILE']], ['variables', ['level']], ['types', ['Logger']], ['functions', ['NewLogger']],

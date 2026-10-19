@@ -109,6 +109,69 @@ func TestParseJavaSourceRecognizesControllers(t *testing.T) {
 	}
 }
 
+const fruitResourceJava = `package com.acme.demo;
+
+import jakarta.ws.rs.*;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+/** Endpoint JAX-RS: il modello di Quarkus e MicroProfile, senza Spring MVC. */
+@Path("/api/fruits")
+@ApplicationScoped
+public class FruitResource {
+
+    @ConfigProperty(name = "quarkus.http.port", defaultValue = "8080")
+    int port;
+
+    @GET
+    @Produces("application/json")
+    public List<Fruit> list() {
+        return null;
+    }
+
+    @POST
+    @Path("/{id}")
+    @Consumes("application/json")
+    public Fruit create(@PathParam("id") long id) {
+        return null;
+    }
+}
+`
+
+func TestJaxRsEndpointsAndMicroProfileConfig(t *testing.T) {
+	source := parseJavaSource([]byte(fruitResourceJava))
+	source.File = "src/main/java/com/acme/demo/FruitResource.java"
+
+	endpoints := endpointsOf([]javaSource{source})
+	if len(endpoints) != 2 {
+		t.Fatalf("endpoints: %+v", endpoints)
+	}
+	if endpoints[0].Method != "GET" || endpoints[0].Path != "/api/fruits" {
+		t.Fatalf("GET: %+v", endpoints[0])
+	}
+	if endpoints[1].Method != "POST" || endpoints[1].Path != "/api/fruits/{id}" {
+		t.Fatalf("POST with @Path: %+v", endpoints[1])
+	}
+	if endpoints[0].Produces != "application/json" || endpoints[1].Consumes != "application/json" {
+		t.Fatalf("media types: %+v", endpoints)
+	}
+
+	beans := beansOf([]javaSource{source})
+	if len(beans) != 1 || beans[0].Name != "fruitResource" || beans[0].Kind != "component" {
+		t.Fatalf("beans: %+v", beans)
+	}
+
+	references := propertyReferencesOf([]javaSource{source})
+	if len(references) != 1 {
+		t.Fatalf("references: %+v", references)
+	}
+	if references[0].Key != "quarkus.http.port" || references[0].Default != "8080" {
+		t.Fatalf("ConfigProperty: %+v", references[0])
+	}
+	if references[0].Member != "port" {
+		t.Fatalf("member: %+v", references[0])
+	}
+}
+
 func TestBeansInjectionsAndEndpoints(t *testing.T) {
 	sources := []javaSource{
 		parseJavaSource([]byte(orderControllerJava)),
@@ -243,18 +306,9 @@ func isolateMetadataCache(t *testing.T) {
 	})
 }
 
-// writeProject scrive su disco un progetto Spring minimo ma realistico.
-func writeProject(t *testing.T) string {
+// writeFiles scrive una mappa percorso → contenuto dentro una cartella.
+func writeFiles(t *testing.T, root string, files map[string]string) {
 	t.Helper()
-	root := t.TempDir()
-	files := map[string]string{
-		"src/main/java/com/acme/demo/MailProperties.java":  mailPropertiesJava,
-		"src/main/java/com/acme/demo/OrderController.java": orderControllerJava,
-		"src/main/java/com/acme/demo/OrderService.java":    orderServiceJava,
-		"src/main/resources/application.properties":        "server.port=8080\nacme.mail.host=smtp.acme.io\n",
-		"src/main/resources/application-prod.properties":   "server.port=80\nacme.mail.host=smtp-prod.acme.io\n",
-		"src/main/resources/application.yml":               "spring:\n  application:\n    name: orders\n",
-	}
 	for relative, content := range files {
 		path := filepath.Join(root, filepath.FromSlash(relative))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -264,6 +318,20 @@ func writeProject(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
+}
+
+// writeProject scrive su disco un progetto Spring minimo ma realistico.
+func writeProject(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{
+		"src/main/java/com/acme/demo/MailProperties.java":  mailPropertiesJava,
+		"src/main/java/com/acme/demo/OrderController.java": orderControllerJava,
+		"src/main/java/com/acme/demo/OrderService.java":    orderServiceJava,
+		"src/main/resources/application.properties":        "server.port=8080\nacme.mail.host=smtp.acme.io\n",
+		"src/main/resources/application-prod.properties":   "server.port=80\nacme.mail.host=smtp-prod.acme.io\n",
+		"src/main/resources/application.yml":               "spring:\n  application:\n    name: orders\n",
+	})
 	return root
 }
 

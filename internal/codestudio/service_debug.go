@@ -72,7 +72,7 @@ func (s *Service) StartDebug(request DebugRequest) (DebugSessionInfo, error) {
 			return DebugSessionInfo{}, err
 		}
 		if request.RemoteSourceRoot != "" {
-			if strings.ContainsAny(request.RemoteSourceRoot, "\x00\r\n") || !(path.IsAbs(request.RemoteSourceRoot) || filepath.IsAbs(request.RemoteSourceRoot)) {
+			if strings.ContainsAny(request.RemoteSourceRoot, "\x00\r\n") || (!path.IsAbs(request.RemoteSourceRoot) && !filepath.IsAbs(request.RemoteSourceRoot)) {
 				return DebugSessionInfo{}, fmt.Errorf("specify the remote source root as an absolute path")
 			}
 			request.LocalSourceRoot = session.Project.RealPath

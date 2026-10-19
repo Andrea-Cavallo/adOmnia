@@ -27,7 +27,7 @@ func LoadGitIgnore(root string) *GitIgnore {
 	if err != nil {
 		return &GitIgnore{}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	ignore := &GitIgnore{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

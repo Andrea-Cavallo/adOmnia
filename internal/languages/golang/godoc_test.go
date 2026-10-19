@@ -38,7 +38,7 @@ type (
 	Item  struct{}
 )
 
-// BUG(andrea): totals ignore taxes.
+// ` + "BUG" + `(andrea): totals ignore taxes.
 const Limit = 3
 `)
 	write("shop/shop_test.go", "package shop\n\nfunc TestHelper() {}\n")

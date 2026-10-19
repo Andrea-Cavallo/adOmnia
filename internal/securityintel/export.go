@@ -11,16 +11,17 @@ import (
 
 // Formati di esportazione supportati.
 const (
-	FormatJSON    = "json"
-	FormatSARIF   = "sarif"
-	FormatHTML    = "html"
-	FormatCyclone = "cyclonedx"
-	FormatSPDX    = "spdx"
-	FormatVEX     = "vex"
+	FormatJSON     = "json"
+	FormatSARIF    = "sarif"
+	FormatHTML     = "html"
+	FormatCyclone  = "cyclonedx"
+	FormatSPDX     = "spdx"
+	FormatVEX      = "vex"
+	FormatMarkdown = "markdown"
 )
 
 // SupportedFormats è l'elenco dei formati che l'utente può esportare.
-var SupportedFormats = []string{FormatJSON, FormatSARIF, FormatHTML, FormatCyclone, FormatSPDX, FormatVEX}
+var SupportedFormats = []string{FormatJSON, FormatSARIF, FormatHTML, FormatCyclone, FormatSPDX, FormatVEX, FormatMarkdown}
 
 // FileExtension è l'estensione del file per un formato.
 func FileExtension(format string) string {
@@ -35,6 +36,8 @@ func FileExtension(format string) string {
 		return ".spdx.json"
 	case FormatVEX:
 		return ".vex.json"
+	case FormatMarkdown:
+		return ".md"
 	default:
 		return ".json"
 	}
@@ -55,6 +58,8 @@ func Export(report ScanReport, format string) ([]byte, error) {
 		return marshalIndent(VEXOf(report))
 	case FormatHTML:
 		return []byte(HTMLReport(report)), nil
+	case FormatMarkdown:
+		return []byte(MarkdownReport(report)), nil
 	default:
 		return nil, fmt.Errorf("unsupported export format: %s", format)
 	}

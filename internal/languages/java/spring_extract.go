@@ -5,20 +5,33 @@ import (
 	"strings"
 )
 
-// Annotation Spring riconosciute: sono loro a dire "questo è un bean", "qui si inietta", "qui risponde".
+// Annotation Spring e JAX-RS riconosciute: sono loro a dire "questo è un bean", "qui si inietta",
+// "qui risponde". JAX-RS (`@Path`, `@GET`…) copre Quarkus e MicroProfile, che non usano Spring MVC.
 var (
 	stereotypeAnnotations = map[string]string{
 		"Component": "component", "Service": "service", "Repository": "repository",
 		"Controller": "controller", "RestController": "controller", "Configuration": "configuration",
+		// MicroProfile/Quarkus: `@ApplicationScoped` e compagni dichiarano bean senza Spring.
+		"ApplicationScoped": "component", "RequestScoped": "component", "SessionScoped": "component",
+		"Singleton": "component", "Dependent": "component", "Named": "component",
 	}
 	injectAnnotations   = map[string]bool{"Autowired": true, "Inject": true, "Resource": true}
 	endpointAnnotations = map[string]bool{
 		"RequestMapping": true, "GetMapping": true, "PostMapping": true, "PutMapping": true,
 		"DeleteMapping": true, "PatchMapping": true,
+		// JAX-RS (Quarkus, MicroProfile, Jersey, RESTEasy).
+		"GET": true, "POST": true, "PUT": true, "DELETE": true, "PATCH": true, "HEAD": true, "OPTIONS": true,
 	}
 	httpMethodOf = map[string]string{
 		"GetMapping": "GET", "PostMapping": "POST", "PutMapping": "PUT",
 		"DeleteMapping": "DELETE", "PatchMapping": "PATCH",
+		// JAX-RS: il metodo HTTP è il nome dell'annotation stessa.
+		"GET": "GET", "POST": "POST", "PUT": "PUT", "DELETE": "DELETE",
+		"PATCH": "PATCH", "HEAD": "HEAD", "OPTIONS": "OPTIONS",
+	}
+	// isJaxRsMethod dice se l'annotation porta il metodo HTTP (JAX-RS) o il percorso (Spring).
+	isJaxRsMethod = map[string]bool{
+		"GET": true, "POST": true, "PUT": true, "DELETE": true, "PATCH": true, "HEAD": true, "OPTIONS": true,
 	}
 )
 
@@ -74,13 +87,27 @@ func configurationProperties(source javaSource, decl javaTypeDecl, prefix string
 	return properties
 }
 
-// propertyReferencesOf sono i `@Value("${…}")` del progetto.
+// propertyReferencesOf sono i `@Value("${…}")` di Spring e i `@ConfigProperty` di MicroProfile,
+// il modo in cui Quarkus legge la configurazione.
 func propertyReferencesOf(sources []javaSource) []SpringPropertyReference {
 	var references []SpringPropertyReference
 	for _, source := range sources {
 		for _, member := range source.Members {
 			for _, annotation := range member.Annotations {
-				if annotation.Name != "Value" {
+				if annotation.Name != "Value" && annotation.Name != "ConfigProperty" {
+					continue
+				}
+				// MicroProfile: `@ConfigProperty(name = "chiave", defaultValue = "x")`.
+				if annotation.Name == "ConfigProperty" {
+					key := annotationString(annotation.Args, "name")
+					if key == "" {
+						continue
+					}
+					references = append(references, SpringPropertyReference{
+						Expression: key, Key: key, Default: annotationString(annotation.Args, "defaultValue", "default"),
+						Class: member.Class, Member: member.Name, File: source.File,
+						Line: annotation.Line, StartColumn: annotation.StartColumn, EndColumn: annotation.EndColumn,
+					})
 					continue
 				}
 				for _, expression := range annotationStrings(annotation.Args) {
@@ -213,7 +240,7 @@ func lombokInjections(source javaSource, beanClasses map[string]bool) []SpringIn
 			}
 			pending := member.Final && !member.Initialized
 			nonNull := findAnnotation(member.Annotations, "NonNull") != nil && !member.Initialized
-			if !(all && !(member.Final && member.Initialized)) && !(required && (pending || nonNull)) {
+			if (!all || (member.Final && member.Initialized)) && (!required || (!pending && !nonNull)) {
 				continue
 			}
 			injections = append(injections, SpringInjection{
@@ -227,14 +254,16 @@ func lombokInjections(source javaSource, beanClasses map[string]bool) []SpringIn
 	return injections
 }
 
-// endpointsOf sono gli endpoint MVC: la route completa è il percorso della classe più quello del metodo.
+// endpointsOf sono gli endpoint HTTP: la route completa è il percorso della classe più quello del
+// metodo. Copre Spring MVC (`@RequestMapping`/`@GetMapping`) e JAX-RS (`@Path`/`@GET`), il modello
+// di Quarkus e MicroProfile.
 func endpointsOf(sources []javaSource) []SpringEndpoint {
 	var endpoints []SpringEndpoint
 	for _, source := range sources {
 		for _, decl := range source.Types {
 			base := ""
 			for _, annotation := range decl.Annotations {
-				if annotation.Name == "RequestMapping" {
+				if annotation.Name == "RequestMapping" || annotation.Name == "Path" {
 					base = annotationPath(annotation.Args)
 				}
 			}
@@ -251,16 +280,51 @@ func endpointsOf(sources []javaSource) []SpringEndpoint {
 					method = strings.ToUpper(annotationString(annotation.Args, "method"))
 					method = strings.TrimPrefix(method, "REQUESTMETHOD.")
 				}
+				// JAX-RS: il metodo HTTP è l'annotation stessa e il percorso sta in `@Path`.
+				path := annotationPath(annotation.Args)
+				if isJaxRsMethod[annotation.Name] {
+					path = jaxRsPathOf(member)
+				}
+				// `@Produces`/`@Consumes` sono annotation a sé in JAX-RS, argomenti in Spring MVC.
+				produces, consumes := annotationString(annotation.Args, "produces"), annotationString(annotation.Args, "consumes")
+				if value := jaxRsMediaOf(member, "Produces"); value != "" {
+					produces = value
+				}
+				if value := jaxRsMediaOf(member, "Consumes"); value != "" {
+					consumes = value
+				}
 				endpoints = append(endpoints, SpringEndpoint{
-					Method: method, Path: joinPath(base, annotationPath(annotation.Args)),
+					Method: method, Path: joinPath(base, path),
 					Class: decl.Name, Member: member.Name, File: source.File,
-					Produces: annotationString(annotation.Args, "produces"), Consumes: annotationString(annotation.Args, "consumes"),
+					Produces: produces, Consumes: consumes,
 					Line: annotation.Line, StartColumn: annotation.StartColumn, EndColumn: annotation.EndColumn,
 				})
 			}
 		}
 	}
 	return endpoints
+}
+
+// jaxRsPathOf è il percorso del metodo in JAX-RS: l'annotation `@Path` sul metodo.
+func jaxRsPathOf(member javaMember) string {
+	for _, annotation := range member.Annotations {
+		if annotation.Name == "Path" {
+			return annotationPath(annotation.Args)
+		}
+	}
+	return ""
+}
+
+// jaxRsMediaOf è il media type dichiarato da `@Produces`/`@Consumes` in JAX-RS.
+func jaxRsMediaOf(member javaMember, name string) string {
+	for _, annotation := range member.Annotations {
+		if annotation.Name == name {
+			for _, value := range annotationStrings(annotation.Args) {
+				return value
+			}
+		}
+	}
+	return ""
 }
 
 // findAnnotation è la prima annotation con uno dei nomi cercati.
@@ -400,14 +464,15 @@ func annotationPath(args string) string {
 
 // propertyKey estrae chiave e default da un'espressione `${chiave:default}` o da un testo che la contiene.
 func propertyKey(expression string) (key, fallback string) {
-	for _, match := range placeholderPattern.FindAllStringSubmatch(expression, -1) {
-		inner := match[1]
-		if cut := strings.Index(inner, ":"); cut >= 0 {
-			return strings.TrimSpace(inner[:cut]), strings.TrimSpace(inner[cut+1:])
-		}
-		return strings.TrimSpace(inner), ""
+	match := placeholderPattern.FindStringSubmatch(expression)
+	if match == nil {
+		return "", ""
 	}
-	return "", ""
+	inner := match[1]
+	if cut := strings.Index(inner, ":"); cut >= 0 {
+		return strings.TrimSpace(inner[:cut]), strings.TrimSpace(inner[cut+1:])
+	}
+	return strings.TrimSpace(inner), ""
 }
 
 // joinPath unisce il percorso della classe con quello del metodo senza doppi separatori.

@@ -183,18 +183,19 @@ func (b docBuilder) site(node ast.Node) ArchSite {
 
 // decl stampa la dichiarazione senza corpo e senza commenti, come go doc.
 func (b docBuilder) decl(node ast.Node) string {
-	switch node := node.(type) {
+	printed := node
+	switch typed := node.(type) {
 	case *ast.FuncDecl:
-		copy := *node
+		copy := *typed
 		copy.Body, copy.Doc = nil, nil
-		node = &copy
+		printed = &copy
 	case *ast.GenDecl:
-		copy := *node
+		copy := *typed
 		copy.Doc = nil
-		node = &copy
+		printed = &copy
 	}
 	var buffer bytes.Buffer
-	if err := (&printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 4}).Fprint(&buffer, b.fset, node); err != nil {
+	if err := (&printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 4}).Fprint(&buffer, b.fset, printed); err != nil {
 		return ""
 	}
 	text := buffer.String()
@@ -288,7 +289,7 @@ func (b docBuilder) checkDoc(result *[]DocProblem, kind, name, text string, node
 	}
 	first, _, _ := strings.Cut(text, " ")
 	article := first == "A" || first == "An" || first == "The"
-	if !strings.HasPrefix(text, prefix) && !(article && strings.HasPrefix(strings.TrimPrefix(text, first+" "), prefix)) {
+	if !strings.HasPrefix(text, prefix) && (!article || !strings.HasPrefix(strings.TrimPrefix(text, first+" "), prefix)) {
 		*result = append(*result, DocProblem{Kind: kind, Name: name, Problem: "The comment should start with " + prefix, Site: b.site(node)})
 	}
 }

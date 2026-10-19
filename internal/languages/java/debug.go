@@ -51,7 +51,7 @@ type StepFilters struct {
 	SkipConstructors       bool     `json:"skipConstructors"`
 }
 
-// DefaultStepFilters è l'insieme di IntelliJ IDEA: niente JDK, librerie e proxy generati (CGLIB, ByteBuddy, JDK
+// DefaultStepFilters è l'insieme di default: niente JDK, librerie e proxy generati (CGLIB, ByteBuddy, JDK
 // proxy, AOP di Spring, Mockito, JUnit), così in un'app Spring Step Into resta nel codice dell'utente.
 func DefaultStepFilters() StepFilters {
 	return StepFilters{

@@ -354,7 +354,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         lineNumbers: projectEditor.lineNumbers ?? 'on',
         wordWrap: projectEditor.wordWrap ?? 'off',
         folding: true,
-        // Parentesi monocromatiche come in IntelliJ: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
+        // Parentesi monocromatiche: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
         bracketPairColorization: { enabled: false },
         guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },
         matchBrackets: 'always',

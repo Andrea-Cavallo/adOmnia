@@ -8,7 +8,7 @@ import { MAX_RESOLVE_ALL_FILES, fixCodeStudioProblemWithAI, resolveAllCodeStudio
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { useSettingsStore } from '@/stores/settings'
 import { useIDEExtensionsStore } from '@/stores/ideExtensions'
-import { downloadText } from '@/lib/fileUtils'
+import { saveTextFile } from '@/lib/fileUtils'
 import { problemsToMarkdown } from '@/lib/code-studio/problemsMarkdown'
 
 export interface CodeStudioBuildProblem {
@@ -59,7 +59,7 @@ export function CodeStudioProblems({ sessionId, buildProblems, onOpenBuildProble
     void fixCodeStudioProblemWithAI(report.relativePath ?? '', problem(diagnostic), others)
   }
 
-  const exportMarkdown = () => downloadText('problems.md', problemsToMarkdown(sorted, buildProblems), 'text/markdown')
+  const exportMarkdown = () => { void saveTextFile('problems.md', problemsToMarkdown(sorted, buildProblems), 'text/markdown').catch(() => undefined) }
 
   const open = (report: GoIDEDiagnosticsReport, diagnostic: GoIDEDiagnostic) => navigateToLocation({
     uri: report.uri, path: report.path, relativePath: report.relativePath, external: !report.relativePath, range: diagnostic.range,

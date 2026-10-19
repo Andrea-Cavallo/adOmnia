@@ -10,7 +10,7 @@ interface CodeStudioShortcutsDialogProps {
   onClose: () => void
 }
 
-/** Keymap di Code Studio: GoLand o VS Code, scorciatoie personalizzate, conflitti e ricerca per nome o per tasto. */
+/** Keymap di Code Studio: predefinita o alternativa, scorciatoie personalizzate, conflitti e ricerca per nome o per tasto. */
 export function CodeStudioShortcutsDialog({ open, onClose }: CodeStudioShortcutsDialogProps) {
   const keymap = useCodeStudioKeymap((state) => state.keymap)
   const custom = useCodeStudioKeymap((state) => state.custom)

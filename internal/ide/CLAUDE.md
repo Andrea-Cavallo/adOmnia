@@ -8,7 +8,7 @@ The IDE is a flagship area: it must feel like a real IDE (fast, stable, never lo
 
 ## What it is
 
-**adOmnia IDE Platform + language adapters.** Code Studio is the Go adapter on top of a language-agnostic core. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON in `internal/languages/web`) are the second adapter, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features.
+**adOmnia IDE Platform + language adapters.** Code Studio is the host and composition root on top of a language-agnostic core. Go lives in `internal/languages/golang`; Java in `internal/languages/java` (JDT LS, JDK, Maven/Gradle, debug and JaCoCo); the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) live in `internal/languages/web`, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`). Rust/Python remain validation scenarios. The original 12-phase migration is complete; it does not mean all implementation has left the host. Follow the remaining extraction queue in `mds/REFACTOR.md`, section CS-HOST.
 
 Read before non-trivial work:
 
@@ -62,13 +62,13 @@ frontend/src/stores/codeStudio*.ts                 stores (one per concern)
 - **Languages registered in one place:** `internal/codestudio/languages.go`.
 - **Projects are `project.Unit`s** (`go.mod`, tomorrow `pom.xml`/`package.json`); a folder can mix languages. `Project` has no Go fields: use `goLayoutOf(project)` (backend) or `goProjectLayout`/`goModules` from `lib/code-studio/goProject.ts` (frontend).
 - **The UI learns languages from the backend** (`GetCapabilities().languages`). Monaco providers register on `languageServerEditorLanguages()`, never on a literal `'go'`.
-- A language server is an `lsp.ServerSpec` built by its adapter (no `LanguageServerProvider` interface).
+- A language server is an `lsp.ServerSpec` built by its adapter; managed servers expose the existing `lsp.ServerProvider` capability (`internal/ide/lsp/provider.go`). Reuse it rather than introducing a parallel provider interface.
 - Run-configuration DTO keeps its flat Go fields **on purpose**: it is the `.adomnia/run-configurations.json` format shared via Git. Migrate in loaders; never break persisted JSON.
 - `ide/sdk` tool-version cache stays process-wide.
 
 ### Deliberate non-goals — do NOT "finish" these without a real second consumer
 - Mass move of `components/code-studio` into `components/ide` (move a file when a second language uses it).
-- `LanguageServerProvider` interface or a tool-window registry.
+- A parallel `LanguageServerProvider` interface or a tool-window registry without a concrete consumer.
 - Removing flat Go fields from the run-config DTO.
 
 ---

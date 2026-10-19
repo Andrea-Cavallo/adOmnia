@@ -65,7 +65,7 @@ The user always knows what's happening. State is visible. Errors are clear. No h
 Even when operations take time, the UI responds immediately. Skeleton states, progress indicators, streamed responses. The user never waits without feedback. The user thinks: *"It keeps up with me."*
 
 ### Premium Desktop Experience
-The application feels like a JetBrains IDE, not a Bootstrap admin panel. Custom rendering. Native-like interactions. No browser-first design compromises. The user thinks: *"This is a real desktop application."*
+The application feels like a professional desktop IDE, not a Bootstrap admin panel. Custom rendering. Native-like interactions. No browser-first design compromises. The user thinks: *"This is a real desktop application."*
 
 ---
 
@@ -120,7 +120,7 @@ The application feels like a JetBrains IDE, not a Bootstrap admin panel. Custom 
 - **Dark-first** — designed for developers who work in dark environments
 - **Monochromatic base with semantic accents** — greys for structure, colors for meaning
 - **Subtle depth** — enough layering to understand hierarchy, not so much as to feel decorative
-- **Sharp where JetBrains is sharp, smooth where Linear is smooth**
+- **Sharp where precision matters, smooth where motion helps**
 
 ### Typography
 - **Monospace for code, sans-serif for UI**
@@ -152,7 +152,7 @@ The quality bar is set by these applications:
 
 | Product | What We Learn From It |
 |---------|----------------------|
-| **JetBrains IDEs** | Density, keyboard-driven, custom rendering, professional feel, stable layout |
+| **Professional desktop IDEs** | Density, keyboard-driven, custom rendering, professional feel, stable layout |
 | **Postman Desktop** | API workflow, collection management, environment variables, request/response UX |
 | **Insomnia** | Simpler, cleaner Postman alternative — less bloat, more focus |
 | **Raycast** | Speed, command palette, instant feedback, keyboard-first, beautiful UI |
@@ -223,7 +223,7 @@ When working on adOmnia, internalize this document. Before every change, ask:
 - Does this make the product feel more premium or less?
 - Does this maintain or break visual cohesion?
 - Does this respect the user's privacy and control?
-- Would a JetBrains/Linear-level designer approve this?
+- Would a top-tier product designer approve this?
 - Does this move us closer to "the best API tool they've ever used"?
 
 If the answer to any of these is "no," reconsider the approach.

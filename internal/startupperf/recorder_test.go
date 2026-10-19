@@ -18,7 +18,7 @@ func TestRecordAppendsLocalTimingSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sample file: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {

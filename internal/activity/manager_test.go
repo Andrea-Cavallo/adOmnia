@@ -6,14 +6,14 @@ func TestActivitySubscribersCanQueryAndUnsubscribe(t *testing.T) {
 	m := NewManager()
 	calls := 0
 	off := m.Subscribe(func() { calls++; _ = m.State("code-studio:s") })
-	m.Report("main", Active, []string{"code-studio:s"})
+	_, _ = m.Report("main", Active, []string{"code-studio:s"})
 	m.RemoveWindow("main")
 	if calls != 2 {
 		t.Fatalf("notifications = %d", calls)
 	}
 	off()
 	off()
-	m.Report("main", Background, nil)
+	_, _ = m.Report("main", Background, nil)
 	if calls != 2 {
 		t.Fatal("subscriber retained after unsubscribe")
 	}
@@ -24,16 +24,16 @@ func TestStatesAcrossWindowsAndRealResourceRelease(t *testing.T) {
 	if m.State("code-studio:s") != Background {
 		t.Fatal("unseen workspace must be background")
 	}
-	m.Report("main", Idle, []string{"code-studio:s"})
+	_, _ = m.Report("main", Idle, []string{"code-studio:s"})
 	if m.State("code-studio:s") != Idle {
 		t.Fatal("visible idle workspace")
 	}
-	m.Report("detached", Active, []string{"code-studio:s"})
+	_, _ = m.Report("detached", Active, []string{"code-studio:s"})
 	resource := Resource{Kind: "language-server", Restorable: true}
 	if m.CanSuspend("code-studio:s", resource, true) {
 		t.Fatal("detached active editor must win")
 	}
-	m.Report("detached", Background, []string{"code-studio:s"})
+	_, _ = m.Report("detached", Background, []string{"code-studio:s"})
 	if !m.CanSuspend("code-studio:s", resource, true) {
 		t.Fatal("idle automatic resource may suspend")
 	}
@@ -48,7 +48,7 @@ func TestStatesAcrossWindowsAndRealResourceRelease(t *testing.T) {
 	if m.State("code-studio:s") != Suspended {
 		t.Fatal("released resource should report suspended")
 	}
-	m.Report("main", Active, []string{"code-studio:s"})
+	_, _ = m.Report("main", Active, []string{"code-studio:s"})
 	if m.State("code-studio:s") != Active {
 		t.Fatal("interaction resumes active state")
 	}
@@ -77,7 +77,7 @@ func TestIntentionalAndUnknownResourcesAreAlwaysProtected(t *testing.T) {
 }
 func TestClosedNativeWindowsDoNotKeepWorkspacesActive(t *testing.T) {
 	m := NewManager()
-	m.Report("closed", Active, []string{"code-studio:s"})
+	_, _ = m.Report("closed", Active, []string{"code-studio:s"})
 	m.SetWindowAlive(func(string) bool { return false })
 	if m.State("code-studio:s") != Background || len(m.windows) != 0 {
 		t.Fatal("dead window retained")

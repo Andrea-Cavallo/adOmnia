@@ -244,18 +244,18 @@ export async function runPackageCommand(session: GoIDESession, relativePath: str
   }
 }
 
-/** Find in Files limitato alla cartella, come "Find in Folder…" di IntelliJ. */
+/** Find in Files limitato alla cartella. */
 export function findInFolder(relativePath: string): void {
   useCodeStudioLspStore.getState().requestFind('', relativePath ? `${relativePath}/**` : '')
 }
 
-/** "Repair IDE on File": riavvia gopls (ricostruisce l'indice) e rilegge il progetto, come Invalidate Caches di JetBrains. */
+/** "Repair IDE on File": riavvia gopls (ricostruisce l'indice) e rilegge il progetto. */
 export async function repairIde(sessionId: string, relativePath: string, directory: boolean): Promise<void> {
   await useCodeStudioLspStore.getState().restart(sessionId)
   await useCodeStudioStore.getState().refreshProject(directory ? relativePath : '')
 }
 
-/** Find in Files globale, come "Find in Files…" di IntelliJ. */
+/** Find in Files globale. */
 export function findInFiles(): void {
   useCodeStudioLspStore.getState().requestFind('')
 }

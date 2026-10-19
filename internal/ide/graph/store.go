@@ -38,7 +38,7 @@ func Fingerprint(root string, match func(rel string) bool) (string, error) {
 		if err != nil {
 			return nil
 		}
-		fmt.Fprintf(hash, "%s\x00%d\x00%d\n", rel, info.Size(), info.ModTime().UnixNano())
+		_, _ = fmt.Fprintf(hash, "%s\x00%d\x00%d\n", rel, info.Size(), info.ModTime().UnixNano())
 		return nil
 	})
 	if err != nil {

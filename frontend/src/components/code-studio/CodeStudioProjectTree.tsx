@@ -34,7 +34,7 @@ type TreeMarks = Map<string, CodeStudioTreeMark>
 
 const EMPTY_MARKS: TreeMarks = new Map()
 
-/** Colori JetBrains: modificato blu, aggiunto verde, non tracciato ambra, conflitto rosso. */
+/** Colori: modificato blu, aggiunto verde, non tracciato ambra, conflitto rosso. */
 const VCS_CLASS: Record<NonNullable<CodeStudioTreeMark['vcs']>, string> = {
   modified: 'text-info', added: 'text-success', untracked: 'text-warning', deleted: 'text-text-4 line-through', conflicted: 'text-danger',
 }

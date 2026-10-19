@@ -29,7 +29,7 @@ export interface JavaDebugTarget {
   environment?: Record<string, string>
 }
 
-const BUILD_DEBUGGABLE = /^(spring-boot:run|test|verify|integration-test|:?(?:[\w.-]+:)*(?:bootRun|run|test|adomniaRun))$/
+const BUILD_DEBUGGABLE = /^(spring-boot:run|quarkus:dev|test|verify|integration-test|:?(?:[\w.-]+:)*(?:bootRun|run|test|adomniaRun|quarkusDev))$/
 
 const optionsOf = (config: JavaDebugConfiguration): Record<string, unknown> =>
   config.languageOptions && typeof config.languageOptions === 'object' ? (config.languageOptions as Record<string, unknown>) : {}

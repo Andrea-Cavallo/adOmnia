@@ -33,3 +33,22 @@ func TestVEXStatesAreConservative(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestMarkdownReportListsFindingsWithFix(t *testing.T) {
+	report := ScanReport{Workspace: "C:/p", ScannedAt: "2026-10-19", Summary: Summary{Findings: 1, High: 1}, Findings: []Finding{{
+		ID: "x", Advisory: Advisory{ID: "GHSA-1", Summary: "RCE in lib"}, Component: Component{Name: "g:a", Version: "1.0", Direct: true},
+		Risk: Risk{Band: "high"}, Reachability: ReachabilityCalled, Remediation: Remediation{FixedVersion: "1.2"},
+	}}}
+	markdown := MarkdownReport(report)
+	for _, want := range []string{"# Dependency security report", "| high | GHSA-1 | g:a 1.0 |", "### GHSA-1 — RCE in lib", "upgrade to 1.2"} {
+		if !strings.Contains(markdown, want) {
+			t.Errorf("missing %q in:\n%s", want, markdown)
+		}
+	}
+	if out, err := Export(report, FormatMarkdown); err != nil || len(out) == 0 || FileExtension(FormatMarkdown) != ".md" {
+		t.Fatalf("export: %v", err)
+	}
+	if !strings.Contains(MarkdownReport(ScanReport{}), "No known vulnerabilities") {
+		t.Fatal("empty report")
+	}
+}

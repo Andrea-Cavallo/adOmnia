@@ -354,7 +354,7 @@ export function buildReproduction(input: ReproInput): { dir: string; files: Repr
     ...(input.queries.length ? [`Bring the database to the state the statements in \`queries.sql\` expect${tables.length ? ' (`db/tables.md` lists the tables and their schema)' : ''}.`] : []),
     ...(input.messages.length ? ['If the flow starts from a message, load the `kafka/*.kafka.json` fixtures in Broker Studio (Producer → Load fixture).'] : []),
     ...(flags.length ? ['Set the feature flags listed in `flags.md` to the captured values.'] : []),
-    `Send \`request.http\` (adOmnia, VS Code REST Client or IntelliJ), or run \`BASE_URL=http://localhost:PORT go test ./${dir}/\`.`,
+    `Send \`request.http\` (adOmnia or any REST client), or run \`BASE_URL=http://localhost:PORT go test ./${dir}/\`.`,
   ]
   const index = files.map((file) => `- \`${file.relativePath.slice(dir.length + 1)}\``).join('\n')
   add('README.md', `# Reproduction: ${run.method} ${pathOf(request.url)}

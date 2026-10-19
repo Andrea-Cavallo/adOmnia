@@ -3,7 +3,6 @@ package maven
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -416,13 +415,4 @@ func min(left, right int) int {
 		return left
 	}
 	return right
-}
-
-// writeTempFile scrive un file temporaneo per gli output di Maven.
-func writeTempFile(directory, name, content string) (string, error) {
-	path := filepath.Join(directory, name)
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		return "", err
-	}
-	return path, nil
 }

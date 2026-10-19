@@ -91,6 +91,7 @@ export interface SecurityEvidence {
   method?: string
   confirmed: boolean
   note?: string
+  why?: string
   callPaths?: SecurityCallFrame[][]
   symbols?: string[]
   packages?: string[]
@@ -216,7 +217,7 @@ export interface SecurityExportFormat {
   extension: string
 }
 
-export type SecurityExportFormatId = 'json' | 'sarif' | 'html' | 'cyclonedx' | 'spdx' | 'vex'
+export type SecurityExportFormatId = 'json' | 'sarif' | 'html' | 'cyclonedx' | 'spdx' | 'vex' | 'markdown'
 
 /** Riga d'impatto di un advisory nell'anteprima di un aggiornamento. */
 export interface SecurityAdvisoryImpact {

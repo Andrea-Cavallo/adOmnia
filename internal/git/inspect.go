@@ -74,14 +74,10 @@ func GetCommitMeta(repoPath, ref string) (CommitMeta, error) {
 		meta.Published = true
 	}
 	if out, err := runGit(repoPath, "branch", "--contains", full, "--format=%(refname:short)"); err == nil {
-		for _, line := range splitLines(out) {
-			meta.Branches = append(meta.Branches, line)
-		}
+		meta.Branches = append(meta.Branches, splitLines(out)...)
 	}
 	if out, err := runGit(repoPath, "tag", "--points-at", full); err == nil {
-		for _, line := range splitLines(out) {
-			meta.Tags = append(meta.Tags, line)
-		}
+		meta.Tags = append(meta.Tags, splitLines(out)...)
 	}
 	meta.RemoteURL = commitWebURL(repoPath, full)
 	return meta, nil

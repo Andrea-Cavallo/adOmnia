@@ -575,7 +575,7 @@ func portScanHandler(w http.ResponseWriter, r *http.Request) {
 			open := false
 			if err == nil {
 				open = true
-				conn.Close()
+				_ = conn.Close()
 			}
 
 			service := wellKnownServices[p]

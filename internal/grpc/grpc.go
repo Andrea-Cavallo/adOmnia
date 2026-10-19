@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/desc/protoparse"
-	"github.com/jhump/protoreflect/dynamic"
+	"github.com/jhump/protoreflect/desc" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -159,8 +159,8 @@ func grpcDial(address string, useTLS bool, timeout time.Duration, caCertPath, cl
 	if address == "" || !strings.Contains(address, ":") {
 		return nil, fmt.Errorf("invalid gRPC address: %s (expected host:port)", address)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	// The connection is established lazily by the first call, which carries its own timeout.
+	_ = timeout
 
 	var opts []grpc.DialOption
 	if useTLS {
@@ -173,7 +173,12 @@ func grpcDial(address string, useTLS bool, timeout time.Duration, caCertPath, cl
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	conn, err := grpc.DialContext(ctx, address, opts...)
+	// NewClient connects lazily and resolves with DNS by default; "passthrough" keeps the old DialContext behaviour for host:port.
+	target := address
+	if !strings.Contains(target, "://") {
+		target = "passthrough:///" + target
+	}
+	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial %s: %w", address, err)
 	}

@@ -4,6 +4,7 @@ import type { CodeStudioEditorMode } from '@/components/code-studio/codeStudioEd
 import type { CodeStudioSignature } from '@/components/code-studio/codeStudioChangeSignature'
 import { create } from 'zustand'
 import { nextLanguageServerProgress } from '@/lib/code-studio/lspProgress'
+import { isStaleLinterError } from '@/lib/code-studio/staleLinter'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
@@ -393,7 +394,10 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
       update({ running: false, result, reports })
     } catch (error) {
       if (runningLints.get(sessionId) !== request) return
-      update({ running: false, error: errorMessage(error) })
+      const message = errorMessage(error)
+      update({ running: false, error: message })
+      // golangci-lint compilato con un Go più vecchio: lo si ricompila (con consenso) e il lint riparte da solo.
+      if (isStaleLinterError(message)) void import('@/components/code-studio/codeStudioLinterRebuild').then((module) => module.rebuildStaleLinter(sessionId, changedOnly))
     } finally {
       if (runningLints.get(sessionId) === request) runningLints.delete(sessionId)
     }

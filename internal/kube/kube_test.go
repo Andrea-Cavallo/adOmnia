@@ -225,5 +225,5 @@ func TestFreeLocalPortIsBindable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("port %d not bindable: %v", port, err)
 	}
-	listener.Close()
+	_ = listener.Close()
 }

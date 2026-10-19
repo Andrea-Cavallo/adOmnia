@@ -113,7 +113,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     setMenu({ kind, x: rect.left, y: rect.bottom + 4 })
   }
 
-  // Sempre visibile, come nel widget progetto di JetBrains: vuota resta una voce disabilitata, non sparisce.
+  // Sempre visibile: vuota resta una voce disabilitata, non sparisce.
   const recentItems = (): ContextMenuItem[] => {
     const recent = (props.recentProjects ?? []).slice(0, MAX_RECENT_IN_MENU)
     if (recent.length === 0) return [{ id: 'recent-empty', label: 'Recent Projects', icon: History, disabled: true, disabledReason: 'No other recent projects yet', separatorBefore: true }]

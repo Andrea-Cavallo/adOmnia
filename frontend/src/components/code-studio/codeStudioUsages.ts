@@ -32,7 +32,7 @@ function usageKind(location: GoIDEEditorLocation): CodeStudioUsageKind {
   return usage === 'declaration' || usage === 'write' || usage === 'read' || usage === 'import' ? usage : 'other'
 }
 
-/** Come GoLand: dichiarazione, scritture, letture e import in sezioni separate, poi per file. */
+/** Dichiarazione, scritture, letture e import in sezioni separate, poi per file. */
 export function groupUsagesByKind(locations: GoIDEEditorLocation[]): CodeStudioUsageGroup[] {
   return ORDER
     .map(({ kind, label }) => {

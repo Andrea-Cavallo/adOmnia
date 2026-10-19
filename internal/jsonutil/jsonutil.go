@@ -47,7 +47,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	result := gjson.Get(req.JSON, req.Path)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"path":   req.Path,
 		"value":  result.Value(),
 		"raw":    result.Raw,
@@ -95,7 +95,7 @@ func jsonSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok":     true,
 		"path":   req.Path,
 		"result": json.RawMessage(result),
@@ -132,7 +132,7 @@ func jsonDiffHandler(w http.ResponseWriter, r *http.Request) {
 	identical := len(patch) == 0
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"identical": identical,
 		"patch":     patch,
 		"count":     len(patch),

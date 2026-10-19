@@ -476,13 +476,13 @@ func Open(path string) (*Job, error) {
 	indexPath := filepath.Join(dir, "entries.idx")
 	writer, err := os.Create(indexPath)
 	if err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		return nil, err
 	}
 	reader, err := os.Open(cleaned)
 	if err != nil {
-		writer.Close()
-		os.RemoveAll(dir)
+		_ = writer.Close()
+		_ = os.RemoveAll(dir)
 		return nil, err
 	}
 
@@ -512,7 +512,7 @@ func Open(path string) (*Job, error) {
 		job.writer = nil
 		job.mu.Unlock()
 		if writer != nil {
-			writer.Close()
+			_ = writer.Close()
 		}
 	}()
 	return job, nil
@@ -621,7 +621,7 @@ func (j *Job) Query(q Query) QueryResult {
 		result.Error = err.Error()
 		return result
 	}
-	defer indexFile.Close()
+	defer func() { _ = indexFile.Close() }()
 
 	cursor := q.From
 	if cursor < 0 {
@@ -730,12 +730,12 @@ func Close(id string) {
 	job.writer, job.reader = nil, nil
 	job.mu.Unlock()
 	if writer != nil {
-		writer.Close()
+		_ = writer.Close()
 	}
 	if reader != nil {
-		reader.Close()
+		_ = reader.Close()
 	}
-	os.RemoveAll(job.indexDir)
+	_ = os.RemoveAll(job.indexDir)
 }
 
 // CloseAll releases every index, on shutdown.

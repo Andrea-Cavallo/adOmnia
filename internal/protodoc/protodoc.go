@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jhump/protoreflect/desc/protoparse"
+	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 

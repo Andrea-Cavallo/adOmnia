@@ -28,7 +28,7 @@
   .code-studio-run-glyph:hover::before { transform: none; }
 }
 
-/* Chiamata ricorsiva (call hierarchy di gopls): icona nel gutter come in GoLand. */
+/* Chiamata ricorsiva (call hierarchy di gopls): icona nel gutter. */
 .code-studio-recursive-glyph {
   display: flex !important;
   align-items: center;
@@ -70,7 +70,7 @@
   opacity: 0.75;
 }
 
-/* Breakpoint: pallino sul numero di riga, come in GoLand. Il numero resta leggibile al passaggio. */
+/* Breakpoint: pallino sul numero di riga. Il numero resta leggibile al passaggio. */
 .monaco-editor .line-numbers.code-studio-bp,
 .monaco-editor .line-numbers.code-studio-exec {
   position: relative;
@@ -96,7 +96,7 @@
   border: 2px solid var(--color-danger);
   box-sizing: border-box;
 }
-/* Condizione o hit count: "?" nel pallino. Logpoint: rombo. Disattivato: grigio. Come GoLand/VS Code. */
+/* Condizione o hit count: "?" nel pallino. Logpoint: rombo. Disattivato: grigio. */
 .monaco-editor .line-numbers.code-studio-bp-cond::after {
   content: '?';
   color: #fff;
@@ -163,7 +163,7 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
 }
 
-/* Implementazioni (I↓) e interfacce implementate (I↑), come in GoLand: cliccabili per navigare. */
+/* Implementazioni (I↓) e interfacce implementate (I↑): cliccabili per navigare. */
 .code-studio-impl-glyph {
   cursor: pointer;
   display: flex !important;
@@ -194,14 +194,14 @@
 .code-studio-ctx-info::before { content: '·'; color: var(--color-accent, #8b5cf6); }
 .code-studio-ctx-glyph:hover::before { filter: brightness(1.3); }
 
-/* Gutter VCS rispetto a HEAD, come GoLand: verde aggiunto, blu modificato, triangolo per le righe cancellate. */
+/* Gutter VCS rispetto a HEAD: verde aggiunto, blu modificato, triangolo per le righe cancellate. */
 .monaco-editor .code-studio-vcs {
   cursor: pointer;
   width: 2px !important;
   margin-left: 2px;
   transition: width 120ms ease;
 }
-/* Tinte smorzate come in IntelliJ; al passaggio la barra si allarga per far capire che è cliccabile. */
+/* Tinte smorzate; al passaggio la barra si allarga per far capire che è cliccabile. */
 .monaco-editor .code-studio-vcs:hover { width: 4px !important; }
 .monaco-editor .code-studio-vcs-added { background: color-mix(in srgb, var(--color-success, #22c55e) 60%, transparent); }
 .monaco-editor .code-studio-vcs-modified { background: color-mix(in srgb, var(--color-info, #3b82f6) 65%, transparent); }
@@ -216,14 +216,14 @@
   border-left: 6px solid var(--color-text-4, #94a3b8);
 }
 
-/* Valori delle variabili a fine riga durante il debug, come GoLand: discreti, mai sopra il codice. */
+/* Valori delle variabili a fine riga durante il debug: discreti, mai sopra il codice. */
 .monaco-editor .code-studio-inline-value {
   color: var(--color-accent-light, #a855f7);
   font-style: italic;
   opacity: 0.85;
 }
 
-/* Toolbar come barra della finestra (JetBrains): si trascina dagli spazi vuoti, i controlli restano cliccabili. */
+/* Toolbar come barra della finestra: si trascina dagli spazi vuoti, i controlli restano cliccabili. */
 .code-studio-titlebar { user-select: none; }
 .code-studio-titlebar button,
 .code-studio-titlebar input,

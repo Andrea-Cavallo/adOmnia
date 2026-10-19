@@ -14,7 +14,7 @@ const ITEMS: ContextMenuItem[] = [
   { id: 'fuzz', label: 'Fuzz Test' },
 ]
 
-/** Code → Generate… (Alt+Insert) accanto al cursore, come negli IDE JetBrains. */
+/** Code → Generate… (Alt+Insert) accanto al cursore. */
 export function CodeStudioGenerateMenu() {
   const anchor = useCodeStudioLspStore((state) => state.generateMenu)
   if (!anchor) return null

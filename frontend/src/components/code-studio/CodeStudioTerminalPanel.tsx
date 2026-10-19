@@ -369,7 +369,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
           <Columns2 size={14} />
         </button>
         <span className="mx-1 h-4 w-px shrink-0 bg-border-1" aria-hidden="true" />
-        {/* + e scelta della shell a destra, come in VS Code. */}
+        {/* + e scelta della shell a destra. */}
         <button
           type="button"
           onClick={() => void open()}
@@ -408,7 +408,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
             }))}
             onSelect={(id) => {
               setProfileMenu(null)
-              // La shell scelta diventa quella del +, come in JetBrains e VS Code.
+              // La shell scelta diventa quella del +.
               setPreferredProfile(id)
               writePreferredProfile(id)
               void open(id)

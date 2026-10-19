@@ -118,6 +118,7 @@ func TestNonGoTemplatesCreateFilesWithoutGo(t *testing.T) {
 		"spring-boot-maven":  {"pom.xml", "README.md", ".gitignore", "src/main/resources/application.properties"},
 		"spring-boot-gradle": {"build.gradle", "settings.gradle", "README.md", ".gitignore", "src/main/resources/application.properties"},
 		"java-maven":         {"pom.xml", "README.md", ".gitignore"},
+		"quarkus-maven":      {"pom.xml", "README.md", ".gitignore", "src/main/resources/application.properties"},
 	}
 	for id, files := range expected {
 		t.Run(id, func(t *testing.T) {

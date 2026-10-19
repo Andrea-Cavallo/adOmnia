@@ -169,15 +169,22 @@ func (e *Engine) Scan(ctx context.Context, request ScanRequest) (ScanReport, err
 			Errors:     item.resolution.Warnings,
 		}
 		unitFindings := e.buildFindings(item.target, item.adapter, item.resolution.Components, advisories, byIdentity, options)
-		if analyzer, ok := item.adapter.(ReachabilityAnalyzer); ok {
+		analysisFailed := false
+		analyzer, hasAnalyzer := item.adapter.(ReachabilityAnalyzer)
+		if hasAnalyzer {
 			evidence, err := analyzer.AnalyzeReachability(ctx, item.target, unitFindings, options)
 			if err == nil && len(evidence) == len(unitFindings) {
 				for findingIndex := range unitFindings {
 					unitFindings[findingIndex].Evidence = evidence[findingIndex]
 					unitFindings[findingIndex].Reachability = normalizeReachability(unitFindings[findingIndex], evidence[findingIndex])
 				}
+			} else if err != nil {
+				// Un'analisi fallita non è "non raggiungibile": i finding restano "non analizzati" e l'utente sa perché.
+				unit.Errors = append(unit.Errors, "Reachability analysis failed: "+err.Error())
+				analysisFailed = true
 			}
 		}
+		explainUnanalyzed(unitFindings, hasAnalyzer, analysisFailed, options.AllowProcesses)
 		if planner, ok := item.adapter.(RemediationPlanner); ok {
 			remediations, err := planner.PlanRemediation(ctx, item.target, unitFindings, options)
 			if err == nil && len(remediations) == len(unitFindings) {
@@ -449,4 +456,25 @@ func suppressionMatches(suppression Suppression, finding Finding) bool {
 		}
 	}
 	return false
+}
+
+// explainUnanalyzed dice, per ogni finding rimasto "non analizzato", perché: l'utente non deve indovinarlo. Se
+// l'adapter ha già dato un motivo (es. govulncheck ha girato ma non segnala l'advisory) lo si lascia.
+func explainUnanalyzed(findings []Finding, hasAnalyzer, failed, allowProcesses bool) {
+	for index := range findings {
+		finding := &findings[index]
+		if finding.Reachability != ReachabilityUnknown || finding.Evidence.Why != "" {
+			continue
+		}
+		switch {
+		case !hasAnalyzer:
+			finding.Evidence.Why = "No reachability analysis for this ecosystem yet"
+		case failed:
+			finding.Evidence.Why = "The analysis failed: see the warning above"
+		case !allowProcesses:
+			finding.Evidence.Why = "Deep analysis is off"
+		default:
+			finding.Evidence.Why = "The analysis did not reach a conclusion"
+		}
+	}
 }

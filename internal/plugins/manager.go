@@ -363,9 +363,10 @@ func normalizePluginManifest(manifest *PluginManifest) error {
 		return fmt.Errorf("unsupported plugin runtime: %s", manifest.Runtime)
 	}
 	if manifest.EntryPoint == "" {
-		if manifest.Runtime == "js" {
+		switch manifest.Runtime {
+		case "js":
 			manifest.EntryPoint = "main.js"
-		} else if manifest.Runtime == "wasm" {
+		case "wasm":
 			manifest.EntryPoint = "plugin.wasm"
 		}
 	}

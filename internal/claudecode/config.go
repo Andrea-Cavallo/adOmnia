@@ -108,7 +108,7 @@ func inspect(root string, ignoreAPIKey bool, getenv func(string) string) Config 
 	config := Config{Helpers: []string{}, Variables: []ConfigVar{}, Warnings: []string{}}
 	values, sources := map[string]string{}, map[string]string{}
 	for _, name := range relevantVars {
-		if value := strings.TrimSpace(getenv(name)); value != "" && !(ignoreAPIKey && name == apiKeyVar) {
+		if value := strings.TrimSpace(getenv(name)); value != "" && (!ignoreAPIKey || name != apiKeyVar) {
 			values[name], sources[name] = value, "environment"
 		}
 	}

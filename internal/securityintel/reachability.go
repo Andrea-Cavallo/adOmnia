@@ -97,6 +97,9 @@ type Evidence struct {
 	Confirmed bool `json:"confirmed"`
 	// Note spiega il limite dell'analisi, in linguaggio comprensibile.
 	Note string `json:"note,omitempty"`
+	// Why è il motivo, in poche parole, per cui un finding è rimasto "non analizzato" (Deep analysis spenta, strumento
+	// fallito, advisory fuori dal database dello strumento…). Vuoto quando l'analisi ha dato un risultato.
+	Why string `json:"why,omitempty"`
 	// CallPaths parte dal codice del progetto (primo elemento) e arriva al simbolo
 	// vulnerabile (ultimo). L'assenza di percorsi non è garanzia di sicurezza.
 	CallPaths [][]CallFrame `json:"callPaths,omitempty"`

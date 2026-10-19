@@ -376,28 +376,28 @@ func buildFolderDiff(left, right map[string]fileMeta) ([]folderDiffFile, []folde
 }
 
 func insertDiffNode(root map[string]*folderDiffFile, parts []string, item folderDiffFile) {
-	current := root
-	for i, part := range parts {
-		node, ok := current[part]
-		if !ok {
-			node = &folderDiffFile{Path: strings.Join(parts[:i+1], "/"), Name: part, IsDir: i < len(parts)-1, Status: "same"}
-			current[part] = node
-		}
-		if i == len(parts)-1 {
-			*node = item
-			return
-		}
-		if node.Children == nil {
-			node.Children = []folderDiffFile{}
-		}
-		childMap := map[string]*folderDiffFile{}
-		for idx := range node.Children {
-			childMap[node.Children[idx].Name] = &node.Children[idx]
-		}
-		insertDiffNode(childMap, parts[i+1:], item)
-		node.Children = mapValues(childMap)
+	if len(parts) == 0 {
 		return
 	}
+	part := parts[0]
+	node, ok := root[part]
+	if !ok {
+		node = &folderDiffFile{Path: part, Name: part, IsDir: len(parts) > 1, Status: "same"}
+		root[part] = node
+	}
+	if len(parts) == 1 {
+		*node = item
+		return
+	}
+	if node.Children == nil {
+		node.Children = []folderDiffFile{}
+	}
+	childMap := map[string]*folderDiffFile{}
+	for idx := range node.Children {
+		childMap[node.Children[idx].Name] = &node.Children[idx]
+	}
+	insertDiffNode(childMap, parts[1:], item)
+	node.Children = mapValues(childMap)
 }
 
 func mapValues(m map[string]*folderDiffFile) []folderDiffFile {

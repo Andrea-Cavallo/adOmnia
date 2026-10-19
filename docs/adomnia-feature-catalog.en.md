@@ -1003,7 +1003,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | # | Feature | Description |
 |---|-------------|-------------|
 | I3.1 | **Collection → MCP Server** | Generates a self-contained TypeScript/Node.js MCP server from a collection (optionally with `_openapiSpec`) or a bare list of requests. |
-| I3.2 | **Endpoints as Tools** | Each endpoint becomes an AI-invocable tool, ready for Cursor, Claude Code, Windsurf, or any MCP-compatible agent. |
+| I3.2 | **Endpoints as Tools** | Each endpoint becomes an AI-invocable tool, ready for Claude Code or any MCP-compatible agent. |
 | I3.3 | **Auth Passthrough** | The generated server passes through authentication for the mapped requests. |
 | I3.4 | **Output Directory Picker** | Choose the output directory; generation runs from the "Generate Server" tab in the MCP panel. |
 
@@ -1037,7 +1037,7 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| J2.1 | **Monaco Editor** | Tabs with pinning, reopen closed tab, split editor with its own tabs, atomic saves, GoLand keymap, multi-caret and column selection. |
+| J2.1 | **Monaco Editor** | Tabs with pinning, reopen closed tab, split editor with its own tabs, atomic saves, configurable keymap, multi-caret and column selection. |
 | J2.2 | **Completion & Diagnostics** | gopls completion with auto-imports and diagnostics computed on unsaved buffers. |
 | J2.3 | **Navigation** | Ctrl+click / Ctrl+B declaration, implementations, super method, usages, symbol search, Search Everywhere (fuzzy matching ranked by prefix/word/substring/subsequence, with recently used actions pushed up), back/forward history, bookmarks, structure view and symbolic breadcrumb. |
 | J2.4 | **Implementation Markers** | Gutter markers for implementations and implemented interfaces, including SDK interfaces. |
@@ -1046,7 +1046,7 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 | J2.7 | **Formatting** | Reformat code and optimize imports, optionally on save; gofumpt optional. |
 | J2.8 | **File Icons** | Gopher for Go sources (test marker), Go logo for module files, Simple Icons brands for Docker, Git, GitHub Actions, `.env` and common formats; readable on both themes. |
 | J2.9 | **Markdown & Mermaid documents** | `.md` files open in Preview with the eye / split / editor switch remembered per file; `.mmd`/`.mermaid` render as diagrams with the same switch and show syntax errors under the diagram. **Markdown tools** side panels: outline with click-to-jump, backlinks found by project search, and a local graph of the note with unresolved/orphan toggles and a folder filter. Covered by automated tests; manual check pending. |
-| J2.10 | **Auto save** | Save on focus change (JetBrains style) and auto save after a pause in typing (1/2/5/10 seconds, off by default), independent and combinable. The delay restarts at every keystroke and never overlaps an in-flight save; save actions (format, imports, lint) still run. |
+| J2.10 | **Auto save** | Save on focus change and auto save after a pause in typing (1/2/5/10 seconds, off by default), independent and combinable. The delay restarts at every keystroke and never overlaps an in-flight save; save actions (format, imports, lint) still run. |
 
 ### J3. Lint & AI
 
@@ -1127,6 +1127,7 @@ rail panel.
 | K1.13 | **Security Center dashboard** | Workspace-wide view across ecosystems: findings by priority, exploited-in-the-wild and reachable counters, per-ecosystem cards (Java/Maven, Go Modules), filters by band and ecosystem, data-source freshness. |
 | K1.14 | **CVEs in the editor** | `go.mod` gets the same editor integration as `pom.xml`: a *Scan vulnerabilities* lens, a marker on each vulnerable `require`, the fixed version as a lens and a quick fix (an undoable edit of the version), and an *Install govulncheck…* lens when reachability is off. In `pom.xml` a direct dependency that brings in a vulnerable transitive library is flagged too, with the library and the advisory. |
 | K1.15 | **Transitive Maven without Maven** | Offline and without authorizing processes, the Maven graph is walked from the POMs in the local repository (`~/.m2`): nearest-wins mediation, scope propagation, optional/provided/test excluded, `<exclusions>`, and the project's `dependencyManagement` applied to transitive versions. A POM that was never downloaded is declared ("N dependency POMs are not in the local repository"), never guessed. |
+| K1.17 | **Pentest with Strix** | Security Center → *Pentest (Strix)*: runs the open-source Strix AI agents (Docker sandbox) on a private copy of a project picked from the recent ones, with scan depth, budget and focus. The model is the one from Settings → AI (or a custom LiteLLM id); a confirmation states that code goes to that provider. Findings come from Strix' SARIF, the full assessment exports as Markdown. Strix is installed on request with `uv`/`pipx` (never `curl \| bash`). Dependency reports also export as Markdown. |
 | K1.16 | **CI gate** | `go run ./cmd/secscan -root . -fail-on high -format sarif` runs the same engine from a pipeline, writes any export format and exits 1 when an unsuppressed finding is at or above the threshold (0 pass, 2 error). |
 
 ---

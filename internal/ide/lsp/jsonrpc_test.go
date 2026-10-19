@@ -58,7 +58,7 @@ func connPair(t *testing.T) (*Conn, fakeServer, *recordingHandler) {
 	handler := &recordingHandler{notifications: make(chan string, 8)}
 	conn := NewConn(clientReader, clientWriter, handler)
 	go conn.Run()
-	t.Cleanup(func() { serverWriter.Close(); clientWriter.Close() })
+	t.Cleanup(func() { _ = serverWriter.Close(); _ = clientWriter.Close() })
 	return conn, fakeServer{reader: bufio.NewReader(serverReader), writer: serverWriter}, handler
 }
 
@@ -141,7 +141,7 @@ func TestConnUnblocksPendingCallsOnClose(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- conn.Call(context.Background(), "never", nil, nil) }()
 	server.read(t)
-	server.writer.(*io.PipeWriter).Close()
+	_ = server.writer.(*io.PipeWriter).Close()
 	if err := <-done; !errors.Is(err, ErrClosed) {
 		t.Fatalf("chiamata non sbloccata: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestConnAppliesPendingRequestLimit(t *testing.T) {
 	if err := conn.Call(context.Background(), "third", nil, nil); !errors.Is(err, ErrTooManyPendingRequests) {
 		t.Fatalf("atteso ErrTooManyPendingRequests, ottenuto %v", err)
 	}
-	server.writer.(*io.PipeWriter).Close()
+	_ = server.writer.(*io.PipeWriter).Close()
 	for _, done := range []chan error{first, second} {
 		select {
 		case err := <-done:
@@ -199,7 +199,7 @@ func TestConnCancelsServerRequestHandlersOnClose(t *testing.T) {
 	handler := &blockingHandler{started: make(chan struct{}), stopped: make(chan error, 1)}
 	conn := NewConn(clientReader, clientWriter, handler)
 	go conn.Run()
-	t.Cleanup(func() { clientWriter.Close(); serverReader.Close() })
+	t.Cleanup(func() { _ = clientWriter.Close(); _ = serverReader.Close() })
 	go func() { _, _ = io.Copy(io.Discard, serverReader) }()
 	server := fakeServer{reader: bufio.NewReader(serverReader), writer: serverWriter}
 	server.send(t, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "workspace/slow", "params": nil})
@@ -208,7 +208,7 @@ func TestConnCancelsServerRequestHandlersOnClose(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("handler never started")
 	}
-	serverWriter.Close()
+	_ = serverWriter.Close()
 	select {
 	case err := <-handler.stopped:
 		if !errors.Is(err, context.Canceled) {

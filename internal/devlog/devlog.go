@@ -153,11 +153,11 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 	path := currentLogPath()
 	f, err := os.Open(path)
 	if err != nil {
-		fmt.Fprintf(w, "data: {\"error\":\"log file not found\"}\n\n")
+		_, _ = fmt.Fprintf(w, "data: {\"error\":\"log file not found\"}\n\n")
 		flusher.Flush()
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, _ = f.Seek(0, io.SeekEnd)
 	scanner := bufio.NewScanner(f)
@@ -175,7 +175,7 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 				if line == "" {
 					continue
 				}
-				fmt.Fprintf(w, "data: %s\n\n", line)
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
 				flusher.Flush()
 			}
 		}

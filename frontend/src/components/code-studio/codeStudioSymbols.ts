@@ -144,7 +144,7 @@ function sectionOf(node: GoIDESymbolNode): StructureSectionId {
 }
 
 /**
- * Raggruppa i simboli di primo livello per sezione, come la Structure di GoLand.
+ * Raggruppa i simboli di primo livello per sezione.
  * gopls elenca i metodi in cima con nome "(*T).M": finiscono sotto il loro tipo, dopo i campi.
  * Un metodo il cui tipo è in un altro file resta nella sezione Methods.
  */

@@ -3,7 +3,7 @@ import { monaco } from '@/lib/monacoSetup'
 /**
  * Emmet per HTML, CSS e JSX/TSX: un suggerimento "Emmet Abbreviation" quando il testo prima del
  * cursore è un'abbreviazione che si espande. La libreria si carica alla prima richiesta, così non pesa
- * sull'avvio. Il language server HTML standard non include Emmet (in VS Code è un'estensione a parte).
+ * sull'avvio. Il language server HTML standard non include Emmet (che è un'estensione a parte).
  */
 
 type EmmetModule = typeof import('emmet')

@@ -34,7 +34,7 @@ export function frameVariables(scopes: GoIDEDebugScope[], children: Record<numbe
 }
 
 /**
- * Come GoLand: ogni variabile si mostra sull'ultima riga, fino a quella in pausa, in cui compare,
+ * Ogni variabile si mostra sull'ultima riga, fino a quella in pausa, in cui compare,
  * senza uscire dalla funzione corrente. Restituisce le variabili per riga (1-based), valori interi.
  */
 export function inlineValueVariables(lines: string[], pausedLine: number, variables: InlineVariable[]): Map<number, InlineVariable[]> {

@@ -10,6 +10,10 @@ import (
 // GradleDebugPort è la porta fissa di `--debug-jvm` (Gradle non permette di sceglierla in modo portabile).
 const GradleDebugPort = 5005
 
+// QuarkusDebugPort è la porta JDWP di default del dev mode di Quarkus (`quarkus.debug.port`):
+// è già in ascolto senza bisogno di iniettare un agent.
+const QuarkusDebugPort = 5005
+
 // jdwpAgent è l'argomento JVM che mette il processo in attesa di un debugger sulla porta.
 func jdwpAgent(port int) string {
 	return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:" + strconv.Itoa(port)
@@ -22,6 +26,11 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 	if unitKind == UnitGradle {
 		for index, argument := range arguments {
 			task := argument[strings.LastIndex(argument, ":")+1:]
+			// Quarkus dev mode espone già JDWP sulla porta di default: non serve `--debug-jvm`,
+			// che anzi aprirebbe una seconda porta che nessuno ascolta.
+			if !strings.HasPrefix(argument, "-") && task == "quarkusDev" {
+				return slices.Clone(arguments), QuarkusDebugPort, nil
+			}
 			if !strings.HasPrefix(argument, "-") && (task == "test" || task == "bootRun" || task == "run" || task == "adomniaRun") {
 				if slices.Contains(arguments, "--debug-jvm") {
 					return slices.Clone(arguments), GradleDebugPort, nil
@@ -30,9 +39,13 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 				return out, GradleDebugPort, nil
 			}
 		}
-		return nil, 0, fmt.Errorf("Gradle can debug the test, run and bootRun tasks: this configuration has none of them")
+		return nil, 0, fmt.Errorf("Gradle can debug the test, run, bootRun and quarkusDev tasks: this configuration has none of them")
 	}
 	switch {
+	case slices.Contains(arguments, "quarkus:dev"):
+		// Quarkus dev mode ha già il debugger in ascolto sulla porta di default: si lasciano
+		// gli argomenti intatti e ci si collega, senza iniettare un agent JDWP.
+		return slices.Clone(arguments), QuarkusDebugPort, nil
 	case slices.Contains(arguments, "spring-boot:run"):
 		const prefix = "-Dspring-boot.run.jvmArguments="
 		out := make([]string, 0, len(arguments)+1)
@@ -53,7 +66,7 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 		agent := jdwpAgent(port)
 		return append(slices.Clone(arguments), "-Dmaven.surefire.debug="+agent, "-Dmaven.failsafe.debug="+agent), port, nil
 	}
-	return nil, 0, fmt.Errorf("Maven can debug test and spring-boot:run configurations; a plain main class is debugged directly with Debug")
+	return nil, 0, fmt.Errorf("Maven can debug test, spring-boot:run and quarkus:dev configurations; a plain main class is debugged directly with Debug")
 }
 
 func hasGoal(arguments []string, goals ...string) bool {

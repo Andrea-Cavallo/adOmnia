@@ -8,6 +8,8 @@ import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioField, CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioGoModSettings, type GoModEdit } from './CodeStudioGoModSettings'
 import { CodeStudioWorkspaceModules } from './CodeStudioWorkspaceModules'
+import { CodeStudioMavenDependencies } from './CodeStudioMavenDependencies'
+import { mavenBuildUnits } from '@/lib/code-studio/mavenUnits'
 
 interface CodeStudioDependenciesProps {
   open: boolean
@@ -23,6 +25,10 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'requirements' | 'gomod' | 'workspace'>('requirements')
+  const mavenUnits = useMemo(() => mavenBuildUnits(session.project), [session.project])
+  const hasGo = goModules(session.project).length > 0
+  const [ecosystem, setEcosystem] = useState<'go' | 'maven'>(hasGo ? 'go' : 'maven')
+  const showMaven = mavenUnits.length > 0 && (ecosystem === 'maven' || !hasGo)
   // Versioni pubblicate per dipendenza, caricate solo su richiesta (passano dal GOPROXY).
   const [versions, setVersions] = useState<Record<string, string[] | 'loading'>>({})
   // REFACTOR.md voce 10: scarto stale + cancel sui `go list` lunghi, come in `stores/codeStudioLsp.ts`.
@@ -132,13 +138,19 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
       tall
       divided
       icon={Package}
-      title="Go dependencies"
-      subtitle="Manage requirements and go.mod directives. Every change is confirmed first."
-      footerStart={running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
+      title={showMaven ? 'Maven dependencies' : 'Go dependencies'}
+      subtitle={showMaven ? 'Dependencies of pom.xml and Gradle files, with vulnerabilities and updates. Changes are editor edits you review.' : 'Manage requirements and go.mod directives. Every change is confirmed first.'}
+      footerStart={showMaven ? 'Updates edit the build file in the editor.' : running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
       footer={<CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>}
     >
       {error && <CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert>}
-      {goModules(session.project).length === 0 ? (
+      {hasGo && mavenUnits.length > 0 && (
+        <div role="tablist" aria-label="Ecosystem" className="gs-segmented self-start">
+          <button type="button" role="tab" aria-selected={!showMaven} onClick={() => setEcosystem('go')} className="gs-segment">Go</button>
+          <button type="button" role="tab" aria-selected={showMaven} onClick={() => setEcosystem('maven')} className="gs-segment">Maven / Gradle</button>
+        </div>
+      )}
+      {showMaven ? <CodeStudioMavenDependencies session={session} units={mavenUnits} onClose={onClose} /> : goModules(session.project).length === 0 ? (
         <div className="gs-surface gs-list-empty">This project has no Go module. Open or create a folder with a go.mod to manage dependencies.</div>
       ) : <>
         <div className="flex items-end gap-2">

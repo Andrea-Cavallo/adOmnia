@@ -45,6 +45,22 @@ export function FinishUpgrade(root: string, planID: string, apply: boolean): $Ca
 }
 
 /**
+ * GovulncheckInstallPlan è il comando che ricompila govulncheck con il Go corrente (da mostrare nella conferma).
+ */
+export function GovulncheckInstallPlan(): $CancellablePromise<string> {
+    return $Call.ByID(3262503963);
+}
+
+/**
+ * InstallGovulncheck esegue `go install` di govulncheck dopo il consenso dell'utente. Serve quando govulncheck è
+ * stato compilato con un Go più vecchio di quello del progetto e non riesce a leggerne i package. L'output si
+ * segue con StrixStatus, che vale per qualunque installazione avviata dal manager.
+ */
+export function InstallGovulncheck(confirmed: boolean): $CancellablePromise<string> {
+    return $Call.ByID(1724333176, confirmed);
+}
+
+/**
  * PlanUpgrade prepara la modifica del manifest per un aggiornamento e restituisce in
  * JSON il piano: il diff da rivedere, l'impatto atteso e i passi di verifica, tutti
  * ancora "idle". Non scrive alcun file: la modifica parte solo con RunUpgradeStep.
@@ -104,4 +120,62 @@ export function ScanWorkspace(root: string, optionsJSON: string): $CancellablePr
  */
 export function SecuritySettings(root: string): $CancellablePromise<string> {
     return $Call.ByID(2200097501, root);
+}
+
+/**
+ * StrixCancel ferma la scansione.
+ */
+export function StrixCancel(runID: string): $CancellablePromise<void> {
+    return $Call.ByID(2332719274, runID);
+}
+
+/**
+ * StrixExport è il report completo in Markdown.
+ */
+export function StrixExport(runID: string): $CancellablePromise<string> {
+    return $Call.ByID(3428775670, runID);
+}
+
+/**
+ * StrixInfo dice se Strix e Docker sono pronti.
+ */
+export function StrixInfo(): $CancellablePromise<string> {
+    return $Call.ByID(3409011052);
+}
+
+/**
+ * StrixInstall installa Strix con il piano mostrato; confirmed deve essere true.
+ */
+export function StrixInstall(confirmed: boolean): $CancellablePromise<string> {
+    return $Call.ByID(2054250291, confirmed);
+}
+
+/**
+ * StrixInstallPlan restituisce il comando che verrà eseguito per installare Strix (da mostrare nella conferma).
+ */
+export function StrixInstallPlan(): $CancellablePromise<string> {
+    return $Call.ByID(2007214060);
+}
+
+/**
+ * StrixReport legge problemi e report scritti da Strix.
+ */
+export function StrixReport(runID: string): $CancellablePromise<string> {
+    return $Call.ByID(3659090634, runID);
+}
+
+/**
+ * StrixStart lancia la scansione di una copia del progetto. aiConfigJSON è la configurazione AI di adOmnia
+ * (la stessa dell'AI Engine); customModel, se non vuoto, è un id LiteLLM scritto dall'utente.
+ * confirmed attesta che l'utente ha accettato che il codice vada al provider LLM.
+ */
+export function StrixStart(optionsJSON: string, aiConfigJSON: string, customModel: string, confirmed: boolean): $CancellablePromise<string> {
+    return $Call.ByID(2167733356, optionsJSON, aiConfigJSON, customModel, confirmed);
+}
+
+/**
+ * StrixStatus restituisce lo stato della run e le righe di output successive a since.
+ */
+export function StrixStatus(runID: string, since: number): $CancellablePromise<string> {
+    return $Call.ByID(52629330, runID, since);
 }

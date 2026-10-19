@@ -58,7 +58,7 @@ interface WindowTitlebar {
 
 /**
  * Niente barra del titolo separata: con la finestra frameless l'header del pannello diventa
- * la barra della finestra (si trascina dagli spazi vuoti, doppio clic ingrandisce), come JetBrains e VS Code.
+ * la barra della finestra (si trascina dagli spazi vuoti, doppio clic ingrandisce).
  */
 export function useWindowTitlebar(): WindowTitlebar {
   const active = useAppStore((state) => state.appWindowChrome)

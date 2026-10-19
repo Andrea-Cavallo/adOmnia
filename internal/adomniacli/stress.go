@@ -281,9 +281,10 @@ func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []ma
 			}
 			if len(dataset) > 0 {
 				index := int(iteration % int64(len(dataset)))
-				if cfg.DatasetMode == "per-vu" {
+				switch cfg.DatasetMode {
+				case "per-vu":
 					index = vu % len(dataset)
-				} else if cfg.DatasetMode == "random" {
+				case "random":
 					index = int((iteration*1103515245 + int64(vu)*2654435761 + 12345) % int64(len(dataset)))
 				}
 				for key, value := range dataset[index] {

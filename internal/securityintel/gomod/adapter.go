@@ -8,6 +8,7 @@
 package gomod
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -337,6 +338,7 @@ func (a *Adapter) AnalyzeReachability(ctx context.Context, target securityintel.
 	for index := range findings {
 		match, found := byIdentity[identityOf(findings[index])]
 		if !found {
+			evidence[index].Why = unreportedReason(findings[index])
 			continue
 		}
 		evidence[index] = evidenceFromFinding(match)
@@ -422,26 +424,68 @@ func runGovulncheck(ctx context.Context, directory, executable string, options s
 		return nil, fmt.Errorf("govulncheck timed out after %s", govulncheckTimeout)
 	}
 	output := []byte(stdout.String())
-	if err != nil && len(strings.TrimSpace(stdout.String())) == 0 {
+	// In modalità JSON govulncheck scrive sempre la sezione "config" su stdout, anche quando non riesce a caricare i
+	// package (es. compilato con un Go più vecchio di quello del progetto): stdout non vuoto non basta a dire che è andata
+	// bene. Un'uscita con errore senza alcun "finding" o "osv" è un fallimento, mai "nessuna vulnerabilità".
+	if err != nil && !bytes.Contains(output, []byte(`"finding"`)) && !bytes.Contains(output, []byte(`"osv"`)) {
 		message := strings.TrimSpace(stderr.String())
 		if message == "" {
 			message = err.Error()
 		}
-		return nil, fmt.Errorf("govulncheck: %s", firstLine(message))
+		return nil, fmt.Errorf("govulncheck: %s", strings.TrimPrefix(firstLine(message), "govulncheck: "))
 	}
 	return output, nil
 }
 
-// findGovulncheck cerca govulncheck nel PATH.
+// unreportedReason spiega perché govulncheck, pur avendo girato, non dice nulla su un advisory. Assenza non è prova di
+// sicurezza: per questo il livello resta "non analizzato" e cambia solo il motivo mostrato.
+func unreportedReason(finding securityintel.Finding) string {
+	if strings.HasPrefix(finding.Advisory.ID, "GO-") {
+		if finding.Component.Name == "stdlib" {
+			return "govulncheck ran and did not flag it: the installed Go already includes the fix"
+		}
+		return "govulncheck ran and did not flag it: the vulnerable code is not part of the build"
+	}
+	return "Not in the Go vulnerability database, so govulncheck cannot judge it"
+}
+
+// findGovulncheck cerca govulncheck dove `go install` lo mette (GOBIN, poi GOPATH/bin) e solo dopo nel PATH.
+// Un govulncheck vecchio può stare prima nel PATH: ricompilarlo con `go install` ne crea uno nuovo altrove e deve vincere
+// quello, altrimenti la ricompilazione non servirebbe a niente.
 func findGovulncheck() string {
 	name := "govulncheck"
 	if runtime.GOOS == "windows" {
 		name = "govulncheck.exe"
 	}
+	for _, directory := range goInstallDirectories() {
+		candidate := filepath.Join(directory, name)
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
 	if candidate, err := exec.LookPath(name); err == nil {
 		return candidate
 	}
 	return ""
+}
+
+// goInstallDirectories sono le cartelle in cui `go install` scrive i binari.
+func goInstallDirectories() []string {
+	goEnv := func(name string) string {
+		output, err := procutil.Command("go", "env", name).Output()
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(output))
+	}
+	var directories []string
+	if bin := goEnv("GOBIN"); bin != "" {
+		directories = append(directories, bin)
+	}
+	for _, path := range filepath.SplitList(goEnv("GOPATH")) {
+		directories = append(directories, filepath.Join(path, "bin"))
+	}
+	return directories
 }
 
 func firstLine(message string) string {

@@ -18,6 +18,29 @@ misurare prima/dopo · nessuna regressione funzionale o grafica · nessun contra
 
 ---
 
+## CS-HOST — Alleggerire il backend Code Studio (audit 2026-10-19)
+
+**Stato: pianificato, nessuna estrazione dichiarata completata.** Verificato `main` a `e8a1c70fc9112e340a0ddd7b06f56741f8c4407b`: 70 directory immediate in `internal`, 266 elementi immediati in `internal/codestudio` (non 266 file di implementazione). Il checkout `develop` contiene anche lavoro concorrente: 71 directory e 267 elementi al momento dell'audit. Il numero di cartelle non è un criterio di accettazione.
+
+Architettura confermata: `codestudio` compone core e adapter; `ide` non importa host, adapter o tooling Go; `languages` non importa host. L'ADR 0001 è esplicitamente superata dal piano multilinguaggio. Le 12 fasi completate indicano la migrazione della piattaforma, non un host già privo di implementazione concreta.
+
+### P0 — Estrazioni in ordine di esecuzione
+
+- [ ] **CS-HOST.1 Profiling.** Estrarre da `internal/codestudio/pprof.go` interpretazione e aggregazione dei campioni, Top, flame graph, archi e righe verso `internal/languages/golang/profiling`. `ListProfileFiles`/`LoadProfile` conservano nell'host sessione, confinamento dei percorsi e limiti di lettura. Spostare con il motore i test numerici di `pprof_test.go`/`pprof_accuracy_test.go`; mantenere test host sui percorsi. Conservare i DTO pubblici e verificare il risultato della generazione Wails prima di scegliere alias o conversioni: lo stesso JSON non garantisce lo stesso percorso TypeScript generato. Beneficio: analisi e regressioni numeriche concentrate nello stesso modulo.
+- [ ] **CS-HOST.2 Dipendenze Go.** Estrarre parsing `go list`/`go mod graph`, costruzione del grafo, duplicati, licenze e pesi da `dependencygraph.go` verso `internal/languages/golang/dependencies`. Restano nell'host autorizzazione, risoluzione della directory, cache/singleflight e orchestrazione dei processi. Inventariare prima i consumer di `runModuleCommand`, incluso `affected_packages.go`: non spostarlo insieme al parser senza considerarli. Riutilizzare test grafo, cache e invalidazione; preservare limiti, isolamento tra sessioni e comportamento offline. Beneficio: un proprietario per la semantica dei moduli Go, senza trasferire la gestione delle sessioni nell'adapter.
+- [ ] **CS-HOST.3 Coverage condivisa.** Separare il contratto neutro dai parser: `coverage_java.go` usa già lo stesso `CoverageReport` per JaCoCo. Valutare il contratto in `ide/testing`, con compatibilità esplicita dei DTO host; parser del profilo e analisi AST di `coverage.go`/`coverage_branches.go` nell'adapter Go, lettura JaCoCo nell'adapter Java. Nessuna dipendenza Java → Go. Verificare shape JSON, colonne UTF-16, disk token, sorgenti confinati, moduli annidati, funzioni e rami. Beneficio: due adapter reali condividono il risultato senza condividere la sintassi del linguaggio.
+- [ ] **CS-HOST.4 Riesame del lifecycle LSP.** La policy RAM è già in `internal/resources/budget.go`. `lsp_budget.go` gestisce mutex, processi, richieste pendenti, attività, epoch e sospensione tramite `lspSession`: non spostare il solo file in `ide/lsp`. Delimitare prima la responsabilità del manager completo, mantenendo replay buffer, shutdown, crash/restart e isolamento sessione/linguaggio. Riusare la policy esistente; nessun secondo servizio di budget.
+- [ ] **CS-HOST.5 Riesame gopls e facade.** `DetectGopls` delega già a `golang.LocateGopls` e `ServerSpec` è già nell'adapter. Lasciare nell'host consenso, installazione tramite process manager, configurazione per sessione, eventi e persistenza. Estrarre soltanto semantica Go residua con consumer verificati. Ridurre `service.go` come conseguenza delle estrazioni; suddividerlo in file dello stesso package non conta come riduzione dell'accoppiamento. Conservare i campi Go legacy dei DTO finché sono richiesti dalla compatibilità.
+
+### P1/P2 e gate
+
+- [ ] **CS-HOST.6 P1 Adapter.** Introdurre sottopacchetti Go/Java solo per responsabilità autonome e dipendenze unidirezionali, dopo le estrazioni P0; nessuna nuova interfaccia per un consumatore ipotetico.
+- [ ] **CS-HOST.7 P2 Moduli adiacenti.** Cercare duplicazioni concrete tra `codestudiowindow`, `devcontext`, `devsession`, `eclipsepde` e gli altri moduli prima di proporre raggruppamenti. Finestre native e sessioni applicative non diventano responsabilità degli adapter.
+
+Per ciascuna estrazione: diff limitato, test comportamentali del modulo e della facade, `go test ./internal/ide -run 'TestCoreDoesNotImportLanguageAdapters|TestLanguageAdaptersDoNotImportHost' -count=1`, confronto dei binding generati e dei contratti JSON/sessione senza variazioni, compilazione dei consumer coinvolti. I test architetturali sono **PASS nell'audit 2026-10-19**; non sono prova di estrazioni ancora da eseguire. Al checkpoint d'integrazione eseguire le suite complete previste dal repository. Le verifiche desktop restano nel solo `MANUAL-CHECK.md`.
+
+---
+
 ## Sintesi
 
 | # | Voce | Priorità | Stato | Fattibilità | Impatto atteso | Sforzo |

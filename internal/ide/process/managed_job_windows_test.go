@@ -44,7 +44,7 @@ func TestJobCloseCyclesReleaseChildrenAndHandles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	windows.CloseHandle(job)
+	_ = windows.CloseHandle(job)
 	var before uint32
 	// Include os/exec runtime initialization in warmup, not in the leak delta.
 	for i := 0; i < 15; i++ {
@@ -66,7 +66,8 @@ func TestJobCloseCyclesReleaseChildrenAndHandles(t *testing.T) {
 			t.Fatal(err)
 		}
 		select {
-		case <-done:
+		case waitErr := <-done:
+			_ = waitErr // the job kills the child: Wait reporting that is expected
 		case <-time.After(5 * time.Second):
 			t.Fatal("child survived job close")
 		}
@@ -118,7 +119,7 @@ func TestJobOwnerCrashTerminatesChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer windows.CloseHandle(child)
-	defer TerminateTreeByPID(pid)
+	defer func() { _ = TerminateTreeByPID(pid) }()
 	if err := owner.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}

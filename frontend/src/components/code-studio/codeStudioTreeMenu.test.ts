@@ -22,7 +22,7 @@ describe('treeKeyAction', () => {
   const key = (value: string, modifiers: Partial<Record<'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey', boolean>> = {}) =>
     treeKeyAction({ key: value, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...modifiers })
 
-  it('maps the GoLand project view shortcuts', () => {
+  it('maps the project view shortcuts', () => {
     expect(key('x', { ctrlKey: true })).toBe('cut')
     expect(key('c', { metaKey: true })).toBe('copy')
     expect(key('v', { ctrlKey: true })).toBe('paste')

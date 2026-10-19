@@ -1,6 +1,6 @@
 /**
- * Auto save a tempo: dopo una pausa nella digitazione salva i file modificati,
- * come `files.autoSave: afterDelay` di VS Code. Il debounce è lo stesso del
+ * Auto save a tempo: dopo una pausa nella digitazione salva i file modificati.
+ * Il debounce è lo stesso del
  * crash recovery (codeStudioRecovery): nessun salvataggio mentre si scrive.
  */
 

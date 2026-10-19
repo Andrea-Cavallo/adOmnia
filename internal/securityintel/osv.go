@@ -17,10 +17,6 @@ const (
 	// È la ragione per cui un motore comune conviene: il costo di rete non cresce
 	// con il numero di ecosistemi.
 	osvBatchEndpoint = "https://api.osv.dev/v1/querybatch"
-	// osvQueryEndpoint è l'API per un singolo pacchetto, usata per gli approfondimenti.
-	osvQueryEndpoint = "https://api.osv.dev/v1/query"
-	// goVulnEndpoint è la Go Vulnerability Database, in formato OSV.
-	goVulnEndpoint = "https://vuln.go.dev/index/db.json"
 
 	osvTimeout       = 45 * time.Second
 	osvBatchMaxQuery = 1000

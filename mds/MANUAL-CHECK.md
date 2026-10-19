@@ -835,11 +835,25 @@ Piano: 06 JS-11 (P2). **Prerequisito:** progetto Spring Boot + uno Quarkus o Mic
 - [ ] JS-6.M3 Un file con `void main()` senza `public static` (Java 25) mostra il ▶ solo quando JDT LS è `ready`; con JDT LS fermo resta la regola della regex e una classe non lanciabile non ha il ▶.
 - [ ] JS-8.M4 Dipendenza senza `<version>` in un pom con parent Spring Boot: il marker/CVE mostra la versione ereditata e non propone modifiche in quel file; "Scan vulnerabilities" su un `build.gradle` segnala i CVE delle dipendenze con versione scritta (e avvisa che le transitive non sono lette).
 
+### JS-16 — Quarkus e MicroProfile (2026-10-19)
+
+Piano: 06 JS-16 (P0). **Prerequisito:** un progetto Quarkus reale (`mvn quarkus:dev` parte) oppure il template **Quarkus (Maven)** da File → New Project. Skin scuro e chiaro.
+
+- [ ] **JS-16.M1** Endpoint JAX-RS: in una classe `@Path` con metodi `@GET`/`@POST` gli endpoint compaiono nel pannello Spring endpoints con metodo, route completa (classe + metodo) e `@Produces`/`@Consumes`; lo stesso elenco è nelle route del Developer Context (lens sul sorgente, "Open API"). Con un progetto Spring accanto nessuna differenza.
+- [ ] **JS-16.M2** Debug del dev mode: `quarkus:dev` (o `quarkusDev`) avviato e premuto Debug — il processo **non** riceve un agent JDWP iniettato (lo si vede dalla console: nessun `-agentlib:jdwp`), la sessione si collega alla porta 5005 e si ferma sui breakpoint; con l'app già in esecuzione il collegamento parte senza riavviare nulla.
+- [ ] **JS-16.M3** Configurazione: in `application.properties` le chiavi `quarkus.*` hanno completamento con tipo e descrizione; su `@ConfigProperty(name = "…")` Ctrl+click porta alla proprietà; `quarkus.http.port` è la porta mostrata come `server.port` per le chiamate API.
+
 ### SEC-2 — CVE nell'editor di go.mod e pom.xml (2026-10-18)
 
 - [ ] SEC-2.M1 Apri un `go.mod` con una dipendenza nota vulnerabile (es. `golang.org/x/net v0.10.0`): la lens "⛨ Scan vulnerabilities" in testa al file avvia la scansione; sulla riga del `require` compaiono il marker (rosso per critical/high), la lens "⚠ GO-… · HIGH · fixed in vX" e "↑ vX (security fix)". Il click (o Ctrl+.) cambia solo la versione, con Ctrl+Z si annulla, `// indirect` resta.
 - [ ] SEC-2.M2 Senza `govulncheck` installato, dopo la scansione compare "ℹ Reachability off · Install govulncheck…": mostra la conferma con il comando `go install …`, poi l'output nella console Run.
 - [ ] SEC-2.M3 Scansiona un `pom.xml` con Maven non autorizzato ma con la repository `~/.m2` popolata: i finding includono le transitive; la dipendenza diretta che le porta ha un marker "brings in <lib> <versione>: CVE-…". Con un POM mai scaricato l'avviso dice quanti ne mancano.
+- [ ] SEC-3.M1 Security Center → Pentest (Strix) senza Strix installato: appare "Install Strix…", il consenso mostra il comando esatto (`uv tool install strix-agent` o `pipx install strix-agent`), l'output scorre nella pagina e a fine installazione il pulsante Run pentest si abilita (con Docker acceso).
+- [ ] SEC-3.M2 Il selettore progetto propone gli ultimi progetti aperti in Code Studio e funziona anche per la scansione dipendenze; Browse apre il selettore nativo.
+- [ ] SEC-3.M3 Run pentest su un progetto piccolo in modalità Quick con budget basso: la conferma dice che il codice va al provider scelto; durante la scansione l'output si aggiorna; Stop la ferma; a fine scansione i problemi compaiono con gravità e file:riga e "Export as MD" scarica report e dettagli. I file del progetto non cambiano e nel progetto non nasce `strix_runs/`.
+- [ ] SEC-3.M4 Con un id modello personalizzato (es. `github_copilot/gpt-4o`) la scansione usa quel modello; senza chiave AI configurata l'errore è chiaro.
+- [ ] SEC-3.M6 Nel tab Strix il menu Agent elenca Settings → AI più una voce per ogni provider con chiave negli Environments (es. `ANTHROPIC_API_KEY · Prod`); scegliendola compare il campo Model (precompilato se noto) e la scansione usa quella chiave, non quella delle impostazioni.
+- [ ] SEC-3.M5 Export → "Markdown report" del Security Center produce un .md con riepilogo e un blocco per ogni finding.
 - [ ] SEC-2.M4 Esporta "CycloneDX VEX" dal Security Center: i finding soppressi risultano `not_affected` con il motivo, gli altri `in_triage` o `exploitable`.
 
 

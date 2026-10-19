@@ -1,0 +1,22 @@
+# __NAME__
+
+Servizio REST con **Quarkus** (Maven) e Java 17: un endpoint JAX-RS, un `@ConfigProperty` e un test
+con REST Assured.
+
+## Avvio
+
+- **Run** — `mvn quarkus:dev` (dev mode con live reload)
+- **Debug** — il dev mode ha già il debugger in ascolto sulla porta 5005: si preme Debug e ci si collega
+- **Test** — `mvn test`
+- **Build** — `mvn package`
+
+## Endpoint
+
+| Metodo | Percorso | Descrizione |
+|---|---|---|
+| GET | `/hello` | Restituisce `greeting.message` + " from Quarkus" |
+
+## Configurazione
+
+`src/main/resources/application.properties`: `quarkus.http.port`, `greeting.message` (letta con
+`@ConfigProperty`), `quarkus.log.level`.

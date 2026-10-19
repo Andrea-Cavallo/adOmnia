@@ -15,7 +15,7 @@ const NO_SCOPES: GoIDEDebugScope[] = []
 const NO_CHILDREN: Record<number, GoIDEDebugVariable[]> = {}
 /** Spazio tra il codice e il valore mostrato a fine riga. */
 const INLINE_VALUE_GAP = '    '
-/** Identificatori e selettori Go (p.X.Y): quello che GoLand valuta al passaggio del mouse. */
+/** Identificatori e selettori Go (p.X.Y): quello che si valuta al passaggio del mouse. */
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/
 const SELECTOR_BEFORE = /(?:[A-Za-z_][A-Za-z0-9_]*\.)+$/
 
@@ -111,7 +111,7 @@ export function runToCursorAt(editor: monaco.editor.ICodeEditor | null): boolean
 }
 
 /**
- * Clic sui numeri di riga = breakpoint, come in GoLand; tasto destro = popover con condizione,
+ * Clic sui numeri di riga = breakpoint; tasto destro = popover con condizione,
  * hit count e logpoint (Monaco non apre il suo menu sul gutter). Monaco selezionerebbe la riga:
  * la selezione precedente si ripristina al rilascio del mouse.
  */
@@ -157,7 +157,7 @@ export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<monaco
     const point = executionPoint(state, sessionId)
     return { pointLine: point?.relativePath === relativePath ? point.line : 0, pointTop: !!point?.top }
   }))
-  // Valori delle variabili a fine riga, come GoLand: solo nel file della riga in pausa.
+  // Valori delle variabili a fine riga: solo nel file della riga in pausa.
   const inline = useCodeStudioDebugStore(useShallow((state) => {
     const view = activeDebugView(state, sessionId)
     const point = executionPoint(state, sessionId)

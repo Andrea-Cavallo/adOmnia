@@ -28,21 +28,25 @@ func TestCoreDoesNotImportAdapters(t *testing.T) {
 		"adomnia/internal/codestudio",
 	}
 	tokenSet := token.NewFileSet()
-	packages, err := parser.ParseDir(tokenSet, packageDirectory, func(info os.FileInfo) bool {
-		return !strings.HasSuffix(info.Name(), "_test.go")
-	}, parser.ImportsOnly)
+	entries, err := os.ReadDir(packageDirectory)
 	if err != nil {
-		t.Fatalf("parse core package: %v", err)
+		t.Fatalf("read core package: %v", err)
 	}
-	for _, pkg := range packages {
-		for name, file := range pkg.Files {
-			for _, spec := range file.Imports {
-				path := strings.Trim(spec.Path.Value, `"`)
-				for _, blocked := range forbidden {
-					if path == blocked || strings.HasPrefix(path, blocked) {
-						t.Errorf("%s imports %s: the security engine core must stay independent of the ecosystem adapters (see %s)",
-							filepath.Base(name), path, filepath.Base(packageDirectory))
-					}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(tokenSet, filepath.Join(packageDirectory, name), nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatalf("parse core package: %v", err)
+		}
+		for _, spec := range file.Imports {
+			path := strings.Trim(spec.Path.Value, `"`)
+			for _, blocked := range forbidden {
+				if path == blocked || strings.HasPrefix(path, blocked) {
+					t.Errorf("%s imports %s: the security engine core must stay independent of the ecosystem adapters (see %s)",
+						name, path, filepath.Base(packageDirectory))
 				}
 			}
 		}

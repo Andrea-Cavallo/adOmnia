@@ -132,7 +132,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
       showModule('database')
     },
   })
-  // Keymap di GoLand per le azioni di editing di Monaco: stesse azioni native, tasti che lo sviluppatore già conosce.
+  // Keymap predefinita per le azioni di editing di Monaco: stesse azioni native, tasti che lo sviluppatore già conosce.
   const native = (id: string, label: string, keybindings: number[], nativeId: string) => {
     editor.addAction({ id, label, keybindings, run: (target) => { target.trigger('code-studio', nativeId, null) } })
   }
@@ -143,7 +143,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
   native('codeStudio.nextOccurrence', 'Add Caret at Next Occurrence', [KeyMod.Alt | KeyCode.KeyJ], 'editor.action.addSelectionToNextFindMatch')
   native('codeStudio.allOccurrences', 'Select All Occurrences', [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyJ], 'editor.action.selectHighlights')
   native('codeStudio.columnSelection', 'Column Selection Mode', [KeyMod.Alt | KeyMod.Shift | KeyCode.Insert], 'editor.action.toggleColumnSelection')
-  // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle di GoLand.
+  // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle predefinite.
   editor.addAction({ id: CODE_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('code-studio', 'editor.action.refactor', null) } })
   const refactoring = (id: string, label: string, keybinding: number, kind: CodeStudioRefactoring) => {
     editor.addAction({ id, label, keybindings: [keybinding], run: (target) => { void runCodeStudioRefactoring(target, kind) } })

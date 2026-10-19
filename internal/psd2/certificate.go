@@ -99,11 +99,11 @@ func loadPEM(raw []byte, password string) (Credential, error) {
 		}
 		if strings.Contains(block.Type, "PRIVATE KEY") {
 			keyBytes := block.Bytes
-			if x509.IsEncryptedPEMBlock(block) {
+			if _, encrypted := block.Headers["DEK-Info"]; encrypted { // legacy RFC 1423 encryption
 				if password == "" {
 					return Credential{}, fmt.Errorf("private key password is required")
 				}
-				decoded, err := x509.DecryptPEMBlock(block, []byte(password))
+				decoded, err := x509.DecryptPEMBlock(block, []byte(password)) //nolint:staticcheck // legacy encrypted PEM keys must stay importable; the stdlib has no replacement
 				if err != nil {
 					return Credential{}, fmt.Errorf("decrypt private key: %w", err)
 				}

@@ -238,7 +238,7 @@ export function buildTreeMenu(entry: Entry, context: TreeMenuContext): ContextMe
   ]
 }
 
-/** Scorciatoie del Project view di GoLand; Cmd vale come Ctrl su macOS. */
+/** Scorciatoie della vista progetto; Cmd vale come Ctrl su macOS. */
 export function treeKeyAction(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>): string | null {
   const mod = event.ctrlKey || event.metaKey
   const key = event.key.toLowerCase()

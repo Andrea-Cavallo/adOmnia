@@ -231,7 +231,7 @@ const defaultSettings: AppSettings = {
   },
   appearance: {
     theme: 'dark',
-    // Come JetBrains: toolbar nella barra della finestra; su Linux (Wayland) resta la barra di sistema.
+    // Toolbar nella barra della finestra; su Linux (Wayland) resta la barra di sistema.
     windowChrome: IS_LINUX ? 'system' : 'app',
     themeId: 'builtin-dark',
     density: 'comfortable',
@@ -369,7 +369,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (migratedToV3) appearance.windowChrome = 'system'
       // Legacy XWayland mode now means app chrome on the native session backend.
       if (appearance.windowChrome === 'app-xwayland') appearance.windowChrome = 'app'
-      // v12: barra unita alla toolbar come in JetBrains, una volta sola; chi poi sceglie System lo mantiene.
+      // v12: barra unita alla toolbar, una volta sola; chi poi sceglie System lo mantiene.
       // v13: la barra di sistema torna nascosta di default (anche per chi l'aveva scelta dopo la v12).
       if ((parsed.version ?? 0) < 13 && appearance.windowChrome === 'system' && !IS_LINUX) appearance.windowChrome = 'app'
       const savedAI = mergeBlock(defaultSettings.ai, parsed.ai)

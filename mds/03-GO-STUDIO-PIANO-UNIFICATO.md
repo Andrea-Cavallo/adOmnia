@@ -30,7 +30,7 @@ Criterio d'ordine: **fiducia** (provare ciò che esiste) → **lacune reali** �
 | **P0** | Dimostrare: collaudo desktop, gate, rilascio v1 | Aperto — 8 sessioni di prova |
 | **P1** | Chiudere le lacune reali (voci “parziali” che sono lavoro vero) | Aperto — 6 blocchi |
 | **P2** | Effetti wow (vetrina e unicità) | Idee, nessuna avviata |
-| **P3** | Funzioni 2027, Copilot Edit/Agent, idee da Zed | Ricerca, nessun perimetro |
+| **P3** | Funzioni 2027, Copilot Edit/Agent, idee per l'editor | Ricerca, nessun perimetro |
 | **P4** | Qualità continua: Definition of Done, KPI, “do not build badly” | Criteri, non bloccano il rilascio |
 
 ## 3. Regole
@@ -146,7 +146,7 @@ Misura l'uso reale per una giornata intera.
 
 ## Sessione 8 — GitHub Copilot
 
-Architettura: Copilot Language Server ufficiale per completamento, login ed enterprise; chat Ask presente. UI sempre adOmnia, nessuna estensione VS Code. Regola: nessun componente assume `github.com`, tutto passa da `GitHubProfile`. **Fatto** (dettagli in git e `docs/CODE-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, crash recovery, device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu, chat Ask con contesto e streaming (`internal/copilot/chat.go`).
+Architettura: Copilot Language Server ufficiale per completamento, login ed enterprise; chat Ask presente. UI sempre adOmnia, nessuna estensione esterna. Regola: nessun componente assume `github.com`, tutto passa da `GitHubProfile`. **Fatto** (dettagli in git e `docs/CODE-STUDIO.md`): profili GitHub/GHE/GHES, impostazioni senza token con proxy e CA aziendale, installazione verificata del Language Server, crash recovery, device flow, sync documenti, ghost text, filtro segreti/`aiignore`, status bar e menu, chat Ask con contesto e streaming (`internal/copilot/chat.go`).
 
 - [ ] **C1** — Install, enable, sign in su github.com, ghost text in un file Go, Tab/Esc.
 - [ ] **C2** — Profilo `company.ghe.com`, sign in enterprise, progetto legato al profilo Work.
@@ -162,7 +162,7 @@ Architettura: Copilot Language Server ufficiale per completamento, login ed ente
 | **Fase 2** — intelligenza del codice | M5, M19, M21 (sessione 3) | [ ] |
 | **Fase 3** — più progetti, ripristino, terminale | M3, M17, M18, M29 (sessioni 2 e 4) | [ ] |
 | **Fase 4** — test runner, debugger, coverage | M7, M20 (sessione 2) | [ ] |
-| **Fase 5** — parità GoLand, VCS, integrazioni | M9–M14, M31; nessuna funzione simulata → M30 | [ ] |
+| **Fase 5** — parità funzionale, VCS, integrazioni | M9–M14, M31; nessuna funzione simulata → M30 | [ ] |
 | **Finale** | Tutti i gate sopra, flussi M15–M30, nessuna regressione nota né processo orfano, `wails3 task dev` sulle piattaforme dichiarate | [ ] |
 
 ## Dopo le prove
@@ -337,11 +337,11 @@ _Da progettare: ognuna richiede prima un perimetro e criteri verificabili. Non b
 - [ ] **Copilot — governance**: context bar, context preview, audit locale dell'agent, policy per ambiente (LOCAL…PROD).
 - [ ] **Adapter JS/TS**: proposta separata, successiva alla baseline Go collaudata.
 
-## Idee prese da Zed (2026-10-15), da progettare
+## Idee per l'editor e l'AI (2026-10-15), da progettare
 
-Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le lacune sono state riverificate su `develop` il 2026-10-15. Valgono la regola di congelamento (§1) e la ricetta *Add a language/IDE feature*: quello che è generico va in `internal/ide/*` e `components/ide`, non nell'adapter Go.
+Raccolta di lacune verificate sul prodotto il 2026-10-15. Valgono la regola di congelamento (§1) e la ricetta *Add a language/IDE feature*: quello che è generico va in `internal/ide/*` e `components/ide`, non nell'adapter Go.
 
-**Già presenti, da non rifare:** vim mode, agenti ACP (milk e Claude Code), collab Yjs, Extend Selection, sticky scroll, Structure (outline), blame, keymap GoLand, zen mode, dev container.
+**Già presenti, da non rifare:** vim mode, agenti ACP (milk e Claude Code), collab Yjs, Extend Selection, sticky scroll, Structure (outline), blame, keymap predefinita, zen mode, dev container.
 
 ### Z1 — AI dell'IDE affidabile (ordine consigliato: Z1.1 → Z1.2 → Z1.3)
 
@@ -359,7 +359,7 @@ Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le la
 
 ### Z2 — Editor e workflow
 
-- [ ] **Z2.1 Multibuffer.** È il punto di forza principale di Zed: estratti di file diversi in un solo editor modificabile. I primi consumer sono Find in Files, References, Problems del progetto e la review di Z1.1. È il lavoro più grande (modello Monaco con estratti, mappatura delle righe, salvataggio verso i file d'origine), quindi va prima uno spike.
+- [ ] **Z2.1 Multibuffer.** Estratti di file diversi in un solo editor modificabile. I primi consumer sono Find in Files, References, Problems del progetto e la review di Z1.1. È il lavoro più grande (modello Monaco con estratti, mappatura delle righe, salvataggio verso i file d'origine), quindi va prima uno spike.
   - *Accettazione:* rinomini a mano 10 occorrenze in 6 file da un solo multibuffer di References. Il salvataggio scrive 6 file e l'undo funziona su tutti.
 - [ ] **Z2.2 Task leggeri con variabili** (`.adomnia/tasks.json`, condivisibile via Git). Comandi shell con `${file}`, `${line}`, `${symbol}`, `${selection}` e `${projectRoot}`, lanciabili dal command palette e dal gutter, più *Rerun last task*. Sono indipendenti dal linguaggio e affiancano le Run Configurations senza sostituirle. Anche questi avviano processi, quindi solo con `AuthorizationPermitted`.
 - [ ] **Z2.3 Inline Assistant** (Ctrl+Enter sulla selezione). Scrivi un'istruzione e ottieni il diff inline nell'editor, da accettare o scartare. Oggi le azioni AI preparano soltanto un prompt in chat. — **IMPLEMENTATO (2026-10-16); verifica manuale in `MANUAL-CHECK.md` GS-13 (M1…M6).** Comando `goStudio.ai.inlineAssistant` (Ctrl+Enter + menu contestuale), popup di istruzione ancorato alla selezione, diff inline con ✓/✗ per hunk e Accept all / Reject all; ogni accettazione è un edit non salvato e annullabile. Le 18 AI actions continuano a preparare il prompt in chat. Codice, test e docs: `mds/FIX.md` GS-13.
@@ -371,7 +371,7 @@ Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le la
 
 - [ ] **Z3.1 Budget di velocità esplicito.** Per esempio apertura progetto sotto 1 s e primo editor sotto 300 ms su un progetto di collaudo, misurati in locale (si collega a *Metriche locali di salute* in P2).
 - [ ] **Z3.2 Command palette** con ricerca fuzzy e ranking per uso recente, partendo dal registry di `goStudioCommands.ts`. — **IMPLEMENTATO (2026-10-16); verifica manuale in `MANUAL-CHECK.md` GS-17 (M1…M3).** Su Search Everywhere (Shift Shift): corrispondenza fuzzy graduata (prefisso > inizio parola > sottostringa > sottosequenza pesata per contiguità e inizi di parola) e boost per uso recente sui comandi eseguiti davvero (tasti, menu, palette), senza far apparire non-match. Codice, test e docs: `mds/FIX.md` GS-17.
-- [ ] **Z3.3 Import dei temi VS Code** (JSON) nei temi adOmnia, per rafforzare le skin importabili.
+- [ ] **Z3.3 Import dei temi esterni** (JSON) nei temi adOmnia, per rafforzare le skin importabili.
 - [ ] **Z3.4 Edit prediction** (prossima modifica, non solo completamento) con un provider locale, per esempio Ollama, per restare local-first. Da valutare dopo il completamento Copilot esistente.
 
 ### Da non copiare
@@ -404,7 +404,7 @@ Confronto con [zed-industries/zed](https://github.com/zed-industries/zed). Le la
 
 ## “Do not build badly”: da rileggere a ogni revisione
 
-- [ ] Non creare un clone incompleto di GoLand.
+- [ ] Non creare un clone incompleto di un altro IDE.
 - [ ] Non creare una chat AI gigante come feature principale.
 - [ ] Non mostrare 20 pannelli contemporaneamente.
 - [ ] Non riempire l'editor di badge.

@@ -5,7 +5,7 @@ import type { ProjectKeymapOverride } from '@/lib/code-studio/projectSettings'
 import { LEGACY_KEYMAP_STORAGE_KEY } from '@/lib/legacyKeymap'
 import { useSettingsStore } from '@/stores/settings'
 
-/** goland: la keymap predefinita (JetBrains). vscode: le scorciatoie di VS Code per chi arriva da lì. */
+/** goland: la keymap predefinita. vscode: la keymap alternativa. */
 export type CodeStudioKeymapId = 'goland' | 'vscode'
 
 export const CODE_STUDIO_KEYMAPS: ReadonlyArray<{ id: CodeStudioKeymapId; label: string }> = [
@@ -15,7 +15,7 @@ export const CODE_STUDIO_KEYMAPS: ReadonlyArray<{ id: CodeStudioKeymapId; label:
 
 const b = (key: string, mods: Omit<CodeStudioKeyBinding, 'key'> = {}): CodeStudioKeyBinding => ({ key, ...mods })
 
-/** Solo le differenze rispetto alla keymap GoLand; i comandi non elencati tengono il proprio tasto. */
+/** Solo le differenze rispetto alla keymap predefinita; i comandi non elencati tengono il proprio tasto. */
 const VSCODE: Partial<Record<CodeStudioCommandId, CodeStudioKeyBinding>> = {
   'view.quickOpen': b('p', { mod: true }),
   'nav.symbol': b('t', { mod: true }),
@@ -155,7 +155,7 @@ function firstBinding(entries: Array<{ present: boolean; value: CodeStudioKeyBin
 
 /**
  * Il tasto che il comando usa davvero, per il contesto attivo: scorciatoie del progetto
- * (`.adomnia/settings.json`), poi personalizzazioni dell'utente, poi keymap scelta, poi GoLand.
+ * (`.adomnia/settings.json`), poi personalizzazioni dell'utente, poi keymap scelta, poi la predefinita.
  */
 export function effectiveBinding(command: CodeStudioCommand, state: CodeStudioKeymapLayers = useCodeStudioKeymap.getState()): CodeStudioKeyBinding | undefined {
   return firstBinding([
@@ -166,7 +166,7 @@ export function effectiveBinding(command: CodeStudioCommand, state: CodeStudioKe
   ], state.when)
 }
 
-/** Le alternative storiche (F6 di Eclipse, F10 di VS Code) valgono solo finché il comando tiene il tasto predefinito. */
+/** Le alternative storiche (F6 e F10) valgono solo finché il comando tiene il tasto predefinito. */
 export function effectiveAltBindings(command: CodeStudioCommand, state: CodeStudioKeymapLayers = useCodeStudioKeymap.getState()): CodeStudioKeyBinding[] {
   return isRemapped(command, state) ? [] : command.altBindings ?? []
 }

@@ -321,7 +321,7 @@ func savedConfig(id string) (dbConnectionRequest, error) {
 }
 func databaseSealHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", 405)
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return
 	}
 	var cfg map[string]any
@@ -349,7 +349,7 @@ func databaseSealHandler(w http.ResponseWriter, r *http.Request) {
 		if passphrase != "" {
 			plain, err := vault.Open(value)
 			if err != nil {
-				http.Error(w, "Unlock Vault before changing extra protection", 423)
+				http.Error(w, "Unlock Vault before changing extra protection", http.StatusLocked)
 				return
 			}
 			ref, err := vault.SealWithPassphrase(plain, passphrase)
@@ -365,7 +365,7 @@ func databaseSealHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if extraProtected {
-			http.Error(w, "Enter the extra passphrase and choose Protect to change this credential", 423)
+			http.Error(w, "Enter the extra passphrase and choose Protect to change this credential", http.StatusLocked)
 			return
 		}
 		if strings.HasPrefix(value, "vault:local:v1:") {
@@ -396,7 +396,7 @@ func databaseSealHandler(w http.ResponseWriter, r *http.Request) {
 func databaseConnectionHandler(action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "POST required", 405)
+			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {

@@ -238,7 +238,7 @@ func parsePrivateKeyPEM(keyPEM string) (crypto.Signer, error) {
 	if block == nil {
 		return nil, fmt.Errorf("private key PEM block not found")
 	}
-	if x509.IsEncryptedPEMBlock(block) {
+	if _, encrypted := block.Headers["DEK-Info"]; encrypted { // legacy RFC 1423 encryption
 		return nil, fmt.Errorf("encrypted private keys are not supported here; extract an unencrypted PEM key locally first")
 	}
 

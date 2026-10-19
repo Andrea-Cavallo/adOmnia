@@ -4,10 +4,33 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [1.0.6] — 2026-10-19
+
+Release notes: [docs/releases/v1.0.6.md](docs/releases/v1.0.6.md).
+
+### Added
+
+- **Strix agent menu.** In *Pentest (Strix)* the *Agent* menu lists Settings → AI plus one entry per provider whose key is found in your Environments (`ANTHROPIC_API_KEY · Prod`…); picking one asks for the model and the scan uses exactly that key.
+- **Reachability says why it is "Not analyzed"**: Deep analysis off, tool failed, advisory outside the Go vulnerability database, nothing compiled yet… shown under each finding.
+- **`secscan -deep`** for CI: authorizes govulncheck/mvn so the pipeline gets reachability too.
+- **Raw HTML in Markdown previews.** README-style `<p align="center">`, `<img width>`, `<br>`, `<details>` and tables render instead of showing their tags; scripts, iframes and event handlers are dropped.
+
+- **Pentest with Strix in the Security Center.** A new *Pentest (Strix)* tab runs [Strix](https://github.com/usestrix/strix), the open-source AI pentesting agents, on a private copy of your project (secrets such as `.env` and key files are left out, your files are never modified) inside Docker. The model comes from Settings → AI, or a custom LiteLLM id; every scan asks first, saying that the code goes to that provider, and is capped by a budget. Pick the project from the recently opened ones, browse for it, or paste a path; results show per finding and the whole assessment exports as Markdown.
+- **Markdown export** for the dependency report too (*Export → Markdown report*).
+- **Module Dependencies for `pom.xml` and Gradle**: dependencies, vulnerabilities (transitive ones included), available updates and one-click version edits in the editor.
+- **Resources** button under *Module Dependencies* in Code Studio with an *Export as MD* report of processes, memory budget and recent samples.
+- **golangci-lint built with an older Go** is now rebuilt on request (one confirmation with the exact command) and the lint reruns by itself.
+
+### Fixed
+
+- **Reachability analysis failures were silent.** A govulncheck built with an older Go than the project's printed its header and then failed; adOmnia read that as "nothing found" and left every finding "Not analyzed". The failure is now reported, with a *Rebuild govulncheck* button, and the rebuilt copy (in `GOBIN`/`GOPATH/bin`) wins over an older one earlier in `PATH`.
+- **README-style HTML in Markdown previews** (`<p align="center">`, `<img>`) showed its tags as text; it now renders through a closed allowlist of tags.
+- **Static-analysis cleanup** across the Go backend: unchecked errors, deprecated APIs (`ReverseProxy.Director`, `grpc.DialContext`, Kafka `DescribeConfig`, `parser.ParseDir`), a load-test duration check that never stopped the loop, godoc declarations printed with their body, and unused code.
+- **Security Center Export menu** closed as soon as the pointer moved onto it; it now opens on click. Exports use the native *Save as* dialog.
 
 ### Changed
 
+- **Security Center redesigned** in the quiet dot-matrix style of the rest of the app: hairlines instead of cards, big mono numbers, a dot per severity, switches as a dot and a word. The Strix tab and the project picker follow it.
 - **Built with Go 1.27.2.** `go.mod` now declares `go 1.27.2`; CI, Dockerfiles and build docs follow. Contributors need Go 1.27.2+ (the Go toolchain downloads it automatically) and the `wails3` CLI `v3.0.0-beta.32`.
 - **Dependencies updated.** Wails `v3.0.0-beta.32` with the matching `@wailsio/runtime`, plus the latest compatible Go modules and npm packages. `github.com/digitorus/pdf` stays on `v0.1.2` because newer releases break PDF signing (`pdfsign v0.9.0`).
 - **Code Studio users on Go 1.27:** linters, gopls and Delve installed with an older Go cannot read Go 1.27 packages. Reinstall them (Code Studio installs `@latest`).

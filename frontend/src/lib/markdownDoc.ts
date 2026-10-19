@@ -2,6 +2,7 @@
 // No React, no DOM, no Wails — safe to unit-test and reuse across components.
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, type SimulationNodeDatum } from 'd3-force'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
+import { renderSafeHtml, replaceHtmlBlocks } from './markdownHtml'
 
 export type { MarkdownFileEntry }
 
@@ -233,6 +234,13 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
     return `\x00BLK${idx}\x00`
   })
 
+  // HTML grezzo (README di GitHub: <p align="center">, <img width>, <details>): riscritto da un elenco chiuso di tag.
+  const withHtml = replaceHtmlBlocks(text, (block) => {
+    const html = renderSafeHtml(block, { url: (value, attribute) => sanitizeUrl(attribute === 'src' ? resolveMarkdownAssetUrl(value, sourcePath) : value) })
+    codeBlocks.push(`<div class="my-2">${html}</div>`)
+    return `\x00BLK${codeBlocks.length - 1}\x00`
+  })
+
   function inlineEsc(raw: string): string {
     let s = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const inlineCodes: string[] = []
@@ -264,7 +272,7 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
     if (inOL) { out.push('</ol>'); inOL = false }
   }
 
-  const lines = text.split('\n')
+  const lines = withHtml.split('\n')
   for (let idx = 0; idx < lines.length; idx += 1) {
     const raw = lines[idx]
     const line = raw.trim()

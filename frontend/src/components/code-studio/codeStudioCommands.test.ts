@@ -47,7 +47,7 @@ describe('Code Studio commands', () => {
     }
   })
 
-  it('steps over with F8, F6 (Eclipse) and F10 (VS Code) and resumes with F9 or F5', () => {
+  it('steps over with F8, F6 and F10 and resumes with F9 or F5', () => {
     for (const stepKey of ['F8', 'F6', 'F10']) expect(commandForKey(key({ key: stepKey }))?.id).toBe('debug.stepOver')
     expect(commandForKey(key({ key: 'F9' }))?.id).toBe('debug.resume')
     expect(commandForKey(key({ key: 'F5' }))?.id).toBe('debug.resume')

@@ -117,7 +117,7 @@ type debugger struct {
 	root   string
 	// buildDir ospita il binario compilato da debug adapter, fuori dal progetto; si elimina all'uscita di adapter.
 	buildDir string
-	// detach: allo Stop debug adapter si stacca senza terminare il programma (attach e remote), come in GoLand.
+	// detach: allo Stop debug adapter si stacca senza terminare il programma (attach e remote).
 	detach  bool
 	command *exec.Cmd
 	conn    io.Closer

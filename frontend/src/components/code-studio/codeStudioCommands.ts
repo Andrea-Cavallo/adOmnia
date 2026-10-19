@@ -51,7 +51,7 @@ export interface CodeStudioCommand {
   menu: CodeStudioMenuId
   label: string
   binding?: CodeStudioKeyBinding
-  /** Tasti alternativi (es. F6 di Eclipse e F10 di VS Code per Step Over): funzionano ma i menu mostrano solo `binding`. */
+  /** Tasti alternativi (es. F6 e F10 per Step Over): funzionano ma i menu mostrano solo `binding`. */
   altBindings?: CodeStudioKeyBinding[]
   /** Il binding è gestito da Monaco o da un listener dedicato (doppio Shift): mostrato nei menu, non intercettato globalmente. */
   editorOwned?: boolean

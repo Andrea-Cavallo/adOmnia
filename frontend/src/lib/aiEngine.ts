@@ -1,6 +1,6 @@
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
 import { resolveSecret } from '@/lib/vaultRefs'
-import { useSettingsStore } from '@/stores/settings'
+import { useSettingsStore, type AIProvider } from '@/stores/settings'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { findAIWorkspaceCredential } from '@/lib/aiCredentials'
 
@@ -15,6 +15,24 @@ function configJSON(apiKey: string, credentialMode: 'auto' | 'vault' | 'environm
     apiKey,
     baseURL,
     credentialMode,
+    awsRegion: ai.awsRegion,
+    awsProfile: ai.awsProfile,
+  })
+}
+
+/**
+ * Config for a provider and key chosen explicitly (e.g. a key found in Environments): the backend must use exactly that
+ * key, so the mode is `vault` (renderer-provided) and no inherited process variable can win over it.
+ */
+export function buildAIConfigFor(provider: AIProvider, model: string, apiKey: string): string {
+  const ai = useSettingsStore.getState().settings.ai
+  const sameProvider = ai.provider === provider
+  return JSON.stringify({
+    provider,
+    model,
+    apiKey,
+    baseURL: sameProvider && ['deepseek', 'ollama', 'huggingface', 'openai-compatible'].includes(provider) ? ai.baseURL : '',
+    credentialMode: 'vault',
     awsRegion: ai.awsRegion,
     awsProfile: ai.awsProfile,
   })

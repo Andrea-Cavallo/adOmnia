@@ -178,6 +178,18 @@ func BuildSpringIndex(projectRoot string) SpringIndex {
 	index.Endpoints = endpointsOf(parsed)
 	index.Values = valuesOf(configFiles)
 	index.ServerPort = serverPortOf(index.Values)
+
+	// Le proprietà `quarkus.*` note entrano solo nei progetti Quarkus: un progetto Spring non deve
+	// vedere chiavi che non lo riguardano. Il segnale è un valore `quarkus.` scritto o un
+	// `@ConfigProperty`, il modo in cui MicroProfile legge la configurazione.
+	if looksLikeQuarkus(index.Values, index.PropertyReferences) {
+		for _, property := range quarkusProperties() {
+			if _, exists := known[property.Name]; !exists {
+				known[property.Name] = property
+				index.Properties = append(index.Properties, property)
+			}
+		}
+	}
 	index.Diagnostics = diagnosticsOf(index.PropertyReferences, index.Values, known)
 	sort.SliceStable(index.Properties, func(i, j int) bool { return index.Properties[i].Name < index.Properties[j].Name })
 	return index
@@ -266,10 +278,11 @@ func profileOf(name string) string {
 }
 
 // serverPortOf è la porta effettiva: il valore del profilo più specifico vince sulla base.
+// Spring scrive `server.port`, Quarkus `quarkus.http.port`: si guardano entrambe.
 func serverPortOf(values []SpringValue) string {
 	port, base := "", ""
 	for _, value := range values {
-		if value.Key != "server.port" {
+		if value.Key != "server.port" && value.Key != "quarkus.http.port" {
 			continue
 		}
 		if value.Profile != "" {

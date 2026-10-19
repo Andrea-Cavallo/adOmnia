@@ -2,6 +2,7 @@ package ai
 
 import (
 	"adomnia/internal/netpolicy"
+	"errors"
 
 	"context"
 	"fmt"
@@ -93,11 +94,11 @@ func (p *bedrockProvider) Complete(ctx context.Context, req CompletionRequest) (
 
 	result, err := client.Converse(ctx, input)
 	if err != nil {
-		return CompletionResponse{}, fmt.Errorf("Amazon Bedrock Converse failed: %w", err)
+		return CompletionResponse{}, fmt.Errorf("amazon bedrock converse failed: %w", err)
 	}
 	message, ok := result.Output.(*types.ConverseOutputMemberMessage)
 	if !ok {
-		return CompletionResponse{}, fmt.Errorf("Amazon Bedrock returned an unsupported response type")
+		return CompletionResponse{}, errors.New("amazon bedrock returned an unsupported response type")
 	}
 	parts := make([]string, 0, len(message.Value.Content))
 	for _, block := range message.Value.Content {

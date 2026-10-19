@@ -7,7 +7,7 @@ import { draftFrom, optionsFrom, useCodeStudioBreakpointUi, type BreakpointDraft
 
 const POPOVER_WIDTH = 340
 
-/** Modifica di un breakpoint dal gutter (tasto destro sul numero di riga), come il popup di GoLand. */
+/** Modifica di un breakpoint dal gutter (tasto destro sul numero di riga). */
 export function CodeStudioBreakpointPopover() {
   const target = useCodeStudioBreakpointUi((state) => state.popover)
   const existing = useCodeStudioDebugStore((state) => (target ? state.breakpoints[target.sessionId]?.[target.relativePath]?.find((item) => item.line === target.line) ?? null : null))

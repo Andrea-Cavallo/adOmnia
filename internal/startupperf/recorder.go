@@ -41,7 +41,7 @@ func Record(dataDir, frontendJSON string, backend map[string]any) error {
 	if err != nil {
 		return fmt.Errorf("open startup performance samples: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	sample := Sample{
 		RecordedAt: time.Now().UTC().Format(time.RFC3339Nano),

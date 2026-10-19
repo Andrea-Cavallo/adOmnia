@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"adomnia/internal/securityintel"
 	"adomnia/internal/securityintel/standard"
+	"adomnia/internal/securityintel/strix"
+	"adomnia/internal/storage"
 )
 
 // SecurityIntel espone adOmnia Security Intelligence al frontend: scansione delle
@@ -26,6 +29,9 @@ type SecurityIntel struct {
 	// plans tiene i piani di remediation aperti: la modifica a un manifest resta
 	// provvisoria e ripristinabile finché l'utente non la conferma.
 	plans *securityintel.PlanStore
+	// strix gestisce le scansioni Strix (pentest con agenti AI) del Security Center.
+	strix     *strix.Manager
+	strixOnce sync.Once
 }
 
 // NewSecurityIntel crea il servizio.
@@ -115,12 +121,13 @@ func (s *SecurityIntel) ExportFormats() (string, error) {
 		Ext  string `json:"extension"`
 	}
 	names := map[string]string{
-		securityintel.FormatJSON:    "JSON",
-		securityintel.FormatSARIF:   "SARIF 2.1.0",
-		securityintel.FormatHTML:    "HTML report",
-		securityintel.FormatCyclone: "CycloneDX SBOM",
-		securityintel.FormatSPDX:    "SPDX SBOM",
-		securityintel.FormatVEX:     "CycloneDX VEX",
+		securityintel.FormatJSON:     "JSON",
+		securityintel.FormatSARIF:    "SARIF 2.1.0",
+		securityintel.FormatHTML:     "HTML report",
+		securityintel.FormatCyclone:  "CycloneDX SBOM",
+		securityintel.FormatSPDX:     "SPDX SBOM",
+		securityintel.FormatVEX:      "CycloneDX VEX",
+		securityintel.FormatMarkdown: "Markdown report",
 	}
 	entries := []entry{}
 	for _, format := range securityintel.SupportedFormats {
@@ -393,4 +400,10 @@ func ecosystemStrings(values []securityintel.Ecosystem) []string {
 // securityintelCacheDirectory è la cartella del database locale degli advisory.
 func securityintelCacheDirectory() string {
 	return filepath.Join(dataDir(), "securityintel")
+}
+
+// strixManager crea il manager alla prima richiesta: la cartella dati è nota solo dopo l'apertura dello storage.
+func (s *SecurityIntel) strixManager() *strix.Manager {
+	s.strixOnce.Do(func() { s.strix = strix.NewManager(storage.DataDir()) })
+	return s.strix
 }

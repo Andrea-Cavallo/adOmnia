@@ -88,11 +88,12 @@ func (l *Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		kind = "run"
 	}
 	arguments := append([]string{kind}, options.GoArguments...)
-	if kind == "tidy" {
+	switch kind {
+	case "tidy":
 		arguments = []string{"mod", "tidy"}
-	} else if kind == "go-tool" {
+	case "go-tool":
 		arguments = append([]string{request.Target}, request.ProgramArguments...)
-	} else {
+	default:
 		if len(options.BuildTags) > 0 && kind != "generate" {
 			arguments = append(arguments, "-tags", strings.Join(options.BuildTags, ","))
 		}

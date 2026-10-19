@@ -49,7 +49,7 @@ function hunk(oldStart: number, oldEnd: number, newStart: number, newEnd: number
   return { kind, oldStart, oldEnd, newStart, newEnd }
 }
 
-/** Differenze a livello di riga, come il gutter di GoLand: aggiunte, modifiche e cancellazioni. */
+/** Differenze a livello di riga: aggiunte, modifiche e cancellazioni. */
 export function lineDiff(oldText: string, newText: string): CodeStudioLineHunk[] {
   const oldLines = splitLines(oldText)
   const newLines = splitLines(newText)

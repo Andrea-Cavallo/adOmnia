@@ -32,10 +32,10 @@ func TestListEstablishedSeesOwnConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	go func() {
 		if conn, err := listener.Accept(); err == nil {
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 			select {}
 		}
 	}()
@@ -43,7 +43,7 @@ func TestListEstablishedSeesOwnConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	conns, err := ListEstablished(context.Background())
 	if err != nil {
 		t.Skipf("no connection tool: %v", err)

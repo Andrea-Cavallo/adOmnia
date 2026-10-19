@@ -64,7 +64,7 @@ function menuItems(menu: CodeStudioMenuId, state: CodeStudioCommandState): Conte
 
 const MENU_PREFIX = 'menu:'
 
-/** Menu principale compresso nel pulsante ☰, come nella New UI di JetBrains: ogni menu è un sottomenu. */
+/** Menu principale compresso nel pulsante ☰: ogni menu è un sottomenu. */
 function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoIDERecentProject[], openProjectPaths: string[]): ContextMenuItem[] {
   return CODE_STUDIO_MENUS.map((menu) => {
     const base = menuItems(menu.id, state)

@@ -228,7 +228,7 @@ func discoverBedrockModels(ctx context.Context, cfg Config, query string) ([]Mod
 		ByProvider: aws.String("Anthropic"),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Amazon Bedrock model discovery failed: %w", err)
+		return nil, fmt.Errorf("amazon bedrock model discovery failed: %w", err)
 	}
 	models := make([]ModelInfo, 0, len(result.ModelSummaries))
 	for _, item := range result.ModelSummaries {

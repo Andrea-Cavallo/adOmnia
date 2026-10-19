@@ -14,7 +14,7 @@ interface CodeStudioBreadcrumbProps {
 }
 
 /**
- * Percorso del file seguito dal simbolo che contiene il cursore (tipo › metodo), nella status bar come in IntelliJ:
+ * Percorso del file seguito dal simbolo che contiene il cursore (tipo › metodo), nella status bar:
  * il codice non perde una riga. Ogni simbolo apre l'elenco dei suoi fratelli.
  */
 export function CodeStudioBreadcrumb({ documentId, relativePath, readOnly, cursor }: CodeStudioBreadcrumbProps) {

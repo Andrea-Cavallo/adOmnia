@@ -1,5 +1,6 @@
-import type { ComponentType } from 'react'
-import { Bookmark, Braces, Bug, FlaskConical, Globe, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { useState, type ComponentType } from 'react'
+import { ResourceDetails, useResourceSample } from '@/components/layout/ResourceStatus'
+import { Bookmark, Braces, Bug, FlaskConical, Globe, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, Gauge, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore, type GoIDEToolWindow } from '@/stores/codeStudioLsp'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
@@ -121,6 +122,12 @@ export function CodeStudioLeftStripe({ session, onCommit, onBookmarks }: CodeStu
   )
 }
 
+/** Risorse dell'app sotto la stripe destra: campiona solo mentre il pannello è aperto. */
+function ResourcesPanel() {
+  const { sample, failed, history } = useResourceSample()
+  return <ResourceDetails sample={sample} failed={failed} history={history} className="fixed bottom-9 right-10 z-50 w-[min(520px,90vw)]" />
+}
+
 interface CodeStudioRightStripeProps {
   onDependencies: () => void
 }
@@ -134,6 +141,7 @@ export function CodeStudioRightStripe({ onDependencies }: CodeStudioRightStripeP
   // Un solo bottone: riapre l'ultimo provider scelto nell'hub, con il suo stato.
   const lastProvider = useCodeStudioAssistantStore((state) => state.lastProvider)
   const providers = useAiProviders()
+  const [resourcesOpen, setResourcesOpen] = useState(false)
   const toggleAssistant = (pane: Exclude<CodeStudioAssistantPane, null>) => {
     if (structureOpen && assistantPane === pane) {
       useCodeStudioAssistantStore.getState().close()
@@ -154,6 +162,8 @@ export function CodeStudioRightStripe({ onDependencies }: CodeStudioRightStripeP
         onClick={() => toggleAssistant(lastProvider)}
       />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
+      <StripeButton label="Resources · RAM, CPU and processes" icon={Gauge} pressed={resourcesOpen} onClick={() => setResourcesOpen((open) => !open)} />
+      {resourcesOpen && <ResourcesPanel />}
     </nav>
   )
 }

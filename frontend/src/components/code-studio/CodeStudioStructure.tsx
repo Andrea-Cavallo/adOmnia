@@ -44,7 +44,7 @@ function SymbolLabel({ node }: { node: GoIDESymbolNode }) {
   )
 }
 
-/** Riga della struttura: il simbolo sotto il cursore resta evidenziato e visibile, come in GoLand. */
+/** Riga della struttura: il simbolo sotto il cursore resta evidenziato e visibile. */
 const SymbolRow = memo(function SymbolRow({ node, depth, documentId, caretPath }: SymbolRowProps) {
   const key = symbolKey(node)
   const onCaretPath = caretPath.includes(key)
@@ -79,7 +79,7 @@ function ownsCaret(node: GoIDESymbolNode, caretPath: string[]): boolean {
   return caretPath[0] === key || (node.children ?? []).some((child) => symbolKey(child) === caretPath[0])
 }
 
-/** Sezione Constants / Types / Functions con conteggio, comprimibile come in GoLand. */
+/** Sezione Constants / Types / Functions con conteggio, comprimibile. */
 function StructureGroup({ section, documentId, caretPath }: { section: StructureSection; documentId: string; caretPath: string[] }) {
   const [open, setOpen] = useState(true)
   return (

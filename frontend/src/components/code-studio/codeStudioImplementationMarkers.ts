@@ -85,7 +85,7 @@ export function useCodeStudioImplementationMarkers(editorRef: MutableRefObject<m
   }, [document.buffer, editorRef, enabled, id, mountCount, sessionId])
 }
 
-/** Ctrl+U: dal tipo o metodo sotto il cursore alle interfacce che implementa (Go to Super Method di GoLand). */
+/** Ctrl+U: dal tipo o metodo sotto il cursore alle interfacce che implementa (Go to Super Method). */
 export function goToSuperMethod(editor: monaco.editor.ICodeEditor): void {
   const model = editor.getModel()
   const position = editor.getPosition()

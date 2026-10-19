@@ -28,6 +28,7 @@ func run() int {
 	failOn := flag.String("fail-on", "high", "lowest severity that fails the build: critical, high, medium, low, informational or none")
 	format := flag.String("format", "", "write a report: json, sarif, html, cyclonedx, spdx or vex")
 	out := flag.String("out", "", "report file (default: secscan<ext> in the current folder)")
+	deep := flag.Bool("deep", false, "authorize govulncheck and mvn to analyze reachability and the effective dependency graph")
 	offline := flag.Bool("offline", false, "use only the local advisory cache")
 	ecosystems := flag.String("ecosystems", "", "comma-separated subset of: Go, Maven")
 	flag.Parse()
@@ -47,7 +48,7 @@ func run() int {
 	engine, _ := standard.Engine(filepath.Join(cacheDirectory, "adomnia-secscan"), settings.SourceEndpoints)
 	request := securityintel.ScanRequest{
 		Root:         absolute,
-		Options:      securityintel.ResolveOptions{Offline: *offline || settings.Offline, IncludePluginDependencies: settings.IncludePluginDependencies, IncludeOptional: settings.IncludeOptional},
+		Options:      securityintel.ResolveOptions{AllowProcesses: *deep, Offline: *offline || settings.Offline, IncludePluginDependencies: settings.IncludePluginDependencies, IncludeOptional: settings.IncludeOptional},
 		Suppressions: settings.Suppressions,
 	}
 	for name := range strings.SplitSeq(*ecosystems, ",") {

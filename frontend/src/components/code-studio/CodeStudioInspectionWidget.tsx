@@ -18,7 +18,7 @@ function useFileCounts(sessionId: string, documentId: string, relativePath: stri
   }))
 }
 
-/** Widget ispezioni in alto a destra dell'editor, come in IntelliJ: stato del file a colpo d'occhio e salto tra i problemi. */
+/** Widget ispezioni in alto a destra dell'editor: stato del file a colpo d'occhio e salto tra i problemi. */
 export function CodeStudioInspectionWidget({ document }: CodeStudioInspectionWidgetProps) {
   const { sessionId, id, relativePath, language } = document.document
   const { errors, warnings } = useFileCounts(sessionId, id, relativePath)

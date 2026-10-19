@@ -33,7 +33,7 @@ describe('remapSemanticTokens', () => {
 })
 
 describe('isLiteralArgument', () => {
-  it('shows parameter names only for literals and nil, like GoLand', () => {
+  it('shows parameter names only for literals and nil', () => {
     const line = 'total = Compute(5, "x", nil, count, true, -2, `raw`)'
     const column = (needle: string) => line.indexOf(needle) + 1
     expect(isLiteralArgument(line, column('5'))).toBe(true)

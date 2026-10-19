@@ -854,7 +854,14 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Slice(partitions, func(i, j int) bool { return partitions[i]["id"].(int32) < partitions[j]["id"].(int32) })
 
-	configEntries, err := admin.DescribeConfig(sarama.ConfigResource{Type: sarama.TopicResource, Name: req.Topic})
+	described, err := admin.DescribeConfigs([]*sarama.ConfigResource{{Type: sarama.TopicResource, Name: req.Topic}}, sarama.DescribeConfigsOptions{})
+	var configEntries []sarama.ConfigEntry
+	if err == nil && len(described) > 0 {
+		if described[0].ErrorCode != sarama.ErrNoError {
+			err = fmt.Errorf("%s: %s", described[0].ErrorCode, described[0].ErrorMsg)
+		}
+		configEntries = described[0].Configs
+	}
 	if err != nil {
 		httputil.JSONError(w, "describe topic configs failed: "+err.Error(), 502)
 		return

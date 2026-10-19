@@ -216,7 +216,7 @@ func checkModuleRegistry(registry, module string) ModuleRegistryCheck {
 	response, err := registryGet(client, endpoint, "", "")
 	if err == nil && (response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden) {
 		if username, password, ok := gitCredentialFor(registry); ok {
-			response.Body.Close()
+			_ = response.Body.Close()
 			response, err = registryGet(client, endpoint, username, password)
 		}
 	}
@@ -224,17 +224,17 @@ func checkModuleRegistry(registry, module string) ModuleRegistryCheck {
 		result.Message = registryErrorMessage(err)
 		return result
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	result.Status = response.StatusCode
-	switch {
-	case response.StatusCode == http.StatusOK:
+	switch response.StatusCode {
+	case http.StatusOK:
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 1<<20))
 		versions := len(strings.Fields(string(body)))
 		result.OK = true
 		result.Message = fmt.Sprintf("Registry raggiungibile: %d versioni di %s.", versions, module)
-	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
+	case http.StatusUnauthorized, http.StatusForbidden:
 		result.Message = "Il registry chiede il login: salva le credenziali dell'host e attiva GOAUTH con le credenziali Git."
-	case response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusGone:
+	case http.StatusNotFound, http.StatusGone:
 		result.OK = true
 		result.Message = fmt.Sprintf("Registry raggiungibile, ma non serve %s (%d): verifica che il repository virtuale includa i moduli richiesti.", module, response.StatusCode)
 	default:

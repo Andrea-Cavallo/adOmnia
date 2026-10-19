@@ -14,7 +14,7 @@ describe('authorForRange', () => {
     expect(authorForRange(blame, 1, 3)).toBe('Linus')
   })
 
-  it('marks uncommitted edits with a star, like IntelliJ', () => {
+  it('marks uncommitted edits with a star', () => {
     expect(authorForRange([line(1, 'Ada', '2026-01-01'), line(2, 'Not Committed Yet', '2026-09-30', UNCOMMITTED)], 1, 2)).toBe('Ada *')
     expect(authorForRange([line(1, 'Not Committed Yet', '2026-09-30', UNCOMMITTED)], 1, 1)).toBe('new *')
   })

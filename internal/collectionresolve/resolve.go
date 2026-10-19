@@ -110,24 +110,27 @@ func mergeScope(parent scopeState, folder collectionfs.Node) scopeState {
 
 func applyRequestInheritance(req requestcontract.Request, scope scopeState) requestcontract.Request {
 	policy := req.Inheritance
-	if policy.Auth == "" || policy.Auth == "inherit" {
+	switch policy.Auth {
+	case "", "inherit":
 		// An auth explicitly set on the request wins; otherwise inherit the scope's.
 		if !authIsSet(req.Auth) {
 			req.Auth = scope.auth
 		}
-	} else if policy.Auth == "none" {
+	case "none":
 		req.Auth = requestcontract.Auth{Type: "none"}
 	}
 
-	if policy.Headers == "" || policy.Headers == "inherit" {
+	switch policy.Headers {
+	case "", "inherit":
 		req.Headers = mergeRows(scope.headers, req.Headers)
-	} else if policy.Headers == "none" {
+	case "none":
 		req.Headers = nil
 	}
-	if policy.Scripts == "" || policy.Scripts == "inherit" {
+	switch policy.Scripts {
+	case "", "inherit":
 		req.Scripts.Pre = appendScript(scope.preScript, req.Scripts.Pre)
 		req.Scripts.Post = appendScript(scope.postScript, req.Scripts.Post)
-	} else if policy.Scripts == "none" {
+	case "none":
 		req.Scripts = requestcontract.Scripts{}
 	}
 	return req

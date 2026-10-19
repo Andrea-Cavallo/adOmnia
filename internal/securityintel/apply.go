@@ -557,9 +557,7 @@ func unifiedDiff(name, before, after string) string {
 // splitDiffLines spezza un testo in righe di diff, normalizzando i fine riga.
 func splitDiffLines(text string) []string {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
-	if strings.HasSuffix(text, "\n") {
-		text = text[:len(text)-1]
-	}
+	text = strings.TrimSuffix(text, "\n")
 	if text == "" {
 		return nil
 	}

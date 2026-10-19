@@ -13,6 +13,18 @@ export function saveBase64File(defaultName: string, dataBase64: string): Promise
   return fn(defaultName, dataBase64)
 }
 
+/** Salva un testo con il selettore nativo "Salva con nome"; fuori dall'app desktop ricade sul download del browser. '' se annullato. */
+export async function saveTextFile(defaultName: string, text: string, type = 'text/plain'): Promise<string> {
+  if (!AppBindings.SaveBinaryFileBase64) {
+    downloadText(defaultName, text, type)
+    return defaultName
+  }
+  const bytes = new TextEncoder().encode(text)
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
+  return saveBase64File(defaultName, btoa(binary))
+}
+
 export function downloadText(filename: string, text: string, type = 'text/plain') {
   const blob = new Blob([text], { type })
   const url = URL.createObjectURL(blob)

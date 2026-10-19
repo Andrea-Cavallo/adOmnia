@@ -1319,7 +1319,7 @@ function withConsoleHeader(consoleByRun: ConsoleByRun, execution: GoIDEExecution
   return { ...consoleByRun, [execution.id]: [header, ...current] }
 }
 
-/** Esito in fondo alla console, come in GoLand: anche un comando senza output mostra che è finito. */
+/** Esito in fondo alla console: anche un comando senza output mostra che è finito. */
 function withConsoleFooter(consoleByRun: ConsoleByRun, execution: GoIDEExecution, sequence: number): ConsoleByRun {
   if (execution.status === 'running') return consoleByRun
   const outcome = execution.status === 'stopped' ? 'Process stopped' : `Process finished with exit code ${execution.exitCode ?? '?'}`

@@ -52,7 +52,7 @@ const SETTINGS: Setting[] = [
   { section: 'Save actions', label: 'Optimize imports on save', hint: 'Add missing and remove unused imports.', kind: 'toggle', pref: 'organizeImportsOnSave' },
   { section: 'Save actions', label: 'Run linter on save', hint: 'golangci-lint, staticcheck or a custom analyzer, when configured.', kind: 'toggle', pref: 'lintOnSave' },
   { section: 'Save actions', label: 'Trim trailing whitespace', hint: 'For non-Go files; Go files are already formatted.', kind: 'toggle', pref: 'trimTrailingWhitespace' },
-  { section: 'Save actions', label: 'Auto save', hint: 'Save every modified file after a pause in typing (VS Code “afterDelay”).', kind: 'select', pref: 'autoSaveDelayMs', options: [{ value: '0', label: 'Off' }, { value: '1000', label: 'After 1 second' }, { value: '2000', label: 'After 2 seconds' }, { value: '5000', label: 'After 5 seconds' }, { value: '10000', label: 'After 10 seconds' }] },
+  { section: 'Save actions', label: 'Auto save', hint: 'Save every modified file after a pause in typing.', kind: 'select', pref: 'autoSaveDelayMs', options: [{ value: '0', label: 'Off' }, { value: '1000', label: 'After 1 second' }, { value: '2000', label: 'After 2 seconds' }, { value: '5000', label: 'After 5 seconds' }, { value: '10000', label: 'After 10 seconds' }] },
   { section: 'Save actions', label: 'Save on focus change', hint: 'Save modified files when the editor loses focus or you switch file.', kind: 'toggle', pref: 'autoSave' },
   { section: 'Language server', label: 'Deep diagnostics on save', hint: 'Run deep diagnostics after saving; completion, hover and navigation remain available.', kind: 'toggle', server: 'diagnosticsOnSave' },
   { section: 'Language server', label: 'gofumpt style', hint: 'Stricter formatting rules (restarts gopls).', kind: 'toggle', server: 'gofumpt' },
@@ -75,7 +75,7 @@ interface CodeStudioSettingsDialogProps {
   onClose: () => void
 }
 
-/** Settings di Code Studio in un unico posto (Ctrl+Alt+S, come GoLand), con ricerca. */
+/** Settings di Code Studio in un unico posto (Ctrl+Alt+S), con ricerca. */
 export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }: CodeStudioSettingsDialogProps) {
   const preferences = useCodeStudioLspStore((state) => state.preferences)
   const settings = useCodeStudioLspStore((state) => state.settings)

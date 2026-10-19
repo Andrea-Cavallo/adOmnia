@@ -9,7 +9,8 @@ export interface MarkdownAssetRef {
 }
 
 function imagePattern(): RegExp {
-  return /!\[[^\]]*\]\(\s*([^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/g
+  // `![alt](src)` oppure `<img ... src="src">`: il gruppo 1 o 2 è la sorgente.
+  return /!\[[^\]]*\]\(\s*([^)\s]+)(?:\s+["'][^"']*["'])?\s*\)|<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi
 }
 
 /** Un asset è esterno quando non è un file relativo al progetto (http, data:, file:, #…). */
@@ -37,7 +38,7 @@ export function localMarkdownAssets(markdown: string, fromPath: string): Markdow
   const seen = new Set<string>()
   const refs: MarkdownAssetRef[] = []
   for (const match of markdown.matchAll(imagePattern())) {
-    const raw = match[1]
+    const raw = match[1] ?? match[2]
     if (seen.has(raw)) continue
     const relative = resolveMarkdownAssetPath(fromPath, raw)
     if (!relative) continue
@@ -50,7 +51,8 @@ export function localMarkdownAssets(markdown: string, fromPath: string): Markdow
 /** Sostituisce le sorgenti locali con i data URL risolti, lasciando intatto il resto. */
 export function substituteMarkdownAssets(markdown: string, assets: Map<string, string>): string {
   if (assets.size === 0) return markdown
-  return markdown.replace(imagePattern(), (full, raw: string) => {
+  return markdown.replace(imagePattern(), (full, markdownSrc: string | undefined, htmlSrc: string | undefined) => {
+    const raw = markdownSrc ?? htmlSrc ?? ''
     const data = assets.get(raw)
     return data ? full.replace(raw, data) : full
   })

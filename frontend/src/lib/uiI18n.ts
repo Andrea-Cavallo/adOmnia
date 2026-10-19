@@ -71,6 +71,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Resources unavailable': 'Consumi non disponibili',
   'Measuring resources…': 'Misurazione consumi…',
   'Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.': 'Applicazione e processi figli. CPU misurata su tutti i core logici. Aggiornamento sospeso durante l’inattività.',
+  'Export as MD': 'Esporta in MD',
+  'Export processes, memory budget and recent samples as a Markdown report': 'Esporta processi, budget di memoria e ultimi campioni in un report Markdown',
 
   'Open in Code Studio': 'Apri in Code Studio',
   'Request actions': 'Azioni richiesta',

@@ -47,7 +47,7 @@ export function hunkAnchorLine(hunk: CodeStudioLineHunk): number {
   return hunk.newEnd < hunk.newStart ? Math.max(hunk.newStart - 1, 1) : hunk.newStart
 }
 
-/** Tacche nella scrollbar: tinte smorzate come in IntelliJ, segnalano senza competere con il codice. */
+/** Tacche nella scrollbar: tinte smorzate, segnalano senza competere con il codice. */
 const OVERVIEW_RULER_COLORS: Record<CodeStudioLineHunk['kind'], string> = {
   added: 'rgba(84, 145, 89, 0.55)',
   modified: 'rgba(67, 105, 141, 0.65)',

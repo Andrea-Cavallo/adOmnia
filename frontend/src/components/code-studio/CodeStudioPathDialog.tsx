@@ -47,7 +47,7 @@ export function CodeStudioPathDialog({ sessionId, request, onClose }: { sessionI
     if (!request) return
     const value = initialName(request)
     setName(value)
-    // Come JetBrains: nel rename è selezionato il nome senza estensione.
+    // Nel rename è selezionato il nome senza estensione.
     requestAnimationFrame(() => {
       const input = inputRef.current
       if (!input) return

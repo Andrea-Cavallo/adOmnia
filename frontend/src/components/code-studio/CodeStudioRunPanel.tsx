@@ -216,7 +216,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const sendRunInput = useCodeStudioStore((state) => state.sendRunInput)
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   const active = executions.find((execution) => execution.id === activeRunId) ?? executions[executions.length - 1] ?? null
-  // Una nuova esecuzione porta in primo piano la finestra Run, come in GoLand; i test hanno la loro finestra.
+  // Una nuova esecuzione porta in primo piano la finestra Run; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
     if (standalone || fixedView || !activeRunId || activeRunId === seenRunId.current) return

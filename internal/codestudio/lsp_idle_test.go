@@ -33,7 +33,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 	}
 	state, _ := manager.server(session.ID, golang.ID)
 	// An active detached window must prevent suspension of its workspace.
-	manager.activity.Report("detached", activity.Active, []string{"code-studio:" + string(session.ID)})
+	_, _ = manager.activity.Report("detached", activity.Active, []string{"code-studio:" + string(session.ID)})
 	state.mu.Lock()
 	activeEpoch := state.idleEpoch
 	state.mu.Unlock()
@@ -41,7 +41,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 	if manager.Status(session.ID, golang.ID).PID != first.PID {
 		t.Fatal("visible workspace was suspended")
 	}
-	manager.activity.Report("detached", activity.Background, nil)
+	_, _ = manager.activity.Report("detached", activity.Background, nil)
 	// Explicit starts are protected even with no open editor.
 	state.mu.Lock()
 	state.userInitiated = true
@@ -67,7 +67,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 	state.mu.Unlock()
 
 	document := Document{ID: "main", Path: filepath.Join(root, "main.go"), URI: fileURI(filepath.Join(root, "main.go"))}
-	manager.activity.Report("main", activity.Active, []string{"code-studio:" + string(session.ID)})
+	_, _ = manager.activity.Report("main", activity.Active, []string{"code-studio:" + string(session.ID)})
 	manager.TrackDocument(session, document, "package main", false)
 	state.mu.Lock()
 	epoch := state.idleEpoch
@@ -77,7 +77,7 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 		t.Fatal("open editor was suspended")
 	}
 	manager.UntrackDocument(session.ID, document.ID)
-	manager.activity.Report("main", activity.Background, nil)
+	_, _ = manager.activity.Report("main", activity.Background, nil)
 	state.mu.Lock()
 	epoch = state.idleEpoch
 	state.mu.Unlock()
@@ -116,7 +116,7 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 	}
 	session := Session{ID: "hibernate", Project: Project{Name: "hibernate", RootPath: root, RealPath: root}}
 	options := LanguageServerOptions{Language: golang.ID, Binary: binary, Environment: append(os.Environ(), fakeGoplsEnv+"=1", "ADOMNIA_FAKE_LSP_LOG_BUFFERS=1")}
-	manager.activity.Report("main", activity.Active, []string{"code-studio:hibernate"})
+	_, _ = manager.activity.Report("main", activity.Active, []string{"code-studio:hibernate"})
 	first, err := manager.Start(session, options)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 		t.Fatal(err)
 	}
 	state, _ := manager.server(session.ID, golang.ID)
-	manager.activity.Report("main", activity.Background, nil)
+	_, _ = manager.activity.Report("main", activity.Background, nil)
 	state.mu.Lock()
 	epoch := state.idleEpoch
 	timer := state.idleTimer
@@ -136,7 +136,7 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 		t.Fatal("open buffer prevented idle timer")
 	}
 	// Unrelated window reports must not postpone this project's grace period.
-	manager.activity.Report("other", activity.Active, []string{"collections"})
+	_, _ = manager.activity.Report("other", activity.Active, []string{"collections"})
 	state.mu.Lock()
 	same := state.idleEpoch == epoch && state.idleTimer == timer
 	state.mu.Unlock()
@@ -154,7 +154,7 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 	if manager.Status(session.ID, golang.ID).PID != 0 {
 		t.Fatal("background edit woke server")
 	}
-	manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
+	_, _ = manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		status := manager.Status(session.ID, golang.ID)
@@ -168,9 +168,9 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 		t.Fatalf("dirty buffer not replayed: %s", log)
 	}
 	manager.Stop(session.ID, golang.ID)
-	manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
+	_, _ = manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
 	state.lifecycle.Lock()
-	state.lifecycle.Unlock()
+	state.lifecycle.Unlock() //nolint:staticcheck // deliberate barrier: waits for an in-flight lifecycle operation
 	if manager.Status(session.ID, golang.ID).PID != 0 {
 		t.Fatal("activity overrode manual stop")
 	}
@@ -179,14 +179,14 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 	if _, err := manager.Start(session, options); err != nil {
 		t.Fatal(err)
 	}
-	manager.activity.Report("detached", activity.Background, nil)
+	_, _ = manager.activity.Report("detached", activity.Background, nil)
 	state.mu.Lock()
 	epoch = state.idleEpoch
 	state.mu.Unlock()
 	manager.suspendIdle(state, epoch)
-	manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
+	_, _ = manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
 	manager.CloseSession(session.ID)
-	manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
+	_, _ = manager.activity.Report("detached", activity.Active, []string{"code-studio:hibernate"})
 	state.lifecycle.Lock()
 	state.mu.Lock()
 	closed := state.closed && state.process == nil

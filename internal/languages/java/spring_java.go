@@ -209,9 +209,7 @@ func scanJavaMembers(data []byte, tokens []javaToken, declared javaDeclarations)
 		}
 		annotations := collectPending(tokens, map[int][]javaAnnotation{}, index)
 		owner := ownerOf(declared.types, token.start)
-		for _, member := range parseJavaMembers(data, token, annotations, owner) {
-			members = append(members, member)
-		}
+		members = append(members, parseJavaMembers(data, token, annotations, owner)...)
 	}
 	return members
 }
@@ -448,8 +446,8 @@ func scanJavaTokens(data []byte) []javaToken {
 		if index >= len(data) {
 			break
 		}
-		switch {
-		case data[index] == '@':
+		switch data[index] {
+		case '@':
 			end := index + annotationEnd(string(data[index:]))
 			if end <= index {
 				end = index + 1
@@ -460,10 +458,10 @@ func scanJavaTokens(data []byte) []javaToken {
 				annotation: parseJavaAnnotation(string(data[index:end]), line, startColumn, endColumn),
 			})
 			index = end
-		case data[index] == '{':
+		case '{':
 			tokens = append(tokens, javaToken{kind: "open", start: index, end: index + 1, text: "{"})
 			index++
-		case data[index] == '}':
+		case '}':
 			tokens = append(tokens, javaToken{kind: "close", start: index, end: index + 1, text: "}"})
 			index++
 		default:
@@ -526,7 +524,7 @@ func stripJavaComments(data []byte) []byte {
 				index++
 			}
 		case out[index] == '/' && index+1 < len(out) && out[index+1] == '*':
-			for index < len(out) && !(out[index] == '*' && index+1 < len(out) && out[index+1] == '/') {
+			for index < len(out) && (out[index] != '*' || index+1 >= len(out) || out[index+1] != '/') {
 				if out[index] != '\n' {
 					out[index] = ' '
 				}

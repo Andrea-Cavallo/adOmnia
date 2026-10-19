@@ -51,7 +51,7 @@ function blameFor(document: GoIDEEditorDocument): Promise<GoIDEVCSBlameLine[]> {
   return request
 }
 
-/** Autore dell'ultima modifica nel range, come in IntelliJ: "*" se ci sono righe non committate. */
+/** Autore dell'ultima modifica nel range: "*" se ci sono righe non committate. */
 export function authorForRange(blame: GoIDEVCSBlameLine[], startLine: number, endLine: number): string {
   const lines = blame.filter((line) => line.line >= startLine && line.line <= endLine)
   const committed = lines.filter((line) => !UNCOMMITTED_HASH.test(line.hash))
@@ -123,7 +123,7 @@ async function showUsages(sessionId: string, documentId: string, line: number, c
   }
 }
 
-/** Code Vision alla IntelliJ: numero di usi e autore git sopra ogni dichiarazione di package. */
+/** Code Vision: numero di usi e autore git sopra ogni dichiarazione di package. */
 export function registerCodeStudioCodeVision(): void {
   if (registered) return
   registered = true

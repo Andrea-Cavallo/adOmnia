@@ -42,7 +42,7 @@ export function StateDot({ state }: { state: string }) {
   return <span className={`h-2 w-2 shrink-0 rounded-full ${stateMeta(state).dot}`} aria-hidden="true" />
 }
 
-/** Colore del valore per tipo, come nei debugger JetBrains: stringhe, numeri, booleani e nil. */
+/** Colore del valore per tipo: stringhe, numeri, booleani e nil. */
 export function valueTone(value: string): string {
   if (/^".*"$/s.test(value) || /^'.'$/.test(value)) return 'text-success'
   if (/^-?\d/.test(value)) return 'text-info'

@@ -102,8 +102,10 @@ func (a *architecture) goroutinesIn(file typedFile, root ast.Node, fn *ast.FuncD
 			return true
 		}
 		g := ArchGoroutine{Kind: kind, Package: file.pkg.PkgPath, Function: function, Site: a.site(node.Pos()), Spawner: spawner, Risks: []string{}, Severity: "none", handlerFunc: handler}
-		var body *ast.BlockStmt
-		bodyInfo := info
+		var (
+			body     *ast.BlockStmt
+			bodyInfo *types.Info
+		)
 		g.Shape, body, bodyInfo = a.describeLaunch(&g, info, target)
 		for _, arg := range args {
 			if t := info.TypeOf(arg); t != nil && isChanType(t) {
@@ -367,10 +369,10 @@ func factsOf(info *types.Info, body *ast.BlockStmt) bodyFacts {
 				}
 			}
 			if callee, _ := typeutil.Callee(info, node).(*types.Func); callee != nil {
-				switch full := callee.FullName(); {
-				case full == "(context.Context).Done" || full == "(context.Context).Err":
+				switch callee.FullName() {
+				case "(context.Context).Done", "(context.Context).Err":
 					facts.cancellable = true
-				case full == "(*sync.WaitGroup).Done":
+				case "(*sync.WaitGroup).Done":
 					facts.done = true
 				}
 			}

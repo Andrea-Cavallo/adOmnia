@@ -48,7 +48,7 @@ func writeJar(t *testing.T, path, manifest string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	zw := zip.NewWriter(f)
 	w, err := zw.Create("META-INF/MANIFEST.MF")
 	if err != nil {

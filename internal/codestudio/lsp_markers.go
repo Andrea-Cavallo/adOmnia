@@ -56,7 +56,7 @@ func sameLocation(location EditorLocation, relativePath string, node SymbolNode)
 	return location.RelativePath == relativePath && location.Range.StartLine == node.SelectionRange.StartLine
 }
 
-// ImplementationMarkers calcola in un solo passaggio i marcatori del gutter del documento, come le icone I↑ e I↓ di GoLand.
+// ImplementationMarkers calcola in un solo passaggio i marcatori del gutter del documento (icone I↑ e I↓).
 func (s *Service) ImplementationMarkers(ctx context.Context, sessionID, documentID string) ([]ImplementationMarker, error) {
 	ctx, cancel := context.WithTimeout(ctx, implementationMarkersTTL)
 	defer cancel()

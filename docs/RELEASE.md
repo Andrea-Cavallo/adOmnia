@@ -226,7 +226,7 @@ limits, plus runtime value inspectors and Benchmark Studio.
 ## v0.9.48 release notes: a cleaner gO rail and Project refresh controls
 
 See [the full v0.9.48 notes](releases/v0.9.48.md): Code Studio's Project view
-gets context-sensitive IntelliJ-style code actions, explicit Reload from Disk
+gets context-sensitive code actions, explicit Reload from Disk
 and Refresh Folder / Project controls that protect dirty buffers. The compact
 left rail now uses the transparent cyan gO mark, the README shows the current
 Code Studio workspace, and the Brick Workshop skin has been removed completely.
@@ -273,12 +273,12 @@ See [the full v0.9.38 notes](releases/v0.9.38.md): errors and warnings can
 be fixed with the AI provider configured in adOmnia, always through a
 reviewed preview, and every file list shows real technology icons.
 
-## v0.9.37 release notes: Code Studio terminal, tests, debugger and GoLand parity
+## v0.9.37 release notes: Code Studio terminal, tests and debugger
 
 See [the full v0.9.37 notes](releases/v0.9.37.md): Code Studio adds a real
 terminal, a structured test runner with coverage, the Delve debugger,
 gopls refactoring and navigation, Git in the editor linked to Git Studio,
-Project Services, separate project windows and a JetBrains-style chrome.
+Project Services, separate project windows and a custom IDE chrome.
 
 ## v0.9.36 release notes: Code Studio becomes a real Code Studio
 
@@ -286,7 +286,7 @@ See [the full v0.9.36 notes](releases/v0.9.36.md): Code Studio now opens, edits,
 understands, lints, runs and tests real Go projects. It adds gopls completion,
 navigation, previewed rename and code actions; golangci-lint or staticcheck
 findings; gutter ▶ actions for `func main` and tests; split editor, pinned
-tabs and a symbolic breadcrumb; and a full GoLand-style menu bar. Debugger,
+tabs and a symbolic breadcrumb; and a full menu bar. Debugger,
 terminal and test runner tree come in later phases.
 
 ## v0.9.35 release notes: Code Studio foundation

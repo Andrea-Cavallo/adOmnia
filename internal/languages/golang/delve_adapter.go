@@ -53,7 +53,7 @@ func delveLaunchArguments(buildDir string, request DebugRequest, program, module
 	arguments := map[string]any{
 		"request": "launch", "mode": request.Mode, "program": program, "cwd": moduleDir, "stopOnEntry": false,
 		"output": filepath.Join(buildDir, debugBinaryName()),
-		// Come GoLand: variabili di package nel pannello Variables e solo le goroutine dell'utente.
+		// Variabili di package nel pannello Variables e solo le goroutine dell'utente.
 		"showGlobalVariables": true, "hideSystemGoroutines": true,
 	}
 	args := append([]string(nil), request.ProgramArguments...)

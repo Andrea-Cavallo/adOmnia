@@ -2,10 +2,10 @@ package codestudio
 
 import (
 	"fmt"
+	"go/build"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -501,7 +501,7 @@ func isRuntimeProfileFunction(fn *profile.Function) bool {
 	if strings.HasPrefix(fn.Name, "runtime.") {
 		return true
 	}
-	goRoot := runtime.GOROOT()
+	goRoot := build.Default.GOROOT
 	if goRoot == "" || fn.Filename == "" {
 		return false
 	}

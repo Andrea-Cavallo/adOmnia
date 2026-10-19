@@ -36,7 +36,7 @@ func TestBenchmarkLargeFile(t *testing.T) {
 	}
 	path := filepath.Join(dir, fmt.Sprintf("bench-%dmb.log", sizeMB))
 	generated := generateFixture(t, path, int64(sizeMB)<<20)
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 
 	var before runtime.MemStats
 	runtime.GC()

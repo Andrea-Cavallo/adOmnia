@@ -14,6 +14,40 @@ func TestDebugArgumentsQualifiedGradleTasks(t *testing.T) {
 		}
 	}
 }
+
+// Quarkus dev mode ha già JDWP in ascolto sulla sua porta: gli argomenti restano intatti e
+// l'agent non va iniettato, altrimenti si aprono due debugger e nessuno dei due funziona.
+func TestDebugArgumentsLeaveQuarkusDevModeAlone(t *testing.T) {
+	args, port, err := DebugArguments(UnitMaven, []string{"-B", "quarkus:dev"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(args, []string{"-B", "quarkus:dev"}) {
+		t.Fatalf("quarkus:dev arguments were rewritten: %v", args)
+	}
+	if port != QuarkusDebugPort {
+		t.Fatalf("port = %d, want %d", port, QuarkusDebugPort)
+	}
+	for _, arg := range args {
+		if strings.Contains(arg, "jdwp") {
+			t.Fatalf("quarkus:dev must not carry a JDWP agent: %v", args)
+		}
+	}
+
+	gradle, port, err := DebugArguments(UnitGradle, []string{":api:quarkusDev"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(gradle, []string{":api:quarkusDev"}) {
+		t.Fatalf("quarkusDev arguments were rewritten: %v", gradle)
+	}
+	if slices.Contains(gradle, "--debug-jvm") {
+		t.Fatalf("quarkusDev must not take --debug-jvm: %v", gradle)
+	}
+	if port != QuarkusDebugPort {
+		t.Fatalf("port = %d, want %d", port, QuarkusDebugPort)
+	}
+}
 func TestDebugArgumentsKeepSpringVMOptions(t *testing.T) {
 	args, _, err := DebugArguments(UnitMaven, []string{"spring-boot:run", "-Dspring-boot.run.jvmArguments=-Xmx512m -Ddemo.mode=local"}, 6002)
 	if err != nil {

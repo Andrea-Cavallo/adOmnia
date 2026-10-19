@@ -53,7 +53,7 @@ func ReadStartup(dbPath, bucket, key, goos string) string {
 	if err != nil {
 		return Default(goos)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	var settingsJSON []byte
 	_ = db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(bucket)); b != nil {

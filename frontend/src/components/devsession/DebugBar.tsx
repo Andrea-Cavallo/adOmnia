@@ -19,7 +19,7 @@ function BarButton({ label, shortcut, disabled, onClick, children, tone }: { lab
   )
 }
 
-/** JetBrains debugger keys, active outside Code Studio (which has its own) while a service is debugged. */
+/** Debugger keys, active outside Code Studio (which has its own) while a service is debugged. */
 function debugKey(event: KeyboardEvent): DebugAction | 'stop' | null {
   if (event.ctrlKey && event.key === 'F2') return 'stop'
   if (event.ctrlKey || event.altKey || event.metaKey) return null

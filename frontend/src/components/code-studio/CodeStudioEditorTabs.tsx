@@ -23,7 +23,7 @@ export function orderTabs(documents: GoIDEEditorDocument[], pinned: Record<strin
   return [...documents.filter((item) => pinned[item.document.id]), ...documents.filter((item) => !pinned[item.document.id])]
 }
 
-/** Per i nomi ripetuti (es. due main.go) restituisce la cartella che li distingue, come GoLand. */
+/** Per i nomi ripetuti (es. due main.go) restituisce la cartella che li distingue. */
 export function tabQualifiers(documents: GoIDEEditorDocument[]): Record<string, string> {
   const counts = new Map<string, number>()
   for (const item of documents) counts.set(item.document.name, (counts.get(item.document.name) ?? 0) + 1)
@@ -123,7 +123,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
             aria-selected={active && !previewTab?.active}
             tabIndex={active ? 0 : -1}
             onClick={() => { selectDocument(item.document.id); onSelectDocument?.() }}
-            // Come negli IDE JetBrains: doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
+            // Doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
             onDoubleClick={() => useCodeStudioStore.getState().toggleEditorMaximized()}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
             onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, document: item }) }}

@@ -97,7 +97,7 @@ function dependencyLenses(documentId: string, status: PomDependencyStatus): mona
 }
 
 /** Applica un aggiornamento come edit normale dell'editor: annullabile con Ctrl+Z e visibile come modifica non salvata. */
-function applyUpdate(documentId: string, line: number, version: string): void {
+export function applyPomUpdate(documentId: string, line: number, version: string): void {
   const document = documentById(documentId)
   const model = document && modelOf(document)
   const status = statusesOf(documentId).find((item) => item.dependency.line === line)
@@ -172,7 +172,7 @@ export function registerCodeStudioPom(): void {
     const document = documentById(documentId)
     if (document) void usePomStore.getState().scanVulnerabilities(documentId, document.document.sessionId, document.document.path, document.document.relativePath)
   })
-  monaco.editor.registerCommand(UPDATE_COMMAND, (_accessor, documentId: string, line: number, version: string) => applyUpdate(documentId, line, version))
+  monaco.editor.registerCommand(UPDATE_COMMAND, (_accessor, documentId: string, line: number, version: string) => applyPomUpdate(documentId, line, version))
 
   const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
   const provider: monaco.languages.CodeLensProvider = {

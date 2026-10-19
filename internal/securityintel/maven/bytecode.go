@@ -68,12 +68,16 @@ func (a *Adapter) AnalyzeReachability(ctx context.Context, target securityintel.
 		for position := range findings {
 			evidence[position] = inconclusiveBytecodeEvidence(
 				"No compiled classes or JARs were found in the project build output to analyze.")
+			evidence[position].Why = "Build the project first: there are no compiled classes to analyze"
 		}
 		return evidence, nil
 	}
 	repository := LocalRepository(options.Environment)
 	for position, finding := range findings {
 		evidence[position] = bytecodeEvidence(finding, index, repository)
+		if evidence[position].Method == securityintel.EvidenceMethodBytecodeReference && !evidence[position].Confirmed && len(evidence[position].Symbols) == 0 {
+			evidence[position].Why = "The compiled code does not reference it, which is not proof it cannot be reached"
+		}
 	}
 	return evidence, nil
 }
@@ -809,7 +813,7 @@ func instructionSize(opcode byte) int {
 		return 5
 	case opcode == 0xc5: // multianewarray
 		return 4
-	case opcode >= 0x00 && opcode <= 0x0f, // nop … dconst_1
+	case opcode <= 0x0f, // nop … dconst_1
 		opcode >= 0x1a && opcode <= 0x35, // *load_0..3, *aload
 		opcode >= 0x3b && opcode <= 0x83, // *store_0..3, *astore, *aload, stack, aritmetica
 		opcode >= 0x85 && opcode <= 0x98, // conversioni e confronti

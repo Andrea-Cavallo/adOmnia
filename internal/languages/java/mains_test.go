@@ -6,9 +6,9 @@ import (
 )
 
 func TestResolveMainClassAnswerIsParsedAndUnsafeNamesDropped(t *testing.T) {
-	raw := json.RawMessage(`[{"mainClass":"it.acme.Zed","projectName":"app","filePath":"C:\\p\\src\\main\\java\\it\\acme\\Zed.java"},{"mainClass":"it.acme.App","projectName":"app","filePath":"/p/App.java"},{"mainClass":"bad name; rm","projectName":"x"}]`)
+	raw := json.RawMessage(`[{"mainClass":"it.acme.Widget","projectName":"app","filePath":"C:\\p\\src\\main\\java\\it\\acme\\Widget.java"},{"mainClass":"it.acme.App","projectName":"app","filePath":"/p/App.java"},{"mainClass":"bad name; rm","projectName":"x"}]`)
 	found := ParseResolveMainClass(raw)
-	if len(found) != 2 || found[0].Class != "it.acme.App" || found[0].Source != MainSourceJDT || found[1].File != "C:/p/src/main/java/it/acme/Zed.java" {
+	if len(found) != 2 || found[0].Class != "it.acme.App" || found[0].Source != MainSourceJDT || found[1].File != "C:/p/src/main/java/it/acme/Widget.java" {
 		t.Fatalf("found = %+v", found)
 	}
 	if ParseResolveMainClass(json.RawMessage(`not json`)) != nil {

@@ -14,7 +14,7 @@ async function toggleMaximise(): Promise<void> {
   WindowToggleMaximise()
 }
 
-/** Come JetBrains: con Code Studio massimizzato la toolbar prende il posto della barra del titolo. */
+/** Con Code Studio massimizzato la toolbar prende il posto della barra del titolo. */
 const IS_DETACHED_WINDOW = codeStudioWindowContext().windowId !== MAIN_CODE_STUDIO_WINDOW
 
 export function useCodeStudioTitlebar(): CodeStudioTitlebar {

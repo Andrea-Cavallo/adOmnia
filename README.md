@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/banner.png" alt="adOmnia" width="100%">
+  <img src="assets/images/halloween.png" alt="adOmnia" width="100%">
 </p>
 
 <p align="center">

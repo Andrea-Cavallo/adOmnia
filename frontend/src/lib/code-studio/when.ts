@@ -1,5 +1,5 @@
 /**
- * Contesti per le scorciatoie con condizione `when` (stile VS Code, semplificato):
+ * Contesti per le scorciatoie con condizione `when` (semplificato):
  * termini booleani combinati con `&&`, `||` e `!` — per esempio `editor && vim.normal`,
  * `!input`, `editor || terminal`. Le parentesi non sono supportate: la condizione si
  * legge da sinistra a destra, `&&` più vincolante di `||`.

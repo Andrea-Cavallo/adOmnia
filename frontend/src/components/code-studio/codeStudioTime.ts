@@ -1,4 +1,4 @@
-/** Tempo relativo breve, come nei pannelli di GoLand ("3 min ago"). */
+/** Tempo relativo breve ("3 min ago"). */
 export function relativeTime(savedAt: string, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((now - new Date(savedAt).getTime()) / 1000))
   if (seconds < 60) return 'just now'

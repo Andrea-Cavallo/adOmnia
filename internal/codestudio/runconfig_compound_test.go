@@ -106,9 +106,9 @@ func TestCompoundStopsWhenATaskFails(t *testing.T) {
 	if _, err := service.StartConfiguredRun(id, stack.ID, nil); err != nil {
 		t.Fatal(err)
 	}
-	runs := waitRuns(t, service, id, 1)
+	waitRuns(t, service, id, 1)
 	time.Sleep(500 * time.Millisecond)
-	if runs, _ = service.ListRuns(id); len(runs) != 1 {
+	if runs, _ := service.ListRuns(id); len(runs) != 1 {
 		t.Fatalf("a failed task must keep the services stopped, got %d runs", len(runs))
 	}
 }

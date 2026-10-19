@@ -177,7 +177,7 @@ function selectPanelState(state: GoIDEState): PanelState {
 }
 
 /** Riassunto primitivo dei documenti: cambia solo quando cambia il file attivo o lo stato dirty, non a ogni tasto. */
-/** Separatore di riga mostrato in status bar, come in IntelliJ. */
+/** Separatore di riga mostrato in status bar. */
 function lineEndingOf(buffer: string): 'LF' | 'CRLF' {
   return buffer.includes('\r\n') ? 'CRLF' : 'LF'
 }
@@ -329,7 +329,7 @@ export function CodeStudioPanel() {
         useCodeStudioLspStore.getState().requestFind('')
         return
       }
-      // Più comandi possono condividere un tasto (es. F5 di VS Code): vince il primo disponibile.
+      // Più comandi possono condividere un tasto (es. F5): vince il primo disponibile.
       // Il contesto `when` (editor, input, vim.normal…) filtra i binding condizionati della keymap.
       const when = activeWhenContext(event.target as HTMLElement | null)
       const candidates = commandsForKey(event, when)
@@ -646,7 +646,7 @@ export function CodeStudioPanel() {
     const dirty = dirtyGoIDEDocuments(useCodeStudioStore.getState(), activeSession.id)
     for (const document of dirty) if (!await saveDocumentWithActions(document.document.id)) return
   }
-  // Save Files on Focus Change: come negli IDE JetBrains, salva quando la finestra va in secondo piano
+  // Save Files on Focus Change: salva quando la finestra va in secondo piano
   // e quando si cambia file. Nessun salvataggio mentre si scrive.
   const autoSave = lsp.preferences.autoSave
   const autoSaveRef = useRef(saveAllWithActions)
@@ -667,7 +667,7 @@ export function CodeStudioPanel() {
     if (document?.dirty) void saveDocumentWithActions(previous)
   }, [activeDocumentId, autoSave]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto save a tempo (come "files.autoSave": "afterDelay" di VS Code): salva quando si smette
+  // Auto save a tempo: salva quando si smette
   // di scrivere per autoSaveDelayMs. Se un salvataggio è già in corso riprova al prossimo tick
   // invece di sovrapporsi, per non rischiare due scritture con lo stesso diskToken.
   const autoSaveDelayMs = lsp.preferences.autoSaveDelayMs

@@ -1,7 +1,7 @@
 import type * as monaco from 'monaco-editor'
 import { parseVimMode, type CodeStudioVimMode } from '@/stores/codeStudioWhenContext'
 
-/** Emulazioni opzionali della tastiera dell'editor; il default è quella di GoLand/VS Code. */
+/** Emulazioni opzionali della tastiera dell'editor; il default è quella standard. */
 export type CodeStudioEditorMode = 'default' | 'vim' | 'emacs'
 
 /**

@@ -3,7 +3,7 @@ import { registerSessionViewExtension, useCodeStudioStore } from './codeStudio'
 
 const MAX_HISTORY = 50
 const MAX_BOOKMARKS = 200
-/** Spostamenti più brevi nello stesso file aggiornano la voce corrente invece di crearne una nuova (come GoLand). */
+/** Spostamenti più brevi nello stesso file aggiornano la voce corrente invece di crearne una nuova. */
 const NEARBY_LINES = 10
 const PERSIST_DEBOUNCE_MS = 1000
 

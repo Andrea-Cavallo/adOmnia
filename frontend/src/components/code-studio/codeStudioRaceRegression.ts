@@ -17,18 +17,30 @@ export function raceRegressionTestStarter(report: RaceReport): string {
     const frame = access.frames[0]
     return `// ${access.kind}: ${frame?.func ?? 'unknown'} (${frame?.path ?? 'unknown'}:${frame?.line ?? '?'})`
   }).join('\n')
-  return `// Paste into a *_test.go file in the affected package, then replace the TODO with a real reproduction.
+  // Una goroutine per ogni accesso del report, avviate insieme: il corpo resta da scrivere (serve il servizio vero).
+  const starts = report.accesses.map((access, index) => {
+    const frame = access.frames[0]
+    return `\tgo func() {\n\t\tdefer wg.Done()\n\t\t<-start\n\t\t// ${access.kind}: call ${frame?.func ?? 'the code'} here (access ${index + 1} of ${report.accesses.length})\n\t}()`
+  }).join('\n')
+  return `// Paste into a *_test.go file in the affected package, then fill in the calls and remove t.Skip.
 // Run with: go test -race -run ^${testName}$ ./...
 package yourpackage
 
-import "testing"
+import (
+\t"sync"
+\t"testing"
+)
 
 ${evidence}
 func ${testName}(t *testing.T) {
-\tt.Skip("TODO: initialise the real dependencies and reproduce the two concurrent accesses above")
+\tt.Skip("initialise the real dependencies and call the accesses above, then remove this line")
 
-\t// TODO: start the concurrent operations from the race report.
-\t// Keep this test deterministic; use channels or a WaitGroup to coordinate the overlap.
+\tvar wg sync.WaitGroup
+\tstart := make(chan struct{})
+\twg.Add(${report.accesses.length})
+${starts}
+\tclose(start) // release every goroutine together so the accesses overlap
+\twg.Wait()
 }
 `
 }

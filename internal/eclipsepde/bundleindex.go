@@ -217,14 +217,14 @@ func readJarManifest(jarPath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	for _, f := range reader.File {
 		if strings.EqualFold(f.Name, "META-INF/MANIFEST.MF") {
 			rc, err := f.Open()
 			if err != nil {
 				return nil, err
 			}
-			defer rc.Close()
+			defer func() { _ = rc.Close() }()
 			return io.ReadAll(rc)
 		}
 	}

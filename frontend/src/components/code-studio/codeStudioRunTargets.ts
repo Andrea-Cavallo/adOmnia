@@ -63,7 +63,7 @@ export function findRunTargets(relativePath: string, text: string, jdtMains?: Re
 }
 
 /**
- * Run Current Context (Ctrl+Shift+F10 di GoLand): in un _test.go il test che contiene il cursore,
+ * Run Current Context (Ctrl+Shift+F10): in un _test.go il test che contiene il cursore,
  * in un package main la sua func main. null = nessun contesto, si eseguono i test del package.
  */
 export function contextRunTarget(relativePath: string, text: string, line: number): CodeStudioGoRunTarget | null {

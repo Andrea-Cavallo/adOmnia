@@ -24,6 +24,8 @@ describe('javaDebugTargetOf', () => {
   })
   it('lets the host open the JDWP port for test and Spring Boot builds', () => {
     expect(javaDebugTargetOf({ kind: 'command', language: 'java', workingDirectory: 'api', programArguments: ['-f', 'x/pom.xml', 'spring-boot:run'] })).toEqual({ buildArguments: ['-f', 'x/pom.xml', 'spring-boot:run'], workingDirectory: 'api' })
+    expect(javaDebugTargetOf({ kind: 'command', language: 'java', programArguments: ['quarkus:dev'] })).toEqual({ buildArguments: ['quarkus:dev'], workingDirectory: '' })
+    expect(javaDebugTargetOf({ kind: 'command', language: 'java', programArguments: [':api:quarkusDev'] })).toEqual({ buildArguments: [':api:quarkusDev'], workingDirectory: '' })
     expect(javaDebugTargetOf({ kind: 'command', language: 'java', programArguments: ['package'] })).toBeNull()
     expect(javaDebugTargetOf({ kind: 'main', language: 'go', languageOptions: { mainClass: 'a.B' } })).toBeNull()
   })
