@@ -4,6 +4,30 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.8] — 2026-10-19
+
+Release notes: [docs/releases/v1.0.8.md](docs/releases/v1.0.8.md).
+
+### Added
+
+- **Tree-first workspace loading.** Workspace shards separate tree metadata (names, methods, urls, notes) from request contents: switching to an inactive workspace renders the tree before request bodies and headers are parsed, and inactive workspaces are prefetched on idle and on workspace-switcher hover. Saves, exports and sharing hydrate first, so a partial request can never be persisted or exported, and a workspace with pending contents is never serialized over its stored shard.
+- **Code Studio load instrumentation.** `GetWorkspaceLoadPerformance()` reports restore, project detection, watcher start and language-server readiness (count, latest, max). The startup recorder keeps bounded samples of every session switch, not only the first restore. Measurements stay local and never enter the session event stream.
+
+### Changed
+
+- **Project detection shares one disk walk.** The Go, Java and web detectors collect units from a single directory scan with their own depth and unit limits; a failing detector no longer hides the others.
+- **Session layouts persist per session** (`session-view:<id>`), so saving tabs or breakpoints no longer rewrites every session; the state snapshot keeps mirroring them for downgrade. Recent-project existence checks are cached (one per path every 15 seconds) and bounded, and availability changes no longer rewrite the state.
+- **Workspace shards migrate compatibly.** Shards written by earlier versions keep loading and gain the tree projection on their next save; request bodies stay in the complete payload, so older builds read them unchanged. `collections/all` remains a complete version-2 snapshot for downgrade and is rebuilt outside the save transaction (flushed at shutdown).
+
+### Fixed
+
+- **gopls loads only the modules of open files.** Since 1.0.6 every project unit became a gopls workspace folder: in a project with many modules gopls created a view per module and loaded all of them at startup. It now receives the project root and finds each open file's module itself (six nested modules: 2 views instead of 6). Language servers are kept running while idle and slow starts are logged with their phases.
+- **Watcher race on close.** A watcher start racing with project close could leave a live watcher for a closed session (visible on Linux CI); the start now re-checks the session before registering.
+
+### Notes
+
+- Native acceptance of the loading work (cold/warm startup, first switch to an inactive workspace, Studio restore and repeated switching, recovered buffers) and the native timing comparison on the same dataset remain open; no startup speedup is claimed without them. See [the loading optimization checkpoint](docs/WORKSPACE-LOADING-OPTIMIZATION.md).
+
 ## [1.0.7] — 2026-10-19
 
 Release notes: [docs/releases/v1.0.7.md](docs/releases/v1.0.7.md).
