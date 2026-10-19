@@ -21,6 +21,9 @@ type ServerSpec struct {
 	// VirtualDocuments descrive i documenti che il server indirizza con URI non-file (es. jdt:// per le
 	// classi di libreria Java): nil se il server restituisce solo file.
 	VirtualDocuments *VirtualDocuments
+	// TraceEnvironment elenca le variabili d'ambiente che spiegano tempi e comportamento del server
+	// (es. GOFLAGS, GOPROXY): l'host le scrive nel log di avvio, con le credenziali negli URL oscurate.
+	TraceEnvironment []string
 }
 
 // VirtualDocuments dice come leggere un documento con URI non-file: l'host lo salva in un file di sola

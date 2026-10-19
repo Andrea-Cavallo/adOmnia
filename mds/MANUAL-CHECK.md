@@ -615,7 +615,8 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 - [ ] **REF-11.M1** Release Windows inattiva a 5/15/30 min: report locale CPU/RAM dell'intero albero e stato osservato. **Hub vuota misurata**, restano workspace API popolato e progetto IDE; niente inferenze dai clock simulati. Evidenze locali in `.artifacts/idle-native/`: `report.json`, JSONL, ambiente, SHA256 binario e `completion.json`.
 - [ ] **REF-11.M2** Dopo Idle/Background: primo input riattiva clock, risorse, Runtime Lens e analisi secondarie; navigazione e ripristino dello stato funzionanti. Split e finestra staccata visibile proteggono anche il workspace senza focus tastiera.
-- [ ] **REF-11.M3** Terminale con comando lungo, debug, richiesta/stream e registrazione intenzionale continuano durante Idle e finestra nascosta; LSP avviato esplicitamente resta protetto, quello automatico senza editor si sospende e riparte alla successiva richiesta.
+- [ ] **REF-11.M3** Terminale con comando lungo, debug, richiesta/stream e registrazione intenzionale continuano durante Idle e finestra nascosta; LSP avviato esplicitamente resta protetto; dal 2026-10-19 anche quello automatico resta acceso in Idle e si sospende solo sotto pressione di memoria (obiettivo globale).
+- [ ] **REF-11.M4** Progetto Go aperto, attendere la fine di *Setting up workspace*, lasciare l'app inattiva oltre 5 minuti e tornare: niente nuovo *Setting up workspace*, stesso PID di gopls nel popover risorse. *Language Server Log* mostra motivo dell'avvio, ambiente (`GOPROXY` senza credenziali), PID, tempo di `initialize` e `✔ Setting up workspace done in …`; su un caricamento oltre un minuto compare la riga `slow` con le cause da controllare. Annotare i tempi reali del progetto lento (10 minuti segnalati) dal log.
 
 ## Z1.4 — regole automatiche del progetto
 

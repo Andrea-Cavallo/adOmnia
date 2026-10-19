@@ -127,6 +127,8 @@ func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSetting
 		// Rivalutata a ogni richiesta: il modo offline può cambiare mentre gopls è attivo.
 		Configuration: func() any { return goplsConfiguration(settings) },
 		WatchesFile:   goplsWatchesFile,
+		// Le variabili che decidono quanto dura il caricamento: moduli da scaricare, workspace, cache.
+		TraceEnvironment: []string{"GOFLAGS", "GOWORK", "GOPROXY", "GOPRIVATE", "GONOSUMDB", "GOTOOLCHAIN", "GOMEMLIMIT", "GOCACHE", "GOMODCACHE"},
 	}
 }
 

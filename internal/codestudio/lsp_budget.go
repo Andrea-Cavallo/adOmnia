@@ -132,6 +132,5 @@ func (m *LSPManager) enforceMemoryBudget(policy *resources.MemoryBudget, sample 
 	state.mu.Unlock()
 	if released {
 		policy.Released(now)
-		m.appendLog(state, "global memory budget: inactive language server hibernated")
 	}
 }

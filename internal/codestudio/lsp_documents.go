@@ -22,10 +22,6 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	state.lifecycle.Lock()
 	state.documentsMu.Lock()
 	state.mu.Lock()
-	if state.idleTimer != nil {
-		state.idleTimer.Stop()
-		state.idleTimer = nil
-	}
 	state.idleEpoch++
 	resume := state.suspended
 

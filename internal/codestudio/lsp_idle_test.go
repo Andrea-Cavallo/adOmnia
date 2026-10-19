@@ -130,18 +130,18 @@ func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) 
 	_, _ = manager.activity.Report("main", activity.Background, nil)
 	state.mu.Lock()
 	epoch := state.idleEpoch
-	timer := state.idleTimer
+	inactiveSince := state.inactiveSince
 	state.mu.Unlock()
-	if timer == nil {
-		t.Fatal("open buffer prevented idle timer")
+	if inactiveSince.IsZero() {
+		t.Fatal("open buffer kept the project marked active")
 	}
-	// Unrelated window reports must not postpone this project's grace period.
+	// Unrelated window reports must not reset this project's inactivity.
 	_, _ = manager.activity.Report("other", activity.Active, []string{"collections"})
 	state.mu.Lock()
-	same := state.idleEpoch == epoch && state.idleTimer == timer
+	same := state.idleEpoch == epoch && state.inactiveSince.Equal(inactiveSince)
 	state.mu.Unlock()
 	if !same {
-		t.Fatal("unrelated activity reset idle timer")
+		t.Fatal("unrelated activity reset inactivity")
 	}
 	manager.suspendIdle(state, epoch)
 	if status := manager.Status(session.ID, golang.ID); status.PID != 0 {

@@ -62,7 +62,6 @@ type lspSession struct {
 	documentsMu   sync.Mutex
 	idleEpoch     uint64
 	lifecycle     sync.Mutex
-	idleTimer     *time.Timer
 	inactiveSince time.Time
 	startedAt     time.Time
 	suspended     bool
@@ -102,6 +101,8 @@ type lspSession struct {
 	closed               bool
 	// virtualURIs: percorso del file salvato → URI originale (non-file) del documento virtuale del server.
 	virtualURIs map[string]string
+	// progress: fasi $/progress aperte, per misurarne la durata nel log (lsp_trace.go).
+	progress map[string]progressTrace
 }
 
 // lspKey identifica un language server: uno per linguaggio in ogni sessione.
@@ -233,6 +234,11 @@ func (m *LSPManager) Log(sessionID SessionID, languageID string) []string {
 // Start avvia il server di options.Language per la sessione se non è già attivo; i documenti
 // tracciati per quel linguaggio vengono riaperti.
 func (m *LSPManager) Start(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
+	return m.start(session, options, launchReasonStart)
+}
+
+// start è Start con il motivo scritto nel log di avvio.
+func (m *LSPManager) start(session Session, options LanguageServerOptions, reason string) (LanguageServerStatus, error) {
 	if options.Language == "" {
 		return LanguageServerStatus{}, fmt.Errorf("language server language not specified")
 	}
@@ -243,10 +249,6 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	if state.closed {
 		state.mu.Unlock()
 		return LanguageServerStatus{}, fmt.Errorf("language server session is closed")
-	}
-	if state.idleTimer != nil {
-		state.idleTimer.Stop()
-		state.idleTimer = nil
 	}
 	state.idleEpoch++
 	state.suspended = false
@@ -264,7 +266,7 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 	state.status = LanguageServerStatus{SessionID: session.ID, Language: options.Language, State: LanguageServerStarting, Binary: options.Binary, Version: options.Version, Restarts: state.status.Restarts}
 	state.mu.Unlock()
 	m.publishStatus(state)
-	if err := m.launch(state); err != nil {
+	if err := m.launch(state, reason); err != nil {
 		m.setState(state, LanguageServerCrashed, err.Error())
 		return m.Status(session.ID, options.Language), err
 	}
@@ -273,7 +275,8 @@ func (m *LSPManager) Start(session Session, options LanguageServerOptions) (Lang
 }
 
 // launch avvia il processo; il chiamante deve aver impostato launching, che viene sempre azzerato.
-func (m *LSPManager) launch(state *lspSession) error {
+// reason finisce nel log: spiega perché il server ricarica il workspace.
+func (m *LSPManager) launch(state *lspSession, reason string) error {
 	defer func() {
 		state.mu.Lock()
 		state.launching = false
@@ -284,6 +287,8 @@ func (m *LSPManager) launch(state *lspSession) error {
 	root := state.root
 	state.mu.Unlock()
 	name := options.DisplayName()
+	m.traceLaunch(state, reason)
+	launchedAt := time.Now()
 
 	command := procutil.Command(options.Binary, options.Arguments...)
 	command.Dir = root
@@ -321,14 +326,18 @@ func (m *LSPManager) launch(state *lspSession) error {
 	// Il server language è un figlio gestito: dopo un crash lo sweep dell'avvio
 	// successivo lo ritrova e lo termina (managedchildren.go).
 	registerManagedChild(command.Process.Pid, filepath.Base(options.Binary))
+	m.trace(state, "process started, PID %d (%s)", command.Process.Pid, round(time.Since(launchedAt)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
 	defer cancel()
 	var initialized initializeResult
+	initializeAt := time.Now()
 	if err := process.conn.Call(ctx, "initialize", initializeParams(state), &initialized); err != nil {
+		m.trace(state, "initialize failed after %s: %v", round(time.Since(initializeAt)), err)
 		m.abandon(state, process)
 		return fmt.Errorf("inizializzazione %s fallita: %w", name, err)
 	}
+	m.trace(state, "initialize answered in %s", round(time.Since(initializeAt)))
 	features := initialized.Capabilities.features()
 	process.syncKind = initialized.Capabilities.syncKind()
 	state.mu.Lock()
@@ -340,6 +349,7 @@ func (m *LSPManager) launch(state *lspSession) error {
 	}
 	// Da qui i documenti aperti dall'utente vanno al server; quelli aperti durante l'handshake li riapre reopenDocuments.
 	m.reopenDocuments(state, process)
+	m.trace(state, "ready in %s; the server now loads the workspace in the background (phases below)", round(time.Since(launchedAt)))
 	m.setState(state, LanguageServerReady, "")
 	m.signalMemoryBudget()
 	return nil
@@ -442,7 +452,7 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 		if cancelled {
 			return
 		}
-		if err := m.launch(state); err != nil {
+		if err := m.launch(state, launchReasonCrash); err != nil {
 			m.handleCrash(state, err.Error())
 		} else {
 			m.armIdle(state)
@@ -477,10 +487,6 @@ func (m *LSPManager) stopLocked(state *lspSession) {
 	state.mu.Lock()
 	state.stopping = true
 	state.restartEpoch++
-	if state.idleTimer != nil {
-		state.idleTimer.Stop()
-		state.idleTimer = nil
-	}
 	process := state.process
 	state.mu.Unlock()
 	if process == nil {
@@ -541,7 +547,7 @@ func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (La
 		state.crashes = nil
 		state.mu.Unlock()
 	}
-	return m.Start(session, options)
+	return m.start(session, options, launchReasonRestart)
 }
 
 // StopSession arresta tutti i language server della sessione.
@@ -768,21 +774,13 @@ func (h *lspHandler) HandleRequest(_ context.Context, method string, params json
 }
 
 func (m *LSPManager) publishProgress(state *lspSession, params json.RawMessage) {
-	var envelope struct {
-		Token json.RawMessage `json:"token"`
-		Value struct {
-			Kind       string `json:"kind"`
-			Title      string `json:"title"`
-			Message    string `json:"message"`
-			Percentage *int   `json:"percentage"`
-		} `json:"value"`
-	}
-	if json.Unmarshal(params, &envelope) != nil || envelope.Value.Kind == "" {
+	token, value, ok := parseProgress(params)
+	if !ok {
 		return
 	}
+	m.traceProgress(state, token, value)
 	m.publish("lsp.progress", state.id, string(state.id), LanguageServerProgress{
-		Token: strings.Trim(string(envelope.Token), `"`), Kind: envelope.Value.Kind, Title: envelope.Value.Title,
-		Message: envelope.Value.Message, Percentage: envelope.Value.Percentage,
+		Token: token, Kind: value.Kind, Title: value.Title, Message: value.Message, Percentage: value.Percentage,
 	})
 }
 
