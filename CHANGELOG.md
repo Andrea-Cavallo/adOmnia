@@ -4,6 +4,12 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.12] — 2026-10-20
+
+Release notes: [docs/releases/v1.0.12.md](docs/releases/v1.0.12.md).
+
+- Publishes the v1.0.11 code: its release build failed on a transient network error, so v1.0.11 (and v1.0.10, never tagged) never reached GitHub Releases.
+
 ## [1.0.11] — 2026-10-20
 
 Release notes: [docs/releases/v1.0.11.md](docs/releases/v1.0.11.md).

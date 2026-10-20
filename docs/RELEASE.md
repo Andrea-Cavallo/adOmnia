@@ -10,6 +10,10 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 [Release notes](releases/v1.0.7.md), [measurements and charts](performance/resources-2026-10-19.md). Native monitor acceptance remains RES-1.M1–M3 in `mds/MANUAL-CHECK.md`.
 
+## v1.0.12 — v1.0.11 published
+
+[Release notes](releases/v1.0.12.md). Same code as v1.0.11, whose tag build failed on a transient `sum.golang.org` error before the GitHub Release step.
+
 ## v1.0.11 — Header, safe document saves and additional languages
 
 [Release notes](releases/v1.0.11.md). Native visual and interactive acceptance remains explicit.
