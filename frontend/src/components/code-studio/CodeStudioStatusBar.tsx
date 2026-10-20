@@ -66,6 +66,14 @@ export function languageServerLabel(state: string, server: string, version?: str
   }
 }
 
+/**
+ * Con il server Java non pronto l'editor serve completamento e Structure dall'analisi locale del
+ * buffer (JS-14): la fonte è esplicita invece di sembrare un tooling semplicemente spento.
+ */
+export function localAnalysisLabel(language: string | undefined, state: string, label: string): string {
+  return language === 'java' && state !== 'ready' ? `Local Java analysis (${label})` : label
+}
+
 export function CodeStudioStatusBar({ session, toolchain, documentInfo, execution, onLanguageServer, onLinter, onSetAuthorization, onManageToolchains }: CodeStudioStatusBarProps) {
   const cursor = useCodeStudioCursorStore(useShallow((state) => ({ line: state.line, column: state.column })))
   const status = useCodeStudioLspStore((state) => state.status[session.id])
@@ -159,7 +167,7 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
       <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {showLsp && <button type="button" onClick={webLanguage ? () => void useIdeLanguageServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
-        <span className="max-w-56 truncate">{progress ? `${progress.title ?? serverName}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version)}</span>
+        <span className="max-w-56 truncate">{progress ? `${progress.title ?? serverName}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : localAnalysisLabel(webLanguage, lspState, languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version))}</span>
       </button>}
       {showGo && <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}

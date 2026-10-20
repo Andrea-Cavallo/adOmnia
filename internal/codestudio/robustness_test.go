@@ -89,6 +89,26 @@ func TestProcessOutputKeepsSplitRuneIntact(t *testing.T) {
 	}
 }
 
+func TestProcessOutputIsCoalescedIntoFewEvents(t *testing.T) {
+	// Un processo verboso deve pubblicare pochi eventi run.output, non uno per scrittura:
+	// ogni evento costa un viaggio di IPC verso il frontend e la sua interattività.
+	manager, events := testProcessManager(t)
+	execution, err := manager.Start(helperSpec("flood"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputs, finished := collectRun(t, events, execution.ID)
+	if finished.Status != "exited" {
+		t.Fatalf("stato finale inatteso: %#v", finished)
+	}
+	if joined := strings.Join(outputs, ""); !strings.Contains(joined, "line 0\n") || !strings.Contains(joined, "line 99") {
+		t.Fatalf("output incompleto: %q", joined)
+	}
+	if len(outputs) >= 50 {
+		t.Fatalf("l'output non è coalesciuto: %d eventi per 100 righe scritte a 5 ms", len(outputs))
+	}
+}
+
 func TestProcessStartNeverExceedsLimitUnderConcurrency(t *testing.T) {
 	manager, _ := testProcessManager(t)
 	var wg sync.WaitGroup

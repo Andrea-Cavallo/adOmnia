@@ -34,6 +34,10 @@ Backend, correlation and the Delve loop are covered end to end by `internal/code
 
 - [ ] **P1 — Manual checks in the running app**: debug bar in every tool, Debug Request from a stopped service, Split Debug View, Ctrl+Tab, Alt+Shift+1…5, SQL capture with a real Postgres/MySQL, Kafka watch with a real broker, both themes and a small window.
 
+### Java / JVM studio — real multimodule verification (2026-10-20)
+
+Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in [MANUAL-CHECK.md](../mds/MANUAL-CHECK.md) (`JS-17.M1`–`M4`), plan in [06-JAVA-SPRING-STUDIO.md](../mds/06-JAVA-SPRING-STUDIO.md) (JS-14, JS-17).
+
 ### Code Studio (IDE) — shipped through v0.9.39, manual verification open
 
 Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Code Studio workspaces and separate project windows. Details: [CODE-STUDIO.md](CODE-STUDIO.md). The work queue lives in `mds/todo-ide.md`.

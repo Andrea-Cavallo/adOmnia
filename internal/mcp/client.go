@@ -5,7 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
+
+// ProtocolVersion is the newest MCP revision this client speaks; a server may answer with an
+// older one it supports, and that version is then used for the rest of the session.
+const ProtocolVersion = "2025-06-18"
+
+// DefaultCallTimeout bounds a call whose context has no deadline, so a hung server cannot
+// freeze the UI forever.
+const DefaultCallTimeout = 2 * time.Minute
+
+// maxPages stops a server that keeps returning a cursor from looping the client.
+const maxPages = 100
 
 type Transport interface {
 	Send(ctx context.Context, req JSONRPCRequest) (JSONRPCResponse, error)
@@ -16,6 +28,7 @@ type Client struct {
 	transport     Transport
 	transportType TransportType
 	idCounter     atomic.Int64
+	initialized   atomic.Pointer[InitializeResult]
 }
 
 func NewClient(cfg ConnectionConfig) (*Client, error) {
@@ -40,6 +53,11 @@ func (c *Client) nextID() int64 {
 }
 
 func (c *Client) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultCallTimeout)
+		defer cancel()
+	}
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      c.nextID(),
@@ -58,19 +76,42 @@ func (c *Client) call(ctx context.Context, method string, params any) (json.RawM
 
 func (c *Client) Initialize(ctx context.Context) (InitializeResult, error) {
 	raw, err := c.call(ctx, "initialize", map[string]any{
-		"protocolVersion": "2024-11-05",
+		"protocolVersion": ProtocolVersion,
 		"capabilities":    map[string]any{},
 		"clientInfo":      map[string]string{"name": "adOmnia", "version": "1.0"},
 	})
 	if err != nil {
 		return InitializeResult{}, err
 	}
-	_ = c.notify(ctx, "notifications/initialized", nil)
 	var result InitializeResult
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return InitializeResult{}, fmt.Errorf("decode initialize result: %w", err)
 	}
+	if versioned, ok := c.transport.(interface{ SetProtocolVersion(string) }); ok && result.ProtocolVersion != "" {
+		versioned.SetProtocolVersion(result.ProtocolVersion)
+	}
+	_ = c.notify(ctx, "notifications/initialized", nil)
+	c.initialized.Store(&result)
 	return result, nil
+}
+
+// Server returns what the server announced at the handshake (zero before Initialize).
+func (c *Client) Server() InitializeResult {
+	if result := c.initialized.Load(); result != nil {
+		return *result
+	}
+	return InitializeResult{}
+}
+
+// Supports reports whether the server announced a capability ("tools", "resources", "prompts"…).
+// Before the handshake it answers true, so nothing is hidden by mistake.
+func (c *Client) Supports(capability string) bool {
+	result := c.initialized.Load()
+	if result == nil {
+		return true
+	}
+	_, ok := result.Capabilities[capability]
+	return ok
 }
 
 func (c *Client) notify(ctx context.Context, method string, params any) error {
@@ -79,21 +120,55 @@ func (c *Client) notify(ctx context.Context, method string, params any) error {
 	return err
 }
 
+// Ping checks that the server is alive and answering.
+func (c *Client) Ping(ctx context.Context) error {
+	_, err := c.call(ctx, "ping", nil)
+	return err
+}
+
+// listAll follows nextCursor until the server has no more pages.
+func listAll[T any](ctx context.Context, c *Client, method, field string) ([]T, error) {
+	var all []T
+	cursor := ""
+	for page := 0; page < maxPages; page++ {
+		var params any
+		if cursor != "" {
+			params = map[string]any{"cursor": cursor}
+		}
+		raw, err := c.call(ctx, method, params)
+		if err != nil {
+			return nil, err
+		}
+		var envelope map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			return nil, fmt.Errorf("decode %s: %w", method, err)
+		}
+		if items, ok := envelope[field]; ok {
+			var batch []T
+			if err := json.Unmarshal(items, &batch); err != nil {
+				return nil, fmt.Errorf("decode %s: %w", method, err)
+			}
+			all = append(all, batch...)
+		}
+		cursor = ""
+		if next, ok := envelope["nextCursor"]; ok {
+			_ = json.Unmarshal(next, &cursor)
+		}
+		if cursor == "" {
+			return all, nil
+		}
+	}
+	return all, fmt.Errorf("%s: more than %d pages, stopped", method, maxPages)
+}
+
 func (c *Client) ListTools(ctx context.Context) ([]Tool, error) {
-	raw, err := c.call(ctx, "tools/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	var result struct {
-		Tools []Tool `json:"tools"`
-	}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return nil, err
-	}
-	return result.Tools, nil
+	return listAll[Tool](ctx, c, "tools/list", "tools")
 }
 
 func (c *Client) CallTool(ctx context.Context, name string, args map[string]any) (CallToolResult, error) {
+	if args == nil {
+		args = map[string]any{}
+	}
 	raw, err := c.call(ctx, "tools/call", map[string]any{
 		"name":      name,
 		"arguments": args,
@@ -109,37 +184,42 @@ func (c *Client) CallTool(ctx context.Context, name string, args map[string]any)
 }
 
 func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
-	raw, err := c.call(ctx, "resources/list", nil)
+	return listAll[Resource](ctx, c, "resources/list", "resources")
+}
+
+func (c *Client) ListResourceTemplates(ctx context.Context) ([]ResourceTemplate, error) {
+	return listAll[ResourceTemplate](ctx, c, "resources/templates/list", "resourceTemplates")
+}
+
+func (c *Client) ReadResource(ctx context.Context, uri string) (ReadResourceResult, error) {
+	raw, err := c.call(ctx, "resources/read", map[string]any{"uri": uri})
 	if err != nil {
-		return nil, err
+		return ReadResourceResult{}, err
 	}
-	var result struct {
-		Resources []Resource `json:"resources"`
-	}
+	var result ReadResourceResult
 	if err := json.Unmarshal(raw, &result); err != nil {
-		return nil, err
+		return ReadResourceResult{}, err
 	}
-	return result.Resources, nil
+	return result, nil
 }
 
 func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
-	raw, err := c.call(ctx, "prompts/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	var result struct {
-		Prompts []Prompt `json:"prompts"`
-	}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return nil, err
-	}
-	return result.Prompts, nil
+	return listAll[Prompt](ctx, c, "prompts/list", "prompts")
 }
 
 func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]any) (GetPromptResult, error) {
+	// Prompt arguments are strings on the wire, whatever the caller passed.
+	wire := make(map[string]string, len(args))
+	for key, value := range args {
+		if text, ok := value.(string); ok {
+			wire[key] = text
+		} else {
+			wire[key] = fmt.Sprint(value)
+		}
+	}
 	raw, err := c.call(ctx, "prompts/get", map[string]any{
 		"name":      name,
-		"arguments": args,
+		"arguments": wire,
 	})
 	if err != nil {
 		return GetPromptResult{}, err

@@ -186,6 +186,10 @@ Code Studio works without any of these installed. Each feature says clearly what
 
 gopls starts with `GO_TELEMETRY_CHILD=2`, so Go's telemetry library starts no `** telemetry **` process and collects nothing for it; your global `go telemetry` mode is left untouched. It also starts with `GOMEMLIMIT=768MiB`, a soft garbage-collector budget rather than a cap on resident process memory. Values you set yourself in the environment win. The first hover or Ctrl+hover after opening a project waits for gopls to load the module and its dependencies; the status bar shows its progress. On Windows, excluding `%LOCALAPPDATA%\go-build` and `go env GOMODCACHE` from Defender speeds this up.
 
+**Installer.** *Tools → Installer…* lists every download adOmnia can ask for in one dialog, grouped by purpose: language servers (gopls, web, Eclipse JDT LS), linters (golangci-lint, staticcheck), Run & Debug (Delve), security (govulncheck, Strix) and Go tools (goimports, mockgen, stringer). Each row shows installed (with its path) or missing; tick what you want, or *Select all missing*, and *Install selected* confirms the exact commands once. Output goes to the Run console and a status-bar task, like every other tool install. The catalog is `codeStudioInstallerTools.ts`: a new tool is one entry there.
+
+**Low-Resource Mode, per service.** The Resource panel lets you choose what Low-Resource Mode pauses: AI assistants, optional analyses (staticcheck / vulncheck), completion, navigation, hover documentation. The default is the previous behaviour (AI + analyses). Changing the choice while the mode is on re-applies it; the choice is stored in `adomnia.codeStudio.lowResources.services.v1`.
+
 Managed tools are installed into `<data>/goide/tools/bin`. A tool on `PATH`, or a path set in *Go → Tool Paths (gopls, linter, dlv)…*, is used instead when present.
 
 Language-server shutdown bounds protocol writes and the final wait for process exit. On Windows, tree termination has a five-second timeout (plus at most one second to drain output); if it fails, Code Studio logs the error and attempts to kill the direct child. An unconfirmed exit is reported as an error and stays in the managed-child registry until the process watcher confirms exit. Automated regressions cover failed tree termination, missing exit confirmation and an unread protocol pipe; native Wails shutdown acceptance remains a separate manual check.
@@ -209,6 +213,8 @@ Java follows the same rules as Go: whatever works for a Go project works for a S
 - **Tests.** The Tests panel shows passed/failed/skipped counters on each class. *Rerun failed* reruns only the failed methods of a class (several at once).
 - **API.** Spring MVC endpoints (`@RestController`, `@RequestMapping`, `@GetMapping`…) are routes of the Developer Context, so the same actions as Go routes are available above the handler: *Open in API client* (`⇄`), *Run*, *Last response*, *History*, *Mock*, *Copy cURL*, *OpenAPI*. *Open API* in the endpoint list creates the `<service> API` collection linked to the running service.
 - **pom.xml / build.gradle.** Dependencies without a `<version>` show the version inherited from a parent or imported BOM (read offline from the local Maven repository); it is updated where it is defined. *Scan vulnerabilities* works on Gradle scripts too (static read: only dependencies with a written version, no transitive ones).
+- **Java without the language server.** With Eclipse JDT LS absent, stopped or still importing, completion and Structure come from a local analysis of the current buffer only (no process, no network, no project scan): nested types, records, anonymous classes, overloaded methods with signatures, fields, enum constants, parameters and locals with their scopes, keywords and snippets. It never invents members of external types, resolved overloads or auto-imports — that stays JDT's job. The status bar states the source: *Local Java analysis (Eclipse JDT LS …)* while the server is not ready, the server name when it is; when JDT is ready its results win and no duplicate provider is active. Limits are declared (256,000 characters / 50,000 tokens per buffer) and over them the editor says nothing rather than guessing.
+- **Large multimodule projects.** A Maven/Gradle reactor is one project: the toolchain required by the modules (`maven.compiler.release`, Gradle toolchains) is read from every module, so the JDK suggestion is the one that really compiles (e.g. Java 25 declared only in the modules is still seen). The selected JDK in `.adomnia/java.local.json` is the same for Run, Debug and Tests, and it is passed to JDT LS as an execution environment. Eclipse JDT LS starts with the Code Studio for Java projects (without waiting for the first open file) because importing a reactor takes minutes. The terminal starts with the real panel width, and the Run console renders process output with terminal semantics: lines split across output chunks stay one line, `\r` redraws overwrite the line instead of smearing it, and verbose runs (`mvn test`) publish coalesced output so the UI — project tree, Stop — stays responsive.
 
 ## Makefiles and Dockerfiles
 
@@ -828,3 +834,22 @@ La Hub mantiene layout, moduli e azioni esistenti con un accento ambra locale e 
 ## CPU/RAM diagnostics and GOMEMLIMIT
 
 Open Application resources from the status bar or Code Studio stripe. Apply the backend Go memory limit live, or save a gopls limit and restart the selected Go project without closing its buffers. Record 30/60/120 seconds, choose an individual process in the CPU/RAM charts, and export JSON/CSV for complete historical data or HTML with embedded charts. Parent PID, executable, role, session ownership, current limit and backend heap/GC are included; missing/partial measurements stay explicit. New backend budget defaults to 512 MiB unless GOMEMLIMIT was set at startup; gopls keeps its existing default. Smaller GC limits can increase CPU. Details and evidence: [resource diagnostics](performance/resources-2026-10-19.md).
+
+### Terminal appearance (2026-10-20)
+
+The terminal palette button opens a local appearance editor with nine bundled presets:
+adOmnia Dark (default), adOmnia OLED, Tokyo Night OLED, Catppuccin Mocha, Gruvbox Material,
+Rose Pine Moon, Monochrome, Nord and adOmnia Light. Font family/size, line height, letter
+spacing, cursor shape/blink and scrollback are applied to existing xterm instances;
+changing appearance does not recreate the PTY. Session tabs sit above the terminal canvas;
+split, rename, search, command history, source links and detached windows keep their existing paths.
+Source-link hover uses the preset link color through xterm decorations.
+
+Persistence is additive: optional `appearance.terminal` in the existing settings JSON,
+saved through `updateAppearance`. Older settings use defaults; imported numerical values
+are bounded (10–24 px, 1,000–20,000 scrollback lines). No workspace format or Go binding change.
+The palettes are bundled adaptations inspired by the named themes, not imported system configurations.
+
+Verification: focused palette/normalization, bus, restore and link tests, TypeScript, frontend build,
+and Go terminal tests. Native desktop visual acceptance (Windows/WebKitGTK, font changes with
+live output, palette changes while split/detached, narrow windows) remains pending.

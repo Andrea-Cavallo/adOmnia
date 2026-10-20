@@ -24,7 +24,7 @@ export type CodeStudioCommandId =
   | 'nav.quickDefinition' | 'nav.showUsages' | 'nav.searchEverywhere' | 'code.quickDocumentation' | 'code.typeInfo' | 'code.semanticHighlighting' | 'code.inlayHints' | 'code.typeHints' | 'code.implementInterface'
   | 'code.refactorThis' | 'code.extractVariable' | 'code.extractConstant' | 'code.extractFunction' | 'code.inline' | 'code.moveToNewFile' | 'code.moveSymbol' | 'code.changeSignature'
   | 'code.completion' | 'code.parameterInfo' | 'code.quickFix' | 'code.rename' | 'code.reformat' | 'code.organizeImports'
-  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.installLanguageServers' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
+  | 'code.formatOnSave' | 'code.importsOnSave' | 'code.gofumpt' | 'code.staticcheck' | 'code.vulncheck' | 'tools.exportSettings' | 'tools.installer' | 'tools.installLanguageServers' | 'tools.aiPolicyAllowed' | 'tools.aiPolicyLocal' | 'tools.aiPolicyOff' | 'code.lintConfig' | 'code.quality' | 'code.lint' | 'code.lintChanged' | 'code.lintBaseline' | 'code.lintBaselineClear' | 'code.lintOnSave'
   | 'run.run' | 'run.build' | 'run.startWorkspace' | 'run.stopWorkspace' | 'run.cleanWorkspace' | 'run.openWorkspaceApi' | 'run.openWorkspaceLogs' | 'run.runtimeSnapshots' | 'run.analyzeStartup' | 'run.stop' | 'run.restart' | 'run.configure'
   | 'run.rerunFailedTests' | 'run.testChanged' | 'run.testCoverage' | 'run.testRace' | 'run.runRace' | 'run.benchPackage' | 'view.tests'
   | 'run.context' | 'run.buildPackage' | 'run.testPackage' | 'run.vetPackage' | 'run.buildAll' | 'run.testAll' | 'run.vetAll' | 'run.generateAll' | 'run.install'
@@ -194,7 +194,8 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'tools.aiPolicyAllowed', menu: 'tools', label: 'AI for This Project: Any Configured Provider', separatorBefore: true },
   { id: 'tools.aiPolicyLocal', menu: 'tools', label: 'AI for This Project: Local Models Only' },
   { id: 'tools.aiPolicyOff', menu: 'tools', label: 'AI for This Project: Off' },
-  { id: 'tools.installLanguageServers', menu: 'tools', label: 'Install All Language Servers…', separatorBefore: true },
+  { id: 'tools.installer', menu: 'tools', label: 'Installer: Language Servers, Linters, Debugger, Security…', separatorBefore: true },
+  { id: 'tools.installLanguageServers', menu: 'tools', label: 'Install All Language Servers…' },
   { id: 'tools.exportSettings', menu: 'tools', label: 'Export Settings Report (Privacy & Audit)…' },
   { id: 'code.lintBaseline', menu: 'code', label: 'Save Lint Baseline (Hide Current Findings)…' },
   { id: 'code.lintBaselineClear', menu: 'code', label: 'Remove Lint Baseline' },
@@ -451,6 +452,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (GO_ONLY_RUN_COMMANDS.has(id) && context.hasGo === false) return 'This command runs the Go toolchain; the project has no Go module (Java menu has Maven/Gradle builds)'
   if (id === 'run.run' && context.webOnly) return context.authorized ? true : NOT_TRUSTED
   if (id === 'tools.installLanguageServers') return context.authorized ? true : NOT_TRUSTED
+  if (id === 'tools.installer') return true
   if (id.startsWith('preview.') || id === 'web.installTools') {
     if (id !== 'preview.show' && !id.startsWith('preview.place') && !context.authorized) return NOT_TRUSTED
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true

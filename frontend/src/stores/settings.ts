@@ -1,3 +1,4 @@
+import type { TerminalAppearance } from '@/lib/code-studio/terminalAppearance'
 import { normalizeJsonColors, type JsonColors } from '@/lib/jsonColors'
 import { normalizeProfiles, type AppearanceProfile, type PersonalColors } from '@/lib/personalAppearance'
 import { validAccent } from '@/lib/accentPalette'
@@ -59,6 +60,7 @@ export interface AppSettings {
     /** Base color remembered per quick mode (status bar Dark/White), restored when switching back. */
     modeBases?: { dark?: string; light?: string }
     /** Optional per-mode JSON syntax overrides. Absent keys inherit the theme. */
+    terminal?: Partial<TerminalAppearance>
     jsonColors?: JsonColors
     profiles?: AppearanceProfile[]
     accentColor?: string

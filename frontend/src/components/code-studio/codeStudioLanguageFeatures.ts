@@ -2,6 +2,7 @@ import { completeLocalJava } from '@/components/ide/languages/java/javaLocalComp
 import { analyzeJavaFile } from '@/components/ide/languages/java/javaLocalAnalysis'
 import { languageServerEditorLanguages } from '@/components/ide/languages'
 import { isServerReady, serverLanguageForEditor } from '@/stores/ideLanguageServers'
+import { isServiceSuspended } from '@/lib/code-studio/pausedServices'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
 import { ExtensionLanguageStatus } from '../../../bindings/adomnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -201,6 +202,7 @@ function registerProviders(): void {
   monaco.languages.registerCompletionItemProvider(LANGUAGE, {
     triggerCharacters: ['.'],
     async provideCompletionItems(model, position, _context, token) {
+      if (isServiceSuspended('completion')) return { suggestions: [] }
       if (model.getLanguageId() === 'java') {
         const owner = documentForModel(model)
         if (!owner || !isServerReady(owner.document.sessionId, 'java')) {
@@ -225,6 +227,7 @@ function registerProviders(): void {
 
   monaco.languages.registerHoverProvider(LANGUAGE, {
     async provideHover(model, position, token) {
+      if (isServiceSuspended('hover')) return null
       const prepared = await prepareDocument(model)
       if (!prepared) return null
       const result = await cancellable(requestHover(prepared.sessionId, prepared.documentId, position.lineNumber, position.column), token)
@@ -237,6 +240,7 @@ function registerProviders(): void {
     signatureHelpTriggerCharacters: ['(', ','],
     signatureHelpRetriggerCharacters: [','],
     async provideSignatureHelp(model, position, token) {
+      if (isServiceSuspended('completion')) return null
       const prepared = await prepareDocument(model)
       if (!prepared) return null
       const result = await cancellable(requestSignatureHelp(prepared.sessionId, prepared.documentId, position.lineNumber, position.column), token)
@@ -258,6 +262,7 @@ function registerProviders(): void {
 
   const locationProvider = (kind: 'definition' | 'typeDefinition') => ({
     async provide(model: monaco.editor.ITextModel, position: monaco.Position, token: monaco.CancellationToken) {
+      if (isServiceSuspended('navigation')) return null
       const owner = documentForModel(model)
       // go.mod: la definizione di una dipendenza e il suo sorgente (replace locale, progetto o
       // module cache), una scelta Go-specific che non passa da gopls.
@@ -280,6 +285,7 @@ function registerProviders(): void {
 
   monaco.languages.registerDocumentSymbolProvider(LANGUAGE, {
     async provideDocumentSymbols(model, token) {
+      if (isServiceSuspended('navigation')) return []
       if (model.getLanguageId() === 'java') {
         const owner = documentForModel(model)
         if (!owner || !isServerReady(owner.document.sessionId, 'java')) return symbolTree(analyzeJavaFile(model.getValue()).symbols)

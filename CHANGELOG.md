@@ -4,6 +4,26 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.10] — 2026-10-20
+
+Release notes: [docs/releases/v1.0.10.md](docs/releases/v1.0.10.md).
+
+### Added
+
+- **Installer** (*Tools → Installer…*): every language server, linter, debugger and security tool in one dialog, with one confirmation of the exact commands.
+- **Low-Resource Mode per service**: pause AI assistants, optional analyses, completion, navigation and/or hover documentation; the choice is persisted and re-applied live.
+- **MCP server**: resources (`adomnia://collection/...`), prompts (`test_endpoint`, `run_collection_report`, `mock_dependency`), tools `collection_get_request` and `collection_list_environments`, tool annotations, protocol negotiation (2025-06-18, 2025-03-26, 2024-11-05), JSON-RPC error codes, and masking of secrets.
+- **MCP client**: Streamable HTTP with `Mcp-Session-Id` and event streams, pagination, `resources/read`, resource templates, `ping`, rich tool results, crash reporting with the server's stderr.
+- **Git**: failed pulls are explained with the right recovery (stash and retry, resolve conflicts, abort).
+- **Terminal appearance** presets and a themed terminal; Nothing-style dialogs and toolbar selects in Code Studio.
+- **Java**: multimodule toolchain detection, JDT LS that starts with the project, Maven goals from any `pom.xml` folder, terminal-grade Run console.
+
+### Fixed
+
+- Stopping a long Maven/Gradle run stops the whole process tree and keeps the tail of the output.
+- Concurrent MCP calls over stdio could swap answers; a crashed stdio server was never reported.
+- The editor stuttered while a language server imported a large project; its diagnostics are now batched.
+
 ## [1.0.9] — 2026-10-20
 
 Release notes: [docs/releases/v1.0.9.md](docs/releases/v1.0.9.md).

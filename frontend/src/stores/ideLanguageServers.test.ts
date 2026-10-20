@@ -26,7 +26,7 @@ vi.mock('@/stores/codeStudioToast', () => ({ studioToast: vi.fn() }))
 vi.mock('@/stores/codeStudioToolInstall', () => ({ beginToolInstall: mocks.beginToolInstall, endToolInstall: mocks.endToolInstall }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: Object.assign(() => undefined, { getState: () => mocks.state, subscribe: () => () => undefined }) }))
 
-import { isServerReady, useIdeLanguageServersStore, serverLanguageForEditor, serverEntry } from './ideLanguageServers'
+import { isServerReady, useIdeLanguageServersStore, serverLanguageForEditor, serverEntry, autoStartLanguagesFor } from './ideLanguageServers'
 
 const RUN = { runId: 'run-9', task: 'install-web-language-servers', languages: ['html'] }
 const entry = (language: string) => serverEntry(useIdeLanguageServersStore.getState(), 's1', language)
@@ -37,6 +37,18 @@ beforeEach(() => {
   useIdeLanguageServersStore.setState({ servers: {}, dismissed: {}, installing: {} })
   mocks.state.sessions = [{ id: 's1', project: { authorization: 'tooling-permitted' } }]
   mocks.stopLanguageServer.mockResolvedValue(undefined)
+})
+
+describe('autoStartLanguagesFor', () => {
+  it('starts JDT LS for Java units without waiting for an open file', () => {
+    // Eclipse JDT LS importa i progetti Maven/Gradle multi-modulo per minuti: parte già
+    // all'apertura del Code Studio, gli altri linguaggi restano pigri.
+    expect(autoStartLanguagesFor([{ language: 'java' }])).toEqual(['java'])
+    expect(autoStartLanguagesFor([{ language: 'java' }, { language: 'java' }])).toEqual(['java'])
+    expect(autoStartLanguagesFor([{ language: 'go' }, { language: 'typescript' }])).toEqual([])
+    expect(autoStartLanguagesFor(undefined)).toEqual([])
+    expect(autoStartLanguagesFor([{ language: 'go' }, { language: 'java' }])).toEqual(['java'])
+  })
 })
 
 describe('serverLanguageForEditor', () => {

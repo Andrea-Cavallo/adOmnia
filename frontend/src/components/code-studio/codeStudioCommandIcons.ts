@@ -154,6 +154,7 @@ export const CODE_STUDIO_COMMAND_ICONS: Partial<Record<CodeStudioCommandId, Code
   'code.lint': icon(Radar),
   'code.lintChanged': icon(Radar),
   'tools.exportSettings': icon(ShieldCheck),
+  'tools.installer': icon(Download),
   'tools.installLanguageServers': icon(Download),
   'tools.aiPolicyAllowed': icon(Sparkles),
   'tools.aiPolicyLocal': icon(ShieldCheck),

@@ -28,7 +28,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
 | I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
-| J | [Code Studio (IDE)](#j-code-studio-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | ~39 |
+| J | [Code Studio (IDE)](#j-code-studio-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration, Java/Spring/JVM | ~43 |
 | K | [Security Intelligence](#k-security-intelligence) | CVE Intelligence Engine, Risk-based prioritisation, Reachability, Maven & Go Analyzers, Remediation, SBOM & Export, Security Center | ~13 |
 
 ---
@@ -1101,6 +1101,15 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 | J6.12 | **Project settings and keymap in JSON** | `.adomnia/settings.json` (schema, autocompletion in the editor, errors marked and skipped) layers the project over the user settings: editor behavior (tab size, soft tabs, wrap, line numbers, font, vim/emacs mode, sticky scroll — winning over `.editorconfig`) and the keymap (preset plus per-command bindings). Shortcuts accept `when` contexts (`editor && vim.normal`, `!input`, `vim.visual`, `terminal`, …) with fall-through across layers. The legacy `adomnia.codestudio.keymap` storage migrates into the settings JSON once. |
 
 ---
+
+### J7. Java, Spring and JVM
+
+| ID | Feature | Description |
+|---|---|---|
+| J7.1 | **Java without the language server** | Completion and Structure from a local analysis of the current buffer when Eclipse JDT LS is absent, stopped or importing: nested types, records, anonymous classes, overloaded methods with signatures, fields, enum constants, parameters and locals with scopes, keywords and snippets; UTF-16-correct positions, no suggestions inside comments/strings, declared limits (256k characters / 50k tokens) over which nothing is guessed. Never invents external members, resolved overloads or auto-imports. The status bar states the source (*Local Java analysis* vs the server name). Covered by automated tests; manual check pending. |
+| J7.2 | **Eclipse JDT LS as the semantic owner** | JDT LS 1.60 (Lombok agent, Java Debug Server bundle) provides semantics, hover, cross-file navigation and launchable classes when ready; it starts with the Code Studio for Java projects because importing a Maven/Gradle reactor takes minutes, and shows the import phase in the status bar. Local rules are a marked fallback only. |
+| J7.3 | **Multimodule toolchain** | The Java version required by a project is read from every module of the reactor (Maven `<modules>`, Gradle `include`), not just the root; the suggested JDK is the smallest installed one that satisfies it, the selected one (`.adomnia/java.local.json`) is shared by Run, Debug and Tests and passed to JDT LS as an execution environment. |
+| J7.4 | **Run/Test/Debug like Go** | Maven/Gradle runs, JUnit tree with per-method outcomes and class roll-up, rerun failed, Java Debug Server with stepping filters and hot swap, `quarkus:dev` attach on 5005, Spring endpoints in the Developer Context, dependency lenses and CVE scan on `pom.xml`/`build.gradle`. Verbose runs publish coalesced output so the UI stays responsive; the Run console applies terminal line semantics (`\r` redraws, chunk-split lines). |
 
 ## K. SECURITY INTELLIGENCE
 

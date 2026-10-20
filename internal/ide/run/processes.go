@@ -24,6 +24,10 @@ const (
 	MaxConcurrentRuns      = 8
 	maxStdinBytes          = 64 * 1024
 	maxExecutionHistory    = 100
+	// outputFlushInterval coalesce l'output di un flusso: un `mvn test` verboso pubblica pochi eventi
+	// al secondo invece di uno per lettura di pipe. Senza, migliaia di eventi `run.output` saturano il
+	// webview e l'intera UI (albero progetto, stop) smette di rispondere.
+	outputFlushInterval = 50 * time.Millisecond
 	// processWaitDelay limita quanto Wait attende la chiusura di stdout/stderr
 	// dopo l'uscita del processo: un nipote rimasto vivo che eredita le pipe non
 	// deve lasciare l'esecuzione appesa in "running" per sempre.
@@ -349,13 +353,18 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr *outputWri
 // outputWriter pubblica come eventi i byte di un flusso del processo. Non
 // spezza mai una sequenza UTF-8 tra due eventi: i byte di un carattere
 // incompleto restano in carry fino alla scrittura successiva. exec.Cmd usa una
-// goroutine per flusso, quindi ogni writer non è mai chiamato in concorrenza.
+// goroutine per flusso, quindi ogni writer non è mai chiamato in concorrenza;
+// il buffer coalescito e il timer sono condivisi con la flush finale e vanno
+// presi con mu.
 type outputWriter struct {
 	manager   *ProcessManager
 	process   *managedProcess
 	execution Execution
 	stream    string
 	carry     []byte
+	mu        sync.Mutex
+	pending   []byte
+	timer     *time.Timer
 }
 
 func (w *outputWriter) Write(p []byte) (int, error) {
@@ -374,13 +383,49 @@ func (w *outputWriter) Write(p []byte) (int, error) {
 	if cut < len(data) {
 		w.carry = bytes.Clone(data[cut:])
 	}
-	w.publish(data[:cut])
+	w.enqueue(data[:cut])
 	return len(p), nil
 }
 
+// enqueue accumula i byte e li pubblica come un solo evento ogni outputFlushInterval.
+func (w *outputWriter) enqueue(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	w.mu.Lock()
+	w.pending = append(w.pending, data...)
+	if w.timer == nil {
+		w.timer = time.AfterFunc(outputFlushInterval, w.flushPending)
+	}
+	w.mu.Unlock()
+}
+
+// flushPending pubblica il buffer coalescito; è il callback del timer o l'ultima chiamata.
+func (w *outputWriter) flushPending() {
+	w.mu.Lock()
+	data := w.pending
+	w.pending = nil
+	w.timer = nil
+	w.mu.Unlock()
+	w.publish(data)
+}
+
+// flush pubblica il residuo alla fine del processo: l'ultimo output precede sempre run.finished.
 func (w *outputWriter) flush() {
-	w.publish(w.carry)
+	w.mu.Lock()
+	if w.timer != nil {
+		w.timer.Stop()
+		w.timer = nil
+	}
+	pending := w.pending
+	w.pending = nil
+	carry := w.carry
 	w.carry = nil
+	w.mu.Unlock()
+	if len(carry) > 0 {
+		pending = append(pending, carry...)
+	}
+	w.publish(pending)
 }
 
 func (w *outputWriter) publish(data []byte) {

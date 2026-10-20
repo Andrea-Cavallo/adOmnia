@@ -1,3 +1,4 @@
+import { diagnosticEventBatch } from '@/lib/code-studio/diagnosticEvents'
 import { patchToolView, toolKey, useStudioTools } from '@/components/code-studio/studioToolState'
 import type { CodeStudioResourceMode } from '@/components/code-studio/codeStudioResourceMode'
 import type { CodeStudioEditorMode } from '@/components/code-studio/codeStudioEditorModes'
@@ -291,7 +292,27 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
 
   // Avvio automatico solo per progetti già autorizzati, con gopls presente e mai fermato dall'utente.
   ensureStarted: async (sessionId) => {
-    if (!unsubscribe) unsubscribe = subscribeGoIDEEvents((event) => get().handleEvent(event))
+    if (!unsubscribe) unsubscribe = subscribeGoIDEEvents(diagnosticEventBatch((events) => {
+      if (events[0]?.type !== 'lsp.diagnostics') {
+        for (const event of events) get().handleEvent(event)
+        return
+      }
+      set((state) => {
+        const diagnostics = { ...state.diagnostics }
+        const changed = new Set<string>()
+        for (const event of events) {
+          if (!event.sessionId) continue
+          const report = event.payload as GoIDEDiagnosticsReport
+          const sessionId = event.sessionId
+          if (sameDiagnostics(diagnostics[sessionId]?.[report.uri], report)) continue
+          if (!changed.has(sessionId)) diagnostics[sessionId] = { ...(diagnostics[sessionId] ?? {}) }
+          changed.add(sessionId)
+          if (report.diagnostics.length === 0) delete diagnostics[sessionId][report.uri]
+          else diagnostics[sessionId][report.uri] = report
+        }
+        return changed.size ? { diagnostics } : state
+      })
+    }))
     if (!isTrusted(sessionId)) return
     if (get().linter[sessionId] === undefined) void get().detectLinter(sessionId)
     if (get().userStopped[sessionId]) return

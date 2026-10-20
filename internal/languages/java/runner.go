@@ -11,16 +11,21 @@ import (
 
 // Kind delle configurazioni Run Java: una classe `main` scelta dall'utente e un attach a una JVM remota.
 const (
+	KindMaven  = "maven"
 	KindMain   = "main"
 	KindAttach = "attach"
 )
 
 // RunKinds implementa run.Runner.
-func (*Language) RunKinds() []string { return []string{KindMain, KindAttach} }
+func (*Language) RunKinds() []string { return []string{KindMain, KindAttach, KindMaven} }
 
 // CommandSpec implementa run.Runner: la working directory della richiesta è il modulo (cartella con
 // pom.xml o build.gradle) che contiene la classe.
 func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
+	if request.Kind == KindMaven {
+		return mavenCommand(request)
+	}
+
 	if request.Kind == KindAttach {
 		return run.CommandSpec{}, fmt.Errorf("a Remote JVM configuration only attaches the debugger: press Debug, not Run")
 	}

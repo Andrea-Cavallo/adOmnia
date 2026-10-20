@@ -10,6 +10,7 @@ vi.mock('@/lib/code-studio-lsp-api', () => ({
 import { diagnosticCounts, isGoplsInstall, useCodeStudioLspStore } from './codeStudioLsp'
 import { getLanguageServerStatus, restartLanguageServer, startLanguageServer } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from './codeStudio'
+import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 
 const report = (uri: string, severity: number) => ({
   uri, path: uri.replace('file://', ''), relativePath: 'main.go',
@@ -20,6 +21,30 @@ const event = (sessionId: string, type: string, payload: unknown) => ({ version:
 
 describe('Code Studio language server store', () => {
   beforeEach(() => useCodeStudioLspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
+
+  it('updates the diagnostics store once for an import burst of 1000 files', async () => {
+    vi.useFakeTimers()
+    let receive: ((event: GoIDEEvent) => void) | undefined
+    vi.mocked(subscribeGoIDEEvents).mockImplementationOnce((listener) => { receive = listener; return () => undefined })
+    try {
+      await useCodeStudioLspStore.getState().ensureStarted('untrusted-import')
+      expect(receive).toBeDefined()
+      let changes = 0
+      const stop = useCodeStudioLspStore.subscribe((state, previous) => {
+        if (state.diagnostics !== previous.diagnostics) changes++
+      })
+      try {
+        for (let i = 0; i < 1000; i++) receive!(event('import', 'lsp.diagnostics', report(`file://${i}.java`, 1)))
+        expect(changes).toBe(0)
+        vi.advanceTimersByTime(50)
+        expect(changes).toBe(1)
+        expect(Object.keys(useCodeStudioLspStore.getState().diagnostics.import)).toHaveLength(1000)
+        receive!(event('import', 'lsp.diagnostics', { ...report('file://0.java', 1), diagnostics: [] }))
+        vi.advanceTimersByTime(50)
+        expect(useCodeStudioLspStore.getState().diagnostics.import['file://0.java']).toBeUndefined()
+      } finally { stop() }
+    } finally { vi.useRealTimers() }
+  })
 
   it('starts gopls in low resources while respecting explicit user stops', async () => {
     const original = useCodeStudioLspStore.getState()

@@ -341,6 +341,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       onMount={onMount}
       options={{
         automaticLayout: true,
+        mouseWheelZoom: true,
         // Avoid forcing the text onto a separate composited layer: WebKitGTK
         // can rasterize it differently from normal browser text on that layer.
         disableLayerHinting: true,
@@ -387,8 +388,8 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       }}
     />
     </div>
-    {/* Riga di stato di Vim (modo, comando in corso): esiste solo con la modalità Vim attiva. */}
-    <div ref={modeStatusRef} aria-live="polite" className={editorMode === 'vim' ? 'h-5 shrink-0 border-t border-border-1 px-2 font-mono text-[10.5px] leading-5 text-text-3' : 'hidden'} />
+    {/* Keep the mode adapter's status host mounted without displaying mode labels. */}
+    <div ref={modeStatusRef} hidden aria-hidden="true" className="hidden" />
     </div>
   )
 }

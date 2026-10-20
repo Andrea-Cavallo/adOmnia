@@ -10,6 +10,7 @@ import { moduleScopeFor, quickRunFor } from './codeStudioQuickActions'
 import { pullGoIDERepository, pushGoIDERepository, revertGoIDEFiles, stageGoIDEFiles, type GoIDEVCSFileChange } from '@/lib/code-studio-vcs-api'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { confirm } from '@/lib/confirmDialog'
+import { presentGitFailure } from '@/lib/git/gitFailure'
 
 /** Placeholder di file usato per chiedere il package di una cartella a moduleScopeFor, che ragiona per file. */
 const DIRECTORY_PROBE = '.'
@@ -180,7 +181,13 @@ export async function runTreeGitAction(sessionId: string, id: 'stage' | 'unstage
     await vcs.refreshStatus(sessionId)
     report(`${id === 'stage' ? 'Staged' : 'Unstaged'} ${paths.length} file(s).`)
   } catch (error) {
-    reportError(error)
+    if (id !== 'pull' && id !== 'push') return reportError(error)
+    const refresh = () => Promise.all([vcs.refreshStatus(sessionId), useCodeStudioStore.getState().refreshProject()]).then(() => undefined)
+    await presentGitFailure({
+      error, operation: id, repoPath: status.repoRoot ?? '',
+      retry: () => id === 'pull' ? pullGoIDERepository(sessionId) : pushGoIDERepository(sessionId),
+      onSettled: refresh,
+    })
   }
 }
 

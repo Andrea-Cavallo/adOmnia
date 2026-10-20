@@ -184,3 +184,18 @@ describe('Java entries in the New submenu', () => {
     expect(newItems(false)).not.toContain('newJavaClass')
   })
 })
+
+
+describe('Maven folder menu', () => {
+  it('offers lifecycle goals only for folders with a pom, including the root', () => {
+    const javaContext = { ...context, hasGoModule: false, hasMavenPom: true }
+    for (const entry of [null, folder('rest-heroes')]) {
+      const menu = ids(buildTreeMenu(entry, javaContext))
+      expect(menu).toContain('maven:clean package')
+      expect(menu).toContain('maven:install')
+      expect(menu).not.toContain('goPackage')
+    }
+    expect(ids(buildTreeMenu(folder('src'), { ...javaContext, hasMavenPom: false }))).not.toContain('maven')
+    expect(ids(buildTreeMenu(file('pom.xml'), javaContext))).not.toContain('maven')
+  })
+})

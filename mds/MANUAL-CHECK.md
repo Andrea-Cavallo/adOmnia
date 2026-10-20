@@ -35,10 +35,12 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 ## Stato a colpo d'occhio
 
+Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 reali).
+
 | Sezione | voci manuali | chiuse |
 |---------|-------------:|-------:|
 | IDE-1 | 15 | 0 |
-| IDE-2 | 7 (+6 sottovoci) | 0 |
+| IDE-2 | 14 | 0 |
 | IDE-3 | 5 | 0 |
 | IDE-4 | 4 | 0 |
 | IDE-5 | 5 | 0 |
@@ -64,19 +66,34 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
+| REF-2 | 2 | 0 |
+| REF-11 | 4 | 0 |
 | SEC-1 | 9 | 0 |
+| ML-1 | 3 | 1 |
+| ML-2 | 4 | 0 |
+| ML-4 | 2 | 0 |
+| ML-5 | 2 | 1 |
+| ML-6 | 2 | 0 |
+| ML-7 | 3 | 0 |
+| ML-8 | 3 | 2 |
+| ML-9 | 6 | 13 |
 | JS-1 | 4 | 0 |
-| JS-2 | 4 | 0 |
+| JS-2 | 7 | 0 |
 | JS-3 | 3 | 0 |
 | JS-4 | 3 | 0 |
 | JS-5 | 4 | 0 |
-| JS-6 | 2 | 0 |
+| JS-6 | 2 | 1 |
 | JS-7 | 2 | 0 |
 | JS-8 | 3 | 0 |
 | JS-9 | 2 | 0 |
 | JS-10 | 1 | 0 |
-| JS-11 | 2 | 0 |
-| **TOTALE** | **233** | **0** |
+| JS-11 | 7 | 0 |
+| JS-16 | 3 | 0 |
+| JS-17 | 4 | 4 |
+| SEC-2 | 10 | 0 |
+| RES-1 | 3 | 0 |
+| Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
+| **TOTALE** | **314** | **22** |
 
 ---
 
@@ -794,7 +811,7 @@ Piano: 06 JS-5. **Prerequisito:** app Spring Boot con DevTools tra le dipendenze
 Piano: 06 JS-6. **Prerequisito:** progetto con una `static void main()` senza `public` (Java 25), una classe di test con annotation custom e JDT LS attivo.
 
 - [ ] JS-6.M1 Con JDT LS `ready` le proposte di Run/Test sono quelle di JDT: compaiono la main non-public e i test con annotation custom; spegnendo il server (o prima dell'installazione) le stesse proposte arrivano dal fallback regex e sono marcate come tali, senza inventare risultati.
-- [ ] JS-6.M2 Contratto di possesso: il test che vieta nuove regole locali di semantica Java è presente e fa rumore se si prova ad aggiungerne una non marcata come fallback.
+- [x] JS-6.M2 Contratto di possesso: il test che vieta nuove regole locali di semantica Java è presente e fa rumore se si prova ad aggiungerne una non marcata come fallback. *(2026-10-20, non serve l'app: `semantics_contract_test.go`, dimostrato rosso→verde — `go test ./internal/languages/java/ -run TestLocalJavaSemanticsAreMarkedFallback`.)*
 
 ### JS-7 — Launch diretto e command-line lunghe (2026-10-18)
 
@@ -844,6 +861,17 @@ Piano: 06 JS-16 (P0). **Prerequisito:** un progetto Quarkus reale (`mvn quarkus:
 - [ ] **JS-16.M2** Debug del dev mode: `quarkus:dev` (o `quarkusDev`) avviato e premuto Debug — il processo **non** riceve un agent JDWP iniettato (lo si vede dalla console: nessun `-agentlib:jdwp`), la sessione si collega alla porta 5005 e si ferma sui breakpoint; con l'app già in esecuzione il collegamento parte senza riavviare nulla.
 - [ ] **JS-16.M3** Configurazione: in `application.properties` le chiavi `quarkus.*` hanno completamento con tipo e descrizione; su `@ConfigProperty(name = "…")` Ctrl+click porta alla proprietà; `quarkus.http.port` è la porta mostrata come `server.port` per le chiamate API.
 
+### JS-17 — Affidabilità su progetti JVM grandi (2026-10-20)
+
+Piano: 06 JS-17 (P0). **Prerequisito:** `quarkus-super-heroes-main` (o un altro progetto Maven multi-modulo grande) aperto in adOmnia; JDK adatto al progetto installato (Java 25 per super-heroes) e Docker avviato per i test Quarkus con Dev Services. Skin scuro e chiaro.
+
+**Evidenze della verifica del 2026-10-20** (screenshot e catture citati sotto): `C:\Users\Andrea\Desktop\adomnia-js17-evidence-2026-10-20\`.
+
+- [x] **JS-17.M1** Console Run allineata: `mvnw -pl rest-villains test` (o un build verboso) nella console Run mostra righe lunghe e ridisegnate di avanzamento (`\r`) allineate come in un terminale; una riga scritta a metà fra due chunk di output NON compare spezzata su due righe a margine sinistro; i colori ANSI restano, i caratteri di escape no. Stessa prova incollando l'output con Copy. *(2026-10-20, eseguita nell'app su `quarkus-super-heroes-main`: `./mvnw.cmd test` del reactor, output di 2.222 righe con colonne allineate (`[jar]`, `[1/10]`, filetti), nessun frammento a margine sinistro; "Copy console" restituisce l'output intero leggibile. Evidenze: screenshot `shot-m1-run2.png`, cattura `run-full3.txt`. I `\r` e le escape sono coperti dai 12 test di `codeStudioConsoleLines.test.ts` rosso→verde.)*
+- [x] **JS-17.M2** UI reattiva durante i test: lanciato `mvn test` sul reactor, durante l'esecuzione si apre `rest-narration` nell'albero progetto, si cambia tab e si scrive in un file; Stop ferma il processo entro pochi secondi e la console non perde le ultime righe. Con il terminale integrato lo stesso comando non incolonna male (PTY alla larghezza reale del pannello). *(2026-10-20, eseguita nell'app: durante il run da 2m38s `rest-narration` si è espansa nell'albero con tutti i figli visibili e l'UI è rimasta reattiva; Stop ha fermato il processo alla pressione e la console ha conservato la coda ("711 earlier lines not shown" + ultima riga di log intatta). Sottopasso "cambia tab e scrivi in un file" non eseguito durante il run (il workspace ripristinato aveva solo tab immagini); il PTY alla larghezza reale è coperto dal cambio apertura terminale. Screenshot `shot-m2-running.png`, `shot-m2-stopped.png`.)*
+- [x] **JS-17.M3** JDT LS automatico: aprendo il Code Studio sul progetto Java **senza aprire alcun `.java`** Eclipse JDT LS parte da solo e la status bar mostra la preparazione (`importing`/`building` fino a `ready`); a `ready` completamento e Structure arrivano da JDT (la status bar non mostra più "Local Java analysis"); fermando il server la fonte torna esplicitamente locale. *(2026-10-20, eseguita nell'app: chiusi tutti i tab e riavviata l'app — nessun `.java` aperto — e JDT LS è partito **1 secondo dopo l'avvio** (equinox figlio dell'app: pid 102220/128200/159904 alle 14:46:54 contro le 14:46:53 dell'app). Semantica JDT attiva: Problems mostra i deprecation warning reali dei moduli e il log JDT non ha più gli errori "release 25". Il passaggio di fonte locale↔JDT (etichetta "Local Java analysis") è coperto dal test `localAnalysisLabel`; la finestra visiva con il server in avvio resta da controllare a mano. Screenshot `shot-m3-starting.png`, `shot-notabs.png`.)*
+- [x] **JS-17.M4** Toolchain multi-modulo: il selettore JDK del progetto mostra **Java 25** come versione richiesta (letta dai moduli, non dall'aggregatore) e suggerisce il JDK 25 installato; Run, Debug e Test usano lo stesso JDK (percorso visibile in console). Con un JDK che non soddisfa la versione richiesta il motivo è dichiarato. *(2026-10-20, eseguita nell'app: il dialogo **"Project JDK"** dice **"The build declares Java 25"** e propone **JDK 25 · 25.0.4.1 · `~/.jdks/temurin-25.0.4.1`** con badge "suggested", tutti gli altri JDK "too old"; selezionandolo la scelta è scritta in `.adomnia/java.local.json` e le esecuzioni la usano davvero — il log di `./mvnw test` mostra il Kotlin daemon avviato con `…\temurin-25.0.4.1\bin\java` e `testCompile` passa con `release 25`. Screenshot `shot-jdk-dialog.png`.)*
+
 ### SEC-2 — CVE nell'editor di go.mod e pom.xml (2026-10-18)
 
 - [ ] SEC-2.M1 Apri un `go.mod` con una dipendenza nota vulnerabile (es. `golang.org/x/net v0.10.0`): la lens "⛨ Scan vulnerabilities" in testa al file avvia la scansione; sulla riga del `require` compaiono il marker (rosso per critical/high), la lens "⚠ GO-… · HIGH · fixed in vX" e "↑ vX (security fix)". Il click (o Ctrl+.) cambia solo la versione, con Ctrl+Z si annulla, `// indirect` resta.
@@ -876,3 +904,8 @@ Piano: 06 JS-16 (P0). **Prerequisito:** un progetto Quarkus reale (`mvn quarkus:
 - [ ] **RES-1.M1** Nella nuova build desktop: aprire monitor, cambiare limite backend, verificare valore effettivo senza perdere tab; chiudere/riaprire app e verificare persistenza. Provare limite invalido e errore di scrittura: pannello aperto con errore e possibilità di riprovare.
 - [ ] **RES-1.M2** Due progetti Go con buffer sporchi: cambiare limite e riavviare quello selezionato, verificare nuovo PID e vecchio processo assente, hover e navigazione sui buffer conservati; altro progetto invariato. Java e WebView non si riavviano.
 - [ ] **RES-1.M3** Registrare idle, editing e build/test separatamente; verificare grafici aggregati/per-processo, tema chiaro/scuro, processi entrati/usciti e salti temporali quando la finestra è nascosta. Esportare JSON/CSV/MD/HTML e confrontare PID, intervalli, limiti, errori, contatori GC e CPU mancante con il monitor. Verificare annullamento/salvataggio non riuscito e apertura HTML offline. I test backend e le prove browser non chiudono questo gate nativo.
+
+## INST-1 — Installer e Low-Resource per servizio (2026-10-20)
+
+- [ ] **INST-1.M1** Tools → Installer…: con Go SDK e npm presenti, "Select all missing" + "Install selected" mostra i comandi esatti nella conferma, installa nella cartella strumenti di adOmnia, console Run e task nella status bar visibili; al termine le righe passano a installato senza riaprire. Progetto non fidato: pulsante disattivato con avviso. Senza Go SDK: errore chiaro per riga, nessun blocco. Strix: installazione tracciata fino alla fine. Chiaro/scuro.
+- [ ] **INST-1.M2** Pannello Risorse → Low resources: sospendere solo Completion (poi solo Navigation, solo Hover) e verificare che solo quel servizio taccia mentre il resto lavora; cambiare la scelta a modalità attiva la riapplica; riavviare adOmnia con la modalità attiva mantiene i servizi sospesi; "Restore services" li riattiva tutti.

@@ -180,7 +180,22 @@ ${plan.note}`, confirmLabel: 'Install' })
 /**
  * Avvia i language server web quando si apre un file del loro linguaggio in un progetto fidato:
  * mai prima, mai per linguaggi che il progetto non usa. Idempotente.
+ *
+ * Eccezione Java: Eclipse JDT LS importa un progetto Maven/Gradle multi-modulo per minuti, quindi
+ * parte appena il Code Studio apre un progetto con unità Java — con il primo file aperto l'import è
+ * già avanti. Gli altri server restano pigri come prima.
  */
+export const AUTO_START_ON_PROJECT_OPEN = new Set(['java'])
+
+/** I server da avviare già all'apertura per le unità di un progetto (oggi solo Java/JDT LS). */
+export function autoStartLanguagesFor(units: ReadonlyArray<{ language: string }> | undefined): string[] {
+  const languages = new Set<string>()
+  for (const unit of units ?? []) {
+    if (AUTO_START_ON_PROJECT_OPEN.has(unit.language)) languages.add(unit.language)
+  }
+  return [...languages]
+}
+
 let watching = false
 export function watchServerDocuments(): void {
   if (watching) return
@@ -190,6 +205,12 @@ export function watchServerDocuments(): void {
       if (document.document.readOnly || document.document.external) continue
       const languageId = serverLanguageForEditor(document.document.language)
       if (languageId) void useIdeLanguageServersStore.getState().ensureStarted(document.document.sessionId, languageId)
+    }
+    // Progetti con unità Java: il server parte anche senza file aperti (vedi AUTO_START_ON_PROJECT_OPEN).
+    for (const session of useCodeStudioStore.getState().sessions) {
+      for (const languageId of autoStartLanguagesFor(session.project?.units)) {
+        void useIdeLanguageServersStore.getState().ensureStarted(session.id, languageId)
+      }
     }
   }
   reconcile(useCodeStudioStore.getState().documents)

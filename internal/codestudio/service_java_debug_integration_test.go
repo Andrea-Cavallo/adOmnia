@@ -73,6 +73,7 @@ func TestJavaDebugBuildsFreshMainAndStopsAtBreakpoint(t *testing.T) {
 
 func startJavaDebugTestProject(t *testing.T, root, tools string, settingsOverride ...map[string]any) (*Service, *eventRecorder, Session) {
 	t.Helper()
+	workspace := filepath.Join(t.TempDir(), "jdt-workspace")
 	recorder := &eventRecorder{}
 	service := NewService(&memoryStore{}, recorder.record)
 	service.toolsRoot = tools
@@ -92,7 +93,7 @@ func startJavaDebugTestProject(t *testing.T, root, tools string, settingsOverrid
 	// Keep indexes and caches isolated from the user's running JDT LS workspace.
 	for i, arg := range spec.Arguments {
 		if arg == "-data" {
-			spec.Arguments[i+1] = filepath.Join(t.TempDir(), "jdt-workspace")
+			spec.Arguments[i+1] = workspace
 		}
 	}
 	settings := map[string]any{"java": map[string]any{"autobuild": map[string]any{"enabled": false}}}

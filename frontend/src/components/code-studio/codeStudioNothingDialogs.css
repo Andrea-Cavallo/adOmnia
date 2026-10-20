@@ -1,0 +1,58 @@
+/* Opt-in Nothing treatment: shared modal behavior, local visual scope. */
+.gs-modal.gs-nothing-dialog {
+  --gs-modal-radius: 4px;
+  --gs-modal-pad: 16px;
+  background: var(--color-surface-0);
+  border-color: var(--color-border-2);
+}
+.gs-nothing-dialog .gs-modal-header { align-items: center; gap: 12px; padding-block: 14px; }
+.gs-nothing-dialog .gs-modal-title { font-family: Doto, var(--font-mono); font-size: 23px; font-weight: 800; letter-spacing: -.5px; }
+.gs-nothing-dialog .gs-modal-subtitle { font-size: 11px; color: var(--color-text-3); }
+.gs-nothing-dialog .gs-modal-icon { width: 30px; height: 30px; border: 1px dotted var(--color-border-2); border-radius: 50%; background: transparent; color: var(--color-text-1); }
+.gs-nothing-dialog .gs-modal-heading::before { content: ''; display: block; width: 28px; height: 4px; margin-bottom: 6px; background: radial-gradient(circle, var(--color-text-3) 1px, transparent 1.5px) left center / 6px 4px repeat-x; }
+.gs-nothing-dialog .gs-modal-body { gap: 12px; }
+.gs-nothing-dialog .gs-modal-body-flush { gap: 0; }
+.gs-nothing-dialog .gs-modal-footer { padding-block: 10px; background: var(--color-surface-0); }
+.gs-nothing-dialog .gs-modal-footer-start { flex-wrap: wrap; gap: 5px; font-size: 11px; }
+.gs-nothing-dialog .gs-btn { height: 29px; border-radius: 3px; font-size: 11px; }
+.gs-nothing-dialog .gs-btn-sm { height: 25px; }
+.gs-nothing-dialog .gs-btn-primary { background: var(--color-text-1); color: var(--color-surface-0); border-color: var(--color-text-1); box-shadow: none; }
+.gs-nothing-dialog .gs-btn-primary:hover { background: var(--color-text-2); }
+.gs-nothing-dialog .gs-btn-secondary { background: transparent; border-color: var(--color-border-2); box-shadow: none; }
+.gs-nothing-dialog .gs-input { min-width: 0; border-radius: 3px; background: var(--color-surface-0); font-size: 12px; }
+.gs-nothing-dialog .gs-label, .gs-nothing-section-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-3); }
+.gs-nothing-dialog .gs-list, .gs-nothing-dialog .gs-surface { border-radius: 0; background: transparent; }
+.gs-nothing-dialog .gs-list-row { min-height: 40px; padding: 7px 10px; gap: 8px; }
+.gs-nothing-dialog .gs-badge { height: 18px; padding-inline: 5px; border-radius: 2px; background: var(--color-surface-1); font-family: var(--font-mono); font-size: 10px; }
+.gs-nothing-dialog .gs-row-actions { opacity: 1; flex-wrap: wrap; justify-content: flex-end; }
+.gs-nothing-dialog .gs-segmented { gap: 0; padding: 0; border-radius: 0; border-bottom: 1px solid var(--color-border-1); background: transparent; }
+.gs-nothing-dialog .gs-segment { height: 29px; border-radius: 0; border-bottom: 2px solid transparent; font-size: 11px; }
+.gs-nothing-dialog .gs-segment[aria-selected='true'] { border-bottom-color: var(--color-text-1); background: transparent; color: var(--color-text-1); box-shadow: none; }
+.gs-nothing-summary { padding-block: 7px; border-block: 1px solid var(--color-border-1); }
+.gs-nothing-section { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--color-border-1); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-3); }
+.gs-commit-sidebar { width: clamp(300px, 32vw, 400px); min-width: 0; }
+.gs-commit-file { border-bottom: 1px solid var(--color-border-1); border-left: 2px solid transparent; border-radius: 0; }
+.gs-commit-file-selected { border-left-color: var(--color-text-1); background: var(--color-surface-2); }
+.gs-commit-file input[type='checkbox'], .gs-commit-dialog form input[type='checkbox'] { accent-color: var(--color-text-1); }
+.gs-commit-file:focus-visible { outline: 2px solid var(--color-text-1); outline-offset: -2px; }
+.gs-commit-dialog form { padding: 12px; gap: 10px; }
+.gs-commit-dialog textarea.gs-input { font-family: var(--font-mono); line-height: 1.6; }
+.gs-commit-dialog form > label:not(.gs-nothing-section-label) { align-items: flex-start; font-size: 11px; }
+.gs-commit-dialog form > div { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .gs-commit-workspace { flex-direction: column; overflow: auto; }
+  .gs-commit-sidebar { width: 100%; min-height: 320px; flex: 0 0 55%; border-right: 0; border-bottom: 1px solid var(--color-border-1); }
+  .gs-commit-review { min-height: 240px; }
+  .gs-dependencies-toolbar > .gs-field { flex-basis: 100%; }
+  .gs-nothing-dialog .gs-list-row { flex-wrap: wrap; }
+  .gs-nothing-dialog .gs-modal-title { font-size: 20px; }
+}
+
+.gs-close-dialog .gs-modal-title { font-size: 21px; }
+.gs-close-dialog .gs-modal-subtitle { margin-top: 6px; font-size: 12px; line-height: 1.6; }
+.gs-close-dialog .gs-modal-footer { flex-wrap: wrap; gap: 6px; }
+.gs-close-dialog .gs-modal-footer-start { display: none; }
+.gs-close-dialog .gs-modal-footer > button:first-of-type { margin-right: auto; }
+.gs-close-dialog .gs-list-row { flex-wrap: nowrap; }
+.gs-close-dialog .gs-list-row > span:nth-of-type(1) { flex-shrink: 0; max-width: 44%; font-family: var(--font-mono); font-size: 11px; }
+.gs-close-dialog .gs-list-row > span:nth-of-type(2) { font-family: var(--font-mono); font-size: 10px; }

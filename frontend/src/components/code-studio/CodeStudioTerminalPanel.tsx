@@ -1,5 +1,10 @@
+import './codeStudioTerminal.css'
+import { CodeStudioTerminalAppearance } from './CodeStudioTerminalAppearance'
+import { codeStudioTerminalTheme, TERMINAL_THEMES } from './codeStudioTerminalTheme'
+import { terminalAppearance } from '@/lib/code-studio/terminalAppearance'
+import { useSettingsStore } from '@/stores/settings'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ChevronDown, ChevronUp, Columns2, Copy, FlaskConical, History, Plus, Search, TerminalSquare, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Columns2, Copy, FlaskConical, History, Palette, Plus, Search, TerminalSquare, Trash2, X } from 'lucide-react'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { CodeStudioTerminalView, closeTerminal, terminalHandle } from './CodeStudioTerminalView'
 import { startCodeStudioTerminalBus } from './codeStudioTerminalBus'
@@ -70,10 +75,17 @@ const toolButton = 'grid h-7 w-7 shrink-0 place-items-center rounded text-text-3
  * mostra un'esecuzione controllata, non una shell interattiva.
  */
 export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminalPanelProps) {
+  const appearance = useSettingsStore((state) => state.settings.appearance.terminal)
+  const appTheme = useSettingsStore((state) => state.settings.appearance.theme)
+  const accent = useSettingsStore((state) => state.settings.appearance.accentColor)
+  const terminalOptions = terminalAppearance(appearance)
+  const colors = codeStudioTerminalTheme(appTheme, accent, terminalOptions.preset)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
   const [terminals, setTerminals] = useState<GoIDETerminalSession[]>([])
   const [loaded, setLoaded] = useState(false)
   const autoOpened = useRef(false)
   const openedProfiles = useRef(new Map<string, string>())
+  const viewsRef = useRef<HTMLDivElement | null>(null)
   const [activeId, setActiveId] = useToolView<string | null>(session.id, 'terminal', 'activeId', null)
   // Il secondo terminale mostrato accanto al primo; null quando il pannello non è diviso.
   const [splitId, setSplitId] = useToolView<string | null>(session.id, 'terminal', 'splitId', null)
@@ -131,13 +143,18 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
     setError(null)
     try {
       const chosenProfile = profile ?? defaultProfile
+      // La shell parte con la misura reale del pannello: ConPTY impagina l'output alla larghezza che
+      // ha all'avvio e ciò che viene scritto prima del fit resta spezzato per sempre. La vista si
+      // riallinea appena montata; questo è il miglior tentativo prima ancora che esista.
+      const host = viewsRef.current
+      const visible = host && host.clientWidth > 0 && host.clientHeight > 0
       const opened = await openGoIDETerminal({
         sessionId: session.id,
         profile: chosenProfile,
         name,
         workingDirectory,
-        columns: 80,
-        rows: 24,
+        columns: visible ? Math.max(40, Math.floor((host.clientWidth - 24) / 8)) : 80,
+        rows: visible ? Math.max(10, Math.floor((host.clientHeight - 12) / 17)) : 24,
       })
       openedProfiles.current.set(opened.id, chosenProfile)
       setTerminals((current) => [...current, opened])
@@ -315,8 +332,9 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
   }
 
   return (
-    <section aria-label="Code Studio terminals" className="flex h-full min-h-0 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-1 px-2">
+    <section aria-label="Code Studio terminals" className="code-studio-terminal flex h-full min-h-0 flex-col" style={{ '--terminal-bg': colors.background, '--terminal-fg': colors.foreground, '--terminal-link': TERMINAL_THEMES.find((item) => item.id === terminalOptions.preset)?.link } as CSSProperties}>
+      {appearanceOpen && <CodeStudioTerminalAppearance onClose={() => setAppearanceOpen(false)} />}
+      <div className="terminal-toolbar">
         <TerminalSquare size={14} className="shrink-0 text-text-3" aria-hidden="true" />
         {(() => {
           const current = terminals.find((terminal) => terminal.id === targetId) ?? terminals[0]
@@ -341,7 +359,9 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
             </button>
           )
         })()}
+        <span className="terminal-theme-indicator">{TERMINAL_THEMES.find((item) => item.id === terminalOptions.preset)?.name ?? 'adOmnia Dark'}</span>
         <div className="min-w-2 flex-1" />
+        <button type="button" onClick={() => setAppearanceOpen(true)} aria-label="Terminal appearance" title="Terminal appearance" className={toolButton}><Palette size={14} /></button>
         <button type="button" onClick={openSearch} disabled={!targetId} title="Find in terminal (Ctrl+F)" className={toolButton}>
           <Search size={14} />
         </button>
@@ -482,15 +502,15 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
       )}
       {notice && <p role="status" className="shrink-0 border-b border-border-1 px-3 py-1 text-[12px] text-text-3">{notice}</p>}
 
-      <div className="flex min-h-0 flex-1">
-      <div className="relative min-h-0 min-w-0 flex-1">
+      <div className="terminal-workspace flex min-h-0 flex-1">
+      <div ref={viewsRef} className="terminal-views relative min-h-0 min-w-0 flex-1">
         {terminals.length === 0 && (
           <p className="p-3 text-[12px] text-text-4">No terminal open. Use + to start a shell in the project directory.</p>
         )}
         {terminals.map((terminal) => (
           <div
             key={terminal.id}
-            className={`absolute inset-y-0 px-3 py-1.5 ${splitVisible && terminal.id === splitId ? 'border-l border-border-1' : ''}`}
+            className={`terminal-pane absolute inset-y-0 px-3 py-1.5 ${splitVisible && terminal.id === splitId ? 'border-l border-border-1' : ''}`}
             style={paneStyle(terminal.id)}
             onMouseDown={() => setFocusedId(terminal.id)}
           >
@@ -507,14 +527,14 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
         ))}
       </div>
       {terminals.length > 1 && (
-        <nav aria-label="Terminals" className="flex w-44 shrink-0 flex-col gap-px overflow-y-auto border-l border-border-1 py-1">
+        <nav aria-label="Terminals" className="terminal-sessions flex shrink-0 flex-col gap-px overflow-y-auto border-l border-border-1 py-1">
           {terminals.map((terminal) => {
             const shown = terminal.id === activeId || (splitVisible && terminal.id === splitId)
             const current = terminal.id === targetId
             return (
               <div
                 key={terminal.id}
-                className={`group relative flex h-7 shrink-0 items-center gap-2 pl-3 pr-1.5 text-[12px] ${current ? 'bg-surface-3 text-text-1' : shown ? 'bg-surface-2 text-text-2' : 'text-text-3 hover:bg-surface-2'}`}
+                className={`terminal-session group relative flex h-7 shrink-0 items-center gap-2 pl-3 pr-1.5 text-[12px] ${current ? 'bg-surface-3 text-text-1' : shown ? 'bg-surface-2 text-text-2' : 'text-text-3 hover:bg-surface-2'}`}
               >
                 {current && <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-accent" aria-hidden="true" />}
                 <TerminalSquare size={13} className={`shrink-0 ${terminal.status === 'running' ? 'text-success' : 'text-text-4'}`} aria-hidden="true" />
@@ -531,6 +551,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
         </nav>
       )}
       </div>
+      <footer className="terminal-status"><span className="terminal-status-dot" /><span>{terminals.find((item) => item.id === targetId)?.status ?? 'Ready'}</span><span className="terminal-status-path" title={terminals.find((item) => item.id === targetId)?.workingDirectory}>{terminals.find((item) => item.id === targetId)?.workingDirectory ?? session.project.realPath}</span><span>Ctrl+F / Find</span></footer>
     </section>
   )
 }

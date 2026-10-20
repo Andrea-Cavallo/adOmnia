@@ -781,6 +781,29 @@ func (h *lspHandler) HandleNotification(method string, params json.RawMessage) {
 	}
 }
 
+// sectionSettings risolve la sezione richiesta dentro le impostazioni: LSP chiede il sottoalbero
+// della sezione (per Java `java` → il contenuto di `java`), non l'intero albero. Quando la sezione
+// non è un cammino delle impostazioni vale la risposta intera: i server che ricevono già il
+// contenuto della sezione (gopls, i server web) continuano a funzionare come prima.
+func sectionSettings(settings any, section string) any {
+	current := settings
+	for _, part := range strings.Split(section, ".") {
+		if part == "" {
+			continue
+		}
+		object, ok := current.(map[string]any)
+		if !ok {
+			return settings
+		}
+		value, ok := object[part]
+		if !ok {
+			return settings
+		}
+		current = value
+	}
+	return current
+}
+
 // HandleRequest risponde alle richieste del server necessarie; workspace/applyEdit viene catturato per l'anteprima.
 func (h *lspHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
 	switch method {
@@ -797,8 +820,12 @@ func (h *lspHandler) HandleRequest(_ context.Context, method string, params json
 			settings = configuration()
 		}
 		result := make([]any, len(request.Items))
-		for index := range result {
-			result[index] = settings
+		for index, item := range request.Items {
+			var entry struct {
+				Section string `json:"section"`
+			}
+			_ = json.Unmarshal(item, &entry)
+			result[index] = sectionSettings(settings, entry.Section)
 		}
 		return result, nil
 	case "window/workDoneProgress/create", "client/registerCapability", "client/unregisterCapability":

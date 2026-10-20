@@ -160,3 +160,35 @@ func (m *MCPClient) GetPromptSession(sessionID, name, argsJSON string) (string, 
 	}
 	return mcpJSON(result), nil
 }
+
+func (m *MCPClient) PingSession(sessionID string) error {
+	c, err := m.sessions.Client(sessionID)
+	if err != nil {
+		return err
+	}
+	return c.Ping(context.Background())
+}
+
+func (m *MCPClient) ListResourceTemplatesSession(sessionID string) (string, error) {
+	c, err := m.sessions.Client(sessionID)
+	if err != nil {
+		return "", err
+	}
+	templates, err := c.ListResourceTemplates(context.Background())
+	if err != nil {
+		return "", err
+	}
+	return mcpJSON(templates), nil
+}
+
+func (m *MCPClient) ReadResourceSession(sessionID, uri string) (string, error) {
+	c, err := m.sessions.Client(sessionID)
+	if err != nil {
+		return "", err
+	}
+	result, err := c.ReadResource(context.Background(), uri)
+	if err != nil {
+		return "", err
+	}
+	return mcpJSON(result), nil
+}

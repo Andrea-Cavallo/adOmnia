@@ -29,13 +29,14 @@ interface StripeButtonProps {
   pressed: boolean
   badge?: BadgeTone | null
   onClick: () => void
+  onMouseEnter?: () => void
   /** Tooltip diverso dall'etichetta: per il bottone AI porta il messaggio classificato dello stato. */
   tooltip?: string
 }
 
-function StripeButton({ label, icon: Icon, pressed, badge, onClick, tooltip }: StripeButtonProps) {
+function StripeButton({ label, icon: Icon, pressed, badge, onClick, onMouseEnter, tooltip }: StripeButtonProps) {
   return (
-    <button type="button" aria-label={label} title={tooltip ?? label} aria-pressed={pressed} onClick={onClick} className="code-studio-stripe-button">
+    <button type="button" aria-label={label} title={tooltip ?? label} aria-pressed={pressed} onClick={onClick} onMouseEnter={onMouseEnter} className="code-studio-stripe-button">
       <Icon size={19} strokeWidth={1.8} />
       <span className="code-studio-stripe-tooltip" aria-hidden="true">{tooltip ?? label}</span>
       {badge && <span className={`code-studio-stripe-badge ${BADGE_CLASS[badge]}`} aria-hidden="true" />}

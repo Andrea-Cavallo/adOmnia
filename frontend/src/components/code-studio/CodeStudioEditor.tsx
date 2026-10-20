@@ -145,7 +145,7 @@ export function CodeStudioEditor({ documents, active, onCursor, onRequestClose, 
             modifiedModelPath={`inmemory://disk-compare/current/${active.document.id}`}
             keepCurrentOriginalModel
             keepCurrentModifiedModel
-            options={{ automaticLayout: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }}
+            options={{ automaticLayout: true, mouseWheelZoom: true, renderSideBySide: true, readOnly: true, minimap: { enabled: false }, fontSize: 12 }}
           />
         ) : isImageDocument(active) ? (
           <CodeStudioImageView document={active} />

@@ -59,7 +59,7 @@ export function CodeStudioMavenDependencies({ session, units, onClose }: Props) 
 
   return <>
     {(error || state.error) && <CodeStudioAlert icon={AlertCircle}>{error || state.error}</CodeStudioAlert>}
-    <div className="flex items-end gap-2">
+    <div className="gs-dependencies-toolbar flex flex-wrap items-end gap-2">
       <CodeStudioField label={unit?.kind === 'gradle' ? 'Gradle project' : 'Maven project'} className="flex-1">
         <select value={manifest} onChange={(event) => setManifest(event.target.value)} className="gs-input gs-mono">
           {units.map((item) => <option key={item.manifest} value={item.manifest}>{item.name} · {relativeTo(session.project, item.manifest)}</option>)}
@@ -72,7 +72,7 @@ export function CodeStudioMavenDependencies({ session, units, onClose }: Props) 
         {state.scanning ? <Loader2 size={13} className="animate-spin" /> : <ShieldAlert size={13} />} Scan vulnerabilities
       </CodeStudioButton>
     </div>
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="gs-nothing-summary flex flex-wrap items-center gap-2">
       <span className="gs-badge">{statuses.length} dependenc{statuses.length === 1 ? 'y' : 'ies'}</span>
       {state.scannedAt && <span className={`gs-badge ${vulnerable ? 'text-danger' : 'text-success'}`}>{vulnerable ? `${vulnerable} with vulnerabilities` : 'no known vulnerabilities'}</span>}
       {state.updatesCheckedAt && <span className="gs-badge">{statuses.filter((status) => status.version?.newer).length} with updates</span>}

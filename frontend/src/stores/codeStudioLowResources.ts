@@ -1,4 +1,5 @@
 import { settleResourceStops } from '@/lib/code-studio/resourceStops'
+import { applySuspended, readPausedServices, writePausedServices, type PausableService } from '@/lib/code-studio/pausedServices'
 import { create } from 'zustand'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
@@ -30,6 +31,9 @@ interface LowResourcesState {
   busy: boolean
   error: string | null
   restore: RestoreState | null
+  /** What Low-Resource Mode pauses; everything else keeps running. */
+  paused: PausableService[]
+  setPaused: (services: PausableService[]) => Promise<void>
   activate: () => Promise<void>
   deactivate: (mode?: 'normal' | 'auto') => Promise<void>
   toggle: () => Promise<void>
@@ -66,8 +70,21 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
     }
     return failures
   }
+  const initialRestore = readRestore()
+  const initialPaused = readPausedServices()
+  // A reload while Low-Resource Mode is on must keep the editor providers paused.
+  applySuspended(initialRestore ? initialPaused : [])
   return {
-    busy: false, error: null, restore: readRestore(),
+    busy: false, error: null, restore: initialRestore, paused: initialPaused,
+    setPaused: async (services) => {
+      writePausedServices(services)
+      set({ paused: services })
+      // Already on: apply the new choice by restoring and pausing again.
+      if (!get().busy && (get().restore || useCodeStudioLspStore.getState().preferences.resourceMode === 'low')) {
+        await get().deactivate()
+        await get().activate()
+      }
+    },
     activate: async () => {
       if (get().busy || get().restore) return
       // A low mode without a restore snapshot belongs to the earlier editor-only/stop-all mode.
@@ -76,7 +93,9 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
       try {
         const lsp = useCodeStudioLspStore.getState()
         const restore: RestoreState = { version: 1, mode: lsp.preferences.resourceMode === 'auto' ? 'auto' : 'normal', agents: {}, staticcheck: lsp.settings.staticcheck, vulncheck: lsp.settings.vulncheck }
-        const failures = await settleResourceStops(Object.entries(AGENTS).map(([label, store]) => ({ label, stop: async () => {
+        const paused = get().paused
+        const agents = paused.includes('ai') ? Object.entries(AGENTS) : []
+        const failures = await settleResourceStops(agents.map(([label, store]) => ({ label, stop: async () => {
           if (!store.getState().settings) await store.getState().ensure()
           const settings = store.getState().settings
           if (!settings) throw new Error(store.getState().error ?? 'Cannot read assistant settings')
@@ -87,18 +106,23 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
         localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(restore))
         set({ restore })
         lsp.updatePreferences({ resourceMode: 'low' })
-        for (const session of useCodeStudioStore.getState().sessions) lsp.cancelLint(session.id)
-        await lsp.updateSettings(null, { staticcheck: false, vulncheck: false })
-        const stops = await settleResourceStops(Object.entries(AGENTS).map(([label, store]) => ({ label, stop: async () => {
+        applySuspended(paused)
+        const pauseAnalyses = paused.includes('analyses')
+        if (pauseAnalyses) {
+          for (const session of useCodeStudioStore.getState().sessions) lsp.cancelLint(session.id)
+          await lsp.updateSettings(null, { staticcheck: false, vulncheck: false })
+        }
+        const stops = await settleResourceStops(agents.map(([label, store]) => ({ label, stop: async () => {
           if (store.getState().settings?.enabled && !await store.getState().setEnabled(false)) throw new Error(store.getState().error ?? 'Could not suspend assistant')
         } })))
-        const analyses = (restore.staticcheck || restore.vulncheck) ? await restartAnalyses() : []
-        if (!report([...stops, ...analyses])) studioToast('Low resources enabled. AI and optional analyses paused; language servers, Run and Debug remain available.')
+        const analyses = pauseAnalyses && (restore.staticcheck || restore.vulncheck) ? await restartAnalyses() : []
+        if (!report([...stops, ...analyses])) studioToast(`Low resources enabled. ${paused.length ? 'Paused: ' + paused.join(', ') + '.' : 'Nothing is paused.'} Everything else, Run and Debug remain available.`)
       } catch (error) { report([String(error)]) } finally { set({ busy: false }) }
     },
     deactivate: async (mode) => {
       if (get().busy) return
       set({ busy: true, error: null })
+      applySuspended([])
       try {
         const restore = get().restore
         const lsp = useCodeStudioLspStore.getState()

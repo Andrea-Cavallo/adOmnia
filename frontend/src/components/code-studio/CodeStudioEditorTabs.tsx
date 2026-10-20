@@ -110,8 +110,8 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
   }
 
   return (
-    <div className="flex h-[34px] shrink-0 items-stretch border-b border-border-1">
-    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
+    <div className="code-studio-editor-tabbar flex h-[36px] min-w-0 shrink-0 items-stretch border-b border-border-1">
+    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="code-studio-editor-tablist flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId && !previewTab?.active
         const isPinned = !!pinned[item.document.id]

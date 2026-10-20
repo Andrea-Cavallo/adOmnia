@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ExternalLink, GitBranch, GitFork, Loader2, RefreshC
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import { pullGoIDERepository, pushGoIDERepository } from '@/lib/code-studio-vcs-api'
+import { presentGitFailure } from '@/lib/git/gitFailure'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import type { FileChange as GitChange } from '@/lib/git/types'
@@ -64,7 +65,15 @@ export function CodeStudioGitPanel({ session, onCommand }: { session: GoIDESessi
     try {
       if (kind === 'pull') await pullGoIDERepository(sessionId); else await pushGoIDERepository(sessionId)
       await refresh()
-    } catch (reason) { setError(errorText(reason)); setLoading(false) }
+    } catch (reason) {
+      setLoading(false)
+      await presentGitFailure({
+        error: reason, operation: kind, repoPath: repoRoot,
+        retry: () => kind === 'pull' ? pullGoIDERepository(sessionId) : pushGoIDERepository(sessionId),
+        onResolveConflicts: () => onCommand?.('vcs.resolveConflicts'),
+        onSettled: refresh,
+      })
+    }
   }
   /** Mutations on the repository: errors go to the banner, success reloads the overview. */
   const run = useCallback(async (action: () => Promise<unknown>) => {
@@ -72,9 +81,16 @@ export function CodeStudioGitPanel({ session, onCommand }: { session: GoIDESessi
     let failure = ''
     try { await action() } catch (reason) { failure = errorText(reason) }
     await refresh()
-    if (failure) setError(failure)
+    if (failure) {
+      await presentGitFailure({
+        error: failure, operation: 'git operation', repoPath: repoRoot,
+        retry: async () => { await action() },
+        onResolveConflicts: () => onCommand?.('vcs.resolveConflicts'),
+        onSettled: refresh,
+      })
+    }
     void useCodeStudioStore.getState().checkActiveDocument()
-  }, [refresh])
+  }, [refresh, repoRoot, onCommand])
   const openRemote = async () => {
     const url = await GitSync.RemoteWebURL(repoRoot)
     if (!url) return setError('No web URL could be derived from the remotes.')

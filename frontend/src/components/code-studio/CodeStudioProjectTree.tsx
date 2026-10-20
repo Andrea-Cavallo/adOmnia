@@ -219,6 +219,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
     setSelectedPath(entry?.relativePath ?? '')
     setCreationFolder(entry ? (entry.directory ? entry.relativePath : parentOf(entry.relativePath)) : '')
     setMenu({ entry, x, y })
+    if (!entry || entry.directory) void useCodeStudioStore.getState().loadDirectory(entry?.relativePath ?? '')
   }, [])
   const canPaste = useCodeStudioTreeClipboard((state) => state.clipboard?.sessionId === session.id)
   const vcsStatus = useCodeStudioVCSStore((state) => state.status[session.id])
@@ -233,6 +234,10 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
     // Le voci New, Paste e Find lavorano nella cartella selezionata, o in quella del file.
     const folder = entry ? (entry.directory ? path : parentOf(path)) : ''
     const openThen = (command: CodeStudioCommandId) => void openDocument(path).then(() => onCommand(command))
+    if (id.startsWith('maven:') && directory) {
+      void useCodeStudioStore.getState().startRun('maven', { language: 'java', workingDirectory: folder, programArguments: id.slice(6).split(' ') })
+      return
+    }
     switch (id) {
       case 'open': void openDocument(path); break
       case 'splitRight': void openInSplit(session.id, path, 'right'); break
@@ -317,7 +322,9 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   }
   const projectSummary = projectProfile(session.project, IDE_LANGUAGE_NAMES).summary
   const hasJava = (session.project.units ?? []).some((unit) => unit.language === 'java')
-  const menuContext = { canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
+  const menuEntries = useCodeStudioStore((state) => state.directoryEntries[session.id]?.[menu?.entry?.relativePath ?? ''])
+  const hasMavenPom = !!menuEntries?.some((item) => !item.directory && item.name === 'pom.xml')
+  const menuContext = { hasMavenPom, canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
 
   return (
     <aside aria-label="Project files" className="code-studio-explorer flex h-full min-w-0 flex-col">

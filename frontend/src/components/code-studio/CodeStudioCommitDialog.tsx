@@ -1,3 +1,4 @@
+import './codeStudioNothingDialogs.css'
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal, Sparkles } from 'lucide-react'
@@ -214,26 +215,27 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
       onClose={onClose}
       size="full"
       tall
-      className="!h-[min(90vh,920px)] !w-[min(1480px,95vw)]"
+      className="gs-nothing-dialog gs-commit-dialog !h-[min(90vh,920px)] !w-[min(1480px,95vw)]"
       divided
       flush
       icon={GitCommitHorizontal}
-      title={<>Commit to <span className="gs-mono text-[14px]">{status?.branch ?? 'branch'}</span></>}
+      title="Commit changes"
       ariaLabel="Commit changes"
-      subtitle="Local only: nothing is pushed."
+      subtitle={<>Branch / <span className="gs-mono">{status?.branch ?? 'branch'}</span> · Local commit</>}
       footerStart={<>{selected.size} of {changes.length} file{changes.length === 1 ? '' : 's'} · <span className="gs-kbd">Ctrl</span><span className="gs-kbd">Enter</span> commits</>}
       footer={<>
         <CodeStudioButton variant="ghost" onClick={onClose}>Cancel</CodeStudioButton>
         <CodeStudioButton variant="primary" type="submit" form="code-studio-commit-form" loading={busy} disabled={!canCommit}>Commit</CodeStudioButton>
       </>}
     >
-      <div className="flex min-h-0 flex-1">
-      <div className="flex w-[400px] min-w-[300px] shrink-0 flex-col border-r border-border-1">
+      <div className="gs-commit-workspace flex min-h-0 flex-1">
+      <div className="gs-commit-sidebar flex shrink-0 flex-col border-r border-border-1">
+      <div className="gs-nothing-section"><span>Changed files</span><span>{selected.size} / {changes.length}</span></div>
       <div className="min-h-0 flex-1 overflow-auto p-1.5">
         {changes.length === 0 && <p className="gs-list-empty">No local changes in this project.</p>}
         {changes.map((change) => (
           <div key={change.relativePath} role="button" tabIndex={0} aria-pressed={focused === change.relativePath} onClick={() => setFocused(change.relativePath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setFocused(change.relativePath) } }} title="Show the changes of this file"
-            className={`flex h-8 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 ${focused === change.relativePath ? 'bg-accent/12 ring-1 ring-accent/30' : 'hover:bg-surface-2/60'} ${change.conflicted ? 'opacity-60' : ''}`}>
+            className={`gs-commit-file flex h-8 cursor-pointer items-center gap-2.5 px-2.5 ${focused === change.relativePath ? 'gs-commit-file-selected' : 'hover:bg-surface-2/60'} ${change.conflicted ? 'opacity-60' : ''}`}>
             <input type="checkbox" aria-label={`Include ${change.relativePath}`} checked={selected.has(change.relativePath)} disabled={change.conflicted} onClick={(event) => event.stopPropagation()} onChange={() => toggle(change.relativePath)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
             <CodeStudioFileIcon name={change.relativePath.split('/').pop() ?? change.relativePath} relativePath={change.relativePath} />
             <span className="flex min-w-0 flex-1 items-baseline gap-2" title={change.relativePath}>
@@ -250,7 +252,8 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
       <div className="min-h-0 shrink-0 overflow-auto" style={{ height: formHeight }}>
       <ChangedSymbols symbols={symbols} selected={selected} onClose={onClose} />
       <form id="code-studio-commit-form" className="flex flex-col gap-3 p-4" onSubmit={(event) => { event.preventDefault(); void commit() }}>
-        <textarea ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
+        <label htmlFor="code-studio-commit-message" className="gs-nothing-section-label">Commit message</label>
+        <textarea id="code-studio-commit-message" ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
         {aiAvailable && (
           <div className="flex items-center gap-2">
@@ -282,7 +285,7 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
       </form>
       </div>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="gs-commit-review min-w-0 flex-1">
         <CodeStudioCommitDiff sessionId={sessionId} relativePath={focused} />
       </div>
       </div>

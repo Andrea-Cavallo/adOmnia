@@ -51,6 +51,13 @@ func TestGoIDEHelperProcess(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		_, _ = os.Stdout.Write([]byte{0xA8, '\n'})
 		os.Exit(0)
+	case "flood":
+		// Molte scritture ravvicinate: senza coalescing ogni riga diventa un evento run.output.
+		for index := range 100 {
+			fmt.Fprintf(os.Stdout, "line %d\n", index)
+			time.Sleep(5 * time.Millisecond)
+		}
+		os.Exit(0)
 	case "tree":
 		child := exec.Command(os.Args[0], "-test.run=TestGoIDEHelperProcess", "--", "child")
 		child.Env = append(os.Environ(), "ADOMNIA_GOIDE_HELPER=1")

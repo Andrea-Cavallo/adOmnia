@@ -1,4 +1,6 @@
-import { Maximize2, Minimize2, Redo2, Save, Undo2 } from 'lucide-react'
+import { useState } from 'react'
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { Ellipsis, Maximize2, Minimize2, Redo2, Save, Undo2 } from 'lucide-react'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { activeCodeStudioEditor, runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 
@@ -13,21 +15,23 @@ export function CodeStudioEditorTabActions({ document, onSave }: CodeStudioEdito
   const editorMaximized = useCodeStudioStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)
   const canSave = document.dirty && !document.saving && !document.document.readOnly
   const model = activeCodeStudioEditor()?.getModel()
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5 pl-1 pr-2">
-      <button type="button" disabled={!model?.canUndo()} onClick={() => runCodeStudioEditorCommand('edit.undo')} title="Undo · Ctrl/Cmd+Z" aria-label="Undo" className="code-studio-icon-button h-7 w-7"><Undo2 size={14} /></button>
-      <button type="button" disabled={!model?.canRedo()} onClick={() => runCodeStudioEditorCommand('edit.redo')} title="Redo · Ctrl/Cmd+Shift+Z" aria-label="Redo" className="code-studio-icon-button h-7 w-7"><Redo2 size={14} /></button>
+    <div role="toolbar" aria-label="Editor actions" className="code-studio-editor-actions">
       <button
         type="button"
         disabled={!canSave}
         onClick={onSave}
         title="Save · Ctrl/Cmd+S"
         aria-label="Save"
-        className="code-studio-icon-button h-7 w-7"
+        className="code-studio-editor-save"
       >
-        <Save size={14} />
+        <Save size={14} /><span>Save</span>
       </button>
+      <button type="button" aria-label="More editor actions" aria-haspopup="menu" aria-expanded={!!menu} title="More editor actions" className="code-studio-icon-button h-7 w-7"
+        onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu(menu ? null : { x: rect.right - 232, y: rect.bottom + 5 }) }}><Ellipsis size={16} /></button>
+      <span className="code-studio-editor-action-divider" aria-hidden="true" />
       <button
         type="button"
         onClick={toggleEditorMaximized}
@@ -38,6 +42,10 @@ export function CodeStudioEditorTabActions({ document, onSave }: CodeStudioEdito
       >
         {editorMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
       </button>
+      {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={[
+        { id: 'undo', label: 'Undo', icon: Undo2, shortcut: 'Ctrl/Cmd+Z', disabled: !model?.canUndo() },
+        { id: 'redo', label: 'Redo', icon: Redo2, shortcut: 'Ctrl/Cmd+Shift+Z', disabled: !model?.canRedo() },
+      ]} onSelect={(id) => { setMenu(null); runCodeStudioEditorCommand(id === 'undo' ? 'edit.undo' : 'edit.redo') }} onClose={() => setMenu(null)} />}
     </div>
   )
 }

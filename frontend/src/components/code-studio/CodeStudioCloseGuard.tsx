@@ -1,3 +1,4 @@
+import './codeStudioNothingDialogs.css'
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { useEffect, useState } from 'react'
 import { Save, Square } from 'lucide-react'
@@ -76,6 +77,8 @@ export function CodeStudioCloseGuard({ windowId = MAIN_CODE_STUDIO_WINDOW }: Cod
       open
       elevated
       size="sm"
+      divided
+      className="gs-nothing-dialog gs-close-dialog"
       onClose={() => setRequest(null)}
       icon={dirty > 0 ? Save : Square}
       tone="warning"

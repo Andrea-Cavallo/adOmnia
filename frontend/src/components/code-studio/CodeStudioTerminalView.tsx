@@ -1,9 +1,10 @@
+import { terminalAppearance } from '@/lib/code-studio/terminalAppearance'
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
-import { codeStudioTerminalTheme } from './codeStudioTerminalTheme'
+import { codeStudioTerminalTheme, TERMINAL_THEMES } from './codeStudioTerminalTheme'
 import { closeGoIDETerminal, resizeGoIDETerminal, writeGoIDETerminal } from '@/lib/code-studio-api'
 import { attachTerminal, forgetTerminal } from './codeStudioTerminalBus'
 import { TerminalLineTracker, cleanBufferText, findTerminalLinks, type CodeStudioTerminalLink } from './codeStudioTerminalLinks'
@@ -46,6 +47,8 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
   const host = useRef<HTMLDivElement | null>(null)
   const terminal = useRef<Terminal | null>(null)
   const fit = useRef<FitAddon | null>(null)
+  const appearance = useSettingsStore(state => state.settings.appearance.terminal)
+  const options = terminalAppearance(appearance)
   const accentColor = useSettingsStore(state => state.settings.appearance.accentColor)
   const theme = useSettingsStore((state) => (state.settings.appearance.theme === 'light' ? 'light' : 'dark'))
   // I callback cambiano a ogni render del pannello: il terminale legge sempre l'ultima versione.
@@ -56,12 +59,14 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
     if (!host.current) return
     const instance = new Terminal({
       convertEol: false,
-      cursorBlink: true,
-      fontFamily: terminalFontFamily(),
-      fontSize: 13,
-      lineHeight: 1.25,
-      scrollback: 5000,
-      theme: codeStudioTerminalTheme(theme, accentColor),
+      cursorBlink: options.cursorBlink,
+      cursorStyle: options.cursorStyle,
+      letterSpacing: options.letterSpacing,
+      fontFamily: options.fontFamily || terminalFontFamily(),
+      fontSize: options.fontSize,
+      lineHeight: options.lineHeight,
+      scrollback: options.scrollback,
+      theme: codeStudioTerminalTheme(theme, accentColor, options.preset),
       allowProposedApi: true,
     })
     const fitAddon = new FitAddon()
@@ -72,6 +77,8 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
     terminal.current = instance
     fit.current = fitAddon
 
+    let linkHighlight: { dispose: () => void } | undefined
+    const clearLinkHighlight = () => { linkHighlight?.dispose(); linkHighlight = undefined }
     // ponytail: i link si cercano riga per riga; un percorso spezzato dal wrap non è cliccabile.
     const links = instance.registerLinkProvider({
       provideLinks(row, callback) {
@@ -80,6 +87,16 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
           range: { start: { x: link.start + 1, y: row }, end: { x: link.end, y: row } },
           text: text.slice(link.start, link.end),
           decorations: { pointerCursor: true, underline: true },
+          hover: () => {
+            clearLinkHighlight()
+            const marker = instance.registerMarker(row - 1 - instance.buffer.active.baseY - instance.buffer.active.cursorY)
+            if (!marker) return
+            const selected = terminalAppearance(useSettingsStore.getState().settings.appearance.terminal)
+            const color = TERMINAL_THEMES.find((item) => item.id === selected.preset)?.link ?? '#7DD3FC'
+            const decoration = instance.registerDecoration({ marker, x: link.start, width: link.end - link.start, foregroundColor: color, layer: 'top' })
+            linkHighlight = { dispose: () => { decoration?.dispose(); marker.dispose() } }
+          },
+          leave: clearLinkHighlight,
           activate: (event) => {
             // Come negli IDE: il click semplice resta selezione, Ctrl/Cmd+click apre il file.
             if (event.ctrlKey || event.metaKey) callbacks.current.onOpenLink(terminalId, link)
@@ -157,9 +174,10 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
 
     // xterm misura le celle sul canvas all'avvio: se il font mono arriva dopo, si rimisura con il glifo giusto.
     let disposed = false
-    void document.fonts.load(`13px ${terminalFontFamily()}`).then(() => {
+    void document.fonts.load(`${options.fontSize}px ${options.fontFamily || terminalFontFamily()}`).then(() => {
       if (disposed) return
-      instance.options.fontFamily = terminalFontFamily()
+      const latest = terminalAppearance(useSettingsStore.getState().settings.appearance.terminal)
+      instance.options.fontFamily = latest.fontFamily || terminalFontFamily()
       sendResize()
     }).catch(() => undefined)
 
@@ -168,6 +186,7 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
       observer.disconnect()
       unsubscribe?.()
       inputHandler.dispose()
+      clearLinkHighlight()
       links.dispose()
       focusHandler?.removeEventListener('focus', onTextareaFocus)
       if (handles.get(terminalId) === handle) handles.delete(terminalId)
@@ -181,8 +200,29 @@ export function CodeStudioTerminalView({ terminalId, active, onExit, onOpenLink,
   }, [terminalId])
 
   useEffect(() => {
-    if (terminal.current) terminal.current.options.theme = codeStudioTerminalTheme(theme, accentColor)
-  }, [theme, accentColor])
+    const instance = terminal.current
+    if (!instance) return
+    const next = terminalAppearance(appearance)
+    instance.options.theme = codeStudioTerminalTheme(theme, accentColor, next.preset)
+    instance.options.fontSize = next.fontSize
+    instance.options.fontFamily = next.fontFamily || terminalFontFamily()
+    instance.options.lineHeight = next.lineHeight
+    instance.options.letterSpacing = next.letterSpacing
+    instance.options.cursorStyle = next.cursorStyle
+    instance.options.cursorBlink = next.cursorBlink
+    instance.options.scrollback = next.scrollback
+    let disposed = false
+    const refit = () => {
+      if (disposed || !host.current?.clientWidth || !host.current?.clientHeight) return
+      try {
+        fit.current?.fit()
+        void resizeGoIDETerminal(terminalId, instance.cols, instance.rows).catch(() => undefined)
+      } catch { /* hidden or not measurable */ }
+    }
+    refit()
+    void document.fonts.load(`${next.fontSize}px ${next.fontFamily || terminalFontFamily()}`).then(refit).catch(() => undefined)
+    return () => { disposed = true }
+  }, [theme, accentColor, appearance, terminalId])
 
   useEffect(() => {
     if (!active || !terminal.current || !fit.current) return

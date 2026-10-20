@@ -1,3 +1,4 @@
+import './codeStudioNothingDialogs.css'
 import { goModules } from '@/lib/code-studio/goProject'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ArrowUpCircle, History, Loader2, Package, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
@@ -123,7 +124,7 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
 
   const running = lastDependencyRun?.status === 'running'
   const summary = state && (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="gs-nothing-summary flex flex-wrap items-center gap-2">
       <span className="gs-badge gs-mono">{state.modulePath}</span>
       <span className={`gs-badge ${state.goSumPresent ? 'text-success' : ''}`}>go.sum {state.goSumPresent ? 'present' : 'missing'}</span>
       <span className="gs-badge">{state.dependencies.length} requirement{state.dependencies.length === 1 ? '' : 's'}</span>
@@ -134,11 +135,12 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
     <CodeStudioModal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="xl"
+      className="gs-nothing-dialog gs-dependencies-dialog"
       tall
       divided
       icon={Package}
-      title={showMaven ? 'Maven dependencies' : 'Go dependencies'}
+      title="Module dependencies"
       subtitle={showMaven ? 'Dependencies of pom.xml and Gradle files, with vulnerabilities and updates. Changes are editor edits you review.' : 'Manage requirements and go.mod directives. Every change is confirmed first.'}
       footerStart={showMaven ? 'Updates edit the build file in the editor.' : running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
       footer={<CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>}
@@ -153,7 +155,7 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
       {showMaven ? <CodeStudioMavenDependencies session={session} units={mavenUnits} onClose={onClose} /> : goModules(session.project).length === 0 ? (
         <div className="gs-surface gs-list-empty">This project has no Go module. Open or create a folder with a go.mod to manage dependencies.</div>
       ) : <>
-        <div className="flex items-end gap-2">
+        <div className="gs-dependencies-toolbar flex flex-wrap items-end gap-2">
           <CodeStudioField label="Module" className="flex-1">
             <select value={moduleDirectory} onChange={(event) => { setModuleDirectory(event.target.value); void load(event.target.value) }} className="gs-input gs-mono">
               {goModules(session.project).map((module) => <option key={module.path} value={module.path}>{module.modulePath || module.path}</option>)}
@@ -192,7 +194,7 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
             </div>
           ))}
         </div>
-        <div className="flex items-end gap-2">
+        <div className="gs-dependencies-toolbar flex flex-wrap items-end gap-2">
           <CodeStudioField label="Add module" className="flex-1">
             <input value={modulePath} onChange={(event) => setModulePath(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && modulePath && !running) void execute('add', modulePath, version) }} placeholder="github.com/example/pkg" className="gs-input gs-mono" />
           </CodeStudioField>

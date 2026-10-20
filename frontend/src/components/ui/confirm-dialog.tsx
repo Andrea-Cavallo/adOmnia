@@ -109,13 +109,13 @@ export function ConfirmDialog({
         </div>
 
         {details.length > 0 && (
-          <dl className="mx-5 mb-4 space-y-2 rounded-xl border border-border-1 bg-surface-0/70 p-3">
+          <dl className="mx-5 mb-4 max-h-60 space-y-2 overflow-y-auto rounded-xl border border-border-1 bg-surface-0/70 p-3">
             {details.map((detail) => (
               <div key={detail.label} className="min-w-0">
                 <dt className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-4">{detail.label}</dt>
                 <dd
                   className={cn(
-                    'mt-0.5 break-all text-[11.5px] leading-snug',
+                    'mt-0.5 select-text whitespace-pre-wrap break-words text-[11.5px] leading-snug',
                     detail.mono ? 'font-mono text-text-1' : 'text-text-2',
                   )}
                   title={detail.value}
@@ -128,14 +128,16 @@ export function ConfirmDialog({
         )}
 
         <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0/60 px-5 py-3">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={onCancel}
-            className="h-8 rounded-lg px-3.5 text-xs font-medium text-text-2 transition-colors hover:bg-surface-3 hover:text-text-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-          >
-            {resolvedCancelLabel}
-          </button>
+          {resolvedCancelLabel && (
+            <button
+              ref={cancelRef}
+              type="button"
+              onClick={onCancel}
+              className="h-8 rounded-lg px-3.5 text-xs font-medium text-text-2 transition-colors hover:bg-surface-3 hover:text-text-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+            >
+              {resolvedCancelLabel}
+            </button>
+          )}
           <button
             ref={confirmRef}
             type="button"

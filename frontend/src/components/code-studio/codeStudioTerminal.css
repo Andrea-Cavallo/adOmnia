@@ -1,0 +1,50 @@
+.code-studio-terminal { background: var(--terminal-bg); color: var(--terminal-fg); }
+.terminal-toolbar { display: flex; flex-shrink: 0; align-items: center; gap: 4px; min-height: 38px; padding: 4px 10px; border-bottom: 1px solid var(--color-border-1); background: var(--color-surface-0); }
+.terminal-toolbar > svg:first-child { padding: 2px; width: 23px; height: 23px; border: 1px dotted var(--color-border-2); border-radius: 4px; }
+.terminal-toolbar > button { flex-shrink: 0; border-radius: 3px; }
+.terminal-theme-indicator { margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--color-border-1); font: 10px var(--font-mono); color: var(--color-text-3); white-space: nowrap; }
+.terminal-views, .terminal-pane, .terminal-pane .xterm-viewport { background: var(--terminal-bg); }
+.terminal-pane { padding: 12px 14px !important; }
+.terminal-pane .xterm { height: 100%; }
+.terminal-pane .xterm a { color: var(--terminal-link); }
+.terminal-sessions { width: 160px; background: var(--color-surface-0); }
+.terminal-session { min-height: 32px; font: 11px var(--font-mono); border-bottom: 1px solid var(--color-border-1); }
+.terminal-status { display: flex; flex-shrink: 0; align-items: center; gap: 8px; min-height: 24px; padding: 4px 12px; border-top: 1px solid var(--color-border-1); background: var(--color-surface-0); color: var(--color-text-3); font: 10px var(--font-mono); }
+.terminal-status-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.terminal-status-path { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-terminal-appearance .gs-modal-title { font-family: Doto, var(--font-mono); font-size: 22px; font-weight: 800; }
+.gs-terminal-appearance { --gs-modal-radius: 5px; }
+.terminal-theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.terminal-theme-card { display: flex; min-width: 0; flex-direction: column; gap: 9px; padding: 12px; border: 1px solid var(--color-border-2); border-radius: 4px; text-align: left; }
+.terminal-theme-card[aria-pressed=true] { outline: 2px solid var(--color-text-1); outline-offset: 2px; }
+.terminal-theme-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.terminal-theme-sample { font: 11px/1.65 var(--font-mono); }
+.terminal-theme-name { display: flex; justify-content: space-between; gap: 6px; font: 10px var(--font-mono); }
+.terminal-theme-swatches { display: flex; gap: 4px; }
+.terminal-theme-swatches i { width: 12px; height: 3px; border-radius: 1px; }
+.terminal-appearance-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 12px; border-top: 1px solid var(--color-border-1); }
+.terminal-cursor-toggle { display: flex; align-items: center; gap: 8px; color: var(--color-text-2); font-size: 12px; }
+@media(max-width: 760px) { .terminal-theme-indicator { display: none; } .terminal-sessions { width: 120px; } .terminal-theme-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media(max-width: 480px) { .terminal-appearance-fields { grid-template-columns: 1fr; } .terminal-status > span:last-child { display: none; } }
+
+/* Session tabs live above the canvas instead of consuming terminal columns. */
+.terminal-workspace { flex-direction: column-reverse; }
+.terminal-workspace > .terminal-sessions { flex-direction: row; width: 100%; height: 34px; gap: 0; padding: 0; overflow-x: auto; overflow-y: hidden; border-left: 0; border-bottom: 1px solid var(--color-border-1); }
+.terminal-sessions > .terminal-session { min-width: 140px; max-width: 220px; height: 33px; border-bottom: 0; border-right: 1px solid var(--color-border-1); }
+.terminal-sessions > .terminal-session > button:last-child { opacity: .6; }
+.terminal-sessions > .terminal-session:hover > button:last-child { opacity: 1; }
+
+/* Keep terminal chrome readable even when its palette differs from the IDE theme. */
+.code-studio-terminal {
+  --color-surface-0: var(--terminal-bg);
+  --color-surface-1: color-mix(in srgb, var(--terminal-bg) 96%, var(--terminal-fg));
+  --color-surface-2: color-mix(in srgb, var(--terminal-bg) 92%, var(--terminal-fg));
+  --color-surface-3: color-mix(in srgb, var(--terminal-bg) 86%, var(--terminal-fg));
+  --color-text-1: var(--terminal-fg);
+  --color-text-2: color-mix(in srgb, var(--terminal-fg) 90%, var(--terminal-bg));
+  --color-text-3: color-mix(in srgb, var(--terminal-fg) 72%, var(--terminal-bg));
+  --color-text-4: color-mix(in srgb, var(--terminal-fg) 62%, var(--terminal-bg));
+  --color-border-1: color-mix(in srgb, var(--terminal-fg) 12%, var(--terminal-bg));
+  --color-border-2: color-mix(in srgb, var(--terminal-fg) 22%, var(--terminal-bg));
+  --color-accent: var(--terminal-link);
+}

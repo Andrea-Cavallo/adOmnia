@@ -37,7 +37,7 @@ beforeEach(() => {
     agent.getState().setEnabled.mockImplementation(async enabled => { agent.getState().settings.enabled = enabled; return true })
   }
   mocks.agents[3].getState().settings.enabled = false
-  useCodeStudioLowResources.setState({ busy: false, restore: null, error: null })
+  useCodeStudioLowResources.setState({ busy: false, restore: null, error: null, paused: ['ai', 'analyses'] })
 })
 
 describe('reversible low resources', () => {
@@ -55,6 +55,17 @@ describe('reversible low resources', () => {
     expect(mocks.agents[0].getState().settings.enabled).toBe(true)
     expect(mocks.agents[3].getState().settings.enabled).toBe(false)
     expect(useCodeStudioLowResources.getState().restore).toBeNull()
+  })
+  it('pauses only the chosen services and lifts the editor gates on restore', async () => {
+    const { isServiceSuspended } = await import('@/lib/code-studio/pausedServices')
+    useCodeStudioLowResources.setState({ paused: ['completion'] })
+    await useCodeStudioLowResources.getState().activate()
+    expect(isServiceSuspended('completion')).toBe(true)
+    expect(isServiceSuspended('navigation')).toBe(false)
+    expect(mocks.agents[0].getState().settings.enabled).toBe(true)
+    expect(mocks.lsp.settings.staticcheck).toBe(true)
+    await useCodeStudioLowResources.getState().deactivate()
+    expect(isServiceSuspended('completion')).toBe(false)
   })
   it('retains the restore snapshot after a failure and retries even after returning to normal mode', async () => {
     await useCodeStudioLowResources.getState().activate()

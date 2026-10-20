@@ -17,6 +17,7 @@ import { DEFAULT_RUN_DRAFT, runRequest } from './codeStudioRunDraft'
 import { ToolchainDialog } from './CodeStudioToolchains'
 import { CodeStudioDependencies } from './CodeStudioDependencies'
 import { CodeStudioDependencyGraph } from './CodeStudioDependencyGraph'
+import { CodeStudioInstaller } from './CodeStudioInstaller'
 import { CodeStudioADRLinks } from './CodeStudioADRLinks'
 import { CodeStudioRuntimeEnrichment } from './CodeStudioRuntimeEnrichment'
 import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
@@ -240,6 +241,7 @@ export function CodeStudioPanel() {
   const [dependenciesOpen, setDependenciesOpen] = useState(false)
   const [extensionsOpen, setExtensionsOpen] = useState(false)
   const [dependencyGraphOpen, setDependencyGraphOpen] = useState(false)
+  const [installerOpen, setInstallerOpen] = useState(false)
   const [adrLinksOpen, setADRLinksOpen] = useState(false)
   const [runtimeEnrichmentOpen, setRuntimeEnrichmentOpen] = useState(false)
   const [runDraft] = useState(DEFAULT_RUN_DRAFT)
@@ -990,6 +992,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       case 'tools.reviewAgentChanges': return activeSession ? useAgentReviewStore.getState().open(activeSession.project.realPath) : undefined
       case 'tools.copilotCompletions': return void useCopilotStore.getState().toggleCompletions()
       case 'tools.dependencyGraph': return setDependencyGraphOpen(true)
+      case 'tools.installer': return setInstallerOpen(true)
       case 'tools.adrLinks': return setADRLinksOpen(true)
       case 'tools.runtimeEnrichment': return setRuntimeEnrichmentOpen(true)
     }
@@ -1078,6 +1081,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioDependencies open={dependenciesOpen} session={activeSession} onClose={() => setDependenciesOpen(false)} />
       <CodeStudioExtensionsDialog open={extensionsOpen} sessionId={activeSession.id} onClose={() => setExtensionsOpen(false)} />
       <CodeStudioDependencyGraph open={dependencyGraphOpen} session={activeSession} onClose={() => setDependencyGraphOpen(false)} />
+      <CodeStudioInstaller open={installerOpen} sessionId={activeSession.id} trusted={activeSessionTrusted} onClose={() => setInstallerOpen(false)} />
       <CodeStudioADRLinks open={adrLinksOpen} sessionId={activeSession.id} onClose={() => setADRLinksOpen(false)} />
       <CodeStudioRuntimeEnrichment open={runtimeEnrichmentOpen} session={activeSession} onClose={() => setRuntimeEnrichmentOpen(false)} />
       <CodeStudioSearchEverywhere open={searchEverywhereOpen} sessionId={activeSession.id} availability={(id) => commandAvailability(id, commandContext)} onCommand={runCommand} onClose={() => setSearchEverywhereOpen(false)} />

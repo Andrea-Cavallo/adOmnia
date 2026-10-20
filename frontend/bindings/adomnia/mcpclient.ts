@@ -54,6 +54,10 @@ export function ListPromptsSession(sessionID: string): $CancellablePromise<strin
     return $Call.ByID(2486993412, sessionID);
 }
 
+export function ListResourceTemplatesSession(sessionID: string): $CancellablePromise<string> {
+    return $Call.ByID(716447812, sessionID);
+}
+
 export function ListResources(): $CancellablePromise<string> {
     return $Call.ByID(2402412914);
 }
@@ -72,6 +76,14 @@ export function ListTools(): $CancellablePromise<string> {
 
 export function ListToolsSession(sessionID: string): $CancellablePromise<string> {
     return $Call.ByID(1024255160, sessionID);
+}
+
+export function PingSession(sessionID: string): $CancellablePromise<void> {
+    return $Call.ByID(1149904063, sessionID);
+}
+
+export function ReadResourceSession(sessionID: string, uri: string): $CancellablePromise<string> {
+    return $Call.ByID(4145504715, sessionID, uri);
 }
 
 export function RestartSession(sessionID: string): $CancellablePromise<string> {

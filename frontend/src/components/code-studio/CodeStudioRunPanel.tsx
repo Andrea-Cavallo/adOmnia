@@ -1,3 +1,4 @@
+import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { Copy, Minus, RefreshCw, Search, Square } from 'lucide-react'
@@ -13,7 +14,7 @@ import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
 import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
 import { resolveConsolePath } from './codeStudioConsolePaths'
-import { parseConsoleLocation } from '@/lib/code-studio/consoleLocation'
+import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
@@ -47,30 +48,9 @@ interface CodeStudioRunPanelProps {
   onCommand?: (id: CodeStudioCommandId) => void
 }
 
-interface ParsedLine {
-  text: string
-  raw: string
-  path?: string
-  line?: number
-  column?: number
-  stream: GoIDEConsoleChunk['stream']
-  sequence: number
-}
+type ParsedLine = ConsoleParsedLine
 
-const ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]/g
-
-function parseLines(chunks: GoIDEConsoleChunk[]): ParsedLine[] {
-  const lines: ParsedLine[] = []
-  for (const chunk of chunks) {
-    for (const raw of chunk.text.split(/\r?\n/)) {
-      if (!raw && chunk.text.endsWith('\n')) continue
-      const text = raw.replace(ansiPattern, '')
-      const location = parseConsoleLocation(text)
-      lines.push({ text, raw, stream: chunk.stream, sequence: chunk.sequence, path: location?.path, line: location?.line, column: location?.column ?? 1 })
-    }
-  }
-  return lines
-}
+const EMPTY_CHUNKS: GoIDEConsoleChunk[] = []
 
 function renderAnsi(raw: string) {
   const segments: Array<{ text: string; className: string }> = []
@@ -210,12 +190,14 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const allExecutions = useCodeStudioStore((state) => state.executions)
   const executions = useMemo(() => allExecutions.filter((execution) => execution.sessionId === sessionId), [allExecutions, sessionId])
   const activeRunId = useCodeStudioStore((state) => state.activeRunBySession[sessionId] ?? null)
-  const consoleByRun = useCodeStudioStore((state) => state.consoleByRun)
   const stopRun = useCodeStudioStore((state) => state.stopRun)
   const restartRun = useCodeStudioStore((state) => state.restartRun)
   const sendRunInput = useCodeStudioStore((state) => state.sendRunInput)
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   const active = executions.find((execution) => execution.id === activeRunId) ?? executions[executions.length - 1] ?? null
+  // Solo i chunk dell'esecuzione attiva: l'output di un'altra run (o di un altro progetto) non deve
+  // ridisegnare questa console.
+  const chunks = useCodeStudioStore((state) => (active ? state.consoleByRun[active.id] : undefined) ?? EMPTY_CHUNKS)
   // Una nuova esecuzione porta in primo piano la finestra Run; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
@@ -224,8 +206,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
     const started = executions.find((execution) => execution.id === activeRunId)
     if (started?.status === 'running' && started.kind !== 'tests' && started.kind !== 'devserver') showToolWindow('run')
   }, [activeRunId, executions, showToolWindow, standalone, fixedView])
-  const chunks = active ? consoleByRun[active.id] ?? [] : []
-  const lines = useMemo(() => parseLines(chunks), [chunks])
+  const lines = useMemo(() => parseConsoleLines(chunks), [chunks])
   const buildSteps = useMemo(() => active?.kind === 'docker-build' ? buildKitProgress(chunks.map(chunk=>chunk.text).join('')) : [], [active?.kind, chunks])
   const buildProblems = useMemo<CodeStudioBuildProblem[]>(() => lines
     .filter((line) => line.path && line.line)
@@ -237,7 +218,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   // "Service logs" vive dentro Run: la barra in alto sceglie il servizio e può nascondere le righe di sistema.
   const [serviceLogs, setServiceLogs] = useToolView(sessionId, tool, 'serviceLogs', false)
   const onlyLogs = logsOnly || serviceLogs
-  const matchingLines = lines.filter((line) => (!onlyLogs || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase())))
+  const matchingLines = useMemo(() => lines.filter((line) => (!onlyLogs || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase()))), [lines, onlyLogs, search])
   // Output intenso: si disegna solo la coda, con "mostra precedenti" a richiesta; Copy e la
   // ricerca lavorano comunque su tutto il buffer (4 MB). Con la ricerca attiva la finestra
   // si apre al cap per non nascondere i match vecchi.
@@ -262,14 +243,9 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
         {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
         {view === 'debug' && debugState !== 'none' && <span className={`flex items-center gap-1.5 text-[11px] ${debugState === 'stopped' ? 'text-warning' : 'text-success'}`}><span className={`h-1.5 w-1.5 rounded-full ${debugState === 'stopped' ? 'bg-warning' : 'bg-success'}`} />{debugState === 'stopped' ? 'Paused' : 'Debugging'}</span>}
         {view === 'run' && active && <>
-          <select
-            aria-label="Active run"
-            value={active.id}
-            onChange={(event) => void selectToolRun(sessionId, tool, event.target.value)}
-            className="h-7 max-w-60 rounded-lg border-0 bg-[var(--gs-raised)] px-2.5 font-mono text-[11.5px] text-text-1 outline-none focus:ring-1 focus:ring-accent"
-          >
-            {executions.map((execution) => <option key={execution.id} value={execution.id}>{execution.kind} · {execution.id.slice(-6)} · {execution.status}</option>)}
-          </select>
+          <CodeStudioToolbarSelect label="Active run" value={active.id} className="max-w-60"
+            options={executions.map((execution) => ({ value: execution.id, label: `${execution.kind} · ${execution.id.slice(-6)} · ${execution.status}` }))}
+            onChange={(id) => void selectToolRun(sessionId, tool, id)} />
           <span className={`ml-2 flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] ${statusClass(active.status)}`} title={`${active.command}\n${active.workingDirectory}`}>
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[active.status] ?? 'bg-text-4'}`} aria-hidden="true" />
             <span className="truncate">{executionDetails(active)}</span>

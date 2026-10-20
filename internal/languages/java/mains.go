@@ -34,6 +34,7 @@ var (
 
 // findMainClasses cerca i `public static void main` nei sorgenti principali (src/main/java) di ogni modulo
 // dell'unità. Legge solo file .java piccoli e si ferma ai limiti: è un suggerimento, non un indice.
+// fallback: JDT decide quando è ready (JS-6) — questa regex serve solo senza server, vedi ScanMainClasses.
 func findMainClasses(unitRoot string) []mainClass {
 	var found []mainClass
 	scanned := 0
@@ -71,6 +72,8 @@ func inMainSources(path string) bool {
 	return strings.Contains(filepath.ToSlash(path), "/src/main/java/")
 }
 
+// readMainClass legge package e main da un solo sorgente con le regex locali.
+// fallback: JDT decide quando è ready (JS-6) — nessuna pretesa di semantica oltre il testo del file.
 func readMainClass(path, unitRoot string) (mainClass, bool) {
 	info, err := os.Stat(path)
 	if err != nil || info.Size() > maxMainSourceKB<<10 {

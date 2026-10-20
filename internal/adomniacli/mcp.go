@@ -2,32 +2,47 @@ package adomniacli
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"strings"
 
 	"adomnia/internal/collectionfs"
-	"adomnia/internal/collectionresolve"
 	"adomnia/internal/mock"
 )
 
-const mcpProtocolVersion = "2024-11-05"
+// Revisions of the protocol this server understands, newest first. The client's requested
+// version is echoed when known, otherwise the newest is offered and the client decides.
+var mcpProtocolVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
+
+const mcpServerInstructions = "adOmnia exposes the API collections of this machine: list and read requests, run them with their tests against real endpoints, and drive a local mock server to see what the code under development sends. Secrets in requests and environments are masked."
+
+// JSON-RPC error codes.
+const (
+	rpcParseError     = -32700
+	rpcInvalidRequest = -32600
+	rpcMethodNotFound = -32601
+	rpcInvalidParams  = -32602
+)
 
 type mcpRPC struct {
-	ID     json.RawMessage `json:"id"`
-	Method string          `json:"method"`
-	Params json.RawMessage `json:"params"`
+	JSONRPC string          `json:"jsonrpc"`
+	ID      json.RawMessage `json:"id"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"`
 }
 
-type mcpTool struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	InputSchema map[string]any `json:"inputSchema"`
+type mcpError struct {
+	Code    int
+	Message string
+}
+
+func (e *mcpError) Error() string { return e.Message }
+
+func invalidParams(format string, args ...any) *mcpError {
+	return &mcpError{rpcInvalidParams, fmt.Sprintf(format, args...)}
 }
 
 // MCP serves adOmnia's collections and mock server to an AI agent over stdio
@@ -41,23 +56,16 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	server := &mcpServer{defaultFolder: defaultFolder, mux: http.NewServeMux()}
 	mock.RegisterHandlers(server.mux)
 	scanner := bufio.NewScanner(stdin)
-	scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	encoder := json.NewEncoder(stdout)
 	for scanner.Scan() {
-		var request mcpRPC
-		if err := json.Unmarshal(scanner.Bytes(), &request); err != nil {
-			fmt.Fprintf(stderr, "adomnia mcp: bad message: %v\n", err)
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
-		if len(request.ID) == 0 { // notification
+		reply, ok := server.respond([]byte(line), stderr)
+		if !ok {
 			continue
-		}
-		result, rpcErr := server.handle(request)
-		reply := map[string]any{"jsonrpc": "2.0", "id": request.ID}
-		if rpcErr != "" {
-			reply["error"] = map[string]any{"code": -32601, "message": rpcErr}
-		} else {
-			reply["result"] = result
 		}
 		if err := encoder.Encode(reply); err != nil {
 			return 1
@@ -66,128 +74,102 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// respond handles one message; ok is false for notifications, which get no reply.
+func (s *mcpServer) respond(line []byte, stderr io.Writer) (map[string]any, bool) {
+	var request mcpRPC
+	if err := json.Unmarshal(line, &request); err != nil {
+		fmt.Fprintf(stderr, "adomnia mcp: bad message: %v\n", err)
+		return mcpErrorReply(json.RawMessage("null"), rpcParseError, "parse error"), true
+	}
+	if len(request.ID) == 0 { // notification (initialized, cancelled…)
+		return nil, false
+	}
+	if request.Method == "" {
+		return mcpErrorReply(request.ID, rpcInvalidRequest, "invalid request: method is required"), true
+	}
+	result, err := s.handle(request)
+	if err != nil {
+		return mcpErrorReply(request.ID, err.Code, err.Message), true
+	}
+	return map[string]any{"jsonrpc": "2.0", "id": request.ID, "result": result}, true
+}
+
+func mcpErrorReply(id json.RawMessage, code int, message string) map[string]any {
+	return map[string]any{"jsonrpc": "2.0", "id": id, "error": map[string]any{"code": code, "message": message}}
+}
+
 type mcpServer struct {
 	defaultFolder string
 	mux           *http.ServeMux
 }
 
-func (s *mcpServer) handle(request mcpRPC) (any, string) {
+func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {
 	switch request.Method {
 	case "initialize":
-		return map[string]any{
-			"protocolVersion": mcpProtocolVersion,
-			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "adomnia", "version": "1"},
-		}, ""
-	case "ping":
-		return map[string]any{}, ""
+		return s.initialize(request.Params), nil
+	case "ping", "logging/setLevel":
+		return map[string]any{}, nil
 	case "tools/list":
-		return map[string]any{"tools": mcpTools()}, ""
+		return map[string]any{"tools": mcpTools()}, nil
 	case "tools/call":
-		var call struct {
-			Name      string          `json:"name"`
-			Arguments json.RawMessage `json:"arguments"`
-		}
-		if err := json.Unmarshal(request.Params, &call); err != nil {
-			return nil, "invalid params"
-		}
-		text, err := s.callTool(call.Name, call.Arguments)
-		if err != nil {
-			text = err.Error()
-		}
-		return map[string]any{"content": []map[string]string{{"type": "text", "text": text}}, "isError": err != nil}, ""
+		return s.toolsCall(request.Params)
+	case "resources/list":
+		return s.resourcesList(request.Params)
+	case "resources/templates/list":
+		return map[string]any{"resourceTemplates": mcpResourceTemplates()}, nil
+	case "resources/read":
+		return s.resourcesRead(request.Params)
+	case "prompts/list":
+		return map[string]any{"prompts": mcpPrompts()}, nil
+	case "prompts/get":
+		return s.promptsGet(request.Params)
 	}
-	return nil, "method not found: " + request.Method
+	return nil, &mcpError{rpcMethodNotFound, "method not found: " + request.Method}
 }
 
-func mcpTools() []mcpTool {
-	object := func(props map[string]any) map[string]any {
-		return map[string]any{"type": "object", "properties": props}
+func (s *mcpServer) initialize(raw json.RawMessage) map[string]any {
+	var params struct {
+		ProtocolVersion string `json:"protocolVersion"`
 	}
-	str := func(description string) map[string]any {
-		return map[string]any{"type": "string", "description": description}
+	_ = json.Unmarshal(raw, &params)
+	version := mcpProtocolVersions[0]
+	for _, supported := range mcpProtocolVersions {
+		if supported == params.ProtocolVersion {
+			version = supported
+		}
 	}
-	collection := str("Collection folder (contains collection.json). Defaults to the server's folder or the working directory.")
-	return []mcpTool{
-		{"collection_list_requests", "List the requests of an adOmnia collection (id, name, method, url, folder).", object(map[string]any{"collection": collection})},
-		{"collection_run", "Run a collection's requests (with their tests) against real endpoints and return pass/fail per request.", object(map[string]any{
-			"collection": collection,
-			"folder":     str("Only run requests under this folder name or slash path."),
-			"env":        str("Environment name loaded from environments/<name>.json."),
-			"vars":       map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}, "description": "Variable overrides."},
-		})},
-		{"mock_start", "Start the local mock server. config: {port, endpoints:[...]} in adOmnia's mock format.", object(map[string]any{"config": map[string]any{"type": "object", "description": "Mock server configuration."}})},
-		{"mock_status", "Report whether the mock server is running and on which port.", object(map[string]any{})},
-		{"mock_hits", "Return the requests the mock server received (use it to verify what the code under development sent).", object(map[string]any{})},
-		{"mock_clear_hits", "Forget the recorded mock hits.", object(map[string]any{})},
-		{"mock_stop", "Stop the mock server.", object(map[string]any{})},
+	return map[string]any{
+		"protocolVersion": version,
+		"capabilities": map[string]any{
+			"tools":     map[string]any{"listChanged": false},
+			"resources": map[string]any{"subscribe": false, "listChanged": false},
+			"prompts":   map[string]any{"listChanged": false},
+			"logging":   map[string]any{},
+		},
+		"serverInfo":   map[string]any{"name": "adomnia", "title": "adOmnia", "version": "1"},
+		"instructions": mcpServerInstructions,
 	}
 }
 
-func (s *mcpServer) callTool(name string, raw json.RawMessage) (string, error) {
-	var args struct {
-		Collection string            `json:"collection"`
-		Folder     string            `json:"folder"`
-		Env        string            `json:"env"`
-		Vars       map[string]string `json:"vars"`
-		Config     json.RawMessage   `json:"config"`
+func (s *mcpServer) toolsCall(raw json.RawMessage) (any, *mcpError) {
+	var call struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
 	}
-	if len(raw) > 0 {
-		if err := json.Unmarshal(raw, &args); err != nil {
-			return "", fmt.Errorf("invalid arguments: %w", err)
-		}
+	if err := json.Unmarshal(raw, &call); err != nil || call.Name == "" {
+		return nil, invalidParams("tools/call needs a tool name")
 	}
-	switch name {
-	case "collection_list_requests":
-		collection, _, err := s.loadCollection(args.Collection)
-		if err != nil {
-			return "", err
-		}
-		resolved, err := collectionresolve.ResolveRequests(collection)
-		if err != nil {
-			return "", err
-		}
-		type row struct {
-			ID, Name, Method, URL, Folder string
-		}
-		rows := make([]row, 0, len(resolved))
-		for _, req := range resolved {
-			var folders []string
-			for index, part := range req.FolderPath {
-				if index%2 == 0 {
-					folders = append(folders, part)
-				}
-			}
-			rows = append(rows, row{req.Request.ID, req.Request.Name, strings.ToUpper(req.Request.Method), req.Request.URL, strings.Join(folders, "/")})
-		}
-		return jsonText(rows)
-	case "collection_run":
-		collection, folder, err := s.loadCollection(args.Collection)
-		if err != nil {
-			return "", err
-		}
-		vars, sources, err := loadRunVars(folder, args.Env, args.Vars)
-		if err != nil {
-			return "", err
-		}
-		return jsonText(executeCollection(collection, false, vars, sources, args.Folder))
-	case "mock_start":
-		if len(args.Config) == 0 {
-			return "", fmt.Errorf("config is required")
-		}
-		return s.mock(http.MethodPost, "/mock/start", args.Config)
-	case "mock_status":
-		return s.mock(http.MethodGet, "/mock/status", nil)
-	case "mock_hits":
-		return s.mock(http.MethodGet, "/mock/hits", nil)
-	case "mock_clear_hits":
-		return s.mock(http.MethodPost, "/mock/hits/clear", nil)
-	case "mock_stop":
-		return s.mock(http.MethodPost, "/mock/stop", nil)
+	if !mcpKnownTool(call.Name) {
+		return nil, invalidParams("unknown tool %q", call.Name)
 	}
-	return "", fmt.Errorf("unknown tool %q", name)
+	text, err := s.callTool(call.Name, call.Arguments)
+	if err != nil {
+		text = err.Error()
+	}
+	return map[string]any{"content": []map[string]string{{"type": "text", "text": text}}, "isError": err != nil}, nil
 }
 
+// loadCollection reads the collection folder: the requested one, else the server default, else ".".
 func (s *mcpServer) loadCollection(requested string) (collectionfs.Collection, string, error) {
 	folder := strings.TrimSpace(requested)
 	if folder == "" {
@@ -205,17 +187,6 @@ func (s *mcpServer) loadCollection(requested string) (collectionfs.Collection, s
 		return collectionfs.Collection{}, "", fmt.Errorf("no adOmnia collection in %s (export one with Export to folder): %w", folder, err)
 	}
 	return collection, folder, nil
-}
-
-// mock calls the in-process mock handlers, so no port or token is involved.
-func (s *mcpServer) mock(method, path string, body []byte) (string, error) {
-	request := httptest.NewRequest(method, path, bytes.NewReader(body))
-	recorder := httptest.NewRecorder()
-	s.mux.ServeHTTP(recorder, request)
-	if recorder.Code >= 400 {
-		return "", fmt.Errorf("%s: %s", path, strings.TrimSpace(recorder.Body.String()))
-	}
-	return recorder.Body.String(), nil
 }
 
 func jsonText(value any) (string, error) {

@@ -126,12 +126,15 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 		},
 		// Il Java Debug Server entra in JDT LS come bundle: così "vscode.java.startDebugSession" esiste.
 		// classFileContentsSupport: senza, JDT LS non risponde con le classi di libreria (Ctrl+click su Map, String…);
-		// l'host le legge con java/classFileContents (VirtualDocuments).
+		// l'host le legge con java/classFileContents (VirtualDocuments). `settings` come fa vscode-java:
+		// i JDK installati (e il JDK del progetto) devono esserci già al primo import, non alla prima
+		// workspace/configuration — altrimenti i moduli `release 25` dicono "release 25 is not found".
 		InitializationOptions: map[string]any{
 			"bundles":                    []string{debugBundle(home)},
 			"extendedClientCapabilities": map[string]any{"classFileContentsSupport": true},
+			"settings":                   JDTSettingsFor(root),
 		},
-		Configuration:    func() any { return jdtSettings(DiscoverJDKs(), mavenUserSettings()) },
+		Configuration:    func() any { return JDTSettingsFor(root) },
 		WatchesFile:      watchesFile,
 		VirtualDocuments: &lsp.VirtualDocuments{Method: "java/classFileContents", RelativePath: classFilePath},
 	}, nil

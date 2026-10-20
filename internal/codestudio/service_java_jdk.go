@@ -1,21 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
-
 	"adomnia/internal/languages/java"
 )
-
-// javaSettingsFile tiene il JDK scelto per il progetto: Run, Debug e Test lo usano allo stesso modo.
-// Sta in .adomnia/ come le run configuration, ma non è condiviso via Git: il percorso è di questa macchina.
-const javaSettingsFile = ".adomnia/java.local.json"
-
-type javaSettings struct {
-	JavaHome string `json:"javaHome,omitempty"`
-}
 
 // JavaJDKReport è ciò che serve a scegliere il JDK: quelli installati, quello che si userebbe senza scelta,
 // la scelta corrente e la versione che il progetto dichiara.
@@ -29,24 +16,13 @@ type JavaJDKReport struct {
 	Suggested string `json:"suggested"`
 }
 
-func readJavaSettings(root string) javaSettings {
-	var settings javaSettings
-	if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(javaSettingsFile))); err == nil {
-		_ = json.Unmarshal(data, &settings)
-	}
-	return settings
-}
-
 // projectJavaHome è il JDK scelto per il progetto, "" se non c'è una scelta valida.
 func (s *Service) projectJavaHome(sessionID SessionID) string {
 	root, err := s.SessionRoot(string(sessionID))
 	if err != nil {
 		return ""
 	}
-	if home := readJavaSettings(root).JavaHome; java.ValidJavaHome(home) {
-		return home
-	}
-	return ""
+	return java.ProjectJavaHome(root)
 }
 
 // JavaJDKs elenca i JDK installati e la scelta del progetto.
@@ -75,22 +51,5 @@ func (s *Service) SetJavaJDK(sessionID, home string) error {
 	if err != nil {
 		return err
 	}
-	if home != "" && !java.ValidJavaHome(home) {
-		return fmt.Errorf("%q is not a JDK folder: it must contain bin/java", home)
-	}
-	path := filepath.Join(root, filepath.FromSlash(javaSettingsFile))
-	if home == "" {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
-	}
-	data, err := json.MarshalIndent(javaSettings{JavaHome: home}, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(data, '\n'), 0o644)
+	return java.SetProjectJavaHome(root, home)
 }

@@ -730,14 +730,19 @@ func (s *Service) StartDependencyAction(request DependencyActionRequest) (Execut
 }
 
 func (s *Service) executionEnvironment(id SessionID, languageID string, overrides map[string]string) ([]string, error) {
+	var environment []string
+	var err error
 	if languageID == golang.ID || languageID == "" {
-		return s.toolchain.Environment(id, overrides)
+		environment, err = s.toolchain.Environment(id, overrides)
+	} else {
+		environment, err = run.Environment(overrides)
 	}
-	environment, err := run.Environment(overrides)
-	if err != nil || languageID != java.ID {
-		return environment, err
+	if err != nil {
+		return nil, err
 	}
-	// Run, Debug e Test dello stesso progetto usano lo stesso JDK.
+	// Il JDK scelto per il progetto vale per **ogni** sua esecuzione: Run, Debug, Test e anche i
+	// comandi liberi (il `./mvnw test` di una run configuration *Command*). Con il solo JDK di
+	// sistema un progetto Java 25 muore con "release version 25 not supported".
 	return append(environment, java.JavaEnvironment(s.projectJavaHome(id))...), nil
 }
 

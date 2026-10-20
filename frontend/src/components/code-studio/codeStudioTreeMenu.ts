@@ -13,6 +13,7 @@ export interface TreeMenuContext {
   /** Il progetto ha almeno un go.mod: l'import path ha senso. */
   hasGoModule: boolean
   /** Il progetto ha un'unità Java: compaiono New Java Class/Package. */
+  hasMavenPom?: boolean
   hasJava?: boolean
   /** Percorsi modificati rispetto a HEAD, relativi alla radice del progetto. */
   changedPaths: string[]
@@ -230,7 +231,11 @@ export function buildTreeMenu(entry: Entry, context: TreeMenuContext): ContextMe
     ...clipboardItems(entry, context),
     ...editItems(entry),
     findItem(entry),
-    ...goItems(entry),
+    ...(context.hasGoModule ? goItems(entry) : []),
+    ...(context.hasMavenPom && (!entry || entry.directory) ? [{
+      id: 'maven', label: 'Maven', icon: Play,
+      submenu: ['clean', 'compile', 'test', 'package', 'verify', 'install', 'clean package', 'clean install'].map((goal) => ({ id: `maven:${goal}`, label: `mvn ${goal}` })),
+    }] : []),
     ...gitItems(entry, context),
     openInItem(entry),
     moreItem(entry),

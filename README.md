@@ -219,11 +219,35 @@ Claude Desktop, Cursor and other clients take the same command in their JSON con
 | Tool | What it does |
 | --- | --- |
 | `collection_list_requests` | List the requests of a collection (id, name, method, url, folder) |
+| `collection_get_request` | One request in full (headers, params, bodies, auth, assertions, scripts) by id |
+| `collection_list_environments` | Environments and their variable names |
 | `collection_run` | Run requests and their tests against real endpoints; filter by `folder`, `env`, `vars` |
 | `mock_start` / `mock_stop` / `mock_status` | Start the local mock server from a config (`port`, `endpoints`), stop it, check it |
 | `mock_hits` / `mock_clear_hits` | See what your code actually sent to the mock, or reset the log |
 
+Every tool carries a title and read-only / destructive / open-world hints, so clients can auto-approve the safe ones and ask before the rest.
+
+**Resources.** The collection is also readable without calling a tool: `adomnia://collection` (summary), `adomnia://collection/request/{id}` and `adomnia://collection/environment/{name}`, listed by `resources/list` and described by templates.
+
+**Prompts.** `test_endpoint` (read, run and explain one request), `run_collection_report` (run a folder and summarise failures) and `mock_dependency` (stand in for an upstream API, then check what your code sent).
+
+**Secrets stay home.** Passwords, tokens, API keys, `Authorization` headers and cookies are masked (`***`) in everything the server returns, in requests and in environments. `collection_run` still uses the real values to call your endpoints.
+
+**Protocol.** MCP `2025-06-18`, `2025-03-26` and `2024-11-05` (the client's version is echoed); standard JSON-RPC errors (`-32700` parse, `-32601` unknown method, `-32602` bad params, `-32002` resource not found); `ping` and `logging/setLevel` answered.
+
 Try it: ask Claude *"list the requests in my adOmnia collection, then run the `auth` folder"*, or *"start a mock for GET /ping and tell me what my service sent to it"*. Check the connection with `claude mcp list`.
+
+### adOmnia as an MCP client
+
+The **MCP** panel connects adOmnia to any other MCP server, over **stdio** (a command you run locally) or **Streamable HTTP** (a URL, optionally with a bearer token), so you can inspect and call its tools, read its resources and try its prompts from one place. Several servers can be connected at once.
+
+- **Handshake and versions.** Offers `2025-06-18`, accepts the older revision the server answers with, and repeats it in `MCP-Protocol-Version` on HTTP. The server's `instructions` and capabilities are kept.
+- **HTTP details.** Plain JSON or `text/event-stream` answers, the `Mcp-Session-Id` handed out by the server (repeated on every call and closed with `DELETE`), and clear errors for a rejected token or a session the server forgot.
+- **stdio details.** Answers are matched to calls by id, so concurrent calls never swap results; notifications and server `ping` requests in between are handled; a cancelled call does not disturb the next one. When a server dies, the error includes the end of its stderr, and the session shows **crashed** (non-zero exit) or **stopped**.
+- **Everything the protocol lists.** Tools, resources, resource templates and prompts follow `nextCursor` across pages; `resources/read` returns text or base64 blobs; tool results keep text, image, audio, resource-link and embedded-resource blocks plus `structuredContent`; prompt arguments are sent as strings, as the spec requires.
+- **Safe by default.** Calls without a deadline time out after two minutes; replies over 16 MB are refused; `ping` checks that a session is alive; restarting a session reuses its saved configuration.
+
+Everything runs on your machine: adOmnia only talks to the servers you configure.
 
 ## What is experimental
 
