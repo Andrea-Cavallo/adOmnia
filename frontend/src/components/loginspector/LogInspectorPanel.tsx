@@ -1,3 +1,5 @@
+import { NothingStudioHeader } from '@/components/ui/NothingStudioHeader'
+import './logInspector.css'
 import { attachLiveSessionSource } from '@/lib/devsession/logInspectorSource'
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -336,7 +338,7 @@ export function LogInspectorPanel() {
   return (
     <div
       ref={panelRef}
-      className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0"
+      className="nothing-studio log-inspector-studio relative"
       onDragEnter={(dragEvent) => { dragEvent.preventDefault(); setDragging(true) }}
       onDragOver={(dragEvent) => dragEvent.preventDefault()}
       onDragLeave={(dragEvent) => { if (dragEvent.currentTarget === dragEvent.target) setDragging(false) }}
@@ -355,6 +357,7 @@ export function LogInspectorPanel() {
         }}
       />
 
+      <NothingStudioHeader title="Log Inspector" section="Studio / Investigation" detail="Explore events. Follow the evidence." count={`${events.length.toLocaleString()} events · ${sources.length} ${sources.length === 1 ? 'source' : 'sources'}`} />
       <LogInspectorToolbar
         filters={filters}
         onFiltersChange={setFilters}

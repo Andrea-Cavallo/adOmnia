@@ -1,15 +1,19 @@
 import { normalizeRailItem, type RailItem } from '@/lib/navigation'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 
+export type HubLogoStyle = 'classic' | 'pixel'
+
 export interface HubLayout {
   tiles: RailItem[]
   todaySide: 'left' | 'right'
+  logo: HubLogoStyle
 }
 
 const KEY = 'adomnia.hubLayout'
 export const DEFAULT_HUB_LAYOUT: HubLayout = {
   tiles: ['codestudio', 'collections', 'database', 'jsonviewer', 'powertools'],
   todaySide: 'right',
+  logo: 'classic',
 }
 /** Rails that make no sense as a Hub tile. */
 export const HUB_EXCLUDED = new Set<RailItem>(['welcome', 'settings'])
@@ -19,7 +23,7 @@ export function parseHubLayout(raw: string | null): HubLayout {
     const data = raw ? JSON.parse(raw) : null
     if (!data || !Array.isArray(data.tiles)) return DEFAULT_HUB_LAYOUT
     const tiles = [...new Set(data.tiles.map(normalizeRailItem).filter((t: RailItem | null): t is RailItem => !!t && !HUB_EXCLUDED.has(t)))] as RailItem[]
-    return { tiles, todaySide: data.todaySide === 'left' ? 'left' : 'right' }
+    return { tiles, todaySide: data.todaySide === 'left' ? 'left' : 'right', logo: data.logo === 'pixel' ? 'pixel' : 'classic' }
   } catch {
     return DEFAULT_HUB_LAYOUT
   }

@@ -103,6 +103,19 @@ export function DatabasePanel() {
   const renderedQuery = useMemo(() => substituteVars(query, vars), [query, vars])
   const queryKind: DbKind | null = active.driver === 'db2' ? null : active.driver
   const connected = statuses[active.id]?.state === 'connected'
+  const [connectionsCollapsed, setConnectionsCollapsed] = useState(() => {
+    try { return localStorage.getItem('adomnia.database.connectionsCollapsed') === '1' } catch { return false }
+  })
+  const setCollapsed = (next: boolean) => {
+    setConnectionsCollapsed(next)
+    try { localStorage.setItem('adomnia.database.connectionsCollapsed', next ? '1' : '0') } catch { /* storage unavailable: state stays per-session */ }
+  }
+  // Once the link is up the form has done its job: give the room to the explorer and the editor.
+  const wasConnected = useRef(false)
+  useEffect(() => {
+    if (connected && !wasConnected.current) setCollapsed(true)
+    wasConnected.current = connected
+  }, [connected])
   const dbSchema = useDbSchema({
     driver: active.driver, connectionId: active.id, connected, schemaItems, schemaColumns, runMongo: (command) => runMongoRef.current(command),
   })
@@ -776,6 +789,8 @@ export function DatabasePanel() {
     <div className="relative flex min-h-0 flex-1 overflow-hidden bg-surface-0">
       <ConnectionsSidebar
         width={connectionsPane.size}
+        collapsed={connectionsCollapsed}
+        onToggleCollapsed={() => setCollapsed(!connectionsCollapsed)}
         connections={connections}
         active={active}
         running={running}
@@ -791,7 +806,7 @@ export function DatabasePanel() {
         onVault={protectConnectionSecrets}
         onCreateLocalSQLite={() => void createLocalSQLite()}
       />
-      <ResizeHandle label="Drag to resize connections" onMouseDown={connectionsPane.startResize} />
+      {!connectionsCollapsed && <ResizeHandle label="Drag to resize connections" onMouseDown={connectionsPane.startResize} />}
 
       {isMongo && mongoView === 'documents' ? (
         <MongoWorkspace connection={active} runMongo={runMongo} reloadToken={mongoReload} modeSwitch={mongoModeSwitch} />

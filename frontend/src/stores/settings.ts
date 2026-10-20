@@ -358,6 +358,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       appearance.baseColor = validAccent(appearance.baseColor) ? appearance.baseColor : undefined
       appearance.jsonColors = normalizeJsonColors(appearance.jsonColors)
       appearance.profiles = normalizeProfiles(appearance.profiles)
+      // Ctrl+B hides the collections tree for the session only: a persisted "collapsed"
+      // made the API collections look lost after a restart.
+      appearance.sidebarCollapsed = false
       appearance.modeBases = Object.fromEntries(Object.entries(appearance.modeBases ?? {}).filter(([k, v]) => (k === 'dark' || k === 'light') && validAccent(v)))
       if (!appearance.themeId) {
         appearance.themeId = appearance.theme === 'light' ? 'builtin-light' : 'builtin-dark'

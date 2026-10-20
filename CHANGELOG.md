@@ -4,6 +4,29 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.9] — 2026-10-20
+
+Release notes: [docs/releases/v1.0.9.md](docs/releases/v1.0.9.md).
+
+### Added
+
+- **Connect Claude to adOmnia over MCP.** The README documents `adomnia mcp [collection-folder]` (stdio, local only) with the Claude Code command, the JSON config for other clients and the seven tools. Verified end to end against a real mock server.
+- **Load test: Parallel and Repeat-with-gap probes.** Fire N requests at the same instant, or send the same request N times with a fixed gap (for example twice, 200 ms apart), and read the result in a per-request waterfall (start offset, latency, status, error). The classic Load mode keeps percentiles and throughput. New backend parameter `staggerMs`, and every timeline point now carries `startMs` and `error`.
+- **Database Studio: collapsible Connections.** The connection form folds into a 40 px rail (status dot and vertical name) and collapses by itself once the connection is established, giving the room to the explorer and the editor. The choice is remembered.
+- **Hub pixel-art wordmark.** Customize → Hub logo switches between the classic and the pixel-art logo; both follow the palette and the choice is stored in `adomnia.hubLayout` (older layouts keep the classic logo).
+- **Shared Nothing-style studio header** and refreshed Utils (power tools) and Log Inspector panels.
+
+### Changed
+
+- **Connections, Load test and Code Studio panels use the dot-matrix language** of Security Center: hairlines instead of boxes, Doto labels, a status dot instead of badges.
+- **Low resources** moved inside Application resources in the status bar; it suspends AI assistants, Staticcheck/vulnerability analyses and expensive editor decorations while language servers stay available.
+- The Utils panel no longer shows placeholder "recent runs".
+
+### Fixed
+
+- **Load test did nothing.** In request-count mode the run was stopped before the first request, so no request was ever sent. A warmup larger than the request count also discarded every request (an all-zero report), and sub-millisecond responses were dropped from the histogram (average 0.0 ms). All three are fixed and covered by tests.
+- **Ctrl+B could hide the API collections for good.** The collapsed state was persisted and the shortcut worked from every rail; it is now session-only, resets on startup and only acts on the collections rail.
+
 ## [1.0.8] — 2026-10-19
 
 Release notes: [docs/releases/v1.0.8.md](docs/releases/v1.0.8.md).

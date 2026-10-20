@@ -1,0 +1,48 @@
+.go-tools-studio .nothing-studio-header { min-height: 60px; padding: 8px 20px; }
+.go-tools-studio .nothing-studio-header h1 { font-size: 24px; }
+.go-tools-layout { display: flex; flex: 1; min-height: 0; }
+.go-tools-nav { display: flex; flex-direction: column; flex-shrink: 0; width: 216px; padding: 16px 8px 0; border-right: 1px solid var(--color-border-1); }
+.go-tools-nav > p { padding: 0 12px 16px; font-size: 9px; }
+.go-tools-nav > button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border-left: 2px solid transparent; text-align: left; font-size: 12px; color: var(--color-text-2); }
+.go-tools-nav-index { font: 10px var(--font-mono); color: var(--color-text-3); }
+.go-tools-nav > button > svg { flex-shrink: 0; color: var(--color-text-3); }
+.go-tools-nav > button[aria-current=page] { border-left-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); color: var(--color-text-1); }
+.go-tools-nav > button[aria-current=page] :is(svg, .go-tools-nav-index) { color: var(--color-accent); }
+.go-tools-nav > button:hover { background: var(--color-surface-1); }
+.go-tools-nav-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 16px 12px; border-top: 1px dotted var(--color-border-2); font: 10px var(--font-mono); color: var(--color-text-3); }
+.go-tools-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: auto; }
+.go-tools-view-header { display: flex; flex-shrink: 0; align-items: center; gap: 20px; margin: 0 24px; padding: 12px 0; border-bottom: 1px dotted var(--color-border-2); }
+.go-tools-view-header h2 { margin: 4px 0; font: 800 24px/1.2 Doto, var(--font-mono); color: var(--color-text-1); }
+.go-tools-view-glyph { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border: 2px dotted var(--color-border-2); border-radius: 50%; color: var(--color-accent); }
+.go-tools-view-description { font-size: 12px; line-height: 1.6; color: var(--color-text-3); }
+.go-tools-view-body { flex: 1; min-height: 200px; }
+.go-tools-studio .go-profile-caption { display: none; }
+.go-tools-studio .go-profile-toolbar { min-height: 56px; height: auto; padding: 12px 24px; gap: 8px 12px; background: transparent; align-content: center; }
+.go-tools-studio .go-profile-toolbar :is(select, label:has(input[aria-label="Search function"])) { min-height: 30px; border: 1px solid var(--color-border-1); border-radius: 4px; background: var(--color-surface-1); }
+.go-tools-studio .go-profile-toolbar select { max-width: min(280px, 100%); }
+.go-tools-studio .go-profile-toolbar label:has(input[aria-label="Search function"]) { flex: 1; min-width: 160px; max-width: 320px; }
+.go-tools-studio .go-profile-toolbar label { gap: 8px; }
+.go-tools-studio .go-profile-empty { gap: 12px; padding: 32px 24px; color: var(--color-text-3); }
+.go-profile-empty-glyph { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 8px; border: 2px dotted var(--color-border-2); border-radius: 50%; color: var(--color-accent); }
+.go-profile-empty-title { font: 800 24px/1.3 Doto, var(--font-mono); color: var(--color-text-1); }
+.go-profile-empty > p:last-child { max-width: 480px; line-height: 1.7; }
+.go-tools-analysis, .go-tools-extra { max-width: 1120px; padding: 24px; }
+.go-tools-analysis h3 { font-size: 14px; font-weight: 500; }
+.go-tools-analysis > p { max-width: 720px; color: var(--color-text-3); line-height: 1.7; }
+.go-tools-scopes { display: grid; gap: 0; margin-top: 24px; max-width: 640px; border-top: 1px solid var(--color-border-1); }
+.go-tools-scope { display: flex; align-items: center; gap: 12px; padding: 16px 12px; font-size: 12px; border-bottom: 1px solid var(--color-border-1); overflow-wrap: anywhere; }
+.go-tools-scope:has(input:checked) { background: color-mix(in srgb, var(--color-accent) 6%, transparent); color: var(--color-text-1); }
+.go-tools-scope input { accent-color: var(--color-accent); }
+.go-tools-struct-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 24px; padding: 24px; max-width: 1120px; }
+.go-tools-struct-card { padding: 20px; border: 1px solid var(--color-border-1); border-top: 2px dotted var(--color-border-2); border-radius: 4px; }
+.go-tools-struct-card h3 { font: 800 21px/1.3 Doto, var(--font-mono); color: var(--color-text-1); }
+.go-tools-struct-card p { margin-top: 12px; color: var(--color-text-3); line-height: 1.7; }
+.go-tools-studio .gs-btn { border-radius: 4px; }
+.go-tools-extra > section { margin-top: 0; }
+.go-tools-extra .gs-section-title { font: 10px var(--font-mono); letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-3); padding-bottom: 8px; }
+.go-tools-extra .gs-list { border-radius: 4px; border-color: var(--color-border-1); background: transparent; }
+.go-tools-extra .gs-list-row { padding: 16px; background: transparent; }
+@media (max-width: 850px) { .go-tools-nav { width: 188px; } .go-tools-nav > button { gap: 8px; padding: 8px; } .go-tools-nav-index { display: none; } .go-tools-struct-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .go-tools-layout { flex-direction: column; } .go-tools-nav { width: 100%; flex-direction: row; overflow-x: auto; padding: 4px 8px; border-right: 0; border-bottom: 1px solid var(--color-border-1); } .go-tools-nav > p, .go-tools-nav-foot { display: none; } .go-tools-nav > button { white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; } .go-tools-nav > button[aria-current=page] { border-bottom-color: var(--color-accent); } .go-tools-view-header { margin: 0 16px; padding: 16px 0; gap: 12px; } .go-tools-view-glyph { width: 44px; height: 44px; } .go-tools-view-header h2 { font-size: 24px; } .go-tools-view-description { font-size: 11px; } .go-tools-studio .go-profile-toolbar, .go-tools-analysis, .go-tools-extra, .go-tools-struct-grid { padding: 16px; } }
+
+.go-tools-struct-message { grid-column: 1 / -1; }

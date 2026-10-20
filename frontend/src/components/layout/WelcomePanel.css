@@ -65,3 +65,11 @@
 
 /* Glyph strokes and terminal follow the active palette, including custom skins. */
 .hub-glyph{display:block;overflow:visible}.hub-glyph-terminal{fill:var(--color-error)}
+
+/* Optional pixel wordmark: the original artwork supplies the shape, the palette supplies its ink. */
+.hub-logo.hub-logo-pixel { color: var(--hub-accent); filter: drop-shadow(0 0 10px color-mix(in srgb,var(--hub-accent) 22%,transparent)); }
+.hub-logo.hub-logo-pixel svg { display: block; width: 100%; height: auto; max-height: 100%; margin: 0; transform: none; }
+.hub-logo-choice { display: flex; align-items: center; gap: 8px; color: var(--hub-muted); font: 11px var(--font-mono); }
+.hub-logo-choice select { padding: 5px 8px; border: 1px solid var(--hub-line); border-radius: 4px; background: var(--hub-bg); color: var(--hub-ink); font: inherit; cursor: pointer; }
+.hub-logo-choice select:focus-visible { outline: 2px solid var(--hub-accent); outline-offset: 2px; }
+.hub-customize { flex-wrap: wrap; }

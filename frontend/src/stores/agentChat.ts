@@ -187,8 +187,10 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
       saveSettings: (settings) => run(async () => set({ settings: await api.saveSettings(settings) })),
 
       setEnabled: async (enabled) => {
-        const settings = get().settings
-        return settings ? get().saveSettings({ ...settings, enabled }) : false
+        try {
+          const settings = get().settings ?? await api.settings()
+          return await get().saveSettings({ ...settings, enabled })
+        } catch (error) { set({ error: messageOf(error) }); return false }
       },
 
       restart: async () => { await run(api.restart) },

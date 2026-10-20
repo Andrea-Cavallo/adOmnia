@@ -1152,6 +1152,9 @@ rail panel.
 
 ### Hub dot-matrix arcade
 
+Hub **Customize → Hub logo** switches between the classic wordmark and the optional pixel-art wordmark. Both follow the selected palette. The choice is stored locally in the existing `adomnia.hubLayout` record as `logo: classic | pixel`; older records without this optional field keep the classic logo. Reset restores the classic logo along with the default layout.
+
+
 For the v1 release surface, the Home Hub no longer exposes Arcade. Its implementation is retained. LaTeX, standalone PDF, Kubernetes and Plugins remain implemented but are omitted from primary discovery; Live Collaboration is opt-in beta. PDF imports and opening a PDF from a Code Studio project retain the complete editor, forms, annotations and signing. See `mds/V1-RELEASE-SCOPE-TODO.md` for the stable scope and acceptance gates.
 
 The arcade pauses on window blur, hidden documents and when scrolled out of view. Idle and paused games do not run a continuous animation loop. The background matrix is cached, real-time physics uses small substeps and resizing preserves the logical board. Best scores stay local; the former Snake best-score key remains readable.

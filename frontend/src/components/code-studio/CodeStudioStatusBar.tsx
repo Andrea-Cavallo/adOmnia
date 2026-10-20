@@ -1,3 +1,4 @@
+import { useCodeStudioLowResources } from '@/stores/codeStudioLowResources'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
 import { goModules, goProjectLayout } from '@/lib/code-studio/goProject'
@@ -146,8 +147,8 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
         {lowResource && (
           <button
             type="button"
-            onClick={() => useCodeStudioLspStore.getState().updatePreferences({ resourceMode: 'normal' })}
-            title={`Low-resource mode${resourceMode === 'auto' ? ' (on battery)' : ''}: semantic colors, inlay hints, sticky scroll and lint on save are paused. Click to turn it off.`}
+            onClick={() => void useCodeStudioLowResources.getState().deactivate('normal')}
+            title={`Low-resource mode${resourceMode === 'auto' ? ' (on battery)' : ''}: optional editor features are paused; language servers stay available. Click to restore services.`}
             className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 text-warning hover:bg-surface-3"
           >
             {resourceMode === 'auto' ? <BatteryLow size={12} /> : <Gauge size={12} />} Low-resource

@@ -1,3 +1,5 @@
+import { NothingStudioHeader } from '@/components/ui/NothingStudioHeader'
+import './codeStudioGoPanel.css'
 import { useState } from 'react'
 import { Boxes, Gauge, Play, Wrench } from 'lucide-react'
 import type { GoIDESession } from '@/lib/code-studio-api'
@@ -12,6 +14,13 @@ import { CodeStudioButton } from './CodeStudioModal'
 
 type View = 'profile' | 'escape' | 'struct' | 'tools'
 type EscapeScope = 'project' | 'package' | 'file'
+const VIEWS = [
+  { id: 'profile', title: 'Profiling', label: 'Profiling with pprof', description: 'Capture CPU and memory profiles. Find where your code spends time.', icon: Gauge },
+  { id: 'escape', title: 'Escape analysis', label: 'Escape analysis', description: 'Inspect heap allocations and compiler inlining decisions.', icon: Play },
+  { id: 'struct', title: 'Struct layout', label: 'Struct optimization', description: 'Find avoidable padding and inspect field alignment.', icon: Boxes },
+  { id: 'tools', title: 'Go tools', label: 'Go tools', description: 'Inspect, install and run tools with the project SDK.', icon: Wrench },
+] as const
+
 const FIELD_ALIGNMENT_MODULE = 'golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest'
 
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error) }
@@ -29,6 +38,8 @@ export function CodeStudioGoPanel({ session }: { session: GoIDESession }) {
   const toolchain = useCodeStudioStore((state) => state.toolchains[session.id])
   const trusted = session.project.authorization === 'tooling-permitted'
   const module = modules[0]
+  const activeView = VIEWS.find(item => item.id === view)!
+  const ActiveIcon = activeView.icon
 
   const runEscapeAnalysis = async () => {
     if (!module) return
@@ -60,28 +71,36 @@ export function CodeStudioGoPanel({ session }: { session: GoIDESession }) {
     } catch (error) { setMessage(errorText(error)) } finally { setBusy(false) }
   }
 
-  return <div className="flex h-full min-h-0 flex-col">
-    <div className="flex h-9 shrink-0 items-center border-b border-border-1 px-2"><span className="px-2 text-[12px] font-semibold text-text-1">Go</span><span className="text-[11px] text-text-4">Optimization and Go tooling · {modules.length} module{modules.length === 1 ? '' : 's'}</span></div>
-    <div className="flex min-h-0 flex-1">
-      <nav aria-label="Go optimization tools" className="w-52 shrink-0 border-r border-border-1 p-1.5">
-        {([
-          ['profile', 'Profiling with pprof', Gauge], ['escape', 'Escape analysis', Play], ['struct', 'Struct optimization', Boxes], ['tools', 'Go tools', Wrench],
-        ] as const).map(([id, label, Icon]) => <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)} className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[11.5px] ${view === id ? 'bg-accent/15 text-accent' : 'text-text-2 hover:bg-surface-2/70'}`}><Icon size={13} />{label}</button>)}
+  return <div className="nothing-studio go-tools-studio h-full">
+    <NothingStudioHeader title="Go" section="Code Studio / Tooling" detail="Performance & optimization" count={`${modules.length} module${modules.length === 1 ? '' : 's'}`} />
+    <div className="go-tools-layout">
+      <nav aria-label="Go optimization tools" className="go-tools-nav">
+        <p className="nothing-studio-label">Workbench / Go</p>
+        {VIEWS.map(({ id, label, icon: Icon }, index) => <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}>
+          <span className="go-tools-nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><Icon size={15} strokeWidth={1.5} aria-hidden="true" /><span>{label}</span>
+        </button>)}
+        <div className="go-tools-nav-foot"><span className="nothing-studio-dot" />Project SDK</div>
       </nav>
-      <div className="min-w-0 flex-1 overflow-auto">
+      <div className="go-tools-content">
+        <header className="go-tools-view-header">
+          <div className="go-tools-view-glyph" aria-hidden="true"><ActiveIcon size={24} strokeWidth={1.25} /></div>
+          <div><p className="nothing-studio-label">Go / {String(VIEWS.findIndex(item => item.id === view) + 1).padStart(2, '0')}</p><h2>{activeView.title}</h2><p className="go-tools-view-description">{activeView.description}</p></div>
+        </header>
+        <div className="go-tools-view-body">
         {view === 'profile' && <CodeStudioProfilePanel session={session} />}
-        {view === 'escape' && <div className="mx-auto max-w-3xl p-6">
+        {view === 'escape' && <div className="go-tools-analysis">
           <h3 className="text-[14px] font-semibold text-text-1">Compiler escape and inlining analysis</h3>
           <p className="mt-1 text-[12px] text-text-4">Runs the project compiler with <code className="gs-mono">-gcflags=all=-m=2</code>. The Run console reports heap escapes, moved values, parameters that leak and inlining decisions.</p>
-          <div className="mt-5 grid gap-2">{(['project', 'package', 'file'] as const).map((item) => <label key={item} className="flex items-center gap-2 text-[12px] text-text-2"><input type="radio" checked={scope === item} onChange={() => setScope(item)} />{item === 'project' ? 'Whole project' : item === 'package' ? 'Current package' : `Current file${activeRelativePath ? ` · ${activeRelativePath}` : ''}`}</label>)}</div>
+          <div className="go-tools-scopes">{(['project', 'package', 'file'] as const).map((item) => <label key={item} className="go-tools-scope"><input type="radio" name="go-escape-scope" checked={scope === item} onChange={() => setScope(item)} />{item === 'project' ? 'Whole project' : item === 'package' ? 'Current package' : `Current file${activeRelativePath ? ` · ${activeRelativePath}` : ''}`}</label>)}</div>
           <CodeStudioButton className="mt-5" variant="primary" icon={Play} disabled={!trusted || !module || (scope === 'file' && !activeRelativePath.endsWith('.go'))} title={trusted ? 'Run compiler analysis' : 'Trust project tools first'} onClick={() => void runEscapeAnalysis()}>Run escape analysis</CodeStudioButton>
         </div>}
-        {view === 'struct' && <div className="mx-auto grid max-w-4xl gap-4 p-6 md:grid-cols-2">
-          <section className="rounded-xl border border-border-1 bg-surface-1 p-4"><h3 className="text-[13px] font-semibold text-text-1">Analyze layout</h3><p className="mt-1 text-[11.5px] text-text-4">Finds structs that waste memory because fields are ordered with avoidable padding. Analysis is read-only.</p><CodeStudioButton className="mt-4" icon={Play} disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(false)}>Analyze project</CodeStudioButton></section>
-          <section className="rounded-xl border border-border-1 bg-surface-1 p-4"><h3 className="text-[13px] font-semibold text-text-1">Apply field ordering</h3><p className="mt-1 text-[11.5px] text-text-4">Runs fieldalignment with <code className="gs-mono">-fix</code>. Review the resulting Git changes before committing.</p><CodeStudioButton className="mt-4" variant="danger-ghost" disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(true)}>Analyze and fix…</CodeStudioButton></section>
-          {message && <p role="status" className="md:col-span-2 text-[11.5px] text-text-3">{message}</p>}
+        {view === 'struct' && <div className="go-tools-struct-grid">
+          <section className="go-tools-struct-card"><h3 className="text-[13px] font-semibold text-text-1">Analyze layout</h3><p className="mt-1 text-[11.5px] text-text-4">Finds structs that waste memory because fields are ordered with avoidable padding. Analysis is read-only.</p><CodeStudioButton className="mt-4" icon={Play} disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(false)}>Analyze project</CodeStudioButton></section>
+          <section className="go-tools-struct-card"><h3 className="text-[13px] font-semibold text-text-1">Apply field ordering</h3><p className="mt-1 text-[11.5px] text-text-4">Runs fieldalignment with <code className="gs-mono">-fix</code>. Review the resulting Git changes before committing.</p><CodeStudioButton className="mt-4" variant="danger-ghost" disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(true)}>Analyze and fix…</CodeStudioButton></section>
+          {message && <p role="status" className="go-tools-struct-message text-[11.5px] text-text-3">{message}</p>}
         </div>}
-        {view === 'tools' && <div className="p-4"><CodeStudioExtraTools sessionId={session.id} goAvailable={toolchain?.available === true} trusted={trusted} /></div>}
+        {view === 'tools' && <div className="go-tools-extra"><CodeStudioExtraTools sessionId={session.id} goAvailable={toolchain?.available === true} trusted={trusted} /></div>}
+        </div>
       </div>
     </div>
   </div>

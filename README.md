@@ -193,6 +193,38 @@ Check for updates in **Settings**. Update packages verify the publisher signatur
 
 [Installation and updates](docs/INSTALL.md) · [Release notes and support limits](docs/releases/v1.0.0.md)
 
+## Connect Claude (or any MCP client) to adOmnia
+
+adOmnia ships a local [MCP](https://modelcontextprotocol.io) server over stdio: `adomnia mcp [collection-folder]`. No port, no account, nothing leaves your machine. The agent can read and run your collections and drive the mock server.
+
+Register it in Claude Code (use the full path of the adOmnia executable; the optional last argument is the default collection folder, exported with *Export to folder*):
+
+```bash
+claude mcp add adomnia -- "C:\path\to\adomnia.exe" mcp "C:\path\to\my-collection"
+```
+
+Claude Desktop, Cursor and other clients take the same command in their JSON config:
+
+```json
+{
+  "mcpServers": {
+    "adomnia": {
+      "command": "C:\\path\\to\\adomnia.exe",
+      "args": ["mcp", "C:\\path\\to\\my-collection"]
+    }
+  }
+}
+```
+
+| Tool | What it does |
+| --- | --- |
+| `collection_list_requests` | List the requests of a collection (id, name, method, url, folder) |
+| `collection_run` | Run requests and their tests against real endpoints; filter by `folder`, `env`, `vars` |
+| `mock_start` / `mock_stop` / `mock_status` | Start the local mock server from a config (`port`, `endpoints`), stop it, check it |
+| `mock_hits` / `mock_clear_hits` | See what your code actually sent to the mock, or reset the log |
+
+Try it: ask Claude *"list the requests in my adOmnia collection, then run the `auth` folder"*, or *"start a mock for GET /ping and tell me what my service sent to it"*. Check the connection with `claude mcp list`.
+
 ## What is experimental
 
 LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift, plugin marketplace and Hub games are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, but platform support is limited by the underlying OS and toolchain.

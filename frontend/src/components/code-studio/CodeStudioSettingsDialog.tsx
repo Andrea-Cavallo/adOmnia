@@ -1,3 +1,4 @@
+import { useCodeStudioLowResources } from '@/stores/codeStudioLowResources'
 import { useMemo, useState } from 'react'
 import { ExternalLink, Search, Settings2 } from 'lucide-react'
 import { EDITOR_FONT_SIZE, useCodeStudioLspStore, type GoIDEEditorPreferences } from '@/stores/codeStudioLsp'
@@ -59,7 +60,7 @@ const SETTINGS: Setting[] = [
   { section: 'Language server', label: 'staticcheck analyzers', hint: 'Extra analyzers inside gopls (restarts gopls).', kind: 'toggle', server: 'staticcheck' },
   { section: 'Language server', label: 'Vulnerability diagnostics', hint: 'gopls vulncheck on go.mod; needs network access to vuln.go.dev (restarts gopls).', kind: 'toggle', server: 'vulncheck' },
   { section: 'Language server', label: 'Completion placeholders', hint: 'Insert parameter placeholders when completing a call (restarts gopls).', kind: 'toggle', server: 'placeholders' },
-  { section: 'Performance', label: 'Low-resource mode', hint: 'Pause semantic colors, inlay hints, sticky scroll and lint on save.', kind: 'select', pref: 'resourceMode', options: [{ value: 'normal', label: 'Off' }, { value: 'low', label: 'Always' }, { value: 'auto', label: 'Only on battery' }] },
+  { section: 'Performance', label: 'Low-resource mode', hint: 'Always pauses AI and optional analyses; language servers, Run and Debug stay available. Off restores previous services. Battery mode only reduces editor features.', kind: 'select', pref: 'resourceMode', options: [{ value: 'normal', label: 'Off' }, { value: 'low', label: 'Always' }, { value: 'auto', label: 'Only on battery' }] },
   { section: 'Keymap & tools', label: 'Keyboard shortcuts', hint: 'GoLand or VS Code keymap, custom shortcuts and conflicts.', kind: 'link', command: 'help.shortcuts' },
   { section: 'Keymap & tools', label: 'Go toolchains', hint: 'Go SDKs for this project, GOPROXY, GOPRIVATE and environment.', kind: 'link', command: 'go.toolchains' },
   { section: 'Keymap & tools', label: 'Tool paths', hint: 'gopls, linter, Delve and make binaries.', kind: 'link', command: 'go.toolPaths' },
@@ -96,7 +97,13 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
     }
     if (item.kind === 'select') {
       return (
-        <select value={String(preferences[item.pref])} onChange={(event) => lsp.updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
+        <select value={String(preferences[item.pref])} onChange={(event) => {
+          if (item.pref === 'resourceMode') {
+            const value = event.target.value as 'normal' | 'low' | 'auto'
+            if (value === 'low') void useCodeStudioLowResources.getState().activate()
+            else void useCodeStudioLowResources.getState().deactivate(value)
+          } else lsp.updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)
+        }} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
           {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       )

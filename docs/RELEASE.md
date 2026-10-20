@@ -10,6 +10,10 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 [Release notes](releases/v1.0.7.md), [measurements and charts](performance/resources-2026-10-19.md). Native monitor acceptance remains RES-1.M1–M3 in `mds/MANUAL-CHECK.md`.
 
+## v1.0.9 — MCP guide, Nothing-style studios and a working load test
+
+[Release notes](releases/v1.0.9.md). Native acceptance of the visual changes (Database Studio rail, load test, Hub pixel logo) is manual.
+
 ## v1.0.8 — Workspace loading and Code Studio responsiveness
 
 [Release notes](releases/v1.0.8.md), [loading optimization checkpoint](WORKSPACE-LOADING-OPTIMIZATION.md). Native acceptance of the loading work and the native timing comparison remain open.

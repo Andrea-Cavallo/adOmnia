@@ -22,12 +22,14 @@ type loadTestRequest struct {
 	Body        string            `json:"body"`
 	Concurrency int               `json:"concurrency"`
 	TotalReqs   int               `json:"totalReqs"`
-	RampUpMs    int               `json:"rampUpMs"`
-	TimeoutMs   int               `json:"timeoutMs"`
-	WarmupReqs  int               `json:"warmupReqs"`
-	CooldownMs  int               `json:"cooldownMs"`
-	QpsTarget   float64           `json:"qpsTarget"`
-	DurationS   int               `json:"durationS"` // if > 0, run for duration instead of TotalReqs
+
+	RampUpMs   int     `json:"rampUpMs"`
+	StaggerMs  int     `json:"staggerMs"` // fixed gap between the start of two requests
+	TimeoutMs  int     `json:"timeoutMs"`
+	WarmupReqs int     `json:"warmupReqs"`
+	CooldownMs int     `json:"cooldownMs"`
+	QpsTarget  float64 `json:"qpsTarget"`
+	DurationS  int     `json:"durationS"` // if > 0, run for duration instead of TotalReqs
 }
 
 type loadTestResult struct {
@@ -60,6 +62,8 @@ type throughputBucket struct {
 }
 
 type timelinePoint struct {
+	StartMs   float64 `json:"startMs"` // when the request left, from the start of the run
+	Error     string  `json:"error,omitempty"`
 	TimeMs    float64 `json:"timeMs"`
 	LatencyMs float64 `json:"latencyMs"`
 	Status    int     `json:"status"`
@@ -153,7 +157,12 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Method == "" {
 		req.Method = "GET"
 	}
+
 	if req.WarmupReqs < 0 {
+		req.WarmupReqs = 0
+	}
+	// A warmup that swallows every request leaves nothing to measure (an all-zero report).
+	if req.WarmupReqs >= req.TotalReqs {
 		req.WarmupReqs = 0
 	}
 
@@ -161,7 +170,9 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Timeout: timeout}
 
 	// HDR Histogram: tracks latency from 1ms to 60s with 3 significant digits
-	hist := hdr.New(1, 60000, 3)
+
+	// Microseconds, so sub-millisecond answers are measured instead of dropped.
+	hist := hdr.New(1, 60_000_000, 3)
 
 	var mu sync.Mutex
 	timeline := make([]timelinePoint, 0, req.TotalReqs)
@@ -189,14 +200,14 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Duration-based mode: stop after DurationS
-	done := make(chan struct{})
+	// A nil channel never fires: count mode runs every request.
+	var done chan struct{}
 	if req.DurationS > 0 {
+		done = make(chan struct{})
 		go func() {
 			time.Sleep(time.Duration(req.DurationS) * time.Second)
 			close(done)
 		}()
-	} else {
-		close(done)
 	}
 
 requests:
@@ -209,6 +220,9 @@ requests:
 
 		if rampDelay > 0 && i > 0 {
 			time.Sleep(rampDelay)
+		}
+		if req.StaggerMs > 0 && i > 0 {
+			time.Sleep(time.Duration(req.StaggerMs) * time.Millisecond)
 		}
 
 		// QPS rate limiting
@@ -231,9 +245,12 @@ requests:
 			if err != nil {
 				mu.Lock()
 				failed++
+
 				timeline = append(timeline, timelinePoint{
-					TimeMs: float64(time.Since(start).Milliseconds()),
-					Ok:     false,
+					StartMs: float64(time.Since(start).Microseconds()) / 1000.0,
+					TimeMs:  float64(time.Since(start).Milliseconds()),
+					Error:   err.Error(),
+					Ok:      false,
 				})
 				mu.Unlock()
 				return
@@ -244,6 +261,7 @@ requests:
 			}
 
 			reqStart := time.Now()
+			startMs := float64(reqStart.Sub(start).Microseconds()) / 1000.0
 			resp, err := client.Do(httpReq)
 			latencyMs := float64(time.Since(reqStart).Microseconds()) / 1000.0
 			elapsed := float64(time.Since(start).Microseconds()) / 1000.0
@@ -260,11 +278,14 @@ requests:
 				return
 			}
 
-			hist.RecordValue(int64(latencyMs))
+			hist.RecordValue(max(int64(latencyMs*1000), 1))
 
 			if err != nil {
+
 				failed++
 				timeline = append(timeline, timelinePoint{
+					StartMs:   startMs,
+					Error:     err.Error(),
 					TimeMs:    elapsed,
 					LatencyMs: latencyMs,
 					Ok:        false,
@@ -279,7 +300,9 @@ requests:
 				} else {
 					failed++
 				}
+
 				timeline = append(timeline, timelinePoint{
+					StartMs:   startMs,
 					TimeMs:    elapsed,
 					LatencyMs: latencyMs,
 					Status:    status,
@@ -336,15 +359,16 @@ requests:
 	}
 
 	if measured > 0 {
-		result.AvgMs = math.Round(hist.Mean()*100) / 100
-		result.MinMs = float64(hist.Min())
-		result.MaxMs = float64(hist.Max())
-		result.P50Ms = float64(hist.ValueAtQuantile(50))
-		result.P75Ms = float64(hist.ValueAtQuantile(75))
-		result.P90Ms = float64(hist.ValueAtQuantile(90))
-		result.P95Ms = float64(hist.ValueAtQuantile(95))
-		result.P99Ms = float64(hist.ValueAtQuantile(99))
-		result.P999Ms = float64(hist.ValueAtQuantile(99.9))
+		ms := func(us int64) float64 { return math.Round(float64(us)/10) / 100 }
+		result.AvgMs = math.Round(hist.Mean()/10) / 100
+		result.MinMs = ms(hist.Min())
+		result.MaxMs = ms(hist.Max())
+		result.P50Ms = ms(hist.ValueAtQuantile(50))
+		result.P75Ms = ms(hist.ValueAtQuantile(75))
+		result.P90Ms = ms(hist.ValueAtQuantile(90))
+		result.P95Ms = ms(hist.ValueAtQuantile(95))
+		result.P99Ms = ms(hist.ValueAtQuantile(99))
+		result.P999Ms = ms(hist.ValueAtQuantile(99.9))
 	}
 
 	if totalTime > 0 {

@@ -1,3 +1,4 @@
+import { useCodeStudioLspStore } from './codeStudioLsp'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -32,6 +33,7 @@ const entry = (language: string) => serverEntry(useIdeLanguageServersStore.getSt
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useCodeStudioLspStore.setState(state => ({ preferences: { ...state.preferences, resourceMode: 'normal' } }))
   useIdeLanguageServersStore.setState({ servers: {}, dismissed: {}, installing: {} })
   mocks.state.sessions = [{ id: 's1', project: { authorization: 'tooling-permitted' } }]
   mocks.stopLanguageServer.mockResolvedValue(undefined)
@@ -50,6 +52,14 @@ describe('serverLanguageForEditor', () => {
 })
 
 describe('web language servers', () => {
+  it('keeps language servers available while low resources is active', async () => {
+    useCodeStudioLspStore.setState(state => ({ preferences: { ...state.preferences, resourceMode: 'low' } }))
+    mocks.languageServers.mockResolvedValue([{ language: 'html', available: true }])
+    mocks.startLanguageServer.mockResolvedValue({ language: 'html', state: 'ready', version: '' })
+    await useIdeLanguageServersStore.getState().ensureStarted('s1', 'html')
+    expect(mocks.startLanguageServer).toHaveBeenCalledWith('s1', 'html')
+  })
+
   it('starts an installed server and tracks it as ready from the backend status', async () => {
     mocks.languageServers.mockResolvedValue([{ language: 'html', available: true }])
     mocks.startLanguageServer.mockResolvedValue({ language: 'html', state: 'ready', version: '' })

@@ -146,7 +146,7 @@ export function EventList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">
+      <div className="log-inspector-column-header flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">
         {visibleColumns.map((id) => columnDefinition(id, columnWidths)).map((column) => (
           <span key={column.id} style={{ width: column.width }} className="group relative shrink-0 truncate pr-2">
             {column.label}

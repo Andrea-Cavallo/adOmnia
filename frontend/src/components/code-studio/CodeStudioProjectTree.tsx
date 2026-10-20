@@ -71,10 +71,10 @@ interface CodeStudioProjectTreeProps {
   onCommand: (id: CodeStudioCommandId) => void
 }
 
-const ROW_INDENT_PX = 14
+const ROW_INDENT_PX = 16
 const ROW_BASE_PX = 6
-/** Icone più piccole del testo: il nome resta l'elemento principale della riga. */
-const TREE_ICON_PX = 13
+/** Consistent icon slots keep folder and file labels aligned. */
+const TREE_ICON_PX = 16
 
 const emptyEntries: GoIDEFileEntry[] = []
 
@@ -164,7 +164,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
         aria-current={selected ? 'true' : undefined}
-        className={`code-studio-tree-row flex h-6 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`code-studio-tree-row flex h-7 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${directoryMark ? ` · ${directoryMarkLabel(directoryMark)}` : ''}${markTitle(mark)}`}
       >
@@ -173,7 +173,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           : <span className="w-3 shrink-0" />}
         {entry.directory
           ? <CodeStudioFolderIcon open={open} size={TREE_ICON_PX} />
-          : <CodeStudioFileIcon name={entry.name} relativePath={entry.relativePath} size={TREE_ICON_PX - 1} />}
+          : <CodeStudioFileIcon name={entry.name} relativePath={entry.relativePath} size={TREE_ICON_PX} />}
         <span className={`min-w-0 flex-1 truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
         {directoryMark && <span className={`shrink-0 text-[10px] ${directoryMark === 'excluded' ? 'text-warning' : 'text-text-4'}`}>{directoryMarkLabel(directoryMark)}</span>}
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
@@ -349,14 +349,14 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         const path = row.dataset.treePath ?? ''
         setSelectedPath(path)
         setCreationFolder(row.dataset.treeDirectory === 'true' ? path : parentOf(path))
-      }} role="tree" aria-label="Project files" onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-1.5 pb-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
+      }} role="tree" aria-label="Project files" onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-2 py-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
         if (event.target !== event.currentTarget) return
         event.preventDefault()
         const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path')
         setDropTarget(null)
         if (source) onMove(source, '')
       }}>
-        <div role="treeitem" aria-level={1} aria-expanded={rootOpen} aria-selected={selectedPath === ''} data-tree-path="" data-tree-directory="true" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`flex h-6 items-center gap-1.5 rounded pl-1.5 pr-2 text-xs focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${selectedPath === '' ? 'code-studio-tree-row-selected' : 'hover:bg-surface-2/60'} ${dropTarget === '' ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''}`} title={session.project.rootPath}
+        <div role="treeitem" aria-level={1} aria-expanded={rootOpen} aria-selected={selectedPath === ''} data-tree-path="" data-tree-directory="true" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`code-studio-tree-root flex h-8 items-center gap-1.5 rounded pl-1.5 pr-2 text-xs focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${selectedPath === '' ? 'code-studio-tree-row-selected' : 'hover:bg-surface-2/60'} ${dropTarget === '' ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''}`} title={session.project.rootPath}
           onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget('') }}
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) }}
           onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path'); setDropTarget(null); if (source) onMove(source, '') }}

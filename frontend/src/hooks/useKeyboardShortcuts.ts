@@ -32,7 +32,12 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
         if (target) { e.preventDefault(); setActiveRail(target) }
         return
       }
-      if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); useAppStore.getState().toggleSidebar(); return }
+      if (mod && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        // Only on the collections rail: elsewhere the toggle would flip an invisible state.
+        if (useAppStore.getState().activeRail === 'collections') useAppStore.getState().toggleSidebar()
+        return
+      }
       if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); document.dispatchEvent(new CustomEvent('adomnia:focus-url')); return }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()

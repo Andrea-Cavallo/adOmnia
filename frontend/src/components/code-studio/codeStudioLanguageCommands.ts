@@ -1,3 +1,4 @@
+import { useCodeStudioLowResources } from '@/stores/codeStudioLowResources'
 import { confirm } from '@/lib/confirmDialog'
 import { useCodeStudioLspStore, EDITOR_FONT_SIZE } from '@/stores/codeStudioLsp'
 import { clearLintBaseline, linterConfigFile, saveLintBaseline } from '@/lib/code-studio-lsp-api'
@@ -96,10 +97,15 @@ export function runLanguageCommand(id: CodeStudioCommandId, sessionId: string | 
     case 'view.stickyScroll': lsp.updatePreferences({ stickyScroll: !lsp.preferences.stickyScroll }); return true
     case 'view.previewTab': lsp.updatePreferences({ previewTab: !lsp.preferences.previewTab }); return true
     // Le due modalità si escludono: riselezionare quella attiva torna a normal.
-    case 'view.lowResourceMode': lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'low' ? 'normal' : 'low' }); return true
+    case 'view.lowResourceMode':
+      void useCodeStudioLowResources.getState().toggle()
+      return true
     case 'view.vimMode': lsp.updatePreferences({ editorMode: lsp.preferences.editorMode === 'vim' ? 'default' : 'vim' }); return true
     case 'view.emacsMode': lsp.updatePreferences({ editorMode: lsp.preferences.editorMode === 'emacs' ? 'default' : 'emacs' }); return true
-    case 'view.lowResourceOnBattery': lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'auto' ? 'normal' : 'auto' }); return true
+    case 'view.lowResourceOnBattery':
+      if (useCodeStudioLowResources.getState().restore || lsp.preferences.resourceMode === 'low') void useCodeStudioLowResources.getState().deactivate('auto')
+      else lsp.updatePreferences({ resourceMode: lsp.preferences.resourceMode === 'auto' ? 'normal' : 'auto' })
+      return true
     case 'view.fontLigatures': lsp.updatePreferences({ fontLigatures: !lsp.preferences.fontLigatures }); return true
     case 'file.autoSave': lsp.updatePreferences({ autoSave: !lsp.preferences.autoSave }); return true
     case 'file.trimWhitespace': lsp.updatePreferences({ trimTrailingWhitespace: !lsp.preferences.trimTrailingWhitespace }); return true

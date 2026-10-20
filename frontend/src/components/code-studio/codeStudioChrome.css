@@ -448,7 +448,7 @@ html.dark .code-studio-root {
   --vscode-diffEditorGutter-removedLineBackground: color-mix(in srgb, var(--color-danger) 14%, transparent);
 }
 
-/* Explorer: guide verticali sempre visibili, un po' più marcate al passaggio del mouse sull'albero. */
+/* Explorer: relaxed rows and quiet guides keep filenames in focus. */
 .code-studio-tree-branch { position: relative; }
 .code-studio-tree-branch::before {
   content: ''; position: absolute; z-index: 1;
@@ -457,7 +457,7 @@ html.dark .code-studio-root {
   background: var(--color-border-1);
   transition: background-color 120ms ease;
 }
-.code-studio-explorer [role="tree"]:hover .code-studio-tree-branch::before { background: var(--color-border-2); }
+.code-studio-tree-branch:is(:hover, :focus-within)::before { background: var(--color-border-2); }
 .code-studio-tree-row:focus-visible {
   outline: 1px solid var(--color-accent); outline-offset: -1px;
 }
@@ -468,4 +468,27 @@ html.dark .code-studio-root {
   box-shadow: inset 2px 0 0 var(--color-accent);
   border-radius: 0 4px 4px 0;
   color: var(--color-text-1);
+}
+
+.code-studio-explorer .code-studio-tree-row,
+.code-studio-explorer .code-studio-tree-root {
+  column-gap: 8px;
+  font-size: 12px;
+  line-height: 20px;
+}
+.code-studio-explorer .code-studio-tree-root { margin-bottom: 4px; }
+
+/* A single folder tone and monospaced names make nested paths easier to scan. */
+.code-studio-explorer [role="tree"] {
+  font-family: var(--font-mono);
+}
+.code-studio-explorer .code-studio-folder-icon {
+  color: var(--color-accent);
+  fill-opacity: 0.24;
+}
+.code-studio-explorer [aria-expanded="true"] > .code-studio-folder-icon {
+  fill-opacity: 0.4;
+}
+.code-studio-tree-branch:has(> .code-studio-tree-row-selected)::before {
+  background: color-mix(in srgb, var(--color-accent) 55%, var(--color-border-1));
 }

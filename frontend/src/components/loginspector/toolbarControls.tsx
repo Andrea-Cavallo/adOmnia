@@ -16,8 +16,9 @@ export function ToolButton({ onClick, icon, label, title, disabled, active }: {
       onClick={onClick}
       title={title}
       disabled={disabled}
+      aria-pressed={active}
       className={cn(
-        'flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] transition-colors disabled:opacity-35',
+        'log-inspector-tool-button flex h-8 items-center gap-2 rounded border px-2.5 text-xs transition-colors disabled:opacity-35',
         active
           ? 'border-accent/50 bg-accent/15 text-accent-light'
           : 'border-border-2 text-text-2 hover:border-accent/40 hover:text-text-1',
@@ -39,8 +40,10 @@ export function IconToggle({ active, onClick, title, children }: {
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={cn(
-        'grid h-7 w-7 place-items-center rounded border transition-colors',
+        'log-inspector-icon-toggle grid h-8 w-7 place-items-center rounded border transition-colors',
         active ? 'border-accent/50 bg-accent/20 text-accent-light' : 'border-border-2 text-text-3 hover:border-accent/40 hover:text-text-1',
       )}
     >

@@ -160,8 +160,10 @@ export const useCopilotStore = create<CopilotState>((set, get) => {
 
     saveSettings: (settings) => run(async () => set({ settings: await saveCopilotSettings(settings) })),
     setEnabled: async (enabled) => {
-      const settings = get().settings
-      return settings ? get().saveSettings({ ...settings, enabled }) : false
+      try {
+        const settings = get().settings ?? await getCopilotSettings()
+        return await get().saveSettings({ ...settings, enabled })
+      } catch (error) { set({ error: messageOf(error) }); return false }
     },
     toggleCompletions: async () => {
       const settings = get().settings

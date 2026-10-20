@@ -194,7 +194,8 @@ export function LogInspectorToolbar({
   }
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border-1 bg-surface-1 px-3 py-2">
+    <div className="log-inspector-toolbar flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border-1 px-4 py-3">
+      <div className="log-inspector-acquisition">
       <ToolButton onClick={onPaste} icon={<ClipboardPaste size={12} />} label="Paste" title="Paste and analyze (Ctrl+V)" />
       <ToolButton onClick={onPickFiles} icon={<FolderOpen size={12} />} label="Open" title="Open one or more log files" />
       <ToolButton
@@ -269,9 +270,9 @@ export function LogInspectorToolbar({
       )}
       <ToolButton onClick={onClear} icon={<Eraser size={12} />} label="Clear" title="Clear everything (Ctrl+L)" disabled={clearDisabled} />
 
-      <span className="mx-1 h-5 w-px bg-border-2" />
-
-      <div className="relative min-w-[200px] flex-1">
+      </div>
+      <div className="log-inspector-query-controls">
+      <div className="log-inspector-search relative min-w-[200px] flex-1">
         <Search size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-4" />
         <input
           ref={searchRef}
@@ -491,6 +492,7 @@ export function LogInspectorToolbar({
           <option key={limit} value={limit}>{(limit / 1000).toFixed(0)}k max</option>
         ))}
       </select>
+      </div>
     </div>
   )
 }

@@ -8,7 +8,7 @@ vi.mock('@/lib/code-studio-lsp-api', () => ({
 }))
 
 import { diagnosticCounts, isGoplsInstall, useCodeStudioLspStore } from './codeStudioLsp'
-import { restartLanguageServer, startLanguageServer } from '@/lib/code-studio-lsp-api'
+import { getLanguageServerStatus, restartLanguageServer, startLanguageServer } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from './codeStudio'
 
 const report = (uri: string, severity: number) => ({
@@ -20,6 +20,26 @@ const event = (sessionId: string, type: string, payload: unknown) => ({ version:
 
 describe('Code Studio language server store', () => {
   beforeEach(() => useCodeStudioLspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
+
+  it('starts gopls in low resources while respecting explicit user stops', async () => {
+    const original = useCodeStudioLspStore.getState()
+    const sessions = useCodeStudioStore.getState().sessions
+    const start = vi.fn(async () => undefined)
+    useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted' } } as never] })
+    useCodeStudioLspStore.setState({ start, preferences: { ...original.preferences, resourceMode: 'low' }, userStopped: {}, gopls: { low: { available: true } as never }, linter: { low: null } })
+    vi.mocked(getLanguageServerStatus).mockResolvedValue({ state: 'stopped' } as never)
+    try {
+      await useCodeStudioLspStore.getState().ensureStarted('low')
+      expect(start).toHaveBeenCalledWith('low', false)
+      start.mockClear()
+      useCodeStudioLspStore.setState({ userStopped: { low: true } })
+      await useCodeStudioLspStore.getState().ensureStarted('low')
+      expect(start).not.toHaveBeenCalled()
+    } finally {
+      useCodeStudioStore.setState({ sessions })
+      useCodeStudioLspStore.setState({ start: original.start, preferences: original.preferences, userStopped: original.userStopped, gopls: original.gopls, linter: original.linter })
+    }
+  })
 
   it('shows activity while gopls restarts and clears it when ready', async () => {
     vi.mocked(restartLanguageServer).mockResolvedValue({ state: 'ready' } as never)

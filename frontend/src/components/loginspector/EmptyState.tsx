@@ -38,7 +38,7 @@ export function EmptyState({ onSampleId, onFile, onFiles, onAnalyzeText, error }
 
   return (
     <div className="min-h-0 flex-1 overflow-auto bg-surface-0">
-      <div className={`flex min-h-full flex-col gap-4 py-4 ${GUTTER}`}>
+      <div className={`log-inspector-welcome flex min-h-full flex-col gap-6 py-6 ${GUTTER}`}>
         <Header />
 
         {error && (
@@ -63,9 +63,10 @@ export function EmptyState({ onSampleId, onFile, onFiles, onAnalyzeText, error }
 
 function Header() {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-border-1 pb-3">
+    <header className="log-inspector-intro flex flex-wrap items-end justify-between gap-x-6 gap-y-2 pb-4">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold text-text-1">Inspect application logs</h2>
+        <p className="nothing-studio-label mb-2">01 / Start here</p>
+        <h2>Inspect application logs</h2>
         <p className="mt-1 max-w-3xl text-xs text-text-3">
           Paste what a pod prints — compressed JSON, JSON Lines, plain text or a mix with stack traces —
           and read it as events instead of walls of text.
@@ -89,7 +90,7 @@ interface InputAreaProps {
 
 function InputArea({ draft, onDraftChange, onFile, onFiles, onAnalyzeText }: InputAreaProps) {
   return (
-    <div className="grid gap-3 md:grid-cols-[1.15fr_1fr]">
+    <div className="log-inspector-input-grid grid gap-4 md:grid-cols-[1fr_1fr]">
       <FileDropZone
         accept={ACCEPTED_EXTENSIONS}
         label="Drop one or more log files here"
@@ -97,10 +98,10 @@ function InputArea({ draft, onDraftChange, onFile, onFiles, onAnalyzeText }: Inp
         onFile={onFile}
         multiple
         onFiles={onFiles}
-        className="h-full min-h-[200px] border-accent/45 hover:border-accent"
+        className="log-inspector-drop h-full min-h-[240px] hover:border-accent"
       />
 
-      <div className="flex min-h-[200px] flex-col gap-2">
+      <div className="log-inspector-paste flex min-h-[240px] flex-col gap-3">
         <textarea
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -137,8 +138,8 @@ function InputArea({ draft, onDraftChange, onFile, onFiles, onAnalyzeText }: Inp
 
 function SampleGrid({ onSampleId }: { onSampleId: (id: string) => void }) {
   return (
-    <section>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-4">Try a sample</p>
+    <section className="log-inspector-samples">
+      <p className="nothing-studio-label mb-3">02 / Try a sample</p>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
         {LOG_SAMPLES.map((sample) => (
           <button

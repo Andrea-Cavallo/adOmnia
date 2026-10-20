@@ -196,8 +196,8 @@ export function CodeStudioProfilePanel({ session }: CodeStudioProfilePanelProps)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="code-studio-tool-header flex-wrap gap-2">
-        <span className="code-studio-tool-title">Performance</span>
+      <div className="go-profile-toolbar code-studio-tool-header flex-wrap gap-2">
+        <span className="go-profile-caption code-studio-tool-title">Performance</span>
         <CodeStudioCreateProfile key={sessionId} session={session} onCreated={profileCreated} />
         <CodeStudioCaptureLiveProfile key={`live-${sessionId}`} session={session} onCreated={profileCreated} />
         <select
@@ -241,8 +241,9 @@ export function CodeStudioProfilePanel({ session }: CodeStudioProfilePanelProps)
       {error && <p className="border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11.5px] text-danger">{error}</p>}
 
       {!report && !reportLoading && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-text-4">
-          <Flame size={22} />
+        <div className="go-profile-empty flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-text-4">
+          <div className="go-profile-empty-glyph"><Flame size={28} strokeWidth={1.25} aria-hidden="true" /></div>
+          <p className="go-profile-empty-title">Start with a profile</p>
           <p className="text-[12.5px]">Use Create .pprof to run package tests and open the generated profile, or select an existing file above.</p>
         </div>
       )}

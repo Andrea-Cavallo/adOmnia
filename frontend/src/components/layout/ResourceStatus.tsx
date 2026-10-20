@@ -8,6 +8,7 @@ import { saveTextFile } from '@/lib/fileUtils'
 import { resourcesToMarkdown } from '@/lib/resourcesMarkdown'
 import { resourceReport, resourcesToCSV, resourcesToHTML, resourceStats } from '@/lib/resourceReport'
 import { ResourceChart } from './ResourceChart'
+const ResourceLowResourceControls = lazy(() => import('./ResourceLowResourceControls').then(m => ({ default: m.ResourceLowResourceControls })))
 const ResourceMemoryControls = lazy(() => import('./ResourceMemoryControls').then(m=>({default:m.ResourceMemoryControls})))
 
 // Indicatore della status bar: ogni campione legge la tabella dei processi del sistema.
@@ -86,6 +87,7 @@ export function ResourceDetails({ sample, failed, history, className = '', recor
       {sample && <div className="flex gap-1"><select aria-label={tr('Report format')} value={format} onChange={e=>setFormat(e.target.value)} className="rounded border border-border-1 bg-surface-0 px-1"><option value="json">JSON</option><option value="csv">CSV</option><option value="md">Markdown</option><option value="html">HTML + {tr('Charts')}</option></select><button type="button" onClick={() => void exportReport()} title={tr('Export full resource recording')} className="flex h-6 items-center gap-1.5 rounded border border-border-1 px-2 font-medium text-text-2 hover:bg-surface-3"><Download size={11} aria-hidden="true" /> {tr('Export')}</button></div>}
     </div>
     <p className="mb-2 text-text-4">{tr('Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.')}</p>
+    <Suspense fallback={null}><ResourceLowResourceControls /></Suspense>
     {failed && <p className="text-warning">{tr('Resources unavailable')}</p>}
     {!sample && !failed && <p className="text-text-4">{tr('Measuring resources…')}</p>}
     {exportError&&<p role="alert" className="text-error">{exportError}</p>}
