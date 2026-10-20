@@ -215,3 +215,32 @@ describe('Code Studio editor state', () => {
     expect(mocks.checkDocument).not.toHaveBeenCalledWith('session-one', 'other', expect.anything())
   })
 })
+
+
+describe('Save snapshot isolation', () => {
+ it('retains typing during an asynchronous save and prevents duplicate writes', async () => {
+  let acknowledge!: (value: unknown) => void
+  mocks.saveDocument.mockReturnValue(new Promise((resolve) => { acknowledge = resolve }))
+  const store = useCodeStudioStore.getState()
+  store.updateDocument('document-one', 'submitted')
+  const first = store.saveDocument('document-one')
+  expect(await store.saveDocument('document-one')).toBe(false)
+  expect(mocks.saveDocument).toHaveBeenCalledTimes(1)
+  store.updateDocument('document-one', 'newer typing')
+  acknowledge({ ...document, content: 'submitted', diskToken: 'token-two' })
+  expect(await first).toBe(true)
+  expect(useCodeStudioStore.getState().documents[0]).toMatchObject({ buffer: 'newer typing', savedContent: 'submitted', diskToken: 'token-two', dirty: true, saving: false })
+ })
+ it('cleans only the acknowledged document and undo to the saved text clears dirty', async () => {
+  mocks.saveDocument.mockResolvedValue({ ...document, content: 'saved' })
+  useCodeStudioStore.setState({ documents: [document, { ...document, document: { ...document.document, id: 'other' }, buffer: 'other unsaved', dirty: true }] })
+  const store = useCodeStudioStore.getState()
+  store.updateDocument('document-one', 'saved')
+  expect(await store.saveDocument('document-one')).toBe(true)
+  expect(useCodeStudioStore.getState().documents[0]).toMatchObject({ dirty: false, saving: false })
+  expect(useCodeStudioStore.getState().documents[1].dirty).toBe(true)
+  store.updateDocument('document-one', 'more')
+  store.updateDocument('document-one', 'saved')
+  expect(useCodeStudioStore.getState().documents[0].dirty).toBe(false)
+ })
+})

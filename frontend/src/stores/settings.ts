@@ -1,4 +1,5 @@
 import type { TerminalAppearance } from '@/lib/code-studio/terminalAppearance'
+import type { Lang } from '@/lib/i18n'
 import { normalizeJsonColors, type JsonColors } from '@/lib/jsonColors'
 import { normalizeProfiles, type AppearanceProfile, type PersonalColors } from '@/lib/personalAppearance'
 import { validAccent } from '@/lib/accentPalette'
@@ -53,7 +54,7 @@ export interface AppSettings {
     uiFont: UIFontId
     fontSize: 'small' | 'medium' | 'large'
     monoFontSize: 'small' | 'medium' | 'large'
-    language: 'en' | 'it'
+    language: Lang
     sidebarWidth: number
     showRailIconsOnly: boolean
     baseColor?: string

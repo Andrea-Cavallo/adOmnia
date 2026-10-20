@@ -18,6 +18,10 @@
   <strong>English</strong> · <a href="README.es-ES.md">Español</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
+<p align="center">
+  <img src="assets/images/adomnia-intro.gif" alt="adOmnia — local-first, no account, no telemetry" width="240">
+</p>
+
 ## adOmnia is written in Go!
 
 <p align="center">

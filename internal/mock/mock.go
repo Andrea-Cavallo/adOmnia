@@ -169,12 +169,14 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	mux.HandleFunc("/", mockRequestHandler)
 
 	mockSrvLn = ln
-	mockSrv = &http.Server{Handler: mux, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
+	srv := &http.Server{Handler: mux, ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second}
+	mockSrv = srv
 	mockSrvPort = cfg.Port
 
 	go func() {
 		devlog.Info("mockStartHandler", "mock server in ascolto", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
-		if err := mockSrv.Serve(ln); err != nil && err != http.ErrServerClosed {
+		// Serve on the local srv: the global may already be nil by the time this runs.
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			devlog.Err("mockStartHandler", "mock server terminato con errore", err, map[string]any{"port": cfg.Port})
 		}
 	}()

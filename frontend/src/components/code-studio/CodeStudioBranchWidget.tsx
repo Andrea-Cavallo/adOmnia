@@ -25,7 +25,7 @@ export function CodeStudioBranchWidget({ sessionId, onCommit }: CodeStudioBranch
 
   const changes = status.changes.length
   const items: ContextMenuItem[] = [
-    { id: COMMIT_ITEM, label: changes ? `Commit… (${changes} changed)` : 'Commit…', shortcut: 'Ctrl+K', disabled: changes === 0, disabledReason: 'No local changes', icon: GitCommitHorizontal },
+    { id: COMMIT_ITEM, label: changes ? `Commit… (${changes} changed)` : 'Commit…', shortcut: 'Ctrl+Shift+K', disabled: changes === 0, disabledReason: 'No local changes', icon: GitCommitHorizontal },
     ...status.branches.map((branch, index) => ({ id: `branch:${branch}`, label: branch, icon: GitBranch, checked: branch === status.branch || undefined, disabled: branch === status.branch, separatorBefore: index === 0 })),
     { id: GIT_STUDIO_ITEM, label: 'Open Project Git', icon: GitPullRequestArrow, separatorBefore: true },
   ]

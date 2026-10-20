@@ -34,5 +34,5 @@ export function useCodeStudioTitlebar(): CodeStudioTitlebar {
 export function CodeStudioWindowControls() {
   const { active } = useCodeStudioTitlebar()
   if (!active) return null
-  return <><span className="ml-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" /><WindowControls height="h-12" /></>
+  return <><span className="ml-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" /><WindowControls height="h-11" /></>
 }

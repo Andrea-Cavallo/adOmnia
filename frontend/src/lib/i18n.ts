@@ -1,8 +1,8 @@
-import { useSettingsStore } from '@/stores/settings'
+import { languageCatalog, useTranslationLanguage } from './lazyTranslations'
 
-export type Lang = 'en' | 'it'
+export type Lang = 'en' | 'it' | 'zh' | 'ja' | 'ru'
 
-const T = {
+const BASE = {
   en: {
     rail: {
       collections: 'Collections',
@@ -108,7 +108,7 @@ const T = {
         densityOptions: { compact: 'Compact', comfortable: 'Comfortable', spacious: 'Spacious' },
         fontSizeOptions: { small: 'Small', medium: 'Medium', large: 'Large' },
         monoFontSizeOptions: { small: 'Small', medium: 'Medium', large: 'Large' },
-        languageOptions: { en: 'English', it: 'Italiano' },
+        languageOptions: { en: 'English', it: 'Italiano', zh: '简体中文', ja: '日本語', ru: 'Русский' },
         accentOptions: {
           default: 'Default',
           blue: 'Blue',
@@ -397,7 +397,7 @@ const T = {
         densityOptions: { compact: 'Compatto', comfortable: 'Comodo', spacious: 'Spazioso' },
         fontSizeOptions: { small: 'Piccolo', medium: 'Medio', large: 'Grande' },
         monoFontSizeOptions: { small: 'Piccolo', medium: 'Medio', large: 'Grande' },
-        languageOptions: { en: 'English', it: 'Italiano' },
+        languageOptions: { en: 'English', it: 'Italiano', zh: '简体中文', ja: '日本語', ru: 'Русский' },
         accentOptions: {
           default: 'Predefinito',
           blue: 'Blu',
@@ -583,9 +583,14 @@ const T = {
   },
 } as const
 
-export type Translations = typeof T['en']
+export type Translations = typeof BASE['en']
+export const T = { ...BASE,
+ get zh(): Translations { return (languageCatalog('zh')?.settings ?? BASE.en) as Translations },
+ get ja(): Translations { return (languageCatalog('ja')?.settings ?? BASE.en) as Translations },
+ get ru(): Translations { return (languageCatalog('ru')?.settings ?? BASE.en) as Translations },
+}
 
 export function useT(): Translations {
-  const lang = useSettingsStore((s) => s.settings.appearance.language ?? 'en') as Lang
+  const lang = useTranslationLanguage()
   return (T[lang] ?? T['en']) as Translations
 }

@@ -1,6 +1,8 @@
+import { languageCatalog } from '@/lib/lazyTranslations'
 import { useCallback } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiTranslation } from '@/lib/uiI18n'
+import type { Lang } from '@/lib/i18n'
 
 const messages = {
   'Your adOmnia': 'Il tuo adOmnia',
@@ -36,6 +38,13 @@ const messages = {
   'Save as new': 'Salva come nuovo',
 } as const
 
+const MESSAGES_BY_LANGUAGE: Partial<Record<Lang, Record<string, string>>> = {
+  it: messages,
+  get zh() { return languageCatalog('zh')?.personal },
+  get ja() { return languageCatalog('ja')?.personal },
+  get ru() { return languageCatalog('ru')?.personal },
+}
+
 export function usePersonalAppearanceTranslation() {
   const language = useSettingsStore((s) => s.settings.appearance.language)
   const translate = useUiTranslation()
@@ -43,7 +52,7 @@ export function usePersonalAppearanceTranslation() {
     (key: keyof typeof messages | 'Send' | 'Cancel' | 'Delete') => {
       if (key === 'Send' || key === 'Cancel' || key === 'Delete')
         return translate(key)
-      return language === 'it' ? messages[key] : key
+      return MESSAGES_BY_LANGUAGE[language]?.[key] ?? key
     },
     [language, translate],
   )

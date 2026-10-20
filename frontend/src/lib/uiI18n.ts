@@ -1,5 +1,5 @@
+import { languageCatalog, useTranslationLanguage } from './lazyTranslations'
 import { useCallback } from 'react'
-import { useSettingsStore } from '@/stores/settings'
 import type { Lang } from '@/lib/i18n'
 
 /**
@@ -1090,8 +1090,30 @@ export const ITALIAN_NAVIGATION_MESSAGES: Record<string, string> = {
   'Database': 'Database',
 }
 
+type MessageDictionary = Record<string, string>
+
+/** Per-language message catalogs. English is the source language and needs no dictionary. */
+export const UI_MESSAGES_BY_LANGUAGE: Partial<Record<Lang, MessageDictionary>> = {
+  it: ITALIAN_UI_MESSAGES as MessageDictionary,
+  get zh() { return languageCatalog('zh')?.ui },
+  get ja() { return languageCatalog('ja')?.ui },
+  get ru() { return languageCatalog('ru')?.ui },
+}
+
+export const NAVIGATION_MESSAGES_BY_LANGUAGE: Partial<Record<Lang, MessageDictionary>> = {
+  it: ITALIAN_NAVIGATION_MESSAGES,
+  get zh() { return languageCatalog('zh')?.navigation },
+  get ja() { return languageCatalog('ja')?.navigation },
+  get ru() { return languageCatalog('ru')?.navigation },
+}
+
+function lookup(dictionaries: Partial<Record<Lang, MessageDictionary>>, message: string, language: Lang): string | undefined {
+  if (language === 'en') return undefined
+  return dictionaries[language]?.[message]
+}
+
 export function translateUi(message: UiMessage, language: Lang, values?: UiValues): string {
-  const template = language === 'it' ? (ITALIAN_UI_MESSAGES[message] ?? message) : message
+  const template = lookup(UI_MESSAGES_BY_LANGUAGE, message, language) ?? message
   if (!values) return template
   return Object.entries(values).reduce(
     (result, [key, value]) => result.split(`{${key}}`).join(String(value)),
@@ -1100,25 +1122,27 @@ export function translateUi(message: UiMessage, language: Lang, values?: UiValue
 }
 
 export function translateNavigation(message: string, language: Lang): string {
-  return language === 'it' ? (ITALIAN_NAVIGATION_MESSAGES[message] ?? message) : message
+  return lookup(NAVIGATION_MESSAGES_BY_LANGUAGE, message, language) ?? message
 }
 
 export function translateKnownUi(message: string, language: Lang): string {
-  if (language !== 'it') return message
-  return (ITALIAN_UI_MESSAGES as Record<string, string>)[message] ?? message
+  return lookup(UI_MESSAGES_BY_LANGUAGE, message, language) ?? message
 }
 
 export function useUiTranslation() {
-  const language = useSettingsStore((state) => state.settings.appearance.language ?? 'en') as Lang
-  return useCallback((message: UiMessage, values?: UiValues) => translateUi(message, language, values), [language])
+  const language = useTranslationLanguage()
+  const catalog = languageCatalog(language)
+  return useCallback((message: UiMessage, values?: UiValues) => translateUi(message, language, values), [language, catalog])
 }
 
 export function useNavigationTranslation() {
-  const language = useSettingsStore((state) => state.settings.appearance.language ?? 'en') as Lang
-  return useCallback((message: string) => translateNavigation(message, language), [language])
+  const language = useTranslationLanguage()
+  const catalog = languageCatalog(language)
+  return useCallback((message: string) => translateNavigation(message, language), [language, catalog])
 }
 
 export function useKnownUiTranslation() {
-  const language = useSettingsStore((state) => state.settings.appearance.language ?? 'en') as Lang
-  return useCallback((message: string) => translateKnownUi(message, language), [language])
+  const language = useTranslationLanguage()
+  const catalog = languageCatalog(language)
+  return useCallback((message: string) => translateKnownUi(message, language), [language, catalog])
 }

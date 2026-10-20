@@ -155,6 +155,9 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
       { id: 'configure', label: 'Edit Configurations…', icon: Settings2, separatorBefore: true },
     ]
     return [
+      { id: 'build', label: 'Build', icon: Hammer, disabled: !toolsReady || loading },
+      { id: 'test', label: 'Test project unit', icon: Check, disabled: !!testReason || loading },
+      { id: 'configure', label: 'Edit Configurations…', icon: Settings2 },
       { id: 'detect', label: `Detect Go Toolchain · ${goVersion(toolchain)}`, icon: RefreshCw, disabled: !authorized, disabledReason: 'Trust the project first' },
       { id: 'toolchain', label: 'Go Binary and Environment…', icon: Settings2, disabled: !authorized, disabledReason: 'Trust the project first' },
       { id: 'dependencies', label: 'Module Dependencies…', icon: PackageSearch },
@@ -173,6 +176,8 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     if (id.startsWith(DETECTED_PREFIX)) return void detected.add(id.slice(DETECTED_PREFIX.length))
     if (id.startsWith(CONFIG_PREFIX)) return props.onSelectConfiguration(id.slice(CONFIG_PREFIX.length) || null)
     switch (id) {
+      case 'build': return props.onBuild()
+      case 'test': return props.onTest()
       case 'open': return props.onOpenProject()
       case 'new': return props.onCreateProject()
       case 'project-window': return void useCodeStudioWindowsStore.getState().moveToNewWindow(activeSession.id)
@@ -188,7 +193,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
 
   const titlebar = useCodeStudioTitlebar()
   return (
-    <div role="toolbar" aria-label="Code Studio toolbar" {...titlebar.props} className={`code-studio-toolbar flex h-12 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'code-studio-titlebar' : 'pr-2'}`}>
+    <div role="toolbar" aria-label="Code Studio toolbar" {...titlebar.props} className={`code-studio-toolbar flex h-11 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'code-studio-titlebar' : 'pr-2'}`}>
       {mainMenu}
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`code-studio-widget max-w-60 pl-1.5 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
@@ -196,13 +201,12 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
         <span className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-text-1">{activeSession.project.name}</span>
         <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
-      {extra}
 
-      <div className="flex min-w-0 flex-1 px-1.5">
-        <button type="button" onClick={props.onSearchEverywhere} title="Search Everywhere · Shift Shift" className="flex h-[34px] w-full max-w-[560px] items-center gap-2.5 rounded-[11px] bg-[var(--gs-island)] px-3.5 text-text-4 shadow-[inset_0_0_0_1px_var(--color-border-1)] transition-colors hover:text-text-2 hover:shadow-[inset_0_0_0_1px_var(--color-border-2,var(--color-border-1))]">
+      <div className="code-studio-header-search flex min-w-0 flex-1 px-1.5">
+        <button type="button" onClick={props.onSearchEverywhere} title="Search Everywhere · Ctrl/Cmd+K" className="code-studio-search-control">
           <Search size={15} className="shrink-0" />
           <span className="flex-1 truncate text-left text-[13px]">Search files, symbols, actions…</span>
-          <span className="flex shrink-0 items-center gap-1"><kbd className="code-studio-key">⇧</kbd><kbd className="code-studio-key">⇧</kbd></span>
+          <span className="flex shrink-0 items-center gap-1"><kbd className="code-studio-key">Ctrl</kbd><kbd className="code-studio-key">K</kbd></span>
         </button>
       </div>
 
@@ -213,9 +217,9 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
           <ChevronDown size={11} className="shrink-0 text-text-4" />
         </button>
         <span className="mx-0.5 h-4 w-px bg-border-1" aria-hidden="true" />
-        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading || (!!activeConfig && templateFor(activeConfig).run === false)} aria-label="Run" title={(!!activeConfig && templateFor(activeConfig).run === false) ? 'Attach configurations use Debug' : 'Run · Ctrl/Cmd+F5'} className="code-studio-icon-button h-[28px] w-[32px] bg-success/20 text-success"><Play size={15} fill="currentColor" /></button>
-        <button type="button" onClick={props.onDebug} disabled={!!debugReason || loading} aria-label="Debug" title={debugReason || 'Debug · Shift+F9'} className="code-studio-icon-button h-[28px] w-[32px] text-info"><Bug size={15} /></button>
-        <button type="button" onClick={props.onTest} disabled={!!testReason || loading} aria-label="Test" title={testReason || 'Test project unit'} className="code-studio-icon-button h-[28px] w-[32px] text-success"><Check size={15} /></button>
+        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading || (!!activeConfig && templateFor(activeConfig).run === false)} aria-label="Run" title={(!!activeConfig && templateFor(activeConfig).run === false) ? 'Attach configurations use Debug' : 'Run · Ctrl/Cmd+F5'} className="code-studio-icon-button code-studio-run-action h-[28px] w-[32px]"><Play size={15} fill="currentColor" /></button>
+        <button type="button" onClick={props.onDebug} disabled={!!debugReason || loading} aria-label="Debug" title={debugReason || 'Debug · Shift+F9'} className="code-studio-icon-button code-studio-debug-action h-[28px] w-[32px]"><Bug size={15} /></button>
+        <button type="button" onClick={props.onTest} disabled={!!testReason || loading} aria-label="Test" title={testReason || 'Test project unit'} className="code-studio-icon-button h-[28px] w-[32px]"><Check size={15} /></button>
         <button type="button" onClick={props.onConfigure} aria-label="Edit run configurations" title="Edit run configurations" className="code-studio-icon-button h-[28px] w-[32px]"><Settings2 size={14} /></button>
         <button type="button" onClick={props.onStop} disabled={!running} aria-label="Stop" title="Stop process tree · Shift+F5" className="code-studio-icon-button h-[28px] w-[32px] bg-danger/15 text-danger"><Square size={12} fill="currentColor" /></button>
       </div>
@@ -227,6 +231,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
         <LayoutGrid size={15} />
         {detachedStudios.length > 0 && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />}
       </button>
+      {extra}
       {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
       {/* Nella barra della finestra la X è quella della finestra: Close Project resta nel menu File. */}
       {!titlebar.active && <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="code-studio-icon-button h-8 w-8"><X size={14} /></button>}

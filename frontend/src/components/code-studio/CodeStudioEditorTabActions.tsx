@@ -1,6 +1,7 @@
+import { CodeStudioPathDialog } from './CodeStudioPathDialog'
 import { useState } from 'react'
 import { ContextMenu } from '@/components/ui/ContextMenu'
-import { Ellipsis, Maximize2, Minimize2, Redo2, Save, Undo2 } from 'lucide-react'
+import { Ellipsis, Loader2, Maximize2, Minimize2, Plus, Redo2, Save, Undo2 } from 'lucide-react'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { activeCodeStudioEditor, runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 
@@ -13,21 +14,28 @@ interface CodeStudioEditorTabActionsProps {
 export function CodeStudioEditorTabActions({ document, onSave }: CodeStudioEditorTabActionsProps) {
   const toggleEditorMaximized = useCodeStudioStore((state) => state.toggleEditorMaximized)
   const editorMaximized = useCodeStudioStore((state) => !state.layout.projectOpen && !state.layout.structureOpen && !state.layout.bottomOpen)
+  const [newFileOpen, setNewFileOpen] = useState(false)
   const canSave = document.dirty && !document.saving && !document.document.readOnly
   const model = activeCodeStudioEditor()?.getModel()
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   return (
     <div role="toolbar" aria-label="Editor actions" className="code-studio-editor-actions">
+      <button type="button" aria-label="New file" title="New file" className="code-studio-icon-button h-7 w-7" onClick={() => setNewFileOpen(true)}><Plus size={15} /></button>
+      {newFileOpen && <CodeStudioPathDialog sessionId={document.document.sessionId} request={{ action: 'newFile', target: document.document.relativePath.split('/').slice(0, -1).join('/') }} onClose={() => setNewFileOpen(false)} />}
       <button
         type="button"
         disabled={!canSave}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={onSave}
         title="Save · Ctrl/Cmd+S"
         aria-label="Save"
         className="code-studio-editor-save"
+        data-save-state={document.saving ? 'saving' : document.saveError ? 'error' : document.dirty ? 'dirty' : 'clean'}
+        aria-busy={document.saving}
+        aria-description={document.saveError || undefined}
       >
-        <Save size={14} /><span>Save</span>
+        {document.saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}<span>{document.saving ? 'Saving' : 'Save'}</span>
       </button>
       <button type="button" aria-label="More editor actions" aria-haspopup="menu" aria-expanded={!!menu} title="More editor actions" className="code-studio-icon-button h-7 w-7"
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu(menu ? null : { x: rect.right - 232, y: rect.bottom + 5 }) }}><Ellipsis size={16} /></button>

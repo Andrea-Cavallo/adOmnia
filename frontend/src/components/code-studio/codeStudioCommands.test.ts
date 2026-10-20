@@ -155,3 +155,8 @@ describe('Code Studio command availability', () => {
     expect(commandAvailability('code.lint', { ...ready, authorized: false })).toMatch(/Trust/)
   })
 })
+
+it('opens reference header search with Ctrl+K and keeps Commit on Ctrl+Shift+K', () => {
+ expect(commandForKey(key({ key: 'k', ctrlKey: true }))?.id).toBe('nav.searchEverywhere')
+ expect(commandForKey(key({ key: 'K', ctrlKey: true, shiftKey: true }))?.id).toBe('vcs.commit')
+})

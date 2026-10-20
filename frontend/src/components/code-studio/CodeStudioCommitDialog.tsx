@@ -92,7 +92,7 @@ function ChangedSymbols({ symbols, selected, onClose }: { symbols: GoIDEVCSChang
   )
 }
 
-/** Commit (Ctrl+K): si registrano solo i file spuntati; i file non versionati partono esclusi. */
+/** Commit (Ctrl+Shift+K): si registrano solo i file spuntati; i file non versionati partono esclusi. */
 export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConflicts }: CodeStudioCommitDialogProps) {
   const status = useCodeStudioVCSStore((state) => state.status[sessionId] ?? null)
   const [selected, setSelected] = useState<Set<string>>(new Set())

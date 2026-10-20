@@ -853,3 +853,21 @@ The palettes are bundled adaptations inspired by the named themes, not imported 
 Verification: focused palette/normalization, bus, restore and link tests, TypeScript, frontend build,
 and Go terminal tests. Native desktop visual acceptance (Windows/WebKitGTK, font changes with
 live output, palette changes while split/detached, narrow windows) remains pending.
+
+### Header and Save states (2026-10-20)
+
+The compact header and document tabs use the existing palette tokens and official AppLogo.
+Run uses the active accent; Debug is outlined; Stop retains its stop/danger semantics.
+At narrow widths, Build/Test/Edit configurations remain available in the overflow menu.
+Search Everywhere is Ctrl/Cmd+K (double Shift remains available); Commit is Ctrl/Cmd+Shift+K.
+The tab toolbar includes New file using the existing path dialog, Save, overflow and maximize.
+
+Save reflects only the selected document: neutral when clean, accent when dirty, busy while saving,
+and an error border on failure. Saving uses the same store action as Ctrl+S. Duplicate requests are
+rejected while saving; the response acknowledges only the submitted snapshot and retains later
+editor changes as dirty, with updated disk token and buffer recovery. Undo to saved content clears dirty.
+
+Verification: store/command/tab tests plus TypeScript and build. Browser preview with real React
+header/tab components and fixture documents checked at 1440 and 760 px; dirty/clean switching was
+exercised visually. Native Wails Save/Undo/Redo, live palette changes and visual acceptance against
+the supplied full IDE mockup remain pending; preview actions do not prove native file writes.

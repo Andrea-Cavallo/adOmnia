@@ -6,7 +6,7 @@ import { useCodeStudioStore } from '@/stores/codeStudio'
 import type { AppSettings } from '@/stores/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { useThemesStore } from '@/stores/themes'
-import { useT } from '@/lib/i18n'
+import { useT, type Lang } from '@/lib/i18n'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { UI_FONTS, type UIFontId } from '@/lib/uiFonts'
 import { cn } from '@/lib/utils'
@@ -466,8 +466,11 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 options={[
                   { value: 'en', label: s.appearance.languageOptions.en },
                   { value: 'it', label: s.appearance.languageOptions.it },
+                  { value: 'zh', label: s.appearance.languageOptions.zh },
+                  { value: 'ja', label: s.appearance.languageOptions.ja },
+                  { value: 'ru', label: s.appearance.languageOptions.ru },
                 ]}
-                onChange={(v) => updateAppearance({ language: v as 'en' | 'it' })}
+                onChange={(v) => updateAppearance({ language: v as Lang })}
               />
               <Select
                 label={s.appearance.theme}

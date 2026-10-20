@@ -113,7 +113,7 @@ export function CodeStudioLeftStripe({ session, onCommit, onBookmarks }: CodeStu
   return (
     <nav aria-label="Code Studio tool windows" className="code-studio-stripe">
       <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { restoreLayout(); updateLayout({ projectOpen: !projectOpen }) }} />
-      <StripeButton label="Commit · Ctrl+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { restoreLayout(); onCommit() }} />
+      <StripeButton label="Commit · Ctrl+Shift+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { restoreLayout(); onCommit() }} />
       <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { restoreLayout(); onBookmarks() }} />
       <div className="flex-1" />
       {TOOL_WINDOWS.map((entry) => (

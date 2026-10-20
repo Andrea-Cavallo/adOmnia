@@ -4,6 +4,15 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.11] — 2026-10-20
+
+Release notes: [docs/releases/v1.0.11.md](docs/releases/v1.0.11.md).
+
+- Compact theme-aware Code Studio header/tabs and active-document Save states.
+- Preserve edits made during asynchronous saves and prevent duplicate writes.
+- Chinese, Japanese and Russian UI/settings catalogs, loaded on demand.
+- README animation and mock-server startup race fix.
+
 ## [1.0.10] — 2026-10-20
 
 Release notes: [docs/releases/v1.0.10.md](docs/releases/v1.0.10.md).

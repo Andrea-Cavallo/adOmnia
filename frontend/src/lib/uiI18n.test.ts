@@ -1,15 +1,25 @@
+import { loadLanguage } from '@/lib/lazyTranslations'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
+beforeAll(async () => { await Promise.all(['zh', 'ja', 'ru'].map(language => loadLanguage(language as 'zh' | 'ja' | 'ru'))) })
 import { FEATURE_REGISTRY, RAIL_CATEGORIES } from '@/lib/featureRegistry'
 import { CATEGORIES as TOOL_CATEGORIES } from '@/components/utils/toolRegistry'
 import {
   ITALIAN_NAVIGATION_MESSAGES,
   ITALIAN_UI_MESSAGES,
+  NAVIGATION_MESSAGES_BY_LANGUAGE,
+  UI_MESSAGES_BY_LANGUAGE,
   translateNavigation,
   translateUi,
   type UiMessage,
 } from '@/lib/uiI18n'
+
+const TRANSLATED_LANGUAGES = ['it', 'zh', 'ja', 'ru'] as const
+
+function placeholdersOf(value: string): string[] {
+  return (value.match(/\{[a-zA-Z0-9_]+\}/g) ?? []).sort()
+}
 
 const GUARDED_SURFACES = [
   'src/App.tsx',
@@ -86,6 +96,31 @@ describe('stable UI localization', () => {
     expect(translateNavigation('Unregistered panel', 'it')).toBe('Unregistered panel')
   })
 
+  it('translates the stable shell into every supported language', () => {
+    for (const language of ['zh', 'ja', 'ru'] as const) {
+      expect(translateUi('Send', language), language).not.toBe('Send')
+      const interpolated = translateUi('{count} variables detected', language, { count: 3 })
+      expect(interpolated, language).toContain('3')
+      expect(interpolated, language).not.toContain('{count}')
+      expect(translateUi('Unregistered message' as UiMessage, language), language).toBe('Unregistered message')
+      expect(translateNavigation('API Workspace', language), language).not.toBe('API Workspace')
+      expect(translateNavigation('Unregistered panel', language), language).toBe('Unregistered panel')
+    }
+  })
+
+  it('keeps every translated UI catalog complete, non-empty, and placeholder-safe', () => {
+    const keys = Object.keys(ITALIAN_UI_MESSAGES) as UiMessage[]
+    for (const language of TRANSLATED_LANGUAGES) {
+      const catalog: Record<string, string> = UI_MESSAGES_BY_LANGUAGE[language] ?? {}
+      expect(Object.keys(catalog).length, language).toBe(keys.length)
+      for (const key of keys) {
+        const translated = catalog[key] ?? ''
+        expect(translated.trim(), `${language}: ${key}`).not.toBe('')
+        expect(placeholdersOf(translated), `${language}: ${key}`).toEqual(placeholdersOf(key))
+      }
+    }
+  })
+
   it('keeps every registered Italian UI message non-empty', () => {
     expect(Object.keys(ITALIAN_UI_MESSAGES).length).toBeGreaterThan(250)
     for (const [source, translated] of Object.entries(ITALIAN_UI_MESSAGES)) {
@@ -105,8 +140,13 @@ describe('stable UI localization', () => {
       labels.add(category.label)
       for (const group of category.groups) labels.add(group.title)
     }
-    for (const label of labels) {
-      expect(ITALIAN_NAVIGATION_MESSAGES, `Missing navigation translation: ${label}`).toHaveProperty(label)
+    for (const language of TRANSLATED_LANGUAGES) {
+      const catalog: Record<string, string> = NAVIGATION_MESSAGES_BY_LANGUAGE[language] ?? {}
+      expect(Object.keys(catalog).length, language).toBe(Object.keys(ITALIAN_NAVIGATION_MESSAGES).length)
+      for (const label of labels) {
+        expect(Object.keys(catalog), `Missing ${language} navigation translation: ${label}`).toContain(label)
+        expect((catalog[label] ?? '').trim(), `${language}: ${label}`).not.toBe('')
+      }
     }
   })
 

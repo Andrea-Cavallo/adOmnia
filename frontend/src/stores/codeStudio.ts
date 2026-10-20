@@ -927,14 +927,24 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     const sessionId = get().activeSessionId
     const documentId = providedId ?? (sessionId ? get().activeDocumentBySession[sessionId] : null)
     const current = get().documents.find((item) => item.document.id === documentId)
-    if (!current || !current.dirty) return true
+    if (!current) return true
+    if (current.saving) return false
+    if (!current.dirty) return true
     set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? { ...item, saving: true, saveError: null } : item) }))
     try {
       // go.mod: un replace locale spegne quello "vero" dello stesso modulo, toglierlo lo riattiva.
       const buffer = isGoModPath(current.document.relativePath) ? syncLocalReplaces(current.buffer) : current.buffer
       const saved = await saveGoIDEDocument(current.document.sessionId, current.document.id, buffer, current.diskToken, force)
       cancelBufferRecovery(current.document.sessionId, current.document.relativePath)
-      set((state) => ({ documents: state.documents.map((item) => item.document.id === current.document.id ? toEditorDocument(saved) : item) }))
+      set((state) => ({ documents: state.documents.map((item) => {
+        if (item.document.id !== current.document.id) return item
+        const next = toEditorDocument(saved)
+        // The disk acknowledges the submitted snapshot, not subsequent typing.
+        if (item.buffer !== current.buffer) return { ...next, buffer: item.buffer, dirty: item.buffer !== next.savedContent }
+        return next
+      }) }))
+      const latest = get().documents.find((item) => item.document.id === current.document.id)
+      if (latest?.dirty) scheduleBufferRecovery(latest.document.sessionId, latest.document.relativePath, latest.buffer, latest.diskToken)
       void get().persistSessionView(current.document.sessionId)
       return true
     } catch (error) {
