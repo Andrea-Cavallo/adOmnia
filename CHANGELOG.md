@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 Release notes: [docs/releases/v1.0.12.md](docs/releases/v1.0.12.md).
 
 - Publishes the v1.0.11 code: its release build failed on a transient network error, so v1.0.11 (and v1.0.10, never tagged) never reached GitHub Releases.
+- Python in Code Studio: run, pytest test tree, debugpy debugging and basedpyright editing with an explicit, visible tool install.
 
 ## [1.0.11] — 2026-10-20
 
