@@ -342,6 +342,35 @@ func TestPytestParserFinishesUnfinishedTests(t *testing.T) {
 	}
 }
 
+// TestPytestParserKeepsUnicodeNodeIDs: nomi e parametri Unicode arrivano intatti dal plugin (che
+// scrive UTF-8) e restano l'identità del nodo per il rerun (PY-5.6).
+func TestPytestParserKeepsUnicodeNodeIDs(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "tests", "test_città.py")
+	node := "tests/test_città.py::test_valori[però/1]"
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	content := strings.Join([]string{
+		`{"event": "collect", "nodeid": ` + jsonPath(node) + `, "file": ` + jsonPath(file) + `}`,
+		`{"event": "report", "nodeid": ` + jsonPath(node) + `, "file": ` + jsonPath(file) + `, "when": "call", "outcome": "passed", "duration": 0.001, "line": 2}`,
+		`{"event": "report", "nodeid": ` + jsonPath(node) + `, "file": ` + jsonPath(file) + `, "when": "teardown", "outcome": "passed", "duration": 0.001}`,
+		`{"event": "end"}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tree := idetesting.NewTree()
+	for _, event := range newPytestParser(root, path).ParseAll([]byte("adomnia: pytest events recorded")) {
+		tree.Apply(event)
+	}
+	results, _ := tree.Snapshot()
+	for _, result := range results {
+		if strings.Contains(result.Name, "test_valori[però∕1]") && strings.Contains(result.Package, "test_città.py") {
+			return
+		}
+	}
+	t.Fatalf("the Unicode node id was lost: %+v", results)
+}
+
 func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
