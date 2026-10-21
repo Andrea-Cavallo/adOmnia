@@ -35,7 +35,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 ## Stato a colpo d'occhio
 
-Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 reali).
+Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 reali). Il 2026-10-21 il conteggio include anche le sezioni mancanti IDE-7, INST-1, PY, RC-UI, EDIT-MODE e AG.
 
 | Sezione | voci manuali | chiuse |
 |---------|-------------:|-------:|
@@ -45,6 +45,7 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 | IDE-4 | 4 | 0 |
 | IDE-5 | 5 | 0 |
 | IDE-6 | 4 | 0 |
+| IDE-7 | 2 | 0 |
 | GS-1 | 6 | 0 |
 | GS-2 | 4 | 0 |
 | GS-3 | 3 | 0 |
@@ -92,8 +93,13 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 | JS-17 | 4 | 4 |
 | SEC-2 | 10 | 0 |
 | RES-1 | 3 | 0 |
+| INST-1 | 2 | 0 |
+| PY | 10 | 0 |
+| RC-UI | 1 | 0 |
+| EDIT-MODE | 1 | 0 |
+| AG | 7 | 0 |
 | Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
-| **TOTALE** | **314** | **22** |
+| **TOTALE** | **337** | **22** |
 
 ---
 
@@ -215,6 +221,18 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 - [ ] **IDE-6.M4** Riavviare gopls durante il caricamento: lo spinner sparisce a lavoro finito; un toast di errore resta ma senza timer attivo.
 
 **Gate manuale IDE-6:** [ ]
+
+---
+
+## IDE-7 — Finestre dentro l'area di lavoro dello schermo
+
+**Prerequisito:** area di lavoro più piccola delle finestre predefinite (1400×900): display 1280×720/1366×768, scala Windows > 100%, o barra delle applicazioni alta. Poi un monitor ≥ 1920×1080 per il confronto.
+
+**Verifiche manuali**
+- [ ] **IDE-7.M1** Con l'area di lavoro ridotta: avviare adOmnia e aprire la finestra staccata di Code Studio, una Live Preview, Swagger Editor, un pannello staccato e una richiesta API staccata — ognuna si apre interamente visibile (barra del titolo e controlli raggiungibili), mai più grande dell'area di lavoro; se il minimo della finestra è più grande dello schermo, la finestra resta comunque dentro.
+- [ ] **IDE-7.M2** Su monitor ≥ 1920×1080: le stesse finestre si aprono alle dimensioni abituali (1400×900 e affini), senza cambi di misura.
+
+**Gate manuale IDE-7:** [ ]
 
 ---
 
@@ -923,6 +941,7 @@ Riferimento: `MULTILANGUAGE-IDE.md` §9.5, PY-0–PY-9. Stato: **supporto implem
 - [ ] **PY-M7** FastAPI/Uvicorn, Django e Flask: proposta modificabile, porta/URL pronti, preview su azione, porta occupata, avvio fallito e stop; reload Run e debug senza reloader. Eventuale import OpenAPI usa il flusso esistente.
 - [ ] **PY-M8** Workspace Go/web/Java/Python: routing LSP, Run/Test/Debug, compound e chiusura unità; Low resources libera strumenti Python senza perdere buffer. Registrare startup/idle/RAM misurati e regressioni degli altri linguaggi.
 - [ ] **PY-M9** Windows nativo, macOS nativo e Linux/WebKitGTK: ripetere percorso minimo open → edit → run → test → breakpoint → stop, percorsi con spazi/Unicode, form light/dark e tastiera. Una piattaforma non provata resta esplicitamente aperta.
+- [ ] **PY-M10** ▶ del gutter su uno script Python: glifo sulla riga di `if __name__ == "__main__":` e, senza guard, sulla prima riga; menu Run e Debug, run nella console con lo script scelto e debug con breakpoint sullo script. Progetto non fidato: Run/Debug bloccati con il messaggio di fiducia. Con lo script in una sottocartella il percorso relativo deve risolversi correttamente.
 
 ## RC-UI — Run configurations (2026-10-21)
 
