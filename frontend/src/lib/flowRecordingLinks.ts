@@ -1,13 +1,20 @@
 import type { RequestItem, ResponseData } from './types'
 import type { FlowVariableMapping } from './flowStorage'
+import { utf8ByteLength } from './textBytes'
+
+// A recorded response is kept only to infer variables from it. Above this size
+// the body is dropped: the recording keeps the step, not a multi-megabyte tree.
+export const RECORDED_BODY_MAX_BYTES = 2 * 1024 * 1024
 
 export interface RecordingSource {
   seq: number
   body: unknown
+  truncated?: boolean
 }
 
 /** Response bodies live only in the recording session, never in saved definitions. */
 export function recordingSource(seq: number, response: ResponseData): RecordingSource {
+  if (utf8ByteLength(response.body) > RECORDED_BODY_MAX_BYTES) return { seq, body: undefined, truncated: true }
   let body: unknown
   try { body = JSON.parse(response.body) } catch { /* Non-JSON responses have no inferred fields. */ }
   return { seq, body }

@@ -6,8 +6,8 @@
 // ponytail: validation-only scan (no value parsing); throws on malformed JSON
 //           so callers keep the user's text on failure, like JSON.parse did.
 
-export function prettyJson(src: string, indent = 2): string {
-  JSON.parse(src) // validate only — throws on malformed input (result discarded)
+export function prettyJson(src: string, indent = 2, validate = true): string {
+  if (validate) JSON.parse(src) // validate only — throws on malformed input (result discarded)
   const pad = ' '.repeat(indent)
   let out = ''
   let depth = 0

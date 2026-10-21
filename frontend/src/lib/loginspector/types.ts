@@ -106,6 +106,8 @@ export interface ParseResult {
 export interface ParseOptions {
   /** Hard ceiling on retained events. Default 200_000. */
   maxEvents?: number
+  /** Hard ceiling on the retained raw text, in bytes. Default 64 MiB. */
+  maxBytes?: number
   /** Try to JSON.parse strings found in message/body/payload/response. Default true. */
   decodeNestedJson?: boolean
   /** Optional user-defined normalization and multiline rules. */

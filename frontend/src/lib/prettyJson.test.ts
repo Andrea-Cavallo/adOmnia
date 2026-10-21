@@ -20,4 +20,9 @@ describe('prettyJson', () => {
   it('rejects malformed JSON', () => {
     expect(() => prettyJson('{"id":}')).toThrow()
   })
+
+  it('can skip the validation parse when the caller already parsed the body', () => {
+    // Same output, no second JSON.parse (the caller validated it once).
+    expect(prettyJson('{"a":1}', 2, false)).toBe('{\n  "a": 1\n}')
+  })
 })
