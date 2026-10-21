@@ -202,6 +202,38 @@ function resolveMarkdownAssetUrl(src: string, sourcePath?: string): string {
   return pathToFileUrl(baseParts.join('/'))
 }
 
+// Contenitori Yuque `:::info`/`:::warning`/`:::danger`: un titolo e paragrafi con le stesse
+// regole inline del resto del documento. Un tipo sconosciuto resta un callout neutro.
+const CALLOUTS: Record<string, { label: string; classes: string }> = {
+  info: { label: 'Info', classes: 'border-accent/40 bg-accent/10' },
+  note: { label: 'Note', classes: 'border-border-2 bg-surface-2' },
+  tips: { label: 'Tip', classes: 'border-success/40 bg-success/10' },
+  success: { label: 'Success', classes: 'border-success/40 bg-success/10' },
+  warning: { label: 'Warning', classes: 'border-warning/40 bg-warning/10' },
+  danger: { label: 'Danger', classes: 'border-danger/40 bg-danger/10' },
+}
+
+function renderCallout(kind: string | undefined, body: string[], inline: (text: string) => string): string {
+  const type = (kind ?? 'note').toLowerCase()
+  const tone = CALLOUTS[type] ?? { label: type.charAt(0).toUpperCase() + type.slice(1), classes: 'border-border-2 bg-surface-2' }
+  const paragraphs = body.map((line) => line.trim()).filter(Boolean)
+  const content = paragraphs.map((line) => `<p class="my-0.5 text-xs leading-relaxed text-text-2">${inline(line)}</p>`).join('')
+  return `<div class="my-3 rounded-md border ${tone.classes} px-3 py-2"><div class="mb-1 text-[11px] font-semibold text-text-2">${esc(tone.label)}</div>${content}</div>`
+}
+
+/** Slug di un titolo per i link interni: minuscolo, senza punteggiatura, spazi in trattini. */
+function headingSlug(text: string): string {
+  const slug = text
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
+    .trim()
+    .replace(/\s+/g, '-')
+  return slug || 'section'
+}
+
 export function renderMarkdown(md: string, sourcePath?: string): string {
   const codeBlocks: string[] = []
   const withFrontmatter = md.replace(/^---\r?\n([\s\S]*?)\r?\n---(?=\r?\n|$)/, (_m, body) => {
@@ -260,6 +292,8 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
       `<a href="${esc(sanitizeUrl(href))}" class="text-accent underline hover:opacity-80 transition-opacity">${label}</a>`)
     s = s.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_m, target, alias) =>
       `<a href="adomnia-md:${esc(target)}" class="text-accent underline hover:opacity-80 transition-opacity">${esc(alias || target)}</a>`)
+    // `==testo==` è l'evidenziazione usata da Yuque: resta testo, non HTML.
+    s = s.replace(/==([^=\n]+)==/g, '<mark class="rounded bg-warning/25 px-0.5 text-text-1">$1</mark>')
     inlineCodes.forEach((h, i) => { s = s.replace(`\x00IC${i}\x00`, h) })
     return s
   }
@@ -267,6 +301,7 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
   const out: string[] = []
   let inUL = false
   let inOL = false
+  const headingIds = new Map<string, number>()
   const closeList = () => {
     if (inUL) { out.push('</ul>'); inUL = false }
     if (inOL) { out.push('</ol>'); inOL = false }
@@ -278,6 +313,21 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
     const line = raw.trim()
     const block = line.match(/^\x00BLK(\d+)\x00$/)
     if (block) { closeList(); out.push(codeBlocks[Number(block[1])]); continue }
+
+    // Contenitori Yuque `:::info … :::` (callout): il corpo usa le stesse regole inline del testo.
+    const callout = line.match(/^:::\s*([A-Za-z]+)?\s*(.*)$/)
+    if (callout) {
+      const body: string[] = callout[2]?.trim() ? [callout[2]] : []
+      idx += 1
+      while (idx < lines.length && !/^:::\s*$/.test(lines[idx].trim())) {
+        body.push(lines[idx])
+        idx += 1
+      }
+      closeList()
+      out.push(renderCallout(callout[1], body, inlineEsc))
+      continue
+    }
+
     if (/^---+$/.test(line)) { closeList(); out.push('<hr class="border-border-1 my-4" />'); continue }
 
     if (line.includes('|') && lines[idx + 1]?.trim().match(/^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/)) {
@@ -315,7 +365,13 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
         'text-xs font-semibold mt-2 mb-0.5',
         'text-xs font-medium mt-2 mb-0.5',
       ][level - 1]
-      out.push(`<h${level} class="${classes} text-text-1">${inlineEsc(h[2])}</h${level}>`)
+      // Un id stabile rende utilizzabili i link a un titolo e il TOC di Yuque; i duplicati
+      // ricevono un suffisso per non produrre id ripetuti.
+      const base = headingSlug(h[2])
+      const seen = headingIds.get(base) ?? 0
+      headingIds.set(base, seen + 1)
+      const id = seen === 0 ? base : `${base}-${seen}`
+      out.push(`<h${level}${id ? ` id="${id}"` : ''} class="${classes} text-text-1">${inlineEsc(h[2])}</h${level}>`)
       continue
     }
 
