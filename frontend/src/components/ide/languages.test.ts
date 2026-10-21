@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
 import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
   it('offers Python script and module runs with basedpyright and pytest/debug support', () => {
@@ -30,6 +31,12 @@ describe('IDE language contributions', () => {
 
   it('keeps the gopls-tuned features (semantic colors, inlay hints, Code Vision) on Go only', () => {
     expect(heavyFeatureEditorLanguages()).toEqual(['go'])
+  })
+
+  it('gives every language a brand icon the run bar can show', () => {
+    for (const language of IDE_LANGUAGES) {
+      expect(BRAND_ICONS[language.icon], language.id).toBeTruthy()
+    }
   })
 
   it('every Go menu command requires the Go language', () => {
