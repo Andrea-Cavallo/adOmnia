@@ -18,7 +18,7 @@ export type CodeStudioCommandId =
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
-  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
+  | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.multilineTabs' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
   | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.goroutines' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'code.changeImpact'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
@@ -116,6 +116,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'view.stickyScroll', menu: 'view', label: 'Sticky Scopes', separatorBefore: true },
   { id: 'view.fontLigatures', menu: 'view', label: 'Font Ligatures' },
   { id: 'view.previewTab', menu: 'view', label: 'Preview Tab (single click in Project)' },
+  { id: 'view.multilineTabs', menu: 'view', label: 'Multi-Row Editor Tabs' },
   { id: 'view.lowResourceMode', menu: 'view', label: 'Low-Resource Mode' },
   { id: 'view.lowResourceOnBattery', menu: 'view', label: 'Low-Resource Mode on Battery' },
   { id: 'view.vimMode', menu: 'view', label: 'Vim Mode', separatorBefore: true },
@@ -387,7 +388,7 @@ export interface CodeStudioCommandContext {
   canGoForward: boolean
   bookmarkCount: number
   /** Preferenze dell'editor mostrate con spunta nei menu. */
-  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; stickyScroll: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
+  editorPrefs?: { resourceMode?: 'normal' | 'low' | 'auto'; editorMode?: 'default' | 'vim' | 'emacs'; previewTab?: boolean; multilineTabs?: boolean; stickyScroll: boolean; fontLigatures: boolean; typeHints: boolean; autoSave: boolean; trimTrailingWhitespace: boolean }
   zen?: boolean
   /** Finestra Code Studio separata: mostra un solo progetto e non ha rail né pannelli adOmnia. */
   detached?: boolean
@@ -582,6 +583,7 @@ export function commandChecked(id: CodeStudioCommandId, context: CodeStudioComma
     case 'view.zenMode': return !!context.zen
     case 'view.stickyScroll': return !!context.editorPrefs?.stickyScroll
     case 'view.previewTab': return !!context.editorPrefs?.previewTab
+    case 'view.multilineTabs': return !!context.editorPrefs?.multilineTabs
     case 'view.lowResourceMode': return context.editorPrefs?.resourceMode === 'low'
     case 'view.lowResourceOnBattery': return context.editorPrefs?.resourceMode === 'auto'
     case 'view.vimMode': return context.editorPrefs?.editorMode === 'vim'

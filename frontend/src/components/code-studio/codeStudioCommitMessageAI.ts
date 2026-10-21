@@ -6,6 +6,7 @@ import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths } from '@/lib/code-studio-api'
 import { useSettingsStore } from '@/stores/settings'
 import { unifiedDiff } from './codeStudioAIActions'
+import { commitFormatInstructions, DEFAULT_COMMIT_FORMAT, type CommitFormatPreference } from './codeStudioCommitFormat'
 
 export const COMMIT_MESSAGE_MAX_TOKENS = 1200
 /** Oltre questa dimensione il diff viene tagliato: il messaggio si scrive sui cambi principali. */
@@ -34,15 +35,17 @@ export interface CommitMessageInput {
   branch: string
   files: CommitMessageFile[]
   symbols: CommitMessageSymbol[]
+  /** Formato richiesto dall'utente; senza, Conventional Commits come prima (10.8). */
+  format?: CommitFormatPreference
 }
 
-/** Prompt del messaggio di commit: solo ciò che verrà registrato, con lo stile Conventional Commits. */
+/** Prompt del messaggio di commit: solo ciò che verrà registrato, nel formato scelto dall'utente. */
 export function buildCommitMessagePrompt(input: CommitMessageInput): { system: string; user: string } {
   const system = [
-    'You write Git commit messages for the changes that are about to be committed in a Go project.',
-    'Use Conventional Commits: a type (feat, fix, refactor, test, docs, chore, perf, ci, build) with an optional scope, then a concise imperative subject under 72 characters.',
-    'Add a short body only when it explains why the change was needed or what it affects.',
-    'Never invent changes: describe only what the diff shows. Reply ONLY with the commit message: no markdown fences, no commentary.',
+    'You write Git commit messages for the changes that are about to be committed in a software project.',
+    commitFormatInstructions(input.format ?? DEFAULT_COMMIT_FORMAT),
+    'Never invent changes: describe only what the diff shows. Write in the language of the existing commit history when it is visible in the diff; otherwise use English.',
+    'Reply ONLY with the commit message: no markdown fences, no commentary.',
   ].join('\n')
   const files = input.files.slice(0, MAX_FILES).map((file) => {
     const note = file.note === 'excluded' ? ' (content excluded by project AI rules)'
@@ -80,7 +83,7 @@ export function parseCommitMessage(raw: string): string {
  * valgono come per le altre funzioni AI. La risposta NON ripristina i segreti: un messaggio di
  * commit non deve rimetterli in chiaro nello storico Git.
  */
-export async function draftCodeStudioCommitMessage(sessionId: string, relativePaths: readonly string[], symbols: readonly CommitMessageSymbol[] = [], branch = ''): Promise<string> {
+export async function draftCodeStudioCommitMessage(sessionId: string, relativePaths: readonly string[], symbols: readonly CommitMessageSymbol[] = [], branch = '', format: CommitFormatPreference = DEFAULT_COMMIT_FORMAT): Promise<string> {
   if (relativePaths.length === 0) throw new Error('select at least one file to commit')
   const ai = useSettingsStore.getState().settings.ai
   if (!isAICompanionAvailable(ai)) throw new Error('no AI provider is configured: enable and test one in Settings → AI')
@@ -118,7 +121,7 @@ export async function draftCodeStudioCommitMessage(sessionId: string, relativePa
     if (budget <= 0) break
   }
   if (files.every((file) => !file.diff)) throw new Error('none of the selected files has a textual change to describe')
-  const prompt = buildCommitMessagePrompt({ branch, files, symbols: [...symbols] })
+  const prompt = buildCommitMessagePrompt({ branch, files, symbols: [...symbols], format })
   await ensureAIConfigured()
   // I segreti del diff restano sulla macchina; il messaggio li lascia come segnaposto.
   const redactor = createAIRedactor()

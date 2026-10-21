@@ -76,6 +76,8 @@ export interface GoIDEEditorPreferences {
   trimTrailingWhitespace: boolean
   /** Un clic nel Project apre una tab di anteprima; doppio clic o una modifica la rendono permanente. */
   previewTab: boolean
+  /** Tab dell'editor su più righe (fino a due), con altezza limitata; comune a tutti i linguaggi e allo split. */
+  multilineTabs: boolean
   /** Modalità a basso consumo: normal, low (sempre) o auto (solo a batteria). */
   resourceMode: CodeStudioResourceMode
   /** Emulazione della tastiera nell'editor: normale, Vim o Emacs. */
@@ -198,7 +200,7 @@ const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   inlineDiagnostics: true, inlineDiagnosticWarnings: true, inlineDiagnosticInfo: true,
   typeHints: false, codeVision: true, stickyScroll: true, fontLigatures: false, fontSize: EDITOR_FONT_SIZE.default,
-  autoSave: false, autoSaveDelayMs: 0, trimTrailingWhitespace: false, previewTab: false, resourceMode: 'normal', editorMode: 'default',
+  autoSave: false, autoSaveDelayMs: 0, trimTrailingWhitespace: false, previewTab: false, multilineTabs: false, resourceMode: 'normal', editorMode: 'default',
 }
 const EMPTY_LINT: GoIDELintState = { running: false, result: null, error: null, reports: {} }
 const runningLints = new Map<string, CancellablePromise<GoIDELintResult>>()

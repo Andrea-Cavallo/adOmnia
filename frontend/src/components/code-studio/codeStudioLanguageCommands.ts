@@ -96,6 +96,7 @@ export function runLanguageCommand(id: CodeStudioCommandId, sessionId: string | 
     case 'code.typeHints': lsp.updatePreferences({ typeHints: !lsp.preferences.typeHints }); return true
     case 'view.stickyScroll': lsp.updatePreferences({ stickyScroll: !lsp.preferences.stickyScroll }); return true
     case 'view.previewTab': lsp.updatePreferences({ previewTab: !lsp.preferences.previewTab }); return true
+    case 'view.multilineTabs': lsp.updatePreferences({ multilineTabs: !lsp.preferences.multilineTabs }); return true
     // Le due modalità si escludono: riselezionare quella attiva torna a normal.
     case 'view.lowResourceMode':
       void useCodeStudioLowResources.getState().toggle()

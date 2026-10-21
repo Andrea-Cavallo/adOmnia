@@ -93,6 +93,7 @@ export const CODE_STUDIO_COMMAND_ICONS: Partial<Record<CodeStudioCommandId, Code
   'view.stickyScroll': icon(Pin),
   'view.fontLigatures': icon(Ligature),
   'view.previewTab': icon(Eye),
+  'view.multilineTabs': icon(Rows2),
   'view.lowResourceMode': icon(Gauge),
   'file.settings': icon(Settings2),
   'view.lowResourceOnBattery': icon(BatteryLow),

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { ArrowRightToLine, Columns2, Globe, Lock, Pin, RotateCcw, Rows2, SquareDashed, Trash2, X } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 
 interface CodeStudioEditorTabsProps {
@@ -60,6 +61,7 @@ function TabCloseButton({ label, dirty = false, onClose }: { label: string; dirt
 
 export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, actions, previewTab, onSelectDocument }: CodeStudioEditorTabsProps) {
   const pinned = useCodeStudioStore((state) => state.pinnedDocuments)
+  const multiline = useCodeStudioLspStore((state) => state.preferences.multilineTabs)
   const hasClosed = useCodeStudioStore((state) => (state.activeSessionId ? (state.closedDocuments[state.activeSessionId]?.length ?? 0) > 0 : false))
   const selectDocument = useCodeStudioStore((state) => state.selectDocument)
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
@@ -110,7 +112,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
   }
 
   return (
-    <div className="code-studio-editor-tabbar flex h-[36px] min-w-0 shrink-0 items-stretch border-b border-border-1">
+    <div className={`code-studio-editor-tabbar flex min-w-0 shrink-0 items-stretch border-b border-border-1 ${multiline ? 'code-studio-editor-tabbar--multiline' : 'h-[36px]'}`}>
     <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="code-studio-editor-tablist flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId && !previewTab?.active
