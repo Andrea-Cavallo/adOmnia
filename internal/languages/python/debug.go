@@ -42,6 +42,30 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 			return dap.AdapterSpec{}, fmt.Errorf("enter valid Python debug options")
 		}
 	}
+	justMyCode := true
+	if options.JustMyCode != nil {
+		justMyCode = *options.JustMyCode
+	}
+	// Attach: il programma gira già (debugpy --listen) e il DAP si collega all'indirizzo scelto.
+	// Nessun interprete viene risolto o avviato: nessun processo, nessuna porta aperta da adOmnia.
+	if options.Kind == "attach" {
+		address, err := attachAddress(options.Host, options.Port)
+		if err != nil {
+			return dap.AdapterSpec{}, err
+		}
+		return dap.AdapterSpec{
+			AdapterID: "python", Address: address, Title: "Attach Python " + address,
+			Launch: func(string) (string, map[string]any) {
+				return "attach", map[string]any{
+					"name": "python", "type": "python", "request": "attach",
+					"justMyCode": justMyCode, "redirectOutput": false, "subProcess": false,
+				}
+			},
+			ExplainError: func(err error) error {
+				return fmt.Errorf("could not attach to debugpy at %s: start it with python -m debugpy --listen %s --wait-for-client %s (%w)", address, address, options.Script, err)
+			},
+		}, nil
+	}
 	interpreter, err := ResolveInterpreter(request.Root, request.WorkingDirectory, options.Interpreter)
 	if err != nil {
 		return dap.AdapterSpec{}, err
@@ -56,10 +80,6 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	}
 	arguments := []string{"-u", "-m", "debugpy", "--listen", address, "--wait-for-client"}
 	arguments = append(arguments, targets...)
-	justMyCode := true
-	if options.JustMyCode != nil {
-		justMyCode = *options.JustMyCode
-	}
 	return dap.AdapterSpec{
 		AdapterID:  "python",
 		Executable: interpreter.Path, Arguments: arguments,
@@ -132,6 +152,25 @@ func debugTarget(request dap.LaunchRequest, options DebugOptions) ([]string, str
 	default:
 		return nil, "", fmt.Errorf("unsupported Python debug kind: %s", options.Kind)
 	}
+}
+
+// attachAddress valida la destinazione di un attach esplicito: host o 127.0.0.1, porta 1–65535.
+// Un indirizzo su tutte le interfacce non è una destinazione valida.
+func attachAddress(host string, port int) (string, error) {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if strings.ContainsAny(host, " \t/\\\x00\r\n") || strings.Contains(host, "://") {
+		return "", fmt.Errorf("enter a host name or address, for example 127.0.0.1")
+	}
+	if host == "0.0.0.0" || host == "::" || host == "[::]" {
+		return "", fmt.Errorf("attach to a specific address, not to every interface")
+	}
+	if port < 1 || port > 65535 {
+		return "", fmt.Errorf("enter the port of the debugpy listener (1–65535)")
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port)), nil
 }
 
 // loopbackAddress prenota una porta libera su 127.0.0.1: serve al solo processo locale, mai

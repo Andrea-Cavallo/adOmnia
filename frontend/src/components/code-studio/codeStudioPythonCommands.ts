@@ -1,6 +1,7 @@
 import { confirm } from '@/lib/confirmDialog'
 import { getPythonInterpreters, installPythonTool, type GoIDEPythonInterpreter } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { studioToast } from '@/stores/codeStudioToast'
 import type { CodeStudioCommandId } from './codeStudioCommands'
@@ -50,6 +51,25 @@ export function runPythonCommand(id: CodeStudioCommandId, sessionId: string | nu
   switch (id) {
     case 'python.selectInterpreter': openPythonInterpreterDialog(sessionId); return true
     case 'python.installDebugpy': void installDebugpy(sessionId); return true
+    case 'python.attach': void attachToDebugpy(sessionId); return true
   }
   return true
+}
+
+/**
+ * Attach esplicito a un debugpy già in ascolto (`python -m debugpy --listen host:port
+ * --wait-for-client script.py`): adOmnia non avvia processi e non apre porte.
+ */
+async function attachToDebugpy(sessionId: string): Promise<void> {
+  const answer = window.prompt('Attach to a running debugpy listener (host:port)', '127.0.0.1:5678')
+  if (answer === null) return
+  const target = answer.trim()
+  const separator = target.lastIndexOf(':')
+  const host = separator > 0 ? target.slice(0, separator).replace(/^\[|\]$/g, '') : '127.0.0.1'
+  const port = Number(target.slice(separator + 1))
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    studioToast('Enter the listener address as host:port, for example 127.0.0.1:5678', 'info')
+    return
+  }
+  await useCodeStudioDebugStore.getState().startPython({ sessionId, kind: 'attach', host, port })
 }

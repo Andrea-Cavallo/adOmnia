@@ -469,6 +469,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   }
   if (id === 'python.selectInterpreter') return true
   if (id === 'python.installDebugpy') return context.authorized ? true : 'Trust this project to install Python tools'
+  if (id === 'python.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {
     case 'nav.back': return context.canGoBack ? true : 'No earlier location'

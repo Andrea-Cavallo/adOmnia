@@ -55,7 +55,7 @@ describe('IDE language contributions', () => {
 
   it('every Python menu command requires the Python language', () => {
     const pythonMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'python')
-    expect(pythonMenu.map((command) => command.id)).toEqual(['python.selectInterpreter', 'python.installDebugpy'])
+    expect(pythonMenu.map((command) => command.id)).toEqual(['python.selectInterpreter', 'python.installDebugpy', 'python.attach'])
     expect(pythonMenu.every((command) => command.requires?.language === 'python')).toBe(true)
   })
 

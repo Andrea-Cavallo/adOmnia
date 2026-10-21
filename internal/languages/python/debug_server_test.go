@@ -134,6 +134,43 @@ func TestDebugArgumentsDropTheReloader(t *testing.T) {
 	}
 }
 
+// TestDebugAdapterAttachesWithoutStartingAProcess: l'attach è esplicito, non risolve un
+// interprete e non avvia nulla: il DAP si collega all'indirizzo indicato (PY-6.1).
+func TestDebugAdapterAttachesWithoutStartingAProcess(t *testing.T) {
+	data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: "127.0.0.1", Port: 5678})
+	spec, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Executable != "" || spec.Address != "127.0.0.1:5678" || !strings.Contains(spec.Title, "Attach") {
+		t.Fatalf("%+v", spec)
+	}
+	request, arguments := spec.Launch("")
+	if request != "attach" || arguments["subProcess"] != false || arguments["justMyCode"] != true {
+		t.Fatalf("%s %+v", request, arguments)
+	}
+}
+
+func TestAttachRejectsInvalidTargets(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		host string
+		port int
+	}{
+		{name: "missing port", host: "127.0.0.1"},
+		{name: "port out of range", host: "127.0.0.1", port: 70000},
+		{name: "scheme", host: "http://localhost", port: 5678},
+		{name: "every interface", host: "0.0.0.0", port: 5678},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: test.host, Port: test.port})
+			if _, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data}); err == nil {
+				t.Fatal("an invalid attach target was accepted")
+			}
+		})
+	}
+}
+
 func TestDebugAdapterRejectsAMissingInterpreter(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "hello.py", "")
