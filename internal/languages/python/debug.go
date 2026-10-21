@@ -92,12 +92,12 @@ func debugTarget(request dap.LaunchRequest, options DebugOptions) ([]string, str
 		if err != nil {
 			return nil, "", err
 		}
-		return append([]string{script}, options.ProgramArguments...), "Debug " + filepath.Base(script), nil
+		return append([]string{script}, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + filepath.Base(script), nil
 	case "module":
 		if !moduleName.MatchString(options.Module) {
 			return nil, "", fmt.Errorf("enter a Python module name, for example package.main")
 		}
-		return append([]string{"-m", options.Module}, options.ProgramArguments...), "Debug " + options.Module, nil
+		return append([]string{"-m", options.Module}, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + options.Module, nil
 	case "pytest":
 		selection, err := testTargets(idetesting.Request{Root: request.Root, WorkingDirectory: request.WorkingDirectory}, TestOptions{Packages: options.Targets, Run: options.Run})
 		if err != nil {
@@ -130,4 +130,67 @@ func loopbackAddress() (string, error) {
 	defer listener.Close()
 	port := listener.Addr().(*net.TCPAddr).Port
 	return net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), nil
+}
+
+// reloadFlagsWithValue sono i flag di reload che consumano anche l'argomento successivo (uvicorn).
+var reloadFlagsWithValue = map[string]bool{"--reload-dir": true, "--reload-include": true, "--reload-exclude": true, "--reload-delay": true}
+
+// debugProgramArguments prepara gli argomenti del programma per il debug (PY-6.4): senza reloader
+// — lo sdoppiamento del processo fa finire i breakpoint nel posto sbagliato — e con `--noreload`
+// per `manage.py runserver`, che di default si ricarica da solo.
+func debugProgramArguments(options DebugOptions, arguments []string) []string {
+	cleaned := withoutReloadArguments(arguments)
+	if options.Module == "flask" {
+		cleaned = withoutFlag(cleaned, "--debug")
+	}
+	if strings.EqualFold(filepath.Base(options.Script), "manage.py") && containsWord(cleaned, "runserver") {
+		cleaned = append(withoutFlag(cleaned, "--noreload"), "--noreload")
+	}
+	return cleaned
+}
+
+// withoutReloadArguments rimuove `--reload`, i flag `--reload-*` e il debugger interattivo
+// (`--debugger`, che intercetta le eccezioni al posto nostro).
+func withoutReloadArguments(arguments []string) []string {
+	cleaned := make([]string, 0, len(arguments))
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		name := argument
+		if equal := strings.IndexByte(name, '='); equal >= 0 {
+			name = name[:equal]
+		}
+		switch {
+		case name == "--reload" || name == "--debugger":
+			continue
+		case strings.HasPrefix(name, "--reload-"):
+			if reloadFlagsWithValue[name] && !strings.Contains(argument, "=") {
+				index++ // salta anche il valore separato
+			}
+			continue
+		}
+		cleaned = append(cleaned, argument)
+	}
+	return cleaned
+}
+
+// withoutFlag rimuove un flag, anche nella forma `--flag=value`.
+func withoutFlag(arguments []string, flag string) []string {
+	cleaned := make([]string, 0, len(arguments))
+	for _, argument := range arguments {
+		if argument == flag || strings.HasPrefix(argument, flag+"=") {
+			continue
+		}
+		cleaned = append(cleaned, argument)
+	}
+	return cleaned
+}
+
+// containsWord dice se arguments contiene la parola esatta.
+func containsWord(arguments []string, word string) bool {
+	for _, argument := range arguments {
+		if argument == word {
+			return true
+		}
+	}
+	return false
 }

@@ -71,6 +71,78 @@ func TestDebugAdapterPytestSelection(t *testing.T) {
 	}
 }
 
+func TestDebugArgumentsDropTheReloader(t *testing.T) {
+	root := t.TempDir()
+	interpreter := writeFile(t, root, "python.exe", "")
+	writeFile(t, root, "manage.py", "")
+	manage, err := resolveScript(root, root, "manage.py")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := func(options DebugOptions) []string {
+		t.Helper()
+		data, _ := json.Marshal(options)
+		spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Dopo `-u -m debugpy --listen <addr> --wait-for-client` ci sono i target del programma.
+		return spec.Arguments[6:]
+	}
+	for _, test := range []struct {
+		name    string
+		options DebugOptions
+		want    []string
+		banned  []string
+	}{
+		{
+			name:    "uvicorn without the reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "uvicorn", ProgramArguments: []string{"app:app", "--reload", "--reload-dir", "extra", "--reload-dir=src", "--port", "8000"}},
+			want:    []string{"-m", "uvicorn", "app:app", "--port", "8000"},
+			banned:  []string{"--reload", "extra", "--reload-dir=src"},
+		},
+		{
+			name:    "flask without debug mode and reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "flask", ProgramArguments: []string{"--app", "app", "run", "--debug", "--reload"}},
+			want:    []string{"-m", "flask", "--app", "app", "run"},
+			banned:  []string{"--debug", "--reload"},
+		},
+		{
+			name:    "django runserver disables its own reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "script", Script: "manage.py", ProgramArguments: []string{"runserver", "8000"}},
+			want:    []string{manage, "runserver", "8000", "--noreload"},
+		},
+		{
+			name:    "django keeps a single --noreload",
+			options: DebugOptions{Interpreter: interpreter, Kind: "script", Script: "manage.py", ProgramArguments: []string{"runserver", "--noreload"}},
+			want:    []string{manage, "runserver", "--noreload"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			arguments := targets(test.options)
+			if strings.Join(arguments, "\x00") != strings.Join(test.want, "\x00") {
+				t.Fatalf("targets = %q, want %q", arguments, test.want)
+			}
+			for _, banned := range test.banned {
+				for _, argument := range arguments {
+					if argument == banned || strings.HasPrefix(argument, banned+"=") {
+						t.Fatalf("%q survived in %q", banned, arguments)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestDebugAdapterRejectsAMissingInterpreter(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "hello.py", "")
+	data, _ := json.Marshal(DebugOptions{Interpreter: filepath.Join(root, "missing-python"), Kind: "script", Script: "hello.py"})
+	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
+		t.Fatal("a missing interpreter must not start a debug session")
+	}
+}
+
 func TestLocateServerAndInstallPlan(t *testing.T) {
 	root := t.TempDir()
 	tools := t.TempDir()
@@ -193,29 +265,61 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	state := awaitDebugStop(t, states, started.ID, "breakpoint")
+	frames, err := manager.StackTrace(started.ID, state.ThreadID)
+	if err != nil || len(frames) == 0 || frames[0].Line != 2 {
+		t.Fatalf("frames: %+v %v", frames, err)
+	}
+	value, err := manager.Evaluate(started.ID, "x", frames[0].ID, "watch")
+	if err != nil || value.Result != "1" {
+		t.Fatalf("evaluate: %+v %v", value, err)
+	}
+	// PY-6.5: lo step avanza di riga senza perdere la sessione.
+	if err := manager.Step(started.ID, "next", state.ThreadID); err != nil {
+		t.Fatal(err)
+	}
+	stepped := awaitDebugStop(t, states, started.ID, "step")
+	after, err := manager.StackTrace(started.ID, stepped.ThreadID)
+	if err != nil || len(after) == 0 || after[0].Line != 3 {
+		t.Fatalf("after step: %+v %v", after, err)
+	}
+	if err := manager.Stop(started.ID); err != nil {
+		t.Fatal(err)
+	}
+	// PY-6.5: il secondo avvio è una sessione nuova che si ferma allo stesso breakpoint.
+	second, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	again := awaitDebugStop(t, states, second.ID, "breakpoint")
+	if frames, err := manager.StackTrace(second.ID, again.ThreadID); err != nil || len(frames) == 0 || frames[0].Line != 2 {
+		t.Fatalf("second launch: %+v %v", frames, err)
+	}
+	if err := manager.Stop(second.ID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// awaitDebugStop attende uno stato di stop con il motivo indicato per una sessione precisa: gli
+// eventi della sessione precedente (terminata dallo Stop) non contano. Una terminazione anticipata
+// o un timeout fanno fallire il test.
+func awaitDebugStop(t *testing.T, states <-chan dap.DebugSessionInfo, session dap.DebugSessionID, reason string) dap.DebugSessionInfo {
+	t.Helper()
 	deadline := time.After(60 * time.Second)
 	for {
 		select {
 		case state := <-states:
+			if session != "" && state.ID != session {
+				continue
+			}
 			if state.State == dap.DebugTerminated {
 				t.Fatalf("debug session ended early: %+v", state)
 			}
-			if state.State == dap.DebugStopped && state.StopReason == "breakpoint" {
-				frames, err := manager.StackTrace(started.ID, state.ThreadID)
-				if err != nil || len(frames) == 0 || frames[0].Line != 2 {
-					t.Fatalf("frames: %+v %v", frames, err)
-				}
-				value, err := manager.Evaluate(started.ID, "x", frames[0].ID, "watch")
-				if err != nil || value.Result != "1" {
-					t.Fatalf("evaluate: %+v %v", value, err)
-				}
-				if err := manager.Stop(started.ID); err != nil {
-					t.Fatal(err)
-				}
-				return
+			if state.State == dap.DebugStopped && state.StopReason == reason {
+				return state
 			}
 		case <-deadline:
-			t.Fatal("the debugger never stopped at the breakpoint")
+			t.Fatalf("the debugger never stopped with reason %q", reason)
 		}
 	}
 }
