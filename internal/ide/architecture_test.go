@@ -26,6 +26,32 @@ func TestLanguageAdaptersDoNotImportHost(t *testing.T) {
 	assertNoForbiddenDeps(t, "adomnia/internal/languages/...", []string{"adomnia/internal/codestudio"})
 }
 
+// Ogni linguaggio resta indipendente dagli altri: condividono il core, non il codice di un altro
+// adapter. Un bisogno comune si sposta nel core (MULTILANGUAGE-IDE 10.1).
+func TestLanguageAdaptersDoNotImportEachOther(t *testing.T) {
+	output, err := exec.Command("go", "list", "-f", `{{.ImportPath}}|{{join .Imports " "}}`, "adomnia/internal/languages/...").CombinedOutput()
+	if err != nil {
+		t.Fatalf("go list: %v\n%s", err, output)
+	}
+	const prefix = "adomnia/internal/languages/"
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		path, imports, found := strings.Cut(line, "|")
+		if !found || !strings.HasPrefix(path, prefix) {
+			continue
+		}
+		language := strings.Split(strings.TrimPrefix(path, prefix), "/")[0]
+		for _, dependency := range strings.Fields(imports) {
+			if !strings.HasPrefix(dependency, prefix) || dependency == path {
+				continue
+			}
+			other := strings.Split(strings.TrimPrefix(dependency, prefix), "/")[0]
+			if other != language {
+				t.Errorf("%s imports %s: adapters must not depend on each other", path, dependency)
+			}
+		}
+	}
+}
+
 func assertNoForbiddenDeps(t *testing.T, pattern string, forbidden []string) {
 	t.Helper()
 	output, err := exec.Command("go", "list", "-deps", "-test", pattern).CombinedOutput()
