@@ -2,9 +2,18 @@ package python
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// venvInterpreter è il percorso dell'interprete dentro un ambiente, come lo crea la piattaforma.
+var venvInterpreter = func() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join("Scripts", "python.exe")
+	}
+	return filepath.Join("bin", "python")
+}()
 
 func TestDetectEnvironmentManagerReadsOnlyManifests(t *testing.T) {
 	for _, test := range []struct {
@@ -38,7 +47,7 @@ func TestEnvironmentPlanCreatesAndInstallsWithVisibleCommands(t *testing.T) {
 	writeFile(t, root, "requirements.txt", "pytest==9.1.1\n")
 	interpreter := writeFile(t, root, "python.exe", "")
 	env := filepath.Join(root, ".venv")
-	writeFile(t, root, filepath.Join(".venv", "Scripts", "python.exe"), "")
+	writeFile(t, root, filepath.Join(".venv", venvInterpreter), "")
 
 	plan := PlanEnvironment(root, root, interpreter)
 	if !plan.Exists || plan.Environment != env {
@@ -50,7 +59,7 @@ func TestEnvironmentPlanCreatesAndInstallsWithVisibleCommands(t *testing.T) {
 	if !plan.Install.Available || !strings.Contains(plan.Install.Command, "-m pip install -r requirements.txt") {
 		t.Fatalf("install command %+v", plan.Install)
 	}
-	if plan.Install.Executable != filepath.Join(env, "Scripts", "python.exe") {
+	if plan.Install.Executable != filepath.Join(env, venvInterpreter) {
 		t.Fatalf("install must use the environment interpreter: %+v", plan.Install)
 	}
 }
@@ -74,14 +83,14 @@ func TestEnvironmentPlanRefusesToCreateFromItsOwnEnvironment(t *testing.T) {
 func TestEnvironmentPlanInstallsEditableProjectAndExplainsMissingFiles(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "pyproject.toml", "[project]\nname='a'\n")
-	writeFile(t, root, filepath.Join(".venv", "Scripts", "python.exe"), "")
+	writeFile(t, root, filepath.Join(".venv", venvInterpreter), "")
 	plan := PlanEnvironment(root, root, "")
 	if !plan.Install.Available || !strings.Contains(plan.Install.Command, "pip install -e .") {
 		t.Fatalf("plan %+v", plan.Install)
 	}
 
 	empty := t.TempDir()
-	writeFile(t, empty, filepath.Join(".venv", "Scripts", "python.exe"), "")
+	writeFile(t, empty, filepath.Join(".venv", venvInterpreter), "")
 	plan = PlanEnvironment(empty, empty, "")
 	if plan.Install.Available || !strings.Contains(plan.Install.Reason, "no requirements") {
 		t.Fatalf("plan %+v", plan.Install)

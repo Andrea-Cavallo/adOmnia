@@ -287,7 +287,11 @@ func stubInterpreter(t *testing.T, name, windowsBody, unixBody string) string {
 	if runtime.GOOS == "windows" {
 		return writeFile(t, t.TempDir(), name+".bat", windowsBody)
 	}
-	return writeFile(t, t.TempDir(), name+".sh", unixBody)
+	path := writeFile(t, t.TempDir(), name+".sh", unixBody)
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 // stuckInterpreter non risponde mai: serve al timeout del probe (PY-2.6).
