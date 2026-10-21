@@ -256,6 +256,44 @@ func TestPytestParserBuildsTreeFromRealPluginEvents(t *testing.T) {
 	}
 }
 
+// TestPytestParserKeepsCapturedOutput: lo stdout/stderr catturato da pytest resta nell'output del
+// singolo test, anche quando il test passa (PY-5.4).
+func TestPytestParserKeepsCapturedOutput(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "tests", "test_prints.py")
+	events := eventsOf(t, root, strings.Join([]string{
+		`{"event": "collect", "nodeid": "tests/test_prints.py::test_ok", "file": ` + jsonPath(file) + `}`,
+		`{"event": "collect", "nodeid": "tests/test_prints.py::test_bad", "file": ` + jsonPath(file) + `}`,
+		`{"event": "report", "nodeid": "tests/test_prints.py::test_ok", "file": ` + jsonPath(file) + `, "when": "call", "outcome": "passed", "duration": 0.001, "capstdout": "hello from stdout\n"}`,
+		`{"event": "report", "nodeid": "tests/test_prints.py::test_ok", "file": ` + jsonPath(file) + `, "when": "teardown", "outcome": "passed", "duration": 0.001}`,
+		`{"event": "report", "nodeid": "tests/test_prints.py::test_bad", "file": ` + jsonPath(file) + `, "when": "call", "outcome": "failed", "duration": 0.001, "line": 7, "longrepr": "assert False", "capstdout": "before the failure", "capstderr": "warning text"}`,
+		`{"event": "report", "nodeid": "tests/test_prints.py::test_bad", "file": ` + jsonPath(file) + `, "when": "teardown", "outcome": "passed", "duration": 0.001}`,
+		`{"event": "end"}`,
+	}, "\n")+"\n")
+	tree := idetesting.NewTree()
+	for _, event := range events {
+		tree.Apply(event)
+	}
+	results, summary := tree.Snapshot()
+	if summary.Passed != 1 || summary.Failed != 1 {
+		t.Fatalf("summary %+v results %+v", summary, results)
+	}
+	output := map[string]string{}
+	for _, result := range results {
+		output[result.ID] = result.Output
+	}
+	passed := output["tests/test_prints.py\x00test_ok"]
+	if !strings.Contains(passed, "--- stdout ---") || !strings.Contains(passed, "hello from stdout") {
+		t.Fatalf("passed test output %q", passed)
+	}
+	failed := output["tests/test_prints.py\x00test_bad"]
+	for _, want := range []string{"assert False", "--- stdout ---", "before the failure", "--- stderr ---", "warning text"} {
+		if !strings.Contains(failed, want) {
+			t.Fatalf("failed test output %q misses %q", failed, want)
+		}
+	}
+}
+
 func TestPytestParserCollectErrorMarksFile(t *testing.T) {
 	root := t.TempDir()
 	file := filepath.Join(root, "tests", "test_broken.py")

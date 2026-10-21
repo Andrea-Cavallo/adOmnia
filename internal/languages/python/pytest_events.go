@@ -21,6 +21,8 @@ type pytestEvent struct {
 	Duration   float64 `json:"duration"`
 	Line       int     `json:"line"`
 	Longrepr   string  `json:"longrepr"`
+	CapStdout  string  `json:"capstdout"`
+	CapStderr  string  `json:"capstderr"`
 	SkipReason string  `json:"skipreason"`
 	XFail      string  `json:"xfail"`
 }
@@ -45,6 +47,8 @@ type pytestTest struct {
 	xpass     bool
 	reason    string
 	output    strings.Builder
+	stdout    strings.Builder
+	stderr    strings.Builder
 	failure   *idetesting.TestLocation
 	finished  bool
 }
@@ -215,10 +219,29 @@ func (p *pytestParser) report(payload pytestEvent) []idetesting.Event {
 		test.xpass = true
 		test.reason = payload.XFail
 	}
+	p.capture(test, payload)
 	if payload.When == "teardown" {
 		return p.finishTest(test)
 	}
 	return nil
+}
+
+// capture conserva lo stdout/stderr catturato da pytest per la fase (PY-5.4): resta nell'output
+// del singolo test, mai buttato via. Il limite è lo stesso dell'output del traceback.
+func (p *pytestParser) capture(test *pytestTest, payload pytestEvent) {
+	for builder, text := range map[*strings.Builder]string{&test.stdout: payload.CapStdout, &test.stderr: payload.CapStderr} {
+		if text == "" {
+			continue
+		}
+		remaining := maxPytestOutput - builder.Len()
+		if remaining <= 0 {
+			continue
+		}
+		if len(text) > remaining {
+			text = text[:remaining]
+		}
+		builder.WriteString(text)
+	}
 }
 
 // collectError è un errore di collection: quel file non porta test eseguibili e resta marcato
@@ -243,7 +266,7 @@ func (p *pytestParser) finishTest(test *pytestTest) []idetesting.Event {
 	}
 	test.finished = true
 	var events []idetesting.Event
-	output := strings.TrimSpace(test.output.String())
+	output := test.reportedOutput()
 	switch {
 	case test.failed:
 		if output != "" {
@@ -256,16 +279,39 @@ func (p *pytestParser) finishTest(test *pytestTest) []idetesting.Event {
 		if reason == "" {
 			reason = "skipped"
 		}
+		skipped := "Skipped: " + reason + "\n"
+		if output != "" {
+			skipped += output + "\n"
+		}
 		events = append(events,
-			idetesting.Event{Action: "output", Package: test.pkg, Test: test.name, Output: "Skipped: " + reason + "\n"},
+			idetesting.Event{Action: "output", Package: test.pkg, Test: test.name, Output: skipped},
 			idetesting.Event{Action: "skip", Package: test.pkg, Test: test.name, Elapsed: test.duration})
 	default:
 		if test.xpass {
-			events = append(events, idetesting.Event{Action: "output", Package: test.pkg, Test: test.name, Output: "XPASS: " + strings.TrimSpace(test.reason) + "\n"})
+			output = strings.TrimSpace("XPASS: " + strings.TrimSpace(test.reason) + "\n" + output)
+		}
+		if output != "" {
+			events = append(events, idetesting.Event{Action: "output", Package: test.pkg, Test: test.name, Output: output + "\n"})
 		}
 		events = append(events, idetesting.Event{Action: "pass", Package: test.pkg, Test: test.name, Elapsed: test.duration})
 	}
 	return events
+}
+
+// reportedOutput mette insieme traceback del fallimento e stdout/stderr catturati da pytest; i
+// blocchi vuoti non compaiono, così l'output di un test pulito resta vuoto.
+func (test *pytestTest) reportedOutput() string {
+	blocks := make([]string, 0, 3)
+	if traceback := strings.TrimSpace(test.output.String()); traceback != "" {
+		blocks = append(blocks, traceback)
+	}
+	if captured := strings.TrimRight(test.stdout.String(), "\r\n"); captured != "" {
+		blocks = append(blocks, "--- stdout ---\n"+captured)
+	}
+	if captured := strings.TrimRight(test.stderr.String(), "\r\n"); captured != "" {
+		blocks = append(blocks, "--- stderr ---\n"+captured)
+	}
+	return strings.Join(blocks, "\n\n")
 }
 
 // finish chiude i test interrotti e stampa l'esito di ogni file di test, come fa il report Java

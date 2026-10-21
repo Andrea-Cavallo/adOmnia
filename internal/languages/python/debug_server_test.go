@@ -143,6 +143,48 @@ func TestDebugAdapterRejectsAMissingInterpreter(t *testing.T) {
 	}
 }
 
+// TestDebugAdapterCrashEndsTheSession prova PY-6.5: un debug adapter che muore subito deve
+// chiudere la sua sessione, senza lasciarla viva in attesa del timeout di lancio.
+func TestDebugAdapterCrashEndsTheSession(t *testing.T) {
+	root := t.TempDir()
+	address, err := loopbackAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := dap.AdapterSpec{
+		AdapterID: "python", Executable: crashInterpreter(t), Address: address, Title: "Debug crashed",
+		Launch: func(string) (string, map[string]any) {
+			return "attach", map[string]any{"name": "python", "type": "python", "request": "attach"}
+		},
+	}
+	manager := dap.NewDebugManager()
+	t.Cleanup(manager.Shutdown)
+	states := make(chan dap.DebugSessionInfo, 32)
+	manager.SetEmitter(func(kind string, _ dap.SessionID, _ string, payload any) {
+		if kind == "debug.state" {
+			states <- payload.(dap.DebugSessionInfo)
+		}
+	})
+	started, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(30 * time.Second)
+	for {
+		select {
+		case state := <-states:
+			if state.ID == started.ID && state.State == dap.DebugTerminated {
+				if active := manager.Active(dap.SessionID("test")); len(active) != 0 {
+					t.Fatalf("a crashed adapter left live sessions: %+v", active)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("a crashed debug adapter must end its session")
+		}
+	}
+}
+
 func TestLocateServerAndInstallPlan(t *testing.T) {
 	root := t.TempDir()
 	tools := t.TempDir()
@@ -212,10 +254,10 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "tests/test_demo.py", strings.Join([]string{
 		"import pytest", "",
-		"def test_ok():", "    assert 1 + 1 == 2", "",
+		"def test_ok():", "    print('hello from the passing test')", "    assert 1 + 1 == 2", "",
 		"@pytest.mark.parametrize('a,b', [(1, 2), (3, 4)])",
 		"def test_params(a, b):", "    assert a < b", "",
-		"def test_failing():", "    assert 1 == 2", "",
+		"def test_failing():", "    print('printed before the failure')", "    assert 1 == 2", "",
 	}, "\n"))
 	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
@@ -240,6 +282,19 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 	_, summary := tree.Snapshot()
 	if summary.Passed != 3 || summary.Failed != 1 {
 		t.Fatalf("summary %+v\noutput:\n%s", summary, output)
+	}
+	// PY-5.4: pytest cattura lo stdout del test e il parser lo conserva nell'albero.
+	results, _ := tree.Snapshot()
+	joined := ""
+	for _, result := range results {
+		if result.Name != "" {
+			joined += result.Output
+		}
+	}
+	for _, want := range []string{"hello from the passing test", "printed before the failure"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("captured output %q misses %q", joined, want)
+		}
 	}
 }
 

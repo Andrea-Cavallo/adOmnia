@@ -93,7 +93,7 @@ func TestProbeReportsVersionPackagesAndArchitecture(t *testing.T) {
 // TestProbeTimesOutOnAStuckInterpreter prova PY-2.6: un interprete bloccato non deve fermare
 // la lista, resta segnalato come non rispondente.
 func TestProbeTimesOutOnAStuckInterpreter(t *testing.T) {
-	stuck := writeFile(t, t.TempDir(), stuckInterpreterName(), stuckInterpreterBody())
+	stuck := stuckInterpreter(t)
 	previous := interpreterProbeTimeout
 	interpreterProbeTimeout = 200 * time.Millisecond
 	defer func() { interpreterProbeTimeout = previous }()
@@ -229,17 +229,22 @@ func runSpec(t *testing.T, spec run.CommandSpec) (string, error) {
 	return strings.TrimSpace(string(output)), err
 }
 
-// stuckInterpreterName/body sono uno script che non risponde mai: .bat su Windows, sh altrove.
-func stuckInterpreterName() string {
+// stubInterpreter crea uno script interprete finto: .bat su Windows, sh altrove. Il corpo è lo
+// stesso su entrambe le piattaforme, deciso dal chiamante.
+func stubInterpreter(t *testing.T, name, windowsBody, unixBody string) string {
+	t.Helper()
 	if runtime.GOOS == "windows" {
-		return "stuck.bat"
+		return writeFile(t, t.TempDir(), name+".bat", windowsBody)
 	}
-	return "stuck.sh"
+	return writeFile(t, t.TempDir(), name+".sh", unixBody)
 }
 
-func stuckInterpreterBody() string {
-	if runtime.GOOS == "windows" {
-		return "@echo off\r\nping -n 30 127.0.0.1 > nul\r\n"
-	}
-	return "#!/bin/sh\nsleep 30\n"
+// stuckInterpreter non risponde mai: serve al timeout del probe (PY-2.6).
+func stuckInterpreter(t *testing.T) string {
+	return stubInterpreter(t, "stuck", "@echo off\r\nping -n 30 127.0.0.1 > nul\r\n", "#!/bin/sh\nsleep 30\n")
+}
+
+// crashInterpreter esce subito con un codice di errore: serve al crash del debug adapter (PY-6.5).
+func crashInterpreter(t *testing.T) string {
+	return stubInterpreter(t, "crash", "@echo off\r\nexit 1\r\n", "#!/bin/sh\nexit 1\n")
 }
