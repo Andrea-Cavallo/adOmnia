@@ -394,7 +394,7 @@ I nomi nuovi sono proposte di collocazione, non file già presenti. Estrarre uti
 - [ ] 10.3 Prestazioni di avvio: Code Studio resta lazy; nessun server di linguaggio parte senza un file di quel linguaggio aperto; misurare memoria con 3 server attivi.
 - [ ] 10.4 Cross-platform: Windows (processi nascosti, DPAPI), Linux (WebKitGTK: controlli form in tema scuro), macOS (compila).
 - [ ] 10.5 Accessibilità e tema: tastiera sulla barra Run/wizard, light + dark verificati.
-- [ ] 10.6 Docs: `docs/CODE-STUDIO.md` (guida), `docs/RELEASE.md` (breaking: rename + migrazione chiavi), `docs/BUILD.md` se cambiano dipendenze di build, release notes in `docs/releases/`.
+- [x] 10.6 *(2026-10-21: `docs/releases/unreleased-2026-10-21.md` con rename/migrazioni, Run UI, Python, tab multilinea, formato commit AI e Markdown, collegato da `docs/RELEASE.md`; `docs/CODE-STUDIO.md` aggiornato per Python ambiente/framework e per il corpus Markdown. `docs/BUILD.md` non cambia: nessuna nuova dipendenza di build. Tag e note di release restano in 10.7.)* Docs: `docs/CODE-STUDIO.md` (guida), `docs/RELEASE.md` (breaking: rename + migrazione chiavi), `docs/BUILD.md` se cambiano dipendenze di build, release notes in `docs/releases/`.
 - [ ] 10.7 Release: `develop` → ff `main` → tag, controllando ogni push (vedi memoria `reference_git_commit_hook`).
 
 ---

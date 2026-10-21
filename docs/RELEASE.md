@@ -32,6 +32,8 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 ## Unreleased (develop)
 
+[Notes of 2026-10-21](releases/unreleased-2026-10-21.md): Code Studio multi-language (Python, Java, web), Run UI, unit icons, multi-row tabs, configurable AI commit format and Yuque markdown, with the rename/migration notes.
+
 [Notes of 2026-10-16](releases/unreleased-2026-10-16.md): toolbar and Run window of Code Studio, gopls warm-up, TODO export, milk fix for Claude Code on Windows.
 
 ## v1.0.2 — correzioni IDE e connessioni database
