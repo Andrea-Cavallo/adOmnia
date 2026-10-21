@@ -10,6 +10,10 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 [Release notes](releases/v1.0.7.md), [measurements and charts](performance/resources-2026-10-19.md). Native monitor acceptance remains RES-1.M1–M3 in `mds/MANUAL-CHECK.md`.
 
+## v1.0.13 — Python in Code Studio, shared agent policy and memory budgets
+
+[Release notes](releases/v1.0.13.md). Native acceptance of the new Run UI and the `PY-M*` items is manual (`mds/MANUAL-CHECK.md`).
+
 ## v1.0.12 — v1.0.11 published
 
 [Release notes](releases/v1.0.12.md). Same code as v1.0.11, whose tag build failed on a transient `sum.golang.org` error before the GitHub Release step.
@@ -31,8 +35,6 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 [Release notes](releases/v1.0.8.md), [loading optimization checkpoint](WORKSPACE-LOADING-OPTIMIZATION.md). Native acceptance of the loading work and the native timing comparison remain open.
 
 ## Unreleased (develop)
-
-[Notes of 2026-10-21](releases/unreleased-2026-10-21.md): Code Studio multi-language (Python, Java, web), Run UI, unit icons, multi-row tabs, configurable AI commit format and Yuque markdown, with the rename/migration notes.
 
 [Notes of 2026-10-16](releases/unreleased-2026-10-16.md): toolbar and Run window of Code Studio, gopls warm-up, TODO export, milk fix for Claude Code on Windows.
 
