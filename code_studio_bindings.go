@@ -760,6 +760,16 @@ func (g *GoIDE) SetFunctionBreakpoints(sessionID string, settings codestudio.Fun
 	return g.service.SetFunctionBreakpoints(sessionID, settings)
 }
 
+// ListExceptionBreakpoints restituisce i breakpoint su eccezione del progetto.
+func (g *GoIDE) ListExceptionBreakpoints(sessionID string) (codestudio.ExceptionBreakpointsView, error) {
+	return g.service.ListExceptionBreakpoints(sessionID)
+}
+
+// SetExceptionBreakpoints sostituisce i breakpoint su eccezione del progetto e li applica alle sessioni attive.
+func (g *GoIDE) SetExceptionBreakpoints(sessionID string, settings codestudio.ExceptionBreakpointSettings) (codestudio.ExceptionBreakpointsView, error) {
+	return g.service.SetExceptionBreakpoints(sessionID, settings)
+}
+
 // DebugRunToCursor riprende il programma in pausa fino alla riga indicata.
 func (g *GoIDE) DebugRunToCursor(debugID, relativePath string, line, threadID int) error {
 	return g.service.DebugRunToCursor(debugID, relativePath, line, threadID)
