@@ -78,6 +78,26 @@ func TestRealProjectThirdPartyImportsFollowTheSelectedEnvironment(t *testing.T) 
 			}
 		}
 	})
+
+	t.Run("the project's own environment is what the IDE resolves", func(t *testing.T) {
+		environment := environmentInterpreter(filepath.Join(project, ".venv"))
+		if environment == "" {
+			t.Skip("the real project has no .venv: create one and install its requirements")
+		}
+		// La scelta salvata (o almeno l'ambiente del progetto) deve portare a questo interprete.
+		resolved, err := ResolveInterpreter(project, project, "")
+		if err != nil || resolved.Path != filepath.Clean(environment) {
+			t.Fatalf("the IDE does not resolve the project environment: %+v %v", resolved, err)
+		}
+		conn, handler, _ := openProjectLangserver(t, project)
+		initializeProject(t, conn, handler, project, pythonSettingsFor(t, environment), documents)
+		messages := diagnosticMessages(t, handler, 3*time.Second, 90*time.Second)
+		for _, name := range missing {
+			if unresolvedImport(messages, name) {
+				t.Fatalf("%q must resolve in the project .venv: %v", name, messages)
+			}
+		}
+	})
 }
 
 // pythonSettingsFor sono le impostazioni LSP dell'IDE con l'interprete indicato come scelta.

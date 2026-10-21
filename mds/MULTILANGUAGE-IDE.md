@@ -530,7 +530,9 @@ Diagnosi della segnalazione *"gtts/psutil could not be resolved"* su un progetto
 
 Test: `TestRealProjectThirdPartyImportsFollowTheSelectedEnvironment` (`realproject_lsp_test.go`, gated su `ADOMNIA_TEST_PYTHON_REAL_PROJECT`, nessuna scrittura nel progetto) apre i file reali `Text_to_speech/txtToSpeech.py` e `Battery_notification/battery.py`: con un ambiente senza i pacchetti `gtts`, `psutil` e `pynotifier` restano irrisolti (la segnalazione dell'utente); con un ambiente che li ha gli stessi file non hanno più alcun import irrisolto. Eseguito sul progetto reale: entrambi i rami PASS. Estratto anche `openProjectLangserver`/`initializeProject`/`diagnosticMessages` da `server_lsp_test.go` (test esistente invariato nel comportamento, PASS).
 
-Manuale: la configurazione dell'ambiente nel progetto utente resta azione dell'utente (PY-2.4); nessun documento utente da toccare. Revisione indipendente non eseguita.
+Manuale: la configurazione dell'ambiente nel progetto utente è stata fatta dietro sua conferma (vedi sotto); nessun documento utente da toccare. Revisione indipendente non eseguita.
+
+**Aggiornamento (stessa sessione, con conferma dell'utente):** creato `.venv` nel progetto reale (Python 3.11) e installati i pin dei suoi script — `gTTS==2.1.1`, `psutil==5.7.2`, `py-notifier==0.1` — con le dipendenze risolte da pip; scelta salvata in `.adomnia/python.local.json` (meccanismo standard dell'IDE, locale). Terzo ramo del test `the project's own environment is what the IDE resolves`: `ResolveInterpreter` risolve quel `.venv` e i file reali non hanno più alcun import irrisolto — **PASS**. Nota: `requirementsALL.txt` intero non è installabile così com'è (pin 2020: `tensorflow==2.6.4`, `numpy==1.19.1`, `PIL==1.1.6`, `model`, `utils`…): installati solo i pacchetti degli script in uso.
 
 ## AG — Workflow agenti in Code Studio e Teams (pianificato 2026-10-21)
 
