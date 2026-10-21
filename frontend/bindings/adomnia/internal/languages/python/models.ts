@@ -6,6 +6,120 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * CommandPlan è un'azione esplicita dell'utente: comando completo visibile, eseguibile e
+ * argomenti già separati (niente shell). Available=false spiega perché non è proponibile.
+ */
+export class CommandPlan {
+    "available": boolean;
+    "executable"?: string;
+    "arguments"?: string[];
+
+    /**
+     * Command è la forma leggibile mostrata nella conferma, con percorsi relativi alla radice.
+     */
+    "command"?: string;
+    "reason"?: string;
+
+    /** Creates a new CommandPlan instance. */
+    constructor($$source: Partial<CommandPlan> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CommandPlan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CommandPlan {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("arguments" in $$parsedSource) {
+            $$parsedSource["arguments"] = $$createField2_0($$parsedSource["arguments"]);
+        }
+        return new CommandPlan($$parsedSource as Partial<CommandPlan>);
+    }
+}
+
+/**
+ * EnvironmentPlan descrive l'ambiente Python di un'unità (o del progetto) e le due azioni
+ * separate che l'utente può chiedere: creare l'ambiente e installare le dipendenze.
+ */
+export class EnvironmentPlan {
+    /**
+     * Root è la cartella dell'unità relativa al progetto ("." per il progetto).
+     */
+    "root": string;
+
+    /**
+     * Manager è "uv", "poetry", "pip" o "" quando il progetto non dichiara dipendenze.
+     */
+    "manager"?: string;
+
+    /**
+     * Lockfile è il lockfile riconosciuto (uv.lock, poetry.lock), "" se non c'è.
+     */
+    "lockfile"?: string;
+
+    /**
+     * RequiresPython e PythonVersion sono i vincoli dichiarati dal progetto.
+     */
+    "requiresPython"?: string;
+    "pythonVersion"?: string;
+
+    /**
+     * Environment è il percorso assoluto dell'ambiente riconosciuto ("" se non esiste).
+     */
+    "environment"?: string;
+
+    /**
+     * Exists dice se l'ambiente esiste già.
+     */
+    "exists": boolean;
+
+    /**
+     * Create e Install sono le azioni esplicite, con il comando visibile prima di partire.
+     */
+    "create": CommandPlan;
+    "install": CommandPlan;
+
+    /** Creates a new EnvironmentPlan instance. */
+    constructor($$source: Partial<EnvironmentPlan> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("exists" in $$source)) {
+            this["exists"] = false;
+        }
+        if (!("create" in $$source)) {
+            this["create"] = (new CommandPlan());
+        }
+        if (!("install" in $$source)) {
+            this["install"] = (new CommandPlan());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EnvironmentPlan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EnvironmentPlan {
+        const $$createField7_0 = $$createType1;
+        const $$createField8_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("create" in $$parsedSource) {
+            $$parsedSource["create"] = $$createField7_0($$parsedSource["create"]);
+        }
+        if ("install" in $$parsedSource) {
+            $$parsedSource["install"] = $$createField8_0($$parsedSource["install"]);
+        }
+        return new EnvironmentPlan($$parsedSource as Partial<EnvironmentPlan>);
+    }
+}
+
+/**
  * Interpreter è un interprete Python candidato per un progetto o un'unità.
  * La scoperta è statica (solo nomi di file); la versione arriva da un probe limitato che
  * l'host esegue solo con il progetto autorizzato (PY-2.2, PY-8.1).
@@ -57,7 +171,7 @@ export class Interpreter {
      * Creates a new Interpreter instance from a string or object.
      */
     static createFrom($$source: any = {}): Interpreter {
-        const $$createField5_0 = $$createType0;
+        const $$createField5_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField5_0($$parsedSource["packages"]);
@@ -67,4 +181,6 @@ export class Interpreter {
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = CommandPlan.createFrom;
+const $$createType2 = $Create.Map($Create.Any, $Create.Any);

@@ -57,6 +57,13 @@ func TestNoLaunchWithoutToolAuthorization(t *testing.T) {
 	if _, err := service.StartPythonDebug(PythonDebugRequest{SessionID: session.ID, Kind: "script", Script: "app.py", WorkingDirectory: "ml"}); err == nil || !strings.Contains(err.Error(), "authorize") {
 		t.Errorf("python debug started without authorization: %v", err)
 	}
+	// Creazione ambiente e installazione dipendenze sono processi come gli altri.
+	if _, err := service.CreatePythonEnvironment(id, "ml", "", true); err == nil || !strings.Contains(err.Error(), "authorize") {
+		t.Errorf("python environment created without authorization: %v", err)
+	}
+	if _, err := service.InstallPythonDependencies(id, "ml", true); err == nil || !strings.Contains(err.Error(), "authorize") {
+		t.Errorf("python dependencies installed without authorization: %v", err)
+	}
 	runs, _ := service.ListRuns(id)
 	if len(runs) != 0 {
 		t.Fatalf("no process may exist before authorization: %#v", runs)

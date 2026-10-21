@@ -2,9 +2,11 @@ package codestudio
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"adomnia/internal/ide/run"
 	"adomnia/internal/languages/python"
 )
 
@@ -60,6 +62,115 @@ func (s *Service) SetPythonInterpreter(sessionID, unit, path string) error {
 		return err
 	}
 	return python.SetProjectInterpreter(root, unit, path)
+}
+
+// pythonEnvironmentDirectory risolve la cartella dell'unità ("" = progetto) e la valida.
+func pythonEnvironmentDirectory(root, unit string) (string, error) {
+	if strings.TrimSpace(unit) == "" {
+		return root, nil
+	}
+	if err := run.ValidateTarget(root, root, unit); err != nil {
+		return "", err
+	}
+	directory := filepath.Join(root, filepath.FromSlash(unit))
+	if info, err := os.Stat(directory); err != nil || !info.IsDir() {
+		return "", fmt.Errorf("the project unit %q does not exist", unit)
+	}
+	return directory, nil
+}
+
+// pythonBaseInterpreter sceglie l'interprete con cui creare un ambiente: la scelta salvata se non
+// vive già dentro l'ambiente dell'unità, altrimenti il primo Python del PATH.
+func pythonBaseInterpreter(root, directory string) string {
+	if selected, err := python.ResolveInterpreter(root, directory, ""); err == nil && !python.InsideEnvironment(directory, selected.Path) {
+		return selected.Path
+	}
+	for _, candidate := range python.DiscoverInterpreters(root, directory) {
+		if candidate.Source == "PATH" && candidate.Problem == "" {
+			return candidate.Path
+		}
+	}
+	return ""
+}
+
+// PythonEnvironment descrive l'ambiente dell'unità (unit == "" è il progetto) e le due azioni
+// esplicite possibili: creare l'ambiente e installare le dipendenze. La lettura è statica.
+func (s *Service) PythonEnvironment(sessionID, unit string) (python.EnvironmentPlan, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return python.EnvironmentPlan{}, err
+	}
+	root := session.Project.RealPath
+	directory, err := pythonEnvironmentDirectory(root, unit)
+	if err != nil {
+		return python.EnvironmentPlan{}, err
+	}
+	return python.PlanEnvironment(root, directory, pythonBaseInterpreter(root, directory)), nil
+}
+
+// CreatePythonEnvironment crea `.venv` nell'unità con l'interprete scelto, solo su conferma e con
+// il comando visibile (PY-2.3/2.4). Non sovrascrive un ambiente esistente e non scarica Python.
+func (s *Service) CreatePythonEnvironment(sessionID, unit, interpreter string, confirmed bool) (Execution, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Execution{}, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
+	}
+	if !confirmed {
+		return Execution{}, fmt.Errorf("confirm the environment creation to continue")
+	}
+	root := session.Project.RealPath
+	directory, err := pythonEnvironmentDirectory(root, unit)
+	if err != nil {
+		return Execution{}, err
+	}
+	base := strings.TrimSpace(interpreter)
+	if base == "" {
+		base = pythonBaseInterpreter(root, directory)
+	}
+	plan := python.PlanEnvironment(root, directory, base)
+	return s.startEnvironmentCommand(session, directory, plan.Create, "the environment already exists in this folder")
+}
+
+// InstallPythonDependencies installa le dipendenze dichiarate nell'ambiente dell'unità, con il
+// pip dell'ambiente: un solo percorso, nessun `uv run` o `poetry install` implicito.
+func (s *Service) InstallPythonDependencies(sessionID, unit string, confirmed bool) (Execution, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Execution{}, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return Execution{}, fmt.Errorf("explicitly authorize the tools for this project")
+	}
+	if !confirmed {
+		return Execution{}, fmt.Errorf("confirm the dependency installation to continue")
+	}
+	root := session.Project.RealPath
+	directory, err := pythonEnvironmentDirectory(root, unit)
+	if err != nil {
+		return Execution{}, err
+	}
+	plan := python.PlanEnvironment(root, directory, pythonBaseInterpreter(root, directory))
+	return s.startEnvironmentCommand(session, directory, plan.Install, "there is no environment to install into")
+}
+
+// startEnvironmentCommand avvia un comando di gestione ambiente già validato dal piano.
+func (s *Service) startEnvironmentCommand(session Session, directory string, command python.CommandPlan, fallbackReason string) (Execution, error) {
+	if !command.Available {
+		if command.Reason == "" {
+			command.Reason = fallbackReason
+		}
+		return Execution{}, fmt.Errorf("%s", command.Reason)
+	}
+	return s.processes.Start(CommandSpec{
+		SessionID: session.ID, Kind: "install",
+		Executable: command.Executable, Arguments: command.Arguments,
+		WorkingDirectory: directory,
+		Environment:      environmentWith(nil),
+		DisplayCommand:   command.Command,
+	})
 }
 
 // pythonInstallableTools sono gli strumenti che si installano nell'interprete scelto con un

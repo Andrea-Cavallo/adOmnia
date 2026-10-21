@@ -1,4 +1,5 @@
 import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport } from '../../bindings/adomnia/internal/codestudio/models'
+import type { EnvironmentPlan } from '../../bindings/adomnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
@@ -820,6 +821,23 @@ export async function setPythonInterpreter(sessionId: string, unit: string, path
 /** Installa uno strumento (debugpy) nell'interprete scelto; richiede la conferma con il comando esatto. */
 export async function installPythonTool(sessionId: string, interpreter: string, tool: string, confirmed: boolean): Promise<Execution> {
   return GoIDEBindings.InstallPythonTool(sessionId, interpreter, tool, confirmed)
+}
+
+/** Ambiente Python dell'unità ('' = progetto): gestore, percorso, comandi di creazione e installazione. */
+export type GoIDEPythonEnvironment = EnvironmentPlan
+
+export async function getPythonEnvironment(sessionId: string, unit = ''): Promise<EnvironmentPlan> {
+  return GoIDEBindings.PythonEnvironment(sessionId, unit)
+}
+
+/** Crea `.venv` nell'unità: solo su conferma, con il comando visibile e nessun download di Python. */
+export async function createPythonEnvironment(sessionId: string, unit: string, interpreter: string, confirmed: boolean): Promise<Execution> {
+  return GoIDEBindings.CreatePythonEnvironment(sessionId, unit, interpreter, confirmed)
+}
+
+/** Installa le dipendenze dichiarate nell'ambiente dell'unità: solo su conferma. */
+export async function installPythonDependencies(sessionId: string, unit: string, confirmed: boolean): Promise<Execution> {
+  return GoIDEBindings.InstallPythonDependencies(sessionId, unit, confirmed)
 }
 
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */
