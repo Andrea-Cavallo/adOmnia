@@ -72,7 +72,7 @@ export function CodeStudioDebugSession({ view, sessionId, editor }: CodeStudioDe
         <PaneHeader title="Goroutines" count={view.goroutines?.goroutines.length} />
         {paused && <p className="px-3 pb-1 text-[11.5px] text-text-4">{tr('Runtime states captured at pause; session controls are above.')}</p>}
         {paused
-          ? <CodeStudioGoroutineTree overview={view.goroutines} loading={view.goroutinesLoading} selectedId={view.threadId} onSelect={selectGoroutine} />
+          ? <CodeStudioGoroutineTree overview={view.goroutines} loading={view.goroutinesLoading} selectedId={view.threadId} sessionId={sessionId} onSelect={selectGoroutine} />
           : <p className="px-3 py-2 text-[13px] text-text-4">{view.info.state === 'running' ? 'Running. Pause or hit a breakpoint to inspect goroutines.' : 'No goroutines.'}</p>}
         </div>
         )}

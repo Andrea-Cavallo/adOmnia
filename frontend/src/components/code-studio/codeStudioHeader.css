@@ -18,6 +18,10 @@
 .code-studio-toolbar .code-studio-key { height: 19px; min-width: 19px; border-radius: 5px; font-size: 10px; }
 .code-studio-toolbar .code-studio-titlebar-controls { height: 44px; }
 .code-studio-editor-tabbar { height: 38px; background: var(--color-surface-0); }
+/* Tab su più righe: fino a due righe visibili, poi si scorre in verticale senza rubare l'editor. */
+.code-studio-editor-tabbar--multiline { height: auto; max-height: 70px; }
+.code-studio-editor-tabbar--multiline .code-studio-editor-tablist { flex-wrap: wrap; align-content: flex-start; overflow-y: auto; row-gap: 3px; }
+.code-studio-editor-tabbar--multiline .code-studio-tab { align-self: stretch; }
 .code-studio-editor-tablist { align-items: center; gap: 3px; padding-block: 3px; }
 .code-studio-editor-tablist .code-studio-tab { height: 30px; align-self: center; padding-inline: 10px 6px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; }
 .code-studio-editor-tablist .code-studio-tab[aria-selected=true] { border-color: var(--color-border-2); background: var(--color-surface-2); }

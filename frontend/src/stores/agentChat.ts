@@ -45,6 +45,7 @@ export interface AgentToolActivity {
 }
 
 export interface AgentChatMessage {
+  plan?: MilkChatEvent['plan']
   context?: string[]
   id: string
   role: 'user' | 'assistant'
@@ -78,9 +79,9 @@ export interface AgentChatState {
   install: () => Promise<void>
   setDialogOpen: (open: boolean) => void
   setWorkspace: (root: string) => Promise<void>
-  sendChat: (root: string, message: string, context?: StudioChatContext) => Promise<void>
+  sendChat: (root: string, message: string, context?: StudioChatContext) => Promise<boolean>
   stopChat: (root: string) => Promise<void>
-  newChat: (root: string) => Promise<void>
+  newChat: (root: string, resetSession?: boolean) => Promise<void>
   respondPermission: (requestId: string, allow: boolean) => Promise<void>
 }
 
@@ -111,6 +112,9 @@ export function applyAgentChatEvent(threads: Record<string, AgentChatThread>, ev
 
   let messages = thread.messages
   switch (event.kind) {
+    case 'plan':
+      messages = patch(message => ({ ...message, plan: event.plan ?? [] }))
+      break
     case 'text':
       messages = patch((message) => ({ ...message, content: message.content + (event.reply ?? '') }))
       break
@@ -211,9 +215,9 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
 
       sendChat: async (root, rawMessage, context = { includeDocument: true, includeWorkspace: true }) => {
         const message = rawMessage.trim()
-        if (!message) return
+        if (!message) return false
         const thread = get().chatThreads[root] ?? emptyThread()
-        if (thread.busyToken) return
+        if (thread.busyToken) return false
         const token = uuid()
         set((state) => ({
           chatThreads: {
@@ -237,14 +241,15 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
             if (!current || current.busyToken !== token) return state
             return { chatThreads: { ...state.chatThreads, [root]: { ...current, messages: current.messages.map((entry) => entry.id === `${token}-user` ? { ...entry, context: prepared.labels } : entry) } } }
           })
-          if (get().chatThreads[root]?.busyToken !== token) return
-          await api.prompt({ token, root, message: prepared.message })
+          if (get().chatThreads[root]?.busyToken !== token) return false
+          await api.prompt({ token, root, message: prepared.message, images: (context.attachments ?? []).filter(item => item.kind === 'image').map(item => ({ name: item.name, mimeType: item.mimeType, data: item.data ?? '' })) })
           // The turn is over even if the agent never sent its closing update.
           set((state) => {
             const current = state.chatThreads[root]
             if (!current || current.busyToken !== token) return state
             return { chatThreads: { ...state.chatThreads, [root]: { ...current, busyToken: null } } }
           })
+          return true
         } catch (error) {
           const text = messageOf(error)
           set((state) => {
@@ -252,6 +257,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
             if (!current || current.busyToken !== token) return state
             return { chatThreads: { ...state.chatThreads, [root]: { ...current, busyToken: null, error: text } } }
           })
+          return false
         }
       },
 
@@ -267,11 +273,11 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
         })
       },
 
-      newChat: async (root) => {
+      newChat: async (root, resetSession = true) => {
         const current = get().chatThreads[root]
         if (current?.busyToken) await get().stopChat(root)
         // A new chat is a new agent session: the old one would still remember the conversation.
-        await api.resetSession(root).catch(() => undefined)
+        if (resetSession) await api.resetSession(root).catch(() => undefined)
         set((state) => ({ chatThreads: { ...state.chatThreads, [root]: emptyThread() } }))
       },
 

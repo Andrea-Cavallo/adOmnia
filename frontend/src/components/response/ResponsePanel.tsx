@@ -4,6 +4,7 @@ import { Copy, Maximize2, GitBranch, GitCompare, Sparkles, X, ShieldCheck, Shiel
 import type { ResponseData, ContractValidationResult, AssertionResult, ScriptRunResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { prettyJson } from '@/lib/prettyJson'
+import { readSpilledBody } from '@/lib/responseSpill'
 import { JsonGraph } from '@/components/ui/JsonGraph'
 import { validateContract, exportContractReportMarkdown, exportContractReportHtml, exportContractReportJson } from '@/lib/contractValidator'
 import { evaluateAssertions } from '@/lib/assertionEngine'
@@ -652,20 +653,43 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   const allTestsPassed = assertionResults.every((r) => r.passed) && scriptRuns.every((run) => run.passed)
 
   const displayBody = response ? (beautifiedBody ?? response.body) : ''
+  // A restored response can carry only a preview: load the full body from local
+  // storage the first time the tab is shown.
+  useEffect(() => {
+    if (!response?.bodyRef) return
+    let cancelled = false
+    void readSpilledBody(response).then((body) => {
+      if (cancelled || body === null) return
+      const current = useTabsStore.getState().tabs.find((tab) => tab.id === tabId)?.response
+      if (!current || current.bodyRef !== response.bodyRef) return
+      useTabsStore.getState().setResponse(tabId, { ...current, body, bodyRef: undefined })
+    })
+    return () => { cancelled = true }
+  }, [tabId, response])
   // Cap heavy syntax highlighting / pretty-printing for very large payloads.
   const bodySizeKB = displayBody.length / 1024
   const tooLargeToRender = bodySizeKB > responseMaxRenderSizeKB
   const isJson = response ? (response.contentType.includes('json') || displayBody.trim().match(/^[\[{]/) != null) : false
+  // One parse per body: the validation badge, the pretty view and the graph all
+  // read the same result instead of re-parsing on every render.
+  const parsedBody = useMemo(() => {
+    if (!response || !isJson) return undefined
+    try { return JSON.parse(displayBody) as unknown } catch { return undefined }
+  }, [response, isJson, displayBody])
+  const jsonValid = parsedBody !== undefined
   let validationBadge: string | null = null
   if (response && isJson && !tooLargeToRender) {
-    try { JSON.parse(displayBody); validationBadge = 'valid' } catch { validationBadge = 'invalid' }
+    validationBadge = jsonValid ? 'valid' : 'invalid'
   }
 
-  // Pretty-printed body used for both display and match counting
-  let prettyBody = displayBody
-  if (isJson && view === 'pretty' && !tooLargeToRender) {
-    try { prettyBody = prettyJson(displayBody) } catch { /* keep raw */ }
-  }
+  // Pretty-printed body used for both display and match counting. The source is
+  // already validated by parsedBody, so prettyJson only re-indents it (no second parse).
+  const prettyBody = useMemo(() => {
+    if (isJson && jsonValid && view === 'pretty' && !tooLargeToRender) {
+      try { return prettyJson(displayBody, 2, false) } catch { return displayBody }
+    }
+    return displayBody
+  }, [displayBody, isJson, jsonValid, view, tooLargeToRender])
   const changedLines = useMemo(() => changedLineIndexes(previousBodyRef.current, prettyBody), [prettyBody])
   const previousMeta = previousMetaRef.current
   const statusChanged = previousMeta ? previousMeta.status !== response?.status : false
@@ -769,10 +793,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     )
   }
 
-  let graphData: unknown = null
-  if (isJson) {
-    try { graphData = JSON.parse(displayBody) } catch { /* not valid */ }
-  }
+  const graphData: unknown = isJson ? parsedBody : null
 
   return (
     <>

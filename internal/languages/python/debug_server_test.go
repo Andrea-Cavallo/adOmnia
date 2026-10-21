@@ -71,6 +71,157 @@ func TestDebugAdapterPytestSelection(t *testing.T) {
 	}
 }
 
+func TestDebugArgumentsDropTheReloader(t *testing.T) {
+	root := t.TempDir()
+	interpreter := writeFile(t, root, "python.exe", "")
+	writeFile(t, root, "manage.py", "")
+	manage, err := resolveScript(root, root, "manage.py")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := func(options DebugOptions) []string {
+		t.Helper()
+		data, _ := json.Marshal(options)
+		spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Dopo `-u -m debugpy --listen <addr> --wait-for-client` ci sono i target del programma.
+		return spec.Arguments[6:]
+	}
+	for _, test := range []struct {
+		name    string
+		options DebugOptions
+		want    []string
+		banned  []string
+	}{
+		{
+			name:    "uvicorn without the reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "uvicorn", App: "app:app", Port: 8000, ProgramArguments: []string{"--reload", "--reload-dir", "extra", "--reload-dir=src"}},
+			want:    []string{"-m", "uvicorn", "app:app", "--port", "8000"},
+			banned:  []string{"--reload", "extra", "--reload-dir=src"},
+		},
+		{
+			name:    "flask without debug mode and reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "flask", App: "app", ProgramArguments: []string{"--debug", "--reload"}},
+			want:    []string{"-m", "flask", "--app", "app", "run"},
+			banned:  []string{"--debug", "--reload"},
+		},
+		{
+			name:    "django runserver disables its own reloader",
+			options: DebugOptions{Interpreter: interpreter, Kind: "script", Script: "manage.py", ProgramArguments: []string{"runserver", "8000"}},
+			want:    []string{manage, "runserver", "8000", "--noreload"},
+		},
+		{
+			name:    "django keeps a single --noreload",
+			options: DebugOptions{Interpreter: interpreter, Kind: "script", Script: "manage.py", ProgramArguments: []string{"runserver", "--noreload"}},
+			want:    []string{manage, "runserver", "--noreload"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			arguments := targets(test.options)
+			if strings.Join(arguments, "\x00") != strings.Join(test.want, "\x00") {
+				t.Fatalf("targets = %q, want %q", arguments, test.want)
+			}
+			for _, banned := range test.banned {
+				for _, argument := range arguments {
+					if argument == banned || strings.HasPrefix(argument, banned+"=") {
+						t.Fatalf("%q survived in %q", banned, arguments)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestDebugAdapterAttachesWithoutStartingAProcess: l'attach è esplicito, non risolve un
+// interprete e non avvia nulla: il DAP si collega all'indirizzo indicato (PY-6.1).
+func TestDebugAdapterAttachesWithoutStartingAProcess(t *testing.T) {
+	data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: "127.0.0.1", Port: 5678})
+	spec, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Executable != "" || spec.Address != "127.0.0.1:5678" || !strings.Contains(spec.Title, "Attach") {
+		t.Fatalf("%+v", spec)
+	}
+	request, arguments := spec.Launch("")
+	if request != "attach" || arguments["subProcess"] != false || arguments["justMyCode"] != true {
+		t.Fatalf("%s %+v", request, arguments)
+	}
+}
+
+func TestAttachRejectsInvalidTargets(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		host string
+		port int
+	}{
+		{name: "missing port", host: "127.0.0.1"},
+		{name: "port out of range", host: "127.0.0.1", port: 70000},
+		{name: "scheme", host: "http://localhost", port: 5678},
+		{name: "every interface", host: "0.0.0.0", port: 5678},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: test.host, Port: test.port})
+			if _, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data}); err == nil {
+				t.Fatal("an invalid attach target was accepted")
+			}
+		})
+	}
+}
+
+func TestDebugAdapterRejectsAMissingInterpreter(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "hello.py", "")
+	data, _ := json.Marshal(DebugOptions{Interpreter: filepath.Join(root, "missing-python"), Kind: "script", Script: "hello.py"})
+	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
+		t.Fatal("a missing interpreter must not start a debug session")
+	}
+}
+
+// TestDebugAdapterCrashEndsTheSession prova PY-6.5: un debug adapter che muore subito deve
+// chiudere la sua sessione, senza lasciarla viva in attesa del timeout di lancio.
+func TestDebugAdapterCrashEndsTheSession(t *testing.T) {
+	root := t.TempDir()
+	address, err := loopbackAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := dap.AdapterSpec{
+		AdapterID: "python", Executable: crashInterpreter(t), Address: address, Title: "Debug crashed",
+		Launch: func(string) (string, map[string]any) {
+			return "attach", map[string]any{"name": "python", "type": "python", "request": "attach"}
+		},
+	}
+	manager := dap.NewDebugManager()
+	t.Cleanup(manager.Shutdown)
+	states := make(chan dap.DebugSessionInfo, 32)
+	manager.SetEmitter(func(kind string, _ dap.SessionID, _ string, payload any) {
+		if kind == "debug.state" {
+			states <- payload.(dap.DebugSessionInfo)
+		}
+	})
+	started, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(30 * time.Second)
+	for {
+		select {
+		case state := <-states:
+			if state.ID == started.ID && state.State == dap.DebugTerminated {
+				if active := manager.Active(dap.SessionID("test")); len(active) != 0 {
+					t.Fatalf("a crashed adapter left live sessions: %+v", active)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("a crashed debug adapter must end its session")
+		}
+	}
+}
+
 func TestLocateServerAndInstallPlan(t *testing.T) {
 	root := t.TempDir()
 	tools := t.TempDir()
@@ -140,10 +291,10 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "tests/test_demo.py", strings.Join([]string{
 		"import pytest", "",
-		"def test_ok():", "    assert 1 + 1 == 2", "",
+		"def test_ok():", "    print('hello from the passing test')", "    assert 1 + 1 == 2", "",
 		"@pytest.mark.parametrize('a,b', [(1, 2), (3, 4)])",
 		"def test_params(a, b):", "    assert a < b", "",
-		"def test_failing():", "    assert 1 == 2", "",
+		"def test_failing():", "    print('printed before the failure')", "    assert 1 == 2", "",
 	}, "\n"))
 	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
@@ -169,6 +320,19 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 	if summary.Passed != 3 || summary.Failed != 1 {
 		t.Fatalf("summary %+v\noutput:\n%s", summary, output)
 	}
+	// PY-5.4: pytest cattura lo stdout del test e il parser lo conserva nell'albero.
+	results, _ := tree.Snapshot()
+	joined := ""
+	for _, result := range results {
+		if result.Name != "" {
+			joined += result.Output
+		}
+	}
+	for _, want := range []string{"hello from the passing test", "printed before the failure"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("captured output %q misses %q", joined, want)
+		}
+	}
 }
 
 func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
@@ -188,34 +352,70 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 			states <- payload.(dap.DebugSessionInfo)
 		}
 	})
-	manager.SeedBreakpoints(dap.SessionID("test"), map[string][]dap.Breakpoint{filepath.Join(root, "hello.py"): {{Line: 2}}}, dap.FunctionBreakpointSettings{})
+	manager.SeedBreakpoints(dap.SessionID("test"), map[string][]dap.Breakpoint{filepath.Join(root, "hello.py"): {{Line: 2}}}, dap.FunctionBreakpointSettings{}, dap.ExceptionBreakpointSettings{})
 	started, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
 	if err != nil {
 		t.Fatal(err)
 	}
+	state := awaitDebugStop(t, states, started.ID, "breakpoint")
+	frames, err := manager.StackTrace(started.ID, state.ThreadID)
+	if err != nil || len(frames) == 0 || frames[0].Line != 2 {
+		t.Fatalf("frames: %+v %v", frames, err)
+	}
+	value, err := manager.Evaluate(started.ID, "x", frames[0].ID, "watch")
+	if err != nil || value.Result != "1" {
+		t.Fatalf("evaluate: %+v %v", value, err)
+	}
+	// PY-6.5: lo step avanza di riga senza perdere la sessione.
+	if err := manager.Step(started.ID, "next", state.ThreadID); err != nil {
+		t.Fatal(err)
+	}
+	stepped := awaitDebugStop(t, states, started.ID, "step")
+	after, err := manager.StackTrace(started.ID, stepped.ThreadID)
+	if err != nil || len(after) == 0 || after[0].Line != 3 {
+		t.Fatalf("after step: %+v %v", after, err)
+	}
+	// PY-6.5: la seconda sessione parte mentre la prima è ancora ferma: due sessioni vive insieme,
+	// ognuna con la propria porta e i propri stop (gli eventi si distinguono per id).
+	secondSpec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, Environment: os.Environ(), LanguageOptions: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: secondSpec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	again := awaitDebugStop(t, states, second.ID, "breakpoint")
+	if frames, err := manager.StackTrace(second.ID, again.ThreadID); err != nil || len(frames) == 0 || frames[0].Line != 2 {
+		t.Fatalf("second launch: %+v %v", frames, err)
+	}
+	for _, id := range []dap.DebugSessionID{started.ID, second.ID} {
+		if err := manager.Stop(id); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// awaitDebugStop attende uno stato di stop con il motivo indicato per una sessione precisa: gli
+// eventi della sessione precedente (terminata dallo Stop) non contano. Una terminazione anticipata
+// o un timeout fanno fallire il test.
+func awaitDebugStop(t *testing.T, states <-chan dap.DebugSessionInfo, session dap.DebugSessionID, reason string) dap.DebugSessionInfo {
+	t.Helper()
 	deadline := time.After(60 * time.Second)
 	for {
 		select {
 		case state := <-states:
+			if session != "" && state.ID != session {
+				continue
+			}
 			if state.State == dap.DebugTerminated {
 				t.Fatalf("debug session ended early: %+v", state)
 			}
-			if state.State == dap.DebugStopped && state.StopReason == "breakpoint" {
-				frames, err := manager.StackTrace(started.ID, state.ThreadID)
-				if err != nil || len(frames) == 0 || frames[0].Line != 2 {
-					t.Fatalf("frames: %+v %v", frames, err)
-				}
-				value, err := manager.Evaluate(started.ID, "x", frames[0].ID, "watch")
-				if err != nil || value.Result != "1" {
-					t.Fatalf("evaluate: %+v %v", value, err)
-				}
-				if err := manager.Stop(started.ID); err != nil {
-					t.Fatal(err)
-				}
-				return
+			if state.State == dap.DebugStopped && state.StopReason == reason {
+				return state
 			}
 		case <-deadline:
-			t.Fatal("the debugger never stopped at the breakpoint")
+			t.Fatalf("the debugger never stopped with reason %q", reason)
 		}
 	}
 }

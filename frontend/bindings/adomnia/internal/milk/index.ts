@@ -3,10 +3,14 @@
 
 export {
     AgentsInfo,
+    ControlValue,
+    ImageAttachment,
     MCPServer,
     PromptRequest,
     PromptResponse,
     ProviderStatus,
+    SessionControl,
+    SessionControls,
     Settings,
     State,
     Status

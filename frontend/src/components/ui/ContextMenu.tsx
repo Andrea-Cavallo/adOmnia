@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,8 @@ export interface ContextMenuItem {
   separatorBefore?: boolean
   /** Icona a sinistra dell'etichetta (lucide o compatibile). */
   icon?: ComponentType<{ size?: number; className?: string }>
+  /** Icona già disegnata (per esempio un logo Simple Icons), al posto di `icon`. */
+  iconElement?: ReactNode
   /** Colore semantico dell'icona, es. `text-success` per Run. */
   iconClassName?: string
   /** Opzione attiva: mostra un segno di spunta a destra. */
@@ -129,7 +131,7 @@ interface MenuLevelProps {
 
 function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClose }: MenuLevelProps) {
   const studio = appearance === 'studio'
-  const hasIcons = items.some((item) => item.icon)
+  const hasIcons = items.some((item) => item.icon || item.iconElement)
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [active, setActive] = useState<number>(-1)
@@ -287,7 +289,8 @@ function studioItemClass(item: ContextMenuItem, highlighted: boolean): string {
 /** Colonna icone: resta vuota per le voci senza icona, così le etichette restano allineate. */
 function MenuIcon({ item, studio }: { item: ContextMenuItem; studio: boolean }) {
   const Icon = item.icon
-  if (!Icon) return <span className={studio ? 'w-4 shrink-0' : 'w-3.5 shrink-0'} aria-hidden="true" />
   const tone = item.disabled ? 'opacity-50' : item.iconClassName ?? 'text-text-3'
+  if (item.iconElement) return <span className={cn('grid shrink-0 place-items-center', studio ? 'w-4' : 'w-3.5', tone)} aria-hidden="true">{item.iconElement}</span>
+  if (!Icon) return <span className={studio ? 'w-4 shrink-0' : 'w-3.5 shrink-0'} aria-hidden="true" />
   return <span className={cn('grid shrink-0 place-items-center', studio ? 'w-4' : 'w-3.5', tone)} aria-hidden="true"><Icon size={studio ? 15 : 13} /></span>
 }

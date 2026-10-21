@@ -16,4 +16,11 @@ describe('pythonDebugTargetOf', () => {
     expect(pythonDebugTargetOf({ kind: 'pytest', language: 'python', languageOptions: { script: 'a.py' } })).toBeNull()
     expect(pythonDebugTargetOf({ kind: 'script', language: 'go', languageOptions: { script: 'a.py' } })).toBeNull()
   })
+
+  it('forwards the guided framework fields of a server configuration', () => {
+    expect(pythonDebugTargetOf({
+      kind: 'module', language: 'python',
+      languageOptions: { module: 'uvicorn', app: 'app.main:app', host: '127.0.0.1', port: 9000, reload: true },
+    })).toEqual({ kind: 'module', module: 'uvicorn', app: 'app.main:app', host: '127.0.0.1', port: 9000, reload: true, workingDirectory: '' })
+  })
 })

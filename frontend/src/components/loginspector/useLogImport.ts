@@ -17,6 +17,7 @@ import {
   type ParsingProfile,
   type StoredSchema,
 } from '@/lib/loginspector'
+import { LIVE_SOURCE_MAX_BYTES, LIVE_SOURCE_MAX_LINES, trimTextToBudget } from '@/lib/loginspector/limits'
 
 export interface ImportProgress {
   done: number
@@ -72,10 +73,11 @@ export interface LogImport {
  * ponytail: full re-parse per batch, incremental append if a live session ever
  * needs to stay open on hundreds of thousands of lines.
  */
-const LIVE_SOURCE_MAX_LINES = 20_000
 
 interface Options {
   maxEvents: number
+  /** Retained raw-text budget for the parsed session, in bytes. */
+  maxBytes?: number
   /** When false the list is not updated while parsing, only at the end. */
   streamPreview: boolean
   /** Called whenever a new import starts, to drop selection-derived state. */
@@ -87,7 +89,7 @@ interface Options {
  * parse, progress and cancellation, the discovered field schema, and the error
  * that came out of it. The panel keeps only what it renders.
  */
-export function useLogImport({ maxEvents, streamPreview, onReset }: Options): LogImport {
+export function useLogImport({ maxEvents, maxBytes, streamPreview, onReset }: Options): LogImport {
   const [source, setSource] = useState<LogSourceResult | null>(null)
   const [sources, setSources] = useState<LogSessionSource[]>([])
   const [events, setEvents] = useState<LogEvent[]>([])
@@ -163,7 +165,7 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
     try {
       const parsed = await parseLogSourcesInBackground(
         activeSources,
-        { maxEvents },
+        { maxEvents, maxBytes },
         {
           onProgress: (done, total, partial) => {
             if (!gate.isActive(operation)) return
@@ -214,7 +216,7 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
         gate.finish(operation)
       }
     }
-  }, [commitSources, maxEvents])
+  }, [commitSources, maxEvents, maxBytes])
 
   const managedSource = useCallback((result: LogSourceResult): LogSessionSource => ({
     id: result.sourceId || `source-${Date.now().toString(36)}-${sequenceRef.current++}`,
@@ -354,8 +356,7 @@ export function useLogImport({ maxEvents, streamPreview, onReset }: Options): Lo
       ? sourcesRef.current.map((item) => {
           if (item.id !== sourceId) return item
           const combined = item.text ? `${item.text}\n${chunk}` : chunk
-          const kept = combined.split('\n')
-          const text = kept.length > LIVE_SOURCE_MAX_LINES ? kept.slice(kept.length - LIVE_SOURCE_MAX_LINES).join('\n') : combined
+          const text = trimTextToBudget(combined, LIVE_SOURCE_MAX_LINES, LIVE_SOURCE_MAX_BYTES)
           return { ...item, text, bytes: text.length }
         })
       : [...sourcesRef.current, managedSource({

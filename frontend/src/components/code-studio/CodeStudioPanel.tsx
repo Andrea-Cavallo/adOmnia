@@ -79,6 +79,7 @@ import { contextRunTarget, runCommandFor, type CodeStudioGoRunTarget, type CodeS
 import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './codeStudioToolTargets'
 import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
 import { startJavaMain } from '@/lib/code-studio-debug-api'
+import { isPythonTarget } from './codeStudioPythonTargets'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -835,6 +836,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its Makefile or Dockerfile' })
       const { kind, partial } = toolRunRequest(target, action === 'buildRun' || action === 'build' || action === 'down' ? action : 'run')
       return void store.startRun(kind, partial)
+    }
+    if (isPythonTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
+      if (action === 'debug') return void useCodeStudioDebugStore.getState().startPython({ sessionId: activeSession.id, kind: 'script', script: target.relativePath, workingDirectory: '' })
+      return void store.startRun('script', { language: 'python', target: '.', workingDirectory: '', languageOptions: { script: target.relativePath } })
     }
     if (isJavaTarget(target)) {
       if (!activeSession) return

@@ -75,6 +75,8 @@ export {
     ErrorTypeEntry,
     EvaluateResult,
     EventContractReport,
+    ExceptionBreakpointSettings,
+    ExceptionBreakpointsView,
     Execution,
     FileBreakpoints,
     FileChange,

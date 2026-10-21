@@ -129,7 +129,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 			return data
 		},
 		Publish: func(snapshot idetesting.Snapshot) {
-			s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), hostTestSnapshot(snapshot))
+			s.emit("tests.updated", snapshot.SessionID, string(snapshot.RunID), s.tests.hostTestSnapshot(snapshot))
 		},
 	}
 	if id == java.ID && request.Coverage {
@@ -163,7 +163,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		return TestRunSnapshot{}, err
 	}
 	startedOK = true
-	return hostTestSnapshot(snapshot), nil
+	return s.tests.hostTestSnapshot(snapshot), nil
 }
 
 func newCoverageProfilePath() (string, error) {

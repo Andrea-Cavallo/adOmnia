@@ -41,6 +41,13 @@ func (c *ClaudeCode) ServiceShutdown() error {
 // Status restituisce lo stato corrente dell'integrazione.
 func (c *ClaudeCode) Status() milk.Status { return c.manager.Status() }
 
+func (c *ClaudeCode) SessionControls(root string) (milk.SessionControls, error) {
+	return c.manager.SessionControls(root)
+}
+func (c *ClaudeCode) SetSessionControl(ctx context.Context, root, id string, value any) (milk.SessionControls, error) {
+	return c.manager.SetSessionControl(ctx, root, id, value)
+}
+
 // Settings restituisce la configurazione. Mai credenziali.
 func (c *ClaudeCode) Settings() milk.Settings { return c.manager.Settings() }
 

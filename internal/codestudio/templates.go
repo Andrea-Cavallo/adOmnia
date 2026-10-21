@@ -74,6 +74,8 @@ var builtinTemplates = []ProjectTemplate{
 	{ID: "java-maven", Name: "Java (Maven)", Language: "java", Description: "Plain Java 17 with a main class and JUnit 5."},
 	{ID: "quarkus-maven", Name: "Quarkus (Maven)", Language: "java", Description: "JAX-RS endpoint with @ConfigProperty and REST Assured tests on Quarkus 3 / Java 17."},
 	{ID: "node-script", Name: "Node.js script", Language: "typescript", Description: "package.json with start and test scripts (node --test), no dependencies."},
+	{ID: "python-script", Name: "Python script", Language: "python", Description: "A single script with a main guard, no dependencies."},
+	{ID: "python-pytest", Name: "Python project (pytest)", Language: "python", Description: "Small module with pytest tests; pytest stays yours to install."},
 }
 
 var customTemplatesRoot = func() (string, error) {

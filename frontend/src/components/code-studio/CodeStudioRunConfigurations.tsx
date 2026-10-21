@@ -9,6 +9,7 @@ import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { cleanRunConfiguration, emptyRunConfiguration } from '@/lib/code-studio/runFormTypes'
 import { groupConfigurationsByUnit } from '@/lib/code-studio/runUnits'
 import { templateFor } from '@/lib/code-studio/runFormSchema'
+import { LanguageBrandIcon } from '@/components/ide/LanguageBrandIcon'
 import './codeStudioRunConfigurations.css'
 
 const EMPTY_CONFIGS: GoIDERunConfiguration[] = []
@@ -51,7 +52,7 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
   const select = (config: GoIDERunConfiguration) => { setDraft({ ...config }); setBaseline(JSON.stringify(config)); setReady(false); setWizard(false); setFeedback(null) }
   const choose = (config: GoIDERunConfiguration) => { select(config); setBaseline(JSON.stringify(emptyRunConfiguration(sessionId))) }
   const filtered = configs.filter(config => `${config.name} ${templateFor(config).group} ${templateFor(config).label} ${config.workingDirectory}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
-  const groups = session ? groupConfigurationsByUnit(filtered, session.project, Object.fromEntries((languages ?? []).map(info => [info.id, info.name]))) : [{ label: '', items: filtered }]
+  const groups = session ? groupConfigurationsByUnit(filtered, session.project, Object.fromEntries((languages ?? []).map(info => [info.id, info.name]))) : [{ label: '', language: '', items: filtered }]
   const template = templateFor(draft)
   const act = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true); setFeedback(null); useCodeStudioStore.setState({ error: null })
@@ -109,7 +110,7 @@ export function CodeStudioRunConfigurations({ open, sessionId, initialDraft, onC
           {!loading && configs.length === 0 && <div className="run-empty"><FolderOpen size={24} /><p>No configurations yet</p><span>Create one from your project to get started.</span></div>}
           {!loading && configs.length > 0 && filtered.length === 0 && <p className="gs-list-empty">No matching configurations.</p>}
           {groups.map(group => <div key={group.label || 'all'}>
-            {group.label && <h3 className="run-unit-heading">{group.label}</h3>}
+            {group.label && <h3 className="run-unit-heading">{group.language && <LanguageBrandIcon id={group.language} />}{group.label}</h3>}
             {group.items.map(config => <button key={config.id} type="button" disabled={busy || loading} aria-current={!wizard && config.id === draft.id ? 'true' : undefined} onClick={async () => { if (config.id === draft.id && !wizard) return; if (await discard()) select(config) }} className="run-saved-item">
               <Play size={13} className="shrink-0" /><span className="min-w-0 flex-1"><strong>{config.name}</strong><small>{templateFor(config).group} · {templateFor(config).label}</small></span>{config.pinned && <Pin size={11} aria-label="Pinned" />}{config.shared && <Share2 size={11} aria-label="Shared" />}
             </button>)}

@@ -35,7 +35,7 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 ## Stato a colpo d'occhio
 
-Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 reali).
+Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le voci di verifica manuale di questo file (IDE/GS/DB, REF, SEC, RES, INST, PY, RC-UI, EDIT-MODE, AG, più le sottosezioni dentro il Registro) e quelle tracciate negli altri piani di `mds/` (`ML-*` in `MULTILANGUAGE-IDE.md`, `JS-*` in `06-JAVA-SPRING-STUDIO.md`). Non è quindi ricalcolabile da questo solo file: quando si spunta una voce, aggiornare la riga della sua sezione e il totale.
 
 | Sezione | voci manuali | chiuse |
 |---------|-------------:|-------:|
@@ -45,6 +45,7 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 | IDE-4 | 4 | 0 |
 | IDE-5 | 5 | 0 |
 | IDE-6 | 4 | 0 |
+| IDE-7 | 2 | 0 |
 | GS-1 | 6 | 0 |
 | GS-2 | 4 | 0 |
 | GS-3 | 3 | 0 |
@@ -55,14 +56,14 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 | GS-8 | 2 | 0 |
 | GS-9 | 5 | 0 |
 | GS-10 | 9 | 0 |
-| GS-11 | 6 | 0 |
+| GS-11 | 7 | 0 |
 | GS-12 | 4 | 0 |
 | GS-13 | 9 | 0 |
 | GS-14 | 6 | 0 |
 | GS-15 | 7 | 0 |
 | GS-16 | 9 | 0 |
 | GS-17 | 5 | 0 |
-| GS-18 | 7 | 0 |
+| GS-18 | 9 | 0 |
 | DB-1 | 14 | 0 |
 | DB-2 | 18 | 0 |
 | DB-3 | 16 | 0 |
@@ -92,8 +93,13 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 | JS-17 | 4 | 4 |
 | SEC-2 | 10 | 0 |
 | RES-1 | 3 | 0 |
+| INST-1 | 2 | 0 |
+| PY | 10 | 0 |
+| RC-UI | 1 | 0 |
+| EDIT-MODE | 1 | 0 |
+| AG | 7 | 0 |
 | Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
-| **TOTALE** | **314** | **22** |
+| **TOTALE** | **340** | **22** |
 
 ---
 
@@ -178,7 +184,7 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 **Implementate, da verificare**
 - [ ] **IDE-4.7** Tab "Goroutines (n)": raggruppamento package → funzione, badge tipo/forma, indicatori loop/ctx/wg, chip di rischio con tooltip che spiega la regola, filtri (solo rischi, in loop, per tipo, testo), click con `SiteLink`. *Limite noto:* la freccia "→ callee" mostra il nome ma non apre il sorgente della funzione avviata.
 - [ ] **IDE-4.9** Comando `view.goroutines` nel menu View e tool window con `initialTab="goroutines"` (nessuna scorciatoia assegnata).
-- [ ] **IDE-4.10** Nei frame "created at" delle race: "Static launch · N hints" apre la vista Goroutines (nulla se l'analisi non è stata lanciata). *Limite noto:* lista goroutine di Delve e snapshot pprof non collegati.
+- [ ] **IDE-4.10** Nei frame "created at" delle race: "Static launch · N hints" apre la vista Goroutines (nulla se l'analisi non è stata lanciata). Nella lista goroutine di Delve e nella funzione selezionata del pannello profili compare lo stesso chip per le funzioni avviate da `go` (match per nome, quindi indizio).
 
 **Verifiche manuali**
 - [ ] **IDE-4.M1** Su un progetto reale con goroutine: la vista si popola; il timeout di 3 min è rispettato.
@@ -215,6 +221,18 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 - [ ] **IDE-6.M4** Riavviare gopls durante il caricamento: lo spinner sparisce a lavoro finito; un toast di errore resta ma senza timer attivo.
 
 **Gate manuale IDE-6:** [ ]
+
+---
+
+## IDE-7 — Finestre dentro l'area di lavoro dello schermo
+
+**Prerequisito:** area di lavoro più piccola delle finestre predefinite (1400×900): display 1280×720/1366×768, scala Windows > 100%, o barra delle applicazioni alta. Poi un monitor ≥ 1920×1080 per il confronto.
+
+**Verifiche manuali**
+- [ ] **IDE-7.M1** Con l'area di lavoro ridotta: avviare adOmnia e aprire la finestra staccata di Code Studio, una Live Preview, Swagger Editor, un pannello staccato e una richiesta API staccata — ognuna si apre interamente visibile (barra del titolo e controlli raggiungibili), mai più grande dell'area di lavoro; se il minimo della finestra è più grande dello schermo, la finestra resta comunque dentro.
+- [ ] **IDE-7.M2** Su monitor ≥ 1920×1080: le stesse finestre si aprono alle dimensioni abituali (1400×900 e affini), senza cambi di misura.
+
+**Gate manuale IDE-7:** [ ]
 
 ---
 
@@ -387,6 +405,7 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 - [ ] **GS-11.1** A fine turno compaiono i file creati, modificati ed eliminati dall'agente; un file riscritto identico non compare; i turni successivi si sommano mantenendo la versione di partenza.
 - [ ] **GS-11.2** Barra sopra la chat con *Review*; dialog con elenco file, blocchi, Accept/Reject per blocco e file, Accept all/Reject all (con conferma); *Tools → Review Agent Changes…*; funziona anche nella chat staccata.
 - [ ] **GS-11.3** Claude Code vede i server MCP configurati e `adomnia` (es. chiede `collection_list_requests`).
+- [ ] **GS-11.5** Con `.adomnia/ai-policy.json` `off`, avviare una chat con Claude Code **e con milk** e chiedere un tool MCP: nessun server è disponibile. Con `local-only` i server HTTP spariscono e restano solo gli stdio (compreso `adomnia`). Con `allowed` torna l'elenco completo.
 
 **Verifiche manuali**
 - [ ] **GS-11.M1** Chiedere a Claude Code di modificare 3 file e crearne uno; rifiutarne uno intero, accettare un solo blocco di un altro, rifiutare il file creato: su disco resta esattamente quanto accettato (confermare con il diff Git), l'editor aperto si aggiorna.
@@ -515,6 +534,8 @@ Conteggio rigenerato dal file il 2026-10-20 (prima: 233 voci dichiarate, 327 rea
 - [ ] **GS-18.1** Budget per peso: con più risposte grandi (~5 MB l'una) la history esce di voce vecchia appena superato il budget (impostazione *History memory budget (MB)*, default 16), anche sotto il limite di numero; la risposta più recente resta sempre; il campo si salva e si ripristina.
 - [ ] **GS-18.2** Doppione base64: una risposta testuale (JSON/testo) non conserva la copia base64 (sessione salvata più leggera); una risposta immagine/pdf mostra ancora il preview corretto.
 - [ ] **GS-18.3** Ricerca nella history su estratto: con body da 5 MB la digitazione resta reattiva; le corrispondenze oltre i 32k del body si trovano aprendo la risposta (limite dichiarato).
+- [ ] **GS-18.6** Risposta oltre 1 MB, poi riavvio: riaprendo la voce compare subito l'anteprima e il corpo completo arriva dal disco (il file di sessione non contiene il body intero). Con una risposta piccola nulla cambia.
+- [ ] **GS-18.9** HAR con una risposta > 512 KB: il dettaglio dice che il body pesante non è in memoria e "Load body" lo mostra; l'export riscrive il file originale. Flow recording con una risposta > 2 MB: il passo resta nella registrazione ma da quel body non si propongono variabili.
 
 **Verifiche manuali**
 - [ ] **GS-18.M1** Percorso felice: inviare 8-10 risposte da 5 MB; la history conserva ~budget impostato, le voci vecchie escono, aprire/riaprire una voce funziona; ripristino sessione coerente.
@@ -918,11 +939,13 @@ Riferimento: `MULTILANGUAGE-IDE.md` §9.5, PY-0–PY-9. Stato: **supporto implem
 - [ ] **PY-M2** Due unità Python con venv diversi: selezione interprete, versione, import disponibili in una sola unità, cambio ambiente, ambiente eliminato, riavvio app e restore. Nessuna contaminazione, buffer non salvati conservati.
 - [ ] **PY-M3** Script e modulo: args con spazi/Unicode, cwd, env-file con segreti redatti, streaming stdout/stderr, stop/rerun, configurazione salvata e riaperta. Ripetere con uv/Poetry presenti e ambiente mancante, senza sync/installazione implicita.
 - [ ] **PY-M4** basedpyright assente → installazione esplicita con comando/console/task → completion/hover/definition/rename/Problems/Structure; offline e errore installazione con retry. Buffer non salvati e file .pyi; light/dark, tastiera e focus.
-- [ ] **PY-M5** pytest: discovery esplicita, test singolo/parametrizzato, suite, fail/skip/xfail, errore collection e rerun failed; traceback apre file/riga corretti. Cancel e tool assente visibili; coverage solo se disponibile.
-- [ ] **PY-M6** debugpy: script, modulo e test selezionato con breakpoint confermato, step, stack/thread, variabili/watch/evaluate; stop, secondo avvio e crash. Verificare assenza processi orfani e isolamento di due sessioni.
+- [ ] **PY-M5** pytest: discovery esplicita, test singolo/parametrizzato, suite, fail/skip/xfail, errore collection e rerun failed; traceback apre file/riga corretti. Cancel e tool assente visibili. Coverage: con pytest-cov presente *Run with coverage* mostra percentuale, file e overlay; senza pytest-cov il comando fallisce con il messaggio del tool e nessun pacchetto viene installato; modificare un file rende le annotazioni non più correnti (token).
+- [ ] **PY-M6** debugpy: script, modulo e test selezionato con breakpoint confermato, step, stack/thread, variabili/watch/evaluate; stop, secondo avvio e crash; attach a un `debugpy --listen` gi� avviato con host:porta espliciti (nessun processo avviato da adOmnia). Verificare assenza processi orfani e isolamento di due sessioni.
 - [ ] **PY-M7** FastAPI/Uvicorn, Django e Flask: proposta modificabile, porta/URL pronti, preview su azione, porta occupata, avvio fallito e stop; reload Run e debug senza reloader. Eventuale import OpenAPI usa il flusso esistente.
 - [ ] **PY-M8** Workspace Go/web/Java/Python: routing LSP, Run/Test/Debug, compound e chiusura unità; Low resources libera strumenti Python senza perdere buffer. Registrare startup/idle/RAM misurati e regressioni degli altri linguaggi.
 - [ ] **PY-M9** Windows nativo, macOS nativo e Linux/WebKitGTK: ripetere percorso minimo open → edit → run → test → breakpoint → stop, percorsi con spazi/Unicode, form light/dark e tastiera. Una piattaforma non provata resta esplicitamente aperta.
+- [ ] **PY-M10** ▶ del gutter su uno script Python: glifo sulla riga di `if __name__ == "__main__":` e, senza guard, sulla prima riga; menu Run e Debug, run nella console con lo script scelto e debug con breakpoint sullo script. Progetto non fidato: Run/Debug bloccati con il messaggio di fiducia. Con lo script in una sottocartella il percorso relativo deve risolversi correttamente.
+- [ ] **PY-M11** Ruff formatter: senza Ruff, Reformat Code e format-on-save mostrano l'errore con l'azione di installazione e non modificano il buffer; dopo **Python → Install Ruff…** (comando visibile, conferma) il file si formatta, `pyproject.toml`/`ruff.toml` del progetto vengono rispettati, e un salvataggio applica la formattazione una sola volta (nessun doppio edit). Buffer con modifiche non salvate e file con spazi/Unicode nei percorsi.
 
 ## RC-UI — Run configurations (2026-10-21)
 
@@ -943,3 +966,10 @@ Tutte le voci sono pianificate: nessuna verifica eseguita. Riferimento `MULTILAN
 - [ ] **AG-M5** Due agenti ACP compatibili: capability diverse, permission request, cancel, crash e protocollo incompatibile; diagnostico/retry senza perdita della review.
 - [ ] **AG-M6** Docker: permessi filesystem/rete/credenziali, limiti, path mapping, daemon assente, offline, cancel e crash; nessun fallback host silenzioso o container/volume orfano.
 - [ ] **AG-M7** Teams: creare/eseguire/sospendere una ricorrenza, riavvio/app chiusa/fuso orario, deduplicazione, errori e inbox review; nessun merge/push/invio esterno automatico. Tastiera, chiaro/scuro e desktop Windows/macOS/Linux secondo piattaforme dichiarate.
+
+## AI-CHAT — Claude/milk: contesto, modelli e allegati (2026-10-21)
+
+- [ ] **AI-CHAT.M1** Nella build Wails su due progetti/language unit: Claude e milk ricevono file attivo, modifiche non salvate, selezione indipendente, regole e indice filtrato. Verificare disattivazione toggle, esclusioni/segretazione e policy off/local-only; nessuna contaminazione tra progetti.
+- [ ] **AI-CHAT.M2** Claude adapter reale: selezionare un modello annunciato (Opus/Sonnet se disponibili sull'account), inviare testo esterno e immagine supportata; verificare comprensione visiva reale, nessuna falsa accettazione, cambio modello bloccato durante turno, errore modello/connessione con Retry e bozza/allegati conservati. Controllare binari, file troppo grandi, paste/IME/Invio, chiaro/scuro.
+- [ ] **AI-CHAT.M3** Dopo aggiornamento esplicito a milk 0.7+: agenti configurati e modelli nel selettore, scope globale dichiarato e backup/campi config preservati; cambio crea nuova chat per il progetto; think/routing restano coerenti dopo slash command, piani task visibili, New chat non riprende contenuti precedenti. Errori e Stop non perdono il lavoro.
+- [ ] **AI-CHAT.M4** Milk ACP 0.7 rifiuta PNG/JPEG prima dell'invio con spiegazione, senza scartarli silenziosamente; file UTF-8 esterni accettati. Quando upstream annuncerà immagini ACP, riaprire il gate con test visivo reale del modello, non soltanto verifica del payload. Colore Send leggibile nei due temi e tastiera/picker utilizzabili.

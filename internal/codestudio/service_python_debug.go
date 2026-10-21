@@ -17,6 +17,10 @@ type PythonDebugRequest struct {
 	Kind             string   `json:"kind"`
 	Script           string   `json:"script,omitempty"`
 	Module           string   `json:"module,omitempty"`
+	App              string   `json:"app,omitempty"`
+	Host             string   `json:"host,omitempty"`
+	Port             int      `json:"port,omitempty"`
+	Reload           bool     `json:"reload,omitempty"`
 	Targets          []string `json:"targets,omitempty"`
 	Run              string   `json:"run,omitempty"`
 	WorkingDirectory string   `json:"workingDirectory,omitempty"`
@@ -47,6 +51,7 @@ func (s *Service) StartPythonDebug(request PythonDebugRequest) (DebugSessionInfo
 	options, err := json.Marshal(python.DebugOptions{
 		Interpreter: request.Interpreter, Kind: request.Kind,
 		Script: request.Script, Module: request.Module,
+		App: request.App, Host: request.Host, Port: request.Port, Reload: request.Reload,
 		Targets: request.Targets, Run: request.Run,
 		ProgramArguments: request.ProgramArguments,
 		JustMyCode:       request.JustMyCode,

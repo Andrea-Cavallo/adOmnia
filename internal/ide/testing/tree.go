@@ -91,6 +91,11 @@ type EventParser interface{ Parse([]byte) (Event, bool) }
 // (Vitest, Jest) restituisce tutti gli eventi insieme invece di uno per riga. Ha la precedenza su Parse.
 type BatchParser interface{ ParseAll([]byte) []Event }
 
+// Finisher è una capability opzionale del parser: chiude l'albero quando il processo termina, anche
+// se il report finale non è arrivato (annullamento, crash). Gli eventi sono emessi una volta sola:
+// un parser che ha già letto il proprio marcatore finale restituisce nil.
+type Finisher interface{ Finish() []Event }
+
 // Tree aggrega gli eventi correlandoli per Package e Test, mai dal solo testo.
 type Tree struct {
 	nodes      map[string]*TestResult

@@ -119,6 +119,8 @@ func TestNonGoTemplatesCreateFilesWithoutGo(t *testing.T) {
 		"spring-boot-gradle": {"build.gradle", "settings.gradle", "README.md", ".gitignore", "src/main/resources/application.properties"},
 		"java-maven":         {"pom.xml", "README.md", ".gitignore"},
 		"quarkus-maven":      {"pom.xml", "README.md", ".gitignore", "src/main/resources/application.properties"},
+		"python-script":      {"main.py", "README.md", ".gitignore"},
+		"python-pytest":      {"pyproject.toml", "app.py", "tests/test_app.py", "README.md", ".gitignore"},
 	}
 	for id, files := range expected {
 		t.Run(id, func(t *testing.T) {
@@ -143,6 +145,12 @@ func TestNonGoTemplatesCreateFilesWithoutGo(t *testing.T) {
 			readme, _ := os.ReadFile(filepath.Join(dir, "README.md"))
 			if !strings.Contains(string(readme), "demo-"+id) || strings.Contains(string(readme), "__NAME__") {
 				t.Errorf("segnaposto __NAME__ non sostituito: %s", readme)
+			}
+			if id == "python-pytest" {
+				pyproject, _ := os.ReadFile(filepath.Join(dir, "pyproject.toml"))
+				if !strings.Contains(string(pyproject), `name = "demo-`+id+`"`) || strings.Contains(string(pyproject), "__NAME__") {
+					t.Errorf("segnaposto non sostituito in pyproject.toml: %s", pyproject)
+				}
 			}
 		})
 	}

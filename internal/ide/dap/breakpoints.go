@@ -256,11 +256,14 @@ func (m *DebugManager) functionsFor(sessionID SessionID) FunctionBreakpointSetti
 }
 
 // SeedBreakpoints carica i breakpoint salvati se la sessione non ne ha ancora in memoria.
-func (m *DebugManager) SeedBreakpoints(sessionID SessionID, byPath map[string][]Breakpoint, functions FunctionBreakpointSettings) {
+func (m *DebugManager) SeedBreakpoints(sessionID SessionID, byPath map[string][]Breakpoint, functions FunctionBreakpointSettings, exceptions ExceptionBreakpointSettings) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.functions[sessionID]; !ok {
 		m.functions[sessionID] = functions
+	}
+	if _, ok := m.exceptions[sessionID]; !ok {
+		m.exceptions[sessionID] = normalizeExceptionFilters(exceptions)
 	}
 	if m.breakpoints[sessionID] != nil {
 		return
@@ -427,6 +430,94 @@ func (m *DebugManager) sendFunctionBreakpoints(session *debugger, settings Funct
 func (m *DebugManager) publishFunctionBreakpoints(session *debugger, view *FunctionBreakpointsView) {
 	if view != nil {
 		m.publish("debug.functionBreakpoints", view.SessionID, "", *view)
+	}
+}
+
+// ExceptionBreakpointSettings sono i breakpoint su eccezione del progetto: i filtri sono i nomi
+// del debug adapter (es. debugpy: "raised", "uncaught"); senza filtri il programma non si ferma
+// sulle eccezioni (PY-6.2).
+type ExceptionBreakpointSettings struct {
+	Filters []string `json:"filters"`
+}
+
+// ExceptionBreakpointsView è il payload di debug.exceptionBreakpoints.
+type ExceptionBreakpointsView struct {
+	SessionID SessionID `json:"sessionId"`
+	Filters   []string  `json:"filters"`
+	// Message spiega perché il debug adapter non ha accettato i filtri.
+	Message string `json:"message,omitempty"`
+}
+
+const maxExceptionFilters = 20
+
+// normalizeExceptionFilters toglie duplicati, filtri vuoti e quelli oltre il limite.
+func normalizeExceptionFilters(settings ExceptionBreakpointSettings) ExceptionBreakpointSettings {
+	seen := map[string]bool{}
+	filters := make([]string, 0, len(settings.Filters))
+	for _, filter := range settings.Filters {
+		filter = strings.TrimSpace(filter)
+		if filter == "" || len(filter) > 100 || seen[filter] {
+			continue
+		}
+		seen[filter] = true
+		filters = append(filters, filter)
+		if len(filters) == maxExceptionFilters {
+			break
+		}
+	}
+	return ExceptionBreakpointSettings{Filters: filters}
+}
+
+func (m *DebugManager) exceptionsFor(sessionID SessionID) ExceptionBreakpointSettings {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	settings := m.exceptions[sessionID]
+	settings.Filters = append([]string(nil), settings.Filters...)
+	return settings
+}
+
+// SetExceptionBreakpoints sostituisce i breakpoint su eccezione del progetto e li invia ai debug
+// attivi; il debug adapter conferma (o rifiuta) i filtri con il proprio messaggio.
+func (m *DebugManager) SetExceptionBreakpoints(sessionID SessionID, settings ExceptionBreakpointSettings) ExceptionBreakpointsView {
+	normalized := normalizeExceptionFilters(settings)
+	m.mu.Lock()
+	m.exceptions[sessionID] = normalized
+	m.mu.Unlock()
+	view := ExceptionBreakpointsView{SessionID: sessionID, Filters: normalized.Filters}
+	for _, session := range m.list(sessionID) {
+		if confirmed := m.sendExceptionBreakpoints(session, normalized); confirmed != nil {
+			view = *confirmed
+		}
+	}
+	m.publish("debug.exceptionBreakpoints", sessionID, "", view)
+	return view
+}
+
+// sendExceptionBreakpoints invia i filtri a un debug adapter connesso; nil se non lo è ancora.
+func (m *DebugManager) sendExceptionBreakpoints(session *debugger, settings ExceptionBreakpointSettings) *ExceptionBreakpointsView {
+	session.mu.Lock()
+	client := session.client
+	sessionID := session.info.SessionID
+	session.mu.Unlock()
+	if client == nil {
+		return nil
+	}
+	filters := settings.Filters
+	if filters == nil {
+		filters = []string{}
+	}
+	view := ExceptionBreakpointsView{SessionID: sessionID, Filters: settings.Filters}
+	ctx, cancel := context.WithTimeout(context.Background(), debugRequestTimeout)
+	defer cancel()
+	if err := client.Call(ctx, "setExceptionBreakpoints", map[string]any{"filters": filters}, nil); err != nil {
+		view.Message = err.Error()
+	}
+	return &view
+}
+
+func (m *DebugManager) publishExceptionBreakpoints(session *debugger, view *ExceptionBreakpointsView) {
+	if view != nil {
+		m.publish("debug.exceptionBreakpoints", view.SessionID, "", *view)
 	}
 }
 

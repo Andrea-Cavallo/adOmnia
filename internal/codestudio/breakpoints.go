@@ -12,6 +12,8 @@ type FunctionBreakpoint = dap.FunctionBreakpoint
 type FunctionBreakpointSettings = dap.FunctionBreakpointSettings
 type FunctionBreakpointState = dap.FunctionBreakpointState
 type FunctionBreakpointsView = dap.FunctionBreakpointsView
+type ExceptionBreakpointSettings = dap.ExceptionBreakpointSettings
+type ExceptionBreakpointsView = dap.ExceptionBreakpointsView
 
 var normalizeBreakpoints = golang.NormalizeBreakpoints
 var normalizeFunctionBreakpoints = golang.NormalizeFunctionBreakpoints

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { CircleDot, FunctionSquare, Plus, ShieldAlert, Trash2 } from 'lucide-react'
 import { CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import type { GoIDEBreakpointState, GoIDEFunctionBreakpoint } from '@/lib/code-studio-debug-api'
+import { exceptionFiltersFor } from '@/components/ide/languages'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { breakpointSpec, useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { CodeStudioBreakpointFields, canApply } from './CodeStudioBreakpointFields'
-import { breakpointSummary, draftFrom, optionsFrom, useCodeStudioBreakpointUi, type BreakpointDraft } from './codeStudioBreakpoints'
+import { breakpointSummary, draftFrom, optionsFrom, toggleExceptionFilter, useCodeStudioBreakpointUi, type BreakpointDraft } from './codeStudioBreakpoints'
 
 interface CodeStudioBreakpointsDialogProps {
   sessionId: string
@@ -26,6 +27,8 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
   const open = useCodeStudioBreakpointUi((state) => state.dialogOpen)
   const files = useCodeStudioDebugStore((state) => state.breakpoints[sessionId] ?? EMPTY_FILES)
   const functions = useCodeStudioDebugStore((state) => state.functionBreakpoints[sessionId])
+  const exceptions = useCodeStudioDebugStore((state) => state.exceptionBreakpoints[sessionId])
+  const units = useCodeStudioStore((state) => state.sessions.find((item) => item.id === sessionId)?.project.units)
   const [selection, setSelection] = useState<Selection>(null)
   const [draft, setDraft] = useState<BreakpointDraft>(() => draftFrom(null))
   const [newFunction, setNewFunction] = useState('')
@@ -35,6 +38,7 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
     if (!open) return
     void useCodeStudioDebugStore.getState().loadBreakpoints(sessionId)
     void useCodeStudioDebugStore.getState().loadFunctionBreakpoints(sessionId)
+    void useCodeStudioDebugStore.getState().loadExceptionBreakpoints(sessionId)
   }, [open, sessionId])
 
   if (!open) return null
@@ -79,6 +83,9 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
   }
   const anyEnabled = lines.some(({ state }) => !state.disabled)
   const isSelected = (kind: 'line' | 'function', id: string) => selection !== null && selection.kind === kind && (selection.kind === 'line' ? `${selection.relativePath}:${selection.line}` : selection.name) === id
+  const exceptionFilters = exceptionFiltersFor((units ?? []).map((unit) => unit.language ?? ''))
+  const activeExceptions = exceptions?.filters ?? []
+  const toggleException = (filter: string) => void debug.setExceptionBreakpoints(sessionId, { filters: toggleExceptionFilter(activeExceptions, filter) })
 
   return (
     <CodeStudioModal
@@ -130,6 +137,21 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
               <input type="checkbox" checked={functions?.stopOnPanic ?? false} onChange={(event) => void debug.setFunctionBreakpoints(sessionId, settingsWith(functionSpecs(), event.target.checked))} className="mt-0.5 accent-accent" />
               <span><span className="flex items-center gap-1.5"><ShieldAlert size={11} className="text-warning" /> Stop on every panic, including recovered ones</span><span className="mt-0.5 block text-[11.5px] text-text-4">Unrecovered panics always stop the debugger.</span>{functions?.panicMessage && <span className="mt-0.5 block text-[10px] text-danger">{functions.panicMessage}</span>}</span>
             </label>
+            {exceptionFilters.length > 0 && (
+              <>
+                <p className="gs-section-title px-4 pb-1.5 pt-4">Exceptions</p>
+                {exceptionFilters.map((filter) => (
+                  <label key={filter.filter} className="flex items-start gap-2.5 px-4 py-1 text-[12.5px] text-text-2">
+                    <input type="checkbox" checked={activeExceptions.includes(filter.filter)} onChange={() => toggleException(filter.filter)} className="mt-0.5 accent-accent" />
+                    <span>
+                      <span className="flex items-center gap-1.5"><ShieldAlert size={11} className="text-warning" /> {filter.label}</span>
+                      {filter.description && <span className="mt-0.5 block text-[11.5px] text-text-4">{filter.description}</span>}
+                    </span>
+                  </label>
+                ))}
+                {exceptions?.message && <p className="px-4 py-1 text-[10px] text-danger">{exceptions.message}</p>}
+              </>
+            )}
           </div>
           <div className="w-[320px] shrink-0 overflow-auto bg-surface-0/40 p-4">
             {!selection && <p className="gs-hint pt-1">Select a breakpoint to set a condition, a hit count or a log message.</p>}

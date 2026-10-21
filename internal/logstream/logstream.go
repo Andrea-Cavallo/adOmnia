@@ -40,6 +40,9 @@ const (
 	maxLineBytes    = 1 << 20
 )
 
+// A line-count cap alone still allows gigabytes when lines are huge.
+var maxBufferBytes int64 = 32 << 20
+
 type Kind string
 
 const (
@@ -82,6 +85,7 @@ type Session struct {
 
 	mu       sync.Mutex
 	lines    []string
+	bytes    int64 // retained payload, newline included
 	base     int64 // sequence number of lines[0]
 	next     int64 // sequence number of the next line appended
 	dropped  int64
@@ -118,13 +122,36 @@ func (s *Session) append(line string) {
 		return // a repeat of what we already have, produced by the reconnect
 	}
 	s.lines = append(s.lines, line)
+	s.bytes += int64(len(line)) + 1
 	s.next++
-	if over := len(s.lines) - s.capacity(); over > 0 {
-		s.lines = append([]string(nil), s.lines[over:]...)
-		s.base += int64(over)
-		s.dropped += int64(over)
-	}
+	s.trim()
 	s.lastSeen = time.Now()
+}
+
+// trim drops the oldest lines until both the count and the byte budget fit.
+// The newest line is always kept. Caller holds the lock.
+func (s *Session) trim() {
+	cut := len(s.lines) - s.capacity()
+	if cut < 0 {
+		cut = 0
+	}
+	remaining := s.bytes
+	for i := 0; i < cut; i++ {
+		remaining -= int64(len(s.lines[i])) + 1
+	}
+	for cut < len(s.lines)-1 && remaining > maxBufferBytes {
+		remaining -= int64(len(s.lines[cut])) + 1
+		cut++
+	}
+	if cut == 0 {
+		return
+	}
+	for i := 0; i < cut; i++ {
+		s.bytes -= int64(len(s.lines[i])) + 1
+	}
+	s.lines = append([]string(nil), s.lines[cut:]...)
+	s.base += int64(cut)
+	s.dropped += int64(cut)
 }
 
 // holdsLine reports whether the tail of the buffer already contains line.

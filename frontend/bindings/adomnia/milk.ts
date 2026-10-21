@@ -112,11 +112,23 @@ export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<mil
     });
 }
 
+export function SessionControls(root: string): $CancellablePromise<milk$0.SessionControls> {
+    return $Call.ByID(2911452761, root).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
 /**
  * SetActiveWorkspace comunica il progetto attivo in Code Studio.
  */
 export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
     return $Call.ByID(1269283718, root);
+}
+
+export function SetSessionControl(root: string, id: string, value: any): $CancellablePromise<milk$0.SessionControls> {
+    return $Call.ByID(4072898334, root, id, value).then(($result: any) => {
+        return $$createType7($result);
+    });
 }
 
 /**
@@ -155,3 +167,4 @@ const $$createType3 = milk$0.MCPServer.createFrom;
 const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = milk$0.PromptResponse.createFrom;
 const $$createType6 = milk$0.Settings.createFrom;
+const $$createType7 = milk$0.SessionControls.createFrom;

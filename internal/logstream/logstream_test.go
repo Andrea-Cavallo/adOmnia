@@ -3,6 +3,7 @@ package logstream
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -108,6 +109,28 @@ func TestBufferKeepsTheNewestLines(t *testing.T) {
 	}
 	if missed := session.Poll(0); !missed.Missed {
 		t.Fatal("a cursor pointing at an evicted line must report Missed")
+	}
+}
+
+func TestBufferByteBudgetKeepsNewestLines(t *testing.T) {
+	previous := maxBufferBytes
+	maxBufferBytes = 100
+	defer func() { maxBufferBytes = previous }()
+
+	session := &Session{Config: Config{Kind: KindFile, BufferLines: 100}}
+	line := strings.Repeat("x", 40) // 41 bytes with the newline
+	for i := 0; i < 5; i++ {
+		session.append(line)
+	}
+	result := session.Poll(-1)
+	if len(result.Lines) != 2 {
+		t.Fatalf("expected 2 lines within the byte budget, got %d", len(result.Lines))
+	}
+	if result.Dropped != 3 {
+		t.Fatalf("expected 3 dropped lines, got %d", result.Dropped)
+	}
+	if session.bytes != int64(2*41) {
+		t.Fatalf("tracked bytes = %d, want %d", session.bytes, 2*41)
 	}
 }
 

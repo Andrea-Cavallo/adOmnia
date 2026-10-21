@@ -24,6 +24,8 @@ type Snapshot struct {
 	Overflow    bool            `json:"overflow,omitempty"`
 	StartedAt   time.Time       `json:"startedAt"`
 	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
+	// Coverage è il report dello strumento di copertura, se la run ne ha prodotto uno.
+	Coverage *CoverageReport `json:"coverage,omitempty"`
 }
 
 // Hooks enrich neutral results inside the run lock. They must not call Manager.
@@ -43,6 +45,7 @@ type testRun struct {
 	hooks           Hooks
 	pending         []byte
 	diagnostics     []byte
+	coverage        *CoverageReport
 	dirty, finished bool
 }
 type Manager struct {
@@ -94,6 +97,16 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 		if len(r.pending) > 0 {
 			r.line(r.pending)
 			r.pending = nil
+		}
+		// Un run annullato o un processo morto non produce il report finale: il parser chiude i
+		// test rimasti aperti invece di lasciarli "running" per sempre (PY-5.6).
+		if finisher, ok := r.parser.(Finisher); ok {
+			for _, event := range finisher.Finish() {
+				r.tree.Apply(event)
+			}
+		}
+		if provider, ok := r.parser.(CoverageProvider); ok {
+			r.coverage = provider.Coverage()
 		}
 		r.finished = true
 		r.snapshot.ExitCode = cloneInt(e.ExitCode)
@@ -196,6 +209,7 @@ func (r *testRun) snapshotLocked(output bool) Snapshot {
 		}
 	}
 	s.Overflow = r.tree.Overflowed()
+	s.Coverage = cloneCoverage(r.coverage)
 	return s
 }
 

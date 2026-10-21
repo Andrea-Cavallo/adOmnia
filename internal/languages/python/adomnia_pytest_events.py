@@ -65,6 +65,16 @@ def pytest_collectreport(report) -> None:
                "longrepr": str(report.longrepr)})
 
 
+def _captured(report) -> dict:
+    # pytest returns per-phase captured output; None when capture is off.
+    result = {}
+    for key in ("capstdout", "capstderr"):
+        text = getattr(report, key, None)
+        if text:
+            result[key] = str(text)[:32768]
+    return result
+
+
 def pytest_runtest_logreport(report) -> None:
     payload = {"event": "report", "nodeid": report.nodeid,
                "file": _FILES.get(report.nodeid) or _file_of(report),
@@ -78,6 +88,7 @@ def pytest_runtest_logreport(report) -> None:
         payload["skipreason"] = _skip_reason(report)
     if report.failed:
         payload["longrepr"] = str(report.longrepr)
+    payload.update(_captured(report))
     _emit(payload)
 
 

@@ -7,9 +7,13 @@ import type {
   MCPServer,
   Settings,
   Status,
+  SessionControls,
 } from '../../bindings/adomnia/internal/milk/models'
 
 export type MilkStatus = Status
+export type AgentSessionControls = SessionControls
+export const getMilkSessionControls = (root: string): Promise<AgentSessionControls> => MilkBindings.SessionControls(root)
+export const setMilkSessionControl = (root: string, id: string, value: unknown): Promise<AgentSessionControls> => MilkBindings.SetSessionControl(root, id, value)
 export type MilkSettings = Settings
 export type MilkAgentsInfo = AgentsInfo
 export type MilkAgentRole = 'primary' | 'escalation'
@@ -33,7 +37,8 @@ export interface MilkChatEvent {
   token: string
   root: string
   sessionId?: string
-  kind: 'begin' | 'text' | 'thought' | 'tool' | 'end' | 'route' | 'warning' | 'error'
+  kind: 'begin' | 'text' | 'thought' | 'tool' | 'end' | 'route' | 'warning' | 'error' | 'plan'
+  plan?: { content: string; status: string; priority?: string }[]
   reply?: string
   tool?: MilkToolUpdate
   route?: MilkRouteInfo

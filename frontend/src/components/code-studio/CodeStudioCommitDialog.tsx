@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal, Sparkles } from 'lucide-react'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { draftCodeStudioCommitMessage, type CommitMessageSymbol } from './codeStudioCommitMessageAI'
+import { loadCommitFormat, normalizeCommitTemplate, saveCommitFormat, type CommitFormatPreference } from './codeStudioCommitFormat'
 import { useSettingsStore } from '@/stores/settings'
 import { getGoIDEChangedSymbols, type GoIDEVCSChangedSymbol } from '@/lib/code-studio-vcs-api'
 import { runCodeStudioChangedTests } from './codeStudioQuickActions'
@@ -105,6 +106,7 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
   const [focused, setFocused] = useState<string | null>(null)
   const [localReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
   const [aiBusy, setAiBusy] = useState(false)
+  const [commitFormat, setCommitFormat] = useState<CommitFormatPreference>(loadCommitFormat)
   const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
   const messageRef = useRef<HTMLTextAreaElement>(null)
   const [formHeight, setFormHeight] = useState(300)
@@ -201,12 +203,19 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
       const changed: CommitMessageSymbol[] = symbols
         .filter((symbol) => selected.has(symbol.relativePath))
         .map((symbol) => ({ name: symbol.name, kind: symbol.kind, change: symbol.change, breaking: symbol.breaking, test: symbol.test }))
-      setMessage(await draftCodeStudioCommitMessage(sessionId, [...selected], changed, status?.branch ?? ''))
+      setMessage(await draftCodeStudioCommitMessage(sessionId, [...selected], changed, status?.branch ?? '', commitFormat))
     } catch (reason) {
       setError(`AI commit message: ${reason instanceof Error ? reason.message : String(reason)}`)
     } finally {
       setAiBusy(false)
     }
+  }
+
+  // Il cambio di formato vale per la prossima bozza; il testo già scritto resta come l'utente lo vede.
+  const changeFormat = (patch: Partial<CommitFormatPreference>) => {
+    const next = { ...commitFormat, ...patch }
+    setCommitFormat(next)
+    saveCommitFormat(next)
   }
 
   return (
@@ -256,9 +265,38 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
         <textarea id="code-studio-commit-message" ref={messageRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void commit() } }}
           rows={3} placeholder="Commit message" aria-label="Commit message" className="gs-input" />
         {aiAvailable && (
-          <div className="flex items-center gap-2">
-            <CodeStudioButton small variant="secondary" icon={Sparkles} loading={aiBusy} disabled={selected.size === 0} onClick={() => void draftMessage()}>Draft message with AI</CodeStudioButton>
-            <span className="text-[11px] text-text-4">Summarises the selected changes · secrets are redacted</span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <CodeStudioButton small variant="secondary" icon={Sparkles} loading={aiBusy} disabled={selected.size === 0} onClick={() => void draftMessage()}>Draft message with AI</CodeStudioButton>
+              <span className="text-[11px] text-text-4">Summarises the selected changes · secrets are redacted</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-text-3">
+              <label htmlFor="code-studio-commit-format">Message format</label>
+              <select
+                id="code-studio-commit-format"
+                value={commitFormat.format}
+                onChange={(event) => changeFormat({ format: event.target.value as CommitFormatPreference['format'] })}
+                className="gs-input h-7 w-auto min-w-40 px-1.5 text-[11.5px]"
+              >
+                <option value="conventional">Conventional Commits</option>
+                <option value="free">Free form</option>
+                <option value="template">Template…</option>
+              </select>
+              <span className="text-text-4">Saved in this app; the draft stays editable.</span>
+            </div>
+            {commitFormat.format === 'template' && (
+              <div className="flex flex-col gap-1">
+                <textarea
+                  aria-label="Commit message template"
+                  value={commitFormat.template}
+                  rows={2}
+                  onChange={(event) => changeFormat({ template: event.target.value })}
+                  onBlur={() => changeFormat({ template: normalizeCommitTemplate(commitFormat.template) })}
+                  className="gs-input font-mono text-[11.5px]"
+                />
+                <span className="text-[10.5px] text-text-4"><code>{'{{summary}}'}</code> is the subject, <code>{'{{body}}'}</code> the optional body. A template without <code>{'{{summary}}'}</code> gets one.</span>
+              </div>
+            )}
           </div>
         )}
         <label className="flex items-center gap-2 text-[12px] text-text-3">

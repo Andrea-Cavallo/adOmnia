@@ -14,6 +14,9 @@ import { CodeStudioPerfExport } from './CodeStudioPerfExport'
 import { CodeStudioCreateProfile } from './CodeStudioCreateProfile'
 import { CodeStudioCaptureLiveProfile } from './CodeStudioCaptureLiveProfile'
 import { useFocusedArtifact } from '@/lib/code-studio/codeStudioRemote'
+import { cachedArchitecture } from '@/lib/code-studio/architectureCache'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { matchLaunchedFunction } from './codeStudioArchitecture'
 import { markdownFileName, profileToMarkdown } from './codeStudioPerfMarkdown'
 import { profileHeatFrom, useCodeStudioProfileHeat } from './codeStudioProfileHeat'
 import { useCodeStudioRuntimeProfile } from '@/stores/codeStudioRuntimeProfile'
@@ -180,6 +183,12 @@ export function CodeStudioProfilePanel({ session }: CodeStudioProfilePanelProps)
   const selectedName = selectedFunction?.name ?? ''
   const callers = useMemo(() => report?.edges.filter((edge) => edge.callee.name === selectedName) ?? [], [report, selectedName])
   const callees = useMemo(() => report?.edges.filter((edge) => edge.caller.name === selectedName) ?? [], [report, selectedName])
+  // Un frame del profilo può corrispondere a un avvio statico: è un indizio (nome della funzione).
+  const staticLaunch = useMemo(() => {
+    if (!selectedFunction) return undefined
+    const launches = cachedArchitecture(sessionId)?.report?.goroutines ?? []
+    return matchLaunchedFunction(launches, selectedFunction.name)
+  }, [selectedFunction, sessionId])
   // Il profilo aperto colora il costo per riga nell'editor della stessa sessione.
   useEffect(() => {
     useCodeStudioProfileHeat.getState().publish(sessionId, report ? profileHeatFrom(report, sampleIndex) : null)
@@ -321,6 +330,13 @@ export function CodeStudioProfilePanel({ session }: CodeStudioProfilePanelProps)
                     <div className="flex items-baseline justify-between text-[11.5px]"><span className="text-text-4">Cumulative</span><span className="font-mono tabular-nums text-text-1">{formatProfileValue(sampleValue(findNode(report.topCum, selectedName)?.cum, sampleIndex), unit)}</span></div>
                     {(selectedFunction.relative || selectedFunction.file?.endsWith('.go')) && (
                       <button type="button" onClick={() => openFunction(selectedFunction)} className="mt-2 w-full rounded-lg bg-accent/15 py-1 text-[11.5px] font-medium text-accent hover:bg-accent/25">Open source</button>
+                    )}
+                    {staticLaunch && (
+                      <button type="button" onClick={() => useCodeStudioLspStore.getState().showToolWindow('goroutines')}
+                        title={`${staticLaunch.kind} launch of ${staticLaunch.launches} found by static analysis${staticLaunch.risks.length ? `: ${staticLaunch.risks.join(', ')}` : ''}. Matched by function name. Open the Goroutines view`}
+                        className="mt-1 w-full rounded-lg bg-surface-2 py-1 text-[11.5px] font-medium text-text-2 hover:text-text-1">
+                        Static launch{staticLaunch.risks.length > 0 ? ` · ${staticLaunch.risks.length} hint${staticLaunch.risks.length === 1 ? '' : 's'}` : ''}
+                      </button>
                     )}
                   </div>
                   <EdgeList title={`Callees · ${callees.length}`} icon={<ArrowRight size={12} />} edges={callees.map((edge) => ({ fn: edge.callee, value: sampleValue(edge.value, sampleIndex) }))} total={total} unit={unit} onSelect={setSelectedFunction} />

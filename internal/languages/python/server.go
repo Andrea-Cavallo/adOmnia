@@ -93,7 +93,7 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 // pyrightconfig.json e [tool.pyright] del progetto restano la fonte delle altre impostazioni.
 func pyrightSettings(root string) any {
 	settings := map[string]any{
-		"python":     map[string]any{},
+		"python":       map[string]any{},
 		"basedpyright": map[string]any{"analysis": map[string]any{"diagnosticMode": "openFilesOnly"}},
 	}
 	if interpreter, err := ResolveInterpreter(root, root, ""); err == nil {
@@ -127,8 +127,8 @@ func (*Language) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	arguments := []string{"-m", "pip", "install", "--upgrade", "--target", directory, pyrightName + "==" + pyrightVersion}
 	return lsp.InstallPlan{
 		Task: pyrightInstallTask, Title: "Install the Python language server?",
-		Label: "Installing basedpyright",
-		Note: fmt.Sprintf("Installs %s %s into the adOmnia tools folder (%s), never into your project or your Python environments. Needs network access now; afterwards basedpyright works offline.", pyrightName, pyrightVersion, directory),
+		Label:      "Installing basedpyright",
+		Note:       fmt.Sprintf("Installs %s %s into the adOmnia tools folder (%s), never into your project or your Python environments. Needs network access now; afterwards basedpyright works offline.", pyrightName, pyrightVersion, directory),
 		Command:    strings.Join(append([]string{sdk.ExecutableName("python")}, arguments...), " "),
 		Executable: interpreter, Arguments: arguments, Directory: directory,
 		Prepare:   func() error { return os.MkdirAll(directory, 0o755) },

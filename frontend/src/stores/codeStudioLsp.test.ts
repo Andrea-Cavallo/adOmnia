@@ -22,6 +22,21 @@ const event = (sessionId: string, type: string, payload: unknown) => ({ version:
 describe('Code Studio language server store', () => {
   beforeEach(() => useCodeStudioLspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
 
+  it('keeps multi-row tabs off by default and persists the toggle', () => {
+    expect(useCodeStudioLspStore.getState().preferences.multilineTabs).toBe(false)
+    const setItem = vi.fn()
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem })
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() })
+    try {
+      useCodeStudioLspStore.getState().updatePreferences({ multilineTabs: true })
+      expect(useCodeStudioLspStore.getState().preferences.multilineTabs).toBe(true)
+      expect(setItem).toHaveBeenCalled()
+      useCodeStudioLspStore.getState().updatePreferences({ multilineTabs: false })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('updates the diagnostics store once for an import burst of 1000 files', async () => {
     vi.useFakeTimers()
     let receive: ((event: GoIDEEvent) => void) | undefined

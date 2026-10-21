@@ -53,7 +53,7 @@ func (s *Service) SaveSessionView(sessionID string, view SessionView) error {
 	}
 	s.viewMu.Lock()
 	saved := s.views[session.ID]
-	view.Breakpoints, view.FunctionBreakpoints, view.StopOnPanic = saved.Breakpoints, saved.FunctionBreakpoints, saved.StopOnPanic
+	view.Breakpoints, view.FunctionBreakpoints, view.StopOnPanic, view.ExceptionBreakpoints = saved.Breakpoints, saved.FunctionBreakpoints, saved.StopOnPanic, saved.ExceptionBreakpoints
 	s.views[session.ID] = view
 	s.viewMu.Unlock()
 	return s.persistSessionView(session.ID, view)

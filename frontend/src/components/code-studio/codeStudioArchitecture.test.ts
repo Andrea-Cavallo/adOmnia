@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEArchEntry } from '@/lib/code-studio-api'
-import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, kafkaTopics, isWrite, packageGraph, packageView, DEFAULT_PACKAGE_VIEW, cycleMembers, packageGroup, groupGoroutines, filterGoroutines, matchGoroutineSite, NO_GOROUTINE_FILTER, queriesByTable, searchFunctions, shortPackage } from './codeStudioArchitecture'
+import { callNeighbourhood, entityRefsForEntry, groupEntries, interfaceGraph, kafkaTopics, isWrite, matchGoroutineLaunch, matchLaunchedFunction, packageGraph, packageView, DEFAULT_PACKAGE_VIEW, cycleMembers, packageGroup, groupGoroutines, filterGoroutines, matchGoroutineSite, NO_GOROUTINE_FILTER, queriesByTable, searchFunctions, shortPackage } from './codeStudioArchitecture'
 
 const site = (relativePath: string, line = 1) => ({ relativePath, line, column: 1 })
 const pkg = (path: string) => ({ path, name: path.split('/').pop()!, module: 'example.com/shop', files: 2, site: site(`${path}.go`), external: [], std: 1 })
@@ -184,5 +184,17 @@ describe('goroutine grouping and filters', () => {
     expect(matchGoroutineSite(items, 'C:\\proj\\store\\s.go', 4)?.function).toBe('Flush')
     expect(matchGoroutineSite(items, '/work/proj/api/api.go', 12)?.kind).toBe('errgroup')
     expect(matchGoroutineSite(items, '/work/proj/api/api.go', 99)).toBeUndefined()
+  })
+
+  it('matches a Delve goroutine or pprof function by the launched name', () => {
+    const launched = [
+      launch({ launches: 'example.com/shop/api.(*Server).handle' }),
+      launch({ launches: 'runWorker' }),
+    ]
+    expect(matchGoroutineLaunch(launched, 'example.com/shop/api.(*Server).handle')?.launches).toBe('example.com/shop/api.(*Server).handle')
+    expect(matchLaunchedFunction(launched, 'example.com/shop/api.(*Server).handle')?.launches).toBe('example.com/shop/api.(*Server).handle')
+    expect(matchGoroutineLaunch(launched, 'runWorker.func1')?.launches).toBe('runWorker')
+    expect(matchGoroutineLaunch(launched, 'other.Unknown')).toBeUndefined()
+    expect(matchGoroutineLaunch(launched, undefined)).toBeUndefined()
   })
 })

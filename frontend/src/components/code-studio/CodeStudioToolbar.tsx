@@ -12,6 +12,7 @@ import type { GoIDEExecution, GoIDERunConfiguration, GoIDESession, GoIDEToolchai
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { ideLanguage, IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
+import { LanguageBrandIcon } from '@/components/ide/LanguageBrandIcon'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { groupConfigurationsByUnit, unitOfConfiguration } from '@/lib/code-studio/runUnits'
 import { useDetectedRunItems } from './useDetectedRunItems'
@@ -147,7 +148,9 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     if (kind === 'config') return [
       // Monorepo: le configurazioni sono raggruppate per unità ("orders · Go") e l'unità è scritta a destra della voce.
       ...groupConfigurationsByUnit(runConfigurations, activeSession.project, IDE_LANGUAGE_NAMES).flatMap((group, groupIndex) => group.items.map((config, index) => ({
-        id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success', checked: config.id === activeConfigId || undefined,
+        id: `${CONFIG_PREFIX}${config.id}`, label: config.name, icon: Play, iconClassName: 'text-success',
+        iconElement: group.language ? <LanguageBrandIcon id={group.language} /> : undefined,
+        checked: config.id === activeConfigId || undefined,
         shortcut: group.label || undefined, separatorBefore: index === 0 && groupIndex > 0 && group.label !== '' || undefined,
       }))),
       ...(profile.hasGo ? [{ id: `${CONFIG_PREFIX}`, label: 'Project root · go run . (no configuration)', icon: Terminal, checked: !activeConfigId || undefined, separatorBefore: runConfigurations.length > 0 }] : []),

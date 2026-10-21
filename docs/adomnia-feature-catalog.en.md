@@ -1011,7 +1011,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code at every new chat session (milk's own protocol does not take them yet). |
+| I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code and milk (v0.7+) at every new chat session. The project AI policy gates the list: `off` sends none, `local-only` sends only stdio servers. |
 | I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). Per-agent switch to turn it off. |
 | I4.3 | **Review Agent Changes** | After a milk or Claude Code turn, the files the agent created, modified or deleted are listed above the chat and in *Tools → Review Agent Changes…*; accept or reject each change, each file or the whole turn. Rejections never overwrite a file changed after the review was shown. |
 
@@ -1221,3 +1221,7 @@ Code Studio supports Python like its other languages. Detection reads project ma
 ### Run configuration interface (2026-10-21)
 
 The shared editor now searches saved configurations and types, prioritizes project languages, defaults cwd only for a unique matching unit, and reviews detected entries before saving. Other installed language types remain accessible in a disclosure. Compact parameter sections retain environment/tasks/target/restart, pin/share, ordering and shell presets; discard checks protect modified drafts. Browser fixture checked in both themes; native Wails acceptance pending (RC-UI.M1).
+
+### Claude Code / milk chat additions (2026-10-21)
+
+Shared context includes live unsaved source, optional selection, project rules, filtered paths and language units. Header selectors use advertised ACP models; external UTF-8 text files and capability-gated images can be attached without storing their bytes in transcripts. Milk 0.7 adds configured-primary selection (global config + new project chat), native routing/reasoning controls, task-plan display and fresh-session semantics. Existing local milk is not upgraded automatically. Its 0.7 ACP prompt handler ignores image blocks, so adOmnia rejects image sends to that transport explicitly; this is not full milk CLI/TUI feature parity. Native account/model/image checks pending in AI-CHAT.M1–M4.

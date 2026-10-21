@@ -3,8 +3,11 @@ import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useMilkStore } from '@/stores/milk'
 import { CodeStudioAgentChat, type ChatAgent } from './CodeStudioAgentChat'
 import { MilkLogo } from './CodeStudioMilkDialog'
+import { getMilkSessionControls, setMilkSessionControl } from '@/lib/milk-api'
 
 const MILK: ChatAgent = {
+  sessionControls: getMilkSessionControls,
+  setSessionControl: setMilkSessionControl,
   tool: 'milk',
   name: 'milk',
   store: useMilkStore,

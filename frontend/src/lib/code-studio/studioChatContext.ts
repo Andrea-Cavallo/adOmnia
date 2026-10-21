@@ -1,6 +1,7 @@
 import { createAIRedactor } from '@/lib/aiRedaction'
 import { getGoIDEAIPolicy, getGoIDEProjectRules, listGoIDEAIExcludedPaths, quickOpenGoIDEFiles } from '@/lib/code-studio-api'
 import type { CopilotChatSelection } from '@/lib/copilot-api'
+import type { AgentAttachment } from './agentAttachments'
 
 export interface StudioChatContext {
   documentId?: string
@@ -8,6 +9,7 @@ export interface StudioChatContext {
   includeDocument: boolean
   includeWorkspace: boolean
   includeRules?: boolean
+  attachments?: AgentAttachment[]
 }
 
 function boundedContext(text: string, bytes: number): string {
@@ -19,7 +21,10 @@ function boundedContext(text: string, bytes: number): string {
 /** Resolve in the project owner at send time, including live unsaved buffers. */
 export async function prepareStudioChat(root: string, message: string, options: StudioChatContext, milkCommand = false, localProvider = false) {
   // Slash commands are milk commands, not natural-language prompts.
-  if (milkCommand && message.trimStart().startsWith('/')) return { message, labels: [] as string[] }
+  if (milkCommand && message.trimStart().startsWith('/')) {
+    if (options.attachments?.length) throw new Error('Remove attachments before running a slash command.')
+    return { message, labels: [] as string[] }
+  }
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
   const state = useCodeStudioStore.getState()
   const session = state.sessions.find((item) => item.project.realPath === root)
@@ -82,14 +87,18 @@ export async function prepareStudioChat(root: string, message: string, options: 
   }
   if (options.includeWorkspace) {
     labels.push(session.project.name)
-    parts.push(`Project: ${session.project.name}\nKnown project paths (bounded index):\n${paths.filter((path) => !excluded.has(path)).join('\n').slice(0, 6000)}`)
+    const units = (session.project.units ?? []).map(unit => `${unit.language} · ${unit.kind} · ${unit.name || unit.root}`).join('\n')
+    parts.push(`Project: ${session.project.name}\n${units ? `Project language units:\n${units}\n` : ''}Known project paths (bounded index):\n${paths.filter((path) => !excluded.has(path)).join('\n').slice(0, 6000)}`)
   }
   const redactor = createAIRedactor()
-  const question = redactor.redact(message)
+  const attachments = options.attachments ?? []
+  for (const attachment of attachments) labels.push(`${attachment.name} (${attachment.kind === 'image' ? 'image' : 'external file'})`)
+  const fileText = attachments.filter(item => item.kind === 'text').map(item => `External file chosen by the user: ${item.name}\n${item.text ?? ''}`).join('\n\n')
+  const question = redactor.redact(message + (fileText ? `\n\n<user_attachments>\n${fileText}\n</user_attachments>` : ''))
   const prefix = '\n\n<adomnia_editor_context>\n'
   const suffix = '\n</adomnia_editor_context>'
   const remaining = 64 * 1024 - new TextEncoder().encode(question + prefix + suffix).length
-  if (remaining < 512) throw new Error('The message is too long to attach editor context. Shorten it and try again.')
+  if (remaining < 512) throw new Error('The message and text attachments are too long to attach editor context. Shorten them or attach an excerpt and try again.')
   return { message: question + prefix + boundedContext(redactor.redact(parts.join('\n\n')), remaining) + suffix, labels }
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
-import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { IDE_LANGUAGES, exceptionFiltersFor, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
   it('offers Python script and module runs with basedpyright and pytest/debug support', () => {
@@ -32,6 +33,20 @@ describe('IDE language contributions', () => {
     expect(heavyFeatureEditorLanguages()).toEqual(['go'])
   })
 
+  it('declares the debugpy exception filters and gathers them per project language', () => {
+    const python = IDE_LANGUAGES.find(language => language.id === 'python')!
+    expect(python.exceptionFilters?.map((filter) => filter.filter)).toEqual(['raised', 'uncaught'])
+    expect(exceptionFiltersFor(['go'])).toEqual([])
+    expect(exceptionFiltersFor(['python', 'python']).map((filter) => filter.filter)).toEqual(['raised', 'uncaught'])
+    expect(exceptionFiltersFor(['java', 'python']).length).toBe(2)
+  })
+
+  it('gives every language a brand icon the run bar can show', () => {
+    for (const language of IDE_LANGUAGES) {
+      expect(BRAND_ICONS[language.icon], language.id).toBeTruthy()
+    }
+  })
+
   it('every Go menu command requires the Go language', () => {
     const goMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'go')
     expect(goMenu.length).toBeGreaterThan(0)
@@ -40,7 +55,7 @@ describe('IDE language contributions', () => {
 
   it('every Python menu command requires the Python language', () => {
     const pythonMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'python')
-    expect(pythonMenu.map((command) => command.id)).toEqual(['python.selectInterpreter', 'python.installDebugpy'])
+    expect(pythonMenu.map((command) => command.id)).toEqual(['python.selectInterpreter', 'python.installDebugpy', 'python.attach'])
     expect(pythonMenu.every((command) => command.requires?.language === 'python')).toBe(true)
   })
 

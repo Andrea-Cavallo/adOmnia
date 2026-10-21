@@ -2,7 +2,7 @@ import type { CodeStudioCommand } from '@/components/code-studio/codeStudioComma
 import { PYTHON_LANGUAGE_ID } from '.'
 
 export type PythonLanguageCommandId =
-  | 'python.selectInterpreter' | 'python.installDebugpy'
+  | 'python.selectInterpreter' | 'python.installDebugpy' | 'python.attach'
 
 const requires = { language: PYTHON_LANGUAGE_ID }
 
@@ -10,4 +10,5 @@ const requires = { language: PYTHON_LANGUAGE_ID }
 export const PYTHON_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'python.selectInterpreter', menu: 'python', label: 'Select Python Interpreter…', separatorBefore: true },
   { id: 'python.installDebugpy', menu: 'python', label: 'Install debugpy…' },
+  { id: 'python.attach', menu: 'python', label: 'Attach to Running Debugpy…', separatorBefore: true },
 ] satisfies ReadonlyArray<Omit<CodeStudioCommand, 'requires'>>).map((command) => ({ ...command, requires }))

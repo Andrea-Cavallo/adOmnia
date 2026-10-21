@@ -1,7 +1,7 @@
 import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
-import { Copy, Minus, RefreshCw, Search, Square } from 'lucide-react'
+import { Copy, ExternalLink, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useCodeStudioStore, type GoIDEConsoleChunk } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
@@ -13,6 +13,8 @@ import { selectDebugState } from './codeStudioDebugCommands'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
 import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
+import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
+import { openExternal } from '@/lib/openExternal'
 import { resolveConsolePath } from './codeStudioConsolePaths'
 import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
@@ -198,6 +200,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   // Solo i chunk dell'esecuzione attiva: l'output di un'altra run (o di un altro progetto) non deve
   // ridisegnare questa console.
   const chunks = useCodeStudioStore((state) => (active ? state.consoleByRun[active.id] : undefined) ?? EMPTY_CHUNKS)
+  // PY-7.3: l'URL locale dichiarato dal server avviato si apre solo su azione esplicita.
+  const serverURL = useMemo(() => firstLocalServerURL(chunks.map((chunk) => chunk.text).join('')), [chunks])
   // Una nuova esecuzione porta in primo piano la finestra Run; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
@@ -267,6 +271,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="code-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
           <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="code-studio-icon-button h-7 w-7"><Copy size={13} /></button>
+          {serverURL && <button type="button" onClick={() => openExternal(serverURL)} aria-label="Open in browser" title={`Open ${serverURL} in the browser`} className="code-studio-icon-button h-7 w-7"><ExternalLink size={13} /></button>}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
         {executions.length > 1 && (

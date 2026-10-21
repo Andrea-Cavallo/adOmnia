@@ -77,12 +77,38 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 		h.handleUsage(notification.Update)
 		return
 	}
+	if discriminator.SessionUpdate == "config_option_update" {
+		var update struct {
+			ConfigOptions []SessionControl `json:"configOptions"`
+		}
+		if json.Unmarshal(notification.Update, &update) == nil {
+			h.manager.mu.Lock()
+			if root := h.manager.rootBySession[notification.SessionID]; root != "" {
+				h.manager.controls[root] = update.ConfigOptions
+			}
+			h.manager.mu.Unlock()
+		}
+		return
+	}
 	token := h.manager.tokenForSession(notification.SessionID)
 	if token == "" {
 		return
 	}
 	root := h.manager.rootForSession(notification.SessionID)
 	switch discriminator.SessionUpdate {
+	case "plan", "plan_update":
+		var update struct {
+			Entries []PlanEntry `json:"entries"`
+			Plan    struct {
+				Entries []PlanEntry `json:"entries"`
+			} `json:"plan"`
+		}
+		if json.Unmarshal(notification.Update, &update) == nil {
+			if discriminator.SessionUpdate == "plan_update" {
+				update.Entries = update.Plan.Entries
+			}
+			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "plan", Plan: update.Entries})
+		}
 	case "state_update":
 		var update struct {
 			State      string `json:"state"`

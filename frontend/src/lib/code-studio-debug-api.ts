@@ -1,7 +1,7 @@
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
-  DelveInfo, EvaluateResult, Execution, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
+  DelveInfo, EvaluateResult, Execution, ExceptionBreakpointSettings, ExceptionBreakpointsView, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
   GoroutineOverview, JavaDebugRequest, ProcessInfo, PythonDebugRequest,
 } from '../../bindings/adomnia/internal/codestudio/models'
 
@@ -27,6 +27,8 @@ export type GoIDEBreakpointState = BreakpointState
 export type GoIDEFunctionBreakpoint = FunctionBreakpoint
 export type GoIDEFunctionBreakpointSettings = FunctionBreakpointSettings
 export type GoIDEFunctionBreakpoints = FunctionBreakpointsView
+export type GoIDEExceptionBreakpointSettings = ExceptionBreakpointSettings
+export type GoIDEExceptionBreakpoints = ExceptionBreakpointsView
 export type GoIDEFileBreakpoints = FileBreakpoints
 export type GoIDEDelveInfo = DelveInfo
 export type GoIDEGoroutineOverview = GoroutineOverview
@@ -112,6 +114,15 @@ export function listGoIDEFunctionBreakpoints(sessionId: string): Promise<Functio
 /** Breakpoint di funzione e "Stop on every panic" del progetto. */
 export function setGoIDEFunctionBreakpoints(sessionId: string, settings: FunctionBreakpointSettings): Promise<FunctionBreakpointsView> {
   return GoIDEBindings.SetFunctionBreakpoints(sessionId, settings)
+}
+
+export function listGoIDEExceptionBreakpoints(sessionId: string): Promise<ExceptionBreakpointsView> {
+  return GoIDEBindings.ListExceptionBreakpoints(sessionId)
+}
+
+/** Breakpoint su eccezione del progetto: i filtri sono i nomi del debug adapter (es. debugpy). */
+export function setGoIDEExceptionBreakpoints(sessionId: string, settings: ExceptionBreakpointSettings): Promise<ExceptionBreakpointsView> {
+  return GoIDEBindings.SetExceptionBreakpoints(sessionId, settings)
 }
 
 /** Run to Cursor: riprende il programma in pausa fino alla riga indicata. */

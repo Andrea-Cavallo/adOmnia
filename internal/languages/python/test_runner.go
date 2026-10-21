@@ -21,6 +21,8 @@ type TestOptions struct {
 	Interpreter string   `json:"interpreter"`
 	Packages    []string `json:"packages"`
 	Run         string   `json:"run"`
+	// Coverage chiede `--cov` a pytest: richiede pytest-cov nell'interprete scelto (PY-5.5).
+	Coverage bool `json:"coverage,omitempty"`
 }
 
 const (
@@ -70,6 +72,14 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	default:
 		arguments = append(arguments, options.Run)
 	}
+	// Copertura opzionale: pytest-cov scrive un report JSON nella cartella strumenti, fuori dal
+	// progetto, e il parser lo legge a fine run. Senza pytest-cov pytest rifiuta `--cov` con un
+	// messaggio chiaro: nessun pacchetto viene installato qui.
+	coveragePath := ""
+	if options.Coverage {
+		coveragePath = eventsPath + ".coverage.json"
+		arguments = append(arguments, "--cov", "--cov-report=json:"+coveragePath)
+	}
 	if err := run.CheckBatchSafe(interpreter.Path, arguments); err != nil {
 		return run.CommandSpec{}, nil, err
 	}
@@ -79,7 +89,7 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 		Environment:      withPythonPath(withEventsFile(request.Environment, eventsPath), pluginDirectory),
 		DisplayCommand:   "python " + strings.Join(arguments, " "),
 	}
-	return spec, newPytestParser(request.Root, eventsPath), nil
+	return spec, newPytestParser(request.Root, eventsPath, coveragePath), nil
 }
 
 // withEventsFile dice al plugin dove scrivere gli eventi: un file temporaneo dell'IDE, mai

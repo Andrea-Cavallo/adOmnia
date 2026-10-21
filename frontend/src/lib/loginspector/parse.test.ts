@@ -309,6 +309,22 @@ describe('limits and large inputs', () => {
     expect(summary.truncated).toBe(true)
   })
 
+  it('stops at the byte budget even under the event limit', () => {
+    const line = `{"msg":"${'x'.repeat(200)}"}`
+    const text = Array.from({ length: 100 }, () => line).join('\n')
+    const { events, summary } = parseLogText(text, { maxBytes: 1024 })
+    expect(events.length).toBeGreaterThan(0)
+    expect(events.length).toBeLessThan(100)
+    expect(summary.truncated).toBe(true)
+  })
+
+  it('keeps the newest item when it alone exceeds the byte budget', () => {
+    const text = JSON.stringify([{ msg: 'x'.repeat(4096) }])
+    const { events, summary } = parseLogText(text, { maxBytes: 64 })
+    expect(events).toHaveLength(1)
+    expect(summary.truncated).toBe(false)
+  })
+
   it('parses 100k JSONL events', () => {
     const text = Array.from(
       { length: 100_000 },

@@ -176,3 +176,9 @@ Implemented project-aware creation, saved/type search, unit grouping, explicit r
 ### Editor keyboard mode — 2026-10-21
 
 Reproduced the reported Enter/Space cursor-only behavior with real Monaco + monaco-vim in Normal mode. The mode indicator had been hidden; mode-change tracking incorrectly listened for DOM events instead of adapter events. Restored a visible mode hint and standard-editing recovery action; fixed adapter subscription/disposal. Regression test failed before fix and passes after it. Browser fixture verifies i → insert and recovery → ordinary letters/spaces/newlines. Actual user session configuration not inspected; native Wails acceptance remains EDIT-MODE.M1.
+
+### AI-CHAT — Claude/milk parity and milk 0.7 adaptation (2026-10-21)
+
+Implemented shared live-project context with independent selection and language-unit metadata; advertised session model selectors (modern/legacy ACP); explicit external UTF-8 files and capability-gated image payloads with backend MIME/size validation. Failed sends retain drafts/attachments. Milk 0.7 configured-primary selector changes its global config with backup and starts a new project chat; reasoning/routing options and task plans use their actual v2 shapes. Fresh-session metadata prevents invisible automatic conversation adoption. Project AI policy is enforced before session controls or prompts. Tests cover transport/state/policy/config isolation; native provider acceptance remains AI-CHAT.M1–M4.
+
+Installed milk remains 0.5.4; upstream stable 0.7.0 was inspected, not installed automatically. Milk 0.7 ACP currently reads only text blocks, so native images remain blocked upstream and are explicitly rejected; text files work. Arbitrary model changes inside a live milk ACP session, complete history replay and team workflow boards are not implemented. See `mds/MULTILANGUAGE-IDE.md` AI-CHAT and AG.

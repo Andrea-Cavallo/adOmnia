@@ -5,6 +5,45 @@ import (
 	"testing"
 )
 
+// TestExceptionBreakpointsAreSavedAndRestored prova PY-6.2: i filtri si normalizzano, sopravvivono
+// a un salvataggio del layout dal frontend e tornano alla riapertura del progetto.
+func TestExceptionBreakpointsAreSavedAndRestored(t *testing.T) {
+	root := copyFixture(t, "debugproject")
+	store := &memoryStore{}
+	ide := NewService(store, func(EventEnvelope) {})
+	session, err := ide.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := ide.SetExceptionBreakpoints(string(session.ID), ExceptionBreakpointSettings{Filters: []string{"raised", "uncaught", "raised", " "}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(view.Filters, ",") != "raised,uncaught" {
+		t.Fatalf("filtri non normalizzati: %+v", view)
+	}
+	// Un salvataggio del layout dal frontend non deve azzerare i filtri del backend.
+	if err := ide.SaveSessionView(string(session.ID), SessionView{OpenPaths: []string{"main.go"}}); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := ide.ListExceptionBreakpoints(string(session.ID))
+	if err != nil || strings.Join(saved.Filters, ",") != "raised,uncaught" {
+		t.Fatalf("filtri non salvati: %+v %v", saved, err)
+	}
+	ide.Shutdown()
+	// Riaprire il progetto con lo stato salvato ripristina i filtri.
+	restored := NewService(&memoryStore{data: store.data}, func(EventEnvelope) {})
+	t.Cleanup(restored.Shutdown)
+	reopened, err := restored.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := restored.ListExceptionBreakpoints(string(reopened.ID))
+	if err != nil || strings.Join(back.Filters, ",") != "raised,uncaught" {
+		t.Fatalf("filtri non ripristinati: %+v %v", back, err)
+	}
+}
+
 // stopAt avvia il debug e restituisce la prima fermata con il frame in cima.
 func stopAt(t *testing.T, ide *Service, recorder *eventRecorder, session Session, environment map[string]string) (DebugSessionInfo, DebugSessionInfo, []DebugFrame) {
 	t.Helper()

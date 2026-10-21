@@ -6,6 +6,7 @@
 package panelwindow
 
 import (
+	"adomnia/internal/windowfit"
 	"errors"
 	"fmt"
 	"net/url"
@@ -112,13 +113,14 @@ func (m *Manager) open(panel, title string, query url.Values) error {
 	if query.Get("window") == "studio-tool" {
 		minWidth, minHeight = 480, 320
 	}
+	winW, winH, winMinW, winMinH := windowfit.Size(m.app, 1280, 840, minWidth, minHeight)
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      windowNamePrefix + panel,
 		Title:     title + " · adOmnia",
-		Width:     1280,
-		Height:    840,
-		MinWidth:  minWidth,
-		MinHeight: minHeight,
+		Width:     winW,
+		Height:    winH,
+		MinWidth:  winMinW,
+		MinHeight: winMinH,
 		URL:       "/?" + query.Encode(),
 		Frameless: m.frameless,
 	})

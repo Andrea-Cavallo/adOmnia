@@ -97,13 +97,21 @@ interface HarDoc {
 
 interface RichEntry extends HarEntry {
   _id: number
+  _entryIndex: number
+  _source: 'a' | 'b'
   _startMs: number
   _domain: string
   _mimeShort: string
   _slow: boolean
   _error: boolean
   _heavy: boolean
+  _requestBodyOmitted?: boolean
+  _responseBodyOmitted?: boolean
 }
+
+// A body above this size is not kept in memory: it is re-read from the file
+// when the user asks for it. Same boundary as the "heavy" marker.
+const HEAVY_BODY_BYTES = 512 * 1024
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -181,21 +189,49 @@ function methodCls(m: string) {
   }
 }
 
-function enrich(entries: HarEntry[]): RichEntry[] {
+function enrich(entries: HarEntry[], source: 'a' | 'b' = 'a'): RichEntry[] {
   const t0 = entries[0] ? new Date(entries[0].startedDateTime).getTime() : 0
   return entries.map((e, i) => {
     const startMs = new Date(e.startedDateTime).getTime() - t0
     return {
       ...e,
       _id: i,
+      _entryIndex: i,
+      _source: source,
       _startMs: isNaN(startMs) ? 0 : Math.max(startMs, 0),
       _domain: parseDomain(e.request.url),
       _mimeShort: shortMime(e.response?.content?.mimeType ?? ''),
       _slow: e.time > 1000,
       _error: !e.response?.status || e.response.status >= 400,
-      _heavy: (e.response?.content?.size || e.response?.bodySize || 0) > 512 * 1024,
+      _heavy: (e.response?.content?.size || e.response?.bodySize || 0) > HEAVY_BODY_BYTES,
     }
   })
+}
+
+/**
+ * Drop bodies above the heavy threshold from the in-memory document. The file
+ * stays on disk (the File handle is kept), so the detail pane can load one body
+ * on demand instead of holding every megabyte of a recorded session.
+ */
+export function stripHeavyBodies(doc: HarDoc): { doc: HarDoc; omitted: number } {
+  let omitted = 0
+  const entries = doc.log.entries.map((entry) => {
+    let next: HarEntry = entry
+    const responseText = entry.response?.content?.text
+    if (responseText && responseText.length > HEAVY_BODY_BYTES) {
+      next = { ...next, response: { ...next.response, content: { ...next.response.content, text: undefined } } }
+      ;(next as RichEntry)._responseBodyOmitted = true
+      omitted++
+    }
+    const requestText = entry.request?.postData?.text
+    if (requestText && requestText.length > HEAVY_BODY_BYTES) {
+      next = { ...next, request: { ...next.request, postData: { ...(next.request.postData ?? { mimeType: '' }), text: undefined } } }
+      ;(next as RichEntry)._requestBodyOmitted = true
+      omitted++
+    }
+    return next
+  })
+  return { doc: { ...doc, log: { ...doc.log, entries } }, omitted }
 }
 
 function readHarFile(file: File): Promise<HarDoc> {
@@ -391,12 +427,58 @@ function BodyPreview({ text }: { text?: string }) {
 
 // ── Entry detail pane ─────────────────────────────────────────────────────────
 
-function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void }) {
+function OmittedBody({ loading, error, onLoad }: { loading: boolean; error: string; onLoad: () => void }) {
+  return (
+    <div className="rounded border border-dashed border-border-2 bg-surface-0 p-3 text-center text-[10px] text-text-4">
+      <p>Heavy body (&gt; 512 KB) not kept in memory.</p>
+      <button
+        onClick={onLoad}
+        disabled={loading}
+        className="mt-2 rounded border border-border-2 px-2 py-1 text-text-2 hover:bg-surface-2 disabled:opacity-40"
+      >
+        {loading ? 'Loading…' : 'Load body'}
+      </button>
+      {error && <p className="mt-1 text-error">{error}</p>}
+    </div>
+  )
+}
+
+function EntryDetail({ entry, onClose, onLoadBody }: {
+  entry: RichEntry
+  onClose: () => void
+  onLoadBody?: (kind: 'request' | 'response') => Promise<string | undefined>
+}) {
   const [tab, setTab] = useState<'timings' | 'request' | 'response'>('timings')
+  const [loadedBodies, setLoadedBodies] = useState<{ request?: string; response?: string }>({})
+  const [loadingBody, setLoadingBody] = useState<'request' | 'response' | null>(null)
+  const [bodyError, setBodyError] = useState('')
+  const requestBody = loadedBodies.request ?? entry.request.postData?.text
+  const responseBody = loadedBodies.response ?? entry.response.content?.text
+  const loadBody = async (kind: 'request' | 'response') => {
+    if (!onLoadBody) return
+    setLoadingBody(kind)
+    setBodyError('')
+    try {
+      const text = await onLoadBody(kind)
+      if (text === undefined) setBodyError('The body is no longer available; import the file again.')
+      else setLoadedBodies((current) => ({ ...current, [kind]: text }))
+    } catch (error) {
+      setBodyError(error instanceof Error ? error.message : 'Could not read the body')
+    } finally {
+      setLoadingBody(null)
+    }
+  }
   const queryParams = queryParamsFromEntry(entry)
 
-  const sendToComposer = () => {
-    useTabsStore.getState().openTab(entryToRequest(entry))
+  const sendToComposer = async () => {
+    let source = entry
+    if (entry._requestBodyOmitted && onLoadBody) {
+      const text = await onLoadBody('request').catch(() => undefined)
+      if (text !== undefined) {
+        source = { ...entry, request: { ...entry.request, postData: { ...(entry.request.postData ?? { mimeType: '' }), text } } }
+      }
+    }
+    useTabsStore.getState().openTab(entryToRequest(source))
     useAppStore.getState().setActiveRail('collections')
   }
 
@@ -413,7 +495,7 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
         name: `Status ${entry.response.status || 200}`,
         status: entry.response.status || 200,
         headers: headersToObject(entry.response.headers ?? []),
-        body: entry.response.content?.text ?? '',
+        body: responseBody ?? '',
         delayMs: Math.max(0, Math.round(entry.time || 0)),
         isActive: true,
       }],
@@ -479,10 +561,12 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
                 <CookieTable cookies={entry.request.cookies} />
               </div>
             )}
-            {entry.request.postData?.text && (
+            {(requestBody || entry._requestBodyOmitted) && (
               <div>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Body</p>
-                <BodyPreview text={entry.request.postData.text} />
+                {requestBody
+                  ? <BodyPreview text={requestBody} />
+                  : <OmittedBody loading={loadingBody === 'request'} error={bodyError} onLoad={() => void loadBody('request')} />}
               </div>
             )}
           </div>
@@ -516,10 +600,12 @@ function EntryDetail({ entry, onClose }: { entry: RichEntry; onClose: () => void
                 <CookieTable cookies={entry.response.cookies} />
               </div>
             )}
-            {entry.response.content?.text && (
+            {(responseBody || entry._responseBodyOmitted) && (
               <div>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">Body</p>
-                <BodyPreview text={entry.response.content.text} />
+                {responseBody
+                  ? <BodyPreview text={responseBody} />
+                  : <OmittedBody loading={loadingBody === 'response'} error={bodyError} onLoad={() => void loadBody('response')} />}
               </div>
             )}
           </div>
@@ -561,11 +647,11 @@ type CompareMatch = { key: string; url: string; method: string; timeA: number; t
 function CompareView({ harA, harB }: { harA: HarDoc; harB: HarDoc }) {
   const matches = useMemo<CompareMatch[]>(() => {
     const mapB = new Map<string, RichEntry>()
-    for (const e of enrich(harB.log.entries)) {
+    for (const e of enrich(harB.log.entries, 'b')) {
       const k = `${e.request.method}:${e.request.url}`
       if (!mapB.has(k)) mapB.set(k, e)
     }
-    return enrich(harA.log.entries).flatMap((e) => {
+    return enrich(harA.log.entries, 'a').flatMap((e) => {
       const k = `${e.request.method}:${e.request.url}`
       const b = mapB.get(k)
       if (!b) return []
@@ -625,6 +711,8 @@ export function HarViewerPanel() {
   const pendingFileImport = useAppStore((state) => state.pendingFileImport)
   const fileARef = useRef<HTMLInputElement | null>(null)
   const fileBRef = useRef<HTMLInputElement | null>(null)
+  const sourceFileRef = useRef<File | null>(null)
+  const bodyCacheRef = useRef(new Map<string, string>())
   const [harA, setHarA] = useState<HarDoc | null>(null)
   const [nameA, setNameA] = useState('')
   const [harB, setHarB] = useState<HarDoc | null>(null)
@@ -645,7 +733,9 @@ export function HarViewerPanel() {
     try {
       const doc = JSON.parse(routed.text) as HarDoc
       if (!doc?.log?.entries) throw new Error('Invalid HAR: missing log.entries')
-      setHarA(doc)
+      sourceFileRef.current = null
+      bodyCacheRef.current.clear()
+      setHarA(stripHeavyBodies(doc).doc)
       setNameA(routed.name)
       setSelected(null)
       setErrMsg('')
@@ -696,8 +786,13 @@ export function HarViewerPanel() {
     setErrMsg(''); setBusy(true)
     try {
       const d = await readHarFile(file)
-      if (slot === 'a') { setHarA(d); setNameA(file.name); setSelected(null) }
-      else { setHarB(d); setNameB(file.name) }
+      const stripped = stripHeavyBodies(d)
+      if (slot === 'a') {
+        sourceFileRef.current = file
+        bodyCacheRef.current.clear()
+        setHarA(stripped.doc); setNameA(file.name); setSelected(null)
+      }
+      else { setHarB(stripped.doc); setNameB(file.name) }
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : 'Import failed')
     } finally { setBusy(false) }
@@ -715,7 +810,9 @@ export function HarViewerPanel() {
       const data = await res.json() as { ok: boolean; data?: HarDoc; error?: string }
       if (!data.ok || !data.data) throw new Error(data.error ?? 'No data returned')
       if (!(data.data.log?.entries?.length)) throw new Error('Proxy has no captured traffic yet')
-      setHarA(data.data); setNameA('Proxy Traffic'); setSelected(null)
+      sourceFileRef.current = null
+      bodyCacheRef.current.clear()
+      setHarA(stripHeavyBodies(data.data).doc); setNameA('Proxy Traffic'); setSelected(null)
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : 'Failed to load from proxy')
     } finally { setBusy(false) }
@@ -728,19 +825,40 @@ export function HarViewerPanel() {
       setErrMsg('Browser Debug has no captured network entries yet')
       return
     }
-    setHarA(browserEntriesToHar(browserEntries))
+    setHarA(stripHeavyBodies(browserEntriesToHar(browserEntries)).doc)
+    sourceFileRef.current = null
+    bodyCacheRef.current.clear()
     setNameA('Browser Debug')
     setSelected(null)
   }, [])
 
-  const exportHar = useCallback(() => {
+  const exportHar = useCallback(async () => {
     if (!harA) return
-    const blob = new Blob([JSON.stringify(harA, null, 2)], { type: 'application/json' })
+    let text = JSON.stringify(harA, null, 2)
+    const source = sourceFileRef.current
+    if (source) {
+      // Export the original file, so heavy bodies dropped from memory are not lost.
+      try { text = await source.text() } catch { /* fall back to the in-memory document */ }
+    }
+    const blob = new Blob([text], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = `${nameA.replace(/\.har$/i, '') || 'export'}.har`; a.click()
     URL.revokeObjectURL(url)
   }, [harA, nameA])
+
+  const loadEntryBody = useCallback(async (index: number, kind: 'request' | 'response') => {
+    const key = `${kind}:${index}`
+    const cached = bodyCacheRef.current.get(key)
+    if (cached !== undefined) return cached
+    const source = sourceFileRef.current
+    if (!source) return undefined
+    const doc = await readHarFile(source)
+    const entry = doc.log.entries[index]
+    const text = kind === 'request' ? entry?.request?.postData?.text : entry?.response?.content?.text
+    if (text !== undefined) bodyCacheRef.current.set(key, text)
+    return text
+  }, [])
 
   const clearFilters = () => { setFilterDomain(''); setFilterStatus(''); setFilterMime(''); setFilterMinMs(0); setSearch('') }
   const hasFilters = !!(filterDomain || filterStatus || filterMime || filterMinMs > 0 || search)
@@ -781,7 +899,7 @@ export function HarViewerPanel() {
               <Layers size={12} /> Compare
             </button>
             <span className="max-w-40 truncate text-[10px] text-text-4" title={nameA}>{nameA}</span>
-            <button onClick={() => { setHarA(null); setHarB(null); setSelected(null); setCompare(false); clearFilters() }}
+            <button onClick={() => { sourceFileRef.current = null; bodyCacheRef.current.clear(); setHarA(null); setHarB(null); setSelected(null); setCompare(false); clearFilters() }}
               className="ml-auto text-text-4 hover:text-error" title="Clear">
               <Trash2 size={13} />
             </button>
@@ -943,7 +1061,13 @@ export function HarViewerPanel() {
             {/* Detail pane */}
             {selected && (
               <div className="flex min-h-0 flex-col overflow-hidden border-l border-border-1">
-                <EntryDetail entry={selected} onClose={() => setSelected(null)} />
+                <EntryDetail
+          entry={selected}
+          onClose={() => setSelected(null)}
+          onLoadBody={selected._source === 'a' && sourceFileRef.current
+            ? (kind) => loadEntryBody(selected._entryIndex, kind)
+            : undefined}
+        />
               </div>
             )}
           </div>

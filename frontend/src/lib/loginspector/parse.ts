@@ -1,4 +1,5 @@
 import { detectFormat, findJsonSuffix, stripAnsi } from './detect'
+import { DEFAULT_MAX_BYTES, utf8ByteLength } from './limits'
 import { levelFromText, normalizePayload, parseTimestamp, startsWithTimestamp, timestampFromText } from './normalize'
 import {
   DEFAULT_MAX_EVENTS,
@@ -71,6 +72,7 @@ export interface LogParser {
 
 export function createLogParser(options: ParseOptions & { format?: LogFormat } = {}): LogParser {
   const maxEvents = options.maxEvents ?? DEFAULT_MAX_EVENTS
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES
   const decodeNestedJson = options.decodeNestedJson !== false
 
   const events: LogEvent[] = []
@@ -81,6 +83,7 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
   let invalid = 0
   let lineNo = 0
   let truncated = false
+  let retainedBytes = 0
   let draft: Draft | null = null
   const started = Date.now()
   const startPattern = compileProfilePattern(options.parsingProfile?.multiline?.startPattern)
@@ -142,22 +145,25 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
   return {
     pushLine(line: string) {
       lineNo++
-      if (events.length >= maxEvents) {
+      if (events.length >= maxEvents || retainedBytes >= maxBytes) {
         truncated = true
         return
       }
       const clean = stripAnsi(line).replace(/\s+$/, '')
+      const size = utf8ByteLength(clean)
       const { body, ts, stream } = splitCriPrefix(clean)
 
       if (isContinuation(body)) {
         draft!.bodies.push(body)
         draft!.raws.push(clean)
+        retainedBytes += size
         return
       }
 
       flush()
       if (body.trim() === '') return
 
+      retainedBytes += size
       draft = {
         startLine: lineNo,
         bodies: [body],
@@ -168,7 +174,9 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
       }
     },
     isFull() {
-      return events.length >= maxEvents
+      const full = events.length >= maxEvents || retainedBytes >= maxBytes
+      if (full) truncated = true
+      return full
     },
     peek() {
       return events
@@ -361,6 +369,7 @@ export function parseLogText(text: string, options: ParseOptions = {}): ParseRes
 function parseJsonDocument(text: string, format: LogFormat, options: ParseOptions): ParseResult {
   const started = Date.now()
   const maxEvents = options.maxEvents ?? DEFAULT_MAX_EVENTS
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES
   const decodeNestedJson = options.decodeNestedJson !== false
   const totalLines = text.split(/\r?\n/).length
 
@@ -385,10 +394,18 @@ function parseJsonDocument(text: string, format: LogFormat, options: ParseOption
   let invalid = 0
   let warningCount = 0
   const errors: ParseIssue[] = []
+  let retainedBytes = 0
+  let truncated = items.length > maxEvents
 
   for (const item of items.slice(0, maxEvents)) {
     const id = events.length
     const raw = JSON.stringify(item)
+    const size = utf8ByteLength(raw)
+    if (events.length > 0 && retainedBytes + size > maxBytes) {
+      truncated = true
+      break
+    }
+    retainedBytes += size
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
       invalid++
       if (errors.length < ISSUE_SAMPLE_LIMIT) {
@@ -446,7 +463,7 @@ function parseJsonDocument(text: string, format: LogFormat, options: ParseOption
       warnings,
       errorCount: invalid,
       warningCount,
-      truncated: items.length > maxEvents,
+      truncated,
       format,
       durationMs: Date.now() - started,
     },

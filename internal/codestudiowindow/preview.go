@@ -1,6 +1,7 @@
 package codestudiowindow
 
 import (
+	"adomnia/internal/windowfit"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -48,9 +49,10 @@ func (p *PreviewWindows) Open(sessionID, previewID, title, url string) error {
 		existing.Focus()
 		return nil
 	}
+	winW, winH, winMinW, winMinH := windowfit.Size(p.app, 1200, 800, 360, 480)
 	window := p.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name: previewWindowName(key), Title: strings.TrimSpace(title + " · Live Preview · adOmnia"),
-		Width: 1200, Height: 800, MinWidth: 360, MinHeight: 480, URL: url,
+		Width: winW, Height: winH, MinWidth: winMinW, MinHeight: winMinH, URL: url,
 	})
 	p.windows[key] = window
 	p.mu.Unlock()

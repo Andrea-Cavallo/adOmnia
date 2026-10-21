@@ -13,12 +13,17 @@ import (
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Python: lo stesso target della Run
-// (script, modulo o pytest) più la scelta di limitare il debugger al codice del progetto.
+// (script, modulo o pytest) più la scelta di limitare il debugger al codice del progetto. App,
+// Host, Port e Reload sono i campi guidati del server framework, come per la Run.
 type DebugOptions struct {
 	Interpreter      string   `json:"interpreter,omitempty"`
 	Kind             string   `json:"kind"`
 	Script           string   `json:"script,omitempty"`
 	Module           string   `json:"module,omitempty"`
+	App              string   `json:"app,omitempty"`
+	Host             string   `json:"host,omitempty"`
+	Port             int      `json:"port,omitempty"`
+	Reload           bool     `json:"reload,omitempty"`
 	Targets          []string `json:"targets,omitempty"`
 	Run              string   `json:"run,omitempty"`
 	ProgramArguments []string `json:"programArguments,omitempty"`
@@ -37,6 +42,30 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 			return dap.AdapterSpec{}, fmt.Errorf("enter valid Python debug options")
 		}
 	}
+	justMyCode := true
+	if options.JustMyCode != nil {
+		justMyCode = *options.JustMyCode
+	}
+	// Attach: il programma gira già (debugpy --listen) e il DAP si collega all'indirizzo scelto.
+	// Nessun interprete viene risolto o avviato: nessun processo, nessuna porta aperta da adOmnia.
+	if options.Kind == "attach" {
+		address, err := attachAddress(options.Host, options.Port)
+		if err != nil {
+			return dap.AdapterSpec{}, err
+		}
+		return dap.AdapterSpec{
+			AdapterID: "python", Address: address, Title: "Attach Python " + address,
+			Launch: func(string) (string, map[string]any) {
+				return "attach", map[string]any{
+					"name": "python", "type": "python", "request": "attach",
+					"justMyCode": justMyCode, "redirectOutput": false, "subProcess": false,
+				}
+			},
+			ExplainError: func(err error) error {
+				return fmt.Errorf("could not attach to debugpy at %s: start it with python -m debugpy --listen %s --wait-for-client %s (%w)", address, address, options.Script, err)
+			},
+		}, nil
+	}
 	interpreter, err := ResolveInterpreter(request.Root, request.WorkingDirectory, options.Interpreter)
 	if err != nil {
 		return dap.AdapterSpec{}, err
@@ -51,12 +80,8 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	}
 	arguments := []string{"-u", "-m", "debugpy", "--listen", address, "--wait-for-client"}
 	arguments = append(arguments, targets...)
-	justMyCode := true
-	if options.JustMyCode != nil {
-		justMyCode = *options.JustMyCode
-	}
 	return dap.AdapterSpec{
-		AdapterID: "python",
+		AdapterID:  "python",
 		Executable: interpreter.Path, Arguments: arguments,
 		WorkingDirectory: request.WorkingDirectory,
 		Environment:      append([]string(nil), request.Environment...),
@@ -71,7 +96,7 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 				// L'output del programma arriva già dalla console del processo: senza
 				// redirect lo vedrebbe due volte.
 				"redirectOutput": false,
-				"subProcess":      false,
+				"subProcess":     false,
 			}
 		},
 		ExplainError: func(err error) error {
@@ -92,12 +117,21 @@ func debugTarget(request dap.LaunchRequest, options DebugOptions) ([]string, str
 		if err != nil {
 			return nil, "", err
 		}
-		return append([]string{script}, options.ProgramArguments...), "Debug " + filepath.Base(script), nil
+		return append([]string{script}, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + filepath.Base(script), nil
 	case "module":
 		if !moduleName.MatchString(options.Module) {
 			return nil, "", fmt.Errorf("enter a Python module name, for example package.main")
 		}
-		return append([]string{"-m", options.Module}, options.ProgramArguments...), "Debug " + options.Module, nil
+		program := Options{Module: options.Module, App: options.App, Host: options.Host, Port: options.Port}
+		if err := validateServerOptions(program); err != nil {
+			return nil, "", err
+		}
+		if framework, ok := serverArguments(program); ok {
+			// Reload mai nel debug: il reloader avvierebbe un secondo processo e i breakpoint
+			// finirebbero in quello sbagliato (PY-6.4).
+			return append(framework, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + options.Module + " " + options.App, nil
+		}
+		return append([]string{"-m", options.Module}, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + options.Module, nil
 	case "pytest":
 		selection, err := testTargets(idetesting.Request{Root: request.Root, WorkingDirectory: request.WorkingDirectory}, TestOptions{Packages: options.Targets, Run: options.Run})
 		if err != nil {
@@ -120,6 +154,25 @@ func debugTarget(request dap.LaunchRequest, options DebugOptions) ([]string, str
 	}
 }
 
+// attachAddress valida la destinazione di un attach esplicito: host o 127.0.0.1, porta 1–65535.
+// Un indirizzo su tutte le interfacce non è una destinazione valida.
+func attachAddress(host string, port int) (string, error) {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if strings.ContainsAny(host, " \t/\\\x00\r\n") || strings.Contains(host, "://") {
+		return "", fmt.Errorf("enter a host name or address, for example 127.0.0.1")
+	}
+	if host == "0.0.0.0" || host == "::" || host == "[::]" {
+		return "", fmt.Errorf("attach to a specific address, not to every interface")
+	}
+	if port < 1 || port > 65535 {
+		return "", fmt.Errorf("enter the port of the debugpy listener (1–65535)")
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port)), nil
+}
+
 // loopbackAddress prenota una porta libera su 127.0.0.1: serve al solo processo locale, mai
 // esposta su tutte le interfacce (PY-6.3).
 func loopbackAddress() (string, error) {
@@ -130,4 +183,67 @@ func loopbackAddress() (string, error) {
 	defer listener.Close()
 	port := listener.Addr().(*net.TCPAddr).Port
 	return net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), nil
+}
+
+// reloadFlagsWithValue sono i flag di reload che consumano anche l'argomento successivo (uvicorn).
+var reloadFlagsWithValue = map[string]bool{"--reload-dir": true, "--reload-include": true, "--reload-exclude": true, "--reload-delay": true}
+
+// debugProgramArguments prepara gli argomenti del programma per il debug (PY-6.4): senza reloader
+// — lo sdoppiamento del processo fa finire i breakpoint nel posto sbagliato — e con `--noreload`
+// per `manage.py runserver`, che di default si ricarica da solo.
+func debugProgramArguments(options DebugOptions, arguments []string) []string {
+	cleaned := withoutReloadArguments(arguments)
+	if options.Module == "flask" {
+		cleaned = withoutFlag(cleaned, "--debug")
+	}
+	if strings.EqualFold(filepath.Base(options.Script), "manage.py") && containsWord(cleaned, "runserver") {
+		cleaned = append(withoutFlag(cleaned, "--noreload"), "--noreload")
+	}
+	return cleaned
+}
+
+// withoutReloadArguments rimuove `--reload`, i flag `--reload-*` e il debugger interattivo
+// (`--debugger`, che intercetta le eccezioni al posto nostro).
+func withoutReloadArguments(arguments []string) []string {
+	cleaned := make([]string, 0, len(arguments))
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		name := argument
+		if equal := strings.IndexByte(name, '='); equal >= 0 {
+			name = name[:equal]
+		}
+		switch {
+		case name == "--reload" || name == "--debugger":
+			continue
+		case strings.HasPrefix(name, "--reload-"):
+			if reloadFlagsWithValue[name] && !strings.Contains(argument, "=") {
+				index++ // salta anche il valore separato
+			}
+			continue
+		}
+		cleaned = append(cleaned, argument)
+	}
+	return cleaned
+}
+
+// withoutFlag rimuove un flag, anche nella forma `--flag=value`.
+func withoutFlag(arguments []string, flag string) []string {
+	cleaned := make([]string, 0, len(arguments))
+	for _, argument := range arguments {
+		if argument == flag || strings.HasPrefix(argument, flag+"=") {
+			continue
+		}
+		cleaned = append(cleaned, argument)
+	}
+	return cleaned
+}
+
+// containsWord dice se arguments contiene la parola esatta.
+func containsWord(arguments []string, word string) bool {
+	for _, argument := range arguments {
+		if argument == word {
+			return true
+		}
+	}
+	return false
 }

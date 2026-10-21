@@ -6,6 +6,7 @@ import { uid, blankRequest } from '@/lib/types'
 import { debouncedSave } from '@/lib/storeSave'
 import { safeStorageGet, safeStoragePut } from '@/lib/wailsStorage'
 import { decodePersistedJSON } from '@/lib/persistedJson'
+import { spillHistory, spillResponseMap, spillTabs } from '@/lib/responseSpill'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore } from '@/stores/collections'
 import { recordDailyRequest } from '@/lib/dailyStats'
@@ -311,11 +312,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       trimHistory(responseHistory),
     )
     debouncedSave('tabs', async () => {
+      // Bodies above the threshold live outside the session JSON; the saved
+      // response keeps a preview and a reference and loads the text on reopen.
+      const [criticalTabs, legacyTabs, deferredResponses, deferredHistory, legacyHistory] = await Promise.all([
+        spillTabs(critical.tabs),
+        spillTabs(legacyPayload.tabs),
+        spillResponseMap(deferred.responses),
+        spillHistory(deferred.responseHistory),
+        spillHistory(legacyPayload.responseHistory as RequestHistoryEntry[]),
+      ])
       await Promise.all([
-        safeStoragePut(BUCKET, CRITICAL_KEY, JSON.stringify(critical)),
-        safeStoragePut(BUCKET, DEFERRED_KEY, JSON.stringify(deferred)),
+        safeStoragePut(BUCKET, CRITICAL_KEY, JSON.stringify({ ...critical, tabs: criticalTabs })),
+        safeStoragePut(BUCKET, DEFERRED_KEY, JSON.stringify({ ...deferred, responses: deferredResponses, responseHistory: deferredHistory })),
         // Keep the previous payload current for downgrade compatibility.
-        safeStoragePut(BUCKET, LEGACY_KEY, JSON.stringify(legacyPayload)),
+        safeStoragePut(BUCKET, LEGACY_KEY, JSON.stringify({ ...legacyPayload, tabs: legacyTabs, responseHistory: legacyHistory })),
       ])
     })
   },

@@ -8,6 +8,13 @@ import { debouncedSave } from '@/lib/storeSave'
 const BUCKET = 'graphql'
 const KEY = 'introspection-cache-v1'
 const MAX_ENTRIES = 40
+// Introspection payloads are megabytes each: a count-only LRU can hold tens of
+// MB. The budget is by weight, and the newest entry is always kept.
+const MAX_BYTES = 8 * 1024 * 1024
+// Evict a whole entry only when it would exceed the budget; keep the newest
+// even when it alone is bigger, so the schema just loaded is never lost.
+export const GRAPHQL_CACHE_MAX_ENTRIES = MAX_ENTRIES
+export const GRAPHQL_CACHE_MAX_BYTES = MAX_BYTES
 
 export interface GraphQLEndpointCache {
   /** Raw introspection payload (the `data` field of the introspection response). */
@@ -37,12 +44,29 @@ function normalizeKey(endpoint: string | undefined): string {
   return (endpoint ?? '').trim()
 }
 
-function prune(byEndpoint: Record<string, GraphQLEndpointCache>): Record<string, GraphQLEndpointCache> {
-  const entries = Object.entries(byEndpoint)
-  if (entries.length <= MAX_ENTRIES) return byEndpoint
-  const kept = entries
-    .sort(([, a], [, b]) => (b.updatedAt > a.updatedAt ? 1 : -1))
-    .slice(0, MAX_ENTRIES)
+export function graphqlEntryBytes(entry: GraphQLEndpointCache): number {
+  return new TextEncoder().encode(JSON.stringify(entry)).length
+}
+
+/**
+ * Keep the newest entries while both the count and the byte budget allow it.
+ * The newest entry is always kept, even if it alone exceeds the budget.
+ */
+export function pruneGraphqlCache(
+  byEndpoint: Record<string, GraphQLEndpointCache>,
+  maxEntries = MAX_ENTRIES,
+  maxBytes = MAX_BYTES,
+): Record<string, GraphQLEndpointCache> {
+  const entries = Object.entries(byEndpoint).sort(([, a], [, b]) => (b.updatedAt > a.updatedAt ? 1 : -1))
+  const kept: Array<[string, GraphQLEndpointCache]> = []
+  let bytes = 0
+  for (const [key, entry] of entries) {
+    if (kept.length >= maxEntries) break
+    const weight = graphqlEntryBytes(entry)
+    if (kept.length > 0 && bytes + weight > maxBytes) break
+    kept.push([key, entry])
+    bytes += weight
+  }
   return Object.fromEntries(kept)
 }
 
@@ -76,7 +100,7 @@ export const useGraphqlCacheStore = create<GraphQLCacheState>((set, get) => ({
     const key = normalizeKey(endpoint)
     if (!key) return
     set((s) => {
-      const next = prune({
+      const next = pruneGraphqlCache({
         ...s.byEndpoint,
         [key]: { ...s.byEndpoint[key], schema, updatedAt: new Date().toISOString() },
       })
@@ -91,7 +115,7 @@ export const useGraphqlCacheStore = create<GraphQLCacheState>((set, get) => ({
     set((s) => {
       const existing = s.byEndpoint[key]
       if (existing?.variables === variables) return s
-      const next = prune({
+      const next = pruneGraphqlCache({
         ...s.byEndpoint,
         [key]: { ...existing, variables, updatedAt: new Date().toISOString() },
       })

@@ -2,16 +2,18 @@ package main
 
 import (
 	"adomnia/internal/activity"
-	"adomnia/internal/copilot"
-	"adomnia/internal/git"
+	"adomnia/internal/aipolicy"
 	"adomnia/internal/codestudio"
 	"adomnia/internal/codestudiowindow"
+	"adomnia/internal/copilot"
+	"adomnia/internal/git"
 	"adomnia/internal/ide/agentreview"
 	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
 	"adomnia/internal/ide/run"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
+	"adomnia/internal/languages/python"
 	"adomnia/internal/plugins"
 	"adomnia/internal/resources"
 	"context"
@@ -178,7 +180,7 @@ func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return copilot.LoadAIPolicy(root), nil
+	return aipolicy.Load(root), nil
 }
 
 // AIProjectRules loads bounded root guidance through the existing project AI filter.
@@ -196,7 +198,7 @@ func (g *GoIDE) SetAIProjectPolicy(sessionID, policy string) error {
 	if err != nil {
 		return err
 	}
-	return copilot.SaveAIPolicy(root, policy)
+	return aipolicy.Save(root, policy)
 }
 
 // AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la
@@ -757,6 +759,16 @@ func (g *GoIDE) ListFunctionBreakpoints(sessionID string) (codestudio.FunctionBr
 // SetFunctionBreakpoints sostituisce i breakpoint di funzione e il panic breakpoint del progetto.
 func (g *GoIDE) SetFunctionBreakpoints(sessionID string, settings codestudio.FunctionBreakpointSettings) (codestudio.FunctionBreakpointsView, error) {
 	return g.service.SetFunctionBreakpoints(sessionID, settings)
+}
+
+// ListExceptionBreakpoints restituisce i breakpoint su eccezione del progetto.
+func (g *GoIDE) ListExceptionBreakpoints(sessionID string) (codestudio.ExceptionBreakpointsView, error) {
+	return g.service.ListExceptionBreakpoints(sessionID)
+}
+
+// SetExceptionBreakpoints sostituisce i breakpoint su eccezione del progetto e li applica alle sessioni attive.
+func (g *GoIDE) SetExceptionBreakpoints(sessionID string, settings codestudio.ExceptionBreakpointSettings) (codestudio.ExceptionBreakpointsView, error) {
+	return g.service.SetExceptionBreakpoints(sessionID, settings)
 }
 
 // DebugRunToCursor riprende il programma in pausa fino alla riga indicata.
@@ -1656,6 +1668,22 @@ func (g *GoIDE) SetPythonInterpreter(sessionID, unit, path string) error {
 // pinnata e comando visibile, solo dopo conferma esplicita.
 func (g *GoIDE) InstallPythonTool(sessionID, interpreter, tool string, confirmed bool) (codestudio.Execution, error) {
 	return g.service.InstallPythonTool(sessionID, interpreter, tool, confirmed)
+}
+
+// PythonEnvironment descrive l'ambiente dell'unità ("" = progetto) e le azioni esplicite
+// disponibili: creare l'ambiente e installare le dipendenze dichiarate.
+func (g *GoIDE) PythonEnvironment(sessionID, unit string) (python.EnvironmentPlan, error) {
+	return g.service.PythonEnvironment(sessionID, unit)
+}
+
+// CreatePythonEnvironment crea `.venv` nell'unità con l'interprete scelto, solo su conferma.
+func (g *GoIDE) CreatePythonEnvironment(sessionID, unit, interpreter string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.CreatePythonEnvironment(sessionID, unit, interpreter, confirmed)
+}
+
+// InstallPythonDependencies installa le dipendenze nell'ambiente dell'unità, solo su conferma.
+func (g *GoIDE) InstallPythonDependencies(sessionID, unit string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallPythonDependencies(sessionID, unit, confirmed)
 }
 
 // StartPythonDebug avvia il debug di uno script, di un modulo o di test pytest con debugpy.

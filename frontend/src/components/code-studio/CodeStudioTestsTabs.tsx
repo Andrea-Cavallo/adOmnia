@@ -4,6 +4,7 @@ import { Copy, Gauge, Repeat, ShieldCheck, Shuffle, Trash2 } from 'lucide-react'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
 import { buildTestTree, filterTestTree, isFailed, isFlaky, isSlow, onlyFailed } from '@/lib/code-studio/codeStudioTestTree'
+import { emptyRunMessage } from '@/lib/code-studio/testRunMessages'
 import type { TestSuite } from '@/lib/code-studio/testSuites'
 import { useCodeStudioTestsStore } from '@/stores/codeStudioTests'
 import { benchmarkHistoryCsv } from './codeStudioBenchmarkHistory'
@@ -63,7 +64,7 @@ export function TestsTab({ suite, session, histories }: TestsTabProps) {
       <div className="flex min-h-0 flex-1 flex-col">
         <div role="tree" aria-label="Test results" className="max-h-[45%] min-h-24 shrink-0 overflow-auto border-b border-border-1 py-1">
           {tree.map((node, index) => <TestRow key={node.result.id} node={node} depth={0} selected={selectedId} run={run} sessionId={sessionId} records={records} entry={index === 0} />)}
-          {tree.length === 0 && <p className="p-3 text-[12px] text-text-4">{run.status === 'running' ? 'Building and starting tests…' : run.diagnostics ? 'The test command failed before producing results. See the Output tab.' : 'No test matches the filters.'}</p>}
+          {tree.length === 0 && <p className="p-3 text-[12px] text-text-4">{emptyRunMessage(run)}</p>}
           {run.overflow && <p className="p-2 text-[12px] text-warning">Too many tests: only the first 5,000 are shown.</p>}
         </div>
         {selected ? <TestDetail key={`${run.runId}:${selected.id}`} run={run} result={selected} runs={history} benchmark={histories.benchmarkContext} /> : <p className="p-3 text-[12px] text-text-4">Select a test to see its output. Double-click opens the failure or the test function.</p>}
@@ -90,10 +91,11 @@ export function OutputTab({ suite, output }: { suite: TestSuite; output: RunOutp
 export function CoverageTab({ suite, sessionId, actions }: { suite: TestSuite; sessionId: string; actions: TestActions }) {
   const report = suite.run?.coverage
   if (report) return <div className="overflow-hidden rounded-md border border-border-1"><CoverageSummary report={report} sessionId={sessionId} /></div>
+  const supported = suite.language === 'go' || suite.language === 'java' || suite.language === 'python'
   return (
     <Empty>
-      <span className="block">{suite.language === 'go' ? 'The last run has no coverage.' : 'Coverage is available for Go suites.'}</span>
-      {suite.language === 'go' && <button type="button" onClick={() => actions.runSuite(suite, { coverage: true })} className="mt-3 inline-flex h-9 items-center gap-2 rounded bg-accent px-2 text-[12px] font-semibold text-on-accent hover:bg-accent-hover"><ShieldCheck size={14} aria-hidden="true" /> Run with coverage</button>}
+      <span className="block">{supported ? 'The last run has no coverage.' : 'Coverage is available for Go, Java and Python suites.'}</span>
+      {supported && <button type="button" onClick={() => actions.runSuite(suite, { coverage: true })} className="mt-3 inline-flex h-9 items-center gap-2 rounded bg-accent px-2 text-[12px] font-semibold text-on-accent hover:bg-accent-hover"><ShieldCheck size={14} aria-hidden="true" /> Run with coverage</button>}
     </Empty>
   )
 }

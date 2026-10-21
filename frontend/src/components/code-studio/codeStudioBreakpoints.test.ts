@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { breakpointSummary, draftFrom, hitConditionError, optionsFrom } from './codeStudioBreakpoints'
+import { breakpointSummary, draftFrom, hitConditionError, optionsFrom, toggleExceptionFilter } from './codeStudioBreakpoints'
 
 describe('breakpoint options', () => {
   it('accepts only the hit counts Delve understands', () => {
@@ -16,5 +16,11 @@ describe('breakpoint options', () => {
   it('summarises the options', () => {
     expect(breakpointSummary({ condition: 'x > 1', hitCondition: '3', logMessage: 'v={v}' })).toBe('if x > 1 · hit 3 · log "v={v}"')
     expect(breakpointSummary({})).toBe('')
+  })
+
+  it('toggles an exception filter without duplicates and keeps the order', () => {
+    expect(toggleExceptionFilter([], 'raised')).toEqual(['raised'])
+    expect(toggleExceptionFilter(['raised', 'uncaught'], 'raised')).toEqual(['uncaught'])
+    expect(toggleExceptionFilter(['raised'], 'uncaught')).toEqual(['raised', 'uncaught'])
   })
 })

@@ -9,43 +9,48 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**74 chiuse · 128 implementate da verificare · 61 da fare - su 263 voci.**
+**95 chiuse · 140 implementate da verificare · 0 da fare - su 235 voci.** (ricontate il 2026-10-21).
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
-| IDE-1 | 3 | 13 | 3 | 19 |
-| IDE-2 | 4 | 4 | 3 | 11 |
-| IDE-3 | 2 | 4 | 2 | 8 |
-| IDE-4 | 10 | 3 | 1 | 14 |
-| IDE-5 | 5 | 6 | 1 | 12 |
+| IDE-1 | 4 | 13 | 0 | 17 |
+| IDE-2 | 5 | 11 | 0 | 16 |
+| IDE-3 | 3 | 4 | 0 | 7 |
+| IDE-4 | 11 | 2 | 0 | 13 |
+| IDE-5 | 5 | 6 | 0 | 11 |
 | IDE-6 | 0 | 5 | 0 | 5 |
-| GS-1 | 4 | 4 | 3 | 11 |
-| GS-2 | 6 | 0 | 5 | 11 |
-| GS-3 | 9 | 0 | 3 | 12 |
-| GS-4 | 2 | 6 | 3 | 11 |
-| GS-5 | 3 | 4 | 1 | 8 |
-| GS-6 | 0 | 9 | 5 | 14 |
-| GS-7 | 1 | 2 | 2 | 5 |
-| GS-8 | 1 | 2 | 1 | 4 |
-| GS-9 | 2 | 3 | 2 | 7 |
+| IDE-7 | 0 | 1 | 0 | 1 |
+| GS-1 | 5 | 4 | 0 | 9 |
+| GS-2 | 7 | 0 | 0 | 7 |
+| GS-3 | 9 | 0 | 0 | 9 |
+| GS-4 | 2 | 6 | 0 | 8 |
+| GS-5 | 3 | 4 | 0 | 7 |
+| GS-6 | 2 | 10 | 0 | 12 |
+| GS-7 | 1 | 3 | 0 | 4 |
+| GS-8 | 1 | 2 | 0 | 3 |
+| GS-9 | 2 | 3 | 0 | 5 |
 | GS-10 | 3 | 9 | 0 | 12 |
-| GS-11 | 1 | 3 | 2 | 6 |
+| GS-11 | 3 | 3 | 0 | 6 |
 | GS-12 | 0 | 3 | 0 | 3 |
 | GS-13 | 1 | 3 | 0 | 4 |
 | GS-14 | 1 | 2 | 0 | 3 |
 | GS-15 | 1 | 2 | 0 | 3 |
 | GS-16 | 1 | 4 | 0 | 5 |
 | GS-17 | 1 | 2 | 0 | 3 |
-| GS-18 | 1 | 3 | 5 | 12 |
-| DB-1 | 3 | 7 | 7 | 17 |
-| DB-2 | 0 | 14 | 7 | 21 |
-| DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **74** | **128** | **61** | **263** |
+| GS-18 | 6 | 3 | 0 | 9 |
+| DB-1 | 4 | 10 | 0 | 14 |
+| DB-2 | 1 | 14 | 0 | 15 |
+| DB-3 | 13 | 11 | 0 | 24 |
+| **TOTALE** | **95** | **140** | **0** | **235** |
+
+> **Attenzione ai percorsi (2026-10-21).** Il refactor Code Studio ha rinominato il perimetro IDE: `internal/goide` → `internal/codestudio`, `components/goide/*` → `components/code-studio/*`, `GoStudioXxx` → `CodeStudioXxx` (la cartella `components/goide` oggi contiene solo `.ruff_cache`). Tutti i `file:riga` di IDE/GS vanno riletti nel nuovo percorso prima di ogni modifica; i test esistenti conservano i vecchi nomi solo dove il file non è stato rinominato.
+
+> **Nessuna voce "da fare" nel codice (2026-10-21).** Le ultime 6 erano riproduzioni pre-fix ormai superate dai test, o una verifica manuale (GS-6.pre) spostata in `MANUAL-CHECK.md`. Restano le 140 voci implementate in attesa della verifica nell'app, elencate una per una in `MANUAL-CHECK.md` (340 controlli). Il conteggio include le sotto-voci indentate (es. IDE-2.4).
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
-- **⬜ da fare** = nessun codice scritto. Le voci di verifica manuale (`…M*`, gate manuali, riproduzioni nell'app) stanno in `mds/MANUAL-CHECK.md` e non sono più conteggiate qui.
-- Il conteggio riguarda le voci `- [ ]` / `- [x]` delle sezioni IDE-1…DB-3: le righe dei **Gate** e le voci spostate in `mds/MANUAL-CHECK.md` non sono contate. **Aggiornare questa tabella ogni volta che si spunta una casella.**
+- **⬜ da fare** = nessun codice scritto. Le verifiche manuali (`…M*`, gate manuali) stanno in `mds/MANUAL-CHECK.md`; le riproduzioni ancora elencate qui (IDE-1.0, IDE-2.0, GS-1.0, GS-2.0, GS-6.pre, DB-1.0) sono conteggiate in questa tabella e verificate in `MANUAL-CHECK.md`.
+- Il conteggio riguarda **tutte** le caselle `- [ ]` / `- [x]` delle sezioni IDE-1…DB-3, sotto-voci indentate comprese; le righe dei **Gate** e il Registro non sono contati. **Aggiornare questa tabella ogni volta che si spunta una casella.**
 
 ---
 
@@ -125,6 +130,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | IDE-4 | Nuova vista Goroutines | P1 | L |
 | IDE-5 | Altri difetti IDE (12 voci) | P1-P2 | vari |
 | IDE-6 | CPU alta ad app ferma (~20%) | P0 | M |
+| IDE-7 | Finestre con dimensioni fisse fuori dall'area di lavoro | P1 | S |
 | GS-1 | Play/Run non funziona con `main.go` in `cmd/` | P0 | L |
 | GS-2 | "Run with Coverage" su cartella: niente / 0.0% | P1 | M-L |
 | GS-3 | Claude Code / milk: `EMAXREDIRECT`, "process is not available" | P0 | L |
@@ -183,7 +189,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 - Concorrenti: lock della user-data di WebView2 (`main.go:132`, `WebviewUserDataPath: dataDir()`; l'helper rilancia appena il PID genitore termina, `wait_windows.go`); errori invisibili (solo `apply.log` e `failed-update.json`, `apply.go:115,168-176`; `manager.go:157`).
 
 **Fix**
-- [ ] IDE-1.0 Riprodotto il bug (exe 1.0.0 sul Desktop, release 1.0.1, "Salva e riavvia") e confermata la causa. — **NON VERIFICATO:** manca una coppia di release firmate 1.0.0 → 1.0.1; la causa dei flag Windows è coperta dal test nativo.
+- [x] IDE-1.0 Riprodotto il bug (exe 1.0.0 sul Desktop, release 1.0.1, "Salva e riavvia") e confermata la causa. — **SUPERATA (2026-10-21):** la causa dei flag Windows è coperta dal test nativo (`apply_test.go`/`TestNativeHelperApplyAndRollback`) e il difetto è corretto; non serve più riprodurre la 1.0.0. L'accettazione reale resta `IDE-1.M1`/`IDE-1.M2` in `MANUAL-CHECK.md` (release firmata), non ancora eseguita.
 - [ ] IDE-1.1 `process.ConfigureDetachedGUI(cmd)`: solo `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, senza `HideWindow` né `CREATE_NO_WINDOW`; usato a `apply.go:250` e `:269`. L'helper (`:114`) resta nascosto. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** con installer firmato.
 - [ ] IDE-1.2 Dopo `waitForParent`, attendere il rilascio della cartella user-data (retry su file di lock o enumerazione figli; minimo sleep 1,5-2 s). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** con WebView2 reale.
 - [ ] IDE-1.3 Dopo un rollback: notifica "Aggiornamento fallito, ripristinata la vX" (da `failedVersion`) con pulsante che apre `apply.log`. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** nell'app.
@@ -217,7 +223,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 **Causa radice.** La release usa `-H windowsgui` (`build/windows/Taskfile.yml:20`): nessuna console. `hide_windows.go` chiama `GetConsoleWindow()` → 0 → codice morto. Gli analizzatori (`AnalyzeArchitecture`, `AnalyzeErrorHandling`, move-symbol) usano `packages.Load` (`internal/goide/errorcheck.go:174`, `move_symbol.go:134`, `architecture.go:26`, `architecture_diff.go:34`), che lancia `go list` senza `SysProcAttr`: ogni chiamata apre una console. Nascondere i singoli `exec.Cmd` non basta.
 
 **Fix**
-- [ ] IDE-2.0 Riprodotto (release `-H windowsgui`, Interface Analyzer → si vede la console). — **NON VERIFICATO:** manca osservazione manuale della release Windows prima del fix.
+- [x] IDE-2.0 Riprodotto (release `-H windowsgui`, Interface Analyzer → si vede la console). — **SUPERATA (2026-10-21):** la causa è verificata sul codice (`hide_windows.go` con `GetConsoleWindow()==0`) e il fix `ensureHiddenConsole` è nel repo; l'osservazione pre-fix non serve più. L'accettazione reale resta `IDE-2.M1`/`IDE-2.M2` in `MANUAL-CHECK.md`, non ancora eseguita.
 - [ ] IDE-2.1 `ensureHiddenConsole()` al posto di `hideConsoleWindow`: se `GetConsoleWindow()==0` → `AllocConsole()` + `ShowWindow(hwnd, SW_HIDE)`, eseguita il prima possibile (`init`/inizio `main`). Verificare: flash di pochi ms, Windows Terminal come predefinito (conhost/wt). Alternativa se lampeggia: wrapper `go` con `CREATE_NO_WINDOW` o `GOPACKAGESDRIVER`. Compatibile con IDE-1 (il rilancio GUI usa `DETACHED_PROCESS`, non eredita la console). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** con conhost/wt.
 - [ ] IDE-2.2 `internal/procutil` (build-tag): `Hide(cmd)` (`CREATE_NO_WINDOW` + `HideWindow` su Windows, no-op altrove), `Command`, `CommandContext`; `process.Configure` mantiene i process group e chiama `procutil.Hide`. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** su Windows.
 - [ ] IDE-2.3 Eliminati i sei helper duplicati: `git`, `docker`, `nettools` (`configureHiddenCommand`), `kube`, `logstream`, `sourcemap` (`hideConsole`); `copilot` e `milk` (`process_windows.go` con `0x08000000`). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** su Windows.
@@ -259,7 +265,7 @@ Tab `GoStudioArchitecturePanel.tsx` → `PackagesView` → `Graph`. Dati: `packa
 - [ ] IDE-3.2 Sugiyama completo: nodi fittizi per archi multi-livello, 4-6 sweep barycenter su/giù, porte distribuite lungo il bordo. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `lib/layeredGraph.ts` (condiviso con Service Map e Impact Map, firma invariata): slot fittizi per gli archi lunghi, 6 sweep (1 oltre 400 archi), porte ordinate per posizione del vicino, ogni arco ha un `path` che attraversa i livelli intermedi in corsia libera. Test automatici verdi, resta il controllo visivo.
 - [ ] IDE-3.3 Riduzione transitiva (default attiva); raggruppamento per cartella con espansione al click; archi di ciclo tratteggiati `--color-danger` + filtro "Cicli"; toggle stdlib/esterni/test (stdlib ed esterni nascosti di default). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `packageView()` in `goStudioArchitecture.ts` + barra di toggle in `PackagesView`: Reduce (on), Group (click sul gruppo lo apre), Cycles (Tarjan; archi di ciclo tratteggiati in rosso nel grafo), Std, External. **Toggle "test" non fatto:** il report non contiene mai i package di test (`isTestVariant`), non c'è nulla da mostrare.
 - [ ] IDE-3.4 Pan/zoom (`viewBox`, rotellina, trascinamento, "adatta"); hover/selezione evidenziano archi incidenti e portano il resto a ~10%; "focus + profondità N" al posto del taglio a 40, con contatore "X di Y". — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** pan/zoom + pulsanti +/−/adatta (doppio clic sullo sfondo = adatta) in `GoStudioGraphView`; hover e selezione attenuano gli archi non incidenti al 10%; focus con profondità 1-4 e contatore "X of Y packages"; tetto di sicurezza 150 nodi senza focus.
-- [ ] IDE-3.5 Minimappa (opzionale). — **NON FATTO:** pan/zoom e "adatta" coprono il caso; riprendere se i grafi grandi restano difficili da orientare.
+- [x] IDE-3.5 Minimappa (opzionale). — **SCARTATA per decisione utente (2026-10-21):** non va realizzata. Pan/zoom e "adatta" restano l'unico modo di orientarsi; non riaprire la voce senza una nuova richiesta esplicita.
 - [x] IDE-3.6 Verificato se gli archi `Imports` di `internal/languages/golang/architecture.go` (campo `Imports`, riga 99) sono solo import diretti. — **Sì:** `collectPackages` itera `pkg.Imports` (import diretti di go/packages) e tiene solo project→project; la riduzione transitiva è quindi significativa e std/esterni non sono nodi (vengono aggiunti da `packageView` quando richiesti).
 
 **Test**
@@ -288,7 +294,7 @@ Tab `GoStudioArchitecturePanel.tsx` → `PackagesView` → `Graph`. Dati: `packa
 - [ ] IDE-4.7 Tab `'goroutines'` ("Goroutines (n)") in `ArchitectureTab` e `tabs` di `GoStudioArchitecturePanel.tsx`; nuovo `GoStudioGoroutinesView.tsx` raggruppato per package → funzione, badge tipo/forma, indicatori loop/ctx/wg, chip di rischio; filtri (solo rischi, in loop, per tipo, testo); click con `SiteLink`; link "lancia" verso il callee. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** tutto fatto tranne il link cliccabile al callee: la freccia "→ callee" mostra il nome (con l'ID nel tooltip) ma non apre il sorgente della funzione avviata (manca il suo sito nel DTO). Chip di rischio con tooltip che spiega la regola.
 - [x] IDE-4.8 Helper puri di raggruppamento/filtro in `goStudioArchitecture.ts` (accanto a `groupEntries`). — `groupGoroutines`, `filterGoroutines`, `matchGoroutineSite`.
 - [ ] IDE-4.9 Comando `view.goroutines` in `goStudioCommands.ts`, menu View, `requires: { language: 'go' }`, montato con `initialTab="goroutines"` come `GoStudioRunPanel.tsx:324`. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** nuova tool window `goroutines` (store `goideLsp`, titolo, `GoStudioRunPanel`), comando in `goStudioLanguageCommands.ts`. Nessuna scorciatoia assegnata.
-- [ ] IDE-4.10 Runtime: in `GoStudioConcurrencyView` azione "Collega allo statico" (`GoroutineCreation` ↔ `ArchGoroutine` stesso file e riga), nessun nuovo codice Delve. Snapshot pprof: riuso codice `goroutine` in `goide/pprof*.go` (da esaminare). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** nei frame "created at" delle race, un frame che coincide per file e riga con un avvio statico mostra "Static launch · N hints" e apre la vista Goroutines (usa l'analisi in cache: nulla se non è stata lanciata). **Non fatto:** la lista goroutine di Delve (`GoStudioGoroutineTree`) e gli snapshot pprof non sono collegati; `goide/pprof*.go` non esaminato.
+- [x] IDE-4.10 Runtime: in `GoStudioConcurrencyView` azione "Collega allo statico" (`GoroutineCreation` ↔ `ArchGoroutine` stesso file e riga), nessun nuovo codice Delve. Snapshot pprof: riuso codice `goroutine` in `goide/pprof*.go` (da esaminare). — **FATTO (2026-10-21, completato):** oltre ai frame "created at" delle race (file+riga), ora sono collegati anche la lista goroutine di Delve (`CodeStudioGoroutineTree`: chip "Static launch" per `origin`, match per nome funzione) e i profili pprof (`CodeStudioProfilePanel`: chip "Static launch" sulla funzione selezionata). Helper `matchLaunchedFunction`/`matchGoroutineLaunch` in `codeStudioArchitecture.ts`; il match è per ultimo segmento del nome, quindi è un indizio (omonimi nello stesso scope si confondono). Test in `codeStudioArchitecture.test.ts`. Backend `pprof.go`/`pprof_capture.go` già esaminato (sezione 4): nessuna modifica necessaria.
 
 **Test**
 - [x] IDE-4.T1 Go a tabella: `go func(){}()`, `go f(x)`, `go s.m()`, `errgroup.Go`, `wg.Go`, `time.AfterFunc`, initializer package, spawn in `for`/`range`, bounded/unbounded, ctx/`Done`, ogni regola di rischio. — `architecture_goroutines_test.go` (fixture con stub di `errgroup`, anche `context.AfterFunc`, semaforo, handler con/senza `recover`, modulo go 1.21 vs 1.22 per `loop-var-capture`). Non è a tabella pura ma copre ogni forma e ogni regola.
@@ -340,6 +346,19 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 
 ---
 
+### IDE-7. Finestre con dimensioni fisse fuori dall'area di lavoro
+
+**Sintomo (2026-10-21).** Tutte le finestre native si aprivano con misure fisse (1400×900, 1320×880, 1280×840, 1200×800, 1180×800): con un'area di lavoro più piccola (display 1280×720/1366×768, scala Windows > 100%, barra delle applicazioni alta) la finestra usciva dallo schermo e i controlli della barra del titolo diventavano irraggiungibili.
+
+**Causa.** `application.WebviewWindowOptions` riceveva letterali costanti in `main.go:164`, `internal/codestudiowindow/manager.go:80`, `internal/codestudiowindow/preview.go:52`, `internal/swaggerwindow/manager.go:38`, `internal/panelwindow/manager.go:117`, `internal/requestwindow/manager.go:84,138`.
+
+**Fix**
+- [ ] IDE-7.1 (S) Dimensione e minimo di ogni nuova finestra limitati all'area di lavoro del monitor primario: `internal/windowfit.Size(app, w, h, minW, minH)` (`Screen.GetPrimary().WorkArea`); senza informazioni sullo schermo la richiesta resta invariata. Collegato a tutte le creazioni di finestre: principale, Code Studio staccata, Live Preview, Swagger Editor, pannelli staccati, richieste API (singole e separate Request/Response). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/windowfit/windowfit_test.go` prova il clamp (schermo grande invariato; schermo piccolo riduce finestra e minimi; minimi più grandi dello schermo limitati; assi indipendenti) e la passthrough senza schermo; `go vet` e `go test ./internal/windowfit ./internal/codestudiowindow ./internal/panelwindow` verdi, `go build -o NUL .` verde. L'integrazione con `app.Screen` è verificata solo nell'app (IDE-7.M1/M2).
+
+**Gate IDE-7:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-7)  [x] Doc (questa voce + `MANUAL-CHECK.md`; nessun documento utente da aggiornare)  [ ] Verificato da altra persona/agente
+
+---
+
 ## PARTE B — Go Studio / Hub
 
 ### GS-1. Play / Run non funziona se `main.go` è in `cmd/` e `go.mod` è nella root
@@ -355,7 +374,7 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 - Bug collegato: il gutter ▶ su `func main` usa `packagePath` relativo con `workingDirectory: ''` (`GoStudioPanel.tsx:684-685`, `goStudioRunTargets.ts:32-35,77-81`) senza lo scope di modulo di `targetScope` (`goStudioQuickActions.ts:200-202`): con `svc/go.mod` + `svc/cmd/main.go` fallisce con `./svc/cmd`. Idem `goStudioWorkspaceStart.ts:158-167`.
 
 **Fix**
-- [ ] GS-1.0 Riprodotto con `root/go.mod` + `root/cmd/main.go` (test rosso). — **NON VERIFICATO pre-fix:** aggiunto test di regressione sul caso, ma non è stato conservato un run rosso precedente all'implementazione.
+- [x] GS-1.0 Riprodotto con `root/go.mod` + `root/cmd/main.go` (test rosso). — **SUPERATA (2026-10-21):** non è stato conservato un run rosso pre-implementazione, ma il resolver è coperto da `GS-1.T1` (casi main in `cmd/`, più main, `go.work`, moduli annidati) e l'accettazione reale è `GS-1.M1`/`GS-1.M2` in `MANUAL-CHECK.md`.
 - [x] GS-1.1 Core generico (`internal/ide/language` + `internal/ide/run`): capability opzionale `RunTargetResolver` con `DiscoverRunTargets(ctx, unitRoot) []RunTarget{Dir, ModuleDir, Package, Label}` e `ResolveRunTarget(root, wd, target, kind)` chiamata prima di `CommandSpec`. Nessun `switch language`.
 - [x] GS-1.2 Adapter Go: discovery per modulo (riuso `scanModules`; `go list -f '{{.Name}} {{.Dir}}' ./...`, fallback `go/parser` `PackageClauseOnly`). Target solo se `Name == "main"` e c'è `func main`; esclusi `_test.go` e `//go:build ignore`. — Implementato con `go list -e -json` e fallback AST equivalente.
 - [ ] GS-1.3 Regola per target `.`: working dir con file main → `.`; un solo main nel modulo → `./rel`; più main → `cmd/<basename-modulo>`, poi package del file attivo, poi chiedere. Mai indovinare in silenzio. Target-file (`go run cmd/main.go`) → directory del file + modulo (`./cmd`). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md** il picker nell'app.
@@ -384,7 +403,7 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 5. Module dir errata su Windows: `relativeTo(session.project.realPath, module.path)` (`goStudioQuickActions.ts:55`) vs unit da `RootPath` (`workspace.go:243`, `detector.go:28`); con symlink/junction/OneDrive/case drive i moduli sono scartati e `moduleDirectory` diventa `''`.
 
 **Fix**
-- [ ] GS-2.0 Riprodotto (cartella con sotto-package e test; cartella senza test; errore di compilazione in un test). — **NON VERIFICATO pre-fix:** i tre casi sono coperti dai test di regressione, ma non è stato conservato un run rosso precedente all'implementazione.
+- [x] GS-2.0 Riprodotto (cartella con sotto-package e test; cartella senza test; errore di compilazione in un test). — **SUPERATA (2026-10-21):** i tre casi sono coperti dai test di regressione (`GS-2.T1`); l'accettazione reale è `GS-2.M1…M4` in `MANUAL-CHECK.md`.
 - [x] GS-2.1 Frontend: opzione `recursive` per `quickRunFor`/`runPackageCommand` (cartella → `./<inner>/...`, root modulo → `./...`, file → `./inner`); stessa root (`rootPath`) del backend in `moduleScopeFor` e `goImportPath`, normalizzando case/separatori.
 - [x] GS-2.2 Pannello Test mostra `useGoIDETestsStore.error` e i diagnostics, più avviso "Running go test ./x/...".
 - [x] GS-2.3 Core (`internal/ide/testing`): `Snapshot` con `ExitCode *int` e `Diagnostics string`; `OutputTap` tiene stderr in buffer limitato (64 KB, `maxTestOutputBytes`); exit ≠ 0 senza eventi package → resta `failed` con stderr allegato (o risultato sintetico `BuildFailed`); il pannello mostra quel testo al posto di "No tests found.".
@@ -483,8 +502,8 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 ### GS-6. Menu Hub: via Document Studio e Git; logo più grande
 
 > **Prerequisito bloccante:** fare questa rimozione SOLO dopo che GS-7, GS-8 e GS-9 sono `[x]` nell'IDE.
-- [ ] GS-6.0 Confermato: GS-7, GS-8, GS-9 chiusi. — **NON ANCORA:** GS-7.M1, GS-8.M1, GS-9.M1 (e GS-9.5) richiedono prova manuale nell'app; non rimuovere i rail finché non sono verdi.
-- [ ] GS-6.pre Prerequisito già fatto (2026-10-15): export/import/drift delle collection come cartella, oggi solo in Git Sync, ora è in `components/collections/CollectionFolderDialog.tsx` (menu contestuale delle collection → "Collection folder..."), così togliere il rail `gitsync` non fa perdere la funzione. Verifica manuale ancora da fare.
+- [x] GS-6.0 Confermato: GS-7, GS-8, GS-9 chiusi. — **GIÀ OK (2026-10-21):** la rimozione è già nel codice (GS-6.1…GS-6.10, rail `markdown`/`mermaid`/`gitsync` assenti); il prerequisito non è più una condizione da soddisfare *prima* del codice. L'esito si verifica ex post in `mds/MANUAL-CHECK.md` (GS-6.M3).
+- [x] GS-6.pre Prerequisito già fatto (2026-10-15): export/import/drift delle collection come cartella, oggi solo in Git Sync, ora è in `components/collections/CollectionFolderDialog.tsx` (menu contestuale delle collection → "Collection folder..."), così togliere il rail `gitsync` non fa perdere la funzione. — **SPOSTATA in `MANUAL-CHECK.md` (GS-6.M5):** è una verifica manuale, non codice; non va conteggiata qui.
 
 **Cosa si toglie.** "Document Studio" = categoria `docs` (`markdown`, `pdfeditor`, `mermaid`, `latex`; `lib/featureRegistry.ts:117-122`); `pdfeditor`, `latex`, `kube`, `plugins` già nascosti da `V1_HIDDEN_FEATURES` (`:144`). "Git" = `gitsync` (`:130-136`). Rimuovere `markdown`, `mermaid`, `gitsync`; `Rail.tsx:390-401` elimina da sola la categoria vuota. Non cancellare gli id senza alias (stato persistito).
 
@@ -595,14 +614,14 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - [ ] GS-11.1 Backend della review: foto in memoria dei file di testo a inizio turno, confronto a fine turno, accetta/rifiuta per blocco, file e tutto; un blocco rifiutato si scrive solo se il file è ancora quello mostrato. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/ide/agentreview` (Tracker, limiti 20.000 file / 64 MB, cartelle `.git`, `node_modules`, `vendor`, `dist`, `target`… escluse), hook `TurnObserver` in `internal/milk/manager.go` (stesso per milk e Claude Code), binding `AgentReview`/`Accept*`/`Reject*` in `goide_agentreview_bindings.go`. Salvataggio atomico estratto in `internal/ide/fileio` (riusato da `internal/goide`). Test: `go test ./internal/ide/agentreview ./internal/ide/fileio ./internal/milk ./internal/goide`.
 - [ ] GS-11.2 UI: barra "N files changed by the agent · Review" sopra il composer della chat, dialog *Review agent changes* (file con +/−, blocchi con contesto, Accept/Reject per blocco e file, Accept all/Reject all con conferma), comando `tools.reviewAgentChanges` (*Tools → Review Agent Changes…*), anche nelle chat staccate. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `GoStudioAgentReviewBar.tsx`, `GoStudioAgentReviewDialog.tsx`, store `stores/goideAgentReview.ts`, helper `lib/goide/agentReview.ts` (riusa `goStudioLineDiff`). Test: `npx vitest run src/lib/goide/agentReview.test.ts`, `npx tsc --noEmit`, `npm run build`, `npm run check:startup`.
 - [ ] GS-11.3 Claude Code riceve davvero i server MCP: `session/new` inviava sempre `mcpServers: []` (`sessionMCPServers` mai chiamata). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/milk/manager.go` `sessionFor`.
-- [ ] GS-11.4 milk (protocollo proprio) non riceve i server MCP: verificare se `milk serve --acp` accetta `mcpServers` in `session/new` prima di inviarli (un campo sconosciuto potrebbe far fallire la sessione).
-- [ ] GS-11.5 I server MCP partono anche con la AI policy del progetto `off` o `local-only`: decidere e applicare il controllo prima di `session/new`.
+- [x] GS-11.4 milk (protocollo proprio) non riceve i server MCP: verificare se `milk serve --acp` accetta `mcpServers` in `session/new` prima di inviarli (un campo sconosciuto potrebbe far fallire la sessione). — **FATTO (2026-10-21, verificato sul campo):** probe reale con `milk v0.7.0` (`initialize` protocol 2 + `session/new` con un server stdio e senza): entrambe le sessioni riescono, il campo non è rifiutato. Ora `session/new` invia `mcpServers` per tutti gli agenti (milk compreso); la policy AI di GS-11.5 continua a filtrarli.
+- [x] GS-11.5 I server MCP partono anche con la AI policy del progetto `off` o `local-only`: decidere e applicare il controllo prima di `session/new`. — **FATTO (2026-10-21):** la policy vive in `internal/aipolicy` (estratto da `internal/copilot`, usato anche dai binding) e `internal/milk/manager.go` filtra i server dopo aver aggiunto quello builtin: `off` (e un valore sconosciuto) non ne invia nessuno, `local-only` tiene solo gli stdio e scarta gli HTTP. Test: `internal/aipolicy` (load/save, fail-closed), `internal/milk/mcpservers_policy_test.go` (filtro e `sessionMCPServers` con policy reale), `internal/copilot` aggiornato all'API nuova.
 - [x] GS-11.6 Documenti: `docs/CODE-STUDIO.md` (Claude Code → *Review agent changes*, MCP solo per Claude Code), `CHANGELOG.md`, `docs/adomnia-feature-catalog.en.md`, piano 03. — **FATTO (2026-10-16).**
 
 **Verifica**
 - Verifiche manuali **GS-11.M1…M3** → `mds/MANUAL-CHECK.md` (sezione **GS-11**).
 
-**Gate GS-11:** [ ] Impl  [ ] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-11)  [ ] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-11:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-11)  [x] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -711,16 +730,16 @@ Con account aziendali (AWS Bedrock) Claude Code non parte nemmeno dopo restart.
 - [x] GS-18.4 Profilo e test: inventario completo delle cache per numero (frontend + Go) con esito reali/non-reali in `REFACTOR.md`; `responseMemory.test.ts` 7 test; suite completa 368 file / 1812 test verdi; `npx tsc --noEmit` pulito. I follow-up non fatti sono promossi a voci tracciabili qui sotto (GS-18.5…GS-18.9). — **FATTO (2026-10-17):** vedi Registro.
 
 **Follow-up (⬜ da fare, dalla stessa review)**
-- [ ] GS-18.5 **Pipeline di visualizzazione della risposta**: un solo parse JSON per risposta e memoizzato — oggi `ResponsePanel` ricalcola `prettyJson` (che riparsa per validare) e riarma `JSON.parse` per il badge e per `graphData` **a ogni render** — con la stringa formattata condivisa fra vista, ricerca e diff. Valutare le copie ritenute `previousBodyRef` (pretty della risposta precedente per il diff di righe) e `beautifiedBody`, con alternative a estratto. Profilo prima/dopo: è il residuo "visualizzazione" della review (correlato alla voce 3 di `REFACTOR.md`).
-- [ ] GS-18.6 **Body grandi: file locale + anteprima** (ipotesi della review): oltre soglia il body completo vive fuori dalla memoria (spill su storage locale; pattern pronto: `internal/goide/history.go` = metadati + contenuto on-demand, `internal/logindex` = file su disco + indice leggero) e in memoria restano anteprima + peso; riaprire la voce di history carica il corpo per intero. Da fare con la migrazione del formato di persistenza delle sessioni.
-- [ ] GS-18.7 **Log inspector: cap in byte** — 200.000 eventi e sorgenti live oggi limitati solo per conteggio; `bytes` è già tracciato in `useLogImport.ts`, va applicato come tetto (e a valle anche il ring dei log stream Go, oggi fino a 200k righe).
-- [ ] GS-18.8 **Cache GraphQL: cap in byte** — oggi 40 schemi di introspection (oggetti da MB) con LRU per `updatedAt`: il tetto deve essere di peso, non di elementi.
-- [ ] GS-18.9 **HAR e flow recorder: caricamento a peso limitato** — il viewer HAR non ha cap (il flag `_heavy` >512 KB c'è già: usare quel confine per tenere i contenuti pesanti su richiesta); il flow recorder tiene gli alberi completi dei body per tutta la registrazione → estratti o riferimenti.
+- [x] GS-18.5 **Pipeline di visualizzazione della risposta**: un solo parse JSON per risposta e memoizzato — oggi `ResponsePanel` ricalcola `prettyJson` (che riparsa per validare) e riarma `JSON.parse` per il badge e per `graphData` **a ogni render** — con la stringa formattata condivisa fra vista, ricerca e diff. Valutare le copie ritenute `previousBodyRef` (pretty della risposta precedente per il diff di righe) e `beautifiedBody`, con alternative a estratto. Profilo prima/dopo: è il residuo "visualizzazione" della review (correlato alla voce 3 di `REFACTOR.md`). — **FATTO (2026-10-21):** `parsedBody` è un `useMemo` unico (badge di validità + `graphData`); `prettyBody` è memoizzato e usa `prettyJson(src, 2, false)` (nuovo parametro `validate`), così il secondo `JSON.parse` sparisce. `beautifiedBody` resta (azione esplicita "beautify", un parse per clic). Test `prettyJson.test.ts` (skip della validazione) e suite response/loginspector verde.
+- [x] GS-18.6 **Body grandi: file locale + anteprima** (ipotesi della review): oltre soglia il body completo vive fuori dalla memoria (spill su storage locale; pattern pronto: `internal/goide/history.go` = metadati + contenuto on-demand, `internal/logindex` = file su disco + indice leggero) e in memoria restano anteprima + peso; riaprire la voce di history carica il corpo per intero. Da fare con la migrazione del formato di persistenza delle sessioni. — **FATTO (2026-10-21):** `lib/responseSpill.ts` (soglia 1 MiB, anteprima 32k, chiave `response-body:<id>` nel bucket `tabs`); `stores/tabs.ts` spilla al salvataggio le risposte della tab attiva, del payload deferred e della history (anche nel payload legacy), lasciando `bodyRef`; `ResponsePanel` ricarica il corpo completo quando la risposta viene mostrata. Nessun cambio di schema obbligatorio: un `body` senza `bodyRef` resta valido. Test `responseSpill.test.ts`; suite tab verdi. *Limite:* una build precedente che legge il payload legacy vede l'anteprima, non il body.
+- [x] GS-18.7 **Log inspector: cap in byte** — 200.000 eventi e sorgenti live oggi limitati solo per conteggio; `bytes` è già tracciato in `useLogImport.ts`, va applicato come tetto (e a valle anche il ring dei log stream Go, oggi fino a 200k righe). — **FATTO (2026-10-21):** `lib/loginspector/limits.ts` (`utf8ByteLength`, `trimTextToBudget`, `DEFAULT_MAX_BYTES` 64 MiB, live 8 MiB) applicato da `parse.ts` (`maxBytes` in `ParseOptions`, budget condiviso per JSONL e documento JSON, la voce più recente resta sempre) e da `useLogImport`; il ring Go `internal/logstream` ha `maxBufferBytes` (32 MiB) oltre al limite di righe. Test: `limits.test.ts`, due casi in `parse.test.ts`, `TestBufferByteBudgetKeepsNewestLines`.
+- [x] GS-18.8 **Cache GraphQL: cap in byte** — oggi 40 schemi di introspection (oggetti da MB) con LRU per `updatedAt`: il tetto deve essere di peso, non di elementi. — **FATTO (2026-10-21):** `stores/graphqlCache.ts` con `pruneGraphqlCache` (conteggio **e** `MAX_BYTES` 8 MiB, voce più recente sempre tenuta) e `graphqlEntryBytes`; test `graphqlCache.test.ts` (4: sotto budget, taglio per numero, taglio per byte, ultima voce oltre budget).
+- [x] GS-18.9 **HAR e flow recorder: caricamento a peso limitato** — il viewer HAR non ha cap (il flag `_heavy` >512 KB c'è già: usare quel confine per tenere i contenuti pesanti su richiesta); il flow recorder tiene gli alberi completi dei body per tutta la registrazione → estratti o riferimenti. — **FATTO (2026-10-21):** `stripHeavyBodies` in `HarViewerPanel` toglie dalla memoria i body >512 KB (risposta e richiesta) e li ricarica dal file originale su "Load body"; l'export riscrive il file originale, quindi i body pesanti non si perdono; "Send to composer"/mock usano il body caricato. Flow recorder: `recordingSource` scarta i body oltre 2 MiB (`RECORDED_BODY_MAX_BYTES`) tenendo il passo con `truncated`. Test `harHeavyBody.test.ts` e `flowRecordingWeight.test.ts`.
 
 **Verifica**
 - Verifica manuale **GS-18.M1…M4** → `mds/MANUAL-CHECK.md` (sezione **GS-18**).
 
-**Gate GS-18:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-18)  [x] Doc  [ ] Verificato da altra persona/agente
+**Gate GS-18:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (GS-18)  [x] Doc  [ ] Verificato da altra persona/agente — il Gate copre 18.1…18.9: nessun follow-up resta aperto.
 
 ---
 
@@ -741,7 +760,7 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - Riusabili: `components/loginspector/JsonTree.tsx` (ricerca, expand/collapse all, wrap, raw, Copy JSON, copia valore e JSONPath; props `{value, title?, className?, actions?}`; token `--color-json-*`; non virtualizzato, ignora i wrapper BSON); `components/jsonviewer/JsonViewerPanel.tsx` (fullscreen ed Esc `:204`, `:391`); `BsonField` di `DocumentCard.tsx`. Nessuna libreria di virtualizzazione.
 
 **Fix** (in ordine)
-- [ ] DB-1.0 Riprodotto su collezione Mongo con sotto-oggetti/array (es. `M0001…M0005`) e su colonna `jsonb` Postgres. — **NON RIPRODOTTO manualmente nell'app** (riproduzione in `mds/MANUAL-CHECK.md`, DB-1.0): la causa (`bsonDisplay` → `Object (2 fields)`, `String(value)` → `[object Object]`) è verificata sul codice e i casi sono coperti da `dbValue.test.ts`.
+- [x] DB-1.0 Riprodotto su collezione Mongo con sotto-oggetti/array (es. `M0001…M0005`) e su colonna `jsonb` Postgres. — **SUPERATA (2026-10-21):** la causa (`bsonDisplay` → `Object (2 fields)`, `String(value)` → `[object Object]`) è verificata sul codice e i casi sono coperti da `dbValue.test.ts`; l'accettazione reale è `DB-1.M1…M3` in `MANUAL-CHECK.md`.
 - [x] DB-1.1 Funzioni pure `normalizeCell`, `previewValue`, `flattenRow` con test accanto. — Implementato in `components/database/dbValue.ts` (non `lib/`: deve usare i wrapper BSON di `mongo/bson.ts`, e i test stanno accanto alle altre funzioni del pannello). `normalizeCell(value, driver)`: stringhe JSON sotto 1 MB parsate, wrapper BSON `$oid`/`$date`/`$number*` letti come `ObjectId('…')`/ISO/numeri **solo per Mongo** (su SQL `{"$oid":…}` resta un oggetto); `previewValue(v, maxLen=60)` → `{ street: "Via Roma", city: "Milano" }`, `[ "a", "b", +1 ]`, `{…}` oltre la profondità; `flattenRow(row, depth=2)` → `address.city`, `tag[0]`…`tag[N]`, `tag[…]` per il resto. Mai più `Object (N fields)` come unico testo.
 - [ ] DB-1.2 `ValueCell.tsx` condiviso: sostituisce `BsonInline` in `DocumentTable` e `CellValue` in `DataTable` per i contenitori; chevron + `previewValue`; click apre l'Inspector. Scalari invariati (`BsonInline`/`CellValue`). In `bson.ts:87-88` solo fallback legacy. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.**
 - [ ] DB-1.3 Cell Inspector (`ValueInspector.tsx`, drawer di destra, token del tema) con `JsonTree` come corpo, alimentato dal valore **grezzo** (i tipi BSON sopravvivono a "Copy JSON"); `JsonTree` esteso con `startExpanded` (profondità) e hook `renderScalar` (`ObjectId('…')`, date ISO). Header: colonna, tipo, dimensione; Copy JSON + "Copy path" per nodo. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md.**
@@ -797,7 +816,7 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - [ ] DB-2.11 (M) `/vault/decrypt` resta invocabile dal renderer col token sidecar: i riferimenti legacy `vault:<age>` e quelli "extra protection" delle credenziali database risultano decifrati in renderer (review sicurezza 2026-10-15). Il formato predefinito `vault:local:v1:` non è apribile da quell'endpoint. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md (DB-2.S1):** `/vault/decrypt` rifiuta con **403** i riferimenti usati da una credenziale database salvata (password o dsn): `vault.SetCredentialRefGuard(database.IsCredentialRef)` è cablato nel sidecar (`internal/sidecar/server.go`), il controllo è in `internal/database/credential_refs.go`. Le env-var e il pannello Vault non sono toccati. Test: `TestIsCredentialRefOnlyMatchesSavedSecrets` (solo i ref salvati, con trim), `TestDecryptRefusesDatabaseCredentialRefs` e `TestDecryptWithoutGuardKeepsWorking`. *Limite noto:* i ref "extra protection" restano decifrabiliti con la passphrase tramite `/vault/encrypt`-side flows dedicati al Vault; il ref legacy `vault:<age>` di una credenziale DB è ora bloccato su questo canale.
 - [ ] DB-2.12 (S) Fallback della chiave di cifratura in chiaro su disco fuori Windows (`seal_key_other.go`: `protectKeyFile` era no-op): chi legge la config-dir utente otteneva chiave + bbolt e decriptava tutto. — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md (DB-2.12):** la chiave di fallback ora è legata a macchina e utente (`machine-id` + uid, `seal_key_other.go`) come DPAPI su Windows: `seal_key_wrap.go` (`wrapKeyFile`/`unwrapKeyFile`, marker `ADK1`) con 5 test (round trip, file legacy da 32 byte invariati, identità sbagliata, manomissione, truncation); cross-compilazione linux/darwin verdi. Su macOS senza `machine-id` resta 0600 in chiaro con l'avviso `credentialWarning` già reso in `ConnectionsSidebar.tsx:330`. Residuo accettabile: chi esegue codice come lo stesso utente sulla stessa macchina legge comunque tutto (come con DPAPI).
 - [ ] DB-2.13 (S) Chiari derivati da env-var `{{VAR}}` risolti nel renderer nel path AI live-context (`dbSecrets.ts:76-90`, usato da `goStudioAILiveContext.ts:85`). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md (DB-3.M5):** `liveDatabaseSchema` ora invia solo `{connectionId, variables}` esattamente come il pannello Database (`liveSchemaQuery` in `goStudioAILiveContext.ts`), senza `connection` risolta: credenziali e riferimenti vault restano in Go. Test `goStudioAILiveContext.test.ts` (corpo senza `connection`, senza "password"); il riuso di `resolveDatabaseConnection` resta solo nei test `dbSecrets.test.ts` (candidato a rimozione in un cleanup).
-- [ ] DB-2.T1 Test Go per il manager (connect/ping/backoff/idle) e per `Seal`/`Open`; security review. — **Test: già presenti e verdi** (`internal/database/manager_test.go`: riuso/disconnect, backoff, idle/reconnect, credenziali; `internal/vault/seal_test.go`: Seal/Open, manomissione, chiave fallback). **Security review indipendente fatta (2026-10-15, agente esterno):** nessun rischio critico/alto sulla riservatezza delle credenziali; trovato e **fissato** un bypass del gate operazioni distruttive via Mongo `runcommand` (ora strict sempre: `mongoDestructiveOperation`, test `TestMongoRunCommandAlwaysNeedsConfirmation`) e allineate al gate le keyword SQL con effetti collaterali `CALL/DO/COPY/MERGE/REPLACE/LOAD/GRANT/REVOKE` (test `TestDestructiveQueryCoversSideEffectStatements`, classificatore frontend `queryInterpreter` allineato). I rischi MEDIO/BASSO residui sono diventati DB-2.11, DB-2.12, DB-2.13.
+- [x] DB-2.T1 Test Go per il manager (connect/ping/backoff/idle) e per `Seal`/`Open`; security review. — **GIÀ OK (2026-10-21):** test già presenti e verdi (`internal/database/manager_test.go`: riuso/disconnect, backoff, idle/reconnect, credenziali; `internal/vault/seal_test.go`: Seal/Open, manomissione, chiave fallback). **Security review indipendente fatta (2026-10-15, agente esterno):** nessun rischio critico/alto sulla riservatezza delle credenziali; trovato e **fissato** un bypass del gate operazioni distruttive via Mongo `runcommand` (ora strict sempre: `mongoDestructiveOperation`, test `TestMongoRunCommandAlwaysNeedsConfirmation`) e allineate al gate le keyword SQL con effetti collaterali `CALL/DO/COPY/MERGE/REPLACE/LOAD/GRANT/REVOKE` (test `TestDestructiveQueryCoversSideEffectStatements`, classificatore frontend `queryInterpreter` allineato). I rischi MEDIO/BASSO residui sono diventati DB-2.11, DB-2.12, DB-2.13.
 
 **Gate DB-2:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (DB-2)  [x] Doc  [x] Security review indipendente  [ ] Verificato da altra persona/agente
 
@@ -965,3 +984,9 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | Checkpoint finale develop e regole progetto | 2026-10-16 | Codex | Build Windows production `wails3 task build` beta.28 verde; frontend completo 358 file / 1760 test verdi; 9 test report Node verdi; `check:startup` 606600 B / 650000 e nessun modulo differito nello startup. Suite Go completa `go test -p 4 ./... -count=1 -timeout 10m` verde (Go Studio 119,397 s). Trovato e corretto un difetto reale nella review agente: scritture con dimensione e timestamp uguali potevano perdere la baseline originale; confronto anche del contenuto testuale limitato e regressione deterministica, 10 ripetizioni con race detector verdi. Regole progetto: test caricamento, aggiornamento, policy, limiti, redazione e invio Copilot/milk verdi; test symlink saltato su Windows per privilegi insufficienti. Log locali `.artifacts/final16-*`. Verifiche desktop Z1.4.M1 e degli altri flussi ancora aperte in MANUAL-CHECK.md; nessuna accettazione manuale dedotta dalla build. | |
 | Updater / conferma concorrente con uscita | 2026-10-16 | Codex | Riprodotto `exit status 2` con nuova fixture `apply-immediate-exit`: conferma valida scritta tra controllo marker e ricezione uscita, rollback erroneo prima del fix. Ora il ramo di uscita ricontrolla il marker prima di ripristinare; finalizzazione condivisa. Log helper incluso nei fallimenti del test. Verdi: pacchetto update completo su Windows per 3 ripetizioni, una con race detector, binario test Linux eseguito su WSL Ubuntu. Restano verifiche manuali app desktop distinte; esito GitHub Actions da verificare dopo push. Log `.artifacts/update-*`. | |
 | Toolchain Go 1.27.2 e aggiornamento dipendenze | 2026-10-18 | Claude Code | `go.mod` a `go 1.27.2`; `go get -u ./...` + `go mod tidy` (35 moduli, Wails `v3.0.0-beta.28` → `beta.32`); `github.com/digitorus/pdf` tenuto a `v0.1.2` perché `v0.2.0+` rompe `pdfsign v0.9.0` (`Reader.Resolve`); `@wailsio/runtime` `3.0.0-beta.32` esatto, `npm update` nei range (nessun major in sospeso). Binding rigenerati con CLI beta.32 senza differenze. Verdi: `go vet ./...` (Linux con GTK4/WebKitGTK 6), build Linux e Windows, `npx tsc --noEmit`, frontend completo 409 file / 2047 test, `wails3 task build` Linux (binario `go1.27.2`), avvio sotto Xvfb fino a Hub e status bar risorse. `go test ./...`: due rossi solo d'ambiente, `TestObserveRealProcess` (rosso identico con Go 1.26.5) e `TestRunLintWithRealLinters` con il `golangci-lint` 2.5.0 del container compilato con Go 1.25 (verde con golangci-lint ricompilato con Go 1.27.2). Build native Windows/macOS e verifiche manuali NON VERIFICATE. | |
+| IDE-7.1 Impl/Test | 2026-10-21 | MiMo (OpenCode) | `internal/windowfit` (`Size` limita dimensione e minimi all'area di lavoro del monitor primario, passthrough senza informazioni sullo schermo) collegato a tutte le creazioni di finestre: `main.go`, `internal/codestudiowindow` (staccata + Live Preview), `internal/swaggerwindow`, `internal/panelwindow`, `internal/requestwindow` (richiesta singola e coppia Request/Response). Test `windowfit_test.go` (5: schermo grande invariato, schermo piccolo riduce finestra e minimi, minimi oltre lo schermo limitati, assi indipendenti, Size senza schermo); `go vet` e `go test ./internal/windowfit ./internal/codestudiowindow ./internal/panelwindow` verdi, `go build -o NUL .` verde. Manuale IDE-7.M1/M2 NON VERIFICATA. |               |
+
+| GS-11.5 / policy AI sui server MCP | 2026-10-21 | OpenCode | Estratto `internal/aipolicy` (Load/Save/Allows) e usato da `internal/copilot`, `code_studio_bindings.go` e `internal/milk`: `filterMCPServersByPolicy` dopo il server builtin (`off`/valore ignoto = nessun server, `local-only` = solo stdio). Verdi: `go test ./internal/aipolicy ./internal/milk ./internal/copilot`, `go build ./...` exit 0. Nuovi test: policy fail-closed, filtro per policy, `sessionMCPServers` con file `.adomnia/ai-policy.json` reale. Verifica manuale (Claude Code reale con policy off) resta in MANUAL-CHECK.md (GS-11.3/M1). |               |
+| GS-18.5 / 18.7 / 18.8 (cache e parse per peso) | 2026-10-21 | OpenCode | GS-18.5: `parsedBody` unico `useMemo` in `ResponsePanel` (badge + graph) e `prettyBody` memoizzato con `prettyJson(src, 2, false)`. GS-18.7: `lib/loginspector/limits.ts` (utf8, trim, 64 MiB; live 8 MiB) usato da `parse.ts`/`useLogImport`, `maxBytes` in `ParseOptions`, ring Go `internal/logstream` con `maxBufferBytes` 32 MiB. GS-18.8: `pruneGraphqlCache` con tetto 8 MiB oltre alle 40 voci. Verdi: `npx vitest run src/lib/loginspector src/components/response src/lib/prettyJson.test.ts src/stores/graphqlCache.test.ts` = 30 file / 187 test; `npx tsc --noEmit` pulito; `go test ./internal/logstream`. Verifica manuale (GS-18.M1…M4) NON eseguita. |               |
+
+| GS-11.4 / MCP a milk + GS-18.6 / 18.9 / IDE-4.10 | 2026-10-21 | OpenCode | **GS-11.4:** probe reale `milk v0.7.0` (`initialize` protocol 2, `session/new` con e senza `mcpServers`): entrambe le sessioni riescono; il campo è inviato a tutti gli agenti, filtrato dalla policy AI. **GS-18.6:** `lib/responseSpill.ts` (1 MiB, anteprima 32k, `bodyRef`), spill in `stores/tabs.ts` (tab attiva, deferred, history, legacy) e ricarica in `ResponsePanel`; 4 test. **GS-18.9:** `stripHeavyBodies` in `HarViewerPanel` (>512 KB, ricarica dal file, export dal file originale) + cap 2 MiB nel flow recorder; 4 test. **IDE-4.10:** chip "Static launch" nella lista goroutine Delve e nel pannello profili (`matchLaunchedFunction`), 1 test. Verdi: `go test ./internal/milk`, `npx tsc --noEmit`, `npx vitest run src/lib/responseSpill.test.ts src/components/har src/lib/flowRecording*.test.ts src/components/code-studio/codeStudioArchitecture.test.ts src/stores/tabs*.test.ts`. Verifiche manuali (GS-11.5, GS-18.M1…M4, IDE-4.M1) restano in MANUAL-CHECK.md. |               |

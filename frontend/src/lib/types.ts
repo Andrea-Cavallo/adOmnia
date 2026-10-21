@@ -216,6 +216,8 @@ export interface ResponseData {
   statusText: string
   headers: Record<string, string>
   body: string
+  /** When set, `body` is a preview and the full text lives in local storage under this key. */
+  bodyRef?: string
   bodyBase64?: string
   contentType: string
   ms: number

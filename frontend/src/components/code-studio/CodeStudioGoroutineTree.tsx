@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Layers, Package, Search, SquareFunction, Star } from 'lucide-react'
 import type { GoIDEGoroutine, GoIDEGoroutineOverview } from '@/lib/code-studio-debug-api'
+import { cachedArchitecture } from '@/lib/code-studio/architectureCache'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { matchGoroutineLaunch, type ArchGoroutine } from './codeStudioArchitecture'
 import { groupByStack, groupGoroutines, isBlocked } from './codeStudioConcurrency'
 import { StateDot, shortLocation, stateMeta } from './CodeStudioDebugUi'
 
@@ -9,6 +12,8 @@ interface CodeStudioGoroutineTreeProps {
   loading: boolean
   selectedId: number | null
   onSelect: (goroutine: GoIDEGoroutine) => void
+  /** Sessione corrente: serve a leggere l'analisi statica già in cache. */
+  sessionId?: string
 }
 
 /** Goroutine raggruppate per package e funzione di avvio: la struttura concorrente del programma a colpo d'occhio. */
@@ -29,10 +34,11 @@ function matches(goroutine: GoIDEGoroutine, filter: StateFilter, query: string):
   return text.includes(query.toLowerCase())
 }
 
-export function CodeStudioGoroutineTree({ overview, loading, selectedId, onSelect }: CodeStudioGoroutineTreeProps) {
+export function CodeStudioGoroutineTree({ overview, loading, selectedId, onSelect, sessionId }: CodeStudioGoroutineTreeProps) {
   const [mode, setMode] = useState<GroupMode>('origin')
   const [filter, setFilter] = useState<StateFilter>('all')
   const [query, setQuery] = useState('')
+  const launches = useMemo<ArchGoroutine[]>(() => (sessionId ? cachedArchitecture(sessionId)?.report?.goroutines ?? [] : []), [sessionId])
   const visible = useMemo(() => (overview?.goroutines ?? []).filter((goroutine) => matches(goroutine, filter, query.trim())), [filter, overview, query])
   const tree = useMemo(() => groupGoroutines(visible), [visible])
   const stacks = useMemo(() => (mode === 'stack' ? groupByStack(visible) : []), [mode, visible])
@@ -78,7 +84,7 @@ export function CodeStudioGoroutineTree({ overview, loading, selectedId, onSelec
                   <span className="shrink-0 font-mono text-[12.5px] text-text-4">{shortLocation(group.location?.relativePath, group.location?.line)}</span>
                   <span className="rounded-full bg-surface-3 px-1.5 text-[12px] text-text-2">×{group.goroutines.length}</span>
                 </button>
-                {open && group.goroutines.map((goroutine) => <GoroutineRow key={goroutine.id} goroutine={goroutine} selected={goroutine.id === selectedId} onSelect={() => onSelect(goroutine)} />)}
+                {open && group.goroutines.map((goroutine) => <GoroutineRow key={goroutine.id} goroutine={goroutine} launch={matchGoroutineLaunch(launches, goroutine.origin?.name)} selected={goroutine.id === selectedId} onSelect={() => onSelect(goroutine)} />)}
               </div>
             )
           })}
@@ -115,7 +121,7 @@ export function CodeStudioGoroutineTree({ overview, loading, selectedId, onSelec
                     <span className="text-[12.5px] text-text-4">{group.goroutines.length}</span>
                   </button>
                   {groupOpen && group.goroutines.map((goroutine) => (
-                    <GoroutineRow key={goroutine.id} goroutine={goroutine} selected={goroutine.id === selectedId} onSelect={() => onSelect(goroutine)} />
+                    <GoroutineRow key={goroutine.id} goroutine={goroutine} launch={matchGoroutineLaunch(launches, goroutine.origin?.name)} selected={goroutine.id === selectedId} onSelect={() => onSelect(goroutine)} />
                   ))}
                 </div>
               )
@@ -129,17 +135,32 @@ export function CodeStudioGoroutineTree({ overview, loading, selectedId, onSelec
   )
 }
 
-function GoroutineRow({ goroutine, selected, onSelect }: { goroutine: GoIDEGoroutine; selected: boolean; onSelect: () => void }) {
+function GoroutineRow({ goroutine, launch, selected, onSelect }: {
+  goroutine: GoIDEGoroutine
+  launch?: ArchGoroutine
+  selected: boolean
+  onSelect: () => void
+}) {
   const meta = stateMeta(goroutine.state)
+  const openLaunch = () => useCodeStudioLspStore.getState().showToolWindow('goroutines')
   return (
-    <button type="button" role="treeitem" aria-selected={selected} onClick={onSelect}
+    <div role="treeitem" aria-selected={selected}
       title={`${goroutine.name}\n${meta.label}${goroutine.blockedOn ? ` on ${goroutine.blockedOn}` : ''}`}
-      className={`ml-4 flex h-7 w-[calc(100%-1rem)] items-center gap-2 rounded-md px-2 text-left text-[13px] ${selected ? 'code-studio-tree-row-selected' : 'text-text-2 hover:bg-surface-2'}`}>
-      <StateDot state={goroutine.state} />
-      <span className="shrink-0 font-mono text-text-1">#{goroutine.id}</span>
-      {goroutine.current && <Star size={11} className="shrink-0 fill-accent text-accent" aria-label="Current goroutine" />}
-      <span className={`shrink-0 text-[12.5px] ${meta.tone}`}>{meta.label}</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-text-3">{goroutine.blockedOn || shortLocation(goroutine.location?.relativePath, goroutine.location?.line)}</span>
-    </button>
+      className={`ml-4 flex h-7 w-[calc(100%-1rem)] items-center gap-2 rounded-md px-2 text-[13px] ${selected ? 'code-studio-tree-row-selected' : 'text-text-2 hover:bg-surface-2'}`}>
+      <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        <StateDot state={goroutine.state} />
+        <span className="shrink-0 font-mono text-text-1">#{goroutine.id}</span>
+        {goroutine.current && <Star size={11} className="shrink-0 fill-accent text-accent" aria-label="Current goroutine" />}
+        <span className={`shrink-0 text-[12.5px] ${meta.tone}`}>{meta.label}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-text-3">{goroutine.blockedOn || shortLocation(goroutine.location?.relativePath, goroutine.location?.line)}</span>
+      </button>
+      {launch && (
+        <button type="button" onClick={openLaunch}
+          title={`${launch.kind} launch of ${launch.launches} found by static analysis${launch.risks.length ? `: ${launch.risks.join(', ')}` : ''}. Matched by function name. Open the Goroutines view`}
+          className="shrink-0 rounded px-1 text-[10px] text-accent hover:bg-accent/10">
+          Static launch{launch.risks.length > 0 ? ` · ${launch.risks.length}` : ''}
+        </button>
+      )}
+    </div>
   )
 }

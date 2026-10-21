@@ -2,6 +2,7 @@
 package requestwindow
 
 import (
+	"adomnia/internal/windowfit"
 	"fmt"
 	"net/url"
 	"strings"
@@ -77,13 +78,14 @@ func (m *Manager) Detach(tabID, snapshot, title string) error {
 	if strings.TrimSpace(title) == "" {
 		title = "API Request · adOmnia"
 	}
+	winW, winH, winMinW, winMinH := windowfit.Size(m.app, 1180, 800, 720, 520)
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "request-" + tabID,
 		Title:     title + " · adOmnia",
-		Width:     1180,
-		Height:    800,
-		MinWidth:  720,
-		MinHeight: 520,
+		Width:     winW,
+		Height:    winH,
+		MinWidth:  winMinW,
+		MinHeight: winMinH,
 		URL:       "/?window=api-request&tab=" + url.QueryEscape(tabID),
 	})
 	window.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
@@ -132,13 +134,14 @@ func (m *Manager) DetachRequestAndResponse(tabID, snapshot, title string) error 
 		{paneRequest, "Request", 760, 860, 620},
 		{paneResponse, "Response", 860, 760, 640},
 	} {
+		winW, winH, winMinW, winMinH := windowfit.Size(m.app, spec.width, spec.height, spec.minWidth, 520)
 		window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Name:      "request-" + tabID + "-" + string(spec.pane),
 			Title:     title + " - " + spec.label + " - adOmnia",
-			Width:     spec.width,
-			Height:    spec.height,
-			MinWidth:  spec.minWidth,
-			MinHeight: 520,
+			Width:     winW,
+			Height:    winH,
+			MinWidth:  winMinW,
+			MinHeight: winMinH,
 			URL:       "/?window=api-request&tab=" + url.QueryEscape(tabID) + "&pane=" + string(spec.pane),
 		})
 		window.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
