@@ -150,15 +150,15 @@ func frameworkEntries(unit project.Unit, manifest Manifest) []suggestEntry {
 	module, attribute := findAppAssignment(unit.Root, `FastAPI\s*\(`)
 	if module != "" && (declarations["fastapi"] || declarations["uvicorn"]) {
 		return []suggestEntry{{
-			action: "run", name: "FastAPI " + module + ":" + attribute, id: ":fastapi", title: "FastAPI · uvicorn " + module + ":" + attribute + " --reload",
-			options: Options{Module: "uvicorn"}, arguments: []string{module + ":" + attribute, "--reload"},
+			action: "run", name: "FastAPI " + module + ":" + attribute, id: ":fastapi", title: "FastAPI · uvicorn " + module + ":" + attribute,
+			options: Options{Module: "uvicorn", App: module + ":" + attribute, Reload: true},
 		}}
 	}
 	module, attribute = findAppAssignment(unit.Root, `Flask\s*\(`)
 	if module != "" && declarations["flask"] {
 		return []suggestEntry{{
 			action: "run", name: "Flask " + module + ":" + attribute, id: ":flask", title: "Flask · flask --app " + module + ":" + attribute + " run",
-			options: Options{Module: "flask"}, arguments: []string{"--app", module + ":" + attribute, "run"},
+			options: Options{Module: "flask", App: module + ":" + attribute},
 		}}
 	}
 	return nil

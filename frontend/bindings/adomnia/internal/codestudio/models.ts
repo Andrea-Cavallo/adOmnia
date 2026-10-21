@@ -5169,6 +5169,10 @@ export class PythonDebugRequest {
     "kind": string;
     "script"?: string;
     "module"?: string;
+    "app"?: string;
+    "host"?: string;
+    "port"?: number;
+    "reload"?: boolean;
     "targets"?: string[];
     "run"?: string;
     "workingDirectory"?: string;
@@ -5193,18 +5197,18 @@ export class PythonDebugRequest {
      * Creates a new PythonDebugRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): PythonDebugRequest {
-        const $$createField4_0 = $$createType4;
-        const $$createField7_0 = $$createType4;
-        const $$createField8_0 = $$createType88;
+        const $$createField8_0 = $$createType4;
+        const $$createField11_0 = $$createType4;
+        const $$createField12_0 = $$createType88;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("targets" in $$parsedSource) {
-            $$parsedSource["targets"] = $$createField4_0($$parsedSource["targets"]);
+            $$parsedSource["targets"] = $$createField8_0($$parsedSource["targets"]);
         }
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField7_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField11_0($$parsedSource["programArguments"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField8_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField12_0($$parsedSource["environment"]);
         }
         return new PythonDebugRequest($$parsedSource as Partial<PythonDebugRequest>);
     }

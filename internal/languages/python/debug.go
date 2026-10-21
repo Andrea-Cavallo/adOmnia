@@ -13,12 +13,17 @@ import (
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Python: lo stesso target della Run
-// (script, modulo o pytest) più la scelta di limitare il debugger al codice del progetto.
+// (script, modulo o pytest) più la scelta di limitare il debugger al codice del progetto. App,
+// Host, Port e Reload sono i campi guidati del server framework, come per la Run.
 type DebugOptions struct {
 	Interpreter      string   `json:"interpreter,omitempty"`
 	Kind             string   `json:"kind"`
 	Script           string   `json:"script,omitempty"`
 	Module           string   `json:"module,omitempty"`
+	App              string   `json:"app,omitempty"`
+	Host             string   `json:"host,omitempty"`
+	Port             int      `json:"port,omitempty"`
+	Reload           bool     `json:"reload,omitempty"`
 	Targets          []string `json:"targets,omitempty"`
 	Run              string   `json:"run,omitempty"`
 	ProgramArguments []string `json:"programArguments,omitempty"`
@@ -56,7 +61,7 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 		justMyCode = *options.JustMyCode
 	}
 	return dap.AdapterSpec{
-		AdapterID: "python",
+		AdapterID:  "python",
 		Executable: interpreter.Path, Arguments: arguments,
 		WorkingDirectory: request.WorkingDirectory,
 		Environment:      append([]string(nil), request.Environment...),
@@ -71,7 +76,7 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 				// L'output del programma arriva già dalla console del processo: senza
 				// redirect lo vedrebbe due volte.
 				"redirectOutput": false,
-				"subProcess":      false,
+				"subProcess":     false,
 			}
 		},
 		ExplainError: func(err error) error {
@@ -96,6 +101,15 @@ func debugTarget(request dap.LaunchRequest, options DebugOptions) ([]string, str
 	case "module":
 		if !moduleName.MatchString(options.Module) {
 			return nil, "", fmt.Errorf("enter a Python module name, for example package.main")
+		}
+		program := Options{Module: options.Module, App: options.App, Host: options.Host, Port: options.Port}
+		if err := validateServerOptions(program); err != nil {
+			return nil, "", err
+		}
+		if framework, ok := serverArguments(program); ok {
+			// Reload mai nel debug: il reloader avvierebbe un secondo processo e i breakpoint
+			// finirebbero in quello sbagliato (PY-6.4).
+			return append(framework, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + options.Module + " " + options.App, nil
 		}
 		return append([]string{"-m", options.Module}, debugProgramArguments(options, options.ProgramArguments)...), "Debug " + options.Module, nil
 	case "pytest":

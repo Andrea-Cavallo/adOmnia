@@ -97,13 +97,13 @@ func TestDebugArgumentsDropTheReloader(t *testing.T) {
 	}{
 		{
 			name:    "uvicorn without the reloader",
-			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "uvicorn", ProgramArguments: []string{"app:app", "--reload", "--reload-dir", "extra", "--reload-dir=src", "--port", "8000"}},
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "uvicorn", App: "app:app", Port: 8000, ProgramArguments: []string{"--reload", "--reload-dir", "extra", "--reload-dir=src"}},
 			want:    []string{"-m", "uvicorn", "app:app", "--port", "8000"},
 			banned:  []string{"--reload", "extra", "--reload-dir=src"},
 		},
 		{
 			name:    "flask without debug mode and reloader",
-			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "flask", ProgramArguments: []string{"--app", "app", "run", "--debug", "--reload"}},
+			options: DebugOptions{Interpreter: interpreter, Kind: "module", Module: "flask", App: "app", ProgramArguments: []string{"--debug", "--reload"}},
 			want:    []string{"-m", "flask", "--app", "app", "run"},
 			banned:  []string{"--debug", "--reload"},
 		},

@@ -29,8 +29,15 @@ export function pythonDebugTargetOf(config: PythonDebugConfiguration): PythonDeb
   if (!value) return null
   const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
   const interpreter = String(options.interpreter ?? '').trim()
+  const app = String(options.app ?? '').trim()
+  const host = String(options.host ?? '').trim()
+  const port = Number(options.port ?? 0)
   return {
     ...(kind === 'script' ? { kind, script: value } : { kind, module: value }),
+    ...(app ? { app } : {}),
+    ...(host ? { host } : {}),
+    ...(Number.isFinite(port) && port > 0 ? { port } : {}),
+    ...(options.reload === true ? { reload: true } : {}),
     workingDirectory: config.workingDirectory ?? '',
     ...(config.programArguments?.length ? { programArguments: [...config.programArguments] } : {}),
     ...(Object.keys(environment).length ? { environment } : {}),

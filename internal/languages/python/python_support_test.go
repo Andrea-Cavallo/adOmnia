@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
 )
 
@@ -158,16 +159,34 @@ func TestSuggestProposesScriptsFrameworksAndTests(t *testing.T) {
 		t.Fatalf("%+v %v", units, err)
 	}
 	titles := map[string]bool{}
+	var fastapi run.Suggestion
 	for _, suggestion := range New().Suggest(context.Background(), root, units[0]) {
 		titles[suggestion.Title] = true
+		if suggestion.Title == "FastAPI · uvicorn main:app" {
+			fastapi = suggestion
+		}
 	}
-	for _, expected := range []string{"FastAPI · uvicorn main:app --reload", "Python · main.py", "Python · pytest"} {
+	for _, expected := range []string{"FastAPI · uvicorn main:app", "Python · main.py", "Python · pytest"} {
 		if !titles[expected] {
 			t.Fatalf("missing %q in %#v", expected, titles)
 		}
 	}
 	if len(titles) != 3 {
 		t.Fatalf("unexpected suggestions %#v", titles)
+	}
+	// PY-7.2: host, porta e reload sono campi guidati, non argomenti opachi.
+	var options Options
+	if err := json.Unmarshal(fastapi.Configuration.LanguageOptions, &options); err != nil {
+		t.Fatal(err)
+	}
+	if options.Module != "uvicorn" || options.App != "main:app" || !options.Reload {
+		t.Fatalf("framework options %+v", options)
+	}
+	if len(fastapi.Configuration.ProgramArguments) != 0 {
+		t.Fatalf("framework arguments must come from the guided fields: %+v", fastapi.Configuration.ProgramArguments)
+	}
+	if err := New().ValidateRunConfiguration(fastapi.Configuration); err != nil {
+		t.Fatalf("the suggestion must be valid: %v", err)
 	}
 }
 

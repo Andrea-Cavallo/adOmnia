@@ -171,6 +171,9 @@ export function CodeStudioPythonInterpreter() {
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-3">{row.detail}</span>
                 {report?.probed && interpreter?.packages?.pytest && <span className="gs-badge shrink-0">pytest</span>}
                 {report?.probed && interpreter?.packages?.debugpy && <span className="gs-badge shrink-0">debugpy</span>}
+                {report?.probed && interpreter?.packages?.uvicorn && <span className="gs-badge shrink-0">uvicorn</span>}
+                {report?.probed && interpreter?.packages?.flask && <span className="gs-badge shrink-0">flask</span>}
+                {report?.probed && interpreter?.packages?.django && <span className="gs-badge shrink-0">django</span>}
                 {interpreter?.problem && <span className="gs-badge shrink-0 text-warning" title={interpreter.problem}>{interpreter.problem}</span>}
                 {!report?.probed && interpreter && <span className="gs-badge shrink-0">not trusted</span>}
               </button>
