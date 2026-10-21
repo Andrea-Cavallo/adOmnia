@@ -165,9 +165,9 @@ examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
 
 Implemented: live persistent backend GC limit, selectable gopls limit with project restart, timed CPU/RSS recording, per-process charts and parent/owner provenance, JSON/CSV/MD/HTML export. The reported 50% CPU spike did not reproduce in the 32-second baseline; no root cause is claimed. Evidence and limits: [report](performance/resources-2026-10-19.md). Native acceptance remains RES-1.M1–M3 in mds/MANUAL-CHECK.md.
 
-### Python Code Studio — 2026-10-21
+### Python Code Studio - 2026-10-21
 
-Initial adapter implemented: project-marker/loose-script detection and schema-driven script/module Run with explicit interpreter. Automated adapter, mixed-workspace, trust and host-routing checks pass, including real script/module execution with local Python 3.11. Native desktop PY-M1/PY-M3 remains open. TOML parsing, per-unit interpreter discovery, LSP, pytest and debugpy remain in `mds/MULTILANGUAGE-IDE.md` §9.5; Python support is not complete. Rust has no adapter yet.
+Python is now a first-class Code Studio language: static unit detection with TOML parsing, per-unit interpreter resolution and selection (`.adomnia/python.local.json`), script/module Run, structured pytest in the Test tree (adOmnia pytest plugin with real node IDs), debugpy debugging (script/module/pytest with the shared debug panels) and basedpyright editing assistance (pinned, explicitly installed). Automated checks pass, including real pytest and real debugpy integration runs against a local Python 3.11 with pytest 9.1.1/debugpy 1.8.22. Open: native desktop acceptance (PY-M* in `mds/MANUAL-CHECK.md`), two environments in one multi-root LSP session (single interpreter setting), attach debugging, pytest coverage and Python formatting (see `mds/MULTILANGUAGE-IDE.md` §9.5). Rust has no adapter yet.
 
 ### Run configuration interface — 2026-10-21
 

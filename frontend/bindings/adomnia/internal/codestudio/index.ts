@@ -153,6 +153,8 @@ export {
     ProjectService,
     ProjectTemplate,
     ProjectTemplateList,
+    PythonDebugRequest,
+    PythonInterpreterReport,
     QuickDefinitionResult,
     QuickOpenResult,
     RecentProject,

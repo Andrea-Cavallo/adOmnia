@@ -41,6 +41,8 @@ type Launch struct {
 }
 
 type LaunchRequest struct {
+	// Root è la radice reale del progetto: serve agli adapter che confinano i target al progetto.
+	Root             string
 	Executable       string
 	WorkingDirectory string
 	Program          string

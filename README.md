@@ -330,6 +330,6 @@ Resource diagnostics: adjust the backend Go GC budget live, restart gopls with a
 
 [MIT license](LICENSE.md)
 
-Python in Code Studio: initial script/module Run support uses an explicitly selected local interpreter. Automatic environment discovery, language-server assistance, structured tests and debugging remain planned; desktop acceptance is pending. See [Code Studio](docs/CODE-STUDIO.md).
+Python in Code Studio: script/module Run, structured pytest tests, debugpy debugging and basedpyright editing assistance, with per-unit interpreter discovery and selection. All tools are used from your local environments or installed explicitly with visible, pinned commands; nothing is installed silently. Notebooks, remote debugging and Python formatting remain planned. Desktop acceptance is pending. See [Code Studio](docs/CODE-STUDIO.md).
 
 Run configurations provide project-aware creation, searchable saved entries and types, review of detected targets, and protection for unsaved edits. See [Code Studio](docs/CODE-STUDIO.md) for the current workflow and acceptance limits.

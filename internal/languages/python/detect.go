@@ -24,8 +24,12 @@ func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
 	if len(v.units) >= 100 || visit.Depth > 12 {
 		return false
 	}
-	switch strings.ToLower(visit.Name) {
-	case ".venv", "venv", "env", "__pycache__", ".tox", ".nox", ".mypy_cache", ".pytest_cache", ".ruff_cache", "site-packages":
+	lower := strings.ToLower(visit.Name)
+	switch lower {
+	case ".venv", "venv", "env", "__pycache__", ".tox", ".nox", ".mypy_cache", ".pytest_cache", ".ruff_cache", "site-packages", ".eggs":
+		return false
+	}
+	if strings.HasSuffix(lower, ".egg-info") || strings.HasSuffix(lower, ".dist-info") {
 		return false
 	}
 	manifest := ""
@@ -63,7 +67,13 @@ func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
 		if strings.EqualFold(filepath.Ext(manifest), ".py") && manifest != "setup.py" && manifest != "manage.py" {
 			kind = "python-scripts"
 		}
-		v.units = append(v.units, project.Unit{Language: ID, Kind: kind, Root: visit.Path, Name: filepath.Base(visit.Path), Manifest: filepath.Join(visit.Path, manifest)})
+		name := filepath.Base(visit.Path)
+		if manifest == "pyproject.toml" {
+			if declared := readManifest(visit.Path).Name; declared != "" {
+				name = declared
+			}
+		}
+		v.units = append(v.units, project.Unit{Language: ID, Kind: kind, Root: visit.Path, Name: name, Manifest: filepath.Join(visit.Path, manifest)})
 	}
 	return true
 }

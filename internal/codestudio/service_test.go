@@ -10,6 +10,7 @@ import (
 
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
+	"adomnia/internal/languages/python"
 	"adomnia/internal/languages/web"
 )
 
@@ -125,10 +126,14 @@ func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
 	for _, language := range languages {
 		ids = append(ids, language.ID)
 	}
-	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID, java.ID}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
+	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID, java.ID, python.ID}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
 		t.Fatalf("languages = %+v, want %v", languages, want)
 	}
 	if capabilities := languages[0].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.Documents {
 		t.Fatalf("Go capabilities = %+v", capabilities)
+	}
+	// Python porta Run, Test (pytest), Debug (debugpy) e language server (basedpyright).
+	if capabilities := languages[len(languages)-1].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.LanguageServer {
+		t.Fatalf("Python capabilities = %+v", capabilities)
 	}
 }

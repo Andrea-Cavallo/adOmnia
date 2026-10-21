@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
-import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, namePatternFor, rollupOf } from './codeStudioTestTree'
+import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, isPythonTestRun, namePatternFor, pythonNodeId, pythonRerunFailedRequest, rollupOf } from './codeStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -167,5 +167,44 @@ describe('Java roll-up and multi-method rerun', () => {
 
   it('falls back to the whole class when a failed test has a display name', () => {
     expect(rerunFailedRequest(javaRun([node(file, '', 'fail'), node(file, 'one', 'fail'), node(file, 'a > b', 'fail')]))).toMatchObject({ run: '' })
+  })
+})
+
+describe('Python test runs', () => {
+  const pyRun = (results: GoIDETestResult[], workingDirectory = ''): GoIDETestRun =>
+    ({ ...run(results, workingDirectory), request: { ...run(results, workingDirectory).request, language: 'python', workingDirectory, packages: ['tests'], coverage: false } }) as GoIDETestRun
+
+  it('tells pytest runs from the other runners', () => {
+    expect(isPythonTestRun(pyRun([]))).toBe(true)
+    expect(isPythonTestRun(run([]))).toBe(false)
+  })
+
+  it('rebuilds the pytest node id from the file and the /-joined name', () => {
+    expect(pythonNodeId(node('tests/test_demo.py', 'TestBox/test_ok[param∕1]', 'pass'))).toBe('tests/test_demo.py::TestBox::test_ok[param/1]')
+    expect(pythonNodeId(node('tests/test_demo.py', 'TestBox/test_ok', 'pass'))).toBe('tests/test_demo.py::TestBox::test_ok')
+    expect(pythonNodeId(node('tests/test_demo.py', '', 'fail'))).toBe('tests/test_demo.py')
+  })
+
+  it('reruns one node by its exact node id, without a run filter', () => {
+    const test = node('tests/test_demo.py', 'TestBox/test_ok[param∕1]', 'fail')
+    expect(requestForNode(pyRun([test]), test)).toMatchObject({ language: 'python', packages: ['tests/test_demo.py::TestBox::test_ok[param/1]'], run: '', coverage: false })
+  })
+
+  it('reruns a whole test file from its package node', () => {
+    const file = node('tests/test_demo.py', '', 'fail')
+    expect(requestForNode(pyRun([file]), file)).toMatchObject({ packages: ['tests/test_demo.py'], run: '' })
+  })
+
+  it('reruns failed node ids, or the whole file when the file failed without failed tests', () => {
+    const results = [
+      node('tests/test_a.py', '', 'fail'),
+      node('tests/test_a.py', 'TestA/test_one', 'fail'),
+      node('tests/test_a.py', 'TestA/test_two', 'pass'),
+      node('tests/test_b.py', '', 'fail'),
+    ]
+    const expected = { packages: ['tests/test_a.py::TestA::test_one', 'tests/test_b.py'], run: '', coverage: false }
+    expect(pythonRerunFailedRequest(pyRun(results))).toMatchObject(expected)
+    expect(rerunFailedRequest(pyRun(results))).toMatchObject(expected)
+    expect(pythonRerunFailedRequest(pyRun([node('tests/test_ok.py', '', 'pass'), node('tests/test_ok.py', 'TestOk', 'pass')]))).toBeNull()
   })
 })

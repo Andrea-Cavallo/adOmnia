@@ -1,4 +1,4 @@
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
 import type { GoIDETestResult, GoIDETestRun, GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
 
 export interface CodeStudioTestNode {
@@ -99,6 +99,20 @@ export function isJavaTestRun(run: GoIDETestRun): boolean {
   return run.request.language === 'java'
 }
 
+/** Il run è dell'adapter Python (pytest): i nodi del report sono node ID pytest. */
+export function isPythonTestRun(run: GoIDETestRun): boolean {
+  return run.request.language === 'python'
+}
+
+/**
+ * Node ID pytest di un risultato: `file::classe::test`, con i segmenti del nome uniti da `::` e
+ * `∕` (U+2215) che torna `/` dentro un segmento. Per un nodo package (name vuoto) il solo file.
+ */
+export function pythonNodeId(result: GoIDETestResult): string {
+  if (!result.name) return result.package
+  return `${result.package}::${result.name.split('/').map((segment) => segment.replace(/\u2215/g, '/')).join('::')}`
+}
+
 /** File di test Java relativo all'unità: il "package" del report è il sorgente relativo al progetto. */
 function javaTestFile(run: GoIDETestRun, result: GoIDETestResult): string {
   const prefix = run.request.workingDirectory ? `${run.request.workingDirectory}/` : ''
@@ -150,6 +164,10 @@ export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoID
     // Un nodo che non è un sorgente di test (il build fallito) si riesegue per intero.
     return { ...run.request, packages: file.endsWith('.java') ? [file] : [], run: result.name ? javaMethodFilter(result.name) : '', coverage: false }
   }
+  if (isPythonTestRun(run)) {
+    // Ogni nodo è un node ID pytest (o il file di test per un package): senza filtro `run`.
+    return { ...run.request, packages: [pythonNodeId(result)], run: '', coverage: false }
+  }
   if (!isGoTestRun(run)) {
     const prefix = moduleDirectory ? `${moduleDirectory}/` : ''
     const file = result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
@@ -181,11 +199,18 @@ export function javaDebugRequestForNode(run: GoIDETestRun, result: GoIDETestResu
   return { sessionId: run.request.sessionId, testFile: result.package, testMethod: javaMethodFilter(result.name), workingDirectory: '' }
 }
 
+/** Debug pytest di un test (o dell'intero file di test) con debugpy: null per i run non Python. */
+export function pythonDebugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDEPythonDebugRequest | null {
+  if (!isPythonTestRun(run)) return null
+  return { sessionId: run.request.sessionId, kind: 'pytest', targets: [pythonNodeId(result)], workingDirectory: run.request.workingDirectory }
+}
+
 /**
  * Rerun failed: solo i package con fallimenti e solo i test di primo livello falliti.
  * Un package che non compila si riesegue per intero; null se non c'è nulla da rieseguire.
  */
 export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  if (isPythonTestRun(run)) return pythonRerunFailedRequest(run)
   if (isJavaTestRun(run)) return javaRerunFailedRequest(run)
   const directories = packageDirectories(run)
   const packages = new Set<string>()
@@ -231,6 +256,21 @@ function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   if (wholeUnit) return { ...run.request, packages: [], run: '', coverage: false }
   if (files.size === 0) return null
   return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort().join(',') : '', coverage: false }
+}
+
+/**
+ * Rerun failed Python: solo i node ID dei test falliti. Un file di test che fallisce senza test
+ * falliti (errore di raccolta) si riesegue per intero; null se non c'è nulla da rieseguire.
+ */
+export function pythonRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  const nodes = new Set<string>()
+  for (const result of run.results) {
+    if (!isFailed(result)) continue
+    if (result.name) nodes.add(pythonNodeId(result))
+    else if (!run.results.some((other) => other.package === result.package && other.name && isFailed(other))) nodes.add(result.package)
+  }
+  if (nodes.size === 0) return null
+  return { ...run.request, packages: [...nodes].sort(), run: '', coverage: false }
 }
 
 export function formatDuration(milliseconds: number): string {

@@ -71,6 +71,7 @@ import { CodeStudioToolPathsDialog } from './CodeStudioToolPathsDialog'
 import { runLanguageCommand } from './codeStudioLanguageCommands'
 import { runPreviewCommand } from './codeStudioPreviewCommands'
 import { runJavaCommand } from './codeStudioJavaCommands'
+import { runPythonCommand } from './codeStudioPythonCommands'
 import { isWebOnlyProject } from '@/lib/code-studio/livePreview'
 import { runSaveActions } from './codeStudioSaveActions'
 import { mouseNavigationCommand } from './codeStudioMouseNavigation'
@@ -87,6 +88,7 @@ import { CodeStudioChangeSignatureDialog } from './CodeStudioChangeSignatureDial
 import { CodeStudioMoveSymbolDialog } from './CodeStudioMoveSymbolDialog'
 import { CodeStudioSpringEndpoints } from './CodeStudioSpringEndpoints'
 import { CodeStudioJavaJdk } from './CodeStudioJavaJdk'
+import { CodeStudioPythonInterpreter } from './CodeStudioPythonInterpreter'
 import { CodeStudioJavaTree } from './CodeStudioJavaTree'
 import { CodeStudioJavaJvm } from './CodeStudioJavaJvm'
 import { CodeStudioSpringGraph } from './CodeStudioSpringGraph'
@@ -150,8 +152,9 @@ import { CodeStudioStartupAnalyzer, useStartupDrawer } from './CodeStudioStartup
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
 import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/codeStudioLayout'
 import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
+import { pythonDebugTargetOf } from '@/lib/code-studio/pythonDebug'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useCodeStudioStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/codeStudio'
@@ -872,6 +875,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
+  // Debug di una configurazione Python: script o modulo con debugpy, senza Delve.
+  const configuredPythonDebugRequest = (): GoIDEPythonDebugRequest | null => {
+    const target = activeSession && activeConfig ? pythonDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
+  }
+
   const openLanguageServerMenu = () => {
     if (!activeSession) return
     if (lspStatus?.state === 'ready' || lspStatus?.state === 'starting') return setLspLogOpen(true)
@@ -897,7 +906,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runLanguageCommand(id, activeSession?.id ?? null)) return
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest)) return
+    if (runPythonCommand(id, activeSession?.id ?? null)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return
@@ -1062,6 +1072,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioMoveSymbolDialog />
       <CodeStudioSpringEndpoints />
       <CodeStudioJavaJdk />
+      <CodeStudioPythonInterpreter />
       <CodeStudioJavaTree />
       <CodeStudioJavaJvm />
       <CodeStudioSpringGraph />

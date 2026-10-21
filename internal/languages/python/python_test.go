@@ -54,7 +54,7 @@ func TestLooseScriptsAndCapabilities(t *testing.T) {
 		t.Fatalf("%+v %v", units, err)
 	}
 	caps := language.CapabilitiesOf(New())
-	if !caps.Run || !caps.Documents || !caps.ProjectDetection || caps.Debug || caps.Tests || caps.LanguageServer {
+	if !caps.Run || !caps.Documents || !caps.ProjectDetection || !caps.Tests || !caps.Debug || !caps.LanguageServer || caps.Usages || caps.Declarations {
 		t.Fatalf("false capability claims: %+v", caps)
 	}
 	for _, path := range []string{"a.py", "a.pyi", "a.PY"} {

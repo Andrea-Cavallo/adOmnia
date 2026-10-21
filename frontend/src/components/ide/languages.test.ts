@@ -3,19 +3,27 @@ import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type Code
 import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 
 describe('IDE language contributions', () => {
-  it('offers Python script and module runs without claiming LSP or debug support', () => {
+  it('offers Python script and module runs with basedpyright and pytest/debug support', () => {
     const python = IDE_LANGUAGES.find(language => language.id === 'python')!
     expect(python.runTemplates?.map(template => template.kind)).toEqual(['script', 'module'])
-    expect(python.editorLanguages).toEqual([])
-    expect(python.providedServer).not.toBe(true)
+    expect(python.editorLanguages).toEqual(['python'])
+    expect(python.languageServer).toBe('basedpyright')
+    expect(python.providedServer).toBe(true)
+    expect(python.heavyFeatures).toBe(false)
+    expect(python.semanticTokens).toBe(true)
+    expect(python.canDebugRun?.({ kind: 'script' } as never)).toBe(true)
+    expect(python.canDebugRun?.({ kind: 'module' } as never)).toBe(true)
+    expect(python.canDebugRun?.({ kind: 'command' } as never)).toBe(false)
     expect(python.canDebugRun?.({} as never)).toBe(false)
-    expect(languageServerEditorLanguages()).not.toContain('python')
+    expect(languageServerEditorLanguages()).toContain('python')
   })
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
-    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java'])
+    expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('python')
+    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
+    expect(isLanguageServerEditorLanguage('python')).toBe(true)
     expect(isLanguageServerEditorLanguage('markdown')).toBe(false)
     expect(new Set(IDE_LANGUAGES.map((language) => language.id)).size).toBe(IDE_LANGUAGES.length)
   })
@@ -28,6 +36,12 @@ describe('IDE language contributions', () => {
     const goMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'go')
     expect(goMenu.length).toBeGreaterThan(0)
     expect(goMenu.every((command) => command.requires?.language === 'go')).toBe(true)
+  })
+
+  it('every Python menu command requires the Python language', () => {
+    const pythonMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'python')
+    expect(pythonMenu.map((command) => command.id)).toEqual(['python.selectInterpreter', 'python.installDebugpy'])
+    expect(pythonMenu.every((command) => command.requires?.language === 'python')).toBe(true)
   })
 
   it('disable commands of a language the backend does not register', () => {

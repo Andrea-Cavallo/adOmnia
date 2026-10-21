@@ -9,7 +9,7 @@ vi.mock('@/lib/code-studio-lsp-api', () => ({}))
 
 import { breakpointDecorations, executionDecorations, expressionAt } from './codeStudioDebugEditor'
 import { debugRequestForTarget } from './codeStudioQuickActions'
-import { debugRequestForNode, javaDebugRequestForNode } from '@/lib/code-studio/codeStudioTestTree'
+import { debugRequestForNode, javaDebugRequestForNode, pythonDebugRequestForNode } from '@/lib/code-studio/codeStudioTestTree'
 import { executionPoint, hasLiveDebugger, type GoIDEDebugView } from '@/stores/codeStudioDebug'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
@@ -64,6 +64,17 @@ describe('Code Studio debugger helpers', () => {
     expect(javaDebugRequestForNode(run, run.results[1])).toEqual({ sessionId: 's1', testFile: 'src/test/java/a/FooTest.java', testMethod: 'adds', workingDirectory: '' })
     expect(javaDebugRequestForNode(run, run.results[2])?.testMethod).toBe('adds')
     expect(javaDebugRequestForNode(run, run.results[0])).toBeNull()
+  })
+
+  it('debugs a pytest node with debugpy by node id, and a whole file from its package node', () => {
+    const run = {
+      request: { sessionId: 's1', language: 'python', workingDirectory: 'svc', packages: ['tests'] },
+      results: [{ id: 'f', package: 'tests/test_demo.py', status: 'fail' }, { id: 't', package: 'tests/test_demo.py', name: 'TestBox/test_ok[param∕1]', status: 'fail' }],
+    } as unknown as GoIDETestRun
+    expect(pythonDebugRequestForNode(run, run.results[1])).toEqual({ sessionId: 's1', kind: 'pytest', targets: ['tests/test_demo.py::TestBox::test_ok[param/1]'], workingDirectory: 'svc' })
+    expect(pythonDebugRequestForNode(run, run.results[0])).toEqual({ sessionId: 's1', kind: 'pytest', targets: ['tests/test_demo.py'], workingDirectory: 'svc' })
+    const javaRun = { request: { sessionId: 's1', language: 'java', workingDirectory: '' }, results: [] } as unknown as GoIDETestRun
+    expect(pythonDebugRequestForNode(javaRun, run.results[1])).toBeNull()
   })
 
   it('exposes the execution point only while paused and prefers the selected frame', () => {

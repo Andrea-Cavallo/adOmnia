@@ -912,7 +912,7 @@ Piano: 06 JS-17 (P0). **Prerequisito:** `quarkus-super-heroes-main` (o un altro 
 
 ## PY — Supporto Python in Code Studio (piano 2026-10-21)
 
-Riferimento: `MULTILANGUAGE-IDE.md` §9.5, PY-0–PY-9. Stato: pianificato, nessuna prova eseguita. Registrare build/commit, OS, versioni degli strumenti, fixture, esito ed eventuali limiti per ogni prova.
+Riferimento: `MULTILANGUAGE-IDE.md` §9.5, PY-0–PY-9. Stato: **supporto implementato** (run script/modulo, pytest strutturato, debug debugpy, basedpyright, interpreti per unità; verifiche automatiche reali con Python 3.11/pytest 9.1.1/debugpy 1.8.22), **nessuna prova nell'app eseguita**: tutte le voci qui sotto restano aperte. Registrare build/commit, OS, versioni degli strumenti, fixture, esito ed eventuali limiti per ogni prova. Limiti già noti da non riconfermare come bug: un solo interprete per server LSP multi-root (PY-4.2), nessuna formattazione Python (PY-4.5), nessuna coverage (PY-5.5), niente exception breakpoint/attach (PY-6), `--reload` non rimosso nel debug dei config framework (PY-6.4).
 
 - [ ] **PY-M1** Aprire script sciolto e progetto pyproject con layout src: Explorer, unità, icona e Run coerenti; senza interprete mostrare azione utile, senza eseguire/download all'apertura. Progetto non fidato leggibile, processi bloccati.
 - [ ] **PY-M2** Due unità Python con venv diversi: selezione interprete, versione, import disponibili in una sola unità, cambio ambiente, ambiente eliminato, riavvio app e restore. Nessuna contaminazione, buffer non salvati conservati.
