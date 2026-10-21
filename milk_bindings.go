@@ -49,6 +49,13 @@ func (m *Milk) ServiceShutdown() error {
 // Status restituisce lo stato corrente dell'integrazione.
 func (m *Milk) Status() milk.Status { return m.manager.Status() }
 
+func (m *Milk) SessionControls(root string) (milk.SessionControls, error) {
+	return m.manager.SessionControls(root)
+}
+func (m *Milk) SetSessionControl(ctx context.Context, root, id string, value any) (milk.SessionControls, error) {
+	return m.manager.SetSessionControl(ctx, root, id, value)
+}
+
 // Settings restituisce la configurazione. Mai credenziali.
 func (m *Milk) Settings() milk.Settings { return m.manager.Settings() }
 

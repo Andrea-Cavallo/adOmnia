@@ -28,6 +28,16 @@ beforeEach(() => {
 const enabled = { includeDocument: true, includeWorkspace: true }
 
 describe('chat receives the editor context, not just the project folder', () => {
+  it('redacts explicit external files and labels images without inserting their bytes as text', async () => {
+    const prompt = await prepareStudioChat('/project', 'Review', { ...enabled, attachments: [
+      { kind: 'text', name: 'outside.py', mimeType: 'text/plain', text: 'const api_key = "very-secret-token"' },
+      { kind: 'image', name: 'shot.png', mimeType: 'image/png', data: 'BASE64_NOT_TEXT' },
+    ] })
+    expect(prompt.message).toContain('External file chosen by the user: outside.py')
+    expect(prompt.message).not.toContain('very-secret-token')
+    expect(prompt.message).not.toContain('BASE64_NOT_TEXT')
+    expect(prompt.labels).toContain('shot.png (image)')
+  })
   it('identifies the current class and includes unsaved source and project paths', async () => {
     const prompt = await prepareStudioChat('/project', 'Leggi la classe aperta', enabled)
     expect(prompt.message).toContain('Active file: src/Example.java')

@@ -1,6 +1,7 @@
 package milk
 
 import (
+	"adomnia/internal/aipolicy"
 	"adomnia/internal/netpolicy"
 	"adomnia/internal/procutil"
 
@@ -63,6 +64,7 @@ type permission struct {
 type Manager struct {
 	agent         Agent
 	mu            sync.Mutex
+	sessionMu     sync.Mutex
 	store         *SettingsStore
 	settings      Settings
 	status        Status
@@ -72,6 +74,8 @@ type Manager struct {
 	crashes       int
 	root          string
 	sessions      map[string]string // root -> sessionId
+	controls      map[string][]SessionControl
+	imagePrompts  bool
 	rootBySession map[string]string
 	turns         map[string]string // sessionId -> token
 	launchKey     string            // Launch.Key del processo in esecuzione
@@ -104,6 +108,7 @@ func NewAgentManager(store *SettingsStore, agent Agent) *Manager {
 		settings:      settings,
 		status:        Status{State: StateDisabled},
 		sessions:      map[string]string{},
+		controls:      map[string][]SessionControl{},
 		rootBySession: map[string]string{},
 		turns:         map[string]string{},
 		pending:       map[string]*permission{},
@@ -373,8 +378,13 @@ func (m *Manager) launch(command Launch, root string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), initializeTimeout)
 	defer cancel()
 	var result struct {
-		ProtocolVersion int `json:"protocolVersion"`
-		Info            struct {
+		ProtocolVersion   int `json:"protocolVersion"`
+		AgentCapabilities struct {
+			PromptCapabilities struct {
+				Image bool `json:"image"`
+			} `json:"promptCapabilities"`
+		} `json:"agentCapabilities"`
+		Info struct {
 			Version string `json:"version"`
 		} `json:"info"`
 		AgentInfo struct {
@@ -391,6 +401,7 @@ func (m *Manager) launch(command Launch, root string) error {
 	}
 	m.mu.Lock()
 	m.crashes = 0 // un avvio riuscito azzera il backoff: contano solo i crash consecutivi
+	m.imagePrompts = result.AgentCapabilities.PromptCapabilities.Image
 	m.mu.Unlock()
 	m.setStatus(func(status *Status) {
 		status.State = StateReady
@@ -613,16 +624,20 @@ func (m *Manager) abandon(running *process) {
 func (m *Manager) forgetSessionsLocked() {
 	m.sessions = map[string]string{}
 	m.rootBySession = map[string]string{}
+	m.controls = map[string][]SessionControl{}
 }
 
 // ResetSession dimentica la sessione di una cartella: il prossimo prompt ne apre
 // una nuova, senza la conversazione precedente (milk non espone session/close).
 func (m *Manager) ResetSession(root string) {
+	m.sessionMu.Lock()
+	defer m.sessionMu.Unlock()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if id, ok := m.sessions[root]; ok {
 		delete(m.sessions, root)
 		delete(m.rootBySession, id)
+		delete(m.controls, root)
 	}
 }
 
@@ -643,6 +658,8 @@ func (m *Manager) connection() (*Conn, error) {
 
 // sessionFor restituisce (creandola al primo uso) la sessione milk per una cartella.
 func (m *Manager) sessionFor(root string) (string, error) {
+	m.sessionMu.Lock()
+	defer m.sessionMu.Unlock()
 	m.mu.Lock()
 	if id, ok := m.sessions[root]; ok && id != "" {
 		m.mu.Unlock()
@@ -656,26 +673,64 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), sessionTimeout)
 	defer cancel()
 	var result struct {
-		SessionID string `json:"sessionId"`
-		Models    struct {
-			CurrentModelID string `json:"currentModelId"`
+		SessionID     string           `json:"sessionId"`
+		ConfigOptions []SessionControl `json:"configOptions"`
+		Models        struct {
+			CurrentModelID  string `json:"currentModelId"`
+			AvailableModels []struct {
+				ModelID string `json:"modelId"`
+				Name    string `json:"name"`
+			} `json:"availableModels"`
 		} `json:"models"`
 	}
-	params := map[string]any{"cwd": root}
-	if m.agent.Protocol == 1 {
-		params["mcpServers"] = m.sessionMCPServers(root)
-	}
+	params := m.sessionParams(root)
 	if err := conn.Call(ctx, "session/new", params, &result); err != nil {
 		return "", fmt.Errorf("cannot open %s session for %s: %w", m.agent.Name, root, err)
 	}
+	if result.SessionID == "" {
+		return "", errors.New("agent returned no session ID")
+	}
 	m.mu.Lock()
+	if m.current == nil || m.current.conn != conn {
+		m.mu.Unlock()
+		return "", ErrClosed
+	}
 	m.sessions[root] = result.SessionID
 	m.rootBySession[result.SessionID] = root
+	options := result.ConfigOptions
+	hasModel := false
+	for index := range options {
+		if options[index].ID == "model" && options[index].Category == "" {
+			options[index].Category = "model"
+		}
+		if options[index].Category == "model" {
+			hasModel = true
+		}
+	}
+	if !hasModel && len(result.Models.AvailableModels) > 0 {
+		model := SessionControl{ID: "_legacy_model", Name: "Model", Category: "model", Type: "select", CurrentValue: result.Models.CurrentModelID}
+		for _, item := range result.Models.AvailableModels {
+			model.Options = append(model.Options, ControlValue{Value: item.ModelID, Name: item.Name})
+		}
+		options = append(options, model)
+	}
+	m.controls[root] = options
 	m.mu.Unlock()
 	if model := result.Models.CurrentModelID; model != "" {
 		m.setStatus(func(status *Status) { status.Model = model })
 	}
 	return result.SessionID, nil
+}
+
+// sessionParams è il payload di session/new. milk v0.7+ accepts mcpServers too
+// (probe 2026-10-21); the project AI policy still filters the list.
+func (m *Manager) sessionParams(root string) map[string]any {
+	params := map[string]any{"cwd": root}
+	if m.agent.Event == "milk" {
+		params["_meta"] = map[string]any{"milk": map[string]bool{"fresh": true}}
+	}
+	params["mcpServers"] = m.sessionMCPServers(root)
+	return params
 }
 
 func (m *Manager) sessionMCPServers(root string) []any {
@@ -686,11 +741,18 @@ func (m *Manager) sessionMCPServers(root string) []any {
 	if source != nil {
 		servers = source()
 	}
-	return acpMCPServers(withBuiltinMCPServer(servers, root, m.Settings().DisableBuiltinMCP))
+	servers = withBuiltinMCPServer(servers, root, m.Settings().DisableBuiltinMCP)
+	// The project AI policy wins over the configured servers: "off" sends none and
+	// "local-only" keeps only stdio servers, so no project data reaches the network.
+	return acpMCPServers(filterMCPServersByPolicy(servers, aipolicy.Load(root)))
 }
 
 // Prompt invia un turno. I delta arrivano come evento milk.chat; cancel interrompe.
 func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptResponse, error) {
+	blocks, err := m.promptBlocks(request)
+	if err != nil {
+		return PromptResponse{}, err
+	}
 	request.Token = strings.TrimSpace(request.Token)
 	request.Message = strings.TrimSpace(request.Message)
 	if request.Token == "" || request.Message == "" {
@@ -704,6 +766,9 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 		m.mu.Lock()
 		root = m.root
 		m.mu.Unlock()
+	}
+	if !aipolicy.Allows(aipolicy.Load(root), m.agent.Event == "opencode") {
+		return PromptResponse{}, errors.New("project AI policy blocks this agent")
 	}
 	if err := m.wakeIfIdle(); err != nil {
 		return PromptResponse{}, err
@@ -748,7 +813,7 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	}
 	if err := conn.Call(ctx, "session/prompt", map[string]any{
 		"sessionId": sessionID,
-		"prompt":    []map[string]string{{"type": "text", "text": request.Message}},
+		"prompt":    blocks,
 	}, &result); err != nil {
 		if ctx.Err() != nil {
 			// Il turno continuerebbe in milk anche se nessuno aspetta più la risposta.

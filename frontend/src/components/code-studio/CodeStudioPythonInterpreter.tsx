@@ -173,6 +173,7 @@ export function CodeStudioPythonInterpreter() {
                 <span className="w-64 shrink-0 text-[12px] text-text-1">{row.title}</span>
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-3">{row.detail}</span>
                 {report?.probed && interpreter?.packages?.pytest && <span className="gs-badge shrink-0">pytest</span>}
+                {report?.probed && interpreter?.packages?.pytest_cov && <span className="gs-badge shrink-0">pytest-cov</span>}
                 {report?.probed && interpreter?.packages?.debugpy && <span className="gs-badge shrink-0">debugpy</span>}
                 {report?.probed && interpreter?.packages?.basedpyright && <span className="gs-badge shrink-0">basedpyright</span>}
                 {report?.probed && interpreter?.packages?.ruff && <span className="gs-badge shrink-0">ruff</span>}

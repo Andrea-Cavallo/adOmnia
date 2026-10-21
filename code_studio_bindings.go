@@ -2,10 +2,11 @@ package main
 
 import (
 	"adomnia/internal/activity"
-	"adomnia/internal/copilot"
-	"adomnia/internal/git"
+	"adomnia/internal/aipolicy"
 	"adomnia/internal/codestudio"
 	"adomnia/internal/codestudiowindow"
+	"adomnia/internal/copilot"
+	"adomnia/internal/git"
 	"adomnia/internal/ide/agentreview"
 	"adomnia/internal/ide/apicontract"
 	"adomnia/internal/ide/graph"
@@ -179,7 +180,7 @@ func (g *GoIDE) AIProjectPolicy(sessionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return copilot.LoadAIPolicy(root), nil
+	return aipolicy.Load(root), nil
 }
 
 // AIProjectRules loads bounded root guidance through the existing project AI filter.
@@ -197,7 +198,7 @@ func (g *GoIDE) SetAIProjectPolicy(sessionID, policy string) error {
 	if err != nil {
 		return err
 	}
-	return copilot.SaveAIPolicy(root, policy)
+	return aipolicy.Save(root, policy)
 }
 
 // AIExcludedPaths restituisce, tra i percorsi indicati, quelli che non devono mai lasciare la

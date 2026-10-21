@@ -1,6 +1,8 @@
 package milk
 
 import (
+	"adomnia/internal/aipolicy"
+
 	"encoding/json"
 	"fmt"
 	"os"
@@ -136,6 +138,26 @@ func acpMCPServers(servers []MCPServer) []any {
 		out = append(out, server.acpParams())
 	}
 	return out
+}
+
+// filterMCPServersByPolicy applies the project AI policy to the servers handed
+// to an agent session. Unknown policies fail closed. Under "local-only" only
+// stdio servers survive: an HTTP server is a remote endpoint by definition.
+func filterMCPServersByPolicy(servers []MCPServer, policy string) []MCPServer {
+	switch policy {
+	case aipolicy.Allowed:
+		return servers
+	case aipolicy.LocalOnly:
+		kept := make([]MCPServer, 0, len(servers))
+		for _, server := range servers {
+			if server.URL == "" {
+				kept = append(kept, server)
+			}
+		}
+		return kept
+	default:
+		return nil
+	}
 }
 
 // withBuiltinMCPServer prepends adOmnia's own MCP server (`adomnia mcp <root>`: collections

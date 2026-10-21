@@ -1,6 +1,8 @@
 package copilot
 
 import (
+	"adomnia/internal/aipolicy"
+
 	"bufio"
 	"os"
 	"path"
@@ -34,7 +36,7 @@ func LoadContextFilter(root string) ContextFilter {
 // LoadContextFilterFor applica anche la politica AI del progetto per un provider locale o cloud.
 func LoadContextFilterFor(root string, localProvider bool) ContextFilter {
 	filter := loadIgnorePatterns(root)
-	filter.blockAll = !PolicyAllows(LoadAIPolicy(root), localProvider)
+	filter.blockAll = !aipolicy.Allows(aipolicy.Load(root), localProvider)
 	return filter
 }
 

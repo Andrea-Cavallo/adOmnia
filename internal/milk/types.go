@@ -1,5 +1,7 @@
 package milk
 
+import "encoding/json"
+
 // State è lo stato dell'integrazione mostrato nella status bar.
 type State string
 
@@ -33,9 +35,54 @@ type Status struct {
 // PromptRequest descrive un turno di chat milk. Token è generato dal frontend e
 // collega progress/cancel; Root è la cartella del progetto attivo.
 type PromptRequest struct {
-	Token   string `json:"token"`
-	Root    string `json:"root,omitempty"`
-	Message string `json:"message"`
+	Token   string            `json:"token"`
+	Root    string            `json:"root,omitempty"`
+	Message string            `json:"message"`
+	Images  []ImageAttachment `json:"images,omitempty"`
+}
+
+type ImageAttachment struct {
+	Name     string `json:"name"`
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
+}
+
+// SessionControl mirrors the selectable ACP session options; model IDs come from the agent.
+type ControlValue struct {
+	Value   string         `json:"value,omitempty"`
+	Name    string         `json:"name"`
+	Options []ControlValue `json:"options,omitempty"`
+}
+type SessionControl struct {
+	ID           string         `json:"id"`
+	Name         string         `json:"name"`
+	Category     string         `json:"category,omitempty"`
+	Type         string         `json:"type"`
+	CurrentValue any            `json:"currentValue"`
+	Options      []ControlValue `json:"options,omitempty"`
+}
+
+// ACP v1 uses id; milk's v2 uses configId. The renderer sees one normalized key.
+func (c *SessionControl) UnmarshalJSON(data []byte) error {
+	type plain SessionControl
+	var wire struct {
+		*plain
+		ConfigID string `json:"configId"`
+	}
+	wire.plain = (*plain)(c)
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if c.ID == "" {
+		c.ID = wire.ConfigID
+	}
+	return nil
+}
+
+type SessionControls struct {
+	Root     string           `json:"root"`
+	Controls []SessionControl `json:"controls"`
+	Images   bool             `json:"images"`
 }
 
 // PromptResponse conferma che il prompt è stato accettato.
@@ -70,6 +117,13 @@ type ChatEvent struct {
 	Route      *RouteInfo  `json:"route,omitempty"`
 	Error      string      `json:"error,omitempty"`
 	StopReason string      `json:"stopReason,omitempty"`
+	Plan       []PlanEntry `json:"plan,omitempty"`
+}
+
+type PlanEntry struct {
+	Content  string `json:"content"`
+	Status   string `json:"status"`
+	Priority string `json:"priority,omitempty"`
 }
 
 // PermissionOption è una scelta offerta da una richiesta di autorizzazione.

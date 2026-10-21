@@ -54,6 +54,65 @@ export class AgentsInfo {
 }
 
 /**
+ * SessionControl mirrors the selectable ACP session options; model IDs come from the agent.
+ */
+export class ControlValue {
+    "value"?: string;
+    "name": string;
+    "options"?: ControlValue[];
+
+    /** Creates a new ControlValue instance. */
+    constructor($$source: Partial<ControlValue> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ControlValue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ControlValue {
+        const $$createField2_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("options" in $$parsedSource) {
+            $$parsedSource["options"] = $$createField2_0($$parsedSource["options"]);
+        }
+        return new ControlValue($$parsedSource as Partial<ControlValue>);
+    }
+}
+
+export class ImageAttachment {
+    "name": string;
+    "mimeType": string;
+    "data": string;
+
+    /** Creates a new ImageAttachment instance. */
+    constructor($$source: Partial<ImageAttachment> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("mimeType" in $$source)) {
+            this["mimeType"] = "";
+        }
+        if (!("data" in $$source)) {
+            this["data"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageAttachment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageAttachment {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ImageAttachment($$parsedSource as Partial<ImageAttachment>);
+    }
+}
+
+/**
  * MCPServer è un "context server" configurato una volta sola e passato a ogni
  * sessione ACP di ogni agente (session/new.mcpServers). Stdio se Command è
  * valorizzato, altrimenti HTTP su URL.
@@ -80,8 +139,8 @@ export class MCPServer {
      */
     static createFrom($$source: any = {}): MCPServer {
         const $$createField2_0 = $$createType2;
-        const $$createField3_0 = $$createType3;
-        const $$createField5_0 = $$createType3;
+        const $$createField3_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField2_0($$parsedSource["args"]);
@@ -104,6 +163,7 @@ export class PromptRequest {
     "token": string;
     "root"?: string;
     "message": string;
+    "images"?: ImageAttachment[];
 
     /** Creates a new PromptRequest instance. */
     constructor($$source: Partial<PromptRequest> = {}) {
@@ -121,7 +181,11 @@ export class PromptRequest {
      * Creates a new PromptRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptRequest {
+        const $$createField3_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("images" in $$parsedSource) {
+            $$parsedSource["images"] = $$createField3_0($$parsedSource["images"]);
+        }
         return new PromptRequest($$parsedSource as Partial<PromptRequest>);
     }
 }
@@ -198,6 +262,78 @@ export class ProviderStatus {
     }
 }
 
+export class SessionControl {
+    "id": string;
+    "name": string;
+    "category"?: string;
+    "type": string;
+    "currentValue": any;
+    "options"?: ControlValue[];
+
+    /** Creates a new SessionControl instance. */
+    constructor($$source: Partial<SessionControl> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("currentValue" in $$source)) {
+            this["currentValue"] = null;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionControl instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionControl {
+        const $$createField5_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("options" in $$parsedSource) {
+            $$parsedSource["options"] = $$createField5_0($$parsedSource["options"]);
+        }
+        return new SessionControl($$parsedSource as Partial<SessionControl>);
+    }
+}
+
+export class SessionControls {
+    "root": string;
+    "controls": SessionControl[];
+    "images": boolean;
+
+    /** Creates a new SessionControls instance. */
+    constructor($$source: Partial<SessionControls> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("controls" in $$source)) {
+            this["controls"] = [];
+        }
+        if (!("images" in $$source)) {
+            this["images"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SessionControls instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SessionControls {
+        const $$createField1_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("controls" in $$parsedSource) {
+            $$parsedSource["controls"] = $$createField1_0($$parsedSource["controls"]);
+        }
+        return new SessionControls($$parsedSource as Partial<SessionControls>);
+    }
+}
+
 /**
  * Settings è la configurazione di adOmnia per l'integrazione milk. Non contiene
  * segreti: le credenziali degli agenti restano nel config di milk (~/.milk).
@@ -257,7 +393,7 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField5_0 = $$createType3;
+        const $$createField5_0 = $$createType5;
         const $$createField6_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("env" in $$parsedSource) {
@@ -346,4 +482,10 @@ export class Status {
 const $$createType0 = ProviderStatus.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = $Create.Map($Create.Any, $Create.Any);
+const $$createType3 = ControlValue.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Map($Create.Any, $Create.Any);
+const $$createType6 = ImageAttachment.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = SessionControl.createFrom;
+const $$createType9 = $Create.Array($$createType8);

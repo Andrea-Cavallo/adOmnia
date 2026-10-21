@@ -1,6 +1,8 @@
 package copilot
 
 import (
+	"adomnia/internal/aipolicy"
+
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,8 +48,8 @@ func TestProjectRulesPolicyFiltersAndBounds(t *testing.T) {
 	if len(got) != 1 || got[0].Path != "CLAUDE.md" || !got[0].Truncated || len(got[0].Text) > maxProjectRuleBytes || !utf8.ValidString(got[0].Text) {
 		t.Fatalf("bad bounded rules: %d", len(got))
 	}
-	for _, policy := range []string{AIPolicyOff, AIPolicyLocalOnly} {
-		if err := SaveAIPolicy(root, policy); err != nil {
+	for _, policy := range []string{aipolicy.Off, aipolicy.LocalOnly} {
+		if err := aipolicy.Save(root, policy); err != nil {
 			t.Fatal(err)
 		}
 		if len(ProjectRules(root)) != 0 {

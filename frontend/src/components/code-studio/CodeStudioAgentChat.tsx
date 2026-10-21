@@ -1,7 +1,7 @@
 import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { CodeStudioAgentReviewBar } from './CodeStudioAgentReviewBar'
-import { memo, useEffect, useMemo, useRef, type ComponentType, type MouseEvent } from 'react'
-import { ChevronRight, Plus, Send, Settings2, Square } from 'lucide-react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent } from 'react'
+import { ChevronRight, Plus, Send, Settings2, Square, Paperclip, X, RefreshCw } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { Browser } from '@wailsio/runtime'
 import '@fontsource/geist/400.css'
@@ -12,13 +12,17 @@ import type { GoIDESession } from '@/lib/code-studio-api'
 import { renderMarkdown } from '@/lib/markdownDoc'
 import { useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
 import type { AgentChatMessage, AgentChatStore, AgentToolActivity } from '@/stores/agentChat'
-import type { MilkRouteInfo, MilkStatus } from '@/lib/milk-api'
+import type { AgentSessionControls, MilkRouteInfo, MilkStatus } from '@/lib/milk-api'
+import { readAgentAttachments, type AgentAttachment } from '@/lib/code-studio/agentAttachments'
 import { useToolView } from './studioToolState'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { selectedRange } from './CodeStudioCopilotChat'
+import { CodeStudioAgentSessionOptions } from './CodeStudioAgentSessionOptions'
 
 /** One ACP agent as the chat shows it: milk and Claude Code share everything else. */
 export interface ChatAgent {
+  sessionControls?: (root: string) => Promise<AgentSessionControls>
+  setSessionControl?: (root: string, id: string, value: unknown) => Promise<AgentSessionControls>
   tool: 'milk' | 'claude' | 'opencode'
   name: string
   store: AgentChatStore
@@ -108,6 +112,7 @@ const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgen
         </details>
       )}
       {message.tools && message.tools.length > 0 && <ToolList tools={message.tools} />}
+      {!!message.plan?.length && <details className="milk-thought"><summary>Task plan · {message.plan.filter(item => item.status === 'completed').length}/{message.plan.length}</summary><ol className="space-y-1 py-2">{message.plan.map((item, index) => <li key={index} className="flex gap-2 text-[11px]"><span>{item.status === 'completed' ? '✓' : item.status === 'in_progress' ? '→' : '·'}</span><span>{item.content}</span></li>)}</ol></details>}
       {message.content && (command
         // Slash commands are executed by the agent itself: their output is terminal text with aligned columns.
         ? <pre className="milk-output milk-command-output">{message.content}</pre>
@@ -121,6 +126,8 @@ const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgen
 export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgentChatProps) {
   const { store, Logo, name, tool } = agent
   const root = session.project.realPath
+  const activeRoot = useRef(root)
+  activeRoot.current = root
   const status = store((state) => state.status)
   const thread = store((state) => state.chatThreads[root])
   const permissions = store((state) => state.permissions)
@@ -128,6 +135,15 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const [includeFile, setIncludeFile] = useToolView(session.id, tool, 'includeFile', true)
   const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, tool, 'includeWorkspace', true)
   const [includeRules, setIncludeRules] = useToolView(session.id, tool, 'includeRules', true)
+  const [includeSelection, setIncludeSelection] = useToolView(session.id, tool, 'includeSelection', true)
+  const [controls, setControls] = useState<AgentSessionControls | null>(null)
+  const [controlsError, setControlsError] = useState('')
+  const [controlsBusy, setControlsBusy] = useState(false)
+  const [controlsRetry, setControlsRetry] = useState(0)
+  const [attachmentsByRoot, setAttachmentsByRoot] = useState<Record<string, AgentAttachment[]>>({})
+  const [attachmentError, setAttachmentError] = useState('')
+  const [readingFiles, setReadingFiles] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const pendingDraft = useCodeStudioAssistantStore((state) => state.draft)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -149,18 +165,43 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const busy = !!thread?.busyToken
   const ready = status?.state === 'ready'
   const messages = thread?.messages ?? []
+  const attachments = attachmentsByRoot[root] ?? []
+  const currentControls = controls?.root === root ? controls : null
+  useEffect(() => { setControls(null); setControlsError(''); setAttachmentError('') }, [root, tool])
+  useEffect(() => {
+    if (!ready || busy || !agent.sessionControls) return
+    let live = true
+    setControlsBusy(true)
+    agent.sessionControls(root).then(result => { if (live) { setControls(result); setControlsError('') } }, error => { if (live) setControlsError(error instanceof Error ? error.message : String(error)) }).finally(() => { if (live) setControlsBusy(false) })
+    return () => { live = false }
+  }, [agent, root, ready, busy, controlsRetry])
 
-  const send = () => {
-    if (!ready || busy || !draft.trim()) return
-    const message = draft
-    setDraft('')
-    void store.getState().sendChat(root, message, {
+  const changeControl = async (id: string, value: unknown) => {
+    if (!agent.setSessionControl || busy || controlsBusy) return
+    setControlsBusy(true); setControlsError('')
+    try {
+      const result = await agent.setSessionControl(root, id, value)
+      if (id === '_milk_agent') await store.getState().newChat(root, false)
+      if (activeRoot.current === root) setControls(result)
+    } catch (error) { if (activeRoot.current === root) setControlsError(error instanceof Error ? error.message : String(error)) }
+    finally { if (activeRoot.current === root) setControlsBusy(false) }
+  }
+
+  const send = async () => {
+    if (!ready || busy || controlsBusy || readingFiles || (!draft.trim() && !attachments.length)) return
+    const message = draft.trim() || 'Review the attached files.'
+    const sent = await store.getState().sendChat(root, message, {
       documentId: document?.document.id,
-      selection: includeFile ? selectedRange(document ?? null) : null,
+      selection: includeSelection ? selectedRange(document ?? null) : null,
       includeDocument: includeFile,
       includeWorkspace,
       includeRules,
+      attachments,
     })
+    if (sent) {
+      if (activeRoot.current === root) setDraft('')
+      setAttachmentsByRoot(current => ({ ...current, [root]: [] }))
+    }
   }
 
   const openSettings = () => store.getState().setDialogOpen(true)
@@ -174,9 +215,13 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
         {/* Who serves the turns (Claude Code: plan, API key, AWS Bedrock, Vertex AI, gateway) and with which model. */}
         {(status?.backend || status?.model) && <span className="milk-bar-version min-w-0 truncate" title={[status.backend, status.model].filter(Boolean).join(' · ')}>{[status.backend, status.model].filter(Boolean).join(' · ')}</span>}
         <span className="flex-1" />
+        <CodeStudioAgentSessionOptions controls={currentControls} disabled={busy || controlsBusy} onChange={changeControl} />
         <button type="button" onClick={openSettings} className="code-studio-icon-button h-7 w-7" title={`${name} settings`} aria-label={`${name} settings`}><Settings2 size={14} /></button>
-        <button type="button" onClick={() => void store.getState().newChat(root)} className="code-studio-icon-button h-7 w-7" title="New chat" aria-label="New chat"><Plus size={15} /></button>
+        <button type="button" disabled={busy || controlsBusy} onClick={() => { void store.getState().newChat(root).then(() => { setControls(null); setControlsRetry(value => value + 1) }) }} className="code-studio-icon-button h-7 w-7" title="New chat" aria-label="New chat"><Plus size={15} /></button>
       </header>
+      {controlsError && <div role="alert" className="milk-error">{controlsError}<button type="button" className="gs-btn gs-btn-ghost gs-btn-sm" disabled={controlsBusy} onClick={() => setControlsRetry(value => value + 1)}><RefreshCw size={12} />Retry</button></div>}
+      {tool === 'milk' && (currentControls?.controls ?? []).some(item => item.id === '_milk_agent') && <p className="px-2 py-1 text-[10px] text-text-4">Changing the primary agent updates milk’s global config and opens a new chat for this project.</p>}
+      {tool === 'milk' && ready && !(currentControls?.controls ?? []).some(item => item.id === '_milk_agent') && <p className="px-2 py-1 text-[10px] text-text-4">Primary-agent selection requires milk 0.7+ and configured agents. <button type="button" className="underline" onClick={openSettings}>Configure / update milk</button></p>}
 
       <div ref={scrollRef} className="milk-scroll">
         {!ready ? (
@@ -219,23 +264,39 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
         <CodeStudioAgentReviewBar root={root} busy={busy} />
         <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label={`${name} context`}>
           <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
-          <button type="button" aria-pressed={includeFile} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>
+          <button type="button" disabled={!document} aria-pressed={includeFile && !!document} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>
+          <button type="button" disabled={!document} aria-pressed={includeSelection} onClick={() => setIncludeSelection(!includeSelection)} className="rounded border border-border-1 px-2 py-1">{includeSelection ? '✓ ' : ''}Selection</button>
           <button type="button" aria-pressed={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} title={session.project.name} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeWorkspace ? '✓ ' : ''}{session.project.name}</button>
         </div>
+        <p className="mb-2 text-[10px] text-text-4">Enabled context and selected attachments are sent to {name}. Unsaved editor changes are included; excluded paths and text secrets are filtered.</p>
+        {!!attachments.length && <div className="mb-2 flex flex-wrap gap-1">{attachments.map((item, index) => <span key={`${item.name}-${index}`} className="flex items-center gap-1 rounded border border-border-1 px-2 py-1 text-[11px] text-text-2"><Paperclip size={11} />{item.name}<button type="button" disabled={busy} aria-label={`Remove ${item.name}`} onClick={() => setAttachmentsByRoot(current => ({ ...current, [root]: attachments.filter((_, position) => position !== index) }))}><X size={11} /></button></span>)}</div>}
+        {attachmentError && <p role="alert" className="milk-error">{attachmentError}</p>}
+        <input ref={fileInput} type="file" multiple className="hidden" aria-label="Attach external files" onChange={async event => {
+          const files = Array.from(event.target.files ?? []); event.target.value = ''
+          setReadingFiles(true); setAttachmentError('')
+          try {
+            const found = await readAgentAttachments(files, currentControls?.images === true)
+            if (attachments.length + found.length > 6) throw new Error('Attach at most six files.')
+            if ([...attachments, ...found].filter(item => item.kind === 'image').length > 4) throw new Error('Attach at most four images.')
+            setAttachmentsByRoot(current => ({ ...current, [root]: [...(current[root] ?? []), ...found] }))
+          } catch (error) { setAttachmentError(error instanceof Error ? error.message : String(error)) }
+          finally { setReadingFiles(false) }
+        }} />
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }}
+          onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send() } }}
           disabled={!ready || busy}
           rows={3}
           placeholder={ready ? (busy ? `${name} is answering…` : `Ask ${name}, or type / for a command`) : `Enable ${name} to chat`}
           aria-label={`Message ${name}`}
         />
         <div className="milk-composer-bar">
+          <button type="button" disabled={!ready || busy || controlsBusy || readingFiles} onClick={() => fileInput.current?.click()} title={currentControls?.images ? 'Attach text files or PNG/JPEG/GIF/WebP images' : 'Attach UTF-8 files. This agent does not advertise image input through ACP.'} aria-label="Add attachments" className="code-studio-icon-button h-7 w-7"><Paperclip size={14} /></button>
           <span>Enter to send, Shift+Enter for a new line</span>
           {busy
             ? <button type="button" onClick={() => void store.getState().stopChat(root)} className="milk-stop"><Square size={10} fill="currentColor" />Stop</button>
-            : <button type="button" onClick={send} disabled={!ready || !draft.trim()} className="milk-send" title="Send" aria-label="Send"><Send size={14} /></button>}
+            : <button type="button" onClick={() => void send()} disabled={!ready || controlsBusy || readingFiles || (!draft.trim() && !attachments.length)} className="milk-send" title="Send" aria-label="Send"><Send size={14} /></button>}
         </div>
       </div>
     </section>

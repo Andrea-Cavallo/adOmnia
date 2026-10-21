@@ -333,3 +333,5 @@ Resource diagnostics: adjust the backend Go GC budget live, restart gopls with a
 Python in Code Studio: script/module Run, structured pytest tests, debugpy debugging and basedpyright editing assistance, with per-unit interpreter discovery and selection. All tools are used from your local environments or installed explicitly with visible, pinned commands; nothing is installed silently. Notebooks, remote debugging and Python formatting remain planned. Desktop acceptance is pending. See [Code Studio](docs/CODE-STUDIO.md).
 
 Run configurations provide project-aware creation, searchable saved entries and types, review of detected targets, and protection for unsaved edits. See [Code Studio](docs/CODE-STUDIO.md) for the current workflow and acceptance limits.
+
+Claude Code and milk chat share filtered live project context and support explicit text attachments. Model selectors follow agent capabilities; images are available only on image-capable ACP adapters. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending. See [Code Studio](docs/CODE-STUDIO.md).
