@@ -29,6 +29,49 @@ func TestNeutralProcess(t *testing.T) {
 	}
 }
 
+// closingParser non emette righe: chiude l'albero solo quando il processo termina.
+type closingParser struct{ closed bool }
+
+func (closingParser) Parse([]byte) (Event, bool) { return Event{}, false }
+
+func (p *closingParser) Finish() []Event {
+	if p.closed {
+		return nil
+	}
+	p.closed = true
+	return []Event{{Action: "skip", Package: "neutral", Test: "notfinished"}}
+}
+
+// TestManagerFinishesOpenTestsWhenTheProcessEnds: un run annullato non manda il report finale; il
+// parser chiude i test aperti una sola volta (PY-5.6).
+func TestManagerFinishesOpenTestsWhenTheProcessEnds(t *testing.T) {
+	processes := run.NewProcessManager()
+	t.Cleanup(processes.Shutdown)
+	manager := NewManager()
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan Snapshot, 1)
+	parser := &closingParser{}
+	_, err = manager.Start(processes, run.CommandSpec{SessionID: "stopped", Executable: binary, Arguments: []string{"-test.run=^TestNeutralProcess$"}}, parser, nil, Hooks{Publish: func(snapshot Snapshot) {
+		if snapshot.Status != TestRunning {
+			done <- snapshot
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case snapshot := <-done:
+		if snapshot.Summary.Skipped != 1 || snapshot.Summary.Running != 0 {
+			t.Fatalf("unfinished tests were not closed: %+v", snapshot)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("completion lost")
+	}
+}
+
 func TestManagerPreservesFailureExitCodeAndDiagnostics(t *testing.T) {
 	processes := run.NewProcessManager()
 	t.Cleanup(processes.Shutdown)

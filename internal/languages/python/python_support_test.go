@@ -308,6 +308,40 @@ func TestPytestParserCollectErrorMarksFile(t *testing.T) {
 	}
 }
 
+// TestPytestParserFinishesUnfinishedTests: un run annullato non manda il marcatore finale; il
+// parser chiude i test rimasti aperti come skip con il motivo, una sola volta (PY-5.6).
+func TestPytestParserFinishesUnfinishedTests(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "tests", "test_slow.py")
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	content := strings.Join([]string{
+		`{"event": "collect", "nodeid": "tests/test_slow.py::test_slow", "file": ` + jsonPath(file) + `}`,
+		`{"event": "report", "nodeid": "tests/test_slow.py::test_slow", "file": ` + jsonPath(file) + `, "when": "call", "outcome": "passed", "duration": 0.001, "line": 2}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	parser := newPytestParser(root, path)
+	parser.ParseAll([]byte("still running"))
+	events := parser.Finish()
+	if events == nil || parser.Finish() != nil {
+		t.Fatalf("finish must close the tree exactly once: %v", events)
+	}
+	tree := idetesting.NewTree()
+	for _, event := range events {
+		tree.Apply(event)
+	}
+	results, summary := tree.Snapshot()
+	if summary.Skipped != 1 || summary.Running != 0 {
+		t.Fatalf("summary %+v results %+v", summary, results)
+	}
+	for _, result := range results {
+		if result.Name == "test_slow" && !strings.Contains(result.Output, "the run ended before this test finished") {
+			t.Fatalf("output %q", result.Output)
+		}
+	}
+}
+
 func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")

@@ -95,6 +95,13 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 			r.line(r.pending)
 			r.pending = nil
 		}
+		// Un run annullato o un processo morto non produce il report finale: il parser chiude i
+		// test rimasti aperti invece di lasciarli "running" per sempre (PY-5.6).
+		if finisher, ok := r.parser.(Finisher); ok {
+			for _, event := range finisher.Finish() {
+				r.tree.Apply(event)
+			}
+		}
 		r.finished = true
 		r.snapshot.ExitCode = cloneInt(e.ExitCode)
 		r.snapshot.Diagnostics = string(r.diagnostics)

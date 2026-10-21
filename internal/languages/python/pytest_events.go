@@ -77,6 +77,10 @@ func newPytestParser(root, eventsPath string) *pytestParser {
 
 func (*pytestParser) Parse([]byte) (idetesting.Event, bool) { return idetesting.Event{}, false }
 
+// Finish chiude l'albero quando pytest termina senza il marcatore finale (run annullato o
+// processo morto): i test rimasti aperti diventano skip con il motivo, non restano "running".
+func (p *pytestParser) Finish() []idetesting.Event { return p.finish() }
+
 // ParseAll legge gli eventi nuovi del plugin a ogni riga di output: l'albero si aggiorna durante
 // l'esecuzione e l'ultima riga (il marcatore del plugin) garantisce la lettura finale.
 func (p *pytestParser) ParseAll(_ []byte) []idetesting.Event {
@@ -328,7 +332,7 @@ func (p *pytestParser) finish() []idetesting.Event {
 			continue
 		}
 		if !test.failed {
-			test.skipped, test.reason = true, "the test did not finish"
+			test.skipped, test.reason = true, "the run ended before this test finished"
 		}
 		events = append(events, p.finishTest(test)...)
 	}
