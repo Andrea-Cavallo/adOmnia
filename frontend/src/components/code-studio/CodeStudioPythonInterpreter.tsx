@@ -82,7 +82,7 @@ export function CodeStudioPythonInterpreter() {
       ...report.installed.map((interpreter): InterpreterRow => ({
         path: interpreter.path,
         title: interpreter.version ? `Python ${interpreter.version}` : 'Python',
-        detail: `${interpreter.path} · ${interpreter.source}`,
+        detail: [interpreter.path, interpreter.source, interpreter.architecture].filter(Boolean).join(' · '),
         interpreter,
       })),
     ]

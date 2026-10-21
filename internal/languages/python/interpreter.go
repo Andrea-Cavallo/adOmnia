@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,8 +28,11 @@ type Interpreter struct {
 	// Source dice l'origine: "saved" (scelta dell'utente), "project" (ambiente nel progetto),
 	// "VIRTUAL_ENV" (ambiente attivato fuori dal progetto) o "PATH".
 	Source string `json:"source"`
-	// Problem segnala un candidato che non si dovrebbe usare senza sceglierlo esplicitamente.
+	// Problem segnala un candidato che non si dovrebbe usare senza sceglierlo esplicitamente
+	// (ambiente fuori dal progetto, probe senza risposta, versione incompatibile con l'unità).
 	Problem string `json:"problem,omitempty"`
+	// Architecture è la coppia macchina/bits del probe (`"AMD64 64-bit"`); "" se non sonda.
+	Architecture string `json:"architecture,omitempty"`
 	// Packages è ciò che l'interprete ha già installato (pytest, debugpy, basedpyright):
 	// valorizzato solo dal probe.
 	Packages map[string]bool `json:"packages,omitempty"`
@@ -36,41 +41,65 @@ type Interpreter struct {
 // EnvironmentDirectories sono i nomi delle cartelle di ambiente virtuali riconosciute.
 var environmentDirectories = []string{".venv", "venv", "env"}
 
-// interpreterProbe è il comando che riporta versione, eseguibile e pacchetti rilevanti in un solo
-// avvio: nessun `pip list`, nessuna importazione del progetto.
-const interpreterProbe = "import importlib.util,json,sys;print(json.dumps({'version':sys.version.split()[0],'executable':sys.executable,'prefix':sys.prefix,'packages':{'pytest':importlib.util.find_spec('pytest') is not None,'debugpy':importlib.util.find_spec('debugpy') is not None,'basedpyright':importlib.util.find_spec('basedpyright') is not None}}))"
+// interpreterProbe è il comando che riporta versione, eseguibile, architettura e pacchetti
+// rilevanti in un solo avvio: nessun `pip list`, nessuna importazione del progetto.
+const interpreterProbe = "import importlib.util,json,platform,struct,sys;print(json.dumps({'version':sys.version.split()[0],'executable':sys.executable,'prefix':sys.prefix,'architecture':(platform.machine() or 'unknown')+' '+str(struct.calcsize('P')*8)+'-bit','packages':{'pytest':importlib.util.find_spec('pytest') is not None,'debugpy':importlib.util.find_spec('debugpy') is not None,'basedpyright':importlib.util.find_spec('basedpyright') is not None}}))"
 
-// InterpreterInfo è il risultato del probe: versione, eseguibile reale e strumenti presenti.
+// InterpreterInfo è il risultato del probe: versione, eseguibile reale, architettura e strumenti presenti.
 type InterpreterInfo struct {
-	Version    string          `json:"version"`
-	Executable string          `json:"executable"`
-	Prefix     string          `json:"prefix"`
-	Packages   map[string]bool `json:"packages"`
+	Version      string          `json:"version"`
+	Executable   string          `json:"executable"`
+	Prefix       string          `json:"prefix"`
+	Architecture string          `json:"architecture"`
+	Packages     map[string]bool `json:"packages"`
 }
 
-const interpreterProbeTimeout = 6 * time.Second
+// interpreterProbeTimeout è il tempo massimo di un probe: un interprete bloccato non deve
+// fermare la lista (variabile per i test, PY-2.6).
+var interpreterProbeTimeout = 6 * time.Second
 
 // probeInterpreter esegue il probe su un interprete; sostituibile nei test.
 var probeInterpreter = readInterpreterInfo
 
 // readInterpreterInfo esegue `<binary> -c interpreterProbe` e legge il JSON in risposta.
+// La lettura non attende la chiusura del tubo: un interprete bloccato — o un suo figlio che
+// tiene lo stdout aperto — deve uscire con il timeout, e il suo albero di processi viene
+// terminato invece di restare orfano (PY-2.6, rosso→verde `TestProbeTimesOutOnAStuckInterpreter`).
 func readInterpreterInfo(binary string) (InterpreterInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), interpreterProbeTimeout)
 	defer cancel()
 	command := procutil.CommandContext(ctx, binary, "-c", interpreterProbe)
 	process.Configure(command, false)
-	output, err := command.Output()
-	if ctx.Err() != nil {
-		return InterpreterInfo{}, fmt.Errorf("%s does not answer a version probe", binary)
-	}
+	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return InterpreterInfo{}, err
 	}
-	var info InterpreterInfo
-	if err := json.Unmarshal(output, &info); err != nil {
-		return InterpreterInfo{}, fmt.Errorf("unrecognized interpreter probe output")
+	if err := command.Start(); err != nil {
+		return InterpreterInfo{}, err
 	}
-	return info, nil
+	output := make(chan []byte, 1)
+	go func() {
+		data, _ := io.ReadAll(stdout)
+		output <- data
+	}()
+	select {
+	case data := <-output:
+		if err := command.Wait(); err != nil {
+			return InterpreterInfo{}, err
+		}
+		var info InterpreterInfo
+		if err := json.Unmarshal(data, &info); err != nil {
+			return InterpreterInfo{}, fmt.Errorf("unrecognized interpreter probe output")
+		}
+		return info, nil
+	case <-ctx.Done():
+		_ = process.TerminateTree(command)
+		go func() {
+			<-output
+			_ = command.Wait()
+		}()
+		return InterpreterInfo{}, fmt.Errorf("%s does not answer a version probe", binary)
+	}
 }
 
 // isInterpreter è il controllo statico di un eseguibile interprete: file regolare, non alias
@@ -200,8 +229,8 @@ func workingDirectoryOr(workingDirectory, root string) string {
 	return root
 }
 
-// ProbeInterpreters completa i candidati con versione, eseguibile reale e strumenti presenti.
-// Esegue un comando per interprete: chiamarla solo con il progetto autorizzato (PY-8.1).
+// ProbeInterpreters completa i candidati con versione, eseguibile reale, architettura e strumenti
+// presenti. Esegue un comando per interprete: chiamarla solo con il progetto autorizzato (PY-8.1).
 func ProbeInterpreters(interpreters []Interpreter) []Interpreter {
 	for index := range interpreters {
 		info, err := probeInterpreter(interpreters[index].Path)
@@ -210,9 +239,174 @@ func ProbeInterpreters(interpreters []Interpreter) []Interpreter {
 			continue
 		}
 		interpreters[index].Version = info.Version
+		interpreters[index].Architecture = info.Architecture
 		interpreters[index].Packages = info.Packages
 	}
 	return interpreters
+}
+
+// CheckRequiresPython confronta la versione di un interprete con il vincolo `requires-python`
+// di un'unità (sottoinsieme PEP 440: `>=`, `>`, `<=`, `<`, `==`, `!=`, `~=`, `===`, combinati con
+// la virgola e con `*` nelle clausole `==`/`!=`). Restituisce "" se l'interprete è compatibile o
+// se versione o vincolo non sono interpretabili — un vincolo che non si conosce non blocca
+// niente (PY-2.1); altrimenti il motivo da mostrare accanto al candidato.
+func CheckRequiresPython(version, requires string) string {
+	constraint := strings.TrimSpace(requires)
+	if constraint == "" {
+		return ""
+	}
+	want, ok := parsePythonVersion(version)
+	if !ok {
+		return ""
+	}
+	for _, clause := range strings.Split(constraint, ",") {
+		clause = strings.TrimSpace(clause)
+		if clause == "" {
+			continue
+		}
+		satisfied, known := clauseSatisfied(want, clause)
+		if !known {
+			return ""
+		}
+		if !satisfied {
+			return fmt.Sprintf("Python %s does not satisfy this project (requires-python %s)", version, constraint)
+		}
+	}
+	return ""
+}
+
+// FlagIncompatible segnala i candidati la cui versione non soddisfa `requires-python` dell'unità:
+// restano scegliabili esplicitamente, ma il dialogo mostra il motivo invece di usarli in silenzio.
+func FlagIncompatible(interpreters []Interpreter, requires string) []Interpreter {
+	if strings.TrimSpace(requires) == "" {
+		return interpreters
+	}
+	for index := range interpreters {
+		if interpreters[index].Version == "" {
+			continue
+		}
+		problem := CheckRequiresPython(interpreters[index].Version, requires)
+		if problem == "" {
+			continue
+		}
+		if interpreters[index].Problem != "" {
+			interpreters[index].Problem += "; "
+		}
+		interpreters[index].Problem += problem
+	}
+	return interpreters
+}
+
+// parsePythonVersion legge le componenti numeriche di una versione ("3.11.2", "3.13.0rc1"):
+// il resto della stringa (pre-release, locale) non cambia il confronto minore/maggiore.
+func parsePythonVersion(version string) ([]int, bool) {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return nil, false
+	}
+	var parts []int
+	for _, component := range strings.Split(version, ".") {
+		digits := component
+		for len(digits) > 0 && digits[0] >= '0' && digits[0] <= '9' {
+			digits = digits[1:]
+		}
+		number := component[:len(component)-len(digits)]
+		if number == "" {
+			break
+		}
+		value, err := strconv.Atoi(number)
+		if err != nil {
+			return nil, false
+		}
+		parts = append(parts, value)
+	}
+	return parts, len(parts) > 0
+}
+
+// versionCompare confronta due versioni componente per componente, completando con zeri.
+func versionCompare(left, right []int) int {
+	for index := 0; index < len(left) || index < len(right); index++ {
+		a, b := 0, 0
+		if index < len(left) {
+			a = left[index]
+		}
+		if index < len(right) {
+			b = right[index]
+		}
+		if a != b {
+			if a < b {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}
+
+// prefixMatch dice se version inizia con prefix (per `==3.11.*`, `~=3.10`).
+func prefixMatch(version, prefix []int) bool {
+	if len(prefix) > len(version) {
+		return false
+	}
+	for index := range prefix {
+		if version[index] != prefix[index] {
+			return false
+		}
+	}
+	return true
+}
+
+// clauseSatisfied valuta una singola clausola del vincolo. known = false quando la clausola
+// non è interpretabile: il chiamante decide, qui si preferisce non bloccare.
+func clauseSatisfied(version []int, clause string) (satisfied, known bool) {
+	for _, operator := range []string{"===", "==", "!=", ">=", "<=", "~=", ">", "<"} {
+		if !strings.HasPrefix(clause, operator) {
+			continue
+		}
+		operand := strings.TrimSpace(clause[len(operator):])
+		wildcard := strings.HasSuffix(operand, "*")
+		operand = strings.TrimSpace(strings.TrimSuffix(operand, "*"))
+		target, ok := parsePythonVersion(operand)
+		if !ok {
+			return false, false
+		}
+		comparison := versionCompare(version, target)
+		switch operator {
+		case "===":
+			return comparison == 0, true
+		case "==":
+			if wildcard {
+				return prefixMatch(version, target), true
+			}
+			return comparison == 0, true
+		case "!=":
+			if wildcard {
+				return !prefixMatch(version, target), true
+			}
+			return comparison != 0, true
+		case ">=":
+			return comparison >= 0, true
+		case "<=":
+			return comparison <= 0, true
+		case ">":
+			return comparison > 0, true
+		case "<":
+			return comparison < 0, true
+		case "~=":
+			// `~=3.10` significa >=3.10 e <4; `~=3.10.1` significa >=3.10.1 e <3.11.
+			// Con una sola componente la clausola non è valida PEP 440: non si blocca.
+			if len(target) < 2 {
+				return false, false
+			}
+			if !prefixMatch(version, target[:len(target)-1]) {
+				return false, true
+			}
+			upper := append([]int(nil), target[:len(target)-1]...)
+			upper[len(upper)-1]++
+			return versionCompare(version, target) >= 0 && versionCompare(version, upper) < 0, true
+		}
+	}
+	return false, false
 }
 
 // RequiresPython è il vincolo di versione dichiarato dall'unità ("" se non c'è).

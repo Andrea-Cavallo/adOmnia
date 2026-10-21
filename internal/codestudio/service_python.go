@@ -23,7 +23,8 @@ type PythonInterpreterReport struct {
 
 // PythonInterpreters elenca gli interpreti candidati del progetto. La scoperta è statica; con il
 // progetto autorizzato ogni candidato viene sondato una volta (versione, eseguibile reale,
-// pytest/debugpy/basedpyright presenti). Nessun ambiente viene installato o modificato.
+// architettura, pytest/debugpy/basedpyright presenti) e segnalato se la versione non soddisfa
+// `requires-python` dell'unità. Nessun ambiente viene installato o modificato.
 func (s *Service) PythonInterpreters(sessionID string) (PythonInterpreterReport, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -35,10 +36,6 @@ func (s *Service) PythonInterpreters(sessionID string) (PythonInterpreterReport,
 		installed = append([]python.Interpreter{{Path: saved, Source: "saved"}}, installed...)
 	}
 	report := PythonInterpreterReport{Installed: installed, Selected: python.ProjectInterpreter(root, "")}
-	if session.Project.Authorization == AuthorizationPermitted {
-		report.Installed = python.ProbeInterpreters(report.Installed)
-		report.Probed = true
-	}
 	for _, unit := range session.Project.Units {
 		if unit.Language != python.ID {
 			continue
@@ -46,6 +43,10 @@ func (s *Service) PythonInterpreters(sessionID string) (PythonInterpreterReport,
 		if constraint := python.RequiresPython(unit.Root); constraint != "" {
 			report.RequiresPython = constraint
 		}
+	}
+	if session.Project.Authorization == AuthorizationPermitted {
+		report.Installed = python.FlagIncompatible(python.ProbeInterpreters(report.Installed), report.RequiresPython)
+		report.Probed = true
 	}
 	return report, nil
 }
@@ -98,7 +99,7 @@ func (s *Service) InstallPythonTool(sessionID, interpreter, tool string, confirm
 		SessionID: session.ID, Kind: "install",
 		Executable: interpreter, Arguments: arguments,
 		WorkingDirectory: session.Project.RealPath,
-		Environment:   environmentWith(nil),
-		DisplayCommand: strings.Join(append([]string{filepath.Base(interpreter)}, arguments...), " "),
+		Environment:      environmentWith(nil),
+		DisplayCommand:   strings.Join(append([]string{filepath.Base(interpreter)}, arguments...), " "),
 	})
 }

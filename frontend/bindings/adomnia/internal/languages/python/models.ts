@@ -25,9 +25,15 @@ export class Interpreter {
     "source": string;
 
     /**
-     * Problem segnala un candidato che non si dovrebbe usare senza sceglierlo esplicitamente.
+     * Problem segnala un candidato che non si dovrebbe usare senza sceglierlo esplicitamente
+     * (ambiente fuori dal progetto, probe senza risposta, versione incompatibile con l'unità).
      */
     "problem"?: string;
+
+    /**
+     * Architecture è la coppia macchina/bits del probe (`"AMD64 64-bit"`); "" se non sonda.
+     */
+    "architecture"?: string;
 
     /**
      * Packages è ciò che l'interprete ha già installato (pytest, debugpy, basedpyright):
@@ -51,10 +57,10 @@ export class Interpreter {
      * Creates a new Interpreter instance from a string or object.
      */
     static createFrom($$source: any = {}): Interpreter {
-        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
-            $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
+            $$parsedSource["packages"] = $$createField5_0($$parsedSource["packages"]);
         }
         return new Interpreter($$parsedSource as Partial<Interpreter>);
     }
