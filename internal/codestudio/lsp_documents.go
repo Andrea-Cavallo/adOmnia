@@ -144,6 +144,16 @@ func (m *LSPManager) UntrackDocument(sessionID SessionID, documentID DocumentID)
 
 // snapshot restituisce una copia del documento e la connessione del server che lo possiede;
 // errore se il server non è pronto.
+// DocumentSnapshot restituisce path, languageId, testo e versione di un documento sincronizzato
+// con un language server. Serve ai fallback che lavorano sul buffer (formattazione esterna).
+func (m *LSPManager) DocumentSnapshot(sessionID SessionID, documentID DocumentID) (path, languageID, text string, version int, ok bool) {
+	document, _, err := m.snapshot(sessionID, documentID)
+	if err != nil {
+		return "", "", "", 0, false
+	}
+	return document.path, document.languageID, document.text, document.version, true
+}
+
 func (m *LSPManager) snapshot(sessionID SessionID, documentID DocumentID) (trackedDocument, *serverProcess, error) {
 	state, ok := m.forDocument(sessionID, documentID)
 	if !ok {

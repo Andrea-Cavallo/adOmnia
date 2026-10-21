@@ -178,6 +178,8 @@ func (s *Service) startEnvironmentCommand(session Session, directory string, com
 // installazione implicita prima di questo.
 var pythonInstallableTools = map[string]string{
 	"debugpy": "1.8.22",
+	// Ruff è opzionale: si installa solo con questa azione esplicita e resta nell'interprete scelto.
+	"ruff": python.RuffVersion,
 }
 
 // InstallPythonTool installa uno strumento Python nell'interprete scelto, solo su conferma

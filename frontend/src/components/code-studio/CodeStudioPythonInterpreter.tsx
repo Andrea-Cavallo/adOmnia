@@ -22,8 +22,11 @@ export function openPythonInterpreterDialog(sessionId: string): void {
   openRequest?.(sessionId)
 }
 
-/** Versione pinnata dello strumento di debug, la stessa che usa il backend. */
-const DEBUGPY_PINNED = 'debugpy==1.8.22'
+/** Versioni pinnate degli strumenti installabili, le stesse che usa il backend. */
+const INSTALLABLE_TOOLS = [
+  { id: 'debugpy', label: 'debugpy', pinned: 'debugpy==1.8.22', why: 'needed to debug Python code' },
+  { id: 'ruff', label: 'Ruff', pinned: 'ruff==0.13.2', why: 'formats Python files; basedpyright does not format' },
+] as const
 
 interface InterpreterRow {
   path: string
@@ -80,13 +83,13 @@ export function CodeStudioPythonInterpreter() {
     }
   }
 
-  const install = async (interpreter: GoIDEPythonInterpreter) => {
+  const install = async (interpreter: GoIDEPythonInterpreter, tool: typeof INSTALLABLE_TOOLS[number]) => {
     if (!sessionId) return
-    const command = `${interpreter.path} -m pip install ${DEBUGPY_PINNED}`
-    if (!window.confirm(`Install debugpy in this interpreter?\n\n${command}\n\nPackages may run their install scripts. Output appears in the Run console.`)) return
-    setBusy(interpreter.path)
+    const command = `${interpreter.path} -m pip install ${tool.pinned}`
+    if (!window.confirm(`Install ${tool.label} in this interpreter?\n\n${command}\n\n${tool.why}. Packages may run their install scripts. Output appears in the Run console.`)) return
+    setBusy(`${interpreter.path}:${tool.id}`)
     try {
-      await installPythonTool(sessionId, interpreter.path, 'debugpy', true)
+      await installPythonTool(sessionId, interpreter.path, tool.id, true)
       useCodeStudioStore.getState().updateLayout({ bottomOpen: true })
       useCodeStudioLspStore.getState().showToolWindow('run')
       await load(sessionId)
@@ -171,15 +174,19 @@ export function CodeStudioPythonInterpreter() {
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-3">{row.detail}</span>
                 {report?.probed && interpreter?.packages?.pytest && <span className="gs-badge shrink-0">pytest</span>}
                 {report?.probed && interpreter?.packages?.debugpy && <span className="gs-badge shrink-0">debugpy</span>}
+                {report?.probed && interpreter?.packages?.basedpyright && <span className="gs-badge shrink-0">basedpyright</span>}
+                {report?.probed && interpreter?.packages?.ruff && <span className="gs-badge shrink-0">ruff</span>}
                 {report?.probed && interpreter?.packages?.uvicorn && <span className="gs-badge shrink-0">uvicorn</span>}
                 {report?.probed && interpreter?.packages?.flask && <span className="gs-badge shrink-0">flask</span>}
                 {report?.probed && interpreter?.packages?.django && <span className="gs-badge shrink-0">django</span>}
                 {interpreter?.problem && <span className="gs-badge shrink-0 text-warning" title={interpreter.problem}>{interpreter.problem}</span>}
                 {!report?.probed && interpreter && <span className="gs-badge shrink-0">not trusted</span>}
               </button>
-              {report?.probed && interpreter && !interpreter.packages?.debugpy && (
+              {report?.probed && interpreter && INSTALLABLE_TOOLS.some((tool) => !interpreter.packages?.[tool.id]) && (
                 <div className="gs-row-actions">
-                  <CodeStudioButton small variant="ghost" disabled={busy !== ''} onClick={() => void install(interpreter)}>Install debugpy…</CodeStudioButton>
+                  {INSTALLABLE_TOOLS.filter((tool) => !interpreter.packages?.[tool.id]).map((tool) => (
+                    <CodeStudioButton key={tool.id} small variant="ghost" disabled={busy !== ''} title={tool.pinned} onClick={() => void install(interpreter, tool)}>Install {tool.label}…</CodeStudioButton>
+                  ))}
                 </div>
               )}
             </div>

@@ -155,9 +155,17 @@ func (s *Service) Rename(ctx context.Context, sessionID, documentID string, line
 	return s.lsp.Rename(ctx, SessionID(sessionID), DocumentID(documentID), line, column, newName)
 }
 
-// FormatDocument restituisce gli edit di formattazione del buffer corrente.
+// FormatDocument restituisce gli edit di formattazione del buffer corrente. Se il language server
+// non offre la formattazione (basedpyright), usa lo strumento dichiarato dall'adapter (Ruff per
+// Python) sullo stesso buffer: un solo percorso per l'azione manuale e il format-on-save.
 func (s *Service) FormatDocument(ctx context.Context, sessionID, documentID string) (FormatResult, error) {
 	edits, version, err := s.lsp.Format(ctx, SessionID(sessionID), DocumentID(documentID))
+	if err == nil && len(edits) > 0 {
+		return FormatResult{Version: version, Edits: edits}, nil
+	}
+	if fallback, fallbackErr := s.formatWithLanguageTool(ctx, sessionID, documentID); fallbackErr == nil {
+		return fallback, nil
+	}
 	return FormatResult{Version: version, Edits: edits}, err
 }
 
