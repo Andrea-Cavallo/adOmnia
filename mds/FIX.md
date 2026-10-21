@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**74 chiuse · 128 implementate da verificare · 61 da fare - su 263 voci.**
+**74 chiuse · 129 implementate da verificare · 61 da fare - su 264 voci.**
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -19,6 +19,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | IDE-4 | 10 | 3 | 1 | 14 |
 | IDE-5 | 5 | 6 | 1 | 12 |
 | IDE-6 | 0 | 5 | 0 | 5 |
+| IDE-7 | 0 | 1 | 0 | 1 |
 | GS-1 | 4 | 4 | 3 | 11 |
 | GS-2 | 6 | 0 | 5 | 11 |
 | GS-3 | 9 | 0 | 3 | 12 |
@@ -40,7 +41,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | DB-1 | 3 | 7 | 7 | 17 |
 | DB-2 | 0 | 14 | 7 | 21 |
 | DB-3 | 9 | 11 | 5 | 25 |
-| **TOTALE** | **74** | **128** | **61** | **263** |
+| **TOTALE** | **74** | **129** | **61** | **264** |
 
 - **✅ chiuse** = casella `[x]`: codice, test e verifica fatti davvero (regola 0.1).
 - **🟡 implementate, da verificare** = casella ancora `[ ]` con nota `IMPLEMENTATO`: codice e test ci sono, manca solo la verifica manuale nell'app (o quella di un'altra persona). Sono chiudibili senza scrivere codice: serve `wails3 task dev` o la release. **La verifica da eseguire è elencata in `mds/MANUAL-CHECK.md`, con gli stessi ID.**
@@ -125,6 +126,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | IDE-4 | Nuova vista Goroutines | P1 | L |
 | IDE-5 | Altri difetti IDE (12 voci) | P1-P2 | vari |
 | IDE-6 | CPU alta ad app ferma (~20%) | P0 | M |
+| IDE-7 | Finestre con dimensioni fisse fuori dall'area di lavoro | P1 | S |
 | GS-1 | Play/Run non funziona con `main.go` in `cmd/` | P0 | L |
 | GS-2 | "Run with Coverage" su cartella: niente / 0.0% | P1 | M-L |
 | GS-3 | Claude Code / milk: `EMAXREDIRECT`, "process is not available" | P0 | L |
@@ -337,6 +339,19 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 **Non toccati (da valutare con una misura):** pannelli con polling `live` (Proxy 0,7-1,5 s, Debugger 0,5 s, WebSocket, Kube, Mock…) che non rallentano in Idle; `useLiveSources.ts` (1,5 s senza gate); il tick del ticker database (1 s). Il test `internal/ide/startup` fallisce in questo ambiente anche su `HEAD` (attende una porta).
 
 **Gate IDE-6:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-6)  [x] Doc  [ ] Verificato da altra persona/agente
+
+---
+
+### IDE-7. Finestre con dimensioni fisse fuori dall'area di lavoro
+
+**Sintomo (2026-10-21).** Tutte le finestre native si aprivano con misure fisse (1400×900, 1320×880, 1280×840, 1200×800, 1180×800): con un'area di lavoro più piccola (display 1280×720/1366×768, scala Windows > 100%, barra delle applicazioni alta) la finestra usciva dallo schermo e i controlli della barra del titolo diventavano irraggiungibili.
+
+**Causa.** `application.WebviewWindowOptions` riceveva letterali costanti in `main.go:164`, `internal/codestudiowindow/manager.go:80`, `internal/codestudiowindow/preview.go:52`, `internal/swaggerwindow/manager.go:38`, `internal/panelwindow/manager.go:117`, `internal/requestwindow/manager.go:84,138`.
+
+**Fix**
+- [ ] IDE-7.1 (S) Dimensione e minimo di ogni nuova finestra limitati all'area di lavoro del monitor primario: `internal/windowfit.Size(app, w, h, minW, minH)` (`Screen.GetPrimary().WorkArea`); senza informazioni sullo schermo la richiesta resta invariata. Collegato a tutte le creazioni di finestre: principale, Code Studio staccata, Live Preview, Swagger Editor, pannelli staccati, richieste API (singole e separate Request/Response). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/windowfit/windowfit_test.go` prova il clamp (schermo grande invariato; schermo piccolo riduce finestra e minimi; minimi più grandi dello schermo limitati; assi indipendenti) e la passthrough senza schermo; `go vet` e `go test ./internal/windowfit ./internal/codestudiowindow ./internal/panelwindow` verdi, `go build -o NUL .` verde. L'integrazione con `app.Screen` è verificata solo nell'app (IDE-7.M1/M2).
+
+**Gate IDE-7:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-7)  [x] Doc (questa voce + `MANUAL-CHECK.md`; nessun documento utente da aggiornare)  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -965,3 +980,4 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | Checkpoint finale develop e regole progetto | 2026-10-16 | Codex | Build Windows production `wails3 task build` beta.28 verde; frontend completo 358 file / 1760 test verdi; 9 test report Node verdi; `check:startup` 606600 B / 650000 e nessun modulo differito nello startup. Suite Go completa `go test -p 4 ./... -count=1 -timeout 10m` verde (Go Studio 119,397 s). Trovato e corretto un difetto reale nella review agente: scritture con dimensione e timestamp uguali potevano perdere la baseline originale; confronto anche del contenuto testuale limitato e regressione deterministica, 10 ripetizioni con race detector verdi. Regole progetto: test caricamento, aggiornamento, policy, limiti, redazione e invio Copilot/milk verdi; test symlink saltato su Windows per privilegi insufficienti. Log locali `.artifacts/final16-*`. Verifiche desktop Z1.4.M1 e degli altri flussi ancora aperte in MANUAL-CHECK.md; nessuna accettazione manuale dedotta dalla build. | |
 | Updater / conferma concorrente con uscita | 2026-10-16 | Codex | Riprodotto `exit status 2` con nuova fixture `apply-immediate-exit`: conferma valida scritta tra controllo marker e ricezione uscita, rollback erroneo prima del fix. Ora il ramo di uscita ricontrolla il marker prima di ripristinare; finalizzazione condivisa. Log helper incluso nei fallimenti del test. Verdi: pacchetto update completo su Windows per 3 ripetizioni, una con race detector, binario test Linux eseguito su WSL Ubuntu. Restano verifiche manuali app desktop distinte; esito GitHub Actions da verificare dopo push. Log `.artifacts/update-*`. | |
 | Toolchain Go 1.27.2 e aggiornamento dipendenze | 2026-10-18 | Claude Code | `go.mod` a `go 1.27.2`; `go get -u ./...` + `go mod tidy` (35 moduli, Wails `v3.0.0-beta.28` → `beta.32`); `github.com/digitorus/pdf` tenuto a `v0.1.2` perché `v0.2.0+` rompe `pdfsign v0.9.0` (`Reader.Resolve`); `@wailsio/runtime` `3.0.0-beta.32` esatto, `npm update` nei range (nessun major in sospeso). Binding rigenerati con CLI beta.32 senza differenze. Verdi: `go vet ./...` (Linux con GTK4/WebKitGTK 6), build Linux e Windows, `npx tsc --noEmit`, frontend completo 409 file / 2047 test, `wails3 task build` Linux (binario `go1.27.2`), avvio sotto Xvfb fino a Hub e status bar risorse. `go test ./...`: due rossi solo d'ambiente, `TestObserveRealProcess` (rosso identico con Go 1.26.5) e `TestRunLintWithRealLinters` con il `golangci-lint` 2.5.0 del container compilato con Go 1.25 (verde con golangci-lint ricompilato con Go 1.27.2). Build native Windows/macOS e verifiche manuali NON VERIFICATE. | |
+| IDE-7.1 Impl/Test | 2026-10-21 | MiMo (OpenCode) | `internal/windowfit` (`Size` limita dimensione e minimi all'area di lavoro del monitor primario, passthrough senza informazioni sullo schermo) collegato a tutte le creazioni di finestre: `main.go`, `internal/codestudiowindow` (staccata + Live Preview), `internal/swaggerwindow`, `internal/panelwindow`, `internal/requestwindow` (richiesta singola e coppia Request/Response). Test `windowfit_test.go` (5: schermo grande invariato, schermo piccolo riduce finestra e minimi, minimi oltre lo schermo limitati, assi indipendenti, Size senza schermo); `go vet` e `go test ./internal/windowfit ./internal/codestudiowindow ./internal/panelwindow` verdi, `go build -o NUL .` verde. Manuale IDE-7.M1/M2 NON VERIFICATA. |               |

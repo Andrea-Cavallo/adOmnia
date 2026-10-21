@@ -6,6 +6,7 @@
 package codestudiowindow
 
 import (
+	"adomnia/internal/windowfit"
 	"errors"
 	"fmt"
 	"net/url"
@@ -75,13 +76,14 @@ func (m *Manager) Open(sessionID, projectName string) (string, error) {
 		return windowID, nil
 	}
 	query := url.Values{"window": {"go-studio"}, "session": {sessionID}, "windowId": {windowID}}
+	winW, winH, winMinW, winMinH := windowfit.Size(m.app, 1400, 900, 900, 600)
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      windowID,
 		Title:     strings.TrimSpace(projectName + " · Code Studio · adOmnia"),
-		Width:     1400,
-		Height:    900,
-		MinWidth:  900,
-		MinHeight: 600,
+		Width:     winW,
+		Height:    winH,
+		MinWidth:  winMinW,
+		MinHeight: winMinH,
 		URL:       "/?" + query.Encode(),
 		Frameless: m.frameless,
 	})

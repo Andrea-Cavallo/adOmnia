@@ -4,6 +4,7 @@ import (
 	"adomnia/internal/netpolicy"
 	"adomnia/internal/resources"
 	"adomnia/internal/update"
+	"adomnia/internal/windowfit"
 
 	"adomnia/internal/adomniacli"
 	"adomnia/internal/browser"
@@ -159,13 +160,14 @@ func main() {
 	opencodeService.attachDesktop(desktopApp)
 	collabService.attachDesktop(desktopApp)
 
+	winW, winH, winMinW, winMinH := windowfit.Size(desktopApp, 1400, 900, 900, 600)
 	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",
 		Title:     "adOmnia paratus.",
-		Width:     1400,
-		Height:    900,
-		MinWidth:  900,
-		MinHeight: 600,
+		Width:     winW,
+		Height:    winH,
+		MinWidth:  winMinW,
+		MinHeight: winMinH,
 		URL:       "/",
 		Frameless: windowchrome.IsApp(startupWindowChrome),
 		// Carries over the v2 DragAndDrop.EnableFileDrop behaviour. Without it

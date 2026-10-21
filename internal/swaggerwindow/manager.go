@@ -2,6 +2,7 @@
 package swaggerwindow
 
 import (
+	"adomnia/internal/windowfit"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -33,13 +34,14 @@ func (m *Manager) Open() {
 		return
 	}
 
+	winW, winH, winMinW, winMinH := windowfit.Size(m.app, 1320, 880, 800, 560)
 	window := m.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "swagger-editor",
 		Title:     "Swagger Editor · adOmnia",
-		Width:     1320,
-		Height:    880,
-		MinWidth:  800,
-		MinHeight: 560,
+		Width:     winW,
+		Height:    winH,
+		MinWidth:  winMinW,
+		MinHeight: winMinH,
 		URL:       "/?window=swagger-editor",
 	})
 	m.window = window
