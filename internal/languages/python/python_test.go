@@ -3,9 +3,11 @@ package python
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +124,65 @@ func TestRunStopEndsARealPythonProcess(t *testing.T) {
 	}
 	if !processes.WaitStopped(started.ID, 15*time.Second) {
 		t.Fatalf("the Python process survived the stop: %+v", started)
+	}
+}
+
+// TestPythonServerReadinessAndStop: un server Python locale reale apre la porta (readiness) e lo
+// stop chiude il processo; la porta occupata e lo startup fallito hanno già i loro test nel core
+// (`TestWaitPort`, `composeready`). PY-7.5.
+func TestPythonServerReadinessAndStop(t *testing.T) {
+	interpreter, err := exec.LookPath("python")
+	if err != nil {
+		t.Skip("Python interpreter unavailable")
+	}
+	root := t.TempDir()
+	processes := run.NewProcessManager()
+	t.Cleanup(processes.Shutdown)
+	startServer := func(port int) (run.Execution, <-chan struct{}) {
+		t.Helper()
+		exited := make(chan struct{}, 1)
+		started, err := processes.Start(run.CommandSpec{
+			SessionID: "python-server", Kind: "run", Executable: interpreter,
+			Arguments:        []string{"-m", "http.server", strconv.Itoa(port), "--bind", "127.0.0.1"},
+			WorkingDirectory: root,
+			OnExit: func(run.Execution) {
+				select {
+				case exited <- struct{}{}:
+				default:
+				}
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return started, exited
+	}
+	alive := func(exited <-chan struct{}) func() bool {
+		return func() bool {
+			select {
+			case <-exited:
+				return false
+			default:
+				return true
+			}
+		}
+	}
+	freePort := func() int {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer listener.Close()
+		return listener.Addr().(*net.TCPAddr).Port
+	}
+
+	port := freePort()
+	server, exited := startServer(port)
+	if err := run.WaitPort(port, 20*time.Second, alive(exited)); err != nil {
+		t.Fatalf("the server never accepted connections: %v", err)
+	}
+	if err := processes.Stop(server.ID); err != nil || !processes.WaitStopped(server.ID, 15*time.Second) {
+		t.Fatalf("stop: %v", err)
 	}
 }
 
