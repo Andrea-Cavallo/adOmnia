@@ -72,7 +72,7 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
   const rowMenu = (suite: TestSuite): ContextMenuItem[] => [
     { id: 'run', label: 'Run', icon: Play, iconClassName: 'text-success', disabled: suite.status === 'running' },
     { id: 'failed', label: 'Run failed tests only', icon: XCircle, disabled: suite.failed === 0, disabledReason: 'No failed tests in the last run' },
-    { id: 'coverage', label: 'Run with coverage', icon: ShieldCheck, disabled: suite.language !== 'go' && suite.language !== 'java', disabledReason: 'Coverage is available for Go and Java suites' },
+    { id: 'coverage', label: 'Run with coverage', icon: ShieldCheck, disabled: suite.language !== 'go' && suite.language !== 'java' && suite.language !== 'python', disabledReason: 'Coverage is available for Go, Java and Python suites' },
     { id: 'repeat', label: 'Repeat ×20 in random order', icon: Repeat, disabled: suite.language !== 'go', disabledReason: 'Repetition with -shuffle is available for Go suites' },
   ]
   const onRowMenu = (suite: TestSuite, id: string) => {
@@ -92,7 +92,7 @@ export const CodeStudioTestsPanel = memo(function CodeStudioTestsPanel({ session
         <CodeStudioTestsHeader
           stats={stats} filter={filter} onFilter={setFilter} query={query} onQuery={setQuery} busy={busy}
           hasGo={suites.some((suite) => suite.language === 'go' || suite.language === 'java')} canRerunFailed={stats.failed > 0}
-          onRunAll={(coverage) => actions.runAll(coverage ? suites.filter((suite) => suite.language === 'go') : suites, coverage ? { coverage: true } : undefined)}
+          onRunAll={(coverage) => actions.runAll(coverage ? suites.filter((suite) => suite.language === 'go' || suite.language === 'python') : suites, coverage ? { coverage: true } : undefined)}
           onRerunFailed={() => actions.rerunFailed(suites)} onStop={actions.stop}
         />
         <CodeStudioTestsStats stats={stats} now={now} />

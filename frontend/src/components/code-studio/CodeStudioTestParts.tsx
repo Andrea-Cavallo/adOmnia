@@ -186,6 +186,11 @@ export function CoverageSummary({ report, sessionId }: { report: GoIDECoverageRe
           ))}
         </div>
       ))}
+      {view === 'files' && report.files.filter((file) => !report.packages.some((pkg) => file.relativePath.startsWith(`${pkg.relativePath}/`))).map((file) => (
+        <button key={file.relativePath} type="button" onClick={() => void openDocument(file.relativePath)} className="flex h-6 w-full items-center gap-2 text-left text-text-3 hover:bg-surface-3 hover:text-text-1">
+          {bar(file.percent)}<span className="w-12 shrink-0 text-right text-[12px]">{file.percent.toFixed(1)}%</span><span className="truncate font-mono text-[12px]">{file.relativePath}</span>
+        </button>
+      ))}
     </div>
   )
 }

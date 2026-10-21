@@ -57,6 +57,9 @@ type pytestTest struct {
 // mai ricostruiti da etichette o output colorato (PY-5.2).
 type pytestParser struct {
 	root, eventsPath string
+	coveragePath     string
+	coverage         *idetesting.CoverageReport
+	coverageRead     bool
 	offset           int64
 	pending          []byte
 	files            map[string]string
@@ -67,12 +70,16 @@ type pytestParser struct {
 	done             bool
 }
 
-func newPytestParser(root, eventsPath string) *pytestParser {
-	return &pytestParser{
+func newPytestParser(root, eventsPath string, coveragePath ...string) *pytestParser {
+	parser := &pytestParser{
 		root: root, eventsPath: eventsPath,
 		files: map[string]string{}, tests: map[string]*pytestTest{},
 		packageFailed: map[string]bool{},
 	}
+	if len(coveragePath) > 0 {
+		parser.coveragePath = coveragePath[0]
+	}
+	return parser
 }
 
 func (*pytestParser) Parse([]byte) (idetesting.Event, bool) { return idetesting.Event{}, false }

@@ -119,6 +119,14 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.workspace.onDetected = func(started time.Time) { service.noteLoad("detectUnits", started) }
+	// La copertura di un adapter (pytest-cov) ha bisogno della radice del progetto per i token.
+	service.tests.SetProjectRoot(func(id SessionID) string {
+		session, err := service.session(string(id))
+		if err != nil {
+			return ""
+		}
+		return session.Project.RealPath
+	})
 	// Language-server readiness: from process start to the ready state, for every start.
 	service.lsp.SetReadyObserver(func(elapsed time.Duration) { service.noteLoadElapsed("lspReady", elapsed) })
 	service.supervisor = NewProcessSupervisor()
