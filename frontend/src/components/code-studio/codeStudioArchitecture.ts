@@ -495,3 +495,26 @@ export function matchGoroutineSite(items: readonly ArchGoroutine[], file: string
   const normal = file.split('\\').join('/')
   return items.find((item) => item.site.line === line && (normal === item.site.relativePath || normal.endsWith(`/${item.site.relativePath}`)))
 }
+
+/** Ultimo nome utile di una funzione: `pkg.(*Server).Start` → `Start`, `pkg.run.func1` → `run`. */
+export function functionLeaf(name: string): string {
+  const cleaned = name.replace(/\.func\d+(?:\.\d+)?$/, '')
+  const receiver = cleaned.match(/\)\.([A-Za-z0-9_]+)$/)
+  if (receiver) return receiver[1]
+  const parts = cleaned.split('.')
+  return parts[parts.length - 1] ?? cleaned
+}
+
+/**
+ * Avvio statico della funzione `name` (runtime Delve o profilo pprof), confrontato
+ * per ultimo segmento: è un indizio, due omonimi in package diversi si confondono.
+ */
+export function matchLaunchedFunction(items: readonly ArchGoroutine[], name: string): ArchGoroutine | undefined {
+  const leaf = functionLeaf(name)
+  return items.find((item) => item.launches && functionLeaf(item.launches) === leaf)
+}
+
+/** Avvio statico che ha lanciato questa goroutine runtime (per nome della funzione di origine). */
+export function matchGoroutineLaunch(items: readonly ArchGoroutine[], originName: string | undefined): ArchGoroutine | undefined {
+  return originName ? matchLaunchedFunction(items, originName) : undefined
+}
