@@ -132,8 +132,8 @@ func environmentInterpreter(directory string) string {
 }
 
 // DiscoverInterpreters elenca i candidati statici: ambienti da start salendo fino a boundary
-// (working directory → radice del progetto), ambiente attivato e interpreti del PATH.
-// Non esegue nulla: versioni e pacchetti arrivano dal probe separato.
+// (working directory → radice del progetto), ambiente attivato, ambienti gestiti da uv/Poetry e
+// interpreti del PATH. Non esegue nulla: versioni e pacchetti arrivano dal probe separato.
 func DiscoverInterpreters(boundary, start string) []Interpreter {
 	var found []Interpreter
 	seen := map[string]bool{}
@@ -159,12 +159,118 @@ func DiscoverInterpreters(boundary, start string) []Interpreter {
 			add(binary, "VIRTUAL_ENV", problem)
 		}
 	}
+	// Ambienti dei gestori esterni (PY-2.1): si leggono solo configurazione e nomi delle cartelle,
+	// mai `uv run` o `poetry env info`. Restano espliciti: non vengono scelti in automatico.
+	for _, managed := range managedEnvironments(boundary) {
+		add(managed.Path, managed.Source, managed.Problem)
+	}
 	for _, name := range pathInterpreterNames() {
 		if binary, err := lookPath(name); err == nil {
 			add(binary, "PATH", "")
 		}
 	}
 	return found
+}
+
+// managedEnvironments trova gli ambienti creati dai gestori esterni senza eseguirli: la variabile
+// esplicita di uv, il percorso Poetry da ambiente o poetry.toml con le cartelle il cui nome inizia
+// con il nome del progetto. Un ambiente trovato qui non viene mai scelto implicitamente.
+func managedEnvironments(projectRoot string) []Interpreter {
+	var managed []Interpreter
+	add := func(directory, source string) {
+		binary := environmentInterpreter(directory)
+		if binary == "" {
+			return
+		}
+		managed = append(managed, Interpreter{
+			Path: binary, Source: source,
+			Problem: "managed by " + source + ": choose it explicitly if it is the right environment",
+		})
+	}
+	if configured := strings.TrimSpace(os.Getenv("UV_PROJECT_ENVIRONMENT")); configured != "" {
+		directory := configured
+		if !filepath.IsAbs(directory) {
+			directory = filepath.Join(projectRoot, filepath.FromSlash(directory))
+		}
+		add(directory, "uv")
+	}
+	for _, directory := range poetryEnvironments(projectRoot) {
+		add(directory, "poetry")
+	}
+	return managed
+}
+
+// poetryEnvironments elenca le cartelle di ambienti Poetry del progetto, lette solo dal
+// filesystem: `POETRY_VIRTUALENVS_PATH`, `[virtualenvs] path` di poetry.toml, altrimenti la cache
+// predefinita della piattaforma. Poetry nomina le cartelle `<progetto>-<hash>-py<versione>`.
+func poetryEnvironments(projectRoot string) []string {
+	base := poetryVirtualenvsPath(projectRoot)
+	if base == "" || !isDirectory(base) {
+		return nil
+	}
+	prefix := poetryProjectPrefix(projectRoot)
+	if prefix == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		return nil
+	}
+	var directories []string
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(strings.ToLower(entry.Name()), prefix) {
+			continue
+		}
+		directories = append(directories, filepath.Join(base, entry.Name()))
+	}
+	return directories
+}
+
+func poetryVirtualenvsPath(projectRoot string) string {
+	if configured := strings.TrimSpace(os.Getenv("POETRY_VIRTUALENVS_PATH")); configured != "" {
+		return configured
+	}
+	if data, err := readLimited(filepath.Join(projectRoot, "poetry.toml"), maxManifestBytes); err == nil {
+		if configured := tomlString(parseTOML(data), "virtualenvs", "path"); configured != "" {
+			if filepath.IsAbs(configured) {
+				return configured
+			}
+			return filepath.Join(projectRoot, filepath.FromSlash(configured))
+		}
+	}
+	switch runtime.GOOS {
+	case "windows":
+		if local := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); local != "" {
+			return filepath.Join(local, "pypoetry", "Cache", "virtualenvs")
+		}
+	case "darwin":
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, "Library", "Caches", "pypoetry", "virtualenvs")
+		}
+	default:
+		if cache := strings.TrimSpace(os.Getenv("XDG_CACHE_HOME")); cache != "" {
+			return filepath.Join(cache, "pypoetry", "virtualenvs")
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, ".cache", "pypoetry", "virtualenvs")
+		}
+	}
+	return ""
+}
+
+// poetryProjectPrefix è il nome della cartella del progetto come lo normalizza Poetry: minuscolo,
+// caratteri non alfanumerici sostituiti da "-".
+func poetryProjectPrefix(projectRoot string) string {
+	name := strings.ToLower(filepath.Base(filepath.Clean(projectRoot)))
+	var builder strings.Builder
+	for _, char := range name {
+		if char >= 'a' && char <= 'z' || char >= '0' && char <= '9' {
+			builder.WriteRune(char)
+		} else {
+			builder.WriteByte('-')
+		}
+	}
+	return builder.String()
 }
 
 // environmentRoots sono le cartelle in cui cercare un ambiente: start e i suoi genitori fino a

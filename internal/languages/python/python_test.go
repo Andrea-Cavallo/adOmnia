@@ -92,6 +92,39 @@ func TestRunValidationAndConfinement(t *testing.T) {
 	}
 }
 
+// TestRunStopEndsARealPythonProcess: cancellare un run reale termina l'albero del processo e
+// l'esecuzione risulta fermata, non completata (PY-3.5).
+func TestRunStopEndsARealPythonProcess(t *testing.T) {
+	interpreter, err := exec.LookPath("python")
+	if err != nil {
+		t.Skip("Python interpreter unavailable")
+	}
+	root := t.TempDir()
+	writeFile(t, root, "slow.py", "import time\nprint('started', flush=True)\ntime.sleep(60)\n")
+	data, _ := json.Marshal(Options{Interpreter: interpreter, Script: "slow.py"})
+	spec, err := New().CommandSpec(run.Request{Kind: "script", Root: root, WorkingDirectory: root, LanguageOptions: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	processes := run.NewProcessManager()
+	t.Cleanup(processes.Shutdown)
+	started, err := processes.Start(run.CommandSpec{
+		SessionID: "python-cancel", Kind: "run", Executable: spec.Executable, Arguments: spec.Arguments,
+		WorkingDirectory: spec.WorkingDirectory, Environment: spec.Environment,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Il processo resta in esecuzione finché non lo si ferma: lo stop deve chiudere l'albero.
+	time.Sleep(300 * time.Millisecond)
+	if err := processes.Stop(started.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !processes.WaitStopped(started.ID, 15*time.Second) {
+		t.Fatalf("the Python process survived the stop: %+v", started)
+	}
+}
+
 func TestRunRealScriptAndModule(t *testing.T) {
 	interpreter, err := exec.LookPath("python")
 	if err != nil {

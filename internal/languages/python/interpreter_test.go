@@ -15,6 +15,57 @@ import (
 	"adomnia/internal/ide/run"
 )
 
+// envInterpreterPath è il layout dell'interprete dentro un ambiente sulla piattaforma corrente.
+func envInterpreterPath(directory string) string {
+	name := filepath.Join("bin", "python")
+	if runtime.GOOS == "windows" {
+		name = filepath.Join("Scripts", "python.exe")
+	}
+	return filepath.Join(directory, name)
+}
+
+// TestManagedEnvironmentsAreListedButNeverChosen: gli ambienti di uv e Poetry si trovano dalla
+// configurazione e dai nomi delle cartelle, senza eseguire i gestori, e restano una scelta
+// esplicita dell'utente (PY-2.1).
+func TestManagedEnvironmentsAreListedButNeverChosen(t *testing.T) {
+	root := t.TempDir()
+	uv := filepath.Join(root, "uv-env")
+	writeFile(t, uv, filepath.Join("Scripts", "python.exe"), "")
+	writeFile(t, uv, filepath.Join("bin", "python"), "")
+	t.Setenv("UV_PROJECT_ENVIRONMENT", "uv-env")
+
+	poetryBase := t.TempDir()
+	poetry := filepath.Join(poetryBase, poetryProjectPrefix(root)+"-9f2c1a-py3.11")
+	writeFile(t, poetry, filepath.Join("Scripts", "python.exe"), "")
+	writeFile(t, poetry, filepath.Join("bin", "python"), "")
+	t.Setenv("POETRY_VIRTUALENVS_PATH", poetryBase)
+	t.Setenv("VIRTUAL_ENV", "")
+
+	found := map[string]Interpreter{}
+	for _, candidate := range DiscoverInterpreters(root, root) {
+		found[candidate.Source] = candidate
+	}
+	if uvCandidate, ok := found["uv"]; !ok || !strings.Contains(uvCandidate.Problem, "choose it explicitly") {
+		t.Fatalf("uv environment missing or implicit: %#v", found)
+	}
+	if poetryCandidate, ok := found["poetry"]; !ok || !strings.Contains(poetryCandidate.Problem, "choose it explicitly") {
+		t.Fatalf("poetry environment missing or implicit: %#v", found)
+	}
+	resolved, err := ResolveInterpreter(root, root, "")
+	if err == nil && (resolved.Source == "uv" || resolved.Source == "poetry") {
+		t.Fatalf("a managed environment was chosen implicitly: %+v", resolved)
+	}
+}
+
+// TestPoetryPathFromProjectConfig legge `[virtualenvs] path` da poetry.toml, relativo al progetto.
+func TestPoetryPathFromProjectConfig(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "poetry.toml", "[virtualenvs]\npath = \"envs\"\n")
+	if got, want := poetryVirtualenvsPath(root), filepath.Join(root, "envs"); got != want {
+		t.Fatalf("path %q, want %q", got, want)
+	}
+}
+
 func TestCheckRequiresPython(t *testing.T) {
 	for _, test := range []struct {
 		version, requires string
