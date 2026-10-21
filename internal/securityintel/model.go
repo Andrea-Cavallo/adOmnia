@@ -20,10 +20,12 @@ const (
 	EcosystemMaven Ecosystem = "Maven"
 	// EcosystemGo è l'ecosistema Go (path del modulo).
 	EcosystemGo Ecosystem = "Go"
+	// EcosystemPyPI è l'ecosistema Python (nome del pacchetto normalizzato PEP 503).
+	EcosystemPyPI Ecosystem = "PyPI"
 )
 
 // Ecosystems è l'ordine stabile con cui gli ecosistemi compaiono nei report.
-var Ecosystems = []Ecosystem{EcosystemMaven, EcosystemGo}
+var Ecosystems = []Ecosystem{EcosystemMaven, EcosystemGo, EcosystemPyPI}
 
 // Origin dice come è arrivata una dipendenza nel grafo: cambia il rischio percepito
 // e la difficoltà della correzione.

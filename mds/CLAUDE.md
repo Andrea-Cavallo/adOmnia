@@ -8,6 +8,8 @@ Cartella dei **piani di lavoro** di adOmnia: code, piani per area, verifiche man
 |------|-----------|--------------|
 | `README.md` | Indice dei piani 01–06 e regole minime | Voci di lavoro |
 | `01…06-*.md` | Piani per area, in ordine di esecuzione (06 continua `MULTILANGUAGE-IDE.md` e si esegue prima di 04–05) | Verifiche manuali |
+| `MULTILANGUAGE-IDE.md` | Piano Code Studio multi-linguaggio: fasi 1–10, **§9.5 Python (PY-0–PY-9)** e **§9.6 Rust (RS-0–RS-10)**, registro avanzamento | Verifiche manuali (stanno in `MANUAL-CHECK.md`) |
+| `SECURITY-INTELLIGENCE-HANDOFF.md` | Handoff del motore di sicurezza delle dipendenze (engine + adapter per ecosistema) | Piani o verifiche manuali |
 | `FIX.md` | Code unica del lavoro (IDE, Go Studio/Hub, Database) + regole 0.1–0.8 | Verifiche che richiedono l'app in esecuzione |
 | `MANUAL-CHECK.md` | **Unico** file delle verifiche manuali (voci `…M*`, riproduzioni nell'app, gate manuali) | Codice, test automatici |
 | `REFACTOR.md` | Piano di refactor | — |

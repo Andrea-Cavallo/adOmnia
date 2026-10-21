@@ -9,6 +9,8 @@ var skippedDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true, "target": true, "build": true, "dist": true,
 	".gradle": true, ".idea": true, ".venv": true, "__pycache__": true, ".next": true, "bin": true,
 	"obj": true, "testdata": true,
+	// ambienti Python: il codice delle librerie installate non è del progetto e produrrebbe route finte.
+	"venv": true, "site-packages": true, "dist-packages": true, "__pypackages__": true,
 }
 
 // interesting reports whether any detector reads rel, and rel is not inside a
@@ -30,7 +32,7 @@ func interesting(rel string) bool {
 		return false
 	}
 	switch path.Ext(base) {
-	case ".go", ".java", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
+	case ".go", ".java", ".py", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
 		return true
 	}
 	return false
@@ -62,6 +64,8 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		add(detectGoFile(rel, data, hints))
 	case strings.HasSuffix(base, ".java"):
 		out = append(out, detectJavaFile(rel, data)...)
+	case strings.HasSuffix(base, ".py"):
+		out = append(out, detectPythonFile(rel, data)...)
 	case isDotenv(base):
 		add(detectDotenv(rel, data))
 	case isCompose(base):

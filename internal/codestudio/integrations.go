@@ -3,6 +3,8 @@ package codestudio
 import (
 	"sort"
 	"strings"
+
+	"adomnia/internal/ide/language"
 )
 
 // PluginContractVersion è la versione del contratto degli eventi Code Studio esposti ai plugin.
@@ -34,15 +36,42 @@ type serviceSignature struct {
 }
 
 // serviceSignatures usa come ID i preset del Docker Lab, così il passaggio non richiede traduzioni.
+// Ogni voce elenca le dipendenze dirette che la identificano in qualunque ecosistema: percorsi di
+// modulo Go e nomi PyPI nella forma normalizzata PEP 503 (minuscolo, trattini). Un nuovo linguaggio
+// aggiunge nomi qui, non un secondo rilevatore.
 var serviceSignatures = []serviceSignature{
-	{"postgres", "PostgreSQL", "database", []string{"github.com/lib/pq", "github.com/jackc/pgx", "gorm.io/driver/postgres", "github.com/go-pg/pg", "github.com/uptrace/bun/driver/pgdriver"}},
-	{"mysql", "MySQL", "database", []string{"github.com/go-sql-driver/mysql", "gorm.io/driver/mysql"}},
-	{"mongodb", "MongoDB", "database", []string{"go.mongodb.org/mongo-driver"}},
-	{"redis", "Redis", "cache", []string{"github.com/redis/go-redis", "github.com/go-redis/redis", "github.com/gomodule/redigo"}},
-	{"kafka", "Kafka", "messaging", []string{"github.com/segmentio/kafka-go", "github.com/IBM/sarama", "github.com/Shopify/sarama", "github.com/confluentinc/confluent-kafka-go", "github.com/twmb/franz-go"}},
-	{"rabbitmq", "RabbitMQ", "messaging", []string{"github.com/rabbitmq/amqp091-go", "github.com/streadway/amqp"}},
-	{"otel", "OpenTelemetry", "observability", []string{"go.opentelemetry.io/otel"}},
-	{"prometheus", "Prometheus", "observability", []string{"github.com/prometheus/client_golang"}},
+	{"postgres", "PostgreSQL", "database", []string{
+		"github.com/lib/pq", "github.com/jackc/pgx", "gorm.io/driver/postgres", "github.com/go-pg/pg", "github.com/uptrace/bun/driver/pgdriver",
+		"psycopg", "psycopg2", "psycopg2-binary", "asyncpg",
+	}},
+	{"mysql", "MySQL", "database", []string{
+		"github.com/go-sql-driver/mysql", "gorm.io/driver/mysql",
+		"pymysql", "mysqlclient", "aiomysql", "mysql-connector-python",
+	}},
+	{"mongodb", "MongoDB", "database", []string{
+		"go.mongodb.org/mongo-driver",
+		"pymongo", "motor",
+	}},
+	{"redis", "Redis", "cache", []string{
+		"github.com/redis/go-redis", "github.com/go-redis/redis", "github.com/gomodule/redigo",
+		"redis", "aioredis",
+	}},
+	{"kafka", "Kafka", "messaging", []string{
+		"github.com/segmentio/kafka-go", "github.com/IBM/sarama", "github.com/Shopify/sarama", "github.com/confluentinc/confluent-kafka-go", "github.com/twmb/franz-go",
+		"kafka-python", "confluent-kafka", "aiokafka",
+	}},
+	{"rabbitmq", "RabbitMQ", "messaging", []string{
+		"github.com/rabbitmq/amqp091-go", "github.com/streadway/amqp",
+		"pika", "aio-pika", "kombu",
+	}},
+	{"otel", "OpenTelemetry", "observability", []string{
+		"go.opentelemetry.io/otel",
+		"opentelemetry-sdk", "opentelemetry-api",
+	}},
+	{"prometheus", "Prometheus", "observability", []string{
+		"github.com/prometheus/client_golang",
+		"prometheus-client",
+	}},
 }
 
 func modulePrefixMatches(modulePath, prefix string) bool {
@@ -50,14 +79,14 @@ func modulePrefixMatches(modulePath, prefix string) bool {
 }
 
 // detectProjectServices riconosce i servizi dalle sole dipendenze dirette: quelle indirette sono rumore delle librerie.
-func detectProjectServices(dependencies []GoDependency) []ProjectService {
+func detectProjectServices(dependencies []ServiceDependency) []ProjectService {
 	found := map[string]*ProjectService{}
 	for _, dependency := range dependencies {
 		if dependency.Indirect {
 			continue
 		}
 		for _, signature := range serviceSignatures {
-			if !matchesModulePrefix(dependency.Path, signature.modules) {
+			if !matchesServiceDependency(dependency.Path, signature.modules) {
 				continue
 			}
 			service := found[signature.id]
@@ -78,6 +107,35 @@ func detectProjectServices(dependencies []GoDependency) []ProjectService {
 	return result
 }
 
+// matchesServiceDependency confronta una dipendenza con le firme: i percorsi di modulo Go si
+// confrontano come sono (prefisso su `/`), i nomi di pacchetto senza `/` anche nella forma normale
+// PEP 503, così `PyMySQL` e `pymysql` sono lo stesso servizio.
+func matchesServiceDependency(path string, prefixes []string) bool {
+	if matchesModulePrefix(path, prefixes) {
+		return true
+	}
+	if strings.Contains(path, "/") {
+		return false
+	}
+	return matchesModulePrefix(serviceDependencyName(path), prefixes)
+}
+
+// ServiceDependency è una dipendenza diretta di un'unità, in qualunque ecosistema.
+type ServiceDependency struct {
+	// Path è il nome nella forma dell'ecosistema (percorso di modulo, nome PyPI).
+	Path string
+	// Indirect è vero per una dipendenza trascinata da un'altra: non identifica un servizio.
+	Indirect bool
+}
+
+// serviceDependencyName normalizza il nome per il confronto: minuscolo e `.`/`_` come `-`, la forma
+// in cui PyPI tratta i nomi. I percorsi di modulo Go non cambiano (sono già minuscoli e con `/`).
+func serviceDependencyName(name string) string {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	normalized = strings.ReplaceAll(normalized, "_", "-")
+	return strings.ReplaceAll(normalized, ".", "-")
+}
+
 func matchesModulePrefix(modulePath string, prefixes []string) bool {
 	for _, prefix := range prefixes {
 		if modulePrefixMatches(modulePath, prefix) {
@@ -87,20 +145,37 @@ func matchesModulePrefix(modulePath string, prefixes []string) bool {
 	return false
 }
 
-// ProjectServices legge i go.mod dei moduli del progetto e restituisce i servizi esterni che usano.
-// Un go.mod illeggibile non blocca gli altri moduli: il rilevamento è un suggerimento, non un requisito.
+// ProjectServices legge le dipendenze dirette delle unità del progetto (go.mod per Go, manifest
+// Python per Python) e restituisce i servizi esterni che usano: ogni adapter sa leggere il proprio
+// manifest, qui non c'è codice per linguaggio. Un manifest illeggibile non blocca gli altri moduli:
+// il rilevamento è un suggerimento, non un requisito.
 func (s *Service) ProjectServices(sessionID string) ([]ProjectService, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return nil, err
 	}
-	var dependencies []GoDependency
+	var dependencies []ServiceDependency
 	for _, module := range goLayoutOf(session.Project).Modules {
 		state, err := readDependencyState(session.Project, module.Path)
 		if err != nil {
 			continue
 		}
-		dependencies = append(dependencies, state.Dependencies...)
+		for _, dependency := range state.Dependencies {
+			dependencies = append(dependencies, ServiceDependency{Path: dependency.Path, Indirect: dependency.Indirect})
+		}
+	}
+	for _, unit := range session.Project.Units {
+		adapter, ok := s.workspace.languages.Get(unit.Language)
+		if !ok {
+			continue
+		}
+		reader, ok := adapter.(language.DirectDependencies)
+		if !ok {
+			continue
+		}
+		for _, path := range reader.DirectDependencies(unit) {
+			dependencies = append(dependencies, ServiceDependency{Path: path})
+		}
 	}
 	return detectProjectServices(dependencies), nil
 }

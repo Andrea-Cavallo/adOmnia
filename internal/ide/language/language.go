@@ -31,6 +31,26 @@ type DebugAdapterProvider = dap.DebugAdapterProvider
 type TestRunner = idetesting.TestRunner
 type ServerProvider = lsp.ServerProvider
 
+// UnitServers è la capability di un linguaggio il cui language server va avviato una volta per
+// unità invece di una volta per progetto. Serve quando l'unità porta con sé il proprio ambiente
+// (un interprete o un venv per servizio, una toolchain per modulo): un solo server multi-root
+// userebbe l'ambiente di una sola unità e risolverebbe gli import di tutti con quello.
+// Il core non nomina linguaggi: lo dichiara l'adapter e l'host gli passa una spec per unità.
+type UnitServers interface {
+	ServersPerUnit() bool
+	// UnitServerSpec retains the workspace root, where machine-local settings live,
+	// while configuring the server for one unit's environment.
+	UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.ServerSpec, error)
+}
+
+// DirectDependencies elenca i pacchetti dichiarati direttamente da un'unità, nella forma che
+// l'ecosistema usa (percorso di modulo Go, nome PyPI normalizzato, coordinate Maven). Serve a chi
+// riconosce i servizi esterni del progetto (Database Studio, Docker Lab, Broker Studio) senza
+// conoscere i formati dei singoli manifest: è l'adapter a saperlo leggere.
+type DirectDependencies interface {
+	DirectDependencies(unit project.Unit) []string
+}
+
 // ProjectDetector riconosce le unità di build del linguaggio sotto root.
 type ProjectDetector interface {
 	DetectUnits(ctx context.Context, root string) ([]project.Unit, error)

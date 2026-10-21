@@ -6,6 +6,7 @@ import (
 	"adomnia/internal/securityintel"
 	"adomnia/internal/securityintel/gomod"
 	"adomnia/internal/securityintel/maven"
+	"adomnia/internal/securityintel/pypi"
 )
 
 // Engine compone il motore. cacheDirectory è il database locale degli advisory (scansioni offline);
@@ -17,6 +18,6 @@ func Engine(cacheDirectory string, endpoints map[string]string) (*securityintel.
 		&securityintel.EPSSSource{Endpoint: endpoints["epss"]},
 		&securityintel.KEVSource{Endpoint: endpoints["kev"]},
 	}
-	adapters := []securityintel.EcosystemAdapter{maven.New(), gomod.New()}
+	adapters := []securityintel.EcosystemAdapter{maven.New(), gomod.New(), pypi.New()}
 	return securityintel.New(adapters, []securityintel.Source{osv}, enrichers, cache), cache
 }

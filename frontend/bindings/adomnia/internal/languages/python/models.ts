@@ -43,6 +43,70 @@ export class CommandPlan {
 }
 
 /**
+ * DeclaredDependency è una dipendenza dichiarata da un'unità Python, con la versione risolta dal
+ * lockfile quando c'è. Serve alla vista delle dipendenze di Code Studio, che per Go e Maven mostra
+ * le stesse informazioni: nome, vincolo dichiarato, versione effettiva, file e riga.
+ * 
+ * Lettura statica: nessun processo, nessun import, nessuna installazione (PY-1.2).
+ */
+export class DeclaredDependency {
+    /**
+     * Name è il nome normalizzato PEP 503, lo stesso usato da Security Intelligence.
+     */
+    "name": string;
+
+    /**
+     * Spec è il vincolo come scritto nel manifest (`==1.2.3`, `>=2`, vuoto se nudo).
+     */
+    "spec"?: string;
+
+    /**
+     * Version è la versione esatta dichiarata ("" se il manifest non la fissa).
+     */
+    "version"?: string;
+
+    /**
+     * Resolved è la versione del lockfile (`poetry.lock`, `uv.lock`), "" se assente.
+     */
+    "resolved"?: string;
+
+    /**
+     * Dev dice che la dipendenza arriva da un gruppo di sviluppo: non è nel runtime.
+     */
+    "dev"?: boolean;
+
+    /**
+     * Source è il file che la dichiara, relativo all'unità (`requirements.txt`, `pyproject.toml`).
+     */
+    "source": string;
+
+    /**
+     * Line è la riga 1-based nel file, 0 se non determinabile (tabella Poetry).
+     */
+    "line"?: number;
+
+    /** Creates a new DeclaredDependency instance. */
+    constructor($$source: Partial<DeclaredDependency> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DeclaredDependency instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DeclaredDependency {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DeclaredDependency($$parsedSource as Partial<DeclaredDependency>);
+    }
+}
+
+/**
  * EnvironmentPlan descrive l'ambiente Python di un'unità (o del progetto) e le due azioni
  * separate che l'utente può chiedere: creare l'ambiente e installare le dipendenze.
  */

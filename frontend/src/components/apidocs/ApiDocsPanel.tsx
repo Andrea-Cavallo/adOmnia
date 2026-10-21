@@ -19,6 +19,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { OASGovernancePanel } from './OASGovernancePanel'
 import type { OASLintFinding } from '@/lib/oaslint-api'
 import { openApiToCollection } from '@/lib/openapiImport'
+import { takeOpenApiURLHandoff } from '@/lib/moduleHandoff'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { OpenSwaggerEditorWindow } from '@/wailsjs/go/main/App'
@@ -73,6 +74,15 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
   const [url, setUrl] = useState('')
   const [pasteText, setPasteText] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // URL consegnato da Code Studio (servizio locale appena avviato): si precompila il campo "From URL",
+  // il fetch resta un'azione esplicita dell'utente.
+  useEffect(() => {
+    const handedOff = takeOpenApiURLHandoff()
+    if (!handedOff) return
+    setUrl(handedOff)
+    setMenu('url')
+  }, [])
 
   // Debounced live parse: keep the last valid model on the right when the
   // current text is broken; only the status bar + inline marker reflect the error.
@@ -381,7 +391,7 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
             <button onClick={() => void loadFromUrl()} disabled={urlLoading} className="flex h-8 w-full items-center justify-center gap-2 rounded bg-accent text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
               {urlLoading && <Loader2 size={13} className="animate-spin" />} Fetch into editor
             </button>
-            <p className="text-[10px] text-text-4">Fetched through adOmnia's engine — no browser CORS limits.</p>
+            <p className="text-[10px] text-text-4">Fetched through adOmnia's engine — no browser CORS limits. FastAPI serves <span className="font-mono">/openapi.json</span>, Spring Boot <span className="font-mono">/v3/api-docs</span>.</p>
           </div>
         </Menu>
 

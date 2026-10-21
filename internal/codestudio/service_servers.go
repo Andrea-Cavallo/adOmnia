@@ -31,6 +31,16 @@ func (s *Service) serverProvider(languageID string) (lsp.ServerProvider, error) 
 
 func (s *Service) locateServer(session Session, provider lsp.ServerProvider) LanguageServerInfo {
 	info := provider.LocateServer(session.Project.RealPath, s.toolsRoot)
+	if perUnit, ok := provider.(language.UnitServers); ok && perUnit.ServersPerUnit() && !info.Available {
+		for _, unit := range session.Project.Units {
+			if unit.Language == info.Language {
+				if candidate := provider.LocateServer(unit.Root, s.toolsRoot); candidate.Available {
+					info = candidate
+					break
+				}
+			}
+		}
+	}
 	if !info.Available {
 		_, err := provider.InstallPlan(s.toolsRoot)
 		info.Installable = err == nil
@@ -77,12 +87,32 @@ func (s *Service) StartProvidedLanguageServer(sessionID, languageID string) (Lan
 	if err != nil {
 		return LanguageServerStatus{}, err
 	}
-	spec, err := provider.ServerSpec(session.Project.RealPath, s.toolsRoot)
-	if err != nil {
-		return LanguageServerStatus{}, err
+	spec := lsp.ServerSpec{Language: languageID}
+	if factory := s.perUnitSpec(languageID, session.Project.RealPath); factory != nil {
+		spec.PerUnitSpec = factory
+	} else {
+		spec, err = provider.ServerSpec(session.Project.RealPath, s.toolsRoot)
+		if err != nil {
+			return LanguageServerStatus{}, err
+		}
 	}
 	s.trackLanguageDocuments(session, languageID)
 	return s.lsp.Start(session, spec)
+}
+
+// perUnitSpec restituisce la factory con cui l'host avvia un server per ogni unità del linguaggio,
+// o nil se il linguaggio ne vuole uno solo per progetto. È l'unico punto in cui il core decide: la
+// risposta viene dall'adapter (language.UnitServers), mai da un elenco di linguaggi qui dentro.
+func (s *Service) perUnitSpec(languageID, projectRoot string) func(string) (lsp.ServerSpec, error) {
+	adapter, ok := s.workspace.languages.Get(languageID)
+	if !ok {
+		return nil
+	}
+	perUnit, ok := adapter.(language.UnitServers)
+	if !ok || !perUnit.ServersPerUnit() {
+		return nil
+	}
+	return func(root string) (lsp.ServerSpec, error) { return perUnit.UnitServerSpec(projectRoot, root, s.toolsRoot) }
 }
 
 // StopProvidedLanguageServer ferma il server gestito del linguaggio.

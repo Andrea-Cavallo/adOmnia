@@ -230,6 +230,11 @@ func TestLocateServerAndInstallPlan(t *testing.T) {
 		t.Fatalf("%+v", info)
 	}
 	writeFile(t, tools, "basedpyright/basedpyright/langserver.py", "")
+	// Senza report di pip la cartella non è verificabile: non si usa e lo dice.
+	if unverified := New().LocateServer(root, tools); unverified.Available || !strings.Contains(strings.ToLower(unverified.Error), "reinstall") {
+		t.Fatalf("an unverified tools folder was accepted: %+v", unverified)
+	}
+	writeToolMetadata(t, managedDirectory(tools), pyrightVersion, pyrightVersion)
 	info = New().LocateServer(root, tools)
 	if !info.Available || info.Source != "managed" || info.Binary != managedDirectory(tools) {
 		t.Fatalf("%+v", info)
@@ -332,6 +337,112 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("captured output %q misses %q", joined, want)
 		}
+	}
+}
+
+// asyncTestPlugin restituisce il primo plugin di test asincrono disponibile nell'interprete:
+// pytest-asyncio (il più comune), poi anyio e trio. "" se nessuno.
+func asyncTestPlugin(info InterpreterInfo) string {
+	for _, plugin := range []string{"pytest_asyncio", "anyio", "trio"} {
+		if info.Packages[plugin] {
+			return plugin
+		}
+	}
+	return ""
+}
+
+// testInterpreterWithAsync cerca un interprete con pytest e un plugin asincrono; senza, salta il
+// test con il motivo (PY-9.1: i test reali restano separati dai deterministici). Ritorna il
+// percorso dell'interprete e il plugin da usare nella fixture.
+func testInterpreterWithAsync(t *testing.T) (string, string) {
+	t.Helper()
+	candidates := []string{os.Getenv("ADOMNIA_TEST_PYTHON")}
+	if candidates[0] == "" {
+		if found, err := exec.LookPath("python"); err == nil {
+			candidates = []string{found}
+		}
+	}
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		info, err := readInterpreterInfo(candidate)
+		if err != nil || !info.Packages["pytest"] {
+			continue
+		}
+		if plugin := asyncTestPlugin(info); plugin != "" {
+			return candidate, plugin
+		}
+	}
+	t.Skipf("no Python interpreter with pytest and an async plugin (pytest-asyncio/anyio/trio) available (set ADOMNIA_TEST_PYTHON to one)")
+	return "", ""
+}
+
+// asyncTestSource scrive un test asincrono con il marker del plugin disponibile: il node ID
+// resta `tests/test_async.py::test_async_ok` per tutti e tre, quindi l'albero è identico.
+func asyncTestSource(plugin string) []string {
+	switch plugin {
+	case "anyio":
+		return []string{
+			"import pytest", "",
+			"@pytest.mark.anyio",
+			"async def test_async_ok():", "    assert 1 + 1 == 2", "",
+		}
+	case "trio":
+		return []string{
+			"import pytest", "",
+			"@pytest.mark.trio",
+			"async def test_async_ok():", "    assert 1 + 1 == 2", "",
+		}
+	default: // pytest_asyncio
+		return []string{
+			"import asyncio", "import pytest", "",
+			"@pytest.mark.asyncio",
+			"async def test_async_ok():", "    await asyncio.sleep(0)", "    assert 1 + 1 == 2", "",
+		}
+	}
+}
+
+// TestRealPytestRunHandlesAsyncTests prova PY-5.6: il plugin adOmnia riporta un test asincrono
+// con lo stesso node ID e lo stesso esito di uno sincrono, quando l'interprete ha un plugin
+// asincrono (pytest-asyncio, anyio o trio). Non è una dipendenza di adOmnia: senza plugin salta.
+func TestRealPytestRunHandlesAsyncTests(t *testing.T) {
+	interpreter, plugin := testInterpreterWithAsync(t)
+	root := t.TempDir()
+	writeFile(t, root, "tests/test_async.py", strings.Join(asyncTestSource(plugin), "\n"))
+	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
+	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, spec.Executable, spec.Arguments...)
+	command.Dir = spec.WorkingDirectory
+	command.Env = spec.Environment
+	output, err := command.CombinedOutput()
+	if err != nil && ctx.Err() != nil {
+		t.Fatalf("pytest timed out: %s", output)
+	}
+	tree := idetesting.NewTree()
+	for _, line := range bytes.Split(output, []byte("\n")) {
+		for _, event := range parser.(idetesting.BatchParser).ParseAll(line) {
+			tree.Apply(event)
+		}
+	}
+	results, summary := tree.Snapshot()
+	if summary.Passed != 1 || summary.Failed != 0 {
+		t.Fatalf("summary %+v\noutput:\n%s", summary, output)
+	}
+	// L'async non cambia l'identità: il node ID è quello del test.
+	found := false
+	for _, result := range results {
+		if strings.Contains(result.ID, "test_async_ok") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the async test is missing from the tree: %+v", results)
 	}
 }
 

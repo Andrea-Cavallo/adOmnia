@@ -1,4 +1,4 @@
-import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport } from '../../bindings/adomnia/internal/codestudio/models'
+import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies } from '../../bindings/adomnia/internal/codestudio/models'
 import type { EnvironmentPlan } from '../../bindings/adomnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
@@ -809,8 +809,15 @@ export async function setJavaJdk(sessionId: string, home: string): Promise<void>
 export type GoIDEPythonInterpreter = PythonInterpreterReport['installed'][number]
 
 /** Interpreti Python candidati, scelta corrente e — solo con il progetto autorizzato — versioni e strumenti. */
-export async function getPythonInterpreters(sessionId: string): Promise<PythonInterpreterReport> {
-  return GoIDEBindings.PythonInterpreters(sessionId)
+export async function getPythonInterpreters(sessionId: string, unit = ''): Promise<PythonInterpreterReport> {
+  return GoIDEBindings.PythonUnitInterpreters(sessionId, unit)
+}
+
+export type GoIDEPythonUnitDependencies = PythonUnitDependencies
+
+/** Dipendenze dichiarate dalle unità Python, con la versione risolta dal lockfile (lettura statica). */
+export async function listPythonDependencies(sessionId: string): Promise<PythonUnitDependencies[]> {
+  return GoIDEBindings.PythonDependencies(sessionId)
 }
 
 /** Sceglie l'interprete Python del progetto (unit = '') o di un'unità; path = '' torna alla scelta automatica. */

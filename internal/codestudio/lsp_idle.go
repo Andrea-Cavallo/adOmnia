@@ -69,7 +69,11 @@ func (m *LSPManager) suspendIdle(state *lspSession, epoch uint64) {
 }
 
 func lspActivityID(state *lspSession) string {
-	return "lsp:" + string(state.id) + ":" + state.language
+	id := "lsp:" + string(state.id) + ":" + state.language
+	if state.unit != "" {
+		id += ":" + state.unit
+	}
+	return id
 }
 
 func (m *LSPManager) setActivityManager(manager *activity.Manager) {
