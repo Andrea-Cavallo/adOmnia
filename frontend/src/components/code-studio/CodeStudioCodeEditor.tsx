@@ -1,5 +1,6 @@
 import { installInlineDiagnostics } from './codeStudioInlineDiagnostics'
 import { attachEditorMode } from './codeStudioEditorModes'
+import { CodeStudioEditorModeNotice } from './CodeStudioEditorModeNotice'
 import { registerCodeStudioSettingsJson } from './codeStudioSettingsJson'
 import { editorConfigWithProject } from '@/lib/code-studio/projectSettings'
 import { useProjectSettings } from '@/stores/codeStudioProjectSettings'
@@ -159,7 +160,11 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   const stickyScroll = projectEditor.stickyScroll ?? stickyScrollPref
   const fontLigatures = projectEditor.fontLigatures ?? fontLigaturesPref
   const fontSize = projectEditor.fontSize ?? fontSizePref
-  const editorMode = projectEditor.editorMode ?? editorModePref
+  const configuredEditorMode = projectEditor.editorMode ?? editorModePref
+  const [standardOverride, setStandardOverride] = useState<string | null>(null)
+  const editorMode = standardOverride === document.document.sessionId ? 'default' : configuredEditorMode
+  const vimMode = useCodeStudioWhenStore(state => state.vimMode)
+  useEffect(() => { setStandardOverride(null) }, [configuredEditorMode])
   const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
   const extensions = useIDEExtensionsStore(state => state.items)
@@ -388,8 +393,12 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       }}
     />
     </div>
-    {/* Keep the mode adapter's status host mounted without displaying mode labels. */}
-    <div ref={modeStatusRef} hidden aria-hidden="true" className="hidden" />
+    <CodeStudioEditorModeNotice mode={editorMode} vimMode={vimMode} statusRef={modeStatusRef} onStandard={() => {
+        // A project setting can override the global preference: recover this editor as well.
+        setStandardOverride(document.document.sessionId)
+        useCodeStudioLspStore.getState().updatePreferences({ editorMode: 'default' })
+        requestAnimationFrame(() => editorRef.current?.focus())
+      }} />
     </div>
   )
 }

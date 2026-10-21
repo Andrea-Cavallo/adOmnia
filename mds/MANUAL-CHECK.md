@@ -909,3 +909,37 @@ Piano: 06 JS-17 (P0). **Prerequisito:** `quarkus-super-heroes-main` (o un altro 
 
 - [ ] **INST-1.M1** Tools → Installer…: con Go SDK e npm presenti, "Select all missing" + "Install selected" mostra i comandi esatti nella conferma, installa nella cartella strumenti di adOmnia, console Run e task nella status bar visibili; al termine le righe passano a installato senza riaprire. Progetto non fidato: pulsante disattivato con avviso. Senza Go SDK: errore chiaro per riga, nessun blocco. Strix: installazione tracciata fino alla fine. Chiaro/scuro.
 - [ ] **INST-1.M2** Pannello Risorse → Low resources: sospendere solo Completion (poi solo Navigation, solo Hover) e verificare che solo quel servizio taccia mentre il resto lavora; cambiare la scelta a modalità attiva la riapplica; riavviare adOmnia con la modalità attiva mantiene i servizi sospesi; "Restore services" li riattiva tutti.
+
+## PY — Supporto Python in Code Studio (piano 2026-10-21)
+
+Riferimento: `MULTILANGUAGE-IDE.md` §9.5, PY-0–PY-9. Stato: pianificato, nessuna prova eseguita. Registrare build/commit, OS, versioni degli strumenti, fixture, esito ed eventuali limiti per ogni prova.
+
+- [ ] **PY-M1** Aprire script sciolto e progetto pyproject con layout src: Explorer, unità, icona e Run coerenti; senza interprete mostrare azione utile, senza eseguire/download all'apertura. Progetto non fidato leggibile, processi bloccati.
+- [ ] **PY-M2** Due unità Python con venv diversi: selezione interprete, versione, import disponibili in una sola unità, cambio ambiente, ambiente eliminato, riavvio app e restore. Nessuna contaminazione, buffer non salvati conservati.
+- [ ] **PY-M3** Script e modulo: args con spazi/Unicode, cwd, env-file con segreti redatti, streaming stdout/stderr, stop/rerun, configurazione salvata e riaperta. Ripetere con uv/Poetry presenti e ambiente mancante, senza sync/installazione implicita.
+- [ ] **PY-M4** basedpyright assente → installazione esplicita con comando/console/task → completion/hover/definition/rename/Problems/Structure; offline e errore installazione con retry. Buffer non salvati e file .pyi; light/dark, tastiera e focus.
+- [ ] **PY-M5** pytest: discovery esplicita, test singolo/parametrizzato, suite, fail/skip/xfail, errore collection e rerun failed; traceback apre file/riga corretti. Cancel e tool assente visibili; coverage solo se disponibile.
+- [ ] **PY-M6** debugpy: script, modulo e test selezionato con breakpoint confermato, step, stack/thread, variabili/watch/evaluate; stop, secondo avvio e crash. Verificare assenza processi orfani e isolamento di due sessioni.
+- [ ] **PY-M7** FastAPI/Uvicorn, Django e Flask: proposta modificabile, porta/URL pronti, preview su azione, porta occupata, avvio fallito e stop; reload Run e debug senza reloader. Eventuale import OpenAPI usa il flusso esistente.
+- [ ] **PY-M8** Workspace Go/web/Java/Python: routing LSP, Run/Test/Debug, compound e chiusura unità; Low resources libera strumenti Python senza perdere buffer. Registrare startup/idle/RAM misurati e regressioni degli altri linguaggi.
+- [ ] **PY-M9** Windows nativo, macOS nativo e Linux/WebKitGTK: ripetere percorso minimo open → edit → run → test → breakpoint → stop, percorsi con spazi/Unicode, form light/dark e tastiera. Una piattaforma non provata resta esplicitamente aperta.
+
+## RC-UI — Run configurations (2026-10-21)
+
+- [ ] **RC-UI.M1** Nuova build Wails, progetto misto Go/Java/web/Python: ricerca salvate/tipi, priorità linguaggi presenti, cwd univoca e nessuna scelta implicita con due unità dello stesso linguaggio; Detected → revisione → salvataggio; schema provider, validazione campi nelle sezioni nascoste, errori/retry; modifica → cambio/chiusura/duplicazione → Cancel conserva il draft, Discard scarta solo dopo conferma. Pin/share, ordine, shell preset, compound, environment/tasks/restart/target conservati. Tastiera/focus, finestra stretta, chiaro/scuro e WebKitGTK. Browser fixture già osservata per layout/ricerca/discard, non prova binding o salvataggio desktop.
+
+## EDIT-MODE — Tastiera editor (2026-10-21)
+
+- [ ] **EDIT-MODE.M1** Nella build Wails: abilitare Vim, cliccare nel codice, verificare Navigation visibile, Invio/Space muovono senza modificare; `i` mostra Insert e abilita testo/spazi/newline, Esc riporta Navigation. “Use standard editing” ripristina la scrittura senza `i`, preserva buffer/cursore/undo; riprovare con editorMode imposto nel progetto, split, cambio tab, Emacs e chiaro/scuro. Le prove browser con Monaco e adapter reali non chiudono il gate nativo.
+
+## AG — Workflow agenti e Teams (pianificato 2026-10-21)
+
+Tutte le voci sono pianificate: nessuna verifica eseguita. Riferimento `MULTILANGUAGE-IDE.md` AG-1–AG-8.
+
+- [ ] **AG-M1** Task singolo: scelta agente/obiettivo/criteri, streaming, intervento, stop/ripresa e failure; nessuna modifica persa o task completato senza evidenze.
+- [ ] **AG-M2** Due agenti in worktree distinti: coda, dipendenze, ownership, porte/risorse e stop selettivo; checkout sporco iniziale intatto, cleanup recuperabile.
+- [ ] **AG-M3** Diff reale con commenti ancorati alla revisione, richiesta correzioni, delta e test invalidati da modifiche successive; conflitto visibile, integrazione soltanto dopo azione umana.
+- [ ] **AG-M4** Contesto da file/simboli/documentazione e buffer non salvati: anteprima destinazione, limiti/redazione, isolamento per task e nessun invio inatteso.
+- [ ] **AG-M5** Due agenti ACP compatibili: capability diverse, permission request, cancel, crash e protocollo incompatibile; diagnostico/retry senza perdita della review.
+- [ ] **AG-M6** Docker: permessi filesystem/rete/credenziali, limiti, path mapping, daemon assente, offline, cancel e crash; nessun fallback host silenzioso o container/volume orfano.
+- [ ] **AG-M7** Teams: creare/eseguire/sospendere una ricorrenza, riavvio/app chiusa/fuso orario, deduplicazione, errori e inbox review; nessun merge/push/invio esterno automatico. Tastiera, chiaro/scuro e desktop Windows/macOS/Linux secondo piattaforme dichiarate.

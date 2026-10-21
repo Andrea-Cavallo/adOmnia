@@ -3,6 +3,14 @@ import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type Code
 import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 
 describe('IDE language contributions', () => {
+  it('offers Python script and module runs without claiming LSP or debug support', () => {
+    const python = IDE_LANGUAGES.find(language => language.id === 'python')!
+    expect(python.runTemplates?.map(template => template.kind)).toEqual(['script', 'module'])
+    expect(python.editorLanguages).toEqual([])
+    expect(python.providedServer).not.toBe(true)
+    expect(python.canDebugRun?.({} as never)).toBe(false)
+    expect(languageServerEditorLanguages()).not.toContain('python')
+  })
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
     expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java'])

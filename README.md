@@ -277,3 +277,7 @@ Resource diagnostics: adjust the backend Go GC budget live, restart gopls with a
 [Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. Follow repository contribution guidelines before opening a pull request.
 
 [MIT license](LICENSE.md)
+
+Python in Code Studio: initial script/module Run support uses an explicitly selected local interpreter. Automatic environment discovery, language-server assistance, structured tests and debugging remain planned; desktop acceptance is pending. See [Code Studio](docs/CODE-STUDIO.md).
+
+Run configurations provide project-aware creation, searchable saved entries and types, review of detected targets, and protection for unsaved edits. See [Code Studio](docs/CODE-STUDIO.md) for the current workflow and acceptance limits.

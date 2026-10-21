@@ -566,3 +566,7 @@ Four files live at the root — everything else is under `docs/`:
 ### Website sync on every release tag (mandatory)
 
 Whenever the release tag on `main` is bumped, update the website repo in the same session: `C:\Users\Andrea\Desktop\adomniaWeb\adOmniaWeb` (GitHub `Andrea-Cavallo/adOmniaWeb`, deployed on Vercel from `master`). The download cards and version badge read the latest GitHub release at load time, so they need no edit, but check them anyway. Then update `index.html` for anything that changed: feature/module copy, screenshots in `assets/shots/`, platform requirements, asset names (the card regexes in the page script). Commit and push to `master`; Vercel redeploys on push.
+
+### Python initial adapter (2026-10-21)
+
+`internal/languages/python` now provides static marker/loose-script detection, document selection and schema-driven script/module Run with an explicit absolute interpreter. Registered in `internal/codestudio/languages.go`; frontend contribution has no LSP editor registrations or debug capability until implemented. No automatic environment discovery, TOML metadata parsing, installs, pytest or debugpy yet. Rust remains planned. Existing trust/process and persisted run configuration contracts are reused without schema changes. Plan: `mds/MULTILANGUAGE-IDE.md` §9.5; desktop acceptance: PY-M1/PY-M3 in `mds/MANUAL-CHECK.md`. This supersedes older statements describing Python solely as a validation scenario; it does not restore Python plugin execution.

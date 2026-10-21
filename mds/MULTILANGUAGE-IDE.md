@@ -263,12 +263,126 @@ Task:
   - [x] 9.4.7 Navigazione su classi JDK/librerie (`java/classFileContents`, documenti virtuali sola lettura), colori semantici con retry durante l'import, Ctrl+Shift+O (ML-9.M15); proposte rapide Maven/Gradle build e motivo di pausa "breakpoint" neutro e pannello Threads al posto di Goroutines per Java.
   - [x] 9.4.9 *(2026-10-18)* **pom.xml intelligente**: `java.ParsePomDependencies` (righe/colonne di `<version>` e delle property, anche da testo non salvato), `java.LookupVersions` (Maven Central, solo su azione, cache 30 min, niente alpha/beta/RC/milestone), host `PomDependencies`/`PomVersions`, lens `Check for updates`/`Scan vulnerabilities`, `↑ versione` per dipendenza, marker CVE dal report `securityintel` (OSV) e quick fix che aggiorna `<version>` o la property. Test: `pomdeps_test.go`, `mavencentral_test.go`, `pomInsights.test.ts`. Prova in app = ML-9.M18. Parent/BOM e scansione CVE Gradle sono implementati in JS-8/JS-12 del piano `06-JAVA-SPRING-STUDIO.md` (lettura offline delle versioni gestite e scansione statica Gradle); restano il collegamento completo al Security Center e le prove in app.
   - [ ] 9.4.8 *(2026-10-18: debug automatico reale superato per Maven `spring-boot:run` su Spring Boot 3.4.5 offline e Gradle 8.13 `:run`, `:test` con JUnit 4, `:bootRun` come task JavaExec di fixture, non plugin Spring Gradle. Breakpoint, evaluate e ambiente provati. Corretti task qualificati, flag duplicati, VM options Spring preservate tramite argfile JDK 9+ su Windows, DevTools restart disabilitato e projectName JDT per attach. Gradle fixture importata come progetto Eclipse: classpath/import Buildship e plugin Spring Gradle reali restano da verificare. Test: `TestJavaGradleDebugRunStopsAtBreakpoint`, `TestJavaSpringBootGoalDebugKeepsVMOptions`. Prove native non eseguite, ML-9.M19 aperta.)* **Ancora aperto:** debug in app di `spring-boot:run` e di `test`/`bootRun`/`run` Gradle (porta 5005; provato solo Maven + JUnit); classpath da JDT LS per Gradle con classe scelta; ML-9.M12 da provare con progetto Spring/Gradle reale.
-- [ ] 9.5 **P1 Python**: rilevamento interprete/venv/uv/poetry per unità, basedpyright, provider script/module/uvicorn/Django/Flask, pytest strutturato, debugpy.
+- [ ] 9.5 **P1 Python**: piano dettagliato PY-0–PY-9 qui sotto (2026-10-21). Prima implementazione Python; Rust segue come adapter separato. Nessun supporto dichiarato completato.
 - [ ] 9.6 **P1 Rust**: Cargo (bin/example/test/bench), rust-analyzer, CodeLLDB.
 - [ ] 9.7 **P2 C# e Kotlin**: solo dopo che P0 e P1 passano il contratto minimo; Kotlin riusa il lavoro Gradle/JVM di Java.
 - [ ] 9.8 Per ogni linguaggio chiuso: aggiornare `docs/CODE-STUDIO.md`, `docs/adomnia-feature-catalog.en.md`, `docs/ISSUES.md`, `README.md`, e ricordarsi di verificare l'AI (contesto minimo, cache) se il linguaggio la usa.
 
 **Gate per linguaggio:** progetto reale piccolo (clone di un esempio ufficiale) → aperto, indicizzato, eseguito, testato, debuggato con breakpoint in app avviata, **senza** modifiche al core.
+
+---
+
+### 9.5 — Python: TODO dettagliato (2026-10-21)
+
+**Obiettivo:** aprire una cartella Python, scegliere l'interprete corretto per unità, modificare con assistenza, eseguire script e moduli, usare pytest e fermarsi a un breakpoint. Successivamente completare i flussi FastAPI/Uvicorn, Django e Flask. Stesso Code Studio e stessi pannelli degli altri linguaggi.
+
+**Stato verificato:** `internal/codestudio/languages.go` registra Go, web e Java; non esistono adapter Python/Rust. Il core espone già `ProjectDetector`/`UnitScanner`, `DocumentSelector`, `Runner`, `TestRunner`, `ServerProvider`, `DebugAdapterProvider`; la UI usa `frontend/src/components/ide/languages.ts`. Le descrizioni storiche di questo piano non sono un inventario corrente. Il Python rimosso dal catalogo F4 è il runtime dei plugin: questo piano riguarda strumenti esterni dell'IDE e non lo reintroduce.
+
+**Pilastri:** Local-first (interpreti, ambienti, analisi e processi locali) e User-extensible (adapter, interprete selezionabile, configurazioni versionabili). Nessun account o servizio cloud necessario.
+
+**Ordine:** PY-0 → PY-1 → PY-2 → PY-3 → PY-4 → PY-5; poi PY-6 e PY-7; PY-8/PY-9 chiudono il supporto. La richiesta del 2026-10-21 autorizza questa pianificazione; non chiude i gate desktop preesistenti e non dichiara implementate nuove feature.
+
+| Blocco | Risultato | Sede principale proposta |
+| --- | --- | --- |
+| PY-0/1 | Contratto e unità Python | `internal/languages/python/{language,detect}.go` |
+| PY-2 | Interprete e ambiente per unità | `internal/languages/python/interpreter.go`, host/settings esistenti |
+| PY-3 | Script/moduli nella Run UI comune | `internal/languages/python/{runner,suggest}.go` |
+| PY-4 | Editor con basedpyright | `internal/languages/python/server.go`, `components/ide/languages/python/` |
+| PY-5 | pytest nell'albero Test | `internal/languages/python/{test_runner,pytest}.go` |
+| PY-6 | Debug con debugpy | `internal/languages/python/debug.go`, DAP esistente |
+| PY-7 | Framework e flusso API | adapter Python, preview/entity router esistenti |
+| PY-8/9 | Packaging, compatibilità e verifica | installer, docs, test e collaudi centrali |
+
+I nomi nuovi sono proposte di collocazione, non file già presenti. Estrarre utility nel core solo se riusate davvero; nessuna riscrittura generale dell'host.
+
+#### PY-0 — Contratto, confini e decisioni da fissare
+
+- [ ] PY-0.1 Registrare `python` come ID stabile; documentare kind delle unità, selettore `.py`/`.pyi`, opzioni JSON e capability minime. Nessuna capability pubblicizzata prima del relativo flusso funzionante.
+- [ ] PY-0.2 Fissare versioni Python supportate e matrice Windows/macOS/Linux dopo verifica delle dipendenze; scegliere versioni pinnate di basedpyright/debugpy e relativi artefatti/hash/licenze. Non copiare numeri di versione da esempi storici.
+- [ ] PY-0.3 Definire opzioni tipizzate per script/modulo, interprete, argomenti, cwd e framework dentro `LanguageOptions`; riusare env/env-file, restart e compound esistenti. Distinguere selezione locale della macchina da configurazione condivisa.
+- [ ] PY-0.4 Preparare fixture piccole: script sciolto, pacchetto `src/`, pytest parametrizzato, due unità con ambienti diversi, monorepo Go/web/Java/Python. Condividere le prove di contratto già presenti invece di creare un secondo registry.
+
+#### PY-1 — Rilevamento progetto e navigazione
+
+- [ ] PY-1.1 Implementare adapter e registrazione nella composition root, senza import Python nel core; contributo UI in `components/ide/languages/python/`, icona e comandi con `requires`.
+- [ ] PY-1.2 Leggere TOML con parser: `pyproject.toml`, `[project]`, `requires-python`, entry point e sezioni tool pertinenti; considerare `requirements*.txt`, `setup.cfg`, `setup.py`, `manage.py` come indizi. Mai eseguire `setup.py` o importare il progetto durante la scansione.
+- [ ] PY-1.3 Riconoscere script senza manifest e package con/senza `__init__.py`; evitare un'unità per ogni file o sottopackage. Definire precedenza dei marker e identità stabile delle unità, incluse unità uv workspace annidate.
+- [ ] PY-1.4 Riusare scansione condivisa, cancellazione e limiti; escludere `.venv`, `venv`, `__pycache__`, cache, build e dipendenze. Gestire symlink, percorsi Unicode/spazi e manifest malformati senza bloccare le altre unità.
+- [ ] PY-1.5 Aggiungere test di detection/dedup/isolamento e restore; aprire un progetto Go/web/Java esistente deve conservare unità e configurazioni.
+
+#### PY-2 — Interpreti, venv, uv e Poetry
+
+- [ ] PY-2.1 Proporre candidati con origine esplicita: scelta salvata per unità → ambiente locale riconosciuto → ambiente del gestore configurato → interpreti di sistema. Non usare ciecamente `VIRTUAL_ENV` di un altro progetto; segnalare conflitti e `requires-python` incompatibile.
+- [ ] PY-2.2 Gestire `.venv/Scripts/python.exe` su Windows e `.venv/bin/python` su Unix; distinguere launcher Windows `py` da interprete concreto e scartare alias non eseguibili. Verificare versione, `sys.executable`, prefix e architettura con probe limitato e solo dopo autorizzazione del progetto.
+- [ ] PY-2.3 Rilevare `uv.lock`, `poetry.lock`, `.python-version` e configurazioni ambiente. Risolvere l'ambiente senza installare, sincronizzare lockfile o scaricare Python; se mancante, mostrare errore e azione esplicita. Nessun `uv run` che provochi sync/download impliciti nel percorso normale.
+- [ ] PY-2.4 Selettore interprete per unità con percorso/versione/origine/stato, refresh e selezione manuale; riusare modal e stati loading/error/retry di Code Studio. Creazione venv e installazione dipendenze sono azioni separate con comando, destinazione e conseguenze visibili.
+- [ ] PY-2.5 Lo stesso interprete alimenta Run/Test/Debug e risoluzione import LSP. Cambio interprete invalida solo le cache interessate, aggiorna il server e non cancella buffer o run config; un ambiente rimosso resta selezionato ma segnalato come mancante.
+- [ ] PY-2.6 Testare due unità con dipendenze diverse, interprete assente/incompatibile, timeout, path con spazi, launcher e restore su macchina diversa. Nessuna installazione globale o attivazione shell necessaria.
+
+#### PY-3 — Run di script e moduli
+
+- [ ] PY-3.1 Implementare `Runner`, `SchemaProvider`, `ConfigValidator` e suggerimenti usando i contratti esistenti: kind script e module con selezione unità, target, args e cwd. Form schema-driven comune; nessun `if (language === 'python')` nel JSX condiviso.
+- [ ] PY-3.2 Costruire argv distinti per `<interprete> <script>` e `<interprete> -m <modulo>`, senza shell; validare modulo/target, percorsi autorizzati, cwd ed eseguibile. Supportare `src/` senza aggiungere silenziosamente `PYTHONPATH`.
+- [ ] PY-3.3 Proporre file attivo e entry point verificabili; script console dichiarati nel manifest non diventano automaticamente `python -m`. Mostrare fonte e motivo di indisponibilità, salvare/duplicare/rieseguire attraverso la UI esistente.
+- [ ] PY-3.4 Integrare output progressivo non bufferizzato, stderr, exit code, stop e process tree; riusare env-file/redazione, storico e compound. Nessun probe di dipendenze tramite import dell'app durante il rilevamento.
+- [ ] PY-3.5 Testare esecuzione reale di script/modulo, argomenti Unicode/spazi, input errato, output finale senza newline, cancel e progetto non fidato. La lettura dei file resta possibile senza autorizzare processi.
+
+#### PY-4 — Editor e basedpyright
+
+- [ ] PY-4.1 Implementare `lsp.ServerProvider`/`ServerSpec` con `basedpyright-langserver --stdio`; riusare tool installer e `codeStudioToolInstall.ts`, `providedServer: true`, Run console e task status. Installazione isolata dai pacchetti dell'app utente, comando/versione visibili; considerare anche le dipendenze transitive nell'offline packaging.
+- [ ] PY-4.2 Configurare interprete, root e import per unità, rispettando `pyrightconfig.json` e sezioni pyproject. **Gate tecnico:** verificare due ambienti nello stesso server multi-root; se non isolabili, estendere genericamente l'identità LSP per unità con questo consumer reale, senza switch Python nel core.
+- [ ] PY-4.3 Collegare completion, hover, definition/references, rename, signature help, diagnostica e Structure tramite provider Monaco comuni; verificare buffer non salvati, UTF-16, import `src/` e stub `.pyi`. Esporre solo operazioni supportate dal server.
+- [ ] PY-4.4 Avvio lazy quando serve, stop/restart e Low resources tramite lifecycle comune; assenza tool/interprete con stato e retry. Nessun server avviato per la sola presenza del progetto nella schermata iniziale.
+- [ ] PY-4.5 Formatting/organize imports: verificare capability reali; Ruff è uno strumento opzionale separato con installazione esplicita, configurazione pyproject rispettata e un solo owner delle modifiche al salvataggio. Non attribuire formattazione a basedpyright senza supporto.
+- [ ] PY-4.6 Testare routing e cambio ambiente con server stub; integrazione reale basedpyright con import noto presente in un solo venv, rename e diagnostica. Registrare skip se lo strumento manca, senza chiamare la prova superata.
+
+#### PY-5 — pytest strutturato
+
+- [ ] PY-5.1 Implementare `TestRunner` e parser dell'adapter, invocando pytest con l'interprete scelto; discovery solo su azione/progetto fidato: la collection importa moduli e può eseguire `conftest.py`.
+- [ ] PY-5.2 Usare node ID stabili per file/classe/funzione/parametrizzazione; run singolo, selezione, suite e rerun failed. Non ricostruire gli ID da label o output colorato.
+- [ ] PY-5.3 Scegliere e provare il trasporto strutturato: piccolo plugin pytest distribuito con adOmnia per eventi e node ID, oppure report con mapping dimostrato. JUnit XML da solo non garantisce discovery, streaming e identità completa: niente parsing fragile dell'output umano.
+- [ ] PY-5.4 Mappare passed/failed/skipped/xfail/xpass, errori collection/setup/teardown, durata e location; conservare traceback/stdout/stderr e distinguere nessun test, errore di avvio e cancellazione.
+- [ ] PY-5.5 Coverage opzionale solo con strumento presente/installato esplicitamente; riportare file/linee alla vista esistente, isolare report per esecuzione e non sovrascrivere quelli dell'utente. Baseline pytest non dipende dalla coverage.
+- [ ] PY-5.6 Testare fixture reale con parametrizzazione, async se plugin presente, failure, skip, collection error e cancel; albero e rerun devono conservare identità anche con nomi Unicode e percorsi annidati.
+
+#### PY-6 — Debug con debugpy
+
+- [ ] PY-6.1 Implementare `DebugAdapterProvider` con DAP esistente. Separare interprete che ospita l'adapter dall'interprete del programma; verificare compatibilità e presenza debugpy senza modificare il venv utente in automatico.
+- [ ] PY-6.2 Supportare launch script/modulo e pytest selezionato, stessi args/cwd/env della run; breakpoint, continue/step, exception breakpoint, thread/call stack, variabili/watch/evaluate nei pannelli comuni.
+- [ ] PY-6.3 Connessioni locali su loopback/porta dinamica, timeout e cleanup su errore/stop/chiusura progetto. Attach locale esplicito successivo al launch; nessuna porta aperta su tutte le interfacce o attach remoto implicito.
+- [ ] PY-6.4 Verificare policy subprocess e reload dei framework: primo flusso debug senza reloader, poi gestione figli se supportata. Evitare breakpoint apparentemente attivi nel processo sbagliato e processi orfani.
+- [ ] PY-6.5 Test DAP reale: breakpoint confermato, frame e variabile attesa, step, stop e secondo avvio; testare interprete/debugpy assente, crash adapter, timeout e due sessioni. Skip espliciti se manca il tool.
+
+#### PY-7 — FastAPI/Uvicorn, Django, Flask e API
+
+- [ ] PY-7.1 Rilevamento statico prudente da manifest/config/file; proposte modificabili Uvicorn (modulo:oggetto, factory opzionale), Django (`manage.py runserver`), Flask (`-m flask --app … run`). Non importare framework né indovinare entry point ambigui.
+- [ ] PY-7.2 Campi guidati host/porta/args, dipendenza mancante visibile, sviluppo con reload esplicito; debug senza reload inizialmente. Riutilizzare readiness e restart comuni evitando doppio riavvio.
+- [ ] PY-7.3 URL locale pronto verso preview/browser esistente solo su azione; eventuale OpenAPI FastAPI verso import esistente tramite entity router, niente nuovo `CustomEvent`, fetch o apertura automatica al semplice rilevamento.
+- [ ] PY-7.4 Template minimi Script e progetto pytest; framework opzionali separati. Creare file non installa pacchetti, non esegue codice e non sovrascrive file esistenti; manifest e istruzioni coerenti col gestore scelto.
+- [ ] PY-7.5 Testare suggerimenti/argv con fixture, porta occupata, startup fallito, stop e readiness con server locale reale. Nessuna esigenza Docker/cloud per il primo supporto Python.
+
+#### PY-8 — Sicurezza, persistenza e risorse
+
+- [ ] PY-8.1 Tutti i processi passano da trust/process layer esistente, compresi probe interprete, Poetry/uv, discovery pytest e installazioni; nessuna esecuzione all'apertura di una cartella non fidata. Lettura statica non richiede esecuzione del progetto.
+- [ ] PY-8.2 Persistenza additiva/loader compatibili: config precedenti Go/Java/web intatte, interpreti assoluti solo locali, riferimenti portabili alle unità nei file condivisi. Non serializzare segreti/env risolti; definire migrazione solo se cambia davvero uno schema.
+- [ ] PY-8.3 Installer: versioni pinnate, destinazioni isolate, hash/artefatti verificati e policy rete comune; niente `pip install` globale, aggiornamenti o download transitive silenziosi. Supportare strumenti già presenti e messaggio utile offline.
+- [ ] PY-8.4 Stop/Low resources libera LSP, DAP e figli delle run gestite senza chiudere progetto o perdere modifiche. Misurare startup, idle e RAM di workspace misto prima/dopo con stessa fixture; niente percentuali senza misure.
+- [ ] PY-8.5 Verificare limiti parsing/file/report, concorrenza, cache per ambiente e nessuna contaminazione tra unità; mantenere verdi i test architetturali core/adapter.
+
+#### PY-9 — Verifiche e documentazione
+
+- [ ] PY-9.1 Per blocco: `go test ./internal/languages/python/...` e package host/core toccati; Vitest mirati e `npx tsc --noEmit` per modifiche TS. Test reali dipendenti da strumenti separati dai test deterministici, con skip motivati.
+- [ ] PY-9.2 Checkpoint integrazione: binding con versione Wails del repo se cambia API, `go build ./...`, `npm run build`, `npm run check:startup`; suite complete frontend/Go solo al checkpoint finale o per regressioni estese.
+- [ ] PY-9.3 Aggiornare `docs/CODE-STUDIO.md`, catalogo, `docs/ISSUES.md`, README e istruzioni architetturali: distinguere supporto IDE da runtime plugin, tool esterni richiesti e limiti provati. Non annunciare Rust prima del suo adapter.
+- [ ] PY-9.4 Compilare registro per fase: Impl / Test (comandi, esito, tool/versioni, skip) / Manuale (riferimenti PY-M*) / Doc; revisione indipendente resta non spuntata finché avvenuta. Collaudi solo in `MANUAL-CHECK.md`, sezione PY.
+
+**Uscite incrementali:** PY-0–PY-4 = editing e Run Python; PY-5–PY-6 = test/debug; PY-7–PY-9 = framework e chiusura. Ogni uscita indica chiaramente i limiti: un adapter registrato o una build verde non equivalgono a supporto completo.
+
+**Fuori primo perimetro:** Jupyter/notebook, debugger remoto, Conda manager completo, installazione automatica di Python, pubblicazione PyPI, gestione grafica universale dei pacchetti, runtime plugin Python. Un interprete Conda selezionato manualmente può essere valutato come eseguibile, senza promettere lifecycle Conda.
+
+**Rust dopo Python (9.6):** usare lo stesso contratto con `internal/languages/rust`, detection Cargo workspace/target, rustup/toolchain esplicita, schema run bin/example/test/bench, rust-analyzer, test Cargo strutturati e CodeLLDB. Dettagliare versioni/protocolli e gate con documentazione ufficiale quando parte quel blocco; non introdurre adesso astrazioni Rust speculative. Correzioni generiche emerse da Python devono restare riusabili.
+
+**Fonti ufficiali consultate per il piano (2026-10-21; versioni da pinnare in PY-0):** [basedpyright installazione](https://docs.basedpyright.com/dev/installation/command-line-and-language-server/), [configurazione LSP](https://docs.basedpyright.com/latest/configuration/language-server-settings/), [uv ambienti](https://docs.astral.sh/uv/pip/environments/), [uv comandi e sync](https://docs.astral.sh/uv/reference/cli/), [debugpy CLI](https://github.com/microsoft/debugpy/wiki/Command-Line-Reference), [debugpy configurazione](https://github.com/microsoft/debugpy/wiki/Debug-configuration-settings), [pytest documentazione](https://docs.pytest.org/en/stable/). Verificare nuovamente i contratti quando si implementano i relativi blocchi.
 
 ---
 
@@ -334,3 +448,103 @@ Le Fasi 7 e 8 possono procedere in parallelo dopo la 4–5; la 9 non parte prima
 | 2026-10-18 | 9.4.8 | Verifica automatica reale offline Spring Boot/Maven e Gradle/JUnit: breakpoint, variabili, VM options e ambiente. Test mirati Java/LSP/run/security Maven e 30 test frontend verdi; build frontend verde. Nessun gate desktop chiuso; import Gradle Buildship e bootRun del plugin Spring restano aperti. |
 
 | 2026-10-18 | Priorità / 7 / 10 | Nuovi TODO dal confronto: JS-14 P0 immediato (Java locale: completamento e outline), JS-15 datasource Spring; 10.8 formati commit AI, 10.9 tab multilinea, 7.6 Markdown/Yuque, 10.10 verifica Homebrew. Nessuna implementazione dichiarata. |
+
+### Python — primo incremento implementato, 2026-10-21
+
+Impl: adapter Python registrato, marker e script sciolti rilevati con scansione condivisa; sottoprogetti espliciti conservati, ambienti/cache ignorati. Run script/module con interprete assoluto esplicito, argv senza shell, script confinato anche dopo risoluzione symlink, output non bufferizzato; form schema-driven e debug/LSP non pubblicizzati. Nessuna modifica agli schemi persistiti.
+
+Test: `go test ./internal/languages/python ./internal/ide -count=1` PASS; test host Python e workspace misti PASS dopo aggiornamento dell'asserzione storica che escludeva Python (ora l'adapter esiste). Esecuzione reale script/modulo con Python 3.11 locale PASS. `npx vitest run src/components/ide/languages.test.ts` PASS (5 test), `npx tsc --noEmit`, `go build ./...`, `npm run build` PASS. Nessuna suite completa richiesta per questo incremento circoscritto.
+
+Manuale: PY-M1/PY-M3 aperti; nessuna prova nativa eseguita. Doc: CODE-STUDIO, catalogo, ISSUES, README e CLAUDE aggiornati. PY-1/PY-3 restano parziali: niente parsing TOML, suggerimenti Detected, selettore per unità o auto-discovery interprete; le altre fasi sono aperte. Nessuna casella di supporto completo spuntata e nessuna revisione indipendente dichiarata.
+
+### RC-UI — Run configurations (2026-10-21)
+
+- [ ] RC-UI.1 **IMPLEMENTATO, collaudo nativo aperto:** finestra ridisegnata con ricerca, gruppi per unità, tipi pertinenti al progetto prima degli altri, precompilazione cwd solo univoca, revisione Detected prima del salvataggio, sezioni compatte e protezione draft. Schema/provider condivisi; nessuna modifica persistita o backend. Impl: `CodeStudioRunConfigurations`, `CodeStudioRunWizard`, `RunConfigForm`, `codeStudioRunConfigurations.css`, helper `runConfigurationCatalog`. Test: 21 test mirati (catalog, unit grouping, form, language contributions), typecheck/build frontend e startup check PASS. Verifica browser con fixture chiara/scura: ricerca, default cwd e annullamento discard PASS; binding assenti nella fixture, niente dichiarazione di salvataggio/rilevamento reale. Manuale: RC-UI.M1. Doc: CODE-STUDIO, catalogo, ISSUES e README aggiornati. Revisione indipendente non eseguita.
+
+### EDIT-MODE — Tastiera editor (2026-10-21)
+
+- [ ] EDIT-MODE.1 **IMPLEMENTATO, gate desktop aperto:** indicatore Vim/Emacs visibile con istruzioni e azione di ritorno alla scrittura standard. Eventi `vim-mode-change` sull'adapter, con unsubscribe al dispose. Riproduzione reale in browser: Normal + Invio/Space cambia solo posizione; Insert e standard scrivono `x ` e newline. Test regressione lifecycle rosso prima del fix, verde dopo; test indicatore e contesto tastiera verdi. Nessun file/profilo utente modificato durante la diagnosi. Stato della sessione nativa dell'utente non verificato. Manuale: EDIT-MODE.M1.
+
+## AG — Workflow agenti in Code Studio e Teams (pianificato 2026-10-21)
+
+**Obiettivo:** affidare ad agenti distinti implementazione, correzioni e analisi, eseguire task indipendenti in parallelo e revisionare risultati verificabili prima di integrarli. Il flusso utente è **Task → AI Agent → Code + Tests → Review → Merge**. L'agente implementa e propone; lo sviluppatore supervisiona, richiede correzioni e decide cosa integrare.
+
+Il riferimento funzionale fornito dall'utente è il workflow di JetBrains Air; qui si pianificano funzioni di adOmnia, senza assumere integrazioni JetBrains, web o CLI già disponibili. Questa sezione autorizza solo la pianificazione: nessun task di implementazione è iniziato o completato.
+
+### Base da riusare e confini
+
+- `internal/ide/agentreview`, `stores/codeStudioAgentReview.ts`, `CodeStudioAgentReviewBar/Dialog`: esistono snapshot e review dei file con accettazione/rifiuto e protezione contro file modificati dopo il diff. Lo stato attuale è in memoria: non equivale a una review persistente per task/worktree con commenti e merge.
+- Riusare i percorsi agenti/ACP e contesto AI già presenti, Git/diff, process manager, trust, Docker e task console. All'inizio di ogni blocco verificare i contratti correnti: presenza di una funzione non significa workflow completo.
+- **Teams** è la sede richiesta per gestione del lavoro e automazioni. Prima dell'implementazione identificare il modulo e il relativo storage; se manca, pianificare un'estensione minima del coordinamento esistente. Non confonderlo con Microsoft Teams e non creare dipendenze cloud implicite.
+- Pilastri: **Local-first** (task, log e artefatti locali/esportabili) e **User-extensible** (provider agenti, ACP e workflow configurabili). Servizi esterni solo quando selezionati dall'utente, con contesto e destinazione visibili.
+- Motore in `internal/<dominio>/`, host Wails sottile; nessuna dipendenza da provider concreti in `internal/ide`. Nuove navigazioni tramite entity router, dialog/palette Code Studio comuni, UI lazy e neutra rispetto al linguaggio.
+
+### AG-1 — Task e agenti distinti
+
+- [ ] AG-1.1 Definire un task locale con ID stabile, progetto/unità, obiettivo, criteri di accettazione, file/aree assegnate, dipendenze, agente/provider e limiti di tempo/costo/risorse. Supportare implementazione, bugfix e analisi come intenzioni dello stesso modello.
+- [ ] AG-1.2 Definire stati osservabili: bozza, in coda, preparazione, in esecuzione, richiesta intervento, verifica, in review, correzioni richieste, pronto da integrare, completato, fallito e annullato. Terminazione dell'agente e completamento del task sono eventi distinti.
+- [ ] AG-1.3 Selettore agente per task con disponibilità, capacità effettive, modello/configurazione, origine locale/remota e prerequisiti. Ammettere agenti diversi per task diversi; dichiarare read-only quando è richiesto solo analizzare.
+- [ ] AG-1.4 Rendere visibili piano, attività, modifiche e comandi; streaming con Stop, timeout, ripresa dove supportata e richiesta di intervento senza chiudere il task o perdere il diagnostico. Un errore provider non deve risultare come successo.
+- [ ] AG-1.5 Conservare cronologia locale di prompt, decisioni, risultati e artefatti con limiti/retention, redazione dei segreti ed export. Versionare il formato e migrare in lettura senza cambiare sessioni/chat esistenti.
+
+### AG-2 — Esecuzione parallela e Git worktree
+
+- [ ] AG-2.1 Preparare un branch/worktree distinto per ogni task di scrittura, registrando repository, base commit, branch, directory e proprietario. Non condividere la stessa cartella di scrittura tra agenti concorrenti.
+- [ ] AG-2.2 Prima di creare il worktree verificare stato Git e lavori non salvati. Rendere esplicito se si parte da un commit o da uno snapshot delle modifiche locali; niente stash/reset automatici o perdita di file utente.
+- [ ] AG-2.3 Scheduler con concorrenza configurabile, coda, dipendenze, ownership dei percorsi e rilevamento sovrapposizioni. Task dipendenti attendono il risultato del predecessore; limiti separati per agenti, test e container.
+- [ ] AG-2.4 Isolare anche porte, directory temporanee, report test e processi; mostrare CPU/RAM/task attivi e rendere Stop/Low resources selettivi. Chiudere un task non deve fermare gli altri o l'IDE.
+- [ ] AG-2.5 Gestire repository non Git, worktree già esistente, branch occupato, submodule, Git LFS, spazio insufficiente e avvio parziale. Analisi read-only consentita senza worktree; scrittura condivisa mai usata come fallback silenzioso.
+- [ ] AG-2.6 Cleanup esplicito e recuperabile: conservare diff/commit/artefatti prima della rimozione; distinguere annullamento, archiviazione e cancellazione. Verificare directory e ownership e non rimuovere checkout estranei.
+
+### AG-3 — Review, commenti e richieste di correzione
+
+- [ ] AG-3.1 Estendere Agent Review esistente con associazione task/agente/worktree/base SHA, elenco file e diff affidabile di aggiunte/modifiche/rimozioni/rinomine; gestire binari e file grandi con limiti dichiarati.
+- [ ] AG-3.2 Aggiungere commenti sul diff con file, lato, intervallo e revisione di riferimento; thread aperti/risolti e commenti generali. Dopo nuove modifiche segnalare commenti obsoleti invece di agganciarli alla riga sbagliata.
+- [ ] AG-3.3 “Richiedi correzioni” invia all'agente assegnato commenti selezionati e contesto minimo, nello stesso worktree; registrare il nuovo tentativo e mostrare il delta rispetto alla review precedente. Nessun invio a un provider diverso senza scelta esplicita.
+- [ ] AG-3.4 Collegare evidenze Code + Tests: comandi, cwd, versioni, esito, durata, log e artefatti; distinguere test passati, falliti, non eseguiti e saltati. Legare l'esito al commit/diff verificato: modifiche successive invalidano il verde precedente.
+- [ ] AG-3.5 Implementare “Pronto da integrare” e anteprima integrazione: base aggiornata, conflitti, file interessati e verifiche richieste. Merge/cherry-pick/applicazione diff soltanto su azione dello sviluppatore; nessun push, merge o approvazione automatica.
+- [ ] AG-3.6 Conflitti e checkout sporco mantengono la review aperta; proporre risoluzione in un'area isolata e richiedere nuova review. Accettare un file nella review non equivale a un merge Git del task.
+
+### AG-4 — Contesto progetto per gli agenti
+
+- [ ] AG-4.1 Compositore del contesto con file/selezione, simboli, diagnostica, documentazione, regole progetto e metadati di build/test. Riusare devcontext, registry editor/LSP e filtri AI esistenti; niente seconda indicizzazione globale.
+- [ ] AG-4.2 Anteprima di ciò che verrà fornito: origine, percorso/simbolo, quantità, limiti e destinazione. Applicare ignore, esclusioni segreti e budget prima dell'invio; cartelle vendor/cache/build escluse per default.
+- [ ] AG-4.3 Snapshot coerente con il commit/worktree del task. Buffer non salvati inclusi solo con scelta esplicita e identificati come tali; non mescolare contenuto dell'editor principale e filesystem del worktree.
+- [ ] AG-4.4 Recupero incrementale su richiesta dell'agente, cancellabile e confinato al progetto autorizzato; risposte troncate/negate spiegate. Documenti e output degli strumenti sono dati, non istruzioni che ampliano i permessi.
+- [ ] AG-4.5 Contesto multi-linguaggio con capability effettive; assenza LSP non blocca file/documentazione. Cache invalidata su cambio revisione e task/sessioni isolati, senza credenziali o contenuti di altri progetti.
+
+### AG-5 — Agent Client Protocol (ACP)
+
+- [ ] AG-5.1 Inventariare ed estendere il client ACP esistente; verificare versione negoziata e capability dai contratti ufficiali al momento dell'implementazione. Non duplicare trasporto/session manager per ogni agente.
+- [ ] AG-5.2 Registrazione agenti compatibili con comando/eseguibile, argomenti, ambiente redatto e verifica disponibilità; installazione esplicita quando necessaria. Supportare il percorso locale già esistente senza account o download automatici.
+- [ ] AG-5.3 Collegare sessioni ACP al task e alla cwd del worktree/sandbox: streaming, tool calls, permission request, cancel e riconnessione. Funzioni non supportate restano indisponibili con motivo visibile.
+- [ ] AG-5.4 Gestire crash, timeout, protocollo incompatibile, output malformato e provider che termina a metà modifica. Log tecnici redatti, retry esplicito e nessuna ripetizione automatica di operazioni con effetti non idempotenti.
+- [ ] AG-5.5 Test di contratto con agente simulato e integrazione con almeno due implementazioni compatibili disponibili; matrice capability/protocollo documentata. Non chiamare universale una compatibilità provata su un solo agente.
+
+### AG-6 — Sandbox e Docker
+
+- [ ] AG-6.1 Definire profili visibili: worktree locale con permessi dichiarati e container Docker isolato. **Un worktree isola i file Git, non è una sandbox di sicurezza**; esprimere chiaramente la differenza nella scelta di esecuzione.
+- [ ] AG-6.2 Container per task con worktree montato secondo i permessi, utente non privilegiato, limiti CPU/RAM/processi/tempo e filesystem temporanei. Niente mount della home o socket Docker nel container per default.
+- [ ] AG-6.3 Politiche rete, eseguibili, filesystem e segreti per task: deny/restrict dove supportato e richieste di ampliamento esplicite. Credenziali solo quando necessarie, temporanee, redatte nei log e mai inserite nel repository o nelle immagini.
+- [ ] AG-6.4 Immagini/template per linguaggio con versione/digest e dipendenze dichiarati; pull/build solo su azione. Docker assente, daemon fermo e ambiente offline hanno diagnostico e retry; nessun passaggio automatico a esecuzione host.
+- [ ] AG-6.5 Mappare percorsi host/container per diff, test e diagnostica; gestire Windows/macOS/Linux e cleanup di container/volumi/processi anche dopo crash. Conservare prima i risultati necessari alla review.
+
+### AG-7 — Automazioni nella componente Teams
+
+- [ ] AG-7.1 Definire la UI Teams per elencare, creare, modificare, sospendere e rimuovere automazioni. Ogni automazione indica progetto, trigger, task template, agente, contesto, isolamento, limiti e destinatario della review; nessun modulo o servizio Teams considerato già implementato senza audit.
+- [ ] AG-7.2 Trigger iniziali: avvio manuale e pianificazione locale con fuso orario; poi eventi Git espliciti. Dichiarare cosa accade ad app chiusa/offline, riavvio, cambio ora e run saltate: nessuna promessa di scheduler remoto o servizio sempre acceso.
+- [ ] AG-7.3 Template per code review, proposta aggiornamenti dipendenze e manutenzione/test/documentazione. Gli aggiornamenti producono un worktree con diff e verifiche: non modificano direttamente il branch di lavoro e non vengono integrati da soli.
+- [ ] AG-7.4 Deduplicazione trigger, lock per progetto/task, concorrenza, retry limitato e backoff; impedire loop in cui commit/output dell'automazione riattivano la stessa automazione indefinitamente.
+- [ ] AG-7.5 Storico run con stati, log, costi se disponibili, artefatti e inbox “Da revisionare”. Notifiche locali configurabili; condivisione con altri membri, messaggi esterni o accesso a repository remoti richiedono destinatari e permessi espliciti.
+- [ ] AG-7.6 Teams multiutente, se richiesto: definire ruoli proprietario/esecutore/revisore, controllo accessi e audit prima di aggiungere sincronizzazione. Primo rilascio local-first; nessun account/cloud obbligatorio per utilizzare task e automazioni locali.
+
+### AG-8 — Sequenza, verifiche e criteri di uscita
+
+**Sequenza:** AG-1 + AG-4 + AG-5 per un task singolo con contesto → AG-2 per task concorrenti → AG-3 per review/correzioni/integrazione → AG-6 per isolamento Docker → AG-7 per ricorrenze Teams. AG-2 e AG-6 restano requisiti dei task che dichiarano rispettivamente parallelismo in scrittura e sandbox; non sono simulati da etichette UI. Le priorità Python/Rust e i gate IDE esistenti restano separati.
+
+- [ ] AG-8.1 Per incremento test mirati su stato task, confini filesystem, permessi, lifecycle processi, protocollo ACP, revisioni diff e scheduler; typecheck/build pertinenti. Suite complete solo al checkpoint finale o su modifiche trasversali.
+- [ ] AG-8.2 Fixture end-to-end automatizzata con due task indipendenti in worktree distinti, test reali, commento → correzione → nuova review e conflitto rilevato. Verificare che il checkout iniziale e le modifiche utente restino intatti.
+- [ ] AG-8.3 Documentare persistenza/migrazioni, requisiti Git/Docker/agenti, limiti di piattaforma, segreti/rete, consumo e recupero dopo crash. Aggiornare guida Code Studio, catalogo e ISSUES soltanto quando le funzioni sono implementate, distinguendo roadmap da prodotto disponibile.
+- [ ] AG-8.4 Registrare Impl / Test / Manuale / Doc per ogni blocco; accettazione desktop AG-M1–AG-M7 esclusivamente in `MANUAL-CHECK.md`. Non spuntare il workflow completo se manca un passaggio o il merge avviene senza decisione dello sviluppatore.
+
+**Criterio di uscita prodotto:** lo sviluppatore crea un task, sceglie agente/contesto/isolamento, osserva codice e test, commenta il diff, richiede una correzione e integra esplicitamente il risultato verificato. Può interrompere ogni fase senza perdere il proprio lavoro. Le automazioni consegnano risultati nello stesso percorso di review.

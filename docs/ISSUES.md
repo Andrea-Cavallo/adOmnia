@@ -164,3 +164,15 @@ examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
 ### Resource diagnostics — 2026-10-19
 
 Implemented: live persistent backend GC limit, selectable gopls limit with project restart, timed CPU/RSS recording, per-process charts and parent/owner provenance, JSON/CSV/MD/HTML export. The reported 50% CPU spike did not reproduce in the 32-second baseline; no root cause is claimed. Evidence and limits: [report](performance/resources-2026-10-19.md). Native acceptance remains RES-1.M1–M3 in mds/MANUAL-CHECK.md.
+
+### Python Code Studio — 2026-10-21
+
+Initial adapter implemented: project-marker/loose-script detection and schema-driven script/module Run with explicit interpreter. Automated adapter, mixed-workspace, trust and host-routing checks pass, including real script/module execution with local Python 3.11. Native desktop PY-M1/PY-M3 remains open. TOML parsing, per-unit interpreter discovery, LSP, pytest and debugpy remain in `mds/MULTILANGUAGE-IDE.md` §9.5; Python support is not complete. Rust has no adapter yet.
+
+### Run configuration interface — 2026-10-21
+
+Implemented project-aware creation, saved/type search, unit grouping, explicit review of detected entries, unambiguous unit cwd defaults, compact parameter sections and draft-discard protection. Focused frontend tests and build pass; browser fixture inspected in light/dark. Real Wails save/detection/native acceptance remains open as RC-UI.M1 in `mds/MANUAL-CHECK.md`.
+
+### Editor keyboard mode — 2026-10-21
+
+Reproduced the reported Enter/Space cursor-only behavior with real Monaco + monaco-vim in Normal mode. The mode indicator had been hidden; mode-change tracking incorrectly listened for DOM events instead of adapter events. Restored a visible mode hint and standard-editing recovery action; fixed adapter subscription/disposal. Regression test failed before fix and passes after it. Browser fixture verifies i → insert and recovery → ordinary letters/spaces/newlines. Actual user session configuration not inspected; native Wails acceptance remains EDIT-MODE.M1.

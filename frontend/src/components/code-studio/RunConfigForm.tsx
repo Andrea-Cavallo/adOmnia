@@ -8,6 +8,8 @@ import { SchemaGrid, CodeStudioRunSchemaFields } from './CodeStudioRunSchemaFiel
 import { CodeStudioEntryList } from './CodeStudioEntryList'
 import { RunTaskList } from './CodeStudioRunParameters'
 import { CodeStudioRunTarget, supportsRemoteTarget } from './CodeStudioRunTarget'
+import { confirm } from '@/lib/confirmDialog'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 
 interface Props {
   draft: GoIDERunConfiguration
@@ -16,36 +18,45 @@ interface Props {
   onReady: (ready: boolean) => void
 }
 const sections = [
-  { id: 'configuration', label: 'Configuration', icon: Settings2 },
+  { id: 'configuration', label: 'Parameters', icon: Settings2 },
   { id: 'environment', label: 'Environment', icon: Leaf },
-  { id: 'tasks', label: 'Before / after launch', icon: ListOrdered },
+  { id: 'tasks', label: 'Tasks', icon: ListOrdered },
   { id: 'target', label: 'Run target', icon: Monitor },
   { id: 'restart', label: 'Restart', icon: RotateCcw },
 ] as const
 export function RunConfigForm({ draft, configs, patch, onReady }: Props) {
   const [section, setSection] = useState<string>('configuration')
+  const registered = useCodeStudioStore(state => state.capabilities?.languages)
+  const availableTemplates = runTemplates.filter(item => !item.language || !registered || registered.some(language => language.id === item.language))
   const template = templateFor(draft)
   const isCompound = draft.kind === 'compound'
   const dockerKind = draft.kind === 'docker-build' || draft.kind === 'docker-run'
   return <div className="flex min-h-0 flex-1 flex-col">
-    <div className="space-y-3 border-b border-border-1 p-4">
+    <div className="run-identity">
       <div className="flex items-end gap-3">
         <label className="gs-field-label min-w-0 flex-1">Name<input required value={draft.name} onChange={event => patch({ name: event.target.value })} className="gs-input" /></label>
         <label className="gs-check"><input type="checkbox" checked={!!draft.pinned} onChange={event => patch({ pinned: event.target.checked })} />Pin</label>
         <label className="gs-check" title="Save in .adomnia/run-configurations.json to share through Git"><input type="checkbox" checked={!!draft.shared} onChange={event => patch({ shared: event.target.checked })} />Share (Git)</label>
       </div>
-      <label className="gs-field-label">Provider / type
-        <select value={templateKey(template)} className="gs-input" onChange={event => {
-          const next = runTemplates.find(item => templateKey(item) === event.target.value)
+      <details className="run-type-selector"><summary><span>{template.group} <span className="text-text-4">/</span> {template.label}</span><span className="text-text-4">Change type</span></summary>
+      <label className="gs-field-label mt-3">Configuration type
+        <select value={templateKey(template)} className="gs-input" onChange={async event => {
+          const next = availableTemplates.find(item => templateKey(item) === event.target.value)
+          if (!next || templateKey(next) === templateKey(template)) return
+          if (!await confirm({ title: 'Change configuration type?', message: 'Target and language-specific parameters will be reset. Name, environment and launch tasks will be kept.', confirmLabel: 'Change type' })) return
           if (next) patch({ ...emptyRunConfiguration(draft.sessionId), id: draft.id, name: draft.name, pinned: draft.pinned, shared: draft.shared, order: draft.order, createdAt: draft.createdAt, updatedAt: draft.updatedAt, workingDirectory: draft.workingDirectory, environment: draft.environment, envFile: draft.envFile, preRun: draft.preRun, postRun: draft.postRun, restartOnSave: draft.restartOnSave, restartPolicy: draft.restartPolicy, compound: [], language: next.language, kind: next.kind as GoIDERunConfiguration['kind'], target: next.target ?? '', languageOptions: {}, remote: null })
         }}>
-          {Array.from(new Set(runTemplates.map(item => item.group))).map(group => <optgroup key={group} label={group}>{runTemplates.filter(item => item.group === group).map(item => <option key={templateKey(item)} value={templateKey(item)}>{item.label}</option>)}</optgroup>)}
-          {!runTemplates.some(item => templateKey(item) === templateKey(template)) && <option value={templateKey(template)}>{template.group} · {template.label}</option>}
+          {Array.from(new Set(availableTemplates.map(item => item.group))).map(group => <optgroup key={group} label={group}>{availableTemplates.filter(item => item.group === group).map(item => <option key={templateKey(item)} value={templateKey(item)}>{item.label}</option>)}</optgroup>)}
+          {!availableTemplates.some(item => templateKey(item) === templateKey(template)) && <option value={templateKey(template)}>{template.group} · {template.label}</option>}
         </select>
       </label>
+      </details>
     </div>
-    <nav aria-label="Configuration sections" className="flex shrink-0 flex-wrap gap-1 border-b border-border-1 px-3 py-2">
-      {sections.map(item => <button key={item.id} type="button" aria-pressed={section === item.id} onClick={() => setSection(item.id)} className={`gs-btn gs-btn-sm ${section === item.id ? 'gs-btn-secondary' : 'gs-btn-ghost'}`}><item.icon size={13} />{item.label}</button>)}
+    <nav aria-label="Configuration sections" className="run-section-nav">
+      {sections.map(item => {
+        const count = item.id === 'environment' ? (draft.environment?.length ?? 0) + (draft.envFile ? 1 : 0) : item.id === 'tasks' ? (draft.preRun?.length ?? 0) + (draft.postRun?.length ?? 0) : 0
+        return <button key={item.id} type="button" aria-pressed={section === item.id} onClick={() => setSection(item.id)}><item.icon size={13} />{item.label}{count > 0 && <span>{count}</span>}</button>
+      })}
     </nav>
     <div className="min-h-0 flex-1 overflow-auto p-4" onInvalidCapture={event => {
       const control = event.target as HTMLElement
@@ -56,8 +67,9 @@ export function RunConfigForm({ draft, configs, patch, onReady }: Props) {
       requestAnimationFrame(() => control.focus())
     }}>
       <div data-run-section="configuration" hidden={section !== 'configuration'} className="space-y-4">
-        <SchemaGrid fields={commonRunFields(draft)} values={draftRecord(draft)} set={(key, value) => patch({ [key]: value })} />
+        <div className="run-parameter-heading"><h3>Launch parameters</h3><p>Paths are relative to the project unless a working directory is specified.</p></div>
         <CodeStudioRunSchemaFields key={templateKey(template)} draft={draft} patch={patch} onReady={onReady} />
+        <SchemaGrid fields={commonRunFields(draft)} values={draftRecord(draft)} set={(key, value) => patch({ [key]: value })} />
         {isCompound && <fieldset><legend className="gs-label">Configurations started together</legend>
           {configs.filter(config => config.id !== draft.id && config.kind !== 'compound').map(config => <label key={config.id} className="gs-check mt-2"><input type="checkbox" checked={(draft.compound ?? []).includes(config.id)} onChange={event => patch({ compound: event.target.checked ? [...(draft.compound ?? []), config.id] : (draft.compound ?? []).filter(id => id !== config.id) })} />{config.name}</label>)}
           {configs.length < 2 && <p className="gs-hint">Create the configurations to start together first.</p>}

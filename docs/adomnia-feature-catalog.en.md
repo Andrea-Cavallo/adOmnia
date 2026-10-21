@@ -1213,3 +1213,11 @@ retain their original meaning. Native UI acceptance remains Z1.4.M1.
 ### Application resource diagnostics
 
 The status bar and Code Studio resource monitor provide live backend GOMEMLIMIT changes, gopls limit/restart for a selected Go project, timed CPU/RSS recordings, per-process charts, observed OS parent PIDs and registered Code Studio ownership. Export full history as JSON/CSV, a Markdown summary or standalone HTML with charts. Backend heap/GC, logical-core normalization, unavailable CPU and incomplete observations are explicit. No remote telemetry. [Measurement and compatibility details](performance/resources-2026-10-19.md).
+
+### Python IDE adapter — initial increment (2026-10-21)
+
+Code Studio detects Python project markers and loose scripts and offers script/module Run configurations with an explicit absolute interpreter path. Detection does not execute project code; execution uses the existing project trust and process lifecycle. No Python/package installation is performed. TOML metadata parsing, automatic interpreter discovery, basedpyright, structured pytest and debugpy remain planned. Native desktop acceptance is pending (PY-M1/PY-M3). This does not restore the removed Python plugin runtime.
+
+### Run configuration interface (2026-10-21)
+
+The shared editor now searches saved configurations and types, prioritizes project languages, defaults cwd only for a unique matching unit, and reviews detected entries before saving. Other installed language types remain accessible in a disclosure. Compact parameter sections retain environment/tasks/target/restart, pin/share, ordering and shell presets; discard checks protect modified drafts. Browser fixture checked in both themes; native Wails acceptance pending (RC-UI.M1).

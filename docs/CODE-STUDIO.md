@@ -871,3 +871,19 @@ Verification: store/command/tab tests plus TypeScript and build. Browser preview
 header/tab components and fixture documents checked at 1440 and 760 px; dirty/clean switching was
 exercised visually. Native Wails Save/Undo/Redo, live palette changes and visual acceptance against
 the supplied full IDE mockup remain pending; preview actions do not prove native file writes.
+
+### Python — primo incremento (2026-10-21)
+
+Code Studio registra ora l'adapter Python e rileva unità da marker di progetto e script `.py`, senza eseguire codice durante la scansione. In Run configurations sono disponibili **Python script** e **Python module**: indicare il percorso assoluto dell'interprete (anche quello di un venv esistente), quindi script o modulo. Gli script devono essere dentro il progetto; gli argomenti sono passati senza shell e l'output usa `-u`. L'esecuzione richiede l'autorizzazione del progetto.
+
+Questo incremento non legge ancora i metadati TOML e non seleziona automaticamente venv/uv/Poetry. Non installa Python o pacchetti. basedpyright, pytest, debugpy e proposte framework restano pianificati in `mds/MULTILANGUAGE-IDE.md` §9.5. I processi usano il lifecycle Run comune; collaudo desktop PY-M1/PY-M3 ancora aperto in `mds/MANUAL-CHECK.md`. Il runtime Python dei plugin resta rimosso.
+
+### Run configurations — nuova interfaccia (2026-10-21)
+
+La finestra Run configurations ha ricerca delle configurazioni salvate, righe con tipo e linguaggio, gruppi per unità e indicazione delle modifiche non salvate. La creazione mette prima i linguaggi rilevati nel progetto, poi comandi/orchestrazione; gli altri adapter disponibili si espandono su richiesta. La ricerca filtra tipo e linguaggio. Una sola unità compatibile precompila la working directory; con più unità non viene indovinata.
+
+Le proposte Detected nella finestra si aprono per revisione prima del salvataggio. Parametri del provider prima di directory/argomenti, schede compatte con conteggio ambiente/task e cambio tipo esplicito con conferma del reset. Cambiare configurazione, duplicare o chiudere protegge il draft modificato. Errori di caricamento mantengono la finestra aperta con Retry. Persistenza, trust e backend invariati. Verifica browser con fixture (chiaro/scuro, ricerca, directory e annullamento del discard) eseguita; backend Wails e collaudo desktop restano nel gate RC-UI.M1.
+
+### Tastiera Vim/Emacs — correzione 2026-10-21
+
+L'emulazione Vim ora mostra il modo attivo nell'editor: Navigation spiega `i` per inserire testo, Insert indica Esc per tornare alla navigazione. “Use standard editing” disattiva l'emulazione nelle preferenze; se il progetto impone Vim, il comando ripristina comunque l'editor corrente senza modificare il file di impostazioni del progetto. Nessun buffer viene sostituito. Gli eventi di cambio modalità sono letti dall'adapter monaco-vim, anziché da eventi DOM mai emessi. In Vim Navigation, Invio/spazio muovono il cursore: non sono tasti di inserimento. Per l'app già aperta: View → Vim Mode disattiva la preferenza globale, oppure `i` entra in Insert.
