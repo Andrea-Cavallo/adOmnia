@@ -34,6 +34,18 @@ func TestDAPAdapterProcess(t *testing.T) {
 		}
 		stream = conn
 	}
+	if mode == "tcp-known" {
+		// The port is chosen by the caller: nothing is printed, the client must know the address.
+		listener, err := net.Listen("tcp", os.Getenv("ADOMNIA_DAP_PORT"))
+		if err != nil {
+			os.Exit(2)
+		}
+		conn, err := listener.Accept()
+		if err != nil {
+			os.Exit(3)
+		}
+		stream = conn
+	}
 	fmt.Fprintln(os.Stderr, "adapter diagnostic")
 	reader := bufio.NewReader(stream)
 	send := func(message any) {
@@ -136,6 +148,70 @@ func TestManagerSupportsStdioAndTCPAdapters(t *testing.T) {
 				t.Fatal("adapter still active after disconnect")
 			}
 		})
+	}
+}
+
+func TestManagerSpawnsProcessAtKnownAddress(t *testing.T) {
+	root := t.TempDir()
+	manager := NewDebugManager()
+	t.Cleanup(manager.Shutdown)
+	states := make(chan DebugSessionInfo, 20)
+	outputs := make(chan DebugOutput, 20)
+	manager.SetEmitter(func(kind string, _ SessionID, _ string, payload any) {
+		switch kind {
+		case "debug.state":
+			states <- payload.(DebugSessionInfo)
+		case "debug.output":
+			outputs <- payload.(DebugOutput)
+		}
+	})
+	// Reserve a free port and release it for the adapter: the address is known in advance and the
+	// adapter never prints it (this is how debugpy works).
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	_ = listener.Close()
+	spec := AdapterSpec{
+		AdapterID: "fake-language", Executable: os.Args[0], Arguments: []string{"-test.run=^TestDAPAdapterProcess$"},
+		Environment: append(os.Environ(), "ADOMNIA_DAP_HELPER=tcp-known", "ADOMNIA_DAP_PORT="+address),
+		WorkingDirectory: root, Address: address,
+		Launch: func(string) (string, map[string]any) { return "launch", map[string]any{"program": "fake-program"} },
+	}
+	started, err := manager.Start(Launch{SessionID: "fake-project", Root: root, Spec: spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(10 * time.Second)
+	for {
+		select {
+		case state := <-states:
+			if state.State == DebugTerminated {
+				t.Fatalf("startup failed: %+v", state)
+			}
+			if state.State == DebugRunning {
+				goto running
+			}
+		case <-deadline:
+			t.Fatal("handshake timed out")
+		}
+	}
+running:
+	threads, err := manager.Threads(started.ID)
+	if err != nil || len(threads) != 1 {
+		t.Fatalf("threads: %+v %v", threads, err)
+	}
+	select {
+	case output := <-outputs:
+		if output.Text != "adapter diagnostic\n" {
+			t.Fatalf("unexpected output: %+v", output)
+		}
+	case <-deadline:
+		t.Fatal("process output not forwarded to the debug console")
+	}
+	if err := manager.Stop(started.ID); err != nil {
+		t.Fatal(err)
 	}
 }
 

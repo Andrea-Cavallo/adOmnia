@@ -161,7 +161,7 @@ func TestMixedWorkspaceWithAJavaServiceKeepsItsSuggestionsInItsFolder(t *testing
 }
 
 // A real monorepo: go.work with two modules, an npm workspaces app, a Maven service and a Python service
-// (no adapter yet). Each detector must keep its own units and none may swallow the others' folders.
+// Each detector must keep its own units and none may swallow the others' folders.
 func TestMonorepoWithGoWorkNpmWorkspacesAndJava(t *testing.T) {
 	root := t.TempDir()
 	writeFixtureFiles(t, root, map[string]string{
@@ -188,8 +188,8 @@ func TestMonorepoWithGoWorkNpmWorkspacesAndJava(t *testing.T) {
 			t.Errorf("%s: want a %s unit, got %q (all: %v)", directory, language, languageOf[directory], languageOf)
 		}
 	}
-	if language, ok := languageOf["ml"]; ok {
-		t.Errorf("Python has no adapter, ml must not become a %s unit", language)
+	if languageOf["ml"] != "python" {
+		t.Errorf("ml must be a Python unit, got %q", languageOf["ml"])
 	}
 	// go.work is the Go workspace unit of the root, not a module: it must not shadow the other languages' units.
 	for _, unit := range units {

@@ -168,14 +168,20 @@ func (m *DebugManager) get(id DebugSessionID) (*debugger, error) {
 }
 
 // Start avvia adapter dap e restituisce subito la sessione in stato starting; il resto procede in background.
+// Con Address ed Executable insieme il processo parte e ci si collega all'endpoint già noto: è il
+// caso dei debugger che aprono una porta scelta da chi avvia (es. debugpy), senza un indirizzo da
+// leggere nell'output.
 func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 	if launch.Spec.AdapterID == "" || launch.Spec.Launch == nil {
 		return DebugSessionInfo{}, errors.New("incomplete debug adapter specification")
 	}
-	if launch.Spec.Address == "" {
-		if launch.Spec.Executable == "" {
+	if launch.Spec.Executable == "" {
+		if launch.Spec.Address == "" {
 			return DebugSessionInfo{}, errors.New("debug adapter executable missing")
 		}
+		return m.startRemote(launch), nil
+	}
+	if launch.Spec.Address == "" {
 		switch launch.Spec.Transport {
 		case Stdio:
 		case TCPListen:
@@ -186,9 +192,6 @@ func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 		default:
 			return DebugSessionInfo{}, fmt.Errorf("unsupported DAP transport: %s", launch.Spec.Transport)
 		}
-	}
-	if launch.Spec.Address != "" {
-		return m.startRemote(launch), nil
 	}
 	buildDir, err := os.MkdirTemp("", "adomnia-debug-")
 	if err != nil {
@@ -238,7 +241,11 @@ func (m *DebugManager) Start(launch Launch) (DebugSessionInfo, error) {
 	m.publishState(session)
 	// Copia presa prima di avviare la goroutine che aggiorna lo stato: leggerla dopo sarebbe un data race.
 	info := session.info
-	if launch.Spec.Transport == Stdio {
+	if launch.Spec.Address != "" {
+		go m.readProcessOutput(session, stdout, nil)
+		go m.waitAdapter(session)
+		go m.connect(session, launch, launch.Spec.Address)
+	} else if launch.Spec.Transport == Stdio {
 		stream := &stdioStream{Reader: stdout, Writer: stdin, reader: stdout, writer: stdin}
 		go m.readProcessOutput(session, stderr, nil)
 		go m.waitAdapter(session)
@@ -280,9 +287,22 @@ func (m *DebugManager) run(session *debugger, launch Launch, stdout io.Reader) {
 	m.connect(session, launch, endpoint)
 }
 
-// connect apre la connessione DAP ed esegue l'handshake; la chiusura della connessione chiude la sessione.
+// connect apre la connessione DAP ed esegue l'handshake; la chiusura della connessione chiude la
+// sessione. Il primo collegamento può fallire perché il debug adapter appena avviato non ha ancora
+// aperto l'endpoint: si riprova per qualche secondo prima di arrendersi.
 func (m *DebugManager) connect(session *debugger, launch Launch, endpoint string) {
-	conn, err := net.DialTimeout("tcp", endpoint, 5*time.Second)
+	var conn net.Conn
+	var err error
+	for attempt := 0; attempt < 40; attempt++ {
+		conn, err = net.DialTimeout("tcp", endpoint, 2*time.Second)
+		if err == nil {
+			break
+		}
+		if m.isClosed(session) {
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
 	if err != nil {
 		m.terminate(session, fmt.Sprintf("connessione a debug adapter fallita: %v", err))
 		return
@@ -323,14 +343,26 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 	}
 	command, arguments := launch.Spec.Launch(session.buildDir)
 	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
-	defer cancelLaunch()
-	if err := client.Call(launchCtx, command, arguments, nil); err != nil {
-		if launch.Spec.ExplainError != nil {
-			return launch.Spec.ExplainError(err)
+	// La risposta di launch/attach può arrivare solo dopo configurationDone (debugpy): l'avvio
+	// non si blocca su di essa. Un errore — subito o in ritardo — chiude comunque la sessione.
+	// Il contesto vive finché la richiesta non risponde: cancellarlo prima farebbe fallire la call.
+	launchResult := make(chan error, 1)
+	go func() {
+		defer cancelLaunch()
+		err := client.Call(launchCtx, command, arguments, nil)
+		launchResult <- err
+		if err != nil && !errors.Is(err, context.Canceled) {
+			m.terminate(session, launchError(launch.Spec, err).Error())
 		}
-		return err
-	}
+	}()
 	select {
+	case err := <-launchResult:
+		if err != nil {
+			return launchError(launch.Spec, err)
+		}
+		if err := awaitInitialized(initialized); err != nil {
+			return err
+		}
 	case <-initialized:
 	case <-time.After(debugRequestTimeout):
 		return errors.New("debug adapter did not finish initializing")
@@ -352,6 +384,24 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 	session.mu.Unlock()
 	m.publishState(session)
 	return nil
+}
+
+// launchError applica la spiegazione dell'adapter a un errore di launch/attach.
+func launchError(spec AdapterSpec, err error) error {
+	if spec.ExplainError != nil {
+		return spec.ExplainError(err)
+	}
+	return err
+}
+
+// awaitInitialized attende il segnale initialized del debug adapter.
+func awaitInitialized(initialized <-chan struct{}) error {
+	select {
+	case <-initialized:
+		return nil
+	case <-time.After(debugRequestTimeout):
+		return errors.New("debug adapter did not finish initializing")
+	}
 }
 
 // readProcessOutput cerca l'endpoint DAP e inoltra il resto dell'output di adapter alla console di debug.

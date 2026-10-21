@@ -1,4 +1,4 @@
-import type { JavaJDKReport, JavaJFRRecording } from '../../bindings/adomnia/internal/codestudio/models'
+import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport } from '../../bindings/adomnia/internal/codestudio/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
@@ -802,6 +802,24 @@ export async function getJavaJdks(sessionId: string): Promise<JavaJDKReport> {
 /** Sceglie il JDK del progetto (Run, Debug e Test lo usano allo stesso modo); '' torna al JDK di sistema. */
 export async function setJavaJdk(sessionId: string, home: string): Promise<void> {
   return GoIDEBindings.SetJavaJDK(sessionId, home)
+}
+
+/** Interprete Python candidato (dal report di `getPythonInterpreters`). */
+export type GoIDEPythonInterpreter = PythonInterpreterReport['installed'][number]
+
+/** Interpreti Python candidati, scelta corrente e — solo con il progetto autorizzato — versioni e strumenti. */
+export async function getPythonInterpreters(sessionId: string): Promise<PythonInterpreterReport> {
+  return GoIDEBindings.PythonInterpreters(sessionId)
+}
+
+/** Sceglie l'interprete Python del progetto (unit = '') o di un'unità; path = '' torna alla scelta automatica. */
+export async function setPythonInterpreter(sessionId: string, unit: string, path: string): Promise<void> {
+  return GoIDEBindings.SetPythonInterpreter(sessionId, unit, path)
+}
+
+/** Installa uno strumento (debugpy) nell'interprete scelto; richiede la conferma con il comando esatto. */
+export async function installPythonTool(sessionId: string, interpreter: string, tool: string, confirmed: boolean): Promise<Execution> {
+  return GoIDEBindings.InstallPythonTool(sessionId, interpreter, tool, confirmed)
 }
 
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */

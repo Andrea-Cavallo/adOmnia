@@ -164,3 +164,15 @@ examples, and an operation filter. v1 is read-only ("Try it" deferred). Files:
 ### Resource diagnostics — 2026-10-19
 
 Implemented: live persistent backend GC limit, selectable gopls limit with project restart, timed CPU/RSS recording, per-process charts and parent/owner provenance, JSON/CSV/MD/HTML export. The reported 50% CPU spike did not reproduce in the 32-second baseline; no root cause is claimed. Evidence and limits: [report](performance/resources-2026-10-19.md). Native acceptance remains RES-1.M1–M3 in mds/MANUAL-CHECK.md.
+
+### Python Code Studio - 2026-10-21
+
+Python is now a first-class Code Studio language: static unit detection with TOML parsing, per-unit interpreter resolution and selection (`.adomnia/python.local.json`), script/module Run, structured pytest in the Test tree (adOmnia pytest plugin with real node IDs), debugpy debugging (script/module/pytest with the shared debug panels) and basedpyright editing assistance (pinned, explicitly installed). Automated checks pass, including real pytest and real debugpy integration runs against a local Python 3.11 with pytest 9.1.1/debugpy 1.8.22. Open: native desktop acceptance (PY-M* in `mds/MANUAL-CHECK.md`), two environments in one multi-root LSP session (single interpreter setting), attach debugging, pytest coverage and Python formatting (see `mds/MULTILANGUAGE-IDE.md` §9.5). Rust has no adapter yet.
+
+### Run configuration interface — 2026-10-21
+
+Implemented project-aware creation, saved/type search, unit grouping, explicit review of detected entries, unambiguous unit cwd defaults, compact parameter sections and draft-discard protection. Focused frontend tests and build pass; browser fixture inspected in light/dark. Real Wails save/detection/native acceptance remains open as RC-UI.M1 in `mds/MANUAL-CHECK.md`.
+
+### Editor keyboard mode — 2026-10-21
+
+Reproduced the reported Enter/Space cursor-only behavior with real Monaco + monaco-vim in Normal mode. The mode indicator had been hidden; mode-change tracking incorrectly listened for DOM events instead of adapter events. Restored a visible mode hint and standard-editing recovery action; fixed adapter subscription/disposal. Regression test failed before fix and passes after it. Browser fixture verifies i → insert and recovery → ordinary letters/spaces/newlines. Actual user session configuration not inspected; native Wails acceptance remains EDIT-MODE.M1.

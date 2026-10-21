@@ -5,7 +5,7 @@ import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, typ
 import { requestWorkspaceSymbols } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
-import { cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, isJavaTestRun, javaDebugRequestForNode, failureRateByCPU, flakyCauses, formatDuration, isFailed, isFlaky, isGoTestRun, raceRepeatRequestForNode, rollupOf, reproduceCommandFor, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
+import { cpuCorrelationRequestForNode, cpuCorrelationVerdict, debugRequestForNode, isJavaTestRun, isPythonTestRun, javaDebugRequestForNode, pythonDebugRequestForNode, failureRateByCPU, flakyCauses, formatDuration, isFailed, isFlaky, isGoTestRun, raceRepeatRequestForNode, rollupOf, reproduceCommandFor, repeatRequestForNode, repetitionStats, reproduceRequest, type CodeStudioTestNode } from '@/lib/code-studio/codeStudioTestTree'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { functionsByCoverage, untakenBranches } from './codeStudioCoverage'
 import { CodeStudioPatchCoverage } from './CodeStudioPatchCoverage'
@@ -101,6 +101,11 @@ export function TestRow({ node, depth, selected, run, sessionId, records, entry 
         )}
         {isJavaTestRun(run) && run.status !== 'running' && javaDebugRequestForNode(run, result) && (
           <button type="button" title={`Debug ${result.name}`} onClick={(event) => { event.stopPropagation(); const request = javaDebugRequestForNode(run, result); if (request) void useCodeStudioDebugStore.getState().startJava(request) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-warning opacity-0 hover:bg-warning/10 group-hover:opacity-100">
+            <Bug size={10} aria-hidden="true" />
+          </button>
+        )}
+        {isPythonTestRun(run) && run.status !== 'running' && pythonDebugRequestForNode(run, result) && (
+          <button type="button" title={`Debug ${result.name || result.package}`} onClick={(event) => { event.stopPropagation(); const request = pythonDebugRequestForNode(run, result); if (request) void useCodeStudioDebugStore.getState().startPython(request) }} className="grid h-5 w-5 shrink-0 place-items-center rounded text-warning opacity-0 hover:bg-warning/10 group-hover:opacity-100">
             <Bug size={10} aria-hidden="true" />
           </button>
         )}

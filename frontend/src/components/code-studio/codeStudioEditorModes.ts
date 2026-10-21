@@ -12,20 +12,15 @@ export type CodeStudioEditorMode = 'default' | 'vim' | 'emacs'
 export async function attachEditorMode(editor: monaco.editor.IStandaloneCodeEditor, mode: CodeStudioEditorMode, statusNode: HTMLElement | null, onVimMode?: (mode: CodeStudioVimMode | null) => void): Promise<() => void> {
   if (mode === 'vim') {
     const { initVimMode } = await import('monaco-vim')
-    const vim = initVimMode(editor, statusNode ?? undefined) as unknown as { dispose: () => void; statusInput?: HTMLInputElement }
+    const vim = initVimMode(editor, statusNode ?? undefined)
     onVimMode?.('normal')
-    const source = vim.statusInput ?? statusNode
-    const report = (event?: Event) => {
-      const detail = (event as CustomEvent<{ mode?: string }> | undefined)?.detail
-      const text = detail?.mode ?? vim.statusInput?.value ?? statusNode?.textContent ?? ''
-      onVimMode?.(parseVimMode(text))
+    const report = (event: { mode: string }) => {
+      onVimMode?.(parseVimMode(event.mode))
     }
-    report()
-    source?.addEventListener('vim-mode-change', report)
-    source?.addEventListener('input', report)
+    // monaco-vim emits on the adapter, not as DOM events on its status element.
+    vim.on('vim-mode-change', report)
     return () => {
-      source?.removeEventListener('vim-mode-change', report)
-      source?.removeEventListener('input', report)
+      vim.off('vim-mode-change', report)
       vim.dispose()
       onVimMode?.(null)
     }

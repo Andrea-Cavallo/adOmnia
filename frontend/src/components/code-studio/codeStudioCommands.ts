@@ -4,11 +4,13 @@ import { IDE_LANGUAGES, languageRequirement, type IdeRegisteredLanguage } from '
 import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide/languages/go/commands'
 import { WEB_LANGUAGE_COMMANDS, type WebLanguageCommandId } from '@/components/ide/languages/web/commands'
 import { JAVA_LANGUAGE_COMMANDS, type JavaLanguageCommandId } from '@/components/ide/languages/java/commands'
+import { PYTHON_LANGUAGE_COMMANDS, type PythonLanguageCommandId } from '@/components/ide/languages/python/commands'
 
 export type CodeStudioCommandId =
   | GoLanguageCommandId
   | WebLanguageCommandId
   | JavaLanguageCommandId
+  | PythonLanguageCommandId
   | 'file.openProject' | 'file.newProject' | 'file.clone' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
@@ -35,7 +37,7 @@ export type CodeStudioCommandId =
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.opencodeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
-export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'run' | 'tools' | 'git' | 'help'
+export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'python' | 'run' | 'tools' | 'git' | 'help'
 
 export interface CodeStudioKeyBinding {
   key: string
@@ -274,6 +276,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'vcs.gitStudio', menu: 'git', label: 'Open Project Git Tool Window', separatorBefore: true },
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
   ...JAVA_LANGUAGE_COMMANDS,
+  ...PYTHON_LANGUAGE_COMMANDS,
 ]
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -463,6 +466,8 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
     return context.hasEditor ? true : 'Open a Java file first'
   }
+  if (id === 'python.selectInterpreter') return true
+  if (id === 'python.installDebugpy') return context.authorized ? true : 'Trust this project to install Python tools'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {
     case 'nav.back': return context.canGoBack ? true : 'No earlier location'

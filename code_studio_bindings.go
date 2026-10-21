@@ -1640,6 +1640,29 @@ func (g *GoIDE) SetJavaJDK(sessionID, home string) error {
 	return g.service.SetJavaJDK(sessionID, home)
 }
 
+// PythonInterpreters elenca gli interpreti Python candidati del progetto; con il progetto
+// autorizzato riporta versione e strumenti presenti (pytest, debugpy, basedpyright).
+func (g *GoIDE) PythonInterpreters(sessionID string) (codestudio.PythonInterpreterReport, error) {
+	return g.service.PythonInterpreters(sessionID)
+}
+
+// SetPythonInterpreter sceglie l'interprete Python del progetto (unit == "") o di un'unità;
+// "" torna all'interpretazione automatica. La scelta resta locale alla macchina.
+func (g *GoIDE) SetPythonInterpreter(sessionID, unit, path string) error {
+	return g.service.SetPythonInterpreter(sessionID, unit, path)
+}
+
+// InstallPythonTool installa uno strumento (debugpy) nell'interprete scelto, con versione
+// pinnata e comando visibile, solo dopo conferma esplicita.
+func (g *GoIDE) InstallPythonTool(sessionID, interpreter, tool string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallPythonTool(sessionID, interpreter, tool, confirmed)
+}
+
+// StartPythonDebug avvia il debug di uno script, di un modulo o di test pytest con debugpy.
+func (g *GoIDE) StartPythonDebug(request codestudio.PythonDebugRequest) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartPythonDebug(request)
+}
+
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione
 // note, valori con il loro profilo, bean, iniezioni ed endpoint. Solo filesystem, senza rete.
 func (g *GoIDE) SpringIndex(sessionID string) (java.SpringIndex, error) {

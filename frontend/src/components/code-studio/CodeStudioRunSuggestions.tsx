@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Sparkles } from 'lucide-react'
+import { ArrowRight, Plus, Sparkles } from 'lucide-react'
 import { getRunSuggestions } from '@/lib/code-studio-api'
 import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import type { Suggestion } from '../../../bindings/adomnia/internal/ide/run/models'
@@ -9,12 +9,14 @@ interface Props {
   /** Cambia quando le configurazioni salvate cambiano: le proposte già salvate spariscono. */
   savedCount: number
   onAdd: (configuration: Partial<GoIDERunConfiguration>) => Promise<void>
+  disabled?: boolean
+  mode?: 'save' | 'review'
 }
 
 const PAGE_SIZE = 6
 
 /** Proposte di configurazione rilevate dai marker del progetto (go.mod, package.json…): un click le salva. */
-export function CodeStudioRunSuggestions({ sessionId, savedCount, onAdd }: Props) {
+export function CodeStudioRunSuggestions({ sessionId, savedCount, onAdd, disabled = false, mode = 'save' }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [status, setStatus] = useState('loading')
   const [retry, setRetry] = useState(0)
@@ -47,13 +49,13 @@ export function CodeStudioRunSuggestions({ sessionId, savedCount, onAdd }: Props
         <button
           key={suggestion.id}
           type="button"
-          disabled={adding !== null}
+          disabled={disabled || adding !== null}
           onClick={() => void add(suggestion)}
-          title={`Add "${suggestion.configuration.name}"`}
+          title={`${mode === 'review' ? 'Review' : 'Add'} "${suggestion.configuration.name}"`}
           className="group flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2/60 hover:text-text-1 disabled:opacity-60"
         >
-          <span className="min-w-0 flex-1 truncate">{adding === suggestion.id ? 'Creating…' : suggestion.title}</span>
-          <Plus size={13} className="shrink-0 text-accent opacity-0 group-hover:opacity-100" />
+          <span className="min-w-0 flex-1 truncate">{adding === suggestion.id ? (mode === 'review' ? 'Opening…' : 'Creating…') : suggestion.title}</span>
+          {mode === 'review' ? <ArrowRight size={13} className="shrink-0 text-text-4" /> : <Plus size={13} className="shrink-0 text-accent opacity-0 group-hover:opacity-100" />}
         </button>
       ))}
       {pending.length > PAGE_SIZE && <div className="flex items-center justify-between px-2 py-1">

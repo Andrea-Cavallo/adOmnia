@@ -112,3 +112,7 @@ apiflownuovo/
 /.artifacts/performance/
 /.artifacts/idle-native/
 /frontend/.artifacts/
+
+# Python bytecode (pytest plugin verification)
+__pycache__/
+*.pyc
