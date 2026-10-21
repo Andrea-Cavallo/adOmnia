@@ -51,46 +51,102 @@ A backend developer's day is usually an editor, a terminal, an API client, a dat
 
 The glue between the tools is the product: when the IDE knows your routes, the API client knows which service to start, the debugger can stop inside the request you just sent and the database tool is already on the right schema, the loop from *I changed a line* to *I saw what it did* collapses from minutes to seconds.
 
-## Screenshots
+## Tour of adOmnia
 
 ### Workspace Hub
 
-Start from the main workspace, review recent activity and open the area you need: Code Studio, API and protocols, data and messaging, documentation, version control or power tools.
+Start here. The hub shows your recent activity and opens every area: Code Studio, API & Protocols, Data & Messaging, Docs & Payloads and Power Tools.
 
 <p align="center">
-  <img src="assets/images/ado-hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
+  <img src="assets/screenshots/hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
 </p>
 
-### Code Studio
+### Custom Hub: your own colors
 
-Edit and run a Go service with its project tree, source editor, terminal and contextual AI assistance visible in the same workspace.
+Pick one accent color and a dark base: the whole app follows, from the rail to the hub and every studio. Shades adapt so text stays readable in Dark and White.
 
 <p align="center">
-  <img src="assets/images/ado-ide.png" alt="Code Studio with a Go project, source editor, running service and Claude Code panel" width="100%">
+  <img src="assets/screenshots/hub-custom-theme.png" alt="Workspace Hub recolored with a custom yellow accent" width="100%">
+</p>
+
+### Code Studio with Go
+
+A real Go IDE: project tree, gopls completion and usage counts, Build/Test/Vet lenses, run configurations, Git branch and the toolchain status in the footer.
+
+<p align="center">
+  <img src="assets/screenshots/code-studio-go.png" alt="Code Studio editing a Go file with gopls, run configuration and project tree" width="100%">
+</p>
+
+### Code Studio with Java
+
+Same IDE, another language: a Maven/Spring project with Eclipse JDT LS, Javadoc and the same run, test and debug interface.
+
+<p align="center">
+  <img src="assets/screenshots/code-studio-java.png" alt="Code Studio editing a Java Maven project with Eclipse JDT LS" width="100%">
+</p>
+
+### Debugger
+
+Stop on a breakpoint and inspect goroutines, call stack, locals and globals, with inline values in the editor, breakpoints, memory, disassembly and an evaluate console.
+
+<p align="center">
+  <img src="assets/screenshots/go-debugger.png" alt="Go debug session paused at a breakpoint with goroutines and variables" width="100%">
+</p>
+
+### AI Assistant
+
+Ask Copilot, milk, Claude Code or OpenCode without leaving the editor. The assistant sees your project rules and the open file, and answers beside the code.
+
+<p align="center">
+  <img src="assets/screenshots/ai-assistant.png" alt="AI Assistant panel next to a Go file, with a Git panel below" width="100%">
+</p>
+
+### Dependency vulnerabilities in `go.mod`
+
+Every requirement shows inline actions (update, browse files, replace with local, remove). Known vulnerabilities appear as problems on the exact line, with the advisory ID.
+
+<p align="center">
+  <img src="assets/screenshots/gomod-vulnerabilities.png" alt="go.mod with a vulnerability warning and the Git commit history below" width="100%">
+</p>
+
+### Live Preview
+
+Run a dev server and see the result inside Code Studio, next to the code, with navigation, device modes and the dev-server status in the footer.
+
+<p align="center">
+  <img src="assets/screenshots/live-preview.png" alt="Live Preview of a running app below the editor" width="100%">
 </p>
 
 ### API Workspace
 
-Organize requests in collections, send them to the running service and inspect the response. Recognized routes link directly to their Go handler.
+Collections, environments and requests. Routes found in your code become requests, each linked to its handler with **Open in Code Studio**.
 
 <p align="center">
-  <img src="assets/images/ado-api.png" alt="API Workspace with a health request, response and link to its Go handler" width="100%">
+  <img src="assets/screenshots/api-workspace.png" alt="API Workspace with a request generated from a Go handler" width="100%">
 </p>
 
 ### Database Studio
 
-Connect to SQLite, PostgreSQL, MySQL, MongoDB or Redis, write queries and inspect results, keys and history without leaving the application.
+Browse databases and collections, filter documents, run aggregations and inspect schema, indexes and validation. Shown here with MongoDB.
 
 <p align="center">
-  <img src="assets/images/ado-db.png" alt="Database Studio connected to Redis with a JSON command editor and key explorer" width="100%">
+  <img src="assets/screenshots/database-studio-mongodb.png" alt="Database Studio exploring a MongoDB collection" width="100%">
 </p>
 
-### Git Sync
+### Log Inspector
 
-Inspect branches and commit history, review changed files, stage selected work and run fetch, pull, push or stash operations from the repository view.
+Open or paste logs, or follow them live. Search with filters, see fields detected automatically, group by request, and read each event as JSON, message, stack trace or context.
 
 <p align="center">
-  <img src="assets/images/ado-git.png" alt="Git Sync with repository branches, commit graph and working changes" width="100%">
+  <img src="assets/screenshots/log-inspector.png" alt="Log Inspector with filters, timeline and JSON event view" width="100%">
+</p>
+
+### Power Tools
+
+19 utilities in one place: HAR Viewer, XML Tools, Observability, Secret Scanner, Docker Lab, Base64, hashes, HMAC, JWT decoder, PEM/JKS, Java decompiler and more.
+
+<p align="center">
+  <img src="assets/screenshots/power-tools.png" alt="Power Tools with the HAR Viewer open" width="100%">
 </p>
 
 ## Demo
@@ -164,10 +220,6 @@ You can use the API tools without opening a Go project.
 SQL, broker messages and logs enrich this workflow when capture/instrumentation is configured. They are not automatically available for every service. See [the walkthrough](docs/GETTING-STARTED.md) for a first setup.
 
 ## Code Studio: the IDE inside the workflow
-
-![Code Studio in the light appearance, paused at a breakpoint with goroutines and variables](docs/screenshots/go-debug-light.png)
-
-*Code Studio paused at a breakpoint, with source code, goroutines, variables and console output. Controls may differ between releases.*
 
 - **Edit and navigate:** gopls completion, diagnostics, references, rename, refactoring, project search and Git.
 - **Run, test and debug:** Go configurations, test explorer, coverage and Delve with conditional breakpoints and goroutine inspection.
