@@ -524,6 +524,14 @@ Impl: `runServerURL.ts` (`localServerURLs`/`firstLocalServerURL`) + bottone "Ope
 
 Test: `runServerURL.test.ts` (uvicorn/Django/Flask/Vite, wildcard e IPv6 → localhost, host remoti ignorati, dedupe e punteggiatura); `npx tsc --noEmit` pulito, `npx vitest run src/components/code-studio/ src/lib/code-studio/` = 199 file / 928 test verdi. Manuale: PY-M7 (URL/preview) resta il collaudo nativo. Doc: nessun documento utente da toccare. Revisione indipendente non eseguita.
 
+### Python — riproduzione "import non risolti" su progetto reale (2026-10-21)
+
+Diagnosi della segnalazione *"gtts/psutil could not be resolved"* su un progetto reale (`python-mini-projects`, aperto in sola lettura): il progetto dichiara `gTTS==2.1.1`/`psutil==5.7.2` in `requirementsALL.txt` ma non ha un venv e **nessuno dei 7 interpreti della macchina ha quei pacchetti** (Python 3.9/3.11/3.12/3.13, anaconda3, msys64, unsloth: `gtts` assente ovunque, `psutil` solo nell'ambiente unsloth). `python.pythonPath` dell'IDE arriva al server correttamente: la causa è l'ambiente selezionato, non il language server.
+
+Test: `TestRealProjectThirdPartyImportsFollowTheSelectedEnvironment` (`realproject_lsp_test.go`, gated su `ADOMNIA_TEST_PYTHON_REAL_PROJECT`, nessuna scrittura nel progetto) apre i file reali `Text_to_speech/txtToSpeech.py` e `Battery_notification/battery.py`: con un ambiente senza i pacchetti `gtts`, `psutil` e `pynotifier` restano irrisolti (la segnalazione dell'utente); con un ambiente che li ha gli stessi file non hanno più alcun import irrisolto. Eseguito sul progetto reale: entrambi i rami PASS. Estratto anche `openProjectLangserver`/`initializeProject`/`diagnosticMessages` da `server_lsp_test.go` (test esistente invariato nel comportamento, PASS).
+
+Manuale: la configurazione dell'ambiente nel progetto utente resta azione dell'utente (PY-2.4); nessun documento utente da toccare. Revisione indipendente non eseguita.
+
 ## AG — Workflow agenti in Code Studio e Teams (pianificato 2026-10-21)
 
 **Obiettivo:** affidare ad agenti distinti implementazione, correzioni e analisi, eseguire task indipendenti in parallelo e revisionare risultati verificabili prima di integrarli. Il flusso utente è **Task → AI Agent → Code + Tests → Review → Merge**. L'agente implementa e propone; lo sviluppatore supervisiona, richiede correzioni e decide cosa integrare.
