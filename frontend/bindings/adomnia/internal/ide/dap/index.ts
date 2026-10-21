@@ -11,6 +11,8 @@ export {
     DebugThread,
     DebugVariable,
     EvaluateResult,
+    ExceptionBreakpointSettings,
+    ExceptionBreakpointsView,
     FileBreakpoints,
     FunctionBreakpoint,
     FunctionBreakpointSettings,

@@ -315,7 +315,7 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 			states <- payload.(dap.DebugSessionInfo)
 		}
 	})
-	manager.SeedBreakpoints(dap.SessionID("test"), map[string][]dap.Breakpoint{filepath.Join(root, "hello.py"): {{Line: 2}}}, dap.FunctionBreakpointSettings{})
+	manager.SeedBreakpoints(dap.SessionID("test"), map[string][]dap.Breakpoint{filepath.Join(root, "hello.py"): {{Line: 2}}}, dap.FunctionBreakpointSettings{}, dap.ExceptionBreakpointSettings{})
 	started, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
 	if err != nil {
 		t.Fatal(err)
@@ -338,11 +338,13 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 	if err != nil || len(after) == 0 || after[0].Line != 3 {
 		t.Fatalf("after step: %+v %v", after, err)
 	}
-	if err := manager.Stop(started.ID); err != nil {
+	// PY-6.5: la seconda sessione parte mentre la prima è ancora ferma: due sessioni vive insieme,
+	// ognuna con la propria porta e i propri stop (gli eventi si distinguono per id).
+	secondSpec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, Environment: os.Environ(), LanguageOptions: data})
+	if err != nil {
 		t.Fatal(err)
 	}
-	// PY-6.5: il secondo avvio è una sessione nuova che si ferma allo stesso breakpoint.
-	second, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: spec})
+	second, err := manager.Start(dap.Launch{SessionID: "test", Root: root, Spec: secondSpec})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,8 +352,10 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 	if frames, err := manager.StackTrace(second.ID, again.ThreadID); err != nil || len(frames) == 0 || frames[0].Line != 2 {
 		t.Fatalf("second launch: %+v %v", frames, err)
 	}
-	if err := manager.Stop(second.ID); err != nil {
-		t.Fatal(err)
+	for _, id := range []dap.DebugSessionID{started.ID, second.ID} {
+		if err := manager.Stop(id); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

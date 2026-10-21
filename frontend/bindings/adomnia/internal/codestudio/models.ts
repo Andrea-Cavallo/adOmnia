@@ -2533,6 +2533,12 @@ export class EventContractReport {
     }
 }
 
+export const ExceptionBreakpointSettings = dap$0.ExceptionBreakpointSettings;
+export type ExceptionBreakpointSettings = dap$0.ExceptionBreakpointSettings;
+
+export const ExceptionBreakpointsView = dap$0.ExceptionBreakpointsView;
+export type ExceptionBreakpointsView = dap$0.ExceptionBreakpointsView;
+
 export const Execution = run$0.Execution;
 export type Execution = run$0.Execution;
 
@@ -6204,6 +6210,11 @@ export class SessionView {
     "stopOnPanic"?: boolean;
 
     /**
+     * ExceptionBreakpoints sono gestiti dal backend (SetExceptionBreakpoints).
+     */
+    "exceptionBreakpoints"?: string[];
+
+    /**
      * Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.
      */
     "cursors"?: CursorPosition[];
@@ -6236,8 +6247,9 @@ export class SessionView {
         const $$createField11_0 = $$createType138;
         const $$createField13_0 = $$createType141;
         const $$createField14_0 = $$createType143;
-        const $$createField16_0 = $$createType145;
-        const $$createField17_0 = $$createType147;
+        const $$createField16_0 = $$createType4;
+        const $$createField17_0 = $$createType145;
+        const $$createField18_0 = $$createType147;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openPaths" in $$parsedSource) {
             $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
@@ -6254,11 +6266,14 @@ export class SessionView {
         if ("functionBreakpoints" in $$parsedSource) {
             $$parsedSource["functionBreakpoints"] = $$createField14_0($$parsedSource["functionBreakpoints"]);
         }
+        if ("exceptionBreakpoints" in $$parsedSource) {
+            $$parsedSource["exceptionBreakpoints"] = $$createField16_0($$parsedSource["exceptionBreakpoints"]);
+        }
         if ("cursors" in $$parsedSource) {
-            $$parsedSource["cursors"] = $$createField16_0($$parsedSource["cursors"]);
+            $$parsedSource["cursors"] = $$createField17_0($$parsedSource["cursors"]);
         }
         if ("split" in $$parsedSource) {
-            $$parsedSource["split"] = $$createField17_0($$parsedSource["split"]);
+            $$parsedSource["split"] = $$createField18_0($$parsedSource["split"]);
         }
         return new SessionView($$parsedSource as Partial<SessionView>);
     }

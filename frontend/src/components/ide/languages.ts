@@ -38,6 +38,18 @@ export interface IdeLanguageContribution {
    * conferma e lo avvia all'apertura di un file. Falso per Go, che ha il proprio ciclo di vita.
    */
   providedServer?: boolean
+  /**
+   * Breakpoint su eccezione del debug adapter del linguaggio: `filter` è il nome che il DAP invia
+   * a `setExceptionBreakpoints` (es. debugpy: "raised", "uncaught"). Senza questa lista il
+   * dialog Breakpoints non mostra la sezione (es. Delve non ha filtri del genere).
+   */
+  exceptionFilters?: readonly ExceptionFilterSpec[]
+}
+
+export interface ExceptionFilterSpec {
+  filter: string
+  label: string
+  description?: string
 }
 
 /** Linguaggio registrato dal backend: basta l'identità per abilitare le contribuzioni. */
@@ -73,6 +85,20 @@ export function semanticTokenEditorLanguages(): string[] {
 /** Linguaggio dell'IDE che serve i file con questo ID Monaco (per icona, LSP, widget). */
 export function ideLanguageForEditor(editorLanguage: string): IdeLanguageContribution | undefined {
   return IDE_LANGUAGES.find((language) => language.editorLanguages.includes(editorLanguage))
+}
+
+/** Filtri su eccezione dei linguaggi indicati, unici e in ordine: sezione Exception del dialog Breakpoints. */
+export function exceptionFiltersFor(languageIDs: readonly string[]): ExceptionFilterSpec[] {
+  const seen = new Set<string>()
+  const filters: ExceptionFilterSpec[] = []
+  for (const id of languageIDs) {
+    for (const filter of ideLanguage(id)?.exceptionFilters ?? []) {
+      if (seen.has(filter.filter)) continue
+      seen.add(filter.filter)
+      filters.push(filter)
+    }
+  }
+  return filters
 }
 
 /** Il file aperto con questo ID Monaco è servito da un language server dell'IDE. */

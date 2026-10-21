@@ -24,7 +24,6 @@ import (
 )
 
 const (
-	debugAddressTimeout = 20 * time.Second
 	debugRequestTimeout = 15 * time.Second
 	// debugDisconnectTimeout è il tempo concesso a debug adapter per fermare e chiudere il programma debuggato.
 	debugDisconnectTimeout = 5 * time.Second
@@ -34,6 +33,10 @@ const (
 	maxDebugFrames     = 200
 	maxDisassembly     = 200
 )
+
+// debugAddressTimeout è il tempo concesso a un debug adapter per aprire l'endpoint DAP:
+// variabile per i test (PY-6.5), che devono farlo scattare senza aspettare venti secondi.
+var debugAddressTimeout = 20 * time.Second
 
 // Stati di una sessione di debug.
 const (
@@ -134,11 +137,12 @@ type DebugManager struct {
 	sessions    map[DebugSessionID]*debugger
 	breakpoints map[SessionID]map[string][]Breakpoint
 	functions   map[SessionID]FunctionBreakpointSettings
+	exceptions  map[SessionID]ExceptionBreakpointSettings
 	emit        func(eventType string, sessionID SessionID, resourceID string, payload any)
 }
 
 func NewDebugManager() *DebugManager {
-	return &DebugManager{sessions: make(map[DebugSessionID]*debugger), breakpoints: make(map[SessionID]map[string][]Breakpoint), functions: make(map[SessionID]FunctionBreakpointSettings)}
+	return &DebugManager{sessions: make(map[DebugSessionID]*debugger), breakpoints: make(map[SessionID]map[string][]Breakpoint), functions: make(map[SessionID]FunctionBreakpointSettings), exceptions: make(map[SessionID]ExceptionBreakpointSettings)}
 }
 
 // SetEmitter collega gli eventi del debugger al servizio.
@@ -372,6 +376,7 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 		m.sendBreakpoints(session, path, breakpoints)
 	}
 	m.publishFunctionBreakpoints(session, m.sendFunctionBreakpoints(session, m.functionsFor(projectID)))
+	m.publishExceptionBreakpoints(session, m.sendExceptionBreakpoints(session, m.exceptionsFor(projectID)))
 	configurationCtx, cancelConfiguration := context.WithTimeout(context.Background(), debugRequestTimeout)
 	defer cancelConfiguration()
 	if err := client.Call(configurationCtx, "configurationDone", map[string]any{}, nil); err != nil {
@@ -565,6 +570,7 @@ func (m *DebugManager) StopSession(sessionID SessionID) {
 	m.mu.Lock()
 	delete(m.breakpoints, sessionID)
 	delete(m.functions, sessionID)
+	delete(m.exceptions, sessionID)
 	m.mu.Unlock()
 }
 

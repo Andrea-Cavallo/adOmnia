@@ -289,6 +289,36 @@ func (s *Service) SetFunctionBreakpoints(sessionID string, settings FunctionBrea
 	return view, s.persistSessionView(session.ID, saved)
 }
 
+// ListExceptionBreakpoints restituisce i breakpoint su eccezione salvati per il progetto.
+func (s *Service) ListExceptionBreakpoints(sessionID string) (ExceptionBreakpointsView, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return ExceptionBreakpointsView{}, err
+	}
+	s.viewMu.RLock()
+	view := s.views[session.ID]
+	s.viewMu.RUnlock()
+	return ExceptionBreakpointsView{SessionID: session.ID, Filters: append([]string(nil), view.ExceptionBreakpoints...)}, nil
+}
+
+// SetExceptionBreakpoints sostituisce i breakpoint su eccezione, li invia ai debug attivi e li salva.
+// I filtri sono i nomi del debug adapter (es. debugpy: "raised", "uncaught"): un adapter che non
+// li conosce risponde con un messaggio che resta nella vista.
+func (s *Service) SetExceptionBreakpoints(sessionID string, settings ExceptionBreakpointSettings) (ExceptionBreakpointsView, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return ExceptionBreakpointsView{}, err
+	}
+	s.seedBreakpoints(session)
+	view := s.debug.SetExceptionBreakpoints(session.ID, settings)
+	s.viewMu.Lock()
+	saved := s.views[session.ID]
+	saved.ExceptionBreakpoints = append([]string(nil), view.Filters...)
+	s.views[session.ID] = saved
+	s.viewMu.Unlock()
+	return view, s.persistSessionView(session.ID, saved)
+}
+
 // DebugRunToCursor riprende il programma in pausa fino alla riga indicata di un file del progetto.
 func (s *Service) DebugRunToCursor(debugID, relativePath string, line, threadID int) error {
 	sessionID, err := s.debug.SessionOf(DebugSessionID(debugID))
@@ -339,8 +369,9 @@ func (s *Service) seedBreakpoints(session Session) {
 		}
 	}
 	functions := FunctionBreakpointSettings{Functions: view.FunctionBreakpoints, StopOnPanic: view.StopOnPanic}
+	exceptions := ExceptionBreakpointSettings{Filters: view.ExceptionBreakpoints}
 	s.viewMu.RUnlock()
-	s.debug.SeedBreakpoints(session.ID, byPath, functions)
+	s.debug.SeedBreakpoints(session.ID, byPath, functions, exceptions)
 }
 
 // validateRemoteAddress accetta solo host:porta, senza schema né percorso.

@@ -20,6 +20,11 @@ export function hitConditionError(value: string): string | null {
   return 'Use a number (stops only on that hit) or >= N, == N, % N'
 }
 
+/** Attiva/disattiva un filtro su eccezione senza duplicati, conservando l'ordine degli altri. */
+export function toggleExceptionFilter(filters: readonly string[], filter: string): string[] {
+  return filters.includes(filter) ? filters.filter((item) => item !== filter) : [...filters, filter]
+}
+
 export function draftFrom(breakpoint: Partial<GoIDEBreakpoint> | null | undefined): BreakpointDraft {
   return {
     enabled: !breakpoint?.disabled,

@@ -308,6 +308,73 @@ export class EvaluateResult {
 }
 
 /**
+ * ExceptionBreakpointSettings sono i breakpoint su eccezione del progetto: i filtri sono i nomi
+ * del debug adapter (es. debugpy: "raised", "uncaught"); senza filtri il programma non si ferma
+ * sulle eccezioni (PY-6.2).
+ */
+export class ExceptionBreakpointSettings {
+    "filters": string[];
+
+    /** Creates a new ExceptionBreakpointSettings instance. */
+    constructor($$source: Partial<ExceptionBreakpointSettings> = {}) {
+        if (!("filters" in $$source)) {
+            this["filters"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExceptionBreakpointSettings instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExceptionBreakpointSettings {
+        const $$createField0_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("filters" in $$parsedSource) {
+            $$parsedSource["filters"] = $$createField0_0($$parsedSource["filters"]);
+        }
+        return new ExceptionBreakpointSettings($$parsedSource as Partial<ExceptionBreakpointSettings>);
+    }
+}
+
+/**
+ * ExceptionBreakpointsView è il payload di debug.exceptionBreakpoints.
+ */
+export class ExceptionBreakpointsView {
+    "sessionId": SessionID;
+    "filters": string[];
+
+    /**
+     * Message spiega perché il debug adapter non ha accettato i filtri.
+     */
+    "message"?: string;
+
+    /** Creates a new ExceptionBreakpointsView instance. */
+    constructor($$source: Partial<ExceptionBreakpointsView> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("filters" in $$source)) {
+            this["filters"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExceptionBreakpointsView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExceptionBreakpointsView {
+        const $$createField1_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("filters" in $$parsedSource) {
+            $$parsedSource["filters"] = $$createField1_0($$parsedSource["filters"]);
+        }
+        return new ExceptionBreakpointsView($$parsedSource as Partial<ExceptionBreakpointsView>);
+    }
+}
+
+/**
  * FileBreakpoints è il payload di debug.breakpoints.
  */
 export class FileBreakpoints {
@@ -334,7 +401,7 @@ export class FileBreakpoints {
      * Creates a new FileBreakpoints instance from a string or object.
      */
     static createFrom($$source: any = {}): FileBreakpoints {
-        const $$createField2_0 = $$createType1;
+        const $$createField2_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("breakpoints" in $$parsedSource) {
             $$parsedSource["breakpoints"] = $$createField2_0($$parsedSource["breakpoints"]);
@@ -397,7 +464,7 @@ export class FunctionBreakpointSettings {
      * Creates a new FunctionBreakpointSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): FunctionBreakpointSettings {
-        const $$createField0_0 = $$createType3;
+        const $$createField0_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("functions" in $$parsedSource) {
             $$parsedSource["functions"] = $$createField0_0($$parsedSource["functions"]);
@@ -467,7 +534,7 @@ export class FunctionBreakpointsView {
      * Creates a new FunctionBreakpointsView instance from a string or object.
      */
     static createFrom($$source: any = {}): FunctionBreakpointsView {
-        const $$createField1_0 = $$createType5;
+        const $$createField1_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("functions" in $$parsedSource) {
             $$parsedSource["functions"] = $$createField1_0($$parsedSource["functions"]);
@@ -479,9 +546,10 @@ export class FunctionBreakpointsView {
 export type SessionID = run$0.SessionID;
 
 // Private type creation functions
-const $$createType0 = BreakpointState.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = FunctionBreakpoint.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = FunctionBreakpointState.createFrom;
-const $$createType5 = $Create.Array($$createType4);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = BreakpointState.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = FunctionBreakpoint.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = FunctionBreakpointState.createFrom;
+const $$createType6 = $Create.Array($$createType5);

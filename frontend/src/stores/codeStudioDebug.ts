@@ -3,9 +3,9 @@ import { confirm } from '@/lib/confirmDialog'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
-  listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
-  setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, stepGoIDEDebug, stopGoIDEDebug,
-  type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
+  listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEExceptionBreakpoints, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
+  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, stepGoIDEDebug, stopGoIDEDebug,
+  type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEExceptionBreakpoints, type GoIDEExceptionBreakpointSettings, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
   type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/code-studio-debug-api'
 import { useCodeStudioStore } from './codeStudio'
@@ -93,6 +93,8 @@ interface GoIDEDebugState {
   breakpoints: Record<string, Record<string, GoIDEBreakpointState[]>>
   /** Breakpoint di funzione e "Stop on every panic", per sessione. */
   functionBreakpoints: Record<string, GoIDEFunctionBreakpoints>
+  /** Breakpoint su eccezione (filtri del debug adapter), per sessione. */
+  exceptionBreakpoints: Record<string, GoIDEExceptionBreakpoints>
   watches: Record<string, string[]>
   delve: Record<string, GoIDEDelveInfo>
   error: string | null
@@ -121,6 +123,8 @@ interface GoIDEDebugState {
   setAllBreakpointsDisabled: (sessionId: string, disabled: boolean) => Promise<void>
   loadFunctionBreakpoints: (sessionId: string) => Promise<void>
   setFunctionBreakpoints: (sessionId: string, settings: GoIDEFunctionBreakpointSettings) => Promise<boolean>
+  loadExceptionBreakpoints: (sessionId: string) => Promise<void>
+  setExceptionBreakpoints: (sessionId: string, settings: GoIDEExceptionBreakpointSettings) => Promise<boolean>
   runToCursor: (debugId: string, relativePath: string, line: number) => Promise<void>
   installDelve: (sessionId: string) => Promise<boolean>
   detectDelve: (sessionId: string) => Promise<GoIDEDelveInfo | null>
@@ -343,6 +347,7 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     activeBySession: {},
     breakpoints: {},
     functionBreakpoints: {},
+    exceptionBreakpoints: {},
     watches: {},
     delve: {},
     error: null,
@@ -578,6 +583,28 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       }
     },
 
+    loadExceptionBreakpoints: async (sessionId) => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      if (get().exceptionBreakpoints[sessionId]) return
+      try {
+        const view = await listGoIDEExceptionBreakpoints(sessionId)
+        set((state) => ({ exceptionBreakpoints: { [sessionId]: view, ...state.exceptionBreakpoints } }))
+      } catch (error) {
+        set({ error: errorMessage(error) })
+      }
+    },
+
+    setExceptionBreakpoints: async (sessionId, settings) => {
+      try {
+        const view = await setGoIDEExceptionBreakpoints(sessionId, settings)
+        set((state) => ({ exceptionBreakpoints: { ...state.exceptionBreakpoints, [sessionId]: view } }))
+        return true
+      } catch (error) {
+        useCodeStudioStore.setState({ error: errorMessage(error) })
+        return false
+      }
+    },
+
     runToCursor: async (debugId, relativePath, line) => {
       const view = get().debuggers[debugId]
       if (!view || view.info.state !== 'stopped') return
@@ -630,6 +657,11 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       if (event.type === 'debug.functionBreakpoints') {
         const view = event.payload as GoIDEFunctionBreakpoints
         if (view?.sessionId) set((state) => ({ functionBreakpoints: { ...state.functionBreakpoints, [view.sessionId]: view } }))
+        return
+      }
+      if (event.type === 'debug.exceptionBreakpoints') {
+        const view = event.payload as GoIDEExceptionBreakpoints
+        if (view?.sessionId) set((state) => ({ exceptionBreakpoints: { ...state.exceptionBreakpoints, [view.sessionId]: view } }))
         return
       }
       if (event.type === 'debug.breakpoints') {

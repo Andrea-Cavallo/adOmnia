@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
-import { IDE_LANGUAGES, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { IDE_LANGUAGES, exceptionFiltersFor, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
@@ -31,6 +31,14 @@ describe('IDE language contributions', () => {
 
   it('keeps the gopls-tuned features (semantic colors, inlay hints, Code Vision) on Go only', () => {
     expect(heavyFeatureEditorLanguages()).toEqual(['go'])
+  })
+
+  it('declares the debugpy exception filters and gathers them per project language', () => {
+    const python = IDE_LANGUAGES.find(language => language.id === 'python')!
+    expect(python.exceptionFilters?.map((filter) => filter.filter)).toEqual(['raised', 'uncaught'])
+    expect(exceptionFiltersFor(['go'])).toEqual([])
+    expect(exceptionFiltersFor(['python', 'python']).map((filter) => filter.filter)).toEqual(['raised', 'uncaught'])
+    expect(exceptionFiltersFor(['java', 'python']).length).toBe(2)
   })
 
   it('gives every language a brand icon the run bar can show', () => {

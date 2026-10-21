@@ -20,6 +20,11 @@ export const PYTHON_LANGUAGE: IdeLanguageContribution = {
   canDebugRun: config => ['script', 'module'].includes(String(config.kind)),
   editorLanguages: ['python'],
   languageServer: 'basedpyright',
+  // debugpy dichiara questi due filtri DAP; i nomi vengono inviati a setExceptionBreakpoints.
+  exceptionFilters: [
+    { filter: 'raised', label: 'Raised Exceptions', description: 'Stop when an exception is raised, even when it is handled.' },
+    { filter: 'uncaught', label: 'Uncaught Exceptions' },
+  ],
   heavyFeatures: false,
   semanticTokens: true,
   providedServer: true,

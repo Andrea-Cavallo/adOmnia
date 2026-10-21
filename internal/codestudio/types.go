@@ -226,6 +226,8 @@ type SessionView struct {
 	// FunctionBreakpoints e StopOnPanic sono gestiti dal backend (SetFunctionBreakpoints).
 	FunctionBreakpoints []FunctionBreakpoint `json:"functionBreakpoints,omitempty"`
 	StopOnPanic         bool                 `json:"stopOnPanic,omitempty"`
+	// ExceptionBreakpoints sono gestiti dal backend (SetExceptionBreakpoints).
+	ExceptionBreakpoints []string `json:"exceptionBreakpoints,omitempty"`
 	// Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.
 	Cursors []CursorPosition `json:"cursors,omitempty"`
 	Split   *SplitView       `json:"split,omitempty"`
