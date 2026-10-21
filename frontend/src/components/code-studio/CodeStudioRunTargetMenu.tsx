@@ -2,6 +2,7 @@ import { Bug, Container, FlaskConical, FlaskRound, Hammer, Play, Save, Square } 
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { CodeStudioRunTarget } from './codeStudioRunTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
+import { isPythonTarget } from './codeStudioPythonTargets'
 
 export type CodeStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'fuzz' | 'build' | 'buildRun' | 'down' | 'save'
 
@@ -19,6 +20,12 @@ function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
     const items: ContextMenuItem[] = [{ id: 'run', label: `Run '${label}'`, icon: Play, iconClassName: 'text-success' }]
     items.push({ id: 'debug', label: `Debug '${label}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' })
     return items
+  }
+  if (isPythonTarget(target)) {
+    return [
+      { id: 'run', label: `Run '${target.name}'`, icon: Play, iconClassName: 'text-success' },
+      { id: 'debug', label: `Debug '${target.name}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' },
+    ]
   }
   if (target.kind === 'make') {
     return [

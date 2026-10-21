@@ -326,6 +326,7 @@ I nomi nuovi sono proposte di collocazione, non file già presenti. Estrarre uti
 - [x] PY-3.3 *(2026-10-21: proposte Detected per script di avvio verificabili, `manage.py runserver`, uvicorn/Flask solo con app univoca riconosciuta staticamente e dipendenza dichiarata, `python -m` solo per entry point con modulo eseguibile verificato (`__main__`/guardia); gli `[project.scripts]` non diventano mai comandi automatici; test `TestSuggestKeepsConsoleScriptsUnverified`.)* Proporre file attivo e entry point verificabili; script console dichiarati nel manifest non diventano automaticamente `python -m`. Mostrare fonte e motivo di indisponibilità, salvare/duplicare/rieseguire attraverso la UI esistente.
 - [x] PY-3.4 *(2026-10-21: output progressivo non bufferizzato (`-u`), stderr/exit code/stop/process tree dal lifecycle Run comune, env-file e redazione invariate; nessun probe con import del progetto: la detection è solo statica.)* Integrare output progressivo non bufferizzato, stderr, exit code, stop e process tree; riusare env-file/redazione, storico e compound. Nessun probe di dipendenze tramite import dell'app durante il rilevamento.
 - [ ] PY-3.5 *(parziale 2026-10-21: esecuzione reale di script/modulo verificata con Python 3.11, argomenti Unicode/spazi, output senza newline finale, guardia di autorizzazione su run/test/debug (`process_launch_guard_test.go` esteso a Python); mancano cancel esplicito durante un run reale e input errato lato utente.)* Testare esecuzione reale di script/modulo, argomenti Unicode/spazi, input errato, output finale senza newline, cancel e progetto non fidato. La lettura dei file resta possibile senza autorizzare processi.
+- [x] PY-3.6 *(2026-10-21: `codeStudioPythonTargets.ts` + test: il ▶ del gutter compare sulla riga del guard `if __name__ == "__main__":` o, senza guard, sulla prima riga; menu Run/Debug come per Java (`CodeStudioRunTargetMenu`), dispatch in `CodeStudioPanel.runTarget` con guardia di autorizzazione, hover dell'editor; la run usa `startRun('script', { languageOptions: { script } })` (kind `script` in `GoIDEQuickRunKind`, `languageOptions` inoltrato da `startRun`) e il debug usa debugpy sullo stesso script. Prova in app = PY-M10.)* ▶ nel gutter Run/Debug per gli script Python, coerente con Go e Java: stessa autorizzazione e stesso interprete risolto delle altre run.
 
 #### PY-4 — Editor e basedpyright
 
@@ -472,6 +473,14 @@ Manuale: PY-M1–PY-M8 aperti in `mds/MANUAL-CHECK.md` (nessuna prova su app avv
 ### EDIT-MODE — Tastiera editor (2026-10-21)
 
 - [ ] EDIT-MODE.1 **IMPLEMENTATO, gate desktop aperto:** indicatore Vim/Emacs visibile con istruzioni e azione di ritorno alla scrittura standard. Eventi `vim-mode-change` sull'adapter, con unsubscribe al dispose. Riproduzione reale in browser: Normal + Invio/Space cambia solo posizione; Insert e standard scrivono `x ` e newline. Test regressione lifecycle rosso prima del fix, verde dopo; test indicatore e contesto tastiera verdi. Nessun file/profilo utente modificato durante la diagnosi. Stato della sessione nativa dell'utente non verificato. Manuale: EDIT-MODE.M1.
+
+### Python — ▶ nel gutter Run/Debug (2026-10-21)
+
+Impl: `codeStudioPythonTargets.ts` (riga del ▶: guard `if __name__ == "__main__":`, prima riga senza guard), `CodeStudioRunTargetMenu` (Run/Debug), `CodeStudioPanel.runTarget` (guardia di autorizzazione, run con `languageOptions.script` relativo al progetto, debug con debugpy sullo stesso script via `startPython`), hover e glifo in `CodeStudioCodeEditor`, tipo `python-main` in `codeStudioRunTargets`. `GoIDEQuickRunKind` aggiunge `script` e `startRun` inoltra `languageOptions`, prima perso nel quick run. Nessuna modifica backend: lo script era già il target del Runner Python.
+
+Test: `codeStudioPythonTargets.test.ts` (guard, fallback prima riga, integrazione con `findRunTargets`); `npx vitest run src/components/code-studio/` = 135 file / 631 test verdi (prima esecuzione con errore di worker transitorio, ripetuta due volte verde); `npx tsc --noEmit` pulito.
+
+Manuale: PY-M10 aperta (`mds/MANUAL-CHECK.md`). Doc: nessun documento toccato — Run/Debug Python sono già descritti in `docs/CODE-STUDIO.md` e il gutter rientra nella voce citata. Revisione indipendente non eseguita.
 
 ## AG — Workflow agenti in Code Studio e Teams (pianificato 2026-10-21)
 
