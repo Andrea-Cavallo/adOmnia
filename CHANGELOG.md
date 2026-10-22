@@ -4,6 +4,12 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.16] — 2026-10-22
+
+Release notes: [docs/releases/v1.0.16.md](docs/releases/v1.0.16.md).
+
+- Same code as the re-published v1.0.15 (Claude Code opens again on Windows, agents without a key are flagged and refused, power switch on each AI Assistant tab). The first v1.0.15 build did not contain those three fixes; a new version number tells the two builds apart, so **update to 1.0.16** if you installed 1.0.15 earlier today.
+
 ## [1.0.15] — 2026-10-22
 
 Release notes: [docs/releases/v1.0.15.md](docs/releases/v1.0.15.md).
