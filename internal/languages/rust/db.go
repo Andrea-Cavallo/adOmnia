@@ -25,8 +25,10 @@ var (
 	dieselTable = regexp.MustCompile(`table!\s*\{\s*([A-Za-z_]\w*)`)
 	// seaOrmTable è `#[sea_orm(table_name = "nome")]` (o table_name = "…" nel codice).
 	seaOrmTable = regexp.MustCompile(`table_name\s*=\s*"([^"]*)"`)
-	// connString è una DSN in una chiamata `with_uri_str("…")`, `.connect("…")` o `::open("…")`.
-	connString = regexp.MustCompile(`(?:with_uri_str|connect|::open)\s*\(\s*"([a-z][a-z0-9+]*://[^"]*)"`)
+	// connString è una DSN in una chiamata `with_uri_str("…")` (sea-orm), `establish("…")` (diesel),
+	// `.connect("…")` (sqlx/sea-orm) o `::open("…")` (rusqlite). La stringa è validata da
+	// isConnectionString (scheme `://`, host:port, `:memory:` o file .db/.sqlite).
+	connString = regexp.MustCompile(`(?:with_uri_str|establish|connect|::open)\s*\(\s*"([^"]*)"`)
 )
 
 // DatabasesInFile estrae tabelle e stringhe di connessione da un sorgente Rust. Tollerante: una
@@ -65,10 +67,30 @@ func DatabasesInFile(relativePath string, data []byte) []DatabaseRef {
 
 	// Stringhe di connessione.
 	for _, loc := range connString.FindAllStringSubmatchIndex(source, -1) {
-		emit("datasource", source[loc[2]:loc[3]], loc[0])
+		if dsn := source[loc[2]:loc[3]]; isConnectionString(dsn) {
+			emit("datasource", dsn, loc[0])
+		}
 	}
 
 	return refs
+}
+
+// isConnectionString dice se una stringa somiglia a una DSN: scheme `://`, host:port senza scheme,
+// `:memory:` oppure un file di database (.db/.sqlite/.sqlite3).
+func isConnectionString(value string) bool {
+	if value == ":memory:" {
+		return true
+	}
+	if strings.Contains(value, "://") {
+		return true
+	}
+	// host:port[/db] senza scheme (es. "localhost:5432/payments"); i `:` in posizione 0 (":memory:",
+	// già gestito) non contano.
+	if strings.IndexByte(value, ':') > 0 {
+		return true
+	}
+	lower := strings.ToLower(value)
+	return strings.HasSuffix(lower, ".db") || strings.HasSuffix(lower, ".sqlite") || strings.HasSuffix(lower, ".sqlite3")
 }
 
 // lineAt restituisce il numero di riga 1-based dell'offset nel sorgente.

@@ -23,7 +23,7 @@ func (*Language) FormatTool(request language.FormatRequest) (run.CommandSpec, bo
 	if path == "" {
 		path = filepath.Join(request.WorkingDirectory, filepath.FromSlash(request.RelativePath))
 	}
-	arguments := []string{"--emit", "stdout", "--edition", rustEdition(request.WorkingDirectory)}
+	arguments := []string{"--emit", "stdout", "--edition", rustEdition(filepath.Dir(path))}
 	return run.CommandSpec{
 		Executable:       rustfmt,
 		Arguments:        arguments,
@@ -32,13 +32,21 @@ func (*Language) FormatTool(request language.FormatRequest) (run.CommandSpec, bo
 	}, true, "", nil
 }
 
-// rustEdition è l'edition dichiarata dal Cargo.toml dell'unità (default 2021): rustfmt la usa per
-// interpretare la sintassi.
-func rustEdition(unitRoot string) string {
-	if data, err := os.ReadFile(filepath.Join(unitRoot, "Cargo.toml")); err == nil {
-		if edition := toml.String(toml.Parse(data), "package", "edition"); edition != "" {
-			return edition
+// rustEdition è l'edition dichiarata dal Cargo.toml del crate che contiene il file (default 2021):
+// risale dalle cartelle fino al manifest, così un file in `src/` di un crate 2024 non viene
+// formattato come 2021. rustfmt la usa per interpretare la sintassi.
+func rustEdition(dir string) string {
+	for dir != "" {
+		if data, err := os.ReadFile(filepath.Join(dir, "Cargo.toml")); err == nil {
+			if edition := toml.String(toml.Parse(data), "package", "edition"); edition != "" {
+				return edition
+			}
 		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
 	}
 	return "2021"
 }

@@ -30,6 +30,9 @@ var (
 	// depSection è `[dependencies]` / `[dev-dependencies]` / `[build-dependencies]` /
 	// `[workspace.dependencies]`.
 	depSection = regexp.MustCompile(`^\[(?:workspace\.)?(dependencies|dev-dependencies|build-dependencies)\]$`)
+	// sectionHeader è una qualsiasi intestazione di sezione/tabella (`[package]`, `[features]`,
+	// `[profile.release]`, `[dependencies.foo]`…): chiude la sezione dipendenze corrente.
+	sectionHeader = regexp.MustCompile(`^\[[^\]]+\]$`)
 	// inlineVersion è `version = "…"` in una tabella inline.
 	inlineVersion = regexp.MustCompile(`\bversion\s*=\s*"([^"]*)"`)
 	// inlinePath / inlineGit / inlineFeatures leggono gli altri campi della tabella inline.
@@ -59,6 +62,10 @@ func ParseCargoDependencies(data []byte) []CargoDependency {
 		}
 		if match := depSection.FindStringSubmatch(trimmed); match != nil {
 			section = match[1]
+			continue
+		}
+		if sectionHeader.MatchString(trimmed) {
+			section = ""
 			continue
 		}
 		if section == "" {
@@ -136,9 +143,14 @@ func featureList(value string) []string {
 	return features
 }
 
+// trimQuotes toglie le virgolette attorno a una stringa, trovando la virgoletta di chiusura invece
+// di assumere l'ultimo carattere: `"1.0" # commento` restituisce `1.0`, non `1.0" # comment`.
 func trimQuotes(value string) string {
-	if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') {
-		return value[1 : len(value)-1]
+	value = strings.TrimSpace(value)
+	if len(value) >= 2 && value[0] == '"' {
+		if end := strings.IndexByte(value[1:], '"'); end >= 0 {
+			return value[1 : 1+end]
+		}
 	}
 	return value
 }

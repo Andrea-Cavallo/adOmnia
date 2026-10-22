@@ -79,25 +79,27 @@ type rustLine struct {
 
 var (
 	// attrRoute riconosce `#[verb("path")]` (actix e rocket usano la stessa forma).
-	attrRoute = regexp.MustCompile(`^#\[\s*(get|post|put|patch|delete|head|options|trace|route)\s*\(\s*"([^"]*)"`)
+	attrRoute = regexp.MustCompile(`^#\[\s*(?:[A-Za-z_]\w*::)*(get|post|put|patch|delete|head|options|trace|route)\s*\(\s*"([^"]*)"`)
 	// routeMethod è `method = "POST"` (actix #[route]).
 	routeMethod = regexp.MustCompile(`method\s*=\s*"([A-Za-z]+)"`)
 	// fnName è il nome della funzione decorata: `pub async fn name` / `fn name`.
 	fnName = regexp.MustCompile(`^(?:pub(?:\s*\(\s*[^)]*\s*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+([A-Za-z_]\w*)`)
 	// routeCall riconosce `.route("path", <catena>)` (axum e actix) e `.route("path")`.
-	routeCall = regexp.MustCompile(`\.route\s*\(\s*"([^"]*)"\s*(?:,\s*(.*))?`)
+	routeCall = regexp.MustCompile(`\.route\s*\(\s*"([^"]*)"`)
 	// nestCall è `.nest("prefix", …)` (axum) e `web::scope("prefix")` (actix): prefisso di un router.
 	nestCall = regexp.MustCompile(`\.nest\s*\(\s*"([^"]*)"|web::scope\s*\(\s*"([^"]*)"`)
 	// resourceCall è `web::resource("path")` (actix).
 	resourceCall = regexp.MustCompile(`web::resource\s*\(\s*"([^"]*)"`)
 	// rocketMount è `.mount("prefix", routes![a, b, c])`.
 	rocketMount = regexp.MustCompile(`\.mount\s*\(\s*"([^"]*)"\s*,\s*routes!\s*\[([^\]]*)\]`)
-	// verbCall riconosce un verbo nella catena: `get(...)`, `post(...)` e `web::get().to(...)`.
-	verbCall = regexp.MustCompile(`(?:web::)?(get|post|put|patch|delete|head|options|trace|any)\s*\(`)
+	// verbCall riconosce un verbo nella catena: `get(...)`, `post(...)` e `web::get().to(...)`. I
+	// confini `\b` evitano che `target(` o `input(` vengano letti come `get(`/`put(`.
+	verbCall = regexp.MustCompile(`(?:web::)?\b(get|post|put|patch|delete|head|options|trace|any)\b\s*\(`)
 	// rocketParam è `<id>` o `<id:regex>` di rocket.
 	rocketParam = regexp.MustCompile(`<([^>]+)>`)
-	// utoipaPath è `#[utoipa::path(get, path = "/x", …)]`.
-	utoipaPath = regexp.MustCompile(`#\[utoipa::path\s*\(\s*(get|post|put|patch|delete|head|options|trace|connect)[^)]*?path\s*=\s*"([^"]*)"`)
+	// utoipaPath è `#[utoipa::path(get, path = "/x", …)]`. Gli argomenti prima di `path =` possono
+	// contenere una coppia di parentesi (`request_body(Json<Order>)`, `responses(…)`).
+	utoipaPath = regexp.MustCompile(`#\[utoipa::path\s*\(\s*(get|post|put|patch|delete|head|options|trace|connect)\b(?:[^()"']|\([^()]*\)|"[^"]*")*?path\s*=\s*"([^"]*)"`)
 )
 
 // rustCodeLines divide il sorgente in righe di codice, togliendo i commenti `//` e i blocchi `/* */`
@@ -197,14 +199,22 @@ func attributeEndpoints(lines []rustLine) []HTTPEndpoint {
 // che lo montano nello stesso file. Un handler montato in più punti produce più prefissi.
 func mountPrefixes(lines []rustLine) map[string][]string {
 	mounts := map[string][]string{}
+	// `routes![…]` può andare a capo (la rustfmt lo spezza): si cerca sul testo completo già privo
+	// di commenti invece che riga per riga.
+	var source strings.Builder
 	for _, line := range lines {
-		match := rocketMount.FindStringSubmatch(line.text)
-		if match == nil {
-			continue
-		}
+		source.WriteString(line.text)
+		source.WriteByte('\n')
+	}
+	for _, match := range rocketMount.FindAllStringSubmatch(source.String(), -1) {
 		prefix := normalizeRustPath(match[1])
 		for _, name := range strings.Split(match[2], ",") {
-			if name = strings.TrimSpace(name); name != "" {
+			name = strings.TrimSpace(name)
+			// `routes![user::get]` elenca nomi qualificati: l'handler è l'ultimo segmento.
+			if index := strings.LastIndex(name, "::"); index >= 0 {
+				name = name[index+2:]
+			}
+			if name != "" {
 				mounts[name] = append(mounts[name], prefix)
 			}
 		}
@@ -223,62 +233,141 @@ func builderEndpoints(lines []rustLine) []HTTPEndpoint {
 }
 
 // statementEndpoints interpreta una singola istruzione builder: applica il prefisso di scope/nest
-// alle route della stessa istruzione e riconosce `.route`/`web::resource`.
+// alle route che ne sono coperte e riconosce `.route`/`web::resource`.
 func statementEndpoints(statement string, line int) []HTTPEndpoint {
 	var out []HTTPEndpoint
-	// Prefisso da scope/nest all'inizio dell'istruzione (actix `web::scope("/api").route(...)`).
-	prefix := ""
-	if m := nestCall.FindStringSubmatch(statement); m != nil {
-		if m[1] != "" {
-			prefix = normalizeRustPath(m[1])
-		} else {
-			prefix = normalizeRustPath(m[2])
-		}
-	}
+	scopes := statementScopes(statement)
 	for _, call := range routeCalls(statement) {
 		for _, method := range callVerbs(call.second) {
-			path := normalizeRustPath(call.path)
-			if prefix != "" {
-				path = joinRustPath(prefix, path)
-			}
+			path := joinRustPath(prefixAt(scopes, call.at), normalizeRustPath(call.path))
 			out = append(out, HTTPEndpoint{Method: method, Path: path, Line: line})
 		}
 	}
-	out = append(out, resourceEndpoints(statement, line, prefix)...)
+	out = append(out, resourceEndpoints(statement, line, scopes)...)
 	return out
 }
 
 // resourceEndpoints riconosce `web::resource("path")` (actix): con `.route(web::verb().to(h))`
 // produce una rotta per verbo, senza produce ANY.
-func resourceEndpoints(statement string, line int, prefix string) []HTTPEndpoint {
+func resourceEndpoints(statement string, line int, scopes []routeScope) []HTTPEndpoint {
 	var out []HTTPEndpoint
 	for _, loc := range resourceCall.FindAllStringSubmatchIndex(statement, -1) {
-		path := normalizeRustPath(statement[loc[2]:loc[3]])
-		// Testo dopo la parentesi che chiude web::resource("path"): le `.route(web::verb()…)` annidate.
+		path := joinRustPath(prefixAt(scopes, loc[0]), normalizeRustPath(statement[loc[2]:loc[3]]))
+		// Testo dopo la parentesi che chiude web::resource("path"): le `.route(web::verb().to(h))` annidate.
 		rest := statement[loc[1]:]
 		close := strings.Index(rest, ")")
 		verbs := resourceVerbs(rest[close+1:])
 		if len(verbs) == 0 {
-			if prefix != "" {
-				path = joinRustPath(prefix, path)
-			}
 			out = append(out, HTTPEndpoint{Method: "ANY", Path: path, Line: line})
 			continue
 		}
 		for _, method := range verbs {
-			full := path
-			if prefix != "" {
-				full = joinRustPath(prefix, path)
-			}
-			out = append(out, HTTPEndpoint{Method: method, Path: full, Line: line})
+			out = append(out, HTTPEndpoint{Method: method, Path: path, Line: line})
 		}
 	}
 	return out
 }
 
+// routeScope è un prefisso con il tratto dell'istruzione a cui si applica.
+type routeScope struct {
+	prefix     string
+	start, end int
+}
+
+// statementScopes trova i prefissi dell'istruzione e il loro raggio:
+//   - axum `.nest("/api", <router>)`: vale solo per le route dentro l'argomento (la parentesi del
+//     nest); quelle scritte dopo appartengono al router esterno e non vanno prefissate;
+//   - actix `web::scope("/api")`: vale per le route concatenate dopo, fino alla parentesi che chiude
+//     il gruppo in cui compare (es. il `.service(…)` che lo contiene).
+//
+// Più prefissi si compongono dal più esterno al più interno.
+func statementScopes(statement string) []routeScope {
+	var scopes []routeScope
+	for _, loc := range nestCall.FindAllStringSubmatchIndex(statement, -1) {
+		if loc[2] >= 0 { // .nest("prefix", …)
+			open := loc[0] + strings.Index(statement[loc[0]:loc[1]], "(")
+			scopes = append(scopes, routeScope{prefix: normalizeRustPath(statement[loc[2]:loc[3]]), start: loc[1], end: closingParen(statement, open)})
+			continue
+		}
+		// web::scope("prefix"): vale dopo la chiusura della sua stessa chiamata.
+		open := loc[0] + strings.Index(statement[loc[0]:loc[1]], "(")
+		after := min(closingParen(statement, open)+1, len(statement))
+		scopes = append(scopes, routeScope{prefix: normalizeRustPath(statement[loc[4]:loc[5]]), start: after, end: enclosingEnd(statement, after)})
+	}
+	return scopes
+}
+
+// prefixAt compone i prefissi che contengono la posizione.
+func prefixAt(scopes []routeScope, position int) string {
+	prefix := ""
+	for _, scope := range scopes {
+		if position >= scope.start && position < scope.end {
+			prefix = joinRustPath(prefix, scope.prefix)
+		}
+	}
+	return prefix
+}
+
+// closingParen restituisce l'indice della parentesi che chiude quella aperta in `open`, ignorando
+// le stringhe; la fine dell'istruzione se non si chiude.
+func closingParen(text string, open int) int {
+	depth := 0
+	inString := false
+	for index := open; index < len(text); index++ {
+		switch char := text[index]; {
+		case inString:
+			if char == '\\' {
+				index++
+			} else if char == '"' {
+				inString = false
+			}
+		case char == '"':
+			inString = true
+		case char == '(':
+			depth++
+		case char == ')':
+			depth--
+			if depth == 0 {
+				return index
+			}
+		}
+	}
+	return len(text)
+}
+
+// enclosingEnd è la prima `)` senza `(` corrispondente dopo `from`: la fine del gruppo che contiene
+// una chiamata; la fine dell'istruzione se non c'è.
+func enclosingEnd(text string, from int) int {
+	depth := 0
+	inString := false
+	for index := from; index < len(text); index++ {
+		switch char := text[index]; {
+		case inString:
+			if char == '\\' {
+				index++
+			} else if char == '"' {
+				inString = false
+			}
+		case char == '"':
+			inString = true
+		case char == '(':
+			depth++
+		case char == ')':
+			if depth == 0 {
+				return index
+			}
+			depth--
+		}
+	}
+	return len(text)
+}
+
 // resourceVerbs legge i verbi `.route(web::verb().to(h))` annidati su una resource, fino al confine
-// della resource (la prima `)` a profondità zero o un'altra `.service`).
+// della resource: il primo `.service(` (una nuova resource/scope annidata) o la fine del testo.
 func resourceVerbs(rest string) []string {
+	if service := strings.Index(rest, ".service"); service >= 0 {
+		rest = rest[:service]
+	}
 	seen := map[string]bool{}
 	var verbs []string
 	for _, m := range verbCall.FindAllStringSubmatch(rest, -1) {
@@ -295,23 +384,22 @@ func resourceVerbs(rest string) []string {
 type routeArg struct {
 	path   string
 	second string
+	at     int // offset della chiamata nell'istruzione
 }
 
 // routeCalls estrae le chiamate `.route("path", …)` da un'istruzione, pareggiando le parentesi.
 func routeCalls(statement string) []routeArg {
 	var out []routeArg
 	for _, loc := range routeCall.FindAllStringSubmatchIndex(statement, -1) {
-		path := routeCall.FindStringSubmatch(statement[loc[0]:loc[1]])[1]
+		path := statement[loc[2]:loc[3]]
 		second := ""
-		// Se c'è una virgola dopo la stringa, la catena di verbi parte da lì e arriva alla
-		// parentesi che chiude la chiamata (pareggiando le parentesi annidate).
-		open := loc[0] + strings.Index(statement[loc[0]:], "(") + 1
-		afterPath := statement[open:]
-		if comma := strings.Index(afterPath, ","); comma >= 0 {
-			start := open + comma + 1
-			second = balanced(statement, start)
+		// Se dopo la stringa segue una virgola, la catena di verbi arriva alla parentesi che chiude
+		// la chiamata (pareggiando le annidate).
+		rest := strings.TrimLeft(statement[loc[1]:], " 	")
+		if strings.HasPrefix(rest, ",") {
+			second = balanced(statement, len(statement)-len(rest)+1)
 		}
-		out = append(out, routeArg{path: path, second: second})
+		out = append(out, routeArg{path: path, second: second, at: loc[0]})
 	}
 	return out
 }
@@ -380,14 +468,40 @@ func rustStatements(lines []rustLine) []rustLine {
 		}
 		buf.WriteString(trimmed)
 		buf.WriteByte(' ')
-		depth += strings.Count(trimmed, "(") - strings.Count(trimmed, ")")
-		depth += strings.Count(trimmed, "[") - strings.Count(trimmed, "]")
+		depth += rustParenBalance(trimmed)
 		if depth <= 0 {
 			flush()
 		}
 	}
 	flush()
 	return out
+}
+
+// rustParenBalance conta le parentesi tonde/quadre aperte meno chiuse, ignorando quelle dentro le
+// stringhe: un percorso o una stringa SQL con una parentesi non deve spezzare o fondere le
+// istruzioni builder (RS-7).
+func rustParenBalance(text string) int {
+	balance := 0
+	inString, escaped := false, false
+	for i := 0; i < len(text); i++ {
+		switch char := text[i]; {
+		case inString:
+			if escaped {
+				escaped = false
+			} else if char == '\\' {
+				escaped = true
+			} else if char == '"' {
+				inString = false
+			}
+		case char == '"':
+			inString = true
+		case char == '(' || char == '[':
+			balance++
+		case char == ')' || char == ']':
+			balance--
+		}
+	}
+	return balance
 }
 
 // normalizeRustPath porta i parametri di percorso nella forma comune `{param}`: `<id>`, `<id:regex>`

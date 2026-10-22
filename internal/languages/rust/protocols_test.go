@@ -13,16 +13,17 @@ impl Greeter for MyGreeter {
 }
 `))
 	services := map[string]bool{}
-	protos := map[string]bool{}
 	for _, r := range got {
 		services[r.Service] = true
-		protos[r.Proto] = true
 	}
 	if !services["greeter"] || !services["Greeter"] {
 		t.Fatalf("services = %#v (got %+v)", services, got)
 	}
-	if !protos["greeter"] {
-		t.Fatalf("protos = %#v", protos)
+	// include_proto! dichiara il modulo generato, non un `.proto`: nessun riferimento a file.
+	for _, r := range got {
+		if r.Proto != "" {
+			t.Fatalf("unexpected proto reference: %+v", r)
+		}
 	}
 }
 

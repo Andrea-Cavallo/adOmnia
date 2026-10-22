@@ -2,6 +2,7 @@ package rust
 
 import (
 	"regexp"
+	"sort"
 )
 
 // GrpcRef è un servizio gRPC dichiarato in un sorgente Rust (tonic): il nome del servizio (trait)
@@ -28,8 +29,9 @@ var (
 	tonicImpl = regexp.MustCompile(`#\[tonic::async_trait\]\s*impl\s+([A-Za-z_]\w*)\s+for`)
 	// compileProtos è `tonic_build::compile_protos("proto/x.proto")` (in build.rs).
 	compileProtos = regexp.MustCompile(`tonic_build::compile_protos\s*\(\s*"([^"]*)"`)
-	// wsHandler è `fn name(... WebSocketUpgrade ...)` (axum) o actix-ws `ws::WebSocket`.
-	wsHandler = regexp.MustCompile(`(?s)(?:async\s+)?fn\s+([A-Za-z_]\w*)\s*\([^)]*?(?:WebSocketUpgrade|ws::WebSocket)\b[^)]*\)`)
+	// wsHandler è `fn name(... WebSocketUpgrade ...)` (axum), actix-ws `ws::WebSocket` oppure
+	// `web::Payload` (la firma dell'upgrade actix-ws/`ws`).
+	wsHandler = regexp.MustCompile(`(?s)(?:async\s+)?fn\s+([A-Za-z_]\w*)\s*\([^)]*?(?:WebSocketUpgrade|ws::WebSocket|web::Payload)\b[^)]*\)`)
 	// sseHandler è `fn name(...) -> Sse<...>` (axum SSE).
 	sseHandler = regexp.MustCompile(`(?s)(?:async\s+)?fn\s+([A-Za-z_]\w*)\s*\([^)]*\)\s*->\s*Sse\s*<`)
 	// builderRoute associa `.route("path", verb(handler))` al nome del handler.
@@ -42,7 +44,7 @@ func GrpcServicesInFile(relativePath string, data []byte) []GrpcRef {
 	var refs []GrpcRef
 	seen := map[string]bool{}
 	emit := func(service, proto string, offset int) {
-		key := "grpc:" + service + proto
+		key := "grpc:" + service + "\x00" + proto
 		if seen[key] {
 			return
 		}
@@ -50,8 +52,10 @@ func GrpcServicesInFile(relativePath string, data []byte) []GrpcRef {
 		refs = append(refs, GrpcRef{Service: service, Proto: proto, Line: lineAt(source, offset)})
 	}
 
+	// include_proto!("greeter") dichiara il modulo generato, non il `.proto`: non è un riferimento
+	// a file e non deve finire nell'attributo proto dell'entità.
 	for _, loc := range includeProto.FindAllStringSubmatchIndex(source, -1) {
-		emit(source[loc[2]:loc[3]], source[loc[2]:loc[3]], loc[0])
+		emit(source[loc[2]:loc[3]], "", loc[0])
 	}
 	for _, loc := range tonicImpl.FindAllStringSubmatchIndex(source, -1) {
 		emit(source[loc[2]:loc[3]], "", loc[0])
@@ -99,12 +103,20 @@ func WebSocketsInFile(relativePath string, data []byte) []WebSocketRef {
 		}
 		refs = append(refs, WebSocketRef{Handler: name, Path: pathByHandler[name], SSE: true, Line: fnLine(source, name)})
 	}
+	// Le mappe non hanno ordine: si stabilizza per riga così le entità del file non ballano
+	// tra un'analisi e l'altra.
+	sort.SliceStable(refs, func(i, j int) bool {
+		if refs[i].Line != refs[j].Line {
+			return refs[i].Line < refs[j].Line
+		}
+		return refs[i].Handler < refs[j].Handler
+	})
 	return refs
 }
 
-// fnLine restituisce la riga 1-based della dichiarazione `fn name`.
+// fnLine restituisce la riga 1-based della dichiarazione `fn name` (anche `pub`/`pub(crate)`).
 func fnLine(source, name string) int {
-	re := regexp.MustCompile(`(?m)^\s*(?:async\s+)?fn\s+` + regexp.QuoteMeta(name) + `\b`)
+	re := regexp.MustCompile(`(?m)^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+` + regexp.QuoteMeta(name) + `\b`)
 	if loc := re.FindStringIndex(source); loc != nil {
 		return lineAt(source, loc[0])
 	}

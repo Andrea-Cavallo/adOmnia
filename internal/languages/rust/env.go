@@ -13,8 +13,10 @@ var (
 	// envCall riconosce std::env::var("X"), env::var("X"), env!("X"), option_env!("X") e
 	// dotenvy::var("X"). I gruppi sono in alternativa: il primo non vuoto è il nome.
 	envCall = regexp.MustCompile(`(?:(?:std::)?env::var\s*\(\s*"([^"]*)")|(?:env!\s*\(\s*"([^"]*)")|(?:option_env!\s*\(\s*"([^"]*)")|(?:dotenvy::var\s*\(\s*"([^"]*)")`)
-	// clapEnv riconosce `#[arg(env = "X")]` / `#[clap(env = "X")]` / `#[command(env = "X")]`.
-	clapEnv = regexp.MustCompile(`#\[(?:arg|clap|command)\([^)]*\benv\s*=\s*"([^"]*)"`)
+	// clapEnv riconosce `#[arg(env = "X")]` / `#[clap(env = "X")]` / `#[command(env = "X")]`. `.*?`
+	// (non `[^)]*`) attraversa le parentesi annidate dei macro (`value_parser!(…)`, `default_value_t`)
+	// così `env` resta riconosciuto anche se non è il primo attributo.
+	clapEnv = regexp.MustCompile(`#\[(?:arg|clap|command)\(.*?\benv\s*=\s*"([^"]*)"`)
 )
 
 // EnvVarsInFile estrae le variabili d'ambiente lette staticamente da un sorgente Rust. Tollerante:

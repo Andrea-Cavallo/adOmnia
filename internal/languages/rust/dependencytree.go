@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"adomnia/internal/ide/toml"
 )
@@ -86,7 +87,8 @@ func parseCargoLockTree(data []byte) []CargoTreeNode {
 		}
 		visited[key] = true
 		for _, dep := range pkg.dependencies {
-			if list := byName[dep]; len(list) > 0 {
+			name := depName(dep)
+			if list := byName[name]; len(list) > 0 {
 				walk(list[0], depth+1)
 			}
 		}
@@ -94,5 +96,25 @@ func parseCargoLockTree(data []byte) []CargoTreeNode {
 	for _, pkg := range roots {
 		walk(pkg, 0)
 	}
+	// Le versioni duplicate non raggiunte (la risoluzione prende sempre la prima) restano visibili
+	// in coda, marcate duplicate: sono proprio quelle da evidenziare (RS-8.2).
+	for _, pkg := range packages {
+		if visited[pkg.name+"@"+pkg.version] {
+			continue
+		}
+		status := CargoTreeResolved
+		if duplicate[pkg.name] {
+			status = CargoTreeDuplicate
+		}
+		tree = append(tree, CargoTreeNode{Depth: 0, Name: pkg.name, Version: pkg.version, Status: status})
+	}
 	return tree
+}
+
+// depName toglie la versione da una voce dipendenza `"serde 1.0.100"` (Cargo.lock v1/v2) → `serde`.
+func depName(entry string) string {
+	if space := strings.IndexByte(entry, ' '); space > 0 {
+		return entry[:space]
+	}
+	return entry
 }
