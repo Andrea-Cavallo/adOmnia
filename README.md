@@ -16,6 +16,10 @@
 </p>
 
 <p align="center">
+  <sub>Listed in <a href="https://github.com/Andrea-Cavallo/awesome-wails">awesome-wails</a> and <a href="https://github.com/Andrea-Cavallo/awesome-api-clients">awesome-api-clients</a>.</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for Windows (.exe)</strong></a> ·
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for macOS (.dmg)</strong></a> ·
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for Linux (.tar.gz)</strong></a>
