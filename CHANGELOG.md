@@ -17,6 +17,9 @@ Release notes: [docs/releases/v1.0.15.md](docs/releases/v1.0.15.md).
 - **Nest and Next suggestions.** The Run bar recognises Nest (`nest start`, `@nestjs/*`), picks `start:dev` as its dev script and, for Next and Nest, also offers the production start (`start` / `start:prod`) without repeating a command that is already the dev script.
 - **Spring datasources in Database Studio.** Project Services reads `spring.datasource.*` (properties, YAML and profiles) with the file and line it came from; the password is never copied, only its presence is known.
 - **Code Vision and override markers for Java.** Usage counts and the latest git author above declarations, with override/implementation markers served by the language server.
+- **Claude Code opens again on Windows.** The launcher no longer hands Node the npm `claude.cmd` shim (it cannot be spawned: `spawn EINVAL`, shown as *milk error -32603: Internal error* when opening a session). It uses the `claude.exe` bundled with the npm package, then a `claude.exe` on PATH, and an executable you set explicitly now wins over detection.
+- **Agents without a key are flagged and refused.** milk's primary selector marks an agent whose key variable adOmnia does not see (*key missing*) and refuses it as primary; the milk settings warn when the primary or escalation agent cannot authenticate, and choosing a provider again repairs a stale key reference (for example Gemini reading `GEMINI_API_KEY` while the key is in `GOOGLE_GENERATIVE_AI_API_KEY`).
+- **Switch Copilot, milk and Claude Code on or off from their tab.** Each tab of the AI Assistant has a power button; turning a provider off stops its process.
 
 ## [1.0.14] — 2026-10-22
 
