@@ -63,14 +63,9 @@ A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
 - **Dependency security.** Security Center scans `pom.xml`, `go.mod` and Python manifests, separates severity from exploitation signals, and previews the impact of an upgrade. Fixes show the diff and apply only after review.
 - **Local-first and extensible.** No cloud, no account, no telemetry. Project tools run only after you trust a project, and every tool install shows its exact command first. Light and dark themes, importable skins, a JavaScript plugin system, shareable templates and Git-friendly workspaces. One portable executable.
 
-```text
-WRITE              RUN                CALL                 UNDERSTAND
-Code Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
-                                                                ↕
-                                                    Variables · logs · SQL · messages
-```
-
-SQL, broker messages and logs join this loop when capture is configured for the service; they are not available for every service automatically.
+<p align="center">
+  <img src="assets/images/loop.svg" alt="Code Studio starts the service under Delve, API Workspace sends the request, and Debug Request stops at the handler breakpoint, with variables, logs, SQL and messages captured for the same request." width="100%">
+</p>
 
 ## Tour of adOmnia
 
