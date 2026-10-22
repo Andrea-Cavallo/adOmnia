@@ -13,6 +13,7 @@ func detectRustFile(rel string, data []byte) []Entity {
 	var out []Entity
 	out = append(out, detectRustRoutes(rel, data)...)
 	out = append(out, detectRustDatabase(rel, data)...)
+	out = append(out, detectRustEnv(rel, data)...)
 	return out
 }
 
