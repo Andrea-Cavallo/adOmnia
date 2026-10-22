@@ -125,7 +125,7 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		// I diagnostici di build (RS-3.3): il core li raccoglie dall'output JSON e li pubblica
 		// sul pannello Problems come per Go e Java.
 		Diagnostics: cargoDiagnosticFromLine,
-		ConsoleLine: pathFixingConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
+		ConsoleLine: runConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
 	}, nil
 }
 

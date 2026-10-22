@@ -68,6 +68,8 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 		WorkingDirectory: request.WorkingDirectory,
 		Environment:      append([]string(nil), request.Environment...),
 		DisplayCommand:   "cargo " + strings.Join(arguments, " "),
+		// Anche `cargo test` aspetta il lock di `target/`: la stessa spiegazione della Run (RS-3.5).
+		ConsoleLine: runConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
 	}
 	parser := newLibtestParser(pkg)
 	parser.paths = workspacePaths{directory: request.WorkingDirectory, root: request.Root}
