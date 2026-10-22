@@ -79,6 +79,7 @@ import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './codeStud
 import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
 import { startJavaMain } from '@/lib/code-studio-debug-api'
 import { isPythonTarget } from './codeStudioPythonTargets'
+import { isRustTarget } from './codeStudioRustTargets'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -89,6 +90,7 @@ import { CodeStudioMoveSymbolDialog } from './CodeStudioMoveSymbolDialog'
 import { CodeStudioSpringEndpoints } from './CodeStudioSpringEndpoints'
 import { CodeStudioJavaJdk } from './CodeStudioJavaJdk'
 import { CodeStudioPythonInterpreter } from './CodeStudioPythonInterpreter'
+import { CodeStudioRustToolchain } from './CodeStudioRustToolchain'
 import { CodeStudioJavaTree } from './CodeStudioJavaTree'
 import { CodeStudioJavaJvm } from './CodeStudioJavaJvm'
 import { CodeStudioSpringGraph } from './CodeStudioSpringGraph'
@@ -152,9 +154,11 @@ import { CodeStudioStartupAnalyzer, useStartupDrawer } from './CodeStudioStartup
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
 import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/codeStudioLayout'
 import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest } from '@/lib/code-studio-debug-api'
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
 import { pythonDebugTargetOf } from '@/lib/code-studio/pythonDebug'
+import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
+import { runRustCommand } from './codeStudioRustCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useCodeStudioStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/codeStudio'
@@ -842,6 +846,13 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startPython({ sessionId: activeSession.id, kind: 'script', script: target.relativePath, workingDirectory: '' })
       return void store.startRun('script', { language: 'python', target: '.', workingDirectory: '', languageOptions: { script: target.relativePath } })
     }
+    if (isRustTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
+      const cargoTarget = target.example ? { example: target.example } : target.bin ? { bin: target.bin } : {}
+      if (action === 'debug') return void useCodeStudioDebugStore.getState().startRust({ sessionId: activeSession.id, ...cargoTarget, workingDirectory: target.crateDirectory })
+      return void store.startRun(target.example ? 'example' : 'bin', { language: 'rust', target: '.', workingDirectory: target.crateDirectory, languageOptions: cargoTarget })
+    }
     if (isJavaTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
@@ -887,6 +898,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
+  // Debug di una configurazione Rust: bin o example Cargo con CodeLLDB, senza Delve.
+  const configuredRustDebugRequest = (): GoIDERustDebugRequest | null => {
+    const target = activeSession && activeConfig ? rustDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
+  }
+
   const openLanguageServerMenu = () => {
     if (!activeSession) return
     if (lspStatus?.state === 'ready' || lspStatus?.state === 'starting') return setLspLogOpen(true)
@@ -913,7 +930,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest)) return
+    if (runRustCommand(id, activeSession?.id ?? null)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return
@@ -1078,6 +1096,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioSpringEndpoints />
       <CodeStudioJavaJdk />
       <CodeStudioPythonInterpreter />
+      <CodeStudioRustToolchain />
       <CodeStudioJavaTree />
       <CodeStudioJavaJvm />
       <CodeStudioSpringGraph />
