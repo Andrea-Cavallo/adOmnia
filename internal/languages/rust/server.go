@@ -51,22 +51,28 @@ func (l *Language) UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.
 	if !info.Available {
 		return lsp.ServerSpec{}, fmt.Errorf("%s", info.Error)
 	}
+	targetDir := rustAnalyzerTargetDir(projectRoot)
 	return lsp.ServerSpec{
 		Language: ID, Name: info.Name, Binary: info.Binary,
-		Configuration:     func() any { return rustAnalyzerSettings() },
+		Configuration:     func() any { return rustAnalyzerSettings(targetDir) },
 		WatchesFile:       watchesRustFile,
 		TraceEnvironment:  []string{"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"},
 	}, nil
 }
 
 // rustAnalyzerSettings è la configurazione servita a workspace/configuration (RS-4.3): i default
-// sensati per un editor. Il targetDir separato dall'utente è RS-9.2.
-func rustAnalyzerSettings() any {
+// sensati per un editor. `targetDir` separato dall'utente è RS-9.2: rust-analyzer e la Run non
+// condividono più `target/`, quindi nessun `Blocking waiting for file lock`.
+func rustAnalyzerSettings(targetDir string) any {
+	cargo := map[string]any{
+		"buildScripts": map[string]any{"enable": true},
+	}
+	if targetDir != "" {
+		cargo["targetDir"] = targetDir
+	}
 	return map[string]any{
 		"rust-analyzer": map[string]any{
-			"cargo": map[string]any{
-				"buildScripts": map[string]any{"enable": true},
-			},
+			"cargo": cargo,
 			"check": map[string]any{
 				"command": "check",
 			},

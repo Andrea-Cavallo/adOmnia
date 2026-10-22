@@ -59,7 +59,7 @@ func TestUnitServerSpecBuildsStdioServer(t *testing.T) {
 }
 
 func TestRustAnalyzerSettings(t *testing.T) {
-	settings := rustAnalyzerSettings()
+	settings := rustAnalyzerSettings("/cache/adomnia/rust-analyzer-target/abc")
 	ra, ok := settings.(map[string]any)["rust-analyzer"].(map[string]any)
 	if !ok {
 		t.Fatalf("settings = %#v", settings)
@@ -67,6 +67,20 @@ func TestRustAnalyzerSettings(t *testing.T) {
 	check, _ := ra["check"].(map[string]any)
 	if check["command"] != "check" {
 		t.Fatalf("check = %#v", ra["check"])
+	}
+	// RS-9.2: il targetDir dedicato arriva a cargo.targetDir.
+	cargo, _ := ra["cargo"].(map[string]any)
+	if cargo["targetDir"] != "/cache/adomnia/rust-analyzer-target/abc" {
+		t.Fatalf("cargo.targetDir = %#v", cargo["targetDir"])
+	}
+}
+
+func TestRustAnalyzerSettingsWithoutTargetDir(t *testing.T) {
+	settings := rustAnalyzerSettings("")
+	ra, _ := settings.(map[string]any)["rust-analyzer"].(map[string]any)
+	cargo, _ := ra["cargo"].(map[string]any)
+	if _, present := cargo["targetDir"]; present {
+		t.Fatalf("targetDir must be omitted when empty: %#v", cargo)
 	}
 }
 
