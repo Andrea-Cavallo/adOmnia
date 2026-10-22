@@ -317,6 +317,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
 | [Code Studio](docs/CODE-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
 | [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
+| [Vault and local credentials](docs/VAULT.md) | Understand age+scrypt, the in-memory key, auto-lock, DPAPI/keychain seals and the threat model |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) · [FAQ](docs/FAQ.md) | Resolve setup and workflow problems |

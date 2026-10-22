@@ -352,3 +352,51 @@ low CPU alone never supplies an inferred idle state.
 ## Interactive resource diagnostics (2026-10-19)
 
 The resource monitor now controls the backend Go GC budget live and saves/restarts gopls per selected Go project. It records CPU/RSS over time, shows observed parent PIDs and registered ownership, and exports JSON, per-process CSV, Markdown or standalone HTML with charts. Backend default: 512 MiB unless an explicit startup GOMEMLIMIT exists; gopls retains 768 MiB or its inherited value. These are soft GC budgets, not process RSS caps. Methodology, measured results and persistence compatibility: [resource diagnostics report](performance/resources-2026-10-19.md).
+
+## Native cold-start measurement (2026-10-22)
+
+Method: `scripts/measure-startup.ps1` launches the built desktop executable with
+an isolated `APPDATA`, so no developer settings or workspace are loaded. It waits
+for `startup-performance.jsonl`, which the renderer writes after the first stable
+frame and the backend records its stages, then terminates the process tree and
+deletes the temporary profile. Each sample is a fresh process; the OS file cache
+is not flushed, so this is a cold application start with a warm system cache, not
+a disk-cold boot. Memory is the working set of the app process plus its direct
+children (WebView2 and the HTTP sidecar).
+
+Windows 11 (10.0.26300), amd64, current build at the time of the measurement
+(3 samples, empty Hub). Raw samples:
+[`docs/performance/startup-2026-10-22-windows.json`](performance/startup-2026-10-22-windows.json).
+
+| Metric | Sample 1 | Sample 2 | Sample 3 | Median |
+| --- | ---: | ---: | ---: | ---: |
+| Start to first stable frame | 1,302 ms | 987 ms | 959 ms | **987 ms** |
+| Backend `OnStartup` total | 20.2 ms | 43.5 ms | 41.5 ms | 41.5 ms |
+| Peak tree working set up to first frame | 180.4 MB | 175.4 MB | 175.2 MB | **175.4 MB** |
+| Tree working set, 2 s after first frame | 195.2 MB | 193.7 MB | 215.6 MB | 195.2 MB |
+
+Renderer marks from the same samples: React mounted at 118�127 ms, bootstrap
+settings loaded at 147�157 ms, workspace hydrated at 167�172 ms, first stable
+frame at 320�357 ms after renderer entry. The process tree median is dominated by
+WebView2 initialization and varies with the machine's WebView2 version.
+
+macOS and Linux are **not measured yet**. Run the same script with PowerShell 7
+(`pwsh -File scripts/measure-startup.ps1 -Exe ./build/bin/adomnia -Samples 3`) on
+each platform, or an equivalent launcher that sets `APPDATA` to a temporary
+directory and watches for `startup-performance.jsonl`. Report the same three
+columns. Do not infer those numbers from the Windows run or from the browser
+preview. Until they exist, the README does not publish native startup figures.
+
+### What runs in `ServiceStartup`
+
+| Service | Work at startup | Without activation |
+| --- | --- | --- |
+| `App` | Dev Log, bbolt storage, plugin manager, sidecar token, proxy rules/CA, local HTTP sidecar | Always starts: the app shell and local storage |
+| `Copilot` | `manager.Start()` | Returns after setting `disabled`: no installer lookup, no language-server process |
+| `Milk` | `manager.Start()` | Returns after setting `disabled`: no binary resolution, no `milk serve --acp` |
+| `ClaudeCode` | `manager.Start()` | Same, using `claude-code.json`; no `claude-agent-acp` process |
+| `OpenCode` | `manager.Start()` | Same, using `opencode.json`; no ACP process |
+
+`internal/copilot/redaction_test.go` (`TestDisabledManagerDoesNotStart`) and
+`internal/milk/redaction_test.go` (`TestDisabledAgentDoesNotResolveOrSpawn`)
+guard the disabled path: `Start` returns before calling the resolver.
