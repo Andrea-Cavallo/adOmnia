@@ -54,6 +54,36 @@ export class AgentsInfo {
 }
 
 /**
+ * Command è una slash command annunciata dall'agente (ACP
+ * available_commands_update): il client la completa, l'agente la esegue.
+ */
+export class Command {
+    "name": string;
+    "description": string;
+    "hint"?: string;
+
+    /** Creates a new Command instance. */
+    constructor($$source: Partial<Command> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Command instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Command {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Command($$parsedSource as Partial<Command>);
+    }
+}
+
+/**
  * SessionControl mirrors the selectable ACP session options; model IDs come from the agent.
  */
 export class ControlValue {
@@ -301,10 +331,17 @@ export class SessionControl {
     }
 }
 
+/**
+ * SessionControls raccoglie le opzioni di sessione offerte dall'agente.
+ * ImageMode dice come arrivano le immagini: "native" (ACP image block),
+ * "file" (riferimento @path, come fa la TUI di milk) o "none".
+ */
 export class SessionControls {
     "root": string;
     "controls": SessionControl[];
+    "commands"?: Command[];
     "images": boolean;
+    "imageMode"?: string;
 
     /** Creates a new SessionControls instance. */
     constructor($$source: Partial<SessionControls> = {}) {
@@ -326,9 +363,13 @@ export class SessionControls {
      */
     static createFrom($$source: any = {}): SessionControls {
         const $$createField1_0 = $$createType9;
+        const $$createField2_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("controls" in $$parsedSource) {
             $$parsedSource["controls"] = $$createField1_0($$parsedSource["controls"]);
+        }
+        if ("commands" in $$parsedSource) {
+            $$parsedSource["commands"] = $$createField2_0($$parsedSource["commands"]);
         }
         return new SessionControls($$parsedSource as Partial<SessionControls>);
     }
@@ -489,3 +530,5 @@ const $$createType6 = ImageAttachment.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = SessionControl.createFrom;
 const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = Command.createFrom;
+const $$createType11 = $Create.Array($$createType10);

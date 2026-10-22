@@ -75,10 +75,13 @@ type Manager struct {
 	root          string
 	sessions      map[string]string // root -> sessionId
 	controls      map[string][]SessionControl
+	commands      map[string][]Command // root -> slash command annunciate dall'agente
 	imagePrompts  bool
 	rootBySession map[string]string
 	turns         map[string]string // sessionId -> token
-	launchKey     string            // Launch.Key del processo in esecuzione
+	ambient       map[string]string // sessionId -> token dei turni avviati da milk (background follow-up)
+	ambientSeq    int
+	launchKey     string // Launch.Key del processo in esecuzione
 	pending       map[string]*permission
 	log           []string
 	emit          Emitter
@@ -109,8 +112,10 @@ func NewAgentManager(store *SettingsStore, agent Agent) *Manager {
 		status:        Status{State: StateDisabled},
 		sessions:      map[string]string{},
 		controls:      map[string][]SessionControl{},
+		commands:      map[string][]Command{},
 		rootBySession: map[string]string{},
 		turns:         map[string]string{},
+		ambient:       map[string]string{},
 		pending:       map[string]*permission{},
 	}
 }
@@ -625,6 +630,8 @@ func (m *Manager) forgetSessionsLocked() {
 	m.sessions = map[string]string{}
 	m.rootBySession = map[string]string{}
 	m.controls = map[string][]SessionControl{}
+	m.commands = map[string][]Command{}
+	m.ambient = map[string]string{}
 }
 
 // ResetSession dimentica la sessione di una cartella: il prossimo prompt ne apre
@@ -638,6 +645,7 @@ func (m *Manager) ResetSession(root string) {
 		delete(m.sessions, root)
 		delete(m.rootBySession, id)
 		delete(m.controls, root)
+		delete(m.commands, root)
 	}
 }
 
@@ -697,6 +705,7 @@ func (m *Manager) sessionFor(root string) (string, error) {
 	}
 	m.sessions[root] = result.SessionID
 	m.rootBySession[result.SessionID] = root
+	delete(m.commands, root) // una nuova sessione riceve le proprie command
 	options := result.ConfigOptions
 	hasModel := false
 	for index := range options {
@@ -749,10 +758,11 @@ func (m *Manager) sessionMCPServers(root string) []any {
 
 // Prompt invia un turno. I delta arrivano come evento milk.chat; cancel interrompe.
 func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptResponse, error) {
-	blocks, err := m.promptBlocks(request)
+	blocks, cleanup, err := m.promptBlocks(request)
 	if err != nil {
 		return PromptResponse{}, err
 	}
+	defer cleanup()
 	request.Token = strings.TrimSpace(request.Token)
 	request.Message = strings.TrimSpace(request.Message)
 	if request.Token == "" || request.Message == "" {
@@ -785,6 +795,10 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	if existing, ok := m.turns[sessionID]; ok && existing != "" {
 		m.mu.Unlock()
 		return PromptResponse{}, fmt.Errorf("a %s turn is already running for this project", m.agent.Name)
+	}
+	if ambient := m.ambient[sessionID]; ambient != "" {
+		m.mu.Unlock()
+		return PromptResponse{}, fmt.Errorf("%s is still reporting a background agent's result for this project", m.agent.Name)
 	}
 	m.turns[sessionID] = request.Token
 	m.mu.Unlock()

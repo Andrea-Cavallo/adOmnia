@@ -28,7 +28,7 @@ func (m *Manager) reapWhenIdle(running *process) {
 func (m *Manager) markIdle(running *process) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.current != running || len(m.turns) > 0 || len(m.pending) > 0 || time.Since(m.lastUsed) < idleLimit {
+	if m.current != running || len(m.turns) > 0 || len(m.ambient) > 0 || len(m.pending) > 0 || time.Since(m.lastUsed) < idleLimit {
 		return false
 	}
 	m.idleStopped = true

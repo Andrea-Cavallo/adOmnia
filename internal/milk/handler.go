@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -90,7 +92,21 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 		}
 		return
 	}
+	if discriminator.SessionUpdate == "available_commands_update" {
+		h.handleCommands(notification.SessionID, notification.Update)
+		return
+	}
 	token := h.manager.tokenForSession(notification.SessionID)
+	if token == "" && discriminator.SessionUpdate == "state_update" {
+		// milk può avviare un turno da solo quando un background agent finisce:
+		// arriva un `running` senza che adOmnia abbia inviato un prompt.
+		var update struct {
+			State string `json:"state"`
+		}
+		if json.Unmarshal(notification.Update, &update) == nil && update.State == "running" {
+			token = h.manager.beginAmbient(notification.SessionID)
+		}
+	}
 	if token == "" {
 		return
 	}
@@ -122,6 +138,7 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "begin"})
 		case "idle":
 			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "end", StopReason: update.StopReason})
+			h.manager.endAmbient(notification.SessionID)
 		}
 	case "agent_message_chunk", "agent_thought_chunk":
 		kind := "text"
@@ -209,6 +226,39 @@ func (h *handler) handleWarning(params json.RawMessage) {
 		return
 	}
 	h.manager.publish("chat", ChatEvent{Token: token, Kind: "warning", Reply: warning.Message})
+}
+
+// handleCommands registra le slash command che l'agente esegue (milk le annuncia
+// subito dopo session/new) e le pubblica per il completamento nell'input.
+func (h *handler) handleCommands(sessionID string, update json.RawMessage) {
+	var notification struct {
+		AvailableCommands []struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Input       *struct {
+				Hint string `json:"hint"`
+			} `json:"input"`
+		} `json:"availableCommands"`
+	}
+	if json.Unmarshal(update, &notification) != nil {
+		return
+	}
+	commands := make([]Command, 0, len(notification.AvailableCommands))
+	for _, item := range notification.AvailableCommands {
+		name := strings.TrimPrefix(item.Name, "/")
+		if name == "" {
+			continue
+		}
+		command := Command{Name: name, Description: item.Description}
+		if item.Input != nil {
+			command.Hint = item.Input.Hint
+		}
+		commands = append(commands, command)
+	}
+	root := h.manager.setCommands(sessionID, commands)
+	if root != "" {
+		h.manager.publish("commands", CommandEvent{Root: root, SessionID: sessionID, Commands: commands})
+	}
 }
 
 // HandleRequest risponde a session/request_permission; gli altri metodi sono non supportati.
@@ -318,11 +368,46 @@ func permissionResponse(optionID string) map[string]any {
 	return map[string]any{"outcome": map[string]any{"outcome": "selected", "optionId": optionID}}
 }
 
-// tokenForSession restituisce il token del turno attivo per una sessione.
+// tokenForSession restituisce il token del turno attivo per una sessione:
+// un prompt inviato da adOmnia o un turno avviato da milk (background follow-up).
 func (m *Manager) tokenForSession(sessionID string) string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.turns[sessionID]
+	if token := m.turns[sessionID]; token != "" {
+		return token
+	}
+	return m.ambient[sessionID]
+}
+
+// beginAmbient crea (o riusa) il token di un turno che milk ha avviato da solo.
+func (m *Manager) beginAmbient(sessionID string) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if token := m.ambient[sessionID]; token != "" {
+		return token
+	}
+	m.ambientSeq++
+	token := fmt.Sprintf("bg-%s-%d", sessionID, m.ambientSeq)
+	m.ambient[sessionID] = token
+	return token
+}
+
+// endAmbient dimentica il turno avviato da milk quando torna idle.
+func (m *Manager) endAmbient(sessionID string) {
+	m.mu.Lock()
+	delete(m.ambient, sessionID)
+	m.mu.Unlock()
+}
+
+// setCommands salva le slash command della sessione e restituisce il progetto.
+func (m *Manager) setCommands(sessionID string, commands []Command) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	root := m.rootBySession[sessionID]
+	if root != "" {
+		m.commands[root] = commands
+	}
+	return root
 }
 
 func (m *Manager) rootForSession(sessionID string) string {
@@ -335,10 +420,13 @@ func (m *Manager) rootForSession(sessionID string) string {
 func (m *Manager) soleToken() string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.turns) != 1 {
+	if len(m.turns)+len(m.ambient) != 1 {
 		return ""
 	}
 	for _, token := range m.turns {
+		return token
+	}
+	for _, token := range m.ambient {
 		return token
 	}
 	return ""

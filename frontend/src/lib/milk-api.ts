@@ -33,6 +33,19 @@ export interface MilkRouteInfo {
   reason: string
 }
 
+/** A slash command the agent advertises (ACP available_commands_update). */
+export interface MilkCommand {
+  name: string
+  description: string
+  hint?: string
+}
+
+export interface MilkCommandEvent {
+  root: string
+  sessionId: string
+  commands: MilkCommand[]
+}
+
 export interface MilkChatEvent {
   token: string
   root: string
@@ -85,6 +98,8 @@ export interface AgentEventHandlers {
   permission: (event: MilkPermissionEvent) => void
   /** The backend answered, timed out or dropped the request. */
   permissionResolved: (requestId: string) => void
+  /** The agent advertised its slash commands for a project. */
+  commands?: (event: MilkCommandEvent) => void
 }
 
 /** Events of an ACP agent hosted by internal/milk: `<prefix>.status`, `<prefix>.chat`, … */
@@ -95,6 +110,7 @@ export function subscribeAgentEvents(prefix: string, handlers: AgentEventHandler
     Events.On(`${prefix}.permission`, (event) => handlers.permission(event.data as MilkPermissionEvent)),
     Events.On(`${prefix}.permissionResolved`, (event) => handlers.permissionResolved((event.data as { requestId: string }).requestId)),
   ]
+  if (handlers.commands) offs.push(Events.On(`${prefix}.commands`, (event) => handlers.commands!(event.data as MilkCommandEvent)))
   return () => offs.forEach((off) => off())
 }
 

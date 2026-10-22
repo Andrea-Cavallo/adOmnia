@@ -63,20 +63,35 @@ func TestImagesAreValidatedAndNeverSilentlyDropped(t *testing.T) {
 	m := NewManager(NewSettingsStore(t.TempDir()))
 	image := ImageAttachment{Name: "shot.png", MimeType: "image/png", Data: base64.StdEncoding.EncodeToString(append([]byte{137, 80, 78, 71, 13, 10, 26, 10}, make([]byte, 100)...))}
 	request := PromptRequest{Message: "explain", Images: []ImageAttachment{image}}
-	if _, err := m.promptBlocks(request); err == nil {
-		t.Fatal("accepted images without capability")
+	// Senza blocchi immagine nativi l'immagine diventa un riferimento @path,
+	// come fa la TUI di milk: il modello non la perde e il file sparisce a fine turno.
+	blocks, cleanup, err := m.promptBlocks(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(blocks) != 1 || blocks[0]["type"] != "text" || !strings.Contains(blocks[0]["text"], "@") {
+		t.Fatalf("image reference lost: %+v", blocks)
+	}
+	reference := strings.TrimPrefix(strings.Split(blocks[0]["text"], "\n")[0], "@")
+	if _, err := os.Stat(reference); err != nil {
+		t.Fatalf("image file not written: %v", err)
+	}
+	cleanup()
+	if _, err := os.Stat(reference); !os.IsNotExist(err) {
+		t.Fatal("image file was not cleaned up")
 	}
 	m.imagePrompts = true
-	blocks, err := m.promptBlocks(request)
+	blocks, cleanup, err = m.promptBlocks(request)
 	if err != nil || len(blocks) != 2 || blocks[1]["type"] != "image" || blocks[1]["data"] != image.Data {
 		t.Fatalf("%v %+v", err, blocks)
 	}
+	cleanup()
 	request.Images[0].MimeType = "image/jpeg"
-	if _, err := m.promptBlocks(request); err == nil {
+	if _, _, err := m.promptBlocks(request); err == nil {
 		t.Fatal("accepted false MIME")
 	}
 	request.Images[0].Data = "not-base64"
-	if _, err := m.promptBlocks(request); err == nil {
+	if _, _, err := m.promptBlocks(request); err == nil {
 		t.Fatal("accepted invalid data")
 	}
 }

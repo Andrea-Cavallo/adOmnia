@@ -3,11 +3,15 @@ package milk
 import (
 	"adomnia/internal/aipolicy"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,7 +33,12 @@ func (m *Manager) SessionControls(root string) (SessionControls, error) {
 	}
 	m.mu.Lock()
 	data, _ := json.Marshal(m.controls[root])
-	result := SessionControls{Root: root, Images: m.imagePrompts, Controls: []SessionControl{}}
+	imageMode := "file"
+	if m.imagePrompts {
+		imageMode = "native"
+	}
+	commands := append([]Command(nil), m.commands[root]...)
+	result := SessionControls{Root: root, Images: true, ImageMode: imageMode, Commands: commands, Controls: []SessionControl{}}
 	m.mu.Unlock()
 	_ = json.Unmarshal(data, &result.Controls)
 	if m.agent.Event == "milk" && versionAtLeast(m.Status().Version, "0.7.0") {
@@ -177,35 +186,118 @@ func selectConfiguredAgent(name string) error {
 	return writeConfig(path, config)
 }
 
-func (m *Manager) promptBlocks(request PromptRequest) ([]map[string]string, error) {
+// promptBlocks traduce il turno in content block ACP. Le immagini usano il blocco
+// nativo `image` quando l'agente lo annuncia; altrimenti vengono scritte in una
+// cartella temporanea e referenziate con `@path`, esattamente come fa la TUI di
+// milk per l'agente CLI (che legge `@path` nativamente). Il secondo valore è la
+// pulizia da eseguire a fine turno.
+func (m *Manager) promptBlocks(request PromptRequest) ([]map[string]string, func(), error) {
 	blocks := []map[string]string{{"type": "text", "text": strings.TrimSpace(request.Message)}}
+	noop := func() {}
 	if len(request.Images) > 4 {
-		return nil, errors.New("attach at most four images")
+		return nil, noop, errors.New("attach at most four images")
 	}
 	m.mu.Lock()
 	supported := m.imagePrompts
 	m.mu.Unlock()
-	if len(request.Images) > 0 && !supported {
-		return nil, errors.New("this agent does not support images through ACP; use an image-capable agent")
-	}
 	total := 0
+	var files []string
+	cleanup := func() {
+		for _, path := range files {
+			_ = os.Remove(path)
+		}
+	}
+	fail := func(err error) ([]map[string]string, func(), error) {
+		cleanup()
+		return nil, noop, err
+	}
 	for _, attachment := range request.Images {
 		if len(attachment.Data) > 6*1024*1024 {
-			return nil, errors.New("image exceeds the 4 MiB limit")
+			return fail(errors.New("image exceeds the 4 MiB limit"))
 		}
 		data, err := base64.StdEncoding.DecodeString(attachment.Data)
 		if err != nil || len(data) == 0 || len(data) > 4*1024*1024 {
-			return nil, errors.New("invalid or oversized image attachment")
+			return fail(errors.New("invalid or oversized image attachment"))
 		}
 		mime := http.DetectContentType(data)
 		if mime != "image/png" && mime != "image/jpeg" && mime != "image/gif" && mime != "image/webp" || mime != attachment.MimeType {
-			return nil, fmt.Errorf("unsupported image format for %s", attachment.Name)
+			return fail(fmt.Errorf("unsupported image format for %s", attachment.Name))
 		}
 		total += len(data)
 		if total > 8*1024*1024 {
-			return nil, errors.New("images exceed the 8 MiB total limit")
+			return fail(errors.New("images exceed the 8 MiB total limit"))
 		}
-		blocks = append(blocks, map[string]string{"type": "image", "mimeType": mime, "data": attachment.Data})
+		if supported {
+			blocks = append(blocks, map[string]string{"type": "image", "mimeType": mime, "data": attachment.Data})
+			continue
+		}
+		path, err := writeImageAttachment(attachment, mime, data)
+		if err != nil {
+			return fail(err)
+		}
+		files = append(files, path)
 	}
-	return blocks, nil
+	if len(files) > 0 {
+		// @path è la convenzione che milk usa verso l'agente CLI: il file resta
+		// leggibile per tutta la durata del turno e viene rimosso alla fine.
+		blocks[0]["text"] = strings.Join(prefixPaths(files), "\n") + "\n" + blocks[0]["text"]
+	}
+	return blocks, cleanup, nil
+}
+
+func prefixPaths(files []string) []string {
+	out := make([]string, 0, len(files))
+	for _, path := range files {
+		out = append(out, "@"+path)
+	}
+	return out
+}
+
+func writeImageAttachment(attachment ImageAttachment, mime string, data []byte) (string, error) {
+	directory := filepath.Join(os.TempDir(), "adomnia-milk-images")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return "", fmt.Errorf("cannot prepare the image attachment folder: %w", err)
+	}
+	sum := sha256.Sum256(data)
+	name := hex.EncodeToString(sum[:8]) + "-" + safeAttachmentName(attachment.Name) + extensionForMIME(mime)
+	path := filepath.Join(directory, name)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("cannot write %s: %w", attachment.Name, err)
+	}
+	return path, nil
+}
+
+// safeAttachmentName tiene solo i caratteri utili di un nome scelto dall'utente.
+func safeAttachmentName(name string) string {
+	clean := strings.Map(func(char rune) rune {
+		switch {
+		case char >= 'a' && char <= 'z', char >= 'A' && char <= 'Z', char >= '0' && char <= '9':
+			return char
+		case char == '.' || char == '-' || char == '_':
+			return char
+		}
+		return '-'
+	}, name)
+	clean = strings.Trim(clean, ".-")
+	if clean == "" {
+		return "image"
+	}
+	if len(clean) > 60 {
+		clean = clean[:60]
+	}
+	return clean
+}
+
+func extensionForMIME(mime string) string {
+	switch mime {
+	case "image/png":
+		return ".png"
+	case "image/jpeg":
+		return ".jpg"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	}
+	return ""
 }

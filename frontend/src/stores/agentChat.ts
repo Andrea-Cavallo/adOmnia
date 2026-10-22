@@ -2,6 +2,8 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 import { prepareStudioChat, type StudioChatContext } from '@/lib/code-studio/studioChatContext'
 import type {
   MilkChatEvent,
+  MilkCommand,
+  MilkCommandEvent,
   MilkPermissionEvent,
   MilkPromptRequest,
   MilkPromptResponse,
@@ -32,6 +34,7 @@ export interface AgentChatApi {
     chat: (event: MilkChatEvent) => void
     permission: (event: MilkPermissionEvent) => void
     permissionResolved: (requestId: string) => void
+    commands?: (event: MilkCommandEvent) => void
   }) => () => void
   /** Only agents adOmnia can download itself (milk). */
   install?: () => Promise<MilkStatus>
@@ -55,6 +58,8 @@ export interface AgentChatMessage {
   tools?: AgentToolActivity[]
   route?: MilkRouteInfo
   stopped?: boolean
+  /** A turn milk started itself (background agent follow-up), not a user prompt. */
+  ambient?: boolean
 }
 
 export interface AgentChatThread {
@@ -71,6 +76,8 @@ export interface AgentChatState {
   dialogOpen: boolean
   chatThreads: Record<string, AgentChatThread>
   permissions: MilkPermissionEvent[]
+  /** Slash commands advertised by the agent, per project root. */
+  commandsByRoot: Record<string, MilkCommand[]>
   ensure: () => Promise<void>
   saveSettings: (settings: MilkSettings) => Promise<boolean>
   setEnabled: (enabled: boolean) => Promise<boolean>
@@ -104,8 +111,24 @@ function upsertTool(tools: AgentToolActivity[] | undefined, update: MilkToolUpda
 
 export function applyAgentChatEvent(threads: Record<string, AgentChatThread>, event: MilkChatEvent): Record<string, AgentChatThread> {
   const match = Object.entries(threads).find(([, thread]) => thread.busyToken === event.token)
-  if (!match) return threads
-  const [root, thread] = match
+  let root: string
+  let thread: AgentChatThread
+  if (match) {
+    [root, thread] = match
+  } else {
+    // milk can open a turn by itself when a background agent finishes: the first
+    // update is a `begin` with no user message in this thread. Show it as an
+    // assistant-only turn instead of dropping the jobs' report.
+    if (event.kind !== 'begin' || !event.root) return threads
+    const current = threads[event.root] ?? emptyThread()
+    if (current.busyToken) return threads
+    root = event.root
+    thread = {
+      messages: [...current.messages, { id: `${event.token}-assistant`, role: 'assistant', content: '', ambient: true }],
+      busyToken: event.token,
+      error: null,
+    }
+  }
   const assistantId = `${event.token}-assistant`
   const patch = (transform: (message: AgentChatMessage) => AgentChatMessage): AgentChatMessage[] =>
     thread.messages.map((message) => (message.id === assistantId ? transform(message) : message))
@@ -168,6 +191,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
       dialogOpen: false,
       chatThreads: {},
       permissions: [],
+      commandsByRoot: {},
 
       ensure: async () => {
         set({ error: null })
@@ -178,6 +202,7 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
             chat: (event) => set((state) => ({ chatThreads: applyAgentChatEvent(state.chatThreads, event) })),
             permission: (event) => set((state) => ({ permissions: [...state.permissions, event] })),
             permissionResolved: (requestId) => set((state) => ({ permissions: state.permissions.filter((entry) => entry.requestId !== requestId) })),
+            commands: (event) => set((state) => ({ commandsByRoot: { ...state.commandsByRoot, [event.root]: event.commands } })),
           })
         }
         try {

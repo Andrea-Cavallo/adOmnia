@@ -1,6 +1,6 @@
 import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { CodeStudioAgentReviewBar } from './CodeStudioAgentReviewBar'
-import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, Plus, Send, Settings2, Square, Paperclip, X, RefreshCw } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { Browser } from '@wailsio/runtime'
@@ -12,7 +12,7 @@ import type { GoIDESession } from '@/lib/code-studio-api'
 import { renderMarkdown } from '@/lib/markdownDoc'
 import { useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
 import type { AgentChatMessage, AgentChatStore, AgentToolActivity } from '@/stores/agentChat'
-import type { AgentSessionControls, MilkRouteInfo, MilkStatus } from '@/lib/milk-api'
+import type { AgentSessionControls, MilkCommand, MilkRouteInfo, MilkStatus } from '@/lib/milk-api'
 import { readAgentAttachments, type AgentAttachment } from '@/lib/code-studio/agentAttachments'
 import { useToolView } from './studioToolState'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
@@ -94,6 +94,30 @@ function ToolList({ tools }: { tools: AgentToolActivity[] }) {
   )
 }
 
+/** Slash commands come from the agent itself (ACP available_commands_update). */
+function SlashPalette({ commands, active, onPick }: { commands: MilkCommand[]; active: number; onPick: (command: MilkCommand) => void }) {
+  return (
+    <div className="milk-commands" role="listbox" aria-label="Agent commands">
+      {commands.map((command, index) => (
+        <button
+          key={command.name}
+          type="button"
+          role="option"
+          aria-selected={index === active}
+          className={`milk-command ${index === active ? 'milk-command-active' : ''}`}
+          // mousedown would blur the textarea before click; keep the draft focused.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onPick(command)}
+        >
+          <span className="milk-command-name">/{command.name}</span>
+          {command.hint && <span className="milk-command-hint">{command.hint}</span>}
+          <span className="milk-command-desc">{command.description}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // Memoizzata: durante lo streaming cambia solo l'ultimo messaggio, i precedenti non rifanno il parsing markdown.
 const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgent; message: AgentChatMessage; command: boolean }) {
   const waiting = !message.content && !message.stopped
@@ -104,6 +128,7 @@ const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgen
         <Logo size={14} />
         <span className="milk-reply-name">{agent.name}</span>
         {message.route && <RouteChip route={message.route} />}
+        {message.ambient && <span className="milk-route milk-route-primary" title="milk started this turn itself when a background agent finished">background</span>}
       </header>
       {message.thought && (
         <details className="milk-thought">
@@ -131,6 +156,7 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const status = store((state) => state.status)
   const thread = store((state) => state.chatThreads[root])
   const permissions = store((state) => state.permissions)
+  const advertisedCommands = store((state) => state.commandsByRoot[root])
   const [draft, setDraft] = useToolView(session.id, tool, 'draft', '')
   const [includeFile, setIncludeFile] = useToolView(session.id, tool, 'includeFile', true)
   const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, tool, 'includeWorkspace', true)
@@ -143,7 +169,10 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const [attachmentsByRoot, setAttachmentsByRoot] = useState<Record<string, AgentAttachment[]>>({})
   const [attachmentError, setAttachmentError] = useState('')
   const [readingFiles, setReadingFiles] = useState(false)
+  const [commandIndex, setCommandIndex] = useState(0)
+  const [commandsDismissed, setCommandsDismissed] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const draftRef = useRef<HTMLTextAreaElement>(null)
   const pendingDraft = useCodeStudioAssistantStore((state) => state.draft)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -167,6 +196,14 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const messages = thread?.messages ?? []
   const attachments = attachmentsByRoot[root] ?? []
   const currentControls = controls?.root === root ? controls : null
+  // The live event wins; the value embedded in session controls covers the first mount.
+  const commands = advertisedCommands?.length ? advertisedCommands : currentControls?.commands ?? []
+  const commandPrefix = /^\/([a-z0-9-]*)$/i.exec(draft)
+  const commandSuggestions = commandPrefix && !commandsDismissed
+    ? commands.filter((command) => command.name.toLowerCase().startsWith(commandPrefix[1].toLowerCase()))
+    : []
+  const activeCommand = commandSuggestions.length ? Math.min(commandIndex, commandSuggestions.length - 1) : 0
+  const imageMode = currentControls?.imageMode
   useEffect(() => { setControls(null); setControlsError(''); setAttachmentError('') }, [root, tool])
   useEffect(() => {
     if (!ready || busy || !agent.sessionControls) return
@@ -185,6 +222,23 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
       if (activeRoot.current === root) setControls(result)
     } catch (error) { if (activeRoot.current === root) setControlsError(error instanceof Error ? error.message : String(error)) }
     finally { if (activeRoot.current === root) setControlsBusy(false) }
+  }
+
+  const pickCommand = (command: MilkCommand) => {
+    setDraft(`/${command.name} `)
+    setCommandIndex(0)
+    setCommandsDismissed(false)
+    requestAnimationFrame(() => draftRef.current?.focus())
+  }
+
+  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (commandSuggestions.length) {
+      if (event.key === 'ArrowDown') { event.preventDefault(); setCommandIndex((activeCommand + 1) % commandSuggestions.length); return }
+      if (event.key === 'ArrowUp') { event.preventDefault(); setCommandIndex((activeCommand - 1 + commandSuggestions.length) % commandSuggestions.length); return }
+      if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) { event.preventDefault(); pickCommand(commandSuggestions[activeCommand]); return }
+      if (event.key === 'Escape') { event.preventDefault(); setCommandsDismissed(true); return }
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send() }
   }
 
   const send = async () => {
@@ -271,28 +325,31 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
         <p className="mb-2 text-[10px] text-text-4">Enabled context and selected attachments are sent to {name}. Unsaved editor changes are included; excluded paths and text secrets are filtered.</p>
         {!!attachments.length && <div className="mb-2 flex flex-wrap gap-1">{attachments.map((item, index) => <span key={`${item.name}-${index}`} className="flex items-center gap-1 rounded border border-border-1 px-2 py-1 text-[11px] text-text-2"><Paperclip size={11} />{item.name}<button type="button" disabled={busy} aria-label={`Remove ${item.name}`} onClick={() => setAttachmentsByRoot(current => ({ ...current, [root]: attachments.filter((_, position) => position !== index) }))}><X size={11} /></button></span>)}</div>}
         {attachmentError && <p role="alert" className="milk-error">{attachmentError}</p>}
+        {!!attachments.length && imageMode === 'file' && attachments.some(item => item.kind === 'image') && <p className="mb-2 text-[10px] text-text-4">Images travel as <span className="font-mono">@file</span> references: milk’s ACP has no vision block yet, so an agent that reads images (Claude Code) can see them; a text-only local model cannot.</p>}
         <input ref={fileInput} type="file" multiple className="hidden" aria-label="Attach external files" onChange={async event => {
           const files = Array.from(event.target.files ?? []); event.target.value = ''
           setReadingFiles(true); setAttachmentError('')
           try {
-            const found = await readAgentAttachments(files, currentControls?.images === true)
+            const found = await readAgentAttachments(files, true)
             if (attachments.length + found.length > 6) throw new Error('Attach at most six files.')
             if ([...attachments, ...found].filter(item => item.kind === 'image').length > 4) throw new Error('Attach at most four images.')
             setAttachmentsByRoot(current => ({ ...current, [root]: [...(current[root] ?? []), ...found] }))
           } catch (error) { setAttachmentError(error instanceof Error ? error.message : String(error)) }
           finally { setReadingFiles(false) }
         }} />
+        {commandSuggestions.length > 0 && <SlashPalette commands={commandSuggestions} active={activeCommand} onPick={pickCommand} />}
         <textarea
+          ref={draftRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send() } }}
+          onChange={(event) => { setDraft(event.target.value); setCommandsDismissed(false); setCommandIndex(0) }}
+          onKeyDown={onComposerKeyDown}
           disabled={!ready || busy}
           rows={3}
           placeholder={ready ? (busy ? `${name} is answering…` : `Ask ${name}, or type / for a command`) : `Enable ${name} to chat`}
           aria-label={`Message ${name}`}
         />
         <div className="milk-composer-bar">
-          <button type="button" disabled={!ready || busy || controlsBusy || readingFiles} onClick={() => fileInput.current?.click()} title={currentControls?.images ? 'Attach text files or PNG/JPEG/GIF/WebP images' : 'Attach UTF-8 files. This agent does not advertise image input through ACP.'} aria-label="Add attachments" className="code-studio-icon-button h-7 w-7"><Paperclip size={14} /></button>
+          <button type="button" disabled={!ready || busy || controlsBusy || readingFiles} onClick={() => fileInput.current?.click()} title={imageMode === 'file' ? 'Attach text files or images (images are sent as @file references)' : 'Attach text files or PNG/JPEG/GIF/WebP images'} aria-label="Add attachments" className="code-studio-icon-button h-7 w-7"><Paperclip size={14} /></button>
           <span>Enter to send, Shift+Enter for a new line</span>
           {busy
             ? <button type="button" onClick={() => void store.getState().stopChat(root)} className="milk-stop"><Square size={10} fill="currentColor" />Stop</button>

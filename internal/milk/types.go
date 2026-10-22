@@ -79,10 +79,30 @@ func (c *SessionControl) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Command è una slash command annunciata dall'agente (ACP
+// available_commands_update): il client la completa, l'agente la esegue.
+type Command struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Hint        string `json:"hint,omitempty"`
+}
+
+// CommandEvent pubblica le slash command di una sessione appena l'agente le annuncia.
+type CommandEvent struct {
+	Root      string    `json:"root"`
+	SessionID string    `json:"sessionId"`
+	Commands  []Command `json:"commands"`
+}
+
+// SessionControls raccoglie le opzioni di sessione offerte dall'agente.
+// ImageMode dice come arrivano le immagini: "native" (ACP image block),
+// "file" (riferimento @path, come fa la TUI di milk) o "none".
 type SessionControls struct {
-	Root     string           `json:"root"`
-	Controls []SessionControl `json:"controls"`
-	Images   bool             `json:"images"`
+	Root      string           `json:"root"`
+	Controls  []SessionControl `json:"controls"`
+	Commands  []Command        `json:"commands,omitempty"`
+	Images    bool             `json:"images"`
+	ImageMode string           `json:"imageMode,omitempty"`
 }
 
 // PromptResponse conferma che il prompt è stato accettato.
