@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -96,5 +97,36 @@ func TestWithoutVarDropsOnlyTheKey(t *testing.T) {
 	got := withoutVar([]string{"PATH=/bin", "anthropic_api_key=x", "ANTHROPIC_API_KEY_OTHER=y"}, apiKeyVar)
 	if len(got) != 2 || got[0] != "PATH=/bin" || got[1] != "ANTHROPIC_API_KEY_OTHER=y" {
 		t.Fatalf("unexpected env: %v", got)
+	}
+}
+
+// Il rilevamento di claude non deve calpestare un CLAUDE_CODE_EXECUTABLE scelto dall'utente.
+func TestResolveKeepsAnExplicitClaudeExecutable(t *testing.T) {
+	adapter := filepath.Join(t.TempDir(), "claude-agent-acp")
+	if err := os.WriteFile(adapter, []byte("test"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	name := "claude"
+	if runtime.GOOS == "windows" {
+		name = "claude.exe"
+	}
+	if err := os.WriteFile(filepath.Join(bin, name), []byte("x"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	detected, err := resolve(milk.Settings{BinaryPath: adapter}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envValue(detected.Env, "CLAUDE_CODE_EXECUTABLE") != filepath.Join(bin, name) {
+		t.Fatalf("a claude on PATH must be detected: %v", envValue(detected.Env, "CLAUDE_CODE_EXECUTABLE"))
+	}
+	explicit, err := resolve(milk.Settings{BinaryPath: adapter, Env: map[string]string{"CLAUDE_CODE_EXECUTABLE": "custom-claude"}}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := envValue(explicit.Env, "CLAUDE_CODE_EXECUTABLE"); got != "custom-claude" {
+		t.Fatalf("the user's explicit executable must win over detection, got %q", got)
 	}
 }

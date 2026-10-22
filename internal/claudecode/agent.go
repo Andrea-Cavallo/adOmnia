@@ -42,14 +42,16 @@ func resolve(settings milk.Settings, root string) (milk.Launch, error) {
 	if settings.IgnoreAPIKey {
 		env = withoutVar(env, apiKeyVar)
 	}
+	// Su Windows exec.LookPath("claude") trova lo shim claude.cmd di npm, che Node non riesce ad avviare (EINVAL,
+	// session/new -32603): NativeClaude dà un .exe vero. Va impostato prima delle variabili esplicite, che vincono.
+	if claude := milk.NativeClaude(exec.LookPath); claude != "" {
+		env = setEnv(env, "CLAUDE_CODE_EXECUTABLE", claude)
+	}
 	for name, value := range settingsEnvironment(root, os.Getenv) {
 		env = setEnv(env, name, value)
 	}
 	for name, value := range settings.Env {
 		env = setEnv(env, name, value)
-	}
-	if claude, lookupErr := exec.LookPath("claude"); lookupErr == nil {
-		env = setEnv(env, "CLAUDE_CODE_EXECUTABLE", claude)
 	}
 	launch.Args = append(launch.Args, settings.ExtraArgs...)
 	launch.Env = env
