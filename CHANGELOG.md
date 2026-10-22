@@ -4,23 +4,49 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [1.0.15] — 2026-10-22
+
+Release notes: [docs/releases/v1.0.15.md](docs/releases/v1.0.15.md).
 
 - **milk agent changes take effect.** Choosing a primary/escalation agent (milk settings or the chat's *Primary agent* selector) restarts `milk serve --acp`. Verified against milk v0.7.1: its config reload does not reliably rebind the primary/escalation runners (the turn keeps going to the previous agent), and milk writes `~/.milk/config.json` back from its own in-memory view on its update check — which is what made a chosen agent "revert" by itself. After the restart the process and the file agree, so neither happens. A change that does not touch the roles no longer restarts anything.
 - **Turn timeout.** milk settings gains *Turn timeout*: a turn that runs longer than the chosen number of minutes is cancelled and reported (*default 10, max 120*). The Stop button still interrupts immediately.
 - **The routing chip names the real agent.** milk reports the agent that served the turn in `state_update._meta.milk/route`; the chip now shows that name instead of the generic *primary*/*escalation* label.
 - **Xiaomi MiMo default model fixed** to `mimo-v2.6-flash` (the previous `mimo-v2-flash` is not a model id on `api.xiaomimimo.com`).
 - **OpenCode is out of the AI Assistant hub** for now: tab, chat pane, settings dialog, Tools command and detached tool window are gone from the frontend, and the OpenCode ACP service is no longer registered in the backend. The launcher (`internal/opencode`) is untouched and can be wired back.
+- **`node --test` in the Test tree.** A `test` script that runs `node --test` is now a test runner of its own (after Vitest and Jest): the tree shows each file, suite and test with pass/fail/skip, durations and a clickable failure location, and a file that cannot start (missing import) is reported as failed with its message. It needs no `node_modules`; a small reporter bundled with adOmnia is stored in the user cache, never in the project.
+- **Nest and Next suggestions.** The Run bar recognises Nest (`nest start`, `@nestjs/*`), picks `start:dev` as its dev script and, for Next and Nest, also offers the production start (`start` / `start:prod`) without repeating a command that is already the dev script.
+- **Spring datasources in Database Studio.** Project Services reads `spring.datasource.*` (properties, YAML and profiles) with the file and line it came from; the password is never copied, only its presence is known.
+- **Code Vision and override markers for Java.** Usage counts and the latest git author above declarations, with override/implementation markers served by the language server.
+
+## [1.0.14] — 2026-10-22
+
+Release notes: [docs/releases/v1.0.14.md](docs/releases/v1.0.14.md).
+
+- **Copilot buffers are redacted before sync.** A shared Go redactor masks private keys, JWTs, cloud/GitHub/Stripe/Slack tokens, passwords in connection strings and sensitive assignments in every synchronized document, including unsaved buffers. The mask preserves byte length, UTF-16 width and line breaks, so completion positions stay valid. Chat messages get the same backend defence.
+- **External agent boundaries are explicit.** The Code Studio guide documents that `.adomnia/aiignore` filters only the context adOmnia prepares; milk, Claude Code and OpenCode run their own tools and can read files themselves, and ACP exposes no per-file read restriction. The agent chat shows a notice when the project has an aiignore, and the project AI policy remains the hard stop.
+- **Every AI entry point is tested.** Copilot documents/chat, milk, Claude Code and OpenCode have tests for prompt redaction and for the project policy (plus the disabled-start path).
+- **Wails version guard in CI.** `scripts/check-wails-version.mjs` fails when `go.mod`, `docs/BUILD.md`, the README, AGENTS.md or a workflow name different Wails versions; the build workflow runs it on every change.
+- **Vault documentation and threat model.** `docs/VAULT.md` collects age+scrypt, the in-memory identity, auto-lock (30 minutes by default, 1–120), the OS keychain/DPAPI local seal for database credentials, recovery and what the vault does not protect.
+- **Native startup measurement.** `scripts/measure-startup.ps1` records first stable frame and process-tree memory with an isolated profile. First Windows measurement: 987 ms median to first frame and 175.4 MB peak tree on an empty Hub; macOS and Linux remain pending.
 - **milk 0.8/0.9 ACP features in the chat.** Slash commands announced by the agent (`available_commands_update`) appear in a keyboard-driven palette in the composer: `/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary` and the rest of milk's real ACP set.
 - **Images reach milk.** Native ACP image blocks when the agent advertises them; otherwise the image is written to a private temporary folder and referenced with `@<absolute path>` (milk's own CLI convention), then deleted at the end of the turn. The composer states which mode is in use.
 - **Background agents report back.** Turns milk starts by itself when a background job finishes are rendered as an assistant turn marked *background* instead of being dropped.
 - `/skip-permissions`, `/think`, plans, routing chips, live tool output and permission prompts keep working through the same ACP client. Claude Code shares all of it.
+
+## [1.0.13] — 2026-10-22
+
+Release notes: [docs/releases/v1.0.13.md](docs/releases/v1.0.13.md).
+
+- Python in Code Studio: run, pytest (with coverage), debugpy, basedpyright (one server per unit), Ruff, per-unit interpreters and explicit environment actions.
+- Python across the product: FastAPI/Flask/Django routes become Developer Context entities, PyPI Security Intelligence and Python module dependencies.
+- Shared agent policy, MCP gating, milk 0.7 support, byte budgets for large responses and logs, Code Studio rename.
 
 ## [1.0.12] — 2026-10-20
 
 Release notes: [docs/releases/v1.0.12.md](docs/releases/v1.0.12.md).
 
 - Publishes the v1.0.11 code: its release build failed on a transient network error, so v1.0.11 (and v1.0.10, never tagged) never reached GitHub Releases.
+- Python in Code Studio: run, pytest test tree, debugpy debugging and basedpyright editing with an explicit, visible tool install.
 
 ## [1.0.11] — 2026-10-20
 
