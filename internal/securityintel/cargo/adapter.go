@@ -132,18 +132,64 @@ func (*Adapter) Resolve(ctx context.Context, target securityintel.Target, option
 }
 
 // directDependencies sono i nomi delle dipendenze dichiarate nel Cargo.toml
-// ([dependencies], [dev-dependencies], [build-dependencies]).
+// ([dependencies], [dev-dependencies], [build-dependencies]). Un workspace virtuale non ha
+// [package]: si leggono anche i manifest dei membri, sennò tutte le loro dipendenze risulterebbero
+// transitive (RS-8.3).
 func directDependencies(manifestPath string) map[string]bool {
 	direct := map[string]bool{}
+	add := func(path string) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return
+		}
+		document := toml.Parse(data)
+		for _, section := range []string{"dependencies", "dev-dependencies", "build-dependencies"} {
+			for name := range toml.Table(document, section) {
+				direct[name] = true
+			}
+		}
+	}
+	add(manifestPath)
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return direct
 	}
 	document := toml.Parse(data)
-	for _, section := range []string{"dependencies", "dev-dependencies", "build-dependencies"} {
-		for name := range toml.Table(document, section) {
-			direct[name] = true
+	if toml.Table(document, "package") != nil {
+		return direct
+	}
+	root := filepath.Dir(manifestPath)
+	for _, pattern := range toml.Strings(document, "workspace", "members") {
+		for _, member := range workspaceMemberManifests(root, pattern) {
+			add(member)
 		}
 	}
+	// [workspace.dependencies] è ereditato dai membri: resta una dipendenza dichiarata.
+	for name := range toml.Table(document, "workspace", "dependencies") {
+		direct[name] = true
+	}
 	return direct
+}
+
+const maxWorkspaceMembers = 100
+
+// workspaceMemberManifests espande un membro del workspace (`crates/*` o un percorso) nel suo
+// Cargo.toml, con un limite sui glob.
+func workspaceMemberManifests(root, pattern string) []string {
+	manifest := func(dir string) string { return filepath.Join(dir, "Cargo.toml") }
+	if !strings.ContainsAny(pattern, "*?[") {
+		return []string{manifest(filepath.Join(root, filepath.FromSlash(pattern)))}
+	}
+	matches, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(pattern)))
+	if err != nil {
+		return nil
+	}
+	if len(matches) > maxWorkspaceMembers {
+		matches = matches[:maxWorkspaceMembers]
+	}
+	out := make([]string, 0, len(matches))
+	for _, match := range matches {
+		out = append(out, manifest(match))
+	}
+	return out
 }

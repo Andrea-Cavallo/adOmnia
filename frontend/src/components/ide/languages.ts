@@ -56,6 +56,8 @@ export interface IdeLanguageContribution {
    * dialog Breakpoints non mostra la sezione (es. Delve non ha filtri del genere).
    */
   exceptionFilters?: readonly ExceptionFilterSpec[]
+  /** Caratteri, oltre al punto, che aprono da soli la lista di completamento (Rust: `:` per `Vec::`). */
+  completionTriggerCharacters?: readonly string[]
 }
 
 export interface ExceptionFilterSpec {

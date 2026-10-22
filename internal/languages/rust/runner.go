@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"adomnia/internal/ide/run"
@@ -26,9 +27,11 @@ type Options struct {
 }
 
 var (
-	crateName    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	// I nomi non possono iniziare con `-`: altrimenti un run config condivisa potrebbe passare un
+	// flag a cargo (`cargo run --bin --version`) invece di un target.
+	crateName    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 	featureName  = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`)
-	profileName  = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	profileName  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 	targetTriple = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]*-[A-Za-z0-9_]+$`)
 )
 
@@ -70,10 +73,11 @@ func optionsFor(kind string, data json.RawMessage) (Options, error) {
 			return options, fmt.Errorf("enter a valid binary name")
 		}
 	case "example":
-		if options.Example == "" && options.Package == "" {
+		// Senza nome cargo eseguirebbe il *bin* del package, non un example.
+		if options.Example == "" {
 			return options, fmt.Errorf("choose an example to run")
 		}
-		if options.Example != "" && !crateName.MatchString(options.Example) {
+		if !crateName.MatchString(options.Example) {
 			return options, fmt.Errorf("enter a valid example name")
 		}
 	case "bench":
@@ -121,6 +125,7 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		// I diagnostici di build (RS-3.3): il core li raccoglie dall'output JSON e li pubblica
 		// sul pannello Problems come per Go e Java.
 		Diagnostics: cargoDiagnosticFromLine,
+		ConsoleLine: pathFixingConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
 	}, nil
 }
 
@@ -199,10 +204,12 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 	return run.FieldSchema{Language: ID, Kind: kind, Fields: fields}
 }
 
+// hasEnvironment dice se l'ambiente della run imposta già name. Su Windows i nomi delle variabili
+// sono case-insensitive (`rustup_toolchain` è RUSTUP_TOOLCHAIN); su Linux/macOS sono distinti.
 func hasEnvironment(environment []string, name string) bool {
 	for _, entry := range environment {
 		key, _, _ := strings.Cut(entry, "=")
-		if strings.EqualFold(key, name) {
+		if key == name || (runtime.GOOS == "windows" && strings.EqualFold(key, name)) {
 			return true
 		}
 	}

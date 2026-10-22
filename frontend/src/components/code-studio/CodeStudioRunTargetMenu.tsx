@@ -3,6 +3,7 @@ import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { CodeStudioRunTarget } from './codeStudioRunTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
 import { isPythonTarget } from './codeStudioPythonTargets'
+import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
 
 export type CodeStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'fuzz' | 'build' | 'buildRun' | 'down' | 'save'
 
@@ -21,7 +22,11 @@ function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
     items.push({ id: 'debug', label: `Debug '${label}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' })
     return items
   }
-  if (isPythonTarget(target)) {
+  if (isRustTestTarget(target)) {
+    // Il debug dei test Rust non c'è ancora (cargo test --no-run → CodeLLDB): solo Run.
+    return [{ id: 'run', label: `Run '${target.name}'`, icon: Play, iconClassName: 'text-success' }]
+  }
+  if (isPythonTarget(target) || isRustTarget(target)) {
     return [
       { id: 'run', label: `Run '${target.name}'`, icon: Play, iconClassName: 'text-success' },
       { id: 'debug', label: `Debug '${target.name}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' },

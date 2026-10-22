@@ -954,7 +954,7 @@ Quando una voce non torna, tenere presenti i limiti **realmente** aperti (gli al
 
 ## RS — Supporto Rust in Code Studio (piano 2026-10-21)
 
-Riferimento: `MULTILANGUAGE-IDE.md` §9.6, RS-0–RS-10. Stato: **piano scritto, nulla implementato**; le voci si spuntano solo dopo prova nell'app. RS-M7 è il gate di integrazione con il resto del prodotto: senza di esso Rust non è "supportato".
+Riferimento: `MULTILANGUAGE-IDE.md` §9.6, RS-0–RS-10. Stato: **codice RS-0→RS-8 implementato** (visto al 2026-10-22; le note inline del piano dicono cosa è rinviato), **collaudi qui sotto non ancora eseguiti**: le voci si spuntano solo dopo prova nell'app. RS-M7 è il gate di integrazione con il resto del prodotto: senza di esso Rust non è "supportato".
 
 - [ ] **RS-M1** Aprire un crate singolo e un workspace Cargo (lib + bin + examples): Explorer, unità (`target/` escluso), icona e Run coerenti; `rust-toolchain.toml` con canale non installato → stato "mancante" con azione esplicita, nessun download/esecuzione all'apertura. Progetto non fidato leggibile, processi bloccati.
 - [ ] **RS-M2** Run di `bin` ed `example`: features, profilo, args con spazi/Unicode, env-file con segreti redatti, stop (muoiono cargo **e** il binario), rerun, configurazione salvata e riaperta. Errore di compilazione: Problems e console con `file:riga:colonna` e codice (`E0308`) cliccabili.

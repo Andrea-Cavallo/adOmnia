@@ -44,3 +44,28 @@ func TestDiagnosticsCollectionIgnoresUnrecognizedLines(t *testing.T) {
 		t.Fatalf("collected = %+v", process.collected)
 	}
 }
+
+func TestConsoleRewriteReplacesHandledLinesAndKeepsTheRest(t *testing.T) {
+	process := &managedProcess{console: func(line string) (string, bool) {
+		switch {
+		case strings.HasPrefix(line, "{drop"):
+			return "", true
+		case strings.HasPrefix(line, "{show"):
+			return "shown", true
+		}
+		return "", false
+	}}
+	writer := &outputWriter{process: process}
+	got := string(writer.rewriteConsole([]byte("keep 1\n{drop}\n{show}\n{program json}\nprompt: ")))
+	if got != "keep 1\nshown\n{program json}\nprompt: " {
+		t.Fatalf("got %q", got)
+	}
+	// una riga JSON spezzata su due scritture aspetta il newline
+	writer = &outputWriter{process: process}
+	if first := writer.rewriteConsole([]byte("{sho")); len(first) != 0 {
+		t.Fatalf("partial JSON must wait, got %q", first)
+	}
+	if second := string(writer.rewriteConsole([]byte("w}\nnext\n"))); second != "shown\nnext\n" {
+		t.Fatalf("second = %q", second)
+	}
+}

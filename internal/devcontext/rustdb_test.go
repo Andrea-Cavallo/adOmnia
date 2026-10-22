@@ -1,6 +1,10 @@
 package devcontext
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 // I riferimenti a database Rust devono arrivare al Developer Context come entità table e
 // datasource, nella stessa forma di quelle Go e delle migration SQL.
@@ -76,5 +80,38 @@ func TestInterestingReadsCargoConfigOnly(t *testing.T) {
 	}
 	if interesting(".cargo/registry/something") || interesting("other/config.toml") {
 		t.Fatal("only .cargo/config.toml is readable, not other config.toml or .cargo internals")
+	}
+}
+
+// La scansione vera (walkInteresting) deve entrare in `.cargo`: prima la saltava come ogni cartella
+// nascosta, e la DATABASE_URL di `[env]` non arrivava mai al pannello Database.
+func TestScanReadsCargoConfigEnvDatabase(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "svc", ".cargo", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("[env]\nDATABASE_URL = \"postgres://app@localhost:5432/shop\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Una cartella nascosta qualunque resta fuori dalla scansione.
+	hidden := filepath.Join(root, ".cache", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(hidden), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hidden, []byte("[env]\nDATABASE_URL = \"postgres://x@h:1/hidden\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := newTestManager(root)
+	snapshot, err := m.Get("s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := byID(snapshot.Entities)
+	if _, ok := ids["datasource:postgres@localhost:5432/shop"]; !ok {
+		t.Fatalf("the [env] DATABASE_URL of .cargo/config.toml must reach the snapshot: %v", ids)
+	}
+	if _, ok := ids["datasource:postgres@h:1/hidden"]; ok {
+		t.Fatal("other hidden directories must stay out of the scan")
 	}
 }

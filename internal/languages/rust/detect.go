@@ -3,6 +3,7 @@ package rust
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -47,7 +48,10 @@ func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
 		return false
 	}
 	for _, name := range visit.Files {
-		if strings.EqualFold(name, "Cargo.toml") {
+		// Cargo riconosce solo `Cargo.toml`. Su Windows il filesystem è case-insensitive e
+		// readManifest lo trova comunque; su Linux un `cargo.toml` non è un manifest e la
+		// unità risulterebbe senza Cargo.toml.
+		if name == "Cargo.toml" || (runtime.GOOS == "windows" && strings.EqualFold(name, "Cargo.toml")) {
 			v.manifests = append(v.manifests, filepath.Join(visit.Path, name))
 			break
 		}

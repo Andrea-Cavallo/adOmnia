@@ -68,3 +68,20 @@ func TestCommandSpecWiresDiagnostics(t *testing.T) {
 		t.Fatalf("arguments = %q", joined)
 	}
 }
+
+func TestCargoConsoleLineShowsRenderedTextAndHidesCargoNoise(t *testing.T) {
+	diagnostic := `{"reason":"compiler-message","message":{"level":"error","message":"x","spans":[],"children":[],"rendered":"error: x\n --> src/main.rs:3:5\n"}}`
+	if text, handled := cargoConsoleLine(diagnostic); !handled || text != "error: x\n --> src/main.rs:3:5\n" {
+		t.Fatalf("diagnostic = %q %v", text, handled)
+	}
+	for _, line := range []string{`{"reason":"compiler-artifact","package_id":"a"}`, `{"reason":"build-finished","success":true}`} {
+		if text, handled := cargoConsoleLine(line); !handled || text != "" {
+			t.Fatalf("%s must be hidden, got %q %v", line, text, handled)
+		}
+	}
+	for _, line := range []string{`{"level":"info","msg":"the program logs JSON"}`, `plain output`, `{broken`} {
+		if _, handled := cargoConsoleLine(line); handled {
+			t.Fatalf("%q belongs to the program", line)
+		}
+	}
+}

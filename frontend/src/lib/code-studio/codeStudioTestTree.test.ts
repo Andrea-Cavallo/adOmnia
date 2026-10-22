@@ -208,3 +208,34 @@ describe('Python test runs', () => {
     expect(pythonRerunFailedRequest(pyRun([node('tests/test_ok.py', '', 'pass'), node('tests/test_ok.py', 'TestOk', 'pass')]))).toBeNull()
   })
 })
+
+describe('Rust test runs', () => {
+  const rustRun = (results: GoIDETestResult[]): GoIDETestRun =>
+    ({ ...run(results, 'crates/api'), request: { ...run(results, 'crates/api').request, language: 'rust', packages: [], coverage: false } }) as GoIDETestRun
+
+  it('reruns a single test by its libtest path, not a Vitest or Go pattern', () => {
+    const test = node('api', 'tests/it_works', 'fail')
+    expect(requestForNode(rustRun([node('api', 'tests', 'fail'), test]), test)).toMatchObject({ language: 'rust', packages: [], run: 'tests::it_works' })
+  })
+
+  it('drops the integration test file prefix and keeps doctest names as they are', () => {
+    const integration = node('api', 'tests/api.rs/health_check', 'fail')
+    expect(requestForNode(rustRun([integration]), integration).run).toBe('health_check')
+    const doctest = node('api', 'src/lib.rs - add (line 3)', 'fail')
+    expect(requestForNode(rustRun([doctest]), doctest).run).toBe('src/lib.rs - add (line 3)')
+  })
+
+  it('reruns a module node by prefix and a package node as a whole suite', () => {
+    const module = node('api', 'tests', 'fail')
+    const child = node('api', 'tests/it_works', 'fail')
+    expect(requestForNode(rustRun([module, child]), module).run).toBe('tests::')
+    expect(requestForNode(rustRun([node('api', '', 'fail')]), node('api', '', 'fail')).run).toBe('')
+  })
+
+  it('reruns every failed leaf test in one request, or everything when the build failed', () => {
+    const results = [node('api', 'tests', 'fail'), node('api', 'tests/a', 'fail'), node('api', 'tests/b', 'fail'), node('api', 'tests/c', 'pass')]
+    expect(rerunFailedRequest(rustRun(results))).toMatchObject({ packages: [], run: 'tests::a\ntests::b' })
+    expect(rerunFailedRequest(rustRun([node('api', '', 'fail', { buildFailed: true })]))?.run).toBe('')
+    expect(rerunFailedRequest(rustRun([node('api', 'tests/c', 'pass')]))).toBeNull()
+  })
+})

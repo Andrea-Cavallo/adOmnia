@@ -20,7 +20,11 @@ type detectConfig struct {
 var defaultDetect = detectConfig{interval: 800 * time.Millisecond, timeout: 2 * time.Minute}
 
 // infraProcesses never are the service: the debugger, gopls, the go tool and linters.
-var infraProcesses = map[string]bool{"dlv": true, "gopls": true, "go": true, "golangci-lint": true, "staticcheck": true}
+var infraProcesses = map[string]bool{
+	"dlv": true, "gopls": true, "go": true, "golangci-lint": true, "staticcheck": true,
+	// Rust tooling: cargo and rustc build, rust-analyzer and CodeLLDB never serve the API.
+	"cargo": true, "rustc": true, "rust-analyzer": true, "codelldb": true, "lldb-server": true,
+}
 
 func isInfraProcess(name string) bool {
 	lower := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(name)), ".exe")

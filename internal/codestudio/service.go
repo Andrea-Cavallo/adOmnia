@@ -149,6 +149,9 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 			service.supervisor.Finish(execution.ID)
 		}
 		service.emit(eventType, execution.SessionID, string(execution.ID), payload)
+		if eventType == "run.finished" && execution.Diagnostics != nil {
+			service.publishBuildDiagnostics(execution)
+		}
 	})
 	service.terminal.SetEventSink(func(eventType string, terminal TerminalSession, payload any) {
 		if payload == nil {

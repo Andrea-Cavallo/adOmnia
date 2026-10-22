@@ -79,7 +79,7 @@ import { isToolTarget, toolConfigurationDraft, toolRunRequest } from './codeStud
 import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
 import { startJavaMain } from '@/lib/code-studio-debug-api'
 import { isPythonTarget } from './codeStudioPythonTargets'
-import { isRustTarget } from './codeStudioRustTargets'
+import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -846,6 +846,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startPython({ sessionId: activeSession.id, kind: 'script', script: target.relativePath, workingDirectory: '' })
       return void store.startRun('script', { language: 'python', target: '.', workingDirectory: '', languageOptions: { script: target.relativePath } })
+    }
+    if (isRustTestTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its tests' })
+      return void useCodeStudioTestsStore.getState().start({ sessionId: activeSession.id, language: 'rust', workingDirectory: target.crateDirectory, packages: [], run: target.testPath })
     }
     if (isRustTarget(target)) {
       if (!activeSession) return

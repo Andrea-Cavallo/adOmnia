@@ -98,3 +98,49 @@ func TestDebugAdapterRejectsMissingTarget(t *testing.T) {
 		t.Fatal("a debug request without a bin or example must fail")
 	}
 }
+
+func TestDebugAdapterRejectsFlagLikeNames(t *testing.T) {
+	root := t.TempDir()
+	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: []byte(`{"bin":"--manifest-path"}`)}); err == nil {
+		t.Fatal("a flag-like binary name must be rejected")
+	}
+}
+
+func TestBuildArtifactPathPassesFeaturesProfileTarget(t *testing.T) {
+	var got []string
+	original := runCargoBuild
+	runCargoBuild = func(_, _ string, args []string) ([]byte, error) {
+		got = args
+		return []byte(`{"reason":"compiler-artifact","executable":"/x/server"}`), nil
+	}
+	defer func() { runCargoBuild = original }()
+	_, err := buildArtifactPath("cargo", ".", DebugOptions{Bin: "server", Features: []string{"tls"}, Profile: "release", Target: "x86_64-unknown-linux-gnu"})
+	if err != nil || strings.Join(got, " ") != "build --message-format=json --bin server --features tls --profile release --target x86_64-unknown-linux-gnu" {
+		t.Fatalf("args = %v err = %v", got, err)
+	}
+}
+
+func TestCodeLLDBInstallPlanVerifiesChecksum(t *testing.T) {
+	plan, err := CodeLLDBInstallPlan(t.TempDir())
+	if err != nil {
+		t.Skip("no pinned CodeLLDB build for this platform")
+	}
+	if !strings.Contains(plan.Command, "SHA256") && !strings.Contains(plan.Command, "sha256") && !strings.Contains(plan.Command, "shasum") {
+		t.Fatalf("install command must verify the checksum: %s", plan.Command)
+	}
+	if plan.Prepare == nil || len(plan.Arguments) == 0 {
+		t.Fatalf("incomplete plan: %+v", plan)
+	}
+}
+
+func TestDefaultBinaryFromImplicitMain(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "Cargo.toml", "[package]\nname = \"svc\"\nversion = \"0.1.0\"\n")
+	if got := DefaultBinary(root); got != "" {
+		t.Fatalf("without src/main.rs there is no default binary, got %q", got)
+	}
+	writeFile(t, root, "src/main.rs", "fn main() {}\n")
+	if got := DefaultBinary(root); got != "svc" {
+		t.Fatalf("default binary = %q", got)
+	}
+}

@@ -1,0 +1,141 @@
+/** ▶ nel gutter dei sorgenti Rust: `fn main` (anche `#[tokio::main] async fn main`). Solo lettura del testo. */
+
+export interface CodeStudioRustRunTarget {
+  line: number
+  kind: 'rust-main'
+  name: string
+  /** Cartella del crate relativa alla radice del progetto: è la working directory di Run e debug. */
+  crateDirectory: string
+  /** `src/bin/<n>.rs` → bin `n`; `src/main.rs` lascia vuoto (lo risolve cargo/il backend dal crate). */
+  bin?: string
+  /** `examples/<n>.rs` → example `n`. */
+  example?: string
+}
+
+const FN_MAIN = /^\s*(?:#\[[^\]]*\]\s*)*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+main\s*\(/
+
+export function isRustTarget(target: { kind: string }): target is CodeStudioRustRunTarget {
+  return target.kind === 'rust-main'
+}
+
+/** Posizione del file nel crate: dove sta il Cargo.toml e che target Cargo è. Null fuori da src/ ed examples/. */
+function crateLayout(relativePath: string): { crateDirectory: string; bin?: string; example?: string; name: string } | null {
+  const parts = relativePath.split('/')
+  for (let index = parts.length - 1; index >= 0; index--) {
+    const crateDirectory = parts.slice(0, index).join('/')
+    const rest = parts.slice(index)
+    // Cargo scopre solo `examples/*.rs`, `examples/*/main.rs`, `src/bin/*.rs`, `src/bin/*/main.rs`:
+    // gli altri file dentro una sottocartella sono moduli, non target.
+    if (rest[0] === 'examples') {
+      if (rest.length === 2) {
+        const name = rest[1].replace(/\.rs$/, '')
+        return { crateDirectory, example: name, name }
+      }
+      if (rest.length === 3 && rest[2] === 'main.rs') {
+        return { crateDirectory, example: rest[1], name: rest[1] }
+      }
+      return null
+    }
+    if (rest[0] === 'src' && rest[1] === 'bin') {
+      if (rest.length === 3) {
+        const name = rest[2].replace(/\.rs$/, '')
+        return { crateDirectory, bin: name, name }
+      }
+      if (rest.length === 4 && rest[3] === 'main.rs') {
+        return { crateDirectory, bin: rest[2], name: rest[2] }
+      }
+      return null
+    }
+    if (rest[0] === 'src' && rest.length === 2 && rest[1] === 'main.rs') {
+      return { crateDirectory, name: parts[index - 1] ?? 'main' }
+    }
+  }
+  return null
+}
+
+export function findRustTargets(relativePath: string, text: string): Array<CodeStudioRustRunTarget | CodeStudioRustTestTarget> {
+  return [...findRustMainTargets(relativePath, text), ...findRustTestTargets(relativePath, text)]
+}
+
+function findRustMainTargets(relativePath: string, text: string): CodeStudioRustRunTarget[] {
+  if (!relativePath.toLowerCase().endsWith('.rs')) return []
+  const layout = crateLayout(relativePath)
+  if (!layout) return []
+  const index = text.split(/\r?\n/).findIndex((line) => FN_MAIN.test(line))
+  if (index < 0) return []
+  const { name, crateDirectory, bin, example } = layout
+  return [{ line: index + 1, kind: 'rust-main', name, crateDirectory, ...(bin ? { bin } : {}), ...(example ? { example } : {}) }]
+}
+
+/** ▶ su una funzione di test Rust (`#[test]`, `#[tokio::test]`…): si lancia per nome esatto con `cargo test`. */
+export interface CodeStudioRustTestTarget {
+  line: number
+  kind: 'rust-test'
+  /** Nome della funzione. */
+  name: string
+  /** Percorso completo come lo stampa libtest (`handlers::tests::creates_user`), per `--exact`. */
+  testPath: string
+  /** Cartella del crate relativa alla radice del progetto: working directory del `cargo test`. */
+  crateDirectory: string
+  relativePath: string
+}
+
+export function isRustTestTarget(target: { kind: string }): target is CodeStudioRustTestTarget {
+  return target.kind === 'rust-test'
+}
+
+const TEST_ATTRIBUTE = /^\s*#\[\s*(?:[A-Za-z_][\w]*::)*test\b[^\]]*\]/
+const OTHER_ATTRIBUTE = /^\s*#\[/
+const FN_NAME = /^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+([A-Za-z_]\w*)/
+const MOD_OPEN = /^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_]\w*)\s*\{/
+
+/** Crate e modulo del file: `crates/api/src/handlers/user.rs` → crate `crates/api`, modulo `handlers::user`. Null fuori da src/ e tests/. */
+function testFileLayout(relativePath: string): { crateDirectory: string; modulePath: string[] } | null {
+  const parts = relativePath.split('/')
+  const lastSrc = parts.lastIndexOf('src')
+  if (lastSrc >= 0 && lastSrc < parts.length - 1) {
+    const rest = parts.slice(lastSrc + 1)
+    if (rest[0] === 'bin') return { crateDirectory: parts.slice(0, lastSrc).join('/'), modulePath: [] }
+    const file = rest[rest.length - 1].replace(/\.rs$/, '')
+    const modulePath = [...rest.slice(0, -1), ...(['lib', 'main', 'mod'].includes(file) ? [] : [file])]
+    return { crateDirectory: parts.slice(0, lastSrc).join('/'), modulePath }
+  }
+  const lastTests = parts.lastIndexOf('tests')
+  if (lastTests >= 0 && lastTests < parts.length - 1) return { crateDirectory: parts.slice(0, lastTests).join('/'), modulePath: [] }
+  return null
+}
+
+/** Toglie stringhe e commenti di riga, così le graffe dentro non spostano la profondità. */
+const withoutLiterals = (line: string): string => line.replace(/"(?:\\.|[^"\\])*"/g, '""').replace(/\/\/.*$/, '')
+
+export function findRustTestTargets(relativePath: string, text: string): CodeStudioRustTestTarget[] {
+  if (!relativePath.toLowerCase().endsWith('.rs')) return []
+  const layout = testFileLayout(relativePath)
+  if (!layout) return []
+  const targets: CodeStudioRustTestTarget[] = []
+  const modules: Array<{ name: string; inner: number }> = []
+  let depth = 0
+  let pendingTest = false
+  text.split(/\r?\n/).forEach((raw, index) => {
+    const line = withoutLiterals(raw)
+    const open = MOD_OPEN.exec(line)
+    if (open) modules.push({ name: open[1], inner: depth + 1 })
+    if (TEST_ATTRIBUTE.test(line)) pendingTest = true
+    else if (pendingTest && !OTHER_ATTRIBUTE.test(line)) {
+      const fn = FN_NAME.exec(line)
+      if (fn) {
+        const testPath = [...layout.modulePath, ...modules.map((entry) => entry.name), fn[1]].join('::')
+        targets.push({ line: index + 1, kind: 'rust-test', name: fn[1], testPath, crateDirectory: layout.crateDirectory, relativePath })
+      }
+      if (fn || line.trim() !== '') pendingTest = false
+    }
+    for (const char of line) {
+      if (char === '{') depth += 1
+      else if (char === '}') {
+        depth -= 1
+        while (modules.length && modules[modules.length - 1].inner > depth) modules.pop()
+      }
+    }
+  })
+  return targets
+}

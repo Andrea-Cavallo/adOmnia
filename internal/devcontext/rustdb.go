@@ -2,6 +2,7 @@ package devcontext
 
 import (
 	"bytes"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,12 +66,30 @@ func detectCargoConfig(rel string, data []byte) []Entity {
 	return out
 }
 
-// envLine restituisce la riga 1-based in cui compare la chiave (approssimata: basta per navigare).
+// envLine restituisce la riga 1-based della dichiarazione della chiave: prima la riga `key = …`,
+// poi una riga con la chiave tra virgolette; le righe di commento e le chiavi simili
+// (`OTHER_KEY`) non valgono.
 func envLine(data []byte, key string) int {
+	assignment := regexp.MustCompile(`^\s*` + regexp.QuoteMeta(key) + `\s*=`)
+	first, second := 0, 0
 	for i, raw := range strings.Split(string(data), "\n") {
-		if strings.Contains(raw, key) {
-			return i + 1
+		line := strings.TrimSpace(raw)
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
+		}
+		switch {
+		case assignment.MatchString(line):
+			if first == 0 {
+				first = i + 1
+			}
+		case strings.Contains(line, `"`+key+`"`), strings.Contains(line, "'"+key+"'"):
+			if second == 0 {
+				second = i + 1
+			}
 		}
 	}
-	return 0
+	if first != 0 {
+		return first
+	}
+	return second
 }

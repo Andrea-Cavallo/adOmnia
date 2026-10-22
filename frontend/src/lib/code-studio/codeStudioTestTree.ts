@@ -104,6 +104,24 @@ export function isPythonTestRun(run: GoIDETestRun): boolean {
   return run.request.language === 'python'
 }
 
+/** Il run è dell'adapter Rust (cargo test): i nodi sono percorsi libtest con `/` al posto di `::`. */
+export function isRustTestRun(run: GoIDETestRun): boolean {
+  return run.request.language === 'rust'
+}
+
+/**
+ * Filtro libtest di un nodo: il nome dell'albero (`tests/it_works`) torna `tests::it_works`, i test
+ * di integrazione perdono il prefisso del file e i doctest restano com'erano. Un nodo con figli è un
+ * modulo e finisce con `::` (esecuzione per prefisso); un package si riesegue per intero.
+ */
+export function rustTestFilter(run: GoIDETestRun, result: GoIDETestResult): string {
+  const name = result.name ?? ''
+  if (!name) return ''
+  if (name.includes(' (line ')) return name
+  const path = name.replace(/^tests\/[^/]+\.rs\//, '').split('/').join('::')
+  return run.results.some((other) => other.parentId === result.id) ? `${path}::` : path
+}
+
 /**
  * Node ID pytest di un risultato: `file::classe::test`, con i segmenti del nome uniti da `::` e
  * `∕` (U+2215) che torna `/` dentro un segmento. Per un nodo package (name vuoto) il solo file.
@@ -168,6 +186,9 @@ export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoID
     // Ogni nodo è un node ID pytest (o il file di test per un package): senza filtro `run`.
     return { ...run.request, packages: [pythonNodeId(result)], run: '', coverage: false }
   }
+  if (isRustTestRun(run)) {
+    return { ...run.request, packages: [], run: rustTestFilter(run, result), coverage: false }
+  }
   if (!isGoTestRun(run)) {
     const prefix = moduleDirectory ? `${moduleDirectory}/` : ''
     const file = result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
@@ -212,6 +233,7 @@ export function pythonDebugRequestForNode(run: GoIDETestRun, result: GoIDETestRe
 export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   if (isPythonTestRun(run)) return pythonRerunFailedRequest(run)
   if (isJavaTestRun(run)) return javaRerunFailedRequest(run)
+  if (isRustTestRun(run)) return rustRerunFailedRequest(run)
   const directories = packageDirectories(run)
   const packages = new Set<string>()
   const tests = new Set<string>()
@@ -229,6 +251,18 @@ export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | nul
   if (packages.size === 0) return null
   const run_ = wholePackage || tests.size === 0 ? '' : `^(${[...tests].map(escapeRegex).join('|')})$`
   return { ...run.request, packages: [...packages].sort(), run: run_, bench: '', coverage: false }
+}
+
+/**
+ * Rerun failed Rust: i nomi esatti dei test foglia falliti, uno per riga (il backend li passa tutti a
+ * libtest dopo `--`). Con un build fallito, o senza foglie, si riesegue l'intera suite.
+ */
+function rustRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  const failed = run.results.filter(isFailed)
+  if (failed.length === 0) return null
+  const leaves = failed.filter((result) => result.name && !run.results.some((other) => other.parentId === result.id)).map((result) => rustTestFilter(run, result))
+  const filter = failed.some((result) => result.buildFailed) ? '' : [...new Set(leaves)].join('\n')
+  return { ...run.request, packages: [], run: filter, coverage: false }
 }
 
 /**

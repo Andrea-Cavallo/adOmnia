@@ -16,11 +16,12 @@ func (*Language) Suggest(ctx context.Context, projectRoot string, unit project.U
 	manifest := readManifest(unit.Root)
 	var suggestions []run.Suggestion
 
-	// Bin: quelli espliciti, oppure il binario implicito src/main.rs (nome = package).
+	// Bin: quelli espliciti più il binario implicito src/main.rs (nome = package). Cargo scopre
+	// src/main.rs anche accanto a `[[bin]]` dichiarati, tranne se ne riprendono nome o percorso.
 	if manifest.IsPackage {
 		bins := manifest.Bins
-		if len(bins) == 0 && hasFile(filepath.Join(unit.Root, "src", "main.rs")) {
-			bins = []string{manifest.Name}
+		if hasFile(filepath.Join(unit.Root, "src", "main.rs")) && !containsName(bins, manifest.Name) {
+			bins = append([]string{manifest.Name}, bins...)
 		}
 		for _, bin := range bins {
 			suggestions = append(suggestions, cargoSuggestion(unit, "bin:"+bin, "Rust · cargo run --bin "+bin, "run", "bin", Options{Bin: bin}))
@@ -31,6 +32,7 @@ func (*Language) Suggest(ctx context.Context, projectRoot string, unit project.U
 	}
 	suggestions = append(suggestions,
 		cargoSuggestion(unit, "build", "Rust · cargo build", "build", "build", Options{}),
+		cargoSuggestion(unit, "build-release", "Rust · cargo build --release", "build", "build", Options{Profile: "release"}),
 		cargoSuggestion(unit, "check", "Rust · cargo check", "build", "check", Options{}),
 	)
 	return suggestions
@@ -55,4 +57,14 @@ func cargoSuggestion(unit project.Unit, id, title, action, kind string, options 
 func hasFile(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.Mode().IsRegular()
+}
+
+// containsName dice se names contiene name.
+func containsName(names []string, name string) bool {
+	for _, candidate := range names {
+		if candidate == name {
+			return true
+		}
+	}
+	return false
 }

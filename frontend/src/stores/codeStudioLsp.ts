@@ -106,7 +106,11 @@ export interface GoIDELintState {
   running: boolean
   result: GoIDELintResult | null
   error: string | null
+  /** Vista unica per Problems e status bar: diagnostica del linter più errori dell'ultima build. */
   reports: Record<string, GoIDEDiagnosticsReport>
+  linterReports?: Record<string, GoIDEDiagnosticsReport>
+  /** Diagnostici dell'ultima build/run del linguaggio (es. cargo): si sostituiscono a ogni esecuzione. */
+  buildReports?: Record<string, GoIDEDiagnosticsReport>
 }
 
 export interface GoIDEReferencesView {
@@ -173,6 +177,8 @@ interface GoIDELspState {
   installLinter: (sessionId: string, kind: GoIDELinterKind) => Promise<GoIDEExecution | null>
   runLint: (sessionId: string, changedOnly?: boolean) => Promise<void>
   cancelLint: (sessionId: string) => void
+  /** Dimentica lo stato (diagnostica, lint, build) di una sessione chiusa. */
+  clearSession: (sessionId: string) => void
   updateSettings: (sessionId: string | null, patch: Partial<GoIDELanguageServerSettings>) => Promise<void>
   updatePreferences: (patch: Partial<GoIDEEditorPreferences>) => void
   showToolWindow: (view: GoIDEToolWindow) => void
@@ -414,7 +420,7 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
       const result = await request
       if (runningLints.get(sessionId) !== request) return
       const reports = Object.fromEntries(result.reports.map((report) => [report.uri, report as unknown as GoIDEDiagnosticsReport]))
-      update({ running: false, result, reports })
+      update({ running: false, result, linterReports: reports, reports: mergedReports(reports, get().lint[sessionId]?.buildReports) })
     } catch (error) {
       if (runningLints.get(sessionId) !== request) return
       const message = errorMessage(error)
@@ -485,6 +491,16 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
       })
       return
     }
+    if (event.type === 'build.diagnostics') {
+      // Gli errori dell'ultima build sostituiscono i precedenti: una build pulita li azzera.
+      const payload = event.payload as { reports?: GoIDEDiagnosticsReport[] } | undefined
+      const buildReports = Object.fromEntries((payload?.reports ?? []).map((report) => [report.uri, report]))
+      set((state) => {
+        const current = state.lint[sessionId] ?? EMPTY_LINT
+        return { lint: { ...state.lint, [sessionId]: { ...current, buildReports, reports: mergedReports(current.linterReports, buildReports) } } }
+      })
+      return
+    }
     if (event.type === 'lsp.diagnostics') {
       const report = event.payload as GoIDEDiagnosticsReport
       set((state) => {
@@ -521,6 +537,19 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
 
   clearMessage: () => set({ message: null }),
   showCaretPopup: (popup) => set({ caretPopup: popup }),
+
+  clearSession: (sessionId) =>
+    set((state) => {
+      // Alla chiusura della sessione non devono restare i report dell'ultima build: riaprendo lo
+      // stesso progetto riaffiorerebbero finché non parte un'esecuzione nuova.
+      const lint = { ...state.lint }
+      const diagnostics = { ...state.diagnostics }
+      const progress = { ...state.progress }
+      delete lint[sessionId]
+      delete diagnostics[sessionId]
+      delete progress[sessionId]
+      return { lint, diagnostics, progress }
+    }),
 }))
 
 /** Unisce diagnostica gopls e risultati del linter per file, mantenendo la sorgente di ogni voce. */

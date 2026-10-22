@@ -232,7 +232,7 @@ func (m *LSPManager) editorLocations(state *lspSession, locations []lsp.Location
 // documentText preferisce il buffer sincronizzato al contenuto su disco.
 func (m *LSPManager) documentText(state *lspSession, uri, path string) string {
 	state.mu.Lock()
-	if id, ok := state.byURI[uri]; ok {
+	if id, ok := state.lookupDocument(uri); ok {
 		text := state.documents[id].text
 		state.mu.Unlock()
 		return text
@@ -613,7 +613,7 @@ func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.W
 			return WorkspaceChange{}, fmt.Errorf("%s: %w", relative, err)
 		}
 		state.mu.Lock()
-		documentID := state.byURI[uri]
+		documentID := state.documentIDFor(uri)
 		state.mu.Unlock()
 		result.Files = append(result.Files, FileChange{URI: uri, Path: path, RelativePath: relative, DocumentID: documentID, Edits: editorEdits(edits), NewContent: updated, OriginalContent: text, Created: isNew})
 	}

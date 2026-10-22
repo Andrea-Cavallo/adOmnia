@@ -354,7 +354,7 @@ func walkInteresting(ctx context.Context, root string, visit func(rel string, mo
 			return ctx.Err()
 		}
 		if d.IsDir() {
-			if p != root && (skippedDirs[d.Name()] || strings.HasPrefix(d.Name(), ".")) {
+			if p != root && (skippedDirs[d.Name()] || (strings.HasPrefix(d.Name(), ".") && d.Name() != ".cargo")) {
 				return filepath.SkipDir
 			}
 			return nil

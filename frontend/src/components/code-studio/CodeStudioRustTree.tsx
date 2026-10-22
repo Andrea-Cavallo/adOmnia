@@ -28,17 +28,27 @@ export function CodeStudioRustTree() {
   const [duplicatesOnly, setDuplicatesOnly] = useState(false)
 
   useEffect(() => {
+    // Una richiesta più vecchia che risolve per ultima non deve sovrascrivere l'albero corrente.
+    let active = 0
     openRequest = (next) => {
+      const token = ++active
       setRequest(next)
       setNodes(null)
       setError('')
       setQuery('')
       setDuplicatesOnly(false)
       getRustDependencyTree(next.sessionId)
-        .then(setNodes)
-        .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+        .then((tree) => {
+          if (token === active) setNodes(tree)
+        })
+        .catch((reason: unknown) => {
+          if (token === active) setError(reason instanceof Error ? reason.message : String(reason))
+        })
     }
-    return () => { openRequest = null }
+    return () => {
+      active++
+      openRequest = null
+    }
   }, [])
 
   const visible = useMemo(() => {
@@ -52,7 +62,7 @@ export function CodeStudioRustTree() {
       open={!!request}
       onClose={() => setRequest(null)}
       title="Cargo.lock dependency tree"
-      subtitle={nodes ? `${nodes.length} crates as the lock resolves them${duplicates ? ` · ${duplicates} duplicate version(s)` : ''}` : 'Reading Cargo.lock…'}
+      subtitle={nodes ? `${nodes.length} crates as the lock resolves them${duplicates ? ` · ${duplicates} duplicate version(s)` : ''}` : error ? 'Cargo.lock could not be read' : 'Reading Cargo.lock…'}
       icon={GitFork}
       size="lg"
       tall

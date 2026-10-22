@@ -145,6 +145,14 @@ describe('Code Studio language server store', () => {
     expect(diagnosticCounts(diagnostics.b)).toEqual({ errors: 0, warnings: 1 })
   })
 
+  it('shows build errors in Problems next to lint results and clears them on a clean build', () => {
+    const { handleEvent } = useCodeStudioLspStore.getState()
+    handleEvent(event('rs', 'build.diagnostics', { reports: [report('file:///rs/src/main.rs', 1)] }))
+    expect(diagnosticCounts(useCodeStudioLspStore.getState().lint.rs?.reports)).toEqual({ errors: 1, warnings: 0 })
+    handleEvent(event('rs', 'build.diagnostics', { reports: [] }))
+    expect(diagnosticCounts(useCodeStudioLspStore.getState().lint.rs?.reports)).toEqual({ errors: 0, warnings: 0 })
+  })
+
   it('keeps the same state when the server republishes identical diagnostics', () => {
     const { handleEvent } = useCodeStudioLspStore.getState()
     handleEvent(event('a', 'lsp.diagnostics', report('file:///a/main.go', 1)))

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strings"
 
 	"adomnia/internal/ide/lsp"
 )
@@ -240,4 +241,34 @@ func (m *LSPManager) NotifyWatchedFiles(sessionID SessionID, changes []DiskChang
 		}
 		_ = process.conn.Notify("workspace/didChangeWatchedFiles", map[string]any{"changes": events})
 	}
+}
+
+// normalizeDriveURI porta a minuscolo la lettera di unità di un URI file di Windows: rust-analyzer
+// risponde con `file:///c:/...` ai documenti aperti come `file:///C:/...`, e va comunque riconosciuto
+// lo stesso file (diagnostiche, modifiche di rename).
+func normalizeDriveURI(uri string) string {
+	if len(uri) > 10 && strings.HasPrefix(uri, "file:///") && uri[9] == ':' {
+		return "file:///" + strings.ToLower(uri[8:9]) + uri[9:]
+	}
+	return uri
+}
+
+// lookupDocument trova il documento aperto per un URI riportato dal server. Chiamare con state.mu preso.
+func (s *lspSession) lookupDocument(uri string) (DocumentID, bool) {
+	if id, ok := s.byURI[uri]; ok {
+		return id, true
+	}
+	normalized := normalizeDriveURI(uri)
+	for known, id := range s.byURI {
+		if normalizeDriveURI(known) == normalized {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// documentIDFor è lookupDocument senza il booleano: "" se il file non è aperto. Chiamare con state.mu preso.
+func (s *lspSession) documentIDFor(uri string) DocumentID {
+	id, _ := s.lookupDocument(uri)
+	return id
 }

@@ -139,9 +139,19 @@ func TestCommandSpecPinsProjectChannelAndKeepsExplicitEnvironment(t *testing.T) 
 	if err != nil || !slices.Contains(spec.Environment, "RUSTUP_TOOLCHAIN=1.80.0") {
 		t.Fatalf("env = %v, err = %v", spec.Environment, err)
 	}
-	request.Environment = []string{"rustup_toolchain=nightly"}
+	request.Environment = []string{"RUSTUP_TOOLCHAIN=nightly"}
 	spec, _ = New().CommandSpec(request)
 	if len(spec.Environment) != 1 {
 		t.Fatalf("user RUSTUP_TOOLCHAIN overridden: %v", spec.Environment)
+	}
+	// I nomi delle variabili sono case-insensitive solo su Windows.
+	request.Environment = []string{"rustup_toolchain=nightly"}
+	spec, _ = New().CommandSpec(request)
+	want := 2
+	if runtime.GOOS == "windows" {
+		want = 1
+	}
+	if len(spec.Environment) != want {
+		t.Fatalf("case-insensitive environment on %s: %v", runtime.GOOS, spec.Environment)
 	}
 }

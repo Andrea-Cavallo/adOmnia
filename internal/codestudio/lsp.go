@@ -1086,7 +1086,7 @@ func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDia
 		return
 	}
 	next := DiagnosticsReport{
-		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.byURI[report.URI],
+		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.documentIDFor(report.URI),
 		Diagnostics: diagnostics,
 	}
 	previous, exists := state.diagnosticSignatures[report.URI]

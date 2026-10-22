@@ -44,7 +44,7 @@ describe('IDE language contributions', () => {
     expect(heavyFeatureEditorLanguages()).not.toContain('java')
   })
 
-  it('declares Rust with run templates and rust-analyzer, no debug yet (RS-2/3/4)', () => {
+  it('declares Rust with run templates and rust-analyzer, debug with CodeLLDB (RS-2/3/4/6)', () => {
     const rust = IDE_LANGUAGES.find(language => language.id === 'rust')!
     expect(rust.name).toBe('Rust')
     expect(rust.icon).toBe('rust')
@@ -53,8 +53,11 @@ describe('IDE language contributions', () => {
     expect(rust.providedServer).toBe(true)
     expect(rust.heavyFeatures).toBe(false)
     expect(rust.runTemplates?.map(template => template.kind)).toEqual(['bin', 'example', 'build', 'check'])
-    expect(rust.canDebugRun).toBeUndefined()
-    expect(rust.menu).toBeUndefined()
+    expect(rust.canDebugRun?.({ kind: 'bin', language: 'rust', languageOptions: { bin: 'app' } } as never)).toBe(true)
+    expect(rust.canDebugRun?.({ kind: 'build', language: 'rust', languageOptions: {} } as never)).toBe(false)
+    expect(rust.exceptionFilters?.map(filter => filter.filter)).toEqual(['rust_panic'])
+    expect(rust.menu?.id).toBe('rust')
+    expect(rust.completionTriggerCharacters).toEqual([':'])
     expect(heavyFeatureEditorLanguages()).not.toContain('rust')
     expect(semanticTokenEditorLanguages()).not.toContain('rust')
   })

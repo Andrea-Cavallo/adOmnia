@@ -14,13 +14,13 @@ const maxManifestBytes = 2 << 20
 // parser TOML condiviso con Python; un manifest malformato produce il sottoinsieme letto, senza
 // bloccare le altre unità.
 type Manifest struct {
-	Path       string
-	IsPackage  bool   // [package] presente
-	Name       string // [package].name
-	DefaultRun string // [package].default-run
-	HasWorkspace bool // [workspace] presente (anche su un package, che è anche radice del workspace)
-	Members    []string // [workspace].members (pattern relativi, es. "crates/*")
-	Exclude    []string // [workspace].exclude
+	Path              string
+	IsPackage         bool     // [package] presente
+	Name              string   // [package].name
+	DefaultRun        string   // [package].default-run
+	HasWorkspace      bool     // [workspace] presente (anche su un package, che è anche radice del workspace)
+	Members           []string // [workspace].members (pattern relativi, es. "crates/*")
+	Exclude           []string // [workspace].exclude
 	DefaultMembers    []string // [workspace].default-members
 	WorkspaceDeps     bool     // [workspace.dependencies] presente (dipendenze ereditate)
 	WorkspacePackage  bool     // [workspace.package] presente (metadati ereditati)
@@ -35,6 +35,19 @@ type Manifest struct {
 	DevDependencies   []string // [dev-dependencies]
 	BuildDependencies []string // [build-dependencies]
 	HasPatch          bool     // [patch] presente
+}
+
+// DefaultBinary è il binario implicito di un crate (`src/main.rs`, nome = package): "" se la
+// cartella non è un package con quel file. Serve al ▶ del gutter, che non conosce il nome del crate.
+func DefaultBinary(dir string) string {
+	manifest := readManifest(dir)
+	if manifest.IsPackage && manifest.DefaultRun != "" {
+		return manifest.DefaultRun
+	}
+	if manifest.IsPackage && hasFile(filepath.Join(dir, "src", "main.rs")) {
+		return manifest.Name
+	}
+	return ""
 }
 
 // readManifest legge il Cargo.toml dell'unità. Un manifest mancante o malformato non è un errore.

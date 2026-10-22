@@ -514,3 +514,18 @@ Test: `go test ./internal/languages/web ./internal/ide` verdi, incluso `TestNode
 ### Python — licenze e wheel dei tool pinnati, PY-0.2 (2026-10-22)
 
 Verificato su PyPI (JSON delle release esatte, 2026-10-22): `basedpyright==1.40.2` MIT, wheel pura `none-any` (richiede Python >=3.10 e `nodejs-wheel-binaries>=20.13.1`, MIT, con wheel `win_amd64`/`win_arm64`, `macosx_13_0_x86_64`/`arm64`, `manylinux_2_28` e `musllinux_1_2` x86_64/aarch64); `debugpy==1.8.22` MIT, wheel native Windows (`win32`/`amd64`), macOS `universal2` e Linux solo `manylinux_2_34_x86_64`, più una wheel `none-any` (Linux aarch64 o glibc < 2.34 ricevono la versione pura, senza speedup nativi); Ruff 0.13.2 MIT, wheel Windows, macOS x86_64/arm64 e Linux manylinux/musllinux x86_64, aarch64, ppc64le, s390x. Nessuna incompatibilità di licenza con la distribuzione MIT di adOmnia. Resta aperto in `MULTILANGUAGE-IDE.md` solo l'avvio reale su macOS e Linux (PY-M9).
+
+
+### Rust — adapter Cargo in Code Studio, RS-0…RS-10 (2026-10-22)
+
+Piano e residui: [`MULTILANGUAGE-IDE.md`](MULTILANGUAGE-IDE.md) §9.6 (stato per blocco, registro commit per commit). Qui le evidenze.
+
+- **Adapter** `internal/languages/rust` registrato in `internal/codestudio/languages.go`: unità `cargo-package` / `cargo-workspace`, workspace virtuali, toolchain per unità (`rust-toolchain.toml`, selezione in `.adomnia/rust.local.json`, `RUSTUP_TOOLCHAIN`), selettore UI e azioni di installazione esplicite (`rustup component add`, `rustup toolchain install`). Il parser TOML è condiviso con Python in `internal/ide/toml`.
+- **Run:** `bin`/`example`/`bench`/`build`/`check`/`clippy` con features, profilo e target; ▶ nel gutter su `fn main`; stop che chiude cargo **e** il binario (`TestRealCargoRunStopEndsTheWholeProcessTree`).
+- **Capability nuova nel core:** build diagnostics (`run.Diagnostic`, `CommandSpec.Diagnostics`, `CommandSpec.ConsoleLine`, `Execution.Diagnostics`) con Rust come primo consumatore; evento host `build.diagnostics` verso Problems; console con il testo di rustc invece del JSON di cargo; percorsi del workspace risolti per i link.
+- **Editor:** rust-analyzer gestito (un server per unità, solo progetto autorizzato, `cargo.targetDir` separato), `rustfmt`, trigger `:` per il completamento. `TestRealRustAnalyzerAnalysesWorkspace` (rust-analyzer 1.99.1): diagnostica, definizione cross-crate, completion, rename. Bug Windows corretto: URI con lettera di unità minuscola.
+- **Test:** `cargo test --no-fail-fast` con parser libtest (albero, integrazione, doctest, panic con riga), rerun singolo/modulo/failed con nomi esatti, workspace virtuali (`TestRealCargoTestVirtualWorkspaceFillsTheTree`), ▶ sui test, dashboard Test.
+- **Debug:** CodeLLDB v1.12.3 pinnato con SHA-256, installazione visibile, `StartRustDebug`, `rust_panic` come exception filter.
+- **Prodotto intero (RS-7):** route axum/actix/rocket/utoipa, DB sqlx/diesel/sea-orm/`.cargo/config.toml`, gRPC/WebSocket/SSE, broker, env var e moduli diventano entità `devcontext`; Live Session riconosce le Run `bin`/`example`.
+- **Dipendenze (RS-8):** `Cargo.toml` intelligente, albero da `Cargo.lock`, OSV `crates.io`.
+- **Verifica:** `go test` verde su `internal/codestudio` (con `-skip "VCS|Git"`: `git commit` non funziona in questo ambiente), `internal/ide/...`, `internal/languages/...`, `internal/devcontext`, `internal/devsession`; `tsc --noEmit` e Vitest mirati verdi. Non provato: CodeLLDB reale, macOS/Linux, app avviata (RS-M*).

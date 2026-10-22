@@ -50,6 +50,10 @@ type CommandSpec struct {
 	// Diagnostics riceve una riga di output e restituisce il diagnostico che descrive (se c'è):
 	// il core raccoglie i diagnostici dell'esecuzione e li pubblica sul pannello Problems (RS-3.3).
 	Diagnostics func(line string) (Diagnostic, bool)
+	// ConsoleLine riscrive una riga dell'output prima della pubblicazione: se handled è true la riga
+	// è sostituita da text (vuoto = la riga sparisce), altrimenti passa intatta. Serve a chi chiede al
+	// compilatore un output strutturato (cargo JSON) ma vuole mostrare il testo leggibile (RS-3.3).
+	ConsoleLine func(line string) (text string, handled bool)
 	// QuietStdout non pubblica stdout come run.output: lo consuma soltanto OutputTap.
 	QuietStdout bool
 	// OnExit viene chiamata una volta a processo terminato, prima dell'evento run.finished.
@@ -80,6 +84,7 @@ type managedProcess struct {
 	// diagnostics trasforma una riga di output in un diagnostico di build (RS-3.3);
 	// collected raccoglie quelli trovati, protetto da collectedMu (due writer, due goroutine).
 	diagnostics func(line string) (Diagnostic, bool)
+	console     func(line string) (string, bool)
 	collectedMu sync.Mutex
 	collected   []Diagnostic
 }
@@ -134,7 +139,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		ID: RunID(newID("run")), SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
 		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
 	}
-	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop, diagnostics: spec.Diagnostics}
+	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop, diagnostics: spec.Diagnostics, console: spec.ConsoleLine}
 	command := procutil.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment
@@ -347,7 +352,10 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr *outputWri
 	}
 	// I diagnostici di build raccolti dall'output (RS-3.3) accompagnano l'esecuzione finita.
 	process.collectedMu.Lock()
-	execution.Diagnostics = append([]Diagnostic(nil), process.collected...)
+	if process.diagnostics != nil {
+		// Non-nil anche se vuoto: il host distingue "build pulita" (azzera Problems) da "nessun parser".
+		execution.Diagnostics = append([]Diagnostic{}, process.collected...)
+	}
 	process.collectedMu.Unlock()
 	m.mu.Lock()
 	delete(m.processes, execution.ID)
@@ -375,7 +383,9 @@ type outputWriter struct {
 	stream    string
 	carry     []byte
 	diagCarry []byte
-	mu        sync.Mutex
+	// consoleCarry trattiene una riga JSON incompleta (inizia con `{`) finché non arriva il newline.
+	consoleCarry []byte
+	mu           sync.Mutex
 	pending   []byte
 	timer     *time.Timer
 }
@@ -390,6 +400,10 @@ func (w *outputWriter) Write(p []byte) (int, error) {
 	if w.process.quiet && w.stream == "stdout" {
 		return len(p), nil
 	}
+	consumed := len(p)
+	if w.process.console != nil {
+		p = w.rewriteConsole(p)
+	}
 	data := p
 	if len(w.carry) > 0 {
 		data = append(w.carry, p...)
@@ -400,7 +414,39 @@ func (w *outputWriter) Write(p []byte) (int, error) {
 		w.carry = bytes.Clone(data[cut:])
 	}
 	w.enqueue(data[:cut])
-	return len(p), nil
+	return consumed, nil
+}
+
+// rewriteConsole applica ConsoleLine alle righe complete. Una riga incompleta che non inizia con `{`
+// passa subito (un prompt senza newline non deve restare appeso); una che inizia con `{` è un
+// messaggio JSON e aspetta la fine riga.
+func (w *outputWriter) rewriteConsole(chunk []byte) []byte {
+	data := append(w.consoleCarry, chunk...)
+	w.consoleCarry = nil
+	var out []byte
+	for {
+		index := bytes.IndexByte(data, '\n')
+		if index < 0 {
+			if len(data) > 0 && data[0] == '{' {
+				w.consoleCarry = bytes.Clone(data)
+			} else {
+				out = append(out, data...)
+			}
+			return out
+		}
+		line := data[:index+1]
+		data = data[index+1:]
+		text, handled := w.process.console(string(bytes.TrimRight(line, "\r\n")))
+		switch {
+		case !handled:
+			out = append(out, line...)
+		case text != "":
+			out = append(out, text...)
+			if !strings.HasSuffix(text, "\n") {
+				out = append(out, '\n')
+			}
+		}
+	}
 }
 
 // feedDiagnostics spezza l'output in righe e invia ciascuna al parser di diagnostici
@@ -464,6 +510,24 @@ func (w *outputWriter) flushPending() {
 // flush pubblica il residuo alla fine del processo: l'ultimo output precede sempre run.finished.
 func (w *outputWriter) flush() {
 	w.flushDiagnostics()
+	if len(w.consoleCarry) > 0 {
+		// La riga JSON senza newline finale passa dalla stessa riscrittura delle righe complete:
+		// grezza finirebbe in console come JSON di cargo.
+		carry := w.consoleCarry
+		w.consoleCarry = nil
+		text := string(carry)
+		if w.process.console != nil {
+			if rewritten, handled := w.process.console(strings.TrimRight(text, "\r\n")); handled {
+				text = rewritten
+				if text != "" && !strings.HasSuffix(text, "\n") {
+					text += "\n"
+				}
+			}
+		}
+		w.mu.Lock()
+		w.pending = append(w.pending, text...)
+		w.mu.Unlock()
+	}
 	w.mu.Lock()
 	if w.timer != nil {
 		w.timer.Stop()

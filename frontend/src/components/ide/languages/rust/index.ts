@@ -1,3 +1,4 @@
+import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
 import type { IdeLanguageContribution } from '../../languages'
 
 /** ID del language adapter backend (`internal/languages/rust`). */
@@ -19,6 +20,13 @@ export const RUST_LANGUAGE: IdeLanguageContribution = {
     { language: 'rust', kind: 'build', label: 'Rust build', group: 'Rust' },
     { language: 'rust', kind: 'check', label: 'Rust check', group: 'Rust' },
   ],
+  canDebugRun: config => rustDebugTargetOf(config) !== null,
+  // CodeLLDB dichiara `rust_panic` come filtro DAP: ferma dove inizia un panic.
+  exceptionFilters: [
+    { filter: 'rust_panic', label: 'Rust panics', description: 'Stop where a panic starts unwinding.' },
+  ],
+  completionTriggerCharacters: [':'],
+  menu: { id: 'rust', label: 'Rust' },
   editorLanguages: ['rust'],
   languageServer: 'rust-analyzer',
   heavyFeatures: false,

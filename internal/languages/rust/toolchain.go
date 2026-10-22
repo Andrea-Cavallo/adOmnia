@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"adomnia/internal/ide/process"
@@ -63,7 +64,9 @@ func ancestorRoots(boundary, start string) []string {
 	current := filepath.Clean(start)
 	for {
 		directories = append(directories, current)
-		if current == filepath.Clean(boundary) {
+		// Confronto insensitive al case: su Windows `unitRoot` e `boundary` possono differire per
+		// case o forma (8.3 vs lungo) e il ciclo non si fermerebbe mai al boundary.
+		if samePath(current, boundary) {
 			break
 		}
 		parent := filepath.Dir(current)
@@ -236,6 +239,10 @@ func ProjectToolchain(root, unit string) string {
 	return settings.Cargo
 }
 
+// projectRustSettingsMu serializza il read-modify-write di `.adomnia/rust.local.json`: due chiamate
+// concorrenti (progetto + unità) altrimenti perdono un aggiornamento.
+var projectRustSettingsMu sync.Mutex
+
 // SetProjectToolchain salva la scelta del cargo; unit == "" imposta il progetto, "" azzera.
 func SetProjectToolchain(root, unit, cargo string) error {
 	if cargo != "" {
@@ -243,7 +250,16 @@ func SetProjectToolchain(root, unit, cargo string) error {
 			return fmt.Errorf("%q is not a cargo executable", cargo)
 		}
 	}
+	projectRustSettingsMu.Lock()
+	defer projectRustSettingsMu.Unlock()
 	path := filepath.Join(root, filepath.FromSlash(ProjectRustSettingsFile))
+	// Un file corrotto non viene sovrascritto: si dice all'utente invece di perdere i dati.
+	if data, err := os.ReadFile(path); err == nil {
+		var check projectRustSettings
+		if err := json.Unmarshal(data, &check); err != nil {
+			return fmt.Errorf("%s is not valid JSON: fix or delete it, then retry", ProjectRustSettingsFile)
+		}
+	}
 	settings := readProjectRustSettings(root)
 	if unit != "" {
 		if settings.Units == nil {

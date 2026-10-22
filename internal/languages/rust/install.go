@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	componentName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	componentName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 	// channelName accetta stable/beta/nightly, versioni complete o parziali e nightly datate
 	// ("nightly-2024-01-01"), ma rifiuta path e metacaratteri di shell.
 	channelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]*$`)

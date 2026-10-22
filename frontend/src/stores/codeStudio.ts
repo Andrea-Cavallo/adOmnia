@@ -66,6 +66,7 @@ import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudi
 import { codeStudioWindowContext } from '@/lib/code-studio-window-api'
 import { confirm } from '@/lib/confirmDialog'
 import { studioToast } from './codeStudioToast'
+import { useCodeStudioLspStore } from './codeStudioLsp'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/code-studio/codeStudioRecovery'
 import { scheduleAutoSave } from '@/lib/code-studio/codeStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/code-studio/codeStudioDiskChanges'
@@ -74,7 +75,7 @@ const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
-export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script'
+export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 
@@ -760,6 +761,8 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
         return false
       }
       await closeGoIDESession(sessionId)
+      // La diagnostica (LSP, lint, build) della sessione chiusa non deve riaffiorare alla riapertura.
+      useCodeStudioLspStore.getState().clearSession(sessionId)
       set((state) => {
         const sessions = state.sessions.filter((session) => session.id !== sessionId)
         return {

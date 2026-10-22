@@ -12,7 +12,9 @@ import (
 type cargoDiagnostic struct {
 	Reason  string `json:"reason"`
 	Message struct {
-		Code     *struct{ Code string `json:"code"` } `json:"code"`
+		Code *struct {
+			Code string `json:"code"`
+		} `json:"code"`
 		Level    string       `json:"level"`
 		Message  string       `json:"message"`
 		Spans    []cargoSpan  `json:"spans"`
@@ -63,4 +65,32 @@ func cargoDiagnosticFromLine(line string) (run.Diagnostic, bool) {
 		}
 	}
 	return diagnostic, true
+}
+
+// cargoConsoleLine riscrive per la console i messaggi JSON di cargo: i diagnostici diventano il
+// testo `rendered` (lo stesso che stampa cargo, con i colori ANSI), gli altri messaggi di cargo
+// (artefatti, build script, fine build) spariscono; ogni altra riga — l'output del programma, anche
+// se è JSON — passa intatta.
+func cargoConsoleLine(line string) (string, bool) {
+	if len(line) == 0 || line[0] != '{' {
+		return "", false
+	}
+	var message cargoDiagnostic
+	if err := json.Unmarshal([]byte(line), &message); err != nil {
+		return "", false
+	}
+	switch message.Reason {
+	case "compiler-message":
+		if message.Message.Rendered != "" {
+			return message.Message.Rendered, true
+		}
+		// `rendered` può essere vuoto: senza fallback la riga sparisce senza lasciare traccia.
+		if message.Message.Message != "" {
+			return message.Message.Message, true
+		}
+		return "", true
+	case "compiler-artifact", "build-script-executed", "build-finished":
+		return "", true
+	}
+	return "", false
 }
