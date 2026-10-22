@@ -4,10 +4,10 @@ import type { IdeLanguageContribution } from '../../languages'
 export const RUST_LANGUAGE_ID = 'rust'
 
 /**
- * Rust (Cargo). L'adapter rileva crate e workspace, riconosce i file `.rs`/Cargo e ora esegue
- * (cargo run/build/check/example/bench/clippy, RS-3). Non ha ancora test strutturati (RS-5), debug
- * (RS-6) né rust-analyzer (RS-4): nessun `languageServer`/`providedServer` e nessun `canDebugRun`.
- * `heavyFeatures: false` lascia fuori le funzioni tarate su gopls finché non c'è un server.
+ * Rust (Cargo). L'adapter rileva crate e workspace, esegue (cargo run/build/check/example/bench,
+ * RS-3) e ora serve l'editor con rust-analyzer (RS-4, installato esplicitamente via rustup e avviato
+ * dal backend `lsp.ServerProvider`). `heavyFeatures` resta spento: colori semantici, inlay hints e
+ * Code Vision vanno verificati con rust-analyzer in app (RS-4.5 / RS-M3) prima di accenderli.
  */
 export const RUST_LANGUAGE: IdeLanguageContribution = {
   id: RUST_LANGUAGE_ID,
@@ -20,5 +20,7 @@ export const RUST_LANGUAGE: IdeLanguageContribution = {
     { language: 'rust', kind: 'check', label: 'Rust check', group: 'Rust' },
   ],
   editorLanguages: ['rust'],
+  languageServer: 'rust-analyzer',
   heavyFeatures: false,
+  providedServer: true,
 }

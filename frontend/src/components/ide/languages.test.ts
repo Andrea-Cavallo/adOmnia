@@ -44,14 +44,14 @@ describe('IDE language contributions', () => {
     expect(heavyFeatureEditorLanguages()).not.toContain('java')
   })
 
-  it('declares Rust with run templates but no server or debug yet (RS-2/3)', () => {
+  it('declares Rust with run templates and rust-analyzer, no debug yet (RS-2/3/4)', () => {
     const rust = IDE_LANGUAGES.find(language => language.id === 'rust')!
     expect(rust.name).toBe('Rust')
     expect(rust.icon).toBe('rust')
     expect(rust.editorLanguages).toEqual(['rust'])
+    expect(rust.languageServer).toBe('rust-analyzer')
+    expect(rust.providedServer).toBe(true)
     expect(rust.heavyFeatures).toBe(false)
-    expect(rust.languageServer).toBeUndefined()
-    expect(rust.providedServer).toBeUndefined()
     expect(rust.runTemplates?.map(template => template.kind)).toEqual(['bin', 'example', 'build', 'check'])
     expect(rust.canDebugRun).toBeUndefined()
     expect(rust.menu).toBeUndefined()
