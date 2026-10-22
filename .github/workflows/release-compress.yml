@@ -103,7 +103,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo rm -f /etc/apt/sources.list.d/*google*
+          sudo rm -f /etc/apt/sources.list.d/*google* /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure-cli*
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends \
             build-essential \
