@@ -12,13 +12,13 @@
   <a href="LICENSE.md"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
   <img alt="Go 1.27" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
   <img alt="Platforms: Windows, macOS, Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Andrea-Cavallo/adOmnia?style=flat"></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia"><img alt="Stars" src="https://img.shields.io/github/stars/Andrea-Cavallo/adOmnia?style=flat"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Download for Windows (.exe)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>Download for macOS (.dmg)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Download for Linux (.tar.gz)</strong></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for Windows (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for macOS (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Download for Linux (.tar.gz)</strong></a>
 </p>
 
 <p align="center">
@@ -195,9 +195,9 @@ Get adOmnia from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/r
 
 | Platform | Download | Setup |
 | --- | --- | --- |
-| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | Requires WebView2; portable executable, not an MSI wizard |
-| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | Install from the DMG |
-| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | Requires GTK 3 and WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Requires WebView2; portable executable, not an MSI wizard |
+| macOS Intel / Apple Silicon | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Install from the DMG |
+| Linux x64 | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Requires GTK 3 and WebKitGTK 4.1 |
 
 Verify a download against `SHA256SUMS.txt` on the release page.
 

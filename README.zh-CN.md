@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>下载 Windows 版 (.exe)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>下载 macOS 版 (.dmg)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>下载 Linux 版 (.tar.gz)</strong></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>下载 Windows 版 (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>下载 macOS 版 (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>下载 Linux 版 (.tar.gz)</strong></a>
 </p>
 
 ## 截图
@@ -168,9 +168,9 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 | 平台 | 下载 | 安装 |
 | --- | --- | --- |
-| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | 需要 WebView2；可执行文件/按用户安装，不是 MSI 安装向导 |
-| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | 通过 DMG 安装；签名详情请查看发行说明 |
-| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | 需要 GTK 3 和 WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | 需要 WebView2；可执行文件/按用户安装，不是 MSI 安装向导 |
+| macOS Intel / Apple Silicon | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | 通过 DMG 安装；签名详情请查看发行说明 |
+| Linux x64 | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | 需要 GTK 3 和 WebKitGTK 4.1 |
 
 **首次启动（未经操作系统签名的二进制文件）：** Windows 上 SmartScreen 弹出提示时，选择 **更多信息 → 仍要运行**。macOS 上首次请右键点击应用并选择 **打开**，或运行 `xattr -dr com.apple.quarantine /Applications/adomnia.app`。应用内更新程序会校验自己的签名和校验和。
 

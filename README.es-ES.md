@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Descargar para Windows (.exe)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>Descargar para macOS (.dmg)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Descargar para Linux (.tar.gz)</strong></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Descargar para Windows (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Descargar para macOS (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Descargar para Linux (.tar.gz)</strong></a>
 </p>
 
 <p align="center">
@@ -54,9 +54,9 @@ Obtén la última versión en **[GitHub Releases](https://github.com/Andrea-Cava
 
 | Plataforma | Archivo | Requisitos |
 | --- | --- | --- |
-| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | WebView2 runtime |
-| macOS (Intel y Apple Silicon) | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | — |
-| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | GTK 3, WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | WebView2 runtime |
+| macOS (Intel y Apple Silicon) | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | — |
+| Linux x64 | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | GTK 3, WebKitGTK 4.1 |
 
 **Primer arranque (binarios sin firma del sistema):** en Windows, SmartScreen muestra «Windows protegió su PC»: elige **Más información → Ejecutar de todas formas**. En macOS, clic derecho sobre la app → **Abrir** la primera vez, o `xattr -dr com.apple.quarantine /Applications/adomnia.app`. El actualizador integrado verifica su propia firma y checksum.
 

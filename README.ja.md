@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Windows 版をダウンロード (.exe)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>macOS 版をダウンロード (.dmg)</strong></a> ·
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Linux 版をダウンロード (.tar.gz)</strong></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Windows 版をダウンロード (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>macOS 版をダウンロード (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><strong>Linux 版をダウンロード (.tar.gz)</strong></a>
 </p>
 
 ## スクリーンショット
@@ -168,9 +168,9 @@ adOmnia は **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releas
 
 | プラットフォーム | ダウンロード | セットアップ |
 | --- | --- | --- |
-| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | WebView2 が必要。実行ファイル/ユーザー単位のインストールで、MSI ウィザードではありません |
-| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | DMG からインストール。署名の詳細はリリースノートを確認してください |
-| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | GTK 3 と WebKitGTK 4.1 が必要 |
+| Windows x64 | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | WebView2 が必要。実行ファイル/ユーザー単位のインストールで、MSI ウィザードではありません |
+| macOS Intel / Apple Silicon | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | DMG からインストール。署名の詳細はリリースノートを確認してください |
+| Linux x64 | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | GTK 3 と WebKitGTK 4.1 が必要 |
 
 **初回起動（OS 署名なしのバイナリ）:** Windows では SmartScreen が表示されたら **詳細情報 → 実行** を選びます。macOS では初回のみアプリを右クリックして **開く**、または `xattr -dr com.apple.quarantine /Applications/adomnia.app` を実行します。アプリ内アップデータは独自の署名とチェックサムを検証します。
 
