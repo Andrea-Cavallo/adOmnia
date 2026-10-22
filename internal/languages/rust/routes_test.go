@@ -137,6 +137,14 @@ func TestMultiLineRouteChain(t *testing.T) {
 	containsAll(t, got, "GET /deep")
 }
 
+func TestUtoipaPathAttribute(t *testing.T) {
+	got := paths(t, `#[utoipa::path(get, path = "/items", responses((status = 200, body = Item)))]
+#[get("/items")]
+async fn list_items() -> Json<Vec<Item>> { todo!() }
+`)
+	containsAll(t, got, "GET /items")
+}
+
 func TestRustCodeLinesStripsLineComments(t *testing.T) {
 	lines := rustCodeLines("let x = 1; // #[get(\"/nope\")]\n#[get(\"/yes\")]")
 	if len(lines) != 2 || !strings.Contains(lines[1].text, `#[get("/yes")]`) {

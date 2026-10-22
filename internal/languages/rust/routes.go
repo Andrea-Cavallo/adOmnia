@@ -45,7 +45,30 @@ func EndpointsInFile(relativePath string, data []byte) []HTTPEndpoint {
 		}
 	}
 	endpoints = append(endpoints, builderEndpoints(lines)...)
+	endpoints = append(endpoints, utoipaEndpoints(lines)...)
 	return endpoints
+}
+
+// utoipaEndpoints riconosce `#[utoipa::path(get, path = "/x", …)]`: la route documentata per
+// OpenAPI. Il percorso normalizzato; il metodo è il primo token dell'attributo.
+func utoipaEndpoints(lines []rustLine) []HTTPEndpoint {
+	var out []HTTPEndpoint
+	for i, line := range lines {
+		for _, m := range utoipaPath.FindAllStringSubmatch(line.text, -1) {
+			handler := ""
+			for j := i + 1; j < len(lines) && j <= i+4; j++ {
+				if strings.TrimSpace(lines[j].text) == "" {
+					continue
+				}
+				if f := fnName.FindStringSubmatch(strings.TrimSpace(lines[j].text)); f != nil {
+					handler = f[1]
+				}
+				break
+			}
+			out = append(out, HTTPEndpoint{Method: strings.ToUpper(m[1]), Path: normalizeRustPath(m[2]), Handler: handler, Line: line.n})
+		}
+	}
+	return out
 }
 
 // rustLine è una riga di codice con i commenti rimossi; n è il numero di riga 1-based.
@@ -73,6 +96,8 @@ var (
 	verbCall = regexp.MustCompile(`(?:web::)?(get|post|put|patch|delete|head|options|trace|any)\s*\(`)
 	// rocketParam è `<id>` o `<id:regex>` di rocket.
 	rocketParam = regexp.MustCompile(`<([^>]+)>`)
+	// utoipaPath è `#[utoipa::path(get, path = "/x", …)]`.
+	utoipaPath = regexp.MustCompile(`#\[utoipa::path\s*\(\s*(get|post|put|patch|delete|head|options|trace|connect)[^)]*?path\s*=\s*"([^"]*)"`)
 )
 
 // rustCodeLines divide il sorgente in righe di codice, togliendo i commenti `//` e i blocchi `/* */`
