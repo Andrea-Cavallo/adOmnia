@@ -567,6 +567,14 @@ Four files live at the root — everything else is under `docs/`:
 
 Whenever the release tag on `main` is bumped, update the website repo in the same session: `C:\Users\Andrea\Desktop\adomniaWeb\adOmniaWeb` (GitHub `Andrea-Cavallo/adOmniaWeb`, deployed on Vercel from `master`). The download cards and version badge read the latest GitHub release at load time, so they need no edit, but check them anyway. Then update `index.html` for anything that changed: feature/module copy, screenshots in `assets/shots/`, platform requirements, asset names (the card regexes in the page script). Commit and push to `master`; Vercel redeploys on push.
 
-### Python initial adapter (2026-10-21)
+### Python adapter (delivered 2026-10-21; desktop acceptance still open)
 
-`internal/languages/python` now provides static marker/loose-script detection, document selection and schema-driven script/module Run with an explicit absolute interpreter. Registered in `internal/codestudio/languages.go`; frontend contribution has no LSP editor registrations or debug capability until implemented. No automatic environment discovery, TOML metadata parsing, installs, pytest or debugpy yet. Rust remains planned. Existing trust/process and persisted run configuration contracts are reused without schema changes. Plan: `mds/MULTILANGUAGE-IDE.md` §9.5; desktop acceptance: PY-M1/PY-M3 in `mds/MANUAL-CHECK.md`. This supersedes older statements describing Python solely as a validation scenario; it does not restore Python plugin execution.
+`internal/languages/python` is a full adapter registered in `internal/codestudio/languages.go`, with its UI contribution in `frontend/src/components/ide/languages/python/`:
+
+- **Projects and environments:** marker/loose-script detection, `pyproject.toml` metadata, per-unit interpreter and venv selection (uv/Poetry detected, never synced or installed implicitly).
+- **Run:** schema-driven script/module Run on the shared Run UI, plus framework suggestions (FastAPI/Uvicorn, Django, Flask).
+- **Editor:** basedpyright as a managed language server (one per unit, explicit visible install via `codeStudioToolInstall`), Ruff formatter (install-on-demand).
+- **Test and Debug:** pytest in the shared Test tree with coverage (pytest-cov, no package installed for the user), debugpy launch and attach.
+- **Cross-product:** HTTP routes and WebSockets become Developer Context entities (`internal/devcontext/pythonroutes.go`), so API Workspace, Mock, cURL, OpenAPI and Live Session see them like Go/Java routes.
+
+Pinned tools: `basedpyright==1.40.2`, `debugpy==1.8.22`, Ruff 0.13.2. Verified only on Python 3.11 / Windows; macOS/Linux matrix and licenses are open (PY-0.2). Out of scope: Jupyter, remote debugger, Conda manager, automatic Python install, PyPI publishing, Python plugin runtime. Rust remains planned (§9.6). Open work: `mds/MULTILANGUAGE-IDE.md` P1-A; delivered evidence: `mds/MULTILANGUAGE-IDE-DONE.md`; desktop acceptance PY-M1…M13 in `mds/MANUAL-CHECK.md` (none ticked yet, so §9.5 is not closed).
