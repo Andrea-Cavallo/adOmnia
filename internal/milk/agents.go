@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -55,7 +56,57 @@ type AgentsInfo struct {
 	Primary    string           `json:"primary"`
 	Escalation string           `json:"escalation"`
 	Providers  []ProviderStatus `json:"providers"`
+	Agents     []AgentStatus    `json:"agents"`
 	Warnings   []string         `json:"warnings"`
+}
+
+// AgentStatus dice se un agente del config di milk può autenticarsi: un agente il cui token_cmd legge una
+// variabile d'ambiente che adOmnia non vede risponde con errori, e va segnalato prima di sceglierlo.
+type AgentStatus struct {
+	Name          string `json:"name"`
+	Model         string `json:"model"`
+	Usable        bool   `json:"usable"`
+	MissingEnvVar string `json:"missingEnvVar,omitempty"`
+}
+
+// tokenVariable trova la variabile letta da un token_cmd: $NAME (sh) o %NAME% (cmd).
+var tokenVariable = regexp.MustCompile(`\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?|%([A-Za-z_][A-Za-z0-9_]*)%`)
+
+// credentialVariable è la variabile da cui l'agente legge la chiave; vuota se non ne usa una (modelli locali,
+// claude-cli, comandi che non leggono l'ambiente).
+func credentialVariable(entry map[string]any) string {
+	command, _ := entry["token_cmd"].(string)
+	match := tokenVariable.FindStringSubmatch(command)
+	if match == nil {
+		return ""
+	}
+	return match[1] + match[2]
+}
+
+func agentStatuses(config map[string]any) []AgentStatus {
+	agents, _ := config["agents"].([]any)
+	statuses := make([]AgentStatus, 0, len(agents))
+	for _, item := range agents {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := entry["name"].(string)
+		if name == "" {
+			continue
+		}
+		model, _ := entry["model"].(string)
+		status := AgentStatus{Name: name, Model: model, Usable: true}
+		if variable := credentialVariable(entry); variable != "" && strings.TrimSpace(os.Getenv(variable)) == "" {
+			status.Usable, status.MissingEnvVar = false, variable
+		}
+		statuses = append(statuses, status)
+	}
+	return statuses
+}
+
+func missingKeyMessage(status AgentStatus) string {
+	return fmt.Sprintf("%s reads %s, which adOmnia does not see", status.Name, status.MissingEnvVar)
 }
 
 // ConfigPath è il config globale di milk (~/.milk/config.json).
@@ -130,6 +181,14 @@ func Agents() (AgentsInfo, error) {
 	}
 	info.Primary, _ = config["agent"].(string)
 	info.Escalation, _ = config["escalation_agent"].(string)
+	info.Agents = agentStatuses(config)
+	for _, role := range []struct{ label, agent string }{{"primary", info.Primary}, {"escalation", info.Escalation}} {
+		for _, status := range info.Agents {
+			if status.Name == role.agent && !status.Usable {
+				info.Warnings = append(info.Warnings, fmt.Sprintf("The %s agent %s: its answers will fail. Choose another model below, or set the variable and restart adOmnia.", role.label, missingKeyMessage(status)))
+			}
+		}
+	}
 	for _, provider := range Providers {
 		envVar, detected := provider.envVar()
 		info.Providers = append(info.Providers, ProviderStatus{
@@ -188,6 +247,13 @@ func UseProvider(id, role string) (bool, error) {
 		config["agents"] = append(agents, agent)
 		changed = true
 	}
+	// Un agente già presente può leggere una variabile che qui non c'è (la chiave è sotto un altro nome): lo si ripara.
+	if entry := agentEntry(config, provider.ID); entry != nil {
+		if variable := credentialVariable(entry); variable != "" && variable != envVar && strings.TrimSpace(os.Getenv(variable)) == "" {
+			entry["token_cmd"] = tokenCommand(envVar)
+			changed = true
+		}
+	}
 	if current, _ := config[roleKey].(string); current != provider.ID {
 		config[roleKey] = provider.ID
 		changed = true
@@ -196,6 +262,17 @@ func UseProvider(id, role string) (bool, error) {
 		return false, nil
 	}
 	return true, writeConfig(path, config)
+}
+
+// agentEntry è la voce dell'agente nel config letto (modificabile in place), nil se manca.
+func agentEntry(config map[string]any, name string) map[string]any {
+	agents, _ := config["agents"].([]any)
+	for _, item := range agents {
+		if entry, ok := item.(map[string]any); ok && entry["name"] == name {
+			return entry
+		}
+	}
+	return nil
 }
 
 // writeConfig salva una copia .bak del config precedente e scrive in modo atomico.

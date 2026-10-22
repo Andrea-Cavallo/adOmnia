@@ -76,7 +76,7 @@ export class Info {
     "nodeEngine"?: string;
 
     /**
-     * TestFramework è il test runner con report JSON dichiarato nelle dipendenze (vitest o jest); vuoto se nessuno.
+     * TestFramework è il test runner con report strutturato: vitest o jest dalle dipendenze, node dallo script test; vuoto se nessuno.
      */
     "testFramework"?: string;
 

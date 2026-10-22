@@ -6,6 +6,40 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AgentStatus dice se un agente del config di milk può autenticarsi: un agente il cui token_cmd legge una
+ * variabile d'ambiente che adOmnia non vede risponde con errori, e va segnalato prima di sceglierlo.
+ */
+export class AgentStatus {
+    "name": string;
+    "model": string;
+    "usable": boolean;
+    "missingEnvVar"?: string;
+
+    /** Creates a new AgentStatus instance. */
+    constructor($$source: Partial<AgentStatus> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("model" in $$source)) {
+            this["model"] = "";
+        }
+        if (!("usable" in $$source)) {
+            this["usable"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AgentStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AgentStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AgentStatus($$parsedSource as Partial<AgentStatus>);
+    }
+}
+
+/**
  * AgentsInfo è lo stato degli agenti di milk visto da adOmnia.
  */
 export class AgentsInfo {
@@ -13,6 +47,7 @@ export class AgentsInfo {
     "primary": string;
     "escalation": string;
     "providers": ProviderStatus[];
+    "agents": AgentStatus[];
     "warnings": string[];
 
     /** Creates a new AgentsInfo instance. */
@@ -29,6 +64,9 @@ export class AgentsInfo {
         if (!("providers" in $$source)) {
             this["providers"] = [];
         }
+        if (!("agents" in $$source)) {
+            this["agents"] = [];
+        }
         if (!("warnings" in $$source)) {
             this["warnings"] = [];
         }
@@ -41,13 +79,17 @@ export class AgentsInfo {
      */
     static createFrom($$source: any = {}): AgentsInfo {
         const $$createField3_0 = $$createType1;
-        const $$createField4_0 = $$createType2;
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("providers" in $$parsedSource) {
             $$parsedSource["providers"] = $$createField3_0($$parsedSource["providers"]);
         }
+        if ("agents" in $$parsedSource) {
+            $$parsedSource["agents"] = $$createField4_0($$parsedSource["agents"]);
+        }
         if ("warnings" in $$parsedSource) {
-            $$parsedSource["warnings"] = $$createField4_0($$parsedSource["warnings"]);
+            $$parsedSource["warnings"] = $$createField5_0($$parsedSource["warnings"]);
         }
         return new AgentsInfo($$parsedSource as Partial<AgentsInfo>);
     }
@@ -104,7 +146,7 @@ export class ControlValue {
      * Creates a new ControlValue instance from a string or object.
      */
     static createFrom($$source: any = {}): ControlValue {
-        const $$createField2_0 = $$createType4;
+        const $$createField2_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField2_0($$parsedSource["options"]);
@@ -168,9 +210,9 @@ export class MCPServer {
      * Creates a new MCPServer instance from a string or object.
      */
     static createFrom($$source: any = {}): MCPServer {
-        const $$createField2_0 = $$createType2;
-        const $$createField3_0 = $$createType5;
-        const $$createField5_0 = $$createType5;
+        const $$createField2_0 = $$createType4;
+        const $$createField3_0 = $$createType7;
+        const $$createField5_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("args" in $$parsedSource) {
             $$parsedSource["args"] = $$createField2_0($$parsedSource["args"]);
@@ -211,7 +253,7 @@ export class PromptRequest {
      * Creates a new PromptRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptRequest {
-        const $$createField3_0 = $$createType7;
+        const $$createField3_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("images" in $$parsedSource) {
             $$parsedSource["images"] = $$createField3_0($$parsedSource["images"]);
@@ -322,7 +364,7 @@ export class SessionControl {
      * Creates a new SessionControl instance from a string or object.
      */
     static createFrom($$source: any = {}): SessionControl {
-        const $$createField5_0 = $$createType4;
+        const $$createField5_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField5_0($$parsedSource["options"]);
@@ -362,8 +404,8 @@ export class SessionControls {
      * Creates a new SessionControls instance from a string or object.
      */
     static createFrom($$source: any = {}): SessionControls {
-        const $$createField1_0 = $$createType9;
-        const $$createField2_0 = $$createType11;
+        const $$createField1_0 = $$createType11;
+        const $$createField2_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("controls" in $$parsedSource) {
             $$parsedSource["controls"] = $$createField1_0($$parsedSource["controls"]);
@@ -440,8 +482,8 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField5_0 = $$createType5;
-        const $$createField6_0 = $$createType2;
+        const $$createField5_0 = $$createType7;
+        const $$createField6_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("env" in $$parsedSource) {
             $$parsedSource["env"] = $$createField5_0($$parsedSource["env"]);
@@ -528,13 +570,15 @@ export class Status {
 // Private type creation functions
 const $$createType0 = ProviderStatus.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = ControlValue.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Map($Create.Any, $Create.Any);
-const $$createType6 = ImageAttachment.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = SessionControl.createFrom;
+const $$createType2 = AgentStatus.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $Create.Array($Create.Any);
+const $$createType5 = ControlValue.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Map($Create.Any, $Create.Any);
+const $$createType8 = ImageAttachment.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = Command.createFrom;
+const $$createType10 = SessionControl.createFrom;
 const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = Command.createFrom;
+const $$createType13 = $Create.Array($$createType12);

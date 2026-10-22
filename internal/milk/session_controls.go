@@ -161,21 +161,15 @@ func configuredAgentControl() (SessionControl, error) {
 		return SessionControl{}, err
 	}
 	control := SessionControl{ID: "_milk_agent", Name: "Primary agent · new chat", Category: "model", Type: "select", CurrentValue: config["agent"], Options: []ControlValue{}}
-	agents, _ := config["agents"].([]any)
-	for _, item := range agents {
-		entry, ok := item.(map[string]any)
-		if !ok {
-			continue
+	for _, agent := range agentStatuses(config) {
+		label := agent.Name
+		if agent.Model != "" {
+			label += " · " + agent.Model
 		}
-		name, _ := entry["name"].(string)
-		model, _ := entry["model"].(string)
-		if name != "" {
-			label := name
-			if model != "" {
-				label += " · " + model
-			}
-			control.Options = append(control.Options, ControlValue{Value: name, Name: label})
+		if !agent.Usable {
+			label += " · key missing"
 		}
+		control.Options = append(control.Options, ControlValue{Value: agent.Name, Name: label})
 	}
 	return control, nil
 }
@@ -193,6 +187,11 @@ func selectConfiguredAgent(name string) (bool, error) {
 	}
 	if !agentNames(config)[name] {
 		return false, errors.New("milk agent is no longer configured")
+	}
+	for _, status := range agentStatuses(config) {
+		if status.Name == name && !status.Usable {
+			return false, fmt.Errorf("%s: it would fail every turn. Set the variable and restart adOmnia, or choose another agent", missingKeyMessage(status))
+		}
 	}
 	if current, _ := config["agent"].(string); current == name {
 		return false, nil
