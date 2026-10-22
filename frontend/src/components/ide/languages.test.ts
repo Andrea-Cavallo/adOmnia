@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
-import { IDE_LANGUAGES, codeVisionEditorLanguages, exceptionFiltersFor, heavyFeatureEditorLanguages, implementationMarkerEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { IDE_LANGUAGES, codeVisionEditorLanguages, exceptionFiltersFor, heavyFeatureEditorLanguages, implementationMarkerEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages, semanticTokenEditorLanguages } from './languages'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
@@ -21,7 +21,7 @@ describe('IDE language contributions', () => {
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('python')
-    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python'])
+    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python', 'rust'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
     expect(isLanguageServerEditorLanguage('python')).toBe(true)
@@ -42,6 +42,21 @@ describe('IDE language contributions', () => {
     expect(codeVisionEditorLanguages()).toEqual(['go', 'java'])
     expect(implementationMarkerEditorLanguages()).toEqual(['go', 'java'])
     expect(heavyFeatureEditorLanguages()).not.toContain('java')
+  })
+
+  it('declares Rust identity without server or run capabilities yet (RS-0/1)', () => {
+    const rust = IDE_LANGUAGES.find(language => language.id === 'rust')!
+    expect(rust.name).toBe('Rust')
+    expect(rust.icon).toBe('rust')
+    expect(rust.editorLanguages).toEqual(['rust'])
+    expect(rust.heavyFeatures).toBe(false)
+    expect(rust.languageServer).toBeUndefined()
+    expect(rust.providedServer).toBeUndefined()
+    expect(rust.runTemplates).toBeUndefined()
+    expect(rust.canDebugRun).toBeUndefined()
+    expect(rust.menu).toBeUndefined()
+    expect(heavyFeatureEditorLanguages()).not.toContain('rust')
+    expect(semanticTokenEditorLanguages()).not.toContain('rust')
   })
 
   it('declares the debugpy exception filters and gathers them per project language', () => {

@@ -402,7 +402,7 @@ if (request.auth.type === 'aws4') {
 
 ### Multi-language IDE Platform (Code Studio)
 
-Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features. Rules:
+Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust is being added incrementally (`internal/languages/rust`: crate/workspace detection now, run/test/debug and rust-analyzer next — see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
 
 - **Dependency direction:** `internal/codestudio` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/codestudio`.
 - **Languages are registered in one place:** `internal/codestudio/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.

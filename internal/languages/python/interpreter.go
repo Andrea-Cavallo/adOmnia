@@ -15,6 +15,7 @@ import (
 
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/ide/toml"
 	"adomnia/internal/procutil"
 )
 
@@ -231,7 +232,7 @@ func poetryVirtualenvsPath(projectRoot string) string {
 		return configured
 	}
 	if data, err := readLimited(filepath.Join(projectRoot, "poetry.toml"), maxManifestBytes); err == nil {
-		if configured := tomlString(parseTOML(data), "virtualenvs", "path"); configured != "" {
+		if configured := toml.String(toml.Parse(data), "virtualenvs", "path"); configured != "" {
 			if filepath.IsAbs(configured) {
 				return configured
 			}

@@ -1,14 +1,18 @@
-package python
+// Package toml legge il sottoinsieme di TOML usato dai manifest dei progetti (pyproject.toml,
+// Cargo.toml): tabelle, chiavi punteggiate, stringhe (anche multilinea), numeri, booleani, date,
+// array e tabelle inline. Le righe che non si interpretano vengono ignorate: un manifest
+// malformato non deve bloccare le altre unità. È una lettura dichiarativa: non esegue mai codice
+// del progetto. Estratto da internal/languages/python (primo consumatore) quando Rust è diventato
+// il secondo (RS-1.2): i due adapter condividono questo parser invece di duplicarlo.
+package toml
 
 import (
 	"strings"
 )
 
-// parseTOML legge il sottoinsieme di TOML usato dai manifest Python (pyproject.toml): tabelle,
-// chiavi punteggiate, stringhe (anche multilinea), numeri, booleani, date e array. Le righe che
-// non si interpretano vengono ignorate: un manifest malformato non deve bloccare le altre unità
-// (PY-1.4). È una lettura dichiarativa: non esegue mai codice del progetto.
-func parseTOML(data []byte) map[string]any {
+// Parse legge un documento TOML in una struttura map[string]any. Non restituisce mai errori: un
+// manifest malformato produce il sottoinsieme che si è riusciti a leggere.
+func Parse(data []byte) map[string]any {
 	root := map[string]any{}
 	table := root
 	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
@@ -147,14 +151,14 @@ func parseValue(raw string, lines []string, index *int) (any, string, bool) {
 	case "true", "false":
 		return token == "true", raw, true
 	}
-	if isTOMLNumber(token) {
+	if isNumber(token) {
 		return token, raw, true
 	}
 	return nil, "", false
 }
 
-// isTOMLNumber accetta interi, float, date e orari scritti senza trattini/duopunti estranei.
-func isTOMLNumber(token string) bool {
+// isNumber accetta interi, float, date e orari scritti senza trattini/due punti estranei.
+func isNumber(token string) bool {
 	if token == "" {
 		return false
 	}
@@ -297,16 +301,28 @@ func arrayTable(root map[string]any, path []string) map[string]any {
 	return entry
 }
 
-// tomlString legge una stringa dal documento; "" se la chiave manca o non è una stringa.
-func tomlString(table map[string]any, path ...string) string {
-	value := tomlValue(table, path...)
-	text, _ := value.(string)
+// Value cammina il percorso nel documento TOML e restituisce il valore grezzo (nil se manca).
+func Value(table map[string]any, path ...string) any {
+	current := any(table)
+	for _, part := range path {
+		child, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		current = child[part]
+	}
+	return current
+}
+
+// String legge una stringa dal documento; "" se la chiave manca o non è una stringa.
+func String(table map[string]any, path ...string) string {
+	text, _ := Value(table, path...).(string)
 	return text
 }
 
-// tomlStrings legge un array di stringhe dal documento.
-func tomlStrings(table map[string]any, path ...string) []string {
-	value := tomlValue(table, path...)
+// Strings legge un array di stringhe dal documento.
+func Strings(table map[string]any, path ...string) []string {
+	value := Value(table, path...)
 	list, ok := value.([]any)
 	if !ok {
 		return nil
@@ -320,22 +336,27 @@ func tomlStrings(table map[string]any, path ...string) []string {
 	return result
 }
 
-// tomlTable legge una tabella annidata dal documento.
-func tomlTable(table map[string]any, path ...string) map[string]any {
-	value := tomlValue(table, path...)
-	child, _ := value.(map[string]any)
+// Table legge una tabella annidata dal documento (nil se manca).
+func Table(table map[string]any, path ...string) map[string]any {
+	child, _ := Value(table, path...).(map[string]any)
 	return child
 }
 
-// tomlValue cammina il percorso nel documento TOML.
-func tomlValue(table map[string]any, path ...string) any {
-	current := any(table)
-	for _, part := range path {
-		child, ok := current.(map[string]any)
-		if !ok {
-			return nil
-		}
-		current = child[part]
+// Tables legge un array di tabelle (`[[...]]`) dal documento (nil se manca).
+func Tables(table map[string]any, path ...string) []map[string]any {
+	value := Value(table, path...)
+	if list, ok := value.([]map[string]any); ok {
+		return list
 	}
-	return current
+	list, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	result := make([]map[string]any, 0, len(list))
+	for _, item := range list {
+		if child, ok := item.(map[string]any); ok {
+			result = append(result, child)
+		}
+	}
+	return result
 }

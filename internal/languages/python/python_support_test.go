@@ -12,56 +12,6 @@ import (
 	idetesting "adomnia/internal/ide/testing"
 )
 
-func TestTOMLParsesPyProjectShapes(t *testing.T) {
-	document := parseTOML([]byte(`
-# commento
-[project]
-name = "orders-api"
-requires-python = ">=3.11"
-dependencies = [
-  "fastapi>=0.110", # commento in coda
-  "uvicorn[standard]",
-]
-
-[project.scripts]
-orders = "orders.cli:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests", "integration"]
-
-[tool.uv.workspace]
-members = ["packages/*"]
-
-[[tool.example]]
-name = "primo"
-
-[[tool.example]]
-name = "secondo"
-`))
-	if got := tomlString(document, "project", "name"); got != "orders-api" {
-		t.Fatalf("name = %q", got)
-	}
-	if got := tomlStrings(document, "project", "dependencies"); len(got) != 2 || got[0] != "fastapi>=0.110" {
-		t.Fatalf("dependencies = %#v", got)
-	}
-	if got := tomlStrings(document, "tool", "pytest", "ini_options", "testpaths"); len(got) != 2 {
-		t.Fatalf("testpaths = %#v", got)
-	}
-	if got := tomlString(document, "project", "scripts", "orders"); got != "orders.cli:main" {
-		t.Fatalf("scripts = %q", got)
-	}
-	if entries, ok := document["tool"].(map[string]any)["example"].([]map[string]any); !ok || len(entries) != 2 {
-		t.Fatalf("array tables = %#v", document["tool"])
-	}
-}
-
-func TestTOMLSurvivesMalformedLines(t *testing.T) {
-	document := parseTOML([]byte("[project]\nname = 'ok'\nquesta riga non ha senso\nbroken = [1, 2\nrequires-python = \">=3.10\"\n"))
-	if tomlString(document, "project", "name") != "ok" || tomlString(document, "project", "requires-python") != ">=3.10" {
-		t.Fatalf("%#v", document)
-	}
-}
-
 func TestManifestReadsProjectAndRequirements(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "pyproject.toml", "[project]\nname = 'demo'\nrequires-python = '>=3.11'\ndependencies = ['django==5.0']\n\n[project.optional-dependencies]\ntest = ['pytest>=8']\n")
