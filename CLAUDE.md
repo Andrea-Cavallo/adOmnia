@@ -70,6 +70,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
 | `docs/CODE-STUDIO.md` | Code Studio (the integrated IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `mds/todo-ide.md`. |
+| `docs/QUALITY.md` | Quality toolchain for adOmnia's own code: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage. |
 | `docs/architecture/ide-multilanguage-refactor.md` | Code Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/codestudio`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
@@ -555,6 +556,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
 | `docs/CODE-STUDIO.md` | Code Studio guide: usage, trust model, optional tools, persistence and shortcuts |
+| `docs/QUALITY.md` | Quality toolchain: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage |
 | `docs/BUILD.md` | Build instructions for all platforms |
 | `docs/INSTALL.md` | End-user installation guide |
 | `docs/RELEASE.md` | Release notes and history |

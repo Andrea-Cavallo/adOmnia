@@ -11,6 +11,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "lint": "oxlint",
     "check:startup": "node scripts/check-startup-bundle.mjs"
   },
   "dependencies": {
@@ -62,7 +63,7 @@
   },
   "overrides": {
     "monaco-editor": {
-      "dompurify": "3.4.16"
+      "dompurify": "3.4.17"
     }
   },
   "devDependencies": {
@@ -70,7 +71,9 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "autoprefixer": "^10.6.1",
+    "oxlint": "^1.89.0",
     "postcss": "^8.5.30",
     "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
