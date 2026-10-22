@@ -16,6 +16,11 @@ var skippedDirs = map[string]bool{
 // interesting reports whether any detector reads rel, and rel is not inside a
 // skipped or hidden directory.
 func interesting(rel string) bool {
+	// `.cargo/config.toml` è l'unico file sotto una cartella nascosta che leggiamo: il suo [env]
+	// dichiara DATABASE_URL e altre variabili del crate (RS-7.3).
+	if rel == ".cargo/config.toml" || strings.HasSuffix(rel, "/.cargo/config.toml") {
+		return true
+	}
 	dir := path.Dir(rel)
 	if dir != "." {
 		for _, segment := range strings.Split(dir, "/") {
@@ -68,6 +73,8 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		out = append(out, detectPythonFile(rel, data)...)
 	case strings.HasSuffix(base, ".rs"):
 		out = append(out, detectRustFile(rel, data)...)
+	case base == "config.toml":
+		add(detectCargoConfig(rel, data), nil)
 	case isDotenv(base):
 		add(detectDotenv(rel, data))
 	case isCompose(base):
