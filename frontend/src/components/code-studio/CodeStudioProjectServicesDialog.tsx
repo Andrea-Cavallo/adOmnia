@@ -21,7 +21,8 @@ function KindIcon({ kind }: { kind: string }) {
 }
 
 /**
- * Servizi usati dal progetto (da go.mod) e scorciatoie verso i moduli adOmnia che li gestiscono.
+ * Servizi usati dal progetto (dai manifest delle sue unità: go.mod, pyproject.toml, requirements.txt)
+ * e scorciatoie verso i moduli adOmnia che li gestiscono.
  * Integrazione a senso unico: Code Studio apre i moduli con il contesto, nulla viene avviato da solo.
  */
 export function CodeStudioProjectServicesDialog({ sessionId, projectName, open, onClose }: CodeStudioProjectServicesDialogProps) {
@@ -50,7 +51,7 @@ export function CodeStudioProjectServicesDialog({ sessionId, projectName, open, 
       flush
       icon={Boxes}
       title="Project services"
-      subtitle={<>{projectName} · detected from go.mod</>}
+      subtitle={<>{projectName} · detected from the project manifests</>}
       footerStart="Nothing starts on its own."
       footer={<>
         <CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>
@@ -59,7 +60,7 @@ export function CodeStudioProjectServicesDialog({ sessionId, projectName, open, 
     >
       <div className="max-h-[52vh] overflow-auto p-1.5">
         {error && <div className="p-3"><CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert></div>}
-        {!error && services === null && <p className="gs-list-empty flex items-center justify-center gap-2"><Loader2 size={13} className="animate-spin" /> Reading go.mod…</p>}
+        {!error && services === null && <p className="gs-list-empty flex items-center justify-center gap-2"><Loader2 size={13} className="animate-spin" /> Reading project manifests…</p>}
         {services?.length === 0 && <p className="gs-list-empty">No database, broker or observability library is a direct dependency. Docker Lab still offers ready-made local stacks.</p>}
         {services?.map((service) => (
           <div key={service.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-2/60">

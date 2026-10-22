@@ -10,7 +10,9 @@ import { CodeStudioAlert, CodeStudioButton, CodeStudioField, CodeStudioModal } f
 import { CodeStudioGoModSettings, type GoModEdit } from './CodeStudioGoModSettings'
 import { CodeStudioWorkspaceModules } from './CodeStudioWorkspaceModules'
 import { CodeStudioMavenDependencies } from './CodeStudioMavenDependencies'
+import { CodeStudioPythonDependencies } from './CodeStudioPythonDependencies'
 import { mavenBuildUnits } from '@/lib/code-studio/mavenUnits'
+import { pythonUnits } from '@/lib/code-studio/pythonUnits'
 
 interface CodeStudioDependenciesProps {
   open: boolean
@@ -28,8 +30,11 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
   const [tab, setTab] = useState<'requirements' | 'gomod' | 'workspace'>('requirements')
   const mavenUnits = useMemo(() => mavenBuildUnits(session.project), [session.project])
   const hasGo = goModules(session.project).length > 0
-  const [ecosystem, setEcosystem] = useState<'go' | 'maven'>(hasGo ? 'go' : 'maven')
-  const showMaven = mavenUnits.length > 0 && (ecosystem === 'maven' || !hasGo)
+  const pythonUnitList = useMemo(() => pythonUnits(session.project), [session.project])
+  const hasPython = pythonUnitList.length > 0
+  const [ecosystem, setEcosystem] = useState<'go' | 'maven' | 'python'>(hasGo ? 'go' : mavenUnits.length > 0 ? 'maven' : 'python')
+  const showMaven = mavenUnits.length > 0 && (ecosystem === 'maven' || (!hasGo && !hasPython))
+  const showPython = hasPython && (ecosystem === 'python' || (!hasGo && mavenUnits.length === 0))
   // Versioni pubblicate per dipendenza, caricate solo su richiesta (passano dal GOPROXY).
   const [versions, setVersions] = useState<Record<string, string[] | 'loading'>>({})
   // REFACTOR.md voce 10: scarto stale + cancel sui `go list` lunghi, come in `stores/codeStudioLsp.ts`.
@@ -141,18 +146,19 @@ export function CodeStudioDependencies({ open, session, onClose }: CodeStudioDep
       divided
       icon={Package}
       title="Module dependencies"
-      subtitle={showMaven ? 'Dependencies of pom.xml and Gradle files, with vulnerabilities and updates. Changes are editor edits you review.' : 'Manage requirements and go.mod directives. Every change is confirmed first.'}
-      footerStart={showMaven ? 'Updates edit the build file in the editor.' : running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
+      subtitle={showMaven ? 'Dependencies of pom.xml and Gradle files, with vulnerabilities and updates. Changes are editor edits you review.' : showPython ? 'Dependencies declared by the Python units, with the versions resolved by poetry.lock or uv.lock.' : 'Manage requirements and go.mod directives. Every change is confirmed first.'}
+      footerStart={showMaven ? 'Updates edit the build file in the editor.' : showPython ? 'Read from the manifests: nothing is installed.' : running ? <><Loader2 size={13} className="animate-spin" /> go get is running…</> : 'Changes update go.mod and go.sum.'}
       footer={<CodeStudioButton variant="ghost" onClick={onClose}>Close</CodeStudioButton>}
     >
       {error && <CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert>}
-      {hasGo && mavenUnits.length > 0 && (
+      {(hasGo ? 1 : 0) + (mavenUnits.length > 0 ? 1 : 0) + (hasPython ? 1 : 0) > 1 && (
         <div role="tablist" aria-label="Ecosystem" className="gs-segmented self-start">
-          <button type="button" role="tab" aria-selected={!showMaven} onClick={() => setEcosystem('go')} className="gs-segment">Go</button>
-          <button type="button" role="tab" aria-selected={showMaven} onClick={() => setEcosystem('maven')} className="gs-segment">Maven / Gradle</button>
+          {hasGo && <button type="button" role="tab" aria-selected={ecosystem === 'go'} onClick={() => setEcosystem('go')} className="gs-segment">Go</button>}
+          {mavenUnits.length > 0 && <button type="button" role="tab" aria-selected={ecosystem === 'maven'} onClick={() => setEcosystem('maven')} className="gs-segment">Maven / Gradle</button>}
+          {hasPython && <button type="button" role="tab" aria-selected={ecosystem === 'python'} onClick={() => setEcosystem('python')} className="gs-segment">Python</button>}
         </div>
       )}
-      {showMaven ? <CodeStudioMavenDependencies session={session} units={mavenUnits} onClose={onClose} /> : goModules(session.project).length === 0 ? (
+      {showPython ? <CodeStudioPythonDependencies session={session} units={pythonUnitList} onClose={onClose} /> : showMaven ? <CodeStudioMavenDependencies session={session} units={mavenUnits} onClose={onClose} /> : goModules(session.project).length === 0 ? (
         <div className="gs-surface gs-list-empty">This project has no Go module. Open or create a folder with a go.mod to manage dependencies.</div>
       ) : <>
         <div className="gs-dependencies-toolbar flex flex-wrap items-end gap-2">

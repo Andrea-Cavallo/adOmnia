@@ -65,6 +65,7 @@ function indexByName(names: readonly string[]): Map<string, number> {
  */
 /** Cosa il chiamante sa di un linguaggio e il server no: usato per Java, dove il tipo del token non basta. */
 export interface SemanticRemapContext {
+  importRanges?: readonly import('./codeStudioImportColors').ImportColorRange[]
   /** Il token che inizia qui (riga e colonna 0-based) è preceduto da `@`: è un'annotazione, qualunque tipo dica il server. */
   isAnnotationAt?: (line: number, start: number) => boolean
   /** Ritipa le variabili del server (`variable`) con questo tipo del client. */
@@ -77,7 +78,14 @@ export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readon
   const typeMap = serverTypes.map((name) => clientTypes.get(name) ?? clientTypes.get(TYPE_ALIASES[name] ?? '') ?? -1)
   const modifierMap = serverModifiers.map((name) => clientModifiers.get(name) ?? -1)
   const mapped: AbsoluteToken[] = []
+  const imports = new Map<number, NonNullable<SemanticRemapContext['importRanges']>[number][]>()
+  for (const range of context.importRanges ?? []) {
+    const row = imports.get(range.line) ?? []
+    row.push(range)
+    imports.set(range.line, row)
+  }
   for (const token of decode(data)) {
+    if (imports.get(token.line)?.some(range => token.start < range.start + range.length && token.start + token.length > range.start)) continue
     let type = typeMap[token.type] ?? -1
     if (context.isAnnotationAt?.(token.line, token.start)) type = clientTypes.get('annotation') ?? type
     else if (context.variableType && serverTypes[token.type] === 'variable') type = clientTypes.get(context.variableType) ?? type
@@ -88,6 +96,8 @@ export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readon
     })
     mapped.push({ ...token, type, modifiers })
   }
+  for (const range of context.importRanges ?? []) mapped.push({ ...range, type: clientTypes.get('string')!, modifiers: 0 })
+  mapped.sort((a, b) => a.line - b.line || a.start - b.start)
   return encode(mapped)
 }
 

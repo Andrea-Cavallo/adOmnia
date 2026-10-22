@@ -21,6 +21,7 @@ import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStud
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
 import { registerCodeStudioPom } from './codeStudioPom'
 import { registerCodeStudioGoVuln } from './codeStudioGoVuln'
+import { registerCodeStudioPythonSecurity } from './codeStudioPythonSecurity'
 import { registerCodeStudioSpring } from './codeStudioSpring'
 import { registerCodeStudioMyBatis } from './codeStudioMyBatis'
 import { registerCodeStudioProtoLens } from './codeStudioProtoLens'
@@ -58,6 +59,7 @@ registerCodeStudioLanguageFeatures()
 registerCodeStudioCodeLens()
 registerCodeStudioPom()
 registerCodeStudioGoVuln()
+registerCodeStudioPythonSecurity()
 registerCodeStudioSpring()
 registerCodeStudioMyBatis()
 registerCodeStudioProtoLens()

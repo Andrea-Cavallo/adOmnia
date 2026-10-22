@@ -3,6 +3,7 @@
 
 export {
     CommandPlan,
+    DeclaredDependency,
     EnvironmentPlan,
     Interpreter
 } from "./models.js";

@@ -1,4 +1,5 @@
 import { featuresForEditor } from './codeStudioServerFeatures'
+import { importColorRanges } from './codeStudioImportColors'
 import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { heavyFeatureEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
@@ -77,8 +78,10 @@ function scheduleSemanticRetry(documentId: string): void {
 
 /** Java: `@Nome` è sempre un'annotazione (JDT LS la tipa a volte come interfaccia) e le variabili hanno il loro colore. */
 function semanticContextFor(model: monaco.editor.ITextModel): SemanticRemapContext {
-  if (model.getLanguageId() !== 'java') return {}
+  const importRanges = importColorRanges(model.getValue(), model.getLanguageId())
+  if (model.getLanguageId() !== 'java') return { importRanges }
   return {
+    importRanges,
     isAnnotationAt: (line, start) => start > 0 && line < model.getLineCount() && model.getLineContent(line + 1).charAt(start - 1) === '@',
     variableType: 'javaVariable',
   }

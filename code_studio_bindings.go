@@ -1658,6 +1658,16 @@ func (g *GoIDE) PythonInterpreters(sessionID string) (codestudio.PythonInterpret
 	return g.service.PythonInterpreters(sessionID)
 }
 
+func (g *GoIDE) PythonUnitInterpreters(sessionID, unit string) (codestudio.PythonInterpreterReport, error) {
+	return g.service.PythonUnitInterpreters(sessionID, unit)
+}
+
+// PythonDependencies elenca le dipendenze dichiarate dalle unità Python, con la versione risolta dal
+// lockfile (poetry.lock/uv.lock): i dati della vista delle dipendenze, come per Go e Maven.
+func (g *GoIDE) PythonDependencies(sessionID string) ([]codestudio.PythonUnitDependencies, error) {
+	return g.service.PythonDependencies(sessionID)
+}
+
 // SetPythonInterpreter sceglie l'interprete Python del progetto (unit == "") o di un'unità;
 // "" torna all'interpretazione automatica. La scelta resta locale alla macchina.
 func (g *GoIDE) SetPythonInterpreter(sessionID, unit, path string) error {

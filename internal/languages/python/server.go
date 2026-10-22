@@ -28,22 +28,33 @@ func managedDirectory(toolsRoot string) string { return filepath.Join(toolsRoot,
 
 // LocateServer implementa lsp.ServerProvider: il server del progetto (installato nel suo
 // ambiente), quello gestito da adOmnia o uno nel PATH. Un server mancante non è fatale:
-// l'editor continua con le funzioni di Monaco.
+// l'editor continua con le funzioni di Monaco. Il server gestito viene usato solo se la cartella
+// strumenti è quella verificata (toolmanifest.go): un'installazione senza report o modificata
+// dopo l'installazione non viene eseguita, e il messaggio dice di reinstallarla.
 func (l *Language) LocateServer(root, toolsRoot string) lsp.ServerInfo {
 	info := lsp.ServerInfo{Language: ID, Name: pyrightName}
 	if binary := projectLanguageServer(root); binary != "" {
 		info.Available, info.Binary, info.Source = true, binary, "project"
 		return info
 	}
-	if toolsRoot != "" && isFile(filepath.Join(managedDirectory(toolsRoot), "basedpyright", "langserver.py")) {
-		info.Available, info.Binary, info.Source = true, managedDirectory(toolsRoot), "managed"
-		return info
+	if toolsRoot != "" {
+		managed := managedDirectory(toolsRoot)
+		if isFile(filepath.Join(managed, "basedpyright", "langserver.py")) {
+			if err := verifyManagedTool(managed); err != nil {
+				info.Error = err.Error()
+			} else {
+				info.Available, info.Binary, info.Source = true, managed, "managed"
+				return info
+			}
+		}
 	}
 	if binary, err := lookPath(pyrightLangserver); err == nil && isFile(binary) {
 		info.Available, info.Binary, info.Source = true, binary, "PATH"
 		return info
 	}
-	info.Error = "basedpyright is not installed: install the Python language server from the editor notice, or run `pip install " + pyrightName + "==" + pyrightVersion + "` in your environment"
+	if info.Error == "" {
+		info.Error = "basedpyright is not installed: install the Python language server from the editor notice, or run `pip install " + pyrightName + "==" + pyrightVersion + "` in your environment"
+	}
 	return info
 }
 
@@ -65,6 +76,10 @@ func projectLanguageServer(root string) string {
 // ServerSpec implementa lsp.ServerProvider. Il server gestito parte con l'interprete di
 // avvio e PYTHONPATH sulla cartella strumenti: il progetto non viene toccato.
 func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
+	return l.UnitServerSpec(root, root, toolsRoot)
+}
+
+func (l *Language) UnitServerSpec(projectRoot, root, toolsRoot string) (lsp.ServerSpec, error) {
 	info := l.LocateServer(root, toolsRoot)
 	if !info.Available {
 		return lsp.ServerSpec{}, fmt.Errorf("%s", info.Error)
@@ -74,7 +89,7 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 		Binary: info.Binary, Arguments: []string{"--stdio"},
 		TraceEnvironment: []string{"VIRTUAL_ENV", "PYTHONPATH"},
 		WatchesFile:      watchesPythonFile,
-		Configuration:    func() any { return pyrightSettings(root) },
+		Configuration:    func() any { return pyrightUnitSettings(projectRoot, root) },
 	}
 	if info.Source == "managed" {
 		interpreter, err := bootstrapInterpreter()
@@ -92,11 +107,15 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 // per il progetto, così i import si risolvono con lo stesso ambiente di Run/Test/Debug (PY-2.5).
 // pyrightconfig.json e [tool.pyright] del progetto restano la fonte delle altre impostazioni.
 func pyrightSettings(root string) any {
+	return pyrightUnitSettings(root, root)
+}
+
+func pyrightUnitSettings(projectRoot, root string) any {
 	settings := map[string]any{
 		"python":       map[string]any{},
 		"basedpyright": map[string]any{"analysis": map[string]any{"diagnosticMode": "openFilesOnly"}},
 	}
-	if interpreter, err := ResolveInterpreter(root, root, ""); err == nil {
+	if interpreter, err := ResolveInterpreter(projectRoot, root, ""); err == nil {
 		settings["python"] = map[string]any{"pythonPath": interpreter.Path}
 	}
 	return settings
@@ -117,18 +136,25 @@ func watchesPythonFile(path string) bool {
 }
 
 // InstallPlan installa basedpyright nella cartella strumenti con un solo comando visibile:
-// pip --target con la versione pinnata. Serve un interprete Python della macchina.
+// pip --target con la versione pinnata e `--report`, il report con la SHA-256 di ogni artefatto
+// scaricato (wheel, sdist e dipendenze) che adOmnia verifica prima di usare il server. Serve un
+// interprete Python della macchina. Niente cache di pip e niente prompt: l'installazione è
+// riproducibile e il download resta visibile nella console Run, mai in silenzio.
 func (*Language) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	interpreter, err := bootstrapInterpreter()
 	if err != nil {
 		return lsp.InstallPlan{}, err
 	}
 	directory := managedDirectory(toolsRoot)
-	arguments := []string{"-m", "pip", "install", "--upgrade", "--target", directory, pyrightName + "==" + pyrightVersion}
+	arguments := []string{
+		"-m", "pip", "install", "--upgrade", "--no-cache-dir", "--no-input", "--disable-pip-version-check",
+		"--target", directory, "--report", filepath.Join(directory, installReportFile),
+		pyrightName + "==" + pyrightVersion,
+	}
 	return lsp.InstallPlan{
 		Task: pyrightInstallTask, Title: "Install the Python language server?",
 		Label:      "Installing basedpyright",
-		Note:       fmt.Sprintf("Installs %s %s into the adOmnia tools folder (%s), never into your project or your Python environments. Needs network access now; afterwards basedpyright works offline.", pyrightName, pyrightVersion, directory),
+		Note:       fmt.Sprintf("Installs %s %s into the adOmnia tools folder (%s), never into your project or your Python environments. pip reports the SHA-256 of every downloaded artifact and adOmnia refuses to run a tools folder that does not match it. Needs network access now; afterwards basedpyright works offline.", pyrightName, pyrightVersion, directory),
 		Command:    strings.Join(append([]string{sdk.ExecutableName("python")}, arguments...), " "),
 		Executable: interpreter, Arguments: arguments, Directory: directory,
 		Prepare:   func() error { return os.MkdirAll(directory, 0o755) },

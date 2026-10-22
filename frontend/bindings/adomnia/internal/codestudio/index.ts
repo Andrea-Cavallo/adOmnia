@@ -157,6 +157,7 @@ export {
     ProjectTemplateList,
     PythonDebugRequest,
     PythonInterpreterReport,
+    PythonUnitDependencies,
     QuickDefinitionResult,
     QuickOpenResult,
     RecentProject,

@@ -1,7 +1,7 @@
 import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
-import { Copy, ExternalLink, Minus, RefreshCw, Search, Square } from 'lucide-react'
+import { Copy, ExternalLink, FileJson, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useCodeStudioStore, type GoIDEConsoleChunk } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
@@ -15,6 +15,8 @@ import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
 import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
 import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
 import { openExternal } from '@/lib/openExternal'
+import { handOffOpenApiURL } from '@/lib/moduleHandoff'
+import { useAppStore } from '@/stores/app'
 import { resolveConsolePath } from './codeStudioConsolePaths'
 import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
@@ -272,6 +274,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="code-studio-icon-button h-7 w-7"><Copy size={13} /></button>
           {serverURL && <button type="button" onClick={() => openExternal(serverURL)} aria-label="Open in browser" title={`Open ${serverURL} in the browser`} className="code-studio-icon-button h-7 w-7"><ExternalLink size={13} /></button>}
+          {serverURL && <button type="button" onClick={() => { handOffOpenApiURL(serverURL); useAppStore.getState().setActiveRail('apidocs') }} aria-label="API docs" title={`Import the OpenAPI document of ${serverURL} into API Docs`} className="code-studio-icon-button h-7 w-7"><FileJson size={13} /></button>}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
         {executions.length > 1 && (

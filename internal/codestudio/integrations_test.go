@@ -8,7 +8,7 @@ import (
 )
 
 func TestDetectProjectServicesUsesDirectDependenciesOnly(t *testing.T) {
-	services := detectProjectServices([]GoDependency{
+	services := detectProjectServices([]ServiceDependency{
 		{Path: "github.com/jackc/pgx/v5"},
 		{Path: "github.com/lib/pq"},
 		{Path: "github.com/redis/go-redis/v9"},
@@ -79,6 +79,62 @@ func TestPluginEventForExposesOnlyTheContract(t *testing.T) {
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Un progetto Python dichiara i servizi che usa nei manifest dell'unità: Project Services deve
+// aprirli come per i moduli Go, senza sapere nulla dei formati Python.
+func TestProjectServicesReadsPythonUnits(t *testing.T) {
+	root := t.TempDir()
+	writeUnitDir(t, root, "api")
+	writeFile(t, filepath.Join(root, "api", "requirements.txt"), "fastapi==0.115.0\npsycopg[binary]==3.2.1\nPyMySQL>=1.1\nredis==5.0.8\npytest==8.3.0\n")
+	writeFile(t, filepath.Join(root, "api", "main.py"), "from fastapi import FastAPI\n\napp = FastAPI()\n")
+	service := NewService(&memoryStore{}, nil)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = service.CloseSession(string(session.ID)) }()
+	services, err := service.ProjectServices(string(session.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []ProjectService{
+		{ID: "postgres", Name: "PostgreSQL", Kind: "database", Modules: []string{"psycopg"}},
+		{ID: "mysql", Name: "MySQL", Kind: "database", Modules: []string{"pymysql"}},
+		{ID: "redis", Name: "Redis", Kind: "cache", Modules: []string{"redis"}},
+	}
+	if !reflect.DeepEqual(services, want) {
+		t.Fatalf("services = %#v, want %#v", services, want)
+	}
+}
+
+// Le dipendenze di sviluppo non descrivono i servizi che il programma usa a runtime.
+func TestProjectServicesIgnoresPythonDevDependencies(t *testing.T) {
+	root := t.TempDir()
+	writeUnitDir(t, root, "app")
+	writeFile(t, filepath.Join(root, "app", "pyproject.toml"), "[project]\nname = \"app\"\ndependencies = [\"asyncpg>=0.29\"]\n\n[dependency-groups]\ndev = [\"redis>=5\"]\n")
+	writeFile(t, filepath.Join(root, "app", "main.py"), "print(1)\n")
+	service := NewService(&memoryStore{}, nil)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = service.CloseSession(string(session.ID)) }()
+	services, err := service.ProjectServices(string(session.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(services) != 1 || services[0].ID != "postgres" {
+		t.Fatalf("services = %#v, want only postgres from runtime dependencies", services)
+	}
+}
+
+// writeUnitDir crea la cartella di un'unità del progetto sotto root.
+func writeUnitDir(t *testing.T, root, name string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
 		t.Fatal(err)
 	}
 }

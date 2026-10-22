@@ -17,7 +17,7 @@ func (s *Service) ResourceUsage() resources.Snapshot {
 						limit = strings.SplitN(value, "=", 2)[1]
 					}
 				}
-				targets = append(targets, resources.Target{PID: state.status.PID, Name: state.options.DisplayName(), Workspace: session.Project.RealPath, SessionID: string(session.ID), Role: "language-server", Owner: "Code Studio / " + state.options.DisplayName(), MemoryLimit: limit})
+				targets = append(targets, resources.Target{PID: state.status.PID, Name: state.options.DisplayName(), Workspace: state.root, SessionID: string(session.ID), Role: "language-server", Owner: "Code Studio / " + state.options.DisplayName(), MemoryLimit: limit})
 			}
 			state.mu.Unlock()
 		}

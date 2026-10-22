@@ -17,6 +17,7 @@ import (
 	"adomnia/internal/activity"
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/ide/project"
 	"adomnia/internal/procutil"
 )
 
@@ -78,6 +79,9 @@ type lspSession struct {
 	name     string
 	// folders are the unit roots given to the server instead of the project root (see workspaceFolderRoots).
 	folders []string
+	// unit è la radice dell'unità servita da questo server: vuota per i linguaggi con un solo server
+	// per sessione, valorizzata quando l'adapter dichiara un server per unità (language.UnitServers).
+	unit    string
 	options LanguageServerOptions
 	status  LanguageServerStatus
 	process *serverProcess
@@ -107,10 +111,13 @@ type lspSession struct {
 	progress map[string]progressTrace
 }
 
-// lspKey identifica un language server: uno per linguaggio in ogni sessione.
+// lspKey identifica un language server: uno per linguaggio in ogni sessione, e uno per unità
+// quando il linguaggio dichiara un server per unità (environment diverso per servizio).
 type lspKey struct {
 	session  SessionID
 	language string
+	// unit è la radice dell'unità: vuota per i linguaggi con un solo server per sessione.
+	unit string
 }
 
 type LSPManager struct {
@@ -166,15 +173,84 @@ func (m *LSPManager) publish(eventType string, sessionID SessionID, resourceID s
 }
 
 func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
+	return m.ensureUnit(session, languageID, "")
+}
+
+// unitServerLanguage dice se il linguaggio va servito da un server per unità. Il core non nomina
+// linguaggi: lo dichiara l'adapter con language.UnitServers.
+func (m *LSPManager) unitServerLanguage(languageID string) bool {
+	if m.languages == nil {
+		return false
+	}
+	adapter, ok := m.languages.Get(languageID)
+	if !ok {
+		return false
+	}
+	perUnit, ok := adapter.(language.UnitServers)
+	return ok && perUnit.ServersPerUnit()
+}
+
+// unitRoots sono le radici delle unità del linguaggio, in ordine stabile. Un linguaggio senza unità
+// riconosciute resta un solo server alla radice del progetto, come per gli altri linguaggi.
+func unitRoots(session Session, languageID string) []string {
+	seen := make(map[string]bool, 2)
+	roots := make([]string, 0, 2)
+	for _, unit := range session.Project.Units {
+		if unit.Language != languageID || unit.Root == "" {
+			continue
+		}
+		root := filepath.Clean(unit.Root)
+		if seen[root] {
+			continue
+		}
+		seen[root] = true
+		roots = append(roots, root)
+	}
+	if len(roots) == 0 {
+		return []string{filepath.Clean(session.Project.RealPath)}
+	}
+	sort.Strings(roots)
+	return roots
+}
+
+// unitRootForPath è la radice dell'unità del linguaggio che contiene il file (la più profonda), o la
+// radice del progetto se il file non appartiene a nessuna unità.
+func unitRootForPath(session Session, languageID, path string) string {
+	root := filepath.Clean(session.Project.RealPath)
+	for _, unit := range session.Project.Units {
+		if unit.Language != languageID || unit.Root == "" {
+			continue
+		}
+		candidate := filepath.Clean(unit.Root)
+		if len(candidate) <= len(root) || project.EnsureWithin(candidate, path) != nil {
+			continue
+		}
+		root = candidate
+	}
+	return root
+}
+
+// ensureUnit restituisce, creandolo, il server del linguaggio per una sessione e una unità. Per i
+// linguaggi con un solo server per sessione unitRoot è vuota: il server parte dalla radice del
+// progetto con tutte le cartelle delle unità. Per gli altri parte dalla radice dell'unità e riceve
+// una sola cartella: è ciò che tiene separati interpreti e import di unità diverse.
+func (m *LSPManager) ensureUnit(session Session, languageID, unitRoot string) *lspSession {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	key := lspKey{session: session.ID, language: languageID}
+	key := lspKey{session: session.ID, language: languageID, unit: unitRoot}
 	if existing, ok := m.sessions[key]; ok {
 		return existing
 	}
+	root, name := session.Project.RealPath, session.Project.Name
+	var folders []string
+	if unitRoot == "" {
+		folders = workspaceFolderRoots(session.Project.RealPath, session.Project.Units, languageID)
+	} else {
+		root, name = unitRoot, filepath.Base(unitRoot)
+	}
 	created := &lspSession{
-		id: session.ID, language: languageID, root: session.Project.RealPath, rootURI: fileURI(session.Project.RealPath), name: session.Project.Name,
-		folders:   workspaceFolderRoots(session.Project.RealPath, session.Project.Units, languageID),
+		id: session.ID, language: languageID, unit: unitRoot, root: root, rootURI: fileURI(root), name: name,
+		folders:   folders,
 		status:    LanguageServerStatus{SessionID: session.ID, Language: languageID, State: LanguageServerStopped},
 		documents: make(map[DocumentID]*trackedDocument), byURI: make(map[string]DocumentID),
 		codeActions: make(map[string]lsp.CodeAction), diagnostics: make(map[string][]lsp.Diagnostic),
@@ -183,12 +259,28 @@ func (m *LSPManager) ensure(session Session, languageID string) *lspSession {
 	return created
 }
 
-// server restituisce il language server del linguaggio nella sessione.
+// server restituisce il server principale del linguaggio (il primo in ordine di unità).
 func (m *LSPManager) server(sessionID SessionID, languageID string) (*lspSession, bool) {
+	states := m.statesOf(sessionID, languageID)
+	if len(states) == 0 {
+		return nil, false
+	}
+	return states[0], true
+}
+
+// statesOf restituisce i server del linguaggio nella sessione, ordinati per unità: di norma uno solo,
+// uno per unità per i linguaggi che dichiarano un server per unità.
+func (m *LSPManager) statesOf(sessionID SessionID, languageID string) []*lspSession {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	state, ok := m.sessions[lspKey{session: sessionID, language: languageID}]
-	return state, ok
+	result := make([]*lspSession, 0, 1)
+	for key, state := range m.sessions {
+		if key.session == sessionID && key.language == languageID {
+			result = append(result, state)
+		}
+	}
+	m.mu.Unlock()
+	sort.Slice(result, func(i, j int) bool { return result[i].unit < result[j].unit })
+	return result
 }
 
 // servers restituisce i language server della sessione, ordinati per linguaggio (risultati stabili).
@@ -218,39 +310,90 @@ func (m *LSPManager) forDocument(sessionID SessionID, documentID DocumentID) (*l
 	return nil, false
 }
 
-// forPath restituisce il server del linguaggio che possiede il file, anche se non è aperto.
+// forPath restituisce il server del linguaggio che possiede il file, anche se non è aperto. Con i
+// server per unità è quello dell'unità che contiene il file.
 func (m *LSPManager) forPath(sessionID SessionID, path string) (*lspSession, bool) {
 	owner, _, ok := m.languages.ForPath(path)
 	if !ok {
 		return nil, false
 	}
-	state, found := m.server(sessionID, owner.ID())
+	state, found := chooseByPath(m.statesOf(sessionID, owner.ID()), path)
 	if found {
 		m.armIdle(state)
 	}
 	return state, found
 }
 
-// Status restituisce lo stato corrente del language server del linguaggio per la sessione.
-func (m *LSPManager) Status(sessionID SessionID, languageID string) LanguageServerStatus {
-	session, ok := m.server(sessionID, languageID)
-	if !ok {
-		return LanguageServerStatus{SessionID: sessionID, Language: languageID, State: LanguageServerStopped}
+// chooseByPath sceglie il server dell'unità che contiene il path (la radice più profonda); senza
+// corrispondenze usa il primo, così i linguaggi a server unico restano identici a prima.
+func chooseByPath(states []*lspSession, path string) (*lspSession, bool) {
+	if len(states) == 0 {
+		return nil, false
 	}
-	session.mu.Lock()
-	defer session.mu.Unlock()
-	return session.status
+	best, bestLength := states[0], -1
+	for _, state := range states {
+		state.mu.Lock()
+		root := state.root
+		state.mu.Unlock()
+		if project.EnsureWithin(root, path) != nil || len(root) <= bestLength {
+			continue
+		}
+		best, bestLength = state, len(root)
+	}
+	return best, true
 }
 
-// Log restituisce le ultime righe di log del language server del linguaggio.
+// Status restituisce lo stato del linguaggio nella sessione. Con un server per unità lo stato è
+// aggregato: pronto appena un'unità lo è; l'errore di un'unità che non parte resta nel suo log.
+func (m *LSPManager) Status(sessionID SessionID, languageID string) LanguageServerStatus {
+	return aggregateStatus(sessionID, languageID, m.statesOf(sessionID, languageID))
+}
+
+func aggregateStatus(sessionID SessionID, languageID string, states []*lspSession) LanguageServerStatus {
+	if len(states) == 0 {
+		return LanguageServerStatus{SessionID: sessionID, Language: languageID, State: LanguageServerStopped}
+	}
+	statuses := make([]LanguageServerStatus, 0, len(states))
+	for _, state := range states {
+		state.mu.Lock()
+		statuses = append(statuses, state.status)
+		state.mu.Unlock()
+	}
+	// Priorità: pronto, in avvio, in crash, fermo. Il primo esemplare fornisce gli altri campi.
+	for _, wanted := range []LanguageServerState{LanguageServerReady, LanguageServerStarting, LanguageServerCrashed, LanguageServerStopped} {
+		for _, status := range statuses {
+			if status.State == wanted {
+				return status
+			}
+		}
+	}
+	return statuses[0]
+}
+
+// Log restituisce il log del linguaggio: con più unità ogni riga porta il nome dell'unità, così
+// l'avvio e gli errori di una unità restano distinguibili.
 func (m *LSPManager) Log(sessionID SessionID, languageID string) []string {
-	session, ok := m.server(sessionID, languageID)
-	if !ok {
+	states := m.statesOf(sessionID, languageID)
+	if len(states) == 0 {
 		return []string{}
 	}
-	session.mu.Lock()
-	defer session.mu.Unlock()
-	return append([]string(nil), session.log...)
+	var lines []string
+	for _, state := range states {
+		state.mu.Lock()
+		root, log := state.root, state.log
+		state.mu.Unlock()
+		prefix := ""
+		if len(states) > 1 || state.unit != "" {
+			prefix = "[" + filepath.Base(root) + "] "
+		}
+		for _, line := range log {
+			lines = append(lines, prefix+line)
+		}
+	}
+	if overflow := len(lines) - maxLanguageServerLog; overflow > 0 {
+		lines = lines[overflow:]
+	}
+	return lines
 }
 
 // Start avvia il server di options.Language per la sessione se non è già attivo; i documenti
@@ -264,7 +407,68 @@ func (m *LSPManager) start(session Session, options LanguageServerOptions, reaso
 	if options.Language == "" {
 		return LanguageServerStatus{}, fmt.Errorf("language server language not specified")
 	}
-	state := m.ensure(session, options.Language)
+	if options.PerUnitSpec != nil {
+		return m.startUnits(session, options, reason)
+	}
+	// Un linguaggio che dichiara un server per unità ma arriva qui senza factory (un chiamante che
+	// costruisce la spec a mano) continua con un solo server alla radice del progetto: la UI resta
+	// funzionante e l'isolamento per unità manca solo in quel percorso.
+	state := m.ensureUnit(session, options.Language, "")
+	return m.startState(session, state, options, reason)
+}
+
+// startUnits avvia un server per ogni unità del linguaggio, ognuno con la spec della propria unità:
+// è così che due unità con ambienti diversi restano isolate. Un'unità che non parte non impedisce
+// alle altre di funzionare; l'errore della prima finisce nel risultato e nel log della sua unità.
+func (m *LSPManager) startUnits(session Session, options LanguageServerOptions, reason string) (LanguageServerStatus, error) {
+	roots := unitRoots(session, options.Language)
+	started := make(map[string]bool, len(roots))
+	var firstErr error
+	for _, root := range roots {
+		started[root] = true
+		if err := m.startUnit(session, options, root, reason); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	// Un file fuori da ogni unità resta sul server della radice del progetto: lo si avvia solo se ha
+	// già documenti tracciati, per non aggiungere un server vuoto.
+	projectRoot := filepath.Clean(session.Project.RealPath)
+	if !started[projectRoot] && m.trackedDocuments(session.ID, options.Language, projectRoot) > 0 {
+		if err := m.startUnit(session, options, projectRoot, reason); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return m.Status(session.ID, options.Language), firstErr
+}
+
+// startUnit avvia il server di una unità costruendone la spec con la radice dell'unità.
+func (m *LSPManager) startUnit(session Session, options LanguageServerOptions, root, reason string) error {
+	spec, err := options.PerUnitSpec(root)
+	if err != nil {
+		// L'unità senza spec (ambiente o server mancante) resta visibile nel suo log e nel suo stato.
+		m.setState(m.ensureUnit(session, options.Language, root), LanguageServerCrashed, err.Error())
+		return fmt.Errorf("%s: %w", root, err)
+	}
+	spec.PerUnitSpec = nil
+	_, err = m.startState(session, m.ensureUnit(session, options.Language, root), spec, reason)
+	return err
+}
+
+// trackedDocuments conta i documenti già tracciati per un server identificato da (linguaggio, unità).
+func (m *LSPManager) trackedDocuments(sessionID SessionID, languageID, unitRoot string) int {
+	m.mu.Lock()
+	state := m.sessions[lspKey{session: sessionID, language: languageID, unit: unitRoot}]
+	m.mu.Unlock()
+	if state == nil {
+		return 0
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	return len(state.documents)
+}
+
+// startState avvia il server di uno stato già identificato (il linguaggio, o una sua unità).
+func (m *LSPManager) startState(session Session, state *lspSession, options LanguageServerOptions, reason string) (LanguageServerStatus, error) {
 	state.lifecycle.Lock()
 	defer state.lifecycle.Unlock()
 	state.mu.Lock()
@@ -486,9 +690,10 @@ func (m *LSPManager) handleCrash(state *lspSession, reason string) {
 	}()
 }
 
-// Stop chiude il language server del linguaggio con shutdown/exit e termina il process tree se non risponde.
+// Stop chiude i language server del linguaggio (tutte le unità) con shutdown/exit e termina il
+// process tree se non rispondono.
 func (m *LSPManager) Stop(sessionID SessionID, languageID string) {
-	if state, ok := m.server(sessionID, languageID); ok {
+	for _, state := range m.statesOf(sessionID, languageID) {
 		m.stop(state)
 	}
 }
@@ -577,20 +782,18 @@ func processExited(process *serverProcess) bool {
 	}
 }
 
-// Restart arresta e riavvia il server di options.Language azzerando il contatore dei crash.
+// Restart arresta e riavvia i server del linguaggio (tutte le unità) azzerando il contatore dei crash.
 func (m *LSPManager) Restart(session Session, options LanguageServerOptions) (LanguageServerStatus, error) {
 	explicit := false
-	if state, ok := m.server(session.ID, options.Language); ok {
+	for _, state := range m.statesOf(session.ID, options.Language) {
 		state.mu.Lock()
-		explicit = state.userInitiated
+		explicit = explicit || state.userInitiated
 		state.mu.Unlock()
 	}
 	m.Stop(session.ID, options.Language)
-	if state, ok := m.server(session.ID, options.Language); ok {
+	for _, state := range m.statesOf(session.ID, options.Language) {
 		state.mu.Lock()
 		state.userInitiated = explicit
-		state.mu.Unlock()
-		state.mu.Lock()
 		state.crashes = nil
 		state.mu.Unlock()
 	}
@@ -676,9 +879,7 @@ func (m *LSPManager) setState(state *lspSession, value LanguageServerState, mess
 }
 
 func (m *LSPManager) publishStatus(state *lspSession) {
-	state.mu.Lock()
-	status := state.status
-	state.mu.Unlock()
+	status := aggregateStatus(state.id, state.language, m.statesOf(state.id, state.language))
 	m.publish("lsp.status", status.SessionID, string(status.SessionID), status)
 }
 

@@ -66,6 +66,7 @@ const REACHABILITY_LABELS: Record<string, string> = {
 const ECOSYSTEM_META: Record<SecurityEcosystem, { title: string; subtitle: string }> = {
   Maven: { title: 'Java / Maven', subtitle: 'pom.xml · effective dependencies' },
   Go: { title: 'Go Modules', subtitle: 'go.mod / go.work · minimal version selection' },
+  PyPI: { title: 'Python / PyPI', subtitle: 'pyproject.toml · requirements · poetry/uv lock' },
 }
 
 const EXPORTS: Array<{ id: SecurityExportFormatId; label: string; mime: string }> = [
@@ -319,7 +320,7 @@ Command: ${plan.command}`, confirmLabel: 'Rebuild' })
               <div className="sec-section-head">
                 <h2 className="sec-label">Ecosystems</h2>
                 <div className="sec-segs">
-                  {(['Maven', 'Go'] as SecurityEcosystem[]).map((ecosystemId) => (
+                  {(['Maven', 'Go', 'PyPI'] as SecurityEcosystem[]).map((ecosystemId) => (
                     <button key={ecosystemId} type="button" className="sec-seg" aria-pressed={ecosystem === ecosystemId}
                       title={ECOSYSTEM_META[ecosystemId].subtitle}
                       onClick={() => setEcosystem(ecosystem === ecosystemId ? 'all' : ecosystemId)}>

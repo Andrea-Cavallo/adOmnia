@@ -28,6 +28,11 @@ type ServerSpec struct {
 	// dei file aperti (gopls: una view per il modulo di ogni file aperto). L'host gli passa quindi solo la
 	// radice: dargli ogni unità come workspace folder gli farebbe caricare subito tutti i moduli.
 	DiscoversNestedUnits bool
+	// PerUnitSpec, quando non è nil, chiede all'host un server per ogni unità del linguaggio: viene
+	// chiamata con la radice dell'unità per costruirne la spec, così ogni unità parte con il proprio
+	// ambiente (interprete, venv, toolchain). I server per unità guardano una sola cartella: quella
+	// dell'unità, non il progetto. L'host la imposta solo se il linguaggio dichiara language.UnitServers.
+	PerUnitSpec func(root string) (ServerSpec, error)
 }
 
 // VirtualDocuments dice come leggere un documento con URI non-file: l'host lo salva in un file di sola

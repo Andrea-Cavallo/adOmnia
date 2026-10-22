@@ -28,24 +28,31 @@ type PythonInterpreterReport struct {
 // architettura, pytest/debugpy/basedpyright presenti) e segnalato se la versione non soddisfa
 // `requires-python` dell'unità. Nessun ambiente viene installato o modificato.
 func (s *Service) PythonInterpreters(sessionID string) (PythonInterpreterReport, error) {
+	return s.PythonUnitInterpreters(sessionID, "")
+}
+
+// PythonUnitInterpreters reports candidates and constraints for the selected unit.
+// The project-wide binding remains available for existing callers.
+func (s *Service) PythonUnitInterpreters(sessionID, unit string) (PythonInterpreterReport, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return PythonInterpreterReport{}, err
 	}
 	root := session.Project.RealPath
-	installed := python.DiscoverInterpreters(root, root)
-	if saved := python.ProjectInterpreter(root, ""); saved != "" {
+	directory, err := pythonEnvironmentDirectory(root, unit)
+	if err != nil {
+		return PythonInterpreterReport{}, err
+	}
+	installed := python.DiscoverInterpreters(root, directory)
+	if saved := python.ProjectInterpreter(root, directory); saved != "" {
+		for i := len(installed) - 1; i >= 0; i-- {
+			if installed[i].Path == saved {
+				installed = append(installed[:i], installed[i+1:]...)
+			}
+		}
 		installed = append([]python.Interpreter{{Path: saved, Source: "saved"}}, installed...)
 	}
-	report := PythonInterpreterReport{Installed: installed, Selected: python.ProjectInterpreter(root, "")}
-	for _, unit := range session.Project.Units {
-		if unit.Language != python.ID {
-			continue
-		}
-		if constraint := python.RequiresPython(unit.Root); constraint != "" {
-			report.RequiresPython = constraint
-		}
-	}
+	report := PythonInterpreterReport{Installed: installed, Selected: python.ProjectInterpreter(root, directory), RequiresPython: python.RequiresPython(directory)}
 	if session.Project.Authorization == AuthorizationPermitted {
 		report.Installed = python.FlagIncompatible(python.ProbeInterpreters(report.Installed), report.RequiresPython)
 		report.Probed = true
@@ -61,7 +68,18 @@ func (s *Service) SetPythonInterpreter(sessionID, unit, path string) error {
 	if err != nil {
 		return err
 	}
-	return python.SetProjectInterpreter(root, unit, path)
+	directory, err := pythonEnvironmentDirectory(root, unit)
+	if err != nil {
+		return err
+	}
+	selection := directory
+	if unit == "" {
+		selection = ""
+	}
+	if err := python.SetProjectInterpreter(root, selection, path); err != nil {
+		return err
+	}
+	return s.lsp.RefreshConfiguration(SessionID(sessionID), python.ID)
 }
 
 // pythonEnvironmentDirectory risolve la cartella dell'unità ("" = progetto) e la valida.
@@ -215,4 +233,47 @@ func (s *Service) InstallPythonTool(sessionID, interpreter, tool string, confirm
 		Environment:      environmentWith(nil),
 		DisplayCommand:   strings.Join(append([]string{filepath.Base(interpreter)}, arguments...), " "),
 	})
+}
+
+// PythonUnitDependencies è ciò che la vista delle dipendenze mostra per un'unità Python: il manifest
+// che le dichiara, il lockfile riconosciuto e ogni dipendenza con vincolo e versione risolta.
+type PythonUnitDependencies struct {
+	// Unit è la cartella dell'unità relativa al progetto ("." per la radice).
+	Unit string `json:"unit"`
+	// Name è il nome leggibile dell'unità (pyproject o cartella).
+	Name string `json:"name"`
+	// Manager è "uv", "poetry" o "pip" quando il progetto dichiara un gestore.
+	Manager string `json:"manager,omitempty"`
+	// Lockfile è il lockfile che fornisce le versioni risolte ("" se assente).
+	Lockfile     string                      `json:"lockfile,omitempty"`
+	Dependencies []python.DeclaredDependency `json:"dependencies"`
+}
+
+// PythonDependencies elenca le dipendenze dichiarate dalle unità Python del progetto, con le
+// versioni risolte dal lockfile: la stessa vista che Go e Maven hanno nel dialog delle dipendenze.
+// Lettura statica dei manifest, nessun processo e nessuna installazione.
+func (s *Service) PythonDependencies(sessionID string) ([]PythonUnitDependencies, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	units := make([]PythonUnitDependencies, 0, 2)
+	for _, unit := range session.Project.Units {
+		if unit.Language != python.ID {
+			continue
+		}
+		manager, lockfile := python.DetectEnvironmentManager(unit.Root)
+		relative, err := filepath.Rel(session.Project.RealPath, unit.Root)
+		if err != nil || relative == "" {
+			relative = "."
+		}
+		units = append(units, PythonUnitDependencies{
+			Unit:         filepath.ToSlash(relative),
+			Name:         python.UnitName(unit),
+			Manager:      manager,
+			Lockfile:     lockfile,
+			Dependencies: python.DeclaredDependencies(unit.Root),
+		})
+	}
+	return units, nil
 }

@@ -3,7 +3,7 @@ import * as SecurityIntelBindings from '../../bindings/adomnia/securityintel'
 // Tipi di adOmnia Security Intelligence. Il backend parla JSON per non generare
 // centinaia di modelli Wails: qui il contratto è tipizzato una volta sola.
 
-export type SecurityEcosystem = 'Maven' | 'Go'
+export type SecurityEcosystem = 'Maven' | 'Go' | 'PyPI'
 export type SecurityReachability =
   | 'called'
   | 'imported'

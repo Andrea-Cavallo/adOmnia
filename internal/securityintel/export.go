@@ -371,6 +371,8 @@ func PackageURL(component Component) string {
 		return fmt.Sprintf("pkg:maven/%s/%s@%s", url.PathEscape(group), url.PathEscape(name), url.PathEscape(component.Version))
 	case EcosystemGo:
 		return fmt.Sprintf("pkg:golang/%s@%s", url.PathEscape(component.Name), url.PathEscape(component.Version))
+	case EcosystemPyPI:
+		return fmt.Sprintf("pkg:pypi/%s@%s", url.PathEscape(component.Name), url.PathEscape(component.Version))
 	default:
 		return fmt.Sprintf("pkg:generic/%s@%s", url.PathEscape(component.Name), url.PathEscape(component.Version))
 	}

@@ -15,7 +15,7 @@ import { ROUTE_INLINE_ACTIONS, runRouteEntityAction, runRouteInlineAction, type 
 
 const LANGUAGE = 'go'
 /** Linguaggi i cui handler HTTP arrivano dal Developer Context (non da regex sul buffer). */
-const CONTEXT_ROUTE_LANGUAGES = ['java']
+export const CONTEXT_ROUTE_LANGUAGES = ['java', 'python']
 const ENTITY_ROUTE_ACTION_COMMAND = 'codeStudio.entityRouteAction'
 const GO_MOD_COMMAND = 'codeStudio.goModAction'
 const PACKAGE_COMMAND = 'codeStudio.packageCommand'

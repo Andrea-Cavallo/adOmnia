@@ -5,6 +5,7 @@ export const DATABASE_PENDING_CONNECTION_KEY = 'adomnia.database.pendingConnecti
 export const DATABASE_PENDING_QUERY_KEY = 'adomnia.database.pendingQuery'
 export const BROKER_PENDING_KEY = 'adomnia.broker.pending'
 export const DOCKER_LAB_PENDING_KEY = 'adomnia.dockerlab.pending'
+export const OPENAPI_PENDING_URL_KEY = 'adomnia.apidocs.pendingUrl'
 
 /** Preset del Docker Lab suggeriti da un altro modulo, con l'origine da mostrare all'utente. */
 export interface DockerLabHandoff {
@@ -38,6 +39,28 @@ export function takeDatabaseQueryHandoff(): string | null {
   try {
     const parsed: unknown = JSON.parse(raw)
     return typeof parsed === 'string' && parsed.trim() ? parsed.trim() : null
+  } catch {
+    return null
+  }
+}
+
+/** Passa all'API Docs l'URL di un servizio locale appena avviato (indirizzo base, non il percorso della spec). */
+export function handOffOpenApiURL(url: string): void {
+  handOff(OPENAPI_PENDING_URL_KEY, url)
+}
+
+/**
+ * Legge e consuma l'URL consegnato da Code Studio; null se assente o malformato. Il documento
+ * OpenAPI non viene scaricato qui: l'API Docs mostra l'URL e l'utente conferma il fetch.
+ */
+export function takeOpenApiURLHandoff(): string | null {
+  const raw = sessionStorage.getItem(OPENAPI_PENDING_URL_KEY)
+  if (!raw) return null
+  sessionStorage.removeItem(OPENAPI_PENDING_URL_KEY)
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'string' || !parsed.trim()) return null
+    return parsed.trim()
   } catch {
     return null
   }
