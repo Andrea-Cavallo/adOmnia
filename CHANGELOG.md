@@ -4,8 +4,16 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
-## [Unreleased]
+## [1.0.14] — 2026-10-22
 
+Release notes: [docs/releases/v1.0.14.md](docs/releases/v1.0.14.md).
+
+- **Copilot buffers are redacted before sync.** A shared Go redactor masks private keys, JWTs, cloud/GitHub/Stripe/Slack tokens, passwords in connection strings and sensitive assignments in every synchronized document, including unsaved buffers. The mask preserves byte length, UTF-16 width and line breaks, so completion positions stay valid. Chat messages get the same backend defence.
+- **External agent boundaries are explicit.** The Code Studio guide documents that `.adomnia/aiignore` filters only the context adOmnia prepares; milk, Claude Code and OpenCode run their own tools and can read files themselves, and ACP exposes no per-file read restriction. The agent chat shows a notice when the project has an aiignore, and the project AI policy remains the hard stop.
+- **Every AI entry point is tested.** Copilot documents/chat, milk, Claude Code and OpenCode have tests for prompt redaction and for the project policy (plus the disabled-start path).
+- **Wails version guard in CI.** `scripts/check-wails-version.mjs` fails when `go.mod`, `docs/BUILD.md`, the README, AGENTS.md or a workflow name different Wails versions; the build workflow runs it on every change.
+- **Vault documentation and threat model.** `docs/VAULT.md` collects age+scrypt, the in-memory identity, auto-lock (30 minutes by default, 1–120), the OS keychain/DPAPI local seal for database credentials, recovery and what the vault does not protect.
+- **Native startup measurement.** `scripts/measure-startup.ps1` records first stable frame and process-tree memory with an isolated profile. First Windows measurement: 987 ms median to first frame and 175.4 MB peak tree on an empty Hub; macOS and Linux remain pending.
 - **milk 0.8/0.9 ACP features in the chat.** Slash commands announced by the agent (`available_commands_update`) appear in a keyboard-driven palette in the composer: `/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary` and the rest of milk's real ACP set.
 - **Images reach milk.** Native ACP image blocks when the agent advertises them; otherwise the image is written to a private temporary folder and referenced with `@<absolute path>` (milk's own CLI convention), then deleted at the end of the turn. The composer states which mode is in use.
 - **Background agents report back.** Turns milk starts by itself when a background job finishes are rendered as an assistant turn marked *background* instead of being dropped.
