@@ -58,6 +58,86 @@ export class Capabilities {
 }
 
 /**
+ * ConfiguredDatabase è un database che un'unità dichiara nella propria configurazione statica
+ * (per Spring Boot: `spring.datasource.*`). Contiene solo ciò che è scritto: la password non è mai
+ * inclusa, solo la sua presenza, così i segreti non attraversano binding, log o file condivisi.
+ */
+export class ConfiguredDatabase {
+    /**
+     * Name è il nome leggibile, con vendor e database quando noti.
+     */
+    "name": string;
+
+    /**
+     * Driver è l'identificatore del Database Studio ("postgres", "mysql", "sqlite", …) oppure vuoto
+     * quando il vendor è dichiarato ma lo Studio non lo sa aprire: in quel caso resta Vendor.
+     */
+    "driver"?: string;
+
+    /**
+     * Vendor è il database come lo dichiara la configurazione ("postgresql", "sqlserver", "h2"…).
+     */
+    "vendor"?: string;
+    "host"?: string;
+    "port"?: number;
+
+    /**
+     * Database è il nome del database (per SQLite il percorso del file).
+     */
+    "database"?: string;
+    "user"?: string;
+    "sslMode"?: string;
+
+    /**
+     * PasswordConfigured dice che una password è dichiarata, mai il suo valore.
+     */
+    "passwordConfigured"?: boolean;
+
+    /**
+     * Profile è il profilo di configurazione che descrive questo database ("" = base).
+     */
+    "profile"?: string;
+
+    /**
+     * Active è true per il profilo effettivamente selezionato quando la configurazione lo dice.
+     */
+    "active"?: boolean;
+
+    /**
+     * File è il percorso del file di configurazione relativo alla radice dell'unità.
+     */
+    "file"?: string;
+    "line"?: number;
+
+    /**
+     * Unresolved elenca i campi che la configurazione non risolve (placeholder `${…}`): non sono
+     * valori, vanno chiesti all'utente prima di aprire una connessione.
+     */
+    "unresolved"?: string[];
+
+    /** Creates a new ConfiguredDatabase instance. */
+    constructor($$source: Partial<ConfiguredDatabase> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ConfiguredDatabase instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ConfiguredDatabase {
+        const $$createField13_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("unresolved" in $$parsedSource) {
+            $$parsedSource["unresolved"] = $$createField13_0($$parsedSource["unresolved"]);
+        }
+        return new ConfiguredDatabase($$parsedSource as Partial<ConfiguredDatabase>);
+    }
+}
+
+/**
  * Info descrive un linguaggio registrato per la UI: identità e capability derivate.
  */
 export class Info {
@@ -84,7 +164,7 @@ export class Info {
      * Creates a new Info instance from a string or object.
      */
     static createFrom($$source: any = {}): Info {
-        const $$createField2_0 = $$createType0;
+        const $$createField2_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("capabilities" in $$parsedSource) {
             $$parsedSource["capabilities"] = $$createField2_0($$parsedSource["capabilities"]);
@@ -94,4 +174,5 @@ export class Info {
 }
 
 // Private type creation functions
-const $$createType0 = Capabilities.createFrom;
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = Capabilities.createFrom;

@@ -12,5 +12,6 @@ export const GO_LANGUAGE: IdeLanguageContribution = {
   canDebugRun: config => config.kind === 'package' || config.kind === 'build',
   editorLanguages: ['go'],
   languageServer: 'gopls',
+  implementationMarkers: true,
   menu: { id: 'go', label: 'Go' },
 }

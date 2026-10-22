@@ -1,4 +1,4 @@
-import { heavyFeatureEditorLanguages } from '@/components/ide/languages'
+import { codeVisionEditorLanguages } from '@/components/ide/languages'
 import { monaco } from '@/lib/monacoSetup'
 import { requestDocumentSymbols, requestLocations, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { getGoIDEBlame, type GoIDEVCSBlameLine } from '@/lib/code-studio-vcs-api'
@@ -9,12 +9,12 @@ import { prepareDocument } from './codeStudioLanguageFeatures'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
-const LANGUAGE = heavyFeatureEditorLanguages()
+const LANGUAGE = codeVisionEditorLanguages()
 const SHOW_USAGES_COMMAND = 'codeStudio.codeVisionUsages'
 const UNCOMMITTED_HASH = /^0+$/
 
 /** Kind LSP dei simboli che meritano Code Vision: funzioni, metodi, tipi, costanti e variabili di package. */
-const VISION_KINDS = new Set([5, 6, 11, 12, 13, 14, 23])
+const VISION_KINDS = new Set([5, 6, 10, 11, 12, 13, 14, 23])
 /** Punti di ingresso chiamati dal runtime: il conteggio degli usi sarebbe sempre zero e fuorviante. */
 const ENTRY_POINT = /^(main|init|(Test|Benchmark|Fuzz|Example)\w*)$/
 

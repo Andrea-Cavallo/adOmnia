@@ -22,12 +22,17 @@ const (
 // PluginEvents elenca gli eventi del contratto, nell'ordine in cui compaiono nella documentazione.
 var PluginEvents = []string{PluginEventProjectOpen, PluginEventProjectClose, PluginEventSave, PluginEventRunFinished}
 
-// ProjectService è un servizio esterno usato dal progetto, riconosciuto dalle dipendenze dirette in go.mod.
+// ProjectService è un servizio esterno usato dal progetto, riconosciuto dalle dipendenze dirette di
+// un'unità (go.mod, manifest Python…) oppure dalla sua configurazione (Spring `spring.datasource.*`).
 type ProjectService struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Kind    string   `json:"kind"`
 	Modules []string `json:"modules"`
+	// Databases sono i database che la configurazione del progetto dichiara per questo servizio.
+	// Contengono i valori noti e la sola presenza di una password, mai il segreto: è l'utente che
+	// crea la connessione in Database Studio, dopo aver completato ciò che manca.
+	Databases []language.ConfiguredDatabase `json:"databases,omitempty"`
 }
 
 type serviceSignature struct {
@@ -146,15 +151,17 @@ func matchesModulePrefix(modulePath string, prefixes []string) bool {
 }
 
 // ProjectServices legge le dipendenze dirette delle unità del progetto (go.mod per Go, manifest
-// Python per Python) e restituisce i servizi esterni che usano: ogni adapter sa leggere il proprio
-// manifest, qui non c'è codice per linguaggio. Un manifest illeggibile non blocca gli altri moduli:
-// il rilevamento è un suggerimento, non un requisito.
+// Python per Python) e i database che la loro configurazione dichiara, restituendo i servizi esterni
+// che usano: ogni adapter sa leggere il proprio manifest e la propria configurazione, qui non c'è
+// codice per linguaggio. Un manifest illeggibile non blocca gli altri moduli: il rilevamento è un
+// suggerimento, non un requisito.
 func (s *Service) ProjectServices(sessionID string) ([]ProjectService, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return nil, err
 	}
 	var dependencies []ServiceDependency
+	var databases []language.ConfiguredDatabase
 	for _, module := range goLayoutOf(session.Project).Modules {
 		state, err := readDependencyState(session.Project, module.Path)
 		if err != nil {
@@ -169,15 +176,64 @@ func (s *Service) ProjectServices(sessionID string) ([]ProjectService, error) {
 		if !ok {
 			continue
 		}
-		reader, ok := adapter.(language.DirectDependencies)
-		if !ok {
-			continue
+		if reader, ok := adapter.(language.DirectDependencies); ok {
+			for _, path := range reader.DirectDependencies(unit) {
+				dependencies = append(dependencies, ServiceDependency{Path: path})
+			}
 		}
-		for _, path := range reader.DirectDependencies(unit) {
-			dependencies = append(dependencies, ServiceDependency{Path: path})
+		if reader, ok := adapter.(language.ConfiguredDatabases); ok {
+			databases = append(databases, reader.ConfiguredDatabases(unit)...)
 		}
 	}
-	return detectProjectServices(dependencies), nil
+	return attachConfiguredDatabases(detectProjectServices(dependencies), databases), nil
+}
+
+// attachConfiguredDatabases unisce i database configurati ai servizi riconosciuti dalle dipendenze:
+// lo stesso driver non compare due volte, e un database senza dipendenza riconosciuta diventa una
+// riga propria. Un vendor che Database Studio non sa aprire resta visibile con il suo nome e senza
+// driver, così l'utente sa cosa il progetto usa e perché non si apre.
+func attachConfiguredDatabases(services []ProjectService, databases []language.ConfiguredDatabase) []ProjectService {
+	if len(databases) == 0 {
+		return services
+	}
+	rows := map[string]int{}
+	for index := range services {
+		if _, exists := rows[services[index].ID]; !exists {
+			rows[services[index].ID] = index
+		}
+	}
+	for _, database := range databases {
+		id := database.Driver
+		if id == "" {
+			id = database.Vendor
+		}
+		if id == "" {
+			continue
+		}
+		if index, exists := rows[id]; exists && services[index].Kind == "database" {
+			services[index].Databases = append(services[index].Databases, database)
+			continue
+		}
+		services = append(services, ProjectService{
+			ID:        id,
+			Name:      databaseServiceLabel(id, database),
+			Kind:      "database",
+			Databases: []language.ConfiguredDatabase{database},
+		})
+		rows[id] = len(services) - 1
+	}
+	return services
+}
+
+// databaseServiceLabel usa il nome noto del servizio; per un vendor senza firma il nome del
+// datasource è già descrittivo.
+func databaseServiceLabel(id string, database language.ConfiguredDatabase) string {
+	for _, signature := range serviceSignatures {
+		if signature.id == id {
+			return signature.name
+		}
+	}
+	return database.Name
 }
 
 // PluginEventFor traduce un evento interno di Code Studio nell'evento del contratto plugin.

@@ -38,6 +38,10 @@ Backend, correlation and the Delve loop are covered end to end by `internal/code
 
 Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in [MANUAL-CHECK.md](../mds/MANUAL-CHECK.md) (`JS-17.M1`–`M4`), plan in [06-JAVA-SPRING-STUDIO.md](../mds/06-JAVA-SPRING-STUDIO.md) (JS-14, JS-17).
 
+### Spring datasource → Database Studio (2026-10-22) — implemented, desktop check open
+
+*Tools → Project Services* now reads `spring.datasource.*` from `application.properties`/`.yml` and their profiles and opens Database Studio with the known target (host, port, database, user, SSL mode). The profile and `file:line` are shown, placeholders stay unresolved and are named as missing, and unsupported vendors are listed with the reason. Passwords are never read or copied — only their presence — and the connection is created without credentials, sealed by the Vault once the user enters them. No connection or process starts on project open. Implementation and automated tests are in the plan (`JS-15`); the desktop check is `JS-15.M1`.
+
 ### Code Studio (IDE) — shipped through v0.9.39, manual verification open
 
 Implemented and covered by automated tests on Windows and Linux: projects and trust, isolated sessions and restore, gopls intelligence and refactoring, linters, Fix with AI, build/run/tests/coverage, the Delve debugger, the PTY terminal, Go Tools, Git in the editor linked to Git Studio, adOmnia integrations, Code Studio workspaces and separate project windows. Details: [CODE-STUDIO.md](CODE-STUDIO.md). The work queue lives in `mds/todo-ide.md`.

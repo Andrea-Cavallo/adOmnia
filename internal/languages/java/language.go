@@ -8,6 +8,8 @@ package java
 import (
 	"path/filepath"
 	"strings"
+
+	"adomnia/internal/ide/language"
 )
 
 // ID è salvato in project.Unit.Language e nelle configurazioni di run.
@@ -26,6 +28,19 @@ func New() *Language { return &Language{} }
 
 func (*Language) ID() string   { return ID }
 func (*Language) Name() string { return "Java" }
+
+// ImplementationDirection implementa language.ImplementationMarkers: JDT LS risponde a
+// `textDocument/implementation` sempre "in basso" — i sottotipi di una classe o interfaccia e i
+// metodi che sovrascrivono quello indicato — quindi il marcatore I↓ dice quanti override esistono
+// nel progetto. È il contrario di gopls sui tipi concreti, ed è per questo che la direzione la
+// dichiara l'adapter.
+func (*Language) ImplementationDirection(kind int) string {
+	switch kind {
+	case 5, 6, 10, 11, 23: // Class (record compresi), Method, Enum, Interface, Struct
+		return language.MarkerImplementedBy
+	}
+	return ""
+}
 
 // DocumentLanguageID restituisce il languageId LSP dei sorgenti Java.
 func (*Language) DocumentLanguageID(path string) (string, bool) {

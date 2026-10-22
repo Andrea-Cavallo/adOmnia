@@ -31,6 +31,17 @@ export interface IdeLanguageContribution {
    * linguaggi che non le hanno ancora verificate con il proprio server; default vero.
    */
   heavyFeatures?: boolean
+  /**
+   * Il language server risponde a `textDocument/implementation` e i marcatori I↑/I↓ hanno senso per
+   * questo linguaggio (gopls e JDT LS sì, un server senza implementazioni no).
+   */
+  implementationMarkers?: boolean
+  /**
+   * Code Vision (usi del simbolo + autore git) su questo linguaggio. Default: come `heavyFeatures`.
+   * Java lo accende da solo: richiede solo document symbols e references, non gli inlay hints, che
+   * restano spenti finché JDT LS non li serve davvero.
+   */
+  codeVision?: boolean
   /** Colori semantici (semantic tokens del language server) anche con `heavyFeatures: false`: sono generici, non tarati su gopls. */
   semanticTokens?: boolean
   /**
@@ -80,6 +91,16 @@ export function heavyFeatureEditorLanguages(): string[] {
 /** ID Monaco su cui registrare i colori semantici: le funzioni pesanti più i linguaggi che li chiedono da soli. */
 export function semanticTokenEditorLanguages(): string[] {
   return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false || language.semanticTokens).flatMap((language) => language.editorLanguages)
+}
+
+/** ID Monaco per cui ha senso calcolare i marcatori I↑/I↓ di implementazione. */
+export function implementationMarkerEditorLanguages(): string[] {
+  return IDE_LANGUAGES.filter((language) => language.implementationMarkers).flatMap((language) => language.editorLanguages)
+}
+
+/** ID Monaco su cui registrare Code Vision: le funzioni pesanti più i linguaggi che lo chiedono da soli. */
+export function codeVisionEditorLanguages(): string[] {
+  return IDE_LANGUAGES.filter((language) => language.codeVision ?? language.heavyFeatures !== false).flatMap((language) => language.editorLanguages)
 }
 
 /** Linguaggio dell'IDE che serve i file con questo ID Monaco (per icona, LSP, widget). */

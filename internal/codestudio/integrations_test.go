@@ -1,10 +1,14 @@
 package codestudio
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"adomnia/internal/ide/language"
 )
 
 func TestDetectProjectServicesUsesDirectDependenciesOnly(t *testing.T) {
@@ -40,6 +44,75 @@ func TestProjectServicesReadsEveryModule(t *testing.T) {
 	}
 	if len(services) != 1 || services[0].ID != "mongodb" {
 		t.Fatalf("services = %#v", services)
+	}
+}
+
+func TestAttachConfiguredDatabasesMergesTheSameDriverOnlyOnce(t *testing.T) {
+	services := detectProjectServices([]ServiceDependency{{Path: "github.com/jackc/pgx/v5"}})
+	databases := []language.ConfiguredDatabase{
+		{Name: "PostgreSQL · orders", Driver: "postgres", Host: "db", Port: 5432, Database: "orders"},
+		{Name: "PostgreSQL · billing (prod)", Driver: "postgres", Host: "db", Port: 5432, Database: "billing", Profile: "prod"},
+		{Name: "Microsoft SQL Server · warehouse", Vendor: "sqlserver", Host: "sql", Port: 1433, Database: "warehouse"},
+	}
+	merged := attachConfiguredDatabases(services, databases)
+	if len(merged) != 2 {
+		t.Fatalf("services = %#v", merged)
+	}
+	if merged[0].ID != "postgres" || len(merged[0].Databases) != 2 || merged[0].Modules == nil {
+		t.Fatalf("postgres row = %#v", merged[0])
+	}
+	if merged[1].ID != "sqlserver" || merged[1].Kind != "database" || merged[1].Name != "Microsoft SQL Server · warehouse" {
+		t.Fatalf("unsupported vendor row = %#v", merged[1])
+	}
+	if merged[1].Databases[0].Driver != "" {
+		t.Fatalf("unsupported vendor must not get a driver: %#v", merged[1])
+	}
+}
+
+func TestAttachConfiguredDatabasesCreatesARowWithoutDependencies(t *testing.T) {
+	merged := attachConfiguredDatabases(nil, []language.ConfiguredDatabase{
+		{Name: "PostgreSQL · orders", Driver: "postgres", Host: "db", Port: 5432, Database: "orders"},
+	})
+	want := []ProjectService{{
+		ID: "postgres", Name: "PostgreSQL", Kind: "database",
+		Databases: []language.ConfiguredDatabase{{Name: "PostgreSQL · orders", Driver: "postgres", Host: "db", Port: 5432, Database: "orders"}},
+	}}
+	if !reflect.DeepEqual(merged, want) {
+		t.Fatalf("merged = %#v, want %#v", merged, want)
+	}
+}
+
+func TestProjectServicesReadsTheSpringDatasource(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "pom.xml"), `<project><modelVersion>4.0.0</modelVersion><groupId>com.acme</groupId><artifactId>orders</artifactId><version>1.0.0</version></project>`)
+	writeUnitDir(t, root, "src/main/resources")
+	writeFile(t, filepath.Join(root, "src", "main", "resources", "application.properties"), "spring.datasource.url=jdbc:postgresql://localhost:5432/orders\nspring.datasource.username=app\nspring.datasource.password=secret\n")
+	service := NewService(&memoryStore{}, nil)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = service.CloseSession(string(session.ID)) }()
+	services, err := service.ProjectServices(string(session.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(services) != 1 || services[0].ID != "postgres" || services[0].Kind != "database" {
+		t.Fatalf("services = %#v", services)
+	}
+	database := services[0].Databases
+	if len(database) != 1 || database[0].Host != "localhost" || database[0].Port != 5432 || database[0].Database != "orders" || database[0].User != "app" {
+		t.Fatalf("databases = %#v", database)
+	}
+	if !database[0].PasswordConfigured {
+		t.Fatalf("password presence lost: %#v", database[0])
+	}
+	encoded, err := json.Marshal(services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "secret") {
+		t.Fatalf("password leaked into the binding payload: %s", encoded)
 	}
 }
 

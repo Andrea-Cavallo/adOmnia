@@ -10,6 +10,8 @@ I riferimenti locali possono essere esportati ma non sono decifrabili su un'altr
 
 ## Connessione
 
+Una connessione può anche arrivare da Code Studio: *Tools → Project Services* legge i `spring.datasource.*` del progetto e apre Database Studio con host, porta, database, utente e SSL mode noti. La password dichiarata nella configurazione del progetto **non** viene importata (Code Studio ne registra solo la presenza): il campo resta vuoto e viene sigillato con lo stesso meccanismo delle altre connessioni quando l'utente la inserisce. I valori non risolti (`${DB_HOST}`) sono elencati come mancanti, non inventati.
+
 **Connect** conserva un client SQL/MongoDB/Redis in Go. **Disconnect** chiude il client; una query successiva può connettersi nuovamente. Lo stato e la latenza vengono aggiornati nella lista e nel form. **Test Connection** apre, verifica e chiude un client distinto, senza modificare la sessione persistente.
 
 Il backend controlla la connessione circa ogni 30 secondi, ritenta gli errori con backoff da 1 a 30 secondi e jitter, e chiude i client inattivi dopo 15 minuti per default. Il campo **Idle (min)** consente 1–120 minuti. **Auto-connect on selection** abilita la connessione quando si seleziona la voce; senza questa preferenza la prima query connette su richiesta.

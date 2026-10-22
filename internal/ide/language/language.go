@@ -51,6 +51,61 @@ type DirectDependencies interface {
 	DirectDependencies(unit project.Unit) []string
 }
 
+// Direzioni dei marcatori di implementazione: quale relazione descrive `textDocument/implementation`
+// per un simbolo. `implementedBy` = il simbolo è implementato o sovrascritto altrove (freccia in
+// basso), `implements` = il simbolo implementa altre interfacce (freccia in alto).
+const (
+	MarkerImplementedBy = "implementedBy"
+	MarkerImplements    = "implements"
+)
+
+// ImplementationMarkers dichiara come il language server del linguaggio risponde a
+// `textDocument/implementation` per un simbolo di un certo kind LSP. I server non sono d'accordo:
+// gopls su un tipo concreto restituisce le interfacce che implementa, JDT LS i sottotipi. Il core
+// non indovina: chiede all'adapter. Senza questa capability resta la semantica di Go, l'unica
+// verificata prima di Java.
+type ImplementationMarkers interface {
+	ImplementationDirection(kind int) string
+}
+
+// ConfiguredDatabase è un database che un'unità dichiara nella propria configurazione statica
+// (per Spring Boot: `spring.datasource.*`). Contiene solo ciò che è scritto: la password non è mai
+// inclusa, solo la sua presenza, così i segreti non attraversano binding, log o file condivisi.
+type ConfiguredDatabase struct {
+	// Name è il nome leggibile, con vendor e database quando noti.
+	Name string `json:"name"`
+	// Driver è l'identificatore del Database Studio ("postgres", "mysql", "sqlite", …) oppure vuoto
+	// quando il vendor è dichiarato ma lo Studio non lo sa aprire: in quel caso resta Vendor.
+	Driver string `json:"driver,omitempty"`
+	// Vendor è il database come lo dichiara la configurazione ("postgresql", "sqlserver", "h2"…).
+	Vendor string `json:"vendor,omitempty"`
+	Host   string `json:"host,omitempty"`
+	Port   int    `json:"port,omitempty"`
+	// Database è il nome del database (per SQLite il percorso del file).
+	Database string `json:"database,omitempty"`
+	User     string `json:"user,omitempty"`
+	SSLMode  string `json:"sslMode,omitempty"`
+	// PasswordConfigured dice che una password è dichiarata, mai il suo valore.
+	PasswordConfigured bool `json:"passwordConfigured,omitempty"`
+	// Profile è il profilo di configurazione che descrive questo database ("" = base).
+	Profile string `json:"profile,omitempty"`
+	// Active è true per il profilo effettivamente selezionato quando la configurazione lo dice.
+	Active bool `json:"active,omitempty"`
+	// File è il percorso del file di configurazione relativo alla radice dell'unità.
+	File string `json:"file,omitempty"`
+	Line int    `json:"line,omitempty"`
+	// Unresolved elenca i campi che la configurazione non risolve (placeholder `${…}`): non sono
+	// valori, vanno chiesti all'utente prima di aprire una connessione.
+	Unresolved []string `json:"unresolved,omitempty"`
+}
+
+// ConfiguredDatabases elenca i database dichiarati dalla configurazione statica di un'unità.
+// Serve a Project services: un progetto Spring con `spring.datasource.url` apre Database Studio
+// con host, porta e database già noti, senza leggere segreti e senza connettersi da sola.
+type ConfiguredDatabases interface {
+	ConfiguredDatabases(unit project.Unit) []ConfiguredDatabase
+}
+
 // ProjectDetector riconosce le unità di build del linguaggio sotto root.
 type ProjectDetector interface {
 	DetectUnits(ctx context.Context, root string) ([]project.Unit, error)

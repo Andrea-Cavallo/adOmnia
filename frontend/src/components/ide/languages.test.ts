@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
-import { IDE_LANGUAGES, exceptionFiltersFor, heavyFeatureEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
+import { IDE_LANGUAGES, codeVisionEditorLanguages, exceptionFiltersFor, heavyFeatureEditorLanguages, implementationMarkerEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages } from './languages'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
@@ -31,6 +31,17 @@ describe('IDE language contributions', () => {
 
   it('keeps the gopls-tuned features (semantic colors, inlay hints, Code Vision) on Go only', () => {
     expect(heavyFeatureEditorLanguages()).toEqual(['go'])
+  })
+
+  it('gives Java Code Vision and implementation markers without gopls-only inlay hints', () => {
+    const java = IDE_LANGUAGES.find(language => language.id === 'java')!
+    expect(java.heavyFeatures).toBe(false)
+    expect(java.semanticTokens).toBe(true)
+    expect(java.codeVision).toBe(true)
+    expect(java.implementationMarkers).toBe(true)
+    expect(codeVisionEditorLanguages()).toEqual(['go', 'java'])
+    expect(implementationMarkerEditorLanguages()).toEqual(['go', 'java'])
+    expect(heavyFeatureEditorLanguages()).not.toContain('java')
   })
 
   it('declares the debugpy exception filters and gathers them per project language', () => {

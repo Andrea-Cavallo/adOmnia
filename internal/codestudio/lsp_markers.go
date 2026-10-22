@@ -3,6 +3,8 @@ package codestudio
 import (
 	"context"
 	"time"
+
+	"adomnia/internal/ide/language"
 )
 
 const (
@@ -30,20 +32,46 @@ type implementationTarget struct {
 	direction string
 }
 
-// implementationTargets sceglie i simboli da interrogare: interfacce e loro metodi, tipi e metodi concreti.
-func implementationTargets(symbols []SymbolNode) []implementationTarget {
+// implementationTargets sceglie i simboli da interrogare, ricorsivamente: un override vive dentro
+// la classe che lo dichiara, non solo dentro un'interfaccia. La direzione la dichiara l'adapter del
+// linguaggio; senza la capability resta la semantica storica di Go, invariata.
+func implementationTargets(symbols []SymbolNode, semantics language.ImplementationMarkers) []implementationTarget {
+	if semantics == nil {
+		return legacyImplementationTargets(symbols)
+	}
+	direction := semantics.ImplementationDirection
+	targets := make([]implementationTarget, 0, len(symbols))
+	var visit func(nodes []SymbolNode)
+	visit = func(nodes []SymbolNode) {
+		for _, node := range nodes {
+			if len(targets) >= maxImplementationTargets {
+				return
+			}
+			if value := direction(node.Kind); value != "" {
+				targets = append(targets, implementationTarget{node, value})
+			}
+			visit(node.Children)
+		}
+	}
+	visit(symbols)
+	return targets
+}
+
+// legacyImplementationTargets è la semantica di Go precedente alla capability: interfacce e loro
+// metodi implementati, tipi e metodi concreti che implementano interfacce.
+func legacyImplementationTargets(symbols []SymbolNode) []implementationTarget {
 	targets := make([]implementationTarget, 0, len(symbols))
 	for _, node := range symbols {
 		switch node.Kind {
 		case symbolKindInterface:
-			targets = append(targets, implementationTarget{node, "implementedBy"})
+			targets = append(targets, implementationTarget{node, language.MarkerImplementedBy})
 			for _, child := range node.Children {
 				if child.Kind == symbolKindMethod {
-					targets = append(targets, implementationTarget{child, "implementedBy"})
+					targets = append(targets, implementationTarget{child, language.MarkerImplementedBy})
 				}
 			}
 		case symbolKindStruct, symbolKindClass, symbolKindMethod:
-			targets = append(targets, implementationTarget{node, "implements"})
+			targets = append(targets, implementationTarget{node, language.MarkerImplements})
 		}
 		if len(targets) >= maxImplementationTargets {
 			return targets[:maxImplementationTargets]
@@ -65,11 +93,15 @@ func (s *Service) ImplementationMarkers(ctx context.Context, sessionID, document
 		return nil, err
 	}
 	relativePath := ""
+	var semantics language.ImplementationMarkers
 	if document, ok := s.documents.Get(SessionID(sessionID), DocumentID(documentID)); ok {
 		relativePath = document.RelativePath
+		if adapter, ok := s.workspace.languages.Get(document.Language); ok {
+			semantics, _ = adapter.(language.ImplementationMarkers)
+		}
 	}
 	markers := make([]ImplementationMarker, 0)
-	for _, target := range implementationTargets(symbols) {
+	for _, target := range implementationTargets(symbols, semantics) {
 		if ctx.Err() != nil {
 			break
 		}

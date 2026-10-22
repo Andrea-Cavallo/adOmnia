@@ -3,5 +3,6 @@
 
 export {
     Capabilities,
+    ConfiguredDatabase,
     Info
 } from "./models.js";

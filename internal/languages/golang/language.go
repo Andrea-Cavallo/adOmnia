@@ -5,6 +5,8 @@
 // converge qui fase dopo fase (docs/architecture/ide-multilanguage-refactor.md).
 package golang
 
+import "adomnia/internal/ide/language"
+
 // ID del linguaggio Go, salvato in project.Unit.Language.
 const ID = "go"
 
@@ -22,3 +24,16 @@ func New() *Language { return &Language{} }
 
 func (*Language) ID() string   { return ID }
 func (*Language) Name() string { return "Go" }
+
+// ImplementationDirection implementa language.ImplementationMarkers: gopls risponde a
+// `textDocument/implementation` con le interfacce che un tipo concreto implementa e con i tipi che
+// implementano un'interfaccia. È la semantica storica dei marcatori I↑/I↓, invariata.
+func (*Language) ImplementationDirection(kind int) string {
+	switch kind {
+	case 11: // Interface: implementata da tipi e metodi
+		return language.MarkerImplementedBy
+	case 5, 6, 23: // Class, Method, Struct: implementa interfacce
+		return language.MarkerImplements
+	}
+	return ""
+}

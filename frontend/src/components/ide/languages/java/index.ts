@@ -7,8 +7,10 @@ export const JAVA_LANGUAGE_ID = 'java'
 
 /**
  * Java (Maven e Gradle) con Eclipse JDT LS, installato dopo conferma nella cartella strumenti di
- * adOmnia (`lsp.ServerProvider` dell'adapter). `heavyFeatures` resta spento (inlay hints e Code Vision non
- * sono verificati con JDT LS); i colori semantici sono accesi: JDT LS li serve come gopls.
+ * adOmnia (`lsp.ServerProvider` dell'adapter). Code Vision è accesa (usi + autore git, dagli stessi
+ * document symbols e references di gopls), i marcatori I↓ contano sottotipi e override. Gli inlay
+ * hints restano spenti: JDT LS 1.60 non applica la preferenza nel nostro client, quindi il toggle
+ * sarebbe un pulsante che non fa nulla.
  */
 export const JAVA_LANGUAGE: IdeLanguageContribution = {
   id: JAVA_LANGUAGE_ID,
@@ -20,6 +22,8 @@ export const JAVA_LANGUAGE: IdeLanguageContribution = {
   languageServer: 'Eclipse JDT LS',
   heavyFeatures: false,
   semanticTokens: true,
+  codeVision: true,
+  implementationMarkers: true,
   providedServer: true,
   menu: { id: 'java', label: 'Java' },
 }

@@ -3,19 +3,23 @@ import { monaco } from '@/lib/monacoSetup'
 import { requestImplementationMarkers, type GoIDEImplementationMarker } from '@/lib/code-studio-lsp-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { implementationMarkerEditorLanguages } from '@/components/ide/languages'
 import { documentForModel, navigateToLocation } from './codeStudioLanguageFeatures'
 import { symbolPathAt } from './codeStudioSymbols'
 import { flushCodeStudioDocument } from './codeStudioLspSync'
 
 const REFRESH_DEBOUNCE_MS = 900
+/** ID Monaco dei linguaggi il cui server risponde a `textDocument/implementation` (Go, Java). */
+const MARKER_LANGUAGES = new Set(implementationMarkerEditorLanguages())
 
 /** Marcatori e decorazioni di ciascun editor: le decorazioni seguono il testo, quindi dicono la riga attuale. */
 const markersByEditor = new WeakMap<monaco.editor.ICodeEditor, { markers: GoIDEImplementationMarker[]; collection: monaco.editor.IEditorDecorationsCollection }>()
 
-function describe(marker: GoIDEImplementationMarker): string {
+/** Testo del tooltip: vale per tipi e metodi, così «implemented by 2» è vero in entrambi i casi. */
+export function describeImplementationMarker(marker: GoIDEImplementationMarker): string {
   const count = marker.locations.length
   return marker.direction === 'implementedBy'
-    ? `${marker.name} is implemented by ${count} ${count === 1 ? 'type' : 'types'} · click to navigate`
+    ? `${marker.name} has ${count} ${count === 1 ? 'implementation' : 'implementations'} · click to navigate`
     : `${marker.name} implements ${count} ${count === 1 ? 'interface' : 'interfaces'} · click to navigate`
 }
 
@@ -24,7 +28,7 @@ export function implementationDecorations(markers: GoIDEImplementationMarker[]):
     range: { startLineNumber: marker.line, startColumn: 1, endLineNumber: marker.line, endColumn: 1 },
     options: {
       glyphMarginClassName: marker.direction === 'implementedBy' ? 'code-studio-impl-glyph code-studio-impl-down' : 'code-studio-impl-glyph code-studio-impl-up',
-      glyphMarginHoverMessage: { value: describe(marker) },
+      glyphMarginHoverMessage: { value: describeImplementationMarker(marker) },
     },
   }))
 }
@@ -48,12 +52,13 @@ export function openImplementationMarker(editor: monaco.editor.ICodeEditor, line
   return true
 }
 
-/** Aggiorna i marcatori del file quando gopls è pronto e dopo una pausa nella scrittura. */
+/** Aggiorna i marcatori del file quando il language server è pronto e dopo una pausa nella scrittura. */
 export function useCodeStudioImplementationMarkers(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
-  const { sessionId, id, external, name } = document.document
+  const { sessionId, id, external } = document.document
   const lspReady = useCodeStudioLspStore((state) => state.status[sessionId]?.state === 'ready')
   const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
-  const enabled = lspReady && !external && name.endsWith('.go')
+  // Il linguaggio viene dal file aperto, non dal nome: Java e Go usano la stessa meccanica.
+  const enabled = lspReady && !external && MARKER_LANGUAGES.has(document.document.language)
 
   useEffect(() => {
     const editor = editorRef.current
@@ -105,5 +110,5 @@ export function goToSuperMethod(editor: monaco.editor.ICodeEditor): void {
       return
     }
   }
-  useCodeStudioLspStore.setState({ message: 'Go to Super Method: the symbol at the caret does not implement an interface.' })
+  useCodeStudioLspStore.setState({ message: 'Go to Super Method: no I↑ marker at the symbol under the caret.' })
 }
