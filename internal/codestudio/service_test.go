@@ -139,10 +139,10 @@ func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
 	if !pythonCaps.Run || !pythonCaps.Tests || !pythonCaps.Debug || !pythonCaps.LanguageServer {
 		t.Fatalf("Python capabilities = %+v", pythonCaps)
 	}
-	// Rust in RS-2/3/4 rileva crate, documenti, esegue (cargo run/build/check) e ha rust-analyzer;
-	// non ha ancora test strutturati né debug.
+	// Rust in RS-2/3/4/5 rileva crate, documenti, esegue, ha rust-analyzer e test strutturati
+	// (cargo test); non ha ancora il debug.
 	rustCaps := capabilitiesFor(t, languages, rust.ID)
-	if !rustCaps.ProjectDetection || !rustCaps.Documents || !rustCaps.Run || !rustCaps.LanguageServer || rustCaps.Tests || rustCaps.Debug {
+	if !rustCaps.ProjectDetection || !rustCaps.Documents || !rustCaps.Run || !rustCaps.LanguageServer || !rustCaps.Tests || rustCaps.Debug {
 		t.Fatalf("Rust capabilities = %+v", rustCaps)
 	}
 }
