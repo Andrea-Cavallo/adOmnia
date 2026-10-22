@@ -506,6 +506,14 @@ func extractPackage(name, root string) error {
 			in.Close()
 			return e
 		}
+		// Hardening decompression bomb: ogni file di un archivio di release ha un tetto assoluto,
+		// la dimensione dichiarata da zip non è credibile (semgrep potential-dos-via-decompression-bomb).
+		const maxEntryBytes = int64(1) << 30 // 1 GiB: un archivio di adOmnia non lo supera
+		if int64(f.UncompressedSize64) > maxEntryBytes {
+			_ = in.Close()
+			_ = out.Close()
+			return fmt.Errorf("update archive entry %s declares more than 1 GiB, refusing to extract", f.Name)
+		}
 		n, e := io.Copy(out, io.LimitReader(in, int64(f.UncompressedSize64)+1))
 		in.Close()
 		closeErr := out.Close()

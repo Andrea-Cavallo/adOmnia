@@ -480,12 +480,8 @@ export async function loadFlowDefinitions(): Promise<SavedFlowDefinition[]> {
 export async function saveFlowDefinitions(value: unknown): Promise<SavedFlowDefinition[]> {
   const definitions = normalizeFlowDefinitions(value)
   safeSetItem(LEGACY_STORAGE_KEY, JSON.stringify(definitions))
-  try {
-    await StoragePut(STORAGE_BUCKET, STORAGE_ITEM, JSON.stringify(definitions))
-  } catch (error) {
-    // Wails 3 bindings are statically imported: a failed call is a real
-    // backend failure, not evidence that the bridge is absent.
-    throw error
-  }
+  // Wails 3 bindings are statically imported: a failed call is a real
+  // backend failure, not evidence that the bridge is absent.
+  await StoragePut(STORAGE_BUCKET, STORAGE_ITEM, JSON.stringify(definitions))
   return definitions
 }

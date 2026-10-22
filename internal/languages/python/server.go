@@ -103,13 +103,9 @@ func (l *Language) UnitServerSpec(projectRoot, root, toolsRoot string) (lsp.Serv
 	return spec, nil
 }
 
-// pyrightSettings è la configurazione servita a workspace/configuration: l'interprete scelto
+// pyrightUnitSettings è la configurazione servita a workspace/configuration: l'interprete scelto
 // per il progetto, così i import si risolvono con lo stesso ambiente di Run/Test/Debug (PY-2.5).
 // pyrightconfig.json e [tool.pyright] del progetto restano la fonte delle altre impostazioni.
-func pyrightSettings(root string) any {
-	return pyrightUnitSettings(root, root)
-}
-
 func pyrightUnitSettings(projectRoot, root string) any {
 	settings := map[string]any{
 		"python":       map[string]any{},

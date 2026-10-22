@@ -36,8 +36,8 @@ var (
 	// inlineVersion è `version = "…"` in una tabella inline.
 	inlineVersion = regexp.MustCompile(`\bversion\s*=\s*"([^"]*)"`)
 	// inlinePath / inlineGit / inlineFeatures leggono gli altri campi della tabella inline.
-	inlinePath     = regexp.MustCompile(`\bpath\s*=\s*"([^"]*)"`)
-	inlineGit      = regexp.MustCompile(`\bgit\s*=\s*"([^"]*)"`)
+	inlinePath      = regexp.MustCompile(`\bpath\s*=\s*"([^"]*)"`)
+	inlineGit       = regexp.MustCompile(`\bgit\s*=\s*"([^"]*)"`)
 	inlineWorkspace = regexp.MustCompile(`\bworkspace\s*=\s*true\b`)
 )
 

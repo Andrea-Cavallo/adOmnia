@@ -9,7 +9,7 @@ import (
 
 func TestSplitModuleVersion(t *testing.T) {
 	cases := map[string][2]string{
-		"example.com/a@v1.2.3":  {"example.com/a", "v1.2.3"},
+		"example.com/a@v1.2.3":   {"example.com/a", "v1.2.3"},
 		"example.com/a":          {"example.com/a", ""},
 		"example.com/a/b@latest": {"example.com/a/b", "latest"},
 	}
@@ -45,11 +45,11 @@ func TestFindDuplicatesDetectsDiamond(t *testing.T) {
 func TestClassifyLicense(t *testing.T) {
 	cases := map[string]string{
 		"Copyright 2020\n\nLicensed under the Apache License, Version 2.0 (the \"License\");": "Apache-2.0",
-		"MIT License\n\nPermission is hereby granted, free of charge, to any person":            "MIT",
-		"The MIT License (MIT)\n\nTHE SOFTWARE IS PROVIDED \"AS IS\"":                            "MIT",
-		"GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007":                                   "GPL-3.0",
-		"Mozilla Public License Version 2.0":                                                    "MPL-2.0",
-		"Copyright (c) 2020. Redistribution and use in source and binary forms":                 "BSD",
+		"MIT License\n\nPermission is hereby granted, free of charge, to any person":          "MIT",
+		"The MIT License (MIT)\n\nTHE SOFTWARE IS PROVIDED \"AS IS\"":                         "MIT",
+		"GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007":                                 "GPL-3.0",
+		"Mozilla Public License Version 2.0":                                                  "MPL-2.0",
+		"Copyright (c) 2020. Redistribution and use in source and binary forms":               "BSD",
 	}
 	for text, want := range cases {
 		if got := classifyLicense(text); got != want {

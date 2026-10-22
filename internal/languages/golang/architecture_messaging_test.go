@@ -11,10 +11,10 @@ import (
 
 func TestNATSAndAMQPTopics(t *testing.T) {
 	report, root := loadFixture(t, map[string]string{
-		"go.mod":                 "module example.com/events\n\ngo 1.22\n\nrequire (\n\tgithub.com/nats-io/nats.go v0.0.0\n\tgithub.com/rabbitmq/amqp091-go v0.0.0\n)\n\nreplace github.com/nats-io/nats.go => ./third_party/nats\n\nreplace github.com/rabbitmq/amqp091-go => ./third_party/amqp\n",
-		"third_party/nats/go.mod": "module github.com/nats-io/nats.go\n\ngo 1.22\n",
+		"go.mod":                   "module example.com/events\n\ngo 1.22\n\nrequire (\n\tgithub.com/nats-io/nats.go v0.0.0\n\tgithub.com/rabbitmq/amqp091-go v0.0.0\n)\n\nreplace github.com/nats-io/nats.go => ./third_party/nats\n\nreplace github.com/rabbitmq/amqp091-go => ./third_party/amqp\n",
+		"third_party/nats/go.mod":  "module github.com/nats-io/nats.go\n\ngo 1.22\n",
 		"third_party/nats/nats.go": "package nats\n\ntype Msg struct{}\ntype Conn struct{}\ntype Subscription struct{}\nfunc (*Conn) Publish(subject string, data []byte) error { return nil }\nfunc (*Conn) QueueSubscribe(subject, queue string, cb func(*Msg)) (*Subscription, error) { return nil, nil }\n",
-		"third_party/amqp/go.mod": "module github.com/rabbitmq/amqp091-go\n\ngo 1.22\n",
+		"third_party/amqp/go.mod":  "module github.com/rabbitmq/amqp091-go\n\ngo 1.22\n",
 		"third_party/amqp/amqp.go": "package amqp091\n\nimport \"context\"\n\ntype Publishing struct{}\ntype Delivery struct{}\ntype Channel struct{}\nfunc (*Channel) PublishWithContext(ctx context.Context, exchange, key string, mandatory, immediate bool, msg Publishing) error { return nil }\nfunc (*Channel) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args map[string]any) (<-chan Delivery, error) { return nil, nil }\n",
 		"events/events.go": `package events
 

@@ -11,8 +11,8 @@ import (
 
 func TestEnvAndConfigReads(t *testing.T) {
 	report, root := loadFixture(t, map[string]string{
-		"go.mod":                   "module example.com/cfg\n\ngo 1.22\n\nrequire github.com/spf13/viper v0.0.0\n\nreplace github.com/spf13/viper => ./third_party/viper\n",
-		"third_party/viper/go.mod": "module github.com/spf13/viper\n\ngo 1.22\n",
+		"go.mod":                     "module example.com/cfg\n\ngo 1.22\n\nrequire github.com/spf13/viper v0.0.0\n\nreplace github.com/spf13/viper => ./third_party/viper\n",
+		"third_party/viper/go.mod":   "module github.com/spf13/viper\n\ngo 1.22\n",
 		"third_party/viper/viper.go": "package viper\n\nfunc GetString(key string) string { return \"\" }\n",
 		"app/app.go": `package app
 

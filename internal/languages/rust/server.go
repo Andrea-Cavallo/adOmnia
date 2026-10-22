@@ -54,9 +54,9 @@ func (l *Language) UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.
 	targetDir := rustAnalyzerTargetDir(projectRoot)
 	return lsp.ServerSpec{
 		Language: ID, Name: info.Name, Binary: info.Binary,
-		Configuration:     func() any { return rustAnalyzerSettings(targetDir) },
-		WatchesFile:       watchesRustFile,
-		TraceEnvironment:  []string{"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"},
+		Configuration:    func() any { return rustAnalyzerSettings(targetDir) },
+		WatchesFile:      watchesRustFile,
+		TraceEnvironment: []string{"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"},
 	}, nil
 }
 

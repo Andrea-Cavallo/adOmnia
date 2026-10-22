@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	sharedRunConfigFile       = ".adomnia/run-configurations.json"
-	maxSharedRunConfigBytes   = 1 << 20
+	sharedRunConfigFile     = ".adomnia/run-configurations.json"
+	maxSharedRunConfigBytes = 1 << 20
 )
 
 // normalizeCommandConfiguration preserves the legacy facade while core owns common rules.
@@ -72,7 +72,6 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 	s.rememberRunRequest(execution.ID, request)
 	return execution, nil
 }
-
 
 // validateCompound accetta solo configurazioni esistenti della sessione e non a loro volta compound.
 func (s *Service) validateCompound(session Session, config RunConfiguration) error {
@@ -163,4 +162,3 @@ func (m *RunConfigManager) Import(sessionID SessionID, config RunConfiguration) 
 	}
 	return m.core.Import(sessionID, toCoreConfiguration(normalized))
 }
-

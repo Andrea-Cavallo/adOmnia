@@ -147,7 +147,6 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 func mainEntries(unit project.Unit) []suggestEntry {
 	var entries []suggestEntry
 	for _, found := range findMainClasses(unit.Root) {
-		found := found
 		simple := found.Class[strings.LastIndex(found.Class, ".")+1:]
 		module := moduleFlag(unit.Root, found.Module)
 		switch {

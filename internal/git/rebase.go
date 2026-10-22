@@ -109,10 +109,10 @@ func buildRebaseTodo(items []RebaseTodoItem) string {
 			action = "pick"
 		}
 		if action == "drop" {
-			b.WriteString(fmt.Sprintf("drop %s %s\n", it.Hash, it.Message))
+			fmt.Fprintf(&b, "drop %s %s\n", it.Hash, it.Message)
 			continue
 		}
-		b.WriteString(fmt.Sprintf("%s %s %s\n", action, it.Hash, it.Message))
+		fmt.Fprintf(&b, "%s %s %s\n", action, it.Hash, it.Message)
 	}
 	return b.String()
 }

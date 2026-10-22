@@ -1,4 +1,4 @@
-﻿package java
+package java
 
 import (
 	"encoding/json"
@@ -113,4 +113,3 @@ func mavenUserSettings() string {
 	}
 	return ""
 }
-

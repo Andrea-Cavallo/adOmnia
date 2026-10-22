@@ -250,7 +250,6 @@ func (m *ConnectionManager) monitor() {
 	}
 }
 func (m *ConnectionManager) maintain(now time.Time) {
-
 	m.mu.Lock()
 	list := make([]*connectionHandle, 0, len(m.entries))
 	for _, h := range m.entries {

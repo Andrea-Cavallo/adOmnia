@@ -103,7 +103,6 @@ func TestIdleLanguageServerResumesAndReusesProcess(t *testing.T) {
 	if manager.Status(session.ID, golang.ID).PID != 0 {
 		t.Fatal("manual stop resumed automatically")
 	}
-
 }
 
 func TestHibernateLanguageServerReplaysDirtyBuffersOnWindowReturn(t *testing.T) {

@@ -80,7 +80,7 @@ func resolveDependencySource(project Project, moduleDirectory, modulePath, modCa
 			source.Version = dependency.Version
 			break
 		}
-	}	// 1. replace locale: il sorgente è la cartella scelta dallo sviluppatore, dentro o fuori dal progetto.
+	} // 1. replace locale: il sorgente è la cartella scelta dallo sviluppatore, dentro o fuori dal progetto.
 	cachePath, cacheVersion := modulePath, source.Version
 	for _, replacement := range state.Replacements {
 		if replacement.Path != modulePath || replacement.Version != "" {
@@ -166,7 +166,7 @@ func describeDependencyDirectory(project Project, source DependencySource, direc
 	return source
 }
 
-// projectRelativePath rende un assoluto relativo al progetto, o '' se ne è fuori.
+// projectRelativePath rende un assoluto relativo al progetto, o ” se ne è fuori.
 func projectRelativePath(project Project, path string) string {
 	if path == "" {
 		return ""

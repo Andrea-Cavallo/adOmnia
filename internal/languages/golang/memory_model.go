@@ -38,7 +38,9 @@ func groupKind(ops []ArchSync) string {
 	return "other"
 }
 
-func where(op ArchSync) string { return fmt.Sprintf("%s (%s:%d)", op.Function, op.Site.Path, op.Site.Line) }
+func where(op ArchSync) string {
+	return fmt.Sprintf("%s (%s:%d)", op.Function, op.Site.Path, op.Site.Line)
+}
 
 func pick(ops []ArchSync, kinds ...string) []ArchSync {
 	var out []ArchSync

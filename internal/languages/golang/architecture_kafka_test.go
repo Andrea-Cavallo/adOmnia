@@ -2,11 +2,11 @@ package golang
 
 import (
 	"context"
+	"go/ast"
+	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
-	"go/ast"
-	"go/parser"
 	"strings"
 	"testing"
 
@@ -14,9 +14,9 @@ import (
 )
 
 var kafkaFixture = map[string]string{
-	"go.mod":                       "module example.com/billing\n\ngo 1.22\n\nrequire github.com/segmentio/kafka-go v0.0.0\n\nreplace github.com/segmentio/kafka-go => ./third_party/kafka\n",
-	"third_party/kafka/go.mod":     "module github.com/segmentio/kafka-go\n\ngo 1.22\n",
-	"third_party/kafka/kafka.go":   "package kafka\n\nimport \"context\"\n\ntype Message struct{ Topic string; Value []byte }\ntype ReaderConfig struct{ Brokers []string; GroupID, Topic string }\ntype Reader struct{}\nfunc NewReader(ReaderConfig) *Reader { return &Reader{} }\nfunc (*Reader) ReadMessage(context.Context) (Message, error) { return Message{}, nil }\ntype Writer struct{ Topic string }\nfunc (*Writer) WriteMessages(context.Context, ...Message) error { return nil }\n",
+	"go.mod":                     "module example.com/billing\n\ngo 1.22\n\nrequire github.com/segmentio/kafka-go v0.0.0\n\nreplace github.com/segmentio/kafka-go => ./third_party/kafka\n",
+	"third_party/kafka/go.mod":   "module github.com/segmentio/kafka-go\n\ngo 1.22\n",
+	"third_party/kafka/kafka.go": "package kafka\n\nimport \"context\"\n\ntype Message struct{ Topic string; Value []byte }\ntype ReaderConfig struct{ Brokers []string; GroupID, Topic string }\ntype Reader struct{}\nfunc NewReader(ReaderConfig) *Reader { return &Reader{} }\nfunc (*Reader) ReadMessage(context.Context) (Message, error) { return Message{}, nil }\ntype Writer struct{ Topic string }\nfunc (*Writer) WriteMessages(context.Context, ...Message) error { return nil }\n",
 	"worker/worker.go": `package worker
 
 import (

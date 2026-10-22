@@ -279,7 +279,7 @@ func isValidVersion(version string) bool {
 		return false
 	}
 	for _, char := range version {
-		if !(char >= '0' && char <= '9') && char != '.' && !(char >= 'a' && char <= 'z') && char != '-' {
+		if (char < '0' || char > '9') && char != '.' && (char < 'a' || char > 'z') && char != '-' {
 			return false
 		}
 	}

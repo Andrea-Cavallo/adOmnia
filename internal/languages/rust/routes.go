@@ -316,9 +316,10 @@ func closingParen(text string, open int) int {
 	for index := open; index < len(text); index++ {
 		switch char := text[index]; {
 		case inString:
-			if char == '\\' {
+			switch char {
+			case '\\':
 				index++
-			} else if char == '"' {
+			case '"':
 				inString = false
 			}
 		case char == '"':
@@ -343,9 +344,10 @@ func enclosingEnd(text string, from int) int {
 	for index := from; index < len(text); index++ {
 		switch char := text[index]; {
 		case inString:
-			if char == '\\' {
+			switch char {
+			case '\\':
 				index++
-			} else if char == '"' {
+			case '"':
 				inString = false
 			}
 		case char == '"':

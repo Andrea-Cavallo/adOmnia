@@ -67,7 +67,7 @@ describe('workspace tree projection', () => {
     const persisted = splitWorkspace(workspace)
     expect(persisted.tree).toEqual(projectTree(workspace.collections))
     expect(persisted.collections).toBe(workspace.collections)
-    const request = findRequestNode(persisted.collections, (persisted.tree?.[0]?.children[0] as FolderItem).children[0].id)
+    const request = findRequestNode(persisted.collections, (persisted.tree![0].children[0] as FolderItem).children[0].id)
     expect(request?.bodies[0].raw).toBe('{"amount":1}')
     expect(request?.headers[0].key).toBe('X-Trace')
   })

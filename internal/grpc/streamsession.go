@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jhump/protoreflect/desc" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"

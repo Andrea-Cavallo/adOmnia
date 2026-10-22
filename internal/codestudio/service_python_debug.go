@@ -14,20 +14,20 @@ import (
 type PythonDebugRequest struct {
 	SessionID SessionID `json:"sessionId"`
 	// Kind è "script", "module" o "pytest".
-	Kind             string   `json:"kind"`
-	Script           string   `json:"script,omitempty"`
-	Module           string   `json:"module,omitempty"`
-	App              string   `json:"app,omitempty"`
-	Host             string   `json:"host,omitempty"`
-	Port             int      `json:"port,omitempty"`
-	Reload           bool     `json:"reload,omitempty"`
-	Targets          []string `json:"targets,omitempty"`
-	Run              string   `json:"run,omitempty"`
-	WorkingDirectory string   `json:"workingDirectory,omitempty"`
-	ProgramArguments []string `json:"programArguments,omitempty"`
+	Kind             string            `json:"kind"`
+	Script           string            `json:"script,omitempty"`
+	Module           string            `json:"module,omitempty"`
+	App              string            `json:"app,omitempty"`
+	Host             string            `json:"host,omitempty"`
+	Port             int               `json:"port,omitempty"`
+	Reload           bool              `json:"reload,omitempty"`
+	Targets          []string          `json:"targets,omitempty"`
+	Run              string            `json:"run,omitempty"`
+	WorkingDirectory string            `json:"workingDirectory,omitempty"`
+	ProgramArguments []string          `json:"programArguments,omitempty"`
 	Environment      map[string]string `json:"environment,omitempty"`
-	Interpreter      string   `json:"interpreter,omitempty"`
-	JustMyCode       *bool    `json:"justMyCode,omitempty"`
+	Interpreter      string            `json:"interpreter,omitempty"`
+	JustMyCode       *bool             `json:"justMyCode,omitempty"`
 }
 
 // StartPythonDebug avvia il debug Python per un progetto autorizzato, su azione esplicita:

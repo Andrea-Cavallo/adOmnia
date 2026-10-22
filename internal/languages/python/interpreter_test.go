@@ -15,15 +15,6 @@ import (
 	"adomnia/internal/ide/run"
 )
 
-// envInterpreterPath è il layout dell'interprete dentro un ambiente sulla piattaforma corrente.
-func envInterpreterPath(directory string) string {
-	name := filepath.Join("bin", "python")
-	if runtime.GOOS == "windows" {
-		name = filepath.Join("Scripts", "python.exe")
-	}
-	return filepath.Join(directory, name)
-}
-
 // TestManagedEnvironmentsAreListedButNeverChosen: gli ambienti di uv e Poetry si trovano dalla
 // configurazione e dai nomi delle cartelle, senza eseguire i gestori, e restano una scelta
 // esplicita dell'utente (PY-2.1).

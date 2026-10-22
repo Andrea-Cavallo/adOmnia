@@ -112,7 +112,9 @@ func (s *Service) perUnitSpec(languageID, projectRoot string) func(string) (lsp.
 	if !ok || !perUnit.ServersPerUnit() {
 		return nil
 	}
-	return func(root string) (lsp.ServerSpec, error) { return perUnit.UnitServerSpec(projectRoot, root, s.toolsRoot) }
+	return func(root string) (lsp.ServerSpec, error) {
+		return perUnit.UnitServerSpec(projectRoot, root, s.toolsRoot)
+	}
 }
 
 // StopProvidedLanguageServer ferma il server gestito del linguaggio.

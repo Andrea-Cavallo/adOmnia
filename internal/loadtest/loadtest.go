@@ -281,7 +281,6 @@ requests:
 			hist.RecordValue(max(int64(latencyMs*1000), 1))
 
 			if err != nil {
-
 				failed++
 				timeline = append(timeline, timelinePoint{
 					StartMs:   startMs,

@@ -50,8 +50,8 @@ type TerminalOutput struct {
 
 // TerminalRequest descrive l'apertura di un nuovo terminale.
 type TerminalRequest struct {
-	SessionID        SessionID         `json:"sessionId"`
-	Name             string            `json:"name"`
+	SessionID SessionID `json:"sessionId"`
+	Name      string    `json:"name"`
 	// Profile è l'ID di un TerminalProfile rilevato ("" = predefinito); il Service lo traduce in Shell.
 	Profile          string            `json:"profile,omitempty"`
 	Shell            string            `json:"shell,omitempty"`

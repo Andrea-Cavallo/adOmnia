@@ -170,7 +170,6 @@ func goplsConfiguration(settings GoplsSettings) map[string]any {
 		config["diagnosticsTrigger"] = "Save"
 	}
 	return config
-
 }
 
 // goplsWatchesFile: i file cambiati su disco che gopls deve rileggere anche se non aperti.

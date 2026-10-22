@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jhump/protoreflect/desc" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/desc"            //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
-	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/dynamic"         //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -791,7 +791,11 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var respData interface{}
-	json.Unmarshal(respJSON, &respData)
+	// respJSON viene da MarshalJSON appena riuscito: se l'unmarshal fallisce (tipi ambigui) la
+	// risposta resta il testo grezzo invece di sparire.
+	if err := json.Unmarshal(respJSON, &respData); err != nil {
+		respData = string(respJSON)
+	}
 
 	// Collect response metadata
 	respMeta := make(map[string]string)

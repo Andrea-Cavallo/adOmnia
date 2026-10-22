@@ -29,7 +29,7 @@ type ArchEntry struct {
 	TopicRoles map[string]string `json:"topicRoles,omitempty"`
 	// Solo consumer Kafka: la prima istruzione dopo la lettura, dove il messaggio è già ricevuto.
 	BreakSite *ArchSite `json:"breakSite,omitempty"`
-	Site     ArchSite `json:"site"`
+	Site      ArchSite  `json:"site"`
 	// Solo per le route HTTP: handler, middleware e corpi di richiesta e risposta riconosciuti.
 	Handler     string    `json:"handler,omitempty"`
 	HandlerSite *ArchSite `json:"handlerSite,omitempty"`
@@ -229,7 +229,7 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 	topics := map[string]bool{}
 	group, serializer := "", ""
 	messaging := map[string]*messagingUse{} // nats/amqp producer o consumer → soggetti/code
-	var produced, consumed *ArchBody // tipo dell'evento serializzato / deserializzato nella funzione
+	var produced, consumed *ArchBody        // tipo dell'evento serializzato / deserializzato nella funzione
 	setGroup := func(expression ast.Expr) {
 		if value, ok := constantString(info, expression); ok && value != "" {
 			group = value

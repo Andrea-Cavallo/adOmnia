@@ -244,7 +244,8 @@ func failureLocation(root, text string) (idetesting.TestLocation, bool) {
 			continue
 		}
 		line := 0
-		fmt.Sscanf(match[2], "%d", &line)
+		// Posizione best-effort: se il numero non si legge la riga resta 0.
+		_, _ = fmt.Sscanf(match[2], "%d", &line)
 		return idetesting.TestLocation{File: match[1], RelativePath: relativeSlash(root, match[1]), Line: line}, true
 	}
 	return idetesting.TestLocation{}, false

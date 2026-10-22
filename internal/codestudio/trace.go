@@ -133,7 +133,7 @@ func (s *Service) ListTraceFiles(sessionID string) ([]ProfileFile, error) {
 			return nil
 		}
 		base := strings.ToLower(entry.Name())
-		if base != "trace.out" && !(strings.HasPrefix(base, "trace-") && strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
+		if base != "trace.out" && (!strings.HasPrefix(base, "trace-") || !strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
 			return nil
 		}
 		info, err := entry.Info()

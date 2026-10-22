@@ -160,4 +160,3 @@ func trimArguments(values []string) []string {
 	}
 	return trimmed
 }
-

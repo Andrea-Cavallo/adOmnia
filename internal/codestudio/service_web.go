@@ -118,10 +118,10 @@ func (c *previewConfigStore) set(realPath string, config PreviewConfig) {
 type WebProjectReport struct {
 	Targets []web.Info `json:"targets"`
 	// Runtime è quello del progetto predefinito (Node.js e il suo package manager).
-	Runtime  web.Runtime       `json:"runtime"`
+	Runtime  web.Runtime          `json:"runtime"`
 	Servers  []LanguageServerInfo `json:"servers"`
-	Config   *PreviewConfig    `json:"config,omitempty"`
-	Previews []preview.Preview `json:"previews"`
+	Config   *PreviewConfig       `json:"config,omitempty"`
+	Previews []preview.Preview    `json:"previews"`
 	// Trusted dice se la sessione può avviare processi: senza fiducia l'anteprima non parte.
 	Trusted bool `json:"trusted"`
 }

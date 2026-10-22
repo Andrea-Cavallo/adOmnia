@@ -259,7 +259,9 @@ func (b *BrowserDebug) GetTargetInfo() (map[string]interface{}, error) {
 	}
 
 	var info map[string]interface{}
-	json.Unmarshal(result, &info)
+	if err := json.Unmarshal(result, &info); err != nil {
+		return nil, fmt.Errorf("failed to parse target info: %w", err)
+	}
 	return info, nil
 }
 

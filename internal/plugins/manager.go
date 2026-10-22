@@ -1306,10 +1306,10 @@ func (pm *PluginManager) loadPluginStateInternal() error {
 		} else {
 			// Plugin dir may have been removed; create a placeholder
 			pm.plugins[id] = &PluginInstance{
-				Manifest: PluginManifest{ID: id},
-				Enabled:  state.Enabled,
-				Settings: state.Settings,
-				Error:    "plugin directory not found",
+				Manifest:  PluginManifest{ID: id},
+				Enabled:   state.Enabled,
+				Settings:  state.Settings,
+				Error:     "plugin directory not found",
 				DevSource: state.DevSource,
 			}
 		}

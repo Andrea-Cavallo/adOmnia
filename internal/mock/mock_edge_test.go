@@ -35,7 +35,7 @@ func TestMockRapidRestart(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		// Start
 		cfg := mockServerConfig{
-			Port:  port,
+			Port: port,
 			Endpoints: []mockEndpoint{{
 				ID:     "ep",
 				Path:   "/ping",
@@ -169,9 +169,9 @@ func TestMockNoEndpoints(t *testing.T) {
 	defer ts.Close()
 
 	cfg := mockServerConfig{
-		Port:               19995,
-		Endpoints:          []mockEndpoint{},
-		CorsHeadersAuto:    true,
+		Port:            19995,
+		Endpoints:       []mockEndpoint{},
+		CorsHeadersAuto: true,
 	}
 	cfgJSON, _ := json.Marshal(cfg)
 	resp, err := http.Post(ts.URL+"/mock/start", "application/json", strings.NewReader(string(cfgJSON)))

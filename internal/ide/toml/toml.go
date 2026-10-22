@@ -191,10 +191,7 @@ func parseArray(raw string, lines []string, index *int) (any, string, bool) {
 				return nil, "", false
 			}
 			items = append(items, value)
-			text = strings.TrimSpace(rest)
-			if strings.HasPrefix(text, ",") {
-				text = strings.TrimPrefix(text, ",")
-			}
+			text = strings.TrimPrefix(strings.TrimSpace(rest), ",")
 		}
 		if *index+1 >= len(lines) {
 			return nil, "", false

@@ -179,12 +179,12 @@ type ArchitectureReport struct {
 	// quando la funzione appartiene a un altro modulo del workspace.
 	ExternalCalls []ArchEdge `json:"-"`
 	// Reads: variabili d'ambiente e chiavi di configurazione lette da ogni funzione.
-	Reads     []ArchRead `json:"reads,omitempty"`
+	Reads []ArchRead `json:"reads,omitempty"`
 	// Syncs: operazioni di sincronizzazione (canali, mutex, atomic, WaitGroup, Once, go).
 	Syncs []ArchSync `json:"syncs,omitempty"`
 	// Goroutines: avvii di lavoro concorrente (go, errgroup, WaitGroup.Go, AfterFunc) con forma, contesto e rischi.
 	Goroutines []ArchGoroutine `json:"goroutines"`
-	Truncated bool       `json:"truncated,omitempty"`
+	Truncated  bool            `json:"truncated,omitempty"`
 }
 
 // ArchRead è la lettura di una variabile d'ambiente (os.Getenv) o di una chiave di config (viper, koanf).

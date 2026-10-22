@@ -13,14 +13,14 @@ import (
 // (RS-2.5): le variabili d'ambiente e il `.cargo/config.toml` del progetto. Non esegue mai
 // cargo/rustc; `[alias]`, `[env]`, `[build].target-dir` e `[target.*]` sono letti staticamente.
 type RustEnvironment struct {
-	CargoHome  string            `json:"cargoHome"`
-	RustupHome string            `json:"rustupHome"`
+	CargoHome  string `json:"cargoHome"`
+	RustupHome string `json:"rustupHome"`
 	// TargetDir è la target directory dell'utente risolta ("" = default `target/`).
-	TargetDir  string                  `json:"targetDir"`
-	RustFlags  string                  `json:"rustFlags"`
-	Aliases    map[string]string       `json:"aliases"`
-	Env        map[string]string       `json:"env"`
-	Targets    map[string]TargetConfig `json:"targets"`
+	TargetDir string                  `json:"targetDir"`
+	RustFlags string                  `json:"rustFlags"`
+	Aliases   map[string]string       `json:"aliases"`
+	Env       map[string]string       `json:"env"`
+	Targets   map[string]TargetConfig `json:"targets"`
 }
 
 // TargetConfig sono i campi `[target.<tripla>]` del `.cargo/config.toml` (runner/linker).

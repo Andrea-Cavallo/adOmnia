@@ -386,8 +386,8 @@ type outputWriter struct {
 	// consoleCarry trattiene una riga JSON incompleta (inizia con `{`) finché non arriva il newline.
 	consoleCarry []byte
 	mu           sync.Mutex
-	pending   []byte
-	timer     *time.Timer
+	pending      []byte
+	timer        *time.Timer
 }
 
 func (w *outputWriter) Write(p []byte) (int, error) {

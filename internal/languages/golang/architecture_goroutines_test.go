@@ -6,9 +6,9 @@ import (
 )
 
 var goroutineFixture = map[string]string{
-	"go.mod":                          "module example.com/gor\n\ngo 1.22\n\nrequire golang.org/x/sync v0.0.0\n\nreplace golang.org/x/sync => ./third_party/sync\n",
-	"third_party/sync/go.mod":         "module golang.org/x/sync\n\ngo 1.22\n",
-	"third_party/sync/errgroup/e.go":  "package errgroup\n\ntype Group struct{}\n\nfunc (g *Group) Go(f func() error)       {}\nfunc (g *Group) TryGo(f func() error) bool { return true }\nfunc (g *Group) SetLimit(n int)          {}\nfunc (g *Group) Wait() error             { return nil }\n",
+	"go.mod":                         "module example.com/gor\n\ngo 1.22\n\nrequire golang.org/x/sync v0.0.0\n\nreplace golang.org/x/sync => ./third_party/sync\n",
+	"third_party/sync/go.mod":        "module golang.org/x/sync\n\ngo 1.22\n",
+	"third_party/sync/errgroup/e.go": "package errgroup\n\ntype Group struct{}\n\nfunc (g *Group) Go(f func() error)       {}\nfunc (g *Group) TryGo(f func() error) bool { return true }\nfunc (g *Group) SetLimit(n int)          {}\nfunc (g *Group) Wait() error             { return nil }\n",
 	"cmd/main.go": `package main
 
 import "example.com/gor/app"

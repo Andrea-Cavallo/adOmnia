@@ -70,5 +70,4 @@ func TestFirstMeaningfulLineSkipsEmptyStderr(t *testing.T) {
 	if got := firstMeaningfulLine("   "); got != "" {
 		t.Fatalf("got %q", got)
 	}
-
 }
