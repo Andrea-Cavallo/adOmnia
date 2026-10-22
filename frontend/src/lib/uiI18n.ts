@@ -103,7 +103,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Pause AI assistants and optional analyses. Completion, navigation, diagnostics, Run and Debug stay available.': 'Sospende gli assistenti AI e le analisi opzionali. Completamento, navigazione, diagnostica, Run e Debug restano disponibili.',
   'Choose what to pause. Whatever you leave unchecked, plus diagnostics, Run and Debug, stays available.': 'Scegli cosa sospendere. Ciò che lasci deselezionato, più diagnostica, Run e Debug, resta disponibile.',
   'AI assistants': 'Assistenti AI',
-  'Copilot, milk, Claude Code, OpenCode': 'Copilot, milk, Claude Code, OpenCode',
+  'Copilot, milk, Claude Code': 'Copilot, milk, Claude Code',
   'Optional analyses': 'Analisi opzionali',
   'staticcheck and vulnerability diagnostics': 'staticcheck e diagnostica vulnerabilità',
   'Completion': 'Completamento',

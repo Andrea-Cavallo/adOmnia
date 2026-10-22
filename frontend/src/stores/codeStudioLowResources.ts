@@ -7,10 +7,9 @@ import { useIdeLanguageServersStore } from './ideLanguageServers'
 import { useCopilotStore } from './copilot'
 import { useMilkStore } from './milk'
 import { useClaudeCodeStore } from './claudeCode'
-import { useOpenCodeStore } from './opencode'
 import { studioToast } from './codeStudioToast'
 
-const AGENTS = { Copilot: useCopilotStore, milk: useMilkStore, 'Claude Code': useClaudeCodeStore, OpenCode: useOpenCodeStore } as const
+const AGENTS = { Copilot: useCopilotStore, milk: useMilkStore, 'Claude Code': useClaudeCodeStore } as const
 const SNAPSHOT_KEY = 'adomnia.codeStudio.lowResources.restore.v1'
 interface RestoreState {
   version: 1

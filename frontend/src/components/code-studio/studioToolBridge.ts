@@ -2,7 +2,6 @@ import { Events } from '@wailsio/runtime'
 import * as AppBindings from '../../../bindings/adomnia/app'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
-import { useOpenCodeStore } from '@/stores/opencode'
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
 import type { AgentChatStore } from '@/stores/agentChat'
@@ -22,7 +21,7 @@ const SNAPSHOT = 'studio-tool:snapshot'
 interface Request { session: string; tool: StudioTool; id: string; action: string; args: unknown[] }
 type Snapshot = ReturnType<typeof snapshot>
 /** ACP agent chats (internal/milk on the backend): same store shape, same forwarding. */
-const agentStore = (tool: StudioTool): AgentChatStore | null => tool === 'milk' ? useMilkStore : tool === 'claude' ? useClaudeCodeStore : tool === 'opencode' ? useOpenCodeStore : null
+const agentStore = (tool: StudioTool): AgentChatStore | null => tool === 'milk' ? useMilkStore : tool === 'claude' ? useClaudeCodeStore : null
 let ownerStarted = false
 let clientStarted = false
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
@@ -88,13 +87,12 @@ export function startStudioToolOwner() {
   useCodeStudioStore.subscribe((state, previous) => {
     if (state.sessions !== previous.sessions) schedule(STUDIO_TOOLS)
     if (state.executions !== previous.executions || state.consoleByRun !== previous.consoleByRun || state.activeRunBySession !== previous.activeRunBySession) schedule(['run', 'logs'])
-    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk', 'claude', 'opencode'])
+    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk', 'claude'])
   })
   useMilkStore.subscribe(() => schedule(['milk']))
-  useOpenCodeStore.subscribe(() => schedule(['opencode']))
   useClaudeCodeStore.subscribe(() => schedule(['claude']))
   useCopilotStore.subscribe(() => schedule(['copilot']))
-  useCodeStudioAssistantStore.subscribe(() => schedule(['milk', 'claude', 'copilot', 'opencode']))
+  useCodeStudioAssistantStore.subscribe(() => schedule(['milk', 'claude', 'copilot']))
   useCodeStudioLspStore.subscribe((state, previous) => { if (state.terminalRequest !== previous.terminalRequest) schedule(['terminal']) })
   useStudioTools.subscribe((state, previous) => {
     if (state.detached !== previous.detached) schedule(STUDIO_TOOLS)

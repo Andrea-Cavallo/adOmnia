@@ -51,7 +51,6 @@ import './codeStudioChrome.css'
 import './codeStudioHeader.css'
 import { CodeStudioCopilotDialog } from './CodeStudioCopilotDialog'
 import { CodeStudioMilkDialog } from './CodeStudioMilkDialog'
-import { CodeStudioOpenCodeDialog } from './CodeStudioOpenCode'
 import { CodeStudioClaudeDialog } from './CodeStudioClaudeCode'
 import { useCodeStudioCopilot } from './useCodeStudioCopilot'
 import { useCopilotStore } from '@/stores/copilot'
@@ -998,12 +997,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       case 'tools.copilot': return useCopilotStore.getState().setDialogOpen(true)
       case 'tools.extensions': return setExtensionsOpen(true)
       case 'tools.copilotChat':
-      case 'tools.opencodeChat':
       case 'tools.claudeChat':
       case 'tools.milkChat':
       case 'tools.aiHub': {
         // L'hub AI riapre l'ultimo provider scelto; i tre comandi restano alias espliciti.
-        const pane = id === 'tools.opencodeChat' ? 'opencode' : id === 'tools.copilotChat' ? 'copilot' : id === 'tools.claudeChat' ? 'claude' : id === 'tools.milkChat' ? 'milk' : useCodeStudioAssistantStore.getState().lastProvider
+        const pane = id === 'tools.copilotChat' ? 'copilot' : id === 'tools.claudeChat' ? 'claude' : id === 'tools.milkChat' ? 'milk' : useCodeStudioAssistantStore.getState().lastProvider
         useCodeStudioAssistantStore.getState().open(pane)
         return store.updateLayout({ structureOpen: true, structureWidth: Math.max(340, store.layout.structureWidth) })
       }
@@ -1123,7 +1121,6 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <CodeStudioMilkDialog />
       <CodeStudioClaudeDialog />
-      <CodeStudioOpenCodeDialog />
       <CodeStudioAgentReviewDialog />
       <CodeStudioAttachDialog sessionId={activeSession.id} mode={attachMode} onClose={() => setAttachMode(null)} />
       <CodeStudioGoToolDialog sessionId={activeSession.id} state={goTool} onClose={() => setGoTool(null)} />

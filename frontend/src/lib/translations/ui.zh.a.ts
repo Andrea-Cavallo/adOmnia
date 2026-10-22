@@ -91,7 +91,7 @@ export const ZH_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "Pause AI assistants and optional analyses. Completion, navigation, diagnostics, Run and Debug stay available.": "暂停 AI 助手和可选分析。补全、导航、诊断、运行和调试仍可使用。",
   "Choose what to pause. Whatever you leave unchecked, plus diagnostics, Run and Debug, stays available.": "选择要暂停的内容。未勾选的项目以及诊断、运行和调试仍可使用。",
   "AI assistants": "AI 助手",
-  "Copilot, milk, Claude Code, OpenCode": "Copilot, milk, Claude Code, OpenCode",
+  "Copilot, milk, Claude Code": "Copilot, milk, Claude Code",
   "Optional analyses": "可选分析",
   "staticcheck and vulnerability diagnostics": "staticcheck 和漏洞诊断",
   "Completion": "补全",

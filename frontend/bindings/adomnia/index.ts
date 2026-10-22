@@ -17,7 +17,6 @@ import * as MCPClient from "./mcpclient.js";
 import * as MCPServerGenerator from "./mcpservergenerator.js";
 import * as Milk from "./milk.js";
 import * as OASLint from "./oaslint.js";
-import * as OpenCode from "./opencode.js";
 import * as PluginManager from "./pluginmanager.js";
 import * as SecurityIntel from "./securityintel.js";
 import * as TemplateStore from "./templatestore.js";
@@ -40,7 +39,6 @@ export {
     MCPServerGenerator,
     Milk,
     OASLint,
-    OpenCode,
     PluginManager,
     SecurityIntel,
     TemplateStore,

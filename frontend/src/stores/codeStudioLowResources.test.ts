@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
     state.setEnabled.mockImplementation(async (enabled: boolean) => { state.settings.enabled = enabled; return true })
     return { getState: () => state }
   }
-  const agents = [assistant(), assistant(), assistant(), assistant()]
+  const agents = [assistant(), assistant(), assistant()]
   const lsp = {
     preferences: { resourceMode: 'normal' }, settings: { staticcheck: true, vulncheck: false },
     status: { s1: { state: 'ready' } }, activity: {}, userStopped: {},
@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => {
 vi.mock('./copilot', () => ({ useCopilotStore: mocks.agents[0] }))
 vi.mock('./milk', () => ({ useMilkStore: mocks.agents[1] }))
 vi.mock('./claudeCode', () => ({ useClaudeCodeStore: mocks.agents[2] }))
-vi.mock('./opencode', () => ({ useOpenCodeStore: mocks.agents[3] }))
 vi.mock('./codeStudio', () => ({ useCodeStudioStore: { getState: () => mocks.app, setState: mocks.setApp } }))
 vi.mock('./codeStudioLsp', () => ({ useCodeStudioLspStore: { getState: () => mocks.lsp, setState: vi.fn() } }))
 vi.mock('./ideLanguageServers', () => ({ useIdeLanguageServersStore: { getState: () => ({ servers: {} }) } }))
@@ -36,7 +35,7 @@ beforeEach(() => {
     agent.getState().settings.enabled = true
     agent.getState().setEnabled.mockImplementation(async enabled => { agent.getState().settings.enabled = enabled; return true })
   }
-  mocks.agents[3].getState().settings.enabled = false
+  mocks.agents[2].getState().settings.enabled = false
   useCodeStudioLowResources.setState({ busy: false, restore: null, error: null, paused: ['ai', 'analyses'] })
 })
 
@@ -48,12 +47,12 @@ describe('reversible low resources', () => {
     expect(mocks.lsp.restart).toHaveBeenCalledWith('s1', false)
     expect(mocks.app.executions[0].status).toBe('running')
     expect(mocks.agents[0].getState().settings.enabled).toBe(false)
-    expect(mocks.agents[3].getState().setEnabled).not.toHaveBeenCalled()
+    expect(mocks.agents[2].getState().setEnabled).not.toHaveBeenCalled()
     await useCodeStudioLowResources.getState().toggle()
     expect(mocks.lsp.preferences.resourceMode).toBe('normal')
     expect(mocks.lsp.settings.staticcheck).toBe(true)
     expect(mocks.agents[0].getState().settings.enabled).toBe(true)
-    expect(mocks.agents[3].getState().settings.enabled).toBe(false)
+    expect(mocks.agents[2].getState().settings.enabled).toBe(false)
     expect(useCodeStudioLowResources.getState().restore).toBeNull()
   })
   it('pauses only the chosen services and lifts the editor gates on restore', async () => {

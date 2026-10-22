@@ -24,7 +24,7 @@ import { listGoIDEDirectory } from '@/lib/code-studio-api'
 export interface ChatAgent {
   sessionControls?: (root: string) => Promise<AgentSessionControls>
   setSessionControl?: (root: string, id: string, value: unknown) => Promise<AgentSessionControls>
-  tool: 'milk' | 'claude' | 'opencode'
+  tool: 'milk' | 'claude'
   name: string
   store: AgentChatStore
   Logo: ComponentType<{ size?: number }>

@@ -10,7 +10,6 @@ export const AI_PROVIDERS: ReadonlyArray<{ id: CodeStudioChatPane; label: string
   { id: 'copilot', label: 'Copilot' },
   { id: 'milk', label: 'milk' },
   { id: 'claude', label: 'Claude Code' },
-  { id: 'opencode', label: 'OpenCode' },
 ]
 
 export function providerLabel(id: CodeStudioChatPane): string {

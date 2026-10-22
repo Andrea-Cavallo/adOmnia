@@ -7,7 +7,6 @@ import { useCopilotStore } from '@/stores/copilot'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioTestsStore } from '@/stores/codeStudioTests'
 import { isChatPane, type CodeStudioChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
-import { useOpenCodeStore } from '@/stores/opencode'
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
 import { documentForModel } from './codeStudioLanguageFeatures'
@@ -33,7 +32,6 @@ function notify(message: string | null): void {
 function targetAssistant(): CodeStudioChatPane {
   const pane = useCodeStudioAssistantStore.getState().pane
   if (isChatPane(pane)) return pane
-  if (useOpenCodeStore.getState().status?.state === 'ready') return 'opencode'
   if (useMilkStore.getState().status?.state === 'ready') return 'milk'
   if (useClaudeCodeStore.getState().status?.state === 'ready') return 'claude'
   if (useCopilotStore.getState().status?.state === 'ready') return 'copilot'
@@ -120,7 +118,7 @@ function workspaceErrors(sessionId: string, relativePath: string): CodeStudioAIC
 
 async function blockedByPolicy(sessionId: string, relativePath: string): Promise<string | null> {
   // ponytail: milk e Copilot sono trattati come provider remoti (milk può avere agenti cloud).
-  const excluded = await listGoIDEAIExcludedPaths(sessionId, [relativePath], targetAssistant() === 'opencode')
+  const excluded = await listGoIDEAIExcludedPaths(sessionId, [relativePath], false)
   if (!excluded.includes(relativePath)) return null
   const policy = await getGoIDEAIPolicy(sessionId).catch(() => 'allowed')
   if (policy === 'off') return 'AI is turned off for this project (.adomnia/ai-policy.json)'

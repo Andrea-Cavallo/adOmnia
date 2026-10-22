@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 
-export type CodeStudioAssistantPane = 'copilot' | 'milk' | 'claude' | 'opencode' | 'a0' | null
+export type CodeStudioAssistantPane = 'copilot' | 'milk' | 'claude' | 'a0' | null
 /** Chat panes: they live in the side pane and can be detached into their own window. */
-export type CodeStudioChatPane = 'copilot' | 'milk' | 'claude' | 'opencode'
-export const isChatPane = (pane: string | null): pane is CodeStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude' || pane === 'opencode'
+export type CodeStudioChatPane = 'copilot' | 'milk' | 'claude'
+export const isChatPane = (pane: string | null): pane is CodeStudioChatPane => pane === 'copilot' || pane === 'milk' || pane === 'claude'
 
 /** Ultimo provider aperto dal bottone AI unico: riapre dove si era rimasti, anche dopo il riavvio. */
 export const LAST_PROVIDER_KEY = 'adomnia.codestudio.ai.lastProvider.v1'

@@ -1,4 +1,3 @@
-import { OpenCodeLogo, CodeStudioOpenCodeChat } from './CodeStudioOpenCode'
 import { useEffect, type ComponentType } from 'react'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
@@ -16,7 +15,6 @@ const PROVIDER_ICONS: Record<CodeStudioChatPane, ComponentType<{ size?: number }
   copilot: GitHubMark,
   milk: MilkLogo,
   claude: ClaudeLogo,
-  opencode: OpenCodeLogo,
 }
 
 interface CodeStudioAiHubPanelProps {
@@ -58,7 +56,7 @@ export function CodeStudioAiHubPanel({ session, document }: CodeStudioAiHubPanel
         })}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {active === 'copilot' ? <CodeStudioCopilotChat session={session} document={document} /> : active === 'milk' ? <CodeStudioMilkChat session={session} document={document} /> : active === 'opencode' ? <CodeStudioOpenCodeChat session={session} document={document} /> : <CodeStudioClaudeChat session={session} document={document} />}
+        {active === 'copilot' ? <CodeStudioCopilotChat session={session} document={document} /> : active === 'milk' ? <CodeStudioMilkChat session={session} document={document} /> : <CodeStudioClaudeChat session={session} document={document} />}
       </div>
     </div>
   )

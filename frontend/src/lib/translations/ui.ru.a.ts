@@ -91,7 +91,7 @@ export const RU_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "Pause AI assistants and optional analyses. Completion, navigation, diagnostics, Run and Debug stay available.": "Приостанавливает работу AI-ассистентов и дополнительных анализов. Автодополнение, навигация, диагностика, Run и Debug остаются доступными.",
   "Choose what to pause. Whatever you leave unchecked, plus diagnostics, Run and Debug, stays available.": "Выберите, что приостановить. Всё, что вы оставите неотмеченным, а также диагностика, Run и Debug, остаётся доступным.",
   "AI assistants": "AI-ассистенты",
-  "Copilot, milk, Claude Code, OpenCode": "Copilot, milk, Claude Code, OpenCode",
+  "Copilot, milk, Claude Code": "Copilot, milk, Claude Code",
   "Optional analyses": "Дополнительные анализы",
   "staticcheck and vulnerability diagnostics": "staticcheck и диагностика уязвимостей",
   "Completion": "Автодополнение",

@@ -12,7 +12,6 @@ import { startStudioToolClient, flushStudioToolView } from './studioToolBridge'
 import { toolContext, toolTitle, useStudioTools } from './studioToolState'
 import { CodeStudioRunPanel } from './CodeStudioRunPanel'
 import { CodeStudioCopilotChat } from './CodeStudioCopilotChat'
-import { CodeStudioOpenCodeChat } from './CodeStudioOpenCode'
 import { CodeStudioMilkChat } from './CodeStudioMilkChat'
 import { CodeStudioClaudeChat } from './CodeStudioClaudeCode'
 import { StudioToolControls } from './StudioToolControls'
@@ -46,9 +45,9 @@ export function DetachedStudioToolWindow() {
       </div>
       {error && <p role="alert" className="p-2 text-xs text-danger">{error}</p>}
       {!ready || !session ? <p className="p-4 text-sm text-text-3">Connecting to the project window…</p> : <div className="flex min-h-0 flex-1 flex-col">
-        {context.tool === 'opencode' ? <CodeStudioOpenCodeChat session={session} document={document} /> : context.tool === 'milk' ? <CodeStudioMilkChat session={session} document={document} /> : context.tool === 'claude' ? <CodeStudioClaudeChat session={session} document={document} /> : context.tool === 'copilot' ? <CodeStudioCopilotChat session={session} document={document} /> : <CodeStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
+        {context.tool === 'milk' ? <CodeStudioMilkChat session={session} document={document} /> : context.tool === 'claude' ? <CodeStudioClaudeChat session={session} document={document} /> : context.tool === 'copilot' ? <CodeStudioCopilotChat session={session} document={document} /> : <CodeStudioRunPanel session={session} fixedView={context.tool === 'terminal' ? 'terminal' : 'run'} logsOnly={context.tool === 'logs'} standalone />}
       </div>}
-      {(context.tool === 'milk' || context.tool === 'claude' || context.tool === 'opencode') && <CodeStudioAgentReviewDialog />}
+      {(context.tool === 'milk' || context.tool === 'claude') && <CodeStudioAgentReviewDialog />}
     </div>
   </ThemeProvider></ErrorBoundary>
 }

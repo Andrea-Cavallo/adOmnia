@@ -91,7 +91,7 @@ export const JA_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "Pause AI assistants and optional analyses. Completion, navigation, diagnostics, Run and Debug stay available.": "AI アシスタントとオプションの解析を一時停止します。補完、ナビゲーション、診断、実行とデバッグは引き続き利用できます。",
   "Choose what to pause. Whatever you leave unchecked, plus diagnostics, Run and Debug, stays available.": "一時停止する項目を選択してください。チェックを外した項目と、診断、実行とデバッグは引き続き利用できます。",
   "AI assistants": "AI アシスタント",
-  "Copilot, milk, Claude Code, OpenCode": "Copilot, milk, Claude Code, OpenCode",
+  "Copilot, milk, Claude Code": "Copilot, milk, Claude Code",
   "Optional analyses": "オプションの解析",
   "staticcheck and vulnerability diagnostics": "staticcheck と脆弱性の診断",
   "Completion": "補完",

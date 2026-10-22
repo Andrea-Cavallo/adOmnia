@@ -32,10 +32,6 @@ vi.mock('@/stores/milk', async () => {
   const { create } = await import('zustand')
   return { useMilkStore: create(() => ({ status: null, settings: null, chatThreads: {}, permissions: [], sendChat: transport.sendChat })) }
 })
-vi.mock('@/stores/opencode', async () => {
-  const { create } = await import('zustand')
-  return { useOpenCodeStore: create(() => ({ status: null, settings: null, chatThreads: {}, permissions: [], sendChat: transport.sendChat })) }
-})
 vi.mock('@/stores/claudeCode', async () => {
   const { create } = await import('zustand')
   return { useClaudeCodeStore: create(() => ({ status: null, settings: null, chatThreads: {}, permissions: [] })) }

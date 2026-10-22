@@ -2,7 +2,7 @@
 export type PausableService = 'ai' | 'analyses' | 'completion' | 'navigation' | 'hover'
 
 export const PAUSABLE_SERVICES: ReadonlyArray<{ id: PausableService; label: string; hint: string }> = [
-  { id: 'ai', label: 'AI assistants', hint: 'Copilot, milk, Claude Code, OpenCode' },
+  { id: 'ai', label: 'AI assistants', hint: 'Copilot, milk, Claude Code' },
   { id: 'analyses', label: 'Optional analyses', hint: 'staticcheck and vulnerability diagnostics' },
   { id: 'completion', label: 'Completion', hint: 'Suggestions and parameter hints' },
   { id: 'navigation', label: 'Navigation', hint: 'Go to definition, structure outline' },

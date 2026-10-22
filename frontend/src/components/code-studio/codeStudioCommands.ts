@@ -34,7 +34,7 @@ export type CodeStudioCommandId =
   | 'debug.stop' | 'debug.restart' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.opencodeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'python' | 'run' | 'tools' | 'git' | 'help'
@@ -262,7 +262,6 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'tools.copilot', menu: 'tools', label: 'GitHub Copilot…' },
   { id: 'tools.copilotChat', menu: 'tools', label: 'Open Copilot Chat' },
   { id: 'tools.milkChat', menu: 'tools', label: 'Open milk' },
-  { id: 'tools.opencodeChat', menu: 'tools', label: 'Open OpenCode + Ollama' },
   { id: 'tools.claudeChat', menu: 'tools', label: 'Open Claude Code' },
   { id: 'tools.reviewAgentChanges', menu: 'tools', label: 'Review Agent Changes…' },
   { id: 'tools.copilotCompletions', menu: 'tools', label: 'Toggle Copilot Inline Completions' },
