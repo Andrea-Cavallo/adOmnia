@@ -13,26 +13,28 @@ import (
 // senza scelta esplicita vale la selezione del progetto, il rust-toolchain del progetto e il PATH
 // (RS-0.4: la macchina non entra nel file condiviso delle configurazioni).
 type Options struct {
-	Toolchain        string   `json:"toolchain,omitempty"`
-	Package          string   `json:"package,omitempty"`
-	Bin              string   `json:"bin,omitempty"`
-	Example          string   `json:"example,omitempty"`
-	Bench            string   `json:"bench,omitempty"`
-	Features         []string `json:"features,omitempty"`
-	AllFeatures      bool     `json:"allFeatures,omitempty"`
-	NoDefaultFeatures bool    `json:"noDefaultFeatures,omitempty"`
-	Profile          string   `json:"profile,omitempty"`
-	Target           string   `json:"target,omitempty"`
+	Toolchain         string   `json:"toolchain,omitempty"`
+	Package           string   `json:"package,omitempty"`
+	Bin               string   `json:"bin,omitempty"`
+	Example           string   `json:"example,omitempty"`
+	Bench             string   `json:"bench,omitempty"`
+	Features          []string `json:"features,omitempty"`
+	AllFeatures       bool     `json:"allFeatures,omitempty"`
+	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitempty"`
+	Profile           string   `json:"profile,omitempty"`
+	Target            string   `json:"target,omitempty"`
 }
 
 var (
-	crateName   = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-	featureName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`)
-	profileName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	crateName    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	featureName  = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`)
+	profileName  = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 	targetTriple = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]*-[A-Za-z0-9_]+$`)
 )
 
-func (*Language) RunKinds() []string { return []string{"bin", "example", "bench", "build", "check", "clippy"} }
+func (*Language) RunKinds() []string {
+	return []string{"bin", "example", "bench", "build", "check", "clippy"}
+}
 
 // optionsFor interpreta e valida le opzioni del kind. La validazione è statica: la toolchain si
 // risolve e si controlla alla partenza (serve il progetto autorizzato per eseguire).
@@ -63,9 +65,7 @@ func optionsFor(kind string, data json.RawMessage) (Options, error) {
 	}
 	switch kind {
 	case "bin":
-		if options.Bin == "" && options.Package == "" {
-			return options, fmt.Errorf("choose a binary to run")
-		}
+		// Senza nome cargo sceglie il binario del crate o elenca quelli disponibili (il ▶ del gutter).
 		if options.Bin != "" && !crateName.MatchString(options.Bin) {
 			return options, fmt.Errorf("enter a valid binary name")
 		}
@@ -108,10 +108,19 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		args = append(args, "--")
 		args = append(args, request.ProgramArguments...)
 	}
+	environment := append([]string(nil), request.Environment...)
+	// RUSTUP_TOOLCHAIN fissa il canale dichiarato dal progetto anche se cargo è un proxy rustup
+	// lanciato fuori dalla cartella (RS-0.2); mai se l'ambiente della run lo imposta già.
+	if toolchain.Channel != "" && !hasEnvironment(environment, "RUSTUP_TOOLCHAIN") {
+		environment = append(environment, "RUSTUP_TOOLCHAIN="+toolchain.Channel)
+	}
 	return run.CommandSpec{
 		Executable: toolchain.Cargo, Arguments: args,
 		WorkingDirectory: request.WorkingDirectory,
-		Environment:      append([]string(nil), request.Environment...),
+		Environment:      environment,
+		// I diagnostici di build (RS-3.3): il core li raccoglie dall'output JSON e li pubblica
+		// sul pannello Problems come per Go e Java.
+		Diagnostics: cargoDiagnosticFromLine,
 	}, nil
 }
 
@@ -121,7 +130,7 @@ func cargoArguments(kind string, options Options) []string {
 		"bin": "run", "example": "run", "bench": "bench",
 		"build": "build", "check": "check", "clippy": "clippy",
 	}[kind]
-	args := []string{sub}
+	args := []string{sub, "--message-format=json-diagnostic-rendered-ansi"}
 	if options.Package != "" {
 		args = append(args, "--package", options.Package)
 	}
@@ -188,4 +197,14 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 		run.Field{Key: "target", Label: "Target", Type: run.FieldText, Section: run.SectionAdvanced, Help: "Optional cross-compilation target triple (--target)."},
 	)
 	return run.FieldSchema{Language: ID, Kind: kind, Fields: fields}
+}
+
+func hasEnvironment(environment []string, name string) bool {
+	for _, entry := range environment {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	return false
 }

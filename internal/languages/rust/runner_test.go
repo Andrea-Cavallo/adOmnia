@@ -2,7 +2,11 @@ package rust
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -11,13 +15,13 @@ import (
 
 func TestCargoArguments(t *testing.T) {
 	got := cargoArguments("bin", Options{Package: "svc", Bin: "server", Features: []string{"tls", "http2"}, Profile: "release", Target: "x86_64-unknown-linux-gnu"})
-	if joined := strings.Join(got, " "); joined != "run --package svc --bin server --features tls,http2 --profile release --target x86_64-unknown-linux-gnu" {
+	if joined := strings.Join(got, " "); joined != "run --message-format=json-diagnostic-rendered-ansi --package svc --bin server --features tls,http2 --profile release --target x86_64-unknown-linux-gnu" {
 		t.Fatalf("bin args = %q", joined)
 	}
-	if joined := strings.Join(cargoArguments("build", Options{AllFeatures: true}), " "); joined != "build --all-features" {
+	if joined := strings.Join(cargoArguments("build", Options{AllFeatures: true}), " "); joined != "build --message-format=json-diagnostic-rendered-ansi --all-features" {
 		t.Fatalf("build args = %q", joined)
 	}
-	if joined := strings.Join(cargoArguments("check", Options{NoDefaultFeatures: true, Features: []string{"a"}}), " "); joined != "check --no-default-features --features a" {
+	if joined := strings.Join(cargoArguments("check", Options{NoDefaultFeatures: true, Features: []string{"a"}}), " "); joined != "check --message-format=json-diagnostic-rendered-ansi --no-default-features --features a" {
 		t.Fatalf("check args = %q", joined)
 	}
 }
@@ -64,7 +68,7 @@ func TestCommandSpecBuildsCargoRun(t *testing.T) {
 	if spec.Executable != filepath.Join(root, "cargo.exe") {
 		t.Fatalf("executable = %q", spec.Executable)
 	}
-	if joined := strings.Join(spec.Arguments, " "); joined != "run --bin server -- --port 8080" {
+	if joined := strings.Join(spec.Arguments, " "); joined != "run --message-format=json-diagnostic-rendered-ansi --bin server -- --port 8080" {
 		t.Fatalf("arguments = %q", joined)
 	}
 }
@@ -115,5 +119,29 @@ func TestSuggestImplicitMainBin(t *testing.T) {
 	}
 	if len(titles) == 0 || titles[0] != "Rust · cargo run --bin hello" {
 		t.Fatalf("implicit main bin not proposed: %#v", titles)
+	}
+}
+
+func TestCommandSpecPinsProjectChannelAndKeepsExplicitEnvironment(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "rust-toolchain.toml"), []byte("[toolchain]\nchannel = \"1.80.0\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cargo := filepath.Join(root, "cargo")
+	if runtime.GOOS == "windows" {
+		cargo += ".exe"
+	}
+	if err := os.WriteFile(cargo, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	request := run.Request{Kind: "build", Root: root, WorkingDirectory: root, LanguageOptions: []byte(`{"toolchain":` + strconv.Quote(cargo) + `}`)}
+	spec, err := New().CommandSpec(request)
+	if err != nil || !slices.Contains(spec.Environment, "RUSTUP_TOOLCHAIN=1.80.0") {
+		t.Fatalf("env = %v, err = %v", spec.Environment, err)
+	}
+	request.Environment = []string{"rustup_toolchain=nightly"}
+	spec, _ = New().CommandSpec(request)
+	if len(spec.Environment) != 1 {
+		t.Fatalf("user RUSTUP_TOOLCHAIN overridden: %v", spec.Environment)
 	}
 }

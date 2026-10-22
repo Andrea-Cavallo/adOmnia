@@ -17,6 +17,9 @@ type Execution struct {
 	ExitCode         *int       `json:"exitCode,omitempty"`
 	DurationMillis   int64      `json:"durationMillis"`
 	Error            string     `json:"error,omitempty"`
+	// Diagnostics sono i diagnostici di build raccolti dall'output (RS-3.3); vuoti se l'adapter
+	// non dichiara un parser o la build non ne produce.
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
 }
 type ProcessOutput struct {
 	RunID     RunID  `json:"runId"`
