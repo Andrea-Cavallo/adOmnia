@@ -62,6 +62,17 @@ func (s *Service) SetRustToolchain(sessionID, path string) error {
 	return s.lsp.RefreshConfiguration(SessionID(sessionID), rust.ID)
 }
 
+// RustDependencyTree è l'albero delle dipendenze dal Cargo.lock (formato TOML stabile, offline,
+// nessuna esecuzione): i duplicati di versione sono in evidenza (RS-8.2). `cargo tree` resta
+// l'azione esplicita per la risoluzione esatta.
+func (s *Service) RustDependencyTree(sessionID string) ([]rust.CargoTreeNode, error) {
+	root, err := s.SessionRoot(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return rust.CargoLockTree(root)
+}
+
 // PreviewRustComponentInstall dice cosa farebbe l'installazione di un componente rustup (RS-2.3).
 func (s *Service) PreviewRustComponentInstall(sessionID, component string) (ServerInstallPreview, error) {
 	if _, err := s.session(sessionID); err != nil {

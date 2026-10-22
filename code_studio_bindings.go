@@ -14,6 +14,7 @@ import (
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 	"adomnia/internal/languages/python"
+	"adomnia/internal/languages/rust"
 	"adomnia/internal/plugins"
 	"adomnia/internal/resources"
 	"context"
@@ -1744,6 +1745,11 @@ func (g *GoIDE) PreviewRustToolchainInstall(sessionID, channel string) (codestud
 // InstallRustToolchain installa un canale rustup (es. 1.85.0) dopo conferma.
 func (g *GoIDE) InstallRustToolchain(sessionID, channel string, confirmed bool) (codestudio.Execution, error) {
 	return g.service.InstallRustToolchain(sessionID, channel, confirmed)
+}
+
+// RustDependencyTree è l'albero delle dipendenze dal Cargo.lock (offline) con i duplicati in evidenza.
+func (g *GoIDE) RustDependencyTree(sessionID string) ([]rust.CargoTreeNode, error) {
+	return g.service.RustDependencyTree(sessionID)
 }
 
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione

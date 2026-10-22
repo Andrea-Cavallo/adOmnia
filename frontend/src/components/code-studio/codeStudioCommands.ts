@@ -5,12 +5,14 @@ import { GO_LANGUAGE_COMMANDS, type GoLanguageCommandId } from '@/components/ide
 import { WEB_LANGUAGE_COMMANDS, type WebLanguageCommandId } from '@/components/ide/languages/web/commands'
 import { JAVA_LANGUAGE_COMMANDS, type JavaLanguageCommandId } from '@/components/ide/languages/java/commands'
 import { PYTHON_LANGUAGE_COMMANDS, type PythonLanguageCommandId } from '@/components/ide/languages/python/commands'
+import { RUST_LANGUAGE_COMMANDS, type RustLanguageCommandId } from '@/components/ide/languages/rust/commands'
 
 export type CodeStudioCommandId =
   | GoLanguageCommandId
   | WebLanguageCommandId
   | JavaLanguageCommandId
   | PythonLanguageCommandId
+  | RustLanguageCommandId
   | 'file.openProject' | 'file.newProject' | 'file.clone' | 'file.save' | 'file.saveAll' | 'file.closeEditor' | 'file.closeProject' | 'file.settings'
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
@@ -37,7 +39,7 @@ export type CodeStudioCommandId =
   | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
-export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'python' | 'run' | 'tools' | 'git' | 'help'
+export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'python' | 'rust' | 'run' | 'tools' | 'git' | 'help'
 
 export interface CodeStudioKeyBinding {
   key: string
@@ -277,6 +279,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'help.shortcuts', menu: 'help', label: 'Keyboard Shortcuts' },
   ...JAVA_LANGUAGE_COMMANDS,
   ...PYTHON_LANGUAGE_COMMANDS,
+  ...RUST_LANGUAGE_COMMANDS,
 ]
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -468,6 +471,8 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   }
   if (id === 'python.selectInterpreter') return true
   if (id === 'python.installDebugpy') return context.authorized ? true : 'Trust this project to install Python tools'
+  if (id === 'rust.installDebugger') return context.authorized ? true : 'Trust this project to install the Rust debugger'
+  if (id === 'rust.selectToolchain' || id === 'rust.dependencyTree') return true
   if (id === 'python.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {

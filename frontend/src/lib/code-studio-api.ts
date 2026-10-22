@@ -1,6 +1,7 @@
 import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustToolchainReport, ServerInstallPreview } from '../../bindings/adomnia/internal/codestudio/models'
 import type { EnvironmentPlan } from '../../bindings/adomnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { CargoTreeNode } from '../../bindings/adomnia/internal/languages/rust/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -878,6 +879,11 @@ export async function previewRustComponentInstall(sessionId: string, component: 
 /** Comando esatto che installerebbe un canale rustup. */
 export async function previewRustToolchainInstall(sessionId: string, channel: string): Promise<ServerInstallPreview> {
   return GoIDEBindings.PreviewRustToolchainInstall(sessionId, channel)
+}
+
+/** Albero delle dipendenze dal Cargo.lock (offline) con i duplicati di versione in evidenza. */
+export async function getRustDependencyTree(sessionId: string): Promise<CargoTreeNode[]> {
+  return GoIDEBindings.RustDependencyTree(sessionId)
 }
 
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */

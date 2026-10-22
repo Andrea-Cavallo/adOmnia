@@ -91,6 +91,7 @@ import { CodeStudioSpringEndpoints } from './CodeStudioSpringEndpoints'
 import { CodeStudioJavaJdk } from './CodeStudioJavaJdk'
 import { CodeStudioPythonInterpreter } from './CodeStudioPythonInterpreter'
 import { CodeStudioRustToolchain } from './CodeStudioRustToolchain'
+import { CodeStudioRustTree } from './CodeStudioRustTree'
 import { CodeStudioJavaTree } from './CodeStudioJavaTree'
 import { CodeStudioJavaJvm } from './CodeStudioJavaJvm'
 import { CodeStudioSpringGraph } from './CodeStudioSpringGraph'
@@ -1097,6 +1098,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioJavaJdk />
       <CodeStudioPythonInterpreter />
       <CodeStudioRustToolchain />
+      <CodeStudioRustTree />
       <CodeStudioJavaTree />
       <CodeStudioJavaJvm />
       <CodeStudioSpringGraph />

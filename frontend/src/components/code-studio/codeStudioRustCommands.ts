@@ -5,6 +5,7 @@ import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall
 import { studioToast } from '@/stores/codeStudioToast'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { openRustToolchainDialog } from './CodeStudioRustToolchain'
+import { openRustDependencyTree } from './CodeStudioRustTree'
 
 const INSTALL_TASK = 'install-rust-debugger'
 
@@ -34,5 +35,6 @@ export function runRustCommand(id: CodeStudioCommandId, sessionId: string | null
   if (!id.startsWith('rust.')) return false
   if (sessionId && id === 'rust.installDebugger') void installDebugger(sessionId)
   if (sessionId && id === 'rust.selectToolchain') openRustToolchainDialog(sessionId)
+  if (sessionId && id === 'rust.dependencyTree') openRustDependencyTree(sessionId)
   return true
 }

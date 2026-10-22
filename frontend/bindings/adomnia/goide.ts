@@ -52,6 +52,9 @@ import * as java$0 from "./internal/languages/java/models.js";
 import * as python$0 from "./internal/languages/python/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as rust$0 from "./internal/languages/rust/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as plugins$0 from "./internal/plugins/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -2119,11 +2122,20 @@ export function RunSonarScan(sessionID: string, token: string): $CancellableProm
 }
 
 /**
+ * RustDependencyTree è l'albero delle dipendenze dal Cargo.lock (offline) con i duplicati in evidenza.
+ */
+export function RustDependencyTree(sessionID: string): $CancellablePromise<rust$0.CargoTreeNode[]> {
+    return $Call.ByID(3447563737, sessionID).then(($result: any) => {
+        return $$createType182($result);
+    });
+}
+
+/**
  * RustToolchains elenca le toolchain Rust candidate del progetto (RS-2.4).
  */
 export function RustToolchains(sessionID: string): $CancellablePromise<codestudio$0.RustToolchainReport> {
     return $Call.ByID(2944931276, sessionID).then(($result: any) => {
-        return $$createType181($result);
+        return $$createType183($result);
     });
 }
 
@@ -2201,7 +2213,7 @@ export function SaveSonarBaseline(sessionID: string, token: string): $Cancellabl
  */
 export function SaveSonarConfig(sessionID: string, config: codestudio$0.SonarConfig): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(2689463436, sessionID, config).then(($result: any) => {
-        return $$createType182($result);
+        return $$createType184($result);
     });
 }
 
@@ -2210,7 +2222,7 @@ export function SaveSonarConfig(sessionID: string, config: codestudio$0.SonarCon
  */
 export function SearchProject(query: codestudio$0.SearchQuery): $CancellablePromise<codestudio$0.SearchResult> {
     return $Call.ByID(1135993643, query).then(($result: any) => {
-        return $$createType183($result);
+        return $$createType185($result);
     });
 }
 
@@ -2219,7 +2231,7 @@ export function SearchProject(query: codestudio$0.SearchQuery): $CancellableProm
  */
 export function SecurityExposures(sessionID: string, locations: codestudio$0.FindingLocation[]): $CancellablePromise<codestudio$0.SecurityExposure[]> {
     return $Call.ByID(1294922534, sessionID, locations).then(($result: any) => {
-        return $$createType185($result);
+        return $$createType187($result);
     });
 }
 
@@ -2228,7 +2240,7 @@ export function SecurityExposures(sessionID: string, locations: codestudio$0.Fin
  */
 export function SecurityScan(sessionID: string): $CancellablePromise<codestudio$0.SecurityReport> {
     return $Call.ByID(1068563901, sessionID).then(($result: any) => {
-        return $$createType186($result);
+        return $$createType188($result);
     });
 }
 
@@ -2265,7 +2277,7 @@ export function SelectProjectParent(): $CancellablePromise<string> {
  */
 export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.SemanticTokensResult> {
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
-        return $$createType187($result);
+        return $$createType189($result);
     });
 }
 
@@ -2287,7 +2299,7 @@ export function SetActiveStudioWorkspace(id: string): $CancellablePromise<codest
 
 export function SetBackendMemoryLimit(mib: number): $CancellablePromise<resources$0.GoRuntime> {
     return $Call.ByID(2918410432, mib).then(($result: any) => {
-        return $$createType188($result);
+        return $$createType190($result);
     });
 }
 
@@ -2296,7 +2308,7 @@ export function SetBackendMemoryLimit(mib: number): $CancellablePromise<resource
  */
 export function SetBreakpoints(sessionID: string, relativePath: string, breakpoints: codestudio$0.Breakpoint[]): $CancellablePromise<codestudio$0.BreakpointState[]> {
     return $Call.ByID(914916034, sessionID, relativePath, breakpoints).then(($result: any) => {
-        return $$createType190($result);
+        return $$createType192($result);
     });
 }
 
@@ -2382,7 +2394,7 @@ export function SetWindowDirtyDocumentCount(windowID: string, count: number): $C
  */
 export function ShutdownAnalysis(sessionID: string, target: string, health: string, graceSeconds: number): $CancellablePromise<codestudio$0.ShutdownReport> {
     return $Call.ByID(2737527334, sessionID, target, health, graceSeconds).then(($result: any) => {
-        return $$createType191($result);
+        return $$createType193($result);
     });
 }
 
@@ -2391,7 +2403,7 @@ export function ShutdownAnalysis(sessionID: string, target: string, health: stri
  */
 export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.SignatureResult> {
     return $Call.ByID(4264674347, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType192($result);
+        return $$createType194($result);
     });
 }
 
@@ -2400,7 +2412,7 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
  */
 export function SonarConfigFor(sessionID: string): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(4113315866, sessionID).then(($result: any) => {
-        return $$createType182($result);
+        return $$createType184($result);
     });
 }
 
@@ -2409,7 +2421,7 @@ export function SonarConfigFor(sessionID: string): $CancellablePromise<codestudi
  */
 export function SpringEndpoints(sessionID: string): $CancellablePromise<java$0.SpringEndpoint[]> {
     return $Call.ByID(3324107379, sessionID).then(($result: any) => {
-        return $$createType194($result);
+        return $$createType196($result);
     });
 }
 
@@ -2419,7 +2431,7 @@ export function SpringEndpoints(sessionID: string): $CancellablePromise<java$0.S
  */
 export function SpringIndex(sessionID: string): $CancellablePromise<java$0.SpringIndex> {
     return $Call.ByID(3641293781, sessionID).then(($result: any) => {
-        return $$createType195($result);
+        return $$createType197($result);
     });
 }
 
@@ -2429,7 +2441,7 @@ export function SpringIndex(sessionID: string): $CancellablePromise<java$0.Sprin
  */
 export function SpringMetadataRefresh(sessionID: string, limit: number): $CancellablePromise<java$0.SpringMetadataReport> {
     return $Call.ByID(1432124745, sessionID, limit).then(($result: any) => {
-        return $$createType196($result);
+        return $$createType198($result);
     });
 }
 
@@ -2585,7 +2597,7 @@ export function StartTests(request: codestudio$0.TestRunRequest): $CancellablePr
  */
 export function StartupAnalysis(sessionID: string, target: string, health: string, timeoutSeconds: number): $CancellablePromise<codestudio$0.StartupReport> {
     return $Call.ByID(1020562025, sessionID, target, health, timeoutSeconds).then(($result: any) => {
-        return $$createType197($result);
+        return $$createType199($result);
     });
 }
 
@@ -2640,7 +2652,7 @@ export function SuppressSecurityFinding(sessionID: string, finding: codestudio$0
  */
 export function TestModuleRegistry(sessionID: string): $CancellablePromise<codestudio$0.ModuleRegistryCheck> {
     return $Call.ByID(2927291149, sessionID).then(($result: any) => {
-        return $$createType198($result);
+        return $$createType200($result);
     });
 }
 
@@ -2649,7 +2661,7 @@ export function TestModuleRegistry(sessionID: string): $CancellablePromise<codes
  */
 export function ToolchainSettings(sessionID: string): $CancellablePromise<codestudio$0.ToolchainSettings> {
     return $Call.ByID(1885808392, sessionID).then(($result: any) => {
-        return $$createType199($result);
+        return $$createType201($result);
     });
 }
 
@@ -2688,7 +2700,7 @@ export function UseGlobalToolchain(sessionID: string): $CancellablePromise<void>
  */
 export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSBlameLine[]> {
     return $Call.ByID(3401291297, sessionID, relativePath).then(($result: any) => {
-        return $$createType201($result);
+        return $$createType203($result);
     });
 }
 
@@ -2697,7 +2709,7 @@ export function VCSBlame(sessionID: string, relativePath: string): $CancellableP
  */
 export function VCSChangedSymbols(sessionID: string): $CancellablePromise<codestudio$0.VCSChangedSymbol[]> {
     return $Call.ByID(2852524783, sessionID).then(($result: any) => {
-        return $$createType203($result);
+        return $$createType205($result);
     });
 }
 
@@ -2713,7 +2725,7 @@ export function VCSCheckout(sessionID: string, branch: string): $CancellableProm
  */
 export function VCSCommitFiles(sessionID: string, message: string, relativePaths: string[]): $CancellablePromise<git$0.CommitResult> {
     return $Call.ByID(2017164414, sessionID, message, relativePaths).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType206($result);
     });
 }
 
@@ -2729,7 +2741,7 @@ export function VCSFileAtRevision(sessionID: string, relativePath: string, revis
  */
 export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
-        return $$createType206($result);
+        return $$createType208($result);
     });
 }
 
@@ -2738,7 +2750,7 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
  */
 export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(3679175152, sessionID, relativePath, start, end).then(($result: any) => {
-        return $$createType206($result);
+        return $$createType208($result);
     });
 }
 
@@ -2747,7 +2759,7 @@ export function VCSLineHistory(sessionID: string, relativePath: string, start: n
  */
 export function VCSPatchLines(sessionID: string, base: string): $CancellablePromise<{ [_ in string]?: git$0.LineRange[] }> {
     return $Call.ByID(447699899, sessionID, base).then(($result: any) => {
-        return $$createType209($result);
+        return $$createType211($result);
     });
 }
 
@@ -2774,7 +2786,7 @@ export function VCSRevert(sessionID: string, relativePaths: string[]): $Cancella
 
 export function VCSSelectRepository(sessionID: string, root: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(156071826, sessionID, root).then(($result: any) => {
-        return $$createType210($result);
+        return $$createType212($result);
     });
 }
 
@@ -2790,7 +2802,7 @@ export function VCSStage(sessionID: string, relativePaths: string[], staged: boo
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
-        return $$createType210($result);
+        return $$createType212($result);
     });
 }
 
@@ -2799,7 +2811,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<codestudio$0.V
  */
 export function VCSWorkingDiff(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSWorkingDiff> {
     return $Call.ByID(4260236086, sessionID, relativePath).then(($result: any) => {
-        return $$createType211($result);
+        return $$createType213($result);
     });
 }
 
@@ -2808,7 +2820,7 @@ export function VCSWorkingDiff(sessionID: string, relativePath: string): $Cancel
  */
 export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.VulnReport> {
     return $Call.ByID(416955177, sessionID, moduleDirectory).then(($result: any) => {
-        return $$createType212($result);
+        return $$createType214($result);
     });
 }
 
@@ -2817,7 +2829,7 @@ export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<codestudio$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType213($result);
+        return $$createType215($result);
     });
 }
 
@@ -2826,7 +2838,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<codestudio
  */
 export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $CancellablePromise<codestudio$0.GraphSummary> {
     return $Call.ByID(4166878463, sessionID, rebuild).then(($result: any) => {
-        return $$createType214($result);
+        return $$createType216($result);
     });
 }
 
@@ -2835,7 +2847,7 @@ export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $Can
  */
 export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<codestudio$0.WorkspaceModule[]> {
     return $Call.ByID(368877389, sessionID).then(($result: any) => {
-        return $$createType216($result);
+        return $$createType218($result);
     });
 }
 
@@ -2844,7 +2856,7 @@ export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<cod
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<codestudio$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType218($result);
+        return $$createType220($result);
     });
 }
 
@@ -3044,41 +3056,43 @@ const $$createType177 = codestudio$0.RecursiveCallsResult.createFrom;
 const $$createType178 = codestudio$0.DependencySource.createFrom;
 const $$createType179 = resources$0.Snapshot.createFrom;
 const $$createType180 = codestudio$0.LintResult.createFrom;
-const $$createType181 = codestudio$0.RustToolchainReport.createFrom;
-const $$createType182 = codestudio$0.SonarConfig.createFrom;
-const $$createType183 = codestudio$0.SearchResult.createFrom;
-const $$createType184 = codestudio$0.SecurityExposure.createFrom;
-const $$createType185 = $Create.Array($$createType184);
-const $$createType186 = security$0.Report.createFrom;
-const $$createType187 = codestudio$0.SemanticTokensResult.createFrom;
-const $$createType188 = resources$0.GoRuntime.createFrom;
-const $$createType189 = dap$0.BreakpointState.createFrom;
-const $$createType190 = $Create.Array($$createType189);
-const $$createType191 = codestudio$0.ShutdownReport.createFrom;
-const $$createType192 = codestudio$0.SignatureResult.createFrom;
-const $$createType193 = java$0.SpringEndpoint.createFrom;
-const $$createType194 = $Create.Array($$createType193);
-const $$createType195 = java$0.SpringIndex.createFrom;
-const $$createType196 = java$0.SpringMetadataReport.createFrom;
-const $$createType197 = codestudio$0.StartupReport.createFrom;
-const $$createType198 = codestudio$0.ModuleRegistryCheck.createFrom;
-const $$createType199 = golang$0.ToolchainSettings.createFrom;
-const $$createType200 = codestudio$0.VCSBlameLine.createFrom;
-const $$createType201 = $Create.Array($$createType200);
-const $$createType202 = codestudio$0.VCSChangedSymbol.createFrom;
+const $$createType181 = rust$0.CargoTreeNode.createFrom;
+const $$createType182 = $Create.Array($$createType181);
+const $$createType183 = codestudio$0.RustToolchainReport.createFrom;
+const $$createType184 = codestudio$0.SonarConfig.createFrom;
+const $$createType185 = codestudio$0.SearchResult.createFrom;
+const $$createType186 = codestudio$0.SecurityExposure.createFrom;
+const $$createType187 = $Create.Array($$createType186);
+const $$createType188 = security$0.Report.createFrom;
+const $$createType189 = codestudio$0.SemanticTokensResult.createFrom;
+const $$createType190 = resources$0.GoRuntime.createFrom;
+const $$createType191 = dap$0.BreakpointState.createFrom;
+const $$createType192 = $Create.Array($$createType191);
+const $$createType193 = codestudio$0.ShutdownReport.createFrom;
+const $$createType194 = codestudio$0.SignatureResult.createFrom;
+const $$createType195 = java$0.SpringEndpoint.createFrom;
+const $$createType196 = $Create.Array($$createType195);
+const $$createType197 = java$0.SpringIndex.createFrom;
+const $$createType198 = java$0.SpringMetadataReport.createFrom;
+const $$createType199 = codestudio$0.StartupReport.createFrom;
+const $$createType200 = codestudio$0.ModuleRegistryCheck.createFrom;
+const $$createType201 = golang$0.ToolchainSettings.createFrom;
+const $$createType202 = codestudio$0.VCSBlameLine.createFrom;
 const $$createType203 = $Create.Array($$createType202);
-const $$createType204 = git$0.CommitResult.createFrom;
-const $$createType205 = codestudio$0.VCSCommit.createFrom;
-const $$createType206 = $Create.Array($$createType205);
-const $$createType207 = git$0.LineRange.createFrom;
+const $$createType204 = codestudio$0.VCSChangedSymbol.createFrom;
+const $$createType205 = $Create.Array($$createType204);
+const $$createType206 = git$0.CommitResult.createFrom;
+const $$createType207 = codestudio$0.VCSCommit.createFrom;
 const $$createType208 = $Create.Array($$createType207);
-const $$createType209 = $Create.Map($Create.Any, $$createType208);
-const $$createType210 = codestudio$0.VCSStatus.createFrom;
-const $$createType211 = codestudio$0.VCSWorkingDiff.createFrom;
-const $$createType212 = govuln$0.Report.createFrom;
-const $$createType213 = codestudio$0.WatcherStatus.createFrom;
-const $$createType214 = codestudio$0.GraphSummary.createFrom;
-const $$createType215 = codestudio$0.WorkspaceModule.createFrom;
-const $$createType216 = $Create.Array($$createType215);
-const $$createType217 = codestudio$0.WorkspaceSymbol.createFrom;
+const $$createType209 = git$0.LineRange.createFrom;
+const $$createType210 = $Create.Array($$createType209);
+const $$createType211 = $Create.Map($Create.Any, $$createType210);
+const $$createType212 = codestudio$0.VCSStatus.createFrom;
+const $$createType213 = codestudio$0.VCSWorkingDiff.createFrom;
+const $$createType214 = govuln$0.Report.createFrom;
+const $$createType215 = codestudio$0.WatcherStatus.createFrom;
+const $$createType216 = codestudio$0.GraphSummary.createFrom;
+const $$createType217 = codestudio$0.WorkspaceModule.createFrom;
 const $$createType218 = $Create.Array($$createType217);
+const $$createType219 = codestudio$0.WorkspaceSymbol.createFrom;
+const $$createType220 = $Create.Array($$createType219);

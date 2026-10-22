@@ -59,6 +59,12 @@ func (p *libtestParser) Parse(line []byte) (idetesting.Event, bool) {
 	return idetesting.Event{}, false
 }
 
+// Finish implementa idetesting.Finisher: l'output libtest non tiene test "in corso" (ogni riga
+// `test … ok|FAILED|ignored` è un esito definitivo, e la riga `running N tests` dà solo il conteggio
+// senza nomi), quindi alla chiusura del processo non c'è nulla da chiudere come skip (RS-5.4, a
+// differenza di pytest che ha una fase di collect con nodi "running").
+func (*libtestParser) Finish() []idetesting.Event { return nil }
+
 // parseOutput gestisce una riga dentro un blocco `---- <nome> stdout ----`: la prima riga vuota o
 // una nuova sezione chiude il blocco; la riga del panic fornisce la posizione del fallimento.
 func (p *libtestParser) parseOutput(text string) (idetesting.Event, bool) {

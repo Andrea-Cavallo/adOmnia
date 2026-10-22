@@ -6,6 +6,44 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * CargoTreeNode è una riga dell'albero in ordine di apparizione: Depth 0 è un crate locale
+ * (workspace member). La vista è la stessa di dependencytree.go (Java): una lista piatta con la
+ * profondità, da cui il frontend ricostruisce l'albero.
+ */
+export class CargoTreeNode {
+    "depth": number;
+    "name": string;
+    "version": string;
+    "status": string;
+
+    /** Creates a new CargoTreeNode instance. */
+    constructor($$source: Partial<CargoTreeNode> = {}) {
+        if (!("depth" in $$source)) {
+            this["depth"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CargoTreeNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CargoTreeNode {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CargoTreeNode($$parsedSource as Partial<CargoTreeNode>);
+    }
+}
+
+/**
  * Toolchain è una toolchain Rust candidata per un progetto o un'unità: il `cargo` che la esegue e
  * il canale dichiarato. La scoperta è statica (solo filesystem); versione e host arrivano da un
  * probe `rustc -vV` che l'host esegue solo con il progetto autorizzato (RS-2.2).
