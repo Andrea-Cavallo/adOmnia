@@ -10,9 +10,19 @@
   var parentWindow = window.parent !== window ? window.parent : null
   var autoReload = true
 
+  // Origine dell'IDE che incornicia la pagina: serve sia per indicare il destinatario di
+  // postMessage sia per verificare chi manda i comandi (S2819). `ancestorOrigins` è supportato
+  // dai webview di adOmnia (WebView2/WebKitGTK); in fallback si impara dal primo messaggio
+  // dell'host. Finché non è nota non si manda nulla: mai postMessage verso '*' (S2819).
+  var parentOrigin = ''
+  try {
+    if (location.ancestorOrigins && location.ancestorOrigins.length > 0) parentOrigin = location.ancestorOrigins[0]
+    else if (document.referrer) parentOrigin = new URL(document.referrer).origin
+  } catch (e) { /* si impara dal primo messaggio dell'host */ }
+
   function report(type, detail) {
-    if (!parentWindow) return
-    try { parentWindow.postMessage({ source: 'adomnia-preview', type: type, detail: detail }, '*') } catch (e) { /* the host is gone */ }
+    if (!parentWindow || !parentOrigin) return
+    try { parentWindow.postMessage({ source: 'adomnia-preview', type: type, detail: detail }, parentOrigin) } catch (e) { /* the host is gone */ }
   }
 
   function describe(value) {
@@ -50,6 +60,12 @@
   window.addEventListener('message', function (message) {
     var data = message.data
     if (!data || data.source !== 'adomnia-host' || message.source !== parentWindow) return
+    // S2819: l'origine deve essere quella dell'host che incornicia la pagina. Il primo messaggio
+    // la insegna se ancestorOrigins/referrer non l'hanno già data.
+    if (message.origin) {
+      if (!parentOrigin) parentOrigin = message.origin
+      else if (message.origin !== parentOrigin) return
+    }
     if (data.type === 'reload') location.reload()
     else if (data.type === 'back') history.back()
     else if (data.type === 'forward') history.forward()

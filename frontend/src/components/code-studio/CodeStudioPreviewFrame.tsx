@@ -54,6 +54,7 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow) return
+      if (origin && event.origin !== origin) return
       const message = parseBridgeMessage(event.data)
       if (!message) return
       if (message.type === 'ready') send({ type: 'auto-reload', enabled: autoReload })
@@ -61,7 +62,7 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
     }
     window.addEventListener('message', listener)
     return () => window.removeEventListener('message', listener)
-  }, [autoReload, onMessage, send])
+  }, [autoReload, onMessage, origin, send])
 
   const sized = width !== null
   return (
