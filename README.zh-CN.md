@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/screenshots/banner.png" alt="adOmnia" width="100%">
+  <img src="assets/images/banner.png" alt="adOmnia" width="100%">
 </p>
 
 <p align="center">
-  <strong>API 开发、Go 调试和服务检查，集于一个桌面应用。</strong><br>
-  一个 API 工作台和 Code Studio，配有数据库、消息、日志和性能分析工具。
+  <strong>本地优先的桌面 IDE，用于运行、测试和调试 AI 智能体编写的代码。</strong><br>
+  路由、API 客户端、Delve 调试器、数据库和消息代理集于一个窗口。无需账号，无需云端，无遥测。
 </p>
 
 <p align="center">
@@ -16,6 +16,12 @@
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ja.md">日本語</a> · <strong>简体中文</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>下载 Windows 版 (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>下载 macOS 版 (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>下载 Linux 版 (.tar.gz)</strong></a>
 </p>
 
 ## 截图
@@ -148,15 +154,25 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 [阅读 Code Studio 指南 →](docs/CODE-STUDIO.md) · [技术参考：IDE 平台 →](docs/CODE-STUDIO-REFERENCE.md)
 
+## 2 分钟上手
+
+1. 下载并打开 adOmnia。
+2. 在 **Code Studio** 中选择 **File → Open Project**，打开一个 Go 服务，并信任该文件夹。
+3. 按 `Ctrl+K` 搜索你的某条路由。
+4. 选择 **Debug Request**，在处理函数中设置断点。
+5. 服务在 Delve 下启动，请求被发送，执行在你的断点处停止。
+
 ## 下载与安装
 
 请从 **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)** 获取 adOmnia。可用的安装包和已知限制请查看发布页面。
 
 | 平台 | 下载 | 安装 |
 | --- | --- | --- |
-| Windows x64 | `adomnia-<version>-windows-amd64.exe` | 需要 WebView2；可执行文件/按用户安装，不是 MSI 安装向导 |
-| macOS Intel / Apple Silicon | `adomnia-<version>-macos-universal.dmg` | 通过 DMG 安装；签名详情请查看发行说明 |
-| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | 需要 GTK 3 和 WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | 需要 WebView2；可执行文件/按用户安装，不是 MSI 安装向导 |
+| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | 通过 DMG 安装；签名详情请查看发行说明 |
+| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | 需要 GTK 3 和 WebKitGTK 4.1 |
+
+**首次启动（未经操作系统签名的二进制文件）：** Windows 上 SmartScreen 弹出提示时，选择 **更多信息 → 仍要运行**。macOS 上首次请右键点击应用并选择 **打开**，或运行 `xattr -dr com.apple.quarantine /Applications/adomnia.app`。应用内更新程序会校验自己的签名和校验和。
 
 可以在 **Settings** 中检查更新。更新包会校验发布者签名和校验和；安装时会请求确认。操作系统的代码签名与更新程序的包签名是两回事。
 

@@ -227,6 +227,16 @@ jobs:
           ADOMNIA_UPDATE_SIGNING_KEY: ${{ secrets.ADOMNIA_UPDATE_SIGNING_KEY }}
         run: go run ./cmd/update-manifest -dir dist -version "${{ steps.ver.outputs.tag }}"
 
+      # Unversioned copies so README/site links keep working across releases
+      # (/releases/latest/download/<alias>). The updater only reads *-update.zip
+      # and the signed manifest, so it never sees these.
+      - name: Add stable download aliases
+        run: |
+          cd dist
+          cp adomnia-*-windows-amd64.exe adomnia-windows-amd64.exe
+          cp adomnia-*-macos-universal.dmg adomnia-macos-universal.dmg
+          cp adomnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
+
       - name: Include installation scripts
         run: cp scripts/install.sh scripts/install.ps1 dist/
 

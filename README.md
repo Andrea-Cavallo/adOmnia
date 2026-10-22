@@ -1,14 +1,27 @@
 <p align="center">
-  <img src="assets/images/halloween.png" alt="adOmnia" width="100%">
+  <img src="assets/images/banner.png" alt="adOmnia" width="100%">
 </p>
 
 <p align="center">
-  <strong>API development, Go debugging and service inspection in one desktop application.</strong><br>
-  An API workbench and Code Studio with database, messaging, logs and profiling tools.
+  <strong>A local-first desktop IDE to run, test and debug the code your AI agent writes.</strong><br>
+  Routes, API client, Delve debugger, database and brokers in one window. No account, no cloud, no telemetry.
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest">Download</a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia"></a>
+  <a href="LICENSE.md"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <img alt="Go 1.27" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
+  <img alt="Platforms: Windows, macOS, Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Andrea-Cavallo/adOmnia?style=flat"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Download for Windows (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>Download for macOS (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Download for Linux (.tar.gz)</strong></a>
+</p>
+
+<p align="center">
   <a href="https://www.youtube.com/watch?v=tefwLUadRr8">Watch the demo</a> ·
   <a href="docs/GETTING-STARTED.md">Getting started</a> ·
   <a href="docs/QUICKSTART.it.md">Guida in italiano</a>
@@ -19,37 +32,45 @@
 </p>
 
 <p align="center">
-  <img src="assets/images/adomnia-intro.gif" alt="adOmnia — local-first, no account, no telemetry" width="240">
+  <a href="https://www.youtube.com/watch?v=tefwLUadRr8"><img src="assets/images/adomnia-intro.gif" alt="adOmnia: local-first, no account, no telemetry" width="100%"></a>
 </p>
 
-## adOmnia is written in Go!
+<p align="center"><sub>Star the repository and choose Watch → Releases to follow progress.</sub></p>
 
-<p align="center">
-  Kubernetes is written in Go<br>
-  Prometheus is written in Go<br>
-  Terraform is written in Go<br>
-  Docker is written in Go<br>
-  Google created Go<br>
-  Cloudflare uses Go<br>
-  Uber uses Go<br>
-  Dropbox uses Go<br>
-  Twitch uses Go<br><br>
-  <strong>Fast compilation. Simple concurrency. Built for infrastructure.</strong><br>
-  <strong>Go is the way to Go. adOmnia is written in Go: speed is the point.</strong>
-</p>
+## The problem
 
-## One window for your code, your endpoints, your debugger and your database
+AI agents now write a large share of backend code. Checking it is the slow part: start the service, find the port, open an API client, attach a debugger, inspect the database. Each step lives in a different tool, and none of them knows about the others.
 
-A backend developer's day is usually an editor, a terminal, an API client, a database GUI, a Docker dashboard, a Kafka tool and a browser with DevTools, none of which know about each other. adOmnia ends the switching: a local-first desktop IDE whose centerpiece is **Code Studio**, wrapping every tool you touch in one minimal, modern interface where the code, the endpoints, the debugger, the database and the brokers know about each other. [Watch it in action](https://www.youtube.com/watch?v=tefwLUadRr8&t=24s).
+adOmnia puts that loop in one window. It reads your routes from the code, so the API client and the debugger already know which service and handler a request belongs to.
 
-- **Complete development tooling.** gopls completion, diagnostics and refactorings, run/test/debug from the gutter, a Delve debugger (launch, attach or remote), pprof and escape-analysis workbenches, a Git workbench with hunk staging, and several isolated projects open at once. Java and Spring, and the web languages, follow the same standards.
-- **Endpoints discovered from the code.** Opening a project builds a local map of modules, services, datasources, `.env` variables, OpenAPI/proto/WSDL contracts and HTTP routes (net/http, gin, echo, chi, gorilla; Spring MVC). Press `Ctrl+K` to jump to a route, table, topic or service and act on it: send it, open its handler, mock it, query it. No more copying ports into an API client.
-- **Request-level debugging.** *Debug Request* starts your service under the debugger, waits for the port, sends the request and stops on the breakpoint that handles it. Requests can target a service by name, resolved to your local run, a Compose port or a remote URL, and show the SQL and Kafka traffic they cause.
-- **Database, brokers and Docker in the same interface.** Database Studio (PostgreSQL, MySQL/MariaDB, MongoDB with an explorer and aggregation builder), Broker Studio, Docker Lab, Mock Server, Proxy and Browser Debugging, load testing, WebSocket/SSE/gRPC/SOAP clients. Opening a tool from a detected service arrives already configured.
-- **Minimal, modern and yours to shape.** One design language across every panel, light and dark themes, importable skins, a JavaScript plugin system, shareable templates and Git-friendly workspaces.
-- **Local-first.** No cloud, no account, no telemetry. Project tools run only after you explicitly trust a project, and every tool install shows its exact command first. One portable executable, written in Go: it starts fast and stays fast.
+## Try it in 2 minutes
 
-The glue between the tools is the product: when the IDE knows your routes, the API client knows which service to start, the debugger can stop inside the request you just sent and the database tool is already on the right schema, the loop from *I changed a line* to *I saw what it did* collapses from minutes to seconds.
+1. **Download and open it.** See [Download and install](#download-and-install) for the SmartScreen / Gatekeeper prompt on first launch.
+2. In **Code Studio**, choose **File → Open Project** and pick a Go service. Trust the folder when asked.
+3. Press `Ctrl+K` and search for one of your routes.
+4. Choose **Debug Request** and set a breakpoint in the handler.
+5. The service starts under Delve, the request is sent, and execution stops on your breakpoint.
+
+A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
+
+## What you get
+
+- **Endpoints discovered from the code.** Opening a project builds a local map of modules, services, datasources, `.env` variables, OpenAPI/proto/WSDL contracts and HTTP routes (net/http, gin, echo, chi, gorilla; Spring MVC; FastAPI, Flask, Django). `Ctrl+K` jumps to a route, table, topic or service and acts on it: send it, open its handler, mock it, query it.
+- **Request-level debugging.** *Debug Request* starts your service under Delve, waits for the port, sends the request and stops on the breakpoint that handles it. Requests can target a service by name, resolved to your local run, a Compose port or a remote URL, and show the SQL and Kafka traffic they cause.
+- **A full IDE for Go, Java and the web.** gopls completion, diagnostics and refactoring; run, test and debug from the gutter; pprof and escape-analysis workbenches; a Git workbench with hunk staging; several isolated projects open at once. Java/Spring, TypeScript/JavaScript and Python follow the same run, test and debug interface.
+- **Data and messaging beside the request.** Database Studio (PostgreSQL, MySQL/MariaDB, MongoDB, Redis), Broker Studio, Docker Lab, Mock Server, Proxy, Browser Debugging, load testing and WebSocket/SSE/gRPC/SOAP clients. Opening a tool from a detected service arrives already configured.
+- **Enterprise protocols.** SOAP/WSDL, WS-Security, mTLS, JKS and certificate tools sit in the same workspace as modern HTTP APIs.
+- **Dependency security.** Security Center scans `pom.xml`, `go.mod` and Python manifests, separates severity from exploitation signals, and previews the impact of an upgrade. Fixes show the diff and apply only after review.
+- **Local-first and extensible.** No cloud, no account, no telemetry. Project tools run only after you trust a project, and every tool install shows its exact command first. Light and dark themes, importable skins, a JavaScript plugin system, shareable templates and Git-friendly workspaces. One portable executable.
+
+```text
+WRITE              RUN                CALL                 UNDERSTAND
+Code Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
+                                                                ↕
+                                                    Variables · logs · SQL · messages
+```
+
+SQL, broker messages and logs join this loop when capture is configured for the service; they are not available for every service automatically.
 
 ## Tour of adOmnia
 
@@ -149,46 +170,6 @@ Open or paste logs, or follow them live. Search with filters, see fields detecte
   <img src="assets/screenshots/power-tools.png" alt="Power Tools with the HAR Viewer open" width="100%">
 </p>
 
-## Demo
-
-**[▶ Watch the demo on YouTube](https://www.youtube.com/watch?v=tefwLUadRr8)**
-
-*API Workspace showing a request, its response and the associated Go handler. Select the image to watch the demonstration.*
-
-## API development and service debugging
-
-adOmnia combines API testing and Go development. Requests can be linked to detected handlers, executed against a running service and inspected in the debugger. Database, messaging, log and trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request.
-
-A Go service started in **Code Studio** becomes a **live development session**. **API Workspace** can call and debug it; recognized routes link back to their source. Logs and configured SQL/broker captures are part of the same workflow.
-
-```text
-WRITE              RUN                CALL                 UNDERSTAND
-Code Studio    →    Live service    →    API Workspace    →    Handler / breakpoint
-                                                                ↕
-                                                    Variables · logs · SQL · messages
-```
-
-### Core capabilities
-
-| Capability | Description |
-| --- | --- |
-| **API testing and source navigation** | Reusable collections, environments, authentication and assertions, with a direct route into recognized Go handlers. Start with an API, then follow its implementation into the running code. |
-| **Request-driven debugging** | Debug Request starts or reuses a compatible Delve session. Inspect frames, variables and goroutines, step through the handler and return to the response. |
-| **Data and events beside the request** | Database, Broker, Log and Trace tools share the application. With capture configured, follow the SQL, messages and logs associated with the live request. |
-| **Go development and profiling** | gopls editing and navigation, test/coverage workflows, Delve, pprof, execution traces and architecture/impact views connect source-level work with runtime investigation. |
-| **Enterprise protocols in the same workflow** | HTTP, SOAP/WSDL, WS-Security, gRPC, WebSocket/SSE, mTLS and certificate tools support both modern APIs and existing systems. |
-| **Dependency security with reviewed fixes** | Security Center scans `pom.xml` and `go.mod`, separates severity from exploitation signals, and previews the security impact of an upgrade before it happens. Safe remediation shows the diff, runs the checks and applies only after your review. |
-| **Local storage and multiple windows** | Local collections and settings, exportable data, multiple Go projects and native studio windows. Arrange the IDE, API client and supporting tools across windows. |
-
-### Storage and external services
-
-**No account required to use the application.** Collections, settings and project state stay local. You choose the APIs, databases, brokers and optional AI providers to connect to. External providers and local services are chosen explicitly.
-
-### Projects and windows
-
-Keep a service in Code Studio, its requests in API Workspace and its database or broker beside them. Open another Go project in its own native window while staying inside the same adOmnia instance.
-
-The workflow preserves links between the project, service session, API request and available diagnostic evidence.
 
 ## Start with your API
 
@@ -198,16 +179,7 @@ The workflow preserves links between the project, service session, API request a
 4. Press **SEND**. Inspect the status, timing, response body, headers and test results.
 5. Save the request to rerun it or share an export.
 
-You can use the API tools without opening a Go project.
-
-| Workflow | Tools in the same workspace |
-| --- | --- |
-| Test HTTP APIs | Collections, environments, authentication, response inspection and assertions |
-| Work with enterprise protocols | SOAP/WSDL, WS-Security, gRPC, mTLS and certificate tools |
-| Follow live connections | WebSocket and SSE clients |
-| Reproduce responses | Mock server and proxy/interceptor tools |
-| Inspect service data | Database Studio and Broker Studio |
-| Understand failures | Browser debugging, logs, traces and the connected Go debugger |
+The API tools work without opening a project.
 
 ## Follow a request into Go code
 
@@ -217,35 +189,28 @@ You can use the API tools without opening a Go project.
 4. Send the matching request. For a recognized route, the **HANDLER** strip links to its source with **OPEN IN GO IDE**.
 5. Inspect the paused frame, variables, stack and goroutines. Step or continue, then return to the response.
 
-SQL, broker messages and logs enrich this workflow when capture/instrumentation is configured. They are not automatically available for every service. See [the walkthrough](docs/GETTING-STARTED.md) for a first setup.
+See [the walkthrough](docs/GETTING-STARTED.md) for a first setup, [Code Studio](docs/CODE-STUDIO.md) for the IDE guide and [the technical reference](docs/CODE-STUDIO-REFERENCE.md) for the platform internals.
 
-## Code Studio: the IDE inside the workflow
-
-- **Edit and navigate:** gopls completion, diagnostics, references, rename, refactoring, project search and Git.
-- **Run, test and debug:** Go configurations, test explorer, coverage and Delve with conditional breakpoints and goroutine inspection.
-- **More than Go:** TypeScript/JavaScript and web projects (Vite/npm scripts, Vitest/Jest results, Live Preview) and Java (Maven/Gradle, JUnit, Spring Boot, breakpoints and remote attach) use the same run, test and debug interface. In `pom.xml`, check for newer versions on Maven Central and scan dependencies for known vulnerabilities, with a one-click version update. Language servers and debuggers are installed only after you confirm the exact command.
-- **Understand the project:** routes, dependencies, interfaces, architecture and change-impact views.
-- **Measure behavior:** pprof profiles, execution traces, benchmarks and concurrency tools.
-- **Keep work together:** terminal, local history, recovery snapshots and multiple projects/windows within one adOmnia instance.
-- **AI assistance:** contextual assistance with configured providers and project policies; review changes before applying them.
-
-> **Upgrading to Go 1.27?** Reinstall the Go tools you already have: golangci-lint, staticcheck, gopls and Delve. Tools built with an older Go cannot read Go 1.27 packages. For example, golangci-lint 2.5.0 built with Go 1.25 reports `export data version 5 is greater than maximum supported version 2` on a Go 1.27 project, while the same binary works on a Go 1.26.5 project. Rebuild each tool with Go 1.27 (`go install <tool>@latest`); Code Studio's own installs already use `@latest`.
-
-Open another project from the project selector. Choose **Open Project in New Window** to place it beside the first IDE; save or discard unsaved files before moving it. Use the **Studios** menu for surrounding tools and workspaces.
-
-[Read the Code Studio guide →](docs/CODE-STUDIO.md) · [Technical reference: the IDE platform →](docs/CODE-STUDIO-REFERENCE.md)
+> **Upgrading to Go 1.27?** Reinstall the Go tools you already have (golangci-lint, staticcheck, gopls, Delve). Tools built with an older Go cannot read Go 1.27 packages and report errors such as `export data version 5 is greater than maximum supported version 2`. Rebuild each with `go install <tool>@latest`; Code Studio's own installs already do.
 
 ## Download and install
 
-Get adOmnia from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)**. Check the release page for available assets and known limitations.
+Get adOmnia from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)**.
 
 | Platform | Download | Setup |
 | --- | --- | --- |
-| Windows x64 | `adomnia-<version>-windows-amd64.exe` | Requires WebView2; executable/per-user installation, not an MSI wizard |
-| macOS Intel / Apple Silicon | `adomnia-<version>-macos-universal.dmg` | Install from the DMG; check signing details in release notes |
-| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | Requires GTK 3 and WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | Requires WebView2; portable executable, not an MSI wizard |
+| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | Install from the DMG |
+| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | Requires GTK 3 and WebKitGTK 4.1 |
 
-Check for updates in **Settings**. Update packages verify the publisher signature and checksum; installation asks for confirmation. OS code signing is separate from updater package signing.
+Verify a download against `SHA256SUMS.txt` on the release page.
+
+**First launch, unsigned binaries**
+
+- **Windows:** SmartScreen shows "Windows protected your PC". Choose **More info → Run anyway**.
+- **macOS:** right-click the app and choose **Open** the first time, or run `xattr -dr com.apple.quarantine /Applications/adomnia.app`.
+
+Binaries are not OS-code-signed yet. The in-app updater (**Settings → Check for updates**) verifies its own publisher signature and checksum and asks for confirmation before installing.
 
 [Installation and updates](docs/INSTALL.md) · [Release notes and support limits](docs/releases/v1.0.0.md)
 
@@ -305,6 +270,24 @@ The **MCP** panel connects adOmnia to any other MCP server, over **stdio** (a co
 
 Everything runs on your machine: adOmnia only talks to the servers you configure.
 
+
+## Questions you'll have
+
+- **Is it safe to run an unsigned binary?** The code is open and each release ships `SHA256SUMS.txt` so you can check the download. The in-app updater verifies its own signature and checksum. OS code signing is not in place yet.
+- **Does it send my code anywhere?** No telemetry and no account. AI features are optional and talk only to the provider you configure.
+- **Which frameworks does route discovery cover?** net/http, gin, echo, chi and gorilla for Go; Spring MVC for Java; FastAPI, Flask and Django for Python.
+- **How is it different from Postman, GoLand or VS Code?** adOmnia reads your routes from the code, so the API client and the debugger already know which service and handler a request belongs to.
+- **Is it production-ready?** No, it is early. See [What is experimental](#what-is-experimental) and the limits below.
+
+## Known limits
+
+| Area | Limit today |
+| --- | --- |
+| Code signing | Windows and macOS binaries are not OS-signed |
+| Python | Desktop acceptance pending; notebooks and remote debugging not available |
+| Request capture | SQL, broker and log capture must be configured per service |
+| LAN collaboration | Beta, opt-in |
+
 ## What is experimental
 
 LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift, plugin marketplace and Hub games are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, but platform support is limited by the underlying OS and toolchain.
@@ -320,6 +303,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Vault and local credentials](docs/VAULT.md) | Understand age+scrypt, the in-memory key, auto-lock, DPAPI/keychain seals and the threat model |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |
+| [Python, run configurations and AI chat](docs/CODE-STUDIO.md#python) | Language details moved out of this page |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) · [FAQ](docs/FAQ.md) | Resolve setup and workflow problems |
 | [Build from source](docs/BUILD.md) · [Contributing](CONTRIBUTING.md) | Build the application and contribute |
 
@@ -327,12 +311,6 @@ Resource diagnostics: adjust the backend Go GC budget live, restart gopls with a
 
 ## Feedback and contributions
 
-[Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. Follow repository contribution guidelines before opening a pull request.
+[Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. Follow the [contribution guidelines](CONTRIBUTING.md) before opening a pull request.
 
 [MIT license](LICENSE.md)
-
-Python in Code Studio: script/module Run, structured pytest tests (optional coverage with pytest-cov), debugpy debugging with exception breakpoints and explicit local attach, Ruff formatting on request and basedpyright editing assistance, with per-unit interpreter discovery and selection; each unit runs its own language server, so two virtualenvs never share an interpreter. FastAPI/Flask/Django routes open in the API client, Project Services preselects Database and Broker Studio from the project manifests, and Security Center scans Python dependencies through the PyPI ecosystem, with CVE lenses and one-click fixes in `requirements*.txt`/`pyproject.toml`, a Python tab in Module dependencies, and an "API docs" handoff from the Run console to the API client's OpenAPI import. All tools are used from your local environments or installed explicitly with visible, pinned commands, and downloaded artifacts are verified against the SHA-256 reported at install time; nothing is installed silently. Notebooks and remote debugging remain planned. Desktop acceptance is pending. See [Code Studio](docs/CODE-STUDIO.md).
-
-Run configurations provide project-aware creation, searchable saved entries and types, review of detected targets, and protection for unsaved edits. See [Code Studio](docs/CODE-STUDIO.md) for the current workflow and acceptance limits.
-
-Claude Code and milk chat share filtered live project context and support explicit text and image attachments. Model selectors follow agent capabilities. milk's own slash commands are read from the agent (`/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary`, …) and offered in a keyboard palette in the composer, so workflows, background agents and plans are usable without guessing syntax; background-agent follow-up turns appear as a marked assistant response instead of being dropped. Images use native ACP blocks when the agent advertises them, otherwise a private temporary `@<path>` reference deleted at the end of the turn — the same convention milk's TUI uses — so Claude Code can read them while a text-only local model cannot. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending. See [Code Studio](docs/CODE-STUDIO.md).

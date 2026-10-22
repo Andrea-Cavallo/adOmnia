@@ -12,9 +12,9 @@ Release files:
 
 | Platform | Artifact |
 |---|---|
-| Windows | `adomnia-<version>-windows-amd64.exe` |
-| Linux | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` |
-| macOS | `adomnia-<version>-macos-universal.dmg` |
+| Windows | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) |
+| Linux | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) |
+| macOS | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) |
 
 ## Install or update with a script
 
@@ -93,13 +93,13 @@ Available artifact groups:
 
 Download the `.exe` file and run it.
 
-If Windows Defender SmartScreen warns about an unsigned application, choose the advanced option only if you trust the downloaded file and source. Code signing can be added later for a smoother install experience.
+Binaries are not OS-code-signed yet. If SmartScreen shows "Windows protected your PC", choose **More info → Run anyway**, but only for a file you downloaded from this repository's releases; compare it with `SHA256SUMS.txt` if you want to be sure. The in-app updater verifies its own publisher signature and checksum.
 
 ## macOS
 
-Download the `.dmg`, open it, and drag `adOmnia.app` to Applications.
+Download the `.dmg`, open it, and drag `adomnia.app` to Applications.
 
-Unsigned builds may trigger Gatekeeper warnings. This is expected until notarized releases are configured.
+Binaries are not notarized yet, so Gatekeeper may block the first launch. Right-click the app and choose **Open** once, or run `xattr -dr com.apple.quarantine /Applications/adomnia.app`.
 
 ## Linux
 

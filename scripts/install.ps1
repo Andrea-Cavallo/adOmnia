@@ -20,7 +20,7 @@ $api = 'https://api.github.com/repos/Andrea-Cavallo/adOmnia/releases'
 $endpoint = "$api/latest"
 if ($Version -ne 'latest') { if (-not $Version.StartsWith('v')) { $Version = "v$Version" }; $endpoint = "$api/tags/$Version" }
 $release = Invoke-RestMethod -Uri $endpoint -TimeoutSec 30
-$package = @($release.assets | Where-Object { $_.name -cmatch '-windows-amd64\.exe$' })
+$package = @($release.assets | Where-Object { $_.name -cmatch '^adomnia-\d.*-windows-amd64\.exe$' })
 $checksums = @($release.assets | Where-Object { $_.name -ceq 'SHA256SUMS.txt' })
 if ($package.Count -ne 1 -or $checksums.Count -ne 1) { throw 'Release is missing the executable/checksums.' }
 foreach ($asset in @($package[0], $checksums[0])) {

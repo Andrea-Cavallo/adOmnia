@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/screenshots/banner.png" alt="adOmnia" width="100%">
+  <img src="assets/images/banner.png" alt="adOmnia" width="100%">
 </p>
 
 <p align="center">
-  <strong>Un IDE de Go y una caja de herramientas API completa en una sola aplicación de escritorio local-first.</strong><br>
-  Escribe el servicio, ejecútalo, llámalo, depúralo — e inspecciona su base de datos, sus mensajes y sus logs sin salir del espacio de trabajo.
+  <strong>Un IDE de escritorio local-first para ejecutar, probar y depurar el código que escribe tu agente de IA.</strong><br>
+  Rutas, cliente API, depurador Delve, base de datos y brokers en una sola ventana. Sin cuenta, sin nube, sin telemetría.
 </p>
 
 <p align="center">
@@ -16,6 +16,12 @@
 
 <p align="center">
   <a href="README.md">English</a> · <strong>Español</strong> · <a href="README.ja.md">日本語</a> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Descargar para Windows (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>Descargar para macOS (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Descargar para Linux (.tar.gz)</strong></a>
 </p>
 
 <p align="center">
@@ -48,9 +54,11 @@ Obtén la última versión en **[GitHub Releases](https://github.com/Andrea-Cava
 
 | Plataforma | Archivo | Requisitos |
 | --- | --- | --- |
-| Windows x64 | `adomnia-<version>-windows-amd64.exe` | WebView2 runtime |
-| macOS (Intel y Apple Silicon) | `adomnia-<version>-macos-universal.dmg` | — |
-| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | GTK 3, WebKitGTK 4.1 |
+| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | WebView2 runtime |
+| macOS (Intel y Apple Silicon) | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | — |
+| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | GTK 3, WebKitGTK 4.1 |
+
+**Primer arranque (binarios sin firma del sistema):** en Windows, SmartScreen muestra «Windows protegió su PC»: elige **Más información → Ejecutar de todas formas**. En macOS, clic derecho sobre la app → **Abrir** la primera vez, o `xattr -dr com.apple.quarantine /Applications/adomnia.app`. El actualizador integrado verifica su propia firma y checksum.
 
 Cada versión incluye `SHA256SUMS.txt`. Consulta la [guía de instalación](docs/INSTALL.md) para los pasos de cada plataforma. Las plantillas para Scoop, Homebrew, Snap y Flatpak están en [`packaging/`](packaging/README.md); usa GitHub Releases hasta que esos canales estén publicados.
 

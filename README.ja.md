@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/screenshots/banner.png" alt="adOmnia" width="100%">
+  <img src="assets/images/banner.png" alt="adOmnia" width="100%">
 </p>
 
 <p align="center">
-  <strong>API 開発、Go のデバッグ、サービスの調査を 1 つのデスクトップアプリで。</strong><br>
-  データベース、メッセージング、ログ、プロファイリングのツールを備えた API ワークベンチと Code Studio。
+  <strong>AI エージェントが書いたコードを実行・テスト・デバッグする、ローカルファーストのデスクトップ IDE。</strong><br>
+  ルート、API クライアント、Delve デバッガ、データベース、ブローカーを 1 つのウィンドウに。アカウント不要、クラウド不要、テレメトリなし。
 </p>
 
 <p align="center">
@@ -16,6 +16,12 @@
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README.es-ES.md">Español</a> · <strong>日本語</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe"><strong>Windows 版をダウンロード (.exe)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg"><strong>macOS 版をダウンロード (.dmg)</strong></a> ·
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"><strong>Linux 版をダウンロード (.tar.gz)</strong></a>
 </p>
 
 ## スクリーンショット
@@ -148,15 +154,25 @@ API ツールは Go プロジェクトを開かなくても使えます。
 
 [Code Studio ガイドを読む →](docs/CODE-STUDIO.md) · [技術リファレンス: IDE プラットフォーム →](docs/CODE-STUDIO-REFERENCE.md)
 
+## 2 分で試す
+
+1. adOmnia をダウンロードして起動します。
+2. **Code Studio** で **File → Open Project** を選び、Go サービスを開きます。フォルダを信頼します。
+3. `Ctrl+K` を押して、ルートを検索します。
+4. **Debug Request** を選び、ハンドラにブレークポイントを置きます。
+5. サービスが Delve の下で起動し、リクエストが送信され、ブレークポイントで停止します。
+
 ## ダウンロードとインストール
 
 adOmnia は **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/releases/latest)** から入手できます。利用可能なアセットと既知の制限は、リリースページで確認してください。
 
 | プラットフォーム | ダウンロード | セットアップ |
 | --- | --- | --- |
-| Windows x64 | `adomnia-<version>-windows-amd64.exe` | WebView2 が必要。実行ファイル/ユーザー単位のインストールで、MSI ウィザードではありません |
-| macOS Intel / Apple Silicon | `adomnia-<version>-macos-universal.dmg` | DMG からインストール。署名の詳細はリリースノートを確認してください |
-| Linux x64 | `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz` | GTK 3 と WebKitGTK 4.1 が必要 |
+| Windows x64 | [`adomnia-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-windows-amd64.exe) | WebView2 が必要。実行ファイル/ユーザー単位のインストールで、MSI ウィザードではありません |
+| macOS Intel / Apple Silicon | [`adomnia-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-macos-universal.dmg) | DMG からインストール。署名の詳細はリリースノートを確認してください |
+| Linux x64 | [`adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest/download/adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz) | GTK 3 と WebKitGTK 4.1 が必要 |
+
+**初回起動（OS 署名なしのバイナリ）:** Windows では SmartScreen が表示されたら **詳細情報 → 実行** を選びます。macOS では初回のみアプリを右クリックして **開く**、または `xattr -dr com.apple.quarantine /Applications/adomnia.app` を実行します。アプリ内アップデータは独自の署名とチェックサムを検証します。
 
 更新の確認は **Settings** から行えます。更新パッケージは発行元の署名とチェックサムを検証し、インストール時には確認を求めます。OS のコード署名は、アップデータのパッケージ署名とは別のものです。
 
