@@ -16,6 +16,7 @@ func detectRustFile(rel string, data []byte) []Entity {
 	out = append(out, detectRustEnv(rel, data)...)
 	out = append(out, detectRustGrpc(rel, data)...)
 	out = append(out, detectRustWebSocket(rel, data)...)
+	out = append(out, detectRustBroker(rel, data)...)
 	return out
 }
 
