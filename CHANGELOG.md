@@ -4,6 +4,14 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [1.0.13] — 2026-10-22
+
+Release notes: [docs/releases/v1.0.13.md](docs/releases/v1.0.13.md).
+
+- Python in Code Studio: run, pytest (with coverage), debugpy, basedpyright (one server per unit), Ruff, per-unit interpreters and explicit environment actions.
+- Python across the product: FastAPI/Flask/Django routes become Developer Context entities, PyPI Security Intelligence and Python module dependencies.
+- Shared agent policy, MCP gating, milk 0.7 support, byte budgets for large responses and logs, Code Studio rename.
+
 ## [1.0.12] — 2026-10-20
 
 Release notes: [docs/releases/v1.0.12.md](docs/releases/v1.0.12.md).
