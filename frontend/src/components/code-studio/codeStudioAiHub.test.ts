@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { aiProviderBadge, aiProviderTone, aiProviderTooltip, providerLabel } from './codeStudioAiHub'
+import { aiProviderBadge, aiProviderPower, aiProviderTone, aiProviderTooltip, providerLabel } from './codeStudioAiHub'
 
 describe('AI hub provider status', () => {
   it('maps every provider state to a tone: green only for ready', () => {
@@ -83,5 +83,18 @@ describe('AI hub last provider', () => {
     const { store } = await withMemoryStorage({ [KEY]: 'teleprinter' })
     expect(store.useCodeStudioAssistantStore.getState().lastProvider).toBe('copilot')
     expect(store.DEFAULT_PROVIDER).toBe('copilot')
+  })
+})
+
+describe('AI hub quick power switch', () => {
+  it('names the action for the current state and stays inert until the setting is known', () => {
+    expect(aiProviderPower('milk', true)).toEqual({ label: 'Turn milk off', next: false, disabled: false })
+    expect(aiProviderPower('Claude Code', false)).toEqual({ label: 'Turn Claude Code on', next: true, disabled: false })
+    expect(aiProviderPower('Copilot', null)).toEqual({ label: 'Copilot: loading its setting', next: true, disabled: true })
+  })
+
+  it('lets the tab show an off provider as off even when its status is idle', () => {
+    expect(aiProviderTone('disabled')).toBe('idle')
+    expect(aiProviderTooltip('idle', null, 'milk')).toBe('milk — Not available')
   })
 })

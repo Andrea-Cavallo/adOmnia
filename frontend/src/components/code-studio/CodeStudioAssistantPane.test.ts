@@ -24,6 +24,18 @@ describe('Code Studio right assistant column', () => {
     expect(hub).toContain('CodeStudioClaudeChat')
   })
 
+  it('lets each provider be switched off and on from its own tab', () => {
+    const hub = source('src/components/code-studio/CodeStudioAiHubPanel.tsx')
+    const providers = source('src/components/code-studio/useAiProviders.ts')
+    // Un pulsante per tab, separato dal tab stesso (niente button dentro button) e guidato dalle impostazioni salvate.
+    expect(hub).toContain('aiProviderPower(label, enabled)')
+    expect(hub).toContain('aria-pressed={enabled === true}')
+    expect(hub).toContain('setAiProviderEnabled[id](power.next)')
+    for (const store of ['useCopilotStore', 'useMilkStore', 'useClaudeCodeStore']) {
+      expect(providers).toContain(`${store}.getState().setEnabled(enabled)`)
+    }
+  })
+
   it('removes the old global floating assistant', () => {
     expect(source('src/App.tsx')).not.toContain('AICompanionHost')
     const companion = source('src/components/assistant/AICompanion.tsx')

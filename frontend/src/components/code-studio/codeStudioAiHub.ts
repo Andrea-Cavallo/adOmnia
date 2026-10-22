@@ -65,3 +65,9 @@ export function aiProviderTooltip(tone: AiProviderTone, message: string | null |
   const state = AI_PROVIDER_TONE_LABEL[tone]
   return message ? `${label} — ${state}: ${message}` : `${label} — ${state}`
 }
+
+/** Interruttore rapido di un provider: etichetta, valore da salvare e se è utilizzabile (`enabled` null = impostazione non ancora letta). */
+export function aiProviderPower(label: string, enabled: boolean | null): { label: string; next: boolean; disabled: boolean } {
+  if (enabled === null) return { label: `${label}: loading its setting`, next: true, disabled: true }
+  return { label: `Turn ${label} ${enabled ? 'off' : 'on'}`, next: !enabled, disabled: false }
+}

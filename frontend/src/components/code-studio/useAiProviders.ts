@@ -8,6 +8,15 @@ export interface AiProviderState {
   tone: AiProviderTone
   /** Messaggio classificato (proxy, registry, certificati…): tooltip del pallino. */
   message: string | null
+  /** Interruttore salvato nelle impostazioni del provider; null finché non è stato letto. */
+  enabled: boolean | null
+}
+
+/** Accende o spegne un provider: salva l'impostazione e il backend ferma o avvia il processo. */
+export const setAiProviderEnabled: Record<CodeStudioChatPane, (enabled: boolean) => Promise<boolean>> = {
+  copilot: (enabled) => useCopilotStore.getState().setEnabled(enabled),
+  milk: (enabled) => useMilkStore.getState().setEnabled(enabled),
+  claude: (enabled) => useClaudeCodeStore.getState().setEnabled(enabled),
 }
 
 /** Stato dei tre provider AI, per i pallini della hub e del bottone unico della stripe. */
@@ -15,10 +24,13 @@ export function useAiProviders(): Record<CodeStudioChatPane, AiProviderState> {
   const copilot = useCopilotStore((state) => state.status)
   const milk = useMilkStore((state) => state.status)
   const claude = useClaudeCodeStore((state) => state.status)
+  const copilotEnabled = useCopilotStore((state) => state.settings?.enabled)
+  const milkEnabled = useMilkStore((state) => state.settings?.enabled)
+  const claudeEnabled = useClaudeCodeStore((state) => state.settings?.enabled)
   return {
-    copilot: { tone: aiProviderTone(copilot?.state), message: copilot?.message ?? null },
-    milk: { tone: aiProviderTone(milk?.state), message: milk?.message ?? null },
-    claude: { tone: aiProviderTone(claude?.state), message: claude?.message ?? null },
+    copilot: { tone: aiProviderTone(copilot?.state), message: copilot?.message ?? null, enabled: copilotEnabled ?? null },
+    milk: { tone: aiProviderTone(milk?.state), message: milk?.message ?? null, enabled: milkEnabled ?? null },
+    claude: { tone: aiProviderTone(claude?.state), message: claude?.message ?? null, enabled: claudeEnabled ?? null },
   }
 }
 
