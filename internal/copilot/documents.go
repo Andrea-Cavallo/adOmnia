@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path/filepath"
 
+	"adomnia/internal/airedact"
 	"adomnia/internal/ide/lsp"
 )
 
@@ -24,11 +25,13 @@ type OpenedDocument struct {
 	Text         string
 }
 
-// DocumentOpened registra il documento e lo invia al server se attivo. I file sensibili non partono mai.
+// DocumentOpened registra il documento e lo invia al server se attivo. I file sensibili non partono mai
+// e il testo sincronizzato è mascherato: il language server Copilot non deve ricevere segreti.
 func (m *Manager) DocumentOpened(opened OpenedDocument) {
 	if len(opened.Text) > maxDocumentBytes || LoadContextFilter(opened.Root).Excluded(opened.RelativePath) {
 		return
 	}
+	opened.Text = airedact.Redact(opened.Text)
 	m.mu.Lock()
 	if _, exists := m.documents[opened.URI]; exists {
 		m.mu.Unlock()
@@ -60,6 +63,7 @@ func (m *Manager) DocumentChanged(documentID string, version int, text string) {
 		m.mu.Unlock()
 		return
 	}
+	text = airedact.Redact(text)
 	tracked.version = version
 	tracked.text = text
 	running := m.current

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/airedact"
 	"adomnia/internal/ide/lsp"
 )
 
@@ -123,6 +124,9 @@ func (m *Manager) Chat(parent context.Context, request ChatRequest) (ChatRespons
 	if len(request.Message) > maxChatMessageBytes {
 		return ChatResponse{}, fmt.Errorf("chat message exceeds %d KiB", maxChatMessageBytes/1024)
 	}
+	// Difesa in profondità: il renderer redige già, ma nessun segreto deve partire
+	// anche quando un altro client chiama il binding direttamente.
+	request.Message = airedact.Redact(request.Message)
 	if m.Status().State != StateReady {
 		return ChatResponse{}, errors.New("GitHub Copilot is not ready; sign in first")
 	}

@@ -22,8 +22,13 @@ wails3 task dev
 npm --prefix frontend test
 npm --prefix frontend run build
 npm --prefix frontend run check:startup
+node scripts/check-wails-version.mjs
 go build ./... && go test ./...
 ```
+
+`check-wails-version.mjs` fails when `docs/BUILD.md`, `README.md`, `AGENTS.md`
+or a workflow names a Wails version different from the one pinned in `go.mod`.
+CI runs it on every build.
 
 ## Production builds
 

@@ -1,5 +1,7 @@
 # Database Studio: connessioni e credenziali
 
+Modello completo di chiavi, auto-lock e limiti: [VAULT.md](VAULT.md).
+
 Da 1.0.2 password e Raw DSN vengono cifrati automaticamente prima di salvare le connessioni nel bucket bbolt `database/connections` e nel mirror `adomnia.database.connections`. La serializzazione rifiuta testo in chiaro anziché scartarlo. Una password vuota nell'editor non elimina un riferimento salvato: usare **Remove password** o **Remove DSN**. Le modifiche vengono salvate dopo una breve pausa nella digitazione o quando si lascia il campo.
 
 La cifratura usa AES-256-GCM con nonce casuale e riferimenti `vault:local:v1:…`. La chiave master per utente è nel keychain di sistema tramite go-keyring: Credential Manager su Windows, Keychain su macOS, Secret Service su Linux. Se il keychain non è disponibile alla prima configurazione, il fallback è un file locale con permessi utente; su Windows il file contiene una chiave protetta da DPAPI. Il form segnala il fallback. Un keychain già inizializzato ma successivamente bloccato causa un errore: la chiave non viene sostituita silenziosamente.

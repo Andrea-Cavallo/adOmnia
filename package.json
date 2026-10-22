@@ -6,6 +6,7 @@
     "frontend:build": "npm --prefix frontend run build",
     "frontend:test": "npm --prefix frontend run test",
     "go:test": "go test ./...",
-    "check": "npm --prefix frontend run build && go test ./..."
+    "check:wails": "node scripts/check-wails-version.mjs",
+    "check": "npm run check:wails && npm --prefix frontend run build && go test ./..."
   }
 }

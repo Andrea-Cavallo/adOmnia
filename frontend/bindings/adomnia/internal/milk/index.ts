@@ -3,6 +3,7 @@
 
 export {
     AgentsInfo,
+    Command,
     ControlValue,
     ImageAttachment,
     MCPServer,

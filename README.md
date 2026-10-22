@@ -317,6 +317,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
 | [Code Studio](docs/CODE-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
 | [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
+| [Vault and local credentials](docs/VAULT.md) | Understand age+scrypt, the in-memory key, auto-lock, DPAPI/keychain seals and the threat model |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) · [FAQ](docs/FAQ.md) | Resolve setup and workflow problems |
@@ -334,4 +335,4 @@ Python in Code Studio: script/module Run, structured pytest tests (optional cove
 
 Run configurations provide project-aware creation, searchable saved entries and types, review of detected targets, and protection for unsaved edits. See [Code Studio](docs/CODE-STUDIO.md) for the current workflow and acceptance limits.
 
-Claude Code and milk chat share filtered live project context and support explicit text attachments. Model selectors follow agent capabilities; images are available only on image-capable ACP adapters. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending. See [Code Studio](docs/CODE-STUDIO.md).
+Claude Code and milk chat share filtered live project context and support explicit text and image attachments. Model selectors follow agent capabilities. milk's own slash commands are read from the agent (`/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary`, …) and offered in a keyboard palette in the composer, so workflows, background agents and plans are usable without guessing syntax; background-agent follow-up turns appear as a marked assistant response instead of being dropped. Images use native ACP blocks when the agent advertises them, otherwise a private temporary `@<path>` reference deleted at the end of the turn — the same convention milk's TUI uses — so Claude Code can read them while a text-only local model cannot. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending. See [Code Studio](docs/CODE-STUDIO.md).

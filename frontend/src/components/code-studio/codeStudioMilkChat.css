@@ -175,6 +175,18 @@
 .milk-waiting-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--milk-sky); animation: milk-pulse 1.2s ease-in-out infinite; }
 .milk-stopped { margin: 0; font-size: 12.5px; color: var(--color-warning); }
 
+.milk-agent-scope {
+  margin: 0 8px 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--color-text-2);
+}
+.milk-agent-scope strong { color: var(--color-text-1); font-weight: 600; }
+
 .milk-error {
   padding: 9px 12px;
   border-radius: 8px;
@@ -215,6 +227,37 @@
 
 /* Composer */
 .milk-composer { flex-shrink: 0; padding: 10px; border-top: 1px solid var(--color-border-1); }
+/* Slash commands annunciate dall'agente: completamento sopra l'input. */
+.milk-commands {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  padding: 4px;
+  border: 1px solid var(--color-border-1);
+  border-radius: 10px;
+  background: var(--color-surface-0);
+}
+.milk-command {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.milk-command:hover, .milk-command-active { background: var(--color-surface-2); }
+.milk-command-name { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; font-weight: 600; color: var(--color-text-1); }
+.milk-command-hint { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--color-text-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.milk-command-desc { font-size: 11.5px; color: var(--color-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Modifiche dell'agente in attesa di revisione, sopra il composer. */
 .milk-review-bar {
   display: flex;

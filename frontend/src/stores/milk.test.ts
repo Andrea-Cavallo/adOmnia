@@ -33,6 +33,23 @@ describe('applyMilkChatEvent', () => {
     const threads = applyMilkChatEvent(thread(), { token: 't1', root: '/p', kind: 'end', stopReason: 'end_turn' })
     expect(threads['/p'].busyToken).toBeNull()
   })
+
+  it('shows a turn milk starts itself (background follow-up)', () => {
+    let threads = applyMilkChatEvent({}, { token: 'bg-1', root: '/p', kind: 'begin' })
+    expect(threads['/p'].busyToken).toBe('bg-1')
+    expect(threads['/p'].messages).toHaveLength(1)
+    expect(threads['/p'].messages[0]).toMatchObject({ id: 'bg-1-assistant', role: 'assistant', content: '', ambient: true })
+    threads = applyMilkChatEvent(threads, { token: 'bg-1', root: '/p', kind: 'text', reply: 'job finished' })
+    threads = applyMilkChatEvent(threads, { token: 'bg-1', root: '/p', kind: 'end', stopReason: 'end_turn' })
+    expect(threads['/p'].messages[0].content).toBe('job finished')
+    expect(threads['/p'].busyToken).toBeNull()
+  })
+
+  it('does not interleave a background turn with a running prompt', () => {
+    const threads = applyMilkChatEvent(thread(), { token: 'bg-1', root: '/p', kind: 'begin' })
+    expect(threads['/p'].busyToken).toBe('t1')
+    expect(threads['/p'].messages).toHaveLength(2)
+  })
 })
 
 describe('ACP v1 partial tool updates', () => {
