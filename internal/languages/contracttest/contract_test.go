@@ -98,10 +98,11 @@ func TestLanguageAdaptersShareTheContract(t *testing.T) {
 				"Cargo.toml":  "[package]\nname = 'app'\nversion = '0.1.0'\n",
 				"src/main.rs": "fn main() {}\n",
 			},
-			UnitRoot:       ".",
-			Document:       "src/main.rs",
-			EditorLanguage: "rust",
-			Detectable:     true,
+			UnitRoot:        ".",
+			Document:        "src/main.rs",
+			EditorLanguage:  "rust",
+			Detectable:      true,
+			WantSuggestions: true,
 		},
 	})
 }

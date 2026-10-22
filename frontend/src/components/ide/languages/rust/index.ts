@@ -4,17 +4,21 @@ import type { IdeLanguageContribution } from '../../languages'
 export const RUST_LANGUAGE_ID = 'rust'
 
 /**
- * Rust (Cargo). In RS-0/1 l'adapter rileva crate e workspace e riconosce i file `.rs`/Cargo, ma non
- * ha ancora run/test/debug né rust-analyzer: nessun `languageServer`/`providedServer`, nessun
- * comando. L'editor usa già la colorazione Monaco di `.rs` (mappata in `documents.go`); qui il
- * linguaggio dichiara solo l'identità per icona e raggruppamento. Le capability arrivano con RS-3
- * (run), RS-4 (rust-analyzer), RS-5 (test) e RS-6 (debug).
+ * Rust (Cargo). L'adapter rileva crate e workspace, riconosce i file `.rs`/Cargo e ora esegue
+ * (cargo run/build/check/example/bench/clippy, RS-3). Non ha ancora test strutturati (RS-5), debug
+ * (RS-6) né rust-analyzer (RS-4): nessun `languageServer`/`providedServer` e nessun `canDebugRun`.
+ * `heavyFeatures: false` lascia fuori le funzioni tarate su gopls finché non c'è un server.
  */
 export const RUST_LANGUAGE: IdeLanguageContribution = {
   id: RUST_LANGUAGE_ID,
   name: 'Rust',
   icon: 'rust',
+  runTemplates: [
+    { language: 'rust', kind: 'bin', label: 'Rust binary', group: 'Rust' },
+    { language: 'rust', kind: 'example', label: 'Rust example', group: 'Rust' },
+    { language: 'rust', kind: 'build', label: 'Rust build', group: 'Rust' },
+    { language: 'rust', kind: 'check', label: 'Rust check', group: 'Rust' },
+  ],
   editorLanguages: ['rust'],
-  // Nessun server finché rust-analyzer non esiste (RS-4): niente funzioni pesanti né colori semantici.
   heavyFeatures: false,
 }
