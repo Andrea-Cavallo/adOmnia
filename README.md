@@ -31,10 +31,6 @@
   <strong>English</strong> · <a href="README.es-ES.md">Español</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=tefwLUadRr8"><img src="assets/images/adomnia-intro.gif" alt="adOmnia: local-first, no account, no telemetry" width="100%"></a>
-</p>
-
 <p align="center"><sub>Star the repository and choose Watch → Releases to follow progress.</sub></p>
 
 ## The problem
