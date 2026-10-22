@@ -39,9 +39,10 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 		return run.CommandSpec{}, nil, err
 	}
 	if info.Kind != UnitNode || info.TestFramework == "" {
-		return run.CommandSpec{}, nil, fmt.Errorf("no Vitest or Jest found in %s: add one to the package.json dependencies", filepath.ToSlash(request.WorkingDirectory))
+		return run.CommandSpec{}, nil, fmt.Errorf("no Vitest or Jest found in %s: add one to the package.json dependencies, or a `node --test` test script", filepath.ToSlash(request.WorkingDirectory))
 	}
-	if !info.DependenciesInstalled {
+	// Il runner di Node è integrato: non servono node_modules.
+	if !info.DependenciesInstalled && info.TestFramework != TestNode {
 		return run.CommandSpec{}, nil, fmt.Errorf("the project dependencies are not installed: install them before running the tests")
 	}
 	if len(options.Packages) > maxTestFiles {
@@ -56,6 +57,9 @@ func (scriptAdapter) TestCommand(request idetesting.Request) (run.CommandSpec, i
 		if _, err := regexp.Compile(options.Run); err != nil {
 			return run.CommandSpec{}, nil, fmt.Errorf("invalid filter expression %q: %w", options.Run, err)
 		}
+	}
+	if info.TestFramework == TestNode {
+		return nodeTestCommand(request, options)
 	}
 	binary, err := exec.LookPath(info.PackageManager)
 	if err != nil {

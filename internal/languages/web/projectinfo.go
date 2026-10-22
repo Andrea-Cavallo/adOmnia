@@ -28,12 +28,14 @@ const (
 	ToolAngular = "angular"
 	ToolAstro   = "astro"
 	ToolNuxt    = "nuxt"
+	ToolNest    = "nest"
 	ToolWebpack = "webpack"
 	ToolUnknown = ""
 )
 
 // devScriptNames sono gli script cercati, in ordine di preferenza, per avviare il dev server.
-var devScriptNames = []string{"dev", "start", "serve", "develop"}
+// start:dev (Nest) viene prima di start, che nei progetti Nest avvia senza watch.
+var devScriptNames = []string{"dev", "start:dev", "start", "serve", "develop"}
 
 // Info descrive un progetto Node.js o statico: ciò che serve per avviarlo, senza eseguire nulla.
 type Info struct {
@@ -67,7 +69,7 @@ type Info struct {
 	InstallCommand []string `json:"installCommand,omitempty"`
 	// NodeEngine è l'intervallo engines.node dichiarato, solo informativo.
 	NodeEngine string `json:"nodeEngine,omitempty"`
-	// TestFramework è il test runner con report JSON dichiarato nelle dipendenze (vitest o jest); vuoto se nessuno.
+	// TestFramework è il test runner con report strutturato: vitest o jest dalle dipendenze, node dallo script test; vuoto se nessuno.
 	TestFramework string `json:"testFramework,omitempty"`
 }
 
@@ -152,6 +154,7 @@ var toolPatterns = []struct {
 	{ToolAngular, regexp.MustCompile(`(^|[\s;&|])ng\s+serve`)},
 	{ToolAstro, regexp.MustCompile(`(^|[\s;&|])astro\s+dev`)},
 	{ToolNuxt, regexp.MustCompile(`(^|[\s;&|])nuxt(i)?\s+dev`)},
+	{ToolNest, regexp.MustCompile(`(^|[\s;&|])nest\s+start`)},
 	{ToolWebpack, regexp.MustCompile(`webpack(-dev-server|\s+serve|\s+s\b)`)},
 }
 
@@ -164,7 +167,7 @@ func detectTool(manifest packageManifest, script string) string {
 	}
 	for _, candidate := range []struct{ dependency, tool string }{
 		{"next", ToolNext}, {"vite", ToolVite}, {"react-scripts", ToolCRA}, {"@angular/cli", ToolAngular},
-		{"astro", ToolAstro}, {"nuxt", ToolNuxt}, {"webpack-dev-server", ToolWebpack},
+		{"astro", ToolAstro}, {"nuxt", ToolNuxt}, {"@nestjs/cli", ToolNest}, {"webpack-dev-server", ToolWebpack},
 	} {
 		if script != "" && manifest.has(candidate.dependency) {
 			return candidate.tool
@@ -177,6 +180,7 @@ func detectFramework(manifest packageManifest) string {
 	for _, candidate := range []struct{ dependency, framework string }{
 		{"next", "react"}, {"react", "react"}, {"preact", "preact"}, {"vue", "vue"}, {"nuxt", "vue"},
 		{"svelte", "svelte"}, {"solid-js", "solid"}, {"@angular/core", "angular"}, {"astro", "astro"},
+		{"@nestjs/core", "nest"},
 	} {
 		if manifest.has(candidate.dependency) {
 			return candidate.framework
@@ -285,7 +289,7 @@ func DefaultPort(tool string) int {
 	switch tool {
 	case ToolVite:
 		return 5173
-	case ToolNext, ToolCRA, ToolNuxt:
+	case ToolNext, ToolCRA, ToolNuxt, ToolNest:
 		return 3000
 	case ToolAngular:
 		return 4200
@@ -338,13 +342,17 @@ func SortInfos(infos []Info) {
 	})
 }
 
-// detectTestFramework riconosce i runner che producono un report JSON strutturato; vitest ha la precedenza
-// perché i progetti Vite che lo usano tengono spesso anche jest-dom o tipi di jest.
+// detectTestFramework riconosce i runner che producono un report strutturato; vitest ha la precedenza
+// perché i progetti Vite che lo usano tengono spesso anche jest-dom o tipi di jest. Il runner integrato
+// di Node (`node --test` nello script test) è l'ultima scelta: vale solo se nessun pacchetto lo sostituisce.
 func detectTestFramework(manifest packageManifest) string {
 	for _, name := range []string{"vitest", "jest"} {
 		if manifest.has(name) {
 			return name
 		}
+	}
+	if nodeTestScript.MatchString(manifest.Scripts["test"]) {
+		return TestNode
 	}
 	return ""
 }

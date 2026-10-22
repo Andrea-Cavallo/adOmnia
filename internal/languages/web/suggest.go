@@ -23,16 +23,20 @@ func (scriptAdapter) Suggest(_ context.Context, projectRoot string, unit project
 		label = "Node"
 	}
 	label = strings.ToUpper(label[:1]) + label[1:]
-	scripts := []struct{ action, script string }{{"run", info.DevScript}, {"build", "build"}, {"test", "test"}}
+	scripts := []struct{ action, script, idSuffix string }{
+		{"run", info.DevScript, ""}, {"build", "build", ""}, {"test", "test", ""},
+		// Dopo `build`, Next e Nest si avviano in produzione con il loro script dedicato.
+		{"run", productionScript(info), "|production"},
+	}
 	suggestions := make([]run.Suggestion, 0, len(scripts))
 	for _, entry := range scripts {
-		if entry.script == "" || info.Scripts[entry.script] == "" {
+		if entry.script == "" || info.Scripts[entry.script] == "" || (entry.idSuffix != "" && entry.script == info.DevScript) {
 			continue
 		}
 		arguments := RunScriptArguments(info.PackageManager, entry.script, nil)
 		command := info.PackageManager + " " + strings.Join(arguments, " ")
 		suggestions = append(suggestions, run.Suggestion{
-			ID: ScriptID + "|" + unit.Root + "|" + entry.action, Language: ScriptID, Action: entry.action, UnitRoot: unit.Root,
+			ID: ScriptID + "|" + unit.Root + "|" + entry.action + entry.idSuffix, Language: ScriptID, Action: entry.action, UnitRoot: unit.Root,
 			Title: label + " · " + command,
 			Configuration: run.Configuration{
 				Language: ScriptID, Name: label + " " + entry.script, Kind: "command",
@@ -41,4 +45,15 @@ func (scriptAdapter) Suggest(_ context.Context, projectRoot string, unit project
 		})
 	}
 	return suggestions
+}
+
+// productionScript è lo script che avvia l'app già compilata, per gli strumenti che ne hanno uno standard.
+func productionScript(info Info) string {
+	switch info.Tool {
+	case ToolNext:
+		return "start"
+	case ToolNest:
+		return "start:prod"
+	}
+	return ""
 }
