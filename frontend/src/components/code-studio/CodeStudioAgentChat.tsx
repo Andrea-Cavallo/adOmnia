@@ -287,7 +287,7 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
         <button type="button" disabled={busy || controlsBusy} onClick={() => { void store.getState().newChat(root).then(() => { setControls(null); setControlsRetry(value => value + 1) }) }} className="code-studio-icon-button h-7 w-7" title="New chat" aria-label="New chat"><Plus size={15} /></button>
       </header>
       {controlsError && <div role="alert" className="milk-error">{controlsError}<button type="button" className="gs-btn gs-btn-ghost gs-btn-sm" disabled={controlsBusy} onClick={() => setControlsRetry(value => value + 1)}><RefreshCw size={12} />Retry</button></div>}
-      {tool === 'milk' && (currentControls?.controls ?? []).some(item => item.id === '_milk_agent') && <p className="px-2 py-1 text-[10px] text-text-4">Changing the primary agent updates milk’s global config and opens a new chat for this project.</p>}
+      {tool === 'milk' && (currentControls?.controls ?? []).some(item => item.id === '_milk_agent') && <p className="px-2 py-1 text-[10px] text-text-4">Changing the primary agent updates milk’s global config, restarts milk and opens a new chat for this project.</p>}
       {tool === 'milk' && ready && !(currentControls?.controls ?? []).some(item => item.id === '_milk_agent') && <p className="px-2 py-1 text-[10px] text-text-4">Primary-agent selection requires milk 0.7+ and configured agents. <button type="button" className="underline" onClick={openSettings}>Configure / update milk</button></p>}
 
       <div ref={scrollRef} className="milk-scroll">

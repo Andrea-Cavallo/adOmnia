@@ -144,11 +144,11 @@ func TestMilkAgentChoicePreservesConfigurationAndSecrets(t *testing.T) {
 	if strings.Contains(string(data), "secret") || len(control.Options) != 2 {
 		t.Fatalf("unsafe model metadata: %s", data)
 	}
-	if err := selectConfiguredAgent("missing"); err == nil {
+	if _, err := selectConfiguredAgent("missing"); err == nil {
 		t.Fatal("accepted missing agent")
 	}
-	if err := selectConfiguredAgent("deep"); err != nil {
-		t.Fatal(err)
+	if changed, err := selectConfiguredAgent("deep"); err != nil || !changed {
+		t.Fatalf("selecting another agent must change the config: changed=%v err=%v", changed, err)
 	}
 	config, err := readConfig(path)
 	if err != nil || config["agent"] != "deep" || config["escalation_agent"] != "deep" || config["unknown"] == nil {

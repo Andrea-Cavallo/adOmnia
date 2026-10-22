@@ -415,6 +415,12 @@ export class Settings {
      */
     "extraArgs"?: string[];
 
+    /**
+     * TurnTimeoutMinutes ferma un turno che non termina entro questo tempo.
+     * 0 usa il default: un modello che "pensa" senza fine non deve tenere la chat occupata per sempre.
+     */
+    "turnTimeoutMinutes"?: number;
+
     /** Creates a new Settings instance. */
     constructor($$source: Partial<Settings> = {}) {
         if (!("enabled" in $$source)) {

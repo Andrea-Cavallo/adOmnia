@@ -20,11 +20,14 @@ func TestUseProviderAddsEnvAgentWithoutWritingTheKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := UseProvider("deepseek", "primary"); err != nil {
-		t.Fatal(err)
+	if changed, err := UseProvider("deepseek", "primary"); err != nil || !changed {
+		t.Fatalf("the first assignment must change the config: changed=%v err=%v", changed, err)
 	}
-	if err := UseProvider("deepseek", "escalation"); err != nil { // già presente: non duplicato
-		t.Fatal(err)
+	if changed, err := UseProvider("deepseek", "escalation"); err != nil || !changed {
+		t.Fatalf("the escalation assignment must change the config: changed=%v err=%v", changed, err)
+	}
+	if changed, err := UseProvider("deepseek", "escalation"); err != nil || changed {
+		t.Fatalf("the same agent and role must not rewrite the config: changed=%v err=%v", changed, err)
 	}
 
 	data, _ := os.ReadFile(path)
@@ -49,7 +52,7 @@ func TestUseProviderAddsEnvAgentWithoutWritingTheKey(t *testing.T) {
 	}
 
 	t.Setenv("OPENAI_API_KEY", "")
-	if err := UseProvider("openai", "primary"); err == nil {
+	if _, err := UseProvider("openai", "primary"); err == nil {
 		t.Fatal("a provider without its env variable must be refused")
 	}
 }

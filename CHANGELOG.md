@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+- **milk agent changes take effect.** Choosing a primary/escalation agent (milk settings or the chat's *Primary agent* selector) restarts `milk serve --acp`. Verified against milk v0.7.1: its config reload does not reliably rebind the primary/escalation runners (the turn keeps going to the previous agent), and milk writes `~/.milk/config.json` back from its own in-memory view on its update check — which is what made a chosen agent "revert" by itself. After the restart the process and the file agree, so neither happens. A change that does not touch the roles no longer restarts anything.
+- **Turn timeout.** milk settings gains *Turn timeout*: a turn that runs longer than the chosen number of minutes is cancelled and reported (*default 10, max 120*). The Stop button still interrupts immediately.
+- **The routing chip names the real agent.** milk reports the agent that served the turn in `state_update._meta.milk/route`; the chip now shows that name instead of the generic *primary*/*escalation* label.
+- **Xiaomi MiMo default model fixed** to `mimo-v2.6-flash` (the previous `mimo-v2-flash` is not a model id on `api.xiaomimimo.com`).
 - **milk 0.8/0.9 ACP features in the chat.** Slash commands announced by the agent (`available_commands_update`) appear in a keyboard-driven palette in the composer: `/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary` and the rest of milk's real ACP set.
 - **Images reach milk.** Native ACP image blocks when the agent advertises them; otherwise the image is written to a private temporary folder and referenced with `@<absolute path>` (milk's own CLI convention), then deleted at the end of the turn. The composer states which mode is in use.
 - **Background agents report back.** Turns milk starts by itself when a background job finishes are rendered as an assistant turn marked *background* instead of being dropped.

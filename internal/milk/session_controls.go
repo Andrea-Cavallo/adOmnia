@@ -94,10 +94,19 @@ func (m *Manager) SetSessionControl(ctx context.Context, root, configID string, 
 	m.mu.Unlock()
 	defer func() { m.mu.Lock(); delete(m.turns, id); m.mu.Unlock() }()
 	if configID == "_milk_agent" {
-		if err := selectConfiguredAgent(value.(string)); err != nil {
+		changed, err := selectConfiguredAgent(value.(string))
+		if err != nil {
 			return SessionControls{}, err
 		}
-		m.ResetSession(root)
+		if changed {
+			// milk rilegge quale agente è primario/escalation solo in modo inaffidabile
+			// (il config reload non riallinea i runner) e poi riscrive ~/.milk/config.json
+			// dalla sua vista in memoria: senza riavvio il turno finisce all'agente di prima
+			// e la scelta "torna indietro" da sola. Il riavvio allinea processo e file.
+			if err := m.Restart(); err != nil {
+				return SessionControls{}, err
+			}
+		}
 		return m.SessionControls(root)
 	}
 	conn, err := m.connection()
@@ -171,20 +180,25 @@ func configuredAgentControl() (SessionControl, error) {
 	return control, nil
 }
 
-func selectConfiguredAgent(name string) error {
+// selectConfiguredAgent scrive l'agente primario nel config globale di milk e
+// dice se il valore è cambiato davvero.
+func selectConfiguredAgent(name string) (bool, error) {
 	path, err := ConfigPath()
 	if err != nil {
-		return err
+		return false, err
 	}
 	config, err := readConfig(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !agentNames(config)[name] {
-		return errors.New("milk agent is no longer configured")
+		return false, errors.New("milk agent is no longer configured")
+	}
+	if current, _ := config["agent"].(string); current == name {
+		return false, nil
 	}
 	config["agent"] = name
-	return writeConfig(path, config)
+	return true, writeConfig(path, config)
 }
 
 // RedactPromptText is the single prompt boundary shared by milk, Claude Code and

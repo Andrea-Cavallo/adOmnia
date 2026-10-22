@@ -30,7 +30,7 @@ var Providers = []Provider{
 	{ID: "openrouter", Label: "OpenRouter", EnvVars: []string{"OPENROUTER_API_KEY"}, URL: "https://openrouter.ai/api", Model: "deepseek/deepseek-chat"},
 	{ID: "groq", Label: "Groq", EnvVars: []string{"GROQ_API_KEY"}, URL: "https://api.groq.com/openai", Model: "llama-3.3-70b-versatile"},
 	{ID: "mistral", Label: "Mistral", EnvVars: []string{"MISTRAL_API_KEY"}, URL: "https://api.mistral.ai", Model: "mistral-small-latest"},
-	{ID: "mimo", Label: "Xiaomi MiMo", EnvVars: []string{"MIMO_API_KEY", "XIAOMI_MIMO_API_KEY"}, URL: "https://api.xiaomimimo.com", Model: "mimo-v2-flash"},
+	{ID: "mimo", Label: "Xiaomi MiMo", EnvVars: []string{"MIMO_API_KEY", "XIAOMI_MIMO_API_KEY"}, URL: "https://api.xiaomimimo.com", Model: "mimo-v2.6-flash"},
 	{ID: "moonshot", Label: "Moonshot Kimi", EnvVars: []string{"MOONSHOT_API_KEY", "KIMI_API_KEY"}, URL: "https://api.moonshot.ai", Model: "kimi-k2-0905-preview"},
 	{ID: "zai", Label: "Z.ai GLM", EnvVars: []string{"ZAI_API_KEY", "ZHIPU_API_KEY"}, URL: "https://api.z.ai/api/paas/v4", Model: "glm-4.6", ChatPath: "/chat/completions"},
 	{ID: "xai", Label: "xAI Grok", EnvVars: []string{"XAI_API_KEY"}, URL: "https://api.x.ai", Model: "grok-4"},
@@ -146,8 +146,10 @@ func truthyEnvironment(value string) bool {
 }
 
 // UseProvider aggiunge (se manca) l'agente del provider al config di milk e lo
-// assegna al ruolo "primary" o "escalation". Gli altri campi del config restano intatti.
-func UseProvider(id, role string) error {
+// assegna al ruolo "primary" o "escalation". Gli altri campi del config restano
+// intatti. Il primo valore dice se il config è cambiato: solo allora milk va
+// riavviato, perché i ruoli valgono dal prossimo avvio del processo.
+func UseProvider(id, role string) (bool, error) {
 	var provider *Provider
 	for index := range Providers {
 		if Providers[index].ID == id {
@@ -155,24 +157,25 @@ func UseProvider(id, role string) error {
 		}
 	}
 	if provider == nil {
-		return fmt.Errorf("unknown provider %q", id)
+		return false, fmt.Errorf("unknown provider %q", id)
 	}
 	roleKey := map[string]string{"primary": "agent", "escalation": "escalation_agent"}[role]
 	if roleKey == "" {
-		return fmt.Errorf("unknown role %q", role)
+		return false, fmt.Errorf("unknown role %q", role)
 	}
 	envVar, detected := provider.envVar()
 	if !detected {
-		return fmt.Errorf("%s is not set: set it and restart adOmnia", envVar)
+		return false, fmt.Errorf("%s is not set: set it and restart adOmnia", envVar)
 	}
 	path, err := ConfigPath()
 	if err != nil {
-		return err
+		return false, err
 	}
 	config, err := readConfig(path)
 	if err != nil {
-		return err
+		return false, err
 	}
+	changed := false
 	if !agentNames(config)[provider.ID] {
 		agent := map[string]any{
 			"name": provider.ID, "provider": "bearer", "url": provider.URL, "model": provider.Model,
@@ -183,9 +186,16 @@ func UseProvider(id, role string) error {
 		}
 		agents, _ := config["agents"].([]any)
 		config["agents"] = append(agents, agent)
+		changed = true
 	}
-	config[roleKey] = provider.ID
-	return writeConfig(path, config)
+	if current, _ := config[roleKey].(string); current != provider.ID {
+		config[roleKey] = provider.ID
+		changed = true
+	}
+	if !changed {
+		return false, nil
+	}
+	return true, writeConfig(path, config)
 }
 
 // writeConfig salva una copia .bak del config precedente e scrive in modo atomico.

@@ -129,9 +129,21 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 		var update struct {
 			State      string `json:"state"`
 			StopReason string `json:"stopReason"`
+			Meta       struct {
+				// milk 0.7 riassume la decisione di routing alla fine del turno:
+				// è l'unico posto dove arriva il nome dell'agente che ha risposto.
+				Route struct {
+					Agent  string `json:"agent"`
+					Target string `json:"target"`
+					Reason string `json:"reason"`
+				} `json:"milk/route"`
+			} `json:"_meta"`
 		}
 		if json.Unmarshal(notification.Update, &update) != nil {
 			return
+		}
+		if route := update.Meta.Route; route.Agent != "" || route.Target != "" {
+			h.manager.publish("chat", ChatEvent{Token: token, Root: root, SessionID: notification.SessionID, Kind: "route", Route: &RouteInfo{Agent: route.Agent, Target: route.Target, Reason: route.Reason}})
 		}
 		switch update.State {
 		case "running":

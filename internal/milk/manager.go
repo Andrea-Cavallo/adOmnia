@@ -26,7 +26,6 @@ const (
 	// Due minuti coprono adapter locali lenti; l'avvio non scarica mai pacchetti.
 	initializeTimeout   = 2 * time.Minute
 	sessionTimeout      = 15 * time.Second
-	promptTimeout       = 10 * time.Minute
 	permissionTimeout   = 90 * time.Second
 	stopTimeout         = 2 * time.Second
 	maxLogLines         = 400
@@ -154,6 +153,12 @@ func (m *Manager) Settings() Settings {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.settings
+}
+
+// turnTimeout è il tempo massimo di un turno: l'utente può cambiarlo nei settings,
+// perché un modello che non finisce mai non deve occupare la chat all'infinito.
+func (m *Manager) turnTimeout() time.Duration {
+	return turnTimeout(m.Settings().TurnTimeoutMinutes)
 }
 
 func (m *Manager) Status() Status {
@@ -814,7 +819,8 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	}
 	endTurn := m.beginTurn(root)
 	defer endTurn()
-	ctx, cancel := context.WithTimeout(parent, promptTimeout)
+	timeout := m.turnTimeout()
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	var result struct {
 		MessageID  string `json:"messageId"`
@@ -832,6 +838,10 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 		if ctx.Err() != nil {
 			// Il turno continuerebbe in milk anche se nessuno aspetta più la risposta.
 			_ = conn.Notify("session/cancel", map[string]any{"sessionId": sessionID})
+			if parent.Err() == nil {
+				return PromptResponse{}, fmt.Errorf("the turn was stopped after %s: %s did not finish in time", timeout, m.agent.Name)
+			}
+			return PromptResponse{}, errors.New("the turn was cancelled")
 		}
 		return PromptResponse{}, err
 	}

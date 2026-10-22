@@ -151,7 +151,9 @@ export function Status(): $CancellablePromise<milk$0.Status> {
 
 /**
  * UseProvider aggiunge al config di milk l'agente di un provider rilevato nell'env e lo
- * assegna al ruolo (primary | escalation); milk riparte per leggere il config nuovo.
+ * assegna al ruolo (primary | escalation). milk applica i ruoli all'avvio del processo:
+ * quando il config cambia il processo riparte prima di rispondere, così il turno dopo
+ * arriva già all'agente scelto (il config reload di milk non riallinea i runner).
  */
 export function UseProvider(id: string, role: string): $CancellablePromise<milk$0.AgentsInfo> {
     return $Call.ByID(2886595737, id, role).then(($result: any) => {

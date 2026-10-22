@@ -237,6 +237,27 @@ export function CodeStudioMilkDialog() {
           Give the agent adOmnia's collections and mock server (MCP)
         </label>
       </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h3 className="gs-section-title">Turn timeout</h3>
+        <p className="text-[12.5px] text-text-2">
+          Stop a turn that runs longer than this, so a model that keeps thinking forever cannot hold the chat open.
+          Use the Stop button in the chat to interrupt sooner.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={draft.turnTimeoutMinutes ?? ''}
+            placeholder="10"
+            onChange={(event) => setDraft({ ...draft, turnTimeoutMinutes: event.target.value === '' ? 0 : Number(event.target.value) })}
+            className="gs-input gs-mono w-24 text-[12px]"
+            aria-label="Turn timeout in minutes"
+          />
+          <span className="text-[11.5px] text-text-4">minutes per turn (blank = 10, max 120)</span>
+        </div>
+      </section>
     </CodeStudioModal>
   )
 }

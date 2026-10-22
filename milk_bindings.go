@@ -99,13 +99,18 @@ func (m *Milk) RespondPermission(requestID string, allow bool) {
 func (m *Milk) Agents() (milk.AgentsInfo, error) { return milk.Agents() }
 
 // UseProvider aggiunge al config di milk l'agente di un provider rilevato nell'env e lo
-// assegna al ruolo (primary | escalation); milk riparte per leggere il config nuovo.
+// assegna al ruolo (primary | escalation). milk applica i ruoli all'avvio del processo:
+// quando il config cambia il processo riparte prima di rispondere, così il turno dopo
+// arriva già all'agente scelto (il config reload di milk non riallinea i runner).
 func (m *Milk) UseProvider(id, role string) (milk.AgentsInfo, error) {
-	if err := milk.UseProvider(id, role); err != nil {
+	changed, err := milk.UseProvider(id, role)
+	if err != nil {
 		return milk.AgentsInfo{}, err
 	}
-	if m.manager.Settings().Enabled {
-		go func() { _ = m.manager.Restart() }()
+	if changed && m.manager.Settings().Enabled {
+		if err := m.manager.Restart(); err != nil {
+			return milk.AgentsInfo{}, err
+		}
 	}
 	return milk.Agents()
 }

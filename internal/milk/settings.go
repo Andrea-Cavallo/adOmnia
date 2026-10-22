@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const settingsFileName = "milk.json"
@@ -30,6 +31,9 @@ type Settings struct {
 	Env map[string]string `json:"env,omitempty"`
 	// ExtraArgs sono argomenti espliciti aggiunti al comando dell'agente ACP.
 	ExtraArgs []string `json:"extraArgs,omitempty"`
+	// TurnTimeoutMinutes ferma un turno che non termina entro questo tempo.
+	// 0 usa il default: un modello che "pensa" senza fine non deve tenere la chat occupata per sempre.
+	TurnTimeoutMinutes int `json:"turnTimeoutMinutes,omitempty"`
 }
 
 // DefaultSettings: milk spento finché l'utente non lo attiva.
@@ -37,9 +41,29 @@ func DefaultSettings() Settings {
 	return Settings{}
 }
 
+// DefaultTurnTimeout è il tempo massimo di un turno quando l'utente non sceglie.
+const DefaultTurnTimeout = 10 * time.Minute
+
+// turnTimeout normalizza la scelta dell'utente: 0 = default, minimo 1 minuto, massimo 2 ore.
+func turnTimeout(minutes int) time.Duration {
+	if minutes <= 0 {
+		return DefaultTurnTimeout
+	}
+	if minutes > 120 {
+		minutes = 120
+	}
+	return time.Duration(minutes) * time.Minute
+}
+
 // Validate normalizza i percorsi e verifica che l'eventuale binario sia un path assoluto.
 func (s Settings) Validate() (Settings, error) {
 	s.BinaryPath = strings.TrimSpace(s.BinaryPath)
+	if s.TurnTimeoutMinutes < 0 {
+		return Settings{}, fmt.Errorf("the turn timeout cannot be negative")
+	}
+	if s.TurnTimeoutMinutes > 120 {
+		s.TurnTimeoutMinutes = 120
+	}
 	if s.BinaryPath != "" && !filepath.IsAbs(s.BinaryPath) {
 		return Settings{}, fmt.Errorf("%q must be an absolute path", s.BinaryPath)
 	}
