@@ -2,6 +2,7 @@ package milk
 
 import (
 	"adomnia/internal/aipolicy"
+	"adomnia/internal/airedact"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -186,13 +187,19 @@ func selectConfiguredAgent(name string) error {
 	return writeConfig(path, config)
 }
 
+// RedactPromptText is the single prompt boundary shared by milk, Claude Code and
+// OpenCode: the agent sees masked secrets, never the original values.
+func RedactPromptText(text string) string {
+	return airedact.Redact(strings.TrimSpace(text))
+}
+
 // promptBlocks traduce il turno in content block ACP. Le immagini usano il blocco
 // nativo `image` quando l'agente lo annuncia; altrimenti vengono scritte in una
 // cartella temporanea e referenziate con `@path`, esattamente come fa la TUI di
 // milk per l'agente CLI (che legge `@path` nativamente). Il secondo valore è la
 // pulizia da eseguire a fine turno.
 func (m *Manager) promptBlocks(request PromptRequest) ([]map[string]string, func(), error) {
-	blocks := []map[string]string{{"type": "text", "text": strings.TrimSpace(request.Message)}}
+	blocks := []map[string]string{{"type": "text", "text": RedactPromptText(request.Message)}}
 	noop := func() {}
 	if len(request.Images) > 4 {
 		return nil, noop, errors.New("attach at most four images")

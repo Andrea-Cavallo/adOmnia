@@ -18,6 +18,7 @@ import { useToolView } from './studioToolState'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { selectedRange } from './CodeStudioCopilotChat'
 import { CodeStudioAgentSessionOptions } from './CodeStudioAgentSessionOptions'
+import { listGoIDEDirectory } from '@/lib/code-studio-api'
 
 /** One ACP agent as the chat shows it: milk and Claude Code share everything else. */
 export interface ChatAgent {
@@ -171,6 +172,7 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   const [readingFiles, setReadingFiles] = useState(false)
   const [commandIndex, setCommandIndex] = useState(0)
   const [commandsDismissed, setCommandsDismissed] = useState(false)
+  const [hasAIIgnore, setHasAIIgnore] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const draftRef = useRef<HTMLTextAreaElement>(null)
   const pendingDraft = useCodeStudioAssistantStore((state) => state.draft)
@@ -186,6 +188,17 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
     void store.getState().ensure()
     void store.getState().setWorkspace(root)
   }, [store, root])
+
+  // .adomnia/aiignore binds only the context adOmnia prepares. An external agent
+  // reads files with its own tools, so the user must know it is still in force.
+  useEffect(() => {
+    let live = true
+    setHasAIIgnore(false)
+    listGoIDEDirectory(session.id, '.adomnia', true)
+      .then(entries => { if (live) setHasAIIgnore(entries.some(entry => !entry.directory && entry.name === 'aiignore')) })
+      .catch(() => { if (live) setHasAIIgnore(false) })
+    return () => { live = false }
+  }, [session.id, root])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -315,6 +328,11 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
       </div>
 
       <div className="milk-composer">
+        {hasAIIgnore && (
+          <p className="milk-agent-scope" role="note">
+            <strong>.adomnia/aiignore is active.</strong> {name} runs its own tools and can still read files it is allowed to open. The project AI policy blocks the agent entirely (off, or local-only for a local model); aiignore filters only the context adOmnia prepares.
+          </p>
+        )}
         <CodeStudioAgentReviewBar root={root} busy={busy} />
         <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label={`${name} context`}>
           <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />

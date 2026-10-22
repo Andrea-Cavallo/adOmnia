@@ -175,6 +175,18 @@
 .milk-waiting-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--milk-sky); animation: milk-pulse 1.2s ease-in-out infinite; }
 .milk-stopped { margin: 0; font-size: 12.5px; color: var(--color-warning); }
 
+.milk-agent-scope {
+  margin: 0 8px 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--color-text-2);
+}
+.milk-agent-scope strong { color: var(--color-text-1); font-weight: 600; }
+
 .milk-error {
   padding: 9px 12px;
   border-radius: 8px;
