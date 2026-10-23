@@ -163,16 +163,8 @@ func (s *StaticServer) serveHTML(w http.ResponseWriter, r *http.Request, file *o
 // (.git, .env, .adomnia…), il path traversal e i link simbolici che escono dalla radice.
 func (s *StaticServer) resolve(urlPath string) (string, int) {
 	cleaned := path.Clean("/" + urlPath)
-	if strings.Contains(cleaned, "..") { // path.Clean already removed every ".." element: what is left is a hostile or odd name
+	if strings.Contains(cleaned, "..") || hasForbiddenSegment(cleaned) { // path.Clean already removed every ".." element: what is left is a hostile or odd name
 		return "", http.StatusNotFound
-	}
-	for _, segment := range strings.Split(cleaned, "/") {
-		if strings.HasPrefix(segment, ".") && segment != "" && segment != ".well-known" {
-			return "", http.StatusNotFound
-		}
-		if strings.ContainsAny(segment, "\\:") && segment != "" {
-			return "", http.StatusNotFound
-		}
 	}
 	candidate := filepath.Join(s.root, filepath.FromSlash(cleaned))
 	real, err := filepath.EvalSymlinks(candidate)
@@ -188,17 +180,36 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 		return "", http.StatusNotFound
 	}
 	if info.IsDir() {
-		index := filepath.Join(real, "index.html")
-		realIndex, indexErr := filepath.EvalSymlinks(index)
-		if indexErr != nil || !strings.HasPrefix(realIndex, s.root+string(filepath.Separator)) {
-			return "", http.StatusNotFound
-		}
-		if indexInfo, statErr := os.Stat(realIndex); statErr == nil && indexInfo.Mode().IsRegular() { // #nosec G703 -- realIndex is symlink-resolved and confined to s.root by the prefix check above
-			return realIndex, http.StatusOK
-		}
-		return "", http.StatusNotFound
+		return s.resolveIndex(real)
 	}
 	return real, http.StatusOK
+}
+
+// hasForbiddenSegment dice se un percorso URL pulito contiene un segmento nascosto (tranne
+// .well-known) o con separatori/volumi di altri sistemi (backslash e :).
+func hasForbiddenSegment(cleaned string) bool {
+	for _, segment := range strings.Split(cleaned, "/") {
+		if segment == "" {
+			continue
+		}
+		if (strings.HasPrefix(segment, ".") && segment != ".well-known") || strings.ContainsAny(segment, "\\:") {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveIndex risolve index.html dentro una cartella già confinata alla radice: anche il link
+// simbolico dell'indice deve restare sotto la radice e puntare a un file regolare.
+func (s *StaticServer) resolveIndex(dir string) (string, int) {
+	realIndex, err := filepath.EvalSymlinks(filepath.Join(dir, "index.html"))
+	if err != nil || !strings.HasPrefix(realIndex, s.root+string(filepath.Separator)) {
+		return "", http.StatusNotFound
+	}
+	if indexInfo, statErr := os.Stat(realIndex); statErr == nil && indexInfo.Mode().IsRegular() { // #nosec G703 -- realIndex is symlink-resolved and confined to s.root by the prefix check above
+		return realIndex, http.StatusOK
+	}
+	return "", http.StatusNotFound
 }
 
 func isHTML(path string) bool {

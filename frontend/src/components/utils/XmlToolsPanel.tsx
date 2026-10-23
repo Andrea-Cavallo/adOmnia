@@ -63,7 +63,7 @@ const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quo
 export function decodeEntities(s: string): string {
   return s.replace(/&(?:(amp|lt|gt|quot|apos)|#(\d+)|#x([0-9a-fA-F]+));/g, (match, named?: string, dec?: string, hex?: string) => {
     if (named) return NAMED_ENTITIES[named]
-    const codePoint = dec ? parseInt(dec, 10) : parseInt(hex ?? '', 16)
+    const codePoint = dec ? Number.parseInt(dec, 10) : Number.parseInt(hex ?? '', 16)
     return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match
   })
 }

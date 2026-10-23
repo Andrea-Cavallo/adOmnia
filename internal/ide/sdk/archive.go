@@ -91,6 +91,39 @@ func ExtractArchive(ctx context.Context, label, archivePath, destination string,
 	return fmt.Errorf("unsupported archive format %s", label)
 }
 
+// entryTarget turns an archive entry name into a path under cleanDestination. Archives are built on
+// other machines, so the name is judged as on any OS: backslashes count as separators, and absolute
+// names, drive letters and ".." segments are refused. skip is true for the root directory entry itself.
+// The containment check stays here, next to the join that produces the path (Zip Slip).
+func entryTarget(label, cleanDestination, name string) (target string, skip bool, err error) {
+	normalized := strings.ReplaceAll(name, "\\", "/")
+	if strings.HasPrefix(normalized, "/") || hasDriveLetter(normalized) || filepath.IsAbs(filepath.FromSlash(normalized)) || filepath.VolumeName(filepath.FromSlash(normalized)) != "" {
+		return "", false, fmt.Errorf("archive %s is unsafe: absolute entry name", label)
+	}
+	for _, segment := range strings.Split(normalized, "/") {
+		if segment == ".." {
+			return "", false, fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
+		}
+	}
+	target = filepath.Join(cleanDestination, filepath.FromSlash(normalized))
+	if target == cleanDestination {
+		return "", true, nil
+	}
+	if !strings.HasPrefix(target, cleanDestination+string(os.PathSeparator)) {
+		return "", false, fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
+	}
+	return target, false, nil
+}
+
+// hasDriveLetter reports a Windows drive prefix such as "C:" at the start of the name.
+func hasDriveLetter(name string) bool {
+	if len(name) < 2 || name[1] != ':' {
+		return false
+	}
+	letter := name[0] | 0x20
+	return letter >= 'a' && letter <= 'z'
+}
+
 func extractZip(ctx context.Context, label, archivePath, destination string, maxBytes int64) error {
 	reader, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -107,44 +140,43 @@ func extractZip(ctx context.Context, label, archivePath, destination string, max
 		if expanded > uint64(maxBytes) {
 			return fmt.Errorf("archive %s expands beyond the allowed limit", label)
 		}
-		target := filepath.Join(cleanDestination, filepath.FromSlash(entry.Name))
-		// Zip Slip: no absolute names, and the joined path must stay strictly under the destination.
-		if strings.HasPrefix(entry.Name, "/") || filepath.IsAbs(filepath.FromSlash(entry.Name)) || filepath.VolumeName(filepath.FromSlash(entry.Name)) != "" {
-			return fmt.Errorf("archive %s is unsafe: absolute entry name", label)
+		target, skip, err := entryTarget(label, cleanDestination, entry.Name)
+		if err != nil {
+			return err
 		}
-		if target == cleanDestination {
+		if skip {
 			continue // the root directory entry itself: nothing to extract
 		}
-		if !strings.HasPrefix(target, cleanDestination+string(os.PathSeparator)) {
-			return fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
-		}
-		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("archive %s contains a forbidden symlink", label)
-		}
-		if entry.FileInfo().IsDir() {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		source, err := entry.Open()
-		if err != nil {
-			return err
-		}
-		destinationFile, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, entry.Mode().Perm())
-		if err == nil {
-			_, err = io.Copy(destinationFile, io.LimitReader(source, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
-			_ = destinationFile.Close()
-		}
-		_ = source.Close()
-		if err != nil {
+		if err := writeZipEntry(label, entry, target, maxBytes); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// writeZipEntry creates the directory or file for one zip entry whose target entryTarget already confined.
+func writeZipEntry(label string, entry *zip.File, target string, maxBytes int64) error {
+	if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("archive %s contains a forbidden symlink", label)
+	}
+	if entry.FileInfo().IsDir() {
+		return os.MkdirAll(target, 0o755)
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	source, err := entry.Open()
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	destinationFile, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, entry.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(destinationFile, io.LimitReader(source, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
+	_ = destinationFile.Close()
+	return err
 }
 
 func extractTarGzip(ctx context.Context, label, archivePath, destination string, maxBytes int64) error {
@@ -172,40 +204,39 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(cleanDestination, filepath.FromSlash(header.Name))
-		// Zip Slip: no absolute names, and the joined path must stay strictly under the destination.
-		if strings.HasPrefix(header.Name, "/") || filepath.IsAbs(filepath.FromSlash(header.Name)) || filepath.VolumeName(filepath.FromSlash(header.Name)) != "" {
-			return fmt.Errorf("archive %s is unsafe: absolute entry name", label)
+		target, skip, err := entryTarget(label, cleanDestination, header.Name)
+		if err != nil {
+			return err
 		}
-		if target == cleanDestination {
+		if skip {
 			continue // the root directory entry itself: nothing to extract
-		}
-		if !strings.HasPrefix(target, cleanDestination+string(os.PathSeparator)) {
-			return fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
 		}
 		if header.Size < 0 || expanded+header.Size > maxBytes {
 			return fmt.Errorf("archive %s expands beyond the allowed limit", label)
 		}
 		expanded += header.Size
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil { // NOSONAR -- target is validated by project.EnsureWithin above: every entry name is confined to the destination (zip-slip guard)
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { // NOSONAR -- same confinement as above: the parent of a path inside destination is inside destination
-				return err
-			}
-			output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm()) // NOSONAR -- same confinement as above, O_EXCL refuses to follow an existing file
-			if err == nil {
-				_, err = io.Copy(output, io.LimitReader(reader, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
-				_ = output.Close()
-			}
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("archive %s contains a forbidden entry", label)
+		if err := writeTarEntry(label, reader, header, target, maxBytes); err != nil {
+			return err
 		}
 	}
+}
+
+// writeTarEntry creates the directory or file for one tar entry whose target entryTarget already confined.
+func writeTarEntry(label string, reader io.Reader, header *tar.Header, target string, maxBytes int64) error {
+	switch header.Typeflag {
+	case tar.TypeDir:
+		return os.MkdirAll(target, 0o755) // NOSONAR -- target is confined to the destination by entryTarget (zip-slip guard)
+	case tar.TypeReg:
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { // NOSONAR -- same confinement: the parent of a path inside destination is inside destination
+			return err
+		}
+		output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm()) // NOSONAR -- same confinement, O_EXCL refuses to follow an existing file
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(output, io.LimitReader(reader, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
+		_ = output.Close()
+		return err
+	}
+	return fmt.Errorf("archive %s contains a forbidden entry", label)
 }

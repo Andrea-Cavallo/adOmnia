@@ -222,11 +222,25 @@ function renderCallout(kind: string | undefined, body: string[], inline: (text: 
 }
 
 /** Slug di un titolo per i link interni: minuscolo, senza punteggiatura, spazi in trattini. */
+// One pass: drops every "<...>" (from a '<' to the next '>'). Once a '<' has no '>' after it, no later one has either,
+// so a single indexOf failure ends the scan: linear, unlike /<[^>]*>/g that rescans the rest for each '<'.
+function removeTagsOnce(text: string): string {
+  let out = ''
+  let from = 0
+  for (let open = text.indexOf('<'); open !== -1; open = text.indexOf('<', from)) {
+    const close = text.indexOf('>', open + 1)
+    if (close === -1) break
+    out += text.slice(from, open)
+    from = close + 1
+  }
+  return out + text.slice(from)
+}
+
 function stripTags(text: string): string {
   let current = text
   for (let previous = ''; previous !== current; ) {
     previous = current
-    current = current.replace(/<[^>]*>/g, '') // repeat: removing "<b>" from "<<b>b>" leaves a new tag
+    current = removeTagsOnce(current) // repeat: removing "<b>" from "<<b>b>" leaves a new tag
   }
   return current
 }
