@@ -10,7 +10,7 @@ on:
 
 env:
   APP_NAME: adomnia
-  WAILS_VERSION: v3.0.0-beta.32
+  WAILS_VERSION: v3.0.0-beta.34
   NODE_VERSION: '22.13.0'
 
 # Least-privilege default for GITHUB_TOKEN; the publishing job raises contents: write.
@@ -221,7 +221,7 @@ jobs:
         run: brew list create-dmg >/dev/null 2>&1 || brew install create-dmg # NOSONAR -- Homebrew has no version pinning: create-dmg only packages the artifacts this job already built, and the app zip is checksummed at release
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }} # NOSONAR -- WAILS_VERSION is the repository pin (v3.0.0-beta.32), the same version go.mod builds against
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }} # NOSONAR -- WAILS_VERSION is the repository pin (v3.0.0-beta.34), the same version go.mod builds against
 
       - name: Build universal app and DMG
         run: |

@@ -17,7 +17,7 @@ Read:
 Requires Go 1.27.2+, Node.js 22.13.0+, and the Wails 3 CLI.
 
 ```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.32
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.34
 
 cd frontend
 npm install
