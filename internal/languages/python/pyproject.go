@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"adomnia/internal/ide/toml"
 )
 
 // Manifest è ciò che serve del pyproject.toml e degli altri indizi Python di un'unità.
@@ -28,25 +30,25 @@ const maxManifestBytes = 2 << 20
 func readManifest(root string) Manifest {
 	manifest := Manifest{Path: filepath.Join(root, "pyproject.toml"), Scripts: map[string]string{}}
 	if data, err := readLimited(manifest.Path, maxManifestBytes); err == nil {
-		document := parseTOML(data)
-		manifest.Name = tomlString(document, "project", "name")
-		manifest.RequiresPython = tomlString(document, "project", "requires-python")
-		manifest.BuildBackend = tomlString(document, "build-system", "build-backend")
-		if scripts := tomlTable(document, "project", "scripts"); len(scripts) > 0 {
+		document := toml.Parse(data)
+		manifest.Name = toml.String(document, "project", "name")
+		manifest.RequiresPython = toml.String(document, "project", "requires-python")
+		manifest.BuildBackend = toml.String(document, "build-system", "build-backend")
+		if scripts := toml.Table(document, "project", "scripts"); len(scripts) > 0 {
 			for name, entry := range scripts {
 				if text, ok := entry.(string); ok {
 					manifest.Scripts[name] = text
 				}
 			}
 		}
-		manifest.Dependencies = append(manifest.Dependencies, tomlStrings(document, "project", "dependencies")...)
+		manifest.Dependencies = append(manifest.Dependencies, toml.Strings(document, "project", "dependencies")...)
 		for _, group := range []string{"dev", "test", "tests", "testing"} {
-			manifest.DevDependencies = append(manifest.DevDependencies, tomlStrings(document, "dependency-groups", group)...)
-			manifest.DevDependencies = append(manifest.DevDependencies, tomlStrings(document, "project", "optional-dependencies", group)...)
+			manifest.DevDependencies = append(manifest.DevDependencies, toml.Strings(document, "dependency-groups", group)...)
+			manifest.DevDependencies = append(manifest.DevDependencies, toml.Strings(document, "project", "optional-dependencies", group)...)
 		}
-		manifest.PytestPaths = tomlStrings(document, "tool", "pytest", "ini_options", "testpaths")
-		manifest.UvWorkspace = tomlStrings(document, "tool", "uv", "workspace", "members")
-		manifest.Poetry = tomlTable(document, "tool", "poetry") != nil
+		manifest.PytestPaths = toml.Strings(document, "tool", "pytest", "ini_options", "testpaths")
+		manifest.UvWorkspace = toml.Strings(document, "tool", "uv", "workspace", "members")
+		manifest.Poetry = toml.Table(document, "tool", "poetry") != nil
 	}
 	for _, name := range []string{"requirements.txt", "requirements-dev.txt", "requirements-test.txt"} {
 		if data, err := readLimited(filepath.Join(root, name), maxManifestBytes); err == nil {

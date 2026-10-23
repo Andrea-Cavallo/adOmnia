@@ -85,8 +85,13 @@ export function WorkspacePanel() {
   }, [api])
 
   useEffect(() => {
-    if (port) refresh()
-  }, [port, refresh])
+    if (!port) return
+    let live = true
+    api('/workspace/list')
+      .then((data) => { if (live) setWorkspaces(data.workspaces ?? []) })
+      .catch((e: unknown) => { if (live) setError(String(e)) })
+    return () => { live = false }
+  }, [port, api])
 
   useEffect(() => {
     void loadFlowDefinitions().then(setFlowDefinitions)
@@ -188,11 +193,11 @@ export function WorkspacePanel() {
         const existingNames = new Set(state.environments.map((environment) => environment.name))
         const environments = importBundle.environments.map((environment) => {
           const baseName = environment.name || 'Imported environment'
-          let name = baseName
+          let uniqueName = baseName
           let suffix = 2
-          while (existingNames.has(name)) name = `${baseName} ${suffix++}`
-          existingNames.add(name)
-          return { ...environment, id: name === baseName ? environment.id : `${environment.id}-${Date.now()}`, name }
+          while (existingNames.has(uniqueName)) uniqueName = `${baseName} ${suffix++}`
+          existingNames.add(uniqueName)
+          return { ...environment, id: uniqueName === baseName ? environment.id : `${environment.id}-${Date.now()}`, name: uniqueName }
         })
         return {
           environments: [...state.environments, ...environments],

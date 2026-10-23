@@ -137,13 +137,12 @@ const TYPE_STYLE: Record<Segment['type'], string> = {
   noenv:    'color: var(--color-warning);  background: rgba(234,179,8,0.10);   border-radius: 2px',
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function buildHtml(segments: Segment[]): string {
-  return segments
-    .map(({ text, type }) => {
-      const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      return `<span style="${TYPE_STYLE[type]}">${esc}</span>`
-    })
-    .join('')
+  return segments.map(({ text, type }) => `<span style="${TYPE_STYLE[type]}">${escapeHtml(text)}</span>`).join('')
 }
 
 // ─── Tooltip logic ────────────────────────────────────────────────────────────
@@ -289,6 +288,8 @@ export function VarHighlightInput({
 
   const segments  = parseSegments(value, resolvedVars, hasActiveEnv)
   const overlayHtml = buildHtml(segments)
+  // The placeholder is shown in the overlay when the field is empty: it is escaped like the segments.
+  const overlayMarkup = overlayHtml || `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLInputElement>) => {
@@ -357,8 +358,8 @@ export function VarHighlightInput({
           className="flex h-full min-w-max items-center"
           style={{ transform: `translateX(${-scrollLeft}px)` }}
           dangerouslySetInnerHTML={{
-            __html: overlayHtml ||
-              `<span style="color:var(--color-text-4)">${placeholder ?? ''}</span>`,
+            // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- every dynamic part (segments, placeholder) goes through escapeHtml
+            __html: overlayMarkup,
           }}
         />
       </div>

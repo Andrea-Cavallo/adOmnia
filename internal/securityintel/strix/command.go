@@ -36,7 +36,7 @@ type Options struct {
 	// Mode: quick, standard o deep. Vuoto: quick.
 	Mode string `json:"mode,omitempty"`
 	// MaxBudget è il tetto di spesa LLM in dollari; 0 = nessun limite (sconsigliato).
-	MaxBudget float64 `json:"maxBudget,omitempty"`
+	MaxBudget float64 `json:"maxBudget,omitzero"`
 	// Instruction guida il test (aree da privilegiare). Opzionale.
 	Instruction string `json:"instruction,omitempty"`
 }

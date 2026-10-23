@@ -43,21 +43,22 @@ function rowClass(selected: boolean): string {
 /** Lists one resource kind in the namespace, reloading when `reloadKey` changes. */
 function useResources<K extends KubeResourceKind>(kind: K, context: string, namespace: string, reloadKey: number) {
   const port = useServerPort()
-  const [items, setItems] = useState<KubeResourceKinds[K][]>([])
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [loaded, setLoaded] = useState<{ key: string; items: KubeResourceKinds[K][]; error: string } | null>(null)
+  const active = !!port && !!context && !!namespace
+  const requestKey = `${port}|${context}|${namespace}|${kind}|${reloadKey}`
   useEffect(() => {
-    if (!port || !context || !namespace) { setItems([]); return }
+    if (!active) return
     let cancelled = false
-    setBusy(true)
     void listResources(port, context, namespace, kind).then((result) => {
       if (cancelled) return
-      setItems(result.items)
-      setError(result.error)
-      setBusy(false)
+      setLoaded({ key: requestKey, items: result.items, error: result.error })
     })
     return () => { cancelled = true }
-  }, [port, context, namespace, kind, reloadKey])
+  }, [active, port, context, namespace, kind, requestKey])
+  // While a reload is in flight the previous result stays visible and `busy` is true.
+  const items = active && loaded ? loaded.items : []
+  const error = active && loaded ? loaded.error : ''
+  const busy = active && loaded?.key !== requestKey
   return { items, error, busy }
 }
 
@@ -217,9 +218,16 @@ export function ForwardsView({ reloadKey }: { reloadKey: number }) {
   const [forwards, setForwards] = useState<KubeForward[]>([])
   const refresh = useCallback(async () => setForwards(await listForwards(port)), [port])
   useEffect(() => {
-    void refresh()
-    return visibleInterval(() => { void refresh() }, FORWARD_POLL_MS, { scope: "kube", kind: "live" })
-  }, [refresh, reloadKey])
+    let cancelled = false
+    const poll = async () => {
+      const next = await listForwards(port)
+      if (!cancelled) setForwards(next)
+    }
+    void poll()
+    const stopPolling = visibleInterval(() => { void poll() }, FORWARD_POLL_MS, { scope: "kube", kind: "live" })
+    return () => { cancelled = true; stopPolling() }
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reloadKey is an explicit refetch trigger from the parent
+  }, [port, reloadKey])
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">

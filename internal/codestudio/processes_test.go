@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -157,21 +156,6 @@ func TestProcessNaturalExit(t *testing.T) {
 	if finished.execution.Status != "exited" || finished.execution.ExitCode == nil || *finished.execution.ExitCode != 0 {
 		t.Fatalf("uscita naturale inattesa: %#v", finished.execution)
 	}
-}
-
-func childPIDFromEvents(t *testing.T, events <-chan processEvent, runID RunID) int {
-	t.Helper()
-	event := waitProcessEvent(t, events, func(event processEvent) bool {
-		output, ok := event.payload.(ProcessOutput)
-		return ok && event.execution.ID == runID && strings.Contains(output.Text, "CHILD_PID=")
-	})
-	output := event.payload.(ProcessOutput)
-	value := strings.TrimSpace(strings.TrimPrefix(output.Text, "CHILD_PID="))
-	pid, err := strconv.Atoi(value)
-	if err != nil {
-		t.Fatalf("PID figlio non valido: %q", value)
-	}
-	return pid
 }
 
 type processEvent struct {

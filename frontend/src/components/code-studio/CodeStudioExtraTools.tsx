@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckCircle2, CircleAlert, Play, Plus, Trash2 } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
 import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool, type GoIDEGoToolInfo } from '@/lib/code-studio-api'
@@ -22,11 +22,14 @@ export function CodeStudioExtraTools({ sessionId, goAvailable, trusted }: { sess
   const [message, setMessage] = useState<string | null>(null)
   const tools = [...BUILTIN_EXTRA_TOOLS, ...custom]
 
-  const detect = useCallback(async () => {
-    const entries = await Promise.all([...BUILTIN_EXTRA_TOOLS, ...readCustomTools()].map(async (tool) => [tool.binary, await detectGoIDEGoTool(sessionId, tool.binary).catch(() => null)] as const))
-    setStatus(Object.fromEntries(entries.filter((entry): entry is readonly [string, GoIDEGoToolInfo] => !!entry[1])))
-  }, [sessionId])
-  useEffect(() => { void detect() }, [detect, custom.length])
+  useEffect(() => {
+    let live = true
+    const probes = [...BUILTIN_EXTRA_TOOLS, ...custom].map(async (tool) => [tool.binary, await detectGoIDEGoTool(sessionId, tool.binary).catch(() => null)] as const)
+    void Promise.all(probes).then((entries) => {
+      if (live) setStatus(Object.fromEntries(entries.filter((entry): entry is readonly [string, GoIDEGoToolInfo] => !!entry[1])))
+    })
+    return () => { live = false }
+  }, [sessionId, custom])
 
   const showRun = () => {
     useCodeStudioLspStore.getState().showToolWindow('run')

@@ -50,9 +50,14 @@ const SymbolRow = memo(function SymbolRow({ node, depth, documentId, caretPath }
   const onCaretPath = caretPath.includes(key)
   const current = caretPath[caretPath.length - 1] === key
   const children = node.children ?? []
-  const [open, setOpen] = useState(!CALLABLE_KINDS.has(node.kind))
+  const revealChildren = onCaretPath && children.length > 0
+  const [open, setOpen] = useState(!CALLABLE_KINDS.has(node.kind) || revealChildren)
+  const [wasRevealing, setWasRevealing] = useState(revealChildren)
+  if (wasRevealing !== revealChildren) {
+    setWasRevealing(revealChildren)
+    if (revealChildren) setOpen(true)
+  }
   const rowRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { if (onCaretPath && children.length > 0) setOpen(true) }, [onCaretPath, children.length])
   useEffect(() => { if (current) rowRef.current?.scrollIntoView({ block: 'nearest' }) }, [current])
   const reveal = () => useCodeStudioStore.setState({ revealLocation: { documentId, line: node.selectionRange.startLine, column: node.selectionRange.startColumn } })
   return (

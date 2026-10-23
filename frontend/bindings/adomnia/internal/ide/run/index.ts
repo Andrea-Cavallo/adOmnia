@@ -3,6 +3,7 @@
 
 export {
     Configuration,
+    Diagnostic,
     DockerOptions,
     EnvironmentEntry,
     Execution,

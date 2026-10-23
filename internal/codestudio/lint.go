@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -65,10 +65,10 @@ type LintResult struct {
 	DurationMS int64               `json:"durationMs"`
 	// ChangedOnly indica che il linter ha girato solo sui package dei file Go modificati e
 	// che Reports contiene solo quei file; ChangedFiles è il loro numero.
-	ChangedOnly  bool `json:"changedOnly,omitempty"`
-	ChangedFiles int  `json:"changedFiles,omitempty"`
+	ChangedOnly  bool `json:"changedOnly,omitzero"`
+	ChangedFiles int  `json:"changedFiles,omitzero"`
 	// Baselined conta i problemi nascosti perché già presenti in .adomnia/lint-baseline.json.
-	Baselined int `json:"baselined,omitempty"`
+	Baselined int `json:"baselined,omitzero"`
 }
 
 type lintIssue struct {
@@ -437,7 +437,7 @@ func parseGolangci(root string, output []byte) ([]lintIssue, error) {
 			} `json:"SuggestedFixes"`
 		} `json:"Issues"`
 	}
-	if err := json.NewDecoder(bytes.NewReader(output[start:])).Decode(&report); err != nil {
+	if err := json.UnmarshalRead(bytes.NewReader(output[start:]), &report); err != nil {
 		return nil, fmt.Errorf("invalid golangci-lint output: %w", err)
 	}
 	issues := make([]lintIssue, 0, len(report.Issues))

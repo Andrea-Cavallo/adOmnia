@@ -6,6 +6,7 @@ import { parseShellDoc, type BsonDoc } from './bson'
 import { DocumentCard } from './DocumentCard'
 import type { RunMongo } from './useMongoBrowser'
 import { EmptyState, ErrorBox, errorText, fieldInput, primaryButton, secondaryButton } from './ui'
+import { withContentKeys } from '@/lib/contentKeys'
 
 export const STAGE_OPERATORS = [
   '$match', '$project', '$addFields', '$set', '$group', '$sort', '$limit', '$skip', '$unwind', '$lookup',
@@ -204,7 +205,7 @@ export function AggregationsTab({ runMongo, db, collection, onExportCode }: Aggr
                       <div className="p-2 text-[11px] text-text-4">No documents</div>
                     ) : (
                       <div className="flex gap-2 overflow-x-auto">
-                        {(preview?.docs ?? []).map((doc, i) => <div key={i} className="w-[280px] flex-none"><DocumentCard doc={doc} /></div>)}
+                        {withContentKeys(preview?.docs ?? [], (doc) => JSON.stringify(doc)).map(({ key, item }) => <div key={key} className="w-[280px] flex-none"><DocumentCard doc={item} /></div>)}
                       </div>
                     )}
                   </div>
@@ -219,7 +220,7 @@ export function AggregationsTab({ runMongo, db, collection, onExportCode }: Aggr
             <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-text-1"><Workflow size={14} className="text-accent" /> Pipeline results <span className="font-normal text-text-3">{results.length} documents{results.length === RESULT_CAP ? ` (first ${RESULT_CAP})` : ''}</span></div>
             {results.length === 0
               ? <EmptyState title="No results" text="The pipeline returned no documents." />
-              : <div className="space-y-2">{results.map((doc, i) => <DocumentCard key={i} doc={doc} />)}</div>}
+              : <div className="space-y-2">{withContentKeys(results, (doc) => JSON.stringify(doc)).map(({ key, item }) => <DocumentCard key={key} doc={item} />)}</div>}
           </div>
         )}
       </div>

@@ -17,6 +17,6 @@ export function precommitProblems(reports: GoIDEDiagnosticsReport[], selected: R
     summary.warnings += warnings
     if (errors + warnings > 0) summary.files.push(report.relativePath)
   }
-  summary.files.sort()
+  summary.files.sort((a, b) => a.localeCompare(b))
   return summary
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { getRequestBody, getResponseBody } from '@/lib/browser-debug-api'
 import type { DebugNetworkEntry } from '@/stores/browser-debug'
@@ -93,7 +93,12 @@ function BodyViewer({ body, loading, error }: { body: string; loading: boolean; 
   )
 }
 
-export function NetworkDetail({
+/** Remounts per entry so every request starts on a clean Headers tab with no stale bodies. */
+export function NetworkDetail(props: NetworkDetailProps) {
+  return <NetworkDetailBody key={props.entry.id} {...props} />
+}
+
+function NetworkDetailBody({
   entry,
   onSendToComposer,
   onAddAsMock,
@@ -109,36 +114,29 @@ export function NetworkDetail({
   const [flowStatus, setFlowStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [actionError, setActionError] = useState('')
 
-  useEffect(() => {
-    setRequestBody('')
-    setResponseBody('')
+  const loadRequestBody = () => {
+    setLoadingRequest(true)
     setRequestError('')
+    getRequestBody(entry.id)
+      .then((body) => setRequestBody(body))
+      .catch((err: unknown) => setRequestError(err instanceof Error ? err.message : 'Failed to read request body'))
+      .finally(() => setLoadingRequest(false))
+  }
+
+  const loadResponseBody = () => {
+    setLoadingResponse(true)
     setResponseError('')
-    setActionError('')
-    setActiveTab('headers')
-  }, [entry.id])
+    getResponseBody(entry.id)
+      .then((body) => setResponseBody(body))
+      .catch((err: unknown) => setResponseError(err instanceof Error ? err.message : 'Failed to read response body'))
+      .finally(() => setLoadingResponse(false))
+  }
 
-  useEffect(() => {
-    if (activeTab === 'request' && !requestBody) {
-      setLoadingRequest(true)
-      setRequestError('')
-      getRequestBody(entry.id)
-        .then((body) => setRequestBody(body))
-        .catch((err: unknown) => setRequestError(err instanceof Error ? err.message : 'Failed to read request body'))
-        .finally(() => setLoadingRequest(false))
-    }
-  }, [activeTab, entry.id, requestBody])
-
-  useEffect(() => {
-    if (activeTab === 'response' && !responseBody) {
-      setLoadingResponse(true)
-      setResponseError('')
-      getResponseBody(entry.id)
-        .then((body) => setResponseBody(body))
-        .catch((err: unknown) => setResponseError(err instanceof Error ? err.message : 'Failed to read response body'))
-        .finally(() => setLoadingResponse(false))
-    }
-  }, [activeTab, entry.id, responseBody])
+  const selectTab = (tab: DetailTab) => {
+    setActiveTab(tab)
+    if (tab === 'request' && !requestBody) loadRequestBody()
+    if (tab === 'response' && !responseBody) loadResponseBody()
+  }
 
   const handleSendToComposer = async () => {
     try {
@@ -208,7 +206,7 @@ export function NetworkDetail({
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
             className={cn(
               'px-3 h-6 rounded text-xs font-medium transition-colors',
               activeTab === tab.id

@@ -1,7 +1,7 @@
 package python
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"math"
 	"path/filepath"
 	"sort"

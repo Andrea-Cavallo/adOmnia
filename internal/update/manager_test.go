@@ -1,12 +1,13 @@
 package update
 
 import (
+	"adomnia/internal/jsonutil"
 	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,8 +20,8 @@ func signedFixture(t *testing.T, m Manifest) ([]byte, string) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	payload, _ := json.Marshal(m)
-	raw, _ := json.Marshal(Envelope{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))})
+	payload, _ := jsonutil.Marshal(m)
+	raw, _ := jsonutil.Marshal(Envelope{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))})
 	return raw, base64.StdEncoding.EncodeToString(pub)
 }
 func TestSignedManifestRejectsTampering(t *testing.T) {
@@ -31,7 +32,7 @@ func TestSignedManifestRejectsTampering(t *testing.T) {
 	var env Envelope
 	_ = json.Unmarshal(raw, &env)
 	env.Payload = base64.StdEncoding.EncodeToString([]byte(`{"version":"v99.0.0"}`))
-	tampered, _ := json.Marshal(env)
+	tampered, _ := jsonutil.Marshal(env)
 	if _, e := VerifyEnvelope(tampered, key); e == nil {
 		t.Fatal("tampered manifest accepted")
 	}

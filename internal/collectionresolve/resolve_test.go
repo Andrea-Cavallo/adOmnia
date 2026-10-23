@@ -1,10 +1,10 @@
 package collectionresolve
 
 import (
-	"encoding/json"
 	"testing"
 
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -125,7 +125,7 @@ func TestResolveEffectiveRequestCanDisableAuthAndHeadersInheritance(t *testing.T
 
 func requestNode(t *testing.T, id string, req requestcontract.Request) collectionfs.Node {
 	t.Helper()
-	raw, err := json.Marshal(req)
+	raw, err := jsonutil.Marshal(req)
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}

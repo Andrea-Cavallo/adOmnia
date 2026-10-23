@@ -92,6 +92,7 @@ export async function parseLogSourcesInBackground(
     }
     const offset = events.length
     const remaining = maxEvents - offset
+    // oxlint-disable-next-line eslint/no-await-in-loop -- sources are parsed in order: each offset depends on the events already collected
     const parsed = await parseLogTextInBackground(
       source.text,
       {

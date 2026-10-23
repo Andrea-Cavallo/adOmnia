@@ -2,8 +2,9 @@ package main
 
 import (
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func (c *CollectionFS) ImportCollectionFromFolder(folderPath string) (string, er
 	if err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(collection)
+	data, err := jsonutil.Marshal(collection)
 	if err != nil {
 		return "", fmt.Errorf("marshal imported collection: %w", err)
 	}
@@ -74,7 +75,7 @@ func (c *CollectionFS) InspectCollectionFolder(folderPath string, collectionJSON
 	if err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(report)
+	data, err := jsonutil.Marshal(report)
 	if err != nil {
 		return "", fmt.Errorf("marshal drift report: %w", err)
 	}

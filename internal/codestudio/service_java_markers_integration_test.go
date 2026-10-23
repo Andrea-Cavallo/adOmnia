@@ -71,8 +71,8 @@ func TestJavaImplementationMarkers(t *testing.T) {
 }
 `
 	files := map[string]string{
-		".project":   `<projectDescription><name>MarkerFixture</name><buildSpec><buildCommand><name>org.eclipse.jdt.core.javabuilder</name></buildCommand></buildSpec><natures><nature>org.eclipse.jdt.core.javanature</nature></natures></projectDescription>`,
-		".classpath": `<classpath><classpathentry kind="src" path="src"/><classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/><classpathentry kind="output" path="bin"/></classpath>`,
+		".project":               `<projectDescription><name>MarkerFixture</name><buildSpec><buildCommand><name>org.eclipse.jdt.core.javabuilder</name></buildCommand></buildSpec><natures><nature>org.eclipse.jdt.core.javanature</nature></natures></projectDescription>`,
+		".classpath":             `<classpath><classpathentry kind="src" path="src"/><classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/><classpathentry kind="output" path="bin"/></classpath>`,
 		"src/MarkerFixture.java": source,
 	}
 	for relative, text := range files {

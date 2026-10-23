@@ -4,7 +4,7 @@
 # other shared library dependencies. Users need nothing installed.
 #
 
-FROM golang:1.27.2-bookworm AS builder
+FROM golang:1.27.3-bookworm AS builder
 
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown
@@ -16,20 +16,30 @@ ENV PATH="/go/bin:${PATH}"
 # Run AppImage tools without FUSE (required inside Docker)
 ENV APPIMAGE_EXTRACT_AND_RUN=1
 
+# Debian package versions rotate with every security update; the base image tag already pins the release.
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl file gcc g++ git imagemagick \
     libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.1-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+# Fail a piped RUN when any stage of the pipe fails.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# NOSONAR -- this runs the NodeSource setup script the same way the vendor documents; it is the
+# build stage only (no runtime container), versions are pinned by the major channel and the
+# resulting artifacts are checksummed in SHA256SUMS.txt at release time.
+# Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
+# hadolint ignore=DL3008
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # linuxdeploy bundles all .so deps (webkit, gtk, etc.) into the AppImage
-RUN curl -fsSL -o /usr/local/bin/linuxdeploy \
+RUN curl --proto '=https' --tlsv1.2 -fsSL -o /usr/local/bin/linuxdeploy \
         https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
-    && curl -fsSL -o /usr/local/bin/linuxdeploy-plugin-appimage \
+    && curl --proto '=https' --tlsv1.2 -fsSL -o /usr/local/bin/linuxdeploy-plugin-appimage \
         https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage \
     && chmod +x /usr/local/bin/linuxdeploy /usr/local/bin/linuxdeploy-plugin-appimage
 
@@ -39,7 +49,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm ci
+WORKDIR /src/frontend
+# NOSONAR -- the frontend toolchain (esbuild/rolldown and friends) needs its install scripts to
+# place the platform binary; --ignore-scripts would break the build. This is the build stage and
+# `npm ci` enforces the committed lockfile.
+RUN npm ci
+WORKDIR /src
 
 COPY . .
 
@@ -69,7 +84,9 @@ RUN set -e && \
     fi && \
     linuxdeploy --appdir /appdir --output appimage && \
     mkdir -p /out && \
-    mv *.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
+    mv ./*.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
+# NOSONAR -- artifact-only image: it carries the AppImage file out of the build and is never run as
+# a container, so there is no process or user to drop.
 FROM scratch AS artifact
 COPY --from=builder /out /

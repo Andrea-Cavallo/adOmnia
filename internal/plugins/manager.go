@@ -6,7 +6,9 @@ package plugins
 import (
 	"adomnia/internal/storage"
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io/fs"
 	"log"
@@ -18,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -146,12 +149,12 @@ type PluginSetting struct {
 // the string settings storage used by the existing UI and persistence layer.
 func (s *PluginSetting) UnmarshalJSON(data []byte) error {
 	type rawSetting struct {
-		Key         string          `json:"key"`
-		Label       string          `json:"label"`
-		Type        string          `json:"type"`
-		Default     json.RawMessage `json:"default"`
-		Options     []string        `json:"options,omitempty"`
-		Description string          `json:"description"`
+		Key         string            `json:"key"`
+		Label       string            `json:"label"`
+		Type        string            `json:"type"`
+		Default     jsonv1.RawMessage `json:"default"`
+		Options     []string          `json:"options,omitempty"`
+		Description string            `json:"description"`
 	}
 	var raw rawSetting
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -661,7 +664,7 @@ func (pm *PluginManager) InstallPlugin(manifestJSON string) (*PluginInstance, er
 	}
 
 	// Write manifest.json
-	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	manifestData, err := jsonutil.Marshal(manifest, jsontext.WithIndent("  "))
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal manifest: %w", err)
 	}
@@ -784,7 +787,7 @@ func (pm *PluginManager) InstallPluginPackage(manifestJSON string, encodedFiles 
 	}
 
 	if repairing {
-		manifestData, err := json.MarshalIndent(manifest, "", "  ")
+		manifestData, err := jsonutil.Marshal(manifest, jsontext.WithIndent("  "))
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal repaired manifest: %w", err)
 		}
@@ -1105,7 +1108,7 @@ func (pm *PluginManager) ApplyEventJSON(eventType, payloadJSON string) (string, 
 			return "", fmt.Errorf("plugin hook %s failed: %s", eventType, result.Error)
 		}
 	}
-	encoded, err := json.Marshal(finalPayload)
+	encoded, err := jsonutil.Marshal(finalPayload)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode %s payload: %w", eventType, err)
 	}
@@ -1252,7 +1255,7 @@ func (pm *PluginManager) savePluginStateInternal() error {
 		}
 	}
 
-	data, err := json.Marshal(states)
+	data, err := jsonutil.Marshal(states)
 	if err != nil {
 		return fmt.Errorf("failed to marshal plugin state: %w", err)
 	}
@@ -1306,10 +1309,10 @@ func (pm *PluginManager) loadPluginStateInternal() error {
 		} else {
 			// Plugin dir may have been removed; create a placeholder
 			pm.plugins[id] = &PluginInstance{
-				Manifest: PluginManifest{ID: id},
-				Enabled:  state.Enabled,
-				Settings: state.Settings,
-				Error:    "plugin directory not found",
+				Manifest:  PluginManifest{ID: id},
+				Enabled:   state.Enabled,
+				Settings:  state.Settings,
+				Error:     "plugin directory not found",
 				DevSource: state.DevSource,
 			}
 		}

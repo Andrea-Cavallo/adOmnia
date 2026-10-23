@@ -16,6 +16,11 @@ var skippedDirs = map[string]bool{
 // interesting reports whether any detector reads rel, and rel is not inside a
 // skipped or hidden directory.
 func interesting(rel string) bool {
+	// `.cargo/config.toml` è l'unico file sotto una cartella nascosta che leggiamo: il suo [env]
+	// dichiara DATABASE_URL e altre variabili del crate (RS-7.3).
+	if rel == ".cargo/config.toml" || strings.HasSuffix(rel, "/.cargo/config.toml") {
+		return true
+	}
 	dir := path.Dir(rel)
 	if dir != "." {
 		for _, segment := range strings.Split(dir, "/") {
@@ -26,13 +31,13 @@ func interesting(rel string) bool {
 	}
 	base := path.Base(rel)
 	switch {
-	case base == "go.mod", isDotenv(base), isCompose(base), isMakefile(base):
+	case base == "go.mod" || base == "Cargo.toml", isDotenv(base), isCompose(base), isMakefile(base):
 		return true
 	case strings.HasSuffix(base, "_test.go"):
 		return false
 	}
 	switch path.Ext(base) {
-	case ".go", ".java", ".py", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
+	case ".go", ".java", ".py", ".rs", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
 		return true
 	}
 	return false
@@ -60,12 +65,18 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 	switch {
 	case base == "go.mod":
 		add(detectGoMod(rel, data))
+	case base == "Cargo.toml":
+		add(detectCargoToml(rel, data))
 	case strings.HasSuffix(base, ".go"):
 		add(detectGoFile(rel, data, hints))
 	case strings.HasSuffix(base, ".java"):
 		out = append(out, detectJavaFile(rel, data)...)
 	case strings.HasSuffix(base, ".py"):
 		out = append(out, detectPythonFile(rel, data)...)
+	case strings.HasSuffix(base, ".rs"):
+		out = append(out, detectRustFile(rel, data)...)
+	case base == "config.toml":
+		add(detectCargoConfig(rel, data), nil)
 	case isDotenv(base):
 		add(detectDotenv(rel, data))
 	case isCompose(base):

@@ -192,7 +192,7 @@ function PresetManager({
 // ─── RabbitMQ panel ───────────────────────────────────────────────────────────
 
 function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: (msgs: BrokerMessage[]) => void }) {
-  const [url, setUrl] = useState('amqp://guest:guest@localhost:5672/')
+  const [url, setUrl] = useState('amqp://guest:guest@localhost:5672/') // NOSONAR -- the default RabbitMQ URL example; AMQPS is the user broker choice
   const [exchange, setExchange] = useState('')
   const [queue, setQueue] = useState('adomnia.test')
   const [routingKey, setRoutingKey] = useState('adomnia.test')
@@ -261,7 +261,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-3">
             <Field label="AMQP URL">
-              <input value={url} onChange={e => setUrl(e.target.value)} className={inputClass} placeholder="amqp://user:pass@host:5672/vhost" />
+              <input value={url} onChange={e => setUrl(e.target.value)} className={inputClass} placeholder="amqp://user:pass@host:5672/vhost" /> {/* NOSONAR -- the default RabbitMQ URL example; AMQPS is the user broker choice */}
             </Field>
           </div>
           <Field label="Exchange">
@@ -334,7 +334,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
         <div className="rounded border border-border-1 bg-surface-1 p-3 text-xs text-text-3 space-y-1.5">
           <p><span className="font-semibold text-text-2">Protocol:</span> AMQP 0-9-1</p>
           <p><span className="font-semibold text-text-2">Default port:</span> 5672 (TLS: 5671)</p>
-          <p><span className="font-semibold text-text-2">URL format:</span> <span className="font-mono">amqp://user:pass@host:5672/vhost</span></p>
+          <p><span className="font-semibold text-text-2">URL format:</span> <span className="font-mono">amqp://user:pass@host:5672/vhost</span></p> {/* NOSONAR -- the default RabbitMQ URL example; AMQPS is the user broker choice */}
           <p><span className="font-semibold text-text-2">Exchange types:</span> direct, fanout, topic, headers</p>
           <p>For exchange/queue listing use the RabbitMQ Management Plugin at <span className="font-mono">http://host:15672</span></p>
         </div>

@@ -4,7 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	goversion "go/version"
@@ -130,8 +131,8 @@ func (i *ToolchainInstaller) ListReleases(ctx context.Context) ([]ToolchainRelea
 		return nil, fmt.Errorf("catalogo Go: risposta HTTP %d", response.StatusCode)
 	}
 	var releases []goDownloadRelease
-	decoder := json.NewDecoder(io.LimitReader(response.Body, maxDownloadIndex))
-	if err := decoder.Decode(&releases); err != nil {
+	decoder := jsontext.NewDecoder(io.LimitReader(response.Body, maxDownloadIndex))
+	if err := json.UnmarshalDecode(decoder, &releases); err != nil {
 		return nil, fmt.Errorf("invalid Go catalog: %w", err)
 	}
 	result := make([]ToolchainRelease, 0, 20)

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { X, Save, ShieldCheck, AlertTriangle, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Theme } from '@/stores/themes'
@@ -35,7 +36,7 @@ const DEFAULT_COLOR_KEYS = [
 type EditorTab = 'colors' | 'fonts' | 'validation' | 'contrast'
 
 function generateId(): string {
-  return `theme-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `theme-${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 }
 
 function createBlankTheme(): Theme {
@@ -430,8 +431,8 @@ function ValidationPanel({ result, loading, onValidate }: ValidationPanelProps) 
       {result!.errors.length > 0 && (
         <div className="space-y-1">
           <h4 className="text-xs font-medium text-red-400 uppercase tracking-wider">Errors</h4>
-          {result!.errors.map((err, i) => (
-            <div key={i} className="flex items-start gap-2 px-3 py-2 rounded bg-red-500/5 border border-red-500/10 text-xs text-red-300">
+          {withContentKeys(result!.errors, (err) => err).map(({ key, item: err }) => (
+            <div key={key} className="flex items-start gap-2 px-3 py-2 rounded bg-red-500/5 border border-red-500/10 text-xs text-red-300">
               <AlertTriangle size={11} className="mt-0.5 flex-shrink-0" />
               {err}
             </div>
@@ -442,8 +443,8 @@ function ValidationPanel({ result, loading, onValidate }: ValidationPanelProps) 
       {result!.warnings.length > 0 && (
         <div className="space-y-1">
           <h4 className="text-xs font-medium text-yellow-400 uppercase tracking-wider">Warnings</h4>
-          {result!.warnings.map((w, i) => (
-            <div key={i} className="flex items-start gap-2 px-3 py-2 rounded bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-300">
+          {withContentKeys(result!.warnings, (w) => w).map(({ key, item: w }) => (
+            <div key={key} className="flex items-start gap-2 px-3 py-2 rounded bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-300">
               <AlertTriangle size={11} className="mt-0.5 flex-shrink-0" />
               {w}
             </div>
@@ -515,8 +516,8 @@ function ContrastPanel({ results, loading, onCheck }: ContrastPanelProps) {
             </tr>
           </thead>
           <tbody>
-            {results.map((r, i) => (
-              <tr key={i} className="border-t border-border-1 hover:bg-surface-1/50 transition-colors">
+            {results.map((r) => (
+              <tr key={r.pair} className="border-t border-border-1 hover:bg-surface-1/50 transition-colors">
                 <td className="px-3 py-1.5 font-mono text-text-2">{r.pair}</td>
                 <td className="px-3 py-1.5 text-center font-mono text-text-1">{r.ratio.toFixed(2)}</td>
                 <td className="px-3 py-1.5 text-center">

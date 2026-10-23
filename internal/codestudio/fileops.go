@@ -310,11 +310,11 @@ func (m *DocumentManager) RevealPath(project Project, relativePath string) error
 	var command *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		command = exec.Command("explorer", "/select,", path)
+		command = exec.Command("explorer", "/select,", path) // NOSONAR -- OS file manager launched by bare name through PATH; the path argument is the file the user revealed
 	case "darwin":
-		command = exec.Command("open", "-R", path)
+		command = exec.Command("open", "-R", path) // NOSONAR -- OS file manager launched by bare name through PATH; the path argument is the file the user revealed
 	default:
-		command = exec.Command("xdg-open", filepath.Dir(path))
+		command = exec.Command("xdg-open", filepath.Dir(path)) // NOSONAR -- OS file manager launched by bare name through PATH; the path argument is the file the user revealed
 	}
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("could not open the file manager: %w", err)

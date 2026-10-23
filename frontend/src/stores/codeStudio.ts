@@ -66,6 +66,7 @@ import { DEFAULT_STUDIO_WORKSPACE_ID, listGoIDEStudioWorkspaces, type GoIDEStudi
 import { codeStudioWindowContext } from '@/lib/code-studio-window-api'
 import { confirm } from '@/lib/confirmDialog'
 import { studioToast } from './codeStudioToast'
+import { useCodeStudioLspStore } from './codeStudioLsp'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/code-studio/codeStudioRecovery'
 import { scheduleAutoSave } from '@/lib/code-studio/codeStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/code-studio/codeStudioDiskChanges'
@@ -74,7 +75,7 @@ const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
-export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script'
+export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 
@@ -760,6 +761,8 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
         return false
       }
       await closeGoIDESession(sessionId)
+      // La diagnostica (LSP, lint, build) della sessione chiusa non deve riaffiorare alla riapertura.
+      useCodeStudioLspStore.getState().clearSession(sessionId)
       set((state) => {
         const sessions = state.sessions.filter((session) => session.id !== sessionId)
         return {
@@ -961,6 +964,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
   saveAllDocuments: async (sessionId) => {
     const dirtyIds = get().documents.filter((item) => item.document.sessionId === sessionId && item.dirty).map((item) => item.document.id)
     for (const documentId of dirtyIds) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- saves run one by one and stop at the first failure
       if (!await get().saveDocument(documentId)) return false
     }
     return true
@@ -1042,18 +1046,19 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     const deleted = affected.filter((item) => wasDeleted(item.relativePath, batch))
     for (const item of deleted) {
       if (item.dirty) set({ error: `${item.relativePath} was deleted on disk. Your unsaved changes are still in the editor.` })
+      // oxlint-disable-next-line eslint/no-await-in-loop -- closes mutate the shared document list, keep them ordered
       else await get().closeDocument(item.id).catch((error: unknown) => set({ error: errorMessage(error) }))
     }
     await refreshFromDisk(sessionId, affected.filter((item) => !deleted.includes(item)).map((item) => item.id))
     const loaded = Object.keys(get().directoryEntries[sessionId] ?? {})
-    for (const directory of directoriesToRefresh(loaded, batch)) {
+    await Promise.all(directoriesToRefresh(loaded, batch).map(async (directory) => {
       try {
         const entries = await listGoIDEDirectory(sessionId, directory, get().showIgnoredBySession[sessionId] ?? false)
         set((state) => ({ directoryEntries: { ...state.directoryEntries, [sessionId]: { ...(state.directoryEntries[sessionId] ?? {}), [directory]: entries } } }))
       } catch {
         // Una cartella eliminata sparisce con il ricaricamento del genitore.
       }
-    }
+    }))
   },
 
   resolveExternalChange: (documentId, action) => set((state) => ({
@@ -1328,6 +1333,7 @@ async function refreshFromDisk(sessionId: string, documentIds: string[]): Promis
     const current = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)
     if (!current) continue
     try {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- documents are re-checked in order; each step reads the latest store state
       const externalState = await checkGoIDEDocument(sessionId, documentId, current.diskToken)
       if (!externalState.changed) continue
       useCodeStudioStore.setState((state) => ({ documents: state.documents.map((item) => item.document.id === documentId ? { ...item, externalState } : item) }))

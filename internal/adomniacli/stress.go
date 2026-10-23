@@ -3,7 +3,8 @@ package adomniacli
 import (
 	"crypto/rand"
 	"encoding/csv"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -704,7 +706,7 @@ func summarizeStress(items []stressObservation, excluded int, iterations, failed
 func renderStressResult(result stressCLIResult, reporter string) ([]byte, error) {
 	switch reporter {
 	case "json":
-		data, err := json.MarshalIndent(result, "", "  ")
+		data, err := jsonutil.Marshal(result, jsontext.WithIndent("  "))
 		return append(data, '\n'), err
 	case "junit":
 		return renderStressJUnit(result)

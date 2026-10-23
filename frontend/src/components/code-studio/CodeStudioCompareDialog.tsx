@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { DiffEditor } from '@monaco-editor/react'
 import { GitCompare, Loader2 } from 'lucide-react'
 import { compareGoIDEPaths, type GoIDEPathComparison } from '@/lib/code-studio-api'
@@ -12,7 +12,11 @@ export function CodeStudioCompareDialog({ sessionId, sourcePath, sourceDirectory
   const [busy, setBusy] = useState(false)
   const theme = useCodeStudioEditorTheme()
 
-  useEffect(() => { setTarget(''); setResult(null); setError(null) }, [sourcePath])
+  const [prevSourcePath, setPrevSourcePath] = useState(sourcePath)
+  if (prevSourcePath !== sourcePath) {
+    setPrevSourcePath(sourcePath)
+    setTarget(''); setResult(null); setError(null)
+  }
   const compare = async () => {
     if (!sourcePath || !target.trim()) return
     setBusy(true); setError(null); setResult(null)

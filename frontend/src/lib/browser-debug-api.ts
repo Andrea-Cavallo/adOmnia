@@ -252,7 +252,7 @@ export async function disconnectDebugger(): Promise<void> {
     await binding.Disconnect()
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to disconnect'
-    throw new Error(message)
+    throw new Error(message, { cause: err })
   }
 }
 
@@ -266,7 +266,7 @@ export async function getTraffic(): Promise<DebugNetworkEntry[]> {
       responseHeaders: normalizeStringRecord(entry.responseHeaders),
     }))
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to read browser traffic')
+    throw new Error(err instanceof Error ? err.message : 'Failed to read browser traffic', { cause: err })
   }
 }
 
@@ -276,7 +276,7 @@ export async function getRequestBody(requestId: string): Promise<string> {
     if (!binding) return ''
     return await binding.GetRequestBody(requestId)
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to read request body')
+    throw new Error(err instanceof Error ? err.message : 'Failed to read request body', { cause: err })
   }
 }
 
@@ -286,7 +286,7 @@ export async function getResponseBody(requestId: string): Promise<string> {
     if (!binding) return ''
     return await binding.GetResponseBody(requestId)
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to read response body')
+    throw new Error(err instanceof Error ? err.message : 'Failed to read response body', { cause: err })
   }
 }
 
@@ -308,7 +308,7 @@ export async function discoverEndpoints(): Promise<DebugEndpoint[]> {
     if (!b?.DiscoverEndpoints) return []
     return ((await b.DiscoverEndpoints()) as DebugEndpoint[]) ?? []
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to discover browser debug endpoints')
+    throw new Error(err instanceof Error ? err.message : 'Failed to discover browser debug endpoints', { cause: err })
   }
 }
 
@@ -318,7 +318,7 @@ export async function connectToTarget(wsUrl: string): Promise<void> {
     if (!b?.ConnectToTarget) return
     await b.ConnectToTarget(wsUrl)
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to connect to target')
+    throw new Error(err instanceof Error ? err.message : 'Failed to connect to target', { cause: err })
   }
 }
 
@@ -328,7 +328,7 @@ export async function launchBrowserForDebug(url: string, port: number): Promise<
     if (!b?.LaunchBrowserForDebug) return []
     return (await b.LaunchBrowserForDebug(url, port)) as DebugTarget[]
   } catch (err: unknown) {
-    throw new Error(err instanceof Error ? err.message : 'Failed to launch browser')
+    throw new Error(err instanceof Error ? err.message : 'Failed to launch browser', { cause: err })
   }
 }
 

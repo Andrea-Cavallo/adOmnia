@@ -65,7 +65,7 @@ export const JA_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "Remove password": "パスワードを削除",
   "Remove DSN": "DSN を削除",
   "Encrypted DSN saved": "暗号化された DSN を保存しました",
-  "Database password": "データベースのパスワード",
+  "Database password": "データベースのパスワード", // NOSONAR -- Japanese UI label for the database password field, not a credential
   "Database DSN": "データベースの DSN",
   "Idle timeout minutes": "アイドルタイムアウト（分）",
   "Idle (min)": "アイドル (min)",

@@ -2,13 +2,14 @@ import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, ExceptionBreakpointSettings, ExceptionBreakpointsView, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
-  GoroutineOverview, JavaDebugRequest, ProcessInfo, PythonDebugRequest,
+  GoroutineOverview, JavaDebugRequest, ProcessInfo, PythonDebugRequest, RustDebugRequest,
 } from '../../bindings/adomnia/internal/codestudio/models'
 
 export type GoIDEDebugRequest = DebugRequest
 export type GoIDEDebugSession = DebugSessionInfo
 export type GoIDEJavaDebugRequest = JavaDebugRequest
 export type GoIDEPythonDebugRequest = PythonDebugRequest
+export type GoIDERustDebugRequest = RustDebugRequest
 /** Payload dell'evento debug.output (non esposto dai binding perché viaggia solo come evento). */
 export interface GoIDEDebugOutput {
   debugId: string
@@ -64,6 +65,21 @@ export function startGoIDEJavaDebug(request: JavaDebugRequest): Promise<DebugSes
 /** Debug di uno script, di un modulo o di test pytest con debugpy (serve nel progetto o nell'interprete). */
 export function startPythonDebug(request: PythonDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartPythonDebug(request)
+}
+
+/** Debug di un bin o di un example Cargo con CodeLLDB (installato in modo esplicito). */
+export function startRustDebug(request: RustDebugRequest): Promise<DebugSessionInfo> {
+  return GoIDEBindings.StartRustDebug(request)
+}
+
+/** Il comando esatto che installerebbe CodeLLDB, per la conferma. */
+export function previewRustDebuggerInstall(sessionId: string) {
+  return GoIDEBindings.PreviewRustDebuggerInstall(sessionId)
+}
+
+/** Installa CodeLLDB (release pinnata, SHA-256 verificato) dopo la conferma dell'utente. */
+export function installRustDebugger(sessionId: string): Promise<Execution> {
+  return GoIDEBindings.InstallRustDebugger(sessionId, true)
 }
 
 export function stopGoIDEDebug(debugId: string): Promise<void> {

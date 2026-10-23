@@ -56,8 +56,8 @@ type Method struct {
 	Line            int    `json:"line"`
 	Input           string `json:"input"`
 	Output          string `json:"output"`
-	ClientStreaming bool   `json:"clientStreaming,omitempty"`
-	ServerStreaming bool   `json:"serverStreaming,omitempty"`
+	ClientStreaming bool   `json:"clientStreaming,omitzero"`
+	ServerStreaming bool   `json:"serverStreaming,omitzero"`
 }
 
 type Service struct {

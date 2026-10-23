@@ -5,15 +5,16 @@ import (
 	"adomnia/internal/vault"
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
-	"math/rand/v2"
+	"math/rand/v2" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"net/http"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -250,7 +251,6 @@ func (m *ConnectionManager) monitor() {
 	}
 }
 func (m *ConnectionManager) maintain(now time.Time) {
-
 	m.mu.Lock()
 	list := make([]*connectionHandle, 0, len(m.entries))
 	for _, h := range m.entries {
@@ -268,7 +268,7 @@ func (m *ConnectionManager) maintain(now time.Time) {
 				h.status.State = "disconnected"
 			} else if h.status.State == "error" && !now.Before(h.retry) {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				h.open(ctx)
+				_ = h.open(ctx) // the failure is recorded in h.status and retried on the next tick
 				cancel()
 			} else if h.status.State == "connected" && now.Sub(h.checked) >= 30*time.Second {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -277,7 +277,7 @@ func (m *ConnectionManager) maintain(now time.Time) {
 				cancel()
 				if err != nil {
 					h.close()
-					h.fail(err)
+					_ = h.fail(err) // records the error in h.status; the returned error is the same one
 				} else {
 					h.status.LatencyMS = time.Since(start).Milliseconds()
 					h.checked = now
@@ -325,7 +325,7 @@ func databaseSealHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var cfg map[string]any
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&cfg) != nil {
+	if json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 1<<20), &cfg) != nil {
 		http.Error(w, "invalid json", 400)
 		return
 	}
@@ -404,7 +404,7 @@ func databaseConnectionHandler(action string) http.HandlerFunc {
 			ID         string              `json:"connectionId"`
 			Connection dbConnectionRequest `json:"connection"`
 		}
-		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req) != nil || req.ID == "" {
+		if json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 1<<20), &req) != nil || req.ID == "" {
 			http.Error(w, "connectionId required", 400)
 			return
 		}
@@ -424,7 +424,7 @@ func databaseConnectionHandler(action string) http.HandlerFunc {
 			}
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			if len(req.Variables) > 0 {
-				data, _ := json.Marshal(req.Variables)
+				data, _ := jsonutil.Marshal(req.Variables)
 				cfg.Variables = string(data)
 			}
 			defer cancel()

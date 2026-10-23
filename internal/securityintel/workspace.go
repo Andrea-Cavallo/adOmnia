@@ -1,7 +1,9 @@
 package securityintel
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,11 +29,11 @@ type WorkspaceSettings struct {
 	// EcosystemsLimita la scansione a certi ecosistemi. Vuoto: tutti.
 	Ecosystems []Ecosystem `json:"ecosystems,omitempty"`
 	// IncludePluginDependencies aggiunge le dipendenze dei plugin di build.
-	IncludePluginDependencies bool `json:"includePluginDependencies,omitempty"`
+	IncludePluginDependencies bool `json:"includePluginDependencies,omitzero"`
 	// IncludeOptional considera anche le dipendenze opzionali.
-	IncludeOptional bool `json:"includeOptional,omitempty"`
+	IncludeOptional bool `json:"includeOptional,omitzero"`
 	// OfflineForza l'analisi offline: nessuna richiesta ai database di advisory.
-	Offline bool `json:"offline,omitempty"`
+	Offline bool `json:"offline,omitzero"`
 	// Sources sostituisce gli endpoint delle fonti con specchi aziendali.
 	SourceEndpoints map[string]string `json:"sourceEndpoints,omitempty"`
 }
@@ -67,7 +69,7 @@ func SaveWorkspaceSettings(root string, settings WorkspaceSettings) error {
 		}
 		return settings.Suppressions[left].Reason < settings.Suppressions[right].Reason
 	})
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

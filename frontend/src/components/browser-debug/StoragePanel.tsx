@@ -47,34 +47,27 @@ export function StoragePanel() {
   const [indexedDBNames, setIndexedDBNames] = useState<string[]>([])
   const [error, setError] = useState('')
 
-  const refresh = useCallback(async () => {
-    try {
+  const refresh = useCallback(() => {
+    const apply = (data: unknown) => {
       switch (activeTab) {
-        case 'cookies': {
-          const data = await getCookies()
-          setCookies(data)
-          break
-        }
-        case 'localStorage': {
-          const data = await getLocalStorage()
-          setLocalItems(data)
-          break
-        }
-        case 'sessionStorage': {
-          const data = await getSessionStorage()
-          setSessionItems(data)
-          break
-        }
-        case 'indexedDB': {
-          const data = await getIndexedDBDatabases()
-          setIndexedDBNames(data)
-          break
-        }
+        case 'cookies': setCookies(data as CookieEntry[]); break
+        case 'localStorage': setLocalItems(data as StorageItem[]); break
+        case 'sessionStorage': setSessionItems(data as StorageItem[]); break
+        case 'indexedDB': setIndexedDBNames(data as string[]); break
       }
       setError('')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load browser storage')
     }
+    const load: Record<StorageTab, () => Promise<unknown>> = {
+      cookies: getCookies,
+      localStorage: getLocalStorage,
+      sessionStorage: getSessionStorage,
+      indexedDB: getIndexedDBDatabases,
+    }
+    load[activeTab]()
+      .then(apply)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load browser storage')
+      })
   }, [activeTab])
 
   useEffect(() => {

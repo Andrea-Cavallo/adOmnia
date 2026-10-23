@@ -179,12 +179,14 @@ export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<monaco
     if (!editor) return
     executionRef.current ??= editor.createDecorationsCollection()
     inlineValuesRef.current ??= editor.createDecorationsCollection()
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- id/mountCount are re-run triggers: the Monaco editor instance behind the ref changes with them
   }, [editorRef, mountCount])
 
   useEffect(() => { void useCodeStudioDebugStore.getState().loadBreakpoints(sessionId) }, [sessionId])
 
   useEffect(() => {
     executionRef.current?.set(executionDecorations(pointLine ? { relativePath, line: pointLine, top: pointTop } : null))
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- id/mountCount are re-run triggers: the Monaco editor instance behind the ref changes with them
   }, [id, mountCount, pointLine, pointTop, relativePath])
 
   useEffect(() => {
@@ -202,6 +204,7 @@ export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<monaco
         options: { after: { content: `${INLINE_VALUE_GAP}${content}`, inlineClassName: 'code-studio-inline-value' }, hoverMessage: hover, showIfCollapsed: true },
       }
     }))
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- id/mountCount are re-run triggers: the Monaco editor instance behind the ref changes with them
   }, [editorRef, id, inline.children, inline.scopes, mountCount, pointLine])
 }
 

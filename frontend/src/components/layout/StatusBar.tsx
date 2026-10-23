@@ -74,19 +74,18 @@ export function StatusBar() {
 
   const [paletteMode, setPaletteMode] = useState<QuickMode | null>(null)
   const paletteOpen = paletteMode !== null
-  const setPaletteOpen = (open: boolean) => { if (!open) setPaletteMode(null) }
   const modeBases = useSettingsStore((s) => s.settings.appearance.modeBases)
   const activeBase = useSettingsStore((s) => s.settings.appearance.baseColor)
   const accentColor = useSettingsStore((s) => s.settings.appearance.accentColor)
   const appearanceRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!paletteOpen) return
-    const close = (event: MouseEvent) => { if (!appearanceRef.current?.contains(event.target as Node)) setPaletteOpen(false) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setPaletteOpen(false) }
+    const close = (event: MouseEvent) => { if (!appearanceRef.current?.contains(event.target as Node)) setPaletteMode(null) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setPaletteMode(null) }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', onKey) }
-  }, [paletteOpen])
+  }, [paletteOpen, setPaletteMode])
 
   return (
     <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">

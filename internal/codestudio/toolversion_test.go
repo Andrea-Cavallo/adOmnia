@@ -1,8 +1,8 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,7 +37,7 @@ func (p *fakeModuleProxy) run(_ context.Context, _, _ string, env []string, args
 			info.Versions = p.versions
 		}
 	}
-	return json.Marshal(info)
+	return jsonutil.Marshal(info)
 }
 
 func installFakeProxy(t *testing.T, proxy *fakeModuleProxy) {

@@ -1,7 +1,8 @@
 package resources
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -86,7 +87,7 @@ func SetRuntimeMemoryLimit(mib int) (GoRuntime, error) {
 	if runtimeConfig.path == "" {
 		return GoRuntime{}, fmt.Errorf("resource settings storage is not configured")
 	}
-	data, _ := json.Marshal(struct {
+	data, _ := jsonutil.Marshal(struct {
 		MiB int `json:"goMemoryLimitMiB"`
 	}{mib})
 	if err := os.MkdirAll(filepath.Dir(runtimeConfig.path), 0700); err != nil {

@@ -1,10 +1,11 @@
 package golang
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"testing"
 
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 func TestRunSchemaOnlyExposesGoFieldsForBuildKinds(t *testing.T) {
@@ -28,14 +29,14 @@ func TestRunSchemaOnlyExposesGoFieldsForBuildKinds(t *testing.T) {
 	if got := keys("command"); len(got) != 0 {
 		t.Fatalf("command must have no Go fields: %v", got)
 	}
-	if _, err := json.Marshal(provider.RunSchema("test")); err != nil {
+	if _, err := jsonutil.Marshal(provider.RunSchema("test")); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestValidateRunConfiguration(t *testing.T) {
 	var validator run.ConfigValidator = New()
-	options := func(o RunOptions) json.RawMessage { data, _ := json.Marshal(o); return data }
+	options := func(o RunOptions) jsonv1.RawMessage { data, _ := jsonutil.Marshal(o); return data }
 	cases := []struct {
 		name   string
 		config run.Configuration
@@ -47,7 +48,7 @@ func TestValidateRunConfiguration(t *testing.T) {
 		{"bad goos", run.Configuration{Kind: "run", LanguageOptions: options(RunOptions{GOOS: "Win Dows"})}, true},
 		{"profile on run", run.Configuration{Kind: "run", LanguageOptions: options(RunOptions{Profile: "cpu"})}, true},
 		{"profile on test", run.Configuration{Kind: "test", LanguageOptions: options(RunOptions{Profile: "cpu"})}, false},
-		{"broken json", run.Configuration{Kind: "run", LanguageOptions: json.RawMessage(`{`)}, true},
+		{"broken json", run.Configuration{Kind: "run", LanguageOptions: jsonv1.RawMessage(`{`)}, true},
 	}
 	for _, tc := range cases {
 		if err := validator.ValidateRunConfiguration(tc.config); (err != nil) != tc.fail {

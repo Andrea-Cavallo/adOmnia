@@ -1,7 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +35,7 @@ func TestRuntimeLockDetectsCrashFromHeartbeatNotPID(t *testing.T) {
 		t.Fatal("un heartbeat recente non è un crash")
 	}
 	// Rimette il lock "morto" e avanza il tempo oltre la soglia.
-	data, _ := json.Marshal(runtimeLockInfo{Instance: "old", PID: os.Getpid(), StartedAt: now, Heartbeat: now})
+	data, _ := jsonutil.Marshal(runtimeLockInfo{Instance: "old", PID: os.Getpid(), StartedAt: now, Heartbeat: now})
 	_ = os.WriteFile(filepath.Join(directory, runtimeLockFile), data, 0o600)
 	later := func() time.Time { return now.Add(staleHeartbeatAfter + time.Second) }
 	next, status, err := AcquireRuntimeLock(directory, later)
@@ -68,7 +69,7 @@ func TestRecoveryKeepsThreeSnapshotsAndSkipsCorruptOnes(t *testing.T) {
 	var state recoveryState
 	_ = json.Unmarshal(store.data, &state)
 	state.Buffers[0].Content = "corrotto"
-	store.data, _ = json.Marshal(state)
+	store.data, _ = jsonutil.Marshal(state)
 	reloaded := NewRecoveryManager(store)
 	if err := reloaded.Load(); err != nil {
 		t.Fatal(err)
@@ -208,7 +209,7 @@ func TestRecoveryFollowsTheWorkspaceAcrossSessionsAndExpiresOldSnapshots(t *test
 	_ = json.Unmarshal(store.data, &state)
 	state.Buffers[0].SavedAt = time.Now().Add(-recoveryRetention - time.Hour)
 	state.Buffers[0].SnapshotHash = ""
-	store.data, _ = json.Marshal(state)
+	store.data, _ = jsonutil.Marshal(state)
 	reloaded := NewRecoveryManager(store)
 	_ = reloaded.Load()
 	if len(reloaded.List("new-session")) != 0 {

@@ -1,7 +1,7 @@
 package python
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -22,8 +22,8 @@ type DebugOptions struct {
 	Module           string   `json:"module,omitempty"`
 	App              string   `json:"app,omitempty"`
 	Host             string   `json:"host,omitempty"`
-	Port             int      `json:"port,omitempty"`
-	Reload           bool     `json:"reload,omitempty"`
+	Port             int      `json:"port,omitzero"`
+	Reload           bool     `json:"reload,omitzero"`
 	Targets          []string `json:"targets,omitempty"`
 	Run              string   `json:"run,omitempty"`
 	ProgramArguments []string `json:"programArguments,omitempty"`

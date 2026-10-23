@@ -2,7 +2,8 @@ package kube
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -130,11 +131,11 @@ func parseServices(raw []byte) ([]Service, error) {
 				ExternalIPs []string          `json:"externalIPs"`
 				Selector    map[string]string `json:"selector"`
 				Ports       []struct {
-					Name       string          `json:"name"`
-					Port       int32           `json:"port"`
-					TargetPort json.RawMessage `json:"targetPort"`
-					NodePort   int32           `json:"nodePort"`
-					Protocol   string          `json:"protocol"`
+					Name       string            `json:"name"`
+					Port       int32             `json:"port"`
+					TargetPort jsonv1.RawMessage `json:"targetPort"`
+					NodePort   int32             `json:"nodePort"`
+					Protocol   string            `json:"protocol"`
 				} `json:"ports"`
 			} `json:"spec"`
 			Status struct {

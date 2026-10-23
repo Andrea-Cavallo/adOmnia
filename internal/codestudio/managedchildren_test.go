@@ -5,7 +5,7 @@ import (
 	"adomnia/internal/ide/process"
 	"adomnia/internal/languages/golang"
 
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,7 +37,7 @@ func spawnManagedHelper(t *testing.T) *exec.Cmd {
 
 func writeRuntimeLock(t *testing.T, directory string, heartbeat time.Time) {
 	t.Helper()
-	data, err := json.Marshal(runtimeLockInfo{Instance: "previous", PID: 99999, StartedAt: heartbeat, Heartbeat: heartbeat})
+	data, err := jsonutil.Marshal(runtimeLockInfo{Instance: "previous", PID: 99999, StartedAt: heartbeat, Heartbeat: heartbeat})
 	if err != nil {
 		t.Fatal(err)
 	}

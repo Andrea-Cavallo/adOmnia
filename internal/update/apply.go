@@ -2,10 +2,11 @@ package update
 
 import (
 	"adomnia/internal/ide/process"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -118,7 +119,7 @@ func (m *Manager) prepareScheduledLocked(exe, target string) error {
 		Parent: os.Getpid(), Version: m.state.Version, Executable: exe,
 		UserData: filepath.Dir(filepath.Dir(m.dir)), Backup: filepath.Join(m.dir, "previous-install"),
 	}
-	raw, err := json.Marshal(plan)
+	raw, err := jsonutil.Marshal(plan)
 	if err != nil {
 		return err
 	}
@@ -196,19 +197,29 @@ func copyRegular(src, dst string, mode os.FileMode) error {
 	return ce
 }
 
-// Helper runs before Wails startup and waits for the original process to exit.
-func RunHelper(planPath, current string) (result error) {
+// helperRun carries the state of one RunHelper invocation across its phases.
+type helperRun struct {
+	plan           applyPlan
+	planPath       string
+	root           string
+	restartAllowed bool
+	relaunched     bool
+	swap           installSwap
+}
+
+// loadHelperPlan reads and validates the update plan next to the helper executable.
+func loadHelperPlan(planPath string) (applyPlan, string, error) {
+	var p applyPlan
 	raw, err := os.ReadFile(planPath)
 	if err != nil {
-		return err
+		return p, "", err
 	}
-	var p applyPlan
 	if err = json.Unmarshal(raw, &p); err != nil {
-		return err
+		return p, "", err
 	}
 	self, err := os.Executable()
 	if err != nil {
-		return err
+		return p, "", err
 	}
 	self, _ = filepath.EvalSymlinks(self)
 	root := filepath.Dir(self)
@@ -216,37 +227,202 @@ func RunHelper(planPath, current string) (result error) {
 		p.Backup = filepath.Join(root, "previous-install")
 	}
 	if p.Parent <= 0 {
-		return errors.New("invalid update plan: missing parent process")
+		return p, root, errors.New("invalid update plan: missing parent process")
 	}
 	for _, path := range []string{planPath, p.Archive, p.Manifest, p.Backup} {
 		if !samePath(filepath.Dir(path), root) {
-			return fmt.Errorf("invalid update plan: %s is outside the updater folder %s", path, root)
+			return p, root, fmt.Errorf("invalid update plan: %s is outside the updater folder %s", path, root)
 		}
 	}
-	restartAllowed := false
-	relaunched := false
-	defer func() {
-		failurePath := filepath.Join(root, "failed-update.json")
-		if result != nil {
-			logf("update not applied: %v", result)
-			raw, _ := json.Marshal(map[string]string{"version": p.Version, "error": result.Error()})
-			_ = os.WriteFile(failurePath, raw, 0600)
-		} else {
-			_ = os.Remove(failurePath)
+	return p, root, nil
+}
+
+// finalize records or clears the failed-update marker and, when allowed, restarts the previous version.
+func (h *helperRun) finalize(result *error) {
+	p := h.plan
+	failurePath := filepath.Join(h.root, "failed-update.json")
+	if *result != nil {
+		logf("update not applied: %v", *result)
+		raw, _ := jsonutil.Marshal(map[string]string{"version": p.Version, "error": (*result).Error()})
+		_ = os.WriteFile(failurePath, raw, 0600)
+	} else {
+		_ = os.Remove(failurePath)
+	}
+	if *result == nil || !h.restartAllowed || h.relaunched {
+		return
+	}
+	if waitForParent(p.Parent, 30*time.Second) != nil {
+		return
+	}
+	if _, statErr := os.Stat(p.Target); os.IsNotExist(statErr) {
+		_ = movePath(p.Backup, p.Target)
+	}
+	if restartErr := startDesktop(p.Executable, nil); restartErr != nil {
+		*result = fmt.Errorf("%v; previous version could not be restarted: %w", *result, restartErr)
+	} else {
+		h.relaunched = true
+	}
+}
+
+// verifyManifest checks the signed manifest against the plan and returns the platform asset.
+func (h *helperRun) verifyManifest(current string) (Asset, error) {
+	p := h.plan
+	raw, err := os.ReadFile(p.Manifest)
+	if err != nil {
+		return Asset{}, err
+	}
+	manifest, err := VerifyEnvelope(raw, PublicKey)
+	if err != nil {
+		return Asset{}, err
+	}
+	if normalizeVersion(manifest.Version) != normalizeVersion(p.Version) {
+		return Asset{}, errors.New("invalid update version")
+	}
+	if CompareSemver(p.Version, current) <= 0 {
+		return Asset{}, errors.New("update downgrade rejected")
+	}
+	return platformAsset(manifest)
+}
+
+// verifyArchive checks the staged archive size and SHA-256 against the signed asset.
+func verifyArchive(path string, asset Asset) error {
+	archive, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	hash := sha256.New()
+	n, err := io.Copy(hash, io.LimitReader(archive, maxPackageSize+1))
+	archive.Close()
+	if err != nil || n != asset.Size || hex.EncodeToString(hash.Sum(nil)) != strings.ToLower(asset.SHA256) {
+		return errors.New("staged update checksum rejected")
+	}
+	return nil
+}
+
+// extractAndCheck unpacks the archive into stage and returns the new executable's path.
+func extractAndCheck(archive, stage, entry string) (string, error) {
+	if err := extractPackage(archive, stage); err != nil {
+		return "", err
+	}
+	source := filepath.Join(stage, entry)
+	if _, err := os.Stat(source); err != nil {
+		return "", errors.New("missing executable in update package")
+	}
+	if runtime.GOOS == "darwin" {
+		if err := procutil.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", source).Run(); err != nil {
+			return "", errors.New("macOS bundle signature rejected")
 		}
-		if result != nil && restartAllowed && !relaunched {
-			if waitForParent(p.Parent, 30*time.Second) == nil {
-				if _, statErr := os.Stat(p.Target); os.IsNotExist(statErr) {
-					_ = movePath(p.Backup, p.Target)
-				}
-				if restartErr := startDesktop(p.Executable, nil); restartErr != nil {
-					result = fmt.Errorf("%v; previous version could not be restarted: %w", result, restartErr)
-				} else {
-					relaunched = true
-				}
+	}
+	return source, nil
+}
+
+// clearStaleBackup restores or removes a backup left behind by a previous interrupted run.
+func clearStaleBackup(p applyPlan) error {
+	if _, statErr := os.Stat(p.Backup); statErr != nil {
+		return nil
+	}
+	if _, targetErr := os.Stat(p.Target); os.IsNotExist(targetErr) {
+		logf("previous run left no app at %s: restoring it from the backup", p.Target)
+		if err := movePath(p.Backup, p.Target); err != nil {
+			return fmt.Errorf("cannot restore the previous installation backup: %w", err)
+		}
+		return nil
+	}
+	if err := removeWithRetry(p.Backup, fileReleaseTimeout); err != nil {
+		return fmt.Errorf("cannot clear a stale update backup: %w", err)
+	}
+	return nil
+}
+
+// rollback restores the previous version and restarts it.
+func (h *helperRun) rollback(reason string) error {
+	logf("rolling back: %s", reason)
+	if err := h.swap.restore(); err != nil {
+		logf("rollback failed: %v", err)
+		return err
+	}
+	logf("previous version restored at %s", h.plan.Target)
+	if err := startDesktop(h.plan.Executable, nil); err != nil {
+		return fmt.Errorf("previous version restored but could not restart: %w", err)
+	}
+	h.relaunched = true
+	return nil
+}
+
+// rollbackWith rolls back and returns the rollback error if any, otherwise cause.
+func (h *helperRun) rollbackWith(reason string, cause error) error {
+	if restoreErr := h.rollback(reason); restoreErr != nil {
+		return restoreErr
+	}
+	return cause
+}
+
+// confirmStartup finalizes a confirmed installation.
+func (h *helperRun) confirmStartup(marker string) error {
+	logf("new version confirmed its startup")
+	h.swap.finish()
+	_ = os.Remove(h.plan.Archive)
+	_ = os.Remove(h.plan.Manifest)
+	_ = os.Remove(marker)
+	_ = os.Remove(h.planPath)
+	return nil
+}
+
+// awaitExit blocks until the child has been reaped; callers ignore the status on purpose.
+func awaitExit(done <-chan error) error { return <-done }
+
+// awaitStartup polls for the new version's confirmation marker until it appears, is rejected,
+// the child exits or the timeout elapses; every failure rolls back to the previous version.
+func (h *helperRun) awaitStartup(cmd *exec.Cmd, marker string) error {
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	for deadline := time.Now().Add(startupConfirmTimeout); time.Now().Before(deadline); {
+		if reason, readErr := os.ReadFile(marker + rejectedSuffix); readErr == nil {
+			_ = cmd.Process.Kill()
+			_ = awaitExit(done) // only waits for the killed child to exit; its status is irrelevant
+			_ = os.Remove(marker + rejectedSuffix)
+			return h.rollbackWith(string(reason), fmt.Errorf("Updated app rejected its startup (%s); restored previous version", reason))
+		}
+		if _, err := os.Stat(marker); err == nil {
+			return h.confirmStartup(marker)
+		}
+		select {
+		case exitErr := <-done:
+			// The child can confirm between the check above and its exit. Once
+			// Wait returns, its final marker is visible: do not roll back a
+			// successfully confirmed installation just because polling lost the race.
+			if _, markerErr := os.Stat(marker); markerErr == nil {
+				return h.confirmStartup(marker)
 			}
+			return h.rollbackWith(fmt.Sprintf("the new version exited before opening its window (%v)", exitStatus(exitErr)), errors.New("Updated app exited before startup confirmation; restored previous version"))
+		case <-time.After(500 * time.Millisecond):
 		}
-	}()
+	}
+	// Never restore over a live application. Kill only our newly started child,
+	// wait for file handles to close, then restore the old executable/bundle.
+	_ = cmd.Process.Kill()
+	_ = awaitExit(done) // only waits for the killed child to exit; its status is irrelevant
+	return h.rollbackWith("the new version did not open its window in time", errors.New("Updated app did not confirm startup; restored previous version"))
+}
+
+// launchNewVersion starts the installed app with the confirmation marker environment.
+func (h *helperRun) launchNewVersion() (*exec.Cmd, string, error) {
+	p := h.plan
+	marker := p.Archive + ".started"
+	_ = os.Remove(marker)
+	_ = os.Remove(marker + rejectedSuffix)
+	cmd := newDesktopCommand(p.Executable)
+	cmd.Env = append(os.Environ(), "ADOMNIA_UPDATE_CONFIRM="+marker, "ADOMNIA_UPDATE_VERSION="+p.Version)
+	if err := cmd.Start(); err != nil {
+		return nil, marker, h.rollbackWith("cannot start the new version: "+err.Error(), err)
+	}
+	logf("new version started (pid %d), waiting up to %s for its window", cmd.Process.Pid, startupConfirmTimeout)
+	return cmd, marker, nil
+}
+
+// install verifies the staged update, swaps it in and waits for the new version to confirm.
+func (h *helperRun) install(current string) error {
+	p := h.plan
 	expectedTarget, entry, err := installTarget(p.Executable)
 	if err != nil {
 		return err
@@ -254,52 +430,23 @@ func RunHelper(planPath, current string) (result error) {
 	if !samePath(expectedTarget, p.Target) {
 		return fmt.Errorf("invalid update destination: %s is not the running app %s", p.Target, expectedTarget)
 	}
-	restartAllowed = true
+	h.restartAllowed = true
 	logf("updating %s from %s to %s", p.Target, current, p.Version)
-	raw, err = os.ReadFile(p.Manifest)
+	asset, err := h.verifyManifest(current)
 	if err != nil {
 		return err
 	}
-	manifest, err := VerifyEnvelope(raw, PublicKey)
-	if err != nil {
+	if err = verifyArchive(p.Archive, asset); err != nil {
 		return err
 	}
-	if normalizeVersion(manifest.Version) != normalizeVersion(p.Version) {
-		return errors.New("invalid update version")
-	}
-	if CompareSemver(p.Version, current) <= 0 {
-		return errors.New("update downgrade rejected")
-	}
-	asset, err := platformAsset(manifest)
-	if err != nil {
-		return err
-	}
-	archive, err := os.Open(p.Archive)
-	if err != nil {
-		return err
-	}
-	h := sha256.New()
-	n, err := io.Copy(h, io.LimitReader(archive, maxPackageSize+1))
-	archive.Close()
-	if err != nil || n != asset.Size || hex.EncodeToString(h.Sum(nil)) != strings.ToLower(asset.SHA256) {
-		return errors.New("staged update checksum rejected")
-	}
-	stage, err := os.MkdirTemp(root, "apply-*")
+	stage, err := os.MkdirTemp(h.root, "apply-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(stage)
-	if err = extractPackage(p.Archive, stage); err != nil {
+	source, err := extractAndCheck(p.Archive, stage, entry)
+	if err != nil {
 		return err
-	}
-	source := filepath.Join(stage, entry)
-	if _, err = os.Stat(source); err != nil {
-		return errors.New("missing executable in update package")
-	}
-	if runtime.GOOS == "darwin" {
-		if err = procutil.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", source).Run(); err != nil {
-			return errors.New("macOS bundle signature rejected")
-		}
 	}
 	logf("package verified, waiting for adOmnia (pid %d) to close", p.Parent)
 	if err = waitForParent(p.Parent, parentExitTimeout); err != nil {
@@ -309,101 +456,34 @@ func RunHelper(planPath, current string) (result error) {
 		return err
 	}
 	logf("adOmnia closed and its data folder is free")
-	backup := p.Backup
-	if _, statErr := os.Stat(backup); statErr == nil {
-		if _, targetErr := os.Stat(p.Target); os.IsNotExist(targetErr) {
-			logf("previous run left no app at %s: restoring it from the backup", p.Target)
-			if err = movePath(backup, p.Target); err != nil {
-				return fmt.Errorf("cannot restore the previous installation backup: %w", err)
-			}
-		} else if err = removeWithRetry(backup, fileReleaseTimeout); err != nil {
-			return fmt.Errorf("cannot clear a stale update backup: %w", err)
-		}
+	if err = clearStaleBackup(p); err != nil {
+		return err
 	}
-	swap := newInstallSwap(p.Target, backup)
-	if err = swap.backup(); err != nil {
+	h.swap = newInstallSwap(p.Target, p.Backup)
+	if err = h.swap.backup(); err != nil {
 		return err
 	}
 	logf("backup of the installed app ready")
-	rollback := func(reason string) error {
-		logf("rolling back: %s", reason)
-		if err := swap.restore(); err != nil {
-			logf("rollback failed: %v", err)
-			return err
-		}
-		logf("previous version restored at %s", p.Target)
-		if err := startDesktop(p.Executable, nil); err != nil {
-			return fmt.Errorf("previous version restored but could not restart: %w", err)
-		}
-		relaunched = true
-		return nil
-	}
-	if err = swap.install(source); err != nil {
-		if restoreErr := rollback("install failed: " + err.Error()); restoreErr != nil {
-			return restoreErr
-		}
-		return err
+	if err = h.swap.install(source); err != nil {
+		return h.rollbackWith("install failed: "+err.Error(), err)
 	}
 	logf("v%s installed at %s", strings.TrimPrefix(p.Version, "v"), p.Target)
-	marker := p.Archive + ".started"
-	_ = os.Remove(marker)
-	_ = os.Remove(marker + rejectedSuffix)
-	cmd := newDesktopCommand(p.Executable)
-	cmd.Env = append(os.Environ(), "ADOMNIA_UPDATE_CONFIRM="+marker, "ADOMNIA_UPDATE_VERSION="+p.Version)
-	if err = cmd.Start(); err != nil {
-		if restoreErr := rollback("cannot start the new version: " + err.Error()); restoreErr != nil {
-			return restoreErr
-		}
+	cmd, marker, err := h.launchNewVersion()
+	if err != nil {
 		return err
 	}
-	logf("new version started (pid %d), waiting up to %s for its window", cmd.Process.Pid, startupConfirmTimeout)
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
-	confirmed := func() error {
-		logf("new version confirmed its startup")
-		swap.finish()
-		_ = os.Remove(p.Archive)
-		_ = os.Remove(p.Manifest)
-		_ = os.Remove(marker)
-		_ = os.Remove(planPath)
-		return nil
+	return h.awaitStartup(cmd, marker)
+}
+
+// Helper runs before Wails startup and waits for the original process to exit.
+func RunHelper(planPath, current string) (result error) {
+	p, root, err := loadHelperPlan(planPath)
+	if err != nil {
+		return err
 	}
-	for deadline := time.Now().Add(startupConfirmTimeout); time.Now().Before(deadline); {
-		if reason, readErr := os.ReadFile(marker + rejectedSuffix); readErr == nil {
-			_ = cmd.Process.Kill()
-			<-done
-			_ = os.Remove(marker + rejectedSuffix)
-			if restoreErr := rollback(string(reason)); restoreErr != nil {
-				return restoreErr
-			}
-			return fmt.Errorf("Updated app rejected its startup (%s); restored previous version", reason)
-		}
-		if _, err = os.Stat(marker); err == nil {
-			return confirmed()
-		}
-		select {
-		case exitErr := <-done:
-			// The child can confirm between the check above and its exit. Once
-			// Wait returns, its final marker is visible: do not roll back a
-			// successfully confirmed installation just because polling lost the race.
-			if _, markerErr := os.Stat(marker); markerErr == nil {
-				return confirmed()
-			}
-			if restoreErr := rollback(fmt.Sprintf("the new version exited before opening its window (%v)", exitStatus(exitErr))); restoreErr != nil {
-				return restoreErr
-			}
-			return errors.New("Updated app exited before startup confirmation; restored previous version")
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-	// Never restore over a live application. Kill only our newly started child,
-	// wait for file handles to close, then restore the old executable/bundle.
-	_ = cmd.Process.Kill()
-	<-done
-	if restoreErr := rollback("the new version did not open its window in time"); restoreErr != nil {
-		return restoreErr
-	}
-	return errors.New("Updated app did not confirm startup; restored previous version")
+	h := &helperRun{plan: p, planPath: planPath, root: root}
+	defer h.finalize(&result)
+	return h.install(current)
 }
 
 // samePath confronta due percorsi dopo averli risolti: su Windows un percorso può arrivare con il
@@ -556,10 +636,10 @@ func ConfirmStartup(current string) error {
 	if normalizeVersion(current) != normalizeVersion(version) {
 		// L'helper legge il motivo e ripristina subito, invece di attendere il timeout.
 		reason := fmt.Sprintf("the installed build reports version %s but the release is %s", current, version)
-		_ = os.WriteFile(marker+rejectedSuffix, []byte(reason), 0600)
+		_ = os.WriteFile(marker+rejectedSuffix, []byte(reason), 0600) // #nosec G703 -- marker path is derived from the updater own install dir, not user input
 		return errors.New("updated build version does not match release: " + reason)
 	}
-	if err := os.WriteFile(marker, []byte(current), 0600); err != nil {
+	if err := os.WriteFile(marker, []byte(current), 0600); err != nil { // #nosec G703 -- marker path is derived from the updater own install dir, not user input
 		return err
 	}
 	_ = os.Unsetenv("ADOMNIA_UPDATE_CONFIRM")
@@ -576,11 +656,11 @@ func OpenApplyLog(dir string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = exec.Command("open", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	case "linux":
-		cmd = exec.Command("xdg-open", path)
+		cmd = exec.Command("xdg-open", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	default:
-		cmd = exec.Command("notepad.exe", path)
+		cmd = exec.Command("notepad.exe", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	}
 	process.ConfigureDetachedGUI(cmd)
 	if err := cmd.Start(); err != nil {

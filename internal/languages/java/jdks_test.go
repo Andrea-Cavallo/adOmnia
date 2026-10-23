@@ -1,12 +1,12 @@
 package java
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/jsonutil"
 )
 
 func fakeJDK(t *testing.T, version string) string {
@@ -90,7 +90,7 @@ func TestJDTSettingsCarryTheProjectJDKFirst(t *testing.T) {
 	// La toolchain del progetto deve arrivare a JDT LS per prima: Run, Debug, Test e build JDT
 	// lavorano sullo stesso JDK, e un JDK scelto fuori dai posti noti resta comunque visibile.
 	selected := fakeJDK(t, "25.0.4")
-	data, err := json.Marshal(map[string]string{"javaHome": selected})
+	data, err := jsonutil.Marshal(map[string]string{"javaHome": selected})
 	if err != nil {
 		t.Fatal(err)
 	}

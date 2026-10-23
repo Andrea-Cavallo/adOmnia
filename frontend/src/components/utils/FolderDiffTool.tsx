@@ -304,7 +304,7 @@ export function FolderDiffTool() {
           data = normalizeFolderDiffResult(await parseWailsJson<FolderDiffResult>(await CompareFolders(left, right, maxFileMB)))
         } catch (err) {
           const fallbackError = err instanceof Error ? err.message.trim() : 'Folder comparison failed.'
-          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError)
+          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError, { cause: err })
         }
       }
       setResult(data)
@@ -345,7 +345,7 @@ export function FolderDiffTool() {
           previewData = await parseWailsJson<FolderDiffPreview>(await ReadFolderDiffFile(payload.scanId, payload.path, payload.maxBytes))
         } catch (err) {
           const fallbackError = err instanceof Error ? err.message.trim() : 'Preview failed'
-          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError)
+          throw new Error(sidecarError ? `${fallbackError} Sidecar error: ${sidecarError}` : fallbackError, { cause: err })
         }
       }
       setPreview({

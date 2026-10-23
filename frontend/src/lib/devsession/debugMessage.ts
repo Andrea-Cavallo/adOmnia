@@ -32,6 +32,7 @@ export async function findKafkaFunction(topic: string, role: KafkaRole): Promise
   const ordered = [...sessions].sort((a, b) => Number(b.id === activeSessionId) - Number(a.id === activeSessionId))
   for (const session of ordered) {
     if (session.project.authorization !== 'tooling-permitted') continue
+    // oxlint-disable-next-line eslint/no-await-in-loop -- projects are tried in priority order (active first) and the search stops at the first match
     const result = await architectureFor(session.id).catch(() => null)
     const entry = result?.report.entries.find((item) => item.kind === role && (item.topics ?? []).includes(topic))
     if (entry) return { goSessionId: session.id, projectName: session.project.name, entry, ...kafkaBreakSite(entry) }

@@ -115,6 +115,73 @@ export class Configuration {
     }
 }
 
+/**
+ * Diagnostic è un diagnostico di compilazione estratto dall'output di build, in
+ * forma neutra rispetto al linguaggio: il core non conosce cargo né rustc. La UI
+ * lo mappa sul pannello Problems come i diagnostici LSP (RS-3.3).
+ */
+export class Diagnostic {
+    /**
+     * File è il percorso relativo al progetto, in forma slash.
+     */
+    "file": string;
+
+    /**
+     * Line e Column sono 1-based; Column conta i caratteri (non i byte).
+     */
+    "line": number;
+    "column": number;
+
+    /**
+     * Severity segue l'ordinamento LSP: 1 errore, 2 warning, 3 info, 4 hint.
+     */
+    "severity": number;
+
+    /**
+     * Code è il codice del compilatore (es. "E0308"); vuoto se assente.
+     */
+    "code"?: string;
+
+    /**
+     * Message è il messaggio principale del diagnostico.
+     */
+    "message": string;
+
+    /**
+     * Help è il suggerimento associato (il testo "help:" di rustc), se presente.
+     */
+    "help"?: string;
+
+    /** Creates a new Diagnostic instance. */
+    constructor($$source: Partial<Diagnostic> = {}) {
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("column" in $$source)) {
+            this["column"] = 0;
+        }
+        if (!("severity" in $$source)) {
+            this["severity"] = 0;
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Diagnostic instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Diagnostic {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Diagnostic($$parsedSource as Partial<Diagnostic>);
+    }
+}
+
 export class DockerOptions {
     /**
      * Context è la cartella di build, relativa alla working directory ("." se vuoto).
@@ -207,6 +274,12 @@ export class Execution {
     "durationMillis": number;
     "error"?: string;
 
+    /**
+     * Diagnostics sono i diagnostici di build raccolti dall'output (RS-3.3); vuoti se l'adapter
+     * non dichiara un parser o la build non ne produce.
+     */
+    "diagnostics"?: Diagnostic[];
+
     /** Creates a new Execution instance. */
     constructor($$source: Partial<Execution> = {}) {
         if (!("id" in $$source)) {
@@ -241,7 +314,11 @@ export class Execution {
      * Creates a new Execution instance from a string or object.
      */
     static createFrom($$source: any = {}): Execution {
+        const $$createField12_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("diagnostics" in $$parsedSource) {
+            $$parsedSource["diagnostics"] = $$createField12_0($$parsedSource["diagnostics"]);
+        }
         return new Execution($$parsedSource as Partial<Execution>);
     }
 }
@@ -282,8 +359,8 @@ export class Field {
      * Creates a new Field instance from a string or object.
      */
     static createFrom($$source: any = {}): Field {
-        const $$createField7_0 = $$createType5;
-        const $$createField8_0 = $$createType7;
+        const $$createField7_0 = $$createType7;
+        const $$createField8_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("options" in $$parsedSource) {
             $$parsedSource["options"] = $$createField7_0($$parsedSource["options"]);
@@ -382,7 +459,7 @@ export class FieldSchema {
      * Creates a new FieldSchema instance from a string or object.
      */
     static createFrom($$source: any = {}): FieldSchema {
-        const $$createField2_0 = $$createType9;
+        const $$createField2_0 = $$createType11;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("fields" in $$parsedSource) {
             $$parsedSource["fields"] = $$createField2_0($$parsedSource["fields"]);
@@ -521,7 +598,7 @@ export class Suggestion {
      * Creates a new Suggestion instance from a string or object.
      */
     static createFrom($$source: any = {}): Suggestion {
-        const $$createField6_0 = $$createType10;
+        const $$createField6_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("configuration" in $$parsedSource) {
             $$parsedSource["configuration"] = $$createField6_0($$parsedSource["configuration"]);
@@ -535,10 +612,12 @@ const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = EnvironmentEntry.createFrom;
 const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = DockerOptions.createFrom;
-const $$createType4 = FieldOption.createFrom;
+const $$createType4 = Diagnostic.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = FieldCondition.createFrom;
-const $$createType7 = $Create.Nullable($$createType6);
-const $$createType8 = Field.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = Configuration.createFrom;
+const $$createType6 = FieldOption.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = FieldCondition.createFrom;
+const $$createType9 = $Create.Nullable($$createType8);
+const $$createType10 = Field.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = Configuration.createFrom;

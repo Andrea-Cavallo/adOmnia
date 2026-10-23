@@ -12,9 +12,9 @@ type RuntimeComponent struct {
 	Key    string `json:"key"`
 	Kind   string `json:"kind"` // "route" | "file" | "datasource" | "topic"
 	Calls  int    `json:"calls"`
-	AvgMs  int64  `json:"avgMs,omitempty"`
-	MaxMs  int64  `json:"maxMs,omitempty"`
-	Errors int    `json:"errors,omitempty"`
+	AvgMs  int64  `json:"avgMs,omitzero"`
+	MaxMs  int64  `json:"maxMs,omitzero"`
+	Errors int    `json:"errors,omitzero"`
 }
 
 // RuntimeEdge is a dynamic, runtime-only connection: a route that hit a source

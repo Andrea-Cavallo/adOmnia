@@ -3,7 +3,7 @@ package dap
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -53,7 +53,7 @@ type DebugSessionInfo struct {
 	State      string         `json:"state"`
 	Title      string         `json:"title"`
 	StopReason string         `json:"stopReason,omitempty"`
-	ThreadID   int            `json:"threadId,omitempty"`
+	ThreadID   int            `json:"threadId,omitzero"`
 	Error      string         `json:"error,omitempty"`
 	StartedAt  time.Time      `json:"startedAt"`
 }
@@ -89,9 +89,9 @@ type DebugInstruction struct {
 	Symbol       string `json:"symbol,omitempty"`
 	Path         string `json:"path,omitempty"`
 	RelativePath string `json:"relativePath,omitempty"`
-	Line         int    `json:"line,omitempty"`
+	Line         int    `json:"line,omitzero"`
 	// Current marca l'istruzione su cui il frame è fermo.
-	Current bool `json:"current,omitempty"`
+	Current bool `json:"current,omitzero"`
 }
 
 type DebugScope struct {
@@ -347,12 +347,14 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 	}
 	command, arguments := launch.Spec.Launch(session.buildDir)
 	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
+	// Il contesto vive finché questa funzione aspetta la risposta: cancellarlo prima farebbe
+	// fallire la call. Il defer qui in alto (S8188) cancella quando smettiamo di aspettare — anche
+	// sul percorso di timeout — così la call in sospeso non resta viva con la sessione chiusa.
+	defer cancelLaunch()
 	// La risposta di launch/attach può arrivare solo dopo configurationDone (debugpy): l'avvio
 	// non si blocca su di essa. Un errore — subito o in ritardo — chiude comunque la sessione.
-	// Il contesto vive finché la richiesta non risponde: cancellarlo prima farebbe fallire la call.
 	launchResult := make(chan error, 1)
 	go func() {
-		defer cancelLaunch()
 		err := client.Call(launchCtx, command, arguments, nil)
 		launchResult <- err
 		if err != nil && !errors.Is(err, context.Canceled) {

@@ -104,7 +104,7 @@ export function parseSpecText(raw: string): unknown {
     try {
       return parseYaml(trimmed)
     } catch (e: unknown) {
-      throw new Error(`Not valid JSON or YAML: ${e instanceof Error ? e.message : 'parse error'}`)
+      throw new Error(`Not valid JSON or YAML: ${e instanceof Error ? e.message : 'parse error'}`, { cause: e })
     }
   }
 }

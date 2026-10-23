@@ -22,10 +22,12 @@ const (
 	EcosystemGo Ecosystem = "Go"
 	// EcosystemPyPI è l'ecosistema Python (nome del pacchetto normalizzato PEP 503).
 	EcosystemPyPI Ecosystem = "PyPI"
+	// EcosystemCargo è l'ecosistema Rust (nome del crate su crates.io).
+	EcosystemCargo Ecosystem = "crates.io"
 )
 
 // Ecosystems è l'ordine stabile con cui gli ecosistemi compaiono nei report.
-var Ecosystems = []Ecosystem{EcosystemMaven, EcosystemGo, EcosystemPyPI}
+var Ecosystems = []Ecosystem{EcosystemMaven, EcosystemGo, EcosystemPyPI, EcosystemCargo}
 
 // Origin dice come è arrivata una dipendenza nel grafo: cambia il rischio percepito
 // e la difficoltà della correzione.
@@ -136,8 +138,8 @@ type CallFrame struct {
 	Receiver  string `json:"receiver,omitempty"`
 	File      string `json:"file,omitempty"`
 	Relative  string `json:"relative,omitempty"`
-	Line      int    `json:"line,omitempty"`
-	Column    int    `json:"column,omitempty"`
+	Line      int    `json:"line,omitzero"`
+	Column    int    `json:"column,omitzero"`
 	InProject bool   `json:"inProject"`
 }
 

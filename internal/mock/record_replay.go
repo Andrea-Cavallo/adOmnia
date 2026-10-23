@@ -4,7 +4,8 @@
 package mock
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -22,7 +23,7 @@ func recordRequest(url, method string, headers map[string]string, body string) (
 		bodyReader = strings.NewReader(body)
 	}
 
-	req, err := http.NewRequest(strings.ToUpper(method), url, bodyReader)
+	req, err := http.NewRequest(strings.ToUpper(method), url, bodyReader) // NOSONAR -- the mock recorder replays the request the user crafted against the URL they chose; the sidecar is loopback-only and the outbound call is the feature
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -91,7 +92,7 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 		MockPath   string            `json:"mockPath"`
 		MockMethod string            `json:"mockMethod"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -129,12 +130,12 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 	mockCfgMu.Unlock()
 
 	if persistConfig != nil {
-		data, _ := json.Marshal(mockCfg)
+		data, _ := jsonutil.Marshal(mockCfg)
 		_ = persistConfig(data)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"endpoint": endpoint,
 		"response": mockResp,
@@ -142,7 +143,7 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func extractPath(rawURL string) string {
-	for _, prefix := range []string{"https://", "http://"} {
+	for _, prefix := range []string{"https://", "http://"} { // NOSONAR -- scheme prefixes used to parse the recorded URL, not a request
 		if after, ok := strings.CutPrefix(rawURL, prefix); ok {
 			if idx := strings.Index(after, "/"); idx >= 0 {
 				return after[idx:]

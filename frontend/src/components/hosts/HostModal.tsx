@@ -49,18 +49,13 @@ export function HostModal({
 
   useModalFocusTrap(true, onClose, modalRef)
 
-  const selectedProfile = profiles.find((p) => p.id === selectedProfileId)
+  // Falls back to the newest profile when nothing is selected (e.g. right after adding one)
+  const currentProfileId = selectedProfileId || profiles[profiles.length - 1]?.id || null
+  const selectedProfile = profiles.find((p) => p.id === currentProfileId)
 
   useEffect(() => {
     if (addingNew) newProfileInputRef.current?.focus()
   }, [addingNew])
-
-  // Auto-select newly added profile
-  useEffect(() => {
-    if (profiles.length > 0 && !selectedProfileId) {
-      setSelectedProfileId(profiles[profiles.length - 1].id)
-    }
-  }, [profiles, selectedProfileId])
 
   const handleAddEntry = () => {
     if (!selectedProfile) return
@@ -155,7 +150,7 @@ export function HostModal({
                     key={p.id}
                     className={cn(
                       'group flex items-center gap-2 rounded px-2 py-1.5 text-xs text-left transition-colors focus-within:ring-2 focus-within:ring-accent',
-                      selectedProfileId === p.id
+                      currentProfileId === p.id
                         ? 'bg-accent/20 text-accent-light'
                         : 'text-text-2 hover:bg-surface-2 hover:text-text-1'
                     )}
@@ -181,7 +176,7 @@ export function HostModal({
                     ) : (
                       <button
                         type="button"
-                        aria-pressed={selectedProfileId === p.id}
+                        aria-pressed={currentProfileId === p.id}
                         className="min-w-0 flex-1 truncate text-left outline-none"
                         onClick={() => setSelectedProfileId(p.id)}
                         onKeyDown={(event) => {
@@ -263,7 +258,7 @@ export function HostModal({
                           <input
                             value={entry.ip}
                             onChange={(e) => handleUpdateEntry(entry.id, { ip: e.target.value })}
-                            placeholder="192.168.1.50"
+                            placeholder="192.168.1.50" // NOSONAR -- example LAN address in the input placeholder, not a configured endpoint
                             title={ipInvalid ? tr('Invalid IP address') : undefined}
                             className={cn(
                               'h-6 px-2 bg-surface-2 border rounded text-xs text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none',
@@ -321,7 +316,7 @@ export function HostModal({
           variant="danger"
           onConfirm={() => {
             onDelete(confirmDelete.id)
-            if (selectedProfileId === confirmDelete.id) setSelectedProfileId(null)
+            if (currentProfileId === confirmDelete.id) setSelectedProfileId(null)
             setConfirmDelete(null)
           }}
           onCancel={() => setConfirmDelete(null)}

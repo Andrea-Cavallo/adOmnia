@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,7 +43,7 @@ func TestStudioWorkspacesKeepTheSameProjectApart(t *testing.T) {
 
 func TestStudioWorkspacesPersistAndMigrateOlderSchemas(t *testing.T) {
 	project := newWorkspaceTestProject(t)
-	legacy, err := json.Marshal(map[string]any{
+	legacy, err := jsonutil.Marshal(map[string]any{
 		"version":  3,
 		"sessions": []Session{{ID: "session-old", Project: Project{Name: "app", RootPath: project, RealPath: project}}},
 	})

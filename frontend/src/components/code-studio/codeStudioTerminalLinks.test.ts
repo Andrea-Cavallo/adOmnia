@@ -9,6 +9,7 @@ describe('findTerminalLinks', () => {
     expect(findTerminalLinks('\tC:/Users/me/app/main.go:9 +0x25')[0]).toMatchObject({ path: 'C:/Users/me/app/main.go', line: 9 })
     expect(findTerminalLinks('    main_test.go:21: got 3, want 4')[0]).toMatchObject({ path: 'main_test.go', line: 21 })
     expect(findTerminalLinks('[ERROR] /p/src/Foo.java:[12,34] cannot find symbol')[0]).toMatchObject({ path: '/p/src/Foo.java', line: 12, column: 34 })
+    expect(findTerminalLinks('  --> src/main.rs:3:5')[0]).toMatchObject({ path: 'src/main.rs', line: 3, column: 5 })
     expect(findTerminalLinks('listening on example.com:443 and 127.0.0.1:8080')).toEqual([])
   })
 })

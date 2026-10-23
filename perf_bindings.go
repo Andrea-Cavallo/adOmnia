@@ -1,8 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/perf"
 )
 
@@ -14,7 +13,7 @@ func (a *App) PerfRecordingStatus() string {
 	if recorder := perf.Current(); recorder != nil && recorder.Active() {
 		status = map[string]any{"active": true, "scenario": recorder.Scenario(), "path": recorder.Path()}
 	}
-	raw, _ := json.Marshal(status)
+	raw, _ := jsonutil.Marshal(status)
 	return string(raw)
 }
 

@@ -18,6 +18,7 @@ export function syncNativeIcon(mode: 'dark' | 'light'): void {
         desired = null
         const key = next.mode
         if (key === applied) continue
+        // oxlint-disable-next-line eslint/no-await-in-loop -- updates are applied one at a time, latest request wins
         try { await SetNativeIconMode(next.mode); applied = key }
         catch (error) { console.warn('[native-icon] Could not update the taskbar icon', error) }
       }

@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "react-hooks", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "bindings/**", "coverage/**", "public/**"],
+  "rules": {
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }],
+    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }],
+    "eslint/no-unused-expressions": ["error", { "allowShortCircuit": true, "allowTernary": true }],
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "eslint/no-underscore-dangle": "off",
+    "import/no-unassigned-import": "off",
+    "eslint/no-control-regex": "off",
+    "import/default": "warn",
+    "eslint/no-useless-escape": "warn",
+    "react/purity": "warn",
+    "react/preserve-manual-memoization": "warn",
+    "react/immutability": "warn",
+    "react/static-components": "warn",
+    "react/error-boundaries": "warn",
+    "react/set-state-in-effect": "warn",
+    "react/memo-dependencies": "warn",
+    "react/exhaustive-effect-dependencies": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/refs": "warn",
+    "react/react-in-jsx-scope": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.test.mjs", "scripts/**"],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
+}

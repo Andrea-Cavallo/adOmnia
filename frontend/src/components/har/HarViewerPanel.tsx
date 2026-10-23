@@ -745,8 +745,8 @@ export function HarViewerPanel() {
   }, [pendingFileImport])
 
   const entries  = useMemo(() => harA ? enrich(harA.log.entries) : [], [harA])
-  const domains  = useMemo(() => Array.from(new Set(entries.map((e) => e._domain))).sort(), [entries])
-  const mimes    = useMemo(() => Array.from(new Set(entries.map((e) => e._mimeShort))).sort(), [entries])
+  const domains  = useMemo(() => Array.from(new Set(entries.map((e) => e._domain))).sort((a, b) => a.localeCompare(b)), [entries])
+  const mimes    = useMemo(() => Array.from(new Set(entries.map((e) => e._mimeShort))).sort((a, b) => a.localeCompare(b)), [entries])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

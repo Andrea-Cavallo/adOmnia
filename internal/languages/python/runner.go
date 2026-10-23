@@ -1,7 +1,8 @@
 package python
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,8 +25,8 @@ type Options struct {
 	Module      string `json:"module,omitempty"`
 	App         string `json:"app,omitempty"`
 	Host        string `json:"host,omitempty"`
-	Port        int    `json:"port,omitempty"`
-	Reload      bool   `json:"reload,omitempty"`
+	Port        int    `json:"port,omitzero"`
+	Reload      bool   `json:"reload,omitzero"`
 }
 
 // frameworkModules sono i moduli per cui i campi host/porta hanno un significato.
@@ -92,7 +93,7 @@ func (*Language) RunKinds() []string { return []string{"script", "module"} }
 
 // optionsFor interpreta e valida le opzioni del kind. La validazione è statica: l'interprete si
 // risolve e si controlla alla partenza (serve il progetto autorizzato per eseguire).
-func optionsFor(kind string, data json.RawMessage) (Options, error) {
+func optionsFor(kind string, data jsonv1.RawMessage) (Options, error) {
 	var options Options
 	if err := json.Unmarshal(data, &options); err != nil {
 		return options, fmt.Errorf("enter valid Python run options")

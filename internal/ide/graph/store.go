@@ -1,9 +1,10 @@
 package graph
 
 import (
+	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -83,7 +84,7 @@ func (s *Store) Save(graph Graph) error {
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return err
 	}
-	data, err := json.Marshal(graph)
+	data, err := jsonutil.Marshal(graph)
 	if err != nil {
 		return err
 	}

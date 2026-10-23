@@ -52,12 +52,12 @@ type PreviewConfig struct {
 	// Entry è la pagina HTML da aprire per il sito statico, relativa a Dir.
 	Entry string `json:"entry,omitempty"`
 	// SPA serve index.html per i percorsi che non esistono (router lato client) nel sito statico.
-	SPA bool `json:"spa,omitempty"`
+	SPA bool `json:"spa,omitzero"`
 	// Placement è dove mostrare l'anteprima: "tab", "split", "panel" o "window".
 	Placement  string `json:"placement,omitempty"`
 	Device     string `json:"device,omitempty"`
-	Width      int    `json:"width,omitempty"`
-	Height     int    `json:"height,omitempty"`
+	Width      int    `json:"width,omitzero"`
+	Height     int    `json:"height,omitzero"`
 	AutoReload bool   `json:"autoReload"`
 }
 
@@ -118,10 +118,10 @@ func (c *previewConfigStore) set(realPath string, config PreviewConfig) {
 type WebProjectReport struct {
 	Targets []web.Info `json:"targets"`
 	// Runtime è quello del progetto predefinito (Node.js e il suo package manager).
-	Runtime  web.Runtime       `json:"runtime"`
+	Runtime  web.Runtime          `json:"runtime"`
 	Servers  []LanguageServerInfo `json:"servers"`
-	Config   *PreviewConfig    `json:"config,omitempty"`
-	Previews []preview.Preview `json:"previews"`
+	Config   *PreviewConfig       `json:"config,omitempty"`
+	Previews []preview.Preview    `json:"previews"`
 	// Trusted dice se la sessione può avviare processi: senza fiducia l'anteprima non parte.
 	Trusted bool `json:"trusted"`
 }
@@ -171,7 +171,7 @@ type PreviewRequest struct {
 	Dir    string `json:"dir"`
 	Script string `json:"script,omitempty"`
 	Entry  string `json:"entry,omitempty"`
-	SPA    bool   `json:"spa,omitempty"`
+	SPA    bool   `json:"spa,omitzero"`
 }
 
 // StartPreview avvia l'anteprima richiesta per un progetto autorizzato e ne ricorda la configurazione.

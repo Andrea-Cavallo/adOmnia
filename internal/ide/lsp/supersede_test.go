@@ -2,7 +2,8 @@ package lsp
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"testing"
 )
@@ -18,12 +19,12 @@ func TestCallLatestSupersedesAndIgnoresLateReply(t *testing.T) {
 	go func() {
 		second <- conn.CallLatest(context.Background(), "file:///a", "textDocument/completion", nil, nil)
 	}()
-	var newest json.RawMessage
+	var newest jsonv1.RawMessage
 	for range 2 {
 		message := server.read(t)
 		if message.Method == "$/cancelRequest" {
 			var params struct {
-				ID json.RawMessage `json:"id"`
+				ID jsonv1.RawMessage `json:"id"`
 			}
 			_ = json.Unmarshal(message.Params, &params)
 			if string(params.ID) != string(old.ID) {
@@ -62,7 +63,7 @@ func TestCancelDocumentPreservesOtherDocumentsAndExplicitOperations(t *testing.T
 	if !errors.Is(<-results, context.Canceled) {
 		t.Fatal("document request survived")
 	}
-	for _, id := range []json.RawMessage{other.ID, rename.ID} {
+	for _, id := range []jsonv1.RawMessage{other.ID, rename.ID} {
 		server.send(t, map[string]any{"jsonrpc": "2.0", "id": id, "result": nil})
 	}
 	for range 2 {

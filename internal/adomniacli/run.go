@@ -2,7 +2,8 @@ package adomniacli
 
 import (
 	"bufio"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"adomnia/internal/collectionfs"
 	"adomnia/internal/collectionresolve"
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/oascontract"
 	"adomnia/internal/requestcontract"
 )
@@ -35,8 +37,8 @@ type RequestResult struct {
 	Name     string `json:"name"`
 	Method   string `json:"method"`
 	URL      string `json:"url"`
-	Status   int    `json:"status,omitempty"`
-	Duration int64  `json:"durationMs,omitempty"`
+	Status   int    `json:"status,omitzero"`
+	Duration int64  `json:"durationMs,omitzero"`
 	Outcome  string `json:"outcome"`
 	Message  string `json:"message,omitempty"`
 }
@@ -413,7 +415,7 @@ func loadEnvironmentVars(root, envName string) (map[string]string, error) {
 func renderSummary(summary RunSummary, reporter string) ([]byte, error) {
 	switch reporter {
 	case "json":
-		data, err := json.MarshalIndent(summary, "", "  ")
+		data, err := jsonutil.Marshal(summary, jsontext.WithIndent("  "))
 		if err != nil {
 			return nil, err
 		}
@@ -513,6 +515,6 @@ func secondsString(ms int64) string {
 }
 
 func mustJSON(v any) string {
-	data, _ := json.Marshal(v)
+	data, _ := jsonutil.Marshal(v)
 	return string(data)
 }

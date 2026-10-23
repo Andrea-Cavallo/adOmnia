@@ -1,7 +1,7 @@
 package java
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"regexp"

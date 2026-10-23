@@ -2,8 +2,8 @@
 package devlog
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,7 +87,7 @@ func write(source, level, fn, msg string, data map[string]any) {
 		Msg:    msg,
 		Data:   data,
 	}
-	b, err := json.Marshal(e)
+	b, err := jsonutil.Marshal(e)
 	if err != nil {
 		return
 	}

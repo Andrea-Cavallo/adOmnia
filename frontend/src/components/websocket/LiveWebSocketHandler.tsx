@@ -5,15 +5,21 @@ import { debugWebSocketHandler, openWebSocketHandler, showConnectionGoroutines, 
 
 /** Under the URL bar when the URL reaches a live Go service: open or debug its WebSocket handler. */
 export function LiveWebSocketHandler({ url, onDebugReady, connected = false }: { url: string; onDebugReady: () => void; connected?: boolean }) {
-  const sessions = useDevSessionStore((state) => state.sessions)
   const [target, setTarget] = useState<WebSocketHandler | null>(null)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   useEffect(() => {
     let cancelled = false
-    const timer = window.setTimeout(() => { void websocketHandlerFor(url).then((next) => { if (!cancelled) setTarget(next) }).catch(() => undefined) }, 300)
-    return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [url, sessions])
+    let timer = 0
+    const schedule = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => { void websocketHandlerFor(url).then((next) => { if (!cancelled) setTarget(next) }).catch(() => undefined) }, 300)
+    }
+    schedule()
+    // Re-resolve the handler whenever the set of dev sessions changes.
+    const unsubscribe = useDevSessionStore.subscribe((state, previous) => { if (state.sessions !== previous.sessions) schedule() })
+    return () => { cancelled = true; window.clearTimeout(timer); unsubscribe() }
+  }, [url])
   if (!target) return null
   const debug = async () => {
     setError('')

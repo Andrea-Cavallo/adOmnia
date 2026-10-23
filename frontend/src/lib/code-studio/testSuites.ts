@@ -43,7 +43,7 @@ export interface SuiteStats {
   lastRunAt: string | null
 }
 
-const LANGUAGE_LABELS: Readonly<Record<string, string>> = { go: 'Go', typescript: 'JS/TS', javascript: 'JS/TS', java: 'Java', python: 'Python' }
+const LANGUAGE_LABELS: Readonly<Record<string, string>> = { go: 'Go', typescript: 'JS/TS', javascript: 'JS/TS', java: 'Java', python: 'Python', rust: 'Rust' }
 
 export function languageLabel(language: string): string {
   return LANGUAGE_LABELS[language] ?? (language ? language[0].toUpperCase() + language.slice(1) : 'Go')

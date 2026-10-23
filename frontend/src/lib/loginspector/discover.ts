@@ -117,7 +117,7 @@ export function discoverFields(events: LogEvent[], options: { sampleSize?: numbe
       canonical: canonicalKey(entry.path),
       count: entry.count,
       coverage: entry.count / sampled,
-      kinds: [...entry.kinds].sort(),
+      kinds: [...entry.kinds].sort((a, b) => a.localeCompare(b)),
       distinct: entry.overflow ? -1 : entry.values.size,
       values: entry.overflow
         ? []
@@ -140,7 +140,7 @@ export function signatureOf(fields: DiscoveredField[]): string[] {
   return fields
     .filter((field) => !field.path.includes('.') && field.coverage >= 0.5)
     .map((field) => field.canonical)
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
 }
 
 /** Overlap of two signatures, 0..1. */
@@ -224,8 +224,8 @@ export function rememberSchema(discovery: FieldDiscovery, sourceName: string): S
     name: previous?.name || sourceName || 'Unnamed log',
     updatedAt: Date.now(),
     seen: (previous?.seen ?? 0) + 1,
-    keys: [...keys].sort(),
-    paths: [...paths].sort(),
+    keys: [...keys].sort((a, b) => a.localeCompare(b)),
+    paths: [...paths].sort((a, b) => a.localeCompare(b)),
   }
 
   const merged = { ...schemas, [entry.fingerprint]: entry }

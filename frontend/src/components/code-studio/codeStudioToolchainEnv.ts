@@ -159,7 +159,7 @@ export function privateHostsOf(form: ToolchainForm): string[] {
       if (host !== 'proxy.golang.org') hosts.add(host)
     } catch { /* GOPROXY non valido: lo segnala `go` */ }
   }
-  return [...hosts].sort()
+  return [...hosts].sort((a, b) => a.localeCompare(b))
 }
 
 /** GOAUTH con il metodo git attivo? */

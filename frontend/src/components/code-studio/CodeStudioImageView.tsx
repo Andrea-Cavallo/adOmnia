@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { FileWarning, Maximize2, Minus, Plus } from 'lucide-react'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 
@@ -17,7 +17,14 @@ export function CodeStudioImageView({ document }: { document: GoIDEEditorDocumen
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null)
   const url = document.dataUrl ?? ''
 
-  useEffect(() => { setZoom(1); setFit(true); setNatural(null) }, [document.document.id])
+  const documentId = document.document.id
+  const [shownDocumentId, setShownDocumentId] = useState(documentId)
+  if (shownDocumentId !== documentId) {
+    setShownDocumentId(documentId)
+    setZoom(1)
+    setFit(true)
+    setNatural(null)
+  }
 
   if (!url) {
     return (

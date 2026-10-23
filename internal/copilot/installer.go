@@ -6,7 +6,7 @@ import (
 	"context"
 	"crypto/sha512"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -164,7 +164,7 @@ func latestRelease(ctx context.Context, client *http.Client, registry, pkg strin
 		return registryRelease{}, fmt.Errorf("npm registry answered %s", response.Status)
 	}
 	var release registryRelease
-	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&release); err != nil {
+	if err := json.UnmarshalRead(io.LimitReader(response.Body, 1<<20), &release); err != nil {
 		return registryRelease{}, fmt.Errorf("unexpected npm registry answer: %w", err)
 	}
 	if !isValidVersion(release.Version) || !strings.HasPrefix(release.Dist.Integrity, integrityPrefix) {
@@ -256,7 +256,7 @@ func extractBinary(archivePath, entryName, destination string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(output, io.LimitReader(reader, maxTarballBytes*2)); err != nil {
+		if _, err := io.Copy(output, io.LimitReader(reader, maxTarballBytes*2)); err != nil { // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
 			_ = output.Close()
 			_ = os.Remove(temporary)
 			return err
@@ -269,7 +269,7 @@ func extractBinary(archivePath, entryName, destination string) error {
 }
 
 func isExecutableFile(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only, probing candidate executable paths
 	return err == nil && info.Mode().IsRegular()
 }
 
@@ -279,7 +279,7 @@ func isValidVersion(version string) bool {
 		return false
 	}
 	for _, char := range version {
-		if !(char >= '0' && char <= '9') && char != '.' && !(char >= 'a' && char <= 'z') && char != '-' {
+		if (char < '0' || char > '9') && char != '.' && (char < 'a' || char > 'z') && char != '-' {
 			return false
 		}
 	}

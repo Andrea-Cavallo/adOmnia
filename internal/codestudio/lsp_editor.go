@@ -2,7 +2,8 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"adomnia/internal/ide/lsp"
@@ -27,17 +28,17 @@ type initializeResult struct {
 }
 
 type serverCapabilities struct {
-	TextDocumentSync       json.RawMessage `json:"textDocumentSync"`
+	TextDocumentSync       jsonv1.RawMessage `json:"textDocumentSync"`
 	SemanticTokensProvider *struct {
 		Legend struct {
 			TokenTypes     []string `json:"tokenTypes"`
 			TokenModifiers []string `json:"tokenModifiers"`
 		} `json:"legend"`
-		Full json.RawMessage `json:"full"`
+		Full jsonv1.RawMessage `json:"full"`
 	} `json:"semanticTokensProvider"`
-	InlayHintProvider         json.RawMessage `json:"inlayHintProvider"`
-	DocumentHighlightProvider json.RawMessage `json:"documentHighlightProvider"`
-	CallHierarchyProvider     json.RawMessage `json:"callHierarchyProvider"`
+	InlayHintProvider         jsonv1.RawMessage `json:"inlayHintProvider"`
+	DocumentHighlightProvider jsonv1.RawMessage `json:"documentHighlightProvider"`
+	CallHierarchyProvider     jsonv1.RawMessage `json:"callHierarchyProvider"`
 }
 
 func (c serverCapabilities) syncKind() int {
@@ -58,7 +59,7 @@ func (c serverCapabilities) syncKind() int {
 }
 
 // providerEnabled interpreta un provider LSP che può essere booleano o un oggetto di opzioni.
-func providerEnabled(raw json.RawMessage) bool {
+func providerEnabled(raw jsonv1.RawMessage) bool {
 	return len(raw) > 0 && string(raw) != "false" && string(raw) != "null"
 }
 
@@ -117,11 +118,11 @@ func (m *LSPManager) InlayHints(ctx context.Context, sessionID SessionID, docume
 	params := documentParams(document)
 	params["range"] = lsp.Range{Start: lspPosition(visible.StartLine, visible.StartColumn), End: lspPosition(visible.EndLine, visible.EndColumn)}
 	var hints []struct {
-		Position     lsp.Position    `json:"position"`
-		Label        json.RawMessage `json:"label"`
-		Kind         int             `json:"kind"`
-		PaddingLeft  bool            `json:"paddingLeft"`
-		PaddingRight bool            `json:"paddingRight"`
+		Position     lsp.Position      `json:"position"`
+		Label        jsonv1.RawMessage `json:"label"`
+		Kind         int               `json:"kind"`
+		PaddingLeft  bool              `json:"paddingLeft"`
+		PaddingRight bool              `json:"paddingRight"`
 	}
 	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/inlayHint", params, &hints); err != nil {
 		return InlayHintsResult{}, err
@@ -137,7 +138,7 @@ func (m *LSPManager) InlayHints(ctx context.Context, sessionID SessionID, docume
 }
 
 // inlayLabel accetta sia la stringa sia la forma a parti (InlayHintLabelPart[]).
-func inlayLabel(raw json.RawMessage) string {
+func inlayLabel(raw jsonv1.RawMessage) string {
 	var text string
 	if json.Unmarshal(raw, &text) == nil {
 		return text
@@ -186,12 +187,12 @@ func highlightKind(kind int) string {
 }
 
 type callHierarchyItem struct {
-	Name           string          `json:"name"`
-	Kind           int             `json:"kind"`
-	URI            string          `json:"uri"`
-	Range          lsp.Range       `json:"range"`
-	SelectionRange lsp.Range       `json:"selectionRange"`
-	Data           json.RawMessage `json:"data,omitempty"`
+	Name           string            `json:"name"`
+	Kind           int               `json:"kind"`
+	URI            string            `json:"uri"`
+	Range          lsp.Range         `json:"range"`
+	SelectionRange lsp.Range         `json:"selectionRange"`
+	Data           jsonv1.RawMessage `json:"data,omitempty"`
 }
 
 func sameCallable(left, right callHierarchyItem) bool {

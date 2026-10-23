@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState, type ComponentType } from 'react'
+import { Suspense, lazy, useState, type ComponentType } from 'react'
 import { useCodeStudioRuntimeContext } from '@/stores/codeStudioRuntimeContext'
 import { Braces, Crosshair, FolderTree, Minus, Sparkles } from 'lucide-react'
 import type { GoIDESession } from '@/lib/code-studio-api'
@@ -36,7 +36,12 @@ export function CodeStudioSidePane({ session, document }: CodeStudioSidePaneProp
   const selectedRuntime = useCodeStudioRuntimeContext(state => state.selected)
   // Context parla di Go (route, SQL, goroutine, go.mod): senza unità Go la scheda non viene mostrata.
   const hasGo = projectProfile(session.project, IDE_LANGUAGE_NAMES).hasGo
-  useEffect(() => { if (hasGo && selectedRuntime?.sessionId === session.id) setTab('context') }, [hasGo, selectedRuntime, session.id])
+  // Jump to Context when a runtime of this session gets selected (adjusted during render, not in an effect).
+  const [seenRuntime, setSeenRuntime] = useState({ hasGo, selectedRuntime, sessionId: session.id })
+  if (seenRuntime.hasGo !== hasGo || seenRuntime.selectedRuntime !== selectedRuntime || seenRuntime.sessionId !== session.id) {
+    setSeenRuntime({ hasGo, selectedRuntime, sessionId: session.id })
+    if (hasGo && selectedRuntime?.sessionId === session.id) setTab('context')
+  }
   const pane = useCodeStudioAssistantStore((state) => state.pane)
   const detached = useStudioTools((state) => isChatPane(pane) && state.detached.includes(toolKey(session.id, pane)))
   const assistantOpen = isChatPane(pane)

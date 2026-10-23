@@ -59,8 +59,8 @@ var registered bool
 func setThemeIcon(window unsafe.Pointer, path, mode string) {
 	cPath := C.CString(path)
 	cName := C.CString("adomnia-theme-" + mode)
-	defer C.free(unsafe.Pointer(cPath))
-	defer C.free(unsafe.Pointer(cName))
+	defer C.free(unsafe.Pointer(cPath)) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
+	defer C.free(unsafe.Pointer(cName)) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 	C.set_theme_icon(window, cPath, cName)
 }
 
@@ -70,7 +70,7 @@ func Set(window unsafe.Pointer) bool {
 		return false
 	}
 	registerOnce.Do(func() {
-		registered = C.register_adomnia_icon(unsafe.Pointer(&icons[0]), C.gsize(len(icons))) != 0
+		registered = C.register_adomnia_icon(unsafe.Pointer(&icons[0]), C.gsize(len(icons))) != 0 // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 	})
 	if !registered {
 		return false

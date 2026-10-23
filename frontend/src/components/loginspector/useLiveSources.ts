@@ -44,9 +44,11 @@ export function useLiveSources(onLines: (sourceId: string, label: string, lines:
   const [tools, setTools] = useState<Record<string, boolean>>({})
   const cursors = useRef<Record<string, number>>({})
   const onLinesRef = useRef(onLines)
-  onLinesRef.current = onLines
   const sourcesRef = useRef<LiveSource[]>([])
-  sourcesRef.current = sources
+  useEffect(() => {
+    onLinesRef.current = onLines
+    sourcesRef.current = sources
+  })
 
   useEffect(() => {
     if (!port) return
@@ -57,10 +59,12 @@ export function useLiveSources(onLines: (sourceId: string, label: string, lines:
     if (!port || sources.length === 0) return
     let cancelled = false
     const tick = async () => {
-      for (const source of sourcesRef.current) {
-        const cursor = cursors.current[source.id] ?? -1
-        const poll = await pollLiveSource(port, source.id, cursor)
-        if (cancelled) return
+      const polls = await Promise.all(sourcesRef.current.map(async (source) => ({
+        source,
+        poll: await pollLiveSource(port, source.id, cursors.current[source.id] ?? -1),
+      })))
+      if (cancelled) return
+      for (const { source, poll } of polls) {
         cursors.current[source.id] = poll.cursor
         if (poll.lines.length) onLinesRef.current(source.id, source.label, poll.lines)
         setSources((current) => current.map((item) => item.id === source.id ? {

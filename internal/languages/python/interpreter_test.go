@@ -2,7 +2,7 @@ package python
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,16 +13,8 @@ import (
 	"time"
 
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
-
-// envInterpreterPath è il layout dell'interprete dentro un ambiente sulla piattaforma corrente.
-func envInterpreterPath(directory string) string {
-	name := filepath.Join("bin", "python")
-	if runtime.GOOS == "windows" {
-		name = filepath.Join("Scripts", "python.exe")
-	}
-	return filepath.Join(directory, name)
-}
 
 // TestManagedEnvironmentsAreListedButNeverChosen: gli ambienti di uv e Poetry si trovano dalla
 // configurazione e dai nomi delle cartelle, senza eseguire i gestori, e restano una scelta
@@ -257,16 +249,16 @@ func sitePackages(t *testing.T, environment string) string {
 	return matches[0]
 }
 
-func mustJSON(t *testing.T, options Options) json.RawMessage {
+func mustJSON(t *testing.T, options Options) jsonv1.RawMessage {
 	t.Helper()
-	data, err := json.Marshal(options)
+	data, err := jsonutil.Marshal(options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return data
 }
 
-func runRequest(unitName, root string, data json.RawMessage) run.Request {
+func runRequest(unitName, root string, data jsonv1.RawMessage) run.Request {
 	return run.Request{Kind: "script", Root: root, WorkingDirectory: filepath.Join(root, unitName), LanguageOptions: data}
 }
 

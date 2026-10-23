@@ -8,7 +8,7 @@ The IDE is a flagship area: it must feel like a real IDE (fast, stable, never lo
 
 ## What it is
 
-**adOmnia IDE Platform + language adapters.** Code Studio is the host and composition root on top of a language-agnostic core. Go lives in `internal/languages/golang`; Java in `internal/languages/java` (JDT LS, JDK, Maven/Gradle, debug and JaCoCo); the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) live in `internal/languages/web`, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`). Rust/Python remain validation scenarios. The original 12-phase migration is complete; it does not mean all implementation has left the host. Follow the remaining extraction queue in `mds/REFACTOR.md`, section CS-HOST.
+**adOmnia IDE Platform + language adapters.** Code Studio is the host and composition root on top of a language-agnostic core. Go lives in `internal/languages/golang`; Java in `internal/languages/java` (JDT LS, JDK, Maven/Gradle, debug and JaCoCo); the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) live in `internal/languages/web`, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Python in `internal/languages/python` (basedpyright, pytest, debugpy). Rust is being added incrementally in `internal/languages/rust`: crate/workspace detection first, then run/test/debug and rust-analyzer (see `mds/MULTILANGUAGE-IDE.md` §9.6). The original 12-phase migration is complete; it does not mean all implementation has left the host. Follow the remaining extraction queue in `mds/REFACTOR.md`, section CS-HOST.
 
 Read before non-trivial work:
 

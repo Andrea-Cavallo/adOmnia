@@ -52,7 +52,7 @@ function persist(profiles: GitProfile[]) {
 }
 
 export function saveGitProfile(profiles: GitProfile[], profile: Omit<GitProfile, 'id'> & { id?: string }): GitProfile[] {
-  const id = profile.id || `git-profile-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const id = profile.id || `git-profile-${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`
   const next = [{ ...profile, id }, ...profiles.filter((item) => item.id !== id)]
   persist(next)
   return next

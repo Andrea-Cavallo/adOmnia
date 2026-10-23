@@ -66,7 +66,8 @@ function futureIso(seconds: number): string {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
+  // getRandomValues (non Math.random): l'id entra in un documento firmato (S2245).
+  return `${prefix}-${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 }
 
 // ─── Exclusive XML Canonicalization (exc-c14n) ────────────────────────────────
@@ -339,7 +340,7 @@ export async function addWssUsernameTokenDigest(
   concat.set(createdBytes, nonceBytes.length)
   concat.set(passwordBytes, nonceBytes.length + createdBytes.length)
 
-  const hashBuf = await crypto.subtle.digest('SHA-1', concat)
+  const hashBuf = await crypto.subtle.digest('SHA-1', concat) // NOSONAR -- WS-Security UsernameToken PasswordDigest is defined as SHA-1(nonce + created + password) by the OASIS profile: interoperability requires it, not a choice
   const digestB64 = bytesToB64(hashBuf)
 
   const tokenId = randomId('UT')

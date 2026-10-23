@@ -11,16 +11,19 @@ type Execution struct {
 	Status           string     `json:"status"`
 	Command          string     `json:"command"`
 	WorkingDirectory string     `json:"workingDirectory"`
-	PID              int        `json:"pid,omitempty"`
+	PID              int        `json:"pid,omitzero"`
 	StartedAt        time.Time  `json:"startedAt"`
 	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
 	ExitCode         *int       `json:"exitCode,omitempty"`
 	DurationMillis   int64      `json:"durationMillis"`
 	Error            string     `json:"error,omitempty"`
+	// Diagnostics sono i diagnostici di build raccolti dall'output (RS-3.3); vuoti se l'adapter
+	// non dichiara un parser o la build non ne produce.
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
 }
 type ProcessOutput struct {
 	RunID     RunID  `json:"runId"`
 	Stream    string `json:"stream"`
 	Text      string `json:"text"`
-	Truncated bool   `json:"truncated,omitempty"`
+	Truncated bool   `json:"truncated,omitzero"`
 }

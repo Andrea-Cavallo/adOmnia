@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import {
-  Activity, Fullscreen, PanelLeft, Gauge, BatteryLow,
+  Activity, Cog, Fullscreen, PanelLeft, Gauge, BatteryLow,
   AlignLeft, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpDown, Binary, Bookmark, BookmarkPlus, BookOpen, Bot, Braces, Bug,
   CircleCheck, CircleDot, CircleHelp, CirclePause, CirclePlay, CircleStop, Code2, Columns2, Compass, Copy, Download,
   Eye, EyeOff, FileCode2, FilePlus2, FileSearch, FileText, FlaskConical, FlaskRound, FolderOpen, FolderPlus, FolderX,
@@ -37,6 +37,7 @@ export const CODE_STUDIO_MENU_ICONS: Record<CodeStudioMenuId, CodeStudioCommandI
   go: { icon: GoGopherIcon },
   java: icon(Boxes),
   python: icon(Terminal),
+  rust: icon(Cog),
   run: icon(Play, RUN),
   tools: icon(Wrench),
   git: icon(GitBranch),

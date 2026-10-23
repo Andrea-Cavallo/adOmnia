@@ -52,7 +52,7 @@ type GoroutineSummary struct {
 type GoroutineOverview struct {
 	Goroutines []GoroutineSummary `json:"goroutines"`
 	// Truncated indica che le goroutine erano più di maxGoroutineOverview.
-	Truncated bool `json:"truncated,omitempty"`
+	Truncated bool `json:"truncated,omitzero"`
 }
 
 var goroutineIDPattern = regexp.MustCompile(`\[Go (\d+)\]`)

@@ -4,7 +4,7 @@ import (
 	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 
@@ -27,7 +28,7 @@ type WSEvent struct {
 	Direction string `json:"direction"` // inbound | outbound | system
 	Content   string `json:"content"`
 	Timestamp int64  `json:"timestamp"`
-	Binary    bool   `json:"binary,omitempty"` // true when payload is base64-encoded binary
+	Binary    bool   `json:"binary,omitzero"` // true when payload is base64-encoded binary
 }
 
 type WSSession struct {
@@ -191,7 +192,7 @@ func WsListHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
+	_ = jsonutil.MarshalWrite(w, sessions)
 }
 
 // WsCloseAllHandler closes every active WebSocket session (POST /ws/close-all).
@@ -208,7 +209,7 @@ func WsCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"closed": count})
+	_ = jsonutil.MarshalWrite(w, map[string]any{"closed": count})
 }
 
 // ── Read pump ────────────────────────────────────────────────────────────────
@@ -266,7 +267,7 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req WSConnectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -297,7 +298,7 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		jsonutil.MarshalWrite(w, map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -315,7 +316,7 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	go wsReadPump(sess)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"sessionId": sessionID})
+	_ = jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID})
 }
 
 func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -348,7 +349,7 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 		case <-sess.done:
 			return
 		case ev := <-ch:
-			data, _ := json.Marshal(ev)
+			data, _ := jsonutil.Marshal(ev)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
@@ -361,7 +362,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req WSSendRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -401,7 +402,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		Binary:    isBinary,
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsPingHandler(w http.ResponseWriter, r *http.Request) {
@@ -410,7 +411,7 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req WSPingRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -435,7 +436,7 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Now().UnixMilli(),
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -444,7 +445,7 @@ func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req WSDisconnectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -454,7 +455,7 @@ func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		sess.closeConn()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 // RegisterHandlers registers WebSocket client sidecar endpoints.

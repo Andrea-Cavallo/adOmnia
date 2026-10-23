@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { Activity, CircleSlash, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import * as AppBindings from '../../../bindings/adomnia/app'
 import type { Event as NetworkEvent, Settings as NetworkSettings } from '../../../bindings/adomnia/internal/netpolicy/models'
@@ -69,7 +70,7 @@ export function NetworkPrivacySettings() {
       </SettingsCard>
 
       <SettingsCard>
-        <TextInput label="Proxy" desc="Corporate proxy for all of adOmnia: API client, AI, Git, Go toolchain and gopls. Empty uses HTTPS_PROXY from the system. Put the password in the system, not in the URL." value={draft.proxyUrl} placeholder="http://proxy.corp:8080" onChange={(proxyUrl) => update({ proxyUrl })} />
+        <TextInput label="Proxy" desc="Corporate proxy for all of adOmnia: API client, AI, Git, Go toolchain and gopls. Empty uses HTTPS_PROXY from the system. Put the password in the system, not in the URL." value={draft.proxyUrl} placeholder="http://proxy.corp:8080" onChange={(proxyUrl) => update({ proxyUrl })} /> {/* NOSONAR -- documentation placeholder showing the corporate proxy URL format */}
         <TextInput label="No proxy for" desc="Hosts reached directly (NO_PROXY), separated by commas." value={draft.noProxy} placeholder="git.corp.example,.internal" onChange={(noProxy) => update({ noProxy })} />
         <TextInput label="Corporate CA bundle (PEM)" desc="Absolute path of a PEM file added to the system certificates for TLS inspection. TLS verification is never turned off." value={draft.caBundlePath} placeholder="C:/certs/corporate-ca.pem" onChange={(caBundlePath) => update({ caBundlePath })} />
         <div className="flex items-center justify-end gap-3 px-2 pb-3">
@@ -103,8 +104,8 @@ export function NetworkPrivacySettings() {
           <div className="px-2 py-4 text-[11px] text-text-4">No connections opened by adOmnia in this session.</div>
         ) : (
           <ul className="max-h-72 overflow-auto px-2 py-2 font-mono text-[11px]">
-            {activity.map((event, index) => (
-              <li key={`${event.time}-${index}`} className="grid grid-cols-[64px_120px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1 py-1 last:border-0">
+            {withContentKeys(activity, (e) => `${e.time}-${e.category}-${e.host}-${e.path ?? ''}`).map(({ key, item: event }) => (
+              <li key={key} className="grid grid-cols-[64px_120px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1 py-1 last:border-0">
                 <span className="text-text-4">{new Date(event.time).toLocaleTimeString()}</span>
                 <span className="truncate text-text-3">{CATEGORY_LABELS[event.category] ?? event.category}</span>
                 <span className="truncate text-text-2" title={event.detail || undefined}>{event.method ? `${event.method} ` : ''}{event.host}{event.path ?? ''}</span>

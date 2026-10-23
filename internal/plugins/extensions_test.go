@@ -45,7 +45,7 @@ func main() {
 		Function string                 ` + "`json:\"function\"`" + `
 		Args     map[string]interface{} ` + "`json:\"args\"`" + `
 	}
-	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+	if err := json.UnmarshalRead(os.Stdin, &in); err != nil {
 		fmt.Fprintln(os.Stderr, "bad input:", err)
 		os.Exit(2)
 	}
@@ -58,7 +58,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "filesystem must not be visible")
 		os.Exit(3)
 	}
-	json.NewEncoder(os.Stdout).Encode(map[string]interface{}{"upper": fmt.Sprint(in.Args["text"]) + "!", "function": in.Function})
+	jsonutil.MarshalWrite(os.Stdout, map[string]interface{}{"upper": fmt.Sprint(in.Args["text"]) + "!", "function": in.Function})
 }
 `,
 	})

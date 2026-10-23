@@ -71,24 +71,19 @@ func (l *liveEvents) wait(t *testing.T, eventType string) devsession.Event {
 	return devsession.Event{}
 }
 
-// The Phase 1 loop end to end with a real Go service under a real Delve:
-// Run with Debug → the API request reaches the breakpoint → the manager ties
-// the pause to the request → Continue from outside Code Studio → HTTP 200, with
-// the service's log line tied to the request by its correlation id.
-func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
-	delve := findDelveForTest(t)
-	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module users-service\n\ngo 1.22\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(liveServiceSource), 0o644); err != nil {
-		t.Fatal(err)
-	}
+// liveResult is the answer of the debugged service to the request sent by the test.
+type liveResult struct {
+	status int
+	body   string
+	err    error
+}
 
+// newLiveManager wires an IDE service and a live-session manager the way the app does: debug events
+// of the IDE feed the manager, and the manager steps and stops through the IDE.
+func newLiveManager(t *testing.T, root string, events *liveEvents) (*devsession.Manager, *Service) {
+	t.Helper()
 	var manager *devsession.Manager
-	var ide *Service
-	events := &liveEvents{}
-	ide = NewService(&memoryStore{}, func(event EventEnvelope) {
+	ide := NewService(&memoryStore{}, func(event EventEnvelope) {
 		if manager == nil {
 			return
 		}
@@ -113,7 +108,13 @@ func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
 		StopDebug: ide.StopDebug,
 		Project:   func(string) (string, string) { return "users-service", root },
 	}, events.add)
+	return manager, ide
+}
 
+// startLiveDebug opens the project, trusts it, configures Delve, sets the breakpoint and starts the
+// service under the debugger; it returns the live session id and the port the service listens on.
+func startLiveDebug(t *testing.T, ide *Service, manager *devsession.Manager, root, delve string) (string, int) {
+	t.Helper()
 	session, err := ide.OpenProject(root)
 	if err != nil {
 		t.Fatal(err)
@@ -137,6 +138,77 @@ func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
 	}
 	liveID := "debug:" + string(started.ID)
 	t.Cleanup(func() { _ = manager.Stop(liveID) })
+	return liveID, port
+}
+
+// sendLiveRequest performs the PUT in the background, tagged with the run's correlation id.
+func sendLiveRequest(url, correlationID string) <-chan liveResult {
+	done := make(chan liveResult, 1)
+	go func() {
+		request, _ := http.NewRequest(http.MethodPut, url, nil)
+		request.Header.Set(devsession.CorrelationHeader, correlationID)
+		response, err := (&http.Client{Timeout: 2 * time.Minute}).Do(request)
+		if err != nil {
+			done <- liveResult{err: err}
+			return
+		}
+		defer response.Body.Close()
+		body, _ := io.ReadAll(response.Body)
+		done <- liveResult{status: response.StatusCode, body: string(body)}
+	}()
+	return done
+}
+
+// expectPausedAtBreakpoint checks that the pause is tied to the request and sits on updateUser,
+// and that the HTTP response is still held back by the debugger.
+func expectPausedAtBreakpoint(t *testing.T, events *liveEvents, run devsession.RequestRun, done <-chan liveResult) {
+	t.Helper()
+	hit := events.wait(t, "breakpoint.hit")
+	paused := hit.Payload.(map[string]any)["run"].(devsession.RequestRun)
+	if paused.ID != run.ID || paused.State != devsession.RunPaused || len(paused.Hits) != 1 {
+		t.Fatalf("pause not tied to the request: %+v", paused)
+	}
+	if h := paused.Hits[0]; h.RelativePath != "main.go" || h.Line != liveBreakpointLine || !strings.HasSuffix(h.Function, "updateUser") {
+		t.Fatalf("unexpected breakpoint location: %+v", h)
+	}
+	select {
+	case r := <-done:
+		t.Fatalf("the response must wait for the debugger, got %+v", r)
+	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+// expectLogTiedToRun waits for the service's log line carrying the run's correlation id.
+func expectLogTiedToRun(t *testing.T, manager *devsession.Manager, liveID, runID string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, entry := range manager.Logs(liveID, runID, 0) {
+			if strings.Contains(entry.Text, "updating user 123") && entry.Match == devsession.MatchID {
+				return
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("service log line not tied to the request: %+v", manager.Logs(liveID, "", 0))
+}
+
+// The Phase 1 loop end to end with a real Go service under a real Delve:
+// Run with Debug → the API request reaches the breakpoint → the manager ties
+// the pause to the request → Continue from outside Code Studio → HTTP 200, with
+// the service's log line tied to the request by its correlation id.
+func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
+	delve := findDelveForTest(t)
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module users-service\n\ngo 1.22\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(liveServiceSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	events := &liveEvents{}
+	manager, ide := newLiveManager(t, root, events)
+	liveID, port := startLiveDebug(t, ide, manager, root, delve)
 
 	// The port comes from the service's own "listening on" line.
 	ready, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -153,43 +225,13 @@ func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
 	if err != nil || run.SessionID != liveID {
 		t.Fatalf("request not tied to the live session: %+v %v", run, err)
 	}
-	type result struct {
-		status int
-		body   string
-		err    error
-	}
-	done := make(chan result, 1)
-	go func() {
-		request, _ := http.NewRequest(http.MethodPut, url, nil)
-		request.Header.Set(devsession.CorrelationHeader, run.CorrelationID)
-		response, err := (&http.Client{Timeout: 2 * time.Minute}).Do(request)
-		if err != nil {
-			done <- result{err: err}
-			return
-		}
-		defer response.Body.Close()
-		body, _ := io.ReadAll(response.Body)
-		done <- result{status: response.StatusCode, body: string(body)}
-	}()
-
-	hit := events.wait(t, "breakpoint.hit")
-	paused := hit.Payload.(map[string]any)["run"].(devsession.RequestRun)
-	if paused.ID != run.ID || paused.State != devsession.RunPaused || len(paused.Hits) != 1 {
-		t.Fatalf("pause not tied to the request: %+v", paused)
-	}
-	if h := paused.Hits[0]; h.RelativePath != "main.go" || h.Line != liveBreakpointLine || !strings.HasSuffix(h.Function, "updateUser") {
-		t.Fatalf("unexpected breakpoint location: %+v", h)
-	}
-	select {
-	case r := <-done:
-		t.Fatalf("the response must wait for the debugger, got %+v", r)
-	case <-time.After(300 * time.Millisecond):
-	}
+	done := sendLiveRequest(url, run.CorrelationID)
+	expectPausedAtBreakpoint(t, events, run, done)
 
 	if err := manager.Step(liveID, "continue"); err != nil {
 		t.Fatal(err)
 	}
-	var r result
+	var r liveResult
 	select {
 	case r = <-done:
 	case <-time.After(60 * time.Second):
@@ -202,15 +244,5 @@ func TestLiveSessionDebugRequestEndToEnd(t *testing.T) {
 	if err != nil || completed.State != devsession.RunCompleted || len(completed.Hits) != 1 {
 		t.Fatalf("run not completed: %+v %v", completed, err)
 	}
-
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		for _, entry := range manager.Logs(liveID, run.ID, 0) {
-			if strings.Contains(entry.Text, "updating user 123") && entry.Match == devsession.MatchID {
-				return
-			}
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	t.Fatalf("service log line not tied to the request: %+v", manager.Logs(liveID, "", 0))
+	expectLogTiedToRun(t, manager, liveID, run.ID)
 }

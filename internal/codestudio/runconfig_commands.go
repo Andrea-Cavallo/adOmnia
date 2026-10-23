@@ -2,8 +2,10 @@ package codestudio
 
 import (
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,8 +14,8 @@ import (
 )
 
 const (
-	sharedRunConfigFile       = ".adomnia/run-configurations.json"
-	maxSharedRunConfigBytes   = 1 << 20
+	sharedRunConfigFile     = ".adomnia/run-configurations.json"
+	maxSharedRunConfigBytes = 1 << 20
 )
 
 // normalizeCommandConfiguration preserves the legacy facade while core owns common rules.
@@ -73,7 +75,6 @@ func (s *Service) startCommandRun(session Session, kind, workingDirectory string
 	return execution, nil
 }
 
-
 // validateCompound accetta solo configurazioni esistenti della sessione e non a loro volta compound.
 func (s *Service) validateCompound(session Session, config RunConfiguration) error {
 	for _, id := range config.Compound {
@@ -113,7 +114,7 @@ func (s *Service) syncSharedRunConfigurations(session Session) {
 		}
 	}
 	sort.SliceStable(shared, func(i, j int) bool { return shared[i].Order < shared[j].Order })
-	data, err := json.MarshalIndent(sharedRunConfigurations{Format: "adomnia-run-configurations", Version: 1, Configurations: shared}, "", "  ")
+	data, err := jsonutil.Marshal(sharedRunConfigurations{Format: "adomnia-run-configurations", Version: 1, Configurations: shared}, jsontext.WithIndent("  "))
 	if err != nil {
 		return
 	}
@@ -163,4 +164,3 @@ func (m *RunConfigManager) Import(sessionID SessionID, config RunConfiguration) 
 	}
 	return m.core.Import(sessionID, toCoreConfiguration(normalized))
 }
-

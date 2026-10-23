@@ -58,7 +58,7 @@ export function prettyJson(src: string, indent = 2, validate = true): string {
 
     // number / true / false / null — copy verbatim until a structural char
     let j = i
-    while (j < n && !/[\s,:{}\[\]"]/.test(src[j])) j++
+    while (j < n && !/[\s,:{}[\]"]/.test(src[j])) j++
     out += src.slice(i, j)
     i = j
   }

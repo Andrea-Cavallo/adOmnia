@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CheckCircle, FolderOpen, X, XCircle } from 'lucide-react'
 import { DialogBody, DialogContent, DialogHeader, DialogOverlay } from '@/components/ui/dialog'
 import { safeSelectFolder } from '@/lib/fileUtils'
@@ -21,12 +21,14 @@ export function CollectionFolderDialog({ open, collectionId = '', onClose }: Col
   const [result, setResult] = useState<{ error?: string; info?: string }>({})
 
   // Start from the last repository the user worked with; they can pick any other folder.
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
     if (open) {
       setFolder((current) => current || loadLastRepo())
       setResult({})
     }
-  }, [open])
+  }
 
   const browse = async () => {
     try {

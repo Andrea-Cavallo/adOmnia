@@ -1,7 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"path"
 	"sort"
@@ -106,7 +107,7 @@ func (h *LocalHistory) persistLocked() error {
 	if h.store == nil {
 		return nil
 	}
-	data, err := json.Marshal(historyState{Version: historySchemaVersion, Revisions: h.revisions})
+	data, err := jsonutil.Marshal(historyState{Version: historySchemaVersion, Revisions: h.revisions})
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,5 @@
 import { ProjectRulesToggle } from './ProjectRulesToggle'
+import { withContentKeys } from '@/lib/contentKeys'
 import { GitHubMark } from './CodeStudioCopilotStatus'
 import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import { useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
@@ -45,14 +46,14 @@ function MessageBody({ message }: { message: CopilotChatMessage }) {
   if (!message.content && message.role === 'assistant') return <span className="text-text-4">Thinking…</span>
   return (
     <div className="space-y-2 whitespace-pre-wrap break-words">
-      {blocks.map((block, index) => {
-        if (!block.startsWith('```')) return <Fragment key={index}>{block}</Fragment>
+      {withContentKeys(blocks, (block) => block).map(({ key, item: block }) => {
+        if (!block.startsWith('```')) return <Fragment key={key}>{block}</Fragment>
         const body = block.slice(3, -3)
         const newline = body.indexOf('\n')
         const language = newline >= 0 ? body.slice(0, newline).trim() : ''
         const code = newline >= 0 ? body.slice(newline + 1) : body
         return (
-          <div key={index} className="overflow-hidden rounded-lg border border-border-1 bg-surface-0">
+          <div key={key} className="overflow-hidden rounded-lg border border-border-1 bg-surface-0">
             <div className="flex h-7 items-center px-2 text-[12px] uppercase tracking-wide text-text-4"><Code2 size={11} className="mr-1" />{language || 'code'}<button type="button" className="ml-auto hover:text-text-1" onClick={() => void navigator.clipboard.writeText(code)} title="Copy code"><Copy size={11} /></button></div>
             <pre className="overflow-x-auto border-t border-border-1 p-2 font-mono text-[13px] leading-4 text-text-2"><code>{code}</code></pre>
           </div>
@@ -101,7 +102,7 @@ export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotCh
     if (pendingDraft === null) return
     const next = useCodeStudioAssistantStore.getState().takeDraft()
     if (next !== null) setDraft(next)
-  }, [pendingDraft])
+  }, [pendingDraft, setDraft])
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [includeFile, setIncludeFile] = useToolView(session.id, 'copilot', 'includeFile', true)
   const [includeSelection, setIncludeSelection] = useToolView(session.id, 'copilot', 'includeSelection', true)
@@ -118,6 +119,7 @@ export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotCh
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the message list is the trigger: follow the stream to the bottom whenever it changes
   }, [thread?.messages])
 
   const send = () => {

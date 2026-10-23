@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os/exec"
 
 	"adomnia/internal/ai"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/securityintel/strix"
 )
 
@@ -15,7 +16,7 @@ import (
 // il comando esatto di installazione, e passa qui solo ciò che l'utente ha confermato.
 
 func asJSON(value any) (string, error) {
-	data, err := json.Marshal(value)
+	data, err := jsonutil.Marshal(value)
 	return string(data), err
 }
 

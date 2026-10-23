@@ -18,13 +18,13 @@ type Field struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Ref      string `json:"ref,omitempty"`
-	Required bool   `json:"required,omitempty"`
+	Required bool   `json:"required,omitzero"`
 }
 
 // Body è il corpo di una richiesta o risposta.
 type Body struct {
 	Schema string  `json:"schema,omitempty"`
-	Array  bool    `json:"array,omitempty"`
+	Array  bool    `json:"array,omitzero"`
 	Fields []Field `json:"fields,omitempty"`
 }
 
@@ -35,7 +35,7 @@ type Operation struct {
 	Request  *Body  `json:"request,omitempty"`
 	Response *Body  `json:"response,omitempty"`
 	File     string `json:"file,omitempty"`
-	Line     int    `json:"line,omitempty"`
+	Line     int    `json:"line,omitzero"`
 }
 
 // Key è l'identità di un'operazione: metodo e path con i parametri normalizzati.
@@ -60,9 +60,9 @@ type Issue struct {
 	Side      string `json:"side,omitempty"` // request | response
 	Field     string `json:"field,omitempty"`
 	Message   string `json:"message"`
-	Breaking  bool   `json:"breaking,omitempty"`
+	Breaking  bool   `json:"breaking,omitzero"`
 	File      string `json:"file,omitempty"`
-	Line      int    `json:"line,omitempty"`
+	Line      int    `json:"line,omitzero"`
 }
 
 // --- OpenAPI -------------------------------------------------------------------------------

@@ -54,16 +54,34 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
       .finally(() => setLoading(false))
   }
 
+  const [prevMode, setPrevMode] = useState(mode)
+  if (prevMode !== mode) {
+    setPrevMode(mode)
+    if (mode) {
+      setQuery('')
+      setSelected(0)
+      setAddress(readRemoteAddress())
+      if (mode === 'attach') { setLoading(true); setError(null) }
+    }
+  }
+
   useEffect(() => {
     if (!mode) return
-    setQuery('')
-    setSelected(0)
-    setAddress(readRemoteAddress())
-    if (mode === 'attach') load()
+    let cancelled = false
+    if (mode === 'attach') {
+      listGoIDEProcesses()
+        .then((result) => { if (!cancelled) setProcesses(result) })
+        .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)) })
+        .finally(() => { if (!cancelled) setLoading(false) })
+    }
     const timer = window.setTimeout(() => inputRef.current?.focus(), 30)
-    return () => window.clearTimeout(timer)
+    return () => { cancelled = true; window.clearTimeout(timer) }
   }, [mode])
-  useEffect(() => { setSelected(0) }, [query])
+
+  const updateQuery = (value: string) => {
+    setQuery(value)
+    setSelected(0)
+  }
 
   if (!mode) return null
 
@@ -102,7 +120,7 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
     >
       {attachMode ? <>
         <div className="flex items-center gap-2">
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="Filter by name, command or PID" aria-label="Filter processes" className="gs-input flex-1" />
+          <input ref={inputRef} value={query} onChange={(event) => updateQuery(event.target.value)} onKeyDown={onKeyDown} placeholder="Filter by name, command or PID" aria-label="Filter processes" className="gs-input flex-1" />
           <CodeStudioButton variant="secondary" className="gs-btn-icon" onClick={load} title="Refresh" aria-label="Refresh processes">{loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}</CodeStudioButton>
         </div>
         {error && <CodeStudioAlert icon={AlertCircle}>{error}</CodeStudioAlert>}

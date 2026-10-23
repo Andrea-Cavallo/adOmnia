@@ -9,10 +9,10 @@ func TestMergeLinksCallsAcrossWorkspaceModules(t *testing.T) {
 		"lib.go": "package lib\n\nfunc Parse(s string) string { return s }\n",
 	})
 	app, _ := loadFixture(t, map[string]string{
-		"go.mod":         "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.0.0\n\nreplace example.com/lib => ./lib\n",
-		"lib/go.mod":     "module example.com/lib\n\ngo 1.22\n",
-		"lib/lib.go":     "package lib\n\nfunc Parse(s string) string { return s }\n",
-		"main.go":        "package main\n\nimport \"example.com/lib\"\n\nfunc main() { _ = lib.Parse(\"a\") }\n",
+		"go.mod":     "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.0.0\n\nreplace example.com/lib => ./lib\n",
+		"lib/go.mod": "module example.com/lib\n\ngo 1.22\n",
+		"lib/lib.go": "package lib\n\nfunc Parse(s string) string { return s }\n",
+		"main.go":    "package main\n\nimport \"example.com/lib\"\n\nfunc main() { _ = lib.Parse(\"a\") }\n",
 	})
 	app.Merge(lib)
 	for _, call := range app.Calls {

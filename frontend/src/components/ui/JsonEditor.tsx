@@ -57,7 +57,7 @@ interface EnvironmentVariableMenu {
 function environmentVariableName(value: string): string {
   const normalized = value
     .trim()
-    .replace(/^['\"]|['\"]$/g, '')
+    .replace(/^['"]|['"]$/g, '')
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .replace(/[^a-zA-Z0-9_]+/g, '_')
     .replace(/^_+|_+$/g, '')
@@ -200,7 +200,7 @@ function tokenizeJson(text: string): Array<{ text: string; cls: string }> {
     if (ch === '-' || /[0-9]/.test(ch)) {
       let num = ch
       i++
-      while (i < text.length && /[0-9.eE+\-]/.test(text[i])) { num += text[i]; i++ }
+      while (i < text.length && /[0-9.eE+-]/.test(text[i])) { num += text[i]; i++ }
       tokens.push({ text: num, cls: 'json-number' })
       continue
     }
@@ -435,14 +435,14 @@ export function JsonEditor({
     expectedValueRef.current = value
   }, [value])
 
-  const commitEdit = (next: string) => {
+  const commitEdit = useCallback((next: string) => {
     if (next === value) return
     undoStackRef.current.push(value)
     if (undoStackRef.current.length > 200) undoStackRef.current.shift()
     redoStackRef.current = []
     expectedValueRef.current = next
     onChange(next)
-  }
+  }, [onChange, value])
 
   const highlight = useCallback((text: string) => {
     if (!text.trim()) return `<span style="color:var(--color-text-4)">${escapeHtml(placeholder ?? '')}</span>`
@@ -535,10 +535,10 @@ export function JsonEditor({
       expectedValueRef.current = next
       onChange(next)
       requestAnimationFrame(() => {
-        const editor = taRef.current
-        if (!editor) return
+        const field = taRef.current
+        if (!field) return
         const caret = Math.min(next.length, s)
-        editor.setSelectionRange(caret, caret)
+        field.setSelectionRange(caret, caret)
       })
       return
     }
@@ -665,7 +665,7 @@ export function JsonEditor({
       taRef.current?.focus()
       taRef.current?.setSelectionRange(caret, caret)
     })
-  }, [addEnvironment, envVariableMenu, setActiveEnv, updateVariables, value])
+  }, [addEnvironment, commitEdit, envVariableMenu, setActiveEnv, updateVariables, value])
 
   return (
     <div
@@ -724,6 +724,7 @@ export function JsonEditor({
           background:    'var(--color-surface-2)',
           overflow:      'hidden',
         }}
+        // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- highlight() escapes every text segment
         dangerouslySetInnerHTML={{ __html: highlight(value) }}
       />
 

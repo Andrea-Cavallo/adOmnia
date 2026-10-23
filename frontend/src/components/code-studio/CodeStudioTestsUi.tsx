@@ -90,10 +90,10 @@ export function SuiteDonut({ passed, failed, running, total }: { passed: number;
   return (
     <svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" className="shrink-0 -rotate-90">
       <circle cx="20" cy="20" r={radius} fill="none" strokeWidth="5" className="stroke-surface-4" />
-      {total > 0 && arcs.map((arc, index) => {
+      {total > 0 && arcs.map((arc) => {
         if (arc.value === 0) return null
         const length = (arc.value / total) * circumference
-        const circle = <circle key={index} cx="20" cy="20" r={radius} fill="none" strokeWidth="5" strokeDasharray={`${Math.max(0, length - 1)} ${circumference}`} strokeDashoffset={-offset} className={arc.className} />
+        const circle = <circle key={arc.className} cx="20" cy="20" r={radius} fill="none" strokeWidth="5" strokeDasharray={`${Math.max(0, length - 1)} ${circumference}`} strokeDashoffset={-offset} className={arc.className} />
         offset += length
         return circle
       })}

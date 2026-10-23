@@ -1,7 +1,9 @@
 package copilot
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
@@ -161,7 +163,7 @@ func (s *SettingsStore) Save(settings Settings) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
-	data, err := json.MarshalIndent(valid, "", "  ")
+	data, err := jsonutil.Marshal(valid, jsontext.WithIndent("  "))
 	if err != nil {
 		return Settings{}, err
 	}

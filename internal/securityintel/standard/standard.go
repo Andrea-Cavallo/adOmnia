@@ -4,6 +4,7 @@ package standard
 
 import (
 	"adomnia/internal/securityintel"
+	"adomnia/internal/securityintel/cargo"
 	"adomnia/internal/securityintel/gomod"
 	"adomnia/internal/securityintel/maven"
 	"adomnia/internal/securityintel/pypi"
@@ -18,6 +19,6 @@ func Engine(cacheDirectory string, endpoints map[string]string) (*securityintel.
 		&securityintel.EPSSSource{Endpoint: endpoints["epss"]},
 		&securityintel.KEVSource{Endpoint: endpoints["kev"]},
 	}
-	adapters := []securityintel.EcosystemAdapter{maven.New(), gomod.New(), pypi.New()}
+	adapters := []securityintel.EcosystemAdapter{maven.New(), gomod.New(), pypi.New(), cargo.New()}
 	return securityintel.New(adapters, []securityintel.Source{osv}, enrichers, cache), cache
 }

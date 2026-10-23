@@ -31,7 +31,7 @@ export default function UnitTestModal({run,route,onClose}: {run:RequestRun;route
    const input=JSON.parse(fixture) as {method:string;path:string;body:string;headers:Record<string,string>;pathParams:Record<string,string>}
    const source=await projectArtifactText(route.goSessionId,route.file)
    setPreview(await GenerateHandlerTest(route.goSessionId,route.file,source,{...input,line:route.line,routePattern:route.route.attrs.path ?? '',expectedStatus:Number(expectedStatus),expectedBody:assertBody?expectedBody:null,handlerExpression:expression,setup}))
-  }catch(error){setError(String(error))}finally{setBusy(false)}
+  }catch(failure){setError(String(failure))}finally{setBusy(false)}
  }
  const save=async()=> {
   if(!preview)return
@@ -43,7 +43,7 @@ export default function UnitTestModal({run,route,onClose}: {run:RequestRun;route
    if(live)await openFrameInCodeStudio(live,{relativePath:preview.relativePath,function:preview.handler,line:1})
    else await useCodeStudioStore.getState().openLocation(preview.relativePath,1,1)
    onClose()
-  }catch(error){setError(String(error))}finally{setBusy(false)}
+  }catch(failure){setError(String(failure))}finally{setBusy(false)}
  }
  return <CodeStudioModal open onClose={onClose} title="Generate unit test" subtitle={`${route.file}:${route.line} · ${route.name}`} size="xl" footer={<><CodeStudioButton disabled={busy} onClick={()=>void generate()}>Preview test</CodeStudioButton><CodeStudioButton disabled={busy||!preview} onClick={()=>void save()}>Save and open test</CodeStudioButton></>}>
   <p className="mb-3 text-xs text-text-3">Invokes the handler in process with httptest. Choose the expected result, replace redacted values with safe fixtures, and arrange dependencies. The test is saved without running it.</p>

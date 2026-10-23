@@ -37,7 +37,7 @@ type VCSChangedSymbol struct {
 	// Touches dice cosa tocca la dichiarazione, dedotto dal sorgente: "http", "grpc", "db", "broker".
 	Touches []string `json:"touches,omitempty"`
 	// Breaking: un simbolo esportato rimosso o con la firma cambiata rispetto a HEAD.
-	Breaking bool `json:"breaking,omitempty"`
+	Breaking bool `json:"breaking,omitzero"`
 }
 
 // Indizi dal sorgente: firme di handler e chiamate tipiche dei client. Sono euristiche, non analisi dei tipi.

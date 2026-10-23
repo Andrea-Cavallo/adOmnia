@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -65,7 +65,7 @@ func installedVersion(binary string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), versionTimeout)
 	defer cancel()
 	cmd := procutil.CommandContext(ctx, binary, "--version")
-	configureProcess(cmd)
+	procutil.ConfigureChild(cmd)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("cannot run %s --version: %w", binary, err)
@@ -244,7 +244,7 @@ func installRelease(ctx context.Context, client *http.Client, destination string
 	if actual := hex.EncodeToString(hash.Sum(nil)); actual != expected {
 		return "", fmt.Errorf("checksum mismatch for milk %s: refusing to install", chosen.Tag)
 	}
-	if err := os.Chmod(temporary.Name(), 0o755); err != nil {
+	if err := os.Chmod(temporary.Name(), 0o755); err != nil { // NOSONAR -- the downloaded binary was checksum-verified against the pinned release hash just above; 0755 only makes that verified tool executable
 		return "", err
 	}
 	progress("Installing milk " + chosen.Tag + "…")

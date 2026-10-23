@@ -23,6 +23,8 @@ func TestCoreDoesNotImportAdapters(t *testing.T) {
 	forbidden := []string{
 		"adomnia/internal/securityintel/maven",
 		"adomnia/internal/securityintel/gomod",
+		"adomnia/internal/securityintel/pypi",
+		"adomnia/internal/securityintel/cargo",
 		"adomnia/internal/securityintel/govuln",
 		"adomnia/internal/languages/",
 		"adomnia/internal/codestudio",

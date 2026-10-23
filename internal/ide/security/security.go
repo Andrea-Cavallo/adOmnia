@@ -47,16 +47,16 @@ type Finding struct {
 	// File è relativo alla radice del progetto, con "/".
 	File   string `json:"file"`
 	Line   int    `json:"line"`
-	Column int    `json:"column,omitempty"`
+	Column int    `json:"column,omitzero"`
 	// Snippet è la riga di codice, con eventuali segreti mascherati.
 	Snippet     string `json:"snippet,omitempty"`
 	Fingerprint string `json:"fingerprint"`
 	// Suppressed: soppresso da un commento nel codice o dal pannello, sempre con motivazione.
-	Suppressed        bool   `json:"suppressed,omitempty"`
+	Suppressed        bool   `json:"suppressed,omitzero"`
 	SuppressionReason string `json:"suppressionReason,omitempty"`
-	SuppressedInline  bool   `json:"suppressedInline,omitempty"`
+	SuppressedInline  bool   `json:"suppressedInline,omitzero"`
 	// Baselined: era già presente quando è stata salvata la baseline.
-	Baselined bool `json:"baselined,omitempty"`
+	Baselined bool `json:"baselined,omitzero"`
 }
 
 // Analyzer trova problemi in un file. Accepts filtra per percorso (estensione, nome) prima di leggerlo.
@@ -72,7 +72,7 @@ type Report struct {
 	FilesScanned int       `json:"filesScanned"`
 	Findings     []Finding `json:"findings"`
 	Rules        []Rule    `json:"rules"`
-	Truncated    bool      `json:"truncated,omitempty"`
+	Truncated    bool      `json:"truncated,omitzero"`
 }
 
 // skippedDirectories non contengono codice del progetto (dipendenze, build, VCS, cache).

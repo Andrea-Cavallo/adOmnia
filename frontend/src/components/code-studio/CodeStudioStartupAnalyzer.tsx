@@ -3,7 +3,10 @@ import { create } from 'zustand'
 import { Loader2, Rocket, X } from 'lucide-react'
 import * as GoIDE from '../../../bindings/adomnia/goide'
 import type { ShutdownReport, StartupReport } from '../../../bindings/adomnia/internal/codestudio/models'
+import { withContentKeys } from '@/lib/contentKeys'
 import { shutdownChecks } from '@/lib/code-studio/shutdownChecks'
+
+const eventKey = (event: { atMs: number; kind: string; detail: string }) => `${event.atMs}:${event.kind}:${event.detail}`
 
 export const useStartupDrawer = create<{ open: boolean; setOpen: (open: boolean) => void }>((set) => ({ open: false, setOpen: (open) => set({ open }) }))
 
@@ -85,8 +88,8 @@ export function CodeStudioStartupAnalyzer({ sessionId }: { sessionId: string }) 
             </ul>
             <h4 className="mb-1 mt-3 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">After the signal</h4>
             <ol className="space-y-0.5">
-              {(shutdown.events ?? []).map((event, index) => (
-                <li key={`${event.atMs}-${index}`} className="flex gap-2 font-mono">
+              {withContentKeys(shutdown.events ?? [], eventKey).map(({ key, item: event }) => (
+                <li key={key} className="flex gap-2 font-mono">
                   <span className="w-20 shrink-0 text-right text-text-4">+{ms(event.atMs - shutdown.shutdown.signalAtMs)}</span>
                   <span className="min-w-0 flex-1 truncate text-text-2" title={event.detail}>{event.kind === 'output' ? event.detail : `${event.kind} ${event.detail}`}</span>
                 </li>
@@ -104,11 +107,11 @@ export function CodeStudioStartupAnalyzer({ sessionId }: { sessionId: string }) 
             <section className="mt-3">
               <h4 className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">Timeline</h4>
               <ol aria-label="Startup timeline" className="space-y-0.5">
-                {events.map((event, index) => {
+                {withContentKeys(events, eventKey).map(({ key, item: event }, index) => {
                   const gap = index > 0 ? event.atMs - events[index - 1].atMs : event.atMs
                   const category = startupCategory(event.kind, event.detail)
                   return (
-                    <li key={`${event.atMs}-${index}`} className="flex items-baseline gap-2 font-mono">
+                    <li key={key} className="flex items-baseline gap-2 font-mono">
                       <span className="w-16 shrink-0 text-right text-text-4">{ms(event.atMs)}</span>
                       {gap >= GAP_MS ? <span className="w-16 shrink-0 text-warning" title="Time spent before this event">+{ms(gap)}</span> : <span className="w-16 shrink-0" />}
                       <span className={`min-w-0 flex-1 truncate ${TONE[category]}`} title={event.detail}>{event.kind === 'output' ? event.detail : `${event.kind} ${event.detail}`}</span>

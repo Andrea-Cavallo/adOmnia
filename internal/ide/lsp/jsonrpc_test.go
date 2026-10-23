@@ -1,9 +1,12 @@
 package lsp
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -15,11 +18,11 @@ type recordingHandler struct {
 	notifications chan string
 }
 
-func (h *recordingHandler) HandleNotification(method string, _ json.RawMessage) {
+func (h *recordingHandler) HandleNotification(method string, _ jsonv1.RawMessage) {
 	h.notifications <- method
 }
 
-func (h *recordingHandler) HandleRequest(_ context.Context, method string, _ json.RawMessage) (any, error) {
+func (h *recordingHandler) HandleRequest(_ context.Context, method string, _ jsonv1.RawMessage) (any, error) {
 	if method == "workspace/configuration" {
 		return []any{map[string]any{}}, nil
 	}
@@ -46,7 +49,7 @@ func (s fakeServer) read(t *testing.T) wireMessage {
 
 func (s fakeServer) send(t *testing.T, message any) {
 	t.Helper()
-	data, _ := json.Marshal(message)
+	data, _ := jsonutil.Marshal(message)
 	if _, err := fmt.Fprintf(s.writer, "Content-Length: %d\r\n\r\n%s", len(data), data); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +78,7 @@ func TestConnCorrelatesResponsesOutOfOrder(t *testing.T) {
 			results <- method + "=" + value
 		}(method)
 	}
-	requests := map[string]json.RawMessage{}
+	requests := map[string]jsonv1.RawMessage{}
 	for range 2 {
 		message := server.read(t)
 		requests[message.Method] = message.ID
@@ -96,7 +99,7 @@ func TestConnCancelsAndTypesErrors(t *testing.T) {
 	request := server.read(t)
 	cancel()
 	cancelMessage := server.read(t)
-	if cancelMessage.Method != "$/cancelRequest" || !json.Valid(cancelMessage.Params) {
+	if cancelMessage.Method != "$/cancelRequest" || !jsontext.Value(cancelMessage.Params).IsValid() {
 		t.Fatalf("cancellazione non inviata: %+v", cancelMessage)
 	}
 	if err := <-done; !IsCancelled(err) {
@@ -185,7 +188,7 @@ type blockingHandler struct {
 	stopped chan error
 }
 
-func (h *blockingHandler) HandleRequest(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+func (h *blockingHandler) HandleRequest(ctx context.Context, _ string, _ jsonv1.RawMessage) (any, error) {
 	close(h.started)
 	<-ctx.Done()
 	h.stopped <- ctx.Err()

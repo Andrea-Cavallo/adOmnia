@@ -4,7 +4,9 @@
 package aipolicy
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -60,7 +62,7 @@ func Save(root, policy string) error {
 	default:
 		return fmt.Errorf("invalid AI policy: %q", policy)
 	}
-	data, err := json.MarshalIndent(document{Format: "adomnia-ai-policy", AI: policy}, "", "  ")
+	data, err := jsonutil.Marshal(document{Format: "adomnia-ai-policy", AI: policy}, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

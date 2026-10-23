@@ -40,8 +40,10 @@ export function CodeStudioMarkdownTools({ document, onJumpToLine }: CodeStudioMa
   const sessionId = document.document.sessionId
   const path = document.document.relativePath
   const openDocument = useCodeStudioStore((state) => state.openDocument)
-  const [backlinks, setBacklinks] = useState<BacklinkMatch[]>([])
-  const [searching, setSearching] = useState(false)
+  const searchKey = `${sessionId}|${path}`
+  const [backlinkResult, setBacklinkResult] = useState<{ key: string; list: BacklinkMatch[] } | null>(null)
+  const backlinks = backlinkResult?.list ?? []
+  const searching = backlinkResult?.key !== searchKey
   const [neighborhood, setNeighborhood] = useState<{ files: MarkdownFileEntry[]; edges: MarkdownEdge[] } | null>(null)
   const [graphOpen, setGraphOpen] = useState(false)
   const [graphPositions, setGraphPositions] = useState<Record<string, { x: number; y: number }>>({})
@@ -56,7 +58,6 @@ export function CodeStudioMarkdownTools({ document, onJumpToLine }: CodeStudioMa
   // Backlink: una ricerca nel progetto invece di leggere ogni nota (GS-7.4).
   useEffect(() => {
     let cancelled = false
-    setSearching(true)
     const request = requestProjectSearch({
       sessionId,
       pattern: backlinkSearchPattern(path),
@@ -69,22 +70,20 @@ export function CodeStudioMarkdownTools({ document, onJumpToLine }: CodeStudioMa
     request
       .then((result) => {
         if (cancelled) return
-        setBacklinks(dedupeBacklinks(path, result.matches
+        setBacklinkResult({ key: searchKey, list: dedupeBacklinks(path, result.matches
           .filter((match) => /\.md$/i.test(match.relativePath))
           .map((match) => ({ relativePath: match.relativePath, line: match.line, preview: match.preview }))
-        ).slice(0, MAX_BACKLINKS))
-        setSearching(false)
+        ).slice(0, MAX_BACKLINKS) })
       })
       .catch(() => {
         if (cancelled) return
-        setBacklinks([])
-        setSearching(false)
+        setBacklinkResult({ key: searchKey, list: [] })
       })
     return () => {
       cancelled = true
       try { request.cancel() } catch { /* annullamento best-effort */ }
     }
-  }, [path, sessionId])
+  }, [path, sessionId, searchKey])
 
   /** Il grafo si costruisce all'apertura: risolve i target ignoti e poi calcola archi e nodi. */
   const openGraph = async () => {
@@ -117,7 +116,7 @@ export function CodeStudioMarkdownTools({ document, onJumpToLine }: CodeStudioMa
   const folderOptions = useMemo(() => {
     const folders = new Set<string>()
     for (const file of neighborhood?.files ?? []) if (file.dir) folders.add(file.dir)
-    return [...folders].sort()
+    return [...folders].sort((a, b) => a.localeCompare(b))
   }, [neighborhood])
 
   const openFile = (file: MarkdownFileEntry) => { void openDocument(file.relPath) }

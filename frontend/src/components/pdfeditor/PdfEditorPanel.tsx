@@ -47,7 +47,6 @@ function cloneFormValues(value: Record<string, string | boolean>): Record<string
 }
 
 export function PdfEditorPanel() {
-  const consumeFileImport = useAppStore((s) => s.consumeFileImport)
   const pendingFileImport = useAppStore((s) => s.pendingFileImport)
 
   const [bytes, setBytes] = useState<Uint8Array | null>(null)
@@ -165,9 +164,9 @@ export function PdfEditorPanel() {
       formValues?: Record<string, string | boolean>
       resetHistory?: boolean
     }) => {
-      setLoadError(null)
       try {
         const loaded = await loadPdfDocument(raw)
+        setLoadError(null)
         setBytes(raw)
         setDoc(loaded.doc)
         setPageCount(loaded.pageCount)
@@ -194,11 +193,13 @@ export function PdfEditorPanel() {
 
   // Consume a PDF queued from drag-drop or "Open in PDF Editor" from a response.
   useEffect(() => {
-    const routed = consumeFileImport('pdf')
+    if (pendingFileImport?.kind !== 'pdf') return
+    const routed = useAppStore.getState().consumeFileImport('pdf')
     if (routed && routed.kind === 'pdf') {
-      void openBytes(routed.bytes, routed.name)
+      // Deferred so loading the document does not set state synchronously inside the effect.
+      queueMicrotask(() => { void openBytes(routed.bytes, routed.name) })
     }
-  }, [consumeFileImport, openBytes, pendingFileImport])
+  }, [openBytes, pendingFileImport])
 
   // ── File open via hidden input ──────────────────────────────────────────────
   const handleOpenFile = () => fileInputRef.current?.click()
@@ -288,10 +289,7 @@ export function PdfEditorPanel() {
   }, [])
 
   useEffect(() => {
-    if (!doc || !searchQuery.trim()) {
-      setSearchMatches([])
-      return
-    }
+    if (!doc || !searchQuery.trim()) return
     let cancelled = false
     const timer = window.setTimeout(() => {
       searchPdfText(doc, searchQuery)
@@ -532,7 +530,7 @@ export function PdfEditorPanel() {
           pageCount={pageCount}
           currentPage={currentPage}
           searchQuery={searchQuery}
-          searchCount={searchMatches.length}
+          searchCount={doc && searchQuery.trim() ? searchMatches.length : 0}
           selectedId={selectedId}
           canUndo={undoStack.length > 0}
           canRedo={redoStack.length > 0}

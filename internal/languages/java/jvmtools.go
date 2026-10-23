@@ -166,9 +166,9 @@ func StartJFR(javaHome string, pid int) (name, file string, err error) {
 	if pid <= 0 {
 		return "", "", fmt.Errorf("invalid process id")
 	}
-	directory := filepath.Join(os.TempDir(), "adomnia-jfr")
-	if err := os.MkdirAll(directory, 0o755); err != nil {
-		return "", "", err
+	directory, err := os.MkdirTemp("", "adomnia-jfr-")
+	if err != nil {
+		return "", "", fmt.Errorf("temporary JFR folder unavailable: %w", err)
 	}
 	name = "adomnia-" + strconv.Itoa(pid)
 	file = filepath.Join(directory, fmt.Sprintf("%s-%d.jfr", name, time.Now().Unix()))

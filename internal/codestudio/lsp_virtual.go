@@ -56,7 +56,7 @@ func virtualDocumentsRoot() string {
 }
 
 func writeVirtualDocument(language, uri string, spec *lsp.VirtualDocuments, text string) (string, error) {
-	sum := sha1.Sum([]byte(uri))
+	sum := sha1.Sum([]byte(uri)) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here
 	relative := filepath.FromSlash(strings.TrimLeft(spec.RelativePath(uri), "/\\"))
 	if relative == "" || strings.Contains(relative, "..") {
 		relative = "document"

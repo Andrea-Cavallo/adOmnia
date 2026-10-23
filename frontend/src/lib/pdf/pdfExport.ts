@@ -197,6 +197,7 @@ export async function exportPdf(
 
     if (a.type === 'text') {
       const { r, g, b } = hexToRgb01(a.color)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- annotations draw onto one document in order
       if (hasNonWinAnsi(a.text) && await drawUnicodeTextImage(pdf, page, pageHeight, a)) {
         continue
       }
@@ -223,6 +224,7 @@ export async function exportPdf(
     } else if (a.type === 'ink') {
       drawInk(page, pageHeight, a)
     } else if (a.type === 'signature') {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- annotations draw onto one document in order
       await drawSignature(pdf, page, pageHeight, a.imageDataUrl, a)
     } else {
       drawShape(page, pageHeight, a)

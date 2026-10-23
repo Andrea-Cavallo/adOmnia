@@ -170,6 +170,8 @@ export {
     RunConfigurationKind,
     RunRequest,
     RuntimeSnapshotFile,
+    RustDebugRequest,
+    RustToolchainReport,
     SearchMatch,
     SearchQuery,
     SearchResult,

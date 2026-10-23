@@ -3,13 +3,13 @@ package web
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 func TestDetectsNodeTestScript(t *testing.T) {
@@ -146,6 +146,6 @@ func applyNodeLines(root string, lines []string) ([]idetesting.TestResult, idete
 }
 
 func jsonString(value string) string {
-	encoded, _ := json.Marshal(value)
+	encoded, _ := jsonutil.Marshal(value)
 	return string(encoded)
 }

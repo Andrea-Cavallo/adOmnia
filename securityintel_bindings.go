@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/securityintel"
 	"adomnia/internal/securityintel/standard"
 	"adomnia/internal/securityintel/strix"
@@ -44,13 +45,13 @@ type ScanOptionsJSON struct {
 	// Ecosystems filtra gli ecosistemi ("Maven", "Go"). Vuoto: tutti.
 	Ecosystems []string `json:"ecosystems,omitempty"`
 	// Offline vieta le richieste ai database di advisory: si usa la cache locale.
-	Offline bool `json:"offline,omitempty"`
+	Offline bool `json:"offline,omitzero"`
 	// AllowProcesses autorizza mvn e govulncheck. Il progetto deve essere autorizzato.
-	AllowProcesses bool `json:"allowProcesses,omitempty"`
+	AllowProcesses bool `json:"allowProcesses,omitzero"`
 	// IncludePluginDependencies include le dipendenze dei plugin di build Maven.
-	IncludePluginDependencies bool `json:"includePluginDependencies,omitempty"`
+	IncludePluginDependencies bool `json:"includePluginDependencies,omitzero"`
 	// IncludeOptional considera anche le dipendenze opzionali Maven.
-	IncludeOptional bool `json:"includeOptional,omitempty"`
+	IncludeOptional bool `json:"includeOptional,omitzero"`
 	// SourceEndpoints sostituisce gli endpoint delle fonti con specchi aziendali.
 	SourceEndpoints map[string]string `json:"sourceEndpoints,omitempty"`
 }
@@ -89,7 +90,7 @@ func (s *SecurityIntel) ScanWorkspace(root string, optionsJSON string) (string, 
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(report)
+	payload, err := jsonutil.Marshal(report)
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +134,7 @@ func (s *SecurityIntel) ExportFormats() (string, error) {
 	for _, format := range securityintel.SupportedFormats {
 		entries = append(entries, entry{ID: format, Name: names[format], Ext: securityintel.FileExtension(format)})
 	}
-	payload, err := json.Marshal(entries)
+	payload, err := jsonutil.Marshal(entries)
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +147,7 @@ func (s *SecurityIntel) SecuritySettings(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(settings)
+	payload, err := jsonutil.Marshal(settings)
 	if err != nil {
 		return "", err
 	}
@@ -176,7 +177,7 @@ func (s *SecurityIntel) PutSuppression(root string, suppressionJSON string) (str
 	if err := securityintel.SaveWorkspaceSettings(root, settings); err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(settings)
+	payload, err := jsonutil.Marshal(settings)
 	if err != nil {
 		return "", err
 	}
@@ -198,7 +199,7 @@ func (s *SecurityIntel) RemoveSuppression(root string, advisoryID string) (strin
 	if err := securityintel.SaveWorkspaceSettings(root, settings); err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(settings)
+	payload, err := jsonutil.Marshal(settings)
 	if err != nil {
 		return "", err
 	}
@@ -238,7 +239,7 @@ func (s *SecurityIntel) PreviewUpgrade(root string, requestJSON string) (string,
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(preview)
+	payload, err := jsonutil.Marshal(preview)
 	if err != nil {
 		return "", err
 	}
@@ -267,7 +268,7 @@ func (s *SecurityIntel) PlanUpgrade(root string, requestJSON string) (string, er
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(plan)
+	payload, err := jsonutil.Marshal(plan)
 	if err != nil {
 		return "", err
 	}
@@ -299,7 +300,7 @@ func (s *SecurityIntel) RunUpgradeStep(root string, planID string, stepID string
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(plan)
+	payload, err := jsonutil.Marshal(plan)
 	if err != nil {
 		return "", err
 	}
@@ -317,7 +318,7 @@ func (s *SecurityIntel) FinishUpgrade(root string, planID string, apply bool) (s
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(plan)
+	payload, err := jsonutil.Marshal(plan)
 	if err != nil {
 		return "", err
 	}

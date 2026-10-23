@@ -196,13 +196,14 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
       : { operation: 'insertMany', documents: parsed }, parsed.length)
   }
 
-  const importDocuments = async (docs: BsonDoc[], onProgress: (done: number) => void) => {
+  const importDocuments = async (toImport: BsonDoc[], onProgress: (done: number) => void) => {
     if (!selected) throw new Error('Select a collection first')
     setBusy(true)
     let done = 0
     try {
-      for (let i = 0; i < docs.length; i += IMPORT_BATCH) {
-        const batch = docs.slice(i, i + IMPORT_BATCH)
+      for (let i = 0; i < toImport.length; i += IMPORT_BATCH) {
+        const batch = toImport.slice(i, i + IMPORT_BATCH)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- batches are inserted in order and progress is reported per batch
         await runMongo({ operation: 'insertMany', database: selected.db, collection: selected.collection, documents: batch })
         done += batch.length
         onProgress(done)
@@ -222,15 +223,16 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
     const all: BsonDoc[] = []
     // ponytail: skip-based paging, fine up to the 100k cap; switch to _id range paging for bigger exports.
     while (all.length < EXPORT_CAP) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- skip-based paging: each page depends on how many documents were read so far
       const r = await runMongo({
         operation: 'find', database: selected.db, collection: selected.collection, filter,
         ...(projection ? { projection } : {}), ...(sort ? { sort } : { sort: { _id: 1 } }),
         skip: all.length, limit: IMPORT_BATCH, canonical: true,
       })
-      const page = (r.documents ?? []) as BsonDoc[]
-      all.push(...page)
+      const pageDocs = (r.documents ?? []) as BsonDoc[]
+      all.push(...pageDocs)
       onProgress(all.length)
-      if (page.length < IMPORT_BATCH) break
+      if (pageDocs.length < IMPORT_BATCH) break
     }
     return all
   }

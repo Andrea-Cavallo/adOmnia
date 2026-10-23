@@ -25,7 +25,7 @@ type Span struct {
 	Attributes map[string]string `json:"attributes,omitempty"`
 	Events     []SpanEvent       `json:"events,omitempty"`
 	// PID is the resource's process.pid, when the SDK reports it.
-	PID int `json:"pid,omitempty"`
+	PID int `json:"pid,omitzero"`
 }
 
 type SpanEvent struct {

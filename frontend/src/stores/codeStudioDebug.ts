@@ -4,9 +4,9 @@ import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
   listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEExceptionBreakpoints, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
-  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, stepGoIDEDebug, stopGoIDEDebug,
+  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, startRustDebug, stepGoIDEDebug, stopGoIDEDebug,
   type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEExceptionBreakpoints, type GoIDEExceptionBreakpointSettings, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
-  type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
+  type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDERustDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/code-studio-debug-api'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
@@ -62,6 +62,7 @@ export interface GoIDEDebugView {
   javaRequest?: GoIDEJavaDebugRequest | null
   /** Richiesta di una sessione Python (debugpy): serve al riavvio, che non passa da Delve. */
   pythonRequest?: GoIDEPythonDebugRequest | null
+  rustRequest?: GoIDERustDebugRequest | null
 }
 
 export interface GoIDEGoroutineSample {
@@ -100,6 +101,7 @@ interface GoIDEDebugState {
   error: string | null
   start: (request: GoIDEDebugRequest) => Promise<void>
   startJava: (request: GoIDEJavaDebugRequest) => Promise<void>
+  startRust: (request: GoIDERustDebugRequest) => Promise<void>
   startPython: (request: GoIDEPythonDebugRequest) => Promise<void>
   stop: (debugId: string) => Promise<void>
   restart: (debugId: string) => Promise<void>
@@ -237,6 +239,7 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     const values: Record<string, GoIDEWatchValue> = {}
     for (const expression of get().watches[view.info.sessionId] ?? []) {
       try {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- watches are evaluated one by one: the debug adapter serialises requests on a paused frame
         const result = await evaluateGoIDEDebug(debugId, expression, frameId, 'watch')
         values[expression] = { value: result.result, type: result.type, reference: result.variablesReference }
       } catch (error) {
@@ -251,6 +254,7 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     const scopes = await getGoIDEDebugScopes(debugId, frame.id)
     const children: Record<number, GoIDEDebugVariable[]> = {}
     for (const scope of scopes.filter((item) => !item.expensive && item.variablesReference > 0)) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- scopes are expanded sequentially against the single paused debug adapter
       children[scope.variablesReference] = await getGoIDEDebugVariables(debugId, scope.variablesReference)
     }
     if (!isCurrentPause(debugId, token)) return
@@ -418,15 +422,35 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       }
     },
 
+    startRust: async (request) => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      set({ error: null })
+      const sessionId = request.sessionId
+      try {
+        if (!await useCodeStudioStore.getState().saveAllDocuments(sessionId)) return
+        const info = await startRustDebug(request)
+        set((state) => ({
+          debuggers: { ...pruneFinished(state.debuggers, sessionId), [info.id]: { ...(state.debuggers[info.id] ?? emptyView(info)), rustRequest: request } },
+          activeBySession: { ...state.activeBySession, [sessionId]: info.id },
+        }))
+        useCodeStudioStore.getState().updateLayout({ bottomOpen: true })
+        useCodeStudioLspStore.getState().showToolWindow('debug')
+      } catch (error) {
+        set({ error: errorMessage(error) })
+        useCodeStudioStore.setState({ error: errorMessage(error) })
+      }
+    },
+
     stop: async (debugId) => {
       try { await stopGoIDEDebug(debugId) } catch (error) { set({ error: errorMessage(error) }) }
     },
 
     restart: async (debugId) => {
       const view = get().debuggers[debugId]
-      if (!view?.request && !view?.javaRequest && !view?.pythonRequest) return
+      if (!view?.request && !view?.javaRequest && !view?.pythonRequest && !view?.rustRequest) return
       if (view.info.state !== 'terminated') await get().stop(debugId)
-      if (view.pythonRequest) await get().startPython(view.pythonRequest)
+      if (view.rustRequest) await get().startRust(view.rustRequest)
+      else if (view.pythonRequest) await get().startPython(view.pythonRequest)
       else if (view.javaRequest) await get().startJava(view.javaRequest)
       else if (view.request) await get().start(view.request)
     },

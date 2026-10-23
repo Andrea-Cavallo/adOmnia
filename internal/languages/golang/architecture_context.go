@@ -17,7 +17,7 @@ type ArchContextCall struct {
 	From    string   `json:"from"`
 	To      string   `json:"to"`
 	Origin  string   `json:"origin"`
-	Timeout bool     `json:"timeout,omitempty"`
+	Timeout bool     `json:"timeout,omitzero"`
 	Site    ArchSite `json:"site"`
 }
 

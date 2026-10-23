@@ -275,7 +275,7 @@ export function useLogImport({ maxEvents, maxBytes, streamPreview, onReset }: Op
         results.push(await loadFromFile(file))
       }
       if (gate.isActive(operation)) {
-        const appended = results.map(managedSource)
+        const appended = results.map((entry) => managedSource(entry))
         const next = [...sourcesRef.current, ...appended]
         commitSources(next)
         await parseSources(next, operation, sourcesRef.current.length === appended.length)

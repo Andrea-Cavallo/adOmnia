@@ -1,3 +1,4 @@
+import { withContentKeys } from '@/lib/contentKeys'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -279,10 +280,10 @@ const EventRow = memo(function EventRow({ event, height, wrap, columns, columnWi
       })}
 
       <span className={cn('min-w-0 flex-1 font-mono text-[11.5px]', LEVEL_MESSAGE[event.level], wrap ? 'whitespace-pre-wrap break-words' : 'truncate')}>
-        {segments.map((segment, index) => (
+        {withContentKeys(segments, (segment) => `${segment.hit ? 'hit' : 'txt'}:${segment.text}`).map(({ key: segmentKey, item: segment }) => (
           segment.hit
-            ? <mark key={index} className="rounded-[2px] bg-accent/35 text-text-1">{segment.text}</mark>
-            : <span key={index}>{segment.text}</span>
+            ? <mark key={segmentKey} className="rounded-[2px] bg-accent/35 text-text-1">{segment.text}</mark>
+            : <span key={segmentKey}>{segment.text}</span>
         ))}
       </span>
 

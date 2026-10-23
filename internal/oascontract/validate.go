@@ -2,7 +2,8 @@ package oascontract
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,7 +22,9 @@ func New(raw string) (*Validator, error) {
 	var spec map[string]any
 	trimmed := strings.TrimSpace(raw)
 	if strings.HasPrefix(trimmed, "{") {
-		decoder := json.NewDecoder(bytes.NewBufferString(raw))
+		// I numeri restano raw (json.Number) per confrontare lo spec senza perdita: UseNumber
+		// è solo del decoder v1, che resta qui accanto a encoding/json/v2.
+		decoder := jsonv1.NewDecoder(bytes.NewBufferString(raw))
 		decoder.UseNumber()
 		if err := decoder.Decode(&spec); err != nil {
 			return nil, fmt.Errorf("parse collection OpenAPI document: %w", err)

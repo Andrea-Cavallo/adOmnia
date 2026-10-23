@@ -3,7 +3,8 @@ package codestudio
 import (
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"
@@ -86,7 +87,7 @@ func TestPhase8RegistryRunAndTestsWithoutGo(t *testing.T) {
 	if _, err := service.SetToolAuthorization(string(session.ID), true); err != nil {
 		t.Fatal(err)
 	}
-	options := json.RawMessage(`{"marker":"opaque-kept"}`)
+	options := jsonv1.RawMessage(`{"marker":"opaque-kept"}`)
 	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("FROM_FILE=ignored\nFILE_ONLY=loaded\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +160,7 @@ func TestPhase8RegistryRunAndTestsWithoutGo(t *testing.T) {
 
 func TestPhase8OpaqueGoTestOptions(t *testing.T) {
 	service, recorder, session := startTestProject(t)
-	started, err := service.StartTests(TestRunRequest{SessionID: session.ID, LanguageOptions: json.RawMessage(`{"packages":["./calc"],"run":"^TestAdd$","coverage":true}`)})
+	started, err := service.StartTests(TestRunRequest{SessionID: session.ID, LanguageOptions: jsonv1.RawMessage(`{"packages":["./calc"],"run":"^TestAdd$","coverage":true}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +171,7 @@ func TestPhase8OpaqueGoTestOptions(t *testing.T) {
 	if len(finished.Request.Packages) != 1 || finished.Request.Packages[0] != "./calc" {
 		t.Fatal("opaque scope ignored")
 	}
-	if _, err := service.StartTests(TestRunRequest{SessionID: session.ID, LanguageOptions: json.RawMessage(`{"packages":["../outside"]}`)}); err == nil {
+	if _, err := service.StartTests(TestRunRequest{SessionID: session.ID, LanguageOptions: jsonv1.RawMessage(`{"packages":["../outside"]}`)}); err == nil {
 		t.Fatal("opaque packages escaped project")
 	}
 }

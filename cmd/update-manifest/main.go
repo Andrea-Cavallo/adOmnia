@@ -2,13 +2,14 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/update"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"flag"
 	"fmt"
 	"io"
@@ -87,12 +88,12 @@ func run() error {
 	if len(manifest.Assets) != 3 {
 		return fmt.Errorf("need all three platform update packages before signing")
 	}
-	payload, e := json.Marshal(manifest)
+	payload, e := jsonutil.Marshal(manifest)
 	if e != nil {
 		return e
 	}
 	envelope := update.Envelope{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))}
-	raw, _ := json.MarshalIndent(envelope, "", "  ")
+	raw, _ := jsonutil.Marshal(envelope, jsontext.WithIndent("  "))
 	if _, err := update.VerifyEnvelope(raw, update.PublicKey); err != nil {
 		return fmt.Errorf("signing key does not match the app publisher identity")
 	}

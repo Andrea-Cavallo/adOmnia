@@ -146,7 +146,7 @@ func workspaceKey(root string) string {
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		key = strings.ToLower(key)
 	}
-	sum := sha1.Sum([]byte(key))
+	sum := sha1.Sum([]byte(key)) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here
 	return filepath.Base(key) + "-" + hex.EncodeToString(sum[:4])
 }
 

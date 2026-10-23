@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
     status: { s1: { state: 'ready' } }, activity: {}, userStopped: {},
     updatePreferences: vi.fn(), updateSettings: vi.fn(), cancelLint: vi.fn(), restart: vi.fn(), ensureStarted: vi.fn(),
   }
-  return { agents, lsp, app: { sessions: [{ id: 's1', project: { name: 'demo' } }], executions: [{ id: 'running', status: 'running' }] }, setApp: vi.fn(), toast: vi.fn() }
+  return { agents, lsp, app: { sessions: [{ id: 's1', project: { name: 'demo' } }], executions: [{ id: 'running', status: 'running' }] }, setApp: vi.fn(), toast: vi.fn(), setRustLowResources: vi.fn() }
 })
 vi.mock('./copilot', () => ({ useCopilotStore: mocks.agents[0] }))
 vi.mock('./milk', () => ({ useMilkStore: mocks.agents[1] }))
@@ -21,6 +21,7 @@ vi.mock('./codeStudio', () => ({ useCodeStudioStore: { getState: () => mocks.app
 vi.mock('./codeStudioLsp', () => ({ useCodeStudioLspStore: { getState: () => mocks.lsp, setState: vi.fn() } }))
 vi.mock('./ideLanguageServers', () => ({ useIdeLanguageServersStore: { getState: () => ({ servers: {} }) } }))
 vi.mock('./codeStudioToast', () => ({ studioToast: mocks.toast }))
+vi.mock('@/lib/code-studio-api', () => ({ setRustLowResources: mocks.setRustLowResources }))
 import { useCodeStudioLowResources } from './codeStudioLowResources'
 
 beforeEach(() => {
@@ -90,6 +91,13 @@ describe('reversible low resources', () => {
     await useCodeStudioLowResources.getState().deactivate()
     expect(mocks.lsp.restart).not.toHaveBeenCalled()
     expect(mocks.lsp.ensureStarted).not.toHaveBeenCalled()
+  })
+  it('turns the rust-analyzer heavy analysis off and back on with Low resources (RS-9.5)', async () => {
+    mocks.app.sessions = [{ id: 's1', project: { name: 'demo', units: [{ language: 'rust' }] } }] as never
+    await useCodeStudioLowResources.getState().activate()
+    expect(mocks.setRustLowResources).toHaveBeenCalledWith('s1', true)
+    await useCodeStudioLowResources.getState().deactivate()
+    expect(mocks.setRustLowResources).toHaveBeenCalledWith('s1', false)
   })
   it('persists only recovery flags, so restoration survives a module reload', async () => {
     await useCodeStudioLowResources.getState().activate()

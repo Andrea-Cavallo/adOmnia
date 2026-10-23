@@ -38,6 +38,7 @@ async function readPackageFiles(sessionId: string, directory: string, exclude: s
       if (open.buffer.length <= MAX_AI_FIX_FILE_CHARS) files.push({ relativePath: entry.relativePath, content: open.buffer, uri: open.document.uri, path: open.document.path, documentId: open.document.id })
       continue
     }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- bounded by MAX_AI_FIX_RELATED_FILES; stops early once enough files are collected
     const opened = await openGoIDEDocument(sessionId, entry.relativePath)
     void closeGoIDEDocument(sessionId, opened.document.id).catch(() => undefined)
     if (opened.content.length <= MAX_AI_FIX_FILE_CHARS) files.push({ relativePath: entry.relativePath, content: opened.content, uri: opened.document.uri, path: opened.document.path })
@@ -143,6 +144,7 @@ export async function resolveAllCodeStudioProblemsWithAI(targets: readonly AIFix
     notify(`Resolve all with AI: ${target.relativePath} (${index + 1}/${queue.length})…`)
     try {
       const [first, ...others] = target.problems
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one AI request at a time: progress is reported per file and the provider is rate limited
       const result = await proposeFix(target.relativePath, first, others)
       if (typeof result === 'string') skipped.push(`${target.relativePath}: ${result}`)
       else for (const file of result) if (!changes.has(file.relativePath)) changes.set(file.relativePath, file)

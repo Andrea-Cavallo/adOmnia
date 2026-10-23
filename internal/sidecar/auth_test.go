@@ -2,7 +2,7 @@ package sidecar
 
 import (
 	"adomnia/internal/oauth"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -68,7 +68,7 @@ func TestSecurityOriginAllowlist(t *testing.T) {
 		origin string
 		want   int // status when a valid token is supplied
 	}{
-		{"", http.StatusOK},                       // direct IPC, no Origin
+		{"", http.StatusOK},                        // direct IPC, no Origin
 		{"wails://wails", http.StatusOK},           // legacy Wails webview
 		{"http://wails.localhost", http.StatusOK},  // WebView2 / current Wails webview
 		{"https://wails.localhost", http.StatusOK}, // https variant

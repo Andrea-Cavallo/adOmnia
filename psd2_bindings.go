@@ -1,8 +1,9 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/psd2"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 
@@ -22,7 +23,7 @@ func (a *App) InspectPSD2Certificate(path, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, err := json.Marshal(info)
+	raw, err := jsonutil.Marshal(info)
 	if err != nil {
 		return "", fmt.Errorf("encode certificate details: %w", err)
 	}
@@ -38,7 +39,7 @@ func (a *App) BuildPSD2Headers(inputJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, err := json.Marshal(result)
+	raw, err := jsonutil.Marshal(result)
 	if err != nil {
 		return "", fmt.Errorf("encode PSD2 headers: %w", err)
 	}

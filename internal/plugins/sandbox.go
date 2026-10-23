@@ -6,7 +6,8 @@ package plugins
 import (
 	"adomnia/internal/storage"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -17,11 +18,12 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
 // HostFunction is a callable function that plugins can invoke from their sandbox.
-type HostFunction func(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
+type HostFunction func(ctx context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error)
 
 // PluginNotification is emitted by the permission-gated ui.notify host API.
 type PluginNotification struct {
@@ -344,7 +346,7 @@ var allowedEnvVars = map[string]bool{
 
 // hostHTTPFetch makes an HTTP request with restrictions:
 // max 10s timeout, max 1MB response, blocked private IPs.
-func hostHTTPFetch(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostHTTPFetch(ctx context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		URL     string            `json:"url"`
 		Method  string            `json:"method"`
@@ -408,7 +410,7 @@ func hostHTTPFetch(ctx context.Context, args json.RawMessage) (json.RawMessage, 
 		"body":    string(body),
 	}
 
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // checkPrivateIP blocks requests to private/loopback addresses.
@@ -447,7 +449,7 @@ func checkPrivateIP(rawURL string) error {
 }
 
 // hostStorageGet reads from plugin's own storage namespace in bbolt.
-func hostStorageGet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostStorageGet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		PluginID string `json:"pluginId"`
@@ -491,11 +493,11 @@ func hostStorageGet(_ context.Context, args json.RawMessage) (json.RawMessage, e
 		result["value"] = string(value)
 	}
 
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostStorageSet writes to plugin's own storage namespace in bbolt.
-func hostStorageSet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostStorageSet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		Value    string `json:"value"`
@@ -529,11 +531,11 @@ func hostStorageSet(_ context.Context, args json.RawMessage) (json.RawMessage, e
 	result := map[string]interface{}{
 		"ok": true,
 	}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostStorageDelete removes a key from plugin's own storage namespace.
-func hostStorageDelete(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostStorageDelete(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Key      string `json:"key"`
 		PluginID string `json:"pluginId"`
@@ -566,11 +568,11 @@ func hostStorageDelete(_ context.Context, args json.RawMessage) (json.RawMessage
 	result := map[string]interface{}{
 		"ok": true,
 	}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostLogInfo logs an info message with plugin prefix.
-func hostLogInfo(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostLogInfo(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Message  string `json:"message"`
 		PluginID string `json:"pluginId"`
@@ -583,11 +585,11 @@ func hostLogInfo(_ context.Context, args json.RawMessage) (json.RawMessage, erro
 	appendPluginLog(params.PluginID, "info", params.Message)
 
 	result := map[string]interface{}{"ok": true}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostLogError logs an error message with plugin prefix.
-func hostLogError(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostLogError(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Message  string `json:"message"`
 		PluginID string `json:"pluginId"`
@@ -600,11 +602,11 @@ func hostLogError(_ context.Context, args json.RawMessage) (json.RawMessage, err
 	appendPluginLog(params.PluginID, "error", params.Message)
 
 	result := map[string]interface{}{"ok": true}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostUINotify emits a desktop notification event for the frontend toast host.
-func hostUINotify(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostUINotify(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Title    string `json:"title"`
 		Message  string `json:"message"`
@@ -642,11 +644,11 @@ func hostUINotify(_ context.Context, args json.RawMessage) (json.RawMessage, err
 	log.Printf("[plugin:%s] NOTIFY [%s] %s: %s", params.PluginID, params.Type, params.Title, params.Message)
 
 	result := map[string]interface{}{"ok": true}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }
 
 // hostEnvGet reads an OS environment variable from the allowlist only.
-func hostEnvGet(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func hostEnvGet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, error) {
 	var params struct {
 		Name string `json:"name"`
 	}
@@ -669,5 +671,5 @@ func hostEnvGet(_ context.Context, args json.RawMessage) (json.RawMessage, error
 		"name":  upperName,
 		"value": value,
 	}
-	return json.Marshal(result)
+	return jsonutil.Marshal(result)
 }

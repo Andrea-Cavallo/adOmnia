@@ -1,0 +1,25 @@
+# gitleaks (job "Secret scanning" di quality.yml). Parte dalle regole predefinite e ignora solo
+# ciò che è dimostrabilmente finto: fixture dei test che esercitano i redattori di segreti e un
+# esempio di documentazione. Ogni voce dice perché; nessun percorso di produzione è escluso.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake keys used as fixtures by the secret redaction and scanner tests"
+paths = [
+  '''(^|/)internal/airedact/redact_test\.go$''',
+  '''(^|/)internal/ide/security/security_test\.go$''',
+  '''(^|/)frontend/src/lib/aiRedaction\.test\.ts$''',
+  '''(^|/)frontend/src/lib/loginspector/chainToFlow\.test\.ts$''',
+]
+
+[[allowlists]]
+description = "SonarQube first-run example in docs/QUALITY.md (default local admin login, no real credential)"
+paths = ['''(^|/)docs/QUALITY\.md$''']
+regexTarget = "line"
+regexes = ['''curl -u admin:''']
+
+[[allowlists]]
+description = "localStorage key name, not a credential"
+paths = ['''(^|/)frontend/src/components/scenarios/DailyScenariosPanel\.tsx$''']
+regexes = ['''STORAGE_KEY''']

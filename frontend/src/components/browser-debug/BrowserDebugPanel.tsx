@@ -170,32 +170,35 @@ interface TabPickerProps {
 
 function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
   const [launchUrl, setLaunchUrl]         = useState('https://')
-  const [scanning, setScanning]           = useState(false)
+  const [scanning, setScanning]           = useState(true)
   const [launching, setLaunching]         = useState(false)
   const [endpoints, setEndpoints]         = useState<DebugEndpoint[]>([])
   const [launchTargets, setLaunchTargets] = useState<DebugTarget[]>([])
   const [error, setError]                 = useState('')
 
-  const scan = useCallback(async () => {
-    setScanning(true)
-    setError('')
-    setLaunchTargets([])
-    try {
-      const result = await discoverEndpoints()
+  // The discovery itself: state is only set once the probe answers, so it is safe to start from an effect.
+  const discover = useCallback(() => discoverEndpoints()
+    .then((result) => {
       const safe = result ?? []
       setEndpoints(safe)
       if (safe.length === 0) {
         setError('No browser found with remote debugging enabled. Launch a new one below, or start Chrome/Edge with --remote-debugging-port=9222')
       }
-    } catch (err: unknown) {
+    })
+    .catch((err: unknown) => {
       setEndpoints([])
       setError(err instanceof Error ? err.message : 'Failed to scan browser debug endpoints')
-    } finally {
-      setScanning(false)
-    }
-  }, [])
+    })
+    .finally(() => setScanning(false)), [])
 
-  useEffect(() => { scan() }, [scan])
+  const scan = useCallback(async () => {
+    setScanning(true)
+    setError('')
+    setLaunchTargets([])
+    await discover()
+  }, [discover])
+
+  useEffect(() => { void discover() }, [discover])
 
   const handleLaunch = useCallback(async () => {
     setLaunching(true)

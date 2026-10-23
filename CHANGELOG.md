@@ -4,6 +4,18 @@ All notable changes to adOmnia are documented here.
 
 This project follows a pragmatic release log format inspired by Keep a Changelog. Versions are created from Git tags such as `v0.1.0`; GitHub Actions builds the Windows, Linux, and macOS artifacts automatically.
 
+## [Unreleased]
+
+- **Rust in Code Studio (in preparation, not announced yet).** Open a Cargo crate or workspace and Code Studio detects every package without running `cargo` or `build.rs`; each unit picks its toolchain (`rust-toolchain.toml`, a saved choice or the PATH) from a *Select Rust Toolchain* dialog with explicit *Install component / toolchain* actions.
+- **Run, build errors and stop.** Run a binary, example, bench, `build`, `check` or `clippy` with features, profile and target; a ▶ in the gutter sits on `fn main`. rustc errors land in the Problems panel and the console shows rustc's own text instead of cargo's JSON, with `file:line` links that resolve from the crate even in a workspace. Stopping a run ends cargo and the compiled binary.
+- **Editing.** rust-analyzer is installed on request (`rustup component add rust-analyzer`), runs one server per Cargo unit only for trusted projects and builds into its own target folder, so it never fights your `cargo run` for the build lock. `rustfmt` formats on save and completion opens after `::`.
+- **Tests.** `cargo test` fills the Test tree (crates, modules, integration tests, doctests, panic location); rerun one test, a module or only the failed ones with exact names, also in virtual workspaces; a ▶ appears on every `#[test]`.
+- **Debugging.** Debug a binary or example with CodeLLDB (pinned v1.12.3, SHA-256 verified, installed from *Rust → Install CodeLLDB…*) with the same build options as Run and a *Rust panics* breakpoint.
+- **A Rust service is a first-class service.** axum, actix and rocket routes, `utoipa` OpenAPI, sqlx/diesel/sea-orm and `.cargo/config.toml` `[env]` databases, tonic gRPC, WebSocket/SSE, Kafka/AMQP/NATS/Redis topics, environment variables and Cargo modules reach API Workspace, Mock, Database and Live Session; a running `cargo run` becomes a live session.
+- **Dependencies.** `Cargo.toml` is parsed with inline versions, the `Cargo.lock` tree shows duplicate versions offline, and crates.io advisories show up in the Security Center.
+- **Build diagnostics in the core.** Any language can now hand compiler output to the Problems panel (`CommandSpec.Diagnostics` / `ConsoleLine`); Rust is the first consumer.
+- **Fixes found along the way.** rust-analyzer's lower-case drive letters no longer drop diagnostics on Windows; `.cargo/config.toml` is read by the project scan; axum `.nest()` prefixes no longer leak onto routes written after them; Live Session no longer ignores Rust runs.
+
 ## [1.0.16] — 2026-10-22
 
 Release notes: [docs/releases/v1.0.16.md](docs/releases/v1.0.16.md).

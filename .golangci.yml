@@ -1,0 +1,58 @@
+# Lint Go di adOmnia — golangci-lint v2 (docs/QUALITY.md).
+#
+# Base: i linter "standard" (govet, errcheck, staticcheck, ineffassign, unused) più quelli che
+# trovano bug veri. Le regole di stile sui commenti (ST1000…) restano fuori: il codice è commentato
+# in italiano e inglese, non è un difetto. `misspell` NON va attivato: corregge l'italiano come se
+# fosse inglese sbagliato (es. "impossibile" → "impossible") e rovina commenti e messaggi.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar
+    - durationcheck
+    - gocyclo
+    - nakedret
+    - whitespace
+  settings:
+    gocyclo:
+      min-complexity: 40
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000"
+        - "-ST1003"
+        - "-ST1005"
+        - "-ST1016"
+        - "-ST1020"
+        - "-ST1021"
+        - "-ST1022"
+        - "-ST1023"
+  exclusions:
+    generated: lax
+    paths:
+      # Codice generato dal toolchain Wails e protobuf: non è scritto a mano.
+      - frontend/bindings/
+      - \.pb\.go$
+    rules:
+      # Le chiusure/rimozioni del cleanup restano volutamente non controllate: non sono bug
+      # (le chiamate il cui errore conta, come json.Unmarshal, restano segnalate).
+      # MarshalWrite è la scrittura JSON su ResponseWriter di json v2 (jsonutil.MarshalWrite): prende il posto di
+      # Encoder.Encode, già escluso qui; a risposta partita l'errore è solo il client che se n'è andato.
+      - linters: [errcheck]
+        text: 'Error return value of `[^`]*\.(Close|Disconnect|Wait|WriteMessage|Encode|MarshalWrite|CloseHandle)` is not checked'
+      - linters: [errcheck]
+        text: 'Error return value of `(os\.Remove(All)?|fmt\.Fprint(f|ln)?)` is not checked'
+      # Chiamate di sistema e scritture su stream/socket: l'errore si vede dal flusso che si
+      # interrompe, controllarle ogni volta è rumore.
+      - linters: [errcheck]
+        text: 'Error return value of `[^`]*\.(Call|Write)` is not checked'
+      # Nei test si ignorano errori di chiusura/flush per brevità.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+
+formatters:
+  enable:
+    - gofmt

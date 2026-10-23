@@ -1,7 +1,8 @@
 package eclipsepde
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"strings"
 	"testing"
 )
@@ -32,11 +33,11 @@ func TestBridgeRequestResponseRoundTrip(t *testing.T) {
 		}},
 		ToolVersions: map[string]string{"pde": "3.9.0"},
 	}
-	payload, err := json.Marshal(result)
+	payload, err := jsonutil.Marshal(result)
 	if err != nil {
 		t.Fatal(err)
 	}
-	responseLine, err := json.Marshal(BridgeResponse{ID: "req-1", Result: payload})
+	responseLine, err := jsonutil.Marshal(BridgeResponse{ID: "req-1", Result: payload})
 	if err != nil {
 		t.Fatal(err)
 	}

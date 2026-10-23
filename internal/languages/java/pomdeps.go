@@ -35,9 +35,9 @@ type PomDependency struct {
 	StartCol int `json:"startColumn"`
 	EndCol   int `json:"endColumn"`
 	// Posizione del testo della property che governa la versione: dove va scritto l'aggiornamento.
-	PropertyLine     int `json:"propertyLine,omitempty"`
-	PropertyStartCol int `json:"propertyStartColumn,omitempty"`
-	PropertyEndCol   int `json:"propertyEndColumn,omitempty"`
+	PropertyLine     int `json:"propertyLine,omitzero"`
+	PropertyStartCol int `json:"propertyStartColumn,omitzero"`
+	PropertyEndCol   int `json:"propertyEndColumn,omitzero"`
 }
 
 // Key è la coordinata `group:artifact`, quella che OSV e Maven Central usano.

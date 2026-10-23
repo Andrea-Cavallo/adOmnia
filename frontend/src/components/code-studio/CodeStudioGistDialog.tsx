@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { GitBranch } from 'lucide-react'
 import { createGoIDEGist } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'
@@ -10,7 +10,11 @@ export function CodeStudioGistDialog({ sessionId, relativePath, onClose }: { ses
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => { setDescription(''); setVisibility('secret'); setError(null); setUrl(null) }, [relativePath])
+  const [prevPath, setPrevPath] = useState(relativePath)
+  if (prevPath !== relativePath) {
+    setPrevPath(relativePath)
+    setDescription(''); setVisibility('secret'); setError(null); setUrl(null)
+  }
 
   const publish = async () => {
     if (!relativePath) return

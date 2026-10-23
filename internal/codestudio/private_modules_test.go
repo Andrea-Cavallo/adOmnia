@@ -12,9 +12,9 @@ import (
 
 func TestFirstProxyURL(t *testing.T) {
 	cases := map[string]string{
-		"":                                          "https://proxy.golang.org",
-		"off":                                       "",
-		"direct":                                    "",
+		"":       "https://proxy.golang.org",
+		"off":    "",
+		"direct": "",
 		"https://art.corp/api/go/virtual/,direct":   "https://art.corp/api/go/virtual",
 		"direct|http://nexus.local:8081/repository": "http://nexus.local:8081/repository",
 	}

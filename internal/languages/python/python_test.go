@@ -2,7 +2,6 @@ package python
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 func writeFile(t *testing.T, root, name, text string) string {
@@ -83,7 +83,7 @@ func TestRunValidationAndConfinement(t *testing.T) {
 		{"module", Options{Interpreter: "python", Module: "pkg"}, false},
 		{"unknown", Options{Interpreter: interpreter}, false},
 	} {
-		data, _ := json.Marshal(tc.options)
+		data, _ := jsonutil.Marshal(tc.options)
 		spec, err := New().CommandSpec(run.Request{Kind: tc.kind, Root: root, WorkingDirectory: root, LanguageOptions: data, ProgramArguments: []string{"hello world", "$(no shell)"}})
 		if (err == nil) != tc.valid {
 			t.Fatalf("%+v: %v", tc, err)
@@ -103,7 +103,7 @@ func TestRunStopEndsARealPythonProcess(t *testing.T) {
 	}
 	root := t.TempDir()
 	writeFile(t, root, "slow.py", "import time\nprint('started', flush=True)\ntime.sleep(60)\n")
-	data, _ := json.Marshal(Options{Interpreter: interpreter, Script: "slow.py"})
+	data, _ := jsonutil.Marshal(Options{Interpreter: interpreter, Script: "slow.py"})
 	spec, err := New().CommandSpec(run.Request{Kind: "script", Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +197,7 @@ func TestRunRealScriptAndModule(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "app.py", "import sys\nprint(sys.argv[1], end='')\n")
 	for _, kind := range []string{"script", "module"} {
-		data, _ := json.Marshal(Options{Interpreter: interpreter, Script: "app.py", Module: "app"})
+		data, _ := jsonutil.Marshal(Options{Interpreter: interpreter, Script: "app.py", Module: "app"})
 		spec, err := New().CommandSpec(run.Request{Kind: kind, Root: root, WorkingDirectory: root, LanguageOptions: data, ProgramArguments: []string{"hello space è"}})
 		if err != nil {
 			t.Fatal(err)

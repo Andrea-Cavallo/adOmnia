@@ -2,7 +2,8 @@ package collab
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"sort"
 	"strings"
@@ -111,7 +112,7 @@ func (m *Manager) Document(message DocumentMessage) error {
 	return nil
 }
 
-func (m *Manager) relayDocument(from string, payload json.RawMessage) string {
+func (m *Manager) relayDocument(from string, payload jsonv1.RawMessage) string {
 	var message DocumentMessage
 	if json.Unmarshal(payload, &message) != nil || !validDocumentID(message.ID) || len(message.Updates) != 0 {
 		return "messaggio documento non valido"

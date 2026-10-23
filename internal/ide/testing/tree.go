@@ -43,21 +43,21 @@ type TestResult struct {
 	Status        string        `json:"status"`
 	ElapsedMillis int64         `json:"elapsedMillis"`
 	Output        string        `json:"output,omitempty"`
-	Truncated     bool          `json:"truncated,omitempty"`
+	Truncated     bool          `json:"truncated,omitzero"`
 	Failure       *TestLocation `json:"failure,omitempty"`
 	Benchmark     string        `json:"benchmark,omitempty"`
 	// BenchmarkSamples tiene ogni riga di risultato con -count=N, per confronti e significatività.
 	BenchmarkSamples []string `json:"benchmarkSamples,omitempty"`
-	BuildFailed      bool     `json:"buildFailed,omitempty"`
+	BuildFailed      bool     `json:"buildFailed,omitzero"`
 	// Directory è la cartella del package relativa al progetto (solo sui nodi package).
 	Directory string `json:"directory,omitempty"`
 	// Runs e Failures contano gli esiti con -count=N; Min/MaxMillis danno la distribuzione delle durate.
-	Runs      int   `json:"runs,omitempty"`
-	Failures  int   `json:"failures,omitempty"`
-	MinMillis int64 `json:"minMillis,omitempty"`
-	MaxMillis int64 `json:"maxMillis,omitempty"`
+	Runs      int   `json:"runs,omitzero"`
+	Failures  int   `json:"failures,omitzero"`
+	MinMillis int64 `json:"minMillis,omitzero"`
+	MaxMillis int64 `json:"maxMillis,omitzero"`
 	// TotalMillis somma le durate di tutte le ripetizioni (media = TotalMillis/Runs).
-	TotalMillis int64 `json:"totalMillis,omitempty"`
+	TotalMillis int64 `json:"totalMillis,omitzero"`
 	// Outcomes è la sequenza degli esiti delle ripetizioni ("P" o "F"), nell'ordine di esecuzione:
 	// con -cpu le prime Repeat sono del primo valore, e così via.
 	Outcomes string `json:"outcomes,omitempty"`

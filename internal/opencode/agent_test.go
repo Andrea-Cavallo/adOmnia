@@ -2,12 +2,13 @@ package opencode
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/milk"
 )
 
@@ -33,7 +34,7 @@ func TestLocalSettings(t *testing.T) {
 
 func TestRuntimeConfigPinsBothModelsAndProvider(t *testing.T) {
 	config := runtimeConfig(DefaultEndpoint, "local:test")
-	raw, _ := json.Marshal(config)
+	raw, _ := jsonutil.Marshal(config)
 	if config["model"] != "adomnia-ollama/local:test" || config["small_model"] != config["model"] || !strings.Contains(string(raw), `"enabled_providers":["adomnia-ollama"]`) {
 		t.Fatalf("not restricted to local provider: %s", raw)
 	}
@@ -53,7 +54,7 @@ func TestOllamaModelsAndMetadata(t *testing.T) {
 			return
 		}
 		var body map[string]string
-		_ = json.NewDecoder(r.Body).Decode(&body)
+		_ = json.UnmarshalRead(r.Body, &body)
 		switch body["model"] {
 		case "local:test":
 			_, _ = w.Write([]byte(`{"capabilities":["completion","tools"]}`))

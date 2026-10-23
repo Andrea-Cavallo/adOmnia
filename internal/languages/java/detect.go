@@ -225,7 +225,7 @@ func gradleUsesSpringBoot(manifest string) bool {
 }
 
 func readLimited(path string) ([]byte, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) // #nosec G703 -- read-only, size-limited manifest inside the opened project
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +242,6 @@ func depth(root, path string) int {
 }
 
 func isFile(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only inside the opened project
 	return err == nil && !info.IsDir()
 }

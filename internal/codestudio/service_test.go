@@ -8,9 +8,11 @@ import (
 	"sync"
 	"testing"
 
+	"adomnia/internal/ide/language"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 	"adomnia/internal/languages/python"
+	"adomnia/internal/languages/rust"
 	"adomnia/internal/languages/web"
 )
 
@@ -126,14 +128,32 @@ func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
 	for _, language := range languages {
 		ids = append(ids, language.ID)
 	}
-	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID, java.ID, python.ID}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
+	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID, java.ID, python.ID, rust.ID}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
 		t.Fatalf("languages = %+v, want %v", languages, want)
 	}
 	if capabilities := languages[0].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.Documents {
 		t.Fatalf("Go capabilities = %+v", capabilities)
 	}
 	// Python porta Run, Test (pytest), Debug (debugpy) e language server (basedpyright).
-	if capabilities := languages[len(languages)-1].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.LanguageServer {
-		t.Fatalf("Python capabilities = %+v", capabilities)
+	pythonCaps := capabilitiesFor(t, languages, python.ID)
+	if !pythonCaps.Run || !pythonCaps.Tests || !pythonCaps.Debug || !pythonCaps.LanguageServer {
+		t.Fatalf("Python capabilities = %+v", pythonCaps)
 	}
+	// Rust in RS-2/3/4/5/6 rileva crate, documenti, esegue, ha rust-analyzer, test strutturati e debug
+	// (CodeLLDB): tutte le capability minime sono accese.
+	rustCaps := capabilitiesFor(t, languages, rust.ID)
+	if !rustCaps.ProjectDetection || !rustCaps.Documents || !rustCaps.Run || !rustCaps.LanguageServer || !rustCaps.Tests || !rustCaps.Debug {
+		t.Fatalf("Rust capabilities = %+v", rustCaps)
+	}
+}
+
+func capabilitiesFor(t *testing.T, languages []language.Info, id string) language.Capabilities {
+	t.Helper()
+	for _, info := range languages {
+		if info.ID == id {
+			return info.Capabilities
+		}
+	}
+	t.Fatalf("language %q not registered", id)
+	return language.Capabilities{}
 }

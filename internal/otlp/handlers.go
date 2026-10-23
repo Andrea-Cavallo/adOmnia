@@ -1,7 +1,8 @@
 package otlp
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -21,7 +22,7 @@ const (
 
 func writeJSON(w http.ResponseWriter, value any) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(value)
+	_ = jsonutil.MarshalWrite(w, value)
 }
 
 // RegisterHandlers exposes the receiver to the UI: status, start/stop (explicit user action),
@@ -37,7 +38,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			HTTPPort int `json:"httpPort"`
 			GRPCPort int `json:"grpcPort"`
 		}{DefaultHTTPPort, DefaultGRPCPort}
-		_ = json.NewDecoder(r.Body).Decode(&ports)
+		_ = json.UnmarshalRead(r.Body, &ports)
 		if err := receiver.Start(ports.HTTPPort, ports.GRPCPort); err != nil {
 			w.WriteHeader(http.StatusConflict)
 		}
@@ -67,7 +68,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 		var saved struct {
 			Spans []Span `json:"spans"`
 		}
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxImportBytes)).Decode(&saved); err != nil {
+		if err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, maxImportBytes), &saved); err != nil {
 			http.Error(w, "not a saved trace: "+err.Error(), http.StatusBadRequest)
 			return
 		}

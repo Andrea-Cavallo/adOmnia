@@ -1,8 +1,8 @@
 package database
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,7 +43,7 @@ func TestRedisConnectionOptions(t *testing.T) {
 
 func TestRedisWritesRequireConfirmationBeforeConnecting(t *testing.T) {
 	req := dbQueryRequest{Connection: dbConnectionRequest{Driver: "redis"}, Query: `{"command":"DEL","args":["key"]}`}
-	body, _ := json.Marshal(req)
+	body, _ := jsonutil.Marshal(req)
 	rec := httptest.NewRecorder()
 	databaseQueryHandler(rec, httptest.NewRequest(http.MethodPost, "/database/query", strings.NewReader(string(body))))
 	if rec.Code != http.StatusConflict {
@@ -88,7 +88,7 @@ func TestRedisLiveDatabase(t *testing.T) {
 	run(`{"command":"ZADD","args":["adomnia:test:zset","1","a"]}`, true, 20)
 	run(`{"command":"XADD","args":["adomnia:test:stream","*","name","event"]}`, true, 20)
 	for i, key := range keys {
-		body, _ := json.Marshal(redisQuery{Operation: "inspect", Key: key})
+		body, _ := jsonutil.Marshal(redisQuery{Operation: "inspect", Key: key})
 		out := run(string(body), false, 2)
 		want := []string{"string", "hash", "list", "set", "zset", "stream"}[i]
 		if out.Rows[0]["type"] != want {
@@ -106,7 +106,7 @@ func TestRedisLiveDatabase(t *testing.T) {
 	if missing.Rows[0]["value"] != nil {
 		t.Fatal(missing)
 	}
-	body, _ := json.Marshal(c)
+	body, _ := jsonutil.Marshal(c)
 	rec := httptest.NewRecorder()
 	databaseTestHandler(rec, httptest.NewRequest(http.MethodPost, "/database/test", strings.NewReader(string(body))))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ok":true`) {

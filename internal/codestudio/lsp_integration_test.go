@@ -124,77 +124,85 @@ func positionOf(t *testing.T, text, needle string, offsetInNeedle int) (int, int
 	return line, column
 }
 
-func TestLanguageServerEndToEndWithRealGopls(t *testing.T) {
-	gopls := findGoplsForTest(t)
-	root := copyFixture(t, "multipkg")
-	recorder := &eventRecorder{}
-	service := NewService(&memoryStore{}, recorder.record)
-	defer service.Shutdown()
-	session := startLanguageServerForTest(t, service, recorder, root, gopls)
-	sessionID := string(session.ID)
-	ctx := context.Background()
+// lspFixture raggruppa ciò che i passi del test end-to-end condividono.
+type lspFixture struct {
+	service  *Service
+	recorder *eventRecorder
+	root     string
+	session  string
+	main     string // id del documento main.go
+	original string // contenuto di main.go su disco
+	line     int    // posizione di greet.Hello( dentro main.go
+	column   int
+}
 
-	mainDocument, err := service.OpenDocument(sessionID, "main.go")
-	if err != nil {
+// expectBufferDiagnostics: il buffer non salvato genera diagnostica senza toccare il disco, e una
+// versione non crescente è ignorata.
+func expectBufferDiagnostics(t *testing.T, f lspFixture, mainDocument OpenDocument) {
+	t.Helper()
+	broken := strings.Replace(f.original, "func main() {", "func main() {\n\tvar unused int = \"text\"", 1)
+	if err := f.service.UpdateDocumentBuffer(f.session, f.main, 2, broken); err != nil {
 		t.Fatal(err)
 	}
-	mainID := string(mainDocument.Document.ID)
-	original := mainDocument.Content
-
-	// Il buffer non salvato genera diagnostica senza toccare il disco.
-	broken := strings.Replace(original, "func main() {", "func main() {\n\tvar unused int = \"text\"", 1)
-	if err := service.UpdateDocumentBuffer(sessionID, mainID, 2, broken); err != nil {
-		t.Fatal(err)
-	}
-	report := recorder.waitFor(t, 30*time.Second, func(event EventEnvelope) bool {
+	report := f.recorder.waitFor(t, 30*time.Second, func(event EventEnvelope) bool {
 		payload, ok := event.Payload.(DiagnosticsReport)
 		return ok && payload.RelativePath == "main.go" && len(payload.Diagnostics) > 0
 	}).Payload.(DiagnosticsReport)
 	if report.DocumentID != mainDocument.Document.ID || report.Diagnostics[0].Range.StartLine != 10 {
 		t.Fatalf("diagnostica inattesa: %+v", report)
 	}
-	if onDisk, _ := os.ReadFile(filepath.Join(root, "main.go")); string(onDisk) != original {
+	if onDisk, _ := os.ReadFile(filepath.Join(f.root, "main.go")); string(onDisk) != f.original {
 		t.Fatal("il buffer non salvato è finito su disco")
 	}
 	// Una versione non crescente è ignorata.
-	if err := service.UpdateDocumentBuffer(sessionID, mainID, 2, original); err != nil {
+	if err := f.service.UpdateDocumentBuffer(f.session, f.main, 2, f.original); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.UpdateDocumentBuffer(sessionID, mainID, 3, original); err != nil {
+	if err := f.service.UpdateDocumentBuffer(f.session, f.main, 3, f.original); err != nil {
 		t.Fatal(err)
 	}
+}
 
-	line, column := positionOf(t, original, "greet.Hello(", len("greet."))
-	completion, err := service.Completion(ctx, sessionID, mainID, line, column)
+// expectNavigation: completion, hover, definition, references, implementation e simboli.
+func expectNavigation(t *testing.T, f lspFixture) {
+	t.Helper()
+	ctx := context.Background()
+	completion, err := f.service.Completion(ctx, f.session, f.main, f.line, f.column)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if completion.Version != 3 || !hasCompletion(completion, "Hello") {
 		t.Fatalf("completion inattesa: versione %d, %d elementi", completion.Version, len(completion.Items))
 	}
-	hover, err := service.Hover(ctx, sessionID, mainID, line, column+1)
+	hover, err := f.service.Hover(ctx, f.session, f.main, f.line, f.column+1)
 	if err != nil || !strings.Contains(hover.Markdown, "Hello(name string) string") {
 		t.Fatalf("hover inatteso: %v %q", err, hover.Markdown)
 	}
-	definitions, err := service.Locations(ctx, sessionID, mainID, "definition", line, column+1)
+	definitions, err := f.service.Locations(ctx, f.session, f.main, "definition", f.line, f.column+1)
 	if err != nil || len(definitions) != 1 || definitions[0].RelativePath != "greet/greet.go" || !strings.Contains(definitions[0].Preview, "func Hello") {
 		t.Fatalf("definition inattesa: %v %+v", err, definitions)
 	}
-	references, err := service.Locations(ctx, sessionID, mainID, "references", line, column+1)
+	references, err := f.service.Locations(ctx, f.session, f.main, "references", f.line, f.column+1)
 	if err != nil || len(references) < 3 {
 		t.Fatalf("references inattese: %v %+v", err, references)
 	}
-	interfaceLine, interfaceColumn := positionOf(t, original, "greet.Greeter", len("greet.")+1)
-	implementations, err := service.Locations(ctx, sessionID, mainID, "implementation", interfaceLine, interfaceColumn)
+	interfaceLine, interfaceColumn := positionOf(t, f.original, "greet.Greeter", len("greet.")+1)
+	implementations, err := f.service.Locations(ctx, f.session, f.main, "implementation", interfaceLine, interfaceColumn)
 	if err != nil || len(implementations) == 0 || !strings.Contains(implementations[0].Preview, "English") {
 		t.Fatalf("implementation inattesa: %v %+v", err, implementations)
 	}
-	symbols, err := service.DocumentSymbols(ctx, sessionID, mainID)
+	symbols, err := f.service.DocumentSymbols(ctx, f.session, f.main)
 	if err != nil || len(symbols.Symbols) == 0 || symbols.Symbols[0].Name != "main" {
 		t.Fatalf("simboli inattesi: %v %+v", err, symbols)
 	}
+}
 
-	rename, err := service.Rename(ctx, sessionID, mainID, line, column+1, "Salute")
+// expectRenameAndFormat: il rename è solo un'anteprima (il disco non cambia) e il formatting
+// risponde per la versione del buffer.
+func expectRenameAndFormat(t *testing.T, f lspFixture) {
+	t.Helper()
+	ctx := context.Background()
+	rename, err := f.service.Rename(ctx, f.session, f.main, f.line, f.column+1, "Salute")
 	if err != nil || len(rename.Files) != 2 {
 		t.Fatalf("rename inatteso: %v %+v", err, rename)
 	}
@@ -203,49 +211,85 @@ func TestLanguageServerEndToEndWithRealGopls(t *testing.T) {
 			t.Fatalf("contenuto rinominato inatteso in %s", file.RelativePath)
 		}
 	}
-	if onDisk, _ := os.ReadFile(filepath.Join(root, "greet", "greet.go")); !strings.Contains(string(onDisk), "func Hello") {
+	if onDisk, _ := os.ReadFile(filepath.Join(f.root, "greet", "greet.go")); !strings.Contains(string(onDisk), "func Hello") {
 		t.Fatal("il rename in anteprima ha modificato il disco")
 	}
 
-	unformatted := strings.Replace(original, "\tvar g", "var    g", 1)
-	if err := service.UpdateDocumentBuffer(sessionID, mainID, 4, unformatted); err != nil {
+	unformatted := strings.Replace(f.original, "\tvar g", "var    g", 1)
+	if err := f.service.UpdateDocumentBuffer(f.session, f.main, 4, unformatted); err != nil {
 		t.Fatal(err)
 	}
-	formatted, err := service.FormatDocument(ctx, sessionID, mainID)
+	formatted, err := f.service.FormatDocument(ctx, f.session, f.main)
 	if err != nil || formatted.Version != 4 || len(formatted.Edits) == 0 {
 		t.Fatalf("formatting inatteso: %v %+v", err, formatted)
 	}
+}
 
-	// Crash controllato: gopls viene riavviato e i documenti riaperti senza riavviare l'app.
-	status, _ := service.LanguageServerStatus(sessionID)
+// expectCrashRecovery: crash controllato, gopls viene riavviato e i documenti riaperti senza
+// riavviare l'app. Restituisce il PID del processo ucciso.
+func expectCrashRecovery(t *testing.T, f lspFixture) int {
+	t.Helper()
+	status, _ := f.service.LanguageServerStatus(f.session)
 	process, err := os.FindProcess(status.PID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = process.Kill()
-	recorder.waitFor(t, 30*time.Second, func(event EventEnvelope) bool {
+	f.recorder.waitFor(t, 30*time.Second, func(event EventEnvelope) bool {
 		payload, ok := event.Payload.(LanguageServerStatus)
 		return ok && payload.State == LanguageServerReady && payload.Restarts == 1
 	})
-	if _, err := service.Hover(ctx, sessionID, mainID, line, column+1); err != nil {
+	if _, err := f.service.Hover(context.Background(), f.session, f.main, f.line, f.column+1); err != nil {
 		t.Fatalf("gopls non operativo dopo il riavvio: %v", err)
 	}
+	return status.PID
+}
 
-	if err := service.StopLanguageServer(sessionID); err != nil {
+// expectCleanStop: lo stop porta il server a Stopped senza lasciare processi orfani.
+func expectCleanStop(t *testing.T, f lspFixture, killedPID int) {
+	t.Helper()
+	if err := f.service.StopLanguageServer(f.session); err != nil {
 		t.Fatal(err)
 	}
-	if final, _ := service.LanguageServerStatus(sessionID); final.State != LanguageServerStopped || final.PID != 0 {
+	if final, _ := f.service.LanguageServerStatus(f.session); final.State != LanguageServerStopped || final.PID != 0 {
 		history := []string{}
-		for _, event := range recorder.all() {
+		for _, event := range f.recorder.all() {
 			if status, ok := event.Payload.(LanguageServerStatus); ok {
 				history = append(history, fmt.Sprintf("%s pid=%d restarts=%d %s", status.State, status.PID, status.Restarts, status.Error))
 			}
 		}
 		t.Fatalf("gopls non arrestato: %+v\nstorico:\n%s", final, strings.Join(history, "\n"))
 	}
-	if processAlive(status.PID) {
+	if processAlive(killedPID) {
 		t.Fatal("processo gopls orfano dopo lo stop")
 	}
+}
+
+func TestLanguageServerEndToEndWithRealGopls(t *testing.T) {
+	gopls := findGoplsForTest(t)
+	root := copyFixture(t, "multipkg")
+	recorder := &eventRecorder{}
+	service := NewService(&memoryStore{}, recorder.record)
+	defer service.Shutdown()
+	session := startLanguageServerForTest(t, service, recorder, root, gopls)
+	sessionID := string(session.ID)
+
+	mainDocument, err := service.OpenDocument(sessionID, "main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := mainDocument.Content
+	line, column := positionOf(t, original, "greet.Hello(", len("greet."))
+	f := lspFixture{
+		service: service, recorder: recorder, root: root, session: sessionID,
+		main: string(mainDocument.Document.ID), original: original, line: line, column: column,
+	}
+
+	expectBufferDiagnostics(t, f, mainDocument)
+	expectNavigation(t, f)
+	expectRenameAndFormat(t, f)
+	killedPID := expectCrashRecovery(t, f)
+	expectCleanStop(t, f, killedPID)
 }
 
 func TestLanguageServerSessionsStayIsolated(t *testing.T) {

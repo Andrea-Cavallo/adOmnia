@@ -1,14 +1,13 @@
 package python
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
+
+	"adomnia/internal/ide/toolmanifest"
 )
 
 // Artefatti verificati dell'installazione gestita (PY-8.3).
@@ -23,11 +22,21 @@ import (
 //
 // I file installati non vengono riletti a ogni avvio: pip scrive le SHA-256 dei file in RECORD
 // dentro il dist-info, ed è quello il riferimento per l'integrità del contenuto.
+//
+// Il formato del manifest e la scrittura/comparazione sono il contratto generico
+// (internal/ide/toolmanifest, estratto da qui quando CodeLLDB è diventato il secondo consumer,
+// RS-9.4): qui restano solo il formato del report di pip e la verifica del dist-info installato.
 const (
 	// installReportFile è il report di pip (`pip install --report`) nella cartella strumenti.
-	installReportFile = "install-report.json"
+	installReportFile = toolmanifest.ReportFile
 	// toolManifestFile è l'impronta salvata da adOmnia alla prima verifica riuscita.
-	toolManifestFile = "adomnia-tool.json"
+	toolManifestFile = toolmanifest.ManifestFile
+)
+
+// toolArtifact e toolManifest sono il formato generico condiviso (internal/ide/toolmanifest).
+type (
+	toolArtifact = toolmanifest.Artifact
+	toolManifest = toolmanifest.Manifest
 )
 
 // pipInstallReport è la parte di report di pip che serve: `install` è l'elenco degli artefatti
@@ -49,22 +58,6 @@ type pipInstallReport struct {
 	} `json:"install"`
 }
 
-// toolArtifact è un artefatto scaricato, con l'hash calcolato da pip sul file ricevuto.
-type toolArtifact struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	URL     string `json:"url"`
-	SHA256  string `json:"sha256"`
-}
-
-// toolManifest lega la cartella strumenti installata al report che l'ha prodotta.
-type toolManifest struct {
-	Tool         string         `json:"tool"`
-	Version      string         `json:"version"`
-	Artifacts    []toolArtifact `json:"artifacts"`
-	ReportSHA256 string         `json:"reportSHA256"`
-}
-
 // verifyManagedTool controlla che il server gestito sia quello installato e verificato: report di pip
 // leggibile e completo, versione installata uguale a quella pinnata, manifest uguale al report.
 // Restituisce un errore che dice cosa fare (reinstallare), mai un "non disponibile" generico.
@@ -81,7 +74,7 @@ func verifyManagedTool(directory string) error {
 	if err := verifyInstalledVersion(directory); err != nil {
 		return err
 	}
-	return ensureToolManifest(filepath.Join(directory, toolManifestFile), report, artifacts)
+	return toolmanifest.Ensure(filepath.Join(directory, toolManifestFile), pyrightName, pyrightVersion, artifacts, report)
 }
 
 // parsePipInstallReport estrae gli artefatti dal report di pip: ognuno deve dichiarare nome,
@@ -104,7 +97,7 @@ func parsePipInstallReport(report []byte) ([]toolArtifact, error) {
 			return nil, fmt.Errorf("an artifact in the pip install report has no name or version")
 		}
 		hash := artifactHash(entry.Download.ArchiveInfo.Hashes, entry.Download.ArchiveInfo.Hash)
-		if !isSHA256(hash) {
+		if !toolmanifest.IsSHA256(hash) {
 			return nil, fmt.Errorf("artifact %s %s has no valid SHA-256 in the pip install report", name, version)
 		}
 		if strings.EqualFold(name, pyrightName) {
@@ -132,15 +125,6 @@ func artifactHash(hashes map[string]string, legacy string) string {
 		return value
 	}
 	return ""
-}
-
-// isSHA256 dice se value è un digest SHA-256 esadecimale.
-func isSHA256(value string) bool {
-	if len(value) != sha256.Size*2 {
-		return false
-	}
-	_, err := hex.DecodeString(value)
-	return err == nil
 }
 
 // verifyInstalledVersion legge la versione dal dist-info installato: il report dice cosa è stato
@@ -171,34 +155,4 @@ func verifyInstalledVersion(directory string) error {
 		}
 	}
 	return fmt.Errorf("the installed %s has no version metadata: reinstall it from the editor notice", pyrightName)
-}
-
-// ensureToolManifest scrive il manifest alla prima verifica riuscita e poi lo confronta con il report
-// corrente: un report, un artefatto o una versione diversi richiedono una nuova installazione.
-func ensureToolManifest(path string, report []byte, artifacts []toolArtifact) error {
-	expected := toolManifest{Tool: pyrightName, Version: pyrightVersion, Artifacts: artifacts, ReportSHA256: digest(report)}
-	if existing, err := os.ReadFile(path); err == nil {
-		var parsed toolManifest
-		if err := json.Unmarshal(existing, &parsed); err != nil {
-			return fmt.Errorf("the %s manifest is unreadable (%v): reinstall it from the editor notice", pyrightName, err)
-		}
-		if !reflect.DeepEqual(parsed, expected) {
-			return fmt.Errorf("the installed %s does not match its verified manifest: the tools folder changed, reinstall it from the editor notice", pyrightName)
-		}
-		return nil
-	}
-	encoded, err := json.MarshalIndent(expected, "", "  ")
-	if err != nil {
-		return fmt.Errorf("could not record the %s manifest: %w", pyrightName, err)
-	}
-	if err := os.WriteFile(path, append(encoded, '\n'), 0o644); err != nil {
-		return fmt.Errorf("could not record the %s manifest: %w", pyrightName, err)
-	}
-	return nil
-}
-
-// digest è la SHA-256 esadecimale di data.
-func digest(data []byte) string {
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
 }

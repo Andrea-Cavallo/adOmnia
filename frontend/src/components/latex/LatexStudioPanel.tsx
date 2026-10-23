@@ -281,14 +281,21 @@ export function LatexStudioPanel() {
     setStatus(`${file.name} imported`)
   }
 
-  useEffect(() => {
-    const routed = consumeFileImport('latex')
-    if (routed?.kind !== 'latex') return
+  // A .tex file routed here (drop, open-with) replaces the document; the queue entry is consumed once applied.
+  const routed = pendingFileImport?.kind === 'latex' ? pendingFileImport : null
+  const [appliedImport, setAppliedImport] = useState<typeof routed>(null)
+  if (routed && routed !== appliedImport) {
+    setAppliedImport(routed)
     setTemplateId('blank-article')
     setSource(routed.text)
-    saveState('blank-article', routed.text)
     setStatus(`${routed.name} imported`)
-  }, [consumeFileImport, pendingFileImport])
+  }
+  const routedText = routed?.text
+  useEffect(() => {
+    if (routedText === undefined) return
+    safeSetItem(STORAGE_KEY, JSON.stringify({ templateId: 'blank-article', source: routedText }))
+    consumeFileImport('latex')
+  }, [routedText, consumeFileImport])
 
   const exportName = activeTemplate.filename || `${slugName(activeTemplate.name)}.tex`
   const previewContent = activeTemplate.kind === 'resume' ? <ResumePreview source={source} /> : <PlainPreview source={source} />

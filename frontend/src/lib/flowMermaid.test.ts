@@ -39,7 +39,7 @@ flowchart TD
       'Show Error / Stop Flow',
     ])
     expect(graph.nodes.find((node) => node.label === 'User is active?')?.type).toBe('condition')
-    expect(graph.edges.filter((edge) => edge.source === graph.nodes[2].id).map((edge) => edge.branch).sort()).toEqual(['false', 'true'])
+    expect(graph.edges.filter((edge) => edge.source === graph.nodes[2].id).map((edge) => edge.branch).sort((a, b) => a.localeCompare(b))).toEqual(['false', 'true'])
     expect(graph.nodes.find((node) => node.label === 'Login API')?.config.request?.method).toBe('POST')
   })
 

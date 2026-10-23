@@ -77,10 +77,15 @@ export function GitGraphActions(props: GitGraphActionsProps) {
   const [fileDiff, setFileDiff] = useState<{ title: string; left: string; right: string; leftLabel: string; rightLabel: string } | null>(null)
 
   // Load metadata for the right-clicked commit so the menu reflects real state.
-  useEffect(() => {
-    if (!commitMenu || selectedHashes.length > 1) { setMeta(null); return }
-    let cancelled = false
+  const metaTarget = selectedHashes.length > 1 ? null : commitMenu
+  const [metaMenu, setMetaMenu] = useState(metaTarget)
+  if (metaMenu !== metaTarget) {
+    setMetaMenu(metaTarget)
     setMeta(null)
+  }
+  useEffect(() => {
+    if (!commitMenu || selectedHashes.length > 1) return
+    let cancelled = false
     const ref = commitMenu.commit.fullHash || commitMenu.commit.hash
     Promise.all([svc.getCommitMeta(repoPath, ref), svc.getRepoState(repoPath)])
       .then(([m, s]) => { if (!cancelled) { setMeta(m); setRepoState(s) } })

@@ -1,7 +1,8 @@
 package run
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"slices"
 	"sort"
@@ -230,7 +231,7 @@ func (m *Manager) Snapshot() []Configuration {
 }
 
 func cloneConfiguration(config Configuration) Configuration {
-	data, _ := json.Marshal(config)
+	data, _ := jsonutil.Marshal(config)
 	var cloned Configuration
 	_ = json.Unmarshal(data, &cloned)
 	return cloned
@@ -303,7 +304,7 @@ func (m *Manager) Import(sessionID SessionID, config Configuration) bool {
 	return true
 }
 func sameSharedContent(left, right Configuration) bool {
-	a, _ := json.Marshal(redactConfiguration(left))
-	b, _ := json.Marshal(redactConfiguration(right))
+	a, _ := jsonutil.Marshal(redactConfiguration(left))
+	b, _ := jsonutil.Marshal(redactConfiguration(right))
 	return string(a) == string(b)
 }

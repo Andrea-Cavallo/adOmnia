@@ -31,7 +31,7 @@ type TraceFrame struct {
 	Function string `json:"function"`
 	File     string `json:"file,omitempty"`
 	Relative string `json:"relative,omitempty"`
-	Line     int    `json:"line,omitempty"`
+	Line     int    `json:"line,omitzero"`
 }
 
 // TraceSpan è un intervallo in cui una risorsa è in uno stato (running, runnable, waiting, syscall).
@@ -70,7 +70,7 @@ type TraceRange struct {
 	Name      string       `json:"name"`
 	Start     int64        `json:"start"`
 	End       int64        `json:"end"`
-	Goroutine int64        `json:"goroutine,omitempty"`
+	Goroutine int64        `json:"goroutine,omitzero"`
 	Stack     []TraceFrame `json:"stack,omitempty"`
 }
 
@@ -79,7 +79,7 @@ type TraceEvent struct {
 	Time      int64        `json:"time"`
 	Category  string       `json:"category"`
 	Label     string       `json:"label"`
-	Goroutine int64        `json:"goroutine,omitempty"`
+	Goroutine int64        `json:"goroutine,omitzero"`
 	Stack     []TraceFrame `json:"stack,omitempty"`
 }
 
@@ -107,7 +107,7 @@ type TraceReport struct {
 	GC            []TraceRange     `json:"gc"`
 	Events        []TraceEvent     `json:"events"`
 	Stats         TraceStats       `json:"stats"`
-	Truncated     bool             `json:"truncated,omitempty"`
+	Truncated     bool             `json:"truncated,omitzero"`
 }
 
 // ListTraceFiles cerca i file di esecuzione trace (`trace.out`, `trace-*.out`, `*.trace`) dentro il progetto.
@@ -133,7 +133,7 @@ func (s *Service) ListTraceFiles(sessionID string) ([]ProfileFile, error) {
 			return nil
 		}
 		base := strings.ToLower(entry.Name())
-		if base != "trace.out" && !(strings.HasPrefix(base, "trace-") && strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
+		if base != "trace.out" && (!strings.HasPrefix(base, "trace-") || !strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
 			return nil
 		}
 		info, err := entry.Info()
@@ -213,38 +213,242 @@ type traceOpenRange struct {
 	stack     []TraceFrame
 }
 
+// traceBuilder accumulates the per-goroutine / per-proc state while the trace events are consumed.
+type traceBuilder struct {
+	root           string
+	report         TraceReport
+	goroutines     map[int64]*TraceGoroutine
+	goroutineState map[int64]*traceGoroutineState
+	procs          map[int64]*TraceProc
+	procState      map[int64]*traceGoroutineState
+	openRanges     []traceOpenRange
+	first, last    int64
+	haveTime       bool
+}
+
+func (b *traceBuilder) mark(t int64) {
+	if !b.haveTime {
+		b.first, b.last, b.haveTime = t, t, true
+		return
+	}
+	if t < b.first {
+		b.first = t
+	}
+	if t > b.last {
+		b.last = t
+	}
+}
+
+func (b *traceBuilder) addEvent(event TraceEvent) {
+	b.report.Events = appendTraceEvent(b.report.Events, event)
+}
+
+// onGoroutineTransition handles a goroutine state change at time t.
+func (b *traceBuilder) onGoroutineTransition(t int64, event trace.Event, transition trace.StateTransition) {
+	id := int64(transition.Resource.Goroutine())
+	from, to := transition.Goroutine()
+	if to == trace.GoUndetermined {
+		return
+	}
+	state := goroutineStateName(to)
+	if state == "" {
+		if to == trace.GoNotExist {
+			b.onGoroutineDestroyed(id, t)
+		}
+		return
+	}
+	goroutine, ok := b.goroutines[id]
+	if !ok {
+		goroutine = &TraceGoroutine{ID: id, Start: t, Alive: true}
+		b.goroutines[id] = goroutine
+	}
+	if from == trace.GoUndetermined || (from == trace.GoNotExist && to == trace.GoRunnable) {
+		goroutine.Start = t
+		if len(goroutine.StartStack) == 0 {
+			goroutine.StartStack = traceFrames(transition.Stack, b.root)
+		}
+	}
+	if current := b.goroutineState[id]; current != nil {
+		appendGoroutineSpan(goroutine, current, t)
+	}
+	next := &traceGoroutineState{state: state, reason: transition.Reason, start: t}
+	if state == "waiting" || state == "syscall" {
+		next.stack = traceFrames(event.Stack(), b.root)
+	}
+	b.goroutineState[id] = next
+}
+
+func (b *traceBuilder) onGoroutineDestroyed(id, t int64) {
+	goroutine, ok := b.goroutines[id]
+	if !ok {
+		return
+	}
+	if current := b.goroutineState[id]; current != nil {
+		appendGoroutineSpan(goroutine, current, t)
+		b.goroutineState[id] = nil
+	}
+	goroutine.End = t
+}
+
+func (b *traceBuilder) onProcTransition(t int64, transition trace.StateTransition) {
+	id := int64(transition.Resource.Proc())
+	_, to := transition.Proc()
+	proc, ok := b.procs[id]
+	if !ok {
+		proc = &TraceProc{ID: id}
+		b.procs[id] = proc
+	}
+	if to == trace.ProcRunning {
+		if b.procState[id] == nil {
+			b.procState[id] = &traceGoroutineState{state: "running", start: t}
+		}
+	} else if current := b.procState[id]; current != nil {
+		appendProcSpan(proc, current, t)
+		b.procState[id] = nil
+	}
+}
+
+func (b *traceBuilder) onRangeEnd(t int64, name string) {
+	for i := len(b.openRanges) - 1; i >= 0; i-- {
+		if b.openRanges[i].name != name {
+			continue
+		}
+		opened := b.openRanges[i]
+		b.openRanges = append(b.openRanges[:i], b.openRanges[i+1:]...)
+		if opened.kind == "gc" || opened.kind == "stw" {
+			b.report.GC = append(b.report.GC, TraceRange{Kind: opened.kind, Name: opened.name, Start: opened.start, End: t, Goroutine: opened.goroutine, Stack: opened.stack})
+		} else {
+			b.addEvent(TraceEvent{Time: t, Category: "region", Label: opened.name, Goroutine: opened.goroutine, Stack: opened.stack})
+		}
+		return
+	}
+}
+
+// onEvent dispatches one trace event.
+func (b *traceBuilder) onEvent(event trace.Event) {
+	t := int64(event.Time())
+	b.mark(t)
+	switch event.Kind() {
+	case trace.EventStateTransition:
+		transition := event.StateTransition()
+		switch transition.Resource.Kind {
+		case trace.ResourceGoroutine:
+			b.onGoroutineTransition(t, event, transition)
+		case trace.ResourceProc:
+			b.onProcTransition(t, transition)
+		}
+	case trace.EventRangeBegin:
+		r := event.Range()
+		b.openRanges = append(b.openRanges, traceOpenRange{
+			name: r.Name, kind: traceRangeKind(r.Name), start: t, goroutine: int64(event.Goroutine()), stack: traceFrames(event.Stack(), b.root),
+		})
+	case trace.EventRangeActive:
+		r := event.Range()
+		b.addEvent(TraceEvent{Time: t, Category: "region", Label: r.Name + " (active)", Goroutine: int64(event.Goroutine()), Stack: traceFrames(event.Stack(), b.root)})
+	case trace.EventRangeEnd:
+		b.onRangeEnd(t, event.Range().Name)
+	case trace.EventLog:
+		log := event.Log()
+		label := strings.TrimSpace(strings.Trim(strings.Join([]string{log.Category, log.Message}, ": "), ": "))
+		b.addEvent(TraceEvent{Time: t, Category: "log", Label: label, Goroutine: int64(event.Goroutine()), Stack: traceFrames(event.Stack(), b.root)})
+	case trace.EventTaskBegin:
+		task := event.Task()
+		b.addEvent(TraceEvent{Time: t, Category: "task", Label: task.Type, Goroutine: int64(event.Goroutine())})
+	}
+}
+
+// closeOpenState ends the spans and ranges still open at the end of the trace.
+func (b *traceBuilder) closeOpenState() {
+	last := b.last
+	for _, goroutine := range b.goroutines {
+		if current := b.goroutineState[goroutine.ID]; current != nil {
+			appendGoroutineSpan(goroutine, current, last)
+		}
+		if goroutine.Alive && goroutine.End == 0 {
+			goroutine.End = last
+		}
+	}
+	for _, proc := range b.procs {
+		if current := b.procState[proc.ID]; current != nil {
+			appendProcSpan(proc, current, last)
+		}
+	}
+	for _, opened := range b.openRanges {
+		if opened.kind == "gc" || opened.kind == "stw" {
+			b.report.GC = append(b.report.GC, TraceRange{Kind: opened.kind, Name: opened.name, Start: opened.start, End: last, Goroutine: opened.goroutine, Stack: opened.stack})
+		}
+	}
+	// Statistiche: le goroutine chiuse al termine non sono "alive".
+	for _, goroutine := range b.goroutines {
+		if goroutine.End != last || b.goroutineState[goroutine.ID] != nil {
+			goroutine.Alive = b.goroutineState[goroutine.ID] != nil
+		} else {
+			goroutine.Alive = false
+		}
+	}
+}
+
+// addWaitStats attributes the duration of a waiting span to its wait category.
+func addWaitStats(stats *TraceStats, span TraceSpan) {
+	if span.State != "waiting" {
+		return
+	}
+	duration := span.End - span.Start
+	if isNetworkReason(span.Reason) {
+		stats.NetworkWait += duration
+	}
+	if isSyncReason(span.Reason) {
+		stats.SyncWait += duration
+	}
+	if isGCReason(span.Reason) {
+		stats.GCWait += duration
+	}
+}
+
+func (b *traceBuilder) finish() TraceReport {
+	report := &b.report
+	report.DurationNanos = b.last - b.first
+	b.closeOpenState()
+	report.Goroutines = summarizeGoroutines(b.goroutines)
+	report.Procs = summarizeProcs(b.procs)
+	sort.SliceStable(report.GC, func(i, j int) bool { return report.GC[i].Start < report.GC[j].Start })
+	sort.SliceStable(report.Events, func(i, j int) bool { return report.Events[i].Time < report.Events[j].Time })
+	report.Stats.Goroutines = len(b.goroutines)
+	report.Stats.Events = len(report.Events)
+	for _, goroutine := range report.Goroutines {
+		report.Stats.Running += goroutine.Running
+		report.Stats.Runnable += goroutine.Runnable
+		report.Stats.Waiting += goroutine.Waiting
+		report.Stats.Syscall += goroutine.Syscall
+		for _, span := range goroutine.Spans {
+			addWaitStats(&report.Stats, span)
+		}
+	}
+	for _, span := range report.GC {
+		if span.Kind == "gc" {
+			report.Stats.GC += span.End - span.Start
+		}
+	}
+	return *report
+}
+
 // buildTraceReport consuma gli eventi della traccia e costruisce le timeline.
 func buildTraceReport(root, path string, reader *trace.Reader) (TraceReport, error) {
-	report := TraceReport{
-		Path:       path,
-		Name:       filepath.Base(path),
-		Goroutines: []TraceGoroutine{},
-		Procs:      []TraceProc{},
-		GC:         []TraceRange{},
-		Events:     []TraceEvent{},
+	b := &traceBuilder{
+		root: root,
+		report: TraceReport{
+			Path:       path,
+			Name:       filepath.Base(path),
+			Goroutines: []TraceGoroutine{},
+			Procs:      []TraceProc{},
+			GC:         []TraceRange{},
+			Events:     []TraceEvent{},
+		},
+		goroutines:     map[int64]*TraceGoroutine{},
+		goroutineState: map[int64]*traceGoroutineState{},
+		procs:          map[int64]*TraceProc{},
+		procState:      map[int64]*traceGoroutineState{},
 	}
-	goroutines := map[int64]*TraceGoroutine{}
-	goroutineState := map[int64]*traceGoroutineState{}
-	destroyed := map[int64]bool{}
-	procs := map[int64]*TraceProc{}
-	procState := map[int64]*traceGoroutineState{}
-	var openRanges []traceOpenRange
-
-	var first, last int64
-	var haveTime bool
-	mark := func(t int64) {
-		if !haveTime {
-			first, last, haveTime = t, t, true
-			return
-		}
-		if t < first {
-			first = t
-		}
-		if t > last {
-			last = t
-		}
-	}
-
 	for {
 		event, err := reader.ReadEvent()
 		if err == io.EOF {
@@ -253,169 +457,9 @@ func buildTraceReport(root, path string, reader *trace.Reader) (TraceReport, err
 		if err != nil {
 			return TraceReport{}, fmt.Errorf("reading the trace failed: %w", err)
 		}
-		t := int64(event.Time())
-		mark(t)
-
-		switch event.Kind() {
-		case trace.EventStateTransition:
-			transition := event.StateTransition()
-			switch transition.Resource.Kind {
-			case trace.ResourceGoroutine:
-				id := int64(transition.Resource.Goroutine())
-				from, to := transition.Goroutine()
-				if to == trace.GoUndetermined {
-					continue
-				}
-				state := goroutineStateName(to)
-				if state == "" {
-					if to == trace.GoNotExist {
-						if goroutine, ok := goroutines[id]; ok {
-							if current := goroutineState[id]; current != nil {
-								appendGoroutineSpan(goroutine, current, t)
-								goroutineState[id] = nil
-							}
-							goroutine.End = t
-						}
-						destroyed[id] = true
-					}
-					continue
-				}
-				goroutine, ok := goroutines[id]
-				if !ok {
-					goroutine = &TraceGoroutine{ID: id, Start: t, Alive: true}
-					goroutines[id] = goroutine
-				}
-				if from == trace.GoUndetermined || (from == trace.GoNotExist && to == trace.GoRunnable) {
-					goroutine.Start = t
-					if len(goroutine.StartStack) == 0 {
-						goroutine.StartStack = traceFrames(transition.Stack, root)
-					}
-				}
-				if current := goroutineState[id]; current != nil {
-					appendGoroutineSpan(goroutine, current, t)
-				}
-				next := &traceGoroutineState{state: state, reason: transition.Reason, start: t}
-				if state == "waiting" || state == "syscall" {
-					next.stack = traceFrames(event.Stack(), root)
-				}
-				goroutineState[id] = next
-
-			case trace.ResourceProc:
-				id := int64(transition.Resource.Proc())
-				_, to := transition.Proc()
-				proc, ok := procs[id]
-				if !ok {
-					proc = &TraceProc{ID: id}
-					procs[id] = proc
-				}
-				if to == trace.ProcRunning {
-					if procState[id] == nil {
-						procState[id] = &traceGoroutineState{state: "running", start: t}
-					}
-				} else if current := procState[id]; current != nil {
-					appendProcSpan(proc, current, t)
-					procState[id] = nil
-				}
-			}
-
-		case trace.EventRangeBegin:
-			r := event.Range()
-			openRanges = append(openRanges, traceOpenRange{
-				name: r.Name, kind: traceRangeKind(r.Name), start: t, goroutine: int64(event.Goroutine()), stack: traceFrames(event.Stack(), root),
-			})
-
-		case trace.EventRangeActive:
-			r := event.Range()
-			report.Events = appendTraceEvent(report.Events, TraceEvent{Time: t, Category: "region", Label: r.Name + " (active)", Goroutine: int64(event.Goroutine()), Stack: traceFrames(event.Stack(), root)})
-
-		case trace.EventRangeEnd:
-			r := event.Range()
-			for i := len(openRanges) - 1; i >= 0; i-- {
-				if openRanges[i].name != r.Name {
-					continue
-				}
-				opened := openRanges[i]
-				openRanges = append(openRanges[:i], openRanges[i+1:]...)
-				if opened.kind == "gc" || opened.kind == "stw" {
-					report.GC = append(report.GC, TraceRange{Kind: opened.kind, Name: opened.name, Start: opened.start, End: t, Goroutine: opened.goroutine, Stack: opened.stack})
-				} else {
-					report.Events = appendTraceEvent(report.Events, TraceEvent{Time: t, Category: "region", Label: opened.name, Goroutine: opened.goroutine, Stack: opened.stack})
-				}
-				break
-			}
-
-		case trace.EventLog:
-			log := event.Log()
-			label := strings.TrimSpace(strings.Trim(strings.Join([]string{log.Category, log.Message}, ": "), ": "))
-			report.Events = appendTraceEvent(report.Events, TraceEvent{Time: t, Category: "log", Label: label, Goroutine: int64(event.Goroutine()), Stack: traceFrames(event.Stack(), root)})
-
-		case trace.EventTaskBegin:
-			task := event.Task()
-			report.Events = appendTraceEvent(report.Events, TraceEvent{Time: t, Category: "task", Label: task.Type, Goroutine: int64(event.Goroutine())})
-		}
+		b.onEvent(event)
 	}
-
-	report.DurationNanos = last - first
-	for _, goroutine := range goroutines {
-		if current := goroutineState[goroutine.ID]; current != nil {
-			appendGoroutineSpan(goroutine, current, last)
-		}
-		if goroutine.Alive && goroutine.End == 0 {
-			goroutine.End = last
-		}
-	}
-	for _, proc := range procs {
-		if current := procState[proc.ID]; current != nil {
-			appendProcSpan(proc, current, last)
-		}
-	}
-	for _, opened := range openRanges {
-		if opened.kind == "gc" || opened.kind == "stw" {
-			report.GC = append(report.GC, TraceRange{Kind: opened.kind, Name: opened.name, Start: opened.start, End: last, Goroutine: opened.goroutine, Stack: opened.stack})
-		}
-	}
-
-	// Statistiche: le goroutine chiuse al termine non sono "alive".
-	for _, goroutine := range goroutines {
-		if goroutine.End != last || goroutineState[goroutine.ID] != nil {
-			goroutine.Alive = goroutineState[goroutine.ID] != nil
-		} else {
-			goroutine.Alive = false
-		}
-	}
-
-	report.Goroutines = summarizeGoroutines(goroutines)
-	report.Procs = summarizeProcs(procs)
-	sort.SliceStable(report.GC, func(i, j int) bool { return report.GC[i].Start < report.GC[j].Start })
-	sort.SliceStable(report.Events, func(i, j int) bool { return report.Events[i].Time < report.Events[j].Time })
-	report.Stats.Goroutines = len(goroutines)
-	report.Stats.Events = len(report.Events)
-	for _, goroutine := range report.Goroutines {
-		report.Stats.Running += goroutine.Running
-		report.Stats.Runnable += goroutine.Runnable
-		report.Stats.Waiting += goroutine.Waiting
-		report.Stats.Syscall += goroutine.Syscall
-		for _, span := range goroutine.Spans {
-			duration := span.End - span.Start
-			if span.State == "waiting" {
-				if isNetworkReason(span.Reason) {
-					report.Stats.NetworkWait += duration
-				}
-				if isSyncReason(span.Reason) {
-					report.Stats.SyncWait += duration
-				}
-				if isGCReason(span.Reason) {
-					report.Stats.GCWait += duration
-				}
-			}
-		}
-	}
-	for _, span := range report.GC {
-		if span.Kind == "gc" {
-			report.Stats.GC += span.End - span.Start
-		}
-	}
-	return report, nil
+	return b.finish(), nil
 }
 
 func goroutineStateName(state trace.GoState) string {

@@ -28,6 +28,8 @@ const (
 	// al secondo invece di uno per lettura di pipe. Senza, migliaia di eventi `run.output` saturano il
 	// webview e l'intera UI (albero progetto, stop) smette di rispondere.
 	outputFlushInterval = 50 * time.Millisecond
+	// maxOutputBytesPerFlush limita un evento `run.output` (≈1,3 MB/s per flusso): oltre, si scarta.
+	maxOutputBytesPerFlush = 64 * 1024
 	// processWaitDelay limita quanto Wait attende la chiusura di stdout/stderr
 	// dopo l'uscita del processo: un nipote rimasto vivo che eredita le pipe non
 	// deve lasciare l'esecuzione appesa in "running" per sempre.
@@ -47,6 +49,13 @@ type CommandSpec struct {
 	DisplayCommand   string
 	// OutputTap riceve l'output grezzo prima della pubblicazione (es. il parser di go test -json).
 	OutputTap func(stream string, data []byte)
+	// Diagnostics riceve una riga di output e restituisce il diagnostico che descrive (se c'è):
+	// il core raccoglie i diagnostici dell'esecuzione e li pubblica sul pannello Problems (RS-3.3).
+	Diagnostics func(line string) (Diagnostic, bool)
+	// ConsoleLine riscrive una riga dell'output prima della pubblicazione: se handled è true la riga
+	// è sostituita da text (vuoto = la riga sparisce), altrimenti passa intatta. Serve a chi chiede al
+	// compilatore un output strutturato (cargo JSON) ma vuole mostrare il testo leggibile (RS-3.3).
+	ConsoleLine func(line string) (text string, handled bool)
 	// QuietStdout non pubblica stdout come run.output: lo consuma soltanto OutputTap.
 	QuietStdout bool
 	// OnExit viene chiamata una volta a processo terminato, prima dell'evento run.finished.
@@ -69,11 +78,18 @@ type managedProcess struct {
 	stopping  atomic.Bool
 	exited    atomic.Bool
 	truncated atomic.Bool
+	flooded   atomic.Bool
 	done      chan struct{}
 	tap       func(string, []byte)
 	quiet     bool
 	onExit    func(Execution)
 	onStop    func()
+	// diagnostics trasforma una riga di output in un diagnostico di build (RS-3.3);
+	// collected raccoglie quelli trovati, protetto da collectedMu (due writer, due goroutine).
+	diagnostics func(line string) (Diagnostic, bool)
+	console     func(line string) (string, bool)
+	collectedMu sync.Mutex
+	collected   []Diagnostic
 }
 
 type ProcessManager struct {
@@ -126,7 +142,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		ID: RunID(newID("run")), SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
 		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
 	}
-	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop}
+	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop, diagnostics: spec.Diagnostics, console: spec.ConsoleLine}
 	command := procutil.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment
@@ -337,6 +353,13 @@ func (m *ProcessManager) wait(process *managedProcess, stdout, stderr *outputWri
 		execution.Status = "failed"
 		execution.Error = err.Error()
 	}
+	// I diagnostici di build raccolti dall'output (RS-3.3) accompagnano l'esecuzione finita.
+	process.collectedMu.Lock()
+	if process.diagnostics != nil {
+		// Non-nil anche se vuoto: il host distingue "build pulita" (azzera Problems) da "nessun parser".
+		execution.Diagnostics = append([]Diagnostic{}, process.collected...)
+	}
+	process.collectedMu.Unlock()
 	m.mu.Lock()
 	delete(m.processes, execution.ID)
 	m.history[execution.ID] = execution
@@ -362,17 +385,28 @@ type outputWriter struct {
 	execution Execution
 	stream    string
 	carry     []byte
-	mu        sync.Mutex
-	pending   []byte
-	timer     *time.Timer
+	diagCarry []byte
+	// consoleCarry trattiene una riga JSON incompleta (inizia con `{`) finché non arriva il newline.
+	consoleCarry []byte
+	mu           sync.Mutex
+	pending      []byte
+	dropped      bool
+	timer        *time.Timer
 }
 
 func (w *outputWriter) Write(p []byte) (int, error) {
 	if w.process.tap != nil {
 		w.process.tap(w.stream, p)
 	}
+	if w.process.diagnostics != nil {
+		w.feedDiagnostics(p)
+	}
 	if w.process.quiet && w.stream == "stdout" {
 		return len(p), nil
+	}
+	consumed := len(p)
+	if w.process.console != nil {
+		p = w.rewriteConsole(p)
 	}
 	data := p
 	if len(w.carry) > 0 {
@@ -384,7 +418,74 @@ func (w *outputWriter) Write(p []byte) (int, error) {
 		w.carry = bytes.Clone(data[cut:])
 	}
 	w.enqueue(data[:cut])
-	return len(p), nil
+	return consumed, nil
+}
+
+// rewriteConsole applica ConsoleLine alle righe complete. Una riga incompleta che non inizia con `{`
+// passa subito (un prompt senza newline non deve restare appeso); una che inizia con `{` è un
+// messaggio JSON e aspetta la fine riga.
+func (w *outputWriter) rewriteConsole(chunk []byte) []byte {
+	data := append(w.consoleCarry, chunk...)
+	w.consoleCarry = nil
+	var out []byte
+	for {
+		index := bytes.IndexByte(data, '\n')
+		if index < 0 {
+			if len(data) > 0 && data[0] == '{' {
+				w.consoleCarry = bytes.Clone(data)
+			} else {
+				out = append(out, data...)
+			}
+			return out
+		}
+		line := data[:index+1]
+		data = data[index+1:]
+		text, handled := w.process.console(string(bytes.TrimRight(line, "\r\n")))
+		switch {
+		case !handled:
+			out = append(out, line...)
+		case text != "":
+			out = append(out, text...)
+			if !strings.HasSuffix(text, "\n") {
+				out = append(out, '\n')
+			}
+		}
+	}
+}
+
+// feedDiagnostics spezza l'output in righe e invia ciascuna al parser di diagnostici
+// dell'adapter (RS-3.3). Le righe incomplete restano in diagCarry.
+func (w *outputWriter) feedDiagnostics(chunk []byte) {
+	data := append(w.diagCarry, chunk...)
+	for {
+		index := bytes.IndexByte(data, '\n')
+		if index < 0 {
+			w.diagCarry = data
+			return
+		}
+		line := data[:index]
+		data = data[index+1:]
+		if diagnostic, ok := w.process.diagnostics(string(line)); ok {
+			w.process.collectedMu.Lock()
+			w.process.collected = append(w.process.collected, diagnostic)
+			w.process.collectedMu.Unlock()
+		}
+	}
+}
+
+// flushDiagnostics processa l'ultima riga senza newline, se c'è.
+func (w *outputWriter) flushDiagnostics() {
+	if w.process.diagnostics == nil || len(w.diagCarry) == 0 {
+		w.diagCarry = nil
+		return
+	}
+	line := w.diagCarry
+	w.diagCarry = nil
+	if diagnostic, ok := w.process.diagnostics(string(line)); ok {
+		w.process.collectedMu.Lock()
+		w.process.collected = append(w.process.collected, diagnostic)
+		w.process.collectedMu.Unlock()
+	}
 }
 
 // enqueue accumula i byte e li pubblica come un solo evento ogni outputFlushInterval.
@@ -393,7 +494,19 @@ func (w *outputWriter) enqueue(data []byte) {
 		return
 	}
 	w.mu.Lock()
+	// Un `loop { println!() }` produce centinaia di MB/s: anche coalescito, un solo evento da
+	// megabyte satura il webview e il tasto Stop smette di rispondere. Come il cycle buffer delle
+	// console JetBrains, oltre il tetto per finestra si tiene la CODA (l'output più recente) e si
+	// scarta il vecchio, con un avviso una tantum: il processo resta fermabile.
 	w.pending = append(w.pending, data...)
+	if excess := len(w.pending) - maxOutputBytesPerFlush; excess > 0 {
+		tail := w.pending[excess:]
+		for len(tail) > 0 && !utf8.RuneStart(tail[0]) {
+			tail = tail[1:]
+		}
+		w.pending = append(w.pending[:0], tail...)
+		w.dropped = true
+	}
 	if w.timer == nil {
 		w.timer = time.AfterFunc(outputFlushInterval, w.flushPending)
 	}
@@ -406,12 +519,36 @@ func (w *outputWriter) flushPending() {
 	data := w.pending
 	w.pending = nil
 	w.timer = nil
+	dropped := w.dropped
+	w.dropped = false
 	w.mu.Unlock()
+	if dropped && w.process.flooded.CompareAndSwap(false, true) {
+		data = append(data, "\n[adOmnia] Output troppo veloce: si mostra solo il più recente, il resto viene scartato.\n"...)
+	}
 	w.publish(data)
 }
 
 // flush pubblica il residuo alla fine del processo: l'ultimo output precede sempre run.finished.
 func (w *outputWriter) flush() {
+	w.flushDiagnostics()
+	if len(w.consoleCarry) > 0 {
+		// La riga JSON senza newline finale passa dalla stessa riscrittura delle righe complete:
+		// grezza finirebbe in console come JSON di cargo.
+		carry := w.consoleCarry
+		w.consoleCarry = nil
+		text := string(carry)
+		if w.process.console != nil {
+			if rewritten, handled := w.process.console(strings.TrimRight(text, "\r\n")); handled {
+				text = rewritten
+				if text != "" && !strings.HasSuffix(text, "\n") {
+					text += "\n"
+				}
+			}
+		}
+		w.mu.Lock()
+		w.pending = append(w.pending, text...)
+		w.mu.Unlock()
+	}
 	w.mu.Lock()
 	if w.timer != nil {
 		w.timer.Stop()

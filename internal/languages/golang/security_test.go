@@ -96,7 +96,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"os"
 	"os/exec"

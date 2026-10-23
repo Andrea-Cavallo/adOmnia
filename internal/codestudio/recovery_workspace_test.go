@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"fmt"
 	"strings"
 	"testing"
@@ -74,7 +74,7 @@ func TestRecoveryMigratesLegacyStoreIntoWorkspaces(t *testing.T) {
 	if err := legacyManager.Remember("s", "main.go", "package main // dirty", ""); err != nil {
 		t.Fatal(err)
 	}
-	legacy, _ := json.Marshal(recoveryState{Version: RecoverySchemaVersion, Buffers: legacyManager.List("s")})
+	legacy, _ := jsonutil.Marshal(recoveryState{Version: RecoverySchemaVersion, Buffers: legacyManager.List("s")})
 
 	store := &workspaceMemoryStore{legacy: legacy, workspaces: map[string][]byte{}}
 	manager := NewRecoveryManager(store)

@@ -1,6 +1,9 @@
 package lsp
 
-import "encoding/json"
+import (
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
+)
 
 // Position usa coordinate zero-based con colonne in unità di codice UTF-16, come da LSP.
 type Position struct {
@@ -59,7 +62,7 @@ type TextDocumentEdit struct {
 // WorkspaceEdit accetta sia la forma `changes` sia `documentChanges` (solo edit testuali).
 type WorkspaceEdit struct {
 	Changes         map[string][]TextEdit `json:"changes,omitempty"`
-	DocumentChanges []json.RawMessage     `json:"documentChanges,omitempty"`
+	DocumentChanges []jsonv1.RawMessage   `json:"documentChanges,omitempty"`
 }
 
 // Normalize unisce `changes` e `documentChanges` in una mappa URI → edit e restituisce i file da creare.
@@ -99,11 +102,11 @@ func (w WorkspaceEdit) Normalize() (map[string][]TextEdit, []string, bool) {
 }
 
 type Diagnostic struct {
-	Range    Range           `json:"range"`
-	Severity int             `json:"severity,omitempty"`
-	Code     json.RawMessage `json:"code,omitempty"`
-	Source   string          `json:"source,omitempty"`
-	Message  string          `json:"message"`
+	Range    Range             `json:"range"`
+	Severity int               `json:"severity,omitzero"`
+	Code     jsonv1.RawMessage `json:"code,omitempty"`
+	Source   string            `json:"source,omitempty"`
+	Message  string            `json:"message"`
 }
 
 type PublishDiagnosticsParams struct {
@@ -123,25 +126,25 @@ type Hover struct {
 }
 
 type Command struct {
-	Title     string            `json:"title"`
-	Command   string            `json:"command"`
-	Arguments []json.RawMessage `json:"arguments,omitempty"`
+	Title     string              `json:"title"`
+	Command   string              `json:"command"`
+	Arguments []jsonv1.RawMessage `json:"arguments,omitempty"`
 }
 
 type CompletionItem struct {
-	Label               string          `json:"label"`
-	Kind                int             `json:"kind,omitempty"`
-	Detail              string          `json:"detail,omitempty"`
-	Documentation       json.RawMessage `json:"documentation,omitempty"`
-	SortText            string          `json:"sortText,omitempty"`
-	FilterText          string          `json:"filterText,omitempty"`
-	InsertText          string          `json:"insertText,omitempty"`
-	InsertTextFormat    int             `json:"insertTextFormat,omitempty"`
-	TextEdit            *TextEdit       `json:"textEdit,omitempty"`
-	AdditionalTextEdits []TextEdit      `json:"additionalTextEdits,omitempty"`
-	Preselect           bool            `json:"preselect,omitempty"`
-	Deprecated          bool            `json:"deprecated,omitempty"`
-	Tags                []int           `json:"tags,omitempty"`
+	Label               string            `json:"label"`
+	Kind                int               `json:"kind,omitzero"`
+	Detail              string            `json:"detail,omitempty"`
+	Documentation       jsonv1.RawMessage `json:"documentation,omitempty"`
+	SortText            string            `json:"sortText,omitempty"`
+	FilterText          string            `json:"filterText,omitempty"`
+	InsertText          string            `json:"insertText,omitempty"`
+	InsertTextFormat    int               `json:"insertTextFormat,omitzero"`
+	TextEdit            *TextEdit         `json:"textEdit,omitempty"`
+	AdditionalTextEdits []TextEdit        `json:"additionalTextEdits,omitempty"`
+	Preselect           bool              `json:"preselect,omitzero"`
+	Deprecated          bool              `json:"deprecated,omitzero"`
+	Tags                []int             `json:"tags,omitempty"`
 }
 
 type CompletionList struct {
@@ -150,13 +153,13 @@ type CompletionList struct {
 }
 
 type ParameterInformation struct {
-	Label         json.RawMessage `json:"label"`
-	Documentation json.RawMessage `json:"documentation,omitempty"`
+	Label         jsonv1.RawMessage `json:"label"`
+	Documentation jsonv1.RawMessage `json:"documentation,omitempty"`
 }
 
 type SignatureInformation struct {
 	Label           string                 `json:"label"`
-	Documentation   json.RawMessage        `json:"documentation,omitempty"`
+	Documentation   jsonv1.RawMessage      `json:"documentation,omitempty"`
 	Parameters      []ParameterInformation `json:"parameters,omitempty"`
 	ActiveParameter *int                   `json:"activeParameter,omitempty"`
 }
@@ -187,11 +190,11 @@ type CodeAction struct {
 	Title       string                   `json:"title"`
 	Kind        string                   `json:"kind,omitempty"`
 	Diagnostics []Diagnostic             `json:"diagnostics,omitempty"`
-	IsPreferred bool                     `json:"isPreferred,omitempty"`
+	IsPreferred bool                     `json:"isPreferred,omitzero"`
 	Disabled    *struct{ Reason string } `json:"disabled,omitempty"`
 	Edit        *WorkspaceEdit           `json:"edit,omitempty"`
 	Command     *Command                 `json:"command,omitempty"`
-	Data        json.RawMessage          `json:"data,omitempty"`
+	Data        jsonv1.RawMessage        `json:"data,omitempty"`
 }
 
 type PrepareRenameResult struct {

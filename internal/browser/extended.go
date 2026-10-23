@@ -2,7 +2,8 @@ package browser
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"sort"
@@ -50,9 +51,9 @@ func (b *BrowserDebug) EvalJS(expression string) (ConsoleEntry, error) {
 
 	var resp struct {
 		Result struct {
-			Type        string          `json:"type"`
-			Value       json.RawMessage `json:"value"`
-			Description string          `json:"description"`
+			Type        string            `json:"type"`
+			Value       jsonv1.RawMessage `json:"value"`
+			Description string            `json:"description"`
 		} `json:"result"`
 		ExceptionDetails *struct {
 			Text      string `json:"text"`
@@ -1016,7 +1017,7 @@ func (b *BrowserDebug) GetDocument(depth int) (*DOMNode, error) {
 	}
 
 	var resp struct {
-		Root json.RawMessage `json:"root"`
+		Root jsonv1.RawMessage `json:"root"`
 	}
 	if err := json.Unmarshal(result, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse document response: %w", err)
@@ -1102,7 +1103,7 @@ func (b *BrowserDebug) QuerySelector(selector string) (*DOMNode, error) {
 	}
 
 	var descResp struct {
-		Node json.RawMessage `json:"node"`
+		Node jsonv1.RawMessage `json:"node"`
 	}
 	if err := json.Unmarshal(descResult, &descResp); err != nil {
 		return &DOMNode{NodeID: resp.NodeID}, nil
@@ -1414,7 +1415,7 @@ func (b *BrowserDebug) GetIndexedDBDatabases() ([]string, error) {
 
 	var resp struct {
 		Result struct {
-			Value json.RawMessage `json:"value"`
+			Value jsonv1.RawMessage `json:"value"`
 		} `json:"result"`
 		ExceptionDetails *struct {
 			Text string `json:"text"`
@@ -1457,7 +1458,7 @@ func (b *BrowserDebug) getWebStorage(storageType string) ([]StorageItem, error) 
 
 	var resp struct {
 		Result struct {
-			Value json.RawMessage `json:"value"`
+			Value jsonv1.RawMessage `json:"value"`
 		} `json:"result"`
 		ExceptionDetails *struct {
 			Text string `json:"text"`
@@ -1606,7 +1607,7 @@ func intFromMap(m map[string]interface{}, key string) int {
 		return int(v)
 	case int:
 		return v
-	case json.Number:
+	case jsonv1.Number:
 		n, _ := v.Int64()
 		return int(n)
 	default:
@@ -1615,20 +1616,20 @@ func intFromMap(m map[string]interface{}, key string) int {
 }
 
 // parseDOMNode recursively parses a CDP DOM node JSON into a DOMNode struct.
-func parseDOMNode(raw json.RawMessage) (*DOMNode, error) {
+func parseDOMNode(raw jsonv1.RawMessage) (*DOMNode, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("nil node data")
 	}
 
 	var nodeMap struct {
-		NodeID     int               `json:"nodeId"`
-		NodeType   int               `json:"nodeType"`
-		NodeName   string            `json:"nodeName"`
-		LocalName  string            `json:"localName"`
-		NodeValue  string            `json:"nodeValue"`
-		Attributes []string          `json:"attributes"`
-		ChildCount int               `json:"childNodeCount"`
-		Children   []json.RawMessage `json:"children"`
+		NodeID     int                 `json:"nodeId"`
+		NodeType   int                 `json:"nodeType"`
+		NodeName   string              `json:"nodeName"`
+		LocalName  string              `json:"localName"`
+		NodeValue  string              `json:"nodeValue"`
+		Attributes []string            `json:"attributes"`
+		ChildCount int                 `json:"childNodeCount"`
+		Children   []jsonv1.RawMessage `json:"children"`
 	}
 	if err := json.Unmarshal(raw, &nodeMap); err != nil {
 		return nil, err

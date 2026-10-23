@@ -1,7 +1,9 @@
 package eclipsepde
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 
@@ -30,16 +32,16 @@ const (
 
 // BridgeRequest is one request line written to the bridge stdin.
 type BridgeRequest struct {
-	ID     string          `json:"id"`
-	Method BridgeMethod    `json:"method"`
-	Params json.RawMessage `json:"params,omitempty"`
+	ID     string            `json:"id"`
+	Method BridgeMethod      `json:"method"`
+	Params jsonv1.RawMessage `json:"params,omitempty"`
 }
 
 // BridgeResponse is one response line read from the bridge stdout.
 type BridgeResponse struct {
 	ID string `json:"id"`
 	// Result carries the method payload on success.
-	Result json.RawMessage `json:"result,omitempty"`
+	Result jsonv1.RawMessage `json:"result,omitempty"`
 	// Error is a human-readable failure; non-empty means the call failed.
 	Error string `json:"error,omitempty"`
 }
@@ -110,15 +112,15 @@ type PingResult struct {
 // EncodeBridgeRequest marshals a request as one protocol line (without the
 // trailing newline, which the transport adds).
 func EncodeBridgeRequest(id string, method BridgeMethod, params any) ([]byte, error) {
-	var raw json.RawMessage
+	var raw jsonv1.RawMessage
 	if params != nil {
-		encoded, err := json.Marshal(params)
+		encoded, err := jsonutil.Marshal(params)
 		if err != nil {
 			return nil, err
 		}
 		raw = encoded
 	}
-	return json.Marshal(BridgeRequest{ID: id, Method: method, Params: raw})
+	return jsonutil.Marshal(BridgeRequest{ID: id, Method: method, Params: raw})
 }
 
 // DecodeBridgeResponse parses one protocol line and returns the correlated

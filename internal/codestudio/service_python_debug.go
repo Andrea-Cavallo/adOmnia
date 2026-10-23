@@ -1,10 +1,10 @@
 package codestudio
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"adomnia/internal/ide/dap"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/python"
 )
 
@@ -14,20 +14,20 @@ import (
 type PythonDebugRequest struct {
 	SessionID SessionID `json:"sessionId"`
 	// Kind è "script", "module" o "pytest".
-	Kind             string   `json:"kind"`
-	Script           string   `json:"script,omitempty"`
-	Module           string   `json:"module,omitempty"`
-	App              string   `json:"app,omitempty"`
-	Host             string   `json:"host,omitempty"`
-	Port             int      `json:"port,omitempty"`
-	Reload           bool     `json:"reload,omitempty"`
-	Targets          []string `json:"targets,omitempty"`
-	Run              string   `json:"run,omitempty"`
-	WorkingDirectory string   `json:"workingDirectory,omitempty"`
-	ProgramArguments []string `json:"programArguments,omitempty"`
+	Kind             string            `json:"kind"`
+	Script           string            `json:"script,omitempty"`
+	Module           string            `json:"module,omitempty"`
+	App              string            `json:"app,omitempty"`
+	Host             string            `json:"host,omitempty"`
+	Port             int               `json:"port,omitzero"`
+	Reload           bool              `json:"reload,omitzero"`
+	Targets          []string          `json:"targets,omitempty"`
+	Run              string            `json:"run,omitempty"`
+	WorkingDirectory string            `json:"workingDirectory,omitempty"`
+	ProgramArguments []string          `json:"programArguments,omitempty"`
 	Environment      map[string]string `json:"environment,omitempty"`
-	Interpreter      string   `json:"interpreter,omitempty"`
-	JustMyCode       *bool    `json:"justMyCode,omitempty"`
+	Interpreter      string            `json:"interpreter,omitempty"`
+	JustMyCode       *bool             `json:"justMyCode,omitempty"`
 }
 
 // StartPythonDebug avvia il debug Python per un progetto autorizzato, su azione esplicita:
@@ -48,7 +48,7 @@ func (s *Service) StartPythonDebug(request PythonDebugRequest) (DebugSessionInfo
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	options, err := json.Marshal(python.DebugOptions{
+	options, err := jsonutil.Marshal(python.DebugOptions{
 		Interpreter: request.Interpreter, Kind: request.Kind,
 		Script: request.Script, Module: request.Module,
 		App: request.App, Host: request.Host, Port: request.Port, Reload: request.Reload,

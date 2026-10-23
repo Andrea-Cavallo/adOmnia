@@ -2,7 +2,8 @@ package adomniacli
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -111,7 +113,7 @@ func TestRunLoadsDotEnvWithExpectedPrecedence(t *testing.T) {
 		t.Fatalf("decode request: %v", err)
 	}
 	request["headers"] = []map[string]any{{"id": "source", "key": "X-Source", "value": "{{source}}", "enabled": true}}
-	data, _ = json.MarshalIndent(request, "", "  ")
+	data, _ = jsonutil.Marshal(request, jsontext.WithIndent("  "))
 	if err := os.WriteFile(requestPath, append(data, '\n'), 0644); err != nil {
 		t.Fatalf("write request: %v", err)
 	}
@@ -204,7 +206,7 @@ func exportInheritedCollection(t *testing.T, baseURL string) string {
 			"id": "assert-status", "enabled": true, "target": "statusCode", "operator": "eq", "expected": "200",
 		}},
 	}
-	rawJSON, err := json.Marshal(raw)
+	rawJSON, err := jsonutil.Marshal(raw)
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
@@ -282,7 +284,7 @@ func exportTestCollection(t *testing.T, baseURL string, expectedStatus string) s
 			"id": "assert-status", "enabled": true, "target": "statusCode", "operator": "eq", "expected": expectedStatus,
 		}},
 	}
-	rawJSON, err := json.Marshal(raw)
+	rawJSON, err := jsonutil.Marshal(raw)
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
@@ -332,11 +334,11 @@ func exportFolderFilterCollection(t *testing.T, baseURL string) string {
 		"activeBodyIdx": 0,
 		"auth":          map[string]any{"type": "none"},
 	}
-	adminJSON, err := json.Marshal(adminRaw)
+	adminJSON, err := jsonutil.Marshal(adminRaw)
 	if err != nil {
 		t.Fatalf("marshal admin request: %v", err)
 	}
-	publicJSON, err := json.Marshal(publicRaw)
+	publicJSON, err := jsonutil.Marshal(publicRaw)
 	if err != nil {
 		t.Fatalf("marshal public request: %v", err)
 	}

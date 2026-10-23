@@ -216,7 +216,7 @@ export function CodeStudioImpactPanel({ session }: { session: GoIDESession }) {
       )}
       {summary && (
         <footer className="shrink-0 border-t border-border-1 px-3 py-1 text-[10.5px] text-text-4">
-          Workspace graph · {Object.entries(summary.stats ?? {}).sort().map(([kind, count]) => `${count} ${kind}`).join(' · ')} · {summary.edges} relations · {summary.cached ? 'from cache' : 'rebuilt'} {new Date(summary.builtAt).toLocaleTimeString()}
+          Workspace graph · {Object.entries(summary.stats ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([kind, count]) => `${count} ${kind}`).join(' · ')} · {summary.edges} relations · {summary.cached ? 'from cache' : 'rebuilt'} {new Date(summary.builtAt).toLocaleTimeString()}
           {summary.truncated && ' · truncated (very large project)'}
           {!!summary.problems?.length && ` · ${summary.problems.length} load problem${summary.problems.length === 1 ? '' : 's'}`}
         </footer>

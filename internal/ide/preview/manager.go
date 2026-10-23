@@ -57,7 +57,7 @@ type Preview struct {
 	State     State  `json:"state"`
 	// URL è l'indirizzo base della pagina; vuoto finché il server non è stato rilevato.
 	URL  string `json:"url,omitempty"`
-	Port int    `json:"port,omitempty"`
+	Port int    `json:"port,omitzero"`
 	// Root è la cartella servita (statico) o in cui gira il dev server.
 	Root string `json:"root"`
 	// DirectURL è l'indirizzo del server vero (dev server o sito statico): lo usano il browser esterno e
@@ -79,7 +79,7 @@ type Preview struct {
 	Hints     []string  `json:"hints,omitempty"`
 	StartedAt time.Time `json:"startedAt"`
 	// Subscribers è il numero di pagine collegate al live reload (solo statico).
-	Subscribers int `json:"subscribers,omitempty"`
+	Subscribers int `json:"subscribers,omitzero"`
 }
 
 // Launcher è la parte del ProcessManager che serve al supervisore dei dev server.

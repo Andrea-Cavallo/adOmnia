@@ -1,7 +1,9 @@
 package security
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -185,7 +187,7 @@ func saveSettings(root string, settings Settings) error {
 		}
 		return a.Rule < b.Rule
 	})
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}
@@ -204,7 +206,7 @@ func saveSettings(root string, settings Settings) error {
 		_ = os.Remove(name)
 		return errors.Join(writeErr, closeErr)
 	}
-	if err := os.Chmod(name, 0o644); err != nil {
+	if err := os.Chmod(name, 0o644); err != nil { // NOSONAR -- the settings file holds project trust preferences, not secrets: 0644 matches every other config file in the app
 		_ = os.Remove(name)
 		return err
 	}

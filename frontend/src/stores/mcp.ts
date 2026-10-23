@@ -104,7 +104,7 @@ const HISTORY_LIMIT = 200
 
 function makeId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-  return `mcp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `mcp-${Date.now()}-${Math.random().toString(36).slice(2)}` // NOSONAR -- degraded fallback for runtimes without the Web Crypto API: the id only labels a local MCP connection
 }
 
 function loadConfigs(): McpSavedConfig[] {

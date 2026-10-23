@@ -1,13 +1,13 @@
 package java
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 func TestMainOptionsAreValidated(t *testing.T) {
@@ -49,7 +49,7 @@ func TestMainRunnerBuildsACommandInTheModule(t *testing.T) {
 	write(t, filepath.Join(root, "mvnw"), "")
 	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "mvnw.cmd"), "")
-	options, _ := json.Marshal(MainOptions{MainClass: "a.App", VMOptions: []string{"-Xmx1g"}})
+	options, _ := jsonutil.Marshal(MainOptions{MainClass: "a.App", VMOptions: []string{"-Xmx1g"}})
 	spec, err := New().CommandSpec(run.Request{Kind: KindMain, WorkingDirectory: root, LanguageOptions: options, ProgramArguments: []string{"go"}})
 	if err != nil || spec.WorkingDirectory != root || !slices.Contains(spec.Environment, "MAVEN_OPTS=-Xmx1g") || !strings.Contains(spec.DisplayCommand, "exec.mainClass=a.App") {
 		t.Fatalf("%+v %v", spec, err)

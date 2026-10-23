@@ -2,7 +2,6 @@ package sidecar
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -10,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/storage"
 )
 
@@ -35,7 +35,7 @@ func TestLiveMockStartStop(t *testing.T) {
 		var rdr io.Reader
 		method := http.MethodGet
 		if body != nil {
-			b, _ := json.Marshal(body)
+			b, _ := jsonutil.Marshal(body)
 			rdr = bytes.NewReader(b)
 			method = http.MethodPost
 		}

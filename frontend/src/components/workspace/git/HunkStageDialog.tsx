@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { Loader2, Scissors } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import { buildPatch, parseFileDiff, selectHunkLines, type Hunk } from '@/lib/git/hunks'
@@ -30,24 +31,34 @@ export function HunkStageDialog({ repoPath, path, mode, onDone, onClose }: HunkS
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  const applyDiff = useCallback((diff: string) => {
+    const parsed = parseFileDiff(diff)
+    setFileHeader(parsed.fileHeader)
+    setHunks(parsed.hunks)
+    setSelected(new Set(parsed.hunks.map((_, i) => i)))
+    setSelectedLines(new Map())
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const diff = await GitSync.FileDiff(repoPath, path, staged)
-      const parsed = parseFileDiff(diff)
-      setFileHeader(parsed.fileHeader)
-      setHunks(parsed.hunks)
-      setSelected(new Set(parsed.hunks.map((_, i) => i)))
-      setSelectedLines(new Map())
+      applyDiff(await GitSync.FileDiff(repoPath, path, staged))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }, [repoPath, path, staged])
+  }, [repoPath, path, staged, applyDiff])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancelled = false
+    GitSync.FileDiff(repoPath, path, staged)
+      .then((diff) => { if (!cancelled) applyDiff(diff) })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [repoPath, path, staged, applyDiff])
 
   const toggle = (i: number) => {
     setSelectedLines((previous) => { const next = new Map(previous); next.delete(i); return next })
@@ -129,8 +140,8 @@ export function HunkStageDialog({ repoPath, path, mode, onDone, onClose }: HunkS
             </div>
           ) : (
             <div className="space-y-2">
-              {hunks.map((hunk, i) => (
-                <div key={i} className={cn('rounded border bg-surface-0', selected.has(i) ? 'border-accent/50' : 'border-border-1')}>
+              {withContentKeys(hunks, (h) => h.header).map(({ key: hunkKey, item: hunk }, i) => (
+                <div key={hunkKey} className={cn('rounded border bg-surface-0', selected.has(i) ? 'border-accent/50' : 'border-border-1')}>
                   <label className="flex cursor-pointer items-center gap-2 border-b border-border-1 px-2 py-1.5">
                     <input type="checkbox" checked={selectedLines.has(i) ? selectedLines.get(i)?.size === changedLineIndexes(hunk).length : selected.has(i)} onChange={() => toggle(i)} className="h-3.5 w-3.5 accent-[var(--color-accent)]" />
                     <code className="truncate font-mono text-[10px] text-accent">{hunk.header}</code>
@@ -143,8 +154,8 @@ export function HunkStageDialog({ repoPath, path, mode, onDone, onClose }: HunkS
                     </button>
                   </label>
                   <pre className="max-h-48 overflow-auto px-2 py-1.5 font-mono text-[10px] leading-[1.35]">
-                    {hunk.lines.map((line, j) => (
-                      <div key={j} className={`${lineClass(line)} flex min-w-max items-start`}>
+                    {withContentKeys(hunk.lines, (l) => l).map(({ key: lineKey, item: line }, j) => (
+                      <div key={lineKey} className={`${lineClass(line)} flex min-w-max items-start`}>
                         {(line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---') ? (
                           <input
                             type="checkbox"

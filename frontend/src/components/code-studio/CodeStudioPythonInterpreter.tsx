@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, Terminal } from 'lucide-react'
 import { CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import {
@@ -48,14 +48,14 @@ export function CodeStudioPythonInterpreter() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
 
-  const load = async (id: string) => {
+  const load = useCallback(async (id: string) => {
     const [nextReport, nextPlan] = await Promise.all([
       getPythonInterpreters(id),
       getPythonEnvironment(id, ''),
     ])
     setReport(nextReport)
     setPlan(nextPlan)
-  }
+  }, [])
 
   useEffect(() => {
     openRequest = (id) => {
@@ -67,7 +67,7 @@ export function CodeStudioPythonInterpreter() {
       load(id).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
     }
     return () => { openRequest = null }
-  }, [])
+  }, [load])
 
   const choose = async (path: string) => {
     if (!sessionId) return

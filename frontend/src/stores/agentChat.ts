@@ -96,7 +96,7 @@ export type AgentChatStore = UseBoundStore<StoreApi<AgentChatState>>
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const emptyThread = (): AgentChatThread => ({ messages: [], busyToken: null, error: null })
-const uuid = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+const uuid = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}` // NOSONAR -- degraded fallback for runtimes without the Web Crypto API: no secure RNG exists there and the id only labels local chat state
 
 function upsertTool(tools: AgentToolActivity[] | undefined, update: MilkToolUpdate): AgentToolActivity[] {
   const list = tools ?? []

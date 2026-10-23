@@ -2,11 +2,12 @@ package sse
 
 import (
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,10 +21,10 @@ import (
 type SSEEvent struct {
 	Type      string `json:"type"`
 	ID        string `json:"id,omitempty"`
-	Retry     int    `json:"retry,omitempty"`
+	Retry     int    `json:"retry,omitzero"`
 	Payload   string `json:"payload"`
 	Timestamp int64  `json:"timestamp"`
-	System    bool   `json:"system,omitempty"`
+	System    bool   `json:"system,omitzero"`
 }
 
 type SSESession struct {
@@ -173,7 +174,7 @@ func SseListHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
+	_ = jsonutil.MarshalWrite(w, sessions) // client gone mid-write: nothing to report
 }
 
 // SseCloseAllHandler closes every active SSE session (POST /sse/close-all).
@@ -190,7 +191,7 @@ func SseCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"closed": count})
+	_ = jsonutil.MarshalWrite(w, map[string]any{"closed": count}) // client gone mid-write: nothing to report
 }
 
 func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +200,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req SSEConnectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -214,7 +215,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil) // NOSONAR -- the SSE panel connects to the stream URL the user entered; the outbound connection is the feature (loopback sidecar)
 	if err != nil {
 		cancel()
 		httputil.JSONError(w, "invalid url: "+err.Error(), http.StatusBadRequest)
@@ -259,7 +260,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	go sseReadPump(sess, resp)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"sessionId": sessionID})
+	_ = jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID}) // client gone mid-write: nothing to report
 }
 
 func sseReadPump(sess *SSESession, resp *http.Response) {
@@ -372,7 +373,7 @@ func sseStreamHandler(w http.ResponseWriter, r *http.Request) {
 		case <-sess.done:
 			return
 		case ev := <-ch:
-			data, _ := json.Marshal(ev)
+			data, _ := jsonutil.Marshal(ev)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
@@ -385,7 +386,7 @@ func sseDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req SSEDisconnectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -393,7 +394,7 @@ func sseDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		val.(*SSESession).close()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 // RegisterHandlers registers Server-Sent Events client sidecar endpoints.

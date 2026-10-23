@@ -63,16 +63,17 @@ function ConfiguredDatabaseRow({ service, database, projectName, onOpen }: {
  * avviato o connesso da solo.
  */
 export function CodeStudioProjectServicesDialog({ sessionId, projectName, open, onClose }: CodeStudioProjectServicesDialogProps) {
-  const [services, setServices] = useState<CodeStudioProjectService[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<{ services: CodeStudioProjectService[] | null; error: string | null } | null>(null)
+  const services = result?.services ?? null
+  const error = result?.error ?? null
 
   useEffect(() => {
     if (!open) return
-    setServices(null)
-    setError(null)
+    let cancelled = false
     fetchProjectServices(sessionId)
-      .then(setServices)
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .then((found) => { if (!cancelled) setResult({ services: found, error: null }) })
+      .catch((reason: unknown) => { if (!cancelled) setResult({ services: null, error: reason instanceof Error ? reason.message : String(reason) }) })
+    return () => { cancelled = true; setResult(null) }
   }, [open, sessionId])
 
   if (!open) return null

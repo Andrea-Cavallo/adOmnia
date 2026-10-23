@@ -1,7 +1,8 @@
 package lsp
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ func (m *MarkupContent) UnmarshalJSON(data []byte) error {
 		m.Kind, m.Value = "markdown", text
 		return nil
 	}
-	var entries []json.RawMessage
+	var entries []jsonv1.RawMessage
 	if len(data) > 0 && data[0] == '[' {
 		if err := json.Unmarshal(data, &entries); err != nil {
 			return err

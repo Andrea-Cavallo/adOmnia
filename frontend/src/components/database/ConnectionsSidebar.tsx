@@ -47,13 +47,22 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
   const [dsnDraft, setDsnDraft] = useState('')
   const [editingPassword, setEditingPassword] = useState(false)
   const [editingDsn, setEditingDsn] = useState(false)
-  const secretSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const secretSaveTimer = useRef<{ connectionId: string; handle: ReturnType<typeof setTimeout> } | null>(null)
+  const cancelSecretSave = () => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current.handle); secretSaveTimer.current = null }
   const scheduleSecretSave = (patch: Partial<DbConnection>) => {
-    if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current)
-    secretSaveTimer.current = setTimeout(() => { secretSaveTimer.current = null; onUpdate(patch) }, 250)
+    cancelSecretSave()
+    secretSaveTimer.current = { connectionId: active.id, handle: setTimeout(() => { secretSaveTimer.current = null; onUpdate(patch) }, 250) }
   }
-  useEffect(() => () => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current) }, [active.id])
-  useEffect(() => { setPasswordDraft(''); setDsnDraft(''); setEditingPassword(false); setEditingDsn(false) }, [active.id])
+  // Switching connection drops a pending (debounced) secret save of the previous one.
+  useEffect(() => {
+    const connectionId = active.id
+    return () => { if (secretSaveTimer.current?.connectionId === connectionId) { clearTimeout(secretSaveTimer.current.handle); secretSaveTimer.current = null } }
+  }, [active.id])
+  const [draftsFor, setDraftsFor] = useState(active.id)
+  if (draftsFor !== active.id) {
+    setDraftsFor(active.id)
+    setPasswordDraft(''); setDsnDraft(''); setEditingPassword(false); setEditingDsn(false)
+  }
   const status = statuses[active.id]
   const [search, setSearch] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -205,7 +214,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
                   value={passwordDraft}
                   placeholder={isVaultRef(active.password) ? '•••••••• saved' : 'Password'}
                   onChange={(e) => { setPasswordDraft(e.target.value); setEditingPassword(true); if (e.target.value) scheduleSecretSave({ password: e.target.value }) }}
-                  onBlur={() => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current); if (editingPassword && passwordDraft) { onUpdate({ password: passwordDraft }); setPasswordDraft(''); setEditingPassword(false) } }}
+                  onBlur={() => { cancelSecretSave(); if (editingPassword && passwordDraft) { onUpdate({ password: passwordDraft }); setPasswordDraft(''); setEditingPassword(false) } }}
                   className={cn(inputCls, 'pr-8')}
                 />
                 <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-4 hover:text-text-2" aria-label={showPassword ? 'Hide password' : 'Show password'}>
@@ -221,7 +230,7 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
             aria-label="Database DSN"
             value={editingDsn ? dsnDraft : isVaultRef(active.dsn) ? '' : active.dsn}
             onChange={(e) => { setDsnDraft(e.target.value); setEditingDsn(true); if (e.target.value) scheduleSecretSave({ dsn: e.target.value }) }}
-            onBlur={() => { if (secretSaveTimer.current) clearTimeout(secretSaveTimer.current); if (editingDsn && dsnDraft) { onUpdate({ dsn: dsnDraft }); setDsnDraft(''); setEditingDsn(false) } }}
+            onBlur={() => { cancelSecretSave(); if (editingDsn && dsnDraft) { onUpdate({ dsn: dsnDraft }); setDsnDraft(''); setEditingDsn(false) } }}
             className={cn(inputCls, 'font-mono text-[11px]')}
             placeholder={isVaultRef(active.dsn) ? 'Encrypted DSN saved' : active.driver === 'redis' ? 'redis://127.0.0.1:6379/0' : 'optional connection string'}
           />

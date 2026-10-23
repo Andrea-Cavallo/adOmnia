@@ -1,8 +1,9 @@
 /** Native close preserves detached-window and running-task guards. */
 export async function restartForUpdate(): Promise<void> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
-  for (const doc of useCodeStudioStore.getState().documents.filter(doc => doc.dirty)) {
-    if (!await useCodeStudioStore.getState().saveDocument(doc.document.id)) throw new Error('Could not save an open file. Save your work and try again.')
+  for (const dirtyDoc of useCodeStudioStore.getState().documents.filter(doc => doc.dirty)) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- sequential on purpose: save files one at a time and stop at the first failure
+    if (!await useCodeStudioStore.getState().saveDocument(dirtyDoc.document.id)) throw new Error('Could not save an open file. Save your work and try again.')
   }
   const { flushPendingSaves } = await import('./storeSave')
   await flushPendingSaves(true)

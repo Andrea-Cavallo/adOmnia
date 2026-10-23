@@ -11,7 +11,7 @@ export interface CodeStudioTerminalLink {
 
 // Estensioni dei sorgenti che compaiono in errori di build, stack trace e tool: così "example.com:443" non diventa un link.
 // ponytail: niente spazi nei percorsi; li supporteremo se un progetto reale li stampa così.
-const FILE_REFERENCE = /((?:[A-Za-z]:[\\/]|[\\/])?(?:[\w.@~+-]+[\\/])*[\w@~+-][\w.@~+-]*\.(?:go|s|mod|sum|proto|sql|tmpl|ya?ml|json|toml|java|kt|kts|groovy)):(?:\[(\d+)(?:,(\d+))?\]|(\d+)(?::(\d+))?)/g
+const FILE_REFERENCE = /((?:[A-Za-z]:[\\/]|[\\/])?(?:[\w.@~+-]+[\\/])*[\w@~+-][\w.@~+-]*\.(?:go|s|mod|sum|proto|sql|tmpl|ya?ml|json|toml|java|kt|kts|groovy|rs)):(?:\[(\d+)(?:,(\d+))?\]|(\d+)(?::(\d+))?)/g
 
 /** Riferimenti a file cliccabili: errori di go build/vet/test e frame degli stack trace ("\t/path/main.go:12 +0x1d"). */
 export function findTerminalLinks(text: string): CodeStudioTerminalLink[] {

@@ -16,7 +16,7 @@ import (
 // fakeUnitLanguage è un linguaggio con un server per unità, come Python: ogni unità porta il proprio
 // ambiente e un solo server multi-root userebbe quello di una sola. Serve a provare che l'host ne
 // avvia uno per unità, ognuno con la propria radice, e che i documenti vanno a quello giusto.
-type fakeUnitLanguage struct{ fakeTextLanguage }
+type fakeUnitLanguage struct{}
 
 func (fakeUnitLanguage) ID() string   { return "unitpy" }
 func (fakeUnitLanguage) Name() string { return "Unit Python" }

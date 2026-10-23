@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Clock, Database, Plus, RefreshCw, Search, Star, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { withContentKeys } from '@/lib/contentKeys'
 import { relativeTime, type HistoryItem, type SchemaColumn, type SchemaItem } from './dbShared'
 
 interface RightRailProps {
@@ -109,9 +110,9 @@ export function RightRail(props: RightRailProps) {
           <div className="rounded-lg border border-dashed border-border-2 px-3 py-4 text-center text-[11.5px] text-text-3">Query history is empty.</div>
         ) : (
           <div className="space-y-0.5">
-            {history.slice(0, 6).map((item, i) => (
+            {withContentKeys(history.slice(0, 6), (entry) => `${entry.ts}:${entry.query}`).map(({ key, item }) => (
               <button
-                key={i}
+                key={key}
                 onClick={() => onPickQuery(item.query)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
               >

@@ -1,0 +1,56 @@
+name: Supply chain
+
+# Sicurezza della catena di fornitura: revisione dei cambiamenti di dipendenza nelle PR
+# e punteggio OSSF Scorecard del repository (come su ossf-scorecard.dev).
+
+on:
+  pull_request:
+    branches: [main, develop]
+  # Scorecard pubblica il punteggio (e il badge) solo da un run sul branch predefinito.
+  push:
+    branches: [main]
+  schedule:
+    - cron: '45 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      # Blocca le PR che introducono dipendenze con vulnerabilità note (richiede GitHub Advanced
+      # Security solo per le private repo: per i repository pubblici è gratuito).
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  scorecard:
+    name: OSSF Scorecard
+    runs-on: ubuntu-22.04
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

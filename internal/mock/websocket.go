@@ -4,7 +4,7 @@ import (
 	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 )
@@ -153,9 +154,9 @@ func wsMockWSHandler(w http.ResponseWriter, r *http.Request) {
 			if rule.DelayMs > 0 {
 				time.Sleep(time.Duration(rule.DelayMs) * time.Millisecond)
 			}
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second)) // a failure surfaces in WriteMessage below
 			writeErr := conn.WriteMessage(websocket.TextMessage, []byte(response))
-			conn.SetWriteDeadline(time.Time{})
+			_ = conn.SetWriteDeadline(time.Time{}) // resetting the deadline on a dead connection is moot
 
 			wsMock.Lock()
 			wsMock.hits = wsMockAppendHit(wsMock.hits, WsMockHit{
@@ -206,7 +207,7 @@ func wsMockStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	if wsMock.running {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"port": wsMock.port, "running": true})
+		jsonutil.MarshalWrite(w, map[string]any{"port": wsMock.port, "running": true})
 		return
 	}
 
@@ -226,7 +227,7 @@ func wsMockStartHandler(w http.ResponseWriter, r *http.Request) {
 	go http.Serve(ln, mux) //nolint:errcheck
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"port": port, "running": true})
+	jsonutil.MarshalWrite(w, map[string]any{"port": port, "running": true})
 }
 
 func wsMockStopHandler(w http.ResponseWriter, r *http.Request) {
@@ -248,14 +249,14 @@ func wsMockStopHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsMockStatusHandler(w http.ResponseWriter, r *http.Request) {
 	wsMock.Lock()
 	defer wsMock.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"running": wsMock.running,
 		"port":    wsMock.port,
 		"hits":    wsMock.hits,
@@ -268,7 +269,7 @@ func wsMockRulesGetHandler(w http.ResponseWriter, r *http.Request) {
 	copy(rules, wsMock.rules)
 	wsMock.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(rules)
+	jsonutil.MarshalWrite(w, rules)
 }
 
 func wsMockRulesSaveHandler(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +278,7 @@ func wsMockRulesSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var rules []WsMockRule
-	if err := json.NewDecoder(r.Body).Decode(&rules); err != nil {
+	if err := json.UnmarshalRead(r.Body, &rules); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -285,7 +286,7 @@ func wsMockRulesSaveHandler(w http.ResponseWriter, r *http.Request) {
 	wsMock.rules = rules
 	wsMock.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsMockHitsClearHandler(w http.ResponseWriter, r *http.Request) {
@@ -297,5 +298,5 @@ func wsMockHitsClearHandler(w http.ResponseWriter, r *http.Request) {
 	wsMock.hits = nil
 	wsMock.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }

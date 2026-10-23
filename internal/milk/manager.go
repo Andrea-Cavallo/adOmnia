@@ -341,7 +341,7 @@ func defaultBinaryCandidates() []string {
 }
 
 func isExecutableFile(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only, candidate paths come from PATH/known install dirs
 	return err == nil && !info.IsDir()
 }
 
@@ -358,7 +358,7 @@ func (m *Manager) launch(command Launch, root string) error {
 		cmd.Dir = root
 	}
 	cmd.Env = withNativeClaude(cmd.Env)
-	configureProcess(cmd)
+	procutil.ConfigureChild(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func (m *Manager) waitStartupDrain(running *process) {
 	select {
 	case <-running.exited:
 	case <-time.After(stopTimeout):
-		_ = terminateProcess(running.cmd)
+		_ = procutil.KillTree(running.cmd)
 		select {
 		case <-running.exited:
 		case <-time.After(stopTimeout):
@@ -607,7 +607,7 @@ func (m *Manager) Stop() {
 	select {
 	case <-running.exited:
 	case <-time.After(stopTimeout):
-		_ = terminateProcess(running.cmd)
+		_ = procutil.KillTree(running.cmd)
 		<-running.exited
 	}
 	m.mu.Lock()
@@ -626,7 +626,7 @@ func (m *Manager) abandon(running *process) {
 	}
 	m.mu.Unlock()
 	_ = running.stdin.Close()
-	_ = terminateProcess(running.cmd)
+	_ = procutil.KillTree(running.cmd)
 }
 
 // forgetSessionsLocked scarta le sessioni: appartengono al processo milk che le

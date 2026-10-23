@@ -13,9 +13,9 @@ import (
 func TestWebSocketServersAndClients(t *testing.T) {
 	root := t.TempDir()
 	files := map[string]string{
-		"go.mod":                       "module example.com/chat\n\ngo 1.22\n\nrequire github.com/gorilla/websocket v0.0.0\n\nreplace github.com/gorilla/websocket => ./third_party/ws\n",
-		"third_party/ws/go.mod":        "module github.com/gorilla/websocket\n\ngo 1.22\n",
-		"third_party/ws/ws.go":         "package websocket\n\nimport \"net/http\"\n\ntype Conn struct{}\ntype Upgrader struct{}\nfunc (Upgrader) Upgrade(http.ResponseWriter, *http.Request, http.Header) (*Conn, error) { return nil, nil }\ntype Dialer struct{}\nvar DefaultDialer = &Dialer{}\nfunc (*Dialer) Dial(string, http.Header) (*Conn, *http.Response, error) { return nil, nil, nil }\n",
+		"go.mod":                "module example.com/chat\n\ngo 1.22\n\nrequire github.com/gorilla/websocket v0.0.0\n\nreplace github.com/gorilla/websocket => ./third_party/ws\n",
+		"third_party/ws/go.mod": "module github.com/gorilla/websocket\n\ngo 1.22\n",
+		"third_party/ws/ws.go":  "package websocket\n\nimport \"net/http\"\n\ntype Conn struct{}\ntype Upgrader struct{}\nfunc (Upgrader) Upgrade(http.ResponseWriter, *http.Request, http.Header) (*Conn, error) { return nil, nil }\ntype Dialer struct{}\nvar DefaultDialer = &Dialer{}\nfunc (*Dialer) Dial(string, http.Header) (*Conn, *http.Response, error) { return nil, nil, nil }\n",
 		"chat/chat.go": `package chat
 
 import (

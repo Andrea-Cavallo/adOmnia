@@ -48,23 +48,24 @@ export const CodeStudioTodoPanel = memo(function CodeStudioTodoPanel({ sessionId
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   const project = useCodeStudioStore((state) => state.sessions.find((session) => session.id === sessionId)?.project)
   const [items, setItems] = useState<CodeStudioTodoItem[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [scanVersion, setScanVersion] = useState(0)
+  const [settled, setSettled] = useState<{ key: string; error: string | null } | null>(null)
+  const scanKey = `${sessionId}:${scanVersion}`
+  const loading = settled?.key !== scanKey
+  const error = settled?.key === scanKey ? settled.error : null
   const [filter, setFilter] = useState<TodoKeyword | 'all'>('all')
 
-  const scan = useCallback(() => {
-    setLoading(true)
-    setError(null)
+  const scan = useCallback(() => setScanVersion((version) => version + 1), [])
+
+  useEffect(() => {
     let current = true
     const request = requestProjectSearch({ sessionId, pattern: TODO_PATTERN, regex: true, caseSensitive: true, wholeWord: false, include: [], exclude: [] })
     request.then((result) => { if (current) setItems(result.matches.map(todoItemFor).filter((item): item is CodeStudioTodoItem => item !== null)) })
       // Una scansione annullata (pannello chiuso o nuova scansione) non è un errore da mostrare.
-      .catch((reason: unknown) => { if (current && !String(reason).toLowerCase().includes('cancel')) setError(reason instanceof Error ? reason.message : String(reason)) })
-      .finally(() => { if (current) setLoading(false) })
+      .then(() => null, (reason: unknown) => (!String(reason).toLowerCase().includes('cancel') ? (reason instanceof Error ? reason.message : String(reason)) : null))
+      .then((message) => { if (current) setSettled({ key: scanKey, error: message }) })
     return () => { current = false; void request.cancel() }
-  }, [sessionId])
-
-  useEffect(() => scan(), [scan])
+  }, [sessionId, scanKey])
 
   const exportMarkdown = useCallback(() => {
     if (!project || !items) return
@@ -75,8 +76,8 @@ export const CodeStudioTodoPanel = memo(function CodeStudioTodoPanel({ sessionId
       { projectName, projectRoot, units: project.units ?? [] },
     )
     const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(markdown)))
-    saveBase64File(`TODO-${projectName}.md`, base64).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
-  }, [items, project])
+    saveBase64File(`TODO-${projectName}.md`, base64).catch((reason: unknown) => setSettled({ key: scanKey, error: reason instanceof Error ? reason.message : String(reason) }))
+  }, [items, project, scanKey])
 
   const visible = useMemo(() => (items ?? []).filter((item) => filter === 'all' || item.keyword === filter), [filter, items])
   const groups = useMemo(() => {

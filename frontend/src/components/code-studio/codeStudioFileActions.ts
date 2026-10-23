@@ -66,6 +66,7 @@ async function closeDocumentsUnder(sessionId: string, relativePath: string): Pro
     useCodeStudioStore.setState({ error: `Save or discard the changes in ${dirty.map((item) => item.document.relativePath).join(', ')} first.` })
     return false
   }
+  // oxlint-disable-next-line eslint/no-await-in-loop -- tabs close one at a time: each close updates the shared tab list and active document
   for (const item of open) await useCodeStudioStore.getState().closeDocument(item.document.id)
   return true
 }

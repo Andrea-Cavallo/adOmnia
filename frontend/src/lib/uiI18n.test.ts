@@ -18,7 +18,7 @@ import {
 const TRANSLATED_LANGUAGES = ['it', 'zh', 'ja', 'ru'] as const
 
 function placeholdersOf(value: string): string[] {
-  return (value.match(/\{[a-zA-Z0-9_]+\}/g) ?? []).sort()
+  return (value.match(/\{[a-zA-Z0-9_]+\}/g) ?? []).sort((a, b) => a.localeCompare(b))
 }
 
 const GUARDED_SURFACES = [

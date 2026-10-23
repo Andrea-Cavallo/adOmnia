@@ -2,7 +2,7 @@ package securityintel
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -139,7 +139,7 @@ func fetchEPSS(ctx context.Context, client *http.Client, endpoint string, cves [
 	var payload struct {
 		Data []epssEntry `json:"data"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(response.Body, &payload); err != nil {
 		return nil, fmt.Errorf("EPSS response: %w", err)
 	}
 	result := map[string]epssEntry{}
@@ -252,7 +252,7 @@ func fetchKEV(ctx context.Context, client *http.Client, endpoint string) (map[st
 		DateReleased    string     `json:"dateReleased"`
 		Vulnerabilities []kevEntry `json:"vulnerabilities"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&catalog); err != nil {
+	if err := json.UnmarshalRead(response.Body, &catalog); err != nil {
 		return nil, "", fmt.Errorf("KEV catalog: %w", err)
 	}
 	result := map[string]kevEntry{}

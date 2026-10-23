@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/subtle"
 	"crypto/tls"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 
@@ -259,7 +261,7 @@ func (m *Manager) hostReadLoop(p *peer, participant Participant) {
 }
 
 // relayShare valida permesso e contenuto lato host, poi inoltra a tutti gli altri.
-func (m *Manager) relayShare(from string, payload json.RawMessage) string {
+func (m *Manager) relayShare(from string, payload jsonv1.RawMessage) string {
 	m.mu.Lock()
 	p := m.peers[from]
 	if p == nil {
@@ -300,11 +302,11 @@ func (m *Manager) relayShare(from string, payload json.RawMessage) string {
 }
 
 // PreviewShare mostra cosa uscirebbe davvero dalla macchina, senza inviare.
-func PreviewShare(kind ShareKind, title string, data json.RawMessage) (Share, error) {
+func PreviewShare(kind ShareKind, title string, data jsonv1.RawMessage) (Share, error) {
 	return sanitizeShare(Share{Kind: kind, Title: title, Data: data})
 }
 
-func PreviewShareWithSecrets(kind ShareKind, title string, data json.RawMessage, variables []string) (Share, error) {
+func PreviewShareWithSecrets(kind ShareKind, title string, data jsonv1.RawMessage, variables []string) (Share, error) {
 	return sanitizeShare(Share{Kind: kind, Title: title, Data: data, SecretVariables: variables})
 }
 
@@ -348,11 +350,11 @@ func sanitizeShare(s Share) (Share, error) {
 }
 
 // Share invia contenuto filtrato: l'host lo manda a tutti, il guest all'host (che decide).
-func (m *Manager) Share(kind ShareKind, title string, data json.RawMessage) (Share, error) {
+func (m *Manager) Share(kind ShareKind, title string, data jsonv1.RawMessage) (Share, error) {
 	return m.ShareWithSecrets(kind, title, data, nil)
 }
 
-func (m *Manager) ShareWithSecrets(kind ShareKind, title string, data json.RawMessage, variables []string) (Share, error) {
+func (m *Manager) ShareWithSecrets(kind ShareKind, title string, data jsonv1.RawMessage, variables []string) (Share, error) {
 	clean, err := PreviewShareWithSecrets(kind, title, data, variables)
 	if err != nil {
 		return Share{}, err
@@ -360,7 +362,7 @@ func (m *Manager) ShareWithSecrets(kind ShareKind, title string, data json.RawMe
 	return m.publishShare(clean)
 }
 
-func (m *Manager) SyncCollection(sourceID, title string, data json.RawMessage) (Share, error) {
+func (m *Manager) SyncCollection(sourceID, title string, data jsonv1.RawMessage) (Share, error) {
 	if sourceID == "" {
 		return Share{}, errors.New("identità collection mancante")
 	}
@@ -786,8 +788,8 @@ func cleanName(name string) string {
 	return name
 }
 
-func mustJSON(v any) json.RawMessage {
-	b, err := json.Marshal(v)
+func mustJSON(v any) jsonv1.RawMessage {
+	b, err := jsonutil.Marshal(v)
 	if err != nil {
 		panic("collab: payload non serializzabile: " + err.Error())
 	}

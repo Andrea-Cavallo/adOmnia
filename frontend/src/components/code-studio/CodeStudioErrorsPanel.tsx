@@ -238,7 +238,7 @@ function TypesView({ report, query }: { report: GoIDEErrorReport; query: string 
 }
 
 function PathsView({ report, activePath, query }: { report: GoIDEErrorReport; activePath: string; query: string }) {
-  const files = useMemo(() => [...new Set(report.paths.map((path) => path.location.relativePath))].sort(), [report.paths])
+  const files = useMemo(() => [...new Set(report.paths.map((path) => path.location.relativePath))].sort((a, b) => a.localeCompare(b)), [report.paths])
   const [chosen, setChosen] = useState('')
   const file = chosen || (files.includes(activePath) ? activePath : files[0] ?? '')
   const paths = errorPathsForFile(report, file).filter((path) => matches(query, path.function, ...path.returns.map((ret) => ret.detail)))

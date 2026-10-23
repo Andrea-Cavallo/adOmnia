@@ -65,7 +65,7 @@ func TestUpdateGoWorkWithRealGo(t *testing.T) {
 func TestCloneDestination(t *testing.T) {
 	parent := t.TempDir()
 	for url, want := range map[string]string{
-		"https://github.com/golang/example.git": "example",
+		"https://github.com/golang/example.git":     "example",
 		"git@gitlab.alm.poste.it:SDP/pdld-core.git": "pdld-core",
 		"ssh://git@host:22/team/api/":               "api",
 	} {

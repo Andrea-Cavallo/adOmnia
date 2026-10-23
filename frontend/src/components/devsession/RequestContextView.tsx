@@ -1,3 +1,4 @@
+import { withContentKeys } from '@/lib/contentKeys'
 import { GenerateUnitTestButton } from './GenerateUnitTestButton'
 import { cn } from '@/lib/utils'
 import { getOtlpTrace, otlpStatus, type OtlpSpan } from '@/lib/otlp-api'
@@ -40,8 +41,8 @@ function Pairs({ pairs }: { pairs: Array<[string, string]> }) {
   if (pairs.length === 0) return <p className="text-[11.5px] text-text-4">None</p>
   return (
     <dl className="grid grid-cols-[minmax(80px,auto)_1fr] gap-x-3 gap-y-0.5 font-mono text-[11.5px]">
-      {pairs.map(([key, value], index) => (
-        <div key={`${key}-${index}`} className="contents">
+      {withContentKeys(pairs, ([key, value]) => `${key}=${value}`).map(({ key: pairKey, item: [key, value] }) => (
+        <div key={pairKey} className="contents">
           <dt className="truncate text-text-3">{key}</dt>
           <dd className="break-all text-text-1">{value}</dd>
         </div>
@@ -133,7 +134,8 @@ export function SaveReproductionButton({ run, compact = false }: { run: RequestR
 
 export function RequestContextView({ run }: { run: RequestRun }) {
   const tab = useTabsStore((state) => state.tabs.find((item) => item.id === run.tabId))
-  const vars = liveVars(useEnvironmentsStore.getState().getResolvedVars())
+  const getResolvedVars = useEnvironmentsStore((state) => state.getResolvedVars)
+  const vars = liveVars(getResolvedVars())
   const route = useRouteForRequest(run.method, run.url)
   const pathname = requestPath(run.url) ?? ''
   let query: Array<[string, string]> = []

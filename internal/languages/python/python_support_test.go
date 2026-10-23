@@ -2,7 +2,8 @@ package python
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,57 +11,8 @@ import (
 
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
-
-func TestTOMLParsesPyProjectShapes(t *testing.T) {
-	document := parseTOML([]byte(`
-# commento
-[project]
-name = "orders-api"
-requires-python = ">=3.11"
-dependencies = [
-  "fastapi>=0.110", # commento in coda
-  "uvicorn[standard]",
-]
-
-[project.scripts]
-orders = "orders.cli:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests", "integration"]
-
-[tool.uv.workspace]
-members = ["packages/*"]
-
-[[tool.example]]
-name = "primo"
-
-[[tool.example]]
-name = "secondo"
-`))
-	if got := tomlString(document, "project", "name"); got != "orders-api" {
-		t.Fatalf("name = %q", got)
-	}
-	if got := tomlStrings(document, "project", "dependencies"); len(got) != 2 || got[0] != "fastapi>=0.110" {
-		t.Fatalf("dependencies = %#v", got)
-	}
-	if got := tomlStrings(document, "tool", "pytest", "ini_options", "testpaths"); len(got) != 2 {
-		t.Fatalf("testpaths = %#v", got)
-	}
-	if got := tomlString(document, "project", "scripts", "orders"); got != "orders.cli:main" {
-		t.Fatalf("scripts = %q", got)
-	}
-	if entries, ok := document["tool"].(map[string]any)["example"].([]map[string]any); !ok || len(entries) != 2 {
-		t.Fatalf("array tables = %#v", document["tool"])
-	}
-}
-
-func TestTOMLSurvivesMalformedLines(t *testing.T) {
-	document := parseTOML([]byte("[project]\nname = 'ok'\nquesta riga non ha senso\nbroken = [1, 2\nrequires-python = \">=3.10\"\n"))
-	if tomlString(document, "project", "name") != "ok" || tomlString(document, "project", "requires-python") != ">=3.10" {
-		t.Fatalf("%#v", document)
-	}
-}
 
 func TestManifestReadsProjectAndRequirements(t *testing.T) {
 	root := t.TempDir()
@@ -394,7 +346,7 @@ func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
 	writeFile(t, root, "tests/test_a.py", "")
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests/test_a.py", "tests/test_b.py::TestX::test_y"}, Run: "k:slow"})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests/test_a.py", "tests/test_b.py::TestX::test_y"}, Run: "k:slow"})
 	spec, eventParser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -405,14 +357,14 @@ func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	if eventParser == nil || !strings.Contains(strings.Join(spec.Environment, ";"), "PYTHONPATH=") {
 		t.Fatalf("parser or PYTHONPATH missing: %+v", spec.Environment)
 	}
-	if _, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: json.RawMessage(`{"run":"--cov"}`)}); err == nil {
+	if _, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: jsonv1.RawMessage(`{"run":"--cov"}`)}); err == nil {
 		t.Fatal("a test id shaped like an option must be rejected")
 	}
 }
 
 // jsonPath rende un percorso un valido literal JSON, come scrive il plugin.
 func jsonPath(path string) string {
-	data, _ := json.Marshal(path)
+	data, _ := jsonutil.Marshal(path)
 	return string(data)
 }
 

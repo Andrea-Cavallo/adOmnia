@@ -41,8 +41,8 @@ type ProfileFunction struct {
 	Package  string `json:"package"`
 	File     string `json:"file,omitempty"`
 	Relative string `json:"relative,omitempty"`
-	Line     int    `json:"line,omitempty"`
-	Runtime  bool   `json:"runtime,omitempty"`
+	Line     int    `json:"line,omitzero"`
+	Runtime  bool   `json:"runtime,omitzero"`
 }
 
 // ProfileNode è una riga della vista Top: valore piatto (flat) e cumulativo (cum) per ogni sample type.
@@ -91,7 +91,7 @@ type ProfileReport struct {
 	Flame         *ProfileFlame       `json:"flame"`
 	Edges         []ProfileEdge       `json:"edges"`
 	Lines         []ProfileLine       `json:"lines"`
-	Truncated     bool                `json:"truncated,omitempty"`
+	Truncated     bool                `json:"truncated,omitzero"`
 }
 
 // ProfileFile è un profilo trovato nel progetto, candidato da aprire nel Performance Studio.

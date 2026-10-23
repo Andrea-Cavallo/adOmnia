@@ -22,7 +22,8 @@ describe('reproduction', () => {
   })
 
   it('finds env references and non-deterministic values', () => {
-    expect(variablesIn('{{baseUrl}}/orders/{{ id }}', 'Bearer {{TOKEN}}')).toEqual(['TOKEN', 'baseUrl', 'id'])
+    // The names are sorted with localeCompare (reliable alphabetical order, S2871).
+    expect(variablesIn('{{baseUrl}}/orders/{{ id }}', 'Bearer {{TOKEN}}')).toEqual(['baseUrl', 'id', 'TOKEN'])
     expect(nonDeterministic(['{"id":"4f2c1a9e-1d2b-4c3d-9e8f-0a1b2c3d4e5f","at":"2026-10-09T10:00:00Z","n":"{{$randomInt}}"}'], ['INSERT INTO t VALUES (now())'])).toEqual([
       'UUID 4f2c1a9e-1d2b-4c3d-9e8f-0a1b2c3d4e5f', 'timestamp 2026-10-09T10:00:00Z', 'generated value {{$randomInt}}', 'SQL NOW()',
     ])
@@ -45,8 +46,8 @@ describe('reproduction', () => {
       dbSchema: 'postgres database "orders" (Database Studio connection "local"):\n- orders(id uuid, status text)',
     })
     expect(result.dir).toBe('repro/20261009-100500-post-orders')
-    const names = result.files.map((file) => file.relativePath.slice(result.dir.length + 1)).sort()
-    expect(names).toEqual(['.env.example', 'README.md', 'config.md', 'db/tables.md', 'docker-compose.yml', 'flags.md', 'kafka/01-orders-created.kafka.json', 'logs.txt', 'queries.sql', 'repro_test.go', 'request.http', 'stack.txt', 'trace.json'])
+    const names = result.files.map((file) => file.relativePath.slice(result.dir.length + 1)).sort((a, b) => a.localeCompare(b))
+    expect(names).toEqual(['.env.example', 'config.md', 'db/tables.md', 'docker-compose.yml', 'flags.md', 'kafka/01-orders-created.kafka.json', 'logs.txt', 'queries.sql', 'README.md', 'repro_test.go', 'request.http', 'stack.txt', 'trace.json'])
     const file = (name: string) => result.files.find((item) => item.relativePath.endsWith(name))!.content
     expect(file('request.http')).toContain('Authorization: {{AUTHORIZATION}}')
     expect(file('request.http')).not.toContain('abc')

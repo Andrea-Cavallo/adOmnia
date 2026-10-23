@@ -70,6 +70,8 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/adomnia-feature-catalog.en.md` | Complete feature inventory. Read this when you need to quickly understand all project capabilities or avoid duplicating an existing tool. |
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
 | `docs/CODE-STUDIO.md` | Code Studio (the integrated IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `mds/todo-ide.md`. |
+| `docs/QUALITY.md` | Quality toolchain for adOmnia's own code: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage. |
+| `docs/JSON-V2.md` | JSON marshaling: `encoding/json/v2` migration, where v1 remains and why, behavior changes. |
 | `docs/architecture/ide-multilanguage-refactor.md` | Code Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/codestudio`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
@@ -376,6 +378,23 @@ if (request.auth.type === 'aws4') {
 - **No "cheap" UI:** no misaligned borders, no off-palette colors, no inconsistent spacing
 - **Wails/WebKitGTK cross-platform cohesion:** treat every user-visible WebKitGTK rendering difference on Linux as a product-quality issue, not as a secondary technical detail. Prefer global token-based normalization for recurring issues in `frontend/src/styles/globals.css`; use local workarounds only when the affected component is truly isolated. In particular, Linux can render native form controls with a light system appearance inside dark themes: for `select`, `input`, `textarea`, checkbox/radio, and number inputs, keep `color-scheme`, rely on the global normalizations, use `surface/text/border/accent/status` tokens, and avoid hardcoded Tailwind palette colors in primary UI (`bg-white/*`, `text-purple-*`, `bg-green-*`, etc.) unless they are intentional semantic states.
 
+### Code quality rules (Sonar / lint gates — new code must not reintroduce them)
+
+Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touched before closing a task. **SonarCloud lags behind the code**: an issue stays OPEN until the next analysis, so verify the list against the working tree before working it (2026-10-23: 40 of 63 "open" S2871 were already fixed in code) — fix in code, push to trigger a scan, then re-read the queue.
+
+- **`.sort()` always takes a comparator** (S2871): `.sort((a, b) => a.localeCompare(b))` for display strings, `([a], [b]) => a.localeCompare(b)` for `Object.entries`. Where the byte order is part of the contract (AWS4 signed headers, canonical keys) use a code-point comparator, not `localeCompare`.
+- **`.map(fn)` gets a wrapper, never the bare function** (S7727): `.map((x) => fn(x))`. A bare function also receives `(value, index, array)` and silently misbehaves as soon as it takes a second parameter.
+- **No object literal with a `then` key** (S7739): `await` treats such an object as a thenable. Label maps keyed by external names (`then`/`else` branch kinds) use a `Map`, not a plain object.
+- **Truncate with `Math.trunc`** (S7767), not `| 0`.
+- **`defer cancel()` right after `context.WithTimeout`/`WithCancel`** (S8188): the cancel belongs to the function's lifetime. If work must outlive the wait, restructure — never move the `defer cancel()` into the goroutine, and never cancel a context while a call on it is still in flight.
+- **Shell scripts use `[[ ... ]]`** in bash (S7688 — `[ ]`/`test` are the legacy forms), and every `*.sh` stays **LF**: CRLF breaks it on Linux (shellcheck SC1017) and `.gitattributes` only normalizes at commit, not in the working tree.
+- **Every `message` listener checks `event.source` AND `event.origin`** (S2819) before reading `event.data`; `postMessage` targets a known origin, not `'*'`, unless the target origin genuinely cannot be known.
+- **Go: no unchecked errors** (`errcheck`). Handle or return them; `_ =` only for truly best-effort calls (e.g. `Close` on a read-only handle) with a one-line reason. Never silence a linter through config.
+- **Keep functions simple.** The `gocyclo` gate is 40, Sonar's cognitive threshold is 15: split by extracting well-named helpers or table-driven dispatch instead of growing a 80-branch function. Do not add to the worst offenders.
+- **React Compiler rules are errors** once cleared in `frontend/.oxlintrc.json` (purity, immutability, refs, set-state-in-effect, exhaustive deps): derive state instead of syncing it in effects, no impure calls in render, no `any` (use `unknown` + narrowing).
+- **Dockerfiles and workflows pass hadolint / actionlint / shellcheck**: pinned versions, `--no-install-recommends`, cleaned apt lists, no unquoted shell variables. A `# hadolint ignore` or `// nosemgrep` / `#nosec` needs the exact rule id and a reason.
+- **Security annotations are precise:** `// nosemgrep: <rule-id>` on the intentional line only; never blanket-disable a rule.
+
 ---
 
 ## Common Change Recipes
@@ -402,7 +421,7 @@ if (request.auth.type === 'aws4') {
 
 ### Multi-language IDE Platform (Code Studio)
 
-Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java/Rust/Python are validation scenarios, not features. Rules:
+Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust (`internal/languages/rust`) is complete in code and tests — Cargo crate/workspace detection, toolchain selection, run with build diagnostics, `cargo test`, CodeLLDB debug, rust-analyzer and the product entities — and waits only for its manual app checks (RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RS-M7 being the integration gate; see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
 
 - **Dependency direction:** `internal/codestudio` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/codestudio`.
 - **Languages are registered in one place:** `internal/codestudio/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.
@@ -555,6 +574,8 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
 | `docs/CODE-STUDIO.md` | Code Studio guide: usage, trust model, optional tools, persistence and shortcuts |
+| `docs/QUALITY.md` | Quality toolchain: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage |
+| `docs/JSON-V2.md` | JSON marshaling: encoding/json/v2 migration and v1 compatibility seams |
 | `docs/BUILD.md` | Build instructions for all platforms |
 | `docs/INSTALL.md` | End-user installation guide |
 | `docs/RELEASE.md` | Release notes and history |
@@ -577,4 +598,4 @@ Whenever the release tag on `main` is bumped, update the website repo in the sam
 - **Test and Debug:** pytest in the shared Test tree with coverage (pytest-cov, no package installed for the user), debugpy launch and attach.
 - **Cross-product:** HTTP routes and WebSockets become Developer Context entities (`internal/devcontext/pythonroutes.go`), so API Workspace, Mock, cURL, OpenAPI and Live Session see them like Go/Java routes.
 
-Pinned tools: `basedpyright==1.40.2`, `debugpy==1.8.22`, Ruff 0.13.2. Verified only on Python 3.11 / Windows; macOS/Linux matrix and licenses are open (PY-0.2). Out of scope: Jupyter, remote debugger, Conda manager, automatic Python install, PyPI publishing, Python plugin runtime. Rust remains planned (§9.6). Open work: `mds/MULTILANGUAGE-IDE.md` P1-A; delivered evidence: `mds/MULTILANGUAGE-IDE-DONE.md`; desktop acceptance PY-M1…M13 in `mds/MANUAL-CHECK.md` (none ticked yet, so §9.5 is not closed).
+Pinned tools: `basedpyright==1.40.2`, `debugpy==1.8.22`, Ruff 0.13.2. Verified only on Python 3.11 / Windows; macOS/Linux matrix and licenses are open (PY-0.2). Out of scope: Jupyter, remote debugger, Conda manager, automatic Python install, PyPI publishing, Python plugin runtime. Rust is no longer planned: its adapter is delivered in `internal/languages/rust` (§9.6) and waits for the manual checks. Open work: `mds/MULTILANGUAGE-IDE.md` P1-A; delivered evidence: `mds/MULTILANGUAGE-IDE-DONE.md`; desktop acceptance PY-M1…M13 in `mds/MANUAL-CHECK.md` (none ticked yet, so §9.5 is not closed).

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react'
 import { GitBranch, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { withContentKeys } from '@/lib/contentKeys'
 import type { MarkdownFileEntry } from '@/lib/markdown-api'
 import { classifyMemoryRelation, type GraphNode, type MarkdownEdge, type AgentMemoryRelationType } from '@/lib/markdownDoc'
 
@@ -190,7 +191,7 @@ export function MarkdownGraphView({
         >
           <rect x="0" y="0" width={GRAPH_WIDTH} height={GRAPH_HEIGHT} fill="var(--color-surface-0)" />
           <g transform={`translate(${graphOffset.x} ${graphOffset.y}) scale(${graphScale})`}>
-            {visibleEdges.slice(0, large ? 500 : 160).map((edge, index) => {
+            {withContentKeys(visibleEdges.slice(0, large ? 500 : 160), (e) => `${e.from}-${e.to}`).map(({ key: edgeKey, item: edge }) => {
               const from = graphNodeMap.get(edge.from)
               const to = graphNodeMap.get(edge.to)
               if (!from || !to) return null
@@ -201,7 +202,7 @@ export function MarkdownGraphView({
               const toY = (to.y / SOURCE_HEIGHT) * GRAPH_HEIGHT
               return (
                 <line
-                  key={`${edge.from}-${edge.to}-${index}`}
+                  key={edgeKey}
                   x1={fromX}
                   y1={fromY}
                   x2={toX}

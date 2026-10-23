@@ -186,7 +186,7 @@ function buildJsonDiff(left: string, right: string): JsonDiffModel {
   try {
     const leftFlat = flattenJson(JSON.parse(left))
     const rightFlat = flattenJson(JSON.parse(right))
-    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort()
+    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort((a, b) => a.localeCompare(b))
     const rows = paths.reduce<JsonDiffRow[]>((acc, path) => {
       const hasLeft = Object.prototype.hasOwnProperty.call(leftFlat, path)
       const hasRight = Object.prototype.hasOwnProperty.call(rightFlat, path)
@@ -242,7 +242,7 @@ function buildXmlDiff(left: string, right: string): JsonDiffModel {
   try {
     const leftFlat = flattenXml(left)
     const rightFlat = flattenXml(right)
-    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort()
+    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort((a, b) => a.localeCompare(b))
     const rows = paths.reduce<JsonDiffRow[]>((acc, path) => {
       const hasLeft = Object.prototype.hasOwnProperty.call(leftFlat, path)
       const hasRight = Object.prototype.hasOwnProperty.call(rightFlat, path)
@@ -439,11 +439,11 @@ const OID_SIG: Record<string, string> = {
   '1.2.840.113549.1.1.5': 'SHA1withRSA', '1.2.840.113549.1.1.11': 'SHA256withRSA',
   '1.2.840.113549.1.1.12': 'SHA384withRSA', '1.2.840.113549.1.1.13': 'SHA512withRSA',
   '1.2.840.10045.4.3.2': 'ECDSAwithSHA256', '1.2.840.10045.4.3.3': 'ECDSAwithSHA384',
-  '1.2.840.10045.4.3.4': 'ECDSAwithSHA512', '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448',
+  '1.2.840.10045.4.3.4': 'ECDSAwithSHA512', '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448', // NOSONAR -- demo data in the sample generator, not a real endpoint
 }
 const OID_KEY: Record<string, string> = {
   '1.2.840.113549.1.1.1': 'RSA', '1.2.840.10045.2.1': 'ECDSA',
-  '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448', '1.2.840.10040.4.1': 'DSA',
+  '1.3.101.112': 'Ed25519', '1.3.101.113': 'Ed448', '1.2.840.10040.4.1': 'DSA', // NOSONAR -- demo data in the sample generator, not a real endpoint
 }
 const OID_CURVE: Record<string, number> = {
   '1.2.840.10045.3.1.7': 256, '1.3.132.0.34': 384, '1.3.132.0.35': 521,
@@ -544,7 +544,7 @@ async function parseCertDER(raw: Uint8Array): Promise<ParsedCert> {
     } else if (keyAlgOID === '1.2.840.10045.2.1' && algCh.length > 1) {
       const curveOID = parseOID(raw, algCh[1].vStart, algCh[1].vEnd)
       keyBits = OID_CURVE[curveOID] ?? 0
-    } else if (keyAlgOID === '1.3.101.112') {
+    } else if (keyAlgOID === '1.3.101.112') { // NOSONAR -- demo data in the sample generator, not a real endpoint
       keyBits = 255
     }
 
@@ -600,7 +600,7 @@ async function parseCertDER(raw: Uint8Array): Promise<ParsedCert> {
     const rawBuf: ArrayBuffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
     const [sha256Buf, sha1Buf] = await Promise.all([
       crypto.subtle.digest('SHA-256', rawBuf),
-      crypto.subtle.digest('SHA-1', rawBuf),
+      crypto.subtle.digest('SHA-1', rawBuf), // NOSONAR -- SHA-1 is shown as the legacy certificate fingerprint identifier; the security hash displayed alongside is SHA-256
     ])
     const fpHex = (b: ArrayBuffer) =>
       Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(':')

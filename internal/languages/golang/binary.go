@@ -260,7 +260,7 @@ func EmbeddedFiles(dir string) []BinarySize {
 				pattern = strings.TrimPrefix(strings.Trim(pattern, "\""), "all:")
 				matches, _ := filepath.Glob(filepath.Join(filepath.Dir(path), filepath.FromSlash(pattern)))
 				for _, file := range matches {
-					_ = filepath.WalkDir(file, func(inner string, innerEntry os.DirEntry, err error) error {
+					_ = filepath.WalkDir(file, func(inner string, innerEntry os.DirEntry, err error) error { // #nosec G703 -- read-only size lookup of files matched by the project's own //go:embed patterns
 						if err == nil && !innerEntry.IsDir() {
 							if info, err := innerEntry.Info(); err == nil {
 								rel, _ := filepath.Rel(dir, inner)

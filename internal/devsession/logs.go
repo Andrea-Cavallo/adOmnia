@@ -1,7 +1,7 @@
 package devsession
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"regexp"
 	"sort"
 	"strings"

@@ -4,6 +4,7 @@ import * as GoIDE from '../../../bindings/adomnia/goide'
 import type { APIContractReport, EventContractReport } from '../../../bindings/adomnia/internal/codestudio/models'
 import type { Issue } from '../../../bindings/adomnia/internal/ide/apicontract/models'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { withContentKeys } from '@/lib/contentKeys'
 
 const KIND_LABEL: Record<string, string> = {
   undocumented: 'Served but not documented', unimplemented: 'Documented but not implemented', 'type-mismatch': 'Field type differs',
@@ -22,8 +23,8 @@ function IssueGroups({ issues }: { issues: Issue[] }) {
         <section key={kind} className="mb-2">
           <h4 className="px-1 pb-1 text-[10.5px] font-semibold uppercase tracking-wide text-text-4">{KIND_LABEL[kind] ?? kind} · {items.length}</h4>
           <ul>
-            {items.map((issue, index) => (
-              <li key={`${issue.message}-${index}`}>
+            {withContentKeys(items, (issue) => `${issue.message}|${issue.file}|${issue.line}`).map(({ key: issueKey, item: issue }) => (
+              <li key={issueKey}>
                 <button type="button" disabled={!issue.file} onClick={() => issue.file && void useCodeStudioStore.getState().openLocation(issue.file, issue.line || 1)} className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-surface-3 disabled:cursor-default">
                   {issue.breaking && <span className="shrink-0 rounded bg-danger/15 px-1 text-[9.5px] font-semibold text-danger">BREAKING</span>}
                   <span className="min-w-0 flex-1 truncate text-text-2" title={issue.message}>{issue.message}</span>
@@ -42,6 +43,7 @@ function IssueGroups({ issues }: { issues: Issue[] }) {
 export function CodeStudioApiContract({ sessionId }: { sessionId: string }) {
   const [report, setReport] = useState<APIContractReport | null>(null)
   const [running, setRunning] = useState(false)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [base, setBase] = useState('main')
   const [diff, setDiff] = useState<Issue[] | null>(null)
@@ -66,12 +68,25 @@ export function CodeStudioApiContract({ sessionId }: { sessionId: string }) {
       setEventDiff(messages ?? [])
     } catch (problem) { setError(problem instanceof Error ? problem.message : String(problem)) } finally { setComparing(false) }
   }
-  useEffect(() => { void check() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([GoIDE.APIContractDrift(sessionId), GoIDE.EventContractDrift(sessionId)])
+      .then(([api, messages]) => {
+        if (cancelled) return
+        setError(null)
+        setReport(api)
+        setEvents(messages)
+      })
+      .catch((problem: unknown) => { if (!cancelled) setError(problem instanceof Error ? problem.message : String(problem)) })
+      .finally(() => { if (!cancelled) setLoadedFor(sessionId) })
+    return () => { cancelled = true }
+  }, [sessionId])
+  const checking = running || loadedFor !== sessionId
   const breaking = (diff ?? []).filter((issue) => issue.breaking).length
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-1 px-2 py-1 text-text-3">
-        <button type="button" onClick={() => void check()} disabled={running} className="flex h-6 items-center gap-1 rounded px-1.5 hover:bg-surface-3 disabled:opacity-50">{running ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}Check</button>
+        <button type="button" onClick={() => void check()} disabled={checking} className="flex h-6 items-center gap-1 rounded px-1.5 hover:bg-surface-3 disabled:opacity-50">{checking ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}Check</button>
         {report && (report.contract
           ? <button type="button" onClick={() => void useCodeStudioStore.getState().openLocation(report.contract, 1)} className="text-accent hover:underline">{report.contract}</button>
           : <span className="text-text-4">No OpenAPI file found (openapi.yaml, swagger.json…)</span>)}

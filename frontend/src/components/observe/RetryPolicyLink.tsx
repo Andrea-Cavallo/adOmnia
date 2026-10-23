@@ -43,11 +43,11 @@ export function RetryPolicyLink({span,spans}: {span:OtlpSpan;spans:OtlpSpan[]}) 
     if(!items.length) throw new Error('No static retry candidates in this function. Export adomnia.retry.policy.file and adomnia.retry.policy.line for an exact link.')
     setCandidates({sessionId:session.id,file,items})
    }
-  }catch(error){setError(String(error))}finally{setBusy(false)}
+  }catch(failure){setError(String(failure))}finally{setBusy(false)}
  }
  return <div><button type="button" disabled={busy} onClick={()=>void open()} className="rounded border border-warning/50 px-2 py-1 text-warning">{busy?'Locating retry policy…':'Retry → policy'}</button>{error && <p role="alert" className="mt-1 text-error">{error}</p>}
   <CodeStudioModal open={!!candidates} onClose={()=>setCandidates(null)} title="Retry candidates" subtitle="Static calls in the span function. Select a declaration; runtime ownership is not established." size="md">
-   {candidates?.items.map((item,i)=><CodeStudioButton key={i} onClick={()=> {void openEntity({kind:'symbol',id:`retry:${candidates.sessionId}:${item.line}`,sessionId:candidates.sessionId,label:item.name,attrs:{},source:{file:candidates.file,line:item.line}},'open');setCandidates(null)}}>{item.name} · {candidates.file}:{item.line}</CodeStudioButton>)}
+   {candidates?.items.map(item=><CodeStudioButton key={`${item.line}:${item.name}`} onClick={()=> {void openEntity({kind:'symbol',id:`retry:${candidates.sessionId}:${item.line}`,sessionId:candidates.sessionId,label:item.name,attrs:{},source:{file:candidates.file,line:item.line}},'open');setCandidates(null)}}>{item.name} · {candidates.file}:{item.line}</CodeStudioButton>)}
   </CodeStudioModal>
  </div>
 }

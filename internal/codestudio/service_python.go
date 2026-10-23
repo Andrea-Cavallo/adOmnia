@@ -182,6 +182,11 @@ func (s *Service) startEnvironmentCommand(session Session, directory string, com
 		}
 		return Execution{}, fmt.Errorf("%s", command.Reason)
 	}
+	// Ricontrollo indipendente dal piano, che è costruito dall'adapter: l'eseguibile deve restare
+	// un interprete Python e la directory deve esistere (python.ValidatePlanCommand).
+	if err := python.ValidatePlanCommand(command, directory); err != nil {
+		return Execution{}, err
+	}
 	return s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: "install",
 		Executable: command.Executable, Arguments: command.Arguments,

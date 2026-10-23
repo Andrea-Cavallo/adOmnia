@@ -89,7 +89,7 @@ function substVars(text: string, vars: Record<string, string>): string {
 }
 
 function eventId() {
-  return Math.random().toString(36).slice(2)
+  return Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function fmt(ts: number) {
@@ -367,7 +367,7 @@ export function SsePanel() {
     setSessionId(null)
   }
 
-  const knownTypes = useMemo(() => Array.from(new Set(events.map((e) => e.type).filter(Boolean))).sort(), [events])
+  const knownTypes = useMemo(() => Array.from(new Set(events.map((e) => e.type).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [events])
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase()
     return events.filter((ev) => {

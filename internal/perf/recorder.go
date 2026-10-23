@@ -1,8 +1,9 @@
 package perf
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"adomnia/internal/activity"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/resources"
 )
 
@@ -181,7 +183,11 @@ func (r *Recorder) record() {
 		Frontend:  frontendMetrics(),
 		Activity:  activity.Default.Snapshot(),
 	}
-	err := json.NewEncoder(r.file).Encode(sample)
+	err := jsonutil.MarshalWrite(r.file, sample)
+	if err == nil {
+		// Un campione per riga (NDJSON): encoding/json/v2 non termina con \n come l'Encoder v1.
+		_, err = io.WriteString(r.file, "\n")
+	}
 	if err != nil && r.err == nil {
 		r.err = fmt.Errorf("write perf sample: %w", err)
 	}

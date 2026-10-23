@@ -52,11 +52,13 @@ export function splitConfirmMessage(message: string, details: ConfirmDetail[] = 
   return { message: lines.join('\n').trim(), details: [...extracted, ...details] }
 }
 
+const NO_DETAILS: ConfirmDetail[] = []
+
 export function ConfirmDialog({
   open,
   title,
   message: rawMessage,
-  details: rawDetails = [],
+  details: rawDetails = NO_DETAILS,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'default',

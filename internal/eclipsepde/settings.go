@@ -1,7 +1,9 @@
 package eclipsepde
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +34,7 @@ type targetProfileJSON struct {
 	Kind                 string `json:"kind"`
 	Path                 string `json:"path"`
 	ExecutionEnvironment string `json:"executionEnvironment,omitempty"`
-	Offline              bool   `json:"offline,omitempty"`
+	Offline              bool   `json:"offline,omitzero"`
 }
 
 // LoadTargetSettings reads `.adomnia/eclipse-target.json` from root; a missing
@@ -92,7 +94,7 @@ func SaveTargetSettings(root string, settings TargetSettings) error {
 			Offline:              p.Offline,
 		})
 	}
-	data, err := json.MarshalIndent(raw, "", "  ")
+	data, err := jsonutil.Marshal(raw, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

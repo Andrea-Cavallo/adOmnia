@@ -135,7 +135,9 @@ function InstallConfirm({ command, onConfirm, onCancel, title }: { command: stri
 }
 
 function Failure({ session, view, preview, confirm, setConfirm }: { session: GoIDESession; view: SessionPreview; preview: LivePreview; confirm: 'dependencies' | 'tools' | null; setConfirm: (value: 'dependencies' | 'tools' | null) => void }) {
-  const { goLive, installDependencies, load } = useLivePreviewStore.getState()
+  const goLive = useLivePreviewStore((state) => state.goLive)
+  const installDependencies = useLivePreviewStore((state) => state.installDependencies)
+  const load = useLivePreviewStore((state) => state.load)
   const target = targetFor(view, view.lastRequest)
   const missing = preview.failureKind === 'missing-dependencies'
   const command = target?.installCommand?.join(' ') ?? 'npm install'

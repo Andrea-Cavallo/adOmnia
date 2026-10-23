@@ -201,9 +201,9 @@ function DOMNodeRow({
       </div>
 
       {isExpanded &&
-        node.children?.map((child, index) => (
+        node.children?.map((child) => (
           <DOMNodeRow
-            key={`${child.nodeId}-${index}`}
+            key={child.nodeId}
             node={child}
             depth={depth + 1}
             selectedNodeId={selectedNodeId}
@@ -262,11 +262,10 @@ export function DOMInspectorPanel() {
     }
   }, [])
 
-  useEffect(() => {
-    if (activeView === 'source' && !pageSource && !sourceLoading) {
-      void refreshSource()
-    }
-  }, [activeView, pageSource, refreshSource, sourceLoading])
+  const openSourceView = useCallback(() => {
+    setActiveView('source')
+    if (!pageSource && !sourceLoading) void refreshSource()
+  }, [pageSource, refreshSource, sourceLoading])
 
   const handleSelect = useCallback(async (node: DOMNode) => {
     setSelectedNode(node)
@@ -382,7 +381,9 @@ export function DOMInspectorPanel() {
   )
 
   const styleEntries = Object.entries(computedStyles)
-  const sourceLines = pageSource ? pageSource.split('\n') : []
+  const sourceLines = pageSource
+    ? pageSource.split('\n').map((text, index) => ({ text, number: index + 1 }))
+    : []
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-surface-1">
@@ -400,7 +401,7 @@ export function DOMInspectorPanel() {
             Elements
           </button>
           <button
-            onClick={() => setActiveView('source')}
+            onClick={openSourceView}
             className={cn(
               'h-6 px-2 text-[10px] font-medium transition-colors border-l border-border-1',
               activeView === 'source' ? 'bg-accent/15 text-accent' : 'text-text-3 hover:text-text-1'
@@ -479,12 +480,12 @@ export function DOMInspectorPanel() {
                 </div>
               )}
               {!sourceLoading &&
-                sourceLines.map((line, index) => (
-                  <div key={index} className="flex min-w-max hover:bg-surface-2/60">
+                sourceLines.map((line) => (
+                  <div key={line.number} className="flex min-w-max hover:bg-surface-2/60">
                     <span className="w-12 flex-shrink-0 select-none border-r border-border-1 pr-2 text-right text-text-4 bg-surface-1">
-                      {index + 1}
+                      {line.number}
                     </span>
-                    <code className="whitespace-pre px-3 text-text-2">{line}</code>
+                    <code className="whitespace-pre px-3 text-text-2">{line.text}</code>
                   </div>
                 ))}
             </div>

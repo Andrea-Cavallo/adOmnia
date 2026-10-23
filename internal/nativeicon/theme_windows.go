@@ -43,7 +43,7 @@ func iconsForMode(mode string) (iconPair, error) {
 			length := binary.LittleEndian.Uint32(entry[8:12])
 			offset := binary.LittleEndian.Uint32(entry[12:16])
 			frame := data[offset : offset+length]
-			h, _, err := createIcon.Call(uintptr(unsafe.Pointer(&frame[0])), uintptr(length), 1, 0x30000, uintptr(size), uintptr(size), 0)
+			h, _, err := createIcon.Call(uintptr(unsafe.Pointer(&frame[0])), uintptr(length), 1, 0x30000, uintptr(size), uintptr(size), 0) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 			if h == 0 {
 				return 0, fmt.Errorf("create native icon: %w", err)
 			}

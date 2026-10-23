@@ -109,6 +109,7 @@ export function parseWsdl(xml: string): WsdlDocument {
     if (a.name.startsWith('xmlns:')) {
       ns[a.name.slice(6)] = a.value
     } else if (a.name === 'xmlns') {
+      // Default namespace: already taken from the root attribute.
     }
   }
 

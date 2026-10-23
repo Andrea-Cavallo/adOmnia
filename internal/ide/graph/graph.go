@@ -54,7 +54,7 @@ type Node struct {
 	Label   string            `json:"label"`
 	Package string            `json:"package,omitempty"`
 	File    string            `json:"file,omitempty"` // relativo alla root, separatore /
-	Line    int               `json:"line,omitempty"`
+	Line    int               `json:"line,omitzero"`
 	Attrs   map[string]string `json:"attrs,omitempty"`
 }
 
@@ -74,7 +74,7 @@ type Graph struct {
 	BuiltAt     time.Time `json:"builtAt"`
 	Nodes       []Node    `json:"nodes"`
 	Edges       []Edge    `json:"edges"`
-	Truncated   bool      `json:"truncated,omitempty"`
+	Truncated   bool      `json:"truncated,omitzero"`
 	Problems    []string  `json:"problems,omitempty"`
 }
 

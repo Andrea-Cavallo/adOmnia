@@ -14,6 +14,7 @@ import (
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 	"adomnia/internal/languages/python"
+	"adomnia/internal/languages/rust"
 	"adomnia/internal/plugins"
 	"adomnia/internal/resources"
 	"context"
@@ -1699,6 +1700,62 @@ func (g *GoIDE) InstallPythonDependencies(sessionID, unit string, confirmed bool
 // StartPythonDebug avvia il debug di uno script, di un modulo o di test pytest con debugpy.
 func (g *GoIDE) StartPythonDebug(request codestudio.PythonDebugRequest) (codestudio.DebugSessionInfo, error) {
 	return g.service.StartPythonDebug(request)
+}
+
+// StartRustDebug avvia il debug di un bin o di un example Cargo con CodeLLDB.
+func (g *GoIDE) StartRustDebug(request codestudio.RustDebugRequest) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartRustDebug(request)
+}
+
+// PreviewRustDebuggerInstall mostra il comando esatto che installerebbe CodeLLDB.
+func (g *GoIDE) PreviewRustDebuggerInstall(sessionID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewRustDebuggerInstall(sessionID)
+}
+
+// InstallRustDebugger installa CodeLLDB (release pinnata, checksum verificato) dopo conferma.
+func (g *GoIDE) InstallRustDebugger(sessionID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallRustDebugger(sessionID, confirmed)
+}
+
+// RustToolchains elenca le toolchain Rust candidate del progetto (RS-2.4).
+func (g *GoIDE) RustToolchains(sessionID string) (codestudio.RustToolchainReport, error) {
+	return g.service.RustToolchains(sessionID)
+}
+
+// SetRustToolchain sceglie il cargo del progetto ("" = automatico); alimenta Run/Test/Debug e rust-analyzer.
+func (g *GoIDE) SetRustToolchain(sessionID, path string) error {
+	return g.service.SetRustToolchain(sessionID, path)
+}
+
+// SetRustLowResources è l'opzione "Low resources" di rust-analyzer (RS-9.5): proc-macro e build
+// script spengono senza riavviare il server.
+func (g *GoIDE) SetRustLowResources(sessionID string, enabled bool) error {
+	return g.service.SetRustLowResources(sessionID, enabled)
+}
+
+// PreviewRustComponentInstall mostra il comando esatto che installerebbe un componente rustup.
+func (g *GoIDE) PreviewRustComponentInstall(sessionID, component string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewRustComponentInstall(sessionID, component)
+}
+
+// InstallRustComponent installa un componente rustup (es. rust-src, clippy) dopo conferma.
+func (g *GoIDE) InstallRustComponent(sessionID, component string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallRustComponent(sessionID, component, confirmed)
+}
+
+// PreviewRustToolchainInstall mostra il comando esatto che installerebbe un canale rustup.
+func (g *GoIDE) PreviewRustToolchainInstall(sessionID, channel string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewRustToolchainInstall(sessionID, channel)
+}
+
+// InstallRustToolchain installa un canale rustup (es. 1.85.0) dopo conferma.
+func (g *GoIDE) InstallRustToolchain(sessionID, channel string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallRustToolchain(sessionID, channel, confirmed)
+}
+
+// RustDependencyTree è l'albero delle dipendenze dal Cargo.lock (offline) con i duplicati in evidenza.
+func (g *GoIDE) RustDependencyTree(sessionID string) ([]rust.CargoTreeNode, error) {
+	return g.service.RustDependencyTree(sessionID)
 }
 
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione

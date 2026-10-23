@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"net/http"
 )
 
@@ -9,7 +9,7 @@ import (
 func JSONError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	_ = jsonutil.MarshalWrite(w, map[string]any{
 		"ok":    false,
 		"error": msg,
 	})

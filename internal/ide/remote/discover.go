@@ -55,7 +55,7 @@ func WSLDistributions(ctx context.Context) []string {
 
 // DecodeWSLOutput converte l'output UTF-16LE di `wsl -l` in stringa.
 func DecodeWSLOutput(output []byte) string {
-	if len(output) < 2 || len(output)%2 != 0 || output[1] != 0 && !(output[0] == 0xff && output[1] == 0xfe) {
+	if len(output) < 2 || len(output)%2 != 0 || output[1] != 0 && (output[0] != 0xff || output[1] != 0xfe) {
 		return string(output) // WSL_UTF8=1 o versioni che scrivono già UTF-8
 	}
 	units := make([]uint16, 0, len(output)/2)

@@ -2,7 +2,7 @@ package collab
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"testing"
 )
 

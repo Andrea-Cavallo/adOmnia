@@ -294,7 +294,9 @@ export interface MockCondition {
 }
 
 export function uid(): string {
-  return Math.random().toString(36).slice(2, 10)
+  // Entropia crittografica (non Math.random): gli id finiscono in DOM, chiavi e confronti e non
+  // devono essere prevedibili (S2245). getRandomValues funziona anche fuori dai contesti sicuri.
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export function blankKVRow(): KVRow {

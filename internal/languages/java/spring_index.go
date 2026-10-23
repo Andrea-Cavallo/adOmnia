@@ -28,15 +28,15 @@ type SpringProperty struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 	Default     string `json:"default,omitempty"`
-	Deprecated  bool   `json:"deprecated,omitempty"`
+	Deprecated  bool   `json:"deprecated,omitzero"`
 	Source      string `json:"source"`
 	// Origin è il jar o la classe che la dichiara (per il tooltip).
 	Origin string `json:"origin,omitempty"`
 	// Posizione della dichiarazione Java, navigabile solo per Source == project.
 	File        string `json:"file,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // SpringValue è un valore scritto in application.properties/.yml, con il profilo a cui appartiene.
@@ -46,11 +46,11 @@ type SpringValue struct {
 	// Profile è il profilo del file (`application-prod.properties` → "prod"); vuoto per la base.
 	Profile string `json:"profile,omitempty"`
 	// OverridesBase è vero quando il profolo ridefinisce la stessa chiave della configurazione base.
-	OverridesBase bool   `json:"overridesBase,omitempty"`
+	OverridesBase bool   `json:"overridesBase,omitzero"`
 	File          string `json:"file,omitempty"`
-	Line          int    `json:"line,omitempty"`
-	StartColumn   int    `json:"startColumn,omitempty"`
-	EndColumn     int    `json:"endColumn,omitempty"`
+	Line          int    `json:"line,omitzero"`
+	StartColumn   int    `json:"startColumn,omitzero"`
+	EndColumn     int    `json:"endColumn,omitzero"`
 }
 
 // SpringPropertyReference è un `@Value("${…}")` nel codice Java.
@@ -61,9 +61,9 @@ type SpringPropertyReference struct {
 	Class       string `json:"class,omitempty"`
 	Member      string `json:"member,omitempty"`
 	File        string `json:"file,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // SpringDiagnostic è un problema di configurazione trovato senza eseguire il progetto.
@@ -72,9 +72,9 @@ type SpringDiagnostic struct {
 	Message     string `json:"message"`
 	Key         string `json:"key,omitempty"`
 	File        string `json:"file,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // SpringBean è un bean dichiarato nel progetto (stereotype o metodo @Bean).
@@ -89,9 +89,9 @@ type SpringBean struct {
 	Supertypes  []string `json:"supertypes,omitempty"`
 	Member      string   `json:"member,omitempty"`
 	File        string   `json:"file,omitempty"`
-	Line        int      `json:"line,omitempty"`
-	StartColumn int      `json:"startColumn,omitempty"`
-	EndColumn   int      `json:"endColumn,omitempty"`
+	Line        int      `json:"line,omitzero"`
+	StartColumn int      `json:"startColumn,omitzero"`
+	EndColumn   int      `json:"endColumn,omitzero"`
 }
 
 // SpringInjection è un punto di iniezione (`@Autowired`/`@Inject`, campo, costruttore o setter).
@@ -103,9 +103,9 @@ type SpringInjection struct {
 	Required    bool   `json:"required"`
 	Class       string `json:"class,omitempty"`
 	File        string `json:"file,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // SpringEndpoint è un endpoint HTTP MVC (classe + metodo).
@@ -117,9 +117,9 @@ type SpringEndpoint struct {
 	Produces    string `json:"produces,omitempty"`
 	Consumes    string `json:"consumes,omitempty"`
 	File        string `json:"file,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo.
@@ -139,7 +139,7 @@ type SpringIndex struct {
 	// MetadataState descrive lo scan degli jar: "ready", "idle", "scanning".
 	MetadataState string `json:"metadataState"`
 	// Skipped è il numero di file saltati per dimensione o per limite.
-	Skipped int `json:"skipped,omitempty"`
+	Skipped int `json:"skipped,omitzero"`
 }
 
 // BuildSpringIndex costruisce l'indice Spring di un progetto leggendo solo il filesystem:

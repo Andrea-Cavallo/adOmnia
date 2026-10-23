@@ -8,7 +8,8 @@
 package sourcemap
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -191,13 +192,16 @@ func withinRoots(path string, roots []string) bool {
 }
 
 func osOpenCommand(path string) *exec.Cmd {
+	// Il percorso è già passato da withinRoots (Open non arriva qui altrimenti): resta da non
+	// farlo reinterpretare da una shell. Su Windows `cmd /c start` riparsa la riga di comando
+	// (`&`, `|`, …): si usa rundll32, che riceve il percorso come singolo argomento inerte.
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", path)
+		return exec.Command("open", path) // NOSONAR -- path validated by withinRoots; no shell is involved
 	case "linux":
-		return exec.Command("xdg-open", path)
+		return exec.Command("xdg-open", path) // NOSONAR -- path validated by withinRoots; no shell is involved
 	default:
-		return exec.Command("cmd", "/c", "start", "", path)
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", path) // NOSONAR -- path validated by withinRoots and passed as a single literal argument (no cmd.exe re-parsing)
 	}
 }
 
@@ -214,7 +218,7 @@ func editorCommand(template, path string, line int) (*exec.Cmd, error) {
 		field = strings.ReplaceAll(field, "{line}", fmt.Sprint(line))
 		args = append(args, field)
 	}
-	return exec.Command(fields[0], args...), nil
+	return exec.Command(fields[0], args...), nil // NOSONAR -- no shell is involved (args are passed literally): the template is the editor command the user configured and path was validated by withinRoots
 }
 
 // Open launches the configured editor on path:line. The path must live inside
@@ -226,7 +230,7 @@ func Open(roots []string, path string, line int, editor string) error {
 	if !withinRoots(path, roots) {
 		return fmt.Errorf("%q is outside the selected repositories", path)
 	}
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(path); err != nil { // NOSONAR -- the path was confined to the user-selected roots above; the existence check is part of opening it in the editor
 		return fmt.Errorf("file not found: %w", err)
 	}
 	cmd, err := editorCommand(editor, path, line)
@@ -243,7 +247,7 @@ func Open(roots []string, path string, line int, editor string) error {
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_ = jsonutil.MarshalWrite(w, payload)
 }
 
 // RegisterHandlers wires the source-mapping endpoints onto the local sidecar.
@@ -254,7 +258,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			return
 		}
 		var request resolveRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
 			writeJSON(w, http.StatusBadRequest, ResolveResult{Error: "invalid request"})
 			return
 		}
@@ -267,7 +271,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			return
 		}
 		var request openRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 			return
 		}

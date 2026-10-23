@@ -4,6 +4,7 @@ import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import { GO_LANGUAGE } from './languages/go'
 import { JAVA_LANGUAGE } from './languages/java'
 import { PYTHON_LANGUAGE } from './languages/python'
+import { RUST_LANGUAGE } from './languages/rust'
 import { WEB_LANGUAGES } from './languages/web'
 
 /**
@@ -55,6 +56,8 @@ export interface IdeLanguageContribution {
    * dialog Breakpoints non mostra la sezione (es. Delve non ha filtri del genere).
    */
   exceptionFilters?: readonly ExceptionFilterSpec[]
+  /** Caratteri, oltre al punto, che aprono da soli la lista di completamento (Rust: `:` per `Vec::`). */
+  completionTriggerCharacters?: readonly string[]
 }
 
 export interface ExceptionFilterSpec {
@@ -69,7 +72,7 @@ export interface IdeRegisteredLanguage {
   name: string
 }
 
-export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES, JAVA_LANGUAGE, PYTHON_LANGUAGE]
+export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES, JAVA_LANGUAGE, PYTHON_LANGUAGE, RUST_LANGUAGE]
 
 /** Nome mostrato di ogni linguaggio registrato, per i riepiloghi che ricevono solo l'id dal backend. */
 export const IDE_LANGUAGE_NAMES: Readonly<Record<string, string>> = Object.fromEntries(IDE_LANGUAGES.map((language) => [language.id, language.name]))

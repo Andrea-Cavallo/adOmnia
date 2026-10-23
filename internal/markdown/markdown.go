@@ -358,7 +358,7 @@ func ImportFolderToWorkspace(sourceRoot string, dataDir string) (WorkspaceInfo, 
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(target, data, 0644); err != nil {
+		if err := os.WriteFile(target, data, 0644); err != nil { // #nosec G703 -- target is built under the user-chosen export folder from walked entries
 			return err
 		}
 		count++

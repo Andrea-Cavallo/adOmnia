@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { FlowNodeDefinition } from '@/lib/flowStorage'
 
 export function useFlowCanvasInteraction({ zoom, onZoom, onSelect, onMove }: {
@@ -14,8 +14,9 @@ export function useFlowCanvasInteraction({ zoom, onZoom, onSelect, onMove }: {
   useEffect(() => () => cleanupRef.current?.(), [])
   useLayoutEffect(() => {
     if (pendingScroll.current) { scrollRef.current?.scrollTo(pendingScroll.current); pendingScroll.current = null }
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- zoom is the trigger: the pending scroll is applied right after the zoomed layout commits
   }, [zoom])
-  const changeZoom = (value: number, clientX?: number, clientY?: number) => {
+  const changeZoom = useCallback((value: number, clientX?: number, clientY?: number) => {
     const scroll = scrollRef.current
     if (!scroll) return
     const next = Math.max(.2, Math.min(2, value))
@@ -25,7 +26,7 @@ export function useFlowCanvasInteraction({ zoom, onZoom, onSelect, onMove }: {
     const y = clientY === undefined ? scroll.clientHeight / 2 : clientY - rect.top
     pendingScroll.current = { left: (scroll.scrollLeft + x) * next / zoom - x, top: (scroll.scrollTop + y) * next / zoom - y }
     onZoom(next)
-  }
+  }, [zoom, onZoom])
   const resetScroll = () => {
     pendingScroll.current = { left: 0, top: 0 }
     scrollRef.current?.scrollTo(pendingScroll.current)
@@ -40,7 +41,7 @@ export function useFlowCanvasInteraction({ zoom, onZoom, onSelect, onMove }: {
     }
     scroll.addEventListener('wheel', wheel, { passive: false })
     return () => scroll.removeEventListener('wheel', wheel)
-  }, [zoom, onZoom])
+  }, [zoom, changeZoom])
   const gesture = (event: ReactPointerEvent, onPointerMove: (next: PointerEvent) => void, onEnd: (moved: boolean) => void) => {
     cleanupRef.current?.()
     const target = event.currentTarget as HTMLElement

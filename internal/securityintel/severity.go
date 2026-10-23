@@ -13,29 +13,29 @@ type Severity struct {
 	// CVSS31Vector è il vettore CVSS 3.1 completo, se presente.
 	CVSS31Vector string `json:"cvss31Vector,omitempty"`
 	// CVSS31Score è il punteggio base 3.1. Calcolato dal vettore se la fonte non lo dà.
-	CVSS31Score float64 `json:"cvss31Score,omitempty"`
+	CVSS31Score float64 `json:"cvss31Score,omitzero"`
 	// CVSS40Vector è il vettore CVSS 4.0 completo, se presente.
 	CVSS40Vector string `json:"cvss40Vector,omitempty"`
 	// CVSS40Score è il punteggio base 4.0. La fonte autorevole (NVD, GHSA) prevale;
 	// quando non lo pubblica il motore lo calcola dal vettore con l'algoritmo delle
 	// macrovector del documento FIRST (cvss4.go, verificato sui reference vector
 	// ufficiali) e lo dichiara con ScoreSource "computed".
-	CVSS40Score float64 `json:"cvss40Score,omitempty"`
+	CVSS40Score float64 `json:"cvss40Score,omitzero"`
 	// ScoreSource dice chi ha fornito il punteggio ("nvd", "ghsa", "osv", "computed").
 	ScoreSource string `json:"scoreSource,omitempty"`
 	// BaseSeverity è la classe normalizzata: CRITICAL, HIGH, MEDIUM, LOW, NONE.
 	BaseSeverity string `json:"baseSeverity,omitempty"`
 	// EPSS è la probabilità stimata di sfruttamento entro 30 giorni, in [0,1].
 	// Non è una gravità: una EPSS alta su una gravità bassa è comunque un rischio.
-	EPSS float64 `json:"epss,omitempty"`
+	EPSS float64 `json:"epss,omitzero"`
 	// EPSSPercentile è la posizione della EPSS rispetto a tutte le CVE note, in [0,1].
-	EPSSPercentile float64 `json:"epssPercentile,omitempty"`
+	EPSSPercentile float64 `json:"epssPercentile,omitzero"`
 	// KEV indica che la vulnerabilità è nel catalogo CISA Known Exploited Vulnerabilities.
 	KEV bool `json:"kev"`
 	// KEVDueDate è la data entro cui CISA impone la correzione ai soggetti federali.
 	KEVDueDate string `json:"kevDueDate,omitempty"`
 	// KEVRansomwareCampaign indica che CISA la associa a campagne ransomware in corso.
-	KEVRansomwareCampaign bool `json:"kevRansomwareCampaign,omitempty"`
+	KEVRansomwareCampaign bool `json:"kevRansomwareCampaign,omitzero"`
 }
 
 // SeverityClass enumera le classi di gravità normalizzate, dal più grave.

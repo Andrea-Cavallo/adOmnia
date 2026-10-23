@@ -5,6 +5,7 @@ import type { MemoryModelReport } from '../../../bindings/adomnia/internal/codes
 import { caretFor } from '@/lib/code-studio/codeStudioCaretMemory'
 import { activeGoIDEDocument, useCodeStudioStore } from '@/stores/codeStudio'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
+import { withContentKeys } from '@/lib/contentKeys'
 
 const KIND_TONE: Record<string, string> = { channel: 'text-accent', mutex: 'text-warning', rwmutex: 'text-warning', atomic: 'text-info', waitgroup: 'text-success', once: 'text-success', goroutine: 'text-text-1' }
 
@@ -45,8 +46,8 @@ export function CodeStudioMemoryModel({ sessionId }: { sessionId: string }) {
           <section key={group.target} aria-label={`${group.kind} ${group.target}`} className="mb-3 rounded-md border border-border-1 p-2">
             <h4 className="mb-1 flex items-center gap-2"><span className={`text-[10px] font-semibold uppercase ${KIND_TONE[group.kind] ?? 'text-text-3'}`}>{group.kind}</span><span className="font-mono text-text-1">{group.target}</span></h4>
             <ul className="mb-1">
-              {group.ops.map((op, index) => (
-                <li key={`${op.site.relativePath}:${op.site.line}:${index}`}>
+              {withContentKeys(group.ops, (o) => `${o.site.relativePath}:${o.site.line}:${o.kind}`).map(({ key, item: op }) => (
+                <li key={key}>
                   <button type="button" onClick={() => void useCodeStudioStore.getState().openLocation(op.site.relativePath, op.site.line)} className="flex w-full gap-2 rounded px-1 text-left font-mono text-[11px] hover:bg-surface-3">
                     <span className="w-16 shrink-0 text-text-4">{op.kind}</span>
                     <span className="min-w-0 flex-1 truncate text-text-2">{op.function}</span>

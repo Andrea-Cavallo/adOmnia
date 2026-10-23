@@ -2,7 +2,6 @@ package python
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 // TestPytestCoverageReportMapsFilesAndLines: il report JSON di coverage.py diventa un report
@@ -62,7 +62,7 @@ func TestPytestCoverageReportMapsFilesAndLines(t *testing.T) {
 func TestCoverageIsOffUnlessRequested(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
 	spec, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestCoverageIsOffUnlessRequested(t *testing.T) {
 func TestCoverageArguments(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}, Coverage: true})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}, Coverage: true})
 	spec, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestRealPytestCoverageReport(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "app.py", "def add(a, b):\n    return a + b\n\n\ndef unused():\n    return 0\n")
 	writeFile(t, root, "tests/test_app.py", "from app import add\n\n\ndef test_add():\n    assert add(1, 2) == 3\n")
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}, Coverage: true})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}, Coverage: true})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)

@@ -43,10 +43,10 @@ type ToolchainInfo struct {
 	Warning string `json:"warning,omitempty"`
 	Error   string `json:"error,omitempty"`
 	// EnvPending: le variabili di go env sono in lettura in background; EnvError non invalida l'SDK.
-	EnvPending bool   `json:"envPending,omitempty"`
+	EnvPending bool   `json:"envPending,omitzero"`
 	EnvError   string `json:"envError,omitempty"`
 	// Cached: valori di go env presi dall'ultimo rilevamento salvato (stesso binario, stessa data).
-	Cached  bool              `json:"cached,omitempty"`
+	Cached  bool              `json:"cached,omitzero"`
 	Timings []ToolchainTiming `json:"timings,omitempty"`
 	// BinaryStamp (dimensione e data del binario) valida la cache senza eseguire go.
 	BinaryStamp string `json:"binaryStamp,omitempty"`

@@ -55,10 +55,10 @@ export function DevLogOverlay({ visible, onClose }: { visible: boolean; onClose:
   const totalCount = entries.length
 
   useEffect(() => {
-    if (scrollRef.current && visible) {
+    if (scrollRef.current && visible && totalCount >= 0) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [entries.length, visible])
+  }, [totalCount, visible])
 
   // Close popup when component unmounts
   useEffect(() => {
@@ -222,10 +222,11 @@ function render(entries){
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 window.addEventListener('message',(e)=>{
+  if(e.source!==window.opener||e.origin!==location.origin) return
   if(e.data?.type==='devlogs-entries') render(e.data.entries)
   else if(e.data==='devlogs-clear') window.opener?.postMessage('devlogs-clear','*')
 })
-window.opener?.postMessage('devlogs-ready','*')
+window.opener?.postMessage('devlogs-ready', window.location.origin)
 </script></body></html>`)
     popup.document.close()
 
@@ -235,13 +236,14 @@ window.opener?.postMessage('devlogs-ready','*')
         setPoppedOut(false)
         return
       }
-      popup.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, '*')
+      popup.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, window.location.origin)
     }
     send()
     const unsub = useDevLogsStore.subscribe(() => send())
 
     // Listen for clear from popup
     const handler = (e: MessageEvent) => {
+      if (e.source !== popup || e.origin !== window.location.origin) return
       if (e.data === 'devlogs-clear') clearAll()
       if (e.data === 'devlogs-ready') send()
     }

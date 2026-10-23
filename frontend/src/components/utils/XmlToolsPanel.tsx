@@ -1,5 +1,6 @@
 import { useEntityHandoff } from '@/lib/entities/dispatch'
-import { useState, useEffect } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
+import { useState, useEffect, useMemo } from 'react'
 import { GitCompare, Code, Search, Copy, AlignLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -190,8 +191,8 @@ function XmlDiffView({ left, right }: { left: string; right: string }) {
           </div>
         </div>
         {/* Each diff row is ONE grid-cols-2 container — guarantees pixel-perfect alignment */}
-        {rows.map((row, idx) => (
-          <div key={idx} className="grid grid-cols-2">
+        {withContentKeys(rows, (row) => `${row.leftType}|${row.left}|${row.rightType}|${row.right}`).map(({ key, item: row }) => (
+          <div key={key} className="grid grid-cols-2">
             <div className={cn('px-3 py-[2px] whitespace-pre leading-5 min-h-[21px]', LINE_CLS[row.leftType])}>
               {row.left || ' '}
             </div>
@@ -236,32 +237,32 @@ const SAMPLE_XML = `<root>
   </user>
 </root>`
 
+function parseAndFormatXml(input: string): { output: string; error: string } {
+  if (!input.trim()) return { output: '', error: '' }
+  try {
+    const doc = new DOMParser().parseFromString(input.trim(), 'application/xml')
+    const err = doc.querySelector('parsererror')
+    if (err || !doc.documentElement || doc.documentElement.tagName === 'parsererror') return { output: '', error: err?.textContent ?? 'Parse error' }
+    return { output: serializeXml(doc.documentElement, 0), error: '' }
+  } catch (e) { return { output: '', error: String(e) } }
+}
+
 export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
   const [tab, setTab] = useState<Tab>(initialTab ?? 'format')
 
   // Format
   const [fmtInput, setFmtInput]   = useState(SAMPLE_XML)
-  const [fmtOutput, setFmtOutput] = useState('')
-  const [fmtError,  setFmtError ] = useState('')
+  const [debouncedFmtInput, setDebouncedFmtInput] = useState(SAMPLE_XML)
   useEntityHandoff('xmltools', (_ref, intent, payload) => {
     if (intent !== 'xml') return false
-    setTab('format'); setFmtInput(String(payload.text ?? '')); setFmtError(''); return true
+    setTab('format'); setFmtInput(String(payload.text ?? '')); return true
   })
 
   useEffect(() => {
-    if (!fmtInput.trim()) { setFmtOutput(''); setFmtError(''); return }
-    const timer = setTimeout(() => {
-      try {
-        const parser = new DOMParser()
-        const doc    = parser.parseFromString(fmtInput.trim(), 'application/xml')
-        const err    = doc.querySelector('parsererror')
-        if (err || !doc.documentElement || doc.documentElement.tagName === 'parsererror') { setFmtError(err?.textContent ?? 'Parse error'); setFmtOutput(''); return }
-        setFmtOutput(serializeXml(doc.documentElement, 0))
-        setFmtError('')
-      } catch (e) { setFmtError(String(e)); setFmtOutput('') }
-    }, 200)
+    const timer = setTimeout(() => setDebouncedFmtInput(fmtInput), 200)
     return () => clearTimeout(timer)
   }, [fmtInput])
+  const { output: fmtOutput, error: fmtError } = useMemo(() => parseAndFormatXml(debouncedFmtInput), [debouncedFmtInput])
 
   // Diff
   const [diffLeft,  setDiffLeft ] = useState('<root><a>1</a><b>hello</b></root>')
@@ -269,13 +270,8 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
 
   // Entities
   const [entInput,  setEntInput ] = useState('<greeting>Hello & "World" in <b>XML</b></greeting>')
-  const [entOutput, setEntOutput] = useState('')
   const [entMode,   setEntMode  ] = useState<'encode' | 'decode'>('encode')
-
-  useEffect(() => {
-    if (!entInput) { setEntOutput(''); return }
-    setEntOutput(entMode === 'encode' ? encodeEntities(entInput) : decodeEntities(entInput))
-  }, [entInput, entMode])
+  const entOutput = useMemo(() => (!entInput ? '' : entMode === 'encode' ? encodeEntities(entInput) : decodeEntities(entInput)), [entInput, entMode])
 
   // XPath
   const [xpathXml,   setXpathXml  ] = useState(SAMPLE_XML)
@@ -294,7 +290,6 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
 
   const changeTab = (k: Tab) => {
     setTab(k)
-    setFmtError('')
     setXpathError('')
     setXpathResult(null)
   }
@@ -492,8 +487,8 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
                   <div className="px-3 py-4 text-xs text-text-4 italic">No nodes matched</div>
                 ) : (
                   <div className="divide-y divide-border-2 max-h-72 overflow-auto">
-                    {xpathResult.nodes.map((node, idx) => (
-                      <div key={idx} className="group relative px-3 py-2 text-xs text-text-2 font-mono whitespace-pre-wrap hover:bg-surface-2 transition-colors">
+                    {withContentKeys(xpathResult.nodes, (node) => node).map(({ key, item: node }, idx) => (
+                      <div key={key} className="group relative px-3 py-2 text-xs text-text-2 font-mono whitespace-pre-wrap hover:bg-surface-2 transition-colors">
                         <span className="text-text-4 mr-2 select-none">{idx + 1}.</span>
                         {node}
                         <button

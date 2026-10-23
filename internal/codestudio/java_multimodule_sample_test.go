@@ -2,7 +2,6 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/java"
 )
 
@@ -73,7 +73,7 @@ func TestJdtImportsARealMultiModuleProject(t *testing.T) {
 	// forma verificata per tentativi su JDT LS 1.60: arguments[0] = cartella del progetto come URI
 	// `file:`, arguments[1] = testo JSON dei parametri (`scope`, `projectFolderPaths`). Un oggetto
 	// strutturato al posto del testo JSON fallisce: il server fa il parsing della stringa.
-	params, err := json.Marshal(map[string]any{"scope": "runtime", "projectFolderPaths": []string{modules[0]}})
+	params, err := jsonutil.Marshal(map[string]any{"scope": "runtime", "projectFolderPaths": []string{modules[0]}})
 	if err != nil {
 		t.Fatal(err)
 	}

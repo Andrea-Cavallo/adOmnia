@@ -1,8 +1,9 @@
 package mcp
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,13 +13,13 @@ func okServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		if req.ID == nil {
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
-		result, _ := json.Marshal(map[string]any{"protocolVersion": ProtocolVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]any{"name": "s"}})
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
+		result, _ := jsonutil.Marshal(map[string]any{"protocolVersion": ProtocolVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]any{"name": "s"}})
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
 	}))
 }
 

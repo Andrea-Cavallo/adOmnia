@@ -3,7 +3,8 @@ package codestudio
 import (
 	"adomnia/internal/ide/language"
 	idetesting "adomnia/internal/ide/testing"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 )
@@ -79,7 +81,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	}
 	options := request.LanguageOptions
 	if len(options) == 0 {
-		options, err = json.Marshal(request)
+		options, err = jsonutil.Marshal(request)
 		if err != nil {
 			return TestRunSnapshot{}, err
 		}
@@ -124,8 +126,8 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		}
 	}
 	hooks := idetesting.Hooks{
-		Metadata: func() json.RawMessage {
-			data, _ := json.Marshal(testMetadata{Coverage: coverage, CoverageError: coverageError, RaceReports: races.Reports()})
+		Metadata: func() jsonv1.RawMessage {
+			data, _ := jsonutil.Marshal(testMetadata{Coverage: coverage, CoverageError: coverageError, RaceReports: races.Reports()})
 			return data
 		},
 		Publish: func(snapshot idetesting.Snapshot) {
@@ -157,7 +159,7 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 		}
 	}
 	spec.SessionID, spec.Kind = session.ID, "tests"
-	payload, _ := json.Marshal(request)
+	payload, _ := jsonutil.Marshal(request)
 	snapshot, err := s.tests.core.Start(s.processes, spec, parser, payload, hooks)
 	if err != nil {
 		return TestRunSnapshot{}, err
@@ -167,11 +169,17 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 }
 
 func newCoverageProfilePath() (string, error) {
-	directory := filepath.Join(os.TempDir(), "adomnia-coverage")
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return "", fmt.Errorf("temporary coverage folder unavailable: %w", err)
+	// CreateTemp riserva un nome casuale con permessi restrittivi nella cartella temporanea
+	// dell'utente: nessuna directory fissa da condividere con altri utenti (S6554).
+	file, err := os.CreateTemp("", "adomnia-cover-*.out")
+	if err != nil {
+		return "", fmt.Errorf("temporary coverage profile unavailable: %w", err)
 	}
-	return filepath.Join(directory, newID("cover")+".out"), nil
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		return "", fmt.Errorf("temporary coverage profile unavailable: %w", err)
+	}
+	return path, nil
 }
 
 // GetTestRun restituisce l'esecuzione di test con l'output completo di ogni nodo.

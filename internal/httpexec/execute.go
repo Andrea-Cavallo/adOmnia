@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/psd2"
 )
 
@@ -66,8 +67,8 @@ type HTTPExecRequest struct {
 	Body                 string              `json:"body"`
 	TimeoutMs            int                 `json:"timeoutMs"`
 	FollowRedirects      bool                `json:"followRedirects"`
-	MaxRedirects         int                 `json:"maxRedirects,omitempty"`
-	StripAuthOnRedirect  bool                `json:"stripAuthOnRedirect,omitempty"`
+	MaxRedirects         int                 `json:"maxRedirects,omitzero"`
+	StripAuthOnRedirect  bool                `json:"stripAuthOnRedirect,omitzero"`
 	SkipTLSVerify        bool                `json:"skipTlsVerify"`
 	ClientCertPEM        string              `json:"clientCertPem,omitempty"`
 	ClientCertPassphrase string              `json:"clientCertPassphrase,omitempty"`
@@ -125,7 +126,7 @@ func ExecuteWithHooks(reqJSON string, transform func(eventType, payloadJSON stri
 }
 
 func mustJSON(v any) string {
-	b, _ := json.Marshal(v)
+	b, _ := jsonutil.Marshal(v)
 	return string(b)
 }
 

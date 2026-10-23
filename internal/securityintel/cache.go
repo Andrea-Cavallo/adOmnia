@@ -1,9 +1,11 @@
 package securityintel
 
 import (
+	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"sync"
@@ -195,7 +197,7 @@ func (c *AdvisoryCache) save() {
 		snapshot[key] = entry
 	}
 	c.mu.RUnlock()
-	data, err := json.MarshalIndent(snapshot, "", "  ")
+	data, err := jsonutil.Marshal(snapshot, jsontext.WithIndent("  "))
 	if err != nil {
 		return
 	}

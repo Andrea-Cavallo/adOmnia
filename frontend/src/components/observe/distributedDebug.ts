@@ -36,11 +36,14 @@ export async function armDistributedDebug(spans: readonly OtlpSpan[]): Promise<s
  for (const {service, session, points} of plan) {
    const debug = useCodeStudioDebugStore.getState()
    for (const point of points) {
+     // oxlint-disable-next-line eslint/no-await-in-loop -- services are armed one after another: each debug session must be ready (and not paused) before the next
      if (!(debug.breakpoints[session.id]?.[point.file] ?? []).some(item => item.line === point.line)) await debug.toggleBreakpoint(session.id, point.file, point.line)
    }
    const live = Object.values(useDevSessionStore.getState().sessions).find(item => item.goSessionId === session.id && !item.endedAt) ?? null
+   // oxlint-disable-next-line eslint/no-await-in-loop -- services are armed one after another: each debug session must be ready (and not paused) before the next
    const ready = await ensureDebugSession(live, service)
    if (ready.state === 'paused') throw new Error(`Continue ${service} before arming the next request`)
+   // oxlint-disable-next-line eslint/no-await-in-loop -- services are armed one after another: each debug session must be ready (and not paused) before the next
    await waitLiveReady(ready.id, '', 30000)
    members.push(ready.id)
  }

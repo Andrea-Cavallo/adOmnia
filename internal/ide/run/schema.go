@@ -36,7 +36,7 @@ type Field struct {
 	Label       string          `json:"label"`
 	Type        FieldType       `json:"type"`
 	Section     string          `json:"section"`
-	Required    bool            `json:"required,omitempty"`
+	Required    bool            `json:"required,omitzero"`
 	Default     any             `json:"default,omitempty"`
 	Help        string          `json:"help,omitempty"`
 	Options     []FieldOption   `json:"options,omitempty"`

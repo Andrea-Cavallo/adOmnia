@@ -6,7 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io/fs"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"adomnia/internal/storage"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -150,7 +152,7 @@ func (pm *PluginManager) SignPluginDirectory(sourceDir, privateKey string) (Plug
 	private := ed25519.PrivateKey(key)
 	public := private.Public().(ed25519.PublicKey)
 	file := PluginSignatureFile{Algorithm: "ed25519", PublicKey: base64.StdEncoding.EncodeToString(public), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(private, digest))}
-	data, _ := json.MarshalIndent(file, "", "  ")
+	data, _ := jsonutil.Marshal(file, jsontext.WithIndent("  "))
 	if err := os.WriteFile(filepath.Join(sourceDir, signatureFile), data, 0o644); err != nil {
 		return PluginSignature{}, err
 	}
@@ -255,7 +257,7 @@ func saveTrustedKeys(keys []string) error {
 	if storage.DB() == nil {
 		return fmt.Errorf("storage not available")
 	}
-	data, _ := json.Marshal(keys)
+	data, _ := jsonutil.Marshal(keys)
 	return storage.DB().Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte("plugins"))
 		if err != nil {

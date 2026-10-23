@@ -20,10 +20,10 @@ type Event struct {
 	Method     string    `json:"method,omitempty"`
 	Host       string    `json:"host"`
 	Path       string    `json:"path,omitempty"`
-	Status     int       `json:"status,omitempty"`
+	Status     int       `json:"status,omitzero"`
 	Outcome    string    `json:"outcome"`
 	Detail     string    `json:"detail,omitempty"`
-	DurationMs int64     `json:"durationMs,omitempty"`
+	DurationMs int64     `json:"durationMs,omitzero"`
 }
 
 // ponytail: ring buffer in memoria, si perde alla chiusura; un log su disco solo se richiesto.

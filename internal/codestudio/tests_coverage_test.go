@@ -1,10 +1,10 @@
 package codestudio
 
 import (
-	"encoding/json"
 	"testing"
 
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 // TestHostCoverageMapsAdapterReport: il report neutro dell'adapter diventa il modello della vista,
@@ -47,7 +47,7 @@ func TestHostCoverageMapsAdapterReport(t *testing.T) {
 // neutro non sostituisce il modello già risolto.
 func TestHostCoverageKeepsGoMetadata(t *testing.T) {
 	manager := NewTestManager()
-	metadata, err := json.Marshal(testMetadata{Coverage: &CoverageReport{Mode: "set", Percent: 80}})
+	metadata, err := jsonutil.Marshal(testMetadata{Coverage: &CoverageReport{Mode: "set", Percent: 80}})
 	if err != nil {
 		t.Fatal(err)
 	}

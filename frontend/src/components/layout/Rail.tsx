@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
@@ -149,7 +149,7 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
       </div>
 
       {cat.groups.map((group, gi) => (
-        <div key={gi}>
+        <div key={group.title}>
           {gi > 0 && <div className="h-px bg-border-1/50 my-1 mx-3" />}
           <div className="px-3 pt-2 pb-0.5">
             <span className="text-[9px] font-semibold text-text-4 tracking-wider uppercase flex items-center gap-1">
@@ -239,8 +239,8 @@ function CategoryButton({ cat, activeRail, anyRunning, isOpen, quickItem, onTogg
   const anyActive = allItems.some((item) => item.id === activeRail)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const cancelHover = () => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }
-  useEffect(() => cancelHover, [])
+  const cancelHover = useCallback(() => { if (hoverTimer.current) clearTimeout(hoverTimer.current); hoverTimer.current = null }, [])
+  useEffect(() => cancelHover, [cancelHover])
   const handleClick = (event: React.MouseEvent) => {
     const destination = cat.directItem ?? quickItem ?? allItems[0]?.id
     if (destination && event.shiftKey && canDetachPanel(destination)) {
@@ -335,19 +335,19 @@ export function Rail() {
   const [quickItems, setQuickItems] = useState<Record<string, RailItem>>(() => {
     try {
       const value = JSON.parse(localStorage.getItem('adomnia.railQuick.v1') ?? '{}')
-      return Object.fromEntries(Object.entries(value).flatMap(([key, value]) => { const id = normalizeRailItem(value); return id ? [[key, id]] : [] }))
+      return Object.fromEntries(Object.entries(value).flatMap(([key, stored]) => { const id = normalizeRailItem(stored); return id ? [[key, id]] : [] }))
     } catch { return {} }
   })
-  useEffect(() => {
+  // Remember the last item opened in each category (adjusted during render, persisted in an effect).
+  const [seenRail, setSeenRail] = useState<RailItem | null>(null)
+  if (activeRail !== seenRail) {
+    setSeenRail(activeRail)
     const category = CATEGORIES.find(cat => cat.groups.some(group => group.items.some(item => item.id === activeRail)))
-    if (!category) return
-    setQuickItems(current => {
-      if (current[category.key] === activeRail) return current
-      const next = { ...current, [category.key]: activeRail }
-      safeSetItem('adomnia.railQuick.v1', JSON.stringify(next))
-      return next
-    })
-  }, [activeRail])
+    if (category && quickItems[category.key] !== activeRail) setQuickItems({ ...quickItems, [category.key]: activeRail })
+  }
+  useEffect(() => {
+    safeSetItem('adomnia.railQuick.v1', JSON.stringify(quickItems))
+  }, [quickItems])
   const railRef = useRef<HTMLElement>(null)
 
   // Click outside → close flyout

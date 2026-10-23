@@ -1,7 +1,8 @@
 package claudecode
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"errors"
 	"net/url"
 	"os"
@@ -223,7 +224,7 @@ func stringValue(raw any) string {
 		}
 		return "0"
 	case float64:
-		data, _ := json.Marshal(value)
+		data, _ := jsonutil.Marshal(value)
 		return string(data)
 	}
 	return ""

@@ -74,18 +74,18 @@ type Ref struct {
 
 // Impact è ciò che una modifica al target può rompere.
 type Impact struct {
-	Target     Node     `json:"target"`
-	Callers    []Ref    `json:"callers"`    // chiamanti diretti e indiretti (anche via interfaccia)
-	Interfaces []Ref    `json:"interfaces"` // contratti che il target implementa
-	Tests      []Ref    `json:"tests"`      // test che raggiungono il target
-	Endpoints  []Ref    `json:"endpoints"`  // route HTTP servite da codice che raggiunge il target
-	RPCs       []Ref    `json:"rpcs"`
-	Consumers  []Ref    `json:"consumers"` // topic consumati da codice che raggiunge il target
+	Target     Node  `json:"target"`
+	Callers    []Ref `json:"callers"`    // chiamanti diretti e indiretti (anche via interfaccia)
+	Interfaces []Ref `json:"interfaces"` // contratti che il target implementa
+	Tests      []Ref `json:"tests"`      // test che raggiungono il target
+	Endpoints  []Ref `json:"endpoints"`  // route HTTP servite da codice che raggiunge il target
+	RPCs       []Ref `json:"rpcs"`
+	Consumers  []Ref `json:"consumers"` // topic consumati da codice che raggiunge il target
 	// Contracts: codice di altri moduli che usa il target (direttamente o no): è API pubblica.
 	Contracts []Ref `json:"contracts,omitempty"`
 	// Solo per un tipo: i tipi che lo contengono (campi), fino alle route che li usano.
-	Containers []Ref `json:"containers,omitempty"`
-	Entries    []Ref    `json:"entries"`   // main/job/cli che arrivano al target
+	Containers []Ref    `json:"containers,omitempty"`
+	Entries    []Ref    `json:"entries"`            // main/job/cli che arrivano al target
 	Services   []Ref    `json:"services,omitempty"` // servizi compose che avviano quegli entry point
 	Packages   []string `json:"packages"`
 	Modules    []string `json:"modules"`
@@ -97,7 +97,7 @@ type Impact struct {
 	// Risk: low | medium | high, con i motivi leggibili.
 	Risk        string   `json:"risk"`
 	RiskReasons []string `json:"riskReasons"`
-	Truncated   bool     `json:"truncated,omitempty"`
+	Truncated   bool     `json:"truncated,omitzero"`
 }
 
 const maxImpactDepth = 12

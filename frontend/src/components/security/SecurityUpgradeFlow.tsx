@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { AlertTriangle, Check, Loader2, Minus, Play, ShieldCheck, Wrench, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -91,6 +92,7 @@ export function SecurityUpgradeFlow({
       for (const step of current.steps) {
         if (step.status === 'ok' || step.status === 'skipped') continue
         setRunningStep(step.id)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- upgrade steps are ordered, each one depends on the previous plan state
         current = await runSecurityUpgradeStep(workspace, current.id, step.id, scanOptions)
         setPlan(current)
         setRunningStep(null)
@@ -184,9 +186,9 @@ export function SecurityUpgradeFlow({
             </p>
           </div>
           <div className="max-h-56 overflow-auto rounded-md border border-border-1 bg-surface-0 p-2">
-            {plan.diff.split('\n').map((line, index) => (
+            {withContentKeys(plan.diff.split('\n'), (line) => line).map(({ key: lineKey, item: line }) => (
               <div
-                key={index}
+                key={lineKey}
                 className={cn(
                   'whitespace-pre-wrap break-all font-mono text-[9px] leading-relaxed',
                   diffTone(line),

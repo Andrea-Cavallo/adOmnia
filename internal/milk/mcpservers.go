@@ -3,7 +3,9 @@ package milk
 import (
 	"adomnia/internal/aipolicy"
 
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,7 +62,7 @@ func (s *MCPServerStore) Save(servers []MCPServer) ([]MCPServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.MarshalIndent(valid, "", "  ")
+	data, err := jsonutil.Marshal(valid, jsontext.WithIndent("  "))
 	if err != nil {
 		return nil, err
 	}

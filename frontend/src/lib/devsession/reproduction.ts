@@ -99,7 +99,7 @@ export function stripText(text: string): string {
 export function variablesIn(...texts: string[]): string[] {
   const names = new Set<string>()
   for (const text of texts) for (const match of text.matchAll(VARIABLE)) names.add(match[1])
-  return [...names].sort()
+  return [...names].sort((a, b) => a.localeCompare(b))
 }
 
 /** Values that will differ on every replay: ids, timestamps, generated variables, clock/random SQL. */
@@ -135,7 +135,7 @@ export function tablesIn(statements: readonly string[]): string[] {
       }
     }
   }
-  return [...found].sort()
+  return [...found].sort((a, b) => a.localeCompare(b))
 }
 
 const FLAG_NAME = /(^|_)(feature|flag|toggle|experiment|ff)(_|$)|_enabled$|_disabled$/i

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { KeyRound, Play } from 'lucide-react'
 import { CodeStudioButton, CodeStudioField, CodeStudioModal } from './CodeStudioModal'
 
@@ -14,14 +14,13 @@ interface CodeStudioSecretsPromptProps {
  * Chiede i valori segreti di una configurazione al momento dell'avvio. I valori
  * restano in memoria per questa esecuzione e non vengono mai persistiti.
  */
-export function CodeStudioSecretsPrompt({ open, configurationName, keys, onSubmit, onCancel }: CodeStudioSecretsPromptProps) {
+export function CodeStudioSecretsPrompt(props: CodeStudioSecretsPromptProps) {
+  // Mounted per opening (and per configuration), so typed values never leak into the next prompt.
+  return props.open ? <SecretsForm key={props.configurationName} {...props} /> : null
+}
+
+function SecretsForm({ open, configurationName, keys, onSubmit, onCancel }: CodeStudioSecretsPromptProps) {
   const [values, setValues] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (open) setValues({})
-  }, [open, configurationName])
-
-  if (!open) return null
   const complete = keys.every((key) => (values[key] ?? '').length > 0)
 
   return (

@@ -48,11 +48,7 @@ export function scheduleWorkspaceSkeleton(
 export function useWorkspaceHydrationShell(hydrated: boolean): WorkspaceShellPhase {
   const [phase, setPhase] = useState<WorkspaceShellPhase>(() => hydrated ? 'ready' : 'quiet')
   const shownAtRef = useRef<number | null>(null)
-  const timingRef = useRef<WorkspaceShellTiming | null>(null)
-  if (timingRef.current === null) {
-    timingRef.current = workspaceShellTimingFromHint(loadWorkspaceStartupHint())
-  }
-  const timing = timingRef.current
+  const [timing] = useState<WorkspaceShellTiming>(() => workspaceShellTimingFromHint(loadWorkspaceStartupHint()))
 
   useEffect(() => {
     if (phase === 'ready') return

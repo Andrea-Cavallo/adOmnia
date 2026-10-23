@@ -2,13 +2,16 @@ package collectionfs
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -131,7 +134,7 @@ func TestInspectDriftDetectsManualFolderChange(t *testing.T) {
 		t.Fatalf("decode request: %v", err)
 	}
 	request["name"] = "Create Admin Event Changed On Disk"
-	changed, err := json.MarshalIndent(request, "", "  ")
+	changed, err := jsonutil.Marshal(request, jsontext.WithIndent("  "))
 	if err != nil {
 		t.Fatalf("encode changed request: %v", err)
 	}
@@ -286,7 +289,7 @@ func loadFixtureCollection(t *testing.T) Collection {
 		t.Fatalf("read fixture: %v", err)
 	}
 	var fixture struct {
-		Storage map[string]json.RawMessage `json:"storage"`
+		Storage map[string]jsonv1.RawMessage `json:"storage"`
 	}
 	if err := json.Unmarshal(data, &fixture); err != nil {
 		t.Fatalf("decode fixture: %v", err)

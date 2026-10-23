@@ -29,9 +29,11 @@ jobs:
       - name: Extract version
         id: ver
         shell: pwsh
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           $tag = $env:GITHUB_REF_NAME
-          if (-not $tag -or -not $tag.StartsWith('v')) { $tag = "${{ inputs.tag }}" }
+          if (-not $tag -or -not $tag.StartsWith('v')) { $tag = $env:INPUT_TAG }
           $ver = $tag.TrimStart('v')
           echo "tag=$tag"     >> $env:GITHUB_OUTPUT
           echo "version=$ver" >> $env:GITHUB_OUTPUT
@@ -89,11 +91,13 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@v7
         with:
@@ -156,11 +160,13 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@v7
         with:
@@ -206,11 +212,13 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v8
         with:
@@ -243,12 +251,12 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.txt
+          sha256sum -- * > SHA256SUMS.txt
           echo "--- Release artifacts ---"
           ls -lh
 
       - name: Publish
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: adOmnia ${{ steps.ver.outputs.version }}

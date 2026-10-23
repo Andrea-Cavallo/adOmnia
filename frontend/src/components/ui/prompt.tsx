@@ -32,19 +32,24 @@ export function Prompt({
   const inputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const [prevInputs, setPrevInputs] = useState({ open, defaultValue })
+  if (prevInputs.open !== open || prevInputs.defaultValue !== defaultValue) {
+    setPrevInputs({ open, defaultValue })
+    if (open) setValue(defaultValue)
+  }
+
   useEffect(() => {
-    if (open) {
-      setValue(defaultValue)
-      // Focus after animation
-      setTimeout(() => {
-        if (multiline) {
-          textareaRef.current?.focus()
-        } else {
-          inputRef.current?.focus()
-        }
-      }, 50)
-    }
-  }, [open, defaultValue, multiline])
+    if (!open) return
+    // Focus after animation
+    const timer = setTimeout(() => {
+      if (multiline) {
+        textareaRef.current?.focus()
+      } else {
+        inputRef.current?.focus()
+      }
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [open, multiline])
 
   const handleConfirm = () => {
     const trimmed = value.trim()

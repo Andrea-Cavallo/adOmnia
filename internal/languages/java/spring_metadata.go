@@ -1,8 +1,10 @@
 package java
 
 import (
+	"adomnia/internal/jsonutil"
 	"archive/zip"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -113,7 +115,7 @@ func writeMetadataCache(cache springMetadataCache) {
 	if path == "" {
 		return
 	}
-	data, err := json.Marshal(cache)
+	data, err := jsonutil.Marshal(cache)
 	if err != nil {
 		return
 	}
@@ -280,12 +282,12 @@ func parseMetadataJSON(data []byte) ([]SpringProperty, bool) {
 	}
 	var document struct {
 		Properties []struct {
-			Name         string          `json:"name"`
-			Type         string          `json:"type"`
-			Description  string          `json:"description"`
-			SourceType   string          `json:"sourceType"`
-			DefaultValue json.RawMessage `json:"defaultValue"`
-			Deprecated   json.RawMessage `json:"deprecated"`
+			Name         string            `json:"name"`
+			Type         string            `json:"type"`
+			Description  string            `json:"description"`
+			SourceType   string            `json:"sourceType"`
+			DefaultValue jsonv1.RawMessage `json:"defaultValue"`
+			Deprecated   jsonv1.RawMessage `json:"deprecated"`
 		} `json:"properties"`
 	}
 	if err := json.Unmarshal(data, &document); err != nil {
@@ -306,7 +308,7 @@ func parseMetadataJSON(data []byte) ([]SpringProperty, bool) {
 }
 
 // jsonScalar è il valore di default come testo, senza le virgolette JSON.
-func jsonScalar(raw json.RawMessage) string {
+func jsonScalar(raw jsonv1.RawMessage) string {
 	value := strings.TrimSpace(string(raw))
 	if value == "" || value == "null" {
 		return ""

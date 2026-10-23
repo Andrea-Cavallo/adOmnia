@@ -2,7 +2,8 @@ package collectionsstore
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"testing"
 
 	"adomnia/internal/storage"
@@ -57,7 +58,7 @@ func TestWorkspaceTreeProjectionIsSeparateFromRequestContents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var shell map[string]json.RawMessage
+	var shell map[string]jsonv1.RawMessage
 	if err := json.Unmarshal(payload.Workspace, &shell); err != nil {
 		t.Fatal(err)
 	}

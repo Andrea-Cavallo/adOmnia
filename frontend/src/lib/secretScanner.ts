@@ -95,7 +95,7 @@ const PATTERNS: PatternDef[] = [
   {
     type: 'api_key',
     risk: 'medium',
-    regex: /xox[bprs]-[A-Za-z0-9\-]{10,}/g,
+    regex: /xox[bprs]-[A-Za-z0-9-]{10,}/g,
     label: 'Slack bot/user token',
     suggestion: 'Store in Vault. Slack tokens grant messaging/reading access.',
   },
@@ -271,14 +271,14 @@ function scanAuth(auth: RequestAuth, location: string): SecretFinding[] {
       suggestion: 'Store credentials in Vault. Use variables for Basic Auth.',
     })
   }
-  if ((auth as any).oauth2ClientSecret) {
-    findings.push(...scanKeyValue('oauth2_client_secret', (auth as any).oauth2ClientSecret, `${location} / OAuth2 Client Secret`))
+  if (auth.oauth2ClientSecret) {
+    findings.push(...scanKeyValue('oauth2_client_secret', auth.oauth2ClientSecret, `${location} / OAuth2 Client Secret`))
   }
-  if ((auth as any).awsSecretKey) {
-    findings.push(...scanKeyValue('aws_secret_key', (auth as any).awsSecretKey, `${location} / AWS Secret Key`))
+  if (auth.awsSecretKey) {
+    findings.push(...scanKeyValue('aws_secret_key', auth.awsSecretKey, `${location} / AWS Secret Key`))
   }
-  if ((auth as any).awsAccessKeyId) {
-    findings.push(...scanKeyValue('aws_access_key', (auth as any).awsAccessKeyId, `${location} / AWS Access Key`))
+  if (auth.awsAccessKeyId) {
+    findings.push(...scanKeyValue('aws_access_key', auth.awsAccessKeyId, `${location} / AWS Access Key`))
   }
 
   return findings
@@ -338,8 +338,8 @@ function scanTreeNodes(nodes: TreeNode[], parentPath: string): SecretFinding[] {
     if (node.type === 'request') {
       return scanRequestItem(node as RequestItem, path)
     }
-    if (node.type === 'folder' && (node as any).children) {
-      return scanTreeNodes((node as any).children, path)
+    if (node.type === 'folder' && node.children) {
+      return scanTreeNodes(node.children, path)
     }
     return []
   })

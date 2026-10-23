@@ -33,10 +33,17 @@ export function CodeStudioGoToolDialog({ sessionId, state, onClose }: CodeStudio
   const inputRef = useRef<HTMLInputElement>(null)
   const open = !!state
 
+  const [prevState, setPrevState] = useState(state)
+  if (prevState !== state) {
+    setPrevState(state)
+    if (state) {
+      setTarget(state.target)
+      setRunning(false)
+    }
+  }
+
   useEffect(() => {
     if (!state) return
-    setTarget(state.target)
-    setRunning(false)
     const timer = window.setTimeout(() => inputRef.current?.select(), 30)
     return () => window.clearTimeout(timer)
   }, [state])

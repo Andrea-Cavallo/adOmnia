@@ -25,7 +25,7 @@ type JDK struct {
 	Source  string `json:"source,omitempty"`
 	Version string `json:"version,omitempty"`
 	// Major è la versione maggiore (8, 17, 21…); 0 se non leggibile.
-	Major    int      `json:"major,omitempty"`
+	Major    int      `json:"major,omitzero"`
 	Problem  string   `json:"problem,omitempty"`
 	Remedies []string `json:"remedies,omitempty"`
 }

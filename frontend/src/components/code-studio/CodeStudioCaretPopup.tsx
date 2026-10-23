@@ -56,15 +56,13 @@ function UsagesBody({ locations, onPick, groupLabel }: { locations: GoIDEEditorL
     if (event.key === 'ArrowUp') { event.preventDefault(); setSelected((value) => Math.max(0, value - 1)) }
     if (event.key === 'Enter' && ordered[selected]) { event.preventDefault(); onPick(ordered[selected]) }
   }
-  let index = -1
   return (
     <div ref={listRef} role="listbox" tabIndex={0} aria-label="Usages" onKeyDown={onKeyDown} className="min-h-0 overflow-auto py-1 text-[11px] outline-none">
       {groups.map((group) => (
         <div key={group.kind}>
           <div className="px-3 pb-0.5 pt-1.5 text-[9px] font-semibold uppercase tracking-wide text-text-4">{group.kind === 'other' && groupLabel ? groupLabel : group.label} · {group.count}</div>
           {group.files.flatMap(([file, items]) => items.map((location) => {
-            index += 1
-            const position = index
+            const position = ordered.indexOf(location)
             return (
               <button
                 key={`${file}:${location.range.startLine}:${location.range.startColumn}`}

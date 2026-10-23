@@ -1,9 +1,10 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/mcp"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 
@@ -19,7 +20,7 @@ func NewMCPClient() *MCPClient {
 }
 
 func mcpJSON(value any) string {
-	raw, _ := json.Marshal(value)
+	raw, _ := jsonutil.Marshal(value)
 	return string(raw)
 }
 

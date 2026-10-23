@@ -112,7 +112,9 @@ func (s *Service) perUnitSpec(languageID, projectRoot string) func(string) (lsp.
 	if !ok || !perUnit.ServersPerUnit() {
 		return nil
 	}
-	return func(root string) (lsp.ServerSpec, error) { return perUnit.UnitServerSpec(projectRoot, root, s.toolsRoot) }
+	return func(root string) (lsp.ServerSpec, error) {
+		return perUnit.UnitServerSpec(projectRoot, root, s.toolsRoot)
+	}
 }
 
 // StopProvidedLanguageServer ferma il server gestito del linguaggio.
@@ -161,6 +163,11 @@ func (s *Service) InstallProvidedLanguageServer(sessionID, languageID string, co
 	if err != nil {
 		return Execution{}, err
 	}
+	return s.runInstallPlan(session, plan)
+}
+
+// runInstallPlan esegue un'installazione già confermata, nella console Run e senza shell dell'utente.
+func (s *Service) runInstallPlan(session Session, plan ServerInstallPreview) (Execution, error) {
 	if plan.Prepare != nil {
 		if err := plan.Prepare(); err != nil {
 			return Execution{}, fmt.Errorf("could not prepare the tools folder: %w", err)

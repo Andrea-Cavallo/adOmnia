@@ -1,7 +1,7 @@
 import { jsonColorTokens } from '@/lib/jsonColors'
 import { personalColors } from '@/lib/personalAppearance'
 import { accentHue, validAccent, luminance } from '@/lib/accentPalette'
-import { createContext, useCallback, useContext, useEffect } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react'
 import type { Theme } from '@/stores/themes'
 import { useThemesStore } from '@/stores/themes'
 import { useSettingsStore } from '@/stores/settings'
@@ -179,10 +179,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return
     }
     syncDocumentIcon(activeThemeId)
+  // accentColor/baseColor/jsonColors are not read here: injectThemeVariables reads them from the store, they only retrigger the effect.
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- intentional re-apply when the personal appearance changes
   }, [activeThemeId, themes, accentColor, baseColor, jsonColors, preview])
 
+  const contextValue = useMemo(() => ({ applyTheme }), [applyTheme])
+
   return (
-    <ThemeContext.Provider value={{ applyTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   )

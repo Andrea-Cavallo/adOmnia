@@ -36,7 +36,7 @@ type PrivateRepoCredential struct {
 type ModuleRegistryCheck struct {
 	URL     string `json:"url"`
 	Module  string `json:"module"`
-	Status  int    `json:"status,omitempty"`
+	Status  int    `json:"status,omitzero"`
 	OK      bool   `json:"ok"`
 	Message string `json:"message"`
 }

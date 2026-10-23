@@ -1,7 +1,8 @@
 package collab
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"io"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	ideproject "adomnia/internal/ide/project"
+	"adomnia/internal/jsonutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -104,7 +106,7 @@ func hasProjectCredentials(path string, data []byte) bool {
 	default:
 		return false
 	}
-	encoded, err := json.Marshal(decoded)
+	encoded, err := jsonutil.Marshal(decoded)
 	if err != nil {
 		return true
 	}
@@ -286,7 +288,7 @@ func (m *Manager) ReadProjectFile(path string) (ProjectFile, error) {
 	return r.File, err
 }
 
-func (m *Manager) serveProject(from string, payload json.RawMessage) {
+func (m *Manager) serveProject(from string, payload jsonv1.RawMessage) {
 	var q projectRequest
 	if json.Unmarshal(payload, &q) != nil || len(q.ID) > 128 || q.ID == "" || len(q.Path) > 4096 {
 		return

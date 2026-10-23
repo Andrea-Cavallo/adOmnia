@@ -74,6 +74,7 @@ export function scheduleIdleWorkspacePrefetch(ids: string[]): void {
     void (async () => {
       for (const id of queue) {
         try {
+          // oxlint-disable-next-line eslint/no-await-in-loop -- sequential on purpose: idle prefetch must not hammer storage in parallel
           await loadWorkspacePayload(id)
         } catch {
           // A workspace that cannot be read now is loaded on first switch.

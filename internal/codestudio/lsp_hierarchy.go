@@ -2,12 +2,14 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/jsonutil"
 )
 
 // Gerarchie di gopls (chiamate e tipi) esposte in forma uniforme: l'elemento LSP
@@ -28,13 +30,13 @@ type HierarchyItem struct {
 }
 
 type hierarchyItem struct {
-	Name           string          `json:"name"`
-	Kind           int             `json:"kind"`
-	Detail         string          `json:"detail,omitempty"`
-	URI            string          `json:"uri"`
-	Range          lsp.Range       `json:"range"`
-	SelectionRange lsp.Range       `json:"selectionRange"`
-	Data           json.RawMessage `json:"data,omitempty"`
+	Name           string            `json:"name"`
+	Kind           int               `json:"kind"`
+	Detail         string            `json:"detail,omitempty"`
+	URI            string            `json:"uri"`
+	Range          lsp.Range         `json:"range"`
+	SelectionRange lsp.Range         `json:"selectionRange"`
+	Data           jsonv1.RawMessage `json:"data,omitempty"`
 }
 
 var (
@@ -132,7 +134,7 @@ func (m *LSPManager) ExpandHierarchy(ctx context.Context, sessionID SessionID, d
 func (m *LSPManager) hierarchyItems(state *lspSession, items []hierarchyItem, callSites []EditorRange) []HierarchyItem {
 	result := make([]HierarchyItem, 0, len(items))
 	for _, item := range items {
-		token, err := json.Marshal(item)
+		token, err := jsonutil.Marshal(item)
 		if err != nil {
 			continue
 		}

@@ -110,7 +110,7 @@ export function ThemePanel() {
   const handleDuplicate = (theme: Theme) => {
     const dup: Theme = {
       ...theme,
-      id: `theme-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `theme-${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`,
       name: `${theme.name} (Copy)`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

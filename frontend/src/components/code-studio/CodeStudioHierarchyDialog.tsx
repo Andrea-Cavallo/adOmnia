@@ -3,6 +3,7 @@ import { ArrowDownRight, ArrowUpRight, Boxes, ChevronDown, ChevronRight, Loader2
 import { requestExpandHierarchy, type GoIDEHierarchyItem } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore, type GoIDEHierarchyView } from '@/stores/codeStudioLsp'
 import { navigateToLocation } from './codeStudioLanguageFeatures'
+import { withContentKeys } from '@/lib/contentKeys'
 import { CodeStudioModal } from './CodeStudioModal'
 
 const DIRECTIONS: Record<GoIDEHierarchyView['kind'], Array<{ id: string; label: string }>> = {
@@ -59,8 +60,8 @@ function HierarchyNode({ sessionId, item, direction, depth, ancestors, initially
           {children === null && !error && <li className="flex h-7 items-center gap-2 text-[11px] text-text-4" style={{ paddingLeft: 28 + depth * 16 }}><Loader2 size={11} className="animate-spin" /> Loading…</li>}
           {error && <li className="text-[11px] text-danger" style={{ paddingLeft: 28 + depth * 16 }}>{error}</li>}
           {children?.length === 0 && <li className="h-7 text-[11px] leading-7 text-text-4" style={{ paddingLeft: 28 + depth * 16 }}>Nothing found.</li>}
-          {children?.map((child, index) => (
-            <HierarchyNode key={`${nodeKey(child)}#${index}`} sessionId={sessionId} item={child} direction={direction} depth={depth + 1} ancestors={nextAncestors} />
+          {children && withContentKeys(children, nodeKey).map(({ key: childKey, item: child }) => (
+            <HierarchyNode key={childKey} sessionId={sessionId} item={child} direction={direction} depth={depth + 1} ancestors={nextAncestors} />
           ))}
         </ul>
       )}
@@ -72,9 +73,9 @@ function HierarchyNode({ sessionId, item, direction, depth, ancestors, initially
 export function CodeStudioHierarchyDialog() {
   const view = useCodeStudioLspStore((state) => state.hierarchy)
   const close = () => useCodeStudioLspStore.setState({ hierarchy: null })
-  const [direction, setDirection] = useState<string>('incoming')
-  useEffect(() => { if (view) setDirection(DIRECTIONS[view.kind][0].id) }, [view])
+  const [picked, setPicked] = useState<{ view: GoIDEHierarchyView; id: string } | null>(null)
   if (!view) return null
+  const direction = picked?.view === view ? picked.id : DIRECTIONS[view.kind][0].id
   const title = view.kind === 'call' ? 'Call Hierarchy' : 'Type Hierarchy'
   return (
     <CodeStudioModal
@@ -90,7 +91,7 @@ export function CodeStudioHierarchyDialog() {
       actions={
         <div role="tablist" aria-label="Direction" className="gs-segmented">
           {DIRECTIONS[view.kind].map((option, index) => (
-            <button key={option.id} type="button" role="tab" aria-selected={direction === option.id} onClick={() => setDirection(option.id)} className="gs-segment">
+            <button key={option.id} type="button" role="tab" aria-selected={direction === option.id} onClick={() => setPicked({ view, id: option.id })} className="gs-segment">
               {index === 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />} {option.label}
             </button>
           ))}

@@ -19,7 +19,7 @@ type LanguageServerStatus struct {
 	State    LanguageServerState `json:"state"`
 	Binary   string              `json:"binary,omitempty"`
 	Version  string              `json:"version,omitempty"`
-	PID      int                 `json:"pid,omitempty"`
+	PID      int                 `json:"pid,omitzero"`
 	Restarts int                 `json:"restarts"`
 	Error    string              `json:"error,omitempty"`
 	// Features elenca ciò che il gopls in esecuzione supporta davvero: l'editor nasconde il resto.
@@ -95,8 +95,8 @@ type CompletionEntry struct {
 	Snippet         bool             `json:"snippet"`
 	Range           *EditorRange     `json:"range,omitempty"`
 	AdditionalEdits []EditorTextEdit `json:"additionalEdits,omitempty"`
-	Preselect       bool             `json:"preselect,omitempty"`
-	Deprecated      bool             `json:"deprecated,omitempty"`
+	Preselect       bool             `json:"preselect,omitzero"`
+	Deprecated      bool             `json:"deprecated,omitzero"`
 }
 
 type CompletionResult struct {
@@ -155,7 +155,7 @@ type FileChange struct {
 	// OriginalContent è il testo su cui gopls ha calcolato gli edit: serve all'anteprima per mostrare le righe rimosse.
 	OriginalContent string `json:"originalContent,omitempty"`
 	// Created indica un file nuovo: va creato su disco, non esiste un buffer da modificare.
-	Created bool `json:"created,omitempty"`
+	Created bool `json:"created,omitzero"`
 }
 
 type WorkspaceChange struct {
@@ -167,7 +167,7 @@ type CodeActionEntry struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Kind      string `json:"kind,omitempty"`
-	Preferred bool   `json:"preferred,omitempty"`
+	Preferred bool   `json:"preferred,omitzero"`
 	Disabled  string `json:"disabled,omitempty"`
 }
 

@@ -45,7 +45,9 @@ export function CodeStudioQualityDialog({ session, open, onClose }: CodeStudioQu
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   const reports = useMemo(() => Object.values(mergedReports(diagnostics, lint?.reports)), [diagnostics, lint?.reports])
   const breakdown = useMemo(() => qualityBreakdown(reports), [reports])
+  // oxlint-disable-next-line react/memo-dependencies, react-hooks/exhaustive-deps -- lint.result is the invalidation signal: the samples live in localStorage and a finished lint run appends one
   const samples = useMemo(() => (open ? loadLintSamples(session.project.rootPath) : []), [open, session.project.rootPath, lint?.result])
+  // oxlint-disable-next-line react/memo-dependencies, react-hooks/exhaustive-deps -- runs is the invalidation signal: the flaky history lives in localStorage and a finished test run updates it
   const flaky = useMemo(() => (open ? flakyRecords(loadFlakyHistory(session.project.rootPath)).size : 0), [open, session.project.rootPath, runs])
   if (!open) return null
   const trend = debtTrend(samples)

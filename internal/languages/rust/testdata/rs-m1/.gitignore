@@ -1,0 +1,4 @@
+# Le fixture RS-M1 sono progetti Rust reali: gli artefatti di cargo non vanno committati.
+# Il decoy dentro target/package/ fa parte della fixture (prova che target/ sia escluso).
+**/target/*
+!**/target/package/

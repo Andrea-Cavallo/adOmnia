@@ -34,4 +34,3 @@ var (
 )
 
 func goplsExecutableName() string { return sdk.ExecutableName("gopls") }
-

@@ -2,7 +2,8 @@ package python
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/ide/toml"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 )
 
@@ -108,7 +111,7 @@ func isInterpreter(path string) bool {
 	if path == "" {
 		return false
 	}
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only, probing candidate interpreter paths
 	if err != nil || !info.Mode().IsRegular() {
 		return false
 	}
@@ -231,7 +234,7 @@ func poetryVirtualenvsPath(projectRoot string) string {
 		return configured
 	}
 	if data, err := readLimited(filepath.Join(projectRoot, "poetry.toml"), maxManifestBytes); err == nil {
-		if configured := tomlString(parseTOML(data), "virtualenvs", "path"); configured != "" {
+		if configured := toml.String(toml.Parse(data), "virtualenvs", "path"); configured != "" {
 			if filepath.IsAbs(configured) {
 				return configured
 			}
@@ -571,7 +574,7 @@ func SetProjectInterpreter(root, unit, binary string) error {
 		}
 		return nil
 	}
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

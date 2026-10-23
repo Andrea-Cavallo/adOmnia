@@ -9,8 +9,8 @@ import { caretFor, rememberCaret } from '@/lib/code-studio/codeStudioCaretMemory
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import { releaseSleepingSessionModels, startCodeStudioHibernation, useCodeStudioHibernation } from './codeStudioHibernation'
 import { useCodeStudioNavigationStore } from '@/stores/codeStudioNavigation'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Editor, type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { CODE_STUDIO_THEMES, applyCodeStudioMonacoThemes, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useSettingsStore } from '@/stores/settings'
@@ -40,6 +40,7 @@ import { useJavaMainsStore } from '@/stores/codeStudioJavaMains'
 import { findRunTargets, runCommandFor, type CodeStudioRunTarget, type CodeStudioRunTargetHandler } from './codeStudioRunTargets'
 import { isToolTarget, toolTargetLabel } from './codeStudioToolTargets'
 import { isPythonTarget } from './codeStudioPythonTargets'
+import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
 import { indentationFor, useEditorConfig } from './codeStudioEditorConfig'
 import { recordCaretPosition, useCodeStudioBookmarks } from './codeStudioNavigationEditor'
@@ -137,8 +138,9 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   const coverageDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const runTargetsRef = useRef<CodeStudioRunTarget[]>([])
   const callbacks = useRef({ onCursor, onRunTarget })
-  callbacks.current = { onCursor, onRunTarget }
+  useLayoutEffect(() => { callbacks.current = { onCursor, onRunTarget } })
   const [mountCount, setMountCount] = useState(0)
+  const [mountedEditor, setMountedEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null)
   const updateDocument = useCodeStudioStore((state) => state.updateDocument)
   const checkActiveDocument = useCodeStudioStore((state) => state.checkActiveDocument)
   const revealLocation = useCodeStudioStore((state) => state.revealLocation)
@@ -150,11 +152,10 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   const inlineWarnings = useCodeStudioLspStore(state => state.preferences.inlineDiagnosticWarnings)
   const inlineInfo = useCodeStudioLspStore(state => state.preferences.inlineDiagnosticInfo)
   useEffect(() => {
-    const editor = editorRef.current
-    if (!editor || !inlineDiagnostics) return
+    if (!mountedEditor || !inlineDiagnostics) return
     // Hints stay in the normal Monaco hover; inline severities are independently selectable.
-    return installInlineDiagnostics(editor, [monaco.MarkerSeverity.Error, ...(inlineWarnings ? [monaco.MarkerSeverity.Warning] : []), ...(inlineInfo ? [monaco.MarkerSeverity.Info] : [])])
-  }, [mountCount, inlineDiagnostics, inlineWarnings, inlineInfo])
+    return installInlineDiagnostics(mountedEditor, [monaco.MarkerSeverity.Error, ...(inlineWarnings ? [monaco.MarkerSeverity.Warning] : []), ...(inlineInfo ? [monaco.MarkerSeverity.Info] : [])])
+  }, [mountedEditor, inlineDiagnostics, inlineWarnings, inlineInfo])
   const fontLigaturesPref = useCodeStudioLspStore((state) => state.preferences.fontLigatures)
   const fontSizePref = useCodeStudioLspStore((state) => state.preferences.fontSize)
   const editorModePref = useCodeStudioLspStore((state) => state.preferences.editorMode)
@@ -165,9 +166,13 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   const fontSize = projectEditor.fontSize ?? fontSizePref
   const configuredEditorMode = projectEditor.editorMode ?? editorModePref
   const [standardOverride, setStandardOverride] = useState<string | null>(null)
+  const [prevConfiguredMode, setPrevConfiguredMode] = useState(configuredEditorMode)
+  if (prevConfiguredMode !== configuredEditorMode) {
+    setPrevConfiguredMode(configuredEditorMode)
+    setStandardOverride(null)
+  }
   const editorMode = standardOverride === document.document.sessionId ? 'default' : configuredEditorMode
   const vimMode = useCodeStudioWhenStore(state => state.vimMode)
-  useEffect(() => { setStandardOverride(null) }, [configuredEditorMode])
   const modeStatusRef = useRef<HTMLDivElement | null>(null)
   const editorConfig = useEditorConfig(document.document.sessionId, document.document.relativePath)
   const extensions = useIDEExtensionsStore(state => state.items)
@@ -184,6 +189,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
 
   const onMount: OnMount = (editor) => {
     editorRef.current = editor
+    setMountedEditor(editor)
     if (hibernationView.current?.documentId === document.document.id) {
       editor.restoreViewState(hibernationView.current.state)
     }
@@ -262,14 +268,14 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
 
   // Ripristino dopo riavvio o crash: il file riapre dove era il cursore, se nessuno l'ha già spostato.
   useEffect(() => {
-    const editor = editorRef.current
+    const editor = mountedEditor
     const caret = caretFor(document.document.sessionId, document.document.relativePath)
     const position = editor?.getPosition()
     if (!editor || !caret || !position || position.lineNumber !== 1 || position.column !== 1) return
     const target = { lineNumber: caret.line, column: caret.column }
     editor.setPosition(target)
     revealWhenSized(editor, target)
-  }, [document.document.id, document.document.relativePath, document.document.sessionId, mountCount])
+  }, [document.document.id, document.document.relativePath, document.document.sessionId, mountedEditor])
 
   useCodeStudioDebugDecorations(editorRef, document, mountCount)
   useCodeStudioBookmarks(editorRef, document, mountCount)
@@ -282,6 +288,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   // Overlay di coverage: solo se il file è identico a quello misurato, altrimenti sparisce (e l'editor avvisa).
   const coverage = useCodeStudioTestsStore((state) => visibleCoverage(state, document.document.sessionId))
   useEffect(() => {
+    if (!mountedEditor) return
     const match = coverageForDocument(coverage, document.document.relativePath, document.diskToken, document.dirty)
     if (match.state !== 'current') return void coverageDecorationsRef.current?.clear()
     const decorations: monaco.editor.IModelDeltaDecoration[] = []
@@ -289,25 +296,29 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       decorations.push({ range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }, options: { linesDecorationsClassName: `code-studio-cov code-studio-cov-${state}`, isWholeLine: true } })
     }
     coverageDecorationsRef.current?.set(decorations)
-  }, [coverage, document.diskToken, document.dirty, document.document.relativePath, mountCount])
+  }, [coverage, document.diskToken, document.dirty, document.document.relativePath, mountedEditor])
 
   // Le `main` le decide JDT LS quando è pronto; il gutter si rilegge quando la risposta arriva.
   const isJava = document.document.relativePath.endsWith('.java')
   const jdtMains = useJavaMainsStore((state) => (isJava ? state.bySession[document.document.sessionId] : undefined))
   useEffect(() => {
     if (isJava) void useJavaMainsStore.getState().refresh(document.document.sessionId)
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- diskToken is a refetch trigger: the file changed on disk
   }, [isJava, document.document.sessionId, document.diskToken])
 
   // ▶ nel gutter accanto a func main e ai test: ricalcolato con debounce mentre si scrive.
   useEffect(() => {
+    if (!mountedEditor) return
     const timer = window.setTimeout(() => {
       const targets = document.document.readOnly ? [] : findRunTargets(document.document.relativePath, document.buffer, jdtMains?.source === 'jdt' ? jdtMains.classes : null)
       runTargetsRef.current = targets
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
-          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
-          glyphMarginHoverMessage: { value: isPythonTarget(target)
+          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || target.kind === 'rust-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
+          glyphMarginHoverMessage: { value: isRustTestTarget(target)
+            ? `▶ Run ${target.name} · cargo test`
+            : isPythonTarget(target) || isRustTarget(target)
             ? `▶ Run ${target.name} · Run or Debug`
             : isToolTarget(target)
             ? `▶ ${toolTargetLabel(target)} · ${target.kind === 'docker' ? 'Build, Build & Run' : target.kind === 'compose' && !target.name ? 'Up, Down' : 'Run'} or save as configuration`
@@ -318,11 +329,11 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       })))
     }, RUN_TARGET_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [document.buffer, document.document.id, document.document.readOnly, document.document.relativePath, jdtMains, mountCount])
+  }, [document.buffer, document.document.readOnly, document.document.relativePath, jdtMains, mountedEditor])
 
   // Vim / Emacs opzionali: si agganciano all'editor montato e si staccano quando si torna al default.
   useEffect(() => {
-    const editor = editorRef.current
+    const editor = mountedEditor
     if (!editor || editorMode === 'default') return
     let detach: (() => void) | null = null
     let cancelled = false
@@ -334,11 +345,11 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       cancelled = true
       detach?.()
     }
-  }, [editorMode, mountCount])
+  }, [editorMode, mountedEditor])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-    <Suspense fallback={null}><CodeStudioCollabBar document={document} editor={editorRef.current} /></Suspense>
+    <Suspense fallback={null}><CodeStudioCollabBar document={document} editor={mountedEditor} /></Suspense>
     <div className="min-h-0 flex-1">
     <Editor
       path={editorModelUri(document.document)}

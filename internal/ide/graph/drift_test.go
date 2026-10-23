@@ -16,9 +16,11 @@ func driftFixture() *Index {
 		pkg(path)
 	}
 	b.Node(Node{ID: "std:net/http", Kind: KindStdlib, Label: "net/http"})
-	edge := func(from, to string) { b.Edge("pkg:example.com/shop/"+from, "pkg:example.com/shop/"+to, EdgeImports, "") }
-	edge("internal/domain", "internal/store")  // domain → repository: layer violation
-	edge("internal/http", "internal/domain")   // allowed
+	edge := func(from, to string) {
+		b.Edge("pkg:example.com/shop/"+from, "pkg:example.com/shop/"+to, EdgeImports, "")
+	}
+	edge("internal/domain", "internal/store")   // domain → repository: layer violation
+	edge("internal/http", "internal/domain")    // allowed
 	edge("internal/billing", "internal/orders") // domain boundary
 	edge("internal/billing", "internal/shared") // shared: fine
 	edge("internal/orders", "internal/billing") // cycle billing ↔ orders

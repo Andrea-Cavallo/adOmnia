@@ -102,7 +102,7 @@ func remoteWebBase(remoteURL string) string {
 		}
 		return "https://" + m[1] + "/" + strings.TrimSuffix(m[2], "/")
 	}
-	for _, prefix := range []string{"https://", "http://"} {
+	for _, prefix := range []string{"https://", "http://"} { // NOSONAR -- scheme prefixes used to detect the remote protocol, not a request
 		if strings.HasPrefix(remoteURL, prefix) {
 			base := strings.TrimSuffix(strings.TrimSuffix(remoteURL, "/"), ".git")
 			// Strip embedded credentials (user:pass@host) for a clean web URL.

@@ -4,6 +4,10 @@ import { openApiToCollection } from '@/lib/openapiImport'
 import { exportToOpenApi } from '@/lib/openapi'
 import { exportToSwagger2 } from '@/lib/swagger2'
 
+// Foreign collection formats (Postman, Insomnia, Bruno...) are untyped JSON that is probed defensively.
+// oxlint-disable-next-line typescript/no-explicit-any -- intentionally loose shape for third-party import formats
+type Loose = any
+
 export type CollectionFormat = 'auto' | 'adomnia' | 'postman' | 'insomnia' | 'bruno' | 'openapi' | 'swagger2'
 export type ExportFormat = Exclude<CollectionFormat, 'auto'>
 
@@ -51,7 +55,7 @@ function normalizeMethod(value: unknown): HttpMethod {
   return (allowed.includes(method) ? method : 'GET') as HttpMethod
 }
 
-function rawUrl(input: any): string {
+function rawUrl(input: Loose): string {
   if (!input) return ''
   if (typeof input === 'string') return input
   if (input.raw) return String(input.raw)
@@ -64,7 +68,7 @@ function rawUrl(input: any): string {
   return ''
 }
 
-function importPostmanItem(item: any): TreeNode | null {
+function importPostmanItem(item: Loose): TreeNode | null {
   if (Array.isArray(item.item)) {
     return {
       id: uid(),
@@ -79,10 +83,10 @@ function importPostmanItem(item: any): TreeNode | null {
     ? item.request.description
     : String(item.request.description?.content || '')
   req.headers = Array.isArray(item.request.header) && item.request.header.length
-    ? item.request.header.map((h: any) => row(String(h.key || ''), String(h.value || ''), !h.disabled))
+    ? item.request.header.map((h: Loose) => row(String(h.key || ''), String(h.value || ''), !h.disabled))
     : [row()]
   if (Array.isArray(item.request.url?.query) && item.request.url.query.length) {
-    req.params = item.request.url.query.map((p: any) => row(String(p.key || ''), String(p.value || ''), !p.disabled))
+    req.params = item.request.url.query.map((p: Loose) => row(String(p.key || ''), String(p.value || ''), !p.disabled))
   }
   const body = item.request.body
   if (body?.raw != null) {
@@ -98,28 +102,28 @@ function importPostmanItem(item: any): TreeNode | null {
   return req
 }
 
-function eventScript(events: any[], listen: string): string {
+function eventScript(events: Loose[], listen: string): string {
   const event = events.find((e) => e.listen === listen)
   const exec = event?.script?.exec
   return Array.isArray(exec) ? exec.join('\n') : ''
 }
 
-function importPostmanAuth(auth: any): RequestAuth {
+function importPostmanAuth(auth: Loose): RequestAuth {
   const next = blankAuth()
   if (auth.type === 'bearer') {
     next.type = 'bearer'
-    next.token = String(auth.bearer?.find?.((x: any) => x.key === 'token')?.value || '')
+    next.token = String(auth.bearer?.find?.((x: Loose) => x.key === 'token')?.value || '')
   }
   if (auth.type === 'basic') {
     next.type = 'basic'
-    next.username = String(auth.basic?.find?.((x: any) => x.key === 'username')?.value || '')
-    next.password = String(auth.basic?.find?.((x: any) => x.key === 'password')?.value || '')
+    next.username = String(auth.basic?.find?.((x: Loose) => x.key === 'username')?.value || '')
+    next.password = String(auth.basic?.find?.((x: Loose) => x.key === 'password')?.value || '')
   }
   if (auth.type === 'apikey') next.type = 'apikey'
   return next
 }
 
-function importPostman(json: any): Collection {
+function importPostman(json: Loose): Collection {
   return {
     id: uid(),
     name: String(json.info?.name || json.name || 'Postman Collection'),
@@ -127,7 +131,7 @@ function importPostman(json: any): Collection {
   }
 }
 
-function importInsomniaAuth(auth: any): RequestAuth {
+function importInsomniaAuth(auth: Loose): RequestAuth {
   const next = blankAuth()
   if (!auth || !auth.type || auth.disabled) return next
   switch (String(auth.type)) {
@@ -157,8 +161,8 @@ function importInsomniaAuth(auth: any): RequestAuth {
   return next
 }
 
-function importInsomnia(json: any): Collection[] {
-  const resources: any[] = Array.isArray(json.resources) ? json.resources : []
+function importInsomnia(json: Loose): Collection[] {
+  const resources: Loose[] = Array.isArray(json.resources) ? json.resources : []
   const workspaces = resources.filter((r) => r._type === 'workspace')
   const requests = resources.filter((r) => r._type === 'request')
   const groups = resources.filter((r) => r._type === 'request_group')
@@ -166,17 +170,17 @@ function importInsomnia(json: any): Collection[] {
     ...groups.filter((g) => (g.parentId ?? null) === parentId).map((g) => ({ id: uid(), name: String(g.name || 'Folder'), type: 'folder' as const, children: buildChildren(g._id) })),
     ...requests.filter((r) => (r.parentId ?? null) === parentId).map((r) => {
       const req = request(String(r.name || 'Request'), normalizeMethod(r.method), String(r.url || ''))
-      req.headers = Array.isArray(r.headers) && r.headers.length ? r.headers.map((h: any) => row(String(h.name || h.key || ''), String(h.value || ''), !h.disabled)) : [row()]
+      req.headers = Array.isArray(r.headers) && r.headers.length ? r.headers.map((h: Loose) => row(String(h.name || h.key || ''), String(h.value || ''), !h.disabled)) : [row()]
       if (Array.isArray(r.parameters) && r.parameters.length) {
-        req.params = r.parameters.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled))
+        req.params = r.parameters.map((p: Loose) => row(String(p.name || ''), String(p.value || ''), !p.disabled))
       }
       const mime: string = r.body?.mimeType || ''
       if (r.body?.text) {
         req.bodies = [{ ...blankBody(), type: 'raw', raw: String(r.body.text), lang: mime.includes('xml') ? 'xml' : mime.includes('text') ? 'text' : 'json' }]
       } else if (r.body?.params && mime.includes('urlencoded')) {
-        req.bodies = [{ ...blankBody(), type: 'urlencoded', form: r.body.params.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
+        req.bodies = [{ ...blankBody(), type: 'urlencoded', form: r.body.params.map((p: Loose) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
       } else if (r.body?.params && mime.includes('multipart')) {
-        req.bodies = [{ ...blankBody(), type: 'formdata', form: r.body.params.map((p: any) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
+        req.bodies = [{ ...blankBody(), type: 'formdata', form: r.body.params.map((p: Loose) => row(String(p.name || ''), String(p.value || ''), !p.disabled)) }]
       }
       if (r.authentication) req.auth = importInsomniaAuth(r.authentication)
       const pre = String(r.preRequestScript || '')
@@ -189,14 +193,14 @@ function importInsomnia(json: any): Collection[] {
   return workspaces.map((w) => ({ id: uid(), name: String(w.name || 'Insomnia Workspace'), children: buildChildren(w._id) }))
 }
 
-function importBruno(json: any): Collection {
-  const walk = (items: any[]): TreeNode[] => items.map((item) => {
+function importBruno(json: Loose): Collection {
+  const walk = (items: Loose[]): TreeNode[] => items.map((item) => {
     if (item.type === 'folder' || Array.isArray(item.items)) {
       return { id: uid(), name: String(item.name || 'Folder'), type: 'folder' as const, children: walk(item.items || item.children || []) }
     }
     const req = request(String(item.name || item.meta?.name || 'Request'), normalizeMethod(item.request?.method || item.method), String(item.request?.url || item.url || ''))
     const headers = item.request?.headers || item.headers
-    if (Array.isArray(headers) && headers.length) req.headers = headers.map((h: any) => row(String(h.name || h.key || ''), String(h.value || ''), h.enabled !== false))
+    if (Array.isArray(headers) && headers.length) req.headers = headers.map((h: Loose) => row(String(h.name || h.key || ''), String(h.value || ''), h.enabled !== false))
     const body = item.request?.body || item.body
     if (typeof body === 'string') req.bodies = [{ ...blankBody(), type: 'raw', raw: body, lang: 'json' }]
     else if (body?.raw) req.bodies = [{ ...blankBody(), type: 'raw', raw: String(body.raw), lang: body.mode === 'xml' ? 'xml' : 'json' }]
@@ -294,7 +298,7 @@ function parseBruFile(text: string): Collection {
   return { id: uid(), name: reqName, children: [req] }
 }
 
-function importAdomnia(json: any): Collection[] {
+function importAdomnia(json: Loose): Collection[] {
   if (Array.isArray(json)) return json as Collection[]
   if (json.format === 'adomnia-workspace' && Array.isArray(json.collections)) return json.collections as Collection[]
   if (json.format === 'adomnia-collection' && json.collection) return [json.collection as Collection]
@@ -320,7 +324,7 @@ export function importCollectionsFromText(text: string, forced: CollectionFormat
     }
   }
 
-  let json: any
+  let json: Loose
   try {
     json = JSON.parse(text)
   } catch {
@@ -366,7 +370,7 @@ export function exportAllCollectionsPayload(collections: Collection[], format: E
 }
 
 function toPostmanCollection(collection: Collection) {
-  const toItem = (node: TreeNode): any => node.type === 'folder'
+  const toItem = (node: TreeNode): Loose => node.type === 'folder'
     ? { name: node.name, item: node.children.map(toItem) }
     : {
         name: node.name,
@@ -382,7 +386,7 @@ function toPostmanCollection(collection: Collection) {
 }
 
 function toInsomniaExport(collection: Collection) {
-  const resources: any[] = [{ _id: `wrk_${collection.id}`, _type: 'workspace', name: collection.name }]
+  const resources: Loose[] = [{ _id: `wrk_${collection.id}`, _type: 'workspace', name: collection.name }]
   const walk = (nodes: TreeNode[], parentId: string) => {
     for (const node of nodes) {
       if (node.type === 'folder') {
@@ -399,7 +403,7 @@ function toInsomniaExport(collection: Collection) {
 }
 
 function toBrunoCollection(collection: Collection) {
-  const walk = (nodes: TreeNode[]): any[] => nodes.map((node) => node.type === 'folder'
+  const walk = (nodes: TreeNode[]): Loose[] => nodes.map((node) => node.type === 'folder'
     ? { type: 'folder', name: node.name, items: walk(node.children) }
     : { type: 'request', name: node.name, request: { method: node.method, url: node.url, headers: node.headers.filter((h) => h.key), body: { raw: node.bodies[node.activeBodyIdx]?.raw || '' } } })
   return { version: '1', name: collection.name, items: walk(collection.children) }

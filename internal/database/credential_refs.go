@@ -1,7 +1,7 @@
 package database
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"strings"
 
 	"adomnia/internal/storage"

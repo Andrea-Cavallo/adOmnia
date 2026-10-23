@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, Clock3, GitCompare, RotateCw, ShieldAlert, Workflow, X, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { withContentKeys } from '@/lib/contentKeys'
 import type { AnalyzedRequest, LogAnalysis, RequestStatus } from '@/lib/loginspector'
 
 interface AnalysisOverviewProps {
@@ -140,8 +141,8 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectE
         )}
         {analysis.anomalies.length > 0 && (
           <div className="border-t border-border-1 px-3 py-1.5">
-            {analysis.anomalies.slice(0, 5).map((anomaly, index) => (
-              <p key={`${anomaly.correlationId}-${anomaly.kind}-${index}`} className={cn('truncate py-0.5 text-[10px]', anomaly.severity === 'error' ? 'text-error' : 'text-warning')} title={`${anomaly.evidence} ${anomaly.action}`}>
+            {withContentKeys(analysis.anomalies.slice(0, 5), (anomaly) => `${anomaly.correlationId}-${anomaly.kind}`).map(({ key, item: anomaly }) => (
+              <p key={key} className={cn('truncate py-0.5 text-[10px]', anomaly.severity === 'error' ? 'text-error' : 'text-warning')} title={`${anomaly.evidence} ${anomaly.action}`}>
                 {anomaly.title}: <span className="text-text-3">{anomaly.evidence}. {anomaly.action}</span>
               </p>
             ))}
@@ -149,8 +150,8 @@ export function AnalysisOverview({ analysis, onFilterRequest, onClose, onSelectE
         )}
         {analysis.integrityIssues.length > 0 && (
           <div className="border-t border-border-1 px-3 py-1.5">
-            {analysis.integrityIssues.slice(0, 4).map((issue, index) => (
-              <button key={`${issue.kind}-${index}`} onClick={() => issue.eventIds[0] !== undefined && onSelectEventId(issue.eventIds[0])} className="block w-full truncate py-0.5 text-left text-[10px] text-warning" title={issue.detail}>
+            {withContentKeys(analysis.integrityIssues.slice(0, 4), (issue) => `${issue.kind}-${issue.title}-${issue.eventIds.join(',')}`).map(({ key, item: issue }) => (
+              <button key={key} onClick={() => issue.eventIds[0] !== undefined && onSelectEventId(issue.eventIds[0])} className="block w-full truncate py-0.5 text-left text-[10px] text-warning" title={issue.detail}>
                 {issue.title}: <span className="text-text-3">{issue.detail}</span>
               </button>
             ))}

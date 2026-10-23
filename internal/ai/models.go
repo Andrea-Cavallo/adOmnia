@@ -4,8 +4,9 @@ import (
 	"adomnia/internal/netpolicy"
 
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -23,10 +24,10 @@ type ModelInfo struct {
 	Name             string   `json:"name"`
 	Owner            string   `json:"owner,omitempty"`
 	Source           string   `json:"source"`
-	Context          int      `json:"context,omitempty"`
-	OutputLimit      int      `json:"outputLimit,omitempty"`
+	Context          int      `json:"context,omitzero"`
+	OutputLimit      int      `json:"outputLimit,omitzero"`
 	Capabilities     []string `json:"capabilities,omitempty"`
-	SupportsThinking bool     `json:"supportsThinking,omitempty"`
+	SupportsThinking bool     `json:"supportsThinking,omitzero"`
 	Local            bool     `json:"local"`
 }
 
@@ -37,50 +38,12 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		return discoverBedrockModels(ctx, cfg, query)
 	}
 	client := netpolicy.ClientWithFallbackProxy("ai", 12*time.Second, cfg.proxy)
-	base := strings.TrimRight(cfg.BaseURL, "/")
-	var endpoint string
-
-	switch cfg.Provider {
-	case ProviderOllama:
-		if base == "" {
-			base = "http://localhost:11434"
-		}
-		endpoint = base + "/api/tags"
-	case ProviderHuggingFace:
-		if base == "" {
-			base = "https://router.huggingface.co/v1"
-		}
-		endpoint = base + "/models"
-	case ProviderOpenAICompatible:
-		if base == "" {
-			base = "http://localhost:1234/v1"
-		}
-		endpoint = base + "/models"
-	case ProviderOpenAI:
-		if base == "" {
-			base = "https://api.openai.com/v1"
-		}
-		endpoint = base + "/models"
-	case ProviderDeepSeek:
-		if base == "" {
-			base = "https://api.deepseek.com"
-		}
-		endpoint = base + "/models"
-	case ProviderAnthropic:
-		// Same root, credential style, headers and proxy as completions so a
-		// Claude Code corporate gateway is honoured for discovery too.
-		endpoint = anthropicRoot(base) + "/v1/models?limit=1000"
-	case ProviderGemini:
-		if base == "" {
-			base = "https://generativelanguage.googleapis.com/v1beta"
-		}
-		endpoint = base + "/models?pageSize=1000"
-	default:
-		return nil, fmt.Errorf("model discovery is not supported for %s", cfg.Provider)
+	endpoint, err := discoveryEndpoint(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	var req *http.Request
-	var err error
 	if cfg.Provider == ProviderAnthropic {
 		conn := newAnthropicConn(cfg, 12*time.Second)
 		client = conn.client
@@ -113,73 +76,122 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 		return nil, fmt.Errorf("model discovery returned HTTP %d", resp.StatusCode)
 	}
 
-	if cfg.Provider == ProviderOllama {
-		var payload struct {
-			Models []struct {
-				Name    string `json:"name"`
-				Model   string `json:"model"`
-				Details struct {
-					ParameterSize string `json:"parameter_size"`
-				} `json:"details"`
-			} `json:"models"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-			return nil, fmt.Errorf("decode Ollama models: %w", err)
-		}
-		models := make([]ModelInfo, 0, len(payload.Models))
-		for _, item := range payload.Models {
-			id := item.Model
-			if id == "" {
-				id = item.Name
-			}
-			if id != "" {
-				models = append(models, ModelInfo{ID: id, Name: id, Owner: item.Details.ParameterSize, Source: "Ollama", Local: true})
-			}
-		}
-		return filterModels(models, query), nil
+	var models []ModelInfo
+	switch cfg.Provider {
+	case ProviderOllama:
+		models, err = decodeOllamaModels(resp.Body)
+	case ProviderGemini:
+		models, err = decodeGeminiModels(resp.Body)
+	default:
+		models, err = decodeOpenAIStyleModels(resp.Body, cfg.Provider)
 	}
-
-	if cfg.Provider == ProviderGemini {
-		var payload struct {
-			Models []struct {
-				Name                       string   `json:"name"`
-				BaseModelID                string   `json:"baseModelId"`
-				DisplayName                string   `json:"displayName"`
-				InputTokenLimit            int      `json:"inputTokenLimit"`
-				OutputTokenLimit           int      `json:"outputTokenLimit"`
-				SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
-				Thinking                   bool     `json:"thinking"`
-			} `json:"models"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-			return nil, fmt.Errorf("decode Gemini models: %w", err)
-		}
-		models := make([]ModelInfo, 0, len(payload.Models))
-		for _, item := range payload.Models {
-			id := strings.TrimPrefix(item.BaseModelID, "models/")
-			if id == "" {
-				id = strings.TrimPrefix(item.Name, "models/")
-			}
-			if id == "" {
-				continue
-			}
-			name := item.DisplayName
-			if name == "" {
-				name = id
-			}
-			models = append(models, ModelInfo{
-				ID:               id,
-				Name:             name,
-				Source:           "Gemini",
-				Context:          item.InputTokenLimit,
-				OutputLimit:      item.OutputTokenLimit,
-				Capabilities:     item.SupportedGenerationMethods,
-				SupportsThinking: item.Thinking,
-			})
-		}
-		return filterModels(models, query), nil
+	if err != nil {
+		return nil, err
 	}
+	return filterModels(models, query), nil
+}
 
+// discoveryEndpoint is the model-list URL of a provider, defaulting the base URL
+// to the provider's public (or local runtime) address when none is configured.
+func discoveryEndpoint(cfg Config) (string, error) {
+	base := strings.TrimRight(cfg.BaseURL, "/")
+	withDefault := func(fallback string) string {
+		if base == "" {
+			return fallback
+		}
+		return base
+	}
+	switch cfg.Provider {
+	case ProviderOllama:
+		return withDefault("http://localhost:11434") + "/api/tags", nil
+	case ProviderHuggingFace:
+		return withDefault("https://router.huggingface.co/v1") + "/models", nil
+	case ProviderOpenAICompatible:
+		return withDefault("http://localhost:1234/v1") + "/models", nil
+	case ProviderOpenAI:
+		return withDefault("https://api.openai.com/v1") + "/models", nil
+	case ProviderDeepSeek:
+		return withDefault("https://api.deepseek.com") + "/models", nil
+	case ProviderAnthropic:
+		// Same root, credential style, headers and proxy as completions so a
+		// Claude Code corporate gateway is honoured for discovery too.
+		return anthropicRoot(base) + "/v1/models?limit=1000", nil
+	case ProviderGemini:
+		return withDefault("https://generativelanguage.googleapis.com/v1beta") + "/models?pageSize=1000", nil
+	}
+	return "", fmt.Errorf("model discovery is not supported for %s", cfg.Provider)
+}
+
+func decodeOllamaModels(body io.Reader) ([]ModelInfo, error) {
+	var payload struct {
+		Models []struct {
+			Name    string `json:"name"`
+			Model   string `json:"model"`
+			Details struct {
+				ParameterSize string `json:"parameter_size"`
+			} `json:"details"`
+		} `json:"models"`
+	}
+	if err := json.UnmarshalRead(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode Ollama models: %w", err)
+	}
+	models := make([]ModelInfo, 0, len(payload.Models))
+	for _, item := range payload.Models {
+		id := item.Model
+		if id == "" {
+			id = item.Name
+		}
+		if id != "" {
+			models = append(models, ModelInfo{ID: id, Name: id, Owner: item.Details.ParameterSize, Source: "Ollama", Local: true})
+		}
+	}
+	return models, nil
+}
+
+func decodeGeminiModels(body io.Reader) ([]ModelInfo, error) {
+	var payload struct {
+		Models []struct {
+			Name                       string   `json:"name"`
+			BaseModelID                string   `json:"baseModelId"`
+			DisplayName                string   `json:"displayName"`
+			InputTokenLimit            int      `json:"inputTokenLimit"`
+			OutputTokenLimit           int      `json:"outputTokenLimit"`
+			SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
+			Thinking                   bool     `json:"thinking"`
+		} `json:"models"`
+	}
+	if err := json.UnmarshalRead(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode Gemini models: %w", err)
+	}
+	models := make([]ModelInfo, 0, len(payload.Models))
+	for _, item := range payload.Models {
+		id := strings.TrimPrefix(item.BaseModelID, "models/")
+		if id == "" {
+			id = strings.TrimPrefix(item.Name, "models/")
+		}
+		if id == "" {
+			continue
+		}
+		name := item.DisplayName
+		if name == "" {
+			name = id
+		}
+		models = append(models, ModelInfo{
+			ID:               id,
+			Name:             name,
+			Source:           "Gemini",
+			Context:          item.InputTokenLimit,
+			OutputLimit:      item.OutputTokenLimit,
+			Capabilities:     item.SupportedGenerationMethods,
+			SupportsThinking: item.Thinking,
+		})
+	}
+	return models, nil
+}
+
+// decodeOpenAIStyleModels reads the `{data: [...]}` list shared by OpenAI, DeepSeek,
+// Hugging Face, Anthropic and OpenAI-compatible runtimes.
+func decodeOpenAIStyleModels(body io.Reader, provider Provider) ([]ModelInfo, error) {
 	var payload struct {
 		Data []struct {
 			ID            string `json:"id"`
@@ -192,7 +204,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 			} `json:"providers"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(body, &payload); err != nil {
 		return nil, fmt.Errorf("decode model list: %w", err)
 	}
 	models := make([]ModelInfo, 0, len(payload.Data))
@@ -201,9 +213,9 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 			continue
 		}
 		contextSize := item.ContextWindow
-		for _, provider := range item.Providers {
-			if provider.Status == "live" && provider.Context > contextSize {
-				contextSize = provider.Context
+		for _, hosted := range item.Providers {
+			if hosted.Status == "live" && hosted.Context > contextSize {
+				contextSize = hosted.Context
 			}
 		}
 		name := item.DisplayName
@@ -211,11 +223,11 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 			name, _ = url.PathUnescape(item.ID)
 		}
 		models = append(models, ModelInfo{
-			ID: item.ID, Name: name, Owner: item.OwnedBy, Source: string(cfg.Provider),
-			Context: contextSize, Local: cfg.Provider == ProviderOpenAICompatible,
+			ID: item.ID, Name: name, Owner: item.OwnedBy, Source: string(provider),
+			Context: contextSize, Local: provider == ProviderOpenAICompatible,
 		})
 	}
-	return filterModels(models, query), nil
+	return models, nil
 }
 
 func discoverBedrockModels(ctx context.Context, cfg Config, query string) ([]ModelInfo, error) {

@@ -1,6 +1,7 @@
-import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies } from '../../bindings/adomnia/internal/codestudio/models'
+import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustToolchainReport, ServerInstallPreview } from '../../bindings/adomnia/internal/codestudio/models'
 import type { EnvironmentPlan } from '../../bindings/adomnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { CargoTreeNode } from '../../bindings/adomnia/internal/languages/rust/models'
 import * as GoIDEBindings from '../../bindings/adomnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -845,6 +846,49 @@ export async function createPythonEnvironment(sessionId: string, unit: string, i
 /** Installa le dipendenze dichiarate nell'ambiente dell'unità: solo su conferma. */
 export async function installPythonDependencies(sessionId: string, unit: string, confirmed: boolean): Promise<Execution> {
   return GoIDEBindings.InstallPythonDependencies(sessionId, unit, confirmed)
+}
+
+/** Toolchain Rust candidata (dal report di `getRustToolchains`). */
+export type GoIDERustToolchain = RustToolchainReport['installed'][number]
+
+/** Toolchain Rust candidate, scelta corrente e — solo con il progetto autorizzato — versione e host. */
+export async function getRustToolchains(sessionId: string): Promise<RustToolchainReport> {
+  return GoIDEBindings.RustToolchains(sessionId)
+}
+
+/** Sceglie il cargo del progetto; path = '' torna alla scelta automatica. */
+export async function setRustToolchain(sessionId: string, path: string): Promise<void> {
+  return GoIDEBindings.SetRustToolchain(sessionId, path)
+}
+
+/** Opzione "Low resources" per rust-analyzer (RS-9.5): spenge proc-macro e build script senza riavviare il server. */
+export async function setRustLowResources(sessionId: string, enabled: boolean): Promise<void> {
+  return GoIDEBindings.SetRustLowResources(sessionId, enabled)
+}
+
+/** Installa un componente rustup (es. rust-src, clippy): solo su conferma, con il comando esatto. */
+export async function installRustComponent(sessionId: string, component: string, confirmed: boolean): Promise<Execution> {
+  return GoIDEBindings.InstallRustComponent(sessionId, component, confirmed)
+}
+
+/** Installa un canale rustup (es. 1.85.0): solo su conferma. */
+export async function installRustToolchain(sessionId: string, channel: string, confirmed: boolean): Promise<Execution> {
+  return GoIDEBindings.InstallRustToolchain(sessionId, channel, confirmed)
+}
+
+/** Comando esatto che installerebbe un componente rustup. */
+export async function previewRustComponentInstall(sessionId: string, component: string): Promise<ServerInstallPreview> {
+  return GoIDEBindings.PreviewRustComponentInstall(sessionId, component)
+}
+
+/** Comando esatto che installerebbe un canale rustup. */
+export async function previewRustToolchainInstall(sessionId: string, channel: string): Promise<ServerInstallPreview> {
+  return GoIDEBindings.PreviewRustToolchainInstall(sessionId, channel)
+}
+
+/** Albero delle dipendenze dal Cargo.lock (offline) con i duplicati di versione in evidenza. */
+export async function getRustDependencyTree(sessionId: string): Promise<CargoTreeNode[]> {
+  return GoIDEBindings.RustDependencyTree(sessionId)
 }
 
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */

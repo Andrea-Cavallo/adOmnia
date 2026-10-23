@@ -3,9 +3,10 @@ package ai
 import (
 	"adomnia/internal/netpolicy"
 
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -44,7 +45,7 @@ func (p *openAIProvider) Complete(ctx context.Context, req CompletionRequest) (C
 	} else {
 		body["max_tokens"] = maxTok
 	}
-	raw, _ := json.Marshal(body)
+	raw, _ := jsonutil.Marshal(body)
 	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost,
 		p.baseURL+"/chat/completions", bytes.NewReader(raw))
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
@@ -70,7 +71,7 @@ func (p *openAIProvider) Complete(ctx context.Context, req CompletionRequest) (C
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 		return CompletionResponse{}, fmt.Errorf("openai decode: %w", err)
 	}
 	if out.Error != nil {

@@ -3,11 +3,12 @@ import { findToolTargets, type CodeStudioToolTarget } from './codeStudioToolTarg
 import { functionAtLine } from './codeStudioGoToTest'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 import { findPythonTargets, type CodeStudioPythonRunTarget } from './codeStudioPythonTargets'
+import { findRustTargets, type CodeStudioRustRunTarget, type CodeStudioRustTestTarget } from './codeStudioRustTargets'
 
 export type CodeStudioRunTargetKind = 'main' | 'test' | 'benchmark' | 'fuzz' | 'example'
 
 /** Un ▶ del gutter: funzione Go, target make o stage Docker. */
-export type CodeStudioRunTarget = CodeStudioGoRunTarget | CodeStudioToolTarget | CodeStudioJavaRunTarget | CodeStudioPythonRunTarget
+export type CodeStudioRunTarget = CodeStudioGoRunTarget | CodeStudioToolTarget | CodeStudioJavaRunTarget | CodeStudioPythonRunTarget | CodeStudioRustRunTarget | CodeStudioRustTestTarget
 
 export interface CodeStudioGoRunTarget {
   line: number
@@ -47,6 +48,7 @@ function kindFor(prefix: string): CodeStudioRunTargetKind {
 export function findRunTargets(relativePath: string, text: string, jdtMains?: ReadonlySet<string> | null): CodeStudioRunTarget[] {
   if (relativePath.endsWith('.java')) return findJavaTargets(relativePath, text, jdtMains)
   if (relativePath.toLowerCase().endsWith('.py')) return findPythonTargets(relativePath, text)
+  if (relativePath.toLowerCase().endsWith('.rs')) return findRustTargets(relativePath, text)
   if (!relativePath.endsWith('.go')) return findToolTargets(relativePath, text)
   const packagePath = packagePathFor(relativePath)
   const isTestFile = relativePath.endsWith('_test.go')

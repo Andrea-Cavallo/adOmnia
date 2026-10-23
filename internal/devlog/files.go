@@ -2,7 +2,7 @@ package devlog
 
 import (
 	"bufio"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os"
@@ -146,11 +146,11 @@ func OpenDir() error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", dir)
+		cmd = exec.Command("open", dir) // NOSONAR -- OS file manager launched by bare name through PATH on the app own logs folder
 	case "linux":
-		cmd = exec.Command("xdg-open", dir)
+		cmd = exec.Command("xdg-open", dir) // NOSONAR -- OS file manager launched by bare name through PATH on the app own logs folder
 	default:
-		cmd = exec.Command("explorer", dir)
+		cmd = exec.Command("explorer", dir) // NOSONAR -- OS file manager launched by bare name through PATH on the app own logs folder
 	}
 	return cmd.Start()
 }

@@ -21,7 +21,7 @@ type Snapshot struct {
 	Diagnostics string          `json:"diagnostics,omitempty"`
 	Summary     TestSummary     `json:"summary"`
 	Results     []TestResult    `json:"results"`
-	Overflow    bool            `json:"overflow,omitempty"`
+	Overflow    bool            `json:"overflow,omitzero"`
 	StartedAt   time.Time       `json:"startedAt"`
 	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
 	// Coverage è il report dello strumento di copertura, se la run ne ha prodotto uno.

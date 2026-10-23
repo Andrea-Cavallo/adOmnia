@@ -59,7 +59,7 @@ export function diffPayloads(left: unknown, right: unknown, ignoredPaths: string
       } else if (!Array.isArray(a) && !Array.isArray(b)) {
         const leftObject = a as Record<string, unknown>
         const rightObject = b as Record<string, unknown>
-        const keys = [...new Set([...Object.keys(leftObject), ...Object.keys(rightObject)])].sort()
+        const keys = [...new Set([...Object.keys(leftObject), ...Object.keys(rightObject)])].sort((first, second) => first.localeCompare(second))
         for (const key of keys) visit(leftObject[key], rightObject[key], jsonPath(path, key))
       }
       return

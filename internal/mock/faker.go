@@ -1,10 +1,10 @@
 package mock
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"strings"
 	"sync"
 	"time"
@@ -30,7 +30,7 @@ func GenerateFromSchema(schema map[string]interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, err := json.Marshal(value)
+	raw, err := jsonutil.Marshal(value)
 	if err != nil {
 		return "", err
 	}

@@ -9,10 +9,13 @@ import { editorModelUri } from './codeStudioModelUri'
 import './codeStudioModal.css'
 import { revertHunk } from './codeStudioVcsEditor'
 import { applyCodeStudioHunkToIndex, type CodeStudioHunkStageMode } from './codeStudioVcsHunkStage'
+import { withContentKeys } from '@/lib/contentKeys'
 import { HunkStageDialog } from '@/components/workspace/git/HunkStageDialog'
 
 const POPUP_WIDTH = 520
 const MAX_PREVIEW_LINES = 40
+
+const close = () => useCodeStudioVCSStore.getState().showHunk(null)
 
 /** Popup del blocco modificato: righe di HEAD, Revert, e stage/unstage del blocco sull'index Git. */
 export function CodeStudioHunkPopup() {
@@ -23,8 +26,6 @@ export function CodeStudioHunkPopup() {
   const ref = useRef<HTMLDivElement>(null)
   const [lines, setLines] = useState<CodeStudioHunkStageMode | null>(null)
   const [busy, setBusy] = useState(false)
-  const close = () => useCodeStudioVCSStore.getState().showHunk(null)
-
   useEffect(() => {
     if (!popup) return
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !lines) close() }
@@ -77,8 +78,8 @@ export function CodeStudioHunkPopup() {
       </div>
       <div className="max-h-64 overflow-auto bg-surface-0 py-1 font-mono text-[10px] leading-4">
         {oldLines.length === 0 && <p className="px-3 py-1 font-sans text-text-4">These lines do not exist in HEAD. Revert removes them.</p>}
-        {oldLines.slice(0, MAX_PREVIEW_LINES).map((line, index) => (
-          <div key={index} className="whitespace-pre px-3 text-text-2"><span className="mr-3 inline-block w-8 select-none text-right text-text-4">{popup.hunk.oldStart + index}</span>{line || ' '}</div>
+        {withContentKeys(oldLines.slice(0, MAX_PREVIEW_LINES), (line) => line).map(({ key, item: line }, index) => (
+          <div key={key} className="whitespace-pre px-3 text-text-2"><span className="mr-3 inline-block w-8 select-none text-right text-text-4">{popup.hunk.oldStart + index}</span>{line || ' '}</div>
         ))}
         {oldLines.length > MAX_PREVIEW_LINES && <p className="px-3 text-text-4">… {oldLines.length - MAX_PREVIEW_LINES} more lines</p>}
       </div>

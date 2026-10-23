@@ -44,14 +44,19 @@ export async function collectDebugEvidence(sessionId: string, debugId: string): 
   const frameId = view.frameId ?? top.id
   const scopes = view.scopes.length ? view.scopes : await within(getGoIDEDebugScopes(debugId, frameId), 3000, [])
   const locals: DebugEvidence['locals'] = []
-  for (const scope of scopes.filter((item) => !item.expensive && item.variablesReference > 0).slice(0, 2)) {
-    const variables = view.children[scope.variablesReference] ?? await within(getGoIDEDebugVariables(debugId, scope.variablesReference), 3000, [])
+  const scopeVariables = await Promise.all(
+    scopes.filter((item) => !item.expensive && item.variablesReference > 0).slice(0, 2).map(
+      (scope) => view.children[scope.variablesReference] ?? within(getGoIDEDebugVariables(debugId, scope.variablesReference), 3000, []),
+    ),
+  )
+  for (const variables of scopeVariables) {
     locals.push(...variables.slice(0, 30).map((variable) => ({ name: variable.name, value: variable.value, type: variable.type })))
   }
   let panicValue: string | null = null
   const runtimeFrame = view.frames.find((frame) => PANIC_FRAME.test(frame.name))
   if (runtimeFrame) {
     for (const scope of await within(getGoIDEDebugScopes(debugId, runtimeFrame.id), 2000, [])) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- early exit on the first match, so scopes are probed one at a time
       const value = (await within(getGoIDEDebugVariables(debugId, scope.variablesReference), 2000, [])).find((variable) => /^(?:e|panic|value|err)$/i.test(variable.name))
       if (value) { panicValue = `${value.value}${value.type ? ` (${value.type})` : ''}`; break }
     }

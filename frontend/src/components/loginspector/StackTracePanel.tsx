@@ -3,6 +3,7 @@ import { Check, Copy, FolderPlus, RefreshCw, Trash2, WrapText } from 'lucide-rea
 import { cn } from '@/lib/utils'
 import { safeSelectFolder } from '@/lib/fileUtils'
 import { openSourceLocation, reindexRepositories, resolveFrame, type FrameResolution } from '@/lib/sourcemap-api'
+import { withContentKeys } from '@/lib/contentKeys'
 import { useServerPort } from '@/lib/useServerPort'
 import { frameCandidates, parseStackTrace, type StackFrame } from '@/lib/loginspector'
 import type { Prefs, UpdatePrefs } from './prefs'
@@ -125,10 +126,10 @@ export function StackTracePanel({ stack, prefs, updatePrefs }: StackTracePanelPr
       <div className="min-h-0 flex-1 overflow-auto bg-surface-0 py-1">
         {parsed.frameCount === 0 ? (
           <pre className={cn('px-3 py-2 font-mono text-[11px] text-text-2', wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre')}>{stack}</pre>
-        ) : parsed.sections.map((section, sectionIndex) => {
+        ) : withContentKeys(parsed.sections, (section) => section.title).map(({ key: sectionKey, item: section }, sectionIndex) => {
           const frames = appOnly ? section.frames.filter((frame) => frame.origin === 'application') : section.frames
           return (
-            <div key={sectionIndex} className="mb-2">
+            <div key={sectionKey} className="mb-2">
               <p className={cn('px-2 py-1 font-mono text-[10px]', sectionIndex === 0 ? 'text-error' : 'text-warning')}>{section.title}</p>
               {frames.map((frame) => {
                 const resolution = resolutions[frame.index]

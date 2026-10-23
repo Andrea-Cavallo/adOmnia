@@ -1,11 +1,11 @@
 package python
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 // TestFrameworkServerUsesGuidedFields: host, porta e reload sono opzioni validate, non argomenti
@@ -35,7 +35,7 @@ func TestFrameworkServerUsesGuidedFields(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			data, _ := json.Marshal(test.options)
+			data, _ := jsonutil.Marshal(test.options)
 			spec, err := New().CommandSpec(run.Request{Root: root, WorkingDirectory: root, Kind: "module", LanguageOptions: data})
 			if err != nil {
 				t.Fatal(err)
@@ -66,7 +66,7 @@ func TestFrameworkServerValidation(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			test.options.Interpreter = interpreter
-			data, _ := json.Marshal(test.options)
+			data, _ := jsonutil.Marshal(test.options)
 			err := New().ValidateRunConfiguration(run.Configuration{Language: ID, Kind: "module", LanguageOptions: data})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("error %v, want %q", err, test.want)

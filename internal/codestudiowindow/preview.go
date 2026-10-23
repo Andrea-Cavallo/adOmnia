@@ -31,7 +31,7 @@ func NewPreviewWindows(app *application.App) *PreviewWindows {
 func previewKey(sessionID, previewID string) string { return sessionID + "\x00" + previewID }
 
 func previewWindowName(key string) string {
-	sum := sha1.Sum([]byte(key))
+	sum := sha1.Sum([]byte(key)) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here
 	return previewWindowPrefix + hex.EncodeToString(sum[:6])
 }
 

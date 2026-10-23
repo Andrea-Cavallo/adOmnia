@@ -2,8 +2,9 @@ package proxy
 
 import (
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"strings"
@@ -22,13 +23,13 @@ func proxyMapLocalHandler(w http.ResponseWriter, r *http.Request) {
 			rules = []mapLocalRule{}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "rules": rules})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "rules": rules})
 
 	case http.MethodPost:
 		var body struct {
 			Rules []mapLocalRule `json:"rules"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := json.UnmarshalRead(r.Body, &body); err != nil {
 			httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 			return
 		}
@@ -36,7 +37,7 @@ func proxyMapLocalHandler(w http.ResponseWriter, r *http.Request) {
 		mapLocalRules = body.Rules
 		mapLocalRulesMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(body.Rules)})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": len(body.Rules)})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -55,13 +56,13 @@ func proxyMapRemoteHandler(w http.ResponseWriter, r *http.Request) {
 			rules = []mapRemoteRule{}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "rules": rules})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "rules": rules})
 
 	case http.MethodPost:
 		var body struct {
 			Rules []mapRemoteRule `json:"rules"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := json.UnmarshalRead(r.Body, &body); err != nil {
 			httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 			return
 		}
@@ -69,7 +70,7 @@ func proxyMapRemoteHandler(w http.ResponseWriter, r *http.Request) {
 		mapRemoteRules = body.Rules
 		mapRemoteRulesMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(body.Rules)})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": len(body.Rules)})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -85,11 +86,11 @@ func proxyThrottleHandler(w http.ResponseWriter, r *http.Request) {
 		cfg := proxyThrottle
 		proxyThrottleMu.RUnlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "config": cfg})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "config": cfg})
 
 	case http.MethodPost:
 		var cfg throttleConfig
-		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		if err := json.UnmarshalRead(r.Body, &cfg); err != nil {
 			httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 			return
 		}
@@ -97,7 +98,7 @@ func proxyThrottleHandler(w http.ResponseWriter, r *http.Request) {
 		proxyThrottle = cfg
 		proxyThrottleMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "config": cfg})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "config": cfg})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -115,7 +116,7 @@ func proxyRepeatHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ID string `json:"id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(r.Body, &body); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -174,7 +175,7 @@ func proxyRepeatHandler(w http.ResponseWriter, r *http.Request) {
 	recordEntry(original.URL, original.Method, original.ReqHeaders, original.ReqBody, resp.StatusCode, respHeaders, string(respBody), duration, "", false)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":         true,
 		"status":     resp.StatusCode,
 		"headers":    respHeaders,

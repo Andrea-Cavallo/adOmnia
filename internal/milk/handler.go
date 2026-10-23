@@ -1,10 +1,12 @@
 package milk
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
@@ -16,7 +18,7 @@ type handler struct {
 }
 
 // HandleNotification elabora session/update e le notifiche estese _milk/*.
-func (h *handler) HandleNotification(method string, params json.RawMessage) {
+func (h *handler) HandleNotification(method string, params jsonv1.RawMessage) {
 	switch method {
 	case "session/update":
 		h.handleSessionUpdate(params)
@@ -30,7 +32,7 @@ func (h *handler) HandleNotification(method string, params json.RawMessage) {
 }
 
 // handleUsage registra il modello che ha servito davvero il turno (Claude Code lo mette in _meta).
-func (h *handler) handleUsage(update json.RawMessage) {
+func (h *handler) handleUsage(update jsonv1.RawMessage) {
 	var usage struct {
 		Meta struct {
 			Model string `json:"_claude/model"`
@@ -44,7 +46,7 @@ func (h *handler) handleUsage(update json.RawMessage) {
 
 // handleAuthStatus registra il backend annunciato dall'agente (Claude Code: piano, API key,
 // Bedrock/Vertex/Foundry, gateway). Solo etichette: mai email né credenziali.
-func (h *handler) handleAuthStatus(params json.RawMessage) {
+func (h *handler) handleAuthStatus(params jsonv1.RawMessage) {
 	var update struct {
 		AuthStatus struct {
 			Label  string `json:"label"`
@@ -61,10 +63,10 @@ func (h *handler) handleAuthStatus(params json.RawMessage) {
 	h.manager.setStatus(func(status *Status) { status.Backend = backend })
 }
 
-func (h *handler) handleSessionUpdate(params json.RawMessage) {
+func (h *handler) handleSessionUpdate(params jsonv1.RawMessage) {
 	var notification struct {
-		SessionID string          `json:"sessionId"`
-		Update    json.RawMessage `json:"update"`
+		SessionID string            `json:"sessionId"`
+		Update    jsonv1.RawMessage `json:"update"`
 	}
 	if json.Unmarshal(params, &notification) != nil {
 		return
@@ -172,11 +174,11 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 	case "tool_call", "tool_call_update":
 		// milk manda name; ACP v1 manda title ("Read `main.go`"), più leggibile.
 		var update struct {
-			ToolCallID string          `json:"toolCallId"`
-			Name       string          `json:"name"`
-			Title      string          `json:"title"`
-			Status     string          `json:"status"`
-			RawOutput  json.RawMessage `json:"rawOutput"`
+			ToolCallID string            `json:"toolCallId"`
+			Name       string            `json:"name"`
+			Title      string            `json:"title"`
+			Status     string            `json:"status"`
+			RawOutput  jsonv1.RawMessage `json:"rawOutput"`
 		}
 		if json.Unmarshal(notification.Update, &update) != nil {
 			return
@@ -210,7 +212,7 @@ func (h *handler) handleSessionUpdate(params json.RawMessage) {
 	}
 }
 
-func (h *handler) handleRoute(params json.RawMessage) {
+func (h *handler) handleRoute(params jsonv1.RawMessage) {
 	var route struct {
 		Agent  string `json:"agent"`
 		Target string `json:"target"`
@@ -226,7 +228,7 @@ func (h *handler) handleRoute(params json.RawMessage) {
 	h.manager.publish("chat", ChatEvent{Token: token, Kind: "route", Route: &RouteInfo{Agent: route.Agent, Target: route.Target, Reason: route.Reason}})
 }
 
-func (h *handler) handleWarning(params json.RawMessage) {
+func (h *handler) handleWarning(params jsonv1.RawMessage) {
 	var warning struct {
 		Message string `json:"message"`
 	}
@@ -242,7 +244,7 @@ func (h *handler) handleWarning(params json.RawMessage) {
 
 // handleCommands registra le slash command che l'agente esegue (milk le annuncia
 // subito dopo session/new) e le pubblica per il completamento nell'input.
-func (h *handler) handleCommands(sessionID string, update json.RawMessage) {
+func (h *handler) handleCommands(sessionID string, update jsonv1.RawMessage) {
 	var notification struct {
 		AvailableCommands []struct {
 			Name        string `json:"name"`
@@ -274,7 +276,7 @@ func (h *handler) handleCommands(sessionID string, update json.RawMessage) {
 }
 
 // HandleRequest risponde a session/request_permission; gli altri metodi sono non supportati.
-func (h *handler) HandleRequest(ctx context.Context, method string, params json.RawMessage) (any, error) {
+func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	if method != "session/request_permission" {
 		return nil, ErrMethodNotFound
 	}
@@ -454,7 +456,7 @@ func newRequestID() string {
 
 // summarizeRaw normalizza un rawOutput arbitrario (stringa o oggetto) in testo
 // leggibile, senza mai fallire la decodifica dell'evento.
-func summarizeRaw(raw json.RawMessage) string {
+func summarizeRaw(raw jsonv1.RawMessage) string {
 	if len(raw) == 0 {
 		return ""
 	}
@@ -465,7 +467,7 @@ func summarizeRaw(raw json.RawMessage) string {
 	if text, ok := value.(string); ok {
 		return text
 	}
-	data, err := json.Marshal(value)
+	data, err := jsonutil.Marshal(value)
 	if err != nil {
 		return string(raw)
 	}

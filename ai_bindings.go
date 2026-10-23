@@ -4,9 +4,10 @@ import (
 	"adomnia/internal/ai"
 	"adomnia/internal/aigateway"
 	"adomnia/internal/devlog"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/mock"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"sync"
@@ -88,7 +89,7 @@ func (a *AIEngine) ListModels(cfgJSON, query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, err := json.Marshal(models)
+	raw, err := jsonutil.Marshal(models)
 	if err != nil {
 		return "", fmt.Errorf("encode models: %w", err)
 	}
@@ -104,7 +105,7 @@ func (a *AIEngine) ClaudeCodeSettingsStatus(workspaceDir string) (string, error)
 	if dir == "" {
 		dir = ai.DefaultClaudeWorkspaceDir()
 	}
-	raw, err := json.Marshal(ai.LoadClaudeCodeSettings(dir).Status())
+	raw, err := jsonutil.Marshal(ai.LoadClaudeCodeSettings(dir).Status())
 	if err != nil {
 		return "", fmt.Errorf("encode Claude Code settings status: %w", err)
 	}
@@ -175,7 +176,7 @@ func (a *AIEngine) GatewayStatus() (string, error) {
 }
 
 func marshalGatewayStatus(status aiGatewayStatus) (string, error) {
-	raw, err := json.Marshal(status)
+	raw, err := jsonutil.Marshal(status)
 	if err != nil {
 		return "", fmt.Errorf("encode AI gateway status: %w", err)
 	}
@@ -201,6 +202,6 @@ func (a *AIEngine) GenerateMockEndpoints(inputType, userInput string) (string, e
 	if err != nil {
 		return "", fmt.Errorf("AI ha generato JSON non valido: %w\nRisposta raw: %s", err, resp.Text)
 	}
-	raw, _ := json.Marshal(endpoints)
+	raw, _ := jsonutil.Marshal(endpoints)
 	return string(raw), nil
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Editor, { type BeforeMount } from '@monaco-editor/react'
+import { Editor, type BeforeMount } from '@monaco-editor/react'
 import { AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
 import { generateScript, findSpecForRequest } from '@/lib/aiScripts'
 import type { RequestItem } from '@/lib/types'
@@ -48,7 +48,9 @@ function configureJavaScript(m: typeof monaco): void {
 
 configureMonacoLoader()
 
-export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', editableTabs = ['pre', 'post', 'tests'], request }: ScriptsEditorProps) {
+const ALL_SCRIPT_TABS: ScriptTab[] = ['pre', 'post', 'tests']
+
+export function ScriptsEditor({ pre, post, tests, onChange, initialTab = 'tests', editableTabs = ALL_SCRIPT_TABS, request }: ScriptsEditorProps) {
   const editorTheme = useAdomniaEditorTheme()
   const tr = useUiTranslation()
   const [tab, setTab] = useState<ScriptTab>(editableTabs.includes(initialTab) ? initialTab : editableTabs[0])

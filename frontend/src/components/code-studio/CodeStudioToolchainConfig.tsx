@@ -1,5 +1,5 @@
 import { goModules } from '@/lib/code-studio/goProject'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Globe, FolderGit2} from 'lucide-react'
 import { CodeStudioButton, CodeStudioField } from './CodeStudioModal'
 import { CodeStudioPrivateModules } from './CodeStudioPrivateModules'
@@ -48,24 +48,29 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
   const setCorporate = (patch: Partial<CodeStudioCorporateNetwork>) => setForm((current) => withCorporateNetwork(current, { ...corporateNetworkOf(current), ...patch }))
   const problems = [...TEXT_FIELDS.map(({ key }) => modulePatternProblem(key, form.fields[key])), proxyProblem(corporate.proxy)].filter((problem): problem is string => !!problem)
 
-  const load = async (nextScope: Scope, current = settings) => {
+  const load = useCallback((nextScope: Scope, current: GoIDEToolchainSettings | null) => {
     const config = nextScope === 'project' ? current?.project ?? current?.global : current?.global
     setGoBinary(config?.goBinary ?? '')
     setForm(toolchainFormFromEnv(config?.environment))
-  }
+  }, [])
 
+  const onErrorRef = useRef(onError)
+  useEffect(() => { onErrorRef.current = onError }, [onError])
   useEffect(() => {
-    void getGoIDEToolchainSettings(sessionId).then((loaded) => {
+    let live = true
+    getGoIDEToolchainSettings(sessionId).then((loaded) => {
+      if (!live) return
       setSettings(loaded)
       const initial: Scope = loaded.project ? 'project' : 'global'
       setScope(initial)
-      void load(initial, loaded)
-    }).catch((reason) => onError(String(reason)))
-  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+      load(initial, loaded)
+    }).catch((reason: unknown) => { if (live) onErrorRef.current(String(reason)) })
+    return () => { live = false }
+  }, [sessionId, load])
 
   const refresh = async () => setSettings(await getGoIDEToolchainSettings(sessionId))
   const setField = (key: ToolchainField, value: string) => setForm((current) => ({ ...current, fields: { ...current.fields, [key]: value } }))
-  const switchScope = (next: Scope) => { setScope(next); void load(next) }
+  const switchScope = (next: Scope) => { setScope(next); load(next, settings) }
 
   const save = async () => {
     setBusy(true); onError(null)
@@ -110,7 +115,7 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
       </CodeStudioField>
       <div className="grid grid-cols-2 gap-x-3 gap-y-3">
         <CodeStudioField label="Corporate proxy" hint={proxyProblem(corporate.proxy) ? <span className="text-danger">{proxyProblem(corporate.proxy)}</span> : 'HTTPS_PROXY and HTTP_PROXY for go, git and gopls. A password in the URL stays in memory only.'}>
-          <input value={corporate.proxy} onChange={(event) => setCorporate({ proxy: event.target.value })} placeholder="http://proxy.corp:8080" aria-invalid={!!proxyProblem(corporate.proxy)} className={inputClass} />
+          <input value={corporate.proxy} onChange={(event) => setCorporate({ proxy: event.target.value })} placeholder="http://proxy.corp:8080" aria-invalid={!!proxyProblem(corporate.proxy)} className={inputClass} /> {/* NOSONAR -- documentation placeholder showing the corporate proxy URL format */}
         </CodeStudioField>
         <CodeStudioField label="No proxy for" hint="NO_PROXY: hosts reached directly, e.g. your Git server.">
           <input value={corporate.noProxy} onChange={(event) => setCorporate({ noProxy: event.target.value })} placeholder="git.corp.example,localhost" className={inputClass} />

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"log"
 	"os"
@@ -19,6 +19,7 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/dropfiles"
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/nettools"
 	"adomnia/internal/panelwindow"
 	"adomnia/internal/perf"
@@ -227,7 +228,7 @@ func (a *App) ReadDroppedFiles(paths []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out, err := json.Marshal(files)
+	out, err := jsonutil.Marshal(files)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize dropped files: %w", err)
 	}
@@ -239,7 +240,7 @@ func (a *App) CompareFolders(left, right string, maxFileMB int64) (string, error
 	if err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(result)
+	data, err := jsonutil.Marshal(result)
 	if err != nil {
 		return "", err
 	}
@@ -251,7 +252,7 @@ func (a *App) ReadFolderDiffFile(scanID, path string, maxBytes int64) (string, e
 	if err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(result)
+	data, err := jsonutil.Marshal(result)
 	if err != nil {
 		return "", err
 	}
@@ -305,7 +306,7 @@ func marshalLogEntries(entries []devlog.Entry) string {
 	if entries == nil {
 		return "[]"
 	}
-	out, err := json.Marshal(entries)
+	out, err := jsonutil.Marshal(entries)
 	if err != nil {
 		devlog.Err("marshalLogEntries", "serializzazione dev logs fallita", err, nil)
 		return "[]"
@@ -498,7 +499,7 @@ func (a *App) SaveSettings(settingsJSON string) error {
 	if storage.DB() == nil {
 		return fmt.Errorf("storage not initialized")
 	}
-	if !json.Valid([]byte(settingsJSON)) {
+	if !jsontext.Value([]byte(settingsJSON)).IsValid() {
 		return fmt.Errorf("invalid settings JSON")
 	}
 	return storage.Put(settingsBucket, settingsKey, []byte(settingsJSON))

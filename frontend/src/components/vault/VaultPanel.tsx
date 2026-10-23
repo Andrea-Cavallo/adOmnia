@@ -37,8 +37,13 @@ export function VaultPanel() {
   }, [api])
 
   useEffect(() => {
-    if (port) refresh()
-  }, [port, refresh])
+    if (!port) return
+    let cancelled = false
+    api('/vault/status')
+      .then((data) => { if (!cancelled) setUnlocked(Boolean(data.unlocked)) })
+      .catch(() => { if (!cancelled) setUnlocked(false) })
+    return () => { cancelled = true }
+  }, [port, api])
 
   useEffect(() => {
     try {
@@ -46,12 +51,16 @@ export function VaultPanel() {
       if (!raw) return
       const pending = JSON.parse(raw) as { name?: string; value?: string; note?: string }
       if (pending.value) {
-        setPlain(JSON.stringify({
+        const loaded = JSON.stringify({
           name: pending.name ?? 'Imported secret',
           value: pending.value,
           note: pending.note ?? 'Imported from another adOmnia panel',
-        }, null, 2))
-        setMessage('Secret loaded from another panel. Enter a passphrase and encrypt it here.')
+        }, null, 2)
+        // Deferred so the hand-off does not set state synchronously inside the effect.
+        queueMicrotask(() => {
+          setPlain(loaded)
+          setMessage('Secret loaded from another panel. Enter a passphrase and encrypt it here.')
+        })
         localStorage.removeItem('adomnia.vault.pendingSecret')
       }
     } catch { /* ignore pending secret parse errors */ }

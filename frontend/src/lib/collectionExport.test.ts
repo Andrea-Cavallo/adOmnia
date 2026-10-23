@@ -10,7 +10,11 @@ const formats: ExportFormat[] = ['adomnia', 'postman', 'insomnia', 'bruno', 'ope
 
 describe('background collection export', () => {
   // A single request is exported inside a new collection with a random id: both sides must draw the same one.
-  beforeEach(() => { vi.spyOn(Math, 'random').mockReturnValue(0.42) })
+  beforeEach(() => {
+    // uid() prende l'entropia da getRandomValues (non più Math.random): lo si rende deterministico
+    // con un valore costante, come faceva il mock di Math.random.
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation(((array: Uint8Array) => { array.fill(7); return array }) as unknown as typeof crypto.getRandomValues)
+  })
   afterEach(() => { vi.restoreAllMocks() })
 
   for (const format of formats) {

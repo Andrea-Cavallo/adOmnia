@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AlertCircle, Copy, ExternalLink, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
@@ -37,7 +37,8 @@ function ServerSection() {
   const status = useCopilotStore((state) => state.status)
   const install = useCopilotStore((state) => state.install)
   const busy = useCopilotStore((state) => state.busy)
-  const { installServer, restart } = useCopilotStore.getState()
+  const installServer = useCopilotStore((state) => state.installServer)
+  const restart = useCopilotStore((state) => state.restart)
   const [log, setLog] = useState<string[] | null>(null)
   const percent = install && install.total > 0 ? Math.round((install.downloaded * 100) / install.total) : null
   const binary = status?.binary
@@ -65,18 +66,22 @@ function ServerSection() {
 export function CodeStudioCopilotDialog({ projectRoot, projectName }: CodeStudioCopilotDialogProps) {
   const open = useCopilotStore((state) => state.dialogOpen)
   const settings = useCopilotStore((state) => state.settings)
+  // The form is mounted per opening, so the draft starts from the stored settings without a sync effect.
+  return open && settings ? <CopilotDialogForm settings={settings} projectRoot={projectRoot} projectName={projectName} /> : null
+}
+
+function CopilotDialogForm({ settings, projectRoot, projectName }: CodeStudioCopilotDialogProps & { settings: CopilotSettings }) {
+  const open = true
   const status = useCopilotStore((state) => state.status)
   const busy = useCopilotStore((state) => state.busy)
   const error = useCopilotStore((state) => state.error)
-  const { setDialogOpen, saveSettings, startSignIn, signOut } = useCopilotStore.getState()
-  const [draft, setDraft] = useState<CopilotSettings | null>(null)
+  const setDialogOpen = useCopilotStore((state) => state.setDialogOpen)
+  const saveSettings = useCopilotStore((state) => state.saveSettings)
+  const startSignIn = useCopilotStore((state) => state.startSignIn)
+  const signOut = useCopilotStore((state) => state.signOut)
+  const [draft, setDraft] = useState<CopilotSettings>(() => structuredClone(settings))
   const close = () => setDialogOpen(false)
 
-  useEffect(() => {
-    if (open && settings) setDraft(structuredClone(settings))
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!open || !draft) return null
   const view = copilotPresentation(status, null)
   const signedIn = status?.state === State.StateReady || status?.state === State.StateUnauthorized
 

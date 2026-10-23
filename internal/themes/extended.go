@@ -4,8 +4,10 @@
 package themes
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/storage"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -380,7 +382,7 @@ func (tm *ThemeManager) SaveSkinToDirectory(theme Theme) (string, error) {
 	}
 	theme.UpdatedAt = now
 
-	data, err := json.MarshalIndent(theme, "", "  ")
+	data, err := jsonutil.Marshal(theme, jsontext.WithIndent("  "))
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal theme: %w", err)
 	}

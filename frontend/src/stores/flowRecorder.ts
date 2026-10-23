@@ -55,9 +55,9 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
       const walk = (value: unknown): unknown => {
         if (Array.isArray(value)) return value.map(walk)
         if (!value || typeof value !== 'object') return value
-        return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, value]) => [key, secretField.test(key)
-          ? (typeof value === 'string' ? keepReference(value) : '')
-          : walk(value)]))
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, secretField.test(key)
+          ? (typeof entry === 'string' ? keepReference(entry) : '')
+          : walk(entry)]))
       }
       let result = JSON.stringify(walk(JSON.parse(parseable)))
       for (const [placeholder, token] of placeholders) result = result.split(placeholder).join(token)

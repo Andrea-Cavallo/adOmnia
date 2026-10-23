@@ -1,9 +1,10 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func AcquireRuntimeLock(directory string, now func() time.Time) (*RuntimeLock, C
 
 func (l *RuntimeLock) write() error {
 	l.mu.Lock()
-	data, err := json.Marshal(l.info)
+	data, err := jsonutil.Marshal(l.info)
 	l.mu.Unlock()
 	if err != nil {
 		return err

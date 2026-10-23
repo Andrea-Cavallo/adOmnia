@@ -1,7 +1,9 @@
 package milk
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,9 +25,9 @@ type Settings struct {
 	SkipPermissions bool `json:"skipPermissions"`
 	// IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
 	// dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
-	IgnoreAPIKey bool `json:"ignoreApiKey,omitempty"`
+	IgnoreAPIKey bool `json:"ignoreApiKey,omitzero"`
 	// DisableBuiltinMCP non passa all'agente il server MCP di adOmnia (collection e mock).
-	DisableBuiltinMCP bool `json:"disableBuiltinMcp,omitempty"`
+	DisableBuiltinMCP bool `json:"disableBuiltinMcp,omitzero"`
 	// Env aggiunge variabili non segrete o riferimenti a credenziali già presenti
 	// all'ambiente dell'agente. I valori restano nel file locale delle impostazioni.
 	Env map[string]string `json:"env,omitempty"`
@@ -33,7 +35,7 @@ type Settings struct {
 	ExtraArgs []string `json:"extraArgs,omitempty"`
 	// TurnTimeoutMinutes ferma un turno che non termina entro questo tempo.
 	// 0 usa il default: un modello che "pensa" senza fine non deve tenere la chat occupata per sempre.
-	TurnTimeoutMinutes int `json:"turnTimeoutMinutes,omitempty"`
+	TurnTimeoutMinutes int `json:"turnTimeoutMinutes,omitzero"`
 }
 
 // DefaultSettings: milk spento finché l'utente non lo attiva.
@@ -129,7 +131,7 @@ func (s *SettingsStore) Save(settings Settings) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
-	data, err := json.MarshalIndent(valid, "", "  ")
+	data, err := jsonutil.Marshal(valid, jsontext.WithIndent("  "))
 	if err != nil {
 		return Settings{}, err
 	}

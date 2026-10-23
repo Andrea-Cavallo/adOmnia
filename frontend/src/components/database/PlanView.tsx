@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertTriangle, ChevronDown, ChevronRight, Flame } from 'lucide-react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { cn } from '@/lib/utils'
 import { maxWeight, type ExecutionPlan, type PlanNode } from './explainPlan'
 
@@ -59,10 +60,12 @@ function NodeRow({ node, depth, max, analyzed }: { node: PlanNode; depth: number
           )}
         </div>
       </div>
-      {open && node.children.map((child, i) => <NodeRow key={i} node={child} depth={depth + 1} max={max} analyzed={analyzed} />)}
+      {open && withContentKeys(node.children, planNodeContent).map(({ key, item: child }) => <NodeRow key={key} node={child} depth={depth + 1} max={max} analyzed={analyzed} />)}
     </>
   )
 }
+
+const planNodeContent = (node: PlanNode) => `${node.label}|${node.detail ?? ''}`
 
 export function PlanView({ plan, analyzed }: PlanViewProps) {
   const max = maxWeight(plan.nodes)
@@ -75,7 +78,7 @@ export function PlanView({ plan, analyzed }: PlanViewProps) {
         ))}
         {max > 0 && <span className="ml-auto text-text-4">Bars compare {analyzed ? 'measured time' : 'estimated cost'} across steps</span>}
       </div>
-      {plan.nodes.map((node, i) => <NodeRow key={i} node={node} depth={0} max={max} analyzed={analyzed} />)}
+      {withContentKeys(plan.nodes, planNodeContent).map(({ key, item: node }) => <NodeRow key={key} node={node} depth={0} max={max} analyzed={analyzed} />)}
     </div>
   )
 }

@@ -11,11 +11,11 @@ import (
 func TestNoLaunchWithoutToolAuthorization(t *testing.T) {
 	project := t.TempDir()
 	writeFixtureFiles(t, project, map[string]string{
-		"orders/go.mod":    "module example.com/orders\n\ngo 1.26\n",
-		"web/package.json": `{"name":"web","scripts":{"dev":"vite"}}`,
-		"billing/pom.xml":  "<project><modelVersion>4.0.0</modelVersion><groupId>x</groupId><artifactId>b</artifactId><version>1</version></project>",
+		"orders/go.mod":     "module example.com/orders\n\ngo 1.26\n",
+		"web/package.json":  `{"name":"web","scripts":{"dev":"vite"}}`,
+		"billing/pom.xml":   "<project><modelVersion>4.0.0</modelVersion><groupId>x</groupId><artifactId>b</artifactId><version>1</version></project>",
 		"ml/pyproject.toml": "[project]\nname = 'ml'\n",
-		"ml/app.py":        "print('hi')\n",
+		"ml/app.py":         "print('hi')\n",
 	})
 	service := NewService(&memoryStore{}, nil)
 	t.Cleanup(service.Shutdown)

@@ -1,6 +1,6 @@
 import { completeLocalJava } from '@/components/ide/languages/java/javaLocalCompletion'
 import { analyzeJavaFile } from '@/components/ide/languages/java/javaLocalAnalysis'
-import { languageServerEditorLanguages } from '@/components/ide/languages'
+import { ideLanguageForEditor, languageServerEditorLanguages } from '@/components/ide/languages'
 import { isServerReady, serverLanguageForEditor } from '@/stores/ideLanguageServers'
 import { isServiceSuspended } from '@/lib/code-studio/pausedServices'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
@@ -199,7 +199,7 @@ function symbolTree(nodes: GoIDESymbolNode[]): monaco.languages.DocumentSymbol[]
 }
 
 function registerProviders(): void {
-  monaco.languages.registerCompletionItemProvider(LANGUAGE, {
+  const completionProvider: monaco.languages.CompletionItemProvider = {
     triggerCharacters: ['.'],
     async provideCompletionItems(model, position, _context, token) {
       if (isServiceSuspended('completion')) return { suggestions: [] }
@@ -223,7 +223,14 @@ function registerProviders(): void {
       const fallback = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn }
       return { suggestions: result.items.map((entry) => completionItem(entry, fallback)), incomplete: result.incomplete }
     },
-  })
+  }
+  // Un linguaggio che apre la lista con altri caratteri oltre al punto (Rust: `::`) ha il suo provider.
+  const withExtraTriggers = LANGUAGE.filter((id) => (ideLanguageForEditor(id)?.completionTriggerCharacters ?? []).length > 0)
+  const plainLanguages = LANGUAGE.filter((id) => !withExtraTriggers.includes(id))
+  if (plainLanguages.length) monaco.languages.registerCompletionItemProvider(plainLanguages, completionProvider)
+  for (const id of withExtraTriggers) {
+    monaco.languages.registerCompletionItemProvider(id, { ...completionProvider, triggerCharacters: ['.', ...(ideLanguageForEditor(id)?.completionTriggerCharacters ?? [])] })
+  }
 
   monaco.languages.registerHoverProvider(LANGUAGE, {
     async provideHover(model, position, token) {

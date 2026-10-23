@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { withActiveEnv } from '@/lib/activeEnv'
 import { Upload, Globe, Send, Copy, RefreshCw, ChevronRight, BookmarkPlus, Plus, X, ShieldCheck, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,7 +48,7 @@ export function SoapPanel() {
   const [response, setResponse] = useState('')
   const [responseInfo, setResponseInfo] = useState<{ status: number; ms: number; size: number } | null>(null)
   const [responseIssue, setResponseIssue] = useState('')
-  const [endpointProbe, setEndpointProbe] = useState<SoapEndpointProbe | null>(null)
+  const [probeResult, setProbeResult] = useState<SoapEndpointProbe | null>(null)
   const [probingEndpoint, setProbingEndpoint] = useState(false)
   const [responseJson, setResponseJson] = useState<unknown>(null)
   const [viewMode, setViewMode] = useState<'xml' | 'json'>('xml')
@@ -89,31 +90,41 @@ export function SoapPanel() {
   })
 
   useEffect(() => {
+    if (pendingFileImport?.kind !== 'wsdl') return
     const routed = useAppStore.getState().consumeFileImport('wsdl')
-    if (routed?.kind === 'wsdl') acceptWsdlText(routed.text)
+    // Deferred so loading the WSDL does not set state synchronously inside the effect.
+    if (routed?.kind === 'wsdl') queueMicrotask(() => acceptWsdlText(routed.text))
   }, [acceptWsdlText, pendingFileImport])
 
   // Current endpoint URL
-  const declaredPort = wsdl?.services
-    .find((s) => s.name === selectedService)
-    ?.ports.find((p) => p.name === selectedPort)
+  const currentPort = useMemo(() => {
+    const declaredPort = wsdl?.services
+      .find((s) => s.name === selectedService)
+      ?.ports.find((p) => p.name === selectedPort)
+    return declaredPort ?? (wsdl?.services.length === 0 && standaloneEndpoint ? { location: standaloneEndpoint } : undefined)
+  }, [wsdl, selectedService, selectedPort, standaloneEndpoint])
 
-  const currentPort = declaredPort ?? (wsdl?.services.length === 0 && standaloneEndpoint ? { location: standaloneEndpoint } : undefined)
+  const currentOp = useMemo(
+    () => wsdl?.portTypes.flatMap((p) => p.operations).find((o) => o.name === selectedOp) ?? (wsdl?.services.length === 0 ? { name: 'SOAP Request', soapAction: standaloneAction } : undefined),
+    [wsdl, selectedOp, standaloneAction],
+  )
 
-  const currentOp = wsdl?.portTypes.flatMap((p) => p.operations).find((o) => o.name === selectedOp) ?? (wsdl?.services.length === 0 ? { name: 'SOAP Request', soapAction: standaloneAction } : undefined)
+  const currentLocation = currentPort?.location
+  // A probe only counts for the endpoint it was run against.
+  const endpointProbe = probeResult && probeResult.url === currentLocation ? probeResult : null
 
   const testCurrentEndpoint = useCallback(async () => {
-    if (!currentPort?.location) return
+    if (!currentLocation) return
     setProbingEndpoint(true)
-    const result = await probeSoapEndpoint(currentPort.location)
-    setEndpointProbe(result)
+    const result = await probeSoapEndpoint(currentLocation)
+    setProbeResult(result)
     setProbingEndpoint(false)
-  }, [currentPort?.location])
+  }, [currentLocation])
 
   useEffect(() => {
-    setEndpointProbe(null)
-    if (currentPort?.location) void testCurrentEndpoint()
-  }, [currentPort?.location, testCurrentEndpoint])
+    // Deferred so the probe does not set state synchronously inside the effect.
+    if (currentLocation) queueMicrotask(() => { void testCurrentEndpoint() })
+  }, [currentLocation, testCurrentEndpoint])
 
   const loadWsdlFromText = useCallback(() => {
     if (!wsdlText.trim()) return
@@ -235,7 +246,7 @@ export function SoapPanel() {
     })
     setHistory(h)
     setSending(false)
-  }, [currentPort, currentOp, envelope, soapVersion, customHeaders, wssConfig])
+  }, [currentPort, currentOp, envelope, soapVersion, customHeaders, wssConfig, endpointProbe, testCurrentEndpoint])
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -816,9 +827,9 @@ export function SoapPanel() {
       {history.length > 0 && (
         <div className="border-t border-border-1 max-h-32 overflow-auto">
           <div className="px-3 py-1.5 text-[10px] font-medium text-text-4 bg-surface-2">History</div>
-          {history.slice(0, 10).map((h, i) => (
+          {withContentKeys(history.slice(0, 10), (entry) => `${entry.timestamp}-${entry.operation}`).map(({ key, item: h }) => (
             <button
-              key={i}
+              key={key}
               onClick={() => {
                 setResponse(h.response)
                 setResponseInfo({ status: h.status, ms: h.durationMs, size: new Blob([h.response]).size })

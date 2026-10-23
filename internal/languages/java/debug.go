@@ -1,7 +1,7 @@
 package java
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -28,7 +28,7 @@ type DebugOptions struct {
 	// AttachHost e AttachPort collegano il debugger a una JVM già in ascolto (-agentlib:jdwp=...server=y):
 	// con AttachPort al posto di MainClass la richiesta DAP è `attach` e nessuna classe viene lanciata.
 	AttachHost  string   `json:"attachHost,omitempty"`
-	AttachPort  int      `json:"attachPort,omitempty"`
+	AttachPort  int      `json:"attachPort,omitzero"`
 	MainClass   string   `json:"mainClass,omitempty"`
 	ProjectName string   `json:"projectName,omitempty"`
 	JavaExec    string   `json:"javaExec,omitempty"`

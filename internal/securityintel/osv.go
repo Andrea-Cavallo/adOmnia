@@ -3,12 +3,13 @@ package securityintel
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/netpolicy"
 )
 
@@ -147,7 +148,7 @@ func (o *OSVSource) queryBatch(ctx context.Context, components []Component) (map
 			query.Version = component.Version
 			request.Queries = append(request.Queries, query)
 		}
-		payload, err := json.Marshal(request)
+		payload, err := jsonutil.Marshal(request)
 		if err != nil {
 			return nil, fmt.Errorf("encode OSV request: %w", err)
 		}
@@ -161,7 +162,7 @@ func (o *OSVSource) queryBatch(ctx context.Context, components []Component) (map
 			return nil, fmt.Errorf("OSV query: %w", err)
 		}
 		var decoded osvBatchResponse
-		decodeErr := json.NewDecoder(response.Body).Decode(&decoded)
+		decodeErr := json.UnmarshalRead(response.Body, &decoded)
 		response.Body.Close()
 		if decodeErr != nil {
 			return nil, fmt.Errorf("OSV response: %w", decodeErr)

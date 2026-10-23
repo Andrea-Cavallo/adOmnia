@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os/exec"
@@ -18,6 +19,7 @@ import (
 	"adomnia/internal/ide/language"
 	"adomnia/internal/ide/lsp"
 	"adomnia/internal/ide/project"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 )
 
@@ -958,7 +960,7 @@ type lspHandler struct {
 }
 
 // HandleNotification scarta i messaggi di processi del server non più correnti.
-func (h *lspHandler) HandleNotification(method string, params json.RawMessage) {
+func (h *lspHandler) HandleNotification(method string, params jsonv1.RawMessage) {
 	if !h.manager.isCurrent(h.session, h.process) {
 		return
 	}
@@ -1006,11 +1008,11 @@ func sectionSettings(settings any, section string) any {
 }
 
 // HandleRequest risponde alle richieste del server necessarie; workspace/applyEdit viene catturato per l'anteprima.
-func (h *lspHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+func (h *lspHandler) HandleRequest(_ context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	switch method {
 	case "workspace/configuration":
 		var request struct {
-			Items []json.RawMessage `json:"items"`
+			Items []jsonv1.RawMessage `json:"items"`
 		}
 		_ = json.Unmarshal(params, &request)
 		h.session.mu.Lock()
@@ -1048,7 +1050,7 @@ func (h *lspHandler) HandleRequest(_ context.Context, method string, params json
 	return nil, lsp.ErrMethodNotFound
 }
 
-func (m *LSPManager) publishProgress(state *lspSession, params json.RawMessage) {
+func (m *LSPManager) publishProgress(state *lspSession, params jsonv1.RawMessage) {
 	token, value, ok := parseProgress(params)
 	if !ok {
 		return
@@ -1086,7 +1088,7 @@ func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDia
 		return
 	}
 	next := DiagnosticsReport{
-		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.byURI[report.URI],
+		URI: report.URI, Path: path, RelativePath: relativeWithin(state.root, path), DocumentID: state.documentIDFor(report.URI),
 		Diagnostics: diagnostics,
 	}
 	previous, exists := state.diagnosticSignatures[report.URI]
@@ -1098,7 +1100,7 @@ func (m *LSPManager) publishDiagnostics(state *lspSession, report lsp.PublishDia
 	} else {
 		// Compare the visible, capped report, not raw diagnostics: invisible fields
 		// still refresh above for code actions. Metadata is part of the identity.
-		encoded, _ := json.Marshal(next) // report contains only JSON-safe value types
+		encoded, _ := jsonutil.Marshal(next) // report contains only JSON-safe value types
 		signature := sha256.Sum256(encoded)
 		if exists && previous == signature {
 			return

@@ -8,6 +8,7 @@ import (
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 	"adomnia/internal/languages/python"
+	"adomnia/internal/languages/rust"
 	"adomnia/internal/languages/web"
 )
 
@@ -87,6 +88,19 @@ func TestLanguageAdaptersShareTheContract(t *testing.T) {
 			UnitRoot:        ".",
 			Document:        "app.py",
 			EditorLanguage:  "python",
+			Detectable:      true,
+			WantSuggestions: true,
+		},
+		{
+			Name:     "rust crate",
+			Language: rust.New(),
+			Files: map[string]string{
+				"Cargo.toml":  "[package]\nname = 'app'\nversion = '0.1.0'\n",
+				"src/main.rs": "fn main() {}\n",
+			},
+			UnitRoot:        ".",
+			Document:        "src/main.rs",
+			EditorLanguage:  "rust",
 			Detectable:      true,
 			WantSuggestions: true,
 		},

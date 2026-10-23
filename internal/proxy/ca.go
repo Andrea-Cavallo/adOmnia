@@ -2,12 +2,12 @@ package proxy
 
 import (
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -62,8 +62,9 @@ func generateCACert() error {
 
 func saveCAToDisk(certPEM, keyPEM []byte) {
 	dir := dataDirectory
-	os.WriteFile(filepath.Join(dir, "adomnia-ca.pem"), certPEM, 0600)
-	os.WriteFile(filepath.Join(dir, "adomnia-ca-key.pem"), keyPEM, 0600)
+	// Best-effort: la CA funziona anche solo in memoria, il salvataggio serve al riavvio.
+	_ = os.WriteFile(filepath.Join(dir, "adomnia-ca.pem"), certPEM, 0600)
+	_ = os.WriteFile(filepath.Join(dir, "adomnia-ca-key.pem"), keyPEM, 0600)
 }
 
 func loadCAFromDisk() (certPEM, keyPEM []byte, ok bool) {
@@ -203,7 +204,7 @@ func caStatusHandler(w http.ResponseWriter, r *http.Request) {
 	caMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":     true,
 		"exists": exists,
 	})
@@ -225,7 +226,7 @@ func caGenerateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func caExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -291,5 +292,5 @@ func caDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	hostCertCacheMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }

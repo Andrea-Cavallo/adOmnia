@@ -230,8 +230,10 @@ export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStre
         if (config.mode === 'stages') {
           const eligible = vu < targetAt(elapsed())
           setActive(eligible)
+          // oxlint-disable-next-line eslint/no-await-in-loop -- a virtual user is a sequential loop: poll, think, run an iteration
           if (!eligible) { if (!await sleep(50, controller.signal)) break; first = true; continue }
         } else setActive(true)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- think time between iterations of one virtual user
         if (!first && !await sleep(config.thinkTimeMs, controller.signal)) break
         const iteration = claim()
         if (iteration < 0) break
@@ -240,6 +242,7 @@ export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStre
           ...stressDatasetRow(options.dataset, config.datasetMode ?? 'shared', vu, iteration, options.random),
           ...stressBuiltinVars(vu, iteration),
         }
+        // oxlint-disable-next-line eslint/no-await-in-loop -- iterations of one virtual user run strictly in order
         const result = await runApiFlow(graph, {
           initialVars: vars,
           signal: controller.signal,

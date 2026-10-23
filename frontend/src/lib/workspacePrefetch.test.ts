@@ -58,6 +58,7 @@ describe('workspace prefetch', () => {
   it('bounds the cache to a fixed number of workspaces', async () => {
     loadV2.mockImplementation(async (id) => payloadFor(id))
     for (let index = 0; index < MAX_PREFETCHED_WORKSPACES + 2; index++) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential loads: the cache evicts the oldest entry first
       await loadWorkspacePayload(`ws-${index}`)
     }
     expect(peekPrefetchedWorkspace('ws-0')).toBeNull()

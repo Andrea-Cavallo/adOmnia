@@ -5,7 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,9 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jhump/protoreflect/desc" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"adomnia/internal/jsonutil"
+	"github.com/jhump/protoreflect/desc"            //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
-	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/dynamic"         //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -75,10 +77,10 @@ type grpcFieldInfo struct {
 	Kind         string          `json:"kind,omitempty"`
 	Number       int32           `json:"number"`
 	Repeated     bool            `json:"repeated"`
-	Map          bool            `json:"map,omitempty"`
-	Required     bool            `json:"required,omitempty"`
-	Optional     bool            `json:"optional,omitempty"`
-	Oneof        bool            `json:"oneof,omitempty"`
+	Map          bool            `json:"map,omitzero"`
+	Required     bool            `json:"required,omitzero"`
+	Optional     bool            `json:"optional,omitzero"`
+	Oneof        bool            `json:"oneof,omitzero"`
 	OneofName    string          `json:"oneof_name,omitempty"`
 	OneofFields  []grpcFieldInfo `json:"oneof_fields,omitempty"`
 	MessageType  string          `json:"message_type,omitempty"`
@@ -102,19 +104,19 @@ type grpcEnumValue struct {
 }
 
 type grpcInvokeRequest struct {
-	Address        string            `json:"address"`
-	TLS            bool              `json:"tls"`
-	CACertPath     string            `json:"ca_cert_path,omitempty"`
-	ClientCertPath string            `json:"client_cert_path,omitempty"`
-	ClientKeyPath  string            `json:"client_key_path,omitempty"`
-	Service        string            `json:"service"`
-	Method         string            `json:"method"`
-	Payload        json.RawMessage   `json:"payload"`
-	Messages       []json.RawMessage `json:"messages,omitempty"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
-	TimeoutMs      int               `json:"timeout_ms,omitempty"`
+	Address        string              `json:"address"`
+	TLS            bool                `json:"tls"`
+	CACertPath     string              `json:"ca_cert_path,omitempty"`
+	ClientCertPath string              `json:"client_cert_path,omitempty"`
+	ClientKeyPath  string              `json:"client_key_path,omitempty"`
+	Service        string              `json:"service"`
+	Method         string              `json:"method"`
+	Payload        jsonv1.RawMessage   `json:"payload"`
+	Messages       []jsonv1.RawMessage `json:"messages,omitempty"`
+	Metadata       map[string]string   `json:"metadata,omitempty"`
+	TimeoutMs      int                 `json:"timeout_ms,omitzero"`
 	// Interactive (only /grpc/stream): keep sending open; drive it with /grpc/stream/send and /close.
-	Interactive bool `json:"interactive,omitempty"`
+	Interactive bool `json:"interactive,omitzero"`
 }
 
 type grpcInvokeResponse struct {
@@ -132,7 +134,7 @@ type grpcInvokeResponse struct {
 func grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath string) (*tls.Config, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS12}
 	if caCertPath != "" {
-		pemBytes, err := os.ReadFile(caCertPath)
+		pemBytes, err := os.ReadFile(caCertPath) // NOSONAR -- the certificate paths come from the mTLS settings the user filled in the gRPC panel (a file picker); the sidecar is loopback-only, same trust domain as the app
 		if err != nil {
 			return nil, fmt.Errorf("read CA certificate: %w", err)
 		}
@@ -422,7 +424,7 @@ func lowercase(s string) string {
 func writeJSON(w http.ResponseWriter, code int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+	jsonutil.MarshalWrite(w, v)
 }
 
 // --- Handlers ---
@@ -436,7 +438,7 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req grpcReflectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -515,7 +517,7 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req grpcDescribeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -563,7 +565,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req grpcInvokeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -620,11 +622,11 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	inputPayloads := []json.RawMessage{req.Payload}
+	inputPayloads := []jsonv1.RawMessage{req.Payload}
 	if methodDesc.IsClientStreaming() {
 		inputPayloads = req.Messages
 		if len(inputPayloads) == 0 {
-			inputPayloads = []json.RawMessage{req.Payload}
+			inputPayloads = []jsonv1.RawMessage{req.Payload}
 		}
 	}
 	inputMessages := make([]*dynamic.Message, 0, len(inputPayloads))
@@ -791,7 +793,11 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var respData interface{}
-	json.Unmarshal(respJSON, &respData)
+	// respJSON viene da MarshalJSON appena riuscito: se l'unmarshal fallisce (tipi ambigui) la
+	// risposta resta il testo grezzo invece di sparire.
+	if err := json.Unmarshal(respJSON, &respData); err != nil {
+		respData = string(respJSON)
+	}
 
 	// Collect response metadata
 	respMeta := make(map[string]string)
@@ -816,7 +822,7 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req grpcInvokeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -831,7 +837,11 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-store")
-	emit := func(value any) { data, _ := json.Marshal(value); _, _ = w.Write(append(data, '\n')); flusher.Flush() }
+	emit := func(value any) {
+		data, _ := jsonutil.Marshal(value)
+		_, _ = w.Write(append(data, '\n'))
+		flusher.Flush()
+	}
 	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
 	if err != nil {
 		emit(map[string]any{"type": "complete", "status": "UNAVAILABLE", "error": err.Error()})
@@ -868,11 +878,11 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		emit(map[string]any{"type": "complete", "status": "INVALID_ARGUMENT", "error": "method is not server-streaming"})
 		return
 	}
-	inputs := []json.RawMessage{req.Payload}
+	inputs := []jsonv1.RawMessage{req.Payload}
 	if method.IsClientStreaming() {
 		inputs = req.Messages
 		if len(inputs) == 0 && !req.Interactive {
-			inputs = []json.RawMessage{req.Payload}
+			inputs = []jsonv1.RawMessage{req.Payload}
 		}
 	}
 	streamDesc := &grpc.StreamDesc{StreamName: req.Method, ServerStreams: method.IsServerStreaming(), ClientStreams: method.IsClientStreaming()}
@@ -994,7 +1004,7 @@ func grpcParseProtoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req grpcParseProtoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -1066,7 +1076,7 @@ func grpcParseProtosetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req grpcParseProtosetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -124,7 +124,9 @@ func linkWebSockets(entities []Entity) {
 		if e.Kind != "websocket" || e.Attrs["role"] != "server" {
 			continue
 		}
-		if route, ok := handlers[e.Attrs["handler"]]; ok {
+		// Solo route dello stesso linguaggio: in un monorepo misto una route Go `serve` non deve
+		// riscrivere il path di un WebSocket Rust il cui handler si chiama uguale.
+		if route, ok := handlers[e.Attrs["handler"]]; ok && e.Attrs["language"] == route.Attrs["language"] {
 			e.Attrs["path"] = route.Attrs["path"]
 			e.Label = route.Attrs["path"]
 		}

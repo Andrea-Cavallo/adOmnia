@@ -233,6 +233,14 @@ func (c *securityChecker) checkCall(call *ast.CallExpr) {
 	if algorithm, weak := weakCryptoPackages[importPath]; weak && (name == "Sum" || strings.HasPrefix(name, "New")) {
 		c.report(call, RuleWeakCrypto, algorithm+" is used ("+path.Base(importPath)+"."+name+").")
 	}
+	c.checkKnownCall(call, importPath, name)
+	if index, ok := sqlMethods[name]; ok && importPath == "" && index < len(call.Args) {
+		c.checkSQL(call, call.Args[index])
+	}
+}
+
+// checkKnownCall esamina le chiamate di libreria con un controllo dedicato (primo caso che combacia).
+func (c *securityChecker) checkKnownCall(call *ast.CallExpr, importPath, name string) {
 	switch {
 	case importPath == "crypto/rsa" && name == "GenerateKey" && len(call.Args) == 2:
 		if bits, ok := intLiteral(call.Args[1]); ok && bits < minRSABits {
@@ -250,14 +258,30 @@ func (c *securityChecker) checkCall(call *ast.CallExpr) {
 		if source := c.text(call.Args[0]); strings.Contains(source, "Body") || strings.Contains(strings.ToLower(source), "conn") {
 			c.report(call, RuleUnsafeDeserialization, "gob decodes data from "+source+".")
 		}
-	case importPath == "path/filepath" && name == "Join" || importPath == "path" && name == "Join":
+	case isPathJoin(importPath, name):
 		c.checkJoin(call)
-	case importPath == "os" && (name == "Open" || name == "ReadFile" || name == "Create" || name == "Remove" || name == "RemoveAll" || name == "OpenFile") || importPath == "net/http" && name == "ServeFile":
+	case isFileAccess(importPath, name):
 		c.checkPathArguments(call)
 	}
-	if index, ok := sqlMethods[name]; ok && importPath == "" && index < len(call.Args) {
-		c.checkSQL(call, call.Args[index])
+}
+
+func isPathJoin(importPath, name string) bool {
+	return name == "Join" && (importPath == "path/filepath" || importPath == "path")
+}
+
+// isFileAccess: chiamate che aprono o rimuovono un file dal percorso ricevuto come argomento.
+func isFileAccess(importPath, name string) bool {
+	if importPath == "net/http" {
+		return name == "ServeFile"
 	}
+	if importPath != "os" {
+		return false
+	}
+	switch name {
+	case "Open", "ReadFile", "Create", "Remove", "RemoveAll", "OpenFile":
+		return true
+	}
+	return false
 }
 
 func (c *securityChecker) checkHTTPLiteral(literal *ast.BasicLit) {
@@ -265,7 +289,7 @@ func (c *securityChecker) checkHTTPLiteral(literal *ast.BasicLit) {
 		return
 	}
 	value, err := strconv.Unquote(literal.Value)
-	if err != nil || !strings.HasPrefix(value, "http://") || len(value) <= len("http://") {
+	if err != nil || !strings.HasPrefix(value, "http://") || len(value) <= len("http://") { // NOSONAR -- the audit tool flags http:// URLs found in user code; the literal is the detection
 		return
 	}
 	host := strings.TrimPrefix(value, "http://")

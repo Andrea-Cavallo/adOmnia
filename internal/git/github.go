@@ -3,9 +3,10 @@ package git
 import (
 	"adomnia/internal/netpolicy"
 
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -99,7 +100,7 @@ func ValidateGitHubToken(token string) (string, error) {
 	var user struct {
 		Login string `json:"login"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &user); err != nil {
 		return "", err
 	}
 	return user.Login, nil
@@ -148,7 +149,7 @@ func ListGitHubPRs(repoPath, token string) ([]PullRequest, error) {
 		return nil, githubError(resp)
 	}
 	var raws []rawPR
-	if err := json.NewDecoder(resp.Body).Decode(&raws); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &raws); err != nil {
 		return nil, err
 	}
 	prs := make([]PullRequest, 0, len(raws))
@@ -172,7 +173,7 @@ func CreateGitHubPR(repoPath, token, title, head, base, body string) (PullReques
 	if b := strings.TrimSpace(base); b != "" {
 		payload["base"] = b
 	}
-	buf, _ := json.Marshal(payload)
+	buf, _ := jsonutil.Marshal(payload)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPI, owner, repo)
@@ -185,7 +186,7 @@ func CreateGitHubPR(repoPath, token, title, head, base, body string) (PullReques
 		return PullRequest{}, githubError(resp)
 	}
 	var raw rawPR
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &raw); err != nil {
 		return PullRequest{}, err
 	}
 	return raw.toPR(), nil

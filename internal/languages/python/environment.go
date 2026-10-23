@@ -196,9 +196,9 @@ func readPythonVersion(unitRoot string) string {
 	return ""
 }
 
-// validatePlanCommand ricontrolla il piano prima di avviare un processo: l'host non si fida di un
+// ValidatePlanCommand ricontrolla il piano prima di avviare un processo: l'host non si fida di un
 // comando costruito altrove e il percorso deve restare dentro il progetto.
-func validatePlanCommand(command CommandPlan, directory string) error {
+func ValidatePlanCommand(command CommandPlan, directory string) error {
 	if !command.Available {
 		return fmt.Errorf("%s", command.Reason)
 	}

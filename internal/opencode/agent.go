@@ -4,7 +4,7 @@ package opencode
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/milk"
 )
 
@@ -85,7 +86,7 @@ func resolve(settings milk.Settings, _ string) (milk.Launch, error) {
 		return milk.Launch{Binary: found.Binary}, err
 	}
 	config := runtimeConfig(settings.Env[EndpointKey], model)
-	raw, err := json.Marshal(config)
+	raw, err := jsonutil.Marshal(config)
 	if err != nil {
 		return milk.Launch{}, err
 	}
@@ -113,7 +114,7 @@ func CheckModel(ctx context.Context, endpoint, model string) error {
 	}
 	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{Proxy: nil}, CheckRedirect: func(*http.Request, []*http.Request) error { return fmt.Errorf("Ollama redirects are not allowed") }}
 	defer client.CloseIdleConnections()
-	body, _ := json.Marshal(map[string]string{"model": settings.Env[ModelKey]})
+	body, _ := jsonutil.Marshal(map[string]string{"model": settings.Env[ModelKey]})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, settings.Env[EndpointKey]+"/api/show", strings.NewReader(string(body)))
 	if err != nil {
 		return err
@@ -132,7 +133,7 @@ func CheckModel(ctx context.Context, endpoint, model string) error {
 		RemoteModel  string   `json:"remote_model"`
 		Capabilities []string `json:"capabilities"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&info); err != nil {
+	if err := json.UnmarshalRead(io.LimitReader(response.Body, 2<<20), &info); err != nil {
 		return fmt.Errorf("invalid Ollama model metadata: %w", err)
 	}
 	if info.RemoteHost != "" || info.RemoteModel != "" {
@@ -198,7 +199,7 @@ func Models(ctx context.Context, endpoint string) ([]string, error) {
 			RemoteModel string `json:"remote_model"`
 		} `json:"models"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&result); err != nil {
+	if err := json.UnmarshalRead(io.LimitReader(response.Body, 2<<20), &result); err != nil {
 		return nil, fmt.Errorf("invalid Ollama model list: %w", err)
 	}
 	models := []string{}

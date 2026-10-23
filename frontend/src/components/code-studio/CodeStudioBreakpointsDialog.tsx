@@ -42,7 +42,6 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
   }, [open, sessionId])
 
   if (!open) return null
-  const debug = useCodeStudioDebugStore.getState()
   const lines = Object.entries(files).sort(([left], [right]) => left.localeCompare(right)).flatMap(([relativePath, states]) => states.map((state) => ({ relativePath, state })))
   const functionList = functions?.functions ?? []
   const settingsWith = (list: GoIDEFunctionBreakpoint[], stopOnPanic = functions?.stopOnPanic ?? false) => ({ functions: list, stopOnPanic })
@@ -59,23 +58,23 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
   const apply = () => {
     if (!selection || !canApply(draft)) return
     const options = optionsFrom(draft)
-    if (selection.kind === 'line') void debug.putBreakpoint(sessionId, selection.relativePath, { line: selection.line, ...options })
-    else void debug.setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().map((item) => (item.name === selection.name ? { name: item.name, condition: options.condition, hitCondition: options.hitCondition, disabled: options.disabled } : item))))
+    if (selection.kind === 'line') void useCodeStudioDebugStore.getState().putBreakpoint(sessionId, selection.relativePath, { line: selection.line, ...options })
+    else void useCodeStudioDebugStore.getState().setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().map((item) => (item.name === selection.name ? { name: item.name, condition: options.condition, hitCondition: options.hitCondition, disabled: options.disabled } : item))))
   }
-  const toggleLine = (relativePath: string, state: GoIDEBreakpointState) => void debug.updateBreakpoint(sessionId, relativePath, state.line, { disabled: !state.disabled || undefined })
+  const toggleLine = (relativePath: string, state: GoIDEBreakpointState) => void useCodeStudioDebugStore.getState().updateBreakpoint(sessionId, relativePath, state.line, { disabled: !state.disabled || undefined })
   const removeLine = (relativePath: string, line: number) => {
-    void debug.updateBreakpoint(sessionId, relativePath, line, null)
+    void useCodeStudioDebugStore.getState().updateBreakpoint(sessionId, relativePath, line, null)
     if (selection?.kind === 'line' && selection.relativePath === relativePath && selection.line === line) setSelection(null)
   }
-  const toggleFunction = (name: string) => void debug.setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().map((item) => (item.name === name ? { ...item, disabled: !item.disabled || undefined } : item))))
+  const toggleFunction = (name: string) => void useCodeStudioDebugStore.getState().setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().map((item) => (item.name === name ? { ...item, disabled: !item.disabled || undefined } : item))))
   const removeFunction = (name: string) => {
-    void debug.setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().filter((item) => item.name !== name)))
+    void useCodeStudioDebugStore.getState().setFunctionBreakpoints(sessionId, settingsWith(functionSpecs().filter((item) => item.name !== name)))
     if (selection?.kind === 'function' && selection.name === name) setSelection(null)
   }
   const addFunction = async () => {
     const name = newFunction.trim()
     if (!name || functionList.some((item) => item.name === name)) return
-    if (await debug.setFunctionBreakpoints(sessionId, settingsWith([...functionSpecs(), { name }]))) setNewFunction('')
+    if (await useCodeStudioDebugStore.getState().setFunctionBreakpoints(sessionId, settingsWith([...functionSpecs(), { name }]))) setNewFunction('')
   }
   const reveal = (relativePath: string, line: number) => {
     close()
@@ -85,7 +84,7 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
   const isSelected = (kind: 'line' | 'function', id: string) => selection !== null && selection.kind === kind && (selection.kind === 'line' ? `${selection.relativePath}:${selection.line}` : selection.name) === id
   const exceptionFilters = exceptionFiltersFor((units ?? []).map((unit) => unit.language ?? ''))
   const activeExceptions = exceptions?.filters ?? []
-  const toggleException = (filter: string) => void debug.setExceptionBreakpoints(sessionId, { filters: toggleExceptionFilter(activeExceptions, filter) })
+  const toggleException = (filter: string) => void useCodeStudioDebugStore.getState().setExceptionBreakpoints(sessionId, { filters: toggleExceptionFilter(activeExceptions, filter) })
 
   return (
     <CodeStudioModal
@@ -99,7 +98,7 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
       tone="danger"
       title="Breakpoints"
       subtitle="Right-click a line number to edit · double-click a breakpoint to open it."
-      actions={lines.length > 0 ? <CodeStudioButton small variant="ghost" onClick={() => void debug.setAllBreakpointsDisabled(sessionId, anyEnabled)}>{anyEnabled ? 'Disable all' : 'Enable all'}</CodeStudioButton> : undefined}
+      actions={lines.length > 0 ? <CodeStudioButton small variant="ghost" onClick={() => void useCodeStudioDebugStore.getState().setAllBreakpointsDisabled(sessionId, anyEnabled)}>{anyEnabled ? 'Disable all' : 'Enable all'}</CodeStudioButton> : undefined}
     >
         <div className="flex min-h-0 flex-1">
           <div role="listbox" aria-label="Breakpoints" className="min-w-0 flex-1 overflow-auto border-r border-border-1 py-2">
@@ -134,7 +133,7 @@ export function CodeStudioBreakpointsDialog({ sessionId }: CodeStudioBreakpoints
             </form>
             <p className="gs-section-title px-4 pb-1.5 pt-4">Panics</p>
             <label className="flex items-start gap-2.5 px-4 py-1 text-[12.5px] text-text-2">
-              <input type="checkbox" checked={functions?.stopOnPanic ?? false} onChange={(event) => void debug.setFunctionBreakpoints(sessionId, settingsWith(functionSpecs(), event.target.checked))} className="mt-0.5 accent-accent" />
+              <input type="checkbox" checked={functions?.stopOnPanic ?? false} onChange={(event) => void useCodeStudioDebugStore.getState().setFunctionBreakpoints(sessionId, settingsWith(functionSpecs(), event.target.checked))} className="mt-0.5 accent-accent" />
               <span><span className="flex items-center gap-1.5"><ShieldAlert size={11} className="text-warning" /> Stop on every panic, including recovered ones</span><span className="mt-0.5 block text-[11.5px] text-text-4">Unrecovered panics always stop the debugger.</span>{functions?.panicMessage && <span className="mt-0.5 block text-[10px] text-danger">{functions.panicMessage}</span>}</span>
             </label>
             {exceptionFilters.length > 0 && (

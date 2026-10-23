@@ -19,7 +19,21 @@ const ISSUE_SAMPLE_LIMIT = 100
 const JAVA_FRAME = /^\s+at\s+\S/
 const JAVA_MORE = /^\s*\.{3}\s+\d+\s+more\s*$/
 const JAVA_CAUSE = /^\s*(?:Caused by|Suppressed):\s/
-const JAVA_THROWABLE = /^(?:[\w$]+\.)+[\w$]*(?:Exception|Error|Throwable)(?::|\s*$)/
+// Un throwable Java `com.foo.MyException:` — nome puntato che finisce con
+// Exception/Error/Throwable, poi `:` o fine riga. Il controllo è in due passi (forma lineare del
+// nome, poi il suffisso) invece che in un'unica regex: `(?:[\w$]+\.)+[\w$]*(?:…)` era un ReDoS
+// (quantificatori annidati con classi sovrapposte).
+const JAVA_THROWABLE_NAME = /^[\w$.]+/
+
+function isJavaThrowable(body: string): boolean {
+  const match = JAVA_THROWABLE_NAME.exec(body)
+  if (!match) return false
+  const rest = body.slice(match[0].length)
+  if (!rest.startsWith(':') && rest.trim() !== '') return false
+  const segments = match[0].split('.')
+  if (segments.length < 2 || segments.some((segment) => segment === '')) return false
+  return /(?:Exception|Error|Throwable)$/.test(segments[segments.length - 1])
+}
 
 const GO_PANIC = /^\s*(?:panic:|fatal error:)/
 const GO_GOROUTINE = /^goroutine\s+\d+\s+\[/
@@ -133,7 +147,7 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
         || GO_CREATED_BY.test(body) || GO_EXIT.test(body) || GO_SIGNAL.test(body) || /^\s/.test(body)
     }
     if (JAVA_FRAME.test(body) || JAVA_MORE.test(body) || JAVA_CAUSE.test(body)) return true
-    if (JAVA_THROWABLE.test(body)) return true
+    if (isJavaThrowable(body)) return true
     if (GO_GOROUTINE.test(body)) {
       draft.goStack = true
       return true
@@ -520,6 +534,7 @@ export async function parseLogTextChunked(
     hooks.onProgress?.(end, lines.length, parser.peek())
     if (parser.isFull()) break
     if (end < lines.length) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential by design: yield a macrotask between parse slices
       await YIELD()
       if (hooks.shouldAbort?.()) {
         aborted = true

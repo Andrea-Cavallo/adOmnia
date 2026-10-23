@@ -293,7 +293,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
               <div className="ltd-section-head">Status codes</div>
               <div className="ltd-codes">
                 {Object.keys(result.statusCodes ?? {}).length === 0 && <span style={{ color: 'var(--color-text-4)' }}>none (no response received)</span>}
-                {Object.entries(result.statusCodes ?? {}).sort().map(([code, count]) => (
+                {Object.entries(result.statusCodes ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([code, count]) => (
                   <span key={code}><b style={{ color: Number(code) < 400 ? 'var(--color-success)' : 'var(--color-error)' }}>{code}</b> <span style={{ color: 'var(--color-text-4)' }}>×{count}</span></span>
                 ))}
               </div>

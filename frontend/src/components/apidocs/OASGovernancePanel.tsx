@@ -4,27 +4,32 @@ import { cn } from '@/lib/utils'
 import { lintOpenAPI, type OASLintFinding, type OASLintSeverity } from '@/lib/oaslint-api'
 
 const RULESET_KEY = 'adomnia.oaslint.ruleset'
+const NO_FINDINGS: OASLintFinding[] = []
 const DEFAULT_RULESET = '{\n  "rules": {}\n}'
 
 export function OASGovernancePanel({ rawSpec, onOpenOperation }: { rawSpec: string; onOpenOperation: (finding: OASLintFinding) => void }) {
-  const [findings, setFindings] = useState<OASLintFinding[]>([])
+  const [result, setResult] = useState<{ rawSpec: string; ruleset: string; findings: OASLintFinding[]; error: string } | null>(null)
   const [ruleset, setRuleset] = useState(() => localStorage.getItem(RULESET_KEY) ?? DEFAULT_RULESET)
   const [appliedRuleset, setAppliedRuleset] = useState(ruleset)
   const [severity, setSeverity] = useState<'all' | OASLintSeverity>('all')
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [rulesetError, setRulesetError] = useState('')
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError('')
     void lintOpenAPI(rawSpec, appliedRuleset)
-      .then((items) => { if (!cancelled) setFindings(items) })
-      .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)) })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .then((items) => { if (!cancelled) setResult({ rawSpec, ruleset: appliedRuleset, findings: items, error: '' }) })
+      .catch((reason: unknown) => {
+        if (!cancelled) setResult((prev) => ({ rawSpec, ruleset: appliedRuleset, findings: prev?.findings ?? [], error: reason instanceof Error ? reason.message : String(reason) }))
+      })
     return () => { cancelled = true }
   }, [rawSpec, appliedRuleset])
+
+  // Derived: a lint run is in flight until the stored result matches the current inputs.
+  const settled = result !== null && result.rawSpec === rawSpec && result.ruleset === appliedRuleset
+  const loading = !settled
+  const findings = result?.findings ?? NO_FINDINGS
+  const error = rulesetError || (settled ? result.error : '')
 
   const counts = useMemo(() => ({
     error: findings.filter((finding) => finding.severity === 'error').length,
@@ -33,10 +38,14 @@ export function OASGovernancePanel({ rawSpec, onOpenOperation }: { rawSpec: stri
   }), [findings])
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return findings.filter((finding) => {
-      if (severity !== 'all' && finding.severity !== severity) return false
-      if (!needle) return true
-      return [finding.ruleId, finding.message, finding.path, finding.method, finding.operationId].some((value) => value?.toLowerCase().includes(needle))
+    const seen = new Map<string, number>()
+    return findings.flatMap((finding) => {
+      if (severity !== 'all' && finding.severity !== severity) return []
+      if (needle && ![finding.ruleId, finding.message, finding.path, finding.method, finding.operationId].some((value) => value?.toLowerCase().includes(needle))) return []
+      const base = `${finding.ruleId}-${finding.location}`
+      const occurrence = seen.get(base) ?? 0
+      seen.set(base, occurrence + 1)
+      return [{ finding, key: `${base}-${occurrence}` }]
     })
   }, [findings, query, severity])
 
@@ -45,9 +54,9 @@ export function OASGovernancePanel({ rawSpec, onOpenOperation }: { rawSpec: stri
       JSON.parse(ruleset)
       localStorage.setItem(RULESET_KEY, ruleset)
       setAppliedRuleset(ruleset)
-      setError('')
+      setRulesetError('')
     } catch {
-      setError('Ruleset must be valid JSON.')
+      setRulesetError('Ruleset must be valid JSON.')
     }
   }
 
@@ -80,8 +89,8 @@ export function OASGovernancePanel({ rawSpec, onOpenOperation }: { rawSpec: stri
         </div>
         {error && <div className="m-4 flex items-center gap-2 rounded border border-error/30 bg-error/10 p-3 text-xs text-error"><AlertCircle size={14} /> {error}</div>}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {visible.map((finding, index) => (
-            <button key={`${finding.ruleId}-${finding.location}-${index}`} onClick={() => onOpenOperation(finding)} disabled={!finding.path || !finding.method} className="grid w-full grid-cols-[72px_180px_1fr_180px] items-start gap-3 border-b border-border-1 px-4 py-3 text-left hover:bg-surface-1 disabled:cursor-default">
+          {visible.map(({ finding, key }) => (
+            <button key={key} onClick={() => onOpenOperation(finding)} disabled={!finding.path || !finding.method} className="grid w-full grid-cols-[72px_180px_1fr_180px] items-start gap-3 border-b border-border-1 px-4 py-3 text-left hover:bg-surface-1 disabled:cursor-default">
               <SeverityBadge severity={finding.severity} />
               <span className="font-mono text-[11px] text-text-2">{finding.ruleId}</span>
               <span className="text-[11px] leading-relaxed text-text-2">{finding.message}</span>

@@ -15,7 +15,7 @@ var projectRuleNames = [...]string{".rules", "AGENTS.md", "CLAUDE.md", ".cursorr
 type ProjectRule struct {
 	Path      string `json:"path"`
 	Text      string `json:"text"`
-	Truncated bool   `json:"truncated,omitempty"`
+	Truncated bool   `json:"truncated,omitzero"`
 }
 
 // ProjectRules reads only the four regular root files, at send time. Missing,

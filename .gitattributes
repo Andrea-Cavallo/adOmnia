@@ -2,5 +2,7 @@
 *.go text eol=lf
 go.mod text eol=lf
 go.sum text eol=lf
+# Shell scripts must stay LF: CRLF breaks them on Linux/macOS (shellcheck SC1017).
+*.sh text eol=lf
 assets/images/export-1791702740230.mp4 filter=lfs diff=lfs merge=lfs -text
 assets/images/export-1791702820789.gif filter=lfs diff=lfs merge=lfs -text

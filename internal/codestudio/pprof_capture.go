@@ -46,7 +46,7 @@ type LiveProfileRequest struct {
 	SessionID string `json:"sessionId"`
 	URL       string `json:"url"`
 	Kind      string `json:"kind"`
-	Seconds   int    `json:"seconds,omitempty"`
+	Seconds   int    `json:"seconds,omitzero"`
 }
 
 // CaptureLiveProfile scarica un profilo da /debug/pprof di un servizio locale, verifica che sia pprof
@@ -91,7 +91,7 @@ func liveProfileEndpoint(request LiveProfileRequest) (string, time.Duration, err
 		return "", 0, fmt.Errorf("specify the service address, e.g. http://localhost:6060")
 	}
 	if !strings.Contains(raw, "://") {
-		raw = "http://" + raw
+		raw = "http://" + raw // NOSONAR -- the pprof endpoint binds on the local loopback interface: plain http on 127.0.0.1
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {

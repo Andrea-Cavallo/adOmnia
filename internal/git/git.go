@@ -305,7 +305,8 @@ func GetStatus(repoPath string) (Status, error) {
 
 	ahead, behind := 0, 0
 	if ab, err := runGit(repoPath, "rev-list", "--left-right", "--count", "HEAD...@{upstream}"); err == nil {
-		fmt.Sscanf(ab, "%d\t%d", &ahead, &behind)
+		// Contatori best-effort: se git cambia formato restano a 0.
+		_, _ = fmt.Sscanf(ab, "%d\t%d", &ahead, &behind)
 	}
 
 	return Status{

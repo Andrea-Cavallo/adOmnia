@@ -1,7 +1,8 @@
 package python
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +61,7 @@ func pipReportFixture(t *testing.T, serverVersion, serverHash string) []byte {
 			},
 		},
 	}}
-	encoded, err := json.Marshal(report)
+	encoded, err := jsonutil.Marshal(report)
 	if err != nil {
 		t.Fatal(err)
 	}

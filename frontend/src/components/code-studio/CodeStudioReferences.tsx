@@ -24,10 +24,12 @@ function FileGroup({ file, locations, indent }: { file: string; locations: GoIDE
   )
 }
 
+const NO_LOCATIONS: never[] = []
+
 /** Risultati di Find Usages (per tipo di utilizzo, poi per file) e di Go to Implementation (per file). */
 export function CodeStudioReferences({ sessionId }: CodeStudioReferencesProps) {
   const view = useCodeStudioLspStore((state) => state.references[sessionId] ?? null)
-  const locations = view?.locations ?? []
+  const locations = view?.locations ?? NO_LOCATIONS
   const byKind = useMemo(() => hasUsageKinds(locations) ? groupUsagesByKind(locations) : null, [locations])
   const byFile = useMemo(() => groupByFile(locations), [locations])
   if (!view) return <p className="p-3 text-[10px] text-text-4">Use Find Usages (Alt+F7) or Go to Implementation (Ctrl/Cmd+Alt+B) on a symbol.</p>

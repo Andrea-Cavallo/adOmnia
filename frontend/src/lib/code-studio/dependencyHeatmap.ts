@@ -71,7 +71,7 @@ export function dependencyHeatmap(input: HeatmapInput, runtime: PackageRuntime |
   rows.sort((left, right) => (right.runtimeShare ?? 0) - (left.runtimeShare ?? 0) || right.coupling - left.coupling || right.blastRadius - left.blastRadius || left.package.localeCompare(right.package))
   const traversed = new Set(runtime?.calls ?? [])
   const untraversed = runtime
-    ? input.imports.filter(([from, to]) => !traversed.has(`${dirOfPackage.get(from)} → ${dirOfPackage.get(to)}`)).map(([from, to]) => `${from} → ${to}`).sort()
+    ? input.imports.filter(([from, to]) => !traversed.has(`${dirOfPackage.get(from)} → ${dirOfPackage.get(to)}`)).map(([from, to]) => `${from} → ${to}`).sort((a, b) => a.localeCompare(b))
     : []
   return { rows, untraversed }
 }

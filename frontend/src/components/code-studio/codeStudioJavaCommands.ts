@@ -32,6 +32,7 @@ async function runGoal(sessionId: string, activePath: string, goalSets: string[]
     if (!found) continue
     useCodeStudioLspStore.getState().showToolWindow('run')
     const { target, workingDirectory, programArguments } = found.configuration
+    // oxlint-disable-next-line eslint/no-await-in-loop -- early exit: only the first matching goal runs
     await useCodeStudioStore.getState().startRun('command', { target, workingDirectory, programArguments: programArguments ?? [] })
     return
   }
@@ -45,6 +46,7 @@ async function openCounterpart(sessionId: string, document: GoIDEEditorDocument)
   const separator = root.includes('\\') ? '\\' : '/'
   for (const relative of candidates) {
     try {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- early exit: try candidates in order until one opens
       await useCodeStudioStore.getState().openDocument(`${root.replace(/[\\/]+$/, '')}${separator}${relative.split('/').join(separator)}`)
       return
     } catch { /* il candidato non esiste: si prova il prossimo */ }

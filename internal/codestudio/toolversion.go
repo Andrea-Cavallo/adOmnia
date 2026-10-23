@@ -3,7 +3,7 @@ package codestudio
 import (
 	"adomnia/internal/procutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"go/version"

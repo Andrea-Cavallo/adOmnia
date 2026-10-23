@@ -1,13 +1,13 @@
 package nettools
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -40,7 +40,7 @@ type certInspectResult struct {
 	NotAfter           string    `json:"notAfter,omitempty"`
 	SignatureAlgorithm string    `json:"signatureAlgorithm,omitempty"`
 	PublicKeyAlgorithm string    `json:"publicKeyAlgorithm,omitempty"`
-	KeyBits            int       `json:"keyBits,omitempty"`
+	KeyBits            int       `json:"keyBits,omitzero"`
 	SANs               []string  `json:"sans"`
 	KeyUsage           []string  `json:"keyUsage"`
 	ExtKeyUsage        []string  `json:"extKeyUsage"`
@@ -115,7 +115,7 @@ func parseCertToResult(cert *x509.Certificate) certInspectResult {
 
 	// Fingerprints
 	sha256sum := sha256.Sum256(cert.Raw)
-	sha1sum := sha1.Sum(cert.Raw)
+	sha1sum := sha1.Sum(cert.Raw) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here // NOSONAR -- SHA-1 is displayed as the legacy certificate fingerprint identifier, the security hash shown alongside is SHA-256
 
 	// Key bits
 	keyBits := 0
@@ -242,11 +242,11 @@ func certInspectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
+	jsonutil.MarshalWrite(w, results)
 }
 
 func writeTempPassword(dir, password string) (string, error) {
-	f, err := os.CreateTemp(dir, "pass-*")
+	f, err := os.CreateTemp(dir, "pass-*") // NOSONAR -- dir is the output folder the user picked for the keystore split; CreateTemp picks a random name with 0600 and the file is deleted right after keytool runs
 	if err != nil {
 		return "", err
 	}
@@ -352,7 +352,7 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 	certPEM, _ := os.ReadFile(certPath)
 	keyPEM, _ := os.ReadFile(keyPath)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"fileName":  header.Filename,
 		"certPem":   string(certPEM),

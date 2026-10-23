@@ -1,8 +1,9 @@
 package ai
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,7 @@ func envJSON(pairs map[string]string, model string) string {
 	if model != "" {
 		doc["model"] = model
 	}
-	raw, _ := json.Marshal(doc)
+	raw, _ := jsonutil.Marshal(doc)
 	return string(raw)
 }
 
@@ -492,7 +493,7 @@ func TestClaudeCodeStatusExposesNamesOnly(t *testing.T) {
 	f.write(t, ClaudeScopeUser, envJSON(map[string]string{
 		"ANTHROPIC_API_KEY": "sk-secret-value", "ANTHROPIC_BASE_URL": "https://gw.secret.example", "UNRELATED": "x",
 	}, "claude-corp-1"))
-	raw, err := json.Marshal(LoadClaudeCodeSettings(f.workspace).Status())
+	raw, err := jsonutil.Marshal(LoadClaudeCodeSettings(f.workspace).Status())
 	if err != nil {
 		t.Fatal(err)
 	}

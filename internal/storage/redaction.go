@@ -1,7 +1,8 @@
 package storage
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"net/url"
 	"regexp"
 	"strings"
@@ -89,7 +90,7 @@ func RedactValueForExport(raw []byte) string {
 		return redactString("", string(raw))
 	}
 	redacted := redactJSONValue(value, "")
-	encoded, err := json.Marshal(redacted)
+	encoded, err := jsonutil.Marshal(redacted)
 	if err != nil {
 		return redactedSecret
 	}

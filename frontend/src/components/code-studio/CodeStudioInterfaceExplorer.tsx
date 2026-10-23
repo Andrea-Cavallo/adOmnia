@@ -16,6 +16,7 @@ export function SiteLink({ site, label }: { site: GoIDEArchSite | undefined; lab
   if (!site?.relativePath) return <span className="font-mono text-text-3">{label}</span>
   return <button type="button" onClick={() => openArchSite(site)} title={`${site.relativePath}:${site.line}`} className="font-mono text-text-2 hover:text-accent hover:underline">{label}</button>
 }
+import { withContentKeys } from '@/lib/contentKeys'
 
 type InterfaceFilter = 'all' | 'hints' | 'single' | 'unimplemented'
 
@@ -120,7 +121,7 @@ function InterfaceDetail({ item }: { item: GoIDEArchInterface }) {
         {usesByKind.length ? usesByKind.map(([kind, users]) => (
           <div key={kind} className="mb-1">
             <span className="text-[10px] text-text-3">{kind} ({users.length})</span>
-            <ul className="pl-3">{users.slice(0, 50).map((user, index) => <li key={index} className="flex gap-2"><SiteLink site={user.site} label={`${user.site.relativePath.split('/').pop()}:${user.site.line}`} />{user.function && <span className="truncate font-mono text-[10px] text-text-4">{user.function}</span>}</li>)}</ul>
+            <ul className="pl-3">{withContentKeys(users.slice(0, 50), (user) => `${user.site.relativePath}:${user.site.line}`).map(({ key: userKey, item: user }) => <li key={userKey} className="flex gap-2"><SiteLink site={user.site} label={`${user.site.relativePath.split('/').pop()}:${user.site.line}`} />{user.function && <span className="truncate font-mono text-[10px] text-text-4">{user.function}</span>}</li>)}</ul>
           </div>
         )) : <p className="text-text-4">Not used as a type anywhere in the project.</p>}
       </section>

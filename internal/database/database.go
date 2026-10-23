@@ -3,7 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -25,7 +27,7 @@ import (
 )
 
 type dbConnectionRequest struct {
-	IdleTimeoutMinutes int    `json:"idleTimeoutMinutes,omitempty"`
+	IdleTimeoutMinutes int    `json:"idleTimeoutMinutes,omitzero"`
 	ID                 string `json:"id"`
 	Variables          string `json:"variables,omitempty"`
 	Driver             string `json:"driver"`
@@ -71,7 +73,7 @@ type dbQueryResponse struct {
 	Warning string `json:"warning,omitempty"`
 	// Documents holds ordered canonical Extended JSON when a Mongo command sets
 	// canonical: true, so the document view keeps field order and BSON types.
-	Documents []json.RawMessage `json:"documents,omitempty"`
+	Documents []jsonv1.RawMessage `json:"documents,omitempty"`
 }
 
 var limitRe = regexp.MustCompile(`(?i)\blimit\s+\d+|\bfetch\s+first\s+\d+\s+rows\s+only`)
@@ -87,7 +89,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req dbConnectionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -161,7 +163,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req dbQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -185,7 +187,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(req.Variables) > 0 {
-		data, _ := json.Marshal(req.Variables)
+		data, _ := jsonutil.Marshal(req.Variables)
 		req.Connection.Variables = string(data)
 	}
 	if req.Connection.ID != "" {
@@ -276,7 +278,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	resp := dbQueryResponse{Driver: driver, Limited: limited, Destructive: destructive, StatementType: stmtType, Explain: explainMode}
 	if isResultQuery(limitedQuery) {
-		cols, rows, err := runRows(ctx, db, limitedQuery)
+		cols, rows, err := runRows(ctx, db, limitedQuery) // NOSONAR -- this is the SQL console: the statement the user typed is meant to run verbatim on their own connection; the sidecar is loopback-only and applyLimit only appends a numeric LIMIT
 		if err != nil {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
@@ -284,7 +286,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Columns = cols
 		resp.Rows = rows
 	} else {
-		res, err := db.ExecContext(ctx, limitedQuery)
+		res, err := db.ExecContext(ctx, limitedQuery) // NOSONAR -- same as above: user-authored SQL executed by design in the database console
 		if err != nil {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
@@ -301,7 +303,7 @@ func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req createLocalSQLiteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -433,21 +435,21 @@ func SanitizeSQLitePath(raw string) (string, error) {
 }
 
 type mongoQueryCommand struct {
-	Operation  string            `json:"operation"`
-	Database   string            `json:"database"`
-	Collection string            `json:"collection"`
-	Filter     json.RawMessage   `json:"filter"`
-	Projection json.RawMessage   `json:"projection"`
-	Sort       json.RawMessage   `json:"sort"`
-	Pipeline   []json.RawMessage `json:"pipeline"`
-	Document   json.RawMessage   `json:"document"`
-	Documents  []json.RawMessage `json:"documents"`
-	Update     json.RawMessage   `json:"update"`
-	Command    json.RawMessage   `json:"command"`
-	Limit      int64             `json:"limit"`
-	Skip       int64             `json:"skip"`
-	Upsert     bool              `json:"upsert"`
-	Canonical  bool              `json:"canonical"`
+	Operation  string              `json:"operation"`
+	Database   string              `json:"database"`
+	Collection string              `json:"collection"`
+	Filter     jsonv1.RawMessage   `json:"filter"`
+	Projection jsonv1.RawMessage   `json:"projection"`
+	Sort       jsonv1.RawMessage   `json:"sort"`
+	Pipeline   []jsonv1.RawMessage `json:"pipeline"`
+	Document   jsonv1.RawMessage   `json:"document"`
+	Documents  []jsonv1.RawMessage `json:"documents"`
+	Update     jsonv1.RawMessage   `json:"update"`
+	Command    jsonv1.RawMessage   `json:"command"`
+	Limit      int64               `json:"limit"`
+	Skip       int64               `json:"skip"`
+	Upsert     bool                `json:"upsert"`
+	Canonical  bool                `json:"canonical"`
 }
 
 func isMongoDriver(driver string) bool {
@@ -563,23 +565,11 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	start := time.Now()
-	var client *mongo.Client
-	var db *mongo.Database
-	var err error
-	if req.handle != nil {
-		client, db = req.handle.mongo, req.handle.mongoDB
-	} else {
-		client, db, err = openMongoDatabase(ctx, req.Connection)
-	}
+	client, db, cleanup, err := mongoOpenTarget(ctx, req, cmd)
 	if err != nil {
 		return dbQueryResponse{}, err
 	}
-	if req.handle == nil {
-		defer client.Disconnect(context.Background())
-	}
-	if name := strings.TrimSpace(cmd.Database); name != "" {
-		db = client.Database(name)
-	}
+	defer cleanup()
 	resp := dbQueryResponse{
 		Driver:        "mongodb",
 		Destructive:   destructive,
@@ -589,270 +579,18 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 	if collectionName == "" {
 		collectionName = strings.TrimSpace(req.Connection.Collection)
 	}
-	collection := func() (*mongo.Collection, error) {
-		if collectionName == "" {
-			return nil, fmt.Errorf("MongoDB operation %q requires collection", op)
-		}
-		return db.Collection(collectionName), nil
-	}
-	limit := int64(req.Limit)
-	if cmd.Limit > 0 {
-		limit = cmd.Limit
-	}
-	if limit <= 0 {
-		limit = 200
-	}
-	if limit > 5000 {
-		limit = 5000
-	}
-
-	switch op {
-	case "find":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		filter, err := mongoRawDoc(cmd.Filter, bson.D{})
-		if err != nil {
-			return resp, fmt.Errorf("invalid filter: %w", err)
-		}
-		findOpts := options.Find().SetLimit(limit)
-		if cmd.Skip > 0 {
-			findOpts.SetSkip(cmd.Skip)
-		}
-		if len(cmd.Projection) > 0 {
-			projection, err := mongoRawDoc(cmd.Projection, nil)
-			if err != nil {
-				return resp, fmt.Errorf("invalid projection: %w", err)
-			}
-			findOpts.SetProjection(projection)
-		}
-		if len(cmd.Sort) > 0 {
-			sortDoc, err := mongoRawDoc(cmd.Sort, nil)
-			if err != nil {
-				return resp, fmt.Errorf("invalid sort: %w", err)
-			}
-			findOpts.SetSort(sortDoc)
-		}
-		cursor, err := coll.Find(ctx, filter, findOpts)
-		if err != nil {
-			return resp, err
-		}
-		if err := fillMongoResult(ctx, cursor, cmd.Canonical, &resp); err != nil {
-			return resp, err
-		}
-		resp.Limited = true
-	case "aggregate":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		pipeline, err := mongoRawPipeline(cmd.Pipeline)
-		if err != nil {
-			return resp, err
-		}
-		cursor, err := coll.Aggregate(ctx, pipeline)
-		if err != nil {
-			return resp, err
-		}
-		if err := fillMongoResult(ctx, cursor, cmd.Canonical, &resp); err != nil {
-			return resp, err
-		}
-	case "insertone":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		doc, err := mongoRawDoc(cmd.Document, nil)
-		if err != nil {
-			return resp, fmt.Errorf("invalid document: %w", err)
-		}
-		result, err := coll.InsertOne(ctx, doc)
-		if err != nil {
-			return resp, err
-		}
-		resp.RowsAffected = 1
-		resp.Columns = []string{"insertedId"}
-		resp.Rows = []map[string]interface{}{{"insertedId": mongoValue(result.InsertedID)}}
-	case "insertmany":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		docs, err := mongoRawDocuments(cmd.Documents)
-		if err != nil {
-			return resp, err
-		}
-		result, err := coll.InsertMany(ctx, docs)
-		if err != nil {
-			return resp, err
-		}
-		resp.RowsAffected = int64(len(result.InsertedIDs))
-		resp.Columns = []string{"insertedIds"}
-		resp.Rows = []map[string]interface{}{{"insertedIds": mongoValue(result.InsertedIDs)}}
-	case "updateone", "updatemany":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		filter, err := mongoRawDoc(cmd.Filter, bson.D{})
-		if err != nil {
-			return resp, fmt.Errorf("invalid filter: %w", err)
-		}
-		update, err := mongoRawDoc(cmd.Update, nil)
-		if err != nil {
-			return resp, fmt.Errorf("invalid update: %w", err)
-		}
-		if op == "updateone" {
-			result, err := coll.UpdateOne(ctx, filter, update, options.UpdateOne().SetUpsert(cmd.Upsert))
-			if err != nil {
-				return resp, err
-			}
-			resp.RowsAffected = result.ModifiedCount
-			resp.Columns = []string{"matched", "modified", "upsertedId"}
-			resp.Rows = []map[string]interface{}{{"matched": result.MatchedCount, "modified": result.ModifiedCount, "upsertedId": mongoValue(result.UpsertedID)}}
-		} else {
-			result, err := coll.UpdateMany(ctx, filter, update, options.UpdateMany().SetUpsert(cmd.Upsert))
-			if err != nil {
-				return resp, err
-			}
-			resp.RowsAffected = result.ModifiedCount
-			resp.Columns = []string{"matched", "modified", "upsertedId"}
-			resp.Rows = []map[string]interface{}{{"matched": result.MatchedCount, "modified": result.ModifiedCount, "upsertedId": mongoValue(result.UpsertedID)}}
-		}
-	case "replaceone":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		filter, err := mongoRawDoc(cmd.Filter, nil)
-		if err != nil || filter == nil {
-			return resp, fmt.Errorf("replaceOne requires a valid filter")
-		}
-		doc, err := mongoRawDoc(cmd.Document, nil)
-		if err != nil || doc == nil {
-			return resp, fmt.Errorf("replaceOne requires a valid document")
-		}
-		result, err := coll.ReplaceOne(ctx, filter, doc)
-		if err != nil {
-			return resp, err
-		}
-		if result.MatchedCount == 0 {
-			return resp, fmt.Errorf("document not found: it may have been deleted or its _id changed")
-		}
-		resp.RowsAffected = result.ModifiedCount
-	case "deleteone", "deletemany":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		filter, err := mongoRawDoc(cmd.Filter, bson.D{})
-		if err != nil {
-			return resp, fmt.Errorf("invalid filter: %w", err)
-		}
-		if op == "deleteone" {
-			result, err := coll.DeleteOne(ctx, filter)
-			if err != nil {
-				return resp, err
-			}
-			resp.RowsAffected = result.DeletedCount
-		} else {
-			result, err := coll.DeleteMany(ctx, filter)
-			if err != nil {
-				return resp, err
-			}
-			resp.RowsAffected = result.DeletedCount
-		}
-	case "count", "countdocuments":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		filter, err := mongoRawDoc(cmd.Filter, bson.D{})
-		if err != nil {
-			return resp, fmt.Errorf("invalid filter: %w", err)
-		}
-		count, err := coll.CountDocuments(ctx, filter)
-		if err != nil {
-			return resp, err
-		}
-		resp.Columns = []string{"count"}
-		resp.Rows = []map[string]interface{}{{"count": count}}
-	case "estimatedcount":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		count, err := coll.EstimatedDocumentCount(ctx)
-		if err != nil {
-			return resp, err
-		}
-		resp.Columns = []string{"count"}
-		resp.Rows = []map[string]interface{}{{"count": count}}
-	case "listcollections":
-		names, err := db.ListCollectionNames(ctx, bson.D{})
-		if err != nil {
-			return resp, err
-		}
-		resp.Columns = []string{"collection"}
-		resp.Rows = make([]map[string]interface{}, 0, len(names))
-		for _, name := range names {
-			resp.Rows = append(resp.Rows, map[string]interface{}{"collection": name})
-		}
-	case "listdatabases":
-		names, err := client.ListDatabaseNames(ctx, bson.D{})
-		if err != nil {
-			return resp, err
-		}
-		resp.Columns = []string{"database"}
-		resp.Rows = make([]map[string]interface{}, 0, len(names))
-		for _, name := range names {
-			resp.Rows = append(resp.Rows, map[string]interface{}{"database": name})
-		}
-	case "createcollection":
-		if collectionName == "" {
-			return resp, fmt.Errorf("createCollection requires collection")
-		}
-		if err := db.CreateCollection(ctx, collectionName); err != nil {
-			return resp, err
-		}
-		resp.RowsAffected = 1
-	case "dropcollection":
-		coll, err := collection()
-		if err != nil {
-			return resp, err
-		}
-		if err := coll.Drop(ctx); err != nil {
-			return resp, err
-		}
-		resp.RowsAffected = 1
-	case "dropdatabase":
-		if err := db.Drop(ctx); err != nil {
-			return resp, err
-		}
-		resp.RowsAffected = 1
-	case "runcommand":
-		command, err := mongoRawDoc(cmd.Command, nil)
-		if err != nil {
-			return resp, fmt.Errorf("invalid command: %w", err)
-		}
-		var out bson.Raw
-		if err := db.RunCommand(ctx, command).Decode(&out); err != nil {
-			return resp, err
-		}
-		if cmd.Canonical {
-			ext, err := bson.MarshalExtJSON(out, true, false)
-			if err != nil {
-				return resp, err
-			}
-			resp.Documents = []json.RawMessage{ext}
-			break
-		}
-		row := mongoDocToMap(out)
-		resp.Columns = columnsFromRows([]map[string]interface{}{row})
-		resp.Rows = []map[string]interface{}{row}
-	default:
+	handler, ok := mongoOpHandlers[op]
+	if !ok {
 		return resp, fmt.Errorf("unsupported MongoDB operation %q", cmd.Operation)
+	}
+	octx := &mongoOpCtx{
+		ctx: ctx, client: client, db: db, cmd: cmd, op: op,
+		collectionName: collectionName,
+		limit:          mongoQueryLimit(req.Limit, cmd.Limit),
+		resp:           &resp,
+	}
+	if err := handler(octx); err != nil {
+		return resp, err
 	}
 	resp.DurationMS = time.Since(start).Milliseconds()
 	return resp, nil
@@ -875,7 +613,7 @@ func mongoDestructiveOperation(op string) (bool, bool) {
 	}
 }
 
-func mongoRawDoc(raw json.RawMessage, fallback interface{}) (interface{}, error) {
+func mongoRawDoc(raw jsonv1.RawMessage, fallback interface{}) (interface{}, error) {
 	if len(raw) == 0 || strings.TrimSpace(string(raw)) == "" {
 		return fallback, nil
 	}
@@ -887,7 +625,7 @@ func mongoRawDoc(raw json.RawMessage, fallback interface{}) (interface{}, error)
 	return doc, nil
 }
 
-func mongoRawDocuments(rawDocs []json.RawMessage) ([]interface{}, error) {
+func mongoRawDocuments(rawDocs []jsonv1.RawMessage) ([]interface{}, error) {
 	if len(rawDocs) == 0 {
 		return nil, fmt.Errorf("documents array is required")
 	}
@@ -902,7 +640,7 @@ func mongoRawDocuments(rawDocs []json.RawMessage) ([]interface{}, error) {
 	return docs, nil
 }
 
-func mongoRawPipeline(rawStages []json.RawMessage) ([]interface{}, error) {
+func mongoRawPipeline(rawStages []jsonv1.RawMessage) ([]interface{}, error) {
 	if len(rawStages) == 0 {
 		return nil, fmt.Errorf("pipeline array is required")
 	}
@@ -938,15 +676,15 @@ func fillMongoResult(ctx context.Context, cursor *mongo.Cursor, canonical bool, 
 
 // mongoCanonicalDocuments keeps each document as raw BSON so field order
 // survives, then renders canonical Extended JSON (types stay explicit).
-func mongoCanonicalDocuments(ctx context.Context, cursor *mongo.Cursor) ([]json.RawMessage, error) {
+func mongoCanonicalDocuments(ctx context.Context, cursor *mongo.Cursor) ([]jsonv1.RawMessage, error) {
 	defer cursor.Close(ctx)
-	docs := make([]json.RawMessage, 0)
+	docs := make([]jsonv1.RawMessage, 0)
 	for cursor.Next(ctx) {
 		out, err := bson.MarshalExtJSON(cursor.Current, true, false)
 		if err != nil {
 			return nil, err
 		}
-		docs = append(docs, json.RawMessage(out))
+		docs = append(docs, jsonv1.RawMessage(out))
 	}
 	return docs, cursor.Err()
 }
@@ -1004,7 +742,7 @@ func columnsFromRows(rows []map[string]interface{}) []string {
 
 func dbWriteJSON(w http.ResponseWriter, value interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(value)
+	_ = jsonutil.MarshalWrite(w, value)
 }
 
 func statementType(query string) string {
@@ -1183,7 +921,7 @@ func destructiveQuery(driver, query string) (bool, bool) {
 }
 
 func runRows(ctx context.Context, db *sql.DB, query string) ([]string, []map[string]interface{}, error) {
-	rows, err := db.QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, query) // NOSONAR -- query is the SQL the user typed in the console (see databaseQueryHandler); running it verbatim is the feature
 	if err != nil {
 		return nil, nil, err
 	}

@@ -3,6 +3,7 @@ import {
   GIT_GRAPH_LANE_START,
   type GitGraphRowLayout,
 } from '@/lib/git/graphLayout'
+import { withContentKeys } from '@/lib/contentKeys'
 
 const GRAPH_COLORS = [
   'var(--color-accent)',
@@ -47,14 +48,14 @@ export function GitCommitGraph({ layout, width, height = 58, colors }: { layout:
       {layout.incoming && (
         <line x1={x} y1="0" x2={x} y2={centerY} stroke={nodeColor} strokeWidth="2.5" strokeLinecap="round" />
       )}
-      {layout.parents.map((edge, index) => {
+      {withContentKeys(layout.parents, (edge) => `${edge.fromLane}-${edge.toLane}-${edge.color}`).map(({ key: edgeKey, item: edge }) => {
         const targetX = graphLaneX(edge.toLane)
         const color = colorFor(edge.color)
         return edge.fromLane === edge.toLane ? (
-          <line key={`parent-${index}`} x1={x} y1={centerY} x2={targetX} y2={bottomY} stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+          <line key={`parent-${edgeKey}`} x1={x} y1={centerY} x2={targetX} y2={bottomY} stroke={color} strokeWidth="2.5" strokeLinecap="round" />
         ) : (
           <path
-            key={`parent-${index}`}
+            key={`parent-${edgeKey}`}
             d={`M ${x} ${centerY} C ${x} ${centerY + bend}, ${targetX} ${bottomY - bend}, ${targetX} ${bottomY}`}
             fill="none"
             stroke={color}

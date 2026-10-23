@@ -22,22 +22,34 @@ export function CodeStudioImplementInterfaceDialog() {
   const inputRef = useRef<HTMLInputElement>(null)
   const close = () => useCodeStudioLspStore.setState({ implementRequest: null })
 
-  useEffect(() => {
-    if (!request) return
-    setQuery('')
-    setResults([])
-    setWorking(false)
-    window.setTimeout(() => inputRef.current?.focus(), 0)
-  }, [request])
+  const [prevRequest, setPrevRequest] = useState(request)
+  if (prevRequest !== request) {
+    setPrevRequest(request)
+    if (request) {
+      setQuery('')
+      setResults([])
+      setWorking(false)
+    }
+  }
 
   useEffect(() => {
-    if (!request || !query.trim()) {
-      setResults([])
-      return
-    }
+    if (!request) return
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 0)
+    return () => window.clearTimeout(focusTimer)
+  }, [request])
+
+  const hasQuery = !!request && !!query.trim()
+  const [prevHasQuery, setPrevHasQuery] = useState(hasQuery)
+  if (prevHasQuery !== hasQuery) {
+    setPrevHasQuery(hasQuery)
+    if (!hasQuery) setResults([])
+  }
+
+  useEffect(() => {
+    if (!request || !query.trim()) return
     let pending: CancellablePromise<GoIDEWorkspaceSymbol[]> | null = null
-    setLoading(true)
     const timer = window.setTimeout(() => {
+      setLoading(true)
       pending = requestWorkspaceSymbols(request.sessionId, query.trim())
       pending
         .then((symbols) => { setResults(implementableInterfaces(symbols, request.directory).slice(0, MAX_RESULTS)); setSelected(0) })

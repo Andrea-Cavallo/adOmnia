@@ -1,5 +1,5 @@
 import { confirm } from '@/lib/confirmDialog'
-import type { GoIDEDebugRequest, GoIDEDebugStepAction, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEDebugStepAction, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest } from '@/lib/code-studio-debug-api'
 import { activeDebugView, useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import type { CodeStudioCommandContext, CodeStudioCommandId } from './codeStudioCommands'
@@ -39,7 +39,7 @@ async function confirmInstallDelve(sessionId: string): Promise<void> {
  * Esegue i comandi del debugger. `configuredRequest` costruisce la richiesta per Debug (Shift+F9)
  * dalla configurazione Run attiva. Restituisce false se il comando non appartiene al debugger.
  */
-export function runDebugCommand(id: CodeStudioCommandId, sessionId: string | null, configuredRequest: () => GoIDEDebugRequest | null, javaRequest: () => GoIDEJavaDebugRequest | null = () => null, pythonRequest: () => GoIDEPythonDebugRequest | null = () => null): boolean {
+export function runDebugCommand(id: CodeStudioCommandId, sessionId: string | null, configuredRequest: () => GoIDEDebugRequest | null, javaRequest: () => GoIDEJavaDebugRequest | null = () => null, pythonRequest: () => GoIDEPythonDebugRequest | null = () => null, rustRequest: () => GoIDERustDebugRequest | null = () => null): boolean {
   if (id === 'view.debug') { useCodeStudioLspStore.getState().showToolWindow('debug'); return true }
   if (id === 'debug.toggleBreakpoint') { toggleBreakpointAtCursor(activeCodeStudioEditor()); return true }
   if (id === 'debug.viewBreakpoints') { useCodeStudioBreakpointUi.getState().setDialogOpen(true); return true }
@@ -58,13 +58,15 @@ export function runDebugCommand(id: CodeStudioCommandId, sessionId: string | nul
     if (java) { void debug.startJava(java); return true }
     const python = pythonRequest()
     if (python) { void debug.startPython(python); return true }
+    const rust = rustRequest()
+    if (rust) { void debug.startRust(rust); return true }
     const request = configuredRequest()
     if (request) void debug.start(request)
     return true
   }
   const view = activeDebugView(debug, sessionId)
   if (id === 'debug.stop') { if (view) void debug.stop(view.info.id); return true }
-  if (id === 'debug.restart') { if (view?.request || view?.javaRequest || view?.pythonRequest) void debug.restart(view.info.id); return true }
+  if (id === 'debug.restart') { if (view?.request || view?.javaRequest || view?.pythonRequest || view?.rustRequest) void debug.restart(view.info.id); return true }
   const action = STEP_ACTIONS[id]
   if (!action) return false
   if (view) void debug.step(view.info.id, action)

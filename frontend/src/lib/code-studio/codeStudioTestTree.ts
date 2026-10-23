@@ -1,4 +1,4 @@
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest } from '@/lib/code-studio-debug-api'
 import type { GoIDETestResult, GoIDETestRun, GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
 
 export interface CodeStudioTestNode {
@@ -104,6 +104,24 @@ export function isPythonTestRun(run: GoIDETestRun): boolean {
   return run.request.language === 'python'
 }
 
+/** Il run è dell'adapter Rust (cargo test): i nodi sono percorsi libtest con `/` al posto di `::`. */
+export function isRustTestRun(run: GoIDETestRun): boolean {
+  return run.request.language === 'rust'
+}
+
+/**
+ * Filtro libtest di un nodo: il nome dell'albero (`tests/it_works`) torna `tests::it_works`, i test
+ * di integrazione perdono il prefisso del file e i doctest restano com'erano. Un nodo con figli è un
+ * modulo e finisce con `::` (esecuzione per prefisso); un package si riesegue per intero.
+ */
+export function rustTestFilter(run: GoIDETestRun, result: GoIDETestResult): string {
+  const name = result.name ?? ''
+  if (!name) return ''
+  if (name.includes(' (line ')) return name
+  const path = name.replace(/^tests\/[^/]+\.rs\//, '').split('/').join('::')
+  return run.results.some((other) => other.parentId === result.id) ? `${path}::` : path
+}
+
 /**
  * Node ID pytest di un risultato: `file::classe::test`, con i segmenti del nome uniti da `::` e
  * `∕` (U+2215) che torna `/` dentro un segmento. Per un nodo package (name vuoto) il solo file.
@@ -168,6 +186,9 @@ export function requestForNode(run: GoIDETestRun, result: GoIDETestResult): GoID
     // Ogni nodo è un node ID pytest (o il file di test per un package): senza filtro `run`.
     return { ...run.request, packages: [pythonNodeId(result)], run: '', coverage: false }
   }
+  if (isRustTestRun(run)) {
+    return { ...run.request, packages: [], run: rustTestFilter(run, result), coverage: false }
+  }
   if (!isGoTestRun(run)) {
     const prefix = moduleDirectory ? `${moduleDirectory}/` : ''
     const file = result.package.startsWith(prefix) ? result.package.slice(prefix.length) : result.package
@@ -206,12 +227,24 @@ export function pythonDebugRequestForNode(run: GoIDETestRun, result: GoIDETestRe
 }
 
 /**
+ * Debug CodeLLDB di un singolo test Rust (RS-5.5): il nome dell'albero arriva al backend così com'è
+ * (`tests/foo.rs/it_works` dice anche quale target di test compilare con `cargo test --no-run`).
+ * I doctest non hanno binario compilato: restano null (limite dichiarato).
+ */
+export function rustDebugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDERustDebugRequest | null {
+  if (!isRustTestRun(run) || !result.name) return null
+  if (result.name.includes(' (line ')) return null
+  return { sessionId: run.request.sessionId, test: result.name, workingDirectory: run.request.workingDirectory }
+}
+
+/**
  * Rerun failed: solo i package con fallimenti e solo i test di primo livello falliti.
  * Un package che non compila si riesegue per intero; null se non c'è nulla da rieseguire.
  */
 export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   if (isPythonTestRun(run)) return pythonRerunFailedRequest(run)
   if (isJavaTestRun(run)) return javaRerunFailedRequest(run)
+  if (isRustTestRun(run)) return rustRerunFailedRequest(run)
   const directories = packageDirectories(run)
   const packages = new Set<string>()
   const tests = new Set<string>()
@@ -228,7 +261,19 @@ export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | nul
   }
   if (packages.size === 0) return null
   const run_ = wholePackage || tests.size === 0 ? '' : `^(${[...tests].map(escapeRegex).join('|')})$`
-  return { ...run.request, packages: [...packages].sort(), run: run_, bench: '', coverage: false }
+  return { ...run.request, packages: [...packages].sort((a, b) => a.localeCompare(b)), run: run_, bench: '', coverage: false }
+}
+
+/**
+ * Rerun failed Rust: i nomi esatti dei test foglia falliti, uno per riga (il backend li passa tutti a
+ * libtest dopo `--`). Con un build fallito, o senza foglie, si riesegue l'intera suite.
+ */
+function rustRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
+  const failed = run.results.filter(isFailed)
+  if (failed.length === 0) return null
+  const leaves = failed.filter((result) => result.name && !run.results.some((other) => other.parentId === result.id)).map((result) => rustTestFilter(run, result))
+  const filter = failed.some((result) => result.buildFailed) ? '' : [...new Set(leaves)].join('\n')
+  return { ...run.request, packages: [], run: filter, coverage: false }
 }
 
 /**
@@ -255,7 +300,7 @@ function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   }
   if (wholeUnit) return { ...run.request, packages: [], run: '', coverage: false }
   if (files.size === 0) return null
-  return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort().join(',') : '', coverage: false }
+  return { ...run.request, packages: [...files].sort((a, b) => a.localeCompare(b)), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort((a, b) => a.localeCompare(b)).join(',') : '', coverage: false }
 }
 
 /**
@@ -270,7 +315,7 @@ export function pythonRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest
     else if (!run.results.some((other) => other.package === result.package && other.name && isFailed(other))) nodes.add(result.package)
   }
   if (nodes.size === 0) return null
-  return { ...run.request, packages: [...nodes].sort(), run: '', coverage: false }
+  return { ...run.request, packages: [...nodes].sort((a, b) => a.localeCompare(b)), run: '', coverage: false }
 }
 
 export function formatDuration(milliseconds: number): string {
@@ -344,7 +389,7 @@ export function raceRepeatRequestForNode(run: GoIDETestRun, result: GoIDETestRes
 }
 
 function shellQuote(value: string): string {
-  return /^[\w./=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\''`)}'`
+  return /^[\w./=-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`
 }
 
 /**

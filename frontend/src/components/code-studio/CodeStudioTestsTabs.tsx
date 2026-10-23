@@ -91,10 +91,10 @@ export function OutputTab({ suite, output }: { suite: TestSuite; output: RunOutp
 export function CoverageTab({ suite, sessionId, actions }: { suite: TestSuite; sessionId: string; actions: TestActions }) {
   const report = suite.run?.coverage
   if (report) return <div className="overflow-hidden rounded-md border border-border-1"><CoverageSummary report={report} sessionId={sessionId} /></div>
-  const supported = suite.language === 'go' || suite.language === 'java' || suite.language === 'python'
+  const supported = suite.language === 'go' || suite.language === 'java' || suite.language === 'python' || suite.language === 'rust'
   return (
     <Empty>
-      <span className="block">{supported ? 'The last run has no coverage.' : 'Coverage is available for Go, Java and Python suites.'}</span>
+      <span className="block">{supported ? 'The last run has no coverage.' : 'Coverage is available for Go, Java, Python and Rust suites.'}</span>
       {supported && <button type="button" onClick={() => actions.runSuite(suite, { coverage: true })} className="mt-3 inline-flex h-9 items-center gap-2 rounded bg-accent px-2 text-[12px] font-semibold text-on-accent hover:bg-accent-hover"><ShieldCheck size={14} aria-hidden="true" /> Run with coverage</button>}
     </Empty>
   )

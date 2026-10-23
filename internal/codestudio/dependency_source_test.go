@@ -121,7 +121,8 @@ func TestDependencySourceActions(t *testing.T) {
 }
 
 // TestLocalDependencyRoots: le replace locali aprono in sola lettura come la module cache.
-func TestLocalDependencyRoots(t *testing.T) {	workspace := t.TempDir()
+func TestLocalDependencyRoots(t *testing.T) {
+	workspace := t.TempDir()
 	app := filepath.Join(workspace, "app")
 	lib := filepath.Join(workspace, "lib")
 	writeFixtureFile(t, app, "go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v1.0.0\n\nreplace example.com/lib => ../lib\n")

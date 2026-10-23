@@ -1,9 +1,9 @@
 package preview
 
 import (
+	"adomnia/internal/jsonutil"
 	"bytes"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -151,7 +151,7 @@ func (h *hub) serveEvents(w http.ResponseWriter, r *http.Request) {
 			if !open {
 				return
 			}
-			payload, _ := json.Marshal(event)
+			payload, _ := jsonutil.Marshal(event)
 			if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
 				return
 			}

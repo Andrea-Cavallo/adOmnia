@@ -87,6 +87,7 @@ export async function authorizeOAuth2Pkce(
   openLoginBrowser(authorizationURL.toString())
 
   const deadline = Date.now() + 5 * 60 * 1000
+  /* oxlint-disable eslint/no-await-in-loop -- status polling is inherently sequential: each poll depends on the previous one */
   while (Date.now() < deadline) {
     await delay(500, signal)
     const statusResponse = await sidecarFetch(
@@ -122,6 +123,7 @@ export async function authorizeOAuth2Pkce(
       token: token.accessToken,
     }
   }
+  /* oxlint-enable eslint/no-await-in-loop */
 
   throw new Error('OAuth authorization timed out after 5 minutes')
 }

@@ -3,7 +3,8 @@ package golang
 import (
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -35,9 +36,9 @@ const (
 var shuffleSeed = regexp.MustCompile(`^(on|-?\d{1,19})$`)
 
 type TestOptions struct {
-	Language        string          `json:"language,omitempty"`
-	LanguageOptions json.RawMessage `json:"languageOptions,omitempty"`
-	SessionID       run.SessionID   `json:"sessionId"`
+	Language        string            `json:"language,omitempty"`
+	LanguageOptions jsonv1.RawMessage `json:"languageOptions,omitempty"`
+	SessionID       run.SessionID     `json:"sessionId"`
 	// WorkingDirectory è la cartella del modulo, relativa al progetto ('' per la radice).
 	WorkingDirectory string `json:"workingDirectory"`
 	// Packages sono pattern relativi al modulo, es. "./..." o "./internal/api".
@@ -46,13 +47,13 @@ type TestOptions struct {
 	Run string `json:"run,omitempty"`
 	// Bench abilita i benchmark con l'espressione indicata (i test vengono esclusi con -run ^$ se Run è vuoto).
 	Bench    string `json:"bench,omitempty"`
-	Coverage bool   `json:"coverage,omitempty"`
+	Coverage bool   `json:"coverage,omitzero"`
 	// Race attiva il race detector (-race): i report finiscono in TestRunSnapshot.RaceReports.
-	Race        bool              `json:"race,omitempty"`
+	Race        bool              `json:"race,omitzero"`
 	BuildTags   []string          `json:"buildTags,omitempty"`
 	Environment map[string]string `json:"environment,omitempty"`
 	// Repeat esegue ogni test N volte (-count=N) per misurarne la flakiness; 0 o 1 = una volta.
-	Repeat int `json:"repeat,omitempty"`
+	Repeat int `json:"repeat,omitzero"`
 	// Shuffle è "on" per un ordine casuale o un seed numerico per riprodurlo (-shuffle).
 	Shuffle string `json:"shuffle,omitempty"`
 	// CPU esegue i test con questi valori di GOMAXPROCS (-cpu): per ogni valore, Repeat ripetizioni.

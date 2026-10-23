@@ -1,7 +1,9 @@
 package milk
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -277,7 +279,7 @@ func agentEntry(config map[string]any, name string) map[string]any {
 
 // writeConfig salva una copia .bak del config precedente e scrive in modo atomico.
 func writeConfig(path string, config map[string]any) error {
-	data, err := json.MarshalIndent(config, "", "  ")
+	data, err := jsonutil.Marshal(config, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func writeConfig(path string, config map[string]any) error {
 		return fmt.Errorf("cannot create milk config folder: %w", err)
 	}
 	if previous, err := os.ReadFile(path); err == nil {
-		_ = os.WriteFile(path+".bak", previous, 0o600)
+		_ = os.WriteFile(path+".bak", previous, 0o600) // #nosec G703 -- path is the agent config file the user chose to configure
 	}
 	temporary := path + ".tmp"
 	if err := os.WriteFile(temporary, data, 0o600); err != nil {

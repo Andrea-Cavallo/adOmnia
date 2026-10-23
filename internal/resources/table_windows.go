@@ -16,7 +16,7 @@ func processTable() (map[int32]processInfo, error) {
 		return nil, err
 	}
 	defer windows.CloseHandle(snapshot)
-	entry := windows.ProcessEntry32{Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{}))}
+	entry := windows.ProcessEntry32{Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{}))} // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 	table := map[int32]processInfo{}
 	for err = windows.Process32First(snapshot, &entry); err == nil; err = windows.Process32Next(snapshot, &entry) {
 		table[int32(entry.ProcessID)] = processInfo{parent: int32(entry.ParentProcessID), name: windows.UTF16ToString(entry.ExeFile[:])}

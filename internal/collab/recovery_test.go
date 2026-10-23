@@ -1,7 +1,8 @@
 package collab
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"testing"
 	"time"
 )
@@ -27,7 +28,7 @@ func TestResumeKeepsIdentityReplaysAndHonorsRole(t *testing.T) {
 	if !guest.Status().Disconnected {
 		t.Fatal("disconnection state lost")
 	}
-	if _, err := host.Share(ShareCollection, "missed", json.RawMessage(`{"name":"missed","children":[]}`)); err != nil {
+	if _, err := host.Share(ShareCollection, "missed", jsonv1.RawMessage(`{"name":"missed","children":[]}`)); err != nil {
 		t.Fatal(err)
 	}
 	status, err := guest.Resume()
@@ -48,7 +49,7 @@ func TestResumeKeepsIdentityReplaysAndHonorsRole(t *testing.T) {
 			t.Fatal("role restored incorrectly")
 		}
 	}
-	if _, err := guest.Share(ShareCollection, "forbidden", json.RawMessage(`{}`)); err == nil {
+	if _, err := guest.Share(ShareCollection, "forbidden", jsonv1.RawMessage(`{}`)); err == nil {
 		t.Fatal("resumed viewer bypassed permission")
 	}
 }

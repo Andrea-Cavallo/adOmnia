@@ -14,10 +14,10 @@ function leaves(value: Tree, prefix = ''): [string, string][] {
 
 describe('settings localization', () => {
   it('keeps every language catalog aligned with the English source', () => {
-    const reference = leaves(T.en).map(([path]) => path).sort()
+    const reference = leaves(T.en).map(([path]) => path).sort((a, b) => a.localeCompare(b))
     expect(reference.length).toBeGreaterThan(250)
     for (const lang of ['it', 'zh', 'ja', 'ru'] as const) {
-      expect(leaves(T[lang] as Tree).map(([path]) => path).sort(), lang).toEqual(reference)
+      expect(leaves(T[lang] as Tree).map(([path]) => path).sort((a, b) => a.localeCompare(b)), lang).toEqual(reference)
     }
   })
 

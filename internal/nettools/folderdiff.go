@@ -1,11 +1,12 @@
 package nettools
 
 import (
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,13 +23,13 @@ type folderDiffFile struct {
 	Name       string           `json:"name"`
 	IsDir      bool             `json:"isDir"`
 	Status     string           `json:"status"`
-	LeftSize   int64            `json:"leftSize,omitempty"`
-	RightSize  int64            `json:"rightSize,omitempty"`
-	LeftMTime  int64            `json:"leftModified,omitempty"`
-	RightMTime int64            `json:"rightModified,omitempty"`
+	LeftSize   int64            `json:"leftSize,omitzero"`
+	RightSize  int64            `json:"rightSize,omitzero"`
+	LeftMTime  int64            `json:"leftModified,omitzero"`
+	RightMTime int64            `json:"rightModified,omitzero"`
 	LeftHash   string           `json:"leftHash,omitempty"`
 	RightHash  string           `json:"rightHash,omitempty"`
-	Binary     bool             `json:"binary,omitempty"`
+	Binary     bool             `json:"binary,omitzero"`
 	Children   []folderDiffFile `json:"children,omitempty"`
 }
 
@@ -36,11 +37,11 @@ type folderDiffFlat struct {
 	Path       string `json:"path"`
 	Status     string `json:"status"`
 	IsDir      bool   `json:"isDir"`
-	LeftSize   int64  `json:"leftSize,omitempty"`
-	RightSize  int64  `json:"rightSize,omitempty"`
-	LeftMTime  int64  `json:"leftModified,omitempty"`
-	RightMTime int64  `json:"rightModified,omitempty"`
-	Binary     bool   `json:"binary,omitempty"`
+	LeftSize   int64  `json:"leftSize,omitzero"`
+	RightSize  int64  `json:"rightSize,omitzero"`
+	LeftMTime  int64  `json:"leftModified,omitzero"`
+	RightMTime int64  `json:"rightModified,omitzero"`
+	Binary     bool   `json:"binary,omitzero"`
 }
 
 type fileMeta struct {
@@ -112,7 +113,7 @@ func folderDiffHandler(w http.ResponseWriter, r *http.Request) {
 		Right     string `json:"right"`
 		MaxFileMB int64  `json:"maxFileMB"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -122,7 +123,7 @@ func folderDiffHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	jsonutil.MarshalWrite(w, result)
 }
 
 func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +136,7 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 		Path     string `json:"path"`
 		MaxBytes int64  `json:"maxBytes"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -145,7 +146,7 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	jsonutil.MarshalWrite(w, result)
 }
 
 func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]interface{}, error) {
@@ -243,7 +244,7 @@ func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string
 }
 
 func ensureDir(path string) error {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // NOSONAR -- path is one of the two folders the user chose to compare in the folder-diff tool; probing it is the feature
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func ensureDir(path string) error {
 
 func scanFolder(root string, maxFileMB int64) (map[string]fileMeta, error) {
 	out := map[string]fileMeta{}
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error { // NOSONAR -- root is the folder the user chose to compare; the walk never leaves it (Rel + SkipDir below)
 		if err != nil {
 			return nil
 		}

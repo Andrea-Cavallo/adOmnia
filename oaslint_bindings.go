@@ -1,8 +1,8 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/oaslint"
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -33,7 +33,7 @@ func (o *OASLint) Lint(specText string, rulesetJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	report, err := json.Marshal(struct {
+	report, err := jsonutil.Marshal(struct {
 		Findings []oaslint.Finding `json:"findings"`
 	}{Findings: findings})
 	if err != nil {

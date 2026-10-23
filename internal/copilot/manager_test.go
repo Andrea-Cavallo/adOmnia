@@ -2,7 +2,8 @@ package copilot
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"os"
 	"path/filepath"
@@ -43,7 +44,7 @@ func (s *fakeServer) log(message string) {
 	_ = s.conn.Notify("window/logMessage", map[string]any{"type": 3, "message": message})
 }
 
-func (s *fakeServer) HandleNotification(method string, params json.RawMessage) {
+func (s *fakeServer) HandleNotification(method string, params jsonv1.RawMessage) {
 	switch method {
 	case "workspace/didChangeWorkspaceFolders":
 		if !s.initialized.Load() {
@@ -63,7 +64,7 @@ func (s *fakeServer) HandleNotification(method string, params json.RawMessage) {
 	}
 }
 
-func (s *fakeServer) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+func (s *fakeServer) HandleRequest(_ context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	switch method {
 	case "initialize":
 		if delay, err := time.ParseDuration(os.Getenv(fakeServerInitializeDelayEnv)); err == nil {

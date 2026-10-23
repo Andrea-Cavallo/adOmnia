@@ -183,7 +183,7 @@ function normalizeNode(value: unknown, index: number): FlowNodeDefinition {
       retryCount: numberValue(config.retryCount, 0),
       delayMs: Math.max(0, numberValue(config.delayMs, 0)),
       timeoutMs: numberValue(config.timeoutMs, 0),
-      extractions: Array.isArray(config.extractions) ? config.extractions.map(normalizeMapping) : [],
+      extractions: Array.isArray(config.extractions) ? config.extractions.map((mapping, index) => normalizeMapping(mapping, index)) : [],
       condition: type === 'condition' ? normalizeCondition(config.condition) : undefined,
       endState: config.endState === 'failed' ? 'failed' : 'success',
       note: stringValue(config.note),
@@ -211,7 +211,7 @@ function normalizeEdge(value: unknown): FlowEdgeDefinition {
 function normalizeGraph(value: unknown): FlowGraphDefinition {
   const source = record(value)
   const settings = record(source.settings)
-  const nodes = Array.isArray(source.nodes) ? source.nodes.map(normalizeNode) : []
+  const nodes = Array.isArray(source.nodes) ? source.nodes.map((node, index) => normalizeNode(node, index)) : []
   const nodeIds = new Set(nodes.map((node) => node.id))
   const edges = Array.isArray(source.edges)
     ? source.edges.map(normalizeEdge).filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
@@ -439,7 +439,7 @@ export function normalizeFlowDefinitions(value: unknown): SavedFlowDefinition[] 
     const name = stringValue(source.name, `Flow ${index + 1}`)
     const graph = source.graph
       ? normalizeGraph(source.graph)
-      : graphFromLegacySteps(Array.isArray(source.steps) ? source.steps.map(normalizeStep) : [])
+      : graphFromLegacySteps(Array.isArray(source.steps) ? source.steps.map((step, index) => normalizeStep(step, index)) : [])
     return {
       id,
       name,
@@ -480,12 +480,8 @@ export async function loadFlowDefinitions(): Promise<SavedFlowDefinition[]> {
 export async function saveFlowDefinitions(value: unknown): Promise<SavedFlowDefinition[]> {
   const definitions = normalizeFlowDefinitions(value)
   safeSetItem(LEGACY_STORAGE_KEY, JSON.stringify(definitions))
-  try {
-    await StoragePut(STORAGE_BUCKET, STORAGE_ITEM, JSON.stringify(definitions))
-  } catch (error) {
-    // Wails 3 bindings are statically imported: a failed call is a real
-    // backend failure, not evidence that the bridge is absent.
-    throw error
-  }
+  // Wails 3 bindings are statically imported: a failed call is a real
+  // backend failure, not evidence that the bridge is absent.
+  await StoragePut(STORAGE_BUCKET, STORAGE_ITEM, JSON.stringify(definitions))
   return definitions
 }

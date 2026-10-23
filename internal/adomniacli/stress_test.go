@@ -2,7 +2,6 @@ package adomniacli
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -27,7 +27,7 @@ func writeStressPlan(t *testing.T, url string, maxP95 float64) string {
 		{ID: "end", Type: "end", Label: "Done", Config: stressNodeConfig{EndState: "success"}},
 	}
 	plan.Graph.Edges = []stressEdge{{Source: "start", Target: "request", Branch: "next"}, {Source: "request", Target: "end", Branch: "success"}}
-	data, err := json.Marshal(plan)
+	data, err := jsonutil.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestStressPreservesDataHandoffsAndFailureBranches(t *testing.T) {
 		{ID: "end", Type: "end", Label: "Done", Config: stressNodeConfig{EndState: "success"}},
 	}
 	plan.Graph.Edges = []stressEdge{{Source: "a", Target: "b", Branch: "success"}, {Source: "b", Target: "d", Branch: "error"}, {Source: "d", Target: "end", Branch: "success"}}
-	data, _ := json.Marshal(plan)
+	data, _ := jsonutil.Marshal(plan)
 	path := filepath.Join(t.TempDir(), "recovery.stress.json")
 	_ = os.WriteFile(path, data, 0600)
 	var stdout, stderr bytes.Buffer

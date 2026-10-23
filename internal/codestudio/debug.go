@@ -2,8 +2,8 @@ package codestudio
 
 import (
 	"adomnia/internal/ide/dap"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
 )
 
 type DebugRequest = golang.DebugRequest
@@ -21,7 +21,7 @@ type debugLaunch struct {
 }
 
 func (m *DebugManager) Start(launch debugLaunch) (DebugSessionInfo, error) {
-	options, err := json.Marshal(launch.request)
+	options, err := jsonutil.Marshal(launch.request)
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}

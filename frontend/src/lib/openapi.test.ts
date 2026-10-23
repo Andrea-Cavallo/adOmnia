@@ -340,7 +340,7 @@ paths:
           description: Created
 `)
     const reqs = collections.flatMap((c) => c.children).filter((n) => n.type === 'request')
-    expect(reqs.map((r: any) => r.method).sort()).toEqual(['GET', 'POST'])
+    expect(reqs.map((r: any) => r.method).sort((a, b) => a.localeCompare(b))).toEqual(['GET', 'POST'])
   })
 
   it('imports each named requestBody example as its own body', () => {
@@ -493,13 +493,13 @@ paths:
     expect(req.auth.type).toBe('oauth2')
     expect(req.auth.oauth2GrantType).toBe('authorization_code')
     // alternatives preserved: both OAuth2 (with all flows/scopes incl. admin) and ApiKey
-    expect(Object.keys(req._openapiSecurity.schemes).sort()).toEqual(['ApiKeyAuth', 'OAuth2'])
+    expect(Object.keys(req._openapiSecurity.schemes).sort((a, b) => a.localeCompare(b))).toEqual(['ApiKeyAuth', 'OAuth2'])
     expect((req._openapiSecurity.schemes.OAuth2 as any).flows.clientCredentials.scopes.admin).toBe('a')
     expect(req._openapiSecurity.requirements).toEqual([{ OAuth2: ['read', 'write'] }, { ApiKeyAuth: [] }])
 
     // Round-trip: both schemes and the requirement list survive export
     const exported = JSON.parse(exportToOpenApi(collections))
-    expect(Object.keys(exported.components.securitySchemes).sort()).toEqual(['ApiKeyAuth', 'OAuth2'])
+    expect(Object.keys(exported.components.securitySchemes).sort((a, b) => a.localeCompare(b))).toEqual(['ApiKeyAuth', 'OAuth2'])
     expect(exported.paths['/secure'].get.security).toEqual([{ OAuth2: ['read', 'write'] }, { ApiKeyAuth: [] }])
   })
 })

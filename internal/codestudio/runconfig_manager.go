@@ -2,8 +2,10 @@ package codestudio
 
 import (
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 )
 
 type RunConfigManager struct{ core *run.Manager }
@@ -18,7 +20,7 @@ func NewRunConfigManager() *RunConfigManager {
 	})}
 }
 func toCoreConfiguration(config RunConfiguration) run.Configuration {
-	options, _ := json.Marshal(golang.RunOptions{GoArguments: config.GoArguments, BuildTags: config.BuildTags, GOOS: config.GOOS, GOARCH: config.GOARCH, Race: config.Race, Coverage: config.Coverage, Profile: config.Profile, DebugFlags: config.DebugFlags})
+	options, _ := jsonutil.Marshal(golang.RunOptions{GoArguments: config.GoArguments, BuildTags: config.BuildTags, GOOS: config.GOOS, GOARCH: config.GOARCH, Race: config.Race, Coverage: config.Coverage, Profile: config.Profile, DebugFlags: config.DebugFlags})
 	result := run.Configuration{
 		Language:         config.Language,
 		LanguageOptions:  options,
@@ -50,7 +52,7 @@ func toCoreConfiguration(config RunConfiguration) run.Configuration {
 		result.Environment = append(result.Environment, run.EnvironmentEntry(entry))
 	}
 	if config.Language != "" && config.Language != golang.ID {
-		result.LanguageOptions = append(json.RawMessage(nil), config.LanguageOptions...)
+		result.LanguageOptions = append(jsonv1.RawMessage(nil), config.LanguageOptions...)
 	}
 	return result
 }

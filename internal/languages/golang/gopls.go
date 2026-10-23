@@ -29,10 +29,10 @@ type GoplsInfo struct {
 
 // GoplsSettings sono le preferenze dell'utente tradotte nella configurazione di gopls.
 type GoplsSettings struct {
-	MemoryLimitMiB          int      `json:"memoryLimitMiB,omitempty"`
+	MemoryLimitMiB          int      `json:"memoryLimitMiB,omitzero"`
 	DirectoryFilters        []string `json:"directoryFilters,omitempty"`
 	ExpandWorkspaceToModule *bool    `json:"expandWorkspaceToModule,omitempty"`
-	DiagnosticsOnSave       bool     `json:"diagnosticsOnSave,omitempty"`
+	DiagnosticsOnSave       bool     `json:"diagnosticsOnSave,omitzero"`
 
 	Gofumpt       bool `json:"gofumpt"`
 	Staticcheck   bool `json:"staticcheck"`
@@ -170,7 +170,6 @@ func goplsConfiguration(settings GoplsSettings) map[string]any {
 		config["diagnosticsTrigger"] = "Save"
 	}
 	return config
-
 }
 
 // goplsWatchesFile: i file cambiati su disco che gopls deve rileggere anche se non aperti.

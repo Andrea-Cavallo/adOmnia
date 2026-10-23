@@ -3,11 +3,12 @@ package milk
 import (
 	"adomnia/internal/aipolicy"
 	"adomnia/internal/airedact"
+	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -33,7 +34,7 @@ func (m *Manager) SessionControls(root string) (SessionControls, error) {
 		return SessionControls{}, err
 	}
 	m.mu.Lock()
-	data, _ := json.Marshal(m.controls[root])
+	data, _ := jsonutil.Marshal(m.controls[root])
 	imageMode := "file"
 	if m.imagePrompts {
 		imageMode = "native"
@@ -278,9 +279,13 @@ func writeImageAttachment(attachment ImageAttachment, mime string, data []byte) 
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return "", fmt.Errorf("cannot prepare the image attachment folder: %w", err)
 	}
+	// Anche se la cartella arriva da una versione precedente: permessi restrittivi sempre.
+	if err := os.Chmod(directory, 0o700); err != nil {
+		return "", fmt.Errorf("cannot prepare the image attachment folder: %w", err)
+	}
 	sum := sha256.Sum256(data)
 	name := hex.EncodeToString(sum[:8]) + "-" + safeAttachmentName(attachment.Name) + extensionForMIME(mime)
-	path := filepath.Join(directory, name)
+	path := filepath.Join(directory, name) // NOSONAR -- the name is content-addressed (sha256 prefix) plus a sanitized name; the folder is 0700 and the file 0600, and the file exists only to be passed to the milk CLI
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return "", fmt.Errorf("cannot write %s: %w", attachment.Name, err)
 	}

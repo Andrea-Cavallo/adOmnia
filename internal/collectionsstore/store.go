@@ -6,13 +6,15 @@ package collectionsstore
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
 )
@@ -47,21 +49,21 @@ type workspace struct {
 	// Tree holds only the metadata the collection tree renders (ids, names,
 	// methods, urls). It is an optional projection: shards written before the
 	// split stay valid and receive it on their next save.
-	Tree        json.RawMessage `json:"tree,omitempty"`
-	Collections json.RawMessage `json:"collections"`
-	CreatedAt   string          `json:"createdAt"`
-	UpdatedAt   string          `json:"updatedAt"`
+	Tree        jsonv1.RawMessage `json:"tree,omitempty"`
+	Collections jsonv1.RawMessage `json:"collections"`
+	CreatedAt   string            `json:"createdAt"`
+	UpdatedAt   string            `json:"updatedAt"`
 }
 
 // legacyWorkspace is the version-2 workspace shape written to collections/all:
 // complete inline collections and no tree projection, so a downgraded build
 // still reads every request body.
 type legacyWorkspace struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Collections json.RawMessage `json:"collections"`
-	CreatedAt   string          `json:"createdAt"`
-	UpdatedAt   string          `json:"updatedAt"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Collections jsonv1.RawMessage `json:"collections"`
+	CreatedAt   string            `json:"createdAt"`
+	UpdatedAt   string            `json:"updatedAt"`
 }
 
 type legacySnapshot struct {
@@ -75,8 +77,8 @@ type legacySnapshot struct {
 // before parsing request contents. CollectionsJSON is JSON text rather than an
 // embedded value so its parse can be deferred past the first tree render.
 type WorkspacePayload struct {
-	Workspace       json.RawMessage `json:"workspace"`
-	CollectionsJSON string          `json:"collectionsJson"`
+	Workspace       jsonv1.RawMessage `json:"workspace"`
+	CollectionsJSON string            `json:"collectionsJson"`
 }
 
 // Critical contains either a v3 index and active workspace, or the untouched
@@ -132,7 +134,7 @@ func decodeWorkspace(data []byte) (workspace, error) {
 		return workspace{}, fmt.Errorf("invalid workspace id")
 	}
 	if len(value.Collections) == 0 {
-		value.Collections = json.RawMessage("[]")
+		value.Collections = jsonv1.RawMessage("[]")
 	}
 	// Unmarshal above already validated the complete JSON, including RawMessage.
 	collections := bytes.TrimSpace(value.Collections)
@@ -167,7 +169,7 @@ func applyMetadata(value workspace, meta WorkspaceMeta) legacyWorkspace {
 func marshalWorkspace(value workspace, meta WorkspaceMeta) ([]byte, error) {
 	// Encode only the small metadata object; preserve the validated collection
 	// bytes without sending every request body through the JSON encoder again.
-	header, err := json.Marshal(meta)
+	header, err := jsonutil.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +188,7 @@ func marshalWorkspace(value workspace, meta WorkspaceMeta) ([]byte, error) {
 // the metadata and tree projection parse immediately, the complete collections
 // JSON text is parsed later by the renderer.
 func marshalWorkspacePayload(value workspace, meta WorkspaceMeta) (WorkspacePayload, error) {
-	header, err := json.Marshal(meta)
+	header, err := jsonutil.Marshal(meta)
 	if err != nil {
 		return WorkspacePayload{}, err
 	}
@@ -227,9 +229,9 @@ func migrateLegacy(bucket *bolt.Bucket, legacyData []byte) (Critical, error) {
 		return Critical{}, nil
 	}
 	var legacy struct {
-		Version           int               `json:"version"`
-		ActiveWorkspaceID string            `json:"activeWorkspaceId"`
-		Workspaces        []json.RawMessage `json:"workspaces"`
+		Version           int                 `json:"version"`
+		ActiveWorkspaceID string              `json:"activeWorkspaceId"`
+		Workspaces        []jsonv1.RawMessage `json:"workspaces"`
 	}
 	if err := json.Unmarshal(legacyData, &legacy); err != nil || legacy.Version < 2 || len(legacy.Workspaces) == 0 {
 		return Critical{LegacyJSON: string(legacyData)}, nil
@@ -253,7 +255,7 @@ func migrateLegacy(bucket *bolt.Bucket, legacyData []byte) (Critical, error) {
 	if _, ok := workspaceData[index.ActiveWorkspaceID]; !ok {
 		index.ActiveWorkspaceID = index.Workspaces[0].ID
 	}
-	indexData, err := json.Marshal(index)
+	indexData, err := jsonutil.Marshal(index)
 	if err != nil {
 		return Critical{}, err
 	}
@@ -371,7 +373,7 @@ func Save(indexJSON string, workspaceJSON []string) error {
 		}
 		changed[value.ID] = value
 	}
-	indexData, err := json.Marshal(index)
+	indexData, err := jsonutil.Marshal(index)
 	if err != nil {
 		return err
 	}
@@ -495,7 +497,7 @@ func rebuildLegacySnapshot(db *bolt.DB) error {
 			}
 			legacy.Workspaces = append(legacy.Workspaces, applyMetadata(value, meta))
 		}
-		legacyData, err := json.Marshal(legacy)
+		legacyData, err := jsonutil.Marshal(legacy)
 		if err != nil {
 			return err
 		}

@@ -26,10 +26,13 @@ if (!root) {
   process.exit(1)
 }
 
+// NOSONAR -- root is the Simple Icons checkout the developer passes on the command line: this is a
+// dev-only generator, run by hand (or by an agent) against a local clone, never on user input.
 const data = JSON.parse(readFileSync(join(root, 'data', 'simple-icons.json'), 'utf8'))
 const byTitle = new Map(data.map((entry) => [entry.title, entry]))
 
 const icons = SLUGS.map((slug) => {
+  // NOSONAR -- slug comes from the constant SLUGS list above, never from a request or argument.
   const svg = readFileSync(join(root, 'icons', `${slug}.svg`), 'utf8')
   const title = svg.match(/<title>([^<]+)<\/title>/)?.[1]
   const path = svg.match(/ d="([^"]+)"/)?.[1]

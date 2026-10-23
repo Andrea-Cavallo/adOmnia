@@ -140,7 +140,7 @@ export function TemplateMarketplace() {
       const collection: Collection = {
         id: uid(),
         name: template.name,
-        children: payload.requests.map(normalizeTemplateRequest),
+        children: payload.requests.map((request, index) => normalizeTemplateRequest(request, index)),
       }
       useCollectionsStore.getState().importCollection(collection)
       useAppStore.getState().setActiveRail('collections')

@@ -1,10 +1,10 @@
 package milk
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -54,7 +54,7 @@ func serveRelease(t *testing.T, binary []byte, checksum string) string {
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/releases":
-			_ = json.NewEncoder(w).Encode([]release{{Tag: "v0.4.0", Prerelease: true, Assets: []releaseAsset{
+			_ = jsonutil.MarshalWrite(w, []release{{Tag: "v0.4.0", Prerelease: true, Assets: []releaseAsset{
 				{Name: asset, URL: server.URL + "/bin", Size: int64(len(binary))},
 				{Name: asset + ".sha256", URL: server.URL + "/sum"},
 			}}})

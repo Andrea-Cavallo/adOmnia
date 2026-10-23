@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeftRight, ZoomOut } from 'lucide-react'
 import {
   CODE_ORIGINS, codeOrigin, codeOriginColor, formatProfilePercent, formatProfileValue, sampleValue, shortFunctionName,
@@ -81,6 +81,18 @@ function useElementWidth<T extends HTMLElement>() {
   return { ref, width }
 }
 
+function flameTooltip(fn: ProfileFunction, value: number, color: string, unit: string, total: number): ReactNode {
+  return (
+    <>
+      <div className="mb-1 break-all font-mono text-[11.5px] text-text-1">{fn.name}</div>
+      <VizTooltipRow label={CODE_ORIGINS.find((origin) => origin.id === codeOrigin(fn))?.label ?? ''} value={fn.package || '—'} color={color} />
+      <VizTooltipRow label="Value" value={formatProfileValue(value, unit)} />
+      <VizTooltipRow label="Share of total" value={formatProfilePercent(value, total)} />
+      <div className="mt-1 text-[10.5px] text-text-4">Click to zoom · select to see callers</div>
+    </>
+  )
+}
+
 interface CodeStudioFlameGraphProps {
   flame: ProfileFlame | null
   total: number
@@ -98,10 +110,12 @@ interface CodeStudioFlameGraphProps {
 export function CodeStudioFlameGraph({ flame, total, sampleIndex, unit, query, selected, onSelect }: CodeStudioFlameGraphProps) {
   const layout = useMemo(() => layoutFlame(flame, total, sampleIndex), [flame, total, sampleIndex])
   const [icicle, setIcicle] = useState(false)
-  const [focus, setFocus] = useState<FlameFrame | null>(null)
+  // The zoom belongs to one layout: a new layout (other profile/sample type) resets it without an effect.
+  const [zoom, setZoom] = useState<{ layout: typeof layout; frame: FlameFrame } | null>(null)
+  const focus = zoom?.layout === layout ? zoom.frame : null
+  const setFocus = (frame: FlameFrame | null) => setZoom(frame ? { layout, frame } : null)
   const { ref, width } = useElementWidth<HTMLDivElement>()
   const { tooltip, show, hide } = useVizTooltip()
-  useEffect(() => setFocus(null), [layout])
 
   const needle = query.trim().toLowerCase()
   const focusX = focus?.x ?? 0
@@ -160,15 +174,7 @@ export function CodeStudioFlameGraph({ flame, total, sampleIndex, unit, query, s
                     className="cursor-pointer"
                     opacity={dimmed ? 0.38 : 1}
                     onClick={() => { onSelect(fn); if (frame.depth >= focusDepth && frame !== focus) setFocus(frame) }}
-                    onMouseMove={(event) => show(event, (
-                      <>
-                        <div className="mb-1 break-all font-mono text-[11.5px] text-text-1">{fn.name}</div>
-                        <VizTooltipRow label={CODE_ORIGINS.find((origin) => origin.id === codeOrigin(fn))?.label ?? ''} value={fn.package || '—'} color={color} />
-                        <VizTooltipRow label="Value" value={formatProfileValue(value, unit)} />
-                        <VizTooltipRow label="Share of total" value={formatProfilePercent(value, total)} />
-                        <div className="mt-1 text-[10.5px] text-text-4">Click to zoom · select to see callers</div>
-                      </>
-                    ))}
+                    onMouseMove={(event) => show(event, flameTooltip(fn, value, color, unit, total))}
                   >
                     <rect
                       x={left}

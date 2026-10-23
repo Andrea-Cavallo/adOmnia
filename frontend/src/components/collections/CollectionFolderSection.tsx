@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Download, Eye, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeSelectFolder } from '@/lib/fileUtils'
@@ -59,11 +59,6 @@ export function CollectionFolderSection({ repoPath, disabled = false, initialCol
     () => repoPath && selectedCollection ? collectionFolderPath(repoPath, selectedCollection.id, selectedCollection.name) : '',
     [repoPath, selectedCollection],
   )
-
-  useEffect(() => {
-    if (!collections.length) setSelectedCollectionId('')
-    else if (!collections.some((collection) => collection.id === selectedCollectionId)) setSelectedCollectionId(collections[0].id)
-  }, [collections, selectedCollectionId])
 
   const run = async (action: () => Promise<string | void>, success: string) => {
     setBusy(true)
