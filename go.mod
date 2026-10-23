@@ -8,7 +8,7 @@ require (
 	github.com/IBM/sarama v1.61.1
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
-	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.4
+	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.5
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.4
 	github.com/aymanbagabas/go-pty v0.2.3
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
