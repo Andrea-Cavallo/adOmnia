@@ -1,7 +1,8 @@
 package mock
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -33,7 +34,7 @@ func TestMockServerStartStop(t *testing.T) {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
 	var status map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&status)
+	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	if status["running"] != false {
 		t.Errorf("expected running=false, got %v", status["running"])
@@ -48,13 +49,13 @@ func TestMockServerStartStop(t *testing.T) {
 		DefaultResponseDelayMs: 0,
 		CorsHeadersAuto:        true,
 	}
-	cfgJSON, _ := json.Marshal(cfg)
+	cfgJSON, _ := jsonutil.Marshal(cfg)
 	resp, err = http.Post(ts.URL+"/mock/start", "application/json", strings.NewReader(string(cfgJSON)))
 	if err != nil {
 		t.Fatalf("POST /mock/start failed: %v", err)
 	}
 	var startRes map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&startRes)
+	json.UnmarshalRead(resp.Body, &startRes)
 	resp.Body.Close()
 	t.Logf("Start response: %+v", startRes)
 
@@ -73,7 +74,7 @@ func TestMockServerStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
-	json.NewDecoder(resp.Body).Decode(&status)
+	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	t.Logf("After start status: running=%v, port=%v", status["running"], status["port"])
 	if status["running"] != true {
@@ -95,7 +96,7 @@ func TestMockServerStartStop(t *testing.T) {
 		t.Fatalf("POST /mock/stop failed: %v", err)
 	}
 	var stopRes map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&stopRes)
+	json.UnmarshalRead(resp.Body, &stopRes)
 	resp.Body.Close()
 	if stopRes["ok"] != true {
 		t.Errorf("expected ok=true from stop, got %v", stopRes)
@@ -106,7 +107,7 @@ func TestMockServerStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
-	json.NewDecoder(resp.Body).Decode(&status)
+	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	if status["running"] != false {
 		t.Errorf("expected running=false after stop, got %v", status["running"])

@@ -46,7 +46,7 @@ type Remediation struct {
 	// È il cuore di "Security Impact Before Update".
 	Introduces []string `json:"introduces,omitempty"`
 	// Blocked dice che la correzione non è applicabile automaticamente.
-	Blocked bool `json:"blocked,omitempty"`
+	Blocked bool `json:"blocked,omitzero"`
 	// BlockedReason spiega perché (es. nessuna versione compatibile, BOM vincolante).
 	BlockedReason string `json:"blockedReason,omitempty"`
 }

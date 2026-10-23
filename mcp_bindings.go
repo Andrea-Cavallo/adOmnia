@@ -3,8 +3,9 @@ package main
 import (
 	"adomnia/internal/mcp"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
+	"adomnia/internal/jsonutil"
 )
 
 const defaultMCPSessionID = "default"
@@ -19,7 +20,7 @@ func NewMCPClient() *MCPClient {
 }
 
 func mcpJSON(value any) string {
-	raw, _ := json.Marshal(value)
+	raw, _ := jsonutil.Marshal(value)
 	return string(raw)
 }
 

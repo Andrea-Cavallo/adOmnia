@@ -1,14 +1,15 @@
 package adomniacli
 
 import (
+	"adomnia/internal/jsonutil"
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"strings"
 	"testing"
 )
 
 func TestMCPHandshakeAndMockStatus(t *testing.T) {
-	empty, _ := json.Marshal(t.TempDir())
+	empty, _ := jsonutil.Marshal(t.TempDir())
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
 {"jsonrpc":"2.0","id":2,"method":"tools/list"}
@@ -25,9 +26,11 @@ func TestMCPHandshakeAndMockStatus(t *testing.T) {
 	}
 	var status struct {
 		Result struct {
-			Content []struct{ Text string }
-			IsError bool
-		}
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+			IsError bool `json:"isError"`
+		} `json:"result"`
 	}
 	if err := json.Unmarshal([]byte(lines[2]), &status); err != nil || status.Result.IsError || !strings.Contains(status.Result.Content[0].Text, `"running":false`) {
 		t.Fatalf("mock_status = %s", lines[2])

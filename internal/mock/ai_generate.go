@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 

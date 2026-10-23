@@ -150,8 +150,8 @@ type ArchFunction struct {
 	ID       string   `json:"id"`
 	Name     string   `json:"name"`
 	Package  string   `json:"package"`
-	Abstract bool     `json:"abstract,omitempty"`
-	Context  bool     `json:"context,omitempty"` // riceve un context.Context
+	Abstract bool     `json:"abstract,omitzero"`
+	Context  bool     `json:"context,omitzero"` // riceve un context.Context
 	Site     ArchSite `json:"site"`
 }
 
@@ -184,7 +184,7 @@ type ArchitectureReport struct {
 	Syncs []ArchSync `json:"syncs,omitempty"`
 	// Goroutines: avvii di lavoro concorrente (go, errgroup, WaitGroup.Go, AfterFunc) con forma, contesto e rischi.
 	Goroutines []ArchGoroutine `json:"goroutines"`
-	Truncated  bool            `json:"truncated,omitempty"`
+	Truncated  bool            `json:"truncated,omitzero"`
 }
 
 // ArchRead è la lettura di una variabile d'ambiente (os.Getenv) o di una chiave di config (viper, koanf).

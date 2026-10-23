@@ -3,7 +3,8 @@
 package bootstrap
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 
@@ -40,15 +41,15 @@ type State struct {
 // decodes each value as part of the response envelope, avoiding escaped JSON
 // strings and a second JSON.parse in every frontend store.
 type StateV2 struct {
-	Version                   int             `json:"version"`
-	Settings                  json.RawMessage `json:"settings"`
-	CollectionsSchema         int             `json:"collectionsSchema"`
-	CollectionsIndex          json.RawMessage `json:"collectionsIndex"`
-	ActiveCollectionWorkspace json.RawMessage `json:"activeCollectionWorkspace"`
-	Environments              json.RawMessage `json:"environments"`
-	Hosts                     json.RawMessage `json:"hosts"`
-	Tabs                      json.RawMessage `json:"tabs"`
-	PayloadBytes              PayloadBytes    `json:"payloadBytes"`
+	Version                   int               `json:"version"`
+	Settings                  jsonv1.RawMessage `json:"settings"`
+	CollectionsSchema         int               `json:"collectionsSchema"`
+	CollectionsIndex          jsonv1.RawMessage `json:"collectionsIndex"`
+	ActiveCollectionWorkspace jsonv1.RawMessage `json:"activeCollectionWorkspace"`
+	Environments              jsonv1.RawMessage `json:"environments"`
+	Hosts                     jsonv1.RawMessage `json:"hosts"`
+	Tabs                      jsonv1.RawMessage `json:"tabs"`
+	PayloadBytes              PayloadBytes      `json:"payloadBytes"`
 }
 
 type PayloadBytes struct {
@@ -131,14 +132,14 @@ func Load() (State, error) {
 	return state, nil
 }
 
-func rawJSON(value, fallback string) (json.RawMessage, error) {
+func rawJSON(value, fallback string) (jsonv1.RawMessage, error) {
 	if value == "" {
 		value = fallback
 	}
-	if !json.Valid([]byte(value)) {
+	if !jsontext.Value([]byte(value)).IsValid() {
 		return nil, fmt.Errorf("invalid persisted JSON")
 	}
-	return json.RawMessage(value), nil
+	return jsonv1.RawMessage(value), nil
 }
 
 // LoadV2 preserves Load as a compatibility fallback while returning a
@@ -157,9 +158,9 @@ func LoadV2() (StateV2, error) {
 		return StateV2{}, err
 	}
 	// LoadCriticalTx already validated and normalized the active workspace.
-	active := json.RawMessage(legacy.ActiveCollectionWorkspace)
+	active := jsonv1.RawMessage(legacy.ActiveCollectionWorkspace)
 	if len(active) == 0 {
-		active = json.RawMessage("null")
+		active = jsonv1.RawMessage("null")
 	}
 	environments, err := rawJSON(legacy.Environments, "null")
 	if err != nil {

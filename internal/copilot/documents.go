@@ -2,7 +2,8 @@ package copilot
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"net/url"
 	"path/filepath"
@@ -179,12 +180,12 @@ type InlineCompletionRequest struct {
 // InlineCompletionItem è un suggerimento in coordinate Monaco. Raw va restituito così com'è per
 // la telemetria di visualizzazione e accettazione richiesta dal server.
 type InlineCompletionItem struct {
-	InsertText  string          `json:"insertText"`
-	StartLine   int             `json:"startLine"`
-	StartColumn int             `json:"startColumn"`
-	EndLine     int             `json:"endLine"`
-	EndColumn   int             `json:"endColumn"`
-	Raw         json.RawMessage `json:"raw"`
+	InsertText  string            `json:"insertText"`
+	StartLine   int               `json:"startLine"`
+	StartColumn int               `json:"startColumn"`
+	EndLine     int               `json:"endLine"`
+	EndColumn   int               `json:"endColumn"`
+	Raw         jsonv1.RawMessage `json:"raw"`
 }
 
 type lspInlineItem struct {
@@ -228,7 +229,7 @@ func (m *Manager) InlineCompletion(ctx context.Context, request InlineCompletion
 	callCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	var result struct {
-		Items []json.RawMessage `json:"items"`
+		Items []jsonv1.RawMessage `json:"items"`
 	}
 	params := map[string]any{
 		"textDocument":      map[string]any{"uri": uri, "version": version},
@@ -259,14 +260,14 @@ func (m *Manager) InlineCompletion(ctx context.Context, request InlineCompletion
 }
 
 // DidShowCompletion segnala al server che il suggerimento è stato mostrato.
-func (m *Manager) DidShowCompletion(raw json.RawMessage) {
+func (m *Manager) DidShowCompletion(raw jsonv1.RawMessage) {
 	if running, err := m.connection(); err == nil {
 		_ = running.Notify("textDocument/didShowCompletion", map[string]any{"item": raw})
 	}
 }
 
 // DidAcceptCompletion esegue il comando di accettazione allegato al suggerimento.
-func (m *Manager) DidAcceptCompletion(raw json.RawMessage) {
+func (m *Manager) DidAcceptCompletion(raw jsonv1.RawMessage) {
 	var item struct {
 		Command *command `json:"command"`
 	}
@@ -280,7 +281,7 @@ func (m *Manager) DidAcceptCompletion(raw json.RawMessage) {
 }
 
 // DidPartiallyAcceptCompletion segnala un'accettazione parziale (parola per parola).
-func (m *Manager) DidPartiallyAcceptCompletion(raw json.RawMessage, acceptedLength int) {
+func (m *Manager) DidPartiallyAcceptCompletion(raw jsonv1.RawMessage, acceptedLength int) {
 	if running, err := m.connection(); err == nil {
 		_ = running.Notify("textDocument/didPartiallyAcceptCompletion", map[string]any{"item": raw, "acceptedLength": acceptedLength})
 	}

@@ -1,12 +1,14 @@
 package java
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 
 // DebugCommand executes a command on this project's Java language server.
-type DebugCommand func(command string, arguments ...any) (json.RawMessage, error)
+type DebugCommand func(command string, arguments ...any) (jsonv1.RawMessage, error)
 
 func ResolveDebugProject(rootURI string, options *DebugOptions, execute DebugCommand) error {
 	var mains []struct {
@@ -35,7 +37,7 @@ func ResolveDebugProject(rootURI string, options *DebugOptions, execute DebugCom
 
 func PrepareDebugRuntime(options *DebugOptions, execute DebugCommand) error {
 	// Java Debug Server 0.53.1 expects a JSON string, not a JSON object.
-	params, err := json.Marshal(struct {
+	params, err := jsonutil.Marshal(struct {
 		MainClass   string `json:"mainClass"`
 		ProjectName string `json:"projectName"`
 		IsFullBuild bool   `json:"isFullBuild"`

@@ -3,7 +3,7 @@ package requestcontract
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 )
 
 type KVRow struct {
@@ -52,7 +53,7 @@ type Variable struct {
 	Key     string `json:"key"`
 	Value   string `json:"value"`
 	Enabled bool   `json:"enabled"`
-	Secret  bool   `json:"secret,omitempty"`
+	Secret  bool   `json:"secret,omitzero"`
 }
 
 type InheritancePolicy struct {
@@ -257,9 +258,9 @@ func RequestBodyString(req Request, vars map[string]string) (string, string, str
 		}
 		payload := map[string]any{"query": query}
 		if strings.TrimSpace(variables) != "" {
-			payload["variables"] = json.RawMessage(variables)
+			payload["variables"] = jsonv1.RawMessage(variables)
 		}
-		data, err := json.Marshal(payload)
+		data, err := jsonutil.Marshal(payload)
 		if err != nil {
 			return "", "", err.Error()
 		}

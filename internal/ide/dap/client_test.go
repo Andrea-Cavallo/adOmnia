@@ -1,9 +1,10 @@
 package dap
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net"
 	"testing"
@@ -15,7 +16,7 @@ func fakeAdapter(t *testing.T, conn net.Conn) {
 	t.Helper()
 	reader := bufio.NewReader(conn)
 	send := func(value map[string]any) {
-		data, _ := json.Marshal(value)
+		data, _ := jsonutil.Marshal(value)
 		fmt.Fprintf(conn, "Content-Length: %d\r\n\r\n%s", len(data), data)
 	}
 	var held []map[string]any

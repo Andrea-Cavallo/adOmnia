@@ -1,7 +1,7 @@
 package generator
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +21,7 @@ func TestGenerateWritesRunnableServerScaffold(t *testing.T) {
 			},
 		}},
 	}
-	raw, err := json.Marshal(input)
+	raw, err := jsonutil.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
 	}

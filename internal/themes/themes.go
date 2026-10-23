@@ -6,12 +6,14 @@ package themes
 
 import (
 	"adomnia/internal/storage"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -110,7 +112,7 @@ func (tm *ThemeManager) SaveTheme(theme Theme) error {
 	}
 	theme.UpdatedAt = now
 
-	data, err := json.Marshal(theme)
+	data, err := jsonutil.Marshal(theme)
 	if err != nil {
 		return fmt.Errorf("failed to marshal theme: %w", err)
 	}
@@ -154,7 +156,7 @@ func (tm *ThemeManager) ExportTheme(id string) (string, error) {
 		return "", err
 	}
 
-	data, err := json.MarshalIndent(theme, "", "  ")
+	data, err := jsonutil.Marshal(theme, jsontext.WithIndent("  "))
 	if err != nil {
 		return "", fmt.Errorf("failed to export theme: %w", err)
 	}

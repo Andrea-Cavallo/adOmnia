@@ -2,8 +2,10 @@ package codestudio
 
 import (
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -112,7 +114,7 @@ func (s *Service) syncSharedRunConfigurations(session Session) {
 		}
 	}
 	sort.SliceStable(shared, func(i, j int) bool { return shared[i].Order < shared[j].Order })
-	data, err := json.MarshalIndent(sharedRunConfigurations{Format: "adomnia-run-configurations", Version: 1, Configurations: shared}, "", "  ")
+	data, err := jsonutil.Marshal(sharedRunConfigurations{Format: "adomnia-run-configurations", Version: 1, Configurations: shared}, jsontext.WithIndent("  "))
 	if err != nil {
 		return
 	}

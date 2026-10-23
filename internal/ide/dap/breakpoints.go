@@ -2,7 +2,7 @@ package dap
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -21,7 +21,7 @@ type Breakpoint struct {
 	HitCondition string `json:"hitCondition,omitempty"`
 	// LogMessage trasforma il breakpoint in logpoint: stampa il messaggio ({espressione}) senza fermarsi.
 	LogMessage string `json:"logMessage,omitempty"`
-	Disabled   bool   `json:"disabled,omitempty"`
+	Disabled   bool   `json:"disabled,omitzero"`
 }
 
 // UnmarshalJSON legge anche il formato salvato fino alla v0.9.42, dove un breakpoint era solo il numero di riga.
@@ -46,7 +46,7 @@ type BreakpointState struct {
 	Condition    string `json:"condition,omitempty"`
 	HitCondition string `json:"hitCondition,omitempty"`
 	LogMessage   string `json:"logMessage,omitempty"`
-	Disabled     bool   `json:"disabled,omitempty"`
+	Disabled     bool   `json:"disabled,omitzero"`
 	Verified     bool   `json:"verified"`
 	Message      string `json:"message,omitempty"`
 }
@@ -63,7 +63,7 @@ type FunctionBreakpoint struct {
 	Name         string `json:"name"`
 	Condition    string `json:"condition,omitempty"`
 	HitCondition string `json:"hitCondition,omitempty"`
-	Disabled     bool   `json:"disabled,omitempty"`
+	Disabled     bool   `json:"disabled,omitzero"`
 }
 
 // FunctionBreakpointSettings sono i breakpoint non legati a una riga, salvati per progetto.
@@ -77,7 +77,7 @@ type FunctionBreakpointState struct {
 	Name         string `json:"name"`
 	Condition    string `json:"condition,omitempty"`
 	HitCondition string `json:"hitCondition,omitempty"`
-	Disabled     bool   `json:"disabled,omitempty"`
+	Disabled     bool   `json:"disabled,omitzero"`
 	Verified     bool   `json:"verified"`
 	Message      string `json:"message,omitempty"`
 }

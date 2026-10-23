@@ -97,7 +97,7 @@ type Impact struct {
 	// Risk: low | medium | high, con i motivi leggibili.
 	Risk        string   `json:"risk"`
 	RiskReasons []string `json:"riskReasons"`
-	Truncated   bool     `json:"truncated,omitempty"`
+	Truncated   bool     `json:"truncated,omitzero"`
 }
 
 const maxImpactDepth = 12

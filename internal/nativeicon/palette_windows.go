@@ -18,7 +18,7 @@ func loadPalettePair(mode, accent string) (iconPair, error) {
 		if err != nil {
 			return 0, err
 		}
-		handle, _, e := createIcon.Call(uintptr(unsafe.Pointer(&frame[0])), uintptr(len(frame)), 1, 0x30000, uintptr(size), uintptr(size), 0)
+		handle, _, e := createIcon.Call(uintptr(unsafe.Pointer(&frame[0])), uintptr(len(frame)), 1, 0x30000, uintptr(size), uintptr(size), 0) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 		if handle == 0 {
 			return 0, fmt.Errorf("create palette icon: %w", e)
 		}

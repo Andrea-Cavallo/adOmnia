@@ -2,9 +2,9 @@ package oauth
 
 import (
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -73,7 +73,7 @@ func StartHandler(w http.ResponseWriter, r *http.Request) {
 	oauthSessionsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	_ = jsonutil.MarshalWrite(w, map[string]string{
 		"state":       state,
 		"redirectUri": fmt.Sprintf("http://127.0.0.1:%d/oauth/callback", serverPort),
 	})
@@ -157,7 +157,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(response)
+	_ = jsonutil.MarshalWrite(w, response)
 }
 
 // RegisterHandlers registers the OAuth loopback authorization endpoints.

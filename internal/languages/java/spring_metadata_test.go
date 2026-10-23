@@ -1,8 +1,8 @@
 package java
 
 import (
+	"adomnia/internal/jsonutil"
 	"archive/zip"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -160,7 +160,7 @@ func TestMetadataCacheRoundTrip(t *testing.T) {
 	if loaded.Repository != "r" || len(loaded.Entries["/a.jar"].Properties) != 1 {
 		t.Fatalf("round trip: %+v", loaded)
 	}
-	encoded, err := json.Marshal(loaded)
+	encoded, err := jsonutil.Marshal(loaded)
 	if err != nil || len(encoded) == 0 {
 		t.Fatalf("json: %v", err)
 	}

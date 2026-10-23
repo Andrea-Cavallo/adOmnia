@@ -1,8 +1,10 @@
 package java
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,7 +35,7 @@ func TestDebugRuntimeBuildsMainBeforeLaunchingJava(t *testing.T) {
 	defer cancel()
 	options := DebugOptions{MainClass: "com.wes.openai.SpringBootApp", ProjectName: "fixture"}
 	var commands []string
-	err = PrepareDebugRuntime(&options, func(command string, args ...any) (json.RawMessage, error) {
+	err = PrepareDebugRuntime(&options, func(command string, args ...any) (jsonv1.RawMessage, error) {
 		commands = append(commands, command)
 		switch command {
 		case "vscode.java.buildWorkspace":
@@ -43,11 +45,11 @@ func TestDebugRuntimeBuildsMainBeforeLaunchingJava(t *testing.T) {
 			if data, err := exec.CommandContext(ctx, javacBinary, "-g", "-d", output, source).CombinedOutput(); err != nil {
 				t.Fatalf("javac: %v: %s", err, data)
 			}
-			return json.RawMessage(`1`), nil
+			return jsonv1.RawMessage(`1`), nil
 		case CommandResolveClasspath:
-			return json.Marshal([][]string{{}, {output}})
+			return jsonutil.Marshal([][]string{{}, {output}})
 		case CommandResolveJavaExec:
-			return json.Marshal(javaBinary)
+			return jsonutil.Marshal(javaBinary)
 		default:
 			t.Fatalf("unexpected command: %s", command)
 			return nil, nil
@@ -69,7 +71,7 @@ func TestDebugRuntimeStopsWhenCompilationFails(t *testing.T) {
 		t.Run(result, func(t *testing.T) {
 			options := DebugOptions{MainClass: "com.wes.openai.SpringBootApp", ProjectName: "app"}
 			calls := 0
-			err := PrepareDebugRuntime(&options, func(command string, args ...any) (json.RawMessage, error) {
+			err := PrepareDebugRuntime(&options, func(command string, args ...any) (jsonv1.RawMessage, error) {
 				calls++
 				if command != CommandBuildWorkspace || len(args) != 1 {
 					t.Fatalf("must compile first: %s %v", command, args)
@@ -86,7 +88,7 @@ func TestDebugRuntimeStopsWhenCompilationFails(t *testing.T) {
 				if json.Unmarshal([]byte(encoded), &params) != nil || params.MainClass != options.MainClass || params.ProjectName != "app" || params.IsFullBuild {
 					t.Fatalf("build parameters: %s", encoded)
 				}
-				return json.RawMessage(result), nil
+				return jsonv1.RawMessage(result), nil
 			})
 			if err == nil || calls != 1 || options.ClassPaths != nil || options.JavaExec != "" {
 				t.Fatalf("failed compilation must prevent launch resolution: options=%+v calls=%d err=%v", options, calls, err)

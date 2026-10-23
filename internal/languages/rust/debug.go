@@ -2,7 +2,7 @@ package rust
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -21,8 +21,8 @@ type DebugOptions struct {
 	ProgramArguments []string `json:"programArguments,omitempty"`
 	// Come la Run: lo stesso build per debug e per esecuzione (features, profilo, target).
 	Features          []string `json:"features,omitempty"`
-	AllFeatures       bool     `json:"allFeatures,omitempty"`
-	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitempty"`
+	AllFeatures       bool     `json:"allFeatures,omitzero"`
+	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitzero"`
 	Profile           string   `json:"profile,omitempty"`
 	Target            string   `json:"target,omitempty"`
 	// Adapter è il CodeLLDB già localizzato dall'host (cartella strumenti, PATH, VS Code).

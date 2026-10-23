@@ -3,13 +3,14 @@ package nettools
 import (
 	"crypto"
 	"crypto/x509"
-	"encoding/json"
+	"encoding/json/v2"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"adomnia/internal/jsonutil"
 	"github.com/youmark/pkcs8"
 )
 
@@ -143,7 +144,7 @@ func certPemEncryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request pemEncryptRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPEMInputBytes+4096)).Decode(&request); err != nil {
+	if err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, maxPEMInputBytes+4096), &request); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
@@ -157,5 +158,5 @@ func certPemEncryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(pemEncryptResponse{PEM: text, Keys: keys})
+	_ = jsonutil.MarshalWrite(w, pemEncryptResponse{PEM: text, Keys: keys})
 }

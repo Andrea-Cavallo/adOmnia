@@ -11,9 +11,9 @@ type javaAnnotation struct {
 	Name        string `json:"name"`     // senza `@` e senza package (`Autowired`)
 	FullName    string `json:"fullName"` // come scritto (`org.springframework.beans.factory.annotation.Autowired`)
 	Args        string `json:"args,omitempty"`
-	Line        int    `json:"line,omitempty"`
-	StartColumn int    `json:"startColumn,omitempty"`
-	EndColumn   int    `json:"endColumn,omitempty"`
+	Line        int    `json:"line,omitzero"`
+	StartColumn int    `json:"startColumn,omitzero"`
+	EndColumn   int    `json:"endColumn,omitzero"`
 }
 
 // javaParam è un parametro di metodo o costruttore.
@@ -32,12 +32,12 @@ type javaMember struct {
 	Annotations []javaAnnotation `json:"annotations,omitempty"`
 	Params      []javaParam      `json:"params,omitempty"`
 	// Final, Static e Initialized servono alle iniezioni che Lombok genera (@RequiredArgsConstructor): solo i campi.
-	Final       bool `json:"final,omitempty"`
-	Static      bool `json:"static,omitempty"`
-	Initialized bool `json:"initialized,omitempty"`
-	Line        int  `json:"line,omitempty"`
-	StartColumn int  `json:"startColumn,omitempty"`
-	EndColumn   int  `json:"endColumn,omitempty"`
+	Final       bool `json:"final,omitzero"`
+	Static      bool `json:"static,omitzero"`
+	Initialized bool `json:"initialized,omitzero"`
+	Line        int  `json:"line,omitzero"`
+	StartColumn int  `json:"startColumn,omitzero"`
+	EndColumn   int  `json:"endColumn,omitzero"`
 }
 
 // javaTypeDecl è una classe, interfaccia, enum o record con le sue annotation.
@@ -55,9 +55,9 @@ type javaTypeDecl struct {
 	bodyStart, bodyEnd int
 	// declEnd è l'offset di byte a cui finisce la dichiarazione del tipo.
 	declEnd     int
-	Line        int `json:"line,omitempty"`
-	StartColumn int `json:"startColumn,omitempty"`
-	EndColumn   int `json:"endColumn,omitempty"`
+	Line        int `json:"line,omitzero"`
+	StartColumn int `json:"startColumn,omitzero"`
+	EndColumn   int `json:"endColumn,omitzero"`
 }
 
 // javaSource è il risultato del parsing leggero di un file .java.

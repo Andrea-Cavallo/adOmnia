@@ -1,6 +1,7 @@
 package update
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/netpolicy"
 	"archive/zip"
 	"context"
@@ -8,7 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"golang.org/x/mod/semver"
@@ -249,7 +250,7 @@ func (m *Manager) fetch(force bool) ([]release, error) {
 }
 func (m *Manager) persistCache() {
 	if os.MkdirAll(m.dir, 0700) == nil {
-		raw, _ := json.Marshal(m.cache)
+		raw, _ := jsonutil.Marshal(m.cache)
 		_ = os.WriteFile(filepath.Join(m.dir, "releases-cache.json"), raw, 0600)
 	}
 }
@@ -514,7 +515,7 @@ func extractPackage(name, root string) error {
 			_ = out.Close()
 			return fmt.Errorf("update archive entry %s declares more than 1 GiB, refusing to extract", f.Name)
 		}
-		n, e := io.Copy(out, io.LimitReader(in, int64(f.UncompressedSize64)+1))
+		n, e := io.Copy(out, io.LimitReader(in, int64(f.UncompressedSize64)+1)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
 		in.Close()
 		closeErr := out.Close()
 		if e != nil {

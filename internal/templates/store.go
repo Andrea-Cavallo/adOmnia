@@ -6,13 +6,15 @@ package templates
 
 import (
 	"adomnia/internal/storage"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -223,7 +225,7 @@ func (ts *TemplateStore) SaveTemplate(t Template) error {
 		t.Tags = []string{}
 	}
 
-	data, err := json.Marshal(t)
+	data, err := jsonutil.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("failed to marshal template: %w", err)
 	}
@@ -267,7 +269,7 @@ func (ts *TemplateStore) ExportTemplate(id string) (string, error) {
 		return "", err
 	}
 
-	data, err := json.MarshalIndent(tpl, "", "  ")
+	data, err := jsonutil.Marshal(tpl, jsontext.WithIndent("  "))
 	if err != nil {
 		return "", fmt.Errorf("failed to export template: %w", err)
 	}

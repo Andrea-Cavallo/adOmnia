@@ -1,7 +1,8 @@
 package mock
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,13 +52,13 @@ func TestMockRapidRestart(t *testing.T) {
 				Mode: "first_active",
 			}},
 		}
-		cfgJSON, _ := json.Marshal(cfg)
+		cfgJSON, _ := jsonutil.Marshal(cfg)
 		resp, err := http.Post(ts.URL+"/mock/start", "application/json", strings.NewReader(string(cfgJSON)))
 		if err != nil {
 			t.Fatalf("iteration %d: start failed: %v", i, err)
 		}
 		var startRes map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&startRes)
+		json.UnmarshalRead(resp.Body, &startRes)
 		resp.Body.Close()
 		if startRes["ok"] != true {
 			t.Fatalf("iteration %d: expected ok=true, got %v", i, startRes)
@@ -118,13 +119,13 @@ func TestMockPortConflict(t *testing.T) {
 		Port:      port,
 		Endpoints: []mockEndpoint{},
 	}
-	cfgJSON, _ := json.Marshal(cfg)
+	cfgJSON, _ := jsonutil.Marshal(cfg)
 	resp, err := http.Post(ts.URL+"/mock/start", "application/json", strings.NewReader(string(cfgJSON)))
 	if err != nil {
 		t.Fatalf("first start failed: %v", err)
 	}
 	var res map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&res)
+	json.UnmarshalRead(resp.Body, &res)
 	resp.Body.Close()
 	if res["ok"] != true {
 		t.Fatalf("first start: expected ok=true, got %v", res)
@@ -137,7 +138,7 @@ func TestMockPortConflict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second start failed: %v", err)
 	}
-	json.NewDecoder(resp2.Body).Decode(&res)
+	json.UnmarshalRead(resp2.Body, &res)
 	resp2.Body.Close()
 	if res["ok"] != true {
 		t.Errorf("second start: expected ok=true (old server should be shut down), got %v", res)
@@ -173,13 +174,13 @@ func TestMockNoEndpoints(t *testing.T) {
 		Endpoints:       []mockEndpoint{},
 		CorsHeadersAuto: true,
 	}
-	cfgJSON, _ := json.Marshal(cfg)
+	cfgJSON, _ := jsonutil.Marshal(cfg)
 	resp, err := http.Post(ts.URL+"/mock/start", "application/json", strings.NewReader(string(cfgJSON)))
 	if err != nil {
 		t.Fatalf("start with 0 endpoints failed: %v", err)
 	}
 	var startRes map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&startRes)
+	json.UnmarshalRead(resp.Body, &startRes)
 	resp.Body.Close()
 	if startRes["ok"] != true {
 		t.Fatalf("expected ok=true, got %v", startRes)

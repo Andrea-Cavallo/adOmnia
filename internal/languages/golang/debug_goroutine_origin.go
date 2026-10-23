@@ -13,7 +13,7 @@ type GoroutineCreation struct {
 	// SourceLine è il testo di Location.
 	SourceLine string `json:"sourceLine,omitempty"`
 	// ParentID è la goroutine che ha eseguito l'istruzione go (Go 1.21+); 0 se non nota.
-	ParentID int `json:"parentId,omitempty"`
+	ParentID int `json:"parentId,omitzero"`
 }
 
 // GoroutineCreation legge dal runtime il punto di creazione della goroutine del thread indicato:

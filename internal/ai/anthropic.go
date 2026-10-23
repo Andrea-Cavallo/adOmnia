@@ -3,9 +3,10 @@ package ai
 import (
 	"adomnia/internal/netpolicy"
 
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,7 +98,7 @@ func (p *anthropicProvider) Complete(ctx context.Context, req CompletionRequest)
 	if req.SystemPrompt != "" {
 		body["system"] = req.SystemPrompt
 	}
-	raw, _ := json.Marshal(body)
+	raw, _ := jsonutil.Marshal(body)
 	httpReq, err := p.conn.newRequest(ctx, http.MethodPost, "/v1/messages", raw)
 	if err != nil {
 		return CompletionResponse{}, err
@@ -121,7 +122,7 @@ func (p *anthropicProvider) Complete(ctx context.Context, req CompletionRequest)
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &out); err != nil {
 		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 			return CompletionResponse{}, fmt.Errorf("anthropic API: HTTP %d", resp.StatusCode)
 		}

@@ -1,7 +1,6 @@
 package java
 
 import (
-	"encoding/json"
 	"encoding/xml"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 
 	"adomnia/internal/ide/language"
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 var _ language.TestRunner = (*Language)(nil)
@@ -135,7 +135,7 @@ func TestTestCommandRunsTheUnitAndRejectsUnsafeFilters(t *testing.T) {
 	write(t, filepath.Join(root, "mvnw"), "")
 	write(t, filepath.Join(root, ".mvn", "wrapper", "maven-wrapper.properties"), "")
 	write(t, filepath.Join(root, "src", "test", "java", "FooTest.java"), "class FooTest {}")
-	options, _ := json.Marshal(TestOptions{Packages: []string{"src/test/java/FooTest.java"}, Run: "works"})
+	options, _ := jsonutil.Marshal(TestOptions{Packages: []string{"src/test/java/FooTest.java"}, Run: "works"})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: options})
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestTestCommandRunsTheUnitAndRejectsUnsafeFilters(t *testing.T) {
 	if spec.WorkingDirectory != root || !strings.HasPrefix(filepath.Base(spec.Executable), "mvnw") || parser == nil || !contains(spec.Arguments, "-Dtest=FooTest#works") {
 		t.Fatalf("unexpected command: %+v", spec)
 	}
-	bad, _ := json.Marshal(TestOptions{Packages: []string{"src/test/java/FooTest.java"}, Run: "x; rm -rf /"})
+	bad, _ := jsonutil.Marshal(TestOptions{Packages: []string{"src/test/java/FooTest.java"}, Run: "x; rm -rf /"})
 	if _, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: bad}); err == nil {
 		t.Error("a method filter that is not an identifier must be refused")
 	}

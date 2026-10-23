@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 
 	"adomnia/internal/perf"
+	"adomnia/internal/jsonutil"
 )
 
 // PerfRecordingStatus reports the active scenario recording as local JSON:
@@ -14,7 +14,7 @@ func (a *App) PerfRecordingStatus() string {
 	if recorder := perf.Current(); recorder != nil && recorder.Active() {
 		status = map[string]any{"active": true, "scenario": recorder.Scenario(), "path": recorder.Path()}
 	}
-	raw, _ := json.Marshal(status)
+	raw, _ := jsonutil.Marshal(status)
 	return string(raw)
 }
 

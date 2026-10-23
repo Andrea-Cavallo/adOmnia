@@ -1,8 +1,9 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,7 +130,7 @@ func TestRunConfigurationsAreIsolatedPerSessionAndRedactSecrets(t *testing.T) {
 	}
 
 	snapshot := manager.Snapshot()
-	encoded, err := json.Marshal(snapshot)
+	encoded, err := jsonutil.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

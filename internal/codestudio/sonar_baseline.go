@@ -1,7 +1,9 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,7 +50,7 @@ func writeSonarBaseline(root string, issues []SonarIssue) (int, error) {
 		}
 		return a.Message < b.Message
 	})
-	data, err := json.MarshalIndent(baseline, "", "  ")
+	data, err := jsonutil.Marshal(baseline, jsontext.WithIndent("  "))
 	if err != nil {
 		return 0, err
 	}

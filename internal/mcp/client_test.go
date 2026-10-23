@@ -1,8 +1,9 @@
 package mcp
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,11 +33,11 @@ func TestNewStdioTransport_RequiresCommand(t *testing.T) {
 func TestClient_ListTools_RoundTrip(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		result, _ := json.Marshal(map[string]any{
+		_ = json.UnmarshalRead(r.Body, &req)
+		result, _ := jsonutil.Marshal(map[string]any{
 			"tools": []Tool{{Name: "echo", Description: "echoes input"}},
 		})
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result:  result,
@@ -62,8 +63,8 @@ func TestClient_ListTools_RoundTrip(t *testing.T) {
 func TestClient_PropagatesJSONRPCError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{
+		_ = json.UnmarshalRead(r.Body, &req)
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error:   &JSONRPCError{Code: -32601, Message: "method not found"},

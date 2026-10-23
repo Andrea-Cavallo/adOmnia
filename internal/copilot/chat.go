@@ -2,7 +2,8 @@ package copilot
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -72,8 +73,8 @@ type ChatModel struct {
 }
 
 type chatProgressEnvelope struct {
-	Token string          `json:"token"`
-	Value json.RawMessage `json:"value"`
+	Token string            `json:"token"`
+	Value jsonv1.RawMessage `json:"value"`
 }
 
 type chatProgressValue struct {
@@ -86,7 +87,7 @@ type chatProgressValue struct {
 		Reply string `json:"reply"`
 	} `json:"editAgentRounds"`
 	Result *struct {
-		Error json.RawMessage `json:"error"`
+		Error jsonv1.RawMessage `json:"error"`
 	} `json:"result"`
 }
 
@@ -375,7 +376,7 @@ func (m *Manager) currentEditorContext() any {
 	return contextDoc(copy, nil)
 }
 
-func (m *Manager) handleChatProgress(raw json.RawMessage) {
+func (m *Manager) handleChatProgress(raw jsonv1.RawMessage) {
 	var envelope chatProgressEnvelope
 	if json.Unmarshal(raw, &envelope) != nil || envelope.Token == "" {
 		return

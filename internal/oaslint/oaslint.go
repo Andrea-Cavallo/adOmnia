@@ -2,12 +2,15 @@ package oaslint
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 
+	"adomnia/internal/jsonutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,7 +69,9 @@ var (
 
 func LintJSON(raw []byte, opts Options) ([]Finding, error) {
 	var spec map[string]any
-	decoder := json.NewDecoder(bytes.NewReader(raw))
+	// I numeri restano raw (json.Number): un linter JSON non deve vederli come float64.
+	// UseNumber è solo del decoder v1, che resta qui accanto a encoding/json/v2.
+	decoder := jsonv1.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	if err := decoder.Decode(&spec); err != nil {
 		return nil, fmt.Errorf("parse OpenAPI JSON: %w", err)
@@ -191,10 +196,10 @@ func HasErrors(findings []Finding) bool {
 }
 
 func FormatJSON(findings []Finding) ([]byte, error) {
-	return json.MarshalIndent(struct {
+	return jsonutil.Marshal(struct {
 		Findings  []Finding `json:"findings"`
 		HasErrors bool      `json:"hasErrors"`
-	}{Findings: findings, HasErrors: HasErrors(findings)}, "", "  ")
+	}{Findings: findings, HasErrors: HasErrors(findings)}, jsontext.WithIndent("  "))
 }
 
 func FormatText(findings []Finding) string {

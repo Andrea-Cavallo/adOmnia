@@ -13,11 +13,12 @@
 package logindex
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -756,7 +757,7 @@ func CloseAll() {
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_ = jsonutil.MarshalWrite(w, payload)
 }
 
 func RegisterHandlers(mux *http.ServeMux) {
@@ -764,7 +765,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 		var request struct {
 			Path string `json:"path"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 			return
 		}
@@ -787,7 +788,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 
 	mux.HandleFunc("/logindex/query", func(w http.ResponseWriter, r *http.Request) {
 		var query Query
-		if err := json.NewDecoder(r.Body).Decode(&query); err != nil {
+		if err := json.UnmarshalRead(r.Body, &query); err != nil {
 			writeJSON(w, http.StatusBadRequest, QueryResult{NextFrom: -1, Error: "invalid request"})
 			return
 		}

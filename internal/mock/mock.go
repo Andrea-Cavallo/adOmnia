@@ -3,12 +3,13 @@ package mock
 import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"net"
 	"net/http"
 	"os"
@@ -33,7 +34,7 @@ func appendHitToFile(entry mockHitEntry) {
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return
 	}
-	line, err := json.Marshal(entry)
+	line, err := jsonutil.Marshal(entry)
 	if err != nil {
 		return
 	}
@@ -80,9 +81,9 @@ type mockServerConfig struct {
 	Port                   int            `json:"port"`
 	Password               string         `json:"password"`
 	Endpoints              []mockEndpoint `json:"endpoints"`
-	DefaultResponseDelayMs int            `json:"defaultResponseDelayMs,omitempty"`
-	CorsHeadersAuto        bool           `json:"corsHeadersAuto,omitempty"`
-	LogHitsToFile          bool           `json:"logHitsToFile,omitempty"`
+	DefaultResponseDelayMs int            `json:"defaultResponseDelayMs,omitzero"`
+	CorsHeadersAuto        bool           `json:"corsHeadersAuto,omitzero"`
+	LogHitsToFile          bool           `json:"logHitsToFile,omitzero"`
 }
 
 var (
@@ -125,7 +126,7 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cfg mockServerConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+	if err := json.UnmarshalRead(r.Body, &cfg); err != nil {
 		devlog.Err("mockStartHandler", "decode configurazione mock fallito", err, nil)
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
@@ -188,7 +189,7 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	devlog.Info("mockStartHandler", "mock server avviato con successo", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "port": cfg.Port})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "port": cfg.Port})
 }
 
 func mockStopHandler(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +223,7 @@ func mockStatusHandler(w http.ResponseWriter, r *http.Request) {
 	mockSrvMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"running": running, "port": port})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"running": running, "port": port})
 }
 
 // mockConfigHandler atomically replaces the runtime configuration without
@@ -235,7 +236,7 @@ func mockConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cfg mockServerConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+	if err := json.UnmarshalRead(r.Body, &cfg); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -256,7 +257,7 @@ func mockConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	devlog.Info("mockConfigHandler", "configurazione mock aggiornata live", map[string]any{"port": activePort, "endpoints": len(cfg.Endpoints)})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"ok": true, "port": activePort, "endpoints": len(cfg.Endpoints)})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "port": activePort, "endpoints": len(cfg.Endpoints)})
 }
 
 func mockHitsHandler(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +267,7 @@ func mockHitsHandler(w http.ResponseWriter, r *http.Request) {
 	mockHitsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(hits)
+	jsonutil.MarshalWrite(w, hits)
 }
 
 func mockHitsClearHandler(w http.ResponseWriter, r *http.Request) {
@@ -429,7 +430,7 @@ func mockPreviewSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Schema string `json:"schema"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -555,7 +556,7 @@ func extractJSONPath(body []byte, path string) (string, bool) {
 	case nil:
 		return "", false
 	default:
-		raw, err := json.Marshal(v)
+		raw, err := jsonutil.Marshal(v)
 		if err != nil {
 			return "", false
 		}

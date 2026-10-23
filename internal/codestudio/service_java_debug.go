@@ -2,7 +2,7 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -14,6 +14,7 @@ import (
 
 	"adomnia/internal/ide/dap"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/java"
 )
 
@@ -36,7 +37,7 @@ type JavaDebugRequest struct {
 	MainClass string `json:"mainClass,omitempty"`
 	// AttachHost e AttachPort collegano il debugger a una JVM avviata con -agentlib:jdwp=...,server=y.
 	AttachHost string `json:"attachHost,omitempty"`
-	AttachPort int    `json:"attachPort,omitempty"`
+	AttachPort int    `json:"attachPort,omitzero"`
 	// BuildArguments sono gli argomenti Maven/Gradle di una configurazione (test, spring-boot:run, bootRun):
 	// l'host li esegue nella console Run con la porta JDWP aperta e vi si collega. WorkingDirectory è il modulo.
 	BuildArguments []string `json:"buildArguments,omitempty"`
@@ -114,7 +115,7 @@ func (s *Service) openJavaAttach(session Session, host string, port int, working
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	projectName, err := java.ResolveAttachProject(fileURI(workingDirectory), func(command string, arguments ...any) (json.RawMessage, error) {
+	projectName, err := java.ResolveAttachProject(fileURI(workingDirectory), func(command string, arguments ...any) (jsonv1.RawMessage, error) {
 		return s.lsp.ExecuteCommand(ctx, session.ID, java.ID, command, arguments...)
 	})
 	if err != nil {
@@ -197,7 +198,7 @@ func (s *Service) debugJavaBuild(session Session, request JavaDebugRequest, work
 
 // openJavaDebugAdapter collega il DebugManager generico all'endpoint DAP del Java Debug Server.
 func (s *Service) openJavaDebugAdapter(session Session, options java.DebugOptions, workingDirectory string) (DebugSessionInfo, error) {
-	data, err := json.Marshal(options)
+	data, err := jsonutil.Marshal(options)
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
@@ -268,7 +269,7 @@ func (s *Service) resolveJavaRuntime(session Session, mainClass string, wait boo
 	discoveryCtx, cancelDiscovery := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
 	defer cancelDiscovery()
 	discover := func() error {
-		return java.ResolveDebugProject(fileURI(session.Project.RealPath), &options, func(command string, arguments ...any) (json.RawMessage, error) {
+		return java.ResolveDebugProject(fileURI(session.Project.RealPath), &options, func(command string, arguments ...any) (jsonv1.RawMessage, error) {
 			return s.lsp.ExecuteCommand(discoveryCtx, session.ID, java.ID, command, arguments...)
 		})
 	}
@@ -286,7 +287,7 @@ func (s *Service) resolveJavaRuntime(session Session, mainClass string, wait boo
 	// Build errors are final for this action, not repeated by the import retry loop.
 	buildCtx, cancelBuild := context.WithTimeout(context.Background(), javaDebugBuildTimeout)
 	defer cancelBuild()
-	err := java.PrepareDebugRuntime(&options, func(command string, arguments ...any) (json.RawMessage, error) {
+	err := java.PrepareDebugRuntime(&options, func(command string, arguments ...any) (jsonv1.RawMessage, error) {
 		return s.lsp.ExecuteCommand(buildCtx, session.ID, java.ID, command, arguments...)
 	})
 	return options, err
@@ -352,7 +353,7 @@ func (s *Service) StartJavaMain(sessionID, relativeFile, mainClass string) (Exec
 	if err != nil {
 		return Execution{}, err
 	}
-	options, _ := json.Marshal(java.MainOptions{MainClass: mainClass})
+	options, _ := jsonutil.Marshal(java.MainOptions{MainClass: mainClass})
 	if direct, ok := s.javaDirectLaunch(session, module, RunRequest{Language: java.ID, LanguageOptions: options}, environment); ok {
 		direct.SessionID, direct.Kind = session.ID, "run"
 		return s.processes.Start(direct)

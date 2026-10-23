@@ -13,7 +13,7 @@ type CargoDependency struct {
 	Name      string   `json:"name"`
 	Version   string   `json:"version,omitempty"`
 	Section   string   `json:"section"` // "dependencies" | "dev-dependencies" | "build-dependencies"
-	Workspace bool     `json:"workspace,omitempty"`
+	Workspace bool     `json:"workspace,omitzero"`
 	Path      string   `json:"path,omitempty"`
 	Git       string   `json:"git,omitempty"`
 	Features  []string `json:"features,omitempty"`

@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 	"testing"
 
 	"adomnia/internal/ide/language"
+	"adomnia/internal/jsonutil"
 )
 
 func TestDetectProjectServicesUsesDirectDependenciesOnly(t *testing.T) {
@@ -107,7 +107,7 @@ func TestProjectServicesReadsTheSpringDatasource(t *testing.T) {
 	if !database[0].PasswordConfigured {
 		t.Fatalf("password presence lost: %#v", database[0])
 	}
-	encoded, err := json.Marshal(services)
+	encoded, err := jsonutil.Marshal(services)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,8 @@
 package mock
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -91,7 +92,7 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 		MockPath   string            `json:"mockPath"`
 		MockMethod string            `json:"mockMethod"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -129,12 +130,12 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 	mockCfgMu.Unlock()
 
 	if persistConfig != nil {
-		data, _ := json.Marshal(mockCfg)
+		data, _ := jsonutil.Marshal(mockCfg)
 		_ = persistConfig(data)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"endpoint": endpoint,
 		"response": mockResp,

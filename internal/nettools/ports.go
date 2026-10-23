@@ -2,7 +2,6 @@ package nettools
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 )
 
@@ -49,7 +49,7 @@ func listeningPortsHandler(w http.ResponseWriter, r *http.Request) {
 		return entries[i].PID < entries[j].PID
 	})
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(listeningPortsResponse{
+	_ = jsonutil.MarshalWrite(w, listeningPortsResponse{
 		OS:      runtime.GOOS,
 		Source:  source,
 		Entries: entries,

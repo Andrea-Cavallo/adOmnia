@@ -4,7 +4,7 @@
 package proxy
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"log"
 	"net/http"
 	"net/netip"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"adomnia/internal/jsonutil"
 	"github.com/gaissmai/bart"
 )
 
@@ -165,7 +166,7 @@ func proxyRulesGetHandler(w http.ResponseWriter, r *http.Request) {
 	proxyRulesMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"rules": rules,
 		"count": len(rules),
 	})
@@ -182,7 +183,7 @@ func proxyRulesPutHandler(w http.ResponseWriter, r *http.Request) {
 		Action string      `json:"action"`
 		ID     string      `json:"id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -211,7 +212,7 @@ func proxyRulesPutHandler(w http.ResponseWriter, r *http.Request) {
 	buildCIDRTable(rulesSnapshot)
 
 	if persistRules != nil {
-		data, _ := json.Marshal(rulesSnapshot)
+		data, _ := jsonutil.Marshal(rulesSnapshot)
 		_ = persistRules(data)
 	}
 
@@ -219,7 +220,7 @@ func proxyRulesPutHandler(w http.ResponseWriter, r *http.Request) {
 	proxyRulesMu.RLock()
 	ct := len(proxyRules)
 	proxyRulesMu.RUnlock()
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": ct})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": ct})
 }
 
 func proxyRulesTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +234,7 @@ func proxyRulesTestHandler(w http.ResponseWriter, r *http.Request) {
 	regexOk, regexRule := matchRegex(target)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"target":      target,
 		"ipMatch":     ipOk,
 		"ipRule":      ipRule,
@@ -262,7 +263,7 @@ func proxyRulesLogHandler(w http.ResponseWriter, r *http.Request) {
 	proxyLogMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"log":   logs,
 		"count": len(logs),
 	})

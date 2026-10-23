@@ -2,7 +2,8 @@ package python
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 func TestManifestReadsProjectAndRequirements(t *testing.T) {
@@ -344,7 +346,7 @@ func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
 	writeFile(t, root, "tests/test_a.py", "")
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests/test_a.py", "tests/test_b.py::TestX::test_y"}, Run: "k:slow"})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests/test_a.py", "tests/test_b.py::TestX::test_y"}, Run: "k:slow"})
 	spec, eventParser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -355,14 +357,14 @@ func TestTestCommandBuildsPytestInvocation(t *testing.T) {
 	if eventParser == nil || !strings.Contains(strings.Join(spec.Environment, ";"), "PYTHONPATH=") {
 		t.Fatalf("parser or PYTHONPATH missing: %+v", spec.Environment)
 	}
-	if _, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: json.RawMessage(`{"run":"--cov"}`)}); err == nil {
+	if _, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: jsonv1.RawMessage(`{"run":"--cov"}`)}); err == nil {
 		t.Fatal("a test id shaped like an option must be rejected")
 	}
 }
 
 // jsonPath rende un percorso un valido literal JSON, come scrive il plugin.
 func jsonPath(path string) string {
-	data, _ := json.Marshal(path)
+	data, _ := jsonutil.Marshal(path)
 	return string(data)
 }
 

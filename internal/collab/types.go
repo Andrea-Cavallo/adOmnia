@@ -92,7 +92,7 @@ type hello struct {
 	Token   string `json:"token"`
 	Name    string `json:"name"`
 	Resume  string `json:"resume,omitempty"`
-	LastSeq uint64 `json:"lastSeq,omitempty"`
+	LastSeq uint64 `json:"lastSeq,omitzero"`
 }
 
 type welcome struct {
@@ -115,7 +115,7 @@ type Status struct {
 	PendingInvite int           `json:"pendingInvites"`
 	Project       *ProjectInfo  `json:"project,omitempty"`
 	Documents     []string      `json:"documents,omitempty"`
-	Disconnected  bool          `json:"disconnected,omitempty"`
+	Disconnected  bool          `json:"disconnected,omitzero"`
 }
 
 // Invite è ciò che l'host copia e manda al guest.

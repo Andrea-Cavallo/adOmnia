@@ -1,7 +1,7 @@
 package git
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -174,7 +174,7 @@ func TestGetOverview_EmptySlicesSerializeAsArrays(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOverview: %v", err)
 	}
-	raw, err := json.Marshal(ov)
+	raw, err := jsonutil.Marshal(ov)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}

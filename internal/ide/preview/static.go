@@ -181,7 +181,7 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 	if project.EnsureWithin(s.root, real) != nil {
 		return "", http.StatusForbidden
 	}
-	info, err := os.Stat(real)
+	info, err := os.Stat(real) // #nosec G703 -- real is symlink-resolved and checked by project.EnsureWithin above
 	if err != nil {
 		return "", http.StatusNotFound
 	}
@@ -196,7 +196,7 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 }
 
 func isRegular(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only, caller passes a symlink-resolved path validated by project.EnsureWithin
 	return err == nil && info.Mode().IsRegular()
 }
 

@@ -2,7 +2,7 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +16,7 @@ func TestOpenAIProviderUsesCompatibleTokenLimitField(t *testing.T) {
 		t.Run(tc.model, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var body map[string]any
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				if err := json.UnmarshalRead(r.Body, &body); err != nil {
 					t.Fatal(err)
 				}
 				if _, ok := body[tc.want]; !ok {

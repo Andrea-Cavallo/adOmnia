@@ -6,7 +6,8 @@ import (
 	"adomnia/internal/procutil"
 
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -36,9 +37,9 @@ type DependencyGraphNode struct {
 	Depth        int    `json:"depth"`
 	License      string `json:"license,omitempty"`
 	Dir          string `json:"dir,omitempty"`
-	WeightBytes  int64  `json:"weightBytes,omitempty"`
-	Unused       bool   `json:"unused,omitempty"`
-	PackageCount int    `json:"packageCount,omitempty"`
+	WeightBytes  int64  `json:"weightBytes,omitzero"`
+	Unused       bool   `json:"unused,omitzero"`
+	PackageCount int    `json:"packageCount,omitzero"`
 }
 
 // DependencyEdge è un arco del grafo dei moduli: from richiede to.
@@ -367,11 +368,16 @@ func parseUsedModules(depsOutput, modulePath string) (map[string]bool, map[strin
 }
 
 func parseModuleList(output string) ([]moduleJSON, error) {
-	decoder := json.NewDecoder(strings.NewReader(output))
+	decoder := jsontext.NewDecoder(strings.NewReader(output))
 	modules := make([]moduleJSON, 0, 128)
-	for decoder.More() {
+	for {
+		// Streaming di oggetti concatenati (go list): un valore per volta fino a EOF.
+		value, err := decoder.ReadValue()
+		if err != nil {
+			break
+		}
 		var module moduleJSON
-		if err := decoder.Decode(&module); err != nil {
+		if err := json.Unmarshal(value, &module); err != nil {
 			return modules, err
 		}
 		modules = append(modules, module)
@@ -445,11 +451,15 @@ func findDuplicates(graphOutput string) []DuplicateDependency {
 }
 
 func parseDependencyUpdates(output string) []DependencyUpdate {
-	decoder := json.NewDecoder(strings.NewReader(output))
+	decoder := jsontext.NewDecoder(strings.NewReader(output))
 	updates := make([]DependencyUpdate, 0, 128)
-	for decoder.More() {
+	for {
+		value, err := decoder.ReadValue()
+		if err != nil {
+			break
+		}
 		var module moduleJSON
-		if err := decoder.Decode(&module); err != nil {
+		if err := json.Unmarshal(value, &module); err != nil {
 			break
 		}
 		if module.Main || module.Update == nil {

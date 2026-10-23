@@ -1,7 +1,7 @@
 package strix
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +16,7 @@ type Finding struct {
 	Severity string `json:"severity"` // critical, high, medium, low, info
 	Message  string `json:"message,omitempty"`
 	File     string `json:"file,omitempty"`
-	Line     int    `json:"line,omitempty"`
+	Line     int    `json:"line,omitzero"`
 }
 
 // Report è ciò che Strix ha scritto in `strix_runs/<nome>/`.
@@ -28,7 +28,7 @@ type Report struct {
 	Details []Detail `json:"details"`
 	// Status e CostUSD vengono da run.json; vuoti se Strix non l'ha scritto.
 	Status  string  `json:"status,omitempty"`
-	CostUSD float64 `json:"costUsd,omitempty"`
+	CostUSD float64 `json:"costUsd,omitzero"`
 }
 
 // Detail è la pagina di un singolo problema.

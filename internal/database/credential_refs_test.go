@@ -1,9 +1,9 @@
 package database
 
 import (
-	"encoding/json"
 	"testing"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/storage"
 )
 
@@ -16,7 +16,7 @@ func TestIsCredentialRefOnlyMatchesSavedSecrets(t *testing.T) {
 		{ID: "a", Password: "vault:age:password-ref", DSN: "vault:age:dsn-ref"},
 		{ID: "b", Password: "", User: "reader"},
 	}
-	raw, _ := json.Marshal(list)
+	raw, _ := jsonutil.Marshal(list)
 	if err := storage.Put("database", "connections", raw); err != nil {
 		t.Fatal(err)
 	}

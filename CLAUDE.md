@@ -71,6 +71,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/ISSUES.md` | Current open issues, bugs, active work queue, and completion status across product areas. |
 | `docs/CODE-STUDIO.md` | Code Studio (the integrated IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `mds/todo-ide.md`. |
 | `docs/QUALITY.md` | Quality toolchain for adOmnia's own code: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage. |
+| `docs/JSON-V2.md` | JSON marshaling: `encoding/json/v2` migration, where v1 remains and why, behavior changes. |
 | `docs/architecture/ide-multilanguage-refactor.md` | Code Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/codestudio`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
@@ -377,6 +378,18 @@ if (request.auth.type === 'aws4') {
 - **No "cheap" UI:** no misaligned borders, no off-palette colors, no inconsistent spacing
 - **Wails/WebKitGTK cross-platform cohesion:** treat every user-visible WebKitGTK rendering difference on Linux as a product-quality issue, not as a secondary technical detail. Prefer global token-based normalization for recurring issues in `frontend/src/styles/globals.css`; use local workarounds only when the affected component is truly isolated. In particular, Linux can render native form controls with a light system appearance inside dark themes: for `select`, `input`, `textarea`, checkbox/radio, and number inputs, keep `color-scheme`, rely on the global normalizations, use `surface/text/border/accent/status` tokens, and avoid hardcoded Tailwind palette colors in primary UI (`bg-white/*`, `text-purple-*`, `bg-green-*`, etc.) unless they are intentional semantic states.
 
+### Code quality rules (Sonar / lint gates — new code must not reintroduce them)
+
+Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touched before closing a task.
+
+- **`.sort()` always takes a comparator** (S2871): `.sort((a, b) => a.localeCompare(b))` for display strings, `([a], [b]) => a.localeCompare(b)` for `Object.entries`. Where the byte order is part of the contract (AWS4 signed headers, canonical keys) use a code-point comparator, not `localeCompare`.
+- **Every `message` listener checks `event.source` AND `event.origin`** (S2819) before reading `event.data`; `postMessage` targets a known origin, not `'*'`, unless the target origin genuinely cannot be known.
+- **Go: no unchecked errors** (`errcheck`). Handle or return them; `_ =` only for truly best-effort calls (e.g. `Close` on a read-only handle) with a one-line reason. Never silence a linter through config.
+- **Keep functions simple.** The `gocyclo` gate is 40, Sonar's cognitive threshold is 15: split by extracting well-named helpers or table-driven dispatch instead of growing a 80-branch function. Do not add to the worst offenders.
+- **React Compiler rules are errors** once cleared in `frontend/.oxlintrc.json` (purity, immutability, refs, set-state-in-effect, exhaustive deps): derive state instead of syncing it in effects, no impure calls in render, no `any` (use `unknown` + narrowing).
+- **Dockerfiles and workflows pass hadolint / actionlint / shellcheck**: pinned versions, `--no-install-recommends`, cleaned apt lists, no unquoted shell variables. A `# hadolint ignore` or `// nosemgrep` / `#nosec` needs the exact rule id and a reason.
+- **Security annotations are precise:** `// nosemgrep: <rule-id>` on the intentional line only; never blanket-disable a rule.
+
 ---
 
 ## Common Change Recipes
@@ -557,6 +570,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
 | `docs/CODE-STUDIO.md` | Code Studio guide: usage, trust model, optional tools, persistence and shortcuts |
 | `docs/QUALITY.md` | Quality toolchain: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage |
+| `docs/JSON-V2.md` | JSON marshaling: encoding/json/v2 migration and v1 compatibility seams |
 | `docs/BUILD.md` | Build instructions for all platforms |
 | `docs/INSTALL.md` | End-user installation guide |
 | `docs/RELEASE.md` | Release notes and history |

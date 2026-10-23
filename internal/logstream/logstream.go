@@ -12,10 +12,11 @@
 package logstream
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -475,7 +476,7 @@ func Tools() map[string]bool {
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_ = jsonutil.MarshalWrite(w, payload)
 }
 
 func RegisterHandlers(mux *http.ServeMux) {
@@ -485,7 +486,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 
 	mux.HandleFunc("/logstream/start", func(w http.ResponseWriter, r *http.Request) {
 		var config Config
-		if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+		if err := json.UnmarshalRead(r.Body, &config); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 			return
 		}

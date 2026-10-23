@@ -1,7 +1,8 @@
 package collab
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +46,7 @@ func TestLANAcceptance(t *testing.T) {
 			t.Fatalf("join via LAN %s fallito: %v", ip, err)
 		}
 
-		data := json.RawMessage(`{"name":"Payments","headers":[{"key":"Authorization","value":"Bearer secret-token"}],"variables":[{"key":"base","value":"http://10.0.0.5"}]}`)
+		data := jsonv1.RawMessage(`{"name":"Payments","headers":[{"key":"Authorization","value":"Bearer secret-token"}],"variables":[{"key":"base","value":"http://10.0.0.5"}]}`)
 		if _, err := host.Share(ShareCollection, "Payments", data); err != nil {
 			host.Stop()
 			guest.Stop()

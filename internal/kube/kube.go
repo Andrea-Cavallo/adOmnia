@@ -9,10 +9,11 @@
 package kube
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -332,7 +333,7 @@ func decodePost(w http.ResponseWriter, r *http.Request, into any) bool {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
 		return false
 	}
-	if err := json.NewDecoder(r.Body).Decode(into); err != nil {
+	if err := json.UnmarshalRead(r.Body, into); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		return false
 	}
@@ -342,7 +343,7 @@ func decodePost(w http.ResponseWriter, r *http.Request, into any) bool {
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_ = jsonutil.MarshalWrite(w, payload)
 }
 
 // RegisterHandlers mounts the cluster endpoints on the sidecar mux.

@@ -1,7 +1,8 @@
 package collab
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"strings"
 	"sync"
 	"testing"
@@ -72,7 +73,7 @@ func TestShareFlowsBothWaysAndIsRedacted(t *testing.T) {
 		t.Fatalf("partecipanti host = %d", n)
 	}
 
-	data := json.RawMessage(`{"name":"Payments","headers":[{"key":"Authorization","value":"Bearer abc"}],"auth":{"bearer":{"token":"xyz"}},"variables":[{"key":"base","value":"http://x"},{"key":"k","value":"v","secret":true}]}`)
+	data := jsonv1.RawMessage(`{"name":"Payments","headers":[{"key":"Authorization","value":"Bearer abc"}],"auth":{"bearer":{"token":"xyz"}},"variables":[{"key":"base","value":"http://x"},{"key":"k","value":"v","secret":true}]}`)
 	if _, err := host.Share(ShareCollection, "Payments", data); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +90,7 @@ func TestShareFlowsBothWaysAndIsRedacted(t *testing.T) {
 		t.Fatalf("redazione inattesa: %s %v", body, share.Redacted)
 	}
 
-	if _, err := guest.Share(ShareRequest, "GET /x", json.RawMessage(`{"url":"/x"}`)); err != nil {
+	if _, err := guest.Share(ShareRequest, "GET /x", jsonv1.RawMessage(`{"url":"/x"}`)); err != nil {
 		t.Fatal(err)
 	}
 	if e := hostRec.waitFor(t, EventShare); e.From != guest.Status().Self {
@@ -100,14 +101,14 @@ func TestShareFlowsBothWaysAndIsRedacted(t *testing.T) {
 func TestViewerCannotShare(t *testing.T) {
 	host, _ := startHost(t)
 	guest, _ := join(t, host, RoleViewer, "Eve")
-	if _, err := guest.Share(ShareRequest, "x", json.RawMessage(`{}`)); err == nil {
+	if _, err := guest.Share(ShareRequest, "x", jsonv1.RawMessage(`{}`)); err == nil {
 		t.Fatal("viewer non deve poter condividere")
 	}
 	// anche se il client bara, l'host rifiuta
 	guest.mu.Lock()
 	guest.self.Role = RoleEditor
 	guest.mu.Unlock()
-	if msg := host.relayShare(guestID(t, host), mustJSON(Share{Kind: ShareRequest, Data: json.RawMessage(`{}`)})); msg == "" {
+	if msg := host.relayShare(guestID(t, host), mustJSON(Share{Kind: ShareRequest, Data: jsonv1.RawMessage(`{}`)})); msg == "" {
 		t.Fatal("l'host deve rifiutare la condivisione di un viewer")
 	}
 }

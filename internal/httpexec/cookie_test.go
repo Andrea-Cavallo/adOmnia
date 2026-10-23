@@ -1,7 +1,8 @@
 package httpexec
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,7 +33,7 @@ func TestCookieJarReplaysCookiesWithinRun(t *testing.T) {
 
 func marshalRequest(t *testing.T, request HTTPExecRequest) string {
 	t.Helper()
-	data, err := json.Marshal(request)
+	data, err := jsonutil.Marshal(request)
 	if err != nil {
 		t.Fatal(err)
 	}

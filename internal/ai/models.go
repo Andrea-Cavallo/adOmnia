@@ -4,7 +4,7 @@ import (
 	"adomnia/internal/netpolicy"
 
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -23,10 +23,10 @@ type ModelInfo struct {
 	Name             string   `json:"name"`
 	Owner            string   `json:"owner,omitempty"`
 	Source           string   `json:"source"`
-	Context          int      `json:"context,omitempty"`
-	OutputLimit      int      `json:"outputLimit,omitempty"`
+	Context          int      `json:"context,omitzero"`
+	OutputLimit      int      `json:"outputLimit,omitzero"`
 	Capabilities     []string `json:"capabilities,omitempty"`
-	SupportsThinking bool     `json:"supportsThinking,omitempty"`
+	SupportsThinking bool     `json:"supportsThinking,omitzero"`
 	Local            bool     `json:"local"`
 }
 
@@ -123,7 +123,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 				} `json:"details"`
 			} `json:"models"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &payload); err != nil {
 			return nil, fmt.Errorf("decode Ollama models: %w", err)
 		}
 		models := make([]ModelInfo, 0, len(payload.Models))
@@ -151,7 +151,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 				Thinking                   bool     `json:"thinking"`
 			} `json:"models"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		if err := json.UnmarshalRead(resp.Body, &payload); err != nil {
 			return nil, fmt.Errorf("decode Gemini models: %w", err)
 		}
 		models := make([]ModelInfo, 0, len(payload.Models))
@@ -192,7 +192,7 @@ func DiscoverModels(ctx context.Context, cfg Config, query string) ([]ModelInfo,
 			} `json:"providers"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &payload); err != nil {
 		return nil, fmt.Errorf("decode model list: %w", err)
 	}
 	models := make([]ModelInfo, 0, len(payload.Data))

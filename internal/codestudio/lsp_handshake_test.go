@@ -2,7 +2,8 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"strings"
@@ -31,7 +32,7 @@ type fakeGopls struct {
 	initialized atomic.Bool
 }
 
-func (f *fakeGopls) HandleNotification(method string, params json.RawMessage) {
+func (f *fakeGopls) HandleNotification(method string, params jsonv1.RawMessage) {
 	switch method {
 	case "initialized":
 		f.initialized.Store(true)
@@ -55,7 +56,7 @@ func (f *fakeGopls) HandleNotification(method string, params json.RawMessage) {
 	}
 }
 
-func (f *fakeGopls) HandleRequest(_ context.Context, method string, _ json.RawMessage) (any, error) {
+func (f *fakeGopls) HandleRequest(_ context.Context, method string, _ jsonv1.RawMessage) (any, error) {
 	if method == "initialize" {
 		time.Sleep(400 * time.Millisecond)
 		return map[string]any{"capabilities": map[string]any{}}, nil

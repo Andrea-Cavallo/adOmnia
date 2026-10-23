@@ -1,7 +1,7 @@
 package rust
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 
 	"adomnia/internal/ide/run"
 )

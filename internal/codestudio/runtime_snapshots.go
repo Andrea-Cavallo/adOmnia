@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"os"
@@ -38,7 +38,7 @@ func (s *Service) SaveRuntimeSnapshot(sessionID, label, content string) (string,
 	if err != nil {
 		return "", err
 	}
-	if !json.Valid([]byte(content)) {
+	if !jsontext.Value([]byte(content)).IsValid() {
 		return "", errors.New("the snapshot is not valid JSON")
 	}
 	if len(content) > 20<<20 {

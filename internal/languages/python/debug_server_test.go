@@ -3,7 +3,6 @@ package python
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"adomnia/internal/ide/dap"
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 func TestDebugAdapterBuildsDebugpyLaunch(t *testing.T) {
@@ -20,7 +20,7 @@ func TestDebugAdapterBuildsDebugpyLaunch(t *testing.T) {
 	interpreter := writeFile(t, root, "python.exe", "")
 	writeFile(t, root, "hello.py", "print('hi')\n")
 	no := false
-	data, _ := json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: "hello.py", ProgramArguments: []string{"--flag"}, JustMyCode: &no})
+	data, _ := jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: "hello.py", ProgramArguments: []string{"--flag"}, JustMyCode: &no})
 	spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, Environment: []string{"A=1"}, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -40,13 +40,13 @@ func TestDebugAdapterBuildsDebugpyLaunch(t *testing.T) {
 		t.Fatalf("%+v", spec)
 	}
 	// Il modulo segue la stessa validazione della run.
-	data, _ = json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "module", Module: "-c"})
+	data, _ = jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "module", Module: "-c"})
 	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
 		t.Fatal("an option-shaped module name must be rejected")
 	}
 	// E lo script fuori dal progetto resta confinato.
 	outside := writeFile(t, t.TempDir(), "outside.py", "")
-	data, _ = json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: outside})
+	data, _ = jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: outside})
 	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
 		t.Fatal("a script outside the project must be rejected")
 	}
@@ -56,7 +56,7 @@ func TestDebugAdapterPytestSelection(t *testing.T) {
 	root := t.TempDir()
 	interpreter := writeFile(t, root, "python.exe", "")
 	writeFile(t, root, "tests/test_demo.py", "")
-	data, _ := json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "pytest", Targets: []string{"tests/test_demo.py::TestX::test_y[1]"}, Run: "k:slow"})
+	data, _ := jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "pytest", Targets: []string{"tests/test_demo.py::TestX::test_y[1]"}, Run: "k:slow"})
 	spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestDebugAdapterPytestSelection(t *testing.T) {
 	if !strings.Contains(joined, "-m pytest tests/test_demo.py::TestX::test_y[1] -k slow") {
 		t.Fatalf("arguments %q", joined)
 	}
-	data, _ = json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "pytest", Targets: []string{"--pdb"}})
+	data, _ = jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "pytest", Targets: []string{"--pdb"}})
 	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
 		t.Fatal("an option-shaped test target must be rejected")
 	}
@@ -81,7 +81,7 @@ func TestDebugArgumentsDropTheReloader(t *testing.T) {
 	}
 	targets := func(options DebugOptions) []string {
 		t.Helper()
-		data, _ := json.Marshal(options)
+		data, _ := jsonutil.Marshal(options)
 		spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data})
 		if err != nil {
 			t.Fatal(err)
@@ -137,7 +137,7 @@ func TestDebugArgumentsDropTheReloader(t *testing.T) {
 // TestDebugAdapterAttachesWithoutStartingAProcess: l'attach è esplicito, non risolve un
 // interprete e non avvia nulla: il DAP si collega all'indirizzo indicato (PY-6.1).
 func TestDebugAdapterAttachesWithoutStartingAProcess(t *testing.T) {
-	data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: "127.0.0.1", Port: 5678})
+	data, _ := jsonutil.Marshal(DebugOptions{Kind: "attach", Host: "127.0.0.1", Port: 5678})
 	spec, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -163,7 +163,7 @@ func TestAttachRejectsInvalidTargets(t *testing.T) {
 		{name: "every interface", host: "0.0.0.0", port: 5678},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			data, _ := json.Marshal(DebugOptions{Kind: "attach", Host: test.host, Port: test.port})
+			data, _ := jsonutil.Marshal(DebugOptions{Kind: "attach", Host: test.host, Port: test.port})
 			if _, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: data}); err == nil {
 				t.Fatal("an invalid attach target was accepted")
 			}
@@ -174,7 +174,7 @@ func TestAttachRejectsInvalidTargets(t *testing.T) {
 func TestDebugAdapterRejectsAMissingInterpreter(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "hello.py", "")
-	data, _ := json.Marshal(DebugOptions{Interpreter: filepath.Join(root, "missing-python"), Kind: "script", Script: "hello.py"})
+	data, _ := jsonutil.Marshal(DebugOptions{Interpreter: filepath.Join(root, "missing-python"), Kind: "script", Script: "hello.py"})
 	if _, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: data}); err == nil {
 		t.Fatal("a missing interpreter must not start a debug session")
 	}
@@ -301,7 +301,7 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 		"def test_params(a, b):", "    assert a < b", "",
 		"def test_failing():", "    print('printed before the failure')", "    assert 1 == 2", "",
 	}, "\n"))
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -410,7 +410,7 @@ func TestRealPytestRunHandlesAsyncTests(t *testing.T) {
 	interpreter, plugin := testInterpreterWithAsync(t)
 	root := t.TempDir()
 	writeFile(t, root, "tests/test_async.py", strings.Join(asyncTestSource(plugin), "\n"))
-	data, _ := json.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
+	data, _ := jsonutil.Marshal(TestOptions{Interpreter: interpreter, Packages: []string{"tests"}})
 	spec, parser, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +450,7 @@ func TestRealDebugpyStopsAtBreakpoint(t *testing.T) {
 	interpreter := testInterpreterWith(t, "debugpy")
 	root := t.TempDir()
 	writeFile(t, root, "hello.py", "x = 1\ny = x + 1\nprint('done', y)\n")
-	data, _ := json.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: "hello.py"})
+	data, _ := jsonutil.Marshal(DebugOptions{Interpreter: interpreter, Kind: "script", Script: "hello.py"})
 	spec, err := New().DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, Environment: os.Environ(), LanguageOptions: data})
 	if err != nil {
 		t.Fatal(err)

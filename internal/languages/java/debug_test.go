@@ -1,18 +1,19 @@
 package java
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"reflect"
 	"strings"
 	"testing"
 
 	"adomnia/internal/ide/dap"
+	"adomnia/internal/jsonutil"
 )
 
 var _ dap.DebugAdapterProvider = (*Language)(nil)
 
 func TestDebugAdapterConnectsToTheServerInsideJdtls(t *testing.T) {
-	options, _ := json.Marshal(DebugOptions{
+	options, _ := jsonutil.Marshal(DebugOptions{
 		Address: "127.0.0.1:5005", MainClass: "it.acme.App", ProjectName: "app", JavaExec: "/jdk/bin/java",
 		ClassPaths: []string{"/p/target/classes"}, ProgramArguments: []string{"a b", "c"}, VMArguments: []string{"-Xmx1g"},
 	})
@@ -37,7 +38,7 @@ func TestDebugAdapterConnectsToTheServerInsideJdtls(t *testing.T) {
 
 func TestDebugRequestsCarryStepFilters(t *testing.T) {
 	launch := func(options string) map[string]any {
-		spec, err := (&Language{}).DebugAdapter(dap.LaunchRequest{WorkingDirectory: "/p", LanguageOptions: json.RawMessage(options)})
+		spec, err := (&Language{}).DebugAdapter(dap.LaunchRequest{WorkingDirectory: "/p", LanguageOptions: jsonv1.RawMessage(options)})
 		if err != nil {
 			t.Fatal(err)
 		}

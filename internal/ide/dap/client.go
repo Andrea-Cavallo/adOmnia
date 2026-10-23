@@ -2,9 +2,11 @@
 package dap
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -20,8 +22,8 @@ var ErrClosed = errors.New("connessione DAP chiusa")
 
 // Event è un evento del debug adapter (stopped, output, terminated…).
 type Event struct {
-	Event string          `json:"event"`
-	Body  json.RawMessage `json:"body"`
+	Event string            `json:"event"`
+	Body  jsonv1.RawMessage `json:"body"`
 }
 
 type message struct {
@@ -32,14 +34,14 @@ type message struct {
 }
 
 type rawMessage struct {
-	Seq        int             `json:"seq"`
-	Type       string          `json:"type"`
-	Command    string          `json:"command"`
-	RequestSeq int             `json:"request_seq"`
-	Success    bool            `json:"success"`
-	Message    string          `json:"message"`
-	Body       json.RawMessage `json:"body"`
-	Event      string          `json:"event"`
+	Seq        int               `json:"seq"`
+	Type       string            `json:"type"`
+	Command    string            `json:"command"`
+	RequestSeq int               `json:"request_seq"`
+	Success    bool              `json:"success"`
+	Message    string            `json:"message"`
+	Body       jsonv1.RawMessage `json:"body"`
+	Event      string            `json:"event"`
 }
 
 // ResponseError è una risposta DAP con success=false.
@@ -146,7 +148,7 @@ type response struct {
 }
 
 func (c *Client) write(value any) error {
-	data, err := json.Marshal(value)
+	data, err := jsonutil.Marshal(value)
 	if err != nil {
 		return err
 	}

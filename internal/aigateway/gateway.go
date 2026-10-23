@@ -1,8 +1,8 @@
 package aigateway
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -29,7 +29,7 @@ type Config struct {
 type Status struct {
 	Running  bool   `json:"running"`
 	Endpoint string `json:"endpoint,omitempty"`
-	Port     int    `json:"port,omitempty"`
+	Port     int    `json:"port,omitzero"`
 	Provider string `json:"provider,omitempty"`
 }
 
@@ -91,7 +91,7 @@ func (g *Gateway) Start(cfg Config) (Status, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "provider": cfg.Provider})
+		_ = jsonutil.MarshalWrite(w, map[string]any{"status": "ok", "provider": cfg.Provider})
 	})
 	mux.Handle("GET /v1/models", authorize(cfg.Token, proxy))
 	mux.Handle("POST /v1/chat/completions", authorize(cfg.Token, limitBody(proxy)))
@@ -177,7 +177,7 @@ func limitBody(next http.Handler) http.Handler {
 func writeOpenAIError(w http.ResponseWriter, status int, errorType, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	_ = jsonutil.MarshalWrite(w, map[string]any{
 		"error": map[string]any{"message": message, "type": errorType, "code": nil},
 	})
 }

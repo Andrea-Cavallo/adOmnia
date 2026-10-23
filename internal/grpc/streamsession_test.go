@@ -1,9 +1,10 @@
 package grpc
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,7 @@ func TestInteractiveBidiStreamSendsAndReceivesOneByOne(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	body, _ := json.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "FullDuplexCall", "interactive": true})
+	body, _ := jsonutil.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "FullDuplexCall", "interactive": true})
 	response, err := http.Post(server.URL+"/grpc/stream", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +52,7 @@ func TestInteractiveBidiStreamSendsAndReceivesOneByOne(t *testing.T) {
 	}
 	control := func(path string, payload map[string]any) int {
 		t.Helper()
-		data, _ := json.Marshal(payload)
+		data, _ := jsonutil.Marshal(payload)
 		reply, err := http.Post(server.URL+path, "application/json", bytes.NewReader(data))
 		if err != nil {
 			t.Fatal(err)

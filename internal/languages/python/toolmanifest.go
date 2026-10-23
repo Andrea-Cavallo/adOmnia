@@ -1,9 +1,11 @@
 package python
 
 import (
+	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -187,7 +189,7 @@ func ensureToolManifest(path string, report []byte, artifacts []toolArtifact) er
 		}
 		return nil
 	}
-	encoded, err := json.MarshalIndent(expected, "", "  ")
+	encoded, err := jsonutil.Marshal(expected, jsontext.WithIndent("  "))
 	if err != nil {
 		return fmt.Errorf("could not record the %s manifest: %w", pyrightName, err)
 	}

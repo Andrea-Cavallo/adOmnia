@@ -2,12 +2,12 @@ package rust
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 
 	"adomnia/internal/ide/project"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 // Suggest propone le configurazioni rilevate per un'unità Cargo: ogni bin ed example dichiarato
@@ -39,7 +39,7 @@ func (*Language) Suggest(ctx context.Context, projectRoot string, unit project.U
 }
 
 func cargoSuggestion(unit project.Unit, id, title, action, kind string, options Options) run.Suggestion {
-	data, _ := json.Marshal(options)
+	data, _ := jsonutil.Marshal(options)
 	return run.Suggestion{
 		ID:       id,
 		Language: ID,

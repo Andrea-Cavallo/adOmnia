@@ -341,7 +341,7 @@ func defaultBinaryCandidates() []string {
 }
 
 func isExecutableFile(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // #nosec G703 -- stat only, candidate paths come from PATH/known install dirs
 	return err == nil && !info.IsDir()
 }
 

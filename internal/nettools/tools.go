@@ -2,7 +2,7 @@ package nettools
 
 import (
 	"adomnia/internal/httputil"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/miekg/dns"
 )
 
@@ -78,14 +79,14 @@ type dnsRecord struct {
 	Type     string `json:"type"`
 	Value    string `json:"value"`
 	TTL      int    `json:"ttl"`
-	Priority int    `json:"priority,omitempty"`
+	Priority int    `json:"priority,omitzero"`
 	MName    string `json:"mname,omitempty"`
 	RName    string `json:"rname,omitempty"`
-	Serial   uint32 `json:"serial,omitempty"`
-	Refresh  int    `json:"refresh,omitempty"`
-	Retry    int    `json:"retry,omitempty"`
-	Expire   int    `json:"expire,omitempty"`
-	MinTTL   uint32 `json:"minttl,omitempty"`
+	Serial   uint32 `json:"serial,omitzero"`
+	Refresh  int    `json:"refresh,omitzero"`
+	Retry    int    `json:"retry,omitzero"`
+	Expire   int    `json:"expire,omitzero"`
+	MinTTL   uint32 `json:"minttl,omitzero"`
 }
 
 type dnsLookupResponse struct {
@@ -100,7 +101,7 @@ func dnsLookupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req dnsLookupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -175,7 +176,7 @@ func dnsLookupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(dnsLookupResponse{
+	jsonutil.MarshalWrite(w, dnsLookupResponse{
 		Records: records,
 		TimeMs:  elapsed,
 	})
@@ -201,7 +202,7 @@ func dnsTraceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req dnsLookupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -264,7 +265,7 @@ func dnsTraceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"host":    req.Host,
 		"type":    req.Type,
 		"trace":   trace,
@@ -292,7 +293,7 @@ func dnsCompareHandler(w http.ResponseWriter, r *http.Request) {
 		Type    string   `json:"type"`
 		Servers []string `json:"servers"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -349,7 +350,7 @@ func dnsCompareHandler(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"host":    req.Host,
 		"type":    req.Type,
 		"results": results,
@@ -378,12 +379,12 @@ func dnsCacheGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !ok || time.Since(entry.CachedAt).Seconds() > float64(entry.TTL) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"cached": false})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"cached": false})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"cached":   true,
 		"host":     host,
 		"records":  entry.Records,
@@ -398,7 +399,7 @@ func dnsCacheClearHandler(w http.ResponseWriter, r *http.Request) {
 	dnsCacheMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 // In the dnsLookupHandler, cache results
@@ -429,7 +430,7 @@ type portResult struct {
 type portScanResponse struct {
 	Results      []portResult `json:"results"`
 	TimeMs       int64        `json:"time_ms"`
-	WarnInternal bool         `json:"warn_internal,omitempty"`
+	WarnInternal bool         `json:"warn_internal,omitzero"`
 }
 
 var commonPorts = []int{
@@ -527,7 +528,7 @@ func portScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req portScanRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -598,7 +599,7 @@ func portScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	jsonutil.MarshalWrite(w, resp)
 }
 
 // --- CORS Tester ---
@@ -628,7 +629,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req corsTestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -757,7 +758,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	jsonutil.MarshalWrite(w, resp)
 }
 
 // RegisterHandlers registers network, certificate and folder comparison endpoints.

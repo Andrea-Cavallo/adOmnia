@@ -3,13 +3,14 @@ package plugins
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
@@ -49,7 +50,7 @@ func executeWasmPlugin(plugin PluginInstance, function string, args map[string]i
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to read plugin module: %w", err)
 	}
-	input, err := json.Marshal(map[string]interface{}{"function": function, "args": args, "settings": plugin.Settings, "pluginId": plugin.Manifest.ID})
+	input, err := jsonutil.Marshal(map[string]interface{}{"function": function, "args": args, "settings": plugin.Settings, "pluginId": plugin.Manifest.ID})
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to encode plugin arguments: %w", err)
 	}

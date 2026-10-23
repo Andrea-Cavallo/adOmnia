@@ -4,8 +4,10 @@
 package startupperf
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -48,7 +50,11 @@ func Record(dataDir, frontendJSON string, backend map[string]any) error {
 		Frontend:   frontend,
 		Backend:    backend,
 	}
-	if err := json.NewEncoder(file).Encode(sample); err != nil {
+	if err := jsonutil.MarshalWrite(file, sample); err != nil {
+		return fmt.Errorf("write startup performance sample: %w", err)
+	}
+	// Un campione per riga (NDJSON), anche quando il file ne contiene uno solo.
+	if _, err := io.WriteString(file, "\n"); err != nil {
 		return fmt.Errorf("write startup performance sample: %w", err)
 	}
 	return nil

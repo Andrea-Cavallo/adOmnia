@@ -13,12 +13,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/digitorus/pdf"
 	"github.com/digitorus/pdfsign/revocation"
 	"github.com/digitorus/pdfsign/sign"
@@ -168,7 +169,7 @@ func Sign(reqJSON string) (string, error) {
 		PdfBase64: base64.StdEncoding.EncodeToString(out.Bytes()),
 		Size:      out.Len(),
 	}
-	data, _ := json.Marshal(res)
+	data, _ := jsonutil.Marshal(res)
 	return string(data), nil
 }
 
@@ -184,7 +185,7 @@ func Verify(pdfBase64 string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("verify PDF: %w", err)
 	}
-	data, _ := json.Marshal(resp)
+	data, _ := jsonutil.Marshal(resp)
 	return string(data), nil
 }
 
@@ -211,7 +212,7 @@ func InspectCertificate(reqJSON string) (string, error) {
 	if len(cred.chain) > 0 {
 		info.ChainLength = len(cred.chain[0])
 	}
-	data, _ := json.Marshal(info)
+	data, _ := jsonutil.Marshal(info)
 	return string(data), nil
 }
 

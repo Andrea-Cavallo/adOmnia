@@ -2,7 +2,7 @@ package golang
 
 import (
 	"adomnia/internal/ide/dap"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -20,7 +20,7 @@ type DebugRequest struct {
 	// Mode è "debug" (programma), "test", "attach" (processo locale) o "remote" (dlv --headless già avviato).
 	Mode string `json:"mode"`
 	// ProcessID è il processo a cui agganciarsi in modalità attach.
-	ProcessID int `json:"processId,omitempty"`
+	ProcessID int `json:"processId,omitzero"`
 	// Address è host:porta del server Delve in modalità remote.
 	Address string `json:"address,omitempty"`
 	// Source roots for a container/remote checkout; DAP maps local -> remote.

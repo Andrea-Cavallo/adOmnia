@@ -1,7 +1,7 @@
 package graph
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -50,7 +50,7 @@ type Violation struct {
 	From    string `json:"from"`
 	To      string `json:"to,omitempty"`
 	File    string `json:"file,omitempty"`
-	Line    int    `json:"line,omitempty"`
+	Line    int    `json:"line,omitzero"`
 }
 
 // DriftReport è il confronto fra l'architettura desiderata e il codice.

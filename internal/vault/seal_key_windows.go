@@ -13,8 +13,8 @@ func protectKeyFile(data []byte) ([]byte, error) {
 	if err := windows.CryptProtectData(&input, nil, nil, 0, nil, windows.CRYPTPROTECT_UI_FORBIDDEN, &output); err != nil {
 		return nil, err
 	}
-	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))
-	return append([]byte(nil), unsafe.Slice(output.Data, output.Size)...), nil
+	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))       // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
+	return append([]byte(nil), unsafe.Slice(output.Data, output.Size)...), nil // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 }
 func openKeyFile(data []byte) ([]byte, error) {
 	if len(data) == 0 {
@@ -25,6 +25,6 @@ func openKeyFile(data []byte) ([]byte, error) {
 	if err := windows.CryptUnprotectData(&input, nil, nil, 0, nil, windows.CRYPTPROTECT_UI_FORBIDDEN, &output); err != nil {
 		return nil, err
 	}
-	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))
-	return append([]byte(nil), unsafe.Slice(output.Data, output.Size)...), nil
+	defer windows.LocalFree(windows.Handle(unsafe.Pointer(output.Data)))       // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
+	return append([]byte(nil), unsafe.Slice(output.Data, output.Size)...), nil // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 }

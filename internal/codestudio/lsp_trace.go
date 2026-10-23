@@ -1,7 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/url"
@@ -146,10 +147,10 @@ type progressValue struct {
 	Percentage *int   `json:"percentage"`
 }
 
-func parseProgress(params json.RawMessage) (string, progressValue, bool) {
+func parseProgress(params jsonv1.RawMessage) (string, progressValue, bool) {
 	var envelope struct {
-		Token json.RawMessage `json:"token"`
-		Value progressValue   `json:"value"`
+		Token jsonv1.RawMessage `json:"token"`
+		Value progressValue     `json:"value"`
 	}
 	if json.Unmarshal(params, &envelope) != nil || envelope.Value.Kind == "" {
 		return "", progressValue{}, false

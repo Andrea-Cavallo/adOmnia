@@ -130,7 +130,7 @@ func extractZip(ctx context.Context, label, archivePath, destination string, max
 		}
 		destinationFile, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, entry.Mode().Perm())
 		if err == nil {
-			_, err = io.Copy(destinationFile, io.LimitReader(source, maxBytes))
+			_, err = io.Copy(destinationFile, io.LimitReader(source, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
 			_ = destinationFile.Close()
 		}
 		_ = source.Close()
@@ -184,7 +184,7 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 			}
 			output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm())
 			if err == nil {
-				_, err = io.Copy(output, io.LimitReader(reader, maxBytes))
+				_, err = io.Copy(output, io.LimitReader(reader, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
 				_ = output.Close()
 			}
 			if err != nil {

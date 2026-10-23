@@ -3,11 +3,12 @@ package milk
 import (
 	"adomnia/internal/aipolicy"
 	"adomnia/internal/airedact"
+	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -33,7 +34,7 @@ func (m *Manager) SessionControls(root string) (SessionControls, error) {
 		return SessionControls{}, err
 	}
 	m.mu.Lock()
-	data, _ := json.Marshal(m.controls[root])
+	data, _ := jsonutil.Marshal(m.controls[root])
 	imageMode := "file"
 	if m.imagePrompts {
 		imageMode = "native"

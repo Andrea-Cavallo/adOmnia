@@ -2,9 +2,11 @@ package milk
 
 import (
 	"adomnia/internal/aipolicy"
+	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +37,7 @@ func TestSessionControlUsesAdvertisedModelAndDoesNotCrossProjects(t *testing.T) 
 		_ = json.Unmarshal(wire["params"], &params)
 		params["method"] = string(wire["method"])
 		request <- params
-		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(wire["id"]), "result": map[string]any{}})
+		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(wire["id"]), "result": map[string]any{}})
 	}()
 	result, err := m.SetSessionControl(context.Background(), "/one", "model", "opus")
 	if err != nil {
@@ -53,7 +55,7 @@ func TestSessionControlUsesAdvertisedModelAndDoesNotCrossProjects(t *testing.T) 
 		t.Fatal("snapshot aliases manager state")
 	}
 	// Config changes from slash commands arrive outside a turn too.
-	(&handler{manager: m}).HandleNotification("session/update", json.RawMessage(`{"sessionId":"s1","update":{"sessionUpdate":"config_option_update","configOptions":[{"id":"model","currentValue":"sonnet"}]}}`))
+	(&handler{manager: m}).HandleNotification("session/update", jsonv1.RawMessage(`{"sessionId":"s1","update":{"sessionUpdate":"config_option_update","configOptions":[{"id":"model","currentValue":"sonnet"}]}}`))
 	if m.controls["/one"][0].CurrentValue != "sonnet" {
 		t.Fatal("ignored out-of-turn config update")
 	}
@@ -114,7 +116,7 @@ func TestMilkV2ConfigIDsAndTypedBooleanRequests(t *testing.T) {
 		var params map[string]any
 		_ = json.Unmarshal(wire["params"], &params)
 		request <- params
-		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(wire["id"]), "result": map[string]any{}})
+		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(wire["id"]), "result": map[string]any{}})
 	}()
 	result, err := m.SetSessionControl(context.Background(), "/project", "think", false)
 	if err != nil {
@@ -140,7 +142,7 @@ func TestMilkAgentChoicePreservesConfigurationAndSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ := json.Marshal(control)
+	data, _ := jsonutil.Marshal(control)
 	if strings.Contains(string(data), "secret") || len(control.Options) != 2 {
 		t.Fatalf("unsafe model metadata: %s", data)
 	}
@@ -170,7 +172,7 @@ func TestMilkV2PlanUsesNestedEntries(t *testing.T) {
 			event = payload.(ChatEvent)
 		}
 	})
-	(&handler{manager: m}).HandleNotification("session/update", json.RawMessage(`{"sessionId":"s","update":{"sessionUpdate":"plan_update","plan":{"type":"items","planId":"task","entries":[{"content":"Run tests","status":"in_progress"}]}}}`))
+	(&handler{manager: m}).HandleNotification("session/update", jsonv1.RawMessage(`{"sessionId":"s","update":{"sessionUpdate":"plan_update","plan":{"type":"items","planId":"task","entries":[{"content":"Run tests","status":"in_progress"}]}}}`))
 	if event.Kind != "plan" || len(event.Plan) != 1 || event.Plan[0].Content != "Run tests" || event.Root != "/project" {
 		t.Fatalf("plan lost: %+v", event)
 	}
@@ -201,7 +203,7 @@ func TestNewSessionRequestsFreshMilkContextAndKeepsLegacyModelList(t *testing.T)
 		var params map[string]any
 		_ = json.Unmarshal(wire["params"], &params)
 		request <- params
-		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(wire["id"]), "result": map[string]any{"sessionId": "fresh", "configOptions": []map[string]any{{"configId": "think", "type": "boolean", "currentValue": true}}, "models": map[string]any{"currentModelId": "sonnet", "availableModels": []map[string]string{{"modelId": "sonnet", "name": "Sonnet"}, {"modelId": "opus", "name": "Opus"}}}}})
+		writeLine(t, pair.agentToClient, map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(wire["id"]), "result": map[string]any{"sessionId": "fresh", "configOptions": []map[string]any{{"configId": "think", "type": "boolean", "currentValue": true}}, "models": map[string]any{"currentModelId": "sonnet", "availableModels": []map[string]string{{"modelId": "sonnet", "name": "Sonnet"}, {"modelId": "opus", "name": "Opus"}}}}})
 	}()
 	result, err := m.SessionControls("/project")
 	if err != nil {

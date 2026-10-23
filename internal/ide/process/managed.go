@@ -1,7 +1,8 @@
 package process
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -133,7 +134,7 @@ func sameProcessName(expected, actual string) bool {
 }
 
 func (r *Registry) saveLocked() {
-	data, err := json.Marshal(struct {
+	data, err := jsonutil.Marshal(struct {
 		Children []ManagedChild `json:"children"`
 	}{Children: r.children})
 	if err != nil || r.path == "" {

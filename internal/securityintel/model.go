@@ -138,8 +138,8 @@ type CallFrame struct {
 	Receiver  string `json:"receiver,omitempty"`
 	File      string `json:"file,omitempty"`
 	Relative  string `json:"relative,omitempty"`
-	Line      int    `json:"line,omitempty"`
-	Column    int    `json:"column,omitempty"`
+	Line      int    `json:"line,omitzero"`
+	Column    int    `json:"column,omitzero"`
 	InProject bool   `json:"inProject"`
 }
 

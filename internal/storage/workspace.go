@@ -4,12 +4,13 @@
 package storage
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -25,7 +26,7 @@ func workspaceListHandler(w http.ResponseWriter, r *http.Request) {
 	keys, err := List("workspace", "ws/")
 	if err != nil || keys == nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"workspaces": []WorkspaceMeta{}, "count": 0})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"workspaces": []WorkspaceMeta{}, "count": 0})
 		return
 	}
 
@@ -43,7 +44,7 @@ func workspaceListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"workspaces": workspaces,
 		"count":      len(workspaces),
 	})
@@ -59,7 +60,7 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 		Name  string `json:"name"`
 		State string `json:"state"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -106,7 +107,7 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[workspace] saved \"%s\" (%d tabs)", req.Name, tabs)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "name": req.Name, "tabs": tabs})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "name": req.Name, "tabs": tabs})
 }
 
 func workspaceLoadHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,5 +149,5 @@ func workspaceDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }

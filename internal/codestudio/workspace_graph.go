@@ -94,7 +94,7 @@ type GraphSummary struct {
 	BuiltAt   time.Time      `json:"builtAt"`
 	Stats     map[string]int `json:"stats"`
 	Edges     int            `json:"edges"`
-	Truncated bool           `json:"truncated,omitempty"`
+	Truncated bool           `json:"truncated,omitzero"`
 	Problems  []string       `json:"problems"`
 	Cached    bool           `json:"cached"`
 }
@@ -385,7 +385,7 @@ func (s *Service) SecurityExposures(sessionID string, locations []FindingLocatio
 // GraphRiskMap è il rischio di modifica per package (Risk map dell'Impact).
 type GraphRiskMap struct {
 	Packages  []graph.PackageRisk `json:"packages"`
-	Truncated bool                `json:"truncated,omitempty"`
+	Truncated bool                `json:"truncated,omitzero"`
 }
 
 // RiskMap calcola il rischio di ogni funzione del progetto, raggruppato per package.

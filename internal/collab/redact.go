@@ -1,7 +1,9 @@
 package collab
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,14 +18,14 @@ var secretKey = regexp.MustCompile(`(?i)(authorization|token|secret|password|pas
 // Copre: campi con nome sensibile, righe {key|name, value} con chiave sensibile,
 // variabili marcate secret (secret:true o type:"secret") e riferimenti `vault:`.
 // Restituisce i path redatti per la preview.
-func Redact(data json.RawMessage) (json.RawMessage, []string, error) {
+func Redact(data jsonv1.RawMessage) (jsonv1.RawMessage, []string, error) {
 	var root any
 	if err := json.Unmarshal(data, &root); err != nil {
 		return nil, nil, err
 	}
 	var paths []string
 	root = redactValue(root, "", "$", &paths)
-	out, err := json.Marshal(root)
+	out, err := jsonutil.Marshal(root)
 	return out, paths, err
 }
 

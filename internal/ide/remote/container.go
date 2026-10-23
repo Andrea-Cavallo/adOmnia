@@ -4,7 +4,7 @@ import (
 	"adomnia/internal/ide/process"
 	"adomnia/internal/procutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os/exec"
 	"path"

@@ -1,7 +1,7 @@
 package rust
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -16,7 +16,7 @@ import (
 type TestOptions struct {
 	Toolchain string `json:"toolchain,omitempty"`
 	Run       string `json:"run,omitempty"`
-	Coverage  bool   `json:"coverage,omitempty"`
+	Coverage  bool   `json:"coverage,omitzero"`
 }
 
 // TestCommand esegue `cargo test` con la toolchain risolta. La compilazione dei test esegue

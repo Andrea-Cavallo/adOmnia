@@ -2,7 +2,9 @@ package adomniacli
 
 import (
 	"bufio"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"strings"
 
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/mock"
 )
 
@@ -28,10 +31,10 @@ const (
 )
 
 type mcpRPC struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id"`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params"`
+	JSONRPC string            `json:"jsonrpc"`
+	ID      jsonv1.RawMessage `json:"id"`
+	Method  string            `json:"method"`
+	Params  jsonv1.RawMessage `json:"params"`
 }
 
 type mcpError struct {
@@ -57,7 +60,6 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	mock.RegisterHandlers(server.mux)
 	scanner := bufio.NewScanner(stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	encoder := json.NewEncoder(stdout)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -67,7 +69,12 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !ok {
 			continue
 		}
-		if err := encoder.Encode(reply); err != nil {
+		if err := jsonutil.MarshalWrite(stdout, reply); err != nil {
+			return 1
+		}
+		// Il trasporto stdio di MCP è delimitato da newline: encoding/json/v2 non termina il
+		// messaggio con \n come faceva l'Encoder v1, senza separatore le risposte si unirebbero.
+		if _, err := io.WriteString(stdout, "\n"); err != nil {
 			return 1
 		}
 	}
@@ -79,7 +86,7 @@ func (s *mcpServer) respond(line []byte, stderr io.Writer) (map[string]any, bool
 	var request mcpRPC
 	if err := json.Unmarshal(line, &request); err != nil {
 		fmt.Fprintf(stderr, "adomnia mcp: bad message: %v\n", err)
-		return mcpErrorReply(json.RawMessage("null"), rpcParseError, "parse error"), true
+		return mcpErrorReply(jsonv1.RawMessage("null"), rpcParseError, "parse error"), true
 	}
 	if len(request.ID) == 0 { // notification (initialized, cancelled…)
 		return nil, false
@@ -94,7 +101,7 @@ func (s *mcpServer) respond(line []byte, stderr io.Writer) (map[string]any, bool
 	return map[string]any{"jsonrpc": "2.0", "id": request.ID, "result": result}, true
 }
 
-func mcpErrorReply(id json.RawMessage, code int, message string) map[string]any {
+func mcpErrorReply(id jsonv1.RawMessage, code int, message string) map[string]any {
 	return map[string]any{"jsonrpc": "2.0", "id": id, "error": map[string]any{"code": code, "message": message}}
 }
 
@@ -127,7 +134,7 @@ func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {
 	return nil, &mcpError{rpcMethodNotFound, "method not found: " + request.Method}
 }
 
-func (s *mcpServer) initialize(raw json.RawMessage) map[string]any {
+func (s *mcpServer) initialize(raw jsonv1.RawMessage) map[string]any {
 	var params struct {
 		ProtocolVersion string `json:"protocolVersion"`
 	}
@@ -151,10 +158,10 @@ func (s *mcpServer) initialize(raw json.RawMessage) map[string]any {
 	}
 }
 
-func (s *mcpServer) toolsCall(raw json.RawMessage) (any, *mcpError) {
+func (s *mcpServer) toolsCall(raw jsonv1.RawMessage) (any, *mcpError) {
 	var call struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments"`
+		Name      string            `json:"name"`
+		Arguments jsonv1.RawMessage `json:"arguments"`
 	}
 	if err := json.Unmarshal(raw, &call); err != nil || call.Name == "" {
 		return nil, invalidParams("tools/call needs a tool name")
@@ -190,6 +197,6 @@ func (s *mcpServer) loadCollection(requested string) (collectionfs.Collection, s
 }
 
 func jsonText(value any) (string, error) {
-	data, err := json.MarshalIndent(value, "", "  ")
+	data, err := jsonutil.Marshal(value, jsontext.WithIndent("  "))
 	return string(data), err
 }

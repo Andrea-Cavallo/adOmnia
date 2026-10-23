@@ -18,11 +18,11 @@ type AdvisoryImpact struct {
 	// Severity è la classe normalizzata: CRITICAL, HIGH, MEDIUM, LOW, NONE.
 	Severity string `json:"severity"`
 	// CVSS è il punteggio più autorevole disponibile (4.0 della fonte, altrimenti 3.1).
-	CVSS float64 `json:"cvss,omitempty"`
+	CVSS float64 `json:"cvss,omitzero"`
 	// EPSS è la probabilità di sfruttamento entro 30 giorni. Non è una gravità.
-	EPSS float64 `json:"epss,omitempty"`
+	EPSS float64 `json:"epss,omitzero"`
 	// KEV dice che l'advisory è nel catalogo CISA delle vulnerabilità sfruttate.
-	KEV bool `json:"kev,omitempty"`
+	KEV bool `json:"kev,omitzero"`
 	// FixedVersion è la versione che chiude l'advisory, se pubblicata.
 	FixedVersion string `json:"fixedVersion,omitempty"`
 }

@@ -9,7 +9,7 @@ package update
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"golang.org/x/mod/semver"

@@ -1,7 +1,7 @@
 package golang
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -19,8 +19,8 @@ type RunOptions struct {
 	ExtraTargets []string `json:"extraTargets,omitempty"`
 	GOOS         string   `json:"goos,omitempty"`
 	GOARCH       string   `json:"goarch,omitempty"`
-	Race         bool     `json:"race,omitempty"`
-	Coverage     bool     `json:"coverage,omitempty"`
+	Race         bool     `json:"race,omitzero"`
+	Coverage     bool     `json:"coverage,omitzero"`
 	Profile      string   `json:"profile,omitempty"`
 	DebugFlags   []string `json:"debugFlags,omitempty"`
 }

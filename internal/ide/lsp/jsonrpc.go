@@ -3,9 +3,11 @@
 package lsp
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -28,9 +30,9 @@ var ErrClosed = errors.New("language server unavailable")
 
 // ResponseError è l'errore tipizzato restituito dal server.
 type ResponseError struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data,omitempty"`
+	Code    int               `json:"code"`
+	Message string            `json:"message"`
+	Data    jsonv1.RawMessage `json:"data,omitempty"`
 }
 
 func (e *ResponseError) Error() string {
@@ -38,25 +40,25 @@ func (e *ResponseError) Error() string {
 }
 
 type wireMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *ResponseError  `json:"error,omitempty"`
+	JSONRPC string            `json:"jsonrpc"`
+	ID      jsonv1.RawMessage `json:"id,omitempty"`
+	Method  string            `json:"method,omitempty"`
+	Params  jsonv1.RawMessage `json:"params,omitempty"`
+	Result  jsonv1.RawMessage `json:"result,omitempty"`
+	Error   *ResponseError    `json:"error,omitempty"`
 }
 
 type response struct {
-	result json.RawMessage
+	result jsonv1.RawMessage
 	err    error
 }
 
 // Handler riceve notifiche e richieste avviate dal server.
 type Handler interface {
 	// HandleNotification elabora una notifica server → client.
-	HandleNotification(method string, params json.RawMessage)
+	HandleNotification(method string, params jsonv1.RawMessage)
 	// HandleRequest risponde a una richiesta server → client; ErrMethodNotFound se non supportata.
-	HandleRequest(ctx context.Context, method string, params json.RawMessage) (any, error)
+	HandleRequest(ctx context.Context, method string, params jsonv1.RawMessage) (any, error)
 }
 
 // ErrMethodNotFound segnala al server che il client non implementa il metodo richiesto.
@@ -246,7 +248,7 @@ func (c *Conn) answer(message wireMessage) {
 }
 
 func (c *Conn) write(message any) error {
-	data, err := json.Marshal(message)
+	data, err := jsonutil.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("serializzazione messaggio LSP fallita: %w", err)
 	}

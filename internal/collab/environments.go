@@ -1,7 +1,9 @@
 package collab
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,7 +12,7 @@ import (
 // environmentPayload excludes private environments at the authoritative origin.
 // Explicit opt-in applies only to a top-level environment variable's plain value.
 // Vault references are never resolved or allowed across the network.
-func environmentPayload(data json.RawMessage, selected []string) (json.RawMessage, map[string]string, error) {
+func environmentPayload(data jsonv1.RawMessage, selected []string) (jsonv1.RawMessage, map[string]string, error) {
 	if len(selected) > 64 {
 		return nil, nil, errors.New("troppi segreti selezionati")
 	}
@@ -53,11 +55,11 @@ func environmentPayload(data json.RawMessage, selected []string) (json.RawMessag
 		}
 		public = append(public, env)
 	}
-	out, err := json.Marshal(public)
+	out, err := jsonutil.Marshal(public)
 	return out, values, err
 }
 
-func restoreSelectedVariables(data json.RawMessage, values map[string]string, redacted []string) (json.RawMessage, []string) {
+func restoreSelectedVariables(data jsonv1.RawMessage, values map[string]string, redacted []string) (jsonv1.RawMessage, []string) {
 	if len(values) == 0 {
 		return data, redacted
 	}
@@ -86,6 +88,6 @@ func restoreSelectedVariables(data json.RawMessage, values map[string]string, re
 			}
 		}
 	}
-	out, _ := json.Marshal(envs)
+	out, _ := jsonutil.Marshal(envs)
 	return out, redacted
 }

@@ -3,11 +3,13 @@ package grpc
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"google.golang.org/grpc"
@@ -46,8 +48,8 @@ func registerStreamSession(stream grpc.ClientStream, input *desc.MessageDescript
 }
 
 type streamControlRequest struct {
-	ID      string          `json:"id"`
-	Message json.RawMessage `json:"message,omitempty"`
+	ID      string            `json:"id"`
+	Message jsonv1.RawMessage `json:"message,omitempty"`
 }
 
 func streamControl(w http.ResponseWriter, r *http.Request) (*streamSession, streamControlRequest, bool) {
@@ -56,7 +58,7 @@ func streamControl(w http.ResponseWriter, r *http.Request) (*streamSession, stre
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return nil, req, false
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return nil, req, false
 	}
@@ -73,10 +75,10 @@ func writeStreamControl(w http.ResponseWriter, err error) {
 	if err != nil {
 		st, _ := status.FromError(err)
 		w.WriteHeader(http.StatusBadGateway)
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "status": st.Code().String(), "error": st.Message()})
+		_ = jsonutil.MarshalWrite(w, map[string]any{"ok": false, "status": st.Code().String(), "error": st.Message()})
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 // grpcStreamSendHandler sends one message on an open interactive stream.

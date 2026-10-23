@@ -2,7 +2,8 @@ package rust
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"net/url"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/jsonutil"
 )
 
 // analyzerHandler risponde al server come l'IDE (workspace/configuration con le impostazioni
@@ -23,7 +25,7 @@ type analyzerHandler struct {
 	messages map[string][]string
 }
 
-func (h *analyzerHandler) HandleNotification(method string, params json.RawMessage) {
+func (h *analyzerHandler) HandleNotification(method string, params jsonv1.RawMessage) {
 	if method != "textDocument/publishDiagnostics" {
 		return
 	}
@@ -46,7 +48,7 @@ func (h *analyzerHandler) HandleNotification(method string, params json.RawMessa
 	}
 }
 
-func (h *analyzerHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+func (h *analyzerHandler) HandleRequest(_ context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	if method != "workspace/configuration" {
 		return nil, nil
 	}
@@ -172,7 +174,7 @@ func TestRealRustAnalyzerAnalysesWorkspace(t *testing.T) {
 		if err := conn.Call(ctx, method, params, &result); err != nil {
 			return "error: " + err.Error()
 		}
-		encoded, _ := json.Marshal(result)
+		encoded, _ := jsonutil.Marshal(result)
 		return string(encoded)
 	}
 	position := func(line, character int) map[string]any {

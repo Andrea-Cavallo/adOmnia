@@ -84,7 +84,7 @@ func FakeSDK(t *testing.T, withVersionFile bool) string {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(root, "bin", "go"+ExeSuffix())
-	if err := os.WriteFile(binary, data, 0o755); err != nil {
+	if err := os.WriteFile(binary, data, 0o755); err != nil { // #nosec G703 -- test helper writing under t.TempDir
 		t.Fatal(err)
 	}
 	if withVersionFile {

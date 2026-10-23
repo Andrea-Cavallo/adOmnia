@@ -1,13 +1,13 @@
 package copilot
 
 import (
+	"adomnia/internal/jsonutil"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha512"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +43,7 @@ func fakeRegistry(t *testing.T, tarball []byte, integrity string) (*Installer, S
 	var server *httptest.Server
 	server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/latest") {
-			_ = json.NewEncoder(w).Encode(map[string]any{"version": "1.2.3", "dist": map[string]string{"tarball": server.URL + "/pkg.tgz", "integrity": integrity}})
+			_ = jsonutil.MarshalWrite(w, map[string]any{"version": "1.2.3", "dist": map[string]string{"tarball": server.URL + "/pkg.tgz", "integrity": integrity}})
 			return
 		}
 		_, _ = w.Write(tarball)

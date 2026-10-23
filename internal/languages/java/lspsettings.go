@@ -1,7 +1,9 @@
 package java
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -80,7 +82,7 @@ func SetProjectJavaHome(root, home string) error {
 		}
 		return nil
 	}
-	data, err := json.MarshalIndent(projectJavaSettings{JavaHome: home}, "", "  ")
+	data, err := jsonutil.Marshal(projectJavaSettings{JavaHome: home}, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

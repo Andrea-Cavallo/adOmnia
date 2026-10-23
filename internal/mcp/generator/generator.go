@@ -1,9 +1,10 @@
 package generator
 
 import (
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"embed"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -146,8 +147,8 @@ func buildTool(req RawRequest, seen map[string]int, envVars map[string]EnvVar) T
 	})
 
 	hasBody, bodyTemplate := bodyTemplateFromRequest(req, properties)
-	propsJSON, _ := json.Marshal(properties)
-	requiredJSON, _ := json.Marshal(required)
+	propsJSON, _ := jsonutil.Marshal(properties)
+	requiredJSON, _ := jsonutil.Marshal(required)
 
 	return ToolDef{
 		Name:            name,

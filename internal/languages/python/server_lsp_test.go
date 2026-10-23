@@ -2,7 +2,8 @@ package python
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"net/url"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 
 	"adomnia/internal/ide/lsp"
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/jsonutil"
 )
 
 // lspTestHandler raccoglie le diagnostiche e risponde alle richieste del server con le stesse
@@ -22,7 +24,7 @@ type lspTestHandler struct {
 	diagnostics chan map[string]any
 }
 
-func (h *lspTestHandler) HandleNotification(method string, params json.RawMessage) {
+func (h *lspTestHandler) HandleNotification(method string, params jsonv1.RawMessage) {
 	if method != "textDocument/publishDiagnostics" {
 		return
 	}
@@ -32,7 +34,7 @@ func (h *lspTestHandler) HandleNotification(method string, params json.RawMessag
 	}
 }
 
-func (h *lspTestHandler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+func (h *lspTestHandler) HandleRequest(_ context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	switch method {
 	case "workspace/configuration":
 		var request struct {
@@ -214,7 +216,7 @@ func TestRealBasedpyrightAnalysesProjectImports(t *testing.T) {
 	}, &definition); err != nil {
 		t.Fatalf("definition: %v", err)
 	}
-	encoded, _ := json.Marshal(definition)
+	encoded, _ := jsonutil.Marshal(definition)
 	if !strings.Contains(string(encoded), "site-packages") {
 		t.Fatalf("definition does not point into the project environment: %s", encoded)
 	}
@@ -228,7 +230,7 @@ func TestRealBasedpyrightAnalysesProjectImports(t *testing.T) {
 	}, &rename); err != nil {
 		t.Fatalf("rename: %v", err)
 	}
-	encoded, _ = json.Marshal(rename)
+	encoded, _ = jsonutil.Marshal(rename)
 	if strings.Count(string(encoded), "renamed") < 2 {
 		t.Fatalf("rename did not update both the declaration and the use: %s", encoded)
 	}

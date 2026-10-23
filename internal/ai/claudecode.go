@@ -3,7 +3,7 @@ package ai
 import (
 	"adomnia/internal/netpolicy"
 
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"golang.org/x/net/http/httpproxy"
 )
 
@@ -136,7 +137,7 @@ func parseClaudeSettings(raw []byte) (claudeSettingsData, bool) {
 		case string:
 			data.env[key] = v
 		case float64, bool:
-			raw, _ := json.Marshal(v)
+			raw, _ := jsonutil.Marshal(v)
 			data.env[key] = string(raw)
 		}
 	}
@@ -302,7 +303,7 @@ type ClaudeCodeFileStatus struct {
 	Scope       string   `json:"scope"`
 	EnvKeys     []string `json:"envKeys"`
 	HasModel    bool     `json:"hasModel"`
-	Invalid     bool     `json:"invalid,omitempty"`
+	Invalid     bool     `json:"invalid,omitzero"`
 }
 
 // ClaudeCodeStatus is safe to send to the renderer: names only, never values.

@@ -1,7 +1,6 @@
 package adomniacli
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -21,7 +21,7 @@ func TestFetchOAuth2ClientCredentials(t *testing.T) {
 		if r.Form.Get("grant_type") != "client_credentials" || r.Form.Get("client_id") != "client" || r.Form.Get("client_secret") != "secret" {
 			t.Fatalf("form = %#v", r.Form)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "issued-token", "expires_in": 300})
+		_ = jsonutil.MarshalWrite(w, map[string]any{"access_token": "issued-token", "expires_in": 300})
 	}))
 	defer server.Close()
 	token, err := fetchOAuth2Token(requestcontract.Auth{Type: "oauth2", OAuth2GrantType: "client_credentials", OAuth2TokenURL: server.URL, OAuth2ClientID: "client", OAuth2ClientSecret: "secret"}, nil)

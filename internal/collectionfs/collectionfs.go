@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 )
 
@@ -41,7 +44,7 @@ type Node struct {
 	PreScript  string                     `json:"preScript,omitempty"`
 	PostScript string                     `json:"postScript,omitempty"`
 	Children   []Node                     `json:"children,omitempty"`
-	Raw        json.RawMessage            `json:"-"`
+	Raw        jsonv1.RawMessage          `json:"-"`
 }
 
 func (n *Node) UnmarshalJSON(data []byte) error {
@@ -70,7 +73,7 @@ func (n Node) MarshalJSON() ([]byte, error) {
 		PostScript string                     `json:"postScript,omitempty"`
 		Children   []Node                     `json:"children"`
 	}
-	return json.Marshal(folder{
+	return jsonutil.Marshal(folder{
 		ID:         n.ID,
 		Name:       n.Name,
 		Type:       n.Type,
@@ -91,7 +94,7 @@ type ExportOptions struct {
 type Environment struct {
 	ID        string                     `json:"id"`
 	Name      string                     `json:"name"`
-	Private   bool                       `json:"private,omitempty"`
+	Private   bool                       `json:"private,omitzero"`
 	Variables []requestcontract.Variable `json:"variables"`
 }
 
@@ -180,7 +183,7 @@ func ExportRequest(root string, request requestcontract.Request) (string, error)
 	if requestPath == "" {
 		return "", fmt.Errorf("request %q is not present in the folder projection; run full export first", request.ID)
 	}
-	raw, err := json.Marshal(request)
+	raw, err := jsonutil.Marshal(request)
 	if err != nil {
 		return "", fmt.Errorf("marshal request %s: %w", request.ID, err)
 	}
@@ -472,7 +475,7 @@ func readRequestNode(path string) (Node, int, error) {
 	}
 	delete(payload, "schemaVersion")
 	delete(payload, "seq")
-	cleaned, err := json.Marshal(payload)
+	cleaned, err := jsonutil.Marshal(payload)
 	if err != nil {
 		return Node{}, 0, fmt.Errorf("encode request %s: %w", path, err)
 	}
@@ -542,7 +545,7 @@ func readJSON(path string, value any) error {
 }
 
 func writeJSON(path string, value any) error {
-	data, err := json.MarshalIndent(value, "", "  ")
+	data, err := jsonutil.Marshal(value, jsontext.WithIndent("  "))
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", path, err)
 	}
@@ -601,18 +604,18 @@ func uniqueName(used map[string]int, base string) string {
 }
 
 func collectionHash(collection Collection) string {
-	data, _ := json.Marshal(collection)
+	data, _ := jsonutil.Marshal(collection)
 	hash, _ := HashJSON(data)
 	return hash
 }
 
 // HashJSON shares canonical snapshot revisions between folder drift and LAN transfers.
-func HashJSON(data json.RawMessage) (string, error) {
+func HashJSON(data jsonv1.RawMessage) (string, error) {
 	var canonical any
 	if err := json.Unmarshal(data, &canonical); err != nil {
 		return "", err
 	}
-	data, err := json.Marshal(canonical)
+	data, err := jsonutil.Marshal(canonical)
 	if err != nil {
 		return "", err
 	}

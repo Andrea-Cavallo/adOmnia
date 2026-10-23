@@ -1,7 +1,9 @@
 // Package run owns language-neutral execution requests and lifecycle.
 package run
 
-import "encoding/json"
+import (
+	jsonv1 "encoding/json"
+)
 
 type Request struct {
 	Kind             string
@@ -9,7 +11,7 @@ type Request struct {
 	WorkingDirectory string
 	Target           string
 	ProgramArguments []string
-	LanguageOptions  json.RawMessage
+	LanguageOptions  jsonv1.RawMessage
 	Executable       string
 	Environment      []string
 }

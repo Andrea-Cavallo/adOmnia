@@ -1,10 +1,10 @@
 package codestudio
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"adomnia/internal/ide/dap"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/rust"
 )
 
@@ -16,8 +16,8 @@ type RustDebugRequest struct {
 	Bin               string            `json:"bin,omitempty"`
 	Example           string            `json:"example,omitempty"`
 	Features          []string          `json:"features,omitempty"`
-	AllFeatures       bool              `json:"allFeatures,omitempty"`
-	NoDefaultFeatures bool              `json:"noDefaultFeatures,omitempty"`
+	AllFeatures       bool              `json:"allFeatures,omitzero"`
+	NoDefaultFeatures bool              `json:"noDefaultFeatures,omitzero"`
 	Profile           string            `json:"profile,omitempty"`
 	Target            string            `json:"target,omitempty"`
 	Toolchain         string            `json:"toolchain,omitempty"`
@@ -45,7 +45,7 @@ func (s *Service) StartRustDebug(request RustDebugRequest) (DebugSessionInfo, er
 		return DebugSessionInfo{}, err
 	}
 	adapter, _ := rust.LocateCodeLLDB(s.toolsRoot)
-	options, err := json.Marshal(rust.DebugOptions{
+	options, err := jsonutil.Marshal(rust.DebugOptions{
 		Toolchain: request.Toolchain, Package: request.Package, Bin: request.Bin, Example: request.Example,
 		ProgramArguments: request.ProgramArguments, Features: request.Features,
 		AllFeatures: request.AllFeatures, NoDefaultFeatures: request.NoDefaultFeatures,

@@ -16,9 +16,9 @@ type MapNode struct {
 	System string `json:"system,omitempty"`
 	// Services only: the process (process.pid, or the owner of a port its server spans
 	// listen on), those ports, and its established TCP connections now.
-	PID         int   `json:"pid,omitempty"`
+	PID         int   `json:"pid,omitzero"`
 	ListenPorts []int `json:"listenPorts,omitempty"`
-	Connections int   `json:"connections,omitempty"`
+	Connections int   `json:"connections,omitzero"`
 }
 
 // MapEdge aggregates the calls observed from one node to another.
@@ -37,17 +37,17 @@ type MapEdge struct {
 	SampleTraceID string `json:"sampleTraceId,omitempty"`
 	ErrorTraceID  string `json:"errorTraceId,omitempty"`
 	SourceFile    string `json:"sourceFile,omitempty"`
-	SourceLine    int    `json:"sourceLine,omitempty"`
+	SourceLine    int    `json:"sourceLine,omitzero"`
 	// The handler that answers the call, from the server span of the callee.
 	HandlerFile string `json:"handlerFile,omitempty"`
-	HandlerLine int    `json:"handlerLine,omitempty"`
+	HandlerLine int    `json:"handlerLine,omitzero"`
 	// Consumer side of a topic: the group and the brokers it reads from, to ask for its lag.
 	Group   string `json:"group,omitempty"`
 	Brokers string `json:"brokers,omitempty"`
 	// PeerPorts are the remote ports the calls go to; ActiveConnections the caller's
 	// established TCP connections to them (or to the callee's ports) right now.
 	PeerPorts         []int `json:"peerPorts,omitempty"`
-	ActiveConnections int   `json:"activeConnections,omitempty"`
+	ActiveConnections int   `json:"activeConnections,omitzero"`
 }
 
 type ServiceMap struct {
@@ -56,7 +56,7 @@ type ServiceMap struct {
 	// WindowMs is the time span the rates refer to.
 	WindowMs float64 `json:"windowMs"`
 	// ConnectionsMeasured is true when the connection counts come from the machine.
-	ConnectionsMeasured bool `json:"connectionsMeasured,omitempty"`
+	ConnectionsMeasured bool `json:"connectionsMeasured,omitzero"`
 }
 
 func firstAttr(attrs map[string]string, keys ...string) string {

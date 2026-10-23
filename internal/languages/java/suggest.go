@@ -2,7 +2,6 @@ package java
 
 import (
 	"context"
-	"encoding/json"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -10,6 +9,7 @@ import (
 
 	"adomnia/internal/ide/project"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 // buildTool è il comando con cui si esegue il build di un'unità: il wrapper del progetto se c'è
@@ -167,7 +167,7 @@ func mainEntries(unit project.Unit) []suggestEntry {
 // directory = modulo che la contiene (UnitRoot, da cui l'host ricava il percorso relativo).
 func mainSuggestion(unit project.Unit, item suggestEntry) run.Suggestion {
 	simple := item.main.Class[strings.LastIndex(item.main.Class, ".")+1:]
-	options, _ := json.Marshal(MainOptions{MainClass: item.main.Class})
+	options, _ := jsonutil.Marshal(MainOptions{MainClass: item.main.Class})
 	return run.Suggestion{
 		ID: ID + "|" + unit.Root + "|" + item.action + item.id, Language: ID, Action: item.action, UnitRoot: item.main.Module,
 		Title: "Java · main " + simple,

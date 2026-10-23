@@ -11,7 +11,7 @@ type ServerInfo struct {
 	Error  string `json:"error,omitempty"`
 	// Installable è vero quando il server manca e adOmnia può installarlo (dopo conferma): la UI
 	// offre "Install…" solo in questo caso. Lo imposta l'host, non l'adapter.
-	Installable bool `json:"installable,omitempty"`
+	Installable bool `json:"installable,omitzero"`
 }
 
 // InstallPlan è l'installazione di un language server come un solo comando visibile: l'host lo

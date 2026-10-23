@@ -6,7 +6,9 @@ package storage
 
 import (
 	"adomnia/internal/devlog"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -255,7 +258,7 @@ func List(bucket, prefix string) ([]string, error) {
 
 // storeJSONPut marshals v as JSON and stores it.
 func storeJSONPut(bucket, key string, v interface{}) error {
-	data, err := json.Marshal(v)
+	data, err := jsonutil.Marshal(v)
 	if err != nil {
 		return err
 	}
@@ -336,7 +339,7 @@ func storeStats() map[string]interface{} {
 
 func storageStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(storeStats())
+	jsonutil.MarshalWrite(w, storeStats())
 }
 
 func storageGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -418,7 +421,7 @@ func storageListHandler(w http.ResponseWriter, r *http.Request) {
 		keys = []string{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"bucket": bucket,
 		"prefix": prefix,
 		"keys":   keys,
@@ -436,13 +439,13 @@ func storageMigrateHandler(w http.ResponseWriter, r *http.Request) {
 		Settings  string `json:"settings"`
 		Mock      string `json:"mock"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	migrateFromLocalStorage(req.Workspace, req.Settings, req.Mock)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func storageExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -467,7 +470,7 @@ func storageExportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(export)
+	jsonutil.MarshalWrite(w, export)
 }
 
 func storageImportHandler(w http.ResponseWriter, r *http.Request) {
@@ -480,8 +483,8 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var data map[string]json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+	var data map[string]jsonv1.RawMessage
+	if err := json.UnmarshalRead(r.Body, &data); err != nil {
 		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -503,7 +506,7 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "imported": count})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "imported": count})
 }
 
 // Snapshot: export all bbolt data as a single downloadable .adomnia-snapshot file.
@@ -527,7 +530,7 @@ func storageSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	data, _ := json.MarshalIndent(export, "", "  ")
+	data, _ := jsonutil.Marshal(export, jsontext.WithIndent("  "))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", "attachment; filename=adomnia-snapshot.json")
 	w.Header().Set("X-Snapshot-Size", fmt.Sprintf("%d", len(data)))
@@ -581,7 +584,7 @@ func storageRestoreHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[store] restored %d keys from snapshot", restored)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "restored": restored})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "restored": restored})
 }
 
 // Full-text search across all buckets.
@@ -639,7 +642,7 @@ func storageSearchHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"q":       q,
 		"results": results,
 		"count":   len(results),

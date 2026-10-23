@@ -23,14 +23,14 @@ type ArchQuery struct {
 	Operation   string   `json:"operation"` // query, exec, prepare, begin, orm
 	Method      string   `json:"method"`
 	SQL         string   `json:"sql,omitempty"`
-	Dynamic     bool     `json:"dynamic,omitempty"` // SQL costruito a runtime (Sprintf, concatenazioni)
+	Dynamic     bool     `json:"dynamic,omitzero"` // SQL costruito a runtime (Sprintf, concatenazioni)
 	Tables      []string `json:"tables"`
-	Model       string   `json:"model,omitempty"`      // GORM: tipo del modello
-	TableGuess  bool     `json:"tableGuess,omitempty"` // tabella dedotta dalla convenzione di GORM
+	Model       string   `json:"model,omitempty"`     // GORM: tipo del modello
+	TableGuess  bool     `json:"tableGuess,omitzero"` // tabella dedotta dalla convenzione di GORM
 	Function    string   `json:"function"`
 	Package     string   `json:"package"`
-	Transaction bool     `json:"transaction,omitempty"`
-	Prepared    bool     `json:"prepared,omitempty"`
+	Transaction bool     `json:"transaction,omitzero"`
+	Prepared    bool     `json:"prepared,omitzero"`
 	Site        ArchSite `json:"site"`
 }
 

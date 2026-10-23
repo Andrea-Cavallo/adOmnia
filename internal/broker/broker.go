@@ -3,11 +3,12 @@ package broker
 import (
 	"adomnia/internal/httputil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/nats-io/nats.go"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -50,14 +51,14 @@ func brokerPresetsSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var preset MessagePreset
-	if err := json.NewDecoder(r.Body).Decode(&preset); err != nil {
+	if err := json.UnmarshalRead(r.Body, &preset); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
 	if preset.ID == "" {
 		preset.ID = fmt.Sprintf("preset-%d", time.Now().UnixNano())
 	}
-	data, _ := json.Marshal(preset)
+	data, _ := jsonutil.Marshal(preset)
 	if err := db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(brokerPresetsBucket)
 		if err != nil {
@@ -69,7 +70,7 @@ func brokerPresetsSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "id": preset.ID})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "id": preset.ID})
 }
 
 func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +89,7 @@ func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "presets": presets})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "presets": presets})
 }
 
 func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +109,7 @@ func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 // ─── RabbitMQ ────────────────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RabbitPublishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -199,7 +200,7 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":         true,
 		"exchange":   req.Config.Exchange,
 		"routingKey": req.RoutingKey,
@@ -213,7 +214,7 @@ func rabbitConsumeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RabbitConsumeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -289,7 +290,7 @@ func rabbitConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 done:
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -354,7 +355,7 @@ func mqttPublishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req MQTTPublishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -378,7 +379,7 @@ func mqttPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"topic":     req.Topic,
 		"qos":       req.QoS,
@@ -393,7 +394,7 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req MQTTSubscribeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -454,7 +455,7 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 done:
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -502,7 +503,7 @@ func redisPublishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RedisPublishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -524,7 +525,7 @@ func redisPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"channel":   req.Channel,
 		"receivers": receivers,
@@ -538,7 +539,7 @@ func redisSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RedisSubscribeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -589,7 +590,7 @@ func redisSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 redisDone:
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -642,7 +643,7 @@ func natsPublishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req NATSPublishRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -679,7 +680,7 @@ func natsPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"subject":   req.Subject,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -692,7 +693,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req NATSSubscribeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -756,7 +757,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 natsDone:
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),

@@ -1,10 +1,11 @@
 package mcp
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,7 +64,7 @@ func (t *httpTransport) headers(req *http.Request) {
 }
 
 func (t *httpTransport) Send(ctx context.Context, req JSONRPCRequest) (JSONRPCResponse, error) {
-	raw, err := json.Marshal(req)
+	raw, err := jsonutil.Marshal(req)
 	if err != nil {
 		return JSONRPCResponse{}, err
 	}
@@ -94,7 +95,7 @@ func (t *httpTransport) Send(ctx context.Context, req JSONRPCRequest) (JSONRPCRe
 		return readEventStream(resp.Body, fmt.Sprint(req.ID))
 	}
 	var result JSONRPCResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxMessageBytes)).Decode(&result); err != nil {
+	if err := json.UnmarshalRead(io.LimitReader(resp.Body, maxMessageBytes), &result); err != nil {
 		return JSONRPCResponse{}, fmt.Errorf("http decode: %w", err)
 	}
 	return result, nil

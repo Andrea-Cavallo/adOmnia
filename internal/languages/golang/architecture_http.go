@@ -66,7 +66,7 @@ func frameworkFor(packagePath string) *httpFramework {
 type ArchBody struct {
 	Type  string `json:"type"`
 	Ref   string `json:"ref,omitempty"`
-	Array bool   `json:"array,omitempty"`
+	Array bool   `json:"array,omitzero"`
 }
 
 // ArchSchema è uno struct usato come DTO, con i campi come li vede JSON.
@@ -84,7 +84,7 @@ type ArchField struct {
 	Format   string `json:"format,omitempty"`
 	Ref      string `json:"ref,omitempty"`
 	Items    string `json:"items,omitempty"` // tipo degli elementi di un array
-	Required bool   `json:"required,omitempty"`
+	Required bool   `json:"required,omitzero"`
 }
 
 // routeScope tiene, dentro una funzione, i prefissi e i middleware di ogni router.

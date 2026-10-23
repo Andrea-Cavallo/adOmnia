@@ -2,12 +2,14 @@ package database
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
+	"adomnia/internal/jsonutil"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -71,7 +73,7 @@ func TestSQLiteQueryHandlerEndToEnd(t *testing.T) {
 
 	run := func(query string, limit int) dbQueryResponse {
 		t.Helper()
-		body, err := json.Marshal(dbQueryRequest{Connection: connection, Query: query, Limit: limit, TimeoutMS: 5000, Confirm: true})
+		body, err := jsonutil.Marshal(dbQueryRequest{Connection: connection, Query: query, Limit: limit, TimeoutMS: 5000, Confirm: true})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,7 +103,7 @@ func TestSQLiteQueryHandlerEndToEnd(t *testing.T) {
 
 func TestMongoRawDocRoundTripKeepsOrderAndTypes(t *testing.T) {
 	in := `{"_id":{"$oid":"65a1b2c3d4e5f60718293a4b"},"z":1,"a":{"$numberLong":"7"},"d":{"$numberDouble":"1.0"},"at":{"$date":"2024-01-02T03:04:05Z"}}`
-	doc, err := mongoRawDoc(json.RawMessage(in), nil)
+	doc, err := mongoRawDoc(jsonv1.RawMessage(in), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,13 +2,14 @@ package plugins
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/dop251/goja"
 )
 
@@ -45,7 +46,7 @@ func executeJavaScriptPlugin(
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to read plugin entrypoint: %w", err)
 	}
-	argsJSON, err := json.Marshal(args)
+	argsJSON, err := jsonutil.Marshal(args)
 	if err != nil {
 		return nil, int64(len(source)), fmt.Errorf("failed to encode plugin arguments: %w", err)
 	}
@@ -121,7 +122,7 @@ func executeJavaScriptPlugin(
 		return nil, memUsed, nil
 	}
 
-	resultJSON, err := json.Marshal(value.Export())
+	resultJSON, err := jsonutil.Marshal(value.Export())
 	if err != nil {
 		return nil, memUsed, fmt.Errorf("plugin function %s returned a non-serializable value: %w", function, err)
 	}
@@ -245,7 +246,7 @@ func invokeHostFunction(ctx context.Context, vm *goja.Runtime, plugin PluginInst
 		}
 	}
 	params["pluginId"] = plugin.Manifest.ID
-	raw, err := json.Marshal(params)
+	raw, err := jsonutil.Marshal(params)
 	if err != nil {
 		panic(vm.NewGoError(fmt.Errorf("failed to encode %s arguments: %w", name, err)))
 	}

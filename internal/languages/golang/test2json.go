@@ -2,7 +2,7 @@ package golang
 
 import (
 	idetesting "adomnia/internal/ide/testing"
-	"encoding/json"
+	"encoding/json/v2"
 	"regexp"
 	"strings"
 )

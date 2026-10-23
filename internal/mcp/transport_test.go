@@ -1,9 +1,11 @@
 package mcp
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -26,12 +28,12 @@ func TestMain(m *testing.M) {
 func fakeServer() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 0, 1<<20), 1<<24)
-	out := func(v any) { raw, _ := json.Marshal(v); fmt.Println(string(raw)) }
+	out := func(v any) { raw, _ := jsonutil.Marshal(v); fmt.Println(string(raw)) }
 	for scanner.Scan() {
 		var req struct {
-			ID     json.RawMessage `json:"id"`
-			Method string          `json:"method"`
-			Params json.RawMessage `json:"params"`
+			ID     jsonv1.RawMessage `json:"id"`
+			Method string            `json:"method"`
+			Params jsonv1.RawMessage `json:"params"`
 		}
 		if json.Unmarshal(scanner.Bytes(), &req) != nil || len(req.ID) == 0 {
 			continue
@@ -46,7 +48,9 @@ func fakeServer() {
 			fmt.Fprintln(os.Stderr, "fake server booted")
 			reply(map[string]any{"protocolVersion": "2025-03-26", "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]any{"name": "fake", "version": "9"}, "instructions": "be nice"})
 		case "tools/list":
-			var p struct{ Cursor string }
+			var p struct {
+				Cursor string `json:"cursor"`
+			}
 			_ = json.Unmarshal(req.Params, &p)
 			if p.Cursor == "" {
 				reply(map[string]any{"tools": []map[string]any{{"name": "one"}}, "nextCursor": "page2"})
@@ -55,8 +59,8 @@ func fakeServer() {
 			}
 		case "tools/call":
 			var p struct {
-				Name      string
-				Arguments map[string]any
+				Name      string         `json:"name"`
+				Arguments map[string]any `json:"arguments"`
 			}
 			_ = json.Unmarshal(req.Params, &p)
 			switch p.Name {
@@ -204,14 +208,14 @@ func TestHTTP_SessionHeaderAndDelete(t *testing.T) {
 			return
 		}
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		if req.ID == nil {
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
 		w.Header().Set("Mcp-Session-Id", "abc")
-		result, _ := json.Marshal(map[string]any{"protocolVersion": "2025-03-26", "capabilities": map[string]any{}, "serverInfo": map[string]any{"name": "h"}})
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
+		result, _ := jsonutil.Marshal(map[string]any{"protocolVersion": "2025-03-26", "capabilities": map[string]any{}, "serverInfo": map[string]any{"name": "h"}})
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
 	}))
 	defer srv.Close()
 	c, err := NewClient(ConnectionConfig{Transport: TransportHTTP, BaseURL: srv.URL, BearerToken: "tok"})
@@ -236,9 +240,9 @@ func TestHTTP_SessionHeaderAndDelete(t *testing.T) {
 func TestHTTP_EventStreamResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		w.Header().Set("content-type", "text/event-stream")
-		id, _ := json.Marshal(req.ID)
+		id, _ := jsonutil.Marshal(req.ID)
 		fmt.Fprint(w, "event: message\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\"}\n\n")
 		fmt.Fprint(w, "data: {\"jsonrpc\":\"2.0\",\"id\":"+string(id)+",\"result\":{\"tools\":[{\"name\":\"streamed\"}]}}\n\n")
 	}))
@@ -297,9 +301,9 @@ func TestHTTP_BadJSONAndUnreachable(t *testing.T) {
 func TestClient_PagesAreCapped(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		result, _ := json.Marshal(map[string]any{"tools": []any{}, "nextCursor": "again"})
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
+		_ = json.UnmarshalRead(r.Body, &req)
+		result, _ := jsonutil.Marshal(map[string]any{"tools": []any{}, "nextCursor": "again"})
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
 	}))
 	defer srv.Close()
 	c, _ := NewClient(ConnectionConfig{Transport: TransportHTTP, BaseURL: srv.URL})
@@ -312,10 +316,10 @@ func TestClient_PromptArgumentsAreStrings(t *testing.T) {
 	var got map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req JSONRPCRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.UnmarshalRead(r.Body, &req)
 		got = req.Params.(map[string]any)
-		result, _ := json.Marshal(map[string]any{"description": "d", "messages": []any{map[string]any{"role": "user", "content": map[string]any{"type": "text", "text": "go"}}}})
-		_ = json.NewEncoder(w).Encode(JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
+		result, _ := jsonutil.Marshal(map[string]any{"description": "d", "messages": []any{map[string]any{"role": "user", "content": map[string]any{"type": "text", "text": "go"}}}})
+		_ = jsonutil.MarshalWrite(w, JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
 	}))
 	defer srv.Close()
 	c, _ := NewClient(ConnectionConfig{Transport: TransportHTTP, BaseURL: srv.URL})

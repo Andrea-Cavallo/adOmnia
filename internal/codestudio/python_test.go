@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"encoding/json"
 	"os/exec"
 	"runtime"
 	"testing"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/python"
 )
 
@@ -30,7 +30,7 @@ func TestPythonConfigurationUsesRegisteredAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options, _ := json.Marshal(python.Options{Interpreter: interpreter, Script: "app.py"})
+	options, _ := jsonutil.Marshal(python.Options{Interpreter: interpreter, Script: "app.py"})
 	saved, err := service.SaveRunConfiguration(string(session.ID), RunConfiguration{Name: "Python script", Language: python.ID, Kind: "script", LanguageOptions: options})
 	if err != nil {
 		t.Fatal(err)

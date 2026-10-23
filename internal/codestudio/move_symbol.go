@@ -4,7 +4,6 @@ import (
 	"adomnia/internal/procutil"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -19,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
 )
@@ -697,7 +697,7 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 		}
 		replace[file.path] = temporary
 	}
-	overlay, _ := json.Marshal(map[string]any{"Replace": replace})
+	overlay, _ := jsonutil.Marshal(map[string]any{"Replace": replace})
 	overlayFile := filepath.Join(overlayDir, "overlay.json")
 	if err := os.WriteFile(overlayFile, overlay, 0o600); err != nil {
 		return err

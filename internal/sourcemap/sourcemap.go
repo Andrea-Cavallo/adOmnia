@@ -8,7 +8,8 @@
 package sourcemap
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -243,7 +244,7 @@ func Open(roots []string, path string, line int, editor string) error {
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_ = jsonutil.MarshalWrite(w, payload)
 }
 
 // RegisterHandlers wires the source-mapping endpoints onto the local sidecar.
@@ -254,7 +255,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			return
 		}
 		var request resolveRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
 			writeJSON(w, http.StatusBadRequest, ResolveResult{Error: "invalid request"})
 			return
 		}
@@ -267,7 +268,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 			return
 		}
 		var request openRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		if err := json.UnmarshalRead(r.Body, &request); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 			return
 		}

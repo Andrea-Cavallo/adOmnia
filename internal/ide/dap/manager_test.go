@@ -1,8 +1,9 @@
 package dap
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net"
@@ -52,7 +53,7 @@ func TestDAPAdapterProcess(t *testing.T) {
 	fmt.Fprintln(os.Stderr, "adapter diagnostic")
 	reader := bufio.NewReader(stream)
 	send := func(message any) {
-		data, _ := json.Marshal(message)
+		data, _ := jsonutil.Marshal(message)
 		fmt.Fprintf(stream, "Content-Length: %d\r\n\r\n%s", len(data), data)
 	}
 	for {

@@ -1,9 +1,11 @@
 package milk
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -21,32 +23,32 @@ var ErrClosed = errors.New("milk process is not available")
 var ErrMethodNotFound = errors.New("method not supported")
 
 type rpcError struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data,omitempty"`
+	Code    int               `json:"code"`
+	Message string            `json:"message"`
+	Data    jsonv1.RawMessage `json:"data,omitempty"`
 }
 
 func (e *rpcError) Error() string { return fmt.Sprintf("milk error %d: %s", e.Code, e.Message) }
 
 type wireMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *rpcError       `json:"error,omitempty"`
+	JSONRPC string            `json:"jsonrpc"`
+	ID      jsonv1.RawMessage `json:"id,omitempty"`
+	Method  string            `json:"method,omitempty"`
+	Params  jsonv1.RawMessage `json:"params,omitempty"`
+	Result  jsonv1.RawMessage `json:"result,omitempty"`
+	Error   *rpcError         `json:"error,omitempty"`
 }
 
 type response struct {
-	result json.RawMessage
+	result jsonv1.RawMessage
 	err    error
 }
 
 // Handler riceve notifiche e richieste avviate da milk (session/update,
 // session/request_permission, …).
 type Handler interface {
-	HandleNotification(method string, params json.RawMessage)
-	HandleRequest(ctx context.Context, method string, params json.RawMessage) (any, error)
+	HandleNotification(method string, params jsonv1.RawMessage)
+	HandleRequest(ctx context.Context, method string, params jsonv1.RawMessage) (any, error)
 }
 
 // Conn è una connessione JSON-RPC 2.0 newline-delimited (ACP) su uno stream bidirezionale.
@@ -109,7 +111,7 @@ func (c *Conn) Run() {
 // Call invia una richiesta e attende la risposta. Gli id sono stringhe JSON,
 // come li usa milk (StdioConn.Request), così la correlazione resta byte-per-byte.
 func (c *Conn) Call(ctx context.Context, method string, params, result any) error {
-	idJSON, _ := json.Marshal(fmt.Sprintf("%d", c.nextID.Add(1)))
+	idJSON, _ := jsonutil.Marshal(fmt.Sprintf("%d", c.nextID.Add(1)))
 	key := string(idJSON)
 	reply := make(chan response, 1)
 	c.mu.Lock()
@@ -119,7 +121,7 @@ func (c *Conn) Call(ctx context.Context, method string, params, result any) erro
 	}
 	c.pending[key] = reply
 	c.mu.Unlock()
-	if err := c.write(map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(idJSON), "method": method, "params": params}); err != nil {
+	if err := c.write(map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(idJSON), "method": method, "params": params}); err != nil {
 		c.forget(key)
 		return err
 	}
@@ -187,7 +189,7 @@ func (c *Conn) answer(message wireMessage) {
 	if c.handler != nil {
 		result, err = c.handler.HandleRequest(context.Background(), message.Method, message.Params)
 	}
-	reply := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(message.ID)}
+	reply := map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(message.ID)}
 	switch {
 	case errors.Is(err, ErrMethodNotFound):
 		reply["error"] = rpcError{Code: -32601, Message: "method not found: " + message.Method}
@@ -200,7 +202,7 @@ func (c *Conn) answer(message wireMessage) {
 }
 
 func (c *Conn) write(message any) error {
-	data, err := json.Marshal(message)
+	data, err := jsonutil.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("serialize JSON-RPC message: %w", err)
 	}

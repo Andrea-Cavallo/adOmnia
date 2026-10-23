@@ -3,10 +3,11 @@ package otlp
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"strconv"
 	"strings"
 
+	"adomnia/internal/jsonutil"
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -114,10 +115,10 @@ func anyValue(value *commonpb.AnyValue) string {
 		for _, item := range v.ArrayValue.GetValues() {
 			parts = append(parts, anyValue(item))
 		}
-		data, _ := json.Marshal(parts)
+		data, _ := jsonutil.Marshal(parts)
 		return string(data)
 	case *commonpb.AnyValue_KvlistValue:
-		data, _ := json.Marshal(attributes(v.KvlistValue.GetValues()))
+		data, _ := jsonutil.Marshal(attributes(v.KvlistValue.GetValues()))
 		return string(data)
 	}
 	return ""
@@ -131,7 +132,7 @@ func DecodeJSON(body []byte) (*coltracepb.ExportTraceServiceRequest, error) {
 		return nil, err
 	}
 	rewriteIDs(generic)
-	normalized, err := json.Marshal(generic)
+	normalized, err := jsonutil.Marshal(generic)
 	if err != nil {
 		return nil, err
 	}

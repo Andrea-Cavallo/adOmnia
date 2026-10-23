@@ -2,7 +2,8 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -52,7 +53,7 @@ func (c *Client) nextID() int64 {
 	return c.idCounter.Add(1)
 }
 
-func (c *Client) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
+func (c *Client) call(ctx context.Context, method string, params any) (jsonv1.RawMessage, error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, DefaultCallTimeout)
@@ -139,7 +140,7 @@ func listAll[T any](ctx context.Context, c *Client, method, field string) ([]T, 
 		if err != nil {
 			return nil, err
 		}
-		var envelope map[string]json.RawMessage
+		var envelope map[string]jsonv1.RawMessage
 		if err := json.Unmarshal(raw, &envelope); err != nil {
 			return nil, fmt.Errorf("decode %s: %w", method, err)
 		}

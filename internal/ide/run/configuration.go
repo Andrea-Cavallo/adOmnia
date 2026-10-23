@@ -20,13 +20,13 @@ type Configuration struct {
 	Environment      []EnvironmentEntry `json:"environment"`
 	Docker           DockerOptions      `json:"docker"`
 	EnvFile          string             `json:"envFile,omitempty"`
-	Port             int                `json:"port,omitempty"`
+	Port             int                `json:"port,omitzero"`
 	PreRun           []string           `json:"preRun,omitempty"`
 	PostRun          []string           `json:"postRun,omitempty"`
 	Compound         []string           `json:"compound,omitempty"`
-	Shared           bool               `json:"shared,omitempty"`
-	Pinned           bool               `json:"pinned,omitempty"`
-	RestartOnSave    bool               `json:"restartOnSave,omitempty"`
+	Shared           bool               `json:"shared,omitzero"`
+	Pinned           bool               `json:"pinned,omitzero"`
+	RestartOnSave    bool               `json:"restartOnSave,omitzero"`
 	RestartPolicy    string             `json:"restartPolicy,omitempty"`
 	Order            int                `json:"order"`
 	CreatedAt        time.Time          `json:"createdAt"`
@@ -40,7 +40,7 @@ type DockerOptions struct {
 	// Stage è lo stage multi-stage da costruire (--target).
 	Stage     string             `json:"stage,omitempty"`
 	BuildArgs []EnvironmentEntry `json:"buildArgs,omitempty"`
-	NoCache   bool               `json:"noCache,omitempty"`
+	NoCache   bool               `json:"noCache,omitzero"`
 	// Ports nel formato di docker run -p: "8080", "8080:80", "127.0.0.1:8080:80/tcp".
 	Ports []string `json:"ports,omitempty"`
 	// Volumes nel formato "percorso/relativo:/percorso/container[:ro]", confinati al progetto.
@@ -49,6 +49,6 @@ type DockerOptions struct {
 type EnvironmentEntry struct {
 	Key    string `json:"key"`
 	Value  string `json:"value,omitempty"`
-	Secret bool   `json:"secret,omitempty"`
+	Secret bool   `json:"secret,omitzero"`
 }
 type Kind string

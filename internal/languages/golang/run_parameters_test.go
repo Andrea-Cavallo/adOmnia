@@ -2,14 +2,14 @@ package golang
 
 import (
 	"adomnia/internal/ide/run"
-	"encoding/json"
+	"adomnia/internal/jsonutil"
 	"strings"
 	"testing"
 )
 
 func TestOpaqueRunOptionsApplyGoFlagsAndEnvironment(t *testing.T) {
 	root := t.TempDir()
-	options, _ := json.Marshal(RunOptions{Race: true, Coverage: true, GOOS: "linux", GOARCH: "amd64", Profile: "cpu"})
+	options, _ := jsonutil.Marshal(RunOptions{Race: true, Coverage: true, GOOS: "linux", GOARCH: "amd64", Profile: "cpu"})
 	spec, err := New().CommandSpec(run.Request{Root: root, WorkingDirectory: root, Kind: "test", Target: ".", Executable: "go", LanguageOptions: options, Environment: []string{"CGO_ENABLED=0"}})
 	if err != nil {
 		t.Fatal(err)

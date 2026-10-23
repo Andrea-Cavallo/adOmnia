@@ -2,9 +2,10 @@ package main
 
 import (
 	"adomnia/internal/git"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
+	"adomnia/internal/jsonutil"
 )
 
 type GitSync struct {
@@ -60,7 +61,7 @@ func (g *GitSync) GetStatus(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(status)
+	raw, _ := jsonutil.Marshal(status)
 	return string(raw), nil
 }
 
@@ -72,7 +73,7 @@ func (g *GitSync) Overview(repoPath string, n int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(overview)
+	raw, _ := jsonutil.Marshal(overview)
 	return string(raw), nil
 }
 
@@ -84,7 +85,7 @@ func (g *GitSync) CommitAll(repoPath, message string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(result)
+	raw, _ := jsonutil.Marshal(result)
 	return string(raw), nil
 }
 
@@ -96,7 +97,7 @@ func (g *GitSync) Commit(repoPath, message string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(result)
+	raw, _ := jsonutil.Marshal(result)
 	return string(raw), nil
 }
 
@@ -136,7 +137,7 @@ func (g *GitSync) CommitPaths(repoPath, message string, paths []string) (string,
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(result)
+	raw, _ := jsonutil.Marshal(result)
 	return string(raw), nil
 }
 
@@ -344,7 +345,7 @@ func (g *GitSync) Log(repoPath string, n int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(lines)
+	raw, _ := jsonutil.Marshal(lines)
 	return string(raw), nil
 }
 
@@ -377,7 +378,7 @@ func (g *GitSync) CompareRefs(repoPath, refA, refB string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(files)
+	raw, _ := jsonutil.Marshal(files)
 	return string(raw), nil
 }
 
@@ -396,7 +397,7 @@ func (g *GitSync) GetWorkingTreeFileSnapshot(repoPath, filePath, oldPath string)
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(snapshot)
+	raw, _ := jsonutil.Marshal(snapshot)
 	return string(raw), nil
 }
 
@@ -472,6 +473,6 @@ func (g *GitSync) RunTerminalCommand(repoPath, command string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(result)
+	raw, _ := jsonutil.Marshal(result)
 	return string(raw), nil
 }

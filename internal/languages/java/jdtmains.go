@@ -1,7 +1,8 @@
 package java
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -20,12 +21,12 @@ type MainClassInfo struct {
 	Class       string `json:"class"`
 	ProjectName string `json:"projectName,omitempty"`
 	File        string `json:"file,omitempty"`
-	Spring      bool   `json:"spring,omitempty"`
+	Spring      bool   `json:"spring,omitzero"`
 	Source      string `json:"source"`
 }
 
 // ParseResolveMainClass legge la risposta di `vscode.java.resolveMainClass`: [{mainClass, projectName, filePath}].
-func ParseResolveMainClass(raw json.RawMessage) []MainClassInfo {
+func ParseResolveMainClass(raw jsonv1.RawMessage) []MainClassInfo {
 	var items []struct {
 		MainClass   string `json:"mainClass"`
 		ProjectName string `json:"projectName"`

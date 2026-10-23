@@ -38,7 +38,7 @@ type ProjectTemplate struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Custom      bool   `json:"custom,omitempty"`
+	Custom      bool   `json:"custom,omitzero"`
 	// Language è l'ID del linguaggio del progetto creato; vuoto = Go (go mod init + go.mod). I template
 	// con un linguaggio diverso non eseguono alcun comando: scrivono solo i loro file.
 	Language string `json:"language,omitempty"`

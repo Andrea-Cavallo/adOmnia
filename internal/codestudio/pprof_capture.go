@@ -46,7 +46,7 @@ type LiveProfileRequest struct {
 	SessionID string `json:"sessionId"`
 	URL       string `json:"url"`
 	Kind      string `json:"kind"`
-	Seconds   int    `json:"seconds,omitempty"`
+	Seconds   int    `json:"seconds,omitzero"`
 }
 
 // CaptureLiveProfile scarica un profilo da /debug/pprof di un servizio locale, verifica che sia pprof

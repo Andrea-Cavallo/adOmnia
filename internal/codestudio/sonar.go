@@ -2,7 +2,7 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -71,7 +71,7 @@ type SonarIssue struct {
 	Type     string   `json:"type,omitempty"`
 	Message  string   `json:"message"`
 	File     string   `json:"file"`
-	Line     int      `json:"line,omitempty"`
+	Line     int      `json:"line,omitzero"`
 	Effort   string   `json:"effort,omitempty"`
 	Status   string   `json:"status,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
@@ -83,7 +83,7 @@ type SonarScanResult struct {
 	ProjectKey string         `json:"projectKey"`
 	Issues     []SonarIssue   `json:"issues"`
 	IssueCount int            `json:"issueCount"`
-	Baselined  int            `json:"baselined,omitempty"`
+	Baselined  int            `json:"baselined,omitzero"`
 	BySeverity map[string]int `json:"bySeverity,omitempty"`
 	ByType     map[string]int `json:"byType,omitempty"`
 	DurationMS int64          `json:"durationMs"`
@@ -507,7 +507,7 @@ func (s *Service) waitSonarTask(ctx context.Context, root, serverURL, token stri
 				ErrorMessage string `json:"errorMessage"`
 			} `json:"task"`
 		}
-		decodeErr := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&parsed)
+		decodeErr := json.UnmarshalRead(io.LimitReader(response.Body, 1<<20), &parsed)
 		response.Body.Close()
 		if response.StatusCode != http.StatusOK || decodeErr != nil {
 			return fmt.Errorf("analysis status unreadable (HTTP %d)", response.StatusCode)

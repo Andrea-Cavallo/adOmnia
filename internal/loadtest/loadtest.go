@@ -3,7 +3,8 @@ package loadtest
 import (
 	"adomnia/internal/devlog"
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 )
 
@@ -50,8 +52,8 @@ type loadTestResult struct {
 	ErrorRate          float64            `json:"errorRate"`
 	StatusCodes        map[int]int        `json:"statusCodes"`
 	Timeline           []timelinePoint    `json:"timeline"`
-	WarmupSkipped      int                `json:"warmupSkipped,omitempty"`
-	CooldownMs         int                `json:"cooldownMs,omitempty"`
+	WarmupSkipped      int                `json:"warmupSkipped,omitzero"`
+	CooldownMs         int                `json:"cooldownMs,omitzero"`
 	ThroughputTimeline []throughputBucket `json:"throughputTimeline,omitempty"`
 }
 
@@ -117,7 +119,7 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req loadTestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		devlog.Err("loadTestHandler", "decode JSON payload fallito", err, nil)
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
@@ -387,7 +389,7 @@ requests:
 		"errorRate":     result.ErrorRate,
 	})
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	jsonutil.MarshalWrite(w, result)
 }
 
 // loadTestReportHandler generates an exportable report in JSON, HTML, or Markdown.
@@ -399,7 +401,7 @@ func loadTestReportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var result loadTestResult
-	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
+	if err := json.UnmarshalRead(r.Body, &result); err != nil {
 		http.Error(w, "invalid result json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -418,7 +420,7 @@ func loadTestReportHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(loadTestReportMarkdown(&result)))
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		jsonutil.MarshalWrite(w, result)
 	}
 }
 
@@ -486,7 +488,7 @@ func loadTestScenarioSaveHandler(w http.ResponseWriter, r *http.Request) {
 		Name   string          `json:"name"`
 		Config loadTestRequest `json:"config"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -494,11 +496,11 @@ func loadTestScenarioSaveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	data, _ := json.Marshal(req.Config)
+	data, _ := jsonutil.Marshal(req.Config)
 	_ = putValue("workspace", "scenario/"+req.Name, data)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "name": req.Name})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "name": req.Name})
 }
 
 func loadTestScenarioListHandler(w http.ResponseWriter, r *http.Request) {
@@ -508,7 +510,7 @@ func loadTestScenarioListHandler(w http.ResponseWriter, r *http.Request) {
 		scenarios = append(scenarios, strings.TrimPrefix(k, "scenario/"))
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"scenarios": scenarios, "count": len(scenarios)})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"scenarios": scenarios, "count": len(scenarios)})
 }
 
 func loadTestScenarioLoadHandler(w http.ResponseWriter, r *http.Request) {
@@ -536,14 +538,14 @@ func loadTestCompareHandler(w http.ResponseWriter, r *http.Request) {
 		Left  loadTestResult `json:"left"`
 		Right loadTestResult `json:"right"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
 	a, b := &req.Left, &req.Right
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"left":  map[string]interface{}{"throughput": a.Throughput, "avgMs": a.AvgMs, "p95Ms": a.P95Ms, "errRate": a.ErrorRate, "total": a.TotalRequests},
 		"right": map[string]interface{}{"throughput": b.Throughput, "avgMs": b.AvgMs, "p95Ms": b.P95Ms, "errRate": b.ErrorRate, "total": b.TotalRequests},
 		"delta": map[string]interface{}{
@@ -588,7 +590,7 @@ func loadTestResultSaveHandler(w http.ResponseWriter, r *http.Request) {
 		Method string         `json:"method"`
 		Result loadTestResult `json:"result"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -603,14 +605,14 @@ func loadTestResultSaveHandler(w http.ResponseWriter, r *http.Request) {
 		Method:    req.Method,
 		Result:    req.Result,
 	}
-	data, err := json.Marshal(saved)
+	data, err := jsonutil.Marshal(saved)
 	if err != nil {
 		http.Error(w, "marshal error", http.StatusInternalServerError)
 		return
 	}
 	_ = putValue(ltResultBucket, ltResultPrefix+req.Name, data)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "name": req.Name, "timestamp": saved.Timestamp})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "name": req.Name, "timestamp": saved.Timestamp})
 }
 
 // GET /loadtest/result/list
@@ -648,7 +650,7 @@ func loadTestResultListHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"results": summaries, "count": len(summaries)})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"results": summaries, "count": len(summaries)})
 }
 
 // GET /loadtest/result/load?name=xxx
@@ -680,7 +682,7 @@ func loadTestResultDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = deleteValue(ltResultBucket, ltResultPrefix+name)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 // gRPC load test endpoint
@@ -704,7 +706,7 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 		ClientKeyPath  string            `json:"clientKeyPath"`
 		Metadata       map[string]string `json:"metadata"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -746,18 +748,18 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 			if payload == "" {
 				payload = "{}"
 			}
-			body, marshalErr := json.Marshal(struct {
+			body, marshalErr := jsonutil.Marshal(struct {
 				Address        string            `json:"address"`
 				Service        string            `json:"service"`
 				Method         string            `json:"method"`
-				Payload        json.RawMessage   `json:"payload"`
+				Payload        jsonv1.RawMessage `json:"payload"`
 				TLS            bool              `json:"tls"`
 				Timeout        int               `json:"timeout_ms"`
 				CACertPath     string            `json:"ca_cert_path,omitempty"`
 				ClientCertPath string            `json:"client_cert_path,omitempty"`
 				ClientKeyPath  string            `json:"client_key_path,omitempty"`
 				Metadata       map[string]string `json:"metadata,omitempty"`
-			}{req.Address, req.Service, req.Method, json.RawMessage(payload), req.Tls, req.TimeoutMs, req.CACertPath, req.ClientCertPath, req.ClientKeyPath, req.Metadata})
+			}{req.Address, req.Service, req.Method, jsonv1.RawMessage(payload), req.Tls, req.TimeoutMs, req.CACertPath, req.ClientCertPath, req.ClientKeyPath, req.Metadata})
 			if marshalErr != nil {
 				mu.Lock()
 				failed++
@@ -821,7 +823,7 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	jsonutil.MarshalWrite(w, result)
 }
 
 func grpcLoadTestOutcome(httpStatus int, body []byte) (bool, string) {

@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os"
@@ -106,7 +107,7 @@ func TestIncrementalWithInstalledGopls(t *testing.T) {
 
 func TestLanguageServerSyncNegotiation(t *testing.T) {
 	for raw, want := range map[string]int{"": 1, "1": 1, "2": 2, "0": 0, `{"openClose":true,"change":2}`: 2, `{"change":1}`: 1} {
-		if got := (serverCapabilities{TextDocumentSync: json.RawMessage(raw)}).syncKind(); got != want {
+		if got := (serverCapabilities{TextDocumentSync: jsonv1.RawMessage(raw)}).syncKind(); got != want {
 			t.Fatalf("%s: got %d want %d", raw, got, want)
 		}
 	}

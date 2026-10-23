@@ -18,7 +18,7 @@ type ArchImplementation struct {
 	Type    string   `json:"type"`
 	Package string   `json:"package"`
 	Pointer bool     `json:"pointer"`
-	Test    bool     `json:"test,omitempty"`
+	Test    bool     `json:"test,omitzero"`
 	Site    ArchSite `json:"site"`
 }
 

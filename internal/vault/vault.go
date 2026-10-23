@@ -8,7 +8,7 @@ import (
 	"adomnia/internal/storage"
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"filippo.io/age"
 	bolt "go.etcd.io/bbolt"
 )
@@ -166,7 +167,7 @@ func vaultStatusHandler(w http.ResponseWriter, r *http.Request) {
 	defer vaultMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"unlocked": vaultUnlocked,
 	})
 }
@@ -180,7 +181,7 @@ func vaultUnlockHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Passphrase string `json:"passphrase"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -205,7 +206,7 @@ func vaultUnlockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] unlocked")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +214,7 @@ func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] locked manually")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +227,7 @@ func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
 		Plaintext  string `json:"plaintext"`
 		Passphrase string `json:"passphrase"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -243,7 +244,7 @@ func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":         true,
 		"ciphertext": ciphertext,
 	})
@@ -282,7 +283,7 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 		Ciphertext string `json:"ciphertext"`
 		Passphrase string `json:"passphrase"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -319,7 +320,7 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"plaintext": plaintext,
 	})
@@ -335,7 +336,7 @@ func vaultExportHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Passphrase string `json:"passphrase"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -368,7 +369,7 @@ func vaultExportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, _ := json.Marshal(export)
+	jsonData, _ := jsonutil.Marshal(export)
 	ciphertext, err := encryptWithAge(string(jsonData), req.Passphrase)
 	if err != nil {
 		http.Error(w, "encryption failed: "+err.Error(), http.StatusInternalServerError)
@@ -376,7 +377,7 @@ func vaultExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":     true,
 		"format": "adomnia-age",
 		"data":   ciphertext,
@@ -394,7 +395,7 @@ func vaultImportHandler(w http.ResponseWriter, r *http.Request) {
 		Data       string `json:"data"`
 		Passphrase string `json:"passphrase"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -436,7 +437,7 @@ func vaultImportHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "imported": imported})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "imported": imported})
 }
 
 // RegisterHandlers registers local secret vault endpoints.

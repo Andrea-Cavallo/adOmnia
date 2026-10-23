@@ -1,8 +1,8 @@
 package devsession
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -321,7 +321,7 @@ func TestStatementsAttributedBySendTime(t *testing.T) {
 }
 
 func TestClonedRunEncodesEmptyHitsAsArray(t *testing.T) {
-	data, err := json.Marshal(cloneRun(&RequestRun{ID: "r1"}))
+	data, err := jsonutil.Marshal(cloneRun(&RequestRun{ID: "r1"}))
 	if err != nil {
 		t.Fatal(err)
 	}

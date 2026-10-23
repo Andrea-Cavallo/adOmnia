@@ -1,7 +1,8 @@
 package adomniacli
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"strings"
@@ -30,7 +31,7 @@ func mcpResourceTemplates() []map[string]string {
 
 // resourcesList exposes what an agent may want to read without calling a tool: the collection
 // summary, every request and every environment.
-func (s *mcpServer) resourcesList(json.RawMessage) (any, *mcpError) {
+func (s *mcpServer) resourcesList(jsonv1.RawMessage) (any, *mcpError) {
 	resources := []mcpResource{{URI: mcpCollectionURI, Name: "Collection summary", Description: "Name, request and environment counts.", MIMEType: "application/json"}}
 	if rows, err := s.requestRows(""); err == nil {
 		for _, row := range rows {
@@ -45,7 +46,7 @@ func (s *mcpServer) resourcesList(json.RawMessage) (any, *mcpError) {
 	return map[string]any{"resources": resources}, nil
 }
 
-func (s *mcpServer) resourcesRead(raw json.RawMessage) (any, *mcpError) {
+func (s *mcpServer) resourcesRead(raw jsonv1.RawMessage) (any, *mcpError) {
 	var params struct {
 		URI string `json:"uri"`
 	}
@@ -131,7 +132,7 @@ func mcpPrompts() []mcpPrompt {
 	}
 }
 
-func (s *mcpServer) promptsGet(raw json.RawMessage) (any, *mcpError) {
+func (s *mcpServer) promptsGet(raw jsonv1.RawMessage) (any, *mcpError) {
 	var params struct {
 		Name      string            `json:"name"`
 		Arguments map[string]string `json:"arguments"`

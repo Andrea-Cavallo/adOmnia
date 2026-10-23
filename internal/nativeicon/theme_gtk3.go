@@ -19,6 +19,6 @@ import (
 
 func setThemeIcon(window unsafe.Pointer, path, mode string) {
 	file := C.CString(filepath.Join(path, "adomnia-theme-"+mode+".png"))
-	defer C.free(unsafe.Pointer(file))
+	defer C.free(unsafe.Pointer(file)) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32/cgo interop
 	C.set_theme_icon(window, file)
 }

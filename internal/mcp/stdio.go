@@ -3,7 +3,8 @@ package mcp
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 )
 
@@ -71,10 +73,10 @@ func newStdioTransport(cfg ConnectionConfig) (*stdioTransport, error) {
 
 // incoming is any message the server can send: a response, a request or a notification.
 type incoming struct {
-	ID     json.RawMessage `json:"id"`
-	Method string          `json:"method"`
-	Result json.RawMessage `json:"result"`
-	Error  *JSONRPCError   `json:"error"`
+	ID     jsonv1.RawMessage `json:"id"`
+	Method string            `json:"method"`
+	Result jsonv1.RawMessage `json:"result"`
+	Error  *JSONRPCError     `json:"error"`
 }
 
 func (t *stdioTransport) readLoop(stdout io.Reader) {
@@ -125,12 +127,12 @@ func (t *stdioTransport) answerServerRequest(msg incoming) {
 	_ = t.write(reply)
 }
 
-func idKey(raw json.RawMessage) string {
+func idKey(raw jsonv1.RawMessage) string {
 	return strings.Trim(strings.TrimSpace(string(raw)), `"`)
 }
 
 func (t *stdioTransport) write(message any) error {
-	raw, err := json.Marshal(message)
+	raw, err := jsonutil.Marshal(message)
 	if err != nil {
 		return err
 	}

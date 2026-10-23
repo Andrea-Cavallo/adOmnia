@@ -52,12 +52,12 @@ type PreviewConfig struct {
 	// Entry è la pagina HTML da aprire per il sito statico, relativa a Dir.
 	Entry string `json:"entry,omitempty"`
 	// SPA serve index.html per i percorsi che non esistono (router lato client) nel sito statico.
-	SPA bool `json:"spa,omitempty"`
+	SPA bool `json:"spa,omitzero"`
 	// Placement è dove mostrare l'anteprima: "tab", "split", "panel" o "window".
 	Placement  string `json:"placement,omitempty"`
 	Device     string `json:"device,omitempty"`
-	Width      int    `json:"width,omitempty"`
-	Height     int    `json:"height,omitempty"`
+	Width      int    `json:"width,omitzero"`
+	Height     int    `json:"height,omitzero"`
 	AutoReload bool   `json:"autoReload"`
 }
 
@@ -171,7 +171,7 @@ type PreviewRequest struct {
 	Dir    string `json:"dir"`
 	Script string `json:"script,omitempty"`
 	Entry  string `json:"entry,omitempty"`
-	SPA    bool   `json:"spa,omitempty"`
+	SPA    bool   `json:"spa,omitzero"`
 }
 
 // StartPreview avvia l'anteprima richiesta per un progetto autorizzato e ne ricorda la configurazione.

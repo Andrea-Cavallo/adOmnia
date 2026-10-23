@@ -51,12 +51,13 @@ func fingerprint(der []byte) string {
 func pinnedTLS(expected string) *tls.Config {
 	return &tls.Config{
 		MinVersion:         tls.VersionTLS13,
-		InsecureSkipVerify: true, // la verifica è il pinning qui sotto, non la catena CA
-		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			if len(rawCerts) == 0 {
+		InsecureSkipVerify: true, // #nosec G402 -- la verifica è il pinning qui sotto, non la catena CA
+		// VerifyConnection (e non VerifyPeerCertificate) gira anche sulle sessioni riprese.
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 {
 				return errors.New("host senza certificato")
 			}
-			if subtle.ConstantTimeCompare([]byte(fingerprint(rawCerts[0])), []byte(expected)) != 1 {
+			if subtle.ConstantTimeCompare([]byte(fingerprint(cs.PeerCertificates[0].Raw)), []byte(expected)) != 1 {
 				return errors.New("fingerprint del certificato dell'host non corrisponde all'invito")
 			}
 			return nil

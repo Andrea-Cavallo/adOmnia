@@ -2,11 +2,12 @@ package devsession
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"strings"
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/nettools"
 	"adomnia/internal/storage"
 )
@@ -46,7 +47,7 @@ func (s *ServiceNames) Set(root, name string) error {
 	} else {
 		s.names[root] = name
 	}
-	data, _ := json.Marshal(s.names)
+	data, _ := jsonutil.Marshal(s.names)
 	s.mu.Unlock()
 	return storage.Put(servicesBucket, servicesKey, data)
 }

@@ -2,7 +2,8 @@ package proxy
 
 import (
 	"adomnia/internal/httputil"
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"net/http"
 	"strings"
 )
@@ -17,7 +18,7 @@ func proxyExportHandler(w http.ResponseWriter, r *http.Request) {
 		Format string   `json:"format"`
 		IDs    []string `json:"ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(r.Body, &body); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -49,12 +50,12 @@ func proxyExportHandler(w http.ResponseWriter, r *http.Request) {
 	switch body.Format {
 	case "har":
 		har := buildHAR(entries)
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "data": har})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": har})
 	case "curl":
 		cmds := buildCurlCommands(entries)
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "data": cmds})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": cmds})
 	case "json":
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "data": entries})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": entries})
 	default:
 		httputil.JSONError(w, "unsupported format: "+body.Format+". Use har, curl, or json", 400)
 	}

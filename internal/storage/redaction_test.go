@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 )
@@ -9,7 +9,7 @@ import (
 func exportedValue(t *testing.T, input string) string {
 	t.Helper()
 	output := RedactValueForExport([]byte(input))
-	if !json.Valid([]byte(output)) {
+	if !jsontext.Value([]byte(output)).IsValid() {
 		t.Fatalf("redacted output is not JSON: %s", output)
 	}
 	return output

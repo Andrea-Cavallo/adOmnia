@@ -1,9 +1,11 @@
 package milk
 
 import (
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"io"
 	"sync"
 	"testing"
@@ -18,13 +20,13 @@ type recordingHandler struct {
 	requestErr    error
 }
 
-func (h *recordingHandler) HandleNotification(method string, _ json.RawMessage) {
+func (h *recordingHandler) HandleNotification(method string, _ jsonv1.RawMessage) {
 	h.mu.Lock()
 	h.notifications = append(h.notifications, method)
 	h.mu.Unlock()
 }
 
-func (h *recordingHandler) HandleRequest(_ context.Context, method string, _ json.RawMessage) (any, error) {
+func (h *recordingHandler) HandleRequest(_ context.Context, method string, _ jsonv1.RawMessage) (any, error) {
 	if h.requestErr != nil {
 		return nil, h.requestErr
 	}
@@ -39,7 +41,7 @@ func (h *recordingHandler) received() []string {
 
 func writeLine(t *testing.T, w io.Writer, value any) {
 	t.Helper()
-	data, err := json.Marshal(value)
+	data, err := jsonutil.Marshal(value)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -77,12 +79,12 @@ func newConnPair(t *testing.T, handler Handler) *connPair {
 }
 
 // readClientLine legge la prossima riga JSON-RPC scritta dal client verso milk.
-func (p *connPair) readClientLine(t *testing.T) map[string]json.RawMessage {
+func (p *connPair) readClientLine(t *testing.T) map[string]jsonv1.RawMessage {
 	t.Helper()
 	if !p.clientOutput.Scan() {
 		t.Fatalf("client wrote no output")
 	}
-	var message map[string]json.RawMessage
+	var message map[string]jsonv1.RawMessage
 	if err := json.Unmarshal(p.clientOutput.Bytes(), &message); err != nil {
 		t.Fatalf("client output is not JSON: %v", err)
 	}
@@ -98,7 +100,7 @@ func TestCallRoundTrip(t *testing.T) {
 			if json.Unmarshal(pair.clientOutput.Bytes(), &message) != nil || message.Method == "" {
 				continue
 			}
-			response := map[string]any{"jsonrpc": "2.0", "id": json.RawMessage(message.ID)}
+			response := map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(message.ID)}
 			if message.Method == "session/new" {
 				response["result"] = map[string]any{"sessionId": "sess-1"}
 			} else {

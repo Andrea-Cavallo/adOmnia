@@ -9,7 +9,8 @@ package govuln
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -47,8 +48,8 @@ type Frame struct {
 	Receiver  string `json:"receiver,omitempty"`
 	File      string `json:"file,omitempty"`
 	Relative  string `json:"relative,omitempty"`
-	Line      int    `json:"line,omitempty"`
-	Column    int    `json:"column,omitempty"`
+	Line      int    `json:"line,omitzero"`
+	Column    int    `json:"column,omitzero"`
 	InProject bool   `json:"inProject"`
 }
 
@@ -151,11 +152,11 @@ func ParseStream(output []byte) (Report, error) {
 	advisories := map[string]osvEntry{}
 	byID := map[string]*Finding{}
 	order := []string{}
-	decoder := json.NewDecoder(bytes.NewReader(output))
+	decoder := jsontext.NewDecoder(bytes.NewReader(output))
 	parsed := 0
 	for {
 		var msg message
-		err := decoder.Decode(&msg)
+		err := json.UnmarshalDecode(decoder, &msg)
 		if errors.Is(err, io.EOF) {
 			break
 		}

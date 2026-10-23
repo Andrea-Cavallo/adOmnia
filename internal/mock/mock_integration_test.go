@@ -1,8 +1,9 @@
 package mock
 
 import (
+	"adomnia/internal/jsonutil"
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,7 +67,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 		CorsHeadersAuto:        true,
 		LogHitsToFile:          false,
 	}
-	cfgJSON, _ := json.Marshal(cfg)
+	cfgJSON, _ := jsonutil.Marshal(cfg)
 
 	resp, err := http.Post(ts.URL+"/mock/start", "application/json", bytes.NewReader(cfgJSON))
 	if err != nil {
@@ -75,7 +76,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 	defer resp.Body.Close()
 
 	var startRes map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&startRes); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &startRes); err != nil {
 		t.Fatalf("failed to decode start response: %v", err)
 	}
 
@@ -99,7 +100,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.NewDecoder(mockResp.Body).Decode(&body)
+	json.UnmarshalRead(mockResp.Body, &body)
 	t.Logf("Mock response: %+v", body)
 
 	if users, ok := body["users"]; !ok {
@@ -127,7 +128,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
 	var status map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&status)
+	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	if status["running"] != false {
 		t.Errorf("expected running=false after stop, got %v", status["running"])

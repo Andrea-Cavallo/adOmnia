@@ -224,7 +224,7 @@ func FileHistory(repoPath, path string, n int) ([]CommitInfo, error) {
 type LineRange struct {
 	Start    int  `json:"start"`
 	End      int  `json:"end"`
-	Deletion bool `json:"deletion,omitempty"`
+	Deletion bool `json:"deletion,omitzero"`
 }
 
 var hunkHeader = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)

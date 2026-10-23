@@ -4,7 +4,7 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httputil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"math"
 	"net/http"
@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/IBM/sarama"
 )
@@ -64,11 +65,11 @@ type KafkaAdminRequest struct {
 type KafkaTopicAdminRequest struct {
 	Config            KafkaBrokerConfig `json:"config"`
 	Topic             string            `json:"topic"`
-	Partitions        int32             `json:"partitions,omitempty"`
-	ReplicationFactor int16             `json:"replicationFactor,omitempty"`
+	Partitions        int32             `json:"partitions,omitzero"`
+	ReplicationFactor int16             `json:"replicationFactor,omitzero"`
 	Configs           map[string]string `json:"configs,omitempty"`
 	DeleteConfigs     []string          `json:"deleteConfigs,omitempty"`
-	ValidateOnly      bool              `json:"validateOnly,omitempty"`
+	ValidateOnly      bool              `json:"validateOnly,omitzero"`
 }
 
 type KafkaConsumerGroupRequest struct {
@@ -83,7 +84,7 @@ type KafkaResetOffsetRequest struct {
 	Topic     string            `json:"topic"`
 	Partition int32             `json:"partition"`
 	Mode      string            `json:"mode"`
-	Offset    int64             `json:"offset,omitempty"`
+	Offset    int64             `json:"offset,omitzero"`
 }
 
 type KafkaBrowseRequest struct {
@@ -153,7 +154,7 @@ func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req KafkaProduceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		devlog.Err("kafkaProduceHandler", "decode JSON fallito", err, nil)
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
@@ -198,7 +199,7 @@ func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":        true,
 		"partition": partition,
 		"offset":    offset,
@@ -260,7 +261,7 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req KafkaBulkProduceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -338,7 +339,7 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":            true,
 		"count":         req.Count,
 		"successes":     successes,
@@ -358,7 +359,7 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req KafkaLoadTestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -516,7 +517,7 @@ func kafkaLoadTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	jsonutil.MarshalWrite(w, result)
 }
 
 func reserveKafkaMessageIndex(sequence *atomic.Int64, total int) (int, bool) {
@@ -550,7 +551,7 @@ func varyJsonField(jsonStr, field string, idx int) string {
 		data[field] = fmt.Sprintf("item-%d", idx)
 	}
 
-	out, err := json.Marshal(data)
+	out, err := jsonutil.Marshal(data)
 	if err != nil {
 		return jsonStr
 	}
@@ -565,7 +566,7 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req KafkaConsumeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		devlog.Err("kafkaConsumeHandler", "decode JSON fallito", err, nil)
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
@@ -629,7 +630,7 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":       true,
 		"messages": handler.getMessages(),
 		"count":    len(handler.getMessages()),
@@ -643,7 +644,7 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cfg KafkaBrokerConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+	if err := json.UnmarshalRead(r.Body, &cfg); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -676,7 +677,7 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":      true,
 		"topics":  topics,
 		"brokers": brokerList,
@@ -703,7 +704,7 @@ func kafkaClusterOverviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -773,7 +774,7 @@ func kafkaClusterOverviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":                 true,
 		"health":             health,
 		"controllerId":       controllerID,
@@ -794,7 +795,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaTopicAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -880,7 +881,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(configs, func(i, j int) bool { return configs[i]["name"].(string) < configs[j]["name"].(string) })
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":         true,
 		"topic":      req.Topic,
 		"isInternal": metadata[0].IsInternal,
@@ -895,7 +896,7 @@ func kafkaCreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaTopicAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -932,7 +933,7 @@ func kafkaCreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
 }
 
 func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -941,7 +942,7 @@ func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaTopicAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -978,7 +979,7 @@ func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
 }
 
 func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -987,7 +988,7 @@ func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaTopicAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -1007,7 +1008,7 @@ func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
 }
 
 func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1016,7 +1017,7 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaConsumerGroupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -1126,7 +1127,7 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "groups": groups})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "groups": groups})
 }
 
 func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
@@ -1135,7 +1136,7 @@ func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaResetOffsetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -1171,7 +1172,7 @@ func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "group": req.Group, "topic": req.Topic, "partition": req.Partition, "offset": offset, "response": resp})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "group": req.Group, "topic": req.Topic, "partition": req.Partition, "offset": offset, "response": resp})
 }
 
 func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -1180,7 +1181,7 @@ func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req KafkaBrowseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -1263,7 +1264,7 @@ func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "topic": req.Topic, "messages": messages, "count": len(messages)})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic, "messages": messages, "count": len(messages)})
 }
 
 func flattenGroupOffsets(resp *sarama.OffsetFetchResponse) []map[string]interface{} {

@@ -35,7 +35,7 @@ type TerminalSession struct {
 	Shell            string     `json:"shell"`
 	WorkingDirectory string     `json:"workingDirectory"`
 	Status           string     `json:"status"`
-	PID              int        `json:"pid,omitempty"`
+	PID              int        `json:"pid,omitzero"`
 	StartedAt        time.Time  `json:"startedAt"`
 	ExitedAt         *time.Time `json:"exitedAt,omitempty"`
 	ExitCode         *int       `json:"exitCode,omitempty"`
@@ -58,8 +58,8 @@ type TerminalRequest struct {
 	ShellArguments   []string          `json:"shellArguments,omitempty"`
 	WorkingDirectory string            `json:"workingDirectory,omitempty"`
 	Environment      map[string]string `json:"environment,omitempty"`
-	Columns          int               `json:"columns,omitempty"`
-	Rows             int               `json:"rows,omitempty"`
+	Columns          int               `json:"columns,omitzero"`
+	Rows             int               `json:"rows,omitzero"`
 }
 
 type managedTerminal struct {

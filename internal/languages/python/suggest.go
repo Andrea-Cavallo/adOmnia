@@ -2,7 +2,6 @@ package python
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 
 	"adomnia/internal/ide/project"
 	"adomnia/internal/ide/run"
+	"adomnia/internal/jsonutil"
 )
 
 // entryScriptNames sono i nomi di file che di solito avviano un progetto Python.
@@ -32,7 +32,7 @@ func (*Language) Suggest(_ context.Context, projectRoot string, unit project.Uni
 	}
 	suggestions := make([]run.Suggestion, 0, len(entries))
 	for _, entry := range entries {
-		options, _ := json.Marshal(entry.options)
+		options, _ := jsonutil.Marshal(entry.options)
 		suggestions = append(suggestions, run.Suggestion{
 			ID: ID + "|" + relativeDirectory(projectRoot, unit.Root) + "|" + entry.action + entry.id, Language: ID,
 			Action: entry.action, UnitRoot: unit.Root, Title: entry.title,

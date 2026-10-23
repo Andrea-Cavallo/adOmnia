@@ -1,8 +1,10 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -58,7 +60,7 @@ func (s *Service) SaveLintBaseline(ctx context.Context, sessionID string) (int, 
 		}
 		return a.Message < b.Message
 	})
-	data, err := json.MarshalIndent(baseline, "", "  ")
+	data, err := jsonutil.Marshal(baseline, jsontext.WithIndent("  "))
 	if err != nil {
 		return 0, err
 	}

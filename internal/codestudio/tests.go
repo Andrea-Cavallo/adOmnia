@@ -3,7 +3,7 @@ package codestudio
 import (
 	"adomnia/internal/ide/testing"
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	"encoding/json/v2"
 	"math"
 	"path/filepath"
 	"sort"
@@ -24,7 +24,7 @@ type TestRunSnapshot struct {
 	Diagnostics string         `json:"diagnostics,omitempty"`
 	Summary     TestSummary    `json:"summary"`
 	Results     []TestResult   `json:"results"`
-	Overflow    bool           `json:"overflow,omitempty"`
+	Overflow    bool           `json:"overflow,omitzero"`
 	StartedAt   time.Time      `json:"startedAt"`
 	// FinishedAt è presente solo quando il processo di test è terminato; permette
 	// di distinguere la durata reale della run dalla metrica ns/op del benchmark.

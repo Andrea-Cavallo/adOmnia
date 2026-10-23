@@ -1,7 +1,8 @@
 package browser
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 
@@ -39,7 +41,7 @@ type cdpMessage struct {
 	ID     int                    `json:"id"`
 	Method string                 `json:"method,omitempty"`
 	Params map[string]interface{} `json:"params,omitempty"`
-	Result json.RawMessage        `json:"result,omitempty"`
+	Result jsonv1.RawMessage      `json:"result,omitempty"`
 	Error  *cdpError              `json:"error,omitempty"`
 }
 
@@ -331,7 +333,7 @@ func (b *BrowserDebug) sendCommand(method string, params map[string]interface{})
 }
 
 // sendCommandWithResult sends a CDP command and waits for the result.
-func (b *BrowserDebug) sendCommandWithResult(method string, params map[string]interface{}) (json.RawMessage, error) {
+func (b *BrowserDebug) sendCommandWithResult(method string, params map[string]interface{}) (jsonv1.RawMessage, error) {
 	id := int(b.msgID.Add(1))
 
 	msg := cdpMessage{
@@ -340,7 +342,7 @@ func (b *BrowserDebug) sendCommandWithResult(method string, params map[string]in
 		Params: params,
 	}
 
-	data, err := json.Marshal(msg)
+	data, err := jsonutil.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal CDP message: %w", err)
 	}
@@ -694,7 +696,7 @@ func toFloat64(v interface{}) float64 {
 		return float64(n)
 	case int64:
 		return float64(n)
-	case json.Number:
+	case jsonv1.Number:
 		f, _ := n.Float64()
 		return f
 	default:

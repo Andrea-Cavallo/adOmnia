@@ -2,7 +2,9 @@ package codestudio
 
 import (
 	"adomnia/internal/languages/golang"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 )
@@ -77,7 +79,7 @@ func normalizeConfiguration(config RunConfiguration) (RunConfiguration, error) {
 		if config.Language == "" || config.Language == golang.ID {
 			return RunConfiguration{}, fmt.Errorf("unsupported configuration type %q", config.Kind)
 		}
-		if !json.Valid(config.LanguageOptions) {
+		if !jsontext.Value(config.LanguageOptions).IsValid() {
 			return RunConfiguration{}, fmt.Errorf("invalid language options")
 		}
 	}
@@ -138,7 +140,7 @@ func redactConfiguration(config RunConfiguration) RunConfiguration {
 
 func cloneConfiguration(config RunConfiguration) RunConfiguration {
 	clone := config
-	clone.LanguageOptions = append(json.RawMessage(nil), config.LanguageOptions...)
+	clone.LanguageOptions = append(jsonv1.RawMessage(nil), config.LanguageOptions...)
 	clone.Files = append([]string(nil), config.Files...)
 	clone.GoArguments = append([]string(nil), config.GoArguments...)
 	clone.ProgramArguments = append([]string(nil), config.ProgramArguments...)

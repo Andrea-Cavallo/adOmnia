@@ -80,20 +80,20 @@ type ConfiguredDatabase struct {
 	// Vendor è il database come lo dichiara la configurazione ("postgresql", "sqlserver", "h2"…).
 	Vendor string `json:"vendor,omitempty"`
 	Host   string `json:"host,omitempty"`
-	Port   int    `json:"port,omitempty"`
+	Port   int    `json:"port,omitzero"`
 	// Database è il nome del database (per SQLite il percorso del file).
 	Database string `json:"database,omitempty"`
 	User     string `json:"user,omitempty"`
 	SSLMode  string `json:"sslMode,omitempty"`
 	// PasswordConfigured dice che una password è dichiarata, mai il suo valore.
-	PasswordConfigured bool `json:"passwordConfigured,omitempty"`
+	PasswordConfigured bool `json:"passwordConfigured,omitzero"`
 	// Profile è il profilo di configurazione che descrive questo database ("" = base).
 	Profile string `json:"profile,omitempty"`
 	// Active è true per il profilo effettivamente selezionato quando la configurazione lo dice.
-	Active bool `json:"active,omitempty"`
+	Active bool `json:"active,omitzero"`
 	// File è il percorso del file di configurazione relativo alla radice dell'unità.
 	File string `json:"file,omitempty"`
-	Line int    `json:"line,omitempty"`
+	Line int    `json:"line,omitzero"`
 	// Unresolved elenca i campi che la configurazione non risolve (placeholder `${…}`): non sono
 	// valori, vanno chiesti all'utente prima di aprire una connessione.
 	Unresolved []string `json:"unresolved,omitempty"`

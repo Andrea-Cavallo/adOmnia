@@ -1,7 +1,8 @@
 package rust
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"regexp"
 	"runtime"
@@ -20,8 +21,8 @@ type Options struct {
 	Example           string   `json:"example,omitempty"`
 	Bench             string   `json:"bench,omitempty"`
 	Features          []string `json:"features,omitempty"`
-	AllFeatures       bool     `json:"allFeatures,omitempty"`
-	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitempty"`
+	AllFeatures       bool     `json:"allFeatures,omitzero"`
+	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitzero"`
 	Profile           string   `json:"profile,omitempty"`
 	Target            string   `json:"target,omitempty"`
 }
@@ -41,7 +42,7 @@ func (*Language) RunKinds() []string {
 
 // optionsFor interpreta e valida le opzioni del kind. La validazione è statica: la toolchain si
 // risolve e si controlla alla partenza (serve il progetto autorizzato per eseguire).
-func optionsFor(kind string, data json.RawMessage) (Options, error) {
+func optionsFor(kind string, data jsonv1.RawMessage) (Options, error) {
 	var options Options
 	if err := json.Unmarshal(data, &options); err != nil {
 		return options, fmt.Errorf("enter valid Rust run options")

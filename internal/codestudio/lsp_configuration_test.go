@@ -1,8 +1,8 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"context"
-	"encoding/json"
 	"testing"
 )
 
@@ -12,7 +12,7 @@ func configurationReply(t *testing.T, settings any, sections ...string) []any {
 	for _, section := range sections {
 		items = append(items, map[string]string{"section": section})
 	}
-	raw, err := json.Marshal(map[string]any{"items": items})
+	raw, err := jsonutil.Marshal(map[string]any{"items": items})
 	if err != nil {
 		t.Fatal(err)
 	}

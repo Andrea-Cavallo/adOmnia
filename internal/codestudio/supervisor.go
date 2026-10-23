@@ -1,7 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"fmt"
 	"sort"
 	"sync"
@@ -131,7 +132,7 @@ func (p *ProcessSupervisor) persistLocked() error {
 		running = append(running, descriptor)
 	}
 	sort.Slice(running, func(i, j int) bool { return running[i].StartedAt.Before(running[j].StartedAt) })
-	data, err := json.Marshal(supervisorState{Version: 1, Running: running})
+	data, err := jsonutil.Marshal(supervisorState{Version: 1, Running: running})
 	if err != nil {
 		return err
 	}

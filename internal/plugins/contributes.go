@@ -105,35 +105,42 @@ var (
 // Reserved language IDs belong to built-in adapters: a plugin cannot replace Go.
 var reservedLanguages = map[string]bool{"go": true, "generic": true}
 
+// contributesValidator tracks declared actions and already-seen contribution ids while validating.
+type contributesValidator struct {
+	actions map[string]bool
+	seen    map[string]bool
+}
+
+func (v *contributesValidator) unique(kind, id string) error {
+	key := kind + ":" + id
+	if v.seen[key] {
+		return fmt.Errorf("contributes.%s: duplicate id %q", kind, id)
+	}
+	v.seen[key] = true
+	return nil
+}
+
+func (v *contributesValidator) needsAction(kind, id, action string) error {
+	if err := v.unique(kind, id); err != nil {
+		return err
+	}
+	if !contributionIDPattern.MatchString(id) {
+		return fmt.Errorf("contributes.%s: invalid id %q", kind, id)
+	}
+	if !v.actions[action] {
+		return fmt.Errorf("contributes.%s %s: action %q is not declared in actions", kind, id, action)
+	}
+	return nil
+}
+
 func validateContributes(manifest *PluginManifest) error {
 	c := &manifest.Contributes
-	actions := map[string]bool{}
+	v := &contributesValidator{actions: map[string]bool{}, seen: map[string]bool{}}
 	for _, action := range manifest.Actions {
-		actions[action.ID] = true
-	}
-	seen := map[string]bool{}
-	unique := func(kind, id string) error {
-		key := kind + ":" + id
-		if seen[key] {
-			return fmt.Errorf("contributes.%s: duplicate id %q", kind, id)
-		}
-		seen[key] = true
-		return nil
-	}
-	needsAction := func(kind, id, action string) error {
-		if err := unique(kind, id); err != nil {
-			return err
-		}
-		if !contributionIDPattern.MatchString(id) {
-			return fmt.Errorf("contributes.%s: invalid id %q", kind, id)
-		}
-		if !actions[action] {
-			return fmt.Errorf("contributes.%s %s: action %q is not declared in actions", kind, id, action)
-		}
-		return nil
+		v.actions[action.ID] = true
 	}
 	for i := range c.Commands {
-		if err := needsAction("commands", c.Commands[i].ID, c.Commands[i].Action); err != nil {
+		if err := v.needsAction("commands", c.Commands[i].ID, c.Commands[i].Action); err != nil {
 			return err
 		}
 		if strings.TrimSpace(c.Commands[i].Title) == "" {
@@ -141,7 +148,7 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for i := range c.CodeActions {
-		if err := needsAction("codeActions", c.CodeActions[i].ID, c.CodeActions[i].Action); err != nil {
+		if err := v.needsAction("codeActions", c.CodeActions[i].ID, c.CodeActions[i].Action); err != nil {
 			return err
 		}
 		if strings.TrimSpace(c.CodeActions[i].Title) == "" {
@@ -149,7 +156,7 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for i := range c.Analyzers {
-		if err := needsAction("analyzers", c.Analyzers[i].ID, c.Analyzers[i].Action); err != nil {
+		if err := v.needsAction("analyzers", c.Analyzers[i].ID, c.Analyzers[i].Action); err != nil {
 			return err
 		}
 		if strings.TrimSpace(c.Analyzers[i].Name) == "" {
@@ -157,77 +164,99 @@ func validateContributes(manifest *PluginManifest) error {
 		}
 	}
 	for _, template := range c.Templates {
-		if err := unique("templates", template.ID); err != nil {
+		if err := v.validateTemplate(template); err != nil {
 			return err
-		}
-		if !contributionIDPattern.MatchString(template.ID) || strings.TrimSpace(template.Name) == "" {
-			return fmt.Errorf("contributes.templates: id and name are required")
-		}
-		clean := strings.ReplaceAll(template.Directory, "\\", "/")
-		if clean == "" || strings.HasPrefix(clean, "/") || strings.Contains(clean, ":") || strings.Split(clean, "/")[0] == ".." || strings.Contains(clean, "/../") {
-			return fmt.Errorf("contributes.templates %s: directory must be a relative path inside the plugin", template.ID)
 		}
 	}
 	for _, language := range c.Languages {
-		if err := unique("languages", language.ID); err != nil {
+		if err := v.validateLanguage(language); err != nil {
 			return err
-		}
-		if !languageIDPattern.MatchString(language.ID) || reservedLanguages[strings.ToLower(language.ID)] {
-			return fmt.Errorf("contributes.languages: invalid or reserved id %q", language.ID)
-		}
-		if len(language.Extensions) == 0 {
-			return fmt.Errorf("contributes.languages %s: at least one extension is required", language.ID)
-		}
-		for _, extension := range language.Extensions {
-			if !extensionPattern.MatchString(extension) || strings.EqualFold(extension, ".go") {
-				return fmt.Errorf("contributes.languages %s: invalid extension %q", language.ID, extension)
-			}
-		}
-		if language.Server != nil && !commandNamePattern.MatchString(language.Server.Command) {
-			return fmt.Errorf("contributes.languages %s: the server command must be a program name on the PATH", language.ID)
 		}
 	}
 	for _, adapter := range c.Adapters {
-		if err := unique("adapters", adapter.ID); err != nil {
+		if err := v.validateAdapter(adapter); err != nil {
 			return err
 		}
-		if adapter.Kind != "framework" && adapter.Kind != "broker" && adapter.Kind != "database" {
-			return fmt.Errorf("contributes.adapters %s: kind must be framework, broker or database", adapter.ID)
+	}
+	return nil
+}
+
+func (v *contributesValidator) validateTemplate(template ContributedTemplate) error {
+	if err := v.unique("templates", template.ID); err != nil {
+		return err
+	}
+	if !contributionIDPattern.MatchString(template.ID) || strings.TrimSpace(template.Name) == "" {
+		return fmt.Errorf("contributes.templates: id and name are required")
+	}
+	clean := strings.ReplaceAll(template.Directory, "\\", "/")
+	if clean == "" || strings.HasPrefix(clean, "/") || strings.Contains(clean, ":") || strings.Split(clean, "/")[0] == ".." || strings.Contains(clean, "/../") {
+		return fmt.Errorf("contributes.templates %s: directory must be a relative path inside the plugin", template.ID)
+	}
+	return nil
+}
+
+func (v *contributesValidator) validateLanguage(language ContributedLanguage) error {
+	if err := v.unique("languages", language.ID); err != nil {
+		return err
+	}
+	if !languageIDPattern.MatchString(language.ID) || reservedLanguages[strings.ToLower(language.ID)] {
+		return fmt.Errorf("contributes.languages: invalid or reserved id %q", language.ID)
+	}
+	if len(language.Extensions) == 0 {
+		return fmt.Errorf("contributes.languages %s: at least one extension is required", language.ID)
+	}
+	for _, extension := range language.Extensions {
+		if !extensionPattern.MatchString(extension) || strings.EqualFold(extension, ".go") {
+			return fmt.Errorf("contributes.languages %s: invalid extension %q", language.ID, extension)
 		}
-		if !contributionIDPattern.MatchString(adapter.ID) || strings.TrimSpace(adapter.Name) == "" || len(adapter.Modules) == 0 {
-			return fmt.Errorf("contributes.adapters: id, name and modules are required")
+	}
+	if language.Server != nil && !commandNamePattern.MatchString(language.Server.Command) {
+		return fmt.Errorf("contributes.languages %s: the server command must be a program name on the PATH", language.ID)
+	}
+	return nil
+}
+
+// adapterHintList is one list of method/type hints that is only legal for a given adapter kind.
+type adapterHintList struct {
+	kind    string // adapter kind that may declare this hint
+	label   string // used in the error message
+	values  []string
+	pattern *regexp.Regexp
+}
+
+func (v *contributesValidator) validateAdapter(adapter ContributedAdapter) error {
+	if err := v.unique("adapters", adapter.ID); err != nil {
+		return err
+	}
+	if adapter.Kind != "framework" && adapter.Kind != "broker" && adapter.Kind != "database" {
+		return fmt.Errorf("contributes.adapters %s: kind must be framework, broker or database", adapter.ID)
+	}
+	if !contributionIDPattern.MatchString(adapter.ID) || strings.TrimSpace(adapter.Name) == "" || len(adapter.Modules) == 0 {
+		return fmt.Errorf("contributes.adapters: id, name and modules are required")
+	}
+	for _, module := range adapter.Modules {
+		if !modulePathPattern.MatchString(module) {
+			return fmt.Errorf("contributes.adapters %s: invalid module path %q", adapter.ID, module)
 		}
-		for _, module := range adapter.Modules {
-			if !modulePathPattern.MatchString(module) {
-				return fmt.Errorf("contributes.adapters %s: invalid module path %q", adapter.ID, module)
+	}
+	hints := []adapterHintList{
+		{"framework", "route method", adapter.RouteMethods, commandNamePattern},
+		{"framework", "handler type", adapter.HandlerTypes, handlerTypePattern},
+		{"broker", "topic method", adapter.TopicMethods, commandNamePattern},
+		{"database", "sql method", adapter.SQLMethods, commandNamePattern},
+	}
+	for _, hint := range hints {
+		for _, value := range hint.values {
+			if adapter.Kind != hint.kind || !hint.pattern.MatchString(value) {
+				return fmt.Errorf("contributes.adapters %s: invalid %s %q", adapter.ID, hint.label, value)
 			}
 		}
-		for _, method := range adapter.RouteMethods {
-			if adapter.Kind != "framework" || !commandNamePattern.MatchString(method) {
-				return fmt.Errorf("contributes.adapters %s: invalid route method %q", adapter.ID, method)
-			}
-		}
-		for _, handlerType := range adapter.HandlerTypes {
-			if adapter.Kind != "framework" || !handlerTypePattern.MatchString(handlerType) {
-				return fmt.Errorf("contributes.adapters %s: invalid handler type %q", adapter.ID, handlerType)
-			}
-		}
-		for _, method := range adapter.TopicMethods {
-			if adapter.Kind != "broker" || !commandNamePattern.MatchString(method) {
-				return fmt.Errorf("contributes.adapters %s: invalid topic method %q", adapter.ID, method)
-			}
-		}
-		if adapter.Broker != "" && (adapter.Kind != "broker" || !brokerNamePattern.MatchString(adapter.Broker)) {
-			return fmt.Errorf("contributes.adapters %s: invalid broker %q", adapter.ID, adapter.Broker)
-		}
-		for _, method := range adapter.SQLMethods {
-			if adapter.Kind != "database" || !commandNamePattern.MatchString(method) {
-				return fmt.Errorf("contributes.adapters %s: invalid sql method %q", adapter.ID, method)
-			}
-		}
-		if adapter.Kind == "broker" && len(adapter.TopicMethods) > 0 && adapter.Broker == "" {
-			return fmt.Errorf("contributes.adapters %s: a broker with topic methods needs a broker protocol name", adapter.ID)
-		}
+	}
+	if adapter.Broker != "" && (adapter.Kind != "broker" || !brokerNamePattern.MatchString(adapter.Broker)) {
+		return fmt.Errorf("contributes.adapters %s: invalid broker %q", adapter.ID, adapter.Broker)
+	}
+	if adapter.Kind == "broker" && len(adapter.TopicMethods) > 0 && adapter.Broker == "" {
+		return fmt.Errorf("contributes.adapters %s: a broker with topic methods needs a broker protocol name", adapter.ID)
 	}
 	return nil
 }

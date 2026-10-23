@@ -1,9 +1,10 @@
 package codestudio
 
 import (
+	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -441,7 +442,7 @@ func (m *RecoveryManager) marshalLocked(include func(recoveredEntry) bool) ([]by
 		return nil, nil
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].SavedAt.Before(entries[j].SavedAt) })
-	data, err := json.Marshal(recoveryState{Version: RecoverySchemaVersion, Buffers: entries})
+	data, err := jsonutil.Marshal(recoveryState{Version: RecoverySchemaVersion, Buffers: entries})
 	if err != nil {
 		return nil, fmt.Errorf("serializzazione buffer di recupero fallita: %w", err)
 	}

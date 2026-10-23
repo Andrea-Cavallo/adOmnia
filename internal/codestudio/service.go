@@ -6,7 +6,6 @@ import (
 	"adomnia/internal/ide/preview"
 	"adomnia/internal/ide/run"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -21,6 +20,7 @@ import (
 	"time"
 
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
 	"adomnia/internal/languages/java"
 )
@@ -802,7 +802,7 @@ func (s *Service) runCommandSpec(sessionID SessionID, kind, workingDirectory, ta
 	}
 	options := request.LanguageOptions
 	if len(options) == 0 {
-		options, err = json.Marshal(golang.RunOptions{GoArguments: request.GoArguments, BuildTags: request.BuildTags, ExtraTargets: request.ExtraTargets})
+		options, err = jsonutil.Marshal(golang.RunOptions{GoArguments: request.GoArguments, BuildTags: request.BuildTags, ExtraTargets: request.ExtraTargets})
 		if err != nil {
 			return CommandSpec{}, err
 		}

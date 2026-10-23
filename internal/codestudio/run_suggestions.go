@@ -2,7 +2,8 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -65,7 +66,7 @@ func finalizeSuggestions(projectRoot string, suggestions []run.Suggestion, saved
 
 // mainClassOf legge `mainClass` dalle LanguageOptions: due configurazioni "main" sono la stessa proposta solo
 // se eseguono la stessa classe (vuoto per ogni altro kind).
-func mainClassOf(options json.RawMessage) string {
+func mainClassOf(options jsonv1.RawMessage) string {
 	var parsed struct {
 		MainClass string `json:"mainClass"`
 	}

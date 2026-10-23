@@ -2,7 +2,7 @@ package web
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"

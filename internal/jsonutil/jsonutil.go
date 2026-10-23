@@ -4,7 +4,8 @@
 package jsonutil
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,7 +48,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	result := gjson.Get(req.JSON, req.Path)
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]interface{}{
 		"path":   req.Path,
 		"value":  result.Value(),
 		"raw":    result.Raw,
@@ -95,10 +96,10 @@ func jsonSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]interface{}{
 		"ok":     true,
 		"path":   req.Path,
-		"result": json.RawMessage(result),
+		"result": jsonv1.RawMessage(result),
 	})
 }
 
@@ -115,8 +116,8 @@ func jsonDiffHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Left  json.RawMessage `json:"left"`
-		Right json.RawMessage `json:"right"`
+		Left  jsonv1.RawMessage `json:"left"`
+		Right jsonv1.RawMessage `json:"right"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -132,7 +133,7 @@ func jsonDiffHandler(w http.ResponseWriter, r *http.Request) {
 	identical := len(patch) == 0
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]interface{}{
 		"identical": identical,
 		"patch":     patch,
 		"count":     len(patch),
@@ -150,7 +151,7 @@ func jsonHumanHandler(w http.ResponseWriter, r *http.Request) {
 		Ms     float64 `json:"ms"`
 		Format string  `json:"format"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
@@ -165,7 +166,7 @@ func jsonHumanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.MarshalWrite(w, resp)
 }
 
 func gjsonType(r gjson.Result) string {
@@ -230,7 +231,7 @@ func jsonStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.MarshalWrite(w, map[string]interface{}{
 		"valid":      valid,
 		"structures": structures,
 		"count":      len(structures),
@@ -260,7 +261,7 @@ func mimeDetectHandler(w http.ResponseWriter, r *http.Request) {
 	mtype := mimetype.Detect(body)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.MarshalWrite(w, map[string]interface{}{
 		"mime":      mtype.String(),
 		"extension": mtype.Extension(),
 		"isJSON":    strings.Contains(mtype.String(), "json"),

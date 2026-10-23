@@ -2,7 +2,8 @@ package adomniacli
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"adomnia/internal/collectionresolve"
+	"adomnia/internal/jsonutil"
 )
 
 type mcpTool struct {
@@ -65,14 +67,14 @@ func mcpKnownTool(name string) bool {
 	return false
 }
 
-func (s *mcpServer) callTool(name string, raw json.RawMessage) (string, error) {
+func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error) {
 	var args struct {
 		Collection string            `json:"collection"`
 		Folder     string            `json:"folder"`
 		Env        string            `json:"env"`
 		ID         string            `json:"id"`
 		Vars       map[string]string `json:"vars"`
-		Config     json.RawMessage   `json:"config"`
+		Config     jsonv1.RawMessage `json:"config"`
 	}
 	if len(raw) > 0 && string(raw) != "null" {
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -173,7 +175,7 @@ func (s *mcpServer) getRequest(requested, id string) (string, error) {
 			continue
 		}
 		var generic any
-		encoded, err := json.Marshal(map[string]any{"folder": folderOf(req.FolderPath), "request": req.Request})
+		encoded, err := jsonutil.Marshal(map[string]any{"folder": folderOf(req.FolderPath), "request": req.Request})
 		if err != nil {
 			return "", err
 		}

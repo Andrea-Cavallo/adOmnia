@@ -1,7 +1,9 @@
 package security
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -185,7 +187,7 @@ func saveSettings(root string, settings Settings) error {
 		}
 		return a.Rule < b.Rule
 	})
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

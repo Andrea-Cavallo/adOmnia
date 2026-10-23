@@ -1,6 +1,7 @@
 package update
 
 import (
+	"adomnia/internal/jsonutil"
 	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
@@ -8,7 +9,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -119,8 +119,8 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			payload, _ := json.Marshal(Manifest{Version: "v1.1.0", Assets: []Asset{{OS: runtime.GOOS, Arch: runtime.GOARCH, Size: int64(b.Len()), SHA256: hex.EncodeToString(hash[:])}}})
-			raw, _ := json.Marshal(Envelope{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))})
+			payload, _ := jsonutil.Marshal(Manifest{Version: "v1.1.0", Assets: []Asset{{OS: runtime.GOOS, Arch: runtime.GOARCH, Size: int64(b.Len()), SHA256: hex.EncodeToString(hash[:])}}})
+			raw, _ := jsonutil.Marshal(Envelope{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))})
 			manifest := filepath.Join(stage, "manifest.json")
 			_ = os.WriteFile(manifest, raw, 0600)
 			parent := exec.Command(self, "--update-test-parent")
@@ -128,7 +128,7 @@ func TestNativeHelperApplyAndRollback(t *testing.T) {
 				t.Fatal(e)
 			}
 			plan := applyPlan{Target: target, Executable: target, Archive: archive, Manifest: manifest, Version: "v1.1.0", Parent: parent.Process.Pid}
-			raw, _ = json.Marshal(plan)
+			raw, _ = jsonutil.Marshal(plan)
 			planFile := filepath.Join(stage, "plan.json")
 			_ = os.WriteFile(planFile, raw, 0600)
 			cmd := exec.Command(helper, "--adomnia-update-helper", planFile)

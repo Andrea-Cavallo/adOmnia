@@ -68,8 +68,8 @@ type Document struct {
 	Language     string     `json:"language"`
 	Version      int        `json:"version"`
 	Dirty        bool       `json:"dirty"`
-	ReadOnly     bool       `json:"readOnly,omitempty"`
-	External     bool       `json:"external,omitempty"`
+	ReadOnly     bool       `json:"readOnly,omitzero"`
+	External     bool       `json:"external,omitzero"`
 	// MediaType è valorizzato per le immagini (image/png, image/jpeg…); Language è "image".
 	MediaType string `json:"mediaType,omitempty"`
 }
@@ -95,8 +95,8 @@ type FileEntry struct {
 	Name         string    `json:"name"`
 	RelativePath string    `json:"relativePath"`
 	Directory    bool      `json:"directory"`
-	Ignored      bool      `json:"ignored,omitempty"`
-	Size         int64     `json:"size,omitempty"`
+	Ignored      bool      `json:"ignored,omitzero"`
+	Size         int64     `json:"size,omitzero"`
 	ModifiedAt   time.Time `json:"modifiedAt"`
 	Language     string    `json:"language,omitempty"`
 }
@@ -160,26 +160,26 @@ type RunConfiguration struct {
 	EnvFile string `json:"envFile,omitempty"`
 	GOOS    string `json:"goos,omitempty"`
 	GOARCH  string `json:"goarch,omitempty"`
-	Race    bool   `json:"race,omitempty"`
+	Race    bool   `json:"race,omitzero"`
 	// Coverage aggiunge -cover; per run e build i dati finiscono in .gocoverdata.
-	Coverage bool `json:"coverage,omitempty"`
+	Coverage bool `json:"coverage,omitzero"`
 	// Profile vale solo per i test: cpu, mem, block, mutex o trace.
 	Profile string `json:"profile,omitempty"`
 	// DebugFlags sono build flag aggiuntivi per Delve, es. -gcflags=all=-N -l.
 	DebugFlags []string `json:"debugFlags,omitempty"`
 	// Port imposta PORT e viene verificata libera prima dell'avvio.
-	Port int `json:"port,omitempty"`
+	Port int `json:"port,omitzero"`
 	// PreRun e PostRun sono ID di altre configurazioni della sessione, eseguite in ordine.
 	PreRun  []string `json:"preRun,omitempty"`
 	PostRun []string `json:"postRun,omitempty"`
 	// Compound: ID delle configurazioni avviate insieme (solo per il tipo compound).
 	Compound []string `json:"compound,omitempty"`
 	// Shared: la configurazione vive anche in .adomnia/run-configurations.json, da versionare con il progetto.
-	Shared bool `json:"shared,omitempty"`
+	Shared bool `json:"shared,omitzero"`
 	// Pinned: in cima ai selettori di configurazione.
-	Pinned bool `json:"pinned,omitempty"`
+	Pinned bool `json:"pinned,omitzero"`
 	// RestartOnSave: un'esecuzione in corso riparte quando si salva un sorgente del suo linguaggio dentro la sua working directory.
-	RestartOnSave bool `json:"restartOnSave,omitempty"`
+	RestartOnSave bool `json:"restartOnSave,omitzero"`
 	// RestartPolicy dopo un crash di adOmnia: "" o prompt (si chiede), never, always.
 	RestartPolicy string `json:"restartPolicy,omitempty"`
 	// Remote: dove eseguire (WSL, host SSH, container); nil = questa macchina. Vale per run, test, build,
@@ -210,9 +210,9 @@ type SessionView struct {
 	OpenPaths          []string `json:"openPaths,omitempty"`
 	ActivePath         string   `json:"activePath,omitempty"`
 	ActiveConfigID     string   `json:"activeConfigId,omitempty"`
-	ProjectWidth       int      `json:"projectWidth,omitempty"`
-	StructureWidth     int      `json:"structureWidth,omitempty"`
-	BottomHeight       int      `json:"bottomHeight,omitempty"`
+	ProjectWidth       int      `json:"projectWidth,omitzero"`
+	StructureWidth     int      `json:"structureWidth,omitzero"`
+	BottomHeight       int      `json:"bottomHeight,omitzero"`
 	StructureOpen      bool     `json:"structureOpen"`
 	BottomOpen         bool     `json:"bottomOpen"`
 	TerminalPanelOpen  bool     `json:"terminalPanelOpen"`
@@ -220,12 +220,12 @@ type SessionView struct {
 	// Bookmarks e Navigation sono gestiti dal frontend e salvati insieme al layout.
 	Bookmarks       []Bookmark        `json:"bookmarks,omitempty"`
 	Navigation      []NavigationEntry `json:"navigation,omitempty"`
-	NavigationIndex int               `json:"navigationIndex,omitempty"`
+	NavigationIndex int               `json:"navigationIndex,omitzero"`
 	// Breakpoints è gestito solo dal backend (SetBreakpoints): SaveSessionView lo conserva.
 	Breakpoints map[string][]Breakpoint `json:"breakpoints,omitempty"`
 	// FunctionBreakpoints e StopOnPanic sono gestiti dal backend (SetFunctionBreakpoints).
 	FunctionBreakpoints []FunctionBreakpoint `json:"functionBreakpoints,omitempty"`
-	StopOnPanic         bool                 `json:"stopOnPanic,omitempty"`
+	StopOnPanic         bool                 `json:"stopOnPanic,omitzero"`
 	// ExceptionBreakpoints sono gestiti dal backend (SetExceptionBreakpoints).
 	ExceptionBreakpoints []string `json:"exceptionBreakpoints,omitempty"`
 	// Cursors: ultima posizione del cursore nei file aperti; Split: lo split dell'editor con i suoi tab.

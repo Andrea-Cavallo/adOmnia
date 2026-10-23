@@ -30,7 +30,7 @@ type Timeline struct {
 	Lines   []string `json:"-"` // output grezzo, per i parser del linguaggio
 	ReadyMs float64  `json:"readyMs"`
 	Ready   bool     `json:"ready"`
-	Port    int      `json:"port,omitempty"`
+	Port    int      `json:"port,omitzero"`
 }
 
 // Options: Health è un path HTTP ("/healthz") da attendere oltre alla porta; Timeout il limite.

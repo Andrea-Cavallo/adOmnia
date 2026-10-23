@@ -1,12 +1,12 @@
 package java
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"adomnia/internal/ide/project"
+	"adomnia/internal/jsonutil"
 )
 
 func TestDatasourcesFollowProfilesAndOverrides(t *testing.T) {
@@ -123,7 +123,7 @@ spring.datasource.password=super-secret-value
 	if databases[0].Driver != "mysql" {
 		t.Fatalf("mariadb uses the mysql driver: %+v", databases[0])
 	}
-	encoded, err := json.Marshal(databases)
+	encoded, err := jsonutil.Marshal(databases)
 	if err != nil {
 		t.Fatal(err)
 	}

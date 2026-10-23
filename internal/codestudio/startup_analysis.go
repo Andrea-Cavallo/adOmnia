@@ -16,7 +16,7 @@ type StartupReport struct {
 	Target  string            `json:"target"`
 	Ready   bool              `json:"ready"`
 	ReadyMs float64           `json:"readyMs"`
-	Port    int               `json:"port,omitempty"`
+	Port    int               `json:"port,omitzero"`
 	Events  []startup.Event   `json:"events"`
 	Inits   []golang.InitStep `json:"inits"`
 	InitMs  float64           `json:"initMs"`

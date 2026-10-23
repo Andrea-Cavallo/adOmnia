@@ -2,7 +2,8 @@ package golang
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -53,11 +54,11 @@ func discoverRunTargetsWithGoList(ctx context.Context, root string) ([]run.RunTa
 		GoFiles  []string
 		CgoFiles []string
 	}
-	decoder := json.NewDecoder(io.LimitReader(stdout, 8<<20))
+	decoder := jsontext.NewDecoder(io.LimitReader(stdout, 8<<20))
 	targets := make([]run.RunTarget, 0)
 	for {
 		var pkg listedPackage
-		if err := decoder.Decode(&pkg); err != nil {
+		if err := json.UnmarshalDecode(decoder, &pkg); err != nil {
 			if err == io.EOF {
 				break
 			}

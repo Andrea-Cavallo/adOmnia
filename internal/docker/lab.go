@@ -3,7 +3,7 @@ package docker
 import (
 	"adomnia/internal/procutil"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"

@@ -1,7 +1,8 @@
 package securityintel
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/jsontext"
 	"fmt"
 	"html"
 	"net/url"
@@ -47,7 +48,7 @@ func FileExtension(format string) string {
 func Export(report ScanReport, format string) ([]byte, error) {
 	switch format {
 	case FormatJSON:
-		return json.MarshalIndent(report, "", "  ")
+		return jsonutil.Marshal(report, jsontext.WithIndent("  "))
 	case FormatSARIF:
 		return marshalIndent(SARIFOf(report))
 	case FormatCyclone:
@@ -66,7 +67,7 @@ func Export(report ScanReport, format string) ([]byte, error) {
 }
 
 func marshalIndent(value any) ([]byte, error) {
-	return json.MarshalIndent(value, "", "  ")
+	return jsonutil.Marshal(value, jsontext.WithIndent("  "))
 }
 
 // SARIFReport è il documento SARIF 2.1.0 prodotto dal report.
@@ -252,7 +253,7 @@ type cycloneSource struct {
 }
 
 type cycloneRating struct {
-	Score    float64 `json:"score,omitempty"`
+	Score    float64 `json:"score,omitzero"`
 	Severity string  `json:"severity,omitempty"`
 	Method   string  `json:"method,omitempty"`
 	Vector   string  `json:"vector,omitempty"`

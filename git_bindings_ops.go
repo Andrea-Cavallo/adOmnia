@@ -2,8 +2,9 @@ package main
 
 import (
 	"adomnia/internal/git"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
+	"adomnia/internal/jsonutil"
 )
 
 // This file exposes the professional commit-graph operations (context-menu
@@ -20,7 +21,7 @@ func (g *GitSync) path(repoPath string) string {
 }
 
 func marshalResult(res git.OpResult) (string, error) {
-	raw, err := json.Marshal(res)
+	raw, err := jsonutil.Marshal(res)
 	if err != nil {
 		return "", fmt.Errorf("marshal result: %w", err)
 	}
@@ -34,7 +35,7 @@ func (g *GitSync) GetRepoState(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(state)
+	raw, _ := jsonutil.Marshal(state)
 	return string(raw), nil
 }
 
@@ -43,7 +44,7 @@ func (g *GitSync) GetCommitMeta(repoPath, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(meta)
+	raw, _ := jsonutil.Marshal(meta)
 	return string(raw), nil
 }
 
@@ -74,7 +75,7 @@ func (g *GitSync) CompareCommits(repoPath, refA, refB string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(result)
+	raw, _ := jsonutil.Marshal(result)
 	return string(raw), nil
 }
 
@@ -91,7 +92,7 @@ func (g *GitSync) ListSubmodules(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(items)
+	raw, _ := jsonutil.Marshal(items)
 	return string(raw), nil
 }
 func (g *GitSync) AddSubmodule(repoPath, remoteURL, path, branch string) error {
@@ -108,7 +109,7 @@ func (g *GitSync) ListWorktrees(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(items)
+	raw, _ := jsonutil.Marshal(items)
 	return string(raw), nil
 }
 func (g *GitSync) AddWorktree(repoPath, path, branch string, createBranch bool) error {
@@ -122,7 +123,7 @@ func (g *GitSync) SparseCheckoutList(repoPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(items)
+	raw, _ := jsonutil.Marshal(items)
 	return string(raw), nil
 }
 func (g *GitSync) SetSparseCheckout(repoPath string, paths []string, cone bool) error {
@@ -149,7 +150,7 @@ func (g *GitSync) FileHistory(repoPath, path string, n int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(commits)
+	raw, _ := jsonutil.Marshal(commits)
 	return string(raw), nil
 }
 
@@ -162,7 +163,7 @@ func (g *GitSync) BlameLines(repoPath, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(lines)
+	raw, _ := jsonutil.Marshal(lines)
 	return string(raw), nil
 }
 
@@ -171,7 +172,7 @@ func (g *GitSync) GetConflictFileVersions(repoPath, path string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(versions)
+	raw, _ := jsonutil.Marshal(versions)
 	return string(raw), nil
 }
 
@@ -210,7 +211,7 @@ func (g *GitSync) Reflog(repoPath string, limit int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(entries)
+	raw, _ := jsonutil.Marshal(entries)
 	return string(raw), nil
 }
 
@@ -251,7 +252,7 @@ func (g *GitSync) GetRebaseTodo(repoPath, baseRef string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(plan)
+	raw, _ := jsonutil.Marshal(plan)
 	return string(raw), nil
 }
 
@@ -292,6 +293,6 @@ func (g *GitSync) SearchHistory(repoPath, filtersJSON string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	raw, _ := json.Marshal(commits)
+	raw, _ := jsonutil.Marshal(commits)
 	return string(raw), nil
 }

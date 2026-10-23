@@ -11,7 +11,7 @@ type Execution struct {
 	Status           string     `json:"status"`
 	Command          string     `json:"command"`
 	WorkingDirectory string     `json:"workingDirectory"`
-	PID              int        `json:"pid,omitempty"`
+	PID              int        `json:"pid,omitzero"`
 	StartedAt        time.Time  `json:"startedAt"`
 	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
 	ExitCode         *int       `json:"exitCode,omitempty"`
@@ -25,5 +25,5 @@ type ProcessOutput struct {
 	RunID     RunID  `json:"runId"`
 	Stream    string `json:"stream"`
 	Text      string `json:"text"`
-	Truncated bool   `json:"truncated,omitempty"`
+	Truncated bool   `json:"truncated,omitzero"`
 }

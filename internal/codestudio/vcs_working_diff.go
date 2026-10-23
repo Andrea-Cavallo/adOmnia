@@ -15,8 +15,8 @@ type VCSWorkingDiff struct {
 	Original     string `json:"original"`
 	Modified     string `json:"modified"`
 	// Binary o TooLarge: il contenuto non viene inviato, il dialog lo spiega.
-	Binary   bool `json:"binary,omitempty"`
-	TooLarge bool `json:"tooLarge,omitempty"`
+	Binary   bool `json:"binary,omitzero"`
+	TooLarge bool `json:"tooLarge,omitzero"`
 }
 
 // VCSWorkingDiff legge il file in HEAD e su disco (vuoti per file nuovi o cancellati); nessuna rete.

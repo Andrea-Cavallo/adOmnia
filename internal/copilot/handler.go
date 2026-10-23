@@ -2,7 +2,8 @@ package copilot
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 
 	"adomnia/internal/ide/lsp"
 )
@@ -19,7 +20,7 @@ type serverStatus struct {
 	Message string `json:"message"`
 }
 
-func (h *handler) HandleNotification(method string, params json.RawMessage) {
+func (h *handler) HandleNotification(method string, params jsonv1.RawMessage) {
 	if !h.manager.isCurrent(h.process) {
 		return
 	}
@@ -45,7 +46,7 @@ func (h *handler) HandleNotification(method string, params json.RawMessage) {
 	}
 }
 
-func (h *handler) HandleRequest(_ context.Context, method string, params json.RawMessage) (any, error) {
+func (h *handler) HandleRequest(_ context.Context, method string, params jsonv1.RawMessage) (any, error) {
 	switch method {
 	case "conversation/context":
 		var request struct {
@@ -84,7 +85,7 @@ func (h *handler) HandleRequest(_ context.Context, method string, params json.Ra
 		return nil, nil
 	case "workspace/configuration":
 		var request struct {
-			Items []json.RawMessage `json:"items"`
+			Items []jsonv1.RawMessage `json:"items"`
 		}
 		_ = json.Unmarshal(params, &request)
 		h.manager.mu.Lock()

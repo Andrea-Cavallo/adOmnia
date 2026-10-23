@@ -24,15 +24,15 @@ type ArchGoroutine struct {
 	Site       ArchSite `json:"site"`
 	// Spawner è l'ID in Functions della funzione che avvia (vuoto per gli initializer).
 	Spawner     string `json:"spawner,omitempty"`
-	InLoop      bool   `json:"inLoop,omitempty"`
+	InLoop      bool   `json:"inLoop,omitzero"`
 	LoopKind    string `json:"loopKind,omitempty"` // for | range
-	Bounded     bool   `json:"bounded,omitempty"`  // numero di avvii limitato: ciclo con tetto costante, SetLimit o semaforo
-	Ctx         bool   `json:"ctx,omitempty"`      // usa un context.Context
-	Cancellable bool   `json:"cancellable,omitempty"`
-	WaitGroup   bool   `json:"waitGroup,omitempty"`
-	ErrGroup    bool   `json:"errGroup,omitempty"`
-	Channels    int    `json:"channels,omitempty"` // operazioni su canali nel corpo o canali passati
-	Recover     bool   `json:"recover,omitempty"`
+	Bounded     bool   `json:"bounded,omitzero"`   // numero di avvii limitato: ciclo con tetto costante, SetLimit o semaforo
+	Ctx         bool   `json:"ctx,omitzero"`       // usa un context.Context
+	Cancellable bool   `json:"cancellable,omitzero"`
+	WaitGroup   bool   `json:"waitGroup,omitzero"`
+	ErrGroup    bool   `json:"errGroup,omitzero"`
+	Channels    int    `json:"channels,omitzero"` // operazioni su canali nel corpo o canali passati
+	Recover     bool   `json:"recover,omitzero"`
 	// Entries: gli entry point (HTTP, job, main…) da cui lo spawner è raggiungibile.
 	Entries  []string `json:"entries,omitempty"`
 	Risks    []string `json:"risks"`

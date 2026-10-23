@@ -1,7 +1,8 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"adomnia/internal/jsonutil"
+	"encoding/json/v2"
 	"reflect"
 	"testing"
 )
@@ -20,7 +21,7 @@ func roundTrip(t *testing.T, payload string) map[string]any {
 			t.Fatalf("import rejected %q", config.Name)
 		}
 	}
-	data, err := json.Marshal(sharedRunConfigurations{Format: file.Format, Version: file.Version, Configurations: manager.List("s1")})
+	data, err := jsonutil.Marshal(sharedRunConfigurations{Format: file.Format, Version: file.Version, Configurations: manager.List("s1")})
 	if err != nil {
 		t.Fatal(err)
 	}

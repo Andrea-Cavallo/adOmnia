@@ -2,7 +2,8 @@ package rust
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"adomnia/internal/ide/process"
 	"adomnia/internal/ide/sdk"
 	"adomnia/internal/ide/toml"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 )
 
@@ -280,7 +282,7 @@ func SetProjectToolchain(root, unit, cargo string) error {
 		}
 		return nil
 	}
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
 		return err
 	}

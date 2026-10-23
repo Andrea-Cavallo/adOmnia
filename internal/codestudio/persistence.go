@@ -1,10 +1,11 @@
 package codestudio
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/jsonutil"
 )
 
 const PersistenceSchemaVersion = 4
@@ -70,7 +71,7 @@ func (p *Persistence) SaveSessionView(sessionID SessionID, view SessionView) err
 	if !ok {
 		return fmt.Errorf("per-session view persistence is unavailable")
 	}
-	data, err := json.Marshal(view)
+	data, err := jsonutil.Marshal(view)
 	if err != nil {
 		return fmt.Errorf("serializzazione layout sessione fallita: %w", err)
 	}
@@ -142,7 +143,7 @@ func (p *Persistence) SaveState(snapshot persistedState) error {
 		return nil
 	}
 	snapshot.Version = PersistenceSchemaVersion
-	data, err := json.Marshal(snapshot)
+	data, err := jsonutil.Marshal(snapshot)
 	if err != nil {
 		return fmt.Errorf("serializzazione stato Code Studio fallita: %w", err)
 	}

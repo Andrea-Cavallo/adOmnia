@@ -28,7 +28,7 @@ type DependencySource struct {
 	ModulePath string `json:"modulePath"`
 	Version    string `json:"version,omitempty"`
 	// Replaced dice che il sorgente segue una direttiva replace del go.mod.
-	Replaced bool `json:"replaced,omitempty"`
+	Replaced bool `json:"replaced,omitzero"`
 	// Directory è la cartella radice del modulo sorgente, assoluta.
 	Directory string `json:"directory,omitempty"`
 	// RelativeDir e EntryRelative sono relativi al progetto quando il sorgente vive al suo interno.

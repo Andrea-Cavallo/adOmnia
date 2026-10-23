@@ -3,7 +3,7 @@ package python
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +22,7 @@ type TestOptions struct {
 	Packages    []string `json:"packages"`
 	Run         string   `json:"run"`
 	// Coverage chiede `--cov` a pytest: richiede pytest-cov nell'interprete scelto (PY-5.5).
-	Coverage bool `json:"coverage,omitempty"`
+	Coverage bool `json:"coverage,omitzero"`
 }
 
 const (

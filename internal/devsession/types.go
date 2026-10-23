@@ -60,8 +60,8 @@ type Session struct {
 	// ResourceID is the gO run id or debug id.
 	ResourceID string `json:"resourceId"`
 	Title      string `json:"title"`
-	PID        int    `json:"pid,omitempty"`
-	Port       int    `json:"port,omitempty"`
+	PID        int    `json:"pid,omitzero"`
+	Port       int    `json:"port,omitzero"`
 	// PortSource is "env", "output", "listening" or "manual".
 	PortSource string     `json:"portSource,omitempty"`
 	State      string     `json:"state"`
@@ -74,7 +74,7 @@ type Session struct {
 // Hit is a breakpoint reached while a request was in flight.
 type Hit struct {
 	SessionID string `json:"sessionId,omitempty"`
-	ThreadID  int    `json:"threadId,omitempty"`
+	ThreadID  int    `json:"threadId,omitzero"`
 	Frame
 	Stack []Frame   `json:"stack,omitempty"`
 	At    time.Time `json:"at"`
@@ -98,8 +98,8 @@ type RequestRun struct {
 	State             string             `json:"state"`
 	StartedAt         time.Time          `json:"startedAt"`
 	CompletedAt       *time.Time         `json:"completedAt,omitempty"`
-	Status            int                `json:"status,omitempty"`
-	DurationMs        int64              `json:"durationMs,omitempty"`
+	Status            int                `json:"status,omitzero"`
+	DurationMs        int64              `json:"durationMs,omitzero"`
 	Error             string             `json:"error,omitempty"`
 	Hits              []Hit              `json:"hits"`
 	Logs              int                `json:"logs"`
@@ -150,7 +150,7 @@ type Query struct {
 	Rows       *int64   `json:"rows,omitempty"`
 	Error      string   `json:"error,omitempty"`
 	ErrorCode  string   `json:"errorCode,omitempty"`
-	Incomplete bool     `json:"incomplete,omitempty"`
+	Incomplete bool     `json:"incomplete,omitzero"`
 }
 
 // Message is a broker message produced while a request was in flight.

@@ -4,10 +4,11 @@ import (
 	"adomnia/internal/netpolicy"
 	"adomnia/internal/procutil"
 
+	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -124,7 +125,7 @@ func doHostJSON(account HostAccount, method, endpoint, token string, payload any
 	}
 	var body io.Reader
 	if payload != nil {
-		raw, _ := json.Marshal(payload)
+		raw, _ := jsonutil.Marshal(payload)
 		body = bytes.NewReader(raw)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -144,7 +145,7 @@ func doHostJSON(account HostAccount, method, endpoint, token string, payload any
 		return hostError(account.Provider, resp)
 	}
 	if target != nil {
-		return json.NewDecoder(resp.Body).Decode(target)
+		return json.UnmarshalRead(resp.Body, target)
 	}
 	return nil
 }

@@ -6,7 +6,8 @@ package netpolicy
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net"
@@ -18,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"golang.org/x/net/http/httpproxy"
 )
 
@@ -79,7 +81,7 @@ func Save(settings Settings) (Settings, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	if filePath != "" {
-		data, _ := json.MarshalIndent(normalized, "", "  ")
+		data, _ := jsonutil.Marshal(normalized, jsontext.WithIndent("  "))
 		if err := os.WriteFile(filePath, data, 0o600); err != nil {
 			return Settings{}, fmt.Errorf("cannot save network settings: %w", err)
 		}

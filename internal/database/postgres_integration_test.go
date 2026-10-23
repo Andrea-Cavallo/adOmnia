@@ -1,11 +1,12 @@
 package database
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/procutil"
 	"adomnia/internal/storage"
 	"adomnia/internal/vault"
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,7 +27,7 @@ func TestPostgresCredentialPersistence(t *testing.T) {
 	}
 	defer storage.Close()
 	cfg := dbConnectionRequest{ID: "db2-postgres-validation", Driver: "postgres", DSN: dsn}
-	raw, _ := json.Marshal(cfg)
+	raw, _ := jsonutil.Marshal(cfg)
 	w := httptest.NewRecorder()
 	databaseSealHandler(w, httptest.NewRequest(http.MethodPost, "/database/seal", bytes.NewReader(raw)))
 	if w.Code != 200 {
@@ -42,14 +43,14 @@ func TestPostgresCredentialPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg = response.Connection
-	sealed, _ := json.Marshal([]dbConnectionRequest{cfg})
+	sealed, _ := jsonutil.Marshal([]dbConnectionRequest{cfg})
 	if err := storage.Put("database", "connections", sealed); err != nil {
 		t.Fatal(err)
 	}
 	defer connections.disconnect(cfg.ID)
 	query := func() dbQueryResponse {
 		t.Helper()
-		body, _ := json.Marshal(dbQueryRequest{ConnectionID: cfg.ID, Query: "SELECT pg_backend_pid() AS pid, current_user AS username", Limit: 1})
+		body, _ := jsonutil.Marshal(dbQueryRequest{ConnectionID: cfg.ID, Query: "SELECT pg_backend_pid() AS pid, current_user AS username", Limit: 1})
 		out := httptest.NewRecorder()
 		databaseQueryHandler(out, httptest.NewRequest(http.MethodPost, "/database/query", bytes.NewReader(body)))
 		if out.Code != 200 {
@@ -74,7 +75,7 @@ func TestPostgresCredentialPersistence(t *testing.T) {
 	query()
 	// A separate native process must read the OS key and open the saved seal.
 	fixture := filepath.Join(t.TempDir(), "sealed.json")
-	encoded, _ := json.Marshal(cfg)
+	encoded, _ := jsonutil.Marshal(cfg)
 	if err := os.WriteFile(fixture, encoded, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +103,7 @@ func TestPostgresCredentialChild(t *testing.T) {
 	if json.Unmarshal(raw, &cfg) != nil {
 		t.Fatal("invalid fixture")
 	}
-	body, _ := json.Marshal(dbQueryRequest{Connection: cfg, Query: "SELECT 1 AS ok", Limit: 1})
+	body, _ := jsonutil.Marshal(dbQueryRequest{Connection: cfg, Query: "SELECT 1 AS ok", Limit: 1})
 	out := httptest.NewRecorder()
 	databaseQueryHandler(out, httptest.NewRequest(http.MethodPost, "/database/query", bytes.NewReader(body)))
 	if out.Code != 200 {

@@ -222,131 +222,164 @@ func (a *architecture) noteReaderTopics(info *types.Info, pkg string, literal *a
 	}
 }
 
-func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, function string) {
-	info := file.pkg.TypesInfo
-	kafka := map[string]string{} // kind → libreria
-	var kafkaSite, consumeSite token.Pos
-	topics := map[string]bool{}
-	group, serializer := "", ""
-	messaging := map[string]*messagingUse{} // nats/amqp producer o consumer → soggetti/code
-	var produced, consumed *ArchBody        // tipo dell'evento serializzato / deserializzato nella funzione
-	setGroup := func(expression ast.Expr) {
-		if value, ok := constantString(info, expression); ok && value != "" {
-			group = value
-			a.noteKafkaGroup(file.pkg.PkgPath, value)
+// functionScan accumulates what collectFunctionEntries learns while walking one function body.
+type functionScan struct {
+	a           *architecture
+	file        typedFile
+	info        *types.Info
+	function    string
+	kafka       map[string]string // kind → libreria
+	kafkaSite   token.Pos
+	consumeSite token.Pos
+	topics      map[string]bool
+	group       string
+	serializer  string
+	messaging   map[string]*messagingUse // nats/amqp producer o consumer → soggetti/code
+	produced    *ArchBody                // tipo dell'evento serializzato nella funzione
+	consumed    *ArchBody                // tipo dell'evento deserializzato nella funzione
+}
+
+func (s *functionScan) setGroup(expression ast.Expr) {
+	if value, ok := constantString(s.info, expression); ok && value != "" {
+		s.group = value
+		s.a.noteKafkaGroup(s.file.pkg.PkgPath, value)
+	}
+}
+
+func (s *functionScan) visitKeyValue(node *ast.KeyValueExpr) {
+	if key, ok := node.Key.(*ast.Ident); ok && (key.Name == "Topic" || key.Name == "GroupTopics") {
+		if topic, ok := constantString(s.info, node.Value); ok {
+			s.topics[topic] = true
 		}
 	}
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		switch node := node.(type) {
-		case *ast.KeyValueExpr:
-			if key, ok := node.Key.(*ast.Ident); ok && (key.Name == "Topic" || key.Name == "GroupTopics") {
-				if topic, ok := constantString(info, node.Value); ok {
-					topics[topic] = true
-				}
-			}
-			if key, ok := node.Key.(*ast.Ident); ok && key.Name == "GroupID" {
-				setGroup(node.Value)
-			}
-			if key, ok := constantString(info, node.Key); ok && key == "group.id" { // confluent ConfigMap
-				setGroup(node.Value)
-			}
-		case *ast.CompositeLit:
-			a.collectCLI(file, node, function)
-			a.noteReaderTopics(info, file.pkg.PkgPath, node)
-		case *ast.CallExpr:
-			callee, _ := typeutil.Callee(info, node).(*types.Func)
-			if callee == nil {
-				return true
-			}
-			packagePath, name := receiverPackage(callee), callee.Name()
-			if argument := kafkaGroupArg(packagePath, name, node.Args); argument != nil {
-				setGroup(argument)
-			}
-			for _, candidate := range kafkaSerializers {
-				if serializer == "" && strings.HasPrefix(packagePath, candidate.prefix) {
-					serializer = candidate.label
-				}
-			}
-			site := a.site(node.Pos())
-			base := ArchEntry{Package: file.pkg.PkgPath, Function: function, Site: site}
-			switch {
-			case strings.HasPrefix(name, "Register") && strings.HasSuffix(name, "Server") && len(node.Args) == 2 && strings.Contains(types.TypeString(info.Types[node.Args[0]].Type, nil), "grpc"):
-				base.Kind, base.Name = "grpc", strings.TrimSuffix(strings.TrimPrefix(name, "Register"), "Server")
-				base.Detail = types.TypeString(info.Types[node.Args[1]].Type, types.RelativeTo(file.pkg.Types))
-				a.addEntry(base)
-			case callee.FullName() == "time.NewTicker" || callee.FullName() == "time.Tick" || callee.FullName() == "time.AfterFunc" ||
-				strings.Contains(packagePath, "robfig/cron") && (name == "AddFunc" || name == "AddJob") ||
-				strings.Contains(packagePath, "go-co-op/gocron") && (name == "Every" || name == "Cron" || name == "NewJob"):
-				base.Kind, base.Name = "job", function
-				if len(node.Args) > 0 {
-					base.Detail = callee.Name() + "(" + string(file.text[a.offset(node.Args[0].Pos()):a.offset(node.Args[0].End())]) + ")"
-				}
-				a.addEntry(base)
-			case callee.FullName() == "flag.Parse" && file.pkg.Name == "main":
-				base.Kind, base.Name, base.Detail = "cli", file.pkg.PkgPath, "flag"
-				a.addEntry(base)
-			default:
-				if entry, ok := websocketEntry(info, base, packagePath, name, node); ok {
-					a.addEntry(entry)
-				}
-			}
-			switch full := callee.FullName(); {
-			case produced == nil && len(node.Args) >= 1 && (full == "encoding/json.Marshal" || full == "google.golang.org/protobuf/proto.Marshal" || full == "github.com/golang/protobuf/proto.Marshal"):
-				produced = a.body(info.Types[node.Args[0]].Type, function+"Event")
-			case consumed == nil && len(node.Args) == 2 && (full == "encoding/json.Unmarshal" || full == "google.golang.org/protobuf/proto.Unmarshal" || full == "github.com/golang/protobuf/proto.Unmarshal"):
-				consumed = a.body(info.Types[node.Args[1]].Type, function+"Event")
-			}
-			if kind, library, ok := configRead(callee, packagePath, name); ok && len(node.Args) > 0 {
-				if key, ok := constantString(info, node.Args[0]); ok && key != "" {
-					a.report.Reads = append(a.report.Reads, ArchRead{Kind: kind, Key: key, Library: library, Package: file.pkg.PkgPath, Function: function, Site: site})
-				}
-			}
-			if kind, label, topic, ok := messagingCall(info, packagePath, name, node.Args); ok {
-				use := messaging[kind]
-				if use == nil {
-					use = &messagingUse{label: label, site: node.Pos(), topics: map[string]bool{}}
-					messaging[kind] = use
-				}
-				if topic != "" {
-					use.topics[topic] = true
-				}
-			}
-			for _, library := range kafkaLibraries {
-				if !strings.HasPrefix(packagePath, library.path) {
-					continue
-				}
-				if slices.Contains(library.produce, name) {
-					kafka["kafka-producer"] = library.label
-					kafkaSite = node.Pos()
-				}
-				if slices.Contains(library.consume, name) {
-					kafka["kafka-consumer"] = library.label
-					kafkaSite = node.Pos()
-					consumeSite = node.Pos()
-					for _, argument := range node.Args {
-						if topic, ok := constantString(info, argument); ok {
-							topics[topic] = true
-						}
-					}
-				}
-			}
-		}
+	if key, ok := node.Key.(*ast.Ident); ok && key.Name == "GroupID" {
+		s.setGroup(node.Value)
+	}
+	if key, ok := constantString(s.info, node.Key); ok && key == "group.id" { // confluent ConfigMap
+		s.setGroup(node.Value)
+	}
+}
+
+// isTimerOrSchedulerCall reports calls that start a periodic job (ticker, cron, gocron).
+func isTimerOrSchedulerCall(callee *types.Func, packagePath, name string) bool {
+	switch callee.FullName() {
+	case "time.NewTicker", "time.Tick", "time.AfterFunc":
 		return true
-	})
-	eventFor := func(kind string) *ArchBody {
-		if strings.HasSuffix(kind, "-producer") {
-			return produced
+	}
+	return strings.Contains(packagePath, "robfig/cron") && (name == "AddFunc" || name == "AddJob") ||
+		strings.Contains(packagePath, "go-co-op/gocron") && (name == "Every" || name == "Cron" || name == "NewJob")
+}
+
+// noteEntryPoints records grpc servers, jobs, CLI flag parsing and websocket endpoints.
+func (s *functionScan) noteEntryPoints(callee *types.Func, packagePath, name string, node *ast.CallExpr, base ArchEntry) {
+	a, info := s.a, s.info
+	switch {
+	case strings.HasPrefix(name, "Register") && strings.HasSuffix(name, "Server") && len(node.Args) == 2 && strings.Contains(types.TypeString(info.Types[node.Args[0]].Type, nil), "grpc"):
+		base.Kind, base.Name = "grpc", strings.TrimSuffix(strings.TrimPrefix(name, "Register"), "Server")
+		base.Detail = types.TypeString(info.Types[node.Args[1]].Type, types.RelativeTo(s.file.pkg.Types))
+		a.addEntry(base)
+	case isTimerOrSchedulerCall(callee, packagePath, name):
+		base.Kind, base.Name = "job", s.function
+		if len(node.Args) > 0 {
+			base.Detail = callee.Name() + "(" + string(s.file.text[a.offset(node.Args[0].Pos()):a.offset(node.Args[0].End())]) + ")"
 		}
-		return consumed
+		a.addEntry(base)
+	case callee.FullName() == "flag.Parse" && s.file.pkg.Name == "main":
+		base.Kind, base.Name, base.Detail = "cli", s.file.pkg.PkgPath, "flag"
+		a.addEntry(base)
+	default:
+		if entry, ok := websocketEntry(info, base, packagePath, name, node); ok {
+			a.addEntry(entry)
+		}
 	}
-	for kind, use := range messaging {
-		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: use.label, Package: file.pkg.PkgPath, Function: function, Topics: sortedSet(use.topics), Event: eventFor(kind), Site: a.site(use.site)})
+}
+
+// notePayloadTypes records the first serialized / deserialized event type of the function.
+func (s *functionScan) notePayloadTypes(callee *types.Func, node *ast.CallExpr) {
+	switch full := callee.FullName(); {
+	case s.produced == nil && len(node.Args) >= 1 && (full == "encoding/json.Marshal" || full == "google.golang.org/protobuf/proto.Marshal" || full == "github.com/golang/protobuf/proto.Marshal"):
+		s.produced = s.a.body(s.info.Types[node.Args[0]].Type, s.function+"Event")
+	case s.consumed == nil && len(node.Args) == 2 && (full == "encoding/json.Unmarshal" || full == "google.golang.org/protobuf/proto.Unmarshal" || full == "github.com/golang/protobuf/proto.Unmarshal"):
+		s.consumed = s.a.body(s.info.Types[node.Args[1]].Type, s.function+"Event")
 	}
-	if len(kafka) == 0 {
+}
+
+func (s *functionScan) noteMessaging(packagePath, name string, node *ast.CallExpr) {
+	kind, label, topic, ok := messagingCall(s.info, packagePath, name, node.Args)
+	if !ok {
 		return
 	}
-	names := make([]string, 0, len(topics))
-	for topic := range topics {
+	use := s.messaging[kind]
+	if use == nil {
+		use = &messagingUse{label: label, site: node.Pos(), topics: map[string]bool{}}
+		s.messaging[kind] = use
+	}
+	if topic != "" {
+		use.topics[topic] = true
+	}
+}
+
+func (s *functionScan) noteKafkaCall(packagePath, name string, node *ast.CallExpr) {
+	for _, library := range kafkaLibraries {
+		if !strings.HasPrefix(packagePath, library.path) {
+			continue
+		}
+		if slices.Contains(library.produce, name) {
+			s.kafka["kafka-producer"] = library.label
+			s.kafkaSite = node.Pos()
+		}
+		if slices.Contains(library.consume, name) {
+			s.kafka["kafka-consumer"] = library.label
+			s.kafkaSite = node.Pos()
+			s.consumeSite = node.Pos()
+			for _, argument := range node.Args {
+				if topic, ok := constantString(s.info, argument); ok {
+					s.topics[topic] = true
+				}
+			}
+		}
+	}
+}
+
+func (s *functionScan) visitCall(node *ast.CallExpr) {
+	callee, _ := typeutil.Callee(s.info, node).(*types.Func)
+	if callee == nil {
+		return
+	}
+	packagePath, name := receiverPackage(callee), callee.Name()
+	if argument := kafkaGroupArg(packagePath, name, node.Args); argument != nil {
+		s.setGroup(argument)
+	}
+	for _, candidate := range kafkaSerializers {
+		if s.serializer == "" && strings.HasPrefix(packagePath, candidate.prefix) {
+			s.serializer = candidate.label
+		}
+	}
+	site := s.a.site(node.Pos())
+	base := ArchEntry{Package: s.file.pkg.PkgPath, Function: s.function, Site: site}
+	s.noteEntryPoints(callee, packagePath, name, node, base)
+	s.notePayloadTypes(callee, node)
+	if kind, library, ok := configRead(callee, packagePath, name); ok && len(node.Args) > 0 {
+		if key, ok := constantString(s.info, node.Args[0]); ok && key != "" {
+			s.a.report.Reads = append(s.a.report.Reads, ArchRead{Kind: kind, Key: key, Library: library, Package: s.file.pkg.PkgPath, Function: s.function, Site: site})
+		}
+	}
+	s.noteMessaging(packagePath, name, node)
+	s.noteKafkaCall(packagePath, name, node)
+}
+
+func (s *functionScan) eventFor(kind string) *ArchBody {
+	if strings.HasSuffix(kind, "-producer") {
+		return s.produced
+	}
+	return s.consumed
+}
+
+// emitKafka adds the kafka producer/consumer entries found in the function.
+func (s *functionScan) emitKafka(fn *ast.FuncDecl) {
+	a, function := s.a, s.function
+	names := make([]string, 0, len(s.topics))
+	for topic := range s.topics {
 		names = append(names, topic)
 	}
 	sort.Strings(names)
@@ -359,16 +392,41 @@ func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, 
 			roles[topic] = role
 		}
 	}
-	for kind, library := range kafka {
-		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: file.pkg.PkgPath, Function: function, Topics: names, Serializer: serializer, TopicRoles: roles, Event: eventFor(kind), Site: a.site(kafkaSite)}
+	for kind, library := range s.kafka {
+		entry := ArchEntry{Kind: kind, Name: function, Detail: library, Package: s.file.pkg.PkgPath, Function: function, Topics: names, Serializer: s.serializer, TopicRoles: roles, Event: s.eventFor(kind), Site: a.site(s.kafkaSite)}
 		if kind == "kafka-consumer" {
-			entry.Group = group
-			if next := statementAfter(fn.Body, consumeSite); next.IsValid() {
+			entry.Group = s.group
+			if next := statementAfter(fn.Body, s.consumeSite); next.IsValid() {
 				site := a.site(next)
 				entry.BreakSite = &site
 			}
 		}
 		a.addEntry(entry)
+	}
+}
+
+func (a *architecture) collectFunctionEntries(file typedFile, fn *ast.FuncDecl, function string) {
+	s := &functionScan{
+		a: a, file: file, info: file.pkg.TypesInfo, function: function,
+		kafka: map[string]string{}, topics: map[string]bool{}, messaging: map[string]*messagingUse{},
+	}
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		switch node := node.(type) {
+		case *ast.KeyValueExpr:
+			s.visitKeyValue(node)
+		case *ast.CompositeLit:
+			a.collectCLI(file, node, function)
+			a.noteReaderTopics(s.info, file.pkg.PkgPath, node)
+		case *ast.CallExpr:
+			s.visitCall(node)
+		}
+		return true
+	})
+	for kind, use := range s.messaging {
+		a.addEntry(ArchEntry{Kind: kind, Name: function, Detail: use.label, Package: file.pkg.PkgPath, Function: function, Topics: sortedSet(use.topics), Event: s.eventFor(kind), Site: a.site(use.site)})
+	}
+	if len(s.kafka) > 0 {
+		s.emitKafka(fn)
 	}
 }
 

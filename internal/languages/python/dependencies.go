@@ -23,11 +23,11 @@ type DeclaredDependency struct {
 	// Resolved è la versione del lockfile (`poetry.lock`, `uv.lock`), "" se assente.
 	Resolved string `json:"resolved,omitempty"`
 	// Dev dice che la dipendenza arriva da un gruppo di sviluppo: non è nel runtime.
-	Dev bool `json:"dev,omitempty"`
+	Dev bool `json:"dev,omitzero"`
 	// Source è il file che la dichiara, relativo all'unità (`requirements.txt`, `pyproject.toml`).
 	Source string `json:"source"`
 	// Line è la riga 1-based nel file, 0 se non determinabile (tabella Poetry).
-	Line int `json:"line,omitempty"`
+	Line int `json:"line,omitzero"`
 }
 
 // DeclaredDependencies elenca le dipendenze di un'unità: pyproject.toml (PEP 621 e Poetry) e

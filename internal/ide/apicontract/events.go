@@ -1,7 +1,7 @@
 package apicontract
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +18,7 @@ type EventShape struct {
 	Schema   string  `json:"schema,omitempty"`
 	Fields   []Field `json:"fields,omitempty"`
 	File     string  `json:"file,omitempty"`
-	Line     int     `json:"line,omitempty"`
+	Line     int     `json:"line,omitzero"`
 }
 
 // EventSchema è uno schema dichiarato nel progetto (Avro .avsc o JSON Schema).

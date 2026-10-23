@@ -1,7 +1,8 @@
 package web
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +11,7 @@ import (
 
 	"adomnia/internal/ide/run"
 	idetesting "adomnia/internal/ide/testing"
+	"adomnia/internal/jsonutil"
 )
 
 const sampleReport = `{"testResults":[
@@ -27,10 +29,10 @@ func runParser(t *testing.T, root, report string, indented bool) ([]idetesting.T
 		t.Fatal(err)
 	}
 	if indented {
-		pretty, _ := json.MarshalIndent(value, "", "  ")
+		pretty, _ := jsonutil.Marshal(value, jsontext.WithIndent("  "))
 		text = string(pretty)
 	} else {
-		compact, _ := json.Marshal(value)
+		compact, _ := jsonutil.Marshal(value)
 		text = string(compact)
 	}
 	parser := &reportParser{root: root}

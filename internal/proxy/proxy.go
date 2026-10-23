@@ -3,11 +3,12 @@ package proxy
 import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/httputil"
+	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net"
@@ -53,7 +54,7 @@ type proxyConfig struct {
 	Port          int                 `json:"port"`
 	Breakpoints   []string            `json:"breakpoints"`
 	Settings      *proxySettingsState `json:"settings,omitempty"`
-	EnableHTTPS   bool                `json:"enableHttps,omitempty"`
+	EnableHTTPS   bool                `json:"enableHttps,omitzero"`
 	UpstreamProxy string              `json:"upstreamProxy,omitempty"`
 	NoProxyHosts  string              `json:"noProxyHosts,omitempty"`
 }
@@ -200,7 +201,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cfg proxyConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+	if err := json.UnmarshalRead(r.Body, &cfg); err != nil {
 		devlog.Err("proxyStartHandler", "decode configurazione proxy fallito", err, nil)
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
@@ -283,7 +284,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	devlog.Info("proxyStartHandler", "proxy intercettore avviato", map[string]any{"port": cfg.Port, "https": cfg.EnableHTTPS})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "port": cfg.Port})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "port": cfg.Port})
 }
 
 func proxyStopHandler(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +307,7 @@ func proxyStopHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
@@ -315,7 +316,7 @@ func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
 		trafficLog = nil
 		trafficMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 		return
 	}
 
@@ -336,7 +337,7 @@ func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
 	httpsEnableMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]interface{}{
 		"ok":           true,
 		"entries":      entries,
 		"count":        len(entries),
@@ -356,7 +357,7 @@ func proxyBreakpointsHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Breakpoints []string `json:"breakpoints"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(r.Body, &body); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -366,7 +367,7 @@ func proxyBreakpointsHandler(w http.ResponseWriter, r *http.Request) {
 	breakpointsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 }
 
 func proxyBreakpointPendingHandler(w http.ResponseWriter, r *http.Request) {
@@ -390,7 +391,7 @@ func proxyBreakpointPendingHandler(w http.ResponseWriter, r *http.Request) {
 	pendingBreakpointsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "pending": pending, "count": len(pending)})
+	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "pending": pending, "count": len(pending)})
 }
 
 func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
@@ -407,7 +408,7 @@ func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
 		Headers map[string]string `json:"headers"`
 		Body    *string           `json:"body"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(r.Body, &body); err != nil {
 		httputil.JSONError(w, "invalid JSON: "+err.Error(), 400)
 		return
 	}
@@ -437,7 +438,7 @@ func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
 	select {
 	case pending.resumeCh <- resume:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
 	case <-time.After(2 * time.Second):
 		httputil.JSONError(w, "request is no longer waiting", 409)
 	}
@@ -590,7 +591,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	outReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(reqBodyBytes))
+	outReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(reqBodyBytes)) // #nosec G704 -- the interceptor forwards to the destination the proxied client asked for; that is its purpose
 	if err != nil {
 		recordEntry(targetURL, r.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), err.Error(), matched)
 		http.Error(w, "invalid request", http.StatusBadGateway)
@@ -637,7 +638,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	client := &http.Client{Timeout: 30 * time.Second, Transport: upstreamTransport()}
-	resp, err := client.Do(outReq)
+	resp, err := client.Do(outReq) // #nosec G704 -- the interceptor forwards to the destination the proxied client asked for; that is its purpose
 	respEnd := time.Now()
 	if err != nil {
 		observed(0, err.Error())

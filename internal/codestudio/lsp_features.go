@@ -2,7 +2,8 @@ package codestudio
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"slices"
@@ -12,6 +13,7 @@ import (
 	"unicode/utf16"
 
 	"adomnia/internal/ide/lsp"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/languages/golang"
 )
 
@@ -44,7 +46,7 @@ func (m *LSPManager) Completion(ctx context.Context, sessionID SessionID, docume
 	}
 	ctx, cancel := withRequestTimeout(ctx)
 	defer cancel()
-	var raw json.RawMessage
+	var raw jsonv1.RawMessage
 	if err := process.conn.CallLatest(ctx, document.uri, "textDocument/completion", positionParams(document, line, column), &raw); err != nil {
 		return CompletionResult{}, err
 	}
@@ -155,7 +157,7 @@ func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documen
 	if kind == "references" {
 		params["context"] = map[string]bool{"includeDeclaration": true}
 	}
-	var raw json.RawMessage
+	var raw jsonv1.RawMessage
 	if err := process.conn.Call(ctx, method, params, &raw); err != nil {
 		return nil, err
 	}
@@ -171,7 +173,7 @@ func (m *LSPManager) Locations(ctx context.Context, sessionID SessionID, documen
 	return result, nil
 }
 
-func decodeLocations(raw json.RawMessage) []lsp.Location {
+func decodeLocations(raw jsonv1.RawMessage) []lsp.Location {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil
 	}
@@ -182,7 +184,7 @@ func decodeLocations(raw json.RawMessage) []lsp.Location {
 		}
 		return nil
 	}
-	var entries []json.RawMessage
+	var entries []jsonv1.RawMessage
 	if json.Unmarshal(raw, &entries) != nil {
 		return nil
 	}
@@ -427,7 +429,7 @@ func (m *LSPManager) CodeActions(ctx context.Context, sessionID SessionID, docum
 	params := map[string]any{"textDocument": lsp.TextDocumentIdentifier{URI: document.uri}, "range": requested, "context": actionContext}
 	requestCtx, cancel := withRequestTimeout(ctx)
 	defer cancel()
-	var raw []json.RawMessage
+	var raw []jsonv1.RawMessage
 	if err := process.conn.Call(requestCtx, "textDocument/codeAction", params, &raw); err != nil {
 		return nil, err
 	}
@@ -535,13 +537,13 @@ func (m *LSPManager) ChangeSignature(ctx context.Context, sessionID SessionID, d
 	}
 	state, _ := m.forDocument(sessionID, documentID)
 	location := lsp.Location{URI: document.uri, Range: lsp.Range{Start: lspPosition(caret.StartLine, caret.StartColumn), End: lspPosition(caret.EndLine, caret.EndColumn)}}
-	argument, err := json.Marshal(map[string]any{"Location": location, "NewParams": newParams, "NewResults": newResults, "ResolveEdits": false})
+	argument, err := jsonutil.Marshal(map[string]any{"Location": location, "NewParams": newParams, "NewResults": newResults, "ResolveEdits": false})
 	if err != nil {
 		return WorkspaceChange{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*defaultRequestTimeout)
 	defer cancel()
-	return m.executeCommand(ctx, state, process, "Change Signature", lsp.Command{Command: golang.GoplsChangeSignatureCommand, Arguments: []json.RawMessage{argument}})
+	return m.executeCommand(ctx, state, process, "Change Signature", lsp.Command{Command: golang.GoplsChangeSignatureCommand, Arguments: []jsonv1.RawMessage{argument}})
 }
 
 // executeCommand esegue un comando gopls e raccoglie gli workspace/applyEdit emessi durante l'esecuzione.
@@ -564,7 +566,7 @@ func (m *LSPManager) executeCommand(ctx context.Context, state *lspSession, proc
 			return WorkspaceChange{}, fmt.Errorf("the action requires unsupported file operations (renaming or deleting files)")
 		}
 		for _, uri := range created {
-			operation, _ := json.Marshal(map[string]string{"kind": "create", "uri": uri})
+			operation, _ := jsonutil.Marshal(map[string]string{"kind": "create", "uri": uri})
 			merged.DocumentChanges = append(merged.DocumentChanges, operation)
 		}
 		for uri, edits := range changes {
@@ -622,7 +624,7 @@ func (m *LSPManager) workspaceChange(state *lspSession, label string, edit lsp.W
 }
 
 // markupText estrae il testo da una documentazione LSP (stringa o MarkupContent).
-func markupText(raw json.RawMessage) string {
+func markupText(raw jsonv1.RawMessage) string {
 	if len(raw) == 0 {
 		return ""
 	}
@@ -638,7 +640,7 @@ func markupText(raw json.RawMessage) string {
 }
 
 // parameterLabel risolve l'etichetta del parametro, espressa come stringa o come offset UTF-16 nella firma.
-func parameterLabel(signature string, raw json.RawMessage) string {
+func parameterLabel(signature string, raw jsonv1.RawMessage) string {
 	var text string
 	if json.Unmarshal(raw, &text) == nil {
 		return text

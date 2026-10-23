@@ -2,8 +2,9 @@ package bootstrap
 
 import (
 	"adomnia/internal/collectionsstore"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/storage"
-	"encoding/json"
+	"encoding/json/v2"
 	bolt "go.etcd.io/bbolt"
 	"testing"
 )
@@ -81,7 +82,7 @@ func TestLoadReturnsAllCriticalValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load structured bootstrap: %v", err)
 	}
-	encoded, err := json.Marshal(structured)
+	encoded, err := jsonutil.Marshal(structured)
 	if err != nil {
 		t.Fatalf("marshal structured bootstrap: %v", err)
 	}

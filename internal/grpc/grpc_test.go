@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"adomnia/internal/jsonutil"
 	"github.com/jhump/protoreflect/desc"            //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"google.golang.org/grpc"
@@ -31,7 +32,7 @@ func (grpcStreamingTestService) UnaryCall(ctx context.Context, request *grpc_tes
 }
 
 func TestGrpcInvokeCapturesHeadersAndTrailers(t *testing.T) {
-	body, _ := json.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "UnaryCall", "payload": map[string]any{}, "timeout_ms": 1000})
+	body, _ := jsonutil.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "UnaryCall", "payload": map[string]any{}, "timeout_ms": 1000})
 	request := httptest.NewRequest(http.MethodPost, "/grpc/invoke", bytes.NewReader(body))
 	recorder := httptest.NewRecorder()
 	grpcInvokeHandler(recorder, request)
@@ -100,7 +101,7 @@ func startGrpcStreamingTestServer(t *testing.T) string {
 func invokeGrpcStreamingRequest(t *testing.T, address string, method string, messages []map[string]interface{}) grpcInvokeResponse {
 	t.Helper()
 
-	body, err := json.Marshal(map[string]interface{}{
+	body, err := jsonutil.Marshal(map[string]interface{}{
 		"address":  address,
 		"service":  "grpc.testing.TestService",
 		"method":   method,
@@ -161,7 +162,7 @@ func TestGrpcInvokeBidirectionalStreamingMessages(t *testing.T) {
 }
 
 func TestGrpcStreamEmitsMessagesBeforeCompletion(t *testing.T) {
-	body, _ := json.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "FullDuplexCall", "messages": []map[string]any{{"payload": map[string]any{"body": "YQ=="}}, {"payload": map[string]any{"body": "Yg=="}}}, "timeout_ms": 2000})
+	body, _ := jsonutil.Marshal(map[string]any{"address": startGrpcStreamingTestServer(t), "service": "grpc.testing.TestService", "method": "FullDuplexCall", "messages": []map[string]any{{"payload": map[string]any{"body": "YQ=="}}, {"payload": map[string]any{"body": "Yg=="}}}, "timeout_ms": 2000})
 	request := httptest.NewRequest(http.MethodPost, "/grpc/stream", bytes.NewReader(body))
 	recorder := httptest.NewRecorder()
 	grpcStreamHandler(recorder, request)
@@ -186,7 +187,7 @@ func TestGrpcStreamEmitsMessagesBeforeCompletion(t *testing.T) {
 }
 
 func TestGrpcParseProtoWithImportsReturnsRichSchema(t *testing.T) {
-	body, err := json.Marshal(map[string]interface{}{
+	body, err := jsonutil.Marshal(map[string]interface{}{
 		"files": map[string]string{
 			"common.proto": `syntax = "proto3";
 				package demo;
@@ -270,7 +271,7 @@ func TestGrpcParseProtosetReturnsLinkedSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal descriptor set: %v", err)
 	}
-	body, err := json.Marshal(map[string]string{"base64": base64.StdEncoding.EncodeToString(raw)})
+	body, err := jsonutil.Marshal(map[string]string{"base64": base64.StdEncoding.EncodeToString(raw)})
 	if err != nil {
 		t.Fatalf("marshal protoset request: %v", err)
 	}

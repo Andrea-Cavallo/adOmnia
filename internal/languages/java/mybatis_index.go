@@ -32,21 +32,21 @@ type MyBatisLink struct {
 	State string `json:"state"`
 
 	XMLFile     string `json:"xmlFile,omitempty"`
-	XMLLine     int    `json:"xmlLine,omitempty"`
-	XMLStartCol int    `json:"xmlStartColumn,omitempty"`
-	XMLEndCol   int    `json:"xmlEndColumn,omitempty"`
+	XMLLine     int    `json:"xmlLine,omitzero"`
+	XMLStartCol int    `json:"xmlStartColumn,omitzero"`
+	XMLEndCol   int    `json:"xmlEndColumn,omitzero"`
 
 	JavaFile     string `json:"javaFile,omitempty"`
-	JavaLine     int    `json:"javaLine,omitempty"`
-	JavaStartCol int    `json:"javaStartColumn,omitempty"`
-	JavaEndCol   int    `json:"javaEndColumn,omitempty"`
+	JavaLine     int    `json:"javaLine,omitzero"`
+	JavaStartCol int    `json:"javaStartColumn,omitzero"`
+	JavaEndCol   int    `json:"javaEndColumn,omitzero"`
 }
 
 // MyBatisIndex è l'elenco dei collegamenti trovati, ordinato per namespace e id.
 type MyBatisIndex struct {
 	Links []MyBatisLink `json:"links"`
 	// Skipped sono i file non letti per i limiti della scansione.
-	Skipped int `json:"skipped,omitempty"`
+	Skipped int `json:"skipped,omitzero"`
 }
 
 var (

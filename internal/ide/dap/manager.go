@@ -3,7 +3,7 @@ package dap
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -53,7 +53,7 @@ type DebugSessionInfo struct {
 	State      string         `json:"state"`
 	Title      string         `json:"title"`
 	StopReason string         `json:"stopReason,omitempty"`
-	ThreadID   int            `json:"threadId,omitempty"`
+	ThreadID   int            `json:"threadId,omitzero"`
 	Error      string         `json:"error,omitempty"`
 	StartedAt  time.Time      `json:"startedAt"`
 }
@@ -89,9 +89,9 @@ type DebugInstruction struct {
 	Symbol       string `json:"symbol,omitempty"`
 	Path         string `json:"path,omitempty"`
 	RelativePath string `json:"relativePath,omitempty"`
-	Line         int    `json:"line,omitempty"`
+	Line         int    `json:"line,omitzero"`
 	// Current marca l'istruzione su cui il frame è fermo.
-	Current bool `json:"current,omitempty"`
+	Current bool `json:"current,omitzero"`
 }
 
 type DebugScope struct {
