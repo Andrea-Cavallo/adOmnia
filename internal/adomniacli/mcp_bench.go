@@ -189,6 +189,10 @@ type perfReportParams struct {
 	OutputDir  string            `json:"outputDir"`
 }
 
+// startupProbe is a seam so report tests never spawn a subprocess; production keeps
+// measuring the real cold start.
+var startupProbe = (*mcpServer).appStartupTime
+
 // performanceReport runs the requested benchmarks and produces a Markdown report.
 // If outputDir is set the .md is also saved to disk; the content is always returned.
 func (s *mcpServer) performanceReport(p perfReportParams) (string, error) {
@@ -211,7 +215,7 @@ func (s *mcpServer) performanceReport(p perfReportParams) (string, error) {
 
 	// ── startup ─────────────────────────────────────────────────────────────
 	fmt.Fprintf(&sb, "## 🚀 Startup\n\n")
-	startupJSON, startupErr := s.appStartupTime()
+	startupJSON, startupErr := startupProbe(s)
 	if startupErr != nil {
 		fmt.Fprintf(&sb, "> ⚠️ Startup measurement failed: %s\n\n", startupErr)
 	} else {

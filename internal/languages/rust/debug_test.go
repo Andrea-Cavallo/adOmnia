@@ -87,6 +87,47 @@ func TestDebugAdapterBuildsAndLaunches(t *testing.T) {
 	}
 }
 
+// RS-6.5: il debug Rust resta su loopback con una porta riservata nota, lancia il programma (mai
+// attach a pid o a host remoti) e la porta dell'indirizzo è quella passata a CodeLLDB. Il cleanup
+// del processo/adapter e il timeout di avvio endpoint sono del core DAP (debugDisconnectTimeout,
+// debugAddressTimeout, i loro test in dap/manager_test.go).
+func TestDebugAdapterIsLoopbackOnlyAndNeverAttaches(t *testing.T) {
+	root := t.TempDir()
+	cargo := writeFile(t, root, "cargo.exe", "")
+	codelldb := writeFile(t, root, "codelldb", "")
+	originalPath := pathCargo
+	pathCargo = func() string { return cargo }
+	originalLook := lookPath
+	lookPath = func(string) (string, error) { return codelldb, nil }
+	defer func() { pathCargo = originalPath; lookPath = originalLook }()
+	originalRun := runCargoBuild
+	runCargoBuild = func(string, string, []string) ([]byte, error) {
+		return []byte(`{"reason":"compiler-artifact","executable":"/tmp/proj/target/debug/server"}`), nil
+	}
+	defer func() { runCargoBuild = originalRun }()
+
+	spec, err := New().DebugAdapter(dap.LaunchRequest{
+		Root: root, WorkingDirectory: root,
+		LanguageOptions: []byte(`{"bin":"server"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(spec.Address, "127.0.0.1:") {
+		t.Fatalf("the DAP endpoint must be loopback-only, got %q", spec.Address)
+	}
+	if len(spec.Arguments) != 2 || spec.Arguments[0] != "--port" || !strings.HasSuffix(spec.Address, spec.Arguments[1]) {
+		t.Fatalf("the adapter must listen on the reserved loopback port: address %q args %v", spec.Address, spec.Arguments)
+	}
+	method, args := spec.Launch("")
+	if method != "launch" || args["request"] != "launch" {
+		t.Fatalf("Rust debug launches the program and never attaches: %q %+v", method, args)
+	}
+	if args["processId"] != nil || args["program"] == nil {
+		t.Fatalf("no pid attach, a program is launched: %+v", args)
+	}
+}
+
 func TestDebugAdapterRejectsMissingTarget(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "cargo.exe", "")

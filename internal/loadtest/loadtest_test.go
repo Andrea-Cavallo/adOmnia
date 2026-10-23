@@ -27,8 +27,10 @@ func TestWarmupNeverSwallowsEveryRequest(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) }))
 	defer target.Close()
 	result := runLoadTest(t, `{"url":"`+target.URL+`","totalReqs":2,"warmupReqs":5,"concurrency":2}`)
-	if result.Successful != 2 || result.AvgMs <= 0 {
-		t.Fatalf("want 2 measured requests with a latency, got %+v", result)
+	// A sub-millisecond run rounds AvgMs to 0, so the measured count is what proves the warmup
+	// did not swallow the requests.
+	if result.Successful != 2 || len(result.Timeline) != 2 {
+		t.Fatalf("want 2 measured requests, got %+v", result)
 	}
 }
 

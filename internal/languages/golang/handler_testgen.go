@@ -79,13 +79,35 @@ func handlerImportNames(file *ast.File) map[string]string {
 	imports := map[string]string{}
 	for _, spec := range file.Imports {
 		value, _ := strconv.Unquote(spec.Path.Value)
-		name := path.Base(value)
+		name := importPackageName(value)
 		if spec.Name != nil {
 			name = spec.Name.Name
 		}
 		imports[name] = value
 	}
 	return imports
+}
+
+// importPackageName is the identifier an import is referenced by. A `/vN` major-version segment is
+// not part of the package name (`github.com/labstack/echo/v4` is used as `echo`), so path.Base alone
+// would yield `v4` and the handler would not be recognised.
+func importPackageName(importPath string) string {
+	name := path.Base(importPath)
+	if len(name) > 1 && name[0] == 'v' {
+		digits := true
+		for i := 1; i < len(name); i++ {
+			if name[i] < '0' || name[i] > '9' {
+				digits = false
+				break
+			}
+		}
+		if digits {
+			if parent := path.Base(path.Dir(importPath)); parent != "." && parent != "/" {
+				return parent
+			}
+		}
+	}
+	return name
 }
 
 func handlerParams(fn *ast.FuncDecl) []ast.Expr {

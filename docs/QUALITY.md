@@ -86,6 +86,29 @@ The root Wails package is excluded (it embeds `frontend/dist` and needs GTK). Th
 fail the build, because the 80% line is an awesome-go guideline for non-data packages "where applicable", not a gate
 for a desktop app. Publishing the number to Codecov or Coveralls is a separate step (`mds/todos-adomnia.md`, AW-5).
 
+### Coverage on new code (Sonar gate)
+
+SonarCloud gates `new_coverage` at 80% on `main`; the current gap, the arithmetic to close it and the
+work waves are in [`mds/COVERAGE-RIENTRO.md`](../mds/COVERAGE-RIENTRO.md). Two facts drive the work and
+are worth repeating here:
+
+- `sonar.javascript.lcov.reportPaths` only receives files Vitest actually imports, so a component with no
+  test is reported as entirely uncovered;
+- a change is done only when the lines it adds or modifies arrive with a test (see the engagement rules in
+  the plan) — otherwise the new-code denominator grows faster than the tests do.
+
+To read the real gap without opening a browser:
+
+```bash
+node scripts/coverage-gap.mjs                        # tabella per area + file peggiori
+node scripts/coverage-gap.mjs --top 40 --json out.json  # elenco completo in JSON
+```
+
+It exits non-zero while the gap is open, so it can run in CI as a report-only step today and as a gate
+once the backlog is closed.
+
+
+
 ## SonarCloud (CI)
 
 The `sonar` job in `sonar.yml` (its own workflow, so `quality.yml` stays green without a Sonar token) scans
